@@ -22,7 +22,7 @@ import { mysqlConnection, postgresClient, withCaseDatabase } from './case-databa
 import { schemaOf } from './schema_of.mjs';
 const root = new URL('../../..', import.meta.url).pathname;
 const args = process.argv.slice(2);
-const selectedCases = ['conditions', 'joinsAndRelations', 'columnsAndSubqueries', 'writes', 'styledStates', 'aesRotation', 'transactions', 'schemaExistsUnderscore'];
+const selectedCases = ['conditions', 'joinsAndRelations', 'columnsAndSubqueries', 'writes', 'styledStates', 'aesRotation', 'transactions', 'schemaExistsUnderscore', 'schemaEmpty'];
 if (args.length !== 0 && (args.length !== 4 || args[0] !== '--case' || !selectedCases.includes(args[1]) || args[2] !== '--dialect' || !['sqlite', 'mysql', 'postgres'].includes(args[3]))) {
   throw new Error(`usage: model.mjs [--case ${selectedCases.join('|')} --dialect sqlite|mysql|postgres]`);
 }
@@ -76,6 +76,7 @@ async function install(dsn) {
 /**
  * Checks schema().empty() on a new case database, with an empty PostgreSQL
  * schema other than public, and with the installed tables.
+ * Requirements: INT-58.
  */
 async function schemaEmpty(dialect, dsn) {
   const db = await connect(dsn);
@@ -151,7 +152,7 @@ async function holdRows(dialect, dsn, table) {
   return async () => { if (released) return; released = true; await client.query('ROLLBACK'); await client.end(); };
 }
 
-// Requirements: PLN-6, PLN-7, PLN-23, PLN-28, PLN-34, PLN-37, PLN-38, PLN-39.
+// Requirements: DSL-60, PLN-6, PLN-7, PLN-23, PLN-28, PLN-34, PLN-37, PLN-38, PLN-39.
 async function conditions(db) {
   const f = await seed(db);
   const svc = f.service.getSeq();
@@ -255,7 +256,7 @@ async function columnsAndSubqueries(db) {
   check(pairs === 2, `tuple: ${pairs}`);
 }
 
-// Requirements: PLN-12, PLN-27.
+// Requirements: DSL-115, DSL-155, PLN-12, PLN-27.
 async function writes(db) {
   const f = await seed(db);
   const b = await new Author().connect(db).getBySeq(f.authors[0].getSeq());
@@ -377,7 +378,7 @@ async function styledStates(db, dsn) {
   check(cells.json_setting === null && cells.jsons_tags === null && cells.serialize_data === null, 'SQL NULL storage');
 }
 
-// Requirements: INT-59, INT-73, INT-134.
+// Requirements: INT-51, INT-59, INT-73, INT-134.
 async function transactions(db, dsn) {
   const utils = db.utils();
   check(utils.schema() !== null && utils.privileges() !== null && utils.aes() !== null && utils.stats() !== null, 'Utils exposes schema, privileges, AES and stats groups');
@@ -561,6 +562,7 @@ function documentModels(text) {
  * back, rotates the row to the next key version, and updates it with the
  * first key version.
  */
+// Requirements: COD-7.
 async function aesJsonColumn(dialect, dsn, sqlitePath) {
   const secret = await readFile(join(root, 'contracts/fixtures/secret_config.dbs'), 'utf8');
   const { secret_config: SecretConfig } = documentModels(secret);
@@ -651,7 +653,7 @@ async function inCaseDatabase(dialect, body) {
 }
 
 try {
-  if (selectedCase === undefined) {
+  if (selectedCase === undefined || selectedCase === 'schemaEmpty') {
   for (const dialect of dialects) {
     begin(`${dialect}/schemaEmpty`);
     await inCaseDatabase(dialect, dsn => schemaEmpty(dialect, dsn));

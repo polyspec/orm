@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: d2bf53fcaacbfb1101ec1c3d4b16c24990f8e8dd0e53566752d9756672866cec -->
+<!-- source-sha256: e6722392ea02548fe82ce1b6f1be5edefae1ed74ba63021e5e52303ba5384858 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -520,7 +520,7 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 - **INT-102** 그리드 부동소수 셀은 값의 네이티브 IEEE-754 비트를 가진다(`Float32(u32)`, `Float64(u64)`). 음의 0과 비유한 값을 보존하며 JSON 숫자 강제 변환을 하지 않는다. MySQL unsigned 값은 부호 없는 64비트 범위 전체를 보존하는 `Unsigned(u64)` 셀이다.
 - **INT-103** 시간 그리드 셀은 값의 dbspec 텍스트 형식을 가진다: `Date`는 `YYYY-MM-DD`, `Time`은 `HH:MM:SS`, `DateTime`은 UTC의 `YYYY-MM-DD HH:MM:SS`이며 각각 소수 자릿수를 갖는다. 기술된 테이블의 읽기는 열이 선언한 정밀도 p를 정확히 쓴다. 선언이 없는 읽기 전용 그리드 조회는 여섯 자리를 쓴다. 00:00:00부터 23:59:59.999999 밖의 시각, 0001-01-01부터 9999-12-31 밖의 날짜, PostgreSQL infinity는 실패하며, dbspec 형식이 아닌 SQLite 텍스트는 `GRID_TEMPORAL_VALUE`로 실패한다.
 - **INT-104** 읽기 전용 그리드 조회는 모든 데이터베이스에서 데이터베이스가 강제하는 읽기 전용 범위 안에서 실행된다.
-- **INT-105** 거부된 커밋 허가(permit)는 네이티브 insert, update, delete를 롤백한다. 커밋 성공이 되는 일은 없다.
+- **INT-105** `polyspec-orm-build`의 커밋 허가(permit)는 거부된 네이티브 insert, update, delete를 롤백한다. 커밋 성공이 되는 일은 없다.
 - **INT-106** 네이티브 update는 새 트랜잭션에서 원본 행을 키로 잠그고, descriptor와 원본 행을 비교하며, 커밋 전에 기록 후 값이 정확한지 검증한다. 검증이 실패하거나 커밋 전에 취소되면 롤백한다. InnoDB가 아닌 MySQL 테이블과 트리거가 있는 MySQL 테이블은 거부된다.
 - **INT-107** 행 기준(baseline)은 정확한 타입 값을 비교한다: 부동소수 비트, decimal scale, 이진 바이트, 생성 열의 원본 값. 이 중 하나라도 다르면 충돌이다.
 - **INT-108** 행 기준은 검사를 마친 불변 행 하나를 캡처한다. 캡처 대상은 제약 순서의 신뢰할 수 있는 NOT NULL 선언 기본 키 값과 descriptor 및 타입 셀의 값 민감 SHA-256 리비전이다. 이후 페이지가 바뀌어도 캡처된 셀은 바뀌지 않는다.
@@ -531,17 +531,17 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 - **INT-113** 한정된 테이블을 기술하면 네이티브 열 타입, 선언된 기본 키 순서, 실제 nullability, 생성 열 표시가 보존된다. 식별자는 비어 있지 않고 전부 NOT NULL인 기본 키를 가진 일반 또는 파티션 테이블을 요구한다.
 - **INT-114** 테이블 페이지는 descriptor 열을 물리 순서로 읽는다. 선언된 기본 키 제약 순서가 있으면 그 순서로 정렬하며, limit은 1부터 1000, offset은 0부터 1000000까지이다. `has_more`는 전체 개수가 아니라 한정된 추가 행 하나로 정한다.
 - **INT-115** 명시된 행 또는 바이트 예산을 넘는 결과를 낸 조회는 부분 성공으로 자르지 않고 거부된다.
-- **INT-116** 타입 있는 NULL은 빈 텍스트나 0이 아니라 선택된 네이티브 바인드 종류를 쓰며, 타입 있는 바인드는 데이터베이스에서 값을 보존한다.
+- **INT-116** `polyspec-orm-build` crate의 Rust `tool_db` API는 타입 있는 NULL에 빈 텍스트나 0 대신 선택된 네이티브 바인드 종류를 쓰며, 타입 있는 바인드 값을 데이터베이스에서 보존한다.
 - **INT-117** 타입 있는 카탈로그 쓰기는 값이 열의 선언된 소수 자릿수를 가질 때 쓴 셀을 다시 읽는다. 기록 후 검증이나 충돌이 거부한 쓰기는 롤백한다.
 - **INT-118** 명시적인 PostgreSQL 제약 또는 트랜잭션 거부는 확인 응답 누락과 구분되며, `ROW_COMMIT_REJECTED`를 보고하기 전에 롤백 확인이 필요하다. 확인되지 않은 커밋 오류는 불확실하며 자동으로 재시도하지 않는다.
 - **INT-119** 트리거가 없다는 판단은 검증된 직접 계정 권한이 있을 때만 유효하다. 역할로만 받은 권한과 활성화된 부분 회수는 보이는 것으로 가정하지 않고 거부한다.
-- **INT-120** 65535개를 넘는 파라미터, 또는 총 값 바이트가 16 MiB를 넘는 바인드 목록은 준비나 실행 전에 `TOOL_BIND_LIMIT`로 거부된다.
+- **INT-120** `polyspec-orm-build` 네이티브 도구는 65535개를 넘는 파라미터 또는 총 값 바이트가 16 MiB를 넘는 바인드 목록을 준비나 실행 전에 `TOOL_BIND_LIMIT`로 거부한다.
 - **INT-121** 테이블 페이지는 준비된 열 이름이 descriptor와 맞지 않거나, 읽기 범위 안에서 메타데이터가 바뀌면 거부된다.
-- **INT-122** 타입 있는 바인드는 실행 전에 잘못된 decimal, 비유한 MySQL float, SQLite NaN, NUL이 있는 PostgreSQL 텍스트를 `TOOL_BIND_INVALID`로 거부한다.
+- **INT-122** `polyspec-orm-build` crate의 Rust `tool_db` 타입 바인드 검증기는 잘못된 decimal, 비유한 MySQL float, SQLite NaN, NUL이 있는 PostgreSQL 텍스트를 실행 전에 `TOOL_BIND_INVALID`로 거부한다.
 - **INT-123** `insert_row`는 생략된 기본키 구성요소마다 `automatic_key` 또는 `default_expression`을 요구하고, 없으면 `ROW_INSERT_IDENTITY_REQUIRED`를 반환한다. 데이터베이스에서 생략된 키를 돌려주며 dialect가 키 형태를 만들 수 없으면 `ROW_INSERT_UNSUPPORTED`를 반환한다. 기존 키와 알 수 없거나 중복되거나 생성 열 대상인 할당을 거부하며, 정확히 한 행의 영향, 선언된 키로 재조회 및 제공된 값의 정확한 비교를 요구한다.
-- **INT-124** 열 메타데이터가 2048개를 넘거나, 열 이름과 네이티브 타입을 합한 크기가 64 KiB를 넘는 질의 결과는 `TOOL_QUERY_COLUMNS`로 실패한다.
-- **INT-125** 경계가 있는 질의의 텍스트가 정확히 한 개의 statement로 나뉘지 않으면 `TOOL_QUERY_STATEMENT`로 실패한다.
-- **INT-135** 질의 결과는 statement의 출력 열을 select 순서대로, 중복된 이름을 포함해 각 네이티브 타입과 함께 나열하며, 행이 없는 결과도 그 열을 유지한다.
+- **INT-124** `polyspec-orm-build` crate의 Rust `tool_db` 질의 결과는 열 메타데이터가 2048개를 넘거나, 열 이름과 네이티브 타입을 합한 크기가 64 KiB를 넘으면 `TOOL_QUERY_COLUMNS`로 실패한다.
+- **INT-125** `polyspec-orm-build` crate의 Rust `tool_db` 경계가 있는 질의는 텍스트가 정확히 한 개의 statement로 나뉘지 않으면 `TOOL_QUERY_STATEMENT`로 실패한다.
+- **INT-135** `polyspec-orm-build` crate의 Rust `tool_db` 질의 결과는 statement 열을 순서대로 네이티브 타입과 함께 나열하며 중복 이름을 포함하고, 행이 없어도 그 열을 유지한다.
 - **INT-136** 읽기 전용 grid 질의는 읽기만 하는 statement 하나를 받아들인다: `SELECT`, 또는 그 부분이 읽기만 하는 `WITH` 질의. 주석이나 문자열 리터럴 안의 `;`는 statement를 끝내지 않는다. 쓰기, commit, 프로시저 호출, `INTO` 선택, `FOR UPDATE` 잠금, 또는 뒤따르는 두 번째 statement가 있는 문장은 거부하며, PostgreSQL에서는 `UNION ALL` 피연산자 200개 또는 `+` 항 200개인 질의도 거부한다.
-- **INT-137** 취소된 task가 열어 둔 읽기 전용 scope는 pool로 돌아가지 않는다: 그 connection은 폐기되고, pool의 다음 checkout은 쓸 수 있다.
+- **INT-137** `polyspec-orm-build` crate의 Rust 카탈로그 연결은 취소된 task가 열어 둔 읽기 전용 scope를 pool에 돌려보내지 않는다: connection을 폐기하고 다음 checkout은 쓸 수 있다.
 - **INT-138** 각 구현의 native package 진입점은 소비자 import에 선언된 public client 표면을 노출한다: Go module package, PHP Composer autoloader, 로드된 PHP extension 선언, TypeScript package exports, Python package import, Rust crate root이다. 소비자는 해당 native 형식으로 진입점을 해석해 public 선언을 사용할 수 있으며, test-only 진입점은 별도 요구사항을 따른다.

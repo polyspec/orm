@@ -5,7 +5,7 @@
 //! holds sql, binds, kind, tables, and transaction (a number recounted from 1 in the order first seen within the case,
 //! null outside a transaction), and error (the code of the statement error, or null if none). compare
 //! "tables" compares only events that have tables. elapsed is a `Duration`, so it cannot be negative.
-//! Requirements: INT-77, PLN-44.
+//! Requirements: INT-77, INT-96, PLN-44.
 
 #[macro_use]
 #[path = "common/model_row.rs"]
@@ -189,6 +189,12 @@ impl EventRun {
             (Some("callback"), Err(e)) if e.to_string().ends_with(CALLBACK_FAILED) => Ok(()),
             (Some(code), Err(e)) if code != "callback" && e.code() == code => {
                 if code == "SUBSCRIBER" {
+                    assert_eq!(
+                        e.to_string(),
+                        "SUBSCRIBER: statement event subscriber failed: subscriber refused the event",
+                        "{}: SUBSCRIBER includes the subscriber error text",
+                        self.driver
+                    );
                     let cause = std::error::Error::source(&e).map(ToString::to_string);
                     assert_eq!(cause.as_deref(), Some("subscriber refused the event"), "{}: SUBSCRIBER keeps the subscriber error as its cause", self.driver);
                 }

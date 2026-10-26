@@ -41,6 +41,7 @@ class SchemaInspectionTest(unittest.TestCase):
         busy = DbStats(max_open_connections=10, open_connections=1, in_use=1, idle=0)
         self.assertEqual(seen, [(busy, busy)])
 
+    # Requirements: INT-58.
     def test_empty_counts_tables_and_views_but_not_the_orm_tables(self):
         schema = self.db.utils().schema()
         self.assertTrue(schema.empty())

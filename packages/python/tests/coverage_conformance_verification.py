@@ -1,7 +1,7 @@
-# conformance_verification coverage: the Python conformance runner runs the read-only vectors conditions_values and
-# relations on the selected database, and each output equals, as a JSON value, the expectation recorded for that
-# database, as the conformance_verification coverage of Go, PHP, TypeScript and Rust does. The runner imports the
-# committed bench models, which make python-model-check keeps equal to the generator output.
+# conformance_verification coverage: the Python conformance runner runs only the selected vectors on the selected
+# database, and each output equals, as a JSON value, the expectation recorded for that database. The runner imports
+# the committed bench models, which make python-model-check keeps equal to the generator output. The creates_and_save
+# vector removes the rows it creates.
 import json
 import subprocess
 import sys
@@ -13,7 +13,7 @@ VECTOR_FILES = {
     "postgres": "vectors.postgres.json",
     "sqlite": "vectors.sqlite.json",
 }
-SELECTED = ["conditions_values", "relations"]
+SELECTED = ["conditions_values", "relations", "functions", "creates_and_save"]
 MODELS = REPOSITORY_ROOT / "packages" / "python" / "src" / "polyspec" / "orm" / "models"
 
 
@@ -56,7 +56,7 @@ def conformance_vector(item):
 
 
 class CoverageTest(CoverageCase):
-    # Requirements: DIA-37.
+    # Requirements: DIA-37, DSL-137, DSL-139, DSL-144, DIA-11, DIA-14.
     def test_conformance_vector(self):
         self.each_item("conformance_vector", conformance_vector)
 

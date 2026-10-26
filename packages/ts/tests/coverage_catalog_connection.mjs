@@ -1,9 +1,12 @@
 // catalog_connection coverage runs the two shared cases against the bench database that the
 // feature check selected (ORM_FEATURE_DATABASE, ORM_FEATURE_DSN) through connectCatalog. The read case only reads; the mutation
 // case inserts, updates and deletes one row of composite_account in tenant 990005 and ends in the state it started in.
-// Requirements: SCH-3, SCH-5, SCH-6a, INT-101, INT-103, INT-109, INT-113, INT-114, INT-115, INT-123.
+// Requirements: SCH-3, SCH-5, SCH-6, SCH-6a, INT-97, INT-101, INT-102, INT-103, INT-104, INT-109, INT-112, INT-113, INT-114, INT-115, INT-121, INT-123, INT-136.
 import assert from 'node:assert/strict';
 import { randomInt } from 'node:crypto';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { nativeQuery, runCases } from './coverage_case.mjs';
 import { BindCell, connect as connectModel, connectCatalog, decode } from '../dist/index.js';
 import { DatabaseSync } from 'node:sqlite';
@@ -25,35 +28,126 @@ async function connect(item = {
 
 const quote = (name, driver) => (driver === 'mysql' ? `\`${name}\`` : `"${name}"`);
 
-// Requirements: INT-101.
+// Requirements: INT-101, INT-121, INT-136.
 async function readCase(item) {
   const { driver, catalog } = await connect(item);
   try {
+    await assert.rejects(connectCatalog('unsupported://host/database'));
+    const directory = mkdtempSync(join(tmpdir(), 'orm-catalog-missing-'));
+    const path = join(directory, 'missing.sqlite');
+    try {
+      await assert.rejects(connectCatalog(`sqlite://${path}`));
+      assert.equal(existsSync(path), false, `${driver}: catalog connection created a missing SQLite database`);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
     const namespace = await catalog.currentNamespace();
     const author = { namespace, name: 'author' };
     const meta = await catalog.describeTable(author);
     assert.deepEqual(meta.primaryKey, ['seq'], `${driver}: author key`);
     assert.equal(meta.reliableRowIdentity, true, `${driver}: author row identity`);
     assert.ok(meta.columns.some(c => c.name === 'start_dt'), `${driver}: author columns lack start_dt`);
+    const metadataName = `catalog_metadata_${process.pid}_${randomInt(0, 1_000_000_000)}`;
+    try {
+      await nativeQuery(driver, item.dsn, [
+        `CREATE TABLE ${quote(metadataName, driver)} (a BIGINT NOT NULL, b BIGINT NOT NULL, note VARCHAR(50), g BIGINT GENERATED ALWAYS AS (a+1) STORED, PRIMARY KEY (b,a))`,
+      ]);
+      const metadata = await catalog.describeTable({ namespace, name: metadataName });
+      const wantNativeTypes = driver === 'mysql'
+        ? ['bigint', 'bigint', 'varchar(50)', 'bigint']
+        : driver === 'postgres'
+          ? ['bigint', 'bigint', 'character varying(50)', 'bigint']
+          : ['BIGINT', 'BIGINT', 'VARCHAR(50)', 'BIGINT'];
+      assert.deepEqual(metadata.columns.map(column => column.name), ['a', 'b', 'note', 'g'], `${driver}: physical metadata column order`);
+      assert.deepEqual(metadata.columns.map(column => column.nativeType), wantNativeTypes, `${driver}: native column types`);
+      assert.deepEqual(metadata.primaryKey, ['b', 'a'], `${driver}: primary-key constraint order`);
+      assert.equal(metadata.columns[2].nullable, true, `${driver}: actual nullable column`);
+      assert.equal(metadata.columns[3].generated, true, `${driver}: generated-column flag`);
+      assert.equal(metadata.reliableRowIdentity, true, `${driver}: non-null primary-key identity`);
+    } finally {
+      await nativeQuery(driver, item.dsn, [`DROP TABLE IF EXISTS ${quote(metadataName, driver)}`]);
+    }
 
     const page = await catalog.tablePage(author, 3, 0);
     assert.deepEqual(page.orderBy, ['seq'], `${driver}: page order`);
     assert.equal(page.hasMore, true, `${driver}: more author rows follow`);
     assert.equal(page.result.rows.length, 3, `${driver}: author page rows`);
+    assert.deepEqual(page.result.columns, meta.columns.map(column => column.name), `${driver}: page columns follow descriptor order`);
+    for (const [limit, offset] of [[0, 0], [1001, 0], [1, 1_000_001]]) {
+      await assert.rejects(catalog.tablePage(author, limit, offset), `${driver}: table page bounds ${limit}/${offset}`);
+    }
 
     const count = await catalog.readOnlyQuery(`SELECT COUNT(*) FROM ${quote('user', driver)}`, []);
     assert.equal(Number(count.rows[0][0]), 5000, `${driver}: user count`);
+    if (driver === 'mysql') {
+      const name = `catalog_readonly_${process.pid}_${randomInt(0, 1_000_000_000)}`;
+      const fn = `${name}_fn`;
+      try {
+        await nativeQuery(driver, item.dsn, [
+          `CREATE TABLE ${quote(name, driver)} (n INTEGER NOT NULL)`,
+          `INSERT INTO ${quote(name, driver)} VALUES (7)`,
+          `CREATE FUNCTION ${quote(fn, driver)}() RETURNS INTEGER DETERMINISTIC MODIFIES SQL DATA BEGIN UPDATE ${quote(name, driver)} SET n=n+1; RETURN 1; END`,
+        ]);
+        await assert.rejects(
+          catalog.readOnlyGridQuery(`SELECT ${quote(fn, driver)}()`, []),
+          undefined,
+          `${driver}: a database-enforced read-only scope allowed a function to write`,
+        );
+      } finally {
+        await nativeQuery(driver, item.dsn, [
+          `DROP FUNCTION IF EXISTS ${quote(fn, driver)}`,
+          `DROP TABLE IF EXISTS ${quote(name, driver)}`,
+        ]);
+      }
+    } else {
+      const readOnlySQL = driver === 'postgres'
+        ? "SELECT current_setting('transaction_read_only')"
+        : 'SELECT query_only FROM pragma_query_only';
+      const readOnlyState = await catalog.readOnlyQuery(readOnlySQL, []);
+      assert.deepEqual(readOnlyState.rows, [[driver === 'postgres' ? 'on' : 1]], `${driver}: query runs in a database-enforced read-only scope`);
+    }
+    if (driver === 'mysql') {
+      const classification = await catalog.readOnlyQuery(
+        "SELECT TABLE_TYPE FROM information_schema.TABLES WHERE TABLE_SCHEMA = 'information_schema' AND TABLE_NAME = 'TABLES'",
+        [],
+      );
+      assert.deepEqual(classification.rows, [['SYSTEM VIEW']], 'information_schema.TABLES is a MySQL SYSTEM VIEW');
+      const systemView = await catalog.describeTable({ namespace: 'information_schema', name: 'TABLES' });
+      assert.equal(systemView.kind, 'view', 'a MySQL SYSTEM VIEW is described as a view');
+      assert.ok(systemView.columns.length > 0, 'a MySQL SYSTEM VIEW retains its columns');
+      assert.deepEqual(systemView.primaryKey, [], 'a MySQL SYSTEM VIEW has no row identity');
+      assert.equal(systemView.reliableRowIdentity, false, 'a MySQL SYSTEM VIEW is not a reliable row identity');
+    }
     await temporalDefaultPrecisionCase(driver, item.dsn, catalog);
     await assert.rejects(
       catalog.readOnlyQuery(`UPDATE ${quote('user', driver)} SET name = name WHERE seq = 1`, []),
       /QUERY_READ_ONLY/,
       `${driver}: a write through readOnlyQuery`,
     );
+    for (const sql of ["SELECT ';' AS value /* ; */", 'WITH values_cte AS (SELECT 1 AS value) SELECT value FROM values_cte']) {
+      await catalog.readOnlyGridQuery(sql);
+    }
+    const readOnlyRefusals = [
+      'COMMIT',
+      'CALL missing_catalog_procedure()',
+      'SELECT 1 INTO catalog_forbidden',
+      'SELECT 1 FOR UPDATE',
+      'SELECT 1; SELECT 2',
+      'WITH changed AS (UPDATE user SET name=name WHERE seq=1 RETURNING seq) SELECT seq FROM changed',
+    ];
+    if (driver === 'postgres') {
+      readOnlyRefusals.push(`SELECT ${Array(200).fill('1').join(' UNION ALL ')}`);
+      readOnlyRefusals.push(`SELECT ${Array(200).fill('1').join('+')}`);
+    }
+    for (const sql of readOnlyRefusals) {
+      await assert.rejects(catalog.readOnlyGridQuery(sql), /QUERY_READ_ONLY/, `${driver}: read-only grid refusal: ${sql}`);
+    }
     await assertGridCells(driver, catalog);
   } finally {
     await catalog.close();
   }
 }
+
 
 // Requirements: INT-101.
 async function temporalDefaultPrecisionCase(driver, dsn, catalog) {
@@ -128,7 +222,7 @@ async function nullAndEmptyTextCase(item) {
   }
 }
 
-// Requirements: DBS-113.
+// Requirements: DBS-113, INT-106, INT-108, INT-109, INT-111.
 async function mutationCase(item) {
   const { driver, catalog } = await connect(item);
   try {
@@ -145,6 +239,12 @@ async function mutationCase(item) {
       { name: 'name', value: 'catalog' },
     ]);
     assert.equal(inserted.rows.length, 1, `${driver}: inserted rows`);
+    const capturedPage = await catalog.tablePage(table, 1000, 0);
+    assert.throws(
+      () => catalog.rowSnapshotFromPage({ ...capturedPage, orderBy: [] }, 0),
+      codeIs('ROW_SNAPSHOT_INVALID'),
+      `${driver}: page order that differs from the descriptor is rejected`,
+    );
 
     const find = async (wantName) => {
       const page = await catalog.tablePage(table, 1000, 0);
@@ -155,9 +255,28 @@ async function mutationCase(item) {
       return catalog.rowSnapshotFromPage(page, index);
     };
 
-    const updated = await catalog.updateRow(await find('catalog'), [{ name: 'name', value: 'catalog-updated' }]);
+    const original = await find('catalog');
+    assert.deepEqual(original.metadata.primaryKey, ['tenant_id', 'account_id'], `${driver}: declared key order`);
+    assert.deepEqual(original.keys(), [TENANT, 1], `${driver}: snapshot key cells follow constraint order`);
+    const originalCells = original.originalCells();
+    const originalRevision = original.revision;
+    for (const values of [
+      [{ name: 'absent', value: 'value' }],
+      [{ name: 'name', value: null }],
+    ]) {
+      await assert.rejects(catalog.updateRow(original, values), codeIs('ROW_UPDATE_INVALID'), `${driver}: invalid assignment is rejected`);
+    }
+    const updated = await catalog.updateRow(original, [{ name: 'name', value: 'catalog-updated' }]);
     assert.equal(updated.rows.length, 1, `${driver}: updated rows`);
-    assert.equal(await catalog.deleteRow(await find('catalog-updated')), 1, `${driver}: deleted rows`);
+    assert.deepEqual(original.originalCells(), originalCells, `${driver}: captured cells remain immutable`);
+    assert.equal(original.revision, originalRevision, `${driver}: captured revision remains immutable`);
+    await assert.rejects(
+      catalog.updateRow(original, [{ name: 'name', value: 'stale' }]),
+      codeIs('ROW_CONFLICT'),
+      `${driver}: update of the stale original row is rejected`,
+    );
+    const current = await find('catalog-updated');
+    assert.equal(await catalog.deleteRow(current), 1, `${driver}: deleted rows`);
     assert.equal(await tenantRows(), 0, `${driver}: rows left`);
   } finally {
     await catalog.close();

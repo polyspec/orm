@@ -36,7 +36,7 @@ final class CompositeKeysNativeTest extends TestCase
         Assert::assertSame([], $pdo->executions, 'fixture setup is not recorded as ORM query execution');
     }
 
-    // Requirements: INT-87, PRT-12, PRT-40.
+    // Requirements: DSL-82, INT-87, PRT-12, PRT-40.
     // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
     public function test_composite_relation_binds_and_assembles_both_key_components(): void
     {

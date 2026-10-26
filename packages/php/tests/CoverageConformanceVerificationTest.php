@@ -55,7 +55,15 @@ function sameJson(mixed $a, mixed $b): bool
     return $a === $b;
 }
 
-const CONFORMANCE_VECTORS = ['audit_lazy', 'conditions_values', 'relations', 'delete_lock', 'relation_null_key'];
+const CONFORMANCE_VECTORS = [
+    'audit_lazy',
+    'conditions_values',
+    'relations',
+    'delete_lock',
+    'relation_null_key',
+    'functions',
+    'creates_and_save',
+];
 
 #[Large]
 final class CoverageConformanceVerificationTest extends TestCase
@@ -162,7 +170,7 @@ final class CoverageConformanceVerificationTest extends TestCase
         self::check('sqlite', $name, $expect);
     }
 
-    // Requirements: CFG-8, DSL-87, DSL-111.
+    // Requirements: CFG-8, DSL-87, DSL-111, DSL-137, DSL-139, DSL-144, DIA-11, DIA-14.
     public function testConformanceVector(): void
     {
         coverageAssertEntryClassesAreInternal();

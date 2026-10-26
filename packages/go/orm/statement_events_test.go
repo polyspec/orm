@@ -16,7 +16,7 @@ import (
 
 // Runs the cases of tests/events/vectors.json with this client and compares the statement events.
 // If ORM_EVENTS_RECORD=1, it records this driver's expected events into the vector instead of comparing.
-// Requirements: INT-77, PLN-44.
+// Requirements: INT-77, INT-96, PLN-44.
 
 const eventsVector = "../../../tests/events/vectors.json"
 
@@ -175,6 +175,8 @@ func (r *eventRun) checked(s eventStep) {
 		}
 	case s.Error != "" && orm.ErrorCode(err) != s.Error:
 		r.t.Fatalf("step %s = %v, want %s", s.Op, err, s.Error)
+	case s.Error == "SUBSCRIBER" && err.Error() != "SUBSCRIBER: statement event subscriber failed: subscriber refused the event":
+		r.t.Fatalf("step %s = %v, want the subscriber error text and cause", s.Op, err)
 	}
 }
 

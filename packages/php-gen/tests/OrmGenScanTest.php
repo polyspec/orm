@@ -188,7 +188,7 @@ final class OrmGenScanTest extends TestCase
 
     public function testTheReceiverIsResolvedFromTheSource(): void
     {
-        // Requirements: INT-28, PLN-1.
+        // Requirements: INT-28, PLN-1, PLN-40.
         // The test of DSL-42 (docs/spec).
         $ns = self::NS;
         $source = <<<PHP

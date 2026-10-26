@@ -1,6 +1,6 @@
 //go:build featurecoverage
 
-// Catalog parity cases: SCH-5, SCH-6a, INT-109, INT-113, INT-114, INT-123.
+// Catalog parity cases: SCH-5, SCH-6a, INT-109, INT-113, INT-114, INT-123, INT-136.
 
 package orm_test
 
@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
@@ -72,9 +73,20 @@ func catalogQuote(name, driver string) string {
 	return `"` + name + `"`
 }
 
-// Requirements: SCH-3, SCH-5, SCH-6a, INT-101, INT-103, INT-113, INT-114, INT-115.
+// Requirements: SCH-3, SCH-5, SCH-6, SCH-6a, INT-97, INT-101, INT-102, INT-103, INT-104, INT-112, INT-113, INT-114, INT-115, INT-121, INT-136.
 func TestCoverageCatalogRead(t *testing.T) {
 	testcase.Start(t, testcase.Database)
+	if _, err := orm.ConnectCatalog("unsupported://host/database"); err == nil {
+		t.Fatal("catalog connection accepted an unsupported DSN")
+	}
+	missing := filepath.Join(t.TempDir(), "missing.sqlite")
+	if catalog, err := orm.ConnectCatalog("sqlite://" + missing); err == nil {
+		catalog.Close()
+		t.Fatal("catalog connection created a missing SQLite database")
+	}
+	if _, err := os.Stat(missing); !os.IsNotExist(err) {
+		t.Fatalf("catalog connection left a missing SQLite database at %s: %v", missing, err)
+	}
 	ctx := context.Background()
 	driver, c := catalogConnect(t)
 	defer testcase.Close(t, c)
@@ -90,6 +102,40 @@ func TestCoverageCatalogRead(t *testing.T) {
 	if !slices.Contains(names, "start_dt") {
 		t.Fatalf("%s: author columns %v lack start_dt", driver, names)
 	}
+	_, dsn := featureDatabase(t)
+	metadataName := fmt.Sprintf("catalog_metadata_%d", os.Getpid())
+	metadataRaw := catalogProbe(t, driver, dsn, metadataName,
+		"CREATE TABLE "+metadataName+" (a BIGINT NOT NULL, b BIGINT NOT NULL, note VARCHAR(50), g BIGINT GENERATED ALWAYS AS (a+1) STORED, PRIMARY KEY (b,a))")
+	metadata, err := c.DescribeTable(ctx, orm.CatalogTableRef{Namespace: meta.Table.Namespace, Name: metadataName})
+	if err != nil {
+		t.Fatalf("%s: qualified metadata fixture: %v", driver, err)
+	}
+	wantNativeTypes := []string{"bigint", "bigint", "varchar(50)", "bigint"}
+	if driver == "postgres" {
+		wantNativeTypes[2] = "character varying(50)"
+	} else if driver == "sqlite" {
+		wantNativeTypes = []string{"BIGINT", "BIGINT", "VARCHAR(50)", "BIGINT"}
+	}
+	gotNames := make([]string, len(metadata.Columns))
+	gotNativeTypes := make([]string, len(metadata.Columns))
+	for i, column := range metadata.Columns {
+		gotNames[i], gotNativeTypes[i] = column.Name, column.NativeType
+	}
+	if !slices.Equal(gotNames, []string{"a", "b", "note", "g"}) || !slices.Equal(gotNativeTypes, wantNativeTypes) ||
+		!slices.Equal(metadata.PrimaryKey, []string{"b", "a"}) || !metadata.Columns[2].Nullable ||
+		!metadata.Columns[3].Generated || !metadata.ReliableRowIdentity {
+		t.Fatalf("%s: qualified metadata = %+v, want native types %v, key [b a], nullable note, generated g and reliable identity", driver, metadata, wantNativeTypes)
+	}
+	if driver == "mysql" {
+		systemView, err := c.ReadOnlyQuery(ctx, "SELECT TABLE_TYPE FROM information_schema.TABLES WHERE TABLE_SCHEMA = 'information_schema' AND TABLE_NAME = 'TABLES'", nil, orm.CatalogQueryLimits{})
+		if err != nil || len(systemView.Rows) != 1 || systemView.Rows[0][0] != "SYSTEM VIEW" {
+			t.Fatalf("MySQL information_schema.TABLES fixture is not a SYSTEM VIEW: rows %v, error %v", systemView.Rows, err)
+		}
+		metadata, err := c.DescribeTable(ctx, orm.CatalogTableRef{Namespace: "information_schema", Name: "TABLES"})
+		if err != nil || metadata.Kind != orm.CatalogKindView || len(metadata.Columns) == 0 || len(metadata.PrimaryKey) != 0 || metadata.ReliableRowIdentity {
+			t.Fatalf("MySQL SYSTEM VIEW descriptor = %+v, error %v", metadata, err)
+		}
+	}
 
 	page, err := c.TablePage(ctx, author, 3, 0)
 	if err != nil {
@@ -101,6 +147,17 @@ func TestCoverageCatalogRead(t *testing.T) {
 	if len(page.Result.Rows) != 3 {
 		t.Fatalf("%s: author page rows %d, want 3", driver, len(page.Result.Rows))
 	}
+	if !slices.Equal(page.Result.Columns, names) {
+		t.Fatalf("%s: page columns %v do not match descriptor order %v", driver, page.Result.Columns, names)
+	}
+	for _, bounds := range []struct {
+		limit  int
+		offset int64
+	}{{limit: 0}, {limit: 1001}, {limit: 1, offset: 1000001}} {
+		if _, err := c.TablePage(ctx, author, bounds.limit, bounds.offset); err == nil {
+			t.Fatalf("%s: table page accepted limit %d offset %d", driver, bounds.limit, bounds.offset)
+		}
+	}
 	catalogTemporalDefaultPrecisionCheck(t, driver, c)
 
 	count, err := c.ReadOnlyQuery(ctx, "SELECT COUNT(*) FROM "+catalogQuote("user", driver), nil, orm.CatalogQueryLimits{})
@@ -109,6 +166,34 @@ func TestCoverageCatalogRead(t *testing.T) {
 	}
 	if got := count.Rows[0][0]; got != int64(5000) {
 		t.Fatalf("%s: user count %v, want 5000", driver, got)
+	}
+	if driver == "mysql" {
+		_, dsn := featureDatabase(t)
+		table := fmt.Sprintf("catalog_readonly_%d", os.Getpid())
+		function := fmt.Sprintf("catalog_readonly_fn_%d", os.Getpid())
+		raw := catalogProbe(t, driver, dsn, table, "CREATE TABLE "+table+" (n INTEGER NOT NULL)", "INSERT INTO "+table+" VALUES (7)")
+		if _, err := raw.Exec("CREATE FUNCTION " + function + "() RETURNS INTEGER DETERMINISTIC MODIFIES SQL DATA BEGIN UPDATE " + table + " SET n=n+1; RETURN 1; END"); err != nil {
+			t.Fatalf("%s: create read-only scope probe function: %v", driver, err)
+		}
+		t.Cleanup(func() {
+			if _, err := raw.Exec("DROP FUNCTION IF EXISTS " + function); err != nil {
+				t.Errorf("%s: drop read-only scope probe function: %v", driver, err)
+			}
+		})
+		if _, err := c.ReadOnlyGridQuery(ctx, "SELECT "+function+"()", nil, orm.CatalogQueryLimits{}); err == nil {
+			t.Fatalf("%s: database read-only scope allowed a function to write", driver)
+		}
+	} else {
+		readOnlySQL := "SELECT current_setting('transaction_read_only')"
+		wantReadOnly := any("on")
+		if driver == "sqlite" {
+			readOnlySQL = "SELECT query_only FROM pragma_query_only"
+			wantReadOnly = int64(1)
+		}
+		readOnlyState, err := c.ReadOnlyQuery(ctx, readOnlySQL, nil, orm.CatalogQueryLimits{})
+		if err != nil || len(readOnlyState.Rows) != 1 || readOnlyState.Rows[0][0] != wantReadOnly {
+			t.Fatalf("%s: database read-only state = %v, error %v, want %v", driver, readOnlyState.Rows, err, wantReadOnly)
+		}
 	}
 	for _, limits := range []orm.CatalogQueryLimits{
 		{MaxRows: 1, MaxBytes: 1024},
@@ -123,6 +208,32 @@ func TestCoverageCatalogRead(t *testing.T) {
 	_, err = c.ReadOnlyQuery(ctx, "UPDATE "+catalogQuote("user", driver)+" SET name = name WHERE seq = 1", nil, orm.CatalogQueryLimits{})
 	if err == nil || !strings.Contains(err.Error(), "QUERY_READ_ONLY") {
 		t.Fatalf("%s: a write through ReadOnlyQuery returned %v, want QUERY_READ_ONLY", driver, err)
+	}
+	for _, sql := range []string{"SELECT ';' AS value /* ; */", "WITH values_cte AS (SELECT 1 AS value) SELECT value FROM values_cte"} {
+		if _, err := c.ReadOnlyGridQuery(ctx, sql, nil, orm.CatalogQueryLimits{}); err != nil {
+			t.Fatalf("%s: supported read-only grid query %q: %v", driver, sql, err)
+		}
+	}
+	readOnlyRefusals := []string{
+		"COMMIT",
+		"CALL missing_catalog_procedure()",
+		"SELECT 1 INTO catalog_forbidden",
+		"SELECT 1 FOR UPDATE",
+		"SELECT 1; SELECT 2",
+		"WITH changed AS (UPDATE user SET name=name WHERE seq=1 RETURNING seq) SELECT seq FROM changed",
+	}
+	if driver == "postgres" {
+		readOnlyRefusals = append(readOnlyRefusals,
+			"SELECT "+strings.TrimSuffix(strings.Repeat("1 UNION ALL ", 200), " UNION ALL "),
+			"SELECT "+strings.TrimSuffix(strings.Repeat("1+", 200), "+"),
+		)
+	}
+	for _, sql := range readOnlyRefusals {
+		_, err := c.ReadOnlyGridQuery(ctx, sql, nil, orm.CatalogQueryLimits{})
+		var coded *ir.Error
+		if !errors.As(err, &coded) || coded.Code != orm.CodeQueryReadOnly {
+			t.Fatalf("%s: read-only grid query %q returned %v, want QUERY_READ_ONLY", driver, sql, err)
+		}
 	}
 	catalogGridCellsCheck(t, ctx, driver, c)
 }
@@ -243,7 +354,7 @@ func TestCoverageCatalogGridColumnAndRowOrder(t *testing.T) {
 	}
 }
 
-// Requirements: SCH-5, SCH-6a, DBS-113, INT-34.
+// Requirements: SCH-5, SCH-6a, DBS-113, INT-34, INT-106, INT-108, INT-109, INT-111.
 func TestCoverageCatalogRowMutation(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	ctx := context.Background()
@@ -283,10 +394,38 @@ func TestCoverageCatalogRowMutation(t *testing.T) {
 	}
 
 	snapshot := catalogFindTenantRow(t, ctx, c, table, driver, "catalog")
+	if !slices.Equal(meta.PrimaryKey, []string{"tenant_id", "account_id"}) {
+		t.Fatalf("composite_account primary key order = %v", meta.PrimaryKey)
+	}
+	originalRevision := snapshot.Revision()
+	for _, values := range [][]orm.CatalogAssignment{
+		{{Name: "name", Value: "first"}, {Name: "name", Value: "second"}},
+		{{Name: "absent", Value: "value"}},
+		{{Name: "name", Value: nil}},
+	} {
+		if _, err := c.UpdateRow(ctx, snapshot, values); orm.ErrorCode(err) != orm.CodeRowUpdateInvalid {
+			t.Fatalf("invalid update %v error = %v, want %s", values, err, orm.CodeRowUpdateInvalid)
+		}
+	}
+	page, err := c.TablePage(ctx, table, 1000, 0)
+	if err != nil {
+		t.Fatalf("page before update: %v", err)
+	}
+	page.Result.Columns[0].Name = "changed"
+	if _, err := orm.CatalogSnapshotFromPage(page, 0); orm.ErrorCode(err) != orm.CodeRowSnapshotInvalid {
+		t.Fatalf("snapshot with a projection that differs from the descriptor error = %v, want %s", err, orm.CodeRowSnapshotInvalid)
+	}
 	updated, err := c.UpdateRow(ctx, snapshot, []orm.CatalogAssignment{{Name: "name", Value: "catalog-updated"}})
 	if err != nil || len(updated.Rows) != 1 {
 		t.Fatalf("%s: update: rows %v, err %v", driver, updated, err)
 	}
+	if snapshot.Revision() != originalRevision {
+		t.Fatalf("captured row revision changed after the source page was updated")
+	}
+	if _, err := c.UpdateRow(ctx, snapshot, []orm.CatalogAssignment{{Name: "name", Value: "stale"}}); orm.ErrorCode(err) != orm.CodeRowConflict {
+		t.Fatalf("stale update error = %v, want %s", err, orm.CodeRowConflict)
+	}
+	catalogFindTenantRow(t, ctx, c, table, driver, "catalog-updated")
 
 	snapshot = catalogFindTenantRow(t, ctx, c, table, driver, "catalog-updated")
 	deleted, err := c.DeleteRow(ctx, snapshot)

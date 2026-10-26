@@ -27,6 +27,7 @@ class LoadSetTest(unittest.TestCase):
             [d.name for d in RuntimeModel.load_set(EXTERNAL, "")], ["core"]
         )
 
+    # Requirements: DBS-156, SCH-12.
     def test_a_text_without_a_header_is_schema_invalid(self):
         with self.assertRaises(OrmError) as caught:
             RuntimeModel.load_set("table item {}\n", "")

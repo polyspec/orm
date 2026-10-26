@@ -518,54 +518,12 @@ mod windows {
 }
 
 #[cfg(test)]
+#[path = "set_internal_tests.rs"]
+mod internal_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
-
-    // The normal form: each rule of a segment has an accepting and a rejecting case.
-    // Requirements: DBS-7, DBS-8, DBS-9, DBS-10.
-    #[test]
-    fn normal_form_cases() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        for (written, external) in [
-            ("shop.dbs", false),
-            ("a/b.dbs", false),
-            ("../core/core.dbs", true),
-            ("../../x.dbs", true),
-            ("console.dbs", false),
-            ("com10.dbs", false),
-            ("lpt.dbs", false),
-            (".dbs", false),
-        ] {
-            assert_eq!(normal_form(written, external), Ok(()), "{written}");
-        }
-        for (written, external) in [
-            ("", false),
-            ("..", true),
-            ("../x.dbs", false),
-            ("a/../x.dbs", true),
-            ("x.dbs/", false),
-            ("C:x.dbs", false),
-            ("COM³.dbs", false),
-            ("aux", false),
-            ("Nul .x.dbs", false),
-            ("a\u{1f}.dbs", false),
-        ] {
-            assert!(normal_form(written, external).is_err(), "{written}");
-        }
-    }
-
-    // The root keeps no trailing separator, so that lstat does not follow a symbolic link.
-    // Requirements: DBS-12.
-    #[cfg(unix)]
-    #[test]
-    fn root_of_prefix() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        for (prefix, root) in [("", "."), ("/", "/"), ("a/", "a"), ("a//", "a"), ("/a/b/", "/a/b")] {
-            assert_eq!(platform::root(OsStr::new(prefix)), OsString::from(root), "{prefix:?}");
-        }
-        assert_eq!(platform::split_last(OsStr::new("a/b/dbspec-set.json")), (OsString::from("a/b/"), OsString::from("dbspec-set.json")));
-        assert_eq!(platform::split_last(OsStr::new("dbspec-set.json")), (OsString::new(), OsString::from("dbspec-set.json")));
-    }
 
     // Nested values are checked by the same rules as the top object: a number beyond a double
     // stays valid JSON, a key twice is set.key, and a lone surrogate is set.json at any level.
@@ -594,19 +552,6 @@ mod tests {
         ] {
             let got = parse(text.as_bytes(), path).err().map_or(String::new(), |e| e.rule);
             assert_eq!(got, rule, "{text}");
-        }
-    }
-
-    // A schema equal to 1 as a double is accepted; any other value is not.
-    // Requirements: DBS-22.
-    #[test]
-    fn schema_values() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        for raw in ["1", "1.0", "1e0", "10e-1", "1.0000000000000000001"] {
-            assert!(schema_is_one(raw), "{raw}");
-        }
-        for raw in ["2", "-1", "1e400", "\"1\"", "true", "null"] {
-            assert!(!schema_is_one(raw), "{raw}");
         }
     }
 }

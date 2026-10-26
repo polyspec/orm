@@ -18,6 +18,21 @@
           "sqlite": "the database differs from the document set: unsupported_check install_note.install_note$score: the check typeof(\"points\") IN ('integer', 'null') is not the renderer CHECK; unsupported_column install_note.points: declared type bigint with CHECK \"\" has no dbspec type"
         }
       }
+    },
+    {
+      "id": "unsupported_column_without_check",
+      "operation": "install",
+      "document": "install/note.dbs",
+      "statement": "ALTER TABLE install_note ADD COLUMN junk INTEGER NULL",
+      "remaining": "SELECT junk FROM install_note",
+      "expected": {
+        "code": "CONFIG",
+        "message": {
+          "mysql": "the database differs from the document set: drop_column install_note.junk",
+          "postgres": "the database differs from the document set: drop_column install_note.junk",
+          "sqlite": "the database differs from the document set: unsupported_column install_note.junk: declared type INTEGER with CHECK \"\" has no dbspec type"
+        }
+      }
     }
   ]
 }

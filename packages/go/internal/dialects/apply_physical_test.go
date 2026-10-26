@@ -522,6 +522,7 @@ func TestApplyChain(t *testing.T) {
 	t.Logf("apply runs: %d", index)
 }
 
+// Requirements: PLN-105.
 // TestApplyThroughTransactionPooler checks the server session requirement of "Apply" in docs/spec/plans.md
 // with PgBouncer transaction pooling. A transaction pooler picks a server connection again for every statement,
 // so the lock cannot cover the whole command. Apply checks the server session when taking the lock and at every step,

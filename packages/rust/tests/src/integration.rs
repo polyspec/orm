@@ -200,7 +200,7 @@ fn names(c: &Collection<Author>) -> String {
     c.models().map(|b| b.get_name().unwrap().to_owned()).collect::<Vec<_>>().join(",")
 }
 
-// Requirements: PLN-6, PLN-7, PLN-23, PLN-28, PLN-34, PLN-37, PLN-38, PLN-39.
+// Requirements: DSL-60, PLN-6, PLN-7, PLN-23, PLN-28, PLN-34, PLN-37, PLN-38, PLN-39.
 async fn conditions(t: &Target) {
     let db = &t.db;
     let f = seed(db).await;
@@ -368,7 +368,7 @@ async fn columns_and_subqueries(t: &Target) {
     assert_eq!(pairs, 2, "tuple");
 }
 
-// Requirements: PLN-12, PLN-27.
+// Requirements: DSL-115, DSL-155, PLN-12, PLN-27.
 async fn writes(t: &Target) {
     let db = &t.db;
     let f = seed(db).await;
@@ -423,7 +423,7 @@ async fn writes(t: &Target) {
     assert_eq!(json["name"], "service", "serialize");
 }
 
-// Requirements: INT-59, INT-73, INT-134.
+// Requirements: INT-51, INT-59, INT-73, INT-134.
 async fn transactions(t: &Target) {
     let _aes = t.db.utils().aes();
     let _schema = t.db.utils().schema();
@@ -679,6 +679,7 @@ async fn read_only_sqlite(t: &Target) {
 
 /// Checks schema().empty() on a new case database, with an empty PostgreSQL
 /// schema other than public, and with the installed tables.
+// Requirements: INT-58.
 async fn schema_empty(t: &Target) {
     let db = &t.db;
     assert!(db.utils().schema().empty().await.unwrap(), "{}: schema().empty() on a database without tables", t.driver);

@@ -167,6 +167,7 @@ class CatalogAutoKeyTest(unittest.TestCase):
         self.assertEqual(result.rows, [[2, "generated", 50]])
         return [call[1] for call in session.calls if call[0] == "run"]
 
+    # Requirements: DBS-113, INT-34.
     def test_sqlite_automatic_primary_key_insert_returns_stored_row(self):
         with _sample_catalog("orm-catalog-auto-key-") as (catalog, metadata):
             self.assertEqual(metadata.primary_key, ["id"])
@@ -348,6 +349,7 @@ class CatalogAutoKeyTest(unittest.TestCase):
             "ROW_WRITE_MISMATCH: stored inserted values differ",
         )
 
+    # Requirements: DBS-113, INT-34.
     def test_mysql_automatic_key_uses_insert_acknowledgement(self):
         metadata = _mysql_metadata(
             [
@@ -424,6 +426,7 @@ class CatalogAutoKeyTest(unittest.TestCase):
             )
         )
 
+    # Requirements: DBS-113, INT-34.
     def test_postgres_default_composite_key_uses_insert_returning(self):
         metadata = _mysql_metadata(
             [

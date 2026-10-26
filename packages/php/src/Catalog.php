@@ -278,7 +278,7 @@ final class Catalog
             $sql .= ' LIMIT ' . ($limit + 1) . ' OFFSET ' . $offset;
             $raw = $this->query($pdo, $sql, [], $limit + 1, self::PAGE_BYTES);
             self::sameNames($raw['names'], $metadata, Code::TABLE_PAGE_METADATA_CHANGED);
-            if ($this->describe($pdo, $ref) != $metadata) {
+            if (!self::samePageDescriptor($this->describe($pdo, $ref), $metadata)) {
                 throw new OrmException(Code::TABLE_PAGE_METADATA_CHANGED, 'descriptor changed during read');
             }
             $rows = self::convertRows($raw, self::nativeTypes($metadata));
@@ -1622,6 +1622,11 @@ final class Catalog
         if ($names !== self::columnNames($metadata)) {
             throw new OrmException($code, 'prepared columns differ from descriptor');
         }
+    }
+
+    private static function samePageDescriptor(CatalogTableMetadata $a, CatalogTableMetadata $b): bool
+    {
+        return $a == $b;
     }
 
     /**

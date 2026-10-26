@@ -202,6 +202,11 @@ final class EventRun
             $code = $e instanceof OrmException ? $e->code_ : $e::class;
             Assert::assertTrue($code === $want, "step {$s['op']} = $code: {$e->getMessage()}, want $want");
             if ($want === Code::SUBSCRIBER) {
+                Assert::assertSame(
+                    'SUBSCRIBER: statement event subscriber failed: subscriber refused the event',
+                    $e->getMessage(),
+                    'the SUBSCRIBER message includes the subscriber error text'
+                );
                 Assert::assertTrue(
                     $e->getPrevious() !== null && $e->getPrevious() === $this->refused,
                     'the SUBSCRIBER error keeps the subscriber error as its previous exception'

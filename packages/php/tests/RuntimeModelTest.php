@@ -44,7 +44,7 @@ final class RuntimeModelTest extends TestCase
         return 'no error';
     }
 
-    // Requirements: SCH-12.
+    // Requirements: DBS-156, SCH-12.
     public function testLoadSetReturnsExternalDocumentsMarked(): void
     {
         $owned = <<<'DBSPEC'
@@ -81,6 +81,7 @@ DBSPEC;
             ),
         );
         self::assertSame('SCHEMA_INVALID', self::errorCode(static fn() => RuntimeModel::loadSet("table item {}\n", $external)));
+        self::assertSame('SCHEMA_INVALID', self::errorCode(static fn() => RuntimeModel::loadSet("table item {}\n", '')));
         self::assertSame('SCHEMA_INVALID', self::errorCode(static fn() => RuntimeModel::loadSet($owned, "table account {}\n")));
     }
 

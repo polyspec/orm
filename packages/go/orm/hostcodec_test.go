@@ -7,6 +7,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
+// Requirements: COD-5.
 func TestHostAESUsesAuthenticatedVersionTwoEnvelope(t *testing.T) {
 	// The test of COD-5 (docs/spec).
 	testcase.Start(t, testcase.Compute)

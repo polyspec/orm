@@ -55,7 +55,7 @@ fn recorded_mutation_hooks() -> (Arc<Mutex<Vec<MutationPhase>>>, Publish, Permit
 }
 
 #[tokio::test]
-// Requirements: INT-101, SCH-3, INT-103, INT-113, INT-114, INT-115.
+// Requirements: INT-97, INT-101, SCH-3, INT-102, INT-103, INT-112, INT-113, INT-114, INT-115.
 async fn coverage_catalog_read() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     within("catalog_read", async {

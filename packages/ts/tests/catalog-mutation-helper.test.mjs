@@ -283,6 +283,7 @@ caseTest('rejects a changed descriptor before applying MySQL safety', DATABASE, 
   assert.equal(safetyCalled, false);
 });
 
+// Requirements: DBS-113, INT-34.
 caseTest('uses MySQL DEFAULT(column) to locate a literal-default composite key', DATABASE, async () => {
   await assertLiteralDefaultCompositeKeyInsert(mysqlCatalogFixture, queries => {
     assert.ok(queries.some(([, sql]) => sql.includes('`seq`=DEFAULT(`seq`)')));
@@ -290,12 +291,14 @@ caseTest('uses MySQL DEFAULT(column) to locate a literal-default composite key',
   });
 });
 
+// Requirements: DBS-113, INT-34.
 caseTest('uses PostgreSQL INSERT RETURNING for a literal-default composite key', DATABASE, async () => {
   await assertLiteralDefaultCompositeKeyInsert(postgresCatalogFixture, queries => {
     assert.ok(queries.some(([, sql]) => sql === 'INSERT INTO "app"."generated_record" ("tenant","n") VALUES ($1,$2) RETURNING "tenant","seq","n"'));
   });
 });
 
+// Requirements: DBS-113, INT-34.
 caseTest('uses the MySQL statement insertId for an omitted automatic key', DATABASE, async () => {
   const { catalog, metadata, queries, stored } = mysqlCatalogFixture({ autoKey: true });
   try {
@@ -353,6 +356,7 @@ caseTest('reports an ambiguous MySQL expression locator result without changing 
   }
 });
 
+// Requirements: DBS-113, INT-34.
 caseTest('inserts an omitted SQLite AUTOINCREMENT key and returns the stored row', DATABASE, async () => {
   await withSqliteCatalog('orm-catalog-auto-key-', 'CREATE TABLE generated_record (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)', async catalog => {
     const metadata = await catalog.describeTable({ namespace: 'main', name: 'generated_record' });

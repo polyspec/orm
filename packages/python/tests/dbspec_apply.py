@@ -10,6 +10,7 @@ import sqlite3
 import tempfile
 import time
 import unittest
+import uuid
 from pathlib import Path
 
 from polyspec.orm.dbspec.apply import (
@@ -149,6 +150,80 @@ class DbspecApplyTest(unittest.TestCase):
 
     def test_lock_wait_sqlite(self) -> None:
         self._test_lock_wait("sqlite", 2)
+
+    # Requirements: PLN-105.
+    def test_apply_through_a_transaction_pooler(self) -> None:
+        server_dsn = os.environ.get("ORM_TEST_POSTGRES_SERVER_DSN")
+        pooler_dsn = os.environ.get("ORM_TEST_PGBOUNCER_DSN")
+        if not server_dsn or not pooler_dsn:
+            raise RuntimeError(
+                "ORM_TEST_POSTGRES_SERVER_DSN and ORM_TEST_PGBOUNCER_DSN are required; pass TEST_ENV"
+            )
+        plans = chain()
+
+        def run_scenario(name: str, hold_session: bool) -> None:
+            database = f"orm_case_{os.getpid()}_{uuid.uuid4().hex[:12]}_pooler_{name}"
+            admin = psycopg.connect(server_dsn, autocommit=True)
+            created = False
+            apply = None
+            other = None
+            try:
+                admin.execute(f'CREATE DATABASE "{database}"')
+                created = True
+                apply = psycopg.connect(
+                    pooler_dsn,
+                    dbname=database,
+                    autocommit=True,
+                    prepare_threshold=None,
+                )
+                other = psycopg.connect(
+                    pooler_dsn,
+                    dbname=database,
+                    autocommit=True,
+                    prepare_threshold=None,
+                )
+                adapter = ApplyAdapter("postgres", apply)
+                if not hold_session:
+                    other.execute(
+                        "SELECT pg_advisory_lock(hashtext('dbspec$plans'), hashtext(current_schema()))"
+                    )
+                held = False
+
+                def take_apply_session(event) -> None:
+                    nonlocal held
+                    if hold_session and event["kind"] == "statement" and not held:
+                        held = True
+                        other.execute("BEGIN")
+                        other.execute("SELECT 1")
+
+                try:
+                    apply_plans(
+                        adapter,
+                        "postgres",
+                        plans,
+                        lambda: NOW,
+                        take_apply_session if hold_session else None,
+                    )
+                except DbspecApplyError as error:
+                    self.assertEqual(error.code, "session", name)
+                    self.assertIn(
+                        "a direct or session-pooled connection", error.detail, name
+                    )
+                else:
+                    self.fail(f"{name}: apply through a transaction pooler succeeded")
+                if held:
+                    other.execute("ROLLBACK")
+            finally:
+                if other is not None:
+                    other.close()
+                if apply is not None:
+                    apply.close()
+                if created:
+                    admin.execute(f'DROP DATABASE "{database}" WITH (FORCE)')
+                admin.close()
+
+        run_scenario("lock_shared", False)
+        run_scenario("session_changed", True)
 
     # Requirements: PLN-91, PLN-92.
     def test_history_and_state_on_every_database(self) -> None:

@@ -1584,7 +1584,7 @@ final class ModelTest extends TestCase
     // conditions
     // Requirements: PLN-6, PLN-7, PLN-16, PLN-23, PLN-28, PLN-29, PLN-34, PLN-36, PLN-37, PLN-38, PLN-39.
     #[DataProvider('drivers')]
-    // Requirements: DSL-49, DSL-50, PLN-4.
+    // Requirements: DSL-49, DSL-50, DSL-60, PLN-4.
     public function testConditions(string $driver): void
     {
         $dsn = self::caseDsn($driver);
@@ -1614,7 +1614,7 @@ final class ModelTest extends TestCase
     }
 
     // writes
-    // Requirements: PLN-12, PLN-27.
+    // Requirements: DSL-115, DSL-155, PLN-12, PLN-27.
     #[DataProvider('drivers')]
     public function testWrites(string $driver): void
     {
@@ -1645,7 +1645,7 @@ final class ModelTest extends TestCase
     }
 
     // transactions
-    // Requirements: PLN-13, PLN-16, PLN-17, PLN-20, PLN-21, INT-73, INT-134.
+    // Requirements: PLN-13, PLN-16, PLN-17, PLN-20, PLN-21, INT-51, INT-73, INT-134.
     #[DataProvider('drivers')]
     public function testTransactions(string $driver): void
     {

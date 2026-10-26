@@ -120,7 +120,7 @@ func names(t *testing.T, c *orm.Collection[*model.AuthorModel]) string {
 	return strings.Join(out, ",")
 }
 
-// Requirements: PLN-6, PLN-7, PLN-16, PLN-23, PLN-28, PLN-30, PLN-34, PLN-37, PLN-38, PLN-39.
+// Requirements: DSL-60, PLN-6, PLN-7, PLN-16, PLN-23, PLN-28, PLN-30, PLN-34, PLN-37, PLN-38, PLN-39.
 func TestConditions(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
@@ -463,6 +463,7 @@ func TestWrites(t *testing.T) {
 		if _, err := b.SetName("x").Update(); err != nil {
 			t.Fatal(err)
 		}
+		// Requirements: DSL-115.
 		item := must(model.Account().Connect(db).SetName("acc").NewLabel("shown").Create())
 		if item.GetLabel() != "shown" || item.ToArray()["label"] != "shown" {
 			t.Fatalf("new value: %v", item.ToArray())
@@ -497,7 +498,7 @@ func TestWrites(t *testing.T) {
 
 // TestTransactions runs a transaction with its savepoint, lock, local and retry calls. A goroutine started inside the
 // callback has no active transaction, so an unconnected model there returns CONFIG.
-// Requirements: PLN-13, PLN-16, PLN-17, PLN-18, PLN-20, PLN-21, DSL-122, INT-59, INT-73, INT-134.
+// Requirements: PLN-13, PLN-16, PLN-17, PLN-18, PLN-20, PLN-21, DSL-122, INT-51, INT-59, INT-73, INT-134.
 func TestTransactions(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {

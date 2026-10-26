@@ -128,7 +128,10 @@ class EventRun {
       return;
     }
     if (!(error instanceof OrmError) || error.code !== s.error) throw new Error(`step ${s.op} = ${error?.message ?? error}, want ${s.error}`);
-    if (s.error === 'SUBSCRIBER') this.check(error.cause instanceof Error && error.cause.message === 'subscriber refused the event', `SUBSCRIBER keeps the subscriber error as its cause: ${error.cause}`);
+    if (s.error === 'SUBSCRIBER') {
+      this.check(error.message === 'SUBSCRIBER: statement event subscriber failed: subscriber refused the event', `SUBSCRIBER includes the subscriber error text: ${error.message}`);
+      this.check(error.cause instanceof Error && error.cause.message === 'subscriber refused the event', `SUBSCRIBER keeps the subscriber error as its cause: ${error.cause}`);
+    }
   }
 }
 

@@ -88,20 +88,25 @@ final class DecimalModelDbTest extends TestCase
     #[DataProvider('drivers')]
     public function testGenerate(string $dialect): void
     {
+        // Requirements: DBS-112, COD-2.
         self::dsn($dialect);
         $generated = self::generate();
         try {
             self::assertFileExists("$generated/bootstrap.php");
             self::assertFileExists("$generated/DecimalCase.php");
+            $source = file_get_contents("$generated/DecimalCase.php");
+            self::assertIsString($source);
+            self::assertStringContainsString('public function getAmount(): string', $source);
+            self::assertStringContainsString('public function setAmount(string $v): static', $source);
         } finally {
             self::remove($generated);
         }
     }
 
+    // Requirements: DBS-112, COD-2.
     #[DataProvider('drivers')]
     public function testSetters(string $dialect): void
     {
-        // The test of COD-2 (docs/spec).
         self::dsn($dialect);
         self::load();
         $class = \DecimalFixture\DecimalCase::class;

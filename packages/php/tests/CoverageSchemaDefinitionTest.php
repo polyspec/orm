@@ -160,6 +160,23 @@ class CoverageSchemaDefinitionTest extends TestCase
         }
     }
 
+    // Requirements: DBS-136, DBS-144.
+    public function testDbspecLimitStopHasNoTokens(): void
+    {
+        $dbspec = static::dbspec();
+        $lines = [];
+        for ($i = 1; $i <= 4097; $i++) {
+            $lines[] = "table t$i {";
+            $lines[] = '}';
+        }
+        $text = "dbspec 1 d\n" . implode("\n", $lines) . "\n";
+        $analysis = $dbspec::analyze($text, ['d' => $text]);
+        Assert::assertSame([], $analysis->tokens);
+        Assert::assertNull($analysis->document);
+        Assert::assertNotSame([], $analysis->diagnostics);
+        Assert::assertSame('limit', $analysis->diagnostics[array_key_last($analysis->diagnostics)]->rule);
+    }
+
     // Requirements: DBS-141.
     public function testDbspecFormat(): void
     {

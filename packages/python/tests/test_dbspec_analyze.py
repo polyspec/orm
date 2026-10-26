@@ -112,6 +112,7 @@ class AnalyzeTest(unittest.TestCase):
             ],
         )
 
+    # Requirements: DBS-136, DBS-144.
     def test_limit_stop_gives_no_tokens(self):
         columns = "".join(f"  c{i} i64\n" for i in range(1001))
         result = analyze_dbspec(f"dbspec 1 app\n\ntable t {{\n{columns}}}\n", {})
@@ -148,6 +149,29 @@ class AnalyzeTest(unittest.TestCase):
             [(d.rule, d.line, d.column) for d in diagnostics],
             [("limit", 20106, 3)],
         )
+
+    # Requirements: DBS-144, DBS-151, DBS-170.
+    def test_document_and_table_limits(self):
+        size = "dbspec 1 shop\n" + "#" * (32 * 1024 * 1024)
+        tables = "dbspec 1 shop\n" + "".join(
+            f"table t{table} {{\n  id i64 identity\n  primary key (id)\n}}\n"
+            for table in range(4097)
+        )
+        columns = "dbspec 1 shop\ntable wide {\n" + "".join(
+            f"  c{column} i32\n" for column in range(1001)
+        )
+        columns += "}\n"
+        cases = [
+            (size, [("limit", 1, 1)]),
+            (tables, [("limit", 4 * 4096 + 2, 1)]),
+            (columns, [("limit", 1003, 3)]),
+        ]
+        for text, expected in cases:
+            document, _positions, diagnostics = parse_dbspec(text, {})
+            self.assertIsNone(document)
+            self.assertEqual(
+                [(d.rule, d.line, d.column) for d in diagnostics], expected
+            )
 
     def test_minus_before_number_is_operator(self):
         result = tokens_of(

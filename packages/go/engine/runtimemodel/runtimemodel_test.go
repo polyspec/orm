@@ -54,7 +54,7 @@ table member_row {
 const loadSetOwned = "dbspec 1 shop\n\nuse core { account }\n\ntable item {\n  seq i64\n  account_seq i64\n  primary key (seq)\n  index ix_item_account (account_seq)\n  foreign key fk_item_account (account_seq) references account (seq) on delete restrict on update restrict\n}\n"
 const loadSetExternal = "dbspec 1 core\n\ntable account {\n  seq i64\n  primary key (seq)\n}\n"
 
-// Requirements: SCH-12.
+// Requirements: DBS-156, SCH-12.
 func TestLoadSetReturnsExternalDocumentsMarked(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	model, diagnostics := LoadSet(loadSetOwned, loadSetExternal)

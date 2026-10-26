@@ -102,6 +102,39 @@ class AesRotationPhysicalTest(unittest.TestCase):
                         db.utils().aes().rotate(models.Author(), keyring), 0
                     )
 
+                    # COD-8: write with the active key; read with that version alone.
+                    versioned = models.connect(
+                        dsn,
+                        aesKey="next-aes-key",
+                        aesVersion=2,
+                        blindIndexKey="test-blind-key",
+                    )
+                    current = models.connect(
+                        dsn,
+                        aesVersion=2,
+                        aesKeyring=AesKeyring({2: "next-aes-key"}, 2),
+                        blindIndexKey="test-blind-key",
+                    )
+                    try:
+                        (
+                            models.Author()
+                            .connect(versioned)
+                            .get_by_seq(authors[1].get_seq())
+                            .set_aes_hex_email("version-two@example.com")
+                            .update()
+                        )
+                        self.assertEqual(
+                            models.Author()
+                            .connect(current)
+                            .get_by_seq(authors[1].get_seq())
+                            .get_aes_hex_email(),
+                            "version-two@example.com",
+                            "write with the key of aesVersion",
+                        )
+                    finally:
+                        current.close()
+                        versioned.close()
+
                     current = models.connect(
                         dsn,
                         aesKeyring=AesKeyring({2: "next-aes-key"}, 2),

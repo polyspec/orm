@@ -133,10 +133,13 @@ class EventRun:
                 raise
             if (
                 error.code == "SUBSCRIBER"
-                and str(error.cause) != "subscriber refused the event"
+                and (
+                    str(error) != "SUBSCRIBER: statement event subscriber failed: subscriber refused the event"
+                    or str(error.cause) != "subscriber refused the event"
+                )
             ):
                 self.problems.append(
-                    f"SUBSCRIBER keeps the subscriber error as its cause: {error.cause!r}"
+                    f"SUBSCRIBER message or cause differs: {error!r}, {error.cause!r}"
                 )
             return
         if "error" in step:
@@ -206,4 +209,4 @@ def load_tests(
 
 if __name__ == "__main__":
     testcase.main()
-"""Requirements: INT-77, PLN-44. This owner compares the SQL and bind output of each statement event."""
+"""Requirements: INT-77, INT-96, PLN-44. This owner compares the SQL and bind output of each statement event."""

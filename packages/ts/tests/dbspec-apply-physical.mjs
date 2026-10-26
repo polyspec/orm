@@ -426,7 +426,9 @@ const poolerScenarios = {
     }
   },
 };
+// The two cases exercise the pooler's server-session checks.
 for (const [name, scenario] of Object.entries(poolerScenarios)) {
+  // Requirements: PLN-105.
   caseTest(`postgres.apply.pooler.${name}`, TIMEOUT, async () => {
     const serverDSN = process.env.ORM_TEST_POSTGRES_SERVER_DSN;
     const poolerDSN = process.env.ORM_TEST_PGBOUNCER_DSN;

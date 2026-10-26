@@ -48,7 +48,7 @@ DBSPEC;
         );
     }
 
-    // Requirements: SCH-12.
+    // Requirements: DBS-156, SCH-12.
     public function testNativeLoadSetReturnsExternalDocumentsMarked(): void
     {
         self::assertTrue((new \ReflectionClass(RuntimeModel::class))->isInternal());
@@ -94,6 +94,7 @@ DBSPEC;
             return 'no error';
         };
         self::assertSame('SCHEMA_INVALID', $code(static fn() => RuntimeModel::loadSet("table item {}\n", $external)));
+        self::assertSame('SCHEMA_INVALID', $code(static fn() => RuntimeModel::loadSet("table item {}\n", '')));
         self::assertSame('SCHEMA_INVALID', $code(static fn() => RuntimeModel::loadSet($owned, "table account {}\n")));
     }
 

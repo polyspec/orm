@@ -54,20 +54,84 @@ trait CatalogConnectionCoverageCases
             : $this->quote($namespace) . '.' . $this->quote($name);
     }
 
-    // Requirements: SCH-3, SCH-5, SCH-6a, INT-101, INT-103, INT-113, INT-114, INT-115.
+    // Requirements: SCH-3, SCH-5, SCH-6, SCH-6a, INT-101, INT-103, INT-104, INT-112, INT-113, INT-114, INT-115, INT-121, INT-136.
     public function testCatalogRead(): void
     {
+        $this->assertCatalogConnectionInputs();
         $namespace = $this->catalog->currentNamespace();
         $author = ['namespace' => $namespace, 'name' => 'author'];
         $meta = $this->catalog->describeTable($author);
         self::assertSame(['seq'], $meta->primaryKey);
         self::assertTrue($meta->reliableRowIdentity);
+        $metadataColumns = 'a BIGINT NOT NULL, b BIGINT NOT NULL, note VARCHAR(50), '
+            . 'g BIGINT GENERATED ALWAYS AS (a+1) STORED, PRIMARY KEY (b,a)';
+        $this->withTemporaryCatalogTable('catalog_metadata_', $metadataColumns, function (string $namespace, string $name): void {
+            $metadata = $this->catalog->describeTable(['namespace' => $namespace, 'name' => $name]);
+            $columns = $metadata->columns;
+            $nativeTypes = array_map(static fn ($column): string => $column->nativeType, $columns);
+            $wantNativeTypes = match ($this->driver) {
+                'mysql' => ['bigint', 'bigint', 'varchar(50)', 'bigint'],
+                'postgres' => ['bigint', 'bigint', 'character varying(50)', 'bigint'],
+                'sqlite' => ['BIGINT', 'BIGINT', 'VARCHAR(50)', 'BIGINT'],
+            };
+            self::assertSame(['a', 'b', 'note', 'g'], array_map(static fn ($column): string => $column->name, $columns));
+            self::assertSame($wantNativeTypes, $nativeTypes);
+            self::assertSame(['b', 'a'], $metadata->primaryKey);
+            self::assertTrue($columns[2]->nullable);
+            self::assertTrue($columns[3]->generated);
+            self::assertTrue($metadata->reliableRowIdentity);
+        });
         $page = $this->catalog->tablePage($author, 3, 0);
         self::assertSame(['seq'], $page->orderBy);
         self::assertTrue($page->hasMore);
         self::assertCount(3, $page->result->rows);
+        self::assertSame(array_map(static fn ($column): string => $column->name, $meta->columns), $page->result->columns);
+        foreach ([[0, 0], [1001, 0], [1, 1000001]] as [$limit, $offset]) {
+            try {
+                $this->catalog->tablePage($author, $limit, $offset);
+                self::fail("table page accepted limit {$limit} offset {$offset}");
+            } catch (OrmException) {
+            }
+        }
         $count = $this->catalog->readOnlyQuery('SELECT COUNT(*) FROM ' . $this->quote('user'), []);
         self::assertSame(5000, (int) $count->rows[0][0]);
+        if ($this->driver === 'mysql') {
+            $name = 'catalog_readonly_' . bin2hex(random_bytes(6));
+            $function = $name . '_fn';
+            $setup = Orm::connect((string) getenv('ORM_FEATURE_DSN'), new Config());
+            try {
+                $setup->pdo()->exec('CREATE TABLE ' . $this->quote($name) . ' (n INTEGER NOT NULL)');
+                $setup->pdo()->exec('INSERT INTO ' . $this->quote($name) . ' VALUES (7)');
+                $setup->pdo()->exec('CREATE FUNCTION ' . $this->quote($function) . '() RETURNS INTEGER DETERMINISTIC MODIFIES SQL DATA BEGIN UPDATE ' . $this->quote($name) . ' SET n=n+1; RETURN 1; END');
+                try {
+                    $this->catalog->readOnlyGridQuery('SELECT ' . $this->quote($function) . '()', []);
+                    self::fail('a database-enforced read-only scope allowed a function to write');
+                } catch (OrmException) {
+                }
+            } finally {
+                $setup->pdo()->exec('DROP FUNCTION IF EXISTS ' . $this->quote($function));
+                $setup->pdo()->exec('DROP TABLE IF EXISTS ' . $this->quote($name));
+                $setup->close();
+            }
+        } else {
+            $readOnlySQL = $this->driver === 'postgres'
+                ? "SELECT current_setting('transaction_read_only')"
+                : 'SELECT query_only FROM pragma_query_only';
+            $readOnlyState = $this->catalog->readOnlyQuery($readOnlySQL, []);
+            self::assertSame($this->driver === 'postgres' ? 'on' : 1, $readOnlyState->rows[0][0]);
+        }
+        if ($this->driver === 'mysql') {
+            $classification = $this->catalog->readOnlyQuery(
+                "SELECT TABLE_TYPE FROM information_schema.TABLES WHERE TABLE_SCHEMA = 'information_schema' AND TABLE_NAME = 'TABLES'",
+                []
+            );
+            self::assertSame('SYSTEM VIEW', $classification->rows[0][0]);
+            $systemView = $this->catalog->describeTable(['namespace' => 'information_schema', 'name' => 'TABLES']);
+            self::assertSame('view', $systemView->kind);
+            self::assertNotEmpty($systemView->columns);
+            self::assertSame([], $systemView->primaryKey);
+            self::assertFalse($systemView->reliableRowIdentity);
+        }
         foreach (
             [
             [['maxRows' => 1, 'maxBytes' => 1024], "SELECT 'abc' AS value UNION ALL SELECT 'def'"],
@@ -91,6 +155,29 @@ trait CatalogConnectionCoverageCases
         } catch (OrmException $e) {
             self::assertSame(Code::QUERY_READ_ONLY, $e->code_);
         }
+        foreach (["SELECT ';' AS value /* ; */", 'WITH values_cte AS (SELECT 1 AS value) SELECT value FROM values_cte'] as $sql) {
+            $this->catalog->readOnlyGridQuery($sql);
+        }
+        $readOnlyRefusals = [
+            'COMMIT',
+            'CALL missing_catalog_procedure()',
+            'SELECT 1 INTO catalog_forbidden',
+            'SELECT 1 FOR UPDATE',
+            'SELECT 1; SELECT 2',
+            'WITH changed AS (UPDATE user SET name=name WHERE seq=1 RETURNING seq) SELECT seq FROM changed',
+        ];
+        if ($this->driver === 'postgres') {
+            $readOnlyRefusals[] = 'SELECT ' . rtrim(str_repeat('1 UNION ALL ', 200), ' UNION ALL ');
+            $readOnlyRefusals[] = 'SELECT ' . rtrim(str_repeat('1+', 200), '+');
+        }
+        foreach ($readOnlyRefusals as $sql) {
+            try {
+                $this->catalog->readOnlyGridQuery($sql);
+                self::fail("read-only grid query accepted {$sql}");
+            } catch (OrmException $error) {
+                self::assertSame(Code::QUERY_READ_ONLY, $error->code_, "read-only grid refusal: {$sql}");
+            }
+        }
         $this->catalog->close();
         $this->catalog->close();
         self::assertSame($snapshot->revision(), $this->catalog->rowSnapshotFromPage($page, 0)->revision());
@@ -99,6 +186,35 @@ trait CatalogConnectionCoverageCases
             self::fail('a database operation after close succeeded');
         } catch (OrmException $e) {
             self::assertSame(Code::CATALOG_CLOSED, $e->code_);
+        }
+    }
+
+    private function assertCatalogConnectionInputs(): void
+    {
+        try {
+            $unexpected = Catalog::connect('unsupported://host/database');
+            $unexpected->close();
+            self::fail('catalog connection accepted an unsupported DSN');
+        } catch (OrmException $error) {
+            self::assertSame(Code::CONFIG, $error->code_);
+        }
+
+        $directory = sys_get_temp_dir() . '/orm-catalog-missing-' . bin2hex(random_bytes(8));
+        self::assertTrue(mkdir($directory, 0700), 'create the owned SQLite fixture directory');
+        $path = $directory . '/missing.sqlite';
+        try {
+            try {
+                $unexpected = Catalog::connect('sqlite://' . $path);
+                $unexpected->close();
+                self::fail('catalog connection accepted a missing SQLite database');
+            } catch (OrmException) {
+            }
+            self::assertFileDoesNotExist($path, 'catalog connection must not create a missing SQLite database');
+        } finally {
+            if (is_file($path)) {
+                unlink($path);
+            }
+            rmdir($directory);
         }
     }
 
@@ -254,7 +370,7 @@ trait CatalogConnectionCoverageCases
         }
     }
 
-    // Requirements: DBS-113.
+    // Requirements: DBS-113, INT-34, INT-106, INT-108, INT-109, INT-111.
     public function testCatalogRowMutation(): void
     {
         $account = $this->quote('composite_account');
@@ -268,6 +384,21 @@ trait CatalogConnectionCoverageCases
             ['tenant_id' => self::TENANT, 'account_id' => 1, 'name' => 'catalog']
         );
         self::assertCount(1, $inserted->rows);
+        $page = $this->catalog->tablePage($table, 1000, 0);
+        $wrongOrder = new CatalogTablePage(
+            $page->metadata,
+            $page->result,
+            $page->limit,
+            $page->offset,
+            [],
+            $page->hasMore,
+        );
+        try {
+            $this->catalog->rowSnapshotFromPage($wrongOrder, 0);
+            self::fail('a snapshot page with an order that differs from the descriptor was accepted');
+        } catch (OrmException $error) {
+            self::assertSame(Code::ROW_SNAPSHOT_INVALID, $error->code_);
+        }
         $find = function (string $want) use ($table): object {
             $page = $this->catalog->tablePage($table, 1000, 0);
             self::assertFalse($page->hasMore);
@@ -281,8 +412,39 @@ trait CatalogConnectionCoverageCases
             self::assertSame($want, $page->result->rows[$found[0]][$page->columnIndex('name')]);
             return $this->catalog->rowSnapshotFromPage($page, $found[0]);
         };
-        $updated = $this->catalog->updateRow($find('catalog'), ['name' => 'catalog-updated']);
+        $original = $find('catalog');
+        self::assertSame(['tenant_id', 'account_id'], $original->metadata->primaryKey);
+        self::assertSame([0, 1], $original->keyIndexes);
+        $originalCells = $original->cells;
+        $originalRevision = $original->revision();
+        foreach (
+            [
+                ['absent' => 'value'],
+                ['name' => null],
+            ] as $invalid
+        ) {
+            try {
+                $this->catalog->updateRow($original, $invalid);
+                self::fail('an invalid row update was accepted');
+            } catch (OrmException $error) {
+                self::assertSame(Code::ROW_UPDATE_INVALID, $error->code_);
+            }
+        }
+        $updated = $this->catalog->updateRow($original, ['name' => 'catalog-updated']);
         self::assertCount(1, $updated->rows);
+        self::assertSame($originalCells, $original->cells);
+        self::assertSame($originalRevision, $original->revision());
+        try {
+            $this->catalog->updateRow($original, ['name' => 'stale']);
+            self::fail('a stale row snapshot was accepted for update');
+        } catch (OrmException $error) {
+            self::assertSame(Code::ROW_CONFLICT, $error->code_);
+        }
+        $updatedName = $this->catalog->readOnlyQuery(
+            "SELECT name FROM {$account} WHERE tenant_id = " . self::TENANT . ' AND account_id = 1',
+            [],
+        )->rows[0][0];
+        self::assertSame('catalog-updated', $updatedName);
         self::assertSame(1, $this->catalog->deleteRow($find('catalog-updated')));
         self::assertSame(0, $tenantRows());
         $this->assertIdentityRequiredError();

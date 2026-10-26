@@ -16,14 +16,14 @@ import (
 )
 
 // TestCoverageConformanceVector runs, on the database the Go conformance runner chose,
-// only the read-only vectors conditions_values and relations, and checks that each output equals
+// only the selected vectors, and checks that each output equals
 // the recorded expect of the database and the JSON value.
-// Requirements: DIA-37.
+// Requirements: DIA-37, DSL-137, DSL-139, DSL-144, DIA-11, DIA-14.
 func TestCoverageConformanceVector(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	driver, dsn := featureDatabase(t)
 	root := filepath.Join("..", "..", "..")
-	names := []string{"conditions_values", "relations"}
+	names := []string{"conditions_values", "relations", "functions", "creates_and_save"}
 	expectFile := map[string]string{
 		"mysql":    "vectors.json",
 		"postgres": "vectors.postgres.json",

@@ -56,6 +56,9 @@
       ],
       "parity": [
         "coverage-dsn-connection",
+        "model-construction-connection-rust",
+        "model-construction-connection-typescript",
+        "model-construction-connection-python",
         "php-public-connection-call",
         "rust-public-connection-call",
         "typescript-public-connection-call",
@@ -65,7 +68,8 @@
         "parameter-slot-validation-vectors",
         "markdown-session-messages",
         "markdown-message-vectors",
-        "markdown-rejected-surfaces"
+        "markdown-rejected-surfaces",
+        "py-test-placeholders"
       ],
       "fixtures": [
         "packages/go/orm/test_helpers_test.go",
@@ -1122,6 +1126,7 @@
       ],
       "parity": [
         "coverage-model-query-rows",
+        "coverage-model-scalar-subquery-column",
         "column-function-generated-alias",
         "go-model-chain-argument-types",
         "chain-null-on-a-non-null-column",
@@ -7654,7 +7659,8 @@
         "aes-stored-version-text-decodes",
         "aes-rotation-stored-version-zero",
         "aes-rotation-row-without-aes-column",
-        "aes-rotation-status-operation"
+        "aes-rotation-status-operation",
+        "aes-json-column"
       ],
       "fixtures": [
         "tests/codec/aes-vectors.json",
@@ -7665,7 +7671,8 @@
         "packages/php/tests/coverage_cases.php",
         "packages/ts/tests/coverage_case.mjs",
         "packages/python/tests/coverage_case.py",
-        "packages/php/tests/BlindIndexSourcePlannerInput.php"
+        "packages/php/tests/BlindIndexSourcePlannerInput.php",
+        "contracts/fixtures/secret_config.dbs"
       ],
       "tests": [
         "packages/go/orm/codec_test.go",
@@ -7716,7 +7723,8 @@
         "packages/php-ext/tests/BlindIndexSourceNativeTest.php",
         "packages/rust/orm/tests/unit/blind_index_source.rs",
         "packages/python/tests/test_blind_index_source.py",
-        "packages/ts/tests/aes-read-row-without-version-cell.mjs"
+        "packages/ts/tests/aes-read-row-without-version-cell.mjs",
+        "packages/python/tests/aes_json.py"
       ],
       "docs": [
         "docs/spec/codec.md",
@@ -7846,7 +7854,7 @@
         },
         {
           "id": "encryption-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_authenticated_encryption && packages/python/.venv/bin/python -m packages.python.tests.test_aes_rotate && packages/python/.venv/bin/python -m packages.python.tests.test_codec_aes_vectors && packages/python/.venv/bin/python -m packages.python.tests.test_codec_vectors && packages/python/.venv/bin/python -m packages.python.tests.test_codec_decode_vectors",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_authenticated_encryption && packages/python/.venv/bin/python -m packages.python.tests.test_aes_rotate && packages/python/.venv/bin/python -m packages.python.tests.test_codec_aes_vectors && packages/python/.venv/bin/python -m packages.python.tests.test_codec_vectors && packages/python/.venv/bin/python -m packages.python.tests.test_codec_decode_vectors && packages/python/.venv/bin/python -m packages.python.tests.aes_json",
           "shard": "other",
           "inputs": [
             "packages/python/tests/test_authenticated_encryption.py",
@@ -7858,7 +7866,20 @@
             "packages/python/src/polyspec/orm/codec.py",
             "tests/codec/vectors.json",
             "tests/codec/aes-vectors.json",
-            "contracts/fixtures/authenticated_encryption.json"
+            "contracts/fixtures/authenticated_encryption.json",
+            "packages/python/tests/aes_json.py",
+            "contracts/fixtures/secret_config.dbs"
+          ]
+        },
+        {
+          "id": "aes-json-php-extension",
+          "command": "make -s aes-json-php-extension-check",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "contracts/check-inputs.json",
+            "packages/php/tests/AesJsonTest.php",
+            "contracts/fixtures/secret_config.dbs"
           ]
         }
       ],

@@ -14,7 +14,7 @@ use function Polyspec\OrderedJson\parse;
 #[Small]
 final class ModelJsonTextTest extends TestCase
 {
-    // Requirements: COD-16.
+    // Requirements: COD-16, COD-26.
     public function testModelJsonTextPreservesOrderedJsonNumberText(): void
     {
         $stored = '{"z":9007199254740993,"b":1.50,"a":1e2}';

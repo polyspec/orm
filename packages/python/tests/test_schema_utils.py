@@ -28,6 +28,7 @@ class SchemaAccessorTest(unittest.TestCase):
     def tearDownClass(cls):
         cls.db.close()
 
+    # Requirements: INT-73, INT-134.
     def test_schema_returns_the_schema_tools_of_the_connection(self):
         from polyspec.orm.utils import SchemaUtils
 

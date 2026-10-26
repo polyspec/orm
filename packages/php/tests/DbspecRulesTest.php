@@ -1064,4 +1064,21 @@ final class DbspecRulesTest extends TestCase
         $this->assertSame([$want], $got, "limit/$id");
         cpuCaseEnd("limit/$id", $clock);
     }
+
+    // Requirements: DBS-144, DBS-151, DBS-170.
+    public function testDocumentAndTableLimits(): void
+    {
+        foreach (['size', 'tables', 'table-columns'] as $id) {
+            $clock = cpuCaseBegin(20.0);
+            [$text, $want] = rules_limit($id);
+            $result = \Polyspec\Orm\Dbspec\Dbspec::parse($text, []);
+            $got = array_map(
+                static fn(\Polyspec\Orm\Dbspec\Diagnostic $d): array => [$d->rule, $d->line, $d->column],
+                $result->diagnostics
+            );
+            $this->assertNull($result->document, "limit/$id: a document was returned");
+            $this->assertSame([$want], $got, "limit/$id");
+            cpuCaseEnd("limit/$id", $clock);
+        }
+    }
 }

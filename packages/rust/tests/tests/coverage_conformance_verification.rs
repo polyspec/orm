@@ -1,5 +1,5 @@
-//! conformance_verification: runs only the read-only vectors that the Rust conformance runner selects with --vector,
-//! and checks that its output equals the expect and JSON values recorded in the selected database. A name of an undeclared
+//! conformance_verification: runs only the selected vectors with the Rust conformance runner's --vector option,
+//! and checks that its output equals the recorded JSON values. The creates_and_save vector removes the rows it creates. A name of an undeclared
 //! vector prints nothing and fails.
 //!
 //! The suites of tests/conformance run one trial `conformance_<dialect>::<vector>` per vector of that dialect's file:
@@ -17,7 +17,7 @@ use std::process::Command;
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
-const VECTORS: [&str; 2] = ["conditions_values", "relations"];
+const VECTORS: [&str; 4] = ["creates_and_save", "conditions_values", "functions", "relations"];
 
 /// The deadline of one runner run. It is wall-clock time because it limits what the database does.
 const DEADLINE: Duration = Duration::from_secs(300);
@@ -31,7 +31,7 @@ fn runner(dsn: &str, vectors: &[&str]) -> Command {
     command
 }
 
-// Requirements: DIA-37.
+// Requirements: DIA-37, DSL-137, DSL-139, DSL-144, DIA-11, DIA-14.
 fn coverage_conformance_vector() {
     let driver = common::required("ORM_FEATURE_DATABASE");
     let dsn = common::required("ORM_FEATURE_DSN");

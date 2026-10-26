@@ -43,6 +43,17 @@ final class DbspecRulesNativeTest extends TestCase
         $this->assertNativeLimit($text, $want);
     }
 
+    // Requirements: DBS-144, DBS-151, DBS-170.
+    public function testNativeDocumentAndTableLimits(): void
+    {
+        foreach (['size', 'tables', 'table-columns'] as $id) {
+            $clock = cpuCaseBegin(20.0);
+            [$text, $want] = rules_limit($id);
+            $this->assertNativeLimit($text, $want);
+            cpuCaseEnd("limit/$id", $clock);
+        }
+    }
+
     /** @param array{string, int, int} $want */
     private function assertNativeLimit(string $text, array $want): void
     {

@@ -1,7 +1,7 @@
 # catalog_connection coverage runs the two shared cases against the bench database that the
 # feature check selected (ORM_FEATURE_DATABASE, ORM_FEATURE_DSN) through connect_catalog. The read case only reads; the
 # mutation case inserts, updates and deletes one row of composite_account in tenant 990005 and ends in the state it started in.
-# Requirements: SCH-3, SCH-5, SCH-6a, INT-101, INT-103, INT-109, INT-113, INT-114, INT-115, INT-123.
+# Requirements: SCH-3, SCH-5, SCH-6, SCH-6a, INT-97, INT-101, INT-102, INT-103, INT-104, INT-109, INT-112, INT-113, INT-114, INT-115, INT-121, INT-123, INT-136.
 # Its SQLite path also checks generated primary keys in a temporary file, outside the bench database.
 import io
 import os
@@ -14,7 +14,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from polyspec.orm import OrmError, codes, connect_catalog
-from polyspec.orm.catalog import GridCell
+from polyspec.orm.catalog import CatalogConnection, GridCell
 from polyspec.orm.codec import decode as decode_styled
 from .coverage_case import run_cases
 from .test_sqlite import generate
@@ -113,9 +113,16 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
     def tearDown(self):
         self.catalog.close()
 
-    # Requirements: INT-101.
+    # Requirements: INT-101, INT-136.
     # Requirements: INT-115.
     def test_read(self):
+        with self.assertRaises(Exception):
+            connect_catalog("unsupported://host/database")
+        with tempfile.TemporaryDirectory(prefix="orm-catalog-missing-") as directory:
+            missing = Path(directory) / "missing.sqlite"
+            with self.assertRaises(Exception):
+                connect_catalog(f"sqlite://{missing}")
+            self.assertFalse(missing.exists(), "catalog connection must not create a missing SQLite database")
         driver = self.driver
         namespace = self.catalog.current_namespace()
         author = {"namespace": namespace, "name": "author"}
@@ -123,14 +130,73 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
         self.assertEqual(meta.primary_key, ["seq"])
         self.assertTrue(meta.reliable_row_identity)
         self.assertIn("start_dt", [c.name for c in meta.columns])
+        self._assert_qualified_table_metadata(namespace)
         page = self.catalog.table_page(author, 3, 0)
         self.assertEqual(page.order_by, ["seq"])
         self.assertTrue(page.has_more)
         self.assertEqual(len(page.result.rows), 3)
+        self.assertEqual(page.result.columns, [column.name for column in meta.columns])
+        for limit, offset in ((0, 0), (1001, 0), (1, 1_000_001)):
+            with self.assertRaises(Exception):
+                self.catalog.table_page(author, limit, offset)
         count = self.catalog.read_only_query(
             f"SELECT COUNT(*) FROM {quote('user', driver)}", []
         )
         self.assertEqual(int(count.rows[0][0]), 5000)
+        if driver == "mysql":
+            import pymysql
+
+            url = urlsplit(self.dsn)
+            query = parse_qs(url.query)
+            name = f"catalog_readonly_{os.getpid()}_{secrets.token_hex(4)}"
+            function = f"{name}_fn"
+            native = pymysql.connect(
+                host=url.hostname or "localhost",
+                port=url.port or 3306,
+                user=unquote(url.username or ""),
+                password=unquote(url.password or ""),
+                database=unquote(url.path.lstrip("/")),
+                unix_socket=query.get("socket", [None])[0],
+                autocommit=True,
+            )
+            try:
+                with native.cursor() as cursor:
+                    cursor.execute(f"CREATE TABLE {quote(name, driver)} (n INTEGER NOT NULL)")
+                    cursor.execute(f"INSERT INTO {quote(name, driver)} VALUES (7)")
+                    cursor.execute(
+                        f"CREATE FUNCTION {quote(function, driver)}() RETURNS INTEGER DETERMINISTIC "
+                        f"MODIFIES SQL DATA BEGIN UPDATE {quote(name, driver)} SET n=n+1; RETURN 1; END"
+                    )
+                with self.assertRaises(Exception, msg="a database-enforced read-only scope allowed a function to write"):
+                    self.catalog.read_only_grid_query(f"SELECT {quote(function, driver)}()", [])
+            finally:
+                try:
+                    with native.cursor() as cursor:
+                        cursor.execute(f"DROP FUNCTION IF EXISTS {quote(function, driver)}")
+                        cursor.execute(f"DROP TABLE IF EXISTS {quote(name, driver)}")
+                finally:
+                    native.close()
+        else:
+            read_only_sql = (
+                "SELECT current_setting('transaction_read_only')"
+                if driver == "postgres"
+                else "SELECT query_only FROM pragma_query_only"
+            )
+            read_only_state = self.catalog.read_only_query(read_only_sql, [])
+            self.assertEqual(read_only_state.rows, [["on" if driver == "postgres" else 1]])
+        if driver == "mysql":
+            classification = self.catalog.read_only_query(
+                "SELECT TABLE_TYPE FROM information_schema.TABLES WHERE TABLE_SCHEMA = 'information_schema' AND TABLE_NAME = 'TABLES'",
+                [],
+            )
+            self.assertEqual(classification.rows, [["SYSTEM VIEW"]])
+            system_view = self.catalog.describe_table(
+                {"namespace": "information_schema", "name": "TABLES"}
+            )
+            self.assertEqual(system_view.kind, "view")
+            self.assertTrue(system_view.columns)
+            self.assertEqual(system_view.primary_key, [])
+            self.assertFalse(system_view.reliable_row_identity)
         self._assert_temporal_default_precision()
         plain_rows = "SELECT 'alpha' AS value UNION ALL SELECT 'beta' AS value"
         exact_rows = self.catalog.read_only_query(
@@ -165,7 +231,90 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
             self.catalog.read_only_query(
                 f"UPDATE {quote('user', driver)} SET name = name WHERE seq = 1", []
             )
+        for sql in (
+            "SELECT ';' AS value /* ; */",
+            "WITH values_cte AS (SELECT 1 AS value) SELECT value FROM values_cte",
+        ):
+            self.catalog.read_only_grid_query(sql, [])
+        read_only_refusals = [
+            "COMMIT",
+            "CALL missing_catalog_procedure()",
+            "SELECT 1 INTO catalog_forbidden",
+            "SELECT 1 FOR UPDATE",
+            "SELECT 1; SELECT 2",
+            "WITH changed AS (UPDATE user SET name=name WHERE seq=1 RETURNING seq) SELECT seq FROM changed",
+        ]
+        if driver == "postgres":
+            read_only_refusals.extend(
+                (
+                    "SELECT " + " UNION ALL ".join(["1"] * 200),
+                    "SELECT " + "+".join(["1"] * 200),
+                )
+            )
+        for sql in read_only_refusals:
+            with self.assertRaises(OrmError, msg=f"read-only grid query accepted {sql}") as refusal:
+                self.catalog.read_only_grid_query(sql, [])
+            self.assertEqual(refusal.exception.code, codes.QUERY_READ_ONLY, sql)
         self.test_grid_cells()
+
+    def _assert_qualified_table_metadata(self, namespace):
+        url = urlsplit(self.dsn)
+        query = parse_qs(url.query)
+        name = f"catalog_metadata_{os.getpid()}_{secrets.token_hex(4)}"
+        if self.driver == "sqlite":
+            native = sqlite3.connect(unquote(url.path))
+        elif self.driver == "mysql":
+            import pymysql
+
+            native = pymysql.connect(
+                host=url.hostname or "localhost",
+                port=url.port or 3306,
+                user=unquote(url.username or ""),
+                password=unquote(url.password or ""),
+                database=unquote(url.path.lstrip("/")),
+                unix_socket=query.get("socket", [None])[0],
+                autocommit=True,
+            )
+        else:
+            import psycopg
+
+            native = psycopg.connect(
+                host=query.get("host", [url.hostname or "localhost"])[-1],
+                port=url.port or 5432,
+                user=unquote(url.username or ""),
+                password=unquote(url.password or ""),
+                dbname=unquote(url.path.lstrip("/")),
+                autocommit=True,
+            )
+        qualified = f"{quote(namespace, self.driver)}.{quote(name, self.driver)}" if self.driver != "sqlite" else quote(name, self.driver)
+
+        def execute(sql):
+            if self.driver == "mysql":
+                with native.cursor() as cursor:
+                    cursor.execute(sql)
+            else:
+                native.execute(sql)
+
+        try:
+            execute(
+                f"CREATE TABLE {qualified} (a BIGINT NOT NULL, b BIGINT NOT NULL, note VARCHAR(50), "
+                "g BIGINT GENERATED ALWAYS AS (a+1) STORED, PRIMARY KEY (b,a))"
+            )
+            metadata = self.catalog.describe_table({"namespace": namespace, "name": name})
+            want_native_types = {
+                "mysql": ["bigint", "bigint", "varchar(50)", "bigint"],
+                "postgres": ["bigint", "bigint", "character varying(50)", "bigint"],
+                "sqlite": ["BIGINT", "BIGINT", "VARCHAR(50)", "BIGINT"],
+            }[self.driver]
+            self.assertEqual([column.name for column in metadata.columns], ["a", "b", "note", "g"])
+            self.assertEqual([column.native_type for column in metadata.columns], want_native_types)
+            self.assertEqual(metadata.primary_key, ["b", "a"])
+            self.assertTrue(metadata.columns[2].nullable)
+            self.assertTrue(metadata.columns[3].generated)
+            self.assertTrue(metadata.reliable_row_identity)
+        finally:
+            execute(f"DROP TABLE IF EXISTS {qualified}")
+            native.close()
 
     def _assert_temporal_default_precision(self):
         if self.driver == "sqlite":
@@ -301,7 +450,7 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
                     self.catalog.delete_row(snapshot)
                 db.close()
 
-    # Requirements: DBS-113.
+    # Requirements: DBS-113, INT-106, INT-108, INT-109, INT-111.
     def test_row_mutation(self):
         driver = self.driver
         account = quote("composite_account", driver)
@@ -320,6 +469,11 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
             meta, [("tenant_id", TENANT), ("account_id", 1), ("name", "catalog")]
         )
         self.assertEqual(len(inserted.rows), 1)
+        bad_page = self.catalog.table_page(table, 1000, 0)
+        bad_page.order_by = []
+        with self.assertRaises(OrmError) as raised:
+            self.catalog.row_snapshot_from_page(bad_page, 0)
+        self.assertEqual(raised.exception.code, codes.ROW_SNAPSHOT_INVALID)
 
         def find(want):
             page = self.catalog.table_page(table, 1000, 0)
@@ -334,10 +488,29 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
             )
             return self.catalog.row_snapshot_from_page(page, found[0])
 
-        updated = self.catalog.update_row(
-            find("catalog"), [("name", "catalog-updated")]
-        )
+        original = find("catalog")
+        self.assertEqual(original.metadata.primary_key, ["tenant_id", "account_id"])
+        self.assertEqual(original.keys(), [TENANT, 1])
+        original_cells = list(original.cells)
+        original_revision = original.revision
+        for values in [[("absent", "value")], [("name", None)]]:
+            with self.assertRaises(OrmError) as raised:
+                self.catalog.update_row(original, values)
+            self.assertEqual(raised.exception.code, codes.ROW_UPDATE_INVALID)
+        updated = self.catalog.update_row(original, [("name", "catalog-updated")])
         self.assertEqual(len(updated.rows), 1)
+        self.assertEqual(original.cells, original_cells)
+        self.assertEqual(original.revision, original_revision)
+        with self.assertRaises(OrmError) as raised:
+            self.catalog.update_row(original, [("name", "stale")])
+        self.assertEqual(raised.exception.code, codes.ROW_CONFLICT)
+        self.assertEqual(
+            self.catalog.read_only_query(
+                f"SELECT name FROM {account} WHERE tenant_id = ? AND account_id = ?",
+                [TENANT, 1],
+            ).rows,
+            [["catalog-updated"]],
+        )
         self.assertEqual(self.catalog.delete_row(find("catalog-updated")), 1)
         self.assertEqual(tenant_rows(), 0)
         if driver == "sqlite":

@@ -210,6 +210,7 @@ func TestAnalyzeClasses(t *testing.T) {
 }
 
 // TestAnalyzeLimitHasNoTokens checks that a limit stop yields no tokens at all.
+// Requirements: DBS-136, DBS-144.
 func TestAnalyzeLimitHasNoTokens(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	var b strings.Builder

@@ -180,9 +180,13 @@ async function addTablesAndColumnsEditedManifest(driver, dsn) {
 // Requirements: INT-56, SCH-8, SCH-9, SCH-10.
 const cases = {
   add_tables_and_columns: addTablesAndColumns,
+  // Requirements: SCH-9.
   add_tables_and_columns_differs: addTablesAndColumnsDiffers,
+  // Requirements: SCH-8, SCH-9.
   add_tables_and_columns_index: addTablesAndColumnsIndex,
+  // Requirements: SCH-8.
   add_tables_and_columns_transaction: addTablesAndColumnsTransaction,
+  // Requirements: SCH-8.
   add_tables_and_columns_edited_manifest: addTablesAndColumnsEditedManifest,
 };
 registerDatabaseCases({

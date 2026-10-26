@@ -5,7 +5,7 @@
 // Usage: node --test packages/ts/tests/dbspec-rules.mjs (after the build)
 import { caseTest } from '../../../tests/testcase.mts';
 import assert from 'node:assert/strict';
-import { emitDbspec, parseDbspec } from '../dist/dbspec/index.js';
+import { analyzeDbspec, emitDbspec, parseDbspec } from '../dist/dbspec/index.js';
 import * as api from '../dist/index.js';
 
 // TIMEOUT is the deadline (ms) of one case. One rule case parses several documents in memory.
@@ -56,6 +56,7 @@ invalid('version 2', ['dbspec 2 shop', 'table Users {'], [['header', 1, 8]]);
 invalid('header without name', ['dbspec 1'], [['header', 1, 9]]);
 invalid('header extra token', ['dbspec 1 shop extra'], [['header', 1, 14]]);
 invalid('leading blank line', ['', 'dbspec 1 shop'], [['header', 1, 1]]);
+// Requirements: DBS-144, DBS-151, DBS-170.
 rule('invalid 32 MiB document', () => {
   const big = 'dbspec 1 shop\n' + '#'.repeat(32 * 1024 * 1024 - 14) + '\n';
   assert.deepEqual(parseDbspec(big, {}).diagnostics.map(d => [d.rule, d.line, d.column]), [['limit', 1, 1]]);
@@ -64,13 +65,16 @@ rule('invalid 32 MiB document', () => {
   assert.deepEqual(parseDbspec(multibyte, {}).diagnostics.map(d => d.rule), ['limit']);
   assert.deepEqual(parseDbspec(multibyte.slice(0, -2) + '\n', {}).diagnostics, []);
 });
+// Requirements: DBS-136, DBS-144.
 rule('invalid 4097 tables', () => {
   const lines = ['dbspec 1 shop'];
   for (let i = 0; i < 4097; i++) lines.push(`table t${i} {`, '  id i64 identity', '  primary key (id)', '}');
-  const result = parseDbspec(text(lines), {});
+  const result = analyzeDbspec(text(lines), {});
   assert.deepEqual(result.diagnostics.map(d => [d.rule, d.line, d.column]), [['limit', 1 + 4096 * 4 + 1, 1]]);
+  assert.deepEqual(result.tokens, [], 'a limit stop yields no tokens');
   assert.deepEqual(parseDbspec(text(lines.slice(0, -4)), {}).diagnostics, []);
 });
+// Requirements: DBS-144, DBS-151, DBS-170.
 rule('invalid 1001 columns', () => {
   const lines = ['dbspec 1 shop', 'table t {', '  id i64 identity'];
   for (let i = 1; i <= 1000; i++) lines.push(`  c${i} i32`);

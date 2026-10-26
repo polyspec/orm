@@ -15,6 +15,7 @@ use PHPUnit\Framework\Attributes\Small;
 // Requirements: DBS-141.
 // Requirements: DBS-141, ORES-14.
 // Requirements: DBS-142.
+// Requirements: DBS-136, DBS-144.
 #[Small]
 final class CoverageSchemaDefinitionExtensionTest extends CoverageSchemaDefinitionTest
 {

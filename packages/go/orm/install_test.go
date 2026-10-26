@@ -48,6 +48,7 @@ func TestMySQLInstallInsideTransaction(t *testing.T) {
 // dialect gets a case database of its own (internal/testdb), because the
 // databases that ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name are shared
 // and may hold tables of other runs.
+// Requirements: INT-58.
 func TestSchemaEmpty(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "zone")

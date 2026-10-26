@@ -473,7 +473,7 @@ final class ModelNativeTest extends TestCase
         self::assertEquals((object) ['label' => 'sample', 'amount' => '2.50'], $model->jsonSerialize());
     }
 
-    // Requirements: COD-16.
+    // Requirements: COD-16, COD-26.
     public function testNativeModelJsonPreservesOrderedJsonNumberText(): void
     {
         $stored = '{"z":9007199254740993,"b":1.50,"a":1e2}';

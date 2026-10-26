@@ -6,7 +6,7 @@ use std::sync::{Arc, OnceLock};
 
 use polyspec_orm_schema::dbspec::{self, Document, Entity, RuntimeModel};
 
-use crate::{codes, Error, Result};
+use crate::{Error, Result, codes};
 
 /// The runtime model of manifest text whose hash has been checked.
 #[derive(Debug, Clone)]
@@ -159,7 +159,7 @@ mod tests {
         Box::leak(text.into_boxed_str())
     }
 
-    // Requirements: SCH-12.
+    // Requirements: DBS-156, SCH-12.
     #[test]
     fn load_set_returns_external_documents_marked() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -180,11 +180,12 @@ mod tests {
         let core_documents = Schema::new(leak(core.manifest_text), leak(core.manifest_hash)).documents().expect("external-only manifest loads");
         assert_eq!(core_documents.iter().map(|document| (document.name.text.as_str(), document.external)).collect::<Vec<_>>(), [("core", false)],);
         assert_eq!(Manifest::load_set("table item {}\n", EXTERNAL, "").unwrap_err().code(), codes::SCHEMA_INVALID);
+        assert_eq!(Manifest::load_set("table item {}\n", "", "").unwrap_err().code(), codes::SCHEMA_INVALID);
         assert_eq!(Manifest::load_set(OWNED, "table account {}\n", &built_hash).unwrap_err().code(), codes::SCHEMA_INVALID);
     }
 
     // Manifest text that does not hash to the declared hash is SCHEMA_HASH_MISMATCH, and text that is not a manifest is SCHEMA_INVALID.
-    // Requirements: DBS-104, SCH-12.
+    // Requirements: DBS-104.
     #[test]
     fn manifest_hash_mismatch_is_reported() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

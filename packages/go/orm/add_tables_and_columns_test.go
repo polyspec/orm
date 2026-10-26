@@ -303,6 +303,7 @@ func TestAddTablesAndColumnsPostgres(t *testing.T) {
 	addTablesAndColumnsCase(t, "postgres")
 }
 
+// Requirements: SCH-9.
 func TestAddTablesAndColumnsDiffersSQLite(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	addTablesAndColumnsDiffersCase(t, "sqlite")
@@ -318,6 +319,7 @@ func TestAddTablesAndColumnsDiffersPostgres(t *testing.T) {
 	addTablesAndColumnsDiffersCase(t, "postgres")
 }
 
+// Requirements: SCH-8, SCH-9.
 func TestAddTablesAndColumnsIndexSQLite(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	addTablesAndColumnsIndexCase(t, "sqlite")
@@ -333,6 +335,7 @@ func TestAddTablesAndColumnsIndexPostgres(t *testing.T) {
 	addTablesAndColumnsIndexCase(t, "postgres")
 }
 
+// Requirements: SCH-8.
 func TestAddTablesAndColumnsTransactionSQLite(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	addTablesAndColumnsTransactionCase(t, "sqlite")
@@ -348,6 +351,7 @@ func TestAddTablesAndColumnsTransactionPostgres(t *testing.T) {
 	addTablesAndColumnsTransactionCase(t, "postgres")
 }
 
+// Requirements: SCH-8.
 func TestAddTablesAndColumnsEditedManifestSQLite(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	addTablesAndColumnsEditedManifestCase(t, "sqlite")

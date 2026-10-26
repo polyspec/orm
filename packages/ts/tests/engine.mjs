@@ -359,7 +359,7 @@ for (const [index, c] of file.cases.entries()) caseTest(c.name, COMPUTE, () => {
   const got = code(() => validate(validateModel, { ...decodeRequest(requestTexts[index]), manifest_hash: validated.manifestHash }));
   if (c.valid ? got !== null : got !== c.error) throw new Error(`got ${got ?? 'valid'}, want ${c.error ?? 'valid'}`);
 });
-// Requirements: SCH-12.
+// Requirements: DBS-156, SCH-12.
 // loadSet returns the parsed documents of a generated schema value, as PHP's RuntimeModel::loadSet does (T163).
 await run.run('load-set', COMPUTE, async () => {
   const owned = 'dbspec 1 shop\n\nuse core { account }\n\ntable item {\n  seq i64\n  account_seq i64\n  primary key (seq)\n  index ix_item_account (account_seq)\n  foreign key fk_item_account (account_seq) references account (seq) on delete restrict on update restrict\n}\n';

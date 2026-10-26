@@ -199,6 +199,7 @@ final class RuntimeDbTest extends TestCase
         self::runCase($driver, 'Polyspec\\Orm\\Tests\\RuntimeDb', self::caseAuditRecordOfATransaction(...));
     }
 
+    // Requirements: DBS-117.
     #[DataProvider('drivers')]
     public function testRestoreOfSoftDeletedRows(string $driver): void
     {

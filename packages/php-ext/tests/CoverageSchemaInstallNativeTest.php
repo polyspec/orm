@@ -42,11 +42,46 @@ final class CoverageSchemaInstallNativeTest extends TestCase
 {
     private static bool $nativeSchemaSetFixtureReady = false;
 
-    // Requirements: DBS-108, SCH-7, PLN-44, INT-55.
+    private static function runNativeAddTablesAndColumns(string $method): void
+    {
+        \Polyspec\Orm\Extension\Tests\PhpExtensionBootstrapAssertions::requireLoaded();
+        coverageAssertEntryClassesAreInternal();
+        $owner = new \Polyspec\Orm\Tests\AddTablesAndColumnsTest($method);
+        foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
+            $owner->{$method}($driver);
+        }
+    }
+
+    // Requirements: SCH-9.
+    public function testNativeAddTablesAndColumnsDiffers(): void
+    {
+        self::runNativeAddTablesAndColumns('testAddTablesAndColumnsDiffers');
+    }
+
+    // Requirements: SCH-8, SCH-9.
+    public function testNativeAddTablesAndColumnsIndex(): void
+    {
+        self::runNativeAddTablesAndColumns('testAddTablesAndColumnsIndex');
+    }
+
+    // Requirements: SCH-8.
+    public function testNativeAddTablesAndColumnsTransaction(): void
+    {
+        self::runNativeAddTablesAndColumns('testAddTablesAndColumnsTransaction');
+    }
+
+    // Requirements: SCH-8.
+    public function testNativeAddTablesAndColumnsEditedManifest(): void
+    {
+        self::runNativeAddTablesAndColumns('testAddTablesAndColumnsEditedManifest');
+    }
+
+    // Requirements: DBS-108, INT-55, INT-58, PLN-44, SCH-7.
     public function testSchemaInstallExisting(): void
     {
         self::forEachCoverageDatabase(static function ($db, string $driver): void {
             Assert::assertTrue(coverageTableExists($db, 'author'), 'the bench database has no author table');
+            Assert::assertFalse($db->utils()->schema()->empty(), 'the installed tables make the schema non-empty');
             $db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema());
             if ($driver === 'mysql') {
                 $inside = coverageCode(fn() => $db->transaction(

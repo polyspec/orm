@@ -200,6 +200,7 @@ func TestRuleDiagnostics(t *testing.T) {
 	}
 }
 
+// Requirements: DBS-144, DBS-151, DBS-170.
 func TestEncodingAndLimitDiagnostics(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	big := "dbspec 1 shop\n" + strings.Repeat("#", maxDocumentBytes)

@@ -13,7 +13,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// Requirements: DBS-116.
+// Requirements: DBS-116, COD-17, COD-20.
 func TestGeneratedStyledGetterAndSetterStates(t *testing.T) {
 	// The test of COD-17, COD-20 (docs/spec).
 	testcase.Start(t, testcase.Database)
@@ -71,7 +71,7 @@ func TestGeneratedStyledGetterAndSetterStates(t *testing.T) {
 }
 
 // TestModelOrderedJSONOutputPreservesExactText exercises the production Model MarshalJSON path.
-// Requirements: COD-16.
+// Requirements: COD-16, COD-26.
 func TestModelOrderedJSONOutputPreservesExactText(t *testing.T) {
 	const stored = `{"z":9007199254740993,"b":1.50,"a":1e2}`
 	value, err := orderedjson.Parse(stored)

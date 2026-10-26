@@ -32,3 +32,18 @@ caseTest('SQLite memory catalog query count is independent of table count', COMP
     }
   }
 });
+
+// Requirements: DIA-191.
+caseTest('dbspec.introspect.sqlite-empty-check-reason', COMPUTE, async () => {
+  const connection = new DatabaseSync(':memory:');
+  try {
+    connection.exec('CREATE TABLE "probe" ("id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, "junk" INTEGER NULL)');
+    const result = await introspectDbspec(connection, 'sqlite', 'introspected');
+    assert.deepEqual(
+      result.unsupported.filter(item => item.name === 'junk').map(item => item.reason),
+      ['declared type INTEGER with CHECK "" has no dbspec type'],
+    );
+  } finally {
+    connection.close();
+  }
+});

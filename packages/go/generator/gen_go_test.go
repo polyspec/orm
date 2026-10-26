@@ -261,7 +261,7 @@ func Bad() *model.ProductModel { return model.Product().LkPrice("x") }
 
 // TestGeneratedFieldTypes checks that the Go type of a generated field for each dbspec type and codec
 // follows the "Runtime model" table of docs/spec/dbspec.md.
-// Requirements: DBS-112, DBS-116, DBS-121, INT-2, INT-3, INT-4, INT-5, INT-6, INT-7, INT-8, INT-12.
+// Requirements: DBS-112, DBS-116, DBS-121, INT-2, INT-3, INT-4, INT-5, INT-6, INT-7, INT-8.
 // Requirements: DBS-121.
 func TestGeneratedFieldTypes(t *testing.T) {
 	testcase.Start(t, testcase.Process)

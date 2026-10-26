@@ -826,6 +826,14 @@
           "reason": "test: an internal test of the Python client that reads the PyMySQL client flags of the connection, an implementation detail; the found-rows behaviour of CFG-10 is the affected_counts vector of the conformance suite (P32)"
         },
         {
+          "glob": "packages/python/tests/test_aggregate_numeric_driver_values.py",
+          "reason": "test: exercises the private _aggregate_number conversion helper with Python Decimal and bool inputs; public aggregate value behavior is covered by the six-client aggregate-numeric suite"
+        },
+        {
+          "glob": "packages/python/tests/test_decimal_model_sqlite_ddl.py",
+          "reason": "test: repeats the public SQLite decimal DDL assertion already exercised on every client by the types-and-defaults vector of the six-client dbspec-ddl suite; the file adds no distinct accepted schema or output behavior"
+        },
+        {
           "glob": "packages/python/tests/coverage_case_test.py",
           "reason": "harness: tests the Python feature-coverage runner’s case selection, database iteration and result events; client behavior is exercised by the declared feature owner cases"
         },
@@ -856,6 +864,10 @@
         {
           "glob": "packages/python/tests/test_column_function_internal.py",
           "reason": "test: mutates a validated request to manufacture impossible missing-column states, then checks private parameter-use, planner and Markdown invariant failures; the public COLUMN_UNKNOWN case is covered by the shared planner_rejects_unknown_column vector"
+        },
+        {
+          "glob": "packages/python/tests/test_utils_statements.py",
+          "reason": "test: verifies the private Python driver adapter that translates PostgreSQL statement markers for psycopg; public utility behavior is exercised through the transaction-local-value owner case"
         }
       ],
       "roots": [
@@ -1048,6 +1060,10 @@
         {
           "glob": "packages/rust/schema/src/dbspec/unicode_word.rs",
           "reason": "generated: exhaustively checks the private generated Unicode range table against its own binary-search implementation; public syntax behavior is exercised by dbspec-syntax"
+        },
+        {
+          "glob": "packages/rust/schema/src/dbspec/set_internal_tests.rs",
+          "reason": "test: checks only private set-path and schema-number helpers; public set reader behavior is exercised by the six-client dbspec-set-files cases"
         },
         {
           "glob": "packages/rust/build/src/lib.rs",
@@ -3816,22 +3832,6 @@
       ]
     },
     {
-      "id": "ts-add-tables-and-columns",
-      "kind": "feature",
-      "requirements": [
-        "SCH-8",
-        "SCH-9",
-        "SCH-10"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/add-tables-and-columns.mjs",
-          "id": "add-tables-and-columns/add_tables_and_columns/sqlite"
-        }
-      ]
-    },
-    {
       "id": "coverage-audit-triggers-audit-history",
       "kind": "feature",
       "requirements": [
@@ -4583,7 +4583,8 @@
         "INT-33",
         "PLN-11",
         "PLN-25",
-        "DSL-73"
+        "DSL-73",
+        "DSL-74"
       ],
       "bindings": [
         {
@@ -4621,6 +4622,73 @@
           "implementation": "python",
           "test": "packages/python/tests/coverage_model_queries.py",
           "id": "test_model_query_rows"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs",
+          "id": "coverage_model_queries::coverage_model_query_rows",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test integration",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_model_queries::coverage_model_query_rows"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coverage-model-scalar-subquery-column",
+      "kind": "feature",
+      "requirements": [
+        "DSL-74"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_model_queries_test.go",
+          "id": "TestCoverageModelQueryRows",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageModelQueryRows",
+            "FEATURE_PACKAGE=./model"
+          ]
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageModelQueriesTest.php",
+          "id": "CoverageModelQueriesTest::testModelQueryRows"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php",
+          "id": "CoverageModelQueriesExtensionTest::test_model_query_rows"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_model_queries.mjs",
+          "id": "model_query_rows [sqlite]"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_model_queries.py",
+          "id": "test_model_query_rows"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_subqueries.py",
+          "id": "test_read_total_is_the_sum_of_the_correlated_rows"
         },
         {
           "implementation": "rust",
@@ -4705,6 +4773,11 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_model_queries::coverage_model_query_rows"
           ]
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_alias_columns.py",
+          "id": "test_alias_column_is_keyed_by_its_snake_case_name"
         }
       ]
     },
@@ -4769,6 +4842,11 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_model_writes::coverage_model_create_parts"
           ]
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testInsertParts"
         }
       ]
     },
@@ -4789,6 +4867,74 @@
         "COD-15"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_model_writes_test.go",
+          "id": "TestCoverageModelWriteCycle",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageModelWriteCycle",
+            "FEATURE_PACKAGE=./model"
+          ]
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageModelWritesTest.php",
+          "id": "CoverageModelWritesTest::testModelWriteCycle"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
+          "id": "CoverageModelWritesExtensionTest::test_model_write_cycle"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_model_writes.mjs",
+          "id": "model_write_cycle [sqlite]"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_model_writes.py",
+          "id": "test_model_write_cycle"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
+          "id": "coverage_model_writes::coverage_model_write_cycle",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test integration",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_model_writes::coverage_model_write_cycle"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ordered-json-storage-round-trip",
+      "kind": "feature",
+      "requirements": [
+        "DIA-26",
+        "COD-15"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/jsontext_order_test.go",
+          "id": "TestJsonTextOrderPreservation"
+        },
         {
           "implementation": "go",
           "test": "packages/go/model/coverage_model_writes_test.go",
@@ -4978,6 +5124,11 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_model_writes::coverage_model_write_cycle"
           ]
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_sqlite.py",
+          "id": "test_write_cycle"
         }
       ]
     },
@@ -7997,7 +8148,8 @@
       "id": "schema-set-load-external-documents",
       "kind": "feature",
       "requirements": [
-        "SCH-12"
+        "SCH-12",
+        "DBS-156"
       ],
       "bindings": [
         {
@@ -8024,6 +8176,11 @@
           "implementation": "python",
           "test": "packages/python/tests/test_load_set.py",
           "id": "LoadSetTest::test_returns_the_documents_with_the_external_ones_marked"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_load_set.py",
+          "id": "LoadSetTest::test_a_text_without_a_header_is_schema_invalid"
         },
         {
           "implementation": "rust",
@@ -8112,6 +8269,11 @@
           "implementation": "rust",
           "test": "packages/rust/orm/src/request.rs",
           "id": "request::plan_cache_tests::in_list_padding_keeps_the_compiled_shape"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/plan_cache_test.go",
+          "id": "TestCanonicalizePadsInListAndRejectsOutOfRangeParam"
         }
       ]
     },
@@ -8152,6 +8314,57 @@
           "implementation": "rust",
           "test": "packages/rust/orm/src/value.rs",
           "symbol": "value::aggregate_numeric"
+        }
+      ]
+    },
+    {
+      "id": "aes-json-column",
+      "kind": "feature",
+      "requirements": [
+        "COD-7"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/aes_json_test.go",
+          "id": "TestAESJSONColumn"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AesJsonTest.php",
+          "id": "AesJsonTest::testAesJsonColumn"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/AesJsonTest.php",
+          "id": "AesJsonTest::testAesJsonColumn",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "aes-json-php-extension-check"
+          ]
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model.mjs",
+          "id": "aesJsonColumn"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/aes_json.py",
+          "id": "test_aes_json_column_on_each_database"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/aes_json.rs",
+          "id": "aes_json_column"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/aes_json_test.go",
+          "id": "TestAESJSONColumnSchema"
         }
       ]
     },
@@ -9692,7 +9905,8 @@
         "DBS-128",
         "DBS-129",
         "DBS-130",
-        "DBS-131"
+        "DBS-131",
+        "DBS-132"
       ],
       "file": "tests/dbspec/cases.json",
       "cases": "$.normalize[*].id",
@@ -10914,7 +11128,8 @@
       "requirements": [
         "INT-91",
         "PLN-44",
-        "INT-77"
+        "INT-77",
+        "INT-96"
       ],
       "file": "tests/events/vectors.json",
       "cases": "$.cases[*].id",
@@ -11156,41 +11371,6 @@
           "implementation": "rust",
           "test": "packages/rust/schema/tests/dbspec_set_parse.rs",
           "symbol": "shared_set_parse_vectors"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-engine-dbspec-rules",
-      "kind": "feature",
-      "requirements": [
-        "DBS-32",
-        "DBS-36",
-        "DBS-38",
-        "DBS-39",
-        "DBS-42",
-        "DBS-43",
-        "DBS-46",
-        "DBS-48",
-        "DBS-50",
-        "DBS-58",
-        "DBS-156",
-        "DBS-157",
-        "DBS-158",
-        "DBS-159",
-        "DBS-161",
-        "DBS-162",
-        "DBS-163",
-        "DBS-164",
-        "DBS-165",
-        "DBS-166",
-        "DBS-167",
-        "DBS-168"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/dbspec/rules_test.go",
-          "id": "TestRuleDiagnostics"
         }
       ]
     },
@@ -11886,9 +12066,7 @@
       "id": "go-internal-packages-go-model-styled-state",
       "kind": "feature",
       "requirements": [
-        "DBS-116",
-        "COD-17",
-        "COD-20"
+        "COD-17"
       ],
       "bindings": [
         {
@@ -11896,68 +12074,12 @@
           "test": "packages/go/model/styled_state_test.go",
           "id": "TestGeneratedStyledGetterAndSetterStates"
         }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-add-tables-and-columns",
-      "kind": "feature",
-      "requirements": [
-        "SCH-8",
-        "SCH-9",
-        "SCH-10"
       ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/add_tables_and_columns_test.go",
-          "id": "TestAddTablesAndColumnsSQLite"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-aes-json",
-      "kind": "feature",
-      "requirements": [
-        "DBS-64",
-        "DBS-70",
-        "DBS-167",
-        "COD-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/aes_json_test.go",
-          "id": "TestAESJSONColumnSchema"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-aes-keys",
-      "kind": "feature",
-      "requirements": [
-        "COD-8"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/aes_keys_test.go",
-          "id": "TestAESWriteUsesKeyOfCurrentVersion"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-aes-rotation",
-      "kind": "feature",
-      "requirements": [
-        "COD-8"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/aes_rotation_test.go",
-          "id": "TestRotateAESRowUpdatesAllAESColumnsAndVersion"
-        }
-      ]
+      "owner": {
+        "kind": "release-package",
+        "artifact": "go-module",
+        "package": "github.com/polyspec/orm/packages/go"
+      }
     },
     {
       "id": "connection-transaction-session-state-ends",
@@ -12508,20 +12630,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-orm-hostcodec",
-      "kind": "feature",
-      "requirements": [
-        "COD-5"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/hostcodec_test.go",
-          "id": "TestHostAESUsesAuthenticatedVersionTwoEnvelope"
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-orm-codec-custom-marshaler",
       "kind": "feature",
       "requirements": [
@@ -12533,7 +12641,12 @@
           "test": "packages/go/orm/codec_test.go",
           "id": "TestOrderedJSONCodecUsesCustomJSONMarshaler"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "go-module",
+        "package": "github.com/polyspec/orm/packages/go"
+      }
     },
     {
       "id": "go-codec-json-byte-slice-encode-rejected",
@@ -12634,20 +12747,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-generator-generated-field-types",
-      "kind": "feature",
-      "requirements": [
-        "INT-12"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_test.go",
-          "id": "TestGeneratedFieldTypes"
-        }
-      ]
-    },
-    {
       "id": "ts-styled-value-checks-setter",
       "kind": "feature",
       "requirements": [
@@ -12659,7 +12758,12 @@
           "test": "packages/ts/tests/styled-value-checks.mjs",
           "id": "styled value checks: a setter refuses what JSON would change"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "@polyspec/orm"
+      }
     },
     {
       "id": "ts-styled-value-checks-output",
@@ -12673,7 +12777,12 @@
           "test": "packages/ts/tests/styled-value-checks.mjs",
           "id": "styled value checks: a changed input fails when it is read for output"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "@polyspec/orm"
+      }
     },
     {
       "id": "ts-styled-value-checks-encoding",
@@ -12687,7 +12796,12 @@
           "test": "packages/ts/tests/styled-value-checks.mjs",
           "id": "styled value checks: a changed input fails when it is read for encoding"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "@polyspec/orm"
+      }
     },
     {
       "id": "transaction-control-methods-are-private",
@@ -13149,21 +13263,6 @@
       }
     },
     {
-      "id": "go-internal-packages-go-orm-jsontext-order",
-      "kind": "feature",
-      "requirements": [
-        "DIA-26",
-        "COD-15"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/jsontext_order_test.go",
-          "id": "TestJsonTextOrderPreservation"
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-orm-rollback-fault-entry",
       "kind": "feature",
       "requirements": [
@@ -13358,20 +13457,6 @@
           "implementation": "go",
           "test": "packages/go/internal/dialects/facts_physical_test.go",
           "id": "TestDialectFacts"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-plan-cache-pads-in-list-and-rejects-range",
-      "kind": "feature",
-      "requirements": [
-        "CPX-4"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/plan_cache_test.go",
-          "id": "TestCanonicalizePadsInListAndRejectsOutOfRangeParam"
         }
       ]
     },
@@ -13589,34 +13674,99 @@
           "implementation": "go",
           "test": "packages/go/model/time_text_test.go",
           "id": "TestTimeSetterRecordsBadText"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/engine/mod.rs",
+          "id": "engine::tests::sqlite_insert_binds_the_clock_for_default_now"
         }
       ]
     },
     {
-      "id": "rust-catalog-connection-does-not-create-a-missing-sqlite-database",
+      "id": "catalog-connection-requires-an-existing-sqlite-database",
       "kind": "feature",
       "requirements": [
         "SCH-6"
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_catalog_connection_test.go",
+          "id": "TestCoverageCatalogRead"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRead"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRead"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_read"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_catalog_connection.py",
+          "id": "test_read"
+        },
+        {
           "implementation": "rust",
           "test": "packages/rust/build/tests/catalog.rs",
           "id": "catalog_connection_does_not_create_a_missing_sqlite_database"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
+          "id": "coverage_catalog_read"
         }
       ]
     },
     {
-      "id": "rust-catalog-connection-rejects-invalid-dsn-without-driver-argument",
+      "id": "catalog-connection-rejects-an-unsupported-dsn",
       "kind": "feature",
       "requirements": [
         "SCH-5"
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_catalog_connection_test.go",
+          "id": "TestCoverageCatalogRead"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRead"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRead"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_read"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_catalog_connection.py",
+          "id": "test_read"
+        },
+        {
           "implementation": "rust",
           "test": "packages/rust/build/tests/catalog.rs",
           "id": "catalog_connection_rejects_invalid_dsn_without_driver_argument"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
+          "id": "coverage_catalog_read"
         }
       ]
     },
@@ -14098,22 +14248,7 @@
       }
     },
     {
-      "id": "rust-binary-grid-values-remain-distinct-from-text-and-null",
-      "kind": "feature",
-      "requirements": [
-        "SCH-3",
-        "INT-115"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/grid_cells.rs",
-          "id": "binary_grid_values_remain_distinct_from_text_and_null"
-        }
-      ]
-    },
-    {
-      "id": "rust-finite-grid-decimals-preserve-precision-and-scale",
+      "id": "catalog-grid-decimals-preserve-precision-and-scale",
       "kind": "feature",
       "requirements": [
         "INT-97"
@@ -14123,11 +14258,41 @@
           "implementation": "rust",
           "test": "packages/rust/build/tests/grid_decimals.rs",
           "id": "finite_grid_decimals_preserve_precision_and_scale"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_catalog_connection_test.go",
+          "id": "TestCoverageCatalogRead"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRead"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRead"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_read"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_catalog_connection.py",
+          "id": "test_read"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
+          "id": "coverage_catalog_read"
         }
       ]
     },
     {
-      "id": "rust-grid-numbers-preserve-native-bits-and-unsigned-range",
+      "id": "catalog-grid-numbers-preserve-native-bits-and-unsigned-range",
       "kind": "feature",
       "requirements": [
         "INT-102"
@@ -14137,30 +14302,71 @@
           "implementation": "rust",
           "test": "packages/rust/build/tests/grid_numbers.rs",
           "id": "grid_numbers_preserve_native_bits_and_unsigned_range"
-        }
-      ]
-    },
-    {
-      "id": "rust-temporal-grid-cells-follow-the-declared-precision",
-      "kind": "feature",
-      "requirements": [
-        "INT-103"
-      ],
-      "bindings": [
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_catalog_connection_test.go",
+          "id": "TestCoverageCatalogRead"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRead"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRead"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_read"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_catalog_connection.py",
+          "id": "test_read"
+        },
         {
           "implementation": "rust",
-          "test": "packages/rust/build/tests/grid_temporal.rs",
-          "id": "temporal_grid_cells_follow_the_declared_precision"
+          "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
+          "id": "coverage_catalog_read"
         }
       ]
     },
     {
-      "id": "rust-actual-catalog-queries-enforce-read-only-scopes-on-three-databases",
+      "id": "catalog-queries-use-database-enforced-read-only-scopes",
       "kind": "feature",
       "requirements": [
         "INT-104"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_catalog_connection_test.go",
+          "id": "TestCoverageCatalogRead"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRead"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRead"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_read"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_catalog_connection.py",
+          "id": "test_read"
+        },
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/read_only_query.rs",
@@ -14180,7 +14386,12 @@
           "test": "packages/rust/build/tests/row_commit_permit.rs",
           "id": "rejected_commit_permits_rollback_all_native_mutations"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "rust-generated-keys-return-the-inserted-row-on-each-database",
@@ -14190,6 +14401,51 @@
         "INT-34"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_catalog_connection_test.go",
+          "id": "TestCoverageCatalogRowMutation"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRowMutation"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRowMutation"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog-mutation-helper.test.mjs",
+          "id": "uses the MySQL statement insertId for an omitted automatic key"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog-mutation-helper.test.mjs",
+          "id": "uses PostgreSQL INSERT RETURNING for a literal-default composite key"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog-mutation-helper.test.mjs",
+          "id": "inserts an omitted SQLite AUTOINCREMENT key and returns the stored row"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_auto_key.py",
+          "id": "CatalogAutoKeyTest.test_sqlite_automatic_primary_key_insert_returns_stored_row"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_auto_key.py",
+          "id": "CatalogAutoKeyTest.test_mysql_automatic_key_uses_insert_acknowledgement"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_auto_key.py",
+          "id": "CatalogAutoKeyTest.test_postgres_default_composite_key_uses_insert_returning"
+        },
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/row_insert_identity.rs",
@@ -14204,6 +14460,31 @@
         "INT-106"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_catalog_connection_test.go",
+          "id": "TestCoverageCatalogRowMutation"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRowMutation"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRowMutation"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_row_mutation"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_catalog_connection.py",
+          "id": "test_row_mutation"
+        },
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/row_mutation.rs",
@@ -14233,6 +14514,31 @@
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_catalog_connection_test.go",
+          "id": "TestCoverageCatalogRowMutation"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRowMutation"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRowMutation"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_row_mutation"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_catalog_connection.py",
+          "id": "test_row_mutation"
+        },
+        {
           "implementation": "rust",
           "test": "packages/rust/build/tests/row_snapshot.rs",
           "id": "row_baseline_preserves_immutable_values_and_key_order"
@@ -14246,6 +14552,31 @@
         "INT-109"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_catalog_connection_test.go",
+          "id": "TestCoverageCatalogRowMutation"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRowMutation"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRowMutation"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_row_mutation"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_catalog_connection.py",
+          "id": "test_row_mutation"
+        },
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/row_snapshot.rs",
@@ -14269,26 +14600,81 @@
       ]
     },
     {
-      "id": "rust-mysql-system-views-are-described-without-row-identity",
+      "id": "catalog-mysql-system-views-are-described-without-row-identity",
       "kind": "feature",
       "requirements": [
         "INT-112"
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_catalog_connection_test.go",
+          "id": "TestCoverageCatalogRead"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRead"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRead"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_read"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_catalog_connection.py",
+          "id": "test_read"
+        },
+        {
           "implementation": "rust",
           "test": "packages/rust/build/tests/table_metadata.rs",
           "id": "mysql_system_views_are_described_without_row_identity"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
+          "id": "coverage_catalog_read"
         }
       ]
     },
     {
-      "id": "rust-qualified-table-metadata-preserves-identity-and-generated-columns",
+      "id": "catalog-qualified-table-metadata-preserves-native-types-and-identity",
       "kind": "feature",
       "requirements": [
         "INT-113"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_catalog_connection_test.go",
+          "id": "TestCoverageCatalogRead"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRead"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRead"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_read"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_catalog_connection.py",
+          "id": "test_read"
+        },
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/table_metadata.rs",
@@ -14297,12 +14683,37 @@
       ]
     },
     {
-      "id": "rust-qualified-table-pages-preserve-columns-key-order-and-bounds",
+      "id": "catalog-qualified-table-pages-preserve-columns-key-order-and-bounds",
       "kind": "feature",
       "requirements": [
         "INT-114"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_catalog_connection_test.go",
+          "id": "TestCoverageCatalogRead"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRead"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRead"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_read"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_catalog_connection.py",
+          "id": "test_read"
+        },
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/table_page.rs",
@@ -14321,6 +14732,11 @@
           "implementation": "rust",
           "test": "packages/rust/build/tests/tool_cells.rs",
           "id": "physical_tool_cells_reject_loss_without_substituting_values"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/grid_cells.rs",
+          "id": "binary_grid_values_remain_distinct_from_text_and_null"
         }
       ],
       "owner": {
@@ -14341,7 +14757,12 @@
           "test": "packages/rust/build/tests/tool_columns.rs",
           "id": "physical_query_columns_preserve_empty_results_and_duplicate_aliases"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "rust-bounded-query-rejects-ambiguous-multiple-result-sets",
@@ -14355,7 +14776,12 @@
           "test": "packages/rust/build/tests/tool_statement.rs",
           "id": "bounded_query_rejects_ambiguous_multiple_result_sets"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "rust-physical-tool-accessors-preserve-errors-on-all-databases",
@@ -14407,7 +14833,12 @@
           "test": "packages/rust/build/tests/typed_binds.rs",
           "id": "native_typed_binds_preserve_values_and_typed_nulls"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "rust-native-typed-writes-roundtrip-reject-and-rollback",
@@ -14430,6 +14861,46 @@
         "INT-118"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/catalog_session_error_test.go",
+          "id": "TestCatalogInsertPreservesIndeterminateCommitCause"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CatalogCommitFailureTest.php",
+          "id": "CatalogCommitFailureTest::testUnknownCommitWithRollbackThatSucceedsReportsTheCommitError"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CatalogCommitFailureTest.php",
+          "id": "CatalogCommitFailureTest::testFailedRollbackIsReportedAsTheCauseOfTheUnknownCommit"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
+          "id": "CatalogConnectionSurfaceTest::testNativeInsertCommitFailurePreservesTheDriverCause"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
+          "id": "CatalogConnectionSurfaceTest::testNativeInsertCommitAndRollbackFailuresPreserveBothDriverCauses"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog-mutation-helper.test.mjs",
+          "id": "catalog/insert/indeterminate-commit-preserves-driver-cause"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog-mutation-helper.test.mjs",
+          "id": "catalog/insert/indeterminate-commit-preserves-rollback-failure"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_auto_key.py",
+          "id": "CatalogAutoKeyTest.test_sqlite_public_insert_reports_indeterminate_commit_cause"
+        },
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/unit/mutation_commit.rs",
@@ -14463,7 +14934,12 @@
           "test": "packages/rust/build/tests/unit/mutation_safety.rs",
           "id": "catalog::mutation::safety_tests::borrowed_bind_validation_stops_at_its_count_budget"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "rust-catalog-disposal-tests-aborted-read-only-connections-are-not-returned-to-the-pool",
@@ -14477,15 +14953,45 @@
           "test": "packages/rust/build/tests/unit/read_only_disposal.rs",
           "id": "catalog::disposal_tests::aborted_read_only_connections_are_not_returned_to_the_pool"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
-      "id": "rust-catalog-read-only-policy-validates-nested-read-shapes-and-rejects-writes",
+      "id": "catalog-read-only-grid-queries-accept-one-read-only-statement",
       "kind": "feature",
       "requirements": [
         "INT-136"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_catalog_connection_test.go",
+          "id": "TestCoverageCatalogRead"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRead"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRead"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_read"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_catalog_connection.py",
+          "id": "test_read"
+        },
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/unit/read_only_policy.rs",
@@ -14494,12 +15000,37 @@
       ]
     },
     {
-      "id": "rust-catalog-page-page-assembly-rejects-column-or-descriptor-changes",
+      "id": "catalog-table-pages-preserve-descriptors-and-reject-changes",
       "kind": "feature",
       "requirements": [
         "INT-121"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/catalog_page_validation_test.go",
+          "id": "TestCatalogPageRejectsChangedDescriptors"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CatalogPageValidationTest.php",
+          "id": "CatalogPageValidationTest::testRejectsPreparedColumnAndDescriptorChanges"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
+          "id": "CatalogConnectionSurfaceTest::testNativeTablePageRejectsPreparedColumnAndChangedDescriptor"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog-page-validation.test.mjs",
+          "id": "tablePage rejects prepared-column and in-scope descriptor changes"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_page_validation.py",
+          "id": "test_rejects_prepared_column_and_in_scope_descriptor_changes"
+        },
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/unit/table_page_validation.rs",
@@ -14519,7 +15050,12 @@
           "test": "packages/rust/build/tests/unit/tool_column_budgets.rs",
           "id": "tool_db::result::tests::metadata_budgets_reject_excess_and_preserve_exact_boundaries"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "rust-tool-db-params-bind-validation-checks-exact-bounds-before-driver-encoding",
@@ -14533,7 +15069,12 @@
           "test": "packages/rust/build/tests/unit/typed_bind_validation.rs",
           "id": "tool_db::params::tests::bind_validation_checks_exact_bounds_before_driver_encoding"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "rust-codec-aes-vectors",
@@ -14812,94 +15353,6 @@
       ]
     },
     {
-      "id": "rust-engine-composite-relation-keys",
-      "kind": "feature",
-      "requirements": [
-        "DIA-24",
-        "DIA-33"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/engine/mod.rs",
-          "id": "engine::tests::composite_relation_keys"
-        }
-      ]
-    },
-    {
-      "id": "rust-engine-key-columns-are-not-written",
-      "kind": "feature",
-      "requirements": [
-        "DIA-24",
-        "DIA-33"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/engine/mod.rs",
-          "id": "engine::tests::key_columns_are_not_written"
-        }
-      ]
-    },
-    {
-      "id": "rust-engine-restore-plans-guarded-update",
-      "kind": "feature",
-      "requirements": [
-        "DIA-24",
-        "DIA-33"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/engine/mod.rs",
-          "id": "engine::tests::restore_plans_guarded_update"
-        }
-      ]
-    },
-    {
-      "id": "rust-engine-restore-rejects-other-requests",
-      "kind": "feature",
-      "requirements": [
-        "DIA-24",
-        "DIA-33"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/engine/mod.rs",
-          "id": "engine::tests::restore_rejects_other_requests"
-        }
-      ]
-    },
-    {
-      "id": "rust-engine-sqlite-insert-binds-the-clock-for-default-now",
-      "kind": "feature",
-      "requirements": [
-        "DIA-24"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/engine/mod.rs",
-          "id": "engine::tests::sqlite_insert_binds_the_clock_for_default_now"
-        }
-      ]
-    },
-    {
-      "id": "rust-row-declared-boolean-tests-selected-boolean-groups-keep-their-declared-type",
-      "kind": "feature",
-      "requirements": [
-        "COD-44"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/row.rs",
-          "id": "row::declared_boolean_tests::selected_boolean_groups_keep_their_declared_type"
-        }
-      ]
-    },
-    {
       "id": "group-count-boolean-decode",
       "kind": "feature",
       "requirements": [
@@ -15024,158 +15477,32 @@
       ]
     },
     {
-      "id": "rust-schema-manifest-hash-mismatch-is-reported",
-      "kind": "feature",
-      "requirements": [
-        "DBS-104",
-        "SCH-12"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/schema.rs",
-          "id": "schema::tests::manifest_hash_mismatch_is_reported"
-        }
-      ]
-    },
-    {
-      "id": "rust-utils-keyring-tests-versions-lists-the-declared-versions-in-ascending-order",
-      "kind": "feature",
-      "requirements": [
-        "COD-44",
-        "INT-52",
-        "INT-53"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/utils.rs",
-          "id": "utils::keyring_tests::versions_lists_the_declared_versions_in_ascending_order"
-        }
-      ]
-    },
-    {
-      "id": "rust-add-tables-and-columns",
-      "kind": "feature",
-      "requirements": [
-        "SCH-8",
-        "SCH-10"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/add_tables_and_columns.rs",
-          "id": "add_tables_and_columns"
-        }
-      ]
-    },
-    {
-      "id": "rust-add-tables-and-columns-differs",
-      "kind": "feature",
-      "requirements": [
-        "SCH-9"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/add_tables_and_columns.rs",
-          "id": "add_tables_and_columns_differs"
-        }
-      ]
-    },
-    {
-      "id": "rust-add-tables-and-columns-edited-manifest",
-      "kind": "feature",
-      "requirements": [
-        "SCH-7",
-        "SCH-8"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/add_tables_and_columns.rs",
-          "id": "add_tables_and_columns_edited_manifest"
-        }
-      ]
-    },
-    {
-      "id": "rust-add-tables-and-columns-index",
-      "kind": "feature",
-      "requirements": [
-        "SCH-8",
-        "SCH-9"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/add_tables_and_columns.rs",
-          "id": "add_tables_and_columns_index"
-        }
-      ]
-    },
-    {
-      "id": "rust-add-tables-and-columns-transaction",
-      "kind": "feature",
-      "requirements": [
-        "SCH-8"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/add_tables_and_columns.rs",
-          "id": "add_tables_and_columns_transaction"
-        }
-      ]
-    },
-    {
-      "id": "rust-aes-json-column",
-      "kind": "feature",
-      "requirements": [
-        "COD-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/aes_json.rs",
-          "id": "aes_json_column"
-        }
-      ]
-    },
-    {
-      "id": "rust-aes-write-uses-key-of-current-version",
-      "kind": "feature",
-      "requirements": [
-        "COD-8"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/aes_keys.rs",
-          "id": "aes_write_uses_key_of_current_version"
-        }
-      ]
-    },
-    {
-      "id": "rust-invalid-aes-configuration-fails-before-connection",
-      "kind": "feature",
-      "requirements": [
-        "COD-8"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/aes_keys.rs",
-          "id": "invalid_aes_configuration_fails_before_connection"
-        }
-      ]
-    },
-    {
       "id": "dbspec-apply-pooler",
       "kind": "feature",
       "requirements": [
         "PLN-105"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/internal/dialects/apply_physical_test.go",
+          "id": "TestApplyThroughTransactionPooler"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
+          "id": "postgres.apply.pooler.lock_shared"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
+          "id": "postgres.apply.pooler.session_changed"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/dbspec_apply.py",
+          "id": "DbspecApplyTest.test_apply_through_a_transaction_pooler"
+        },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/dbspec_apply.rs",
@@ -15194,25 +15521,6 @@
       ]
     },
     {
-      "id": "rust-external-documents",
-      "kind": "feature",
-      "requirements": [
-        "DBS-105",
-        "DBS-107",
-        "DBS-108",
-        "SCH-7",
-        "SCH-8",
-        "SCH-11"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/external_documents.rs",
-          "id": "external_documents"
-        }
-      ]
-    },
-    {
       "id": "rust-array-output-of-an-unrepresentable-number-is-an-error",
       "kind": "feature",
       "requirements": [
@@ -15224,13 +15532,19 @@
           "test": "packages/rust/orm/tests/model_output.rs",
           "id": "array_output_of_an_unrepresentable_number_is_an_error"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm"
+      }
     },
     {
       "id": "model-ordered-json-output-text",
       "kind": "feature",
       "requirements": [
-        "COD-16"
+        "COD-16",
+        "COD-26"
       ],
       "bindings": [
         {
@@ -15259,51 +15573,14 @@
           "id": "test_model_output_preserves_ordered_json_number_text"
         },
         {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_json_text.py",
+          "id": "test_a_row_writes_the_stored_ordered_json_text_in_row_order"
+        },
+        {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/model_output.rs",
           "id": "json_output_keeps_the_ordered_json_text"
-        }
-      ]
-    },
-    {
-      "id": "rust-trigger-refused-mysql",
-      "kind": "feature",
-      "requirements": [
-        "DBS-84"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "trigger_refused_mysql"
-        }
-      ]
-    },
-    {
-      "id": "rust-trigger-refused-postgres",
-      "kind": "feature",
-      "requirements": [
-        "DBS-84"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "trigger_refused_postgres"
-        }
-      ]
-    },
-    {
-      "id": "rust-trigger-refused-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "DBS-84"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "trigger_refused_sqlite"
         }
       ]
     },
@@ -15461,239 +15738,6 @@
       }
     },
     {
-      "id": "rust-dbspec-set-nested-json-rules",
-      "kind": "feature",
-      "requirements": [
-        "DBS-13",
-        "DBS-21",
-        "DBS-23"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/src/dbspec/set.rs",
-          "id": "dbspec::set::tests::nested_json_rules"
-        }
-      ]
-    },
-    {
-      "id": "rust-dbspec-set-normal-form-cases",
-      "kind": "feature",
-      "requirements": [
-        "DBS-7",
-        "DBS-8",
-        "DBS-9",
-        "DBS-10"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/src/dbspec/set.rs",
-          "id": "dbspec::set::tests::normal_form_cases"
-        }
-      ]
-    },
-    {
-      "id": "rust-dbspec-set-root-of-prefix",
-      "kind": "feature",
-      "requirements": [
-        "DBS-12"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/src/dbspec/set.rs",
-          "id": "dbspec::set::tests::root_of_prefix"
-        }
-      ]
-    },
-    {
-      "id": "rust-dbspec-set-schema-values",
-      "kind": "feature",
-      "requirements": [
-        "DBS-22"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/src/dbspec/set.rs",
-          "id": "dbspec::set::tests::schema_values"
-        }
-      ]
-    },
-    {
-      "id": "rust-limit-stop-gives-no-tokens",
-      "kind": "feature",
-      "requirements": [
-        "DBS-136",
-        "DBS-144"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_analyze.rs",
-          "id": "limit_stop_gives_no_tokens"
-        }
-      ]
-    },
-    {
-      "id": "rust-token-classes",
-      "kind": "feature",
-      "requirements": [
-        "DBS-134",
-        "DBS-135",
-        "DBS-137",
-        "DBS-139"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_analyze.rs",
-          "id": "token_classes"
-        }
-      ]
-    },
-    {
-      "id": "rust-model-is-read-changed-and-emitted",
-      "kind": "feature",
-      "requirements": [
-        "DBS-123",
-        "DBS-126"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_model.rs",
-          "id": "model_is_read_changed_and_emitted"
-        }
-      ]
-    },
-    {
-      "id": "rust-dbspec-comment-attachment",
-      "kind": "feature",
-      "requirements": [
-        "DBS-126",
-        "DBS-132"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_rules.rs",
-          "id": "dbspec_comment_attachment"
-        }
-      ]
-    },
-    {
-      "id": "rust-dbspec-limits",
-      "kind": "feature",
-      "requirements": [
-        "DBS-144",
-        "DBS-151",
-        "DBS-170"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_rules.rs",
-          "id": "dbspec_limits"
-        }
-      ]
-    },
-    {
-      "id": "rust-dbspec-rules",
-      "kind": "feature",
-      "requirements": [
-        "DBS-156",
-        "DBS-157",
-        "DBS-158",
-        "DBS-159",
-        "DBS-161",
-        "DBS-162",
-        "DBS-163",
-        "DBS-164",
-        "DBS-165",
-        "DBS-166",
-        "DBS-167",
-        "DBS-168",
-        "DBS-169",
-        "DBS-171"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_rules.rs",
-          "id": "dbspec_rules"
-        }
-      ]
-    },
-    {
-      "id": "rust-manifest-text-reads-back-as-the-same-document-set",
-      "kind": "feature",
-      "requirements": [
-        "DBS-100",
-        "SCH-12"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_runtime.rs",
-          "id": "manifest_text_reads_back_as_the_same_document_set"
-        }
-      ]
-    },
-    {
-      "id": "rust-manifest-text-without-header-is-rejected",
-      "kind": "feature",
-      "requirements": [
-        "DBS-156",
-        "SCH-12"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_runtime.rs",
-          "id": "manifest_text_without_header_is_rejected"
-        }
-      ]
-    },
-    {
-      "id": "rust-runtime-model-names-entities-and-reads-settings",
-      "kind": "feature",
-      "requirements": [
-        "DBS-65",
-        "DBS-85",
-        "DBS-99",
-        "DBS-111",
-        "DBS-112"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_runtime.rs",
-          "id": "runtime_model_names_entities_and_reads_settings"
-        }
-      ]
-    },
-    {
-      "id": "rust-runtime-model-of-bench",
-      "kind": "feature",
-      "requirements": [
-        "DBS-111"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_runtime.rs",
-          "id": "runtime_model_of_bench"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/src/names.rs",
-          "id": "names::tests::snake_case_separates_ascii_uppercase_characters"
-        }
-      ]
-    },
-    {
       "id": "catalog-connection-read",
       "kind": "feature",
       "requirements": [
@@ -15783,6 +15827,11 @@
           "implementation": "rust",
           "test": "packages/rust/build/src/catalog/temporal.rs",
           "id": "catalog::temporal::tests::fraction_keeps_exactly_p_digits_and_rejects_dropped_digits"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/grid_temporal.rs",
+          "id": "temporal_grid_cells_follow_the_declared_precision"
         }
       ]
     },
@@ -15881,6 +15930,11 @@
           "implementation": "php",
           "test": "packages/php/tests/CatalogQueryBoundsTest.php",
           "id": "CatalogQueryBoundsTest::testPlainAndGridConsumersShareTheByteLimit"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/grid_cells.rs",
+          "id": "binary_grid_values_remain_distinct_from_text_and_null"
         }
       ]
     },
@@ -16082,20 +16136,6 @@
       ]
     },
     {
-      "id": "py-decimal-model-db",
-      "kind": "feature",
-      "requirements": [
-        "COD-2"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/decimal_model_db.py",
-          "id": "test_setters"
-        }
-      ]
-    },
-    {
       "id": "py-schema-inspection",
       "kind": "feature",
       "requirements": [
@@ -16113,136 +16153,6 @@
       ]
     },
     {
-      "id": "py-test-add-tables-and-columns",
-      "kind": "feature",
-      "requirements": [
-        "SCH-8"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_add_tables_and_columns.py",
-          "id": "test_adds_the_new_table_and_the_nullable_column"
-        }
-      ]
-    },
-    {
-      "id": "py-test-add-tables-steps",
-      "kind": "feature",
-      "requirements": [
-        "SCH-8"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_add_tables_steps.py",
-          "id": "test_a_new_table_and_a_nullable_column_are_added_as_one_plan"
-        }
-      ]
-    },
-    {
-      "id": "py-test-aes-rotate",
-      "kind": "feature",
-      "requirements": [
-        "COD-8"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_aes_rotate.py",
-          "id": "test_rotates_every_row_not_at_the_current_version"
-        }
-      ]
-    },
-    {
-      "id": "py-test-aggregate-numeric-driver-values",
-      "kind": "feature",
-      "requirements": [
-        "DSL-66"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_aggregate_numeric_driver_values.py",
-          "id": "test_decimal_and_text_give_the_same_value"
-        }
-      ]
-    },
-    {
-      "id": "py-test-alias-columns",
-      "kind": "feature",
-      "requirements": [
-        "DSL-73"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_alias_columns.py",
-          "id": "test_alias_column_is_keyed_by_its_snake_case_name"
-        }
-      ]
-    },
-    {
-      "id": "py-test-collection",
-      "kind": "feature",
-      "requirements": [
-        "INT-62",
-        "INT-63",
-        "INT-80",
-        "INT-86"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_collection.py",
-          "id": "test_get_has_and_fetched_read_the_stored_key"
-        }
-      ]
-    },
-    {
-      "id": "py-test-dbspec-analyze",
-      "kind": "feature",
-      "requirements": [
-        "DBS-134",
-        "DBS-135"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_analyze.py",
-          "id": "test_header_only"
-        }
-      ]
-    },
-    {
-      "id": "py-test-dbspec-render-dialect",
-      "kind": "feature",
-      "requirements": [
-        "DBS-174"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_render_dialect.py",
-          "id": "test_unknown_dialect_is_a_type_error"
-        }
-      ]
-    },
-    {
-      "id": "py-test-decimal-model-sqlite-ddl",
-      "kind": "feature",
-      "requirements": [
-        "DIA-25"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_decimal_model_sqlite_ddl.py",
-          "id": "test_a_sqlite_decimal_column_is_scaled_integer_storage"
-        }
-      ]
-    },
-    {
       "id": "py-test-driver-cells",
       "kind": "feature",
       "requirements": [
@@ -16253,36 +16163,18 @@
           "implementation": "python",
           "test": "packages/python/tests/test_driver_cells.py",
           "id": "test_decimal_and_newdecimal_cells_are_their_exact_text"
-        }
-      ]
-    },
-    {
-      "id": "py-test-event-placeholders",
-      "kind": "feature",
-      "requirements": [
-        "INT-91"
-      ],
-      "bindings": [
+        },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_event_placeholders.py",
-          "id": "test_clock_and_secret_binds_are_shown_as_placeholders"
+          "test": "packages/python/tests/test_driver_cells.py",
+          "id": "test_numeric_cells_load_as_text"
         }
-      ]
-    },
-    {
-      "id": "py-test-installed-differences",
-      "kind": "feature",
-      "requirements": [
-        "SCH-7"
       ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_installed_differences.py",
-          "id": "test_an_equal_set_has_no_difference"
-        }
-      ]
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec-orm"
+      }
     },
     {
       "id": "dbspec-introspect-messages",
@@ -16292,37 +16184,19 @@
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/engine/dbspec/introspect_query_count_test.go",
+          "id": "TestSQLiteUnsupportedColumnReasonQuotesMissingCheck"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-introspect-query-count.mjs",
+          "id": "dbspec.introspect.sqlite-empty-check-reason"
+        },
+        {
           "implementation": "python",
           "test": "packages/python/tests/test_introspect_messages.py",
           "id": "test_a_column_without_check_is_quoted_as_the_empty_string"
-        }
-      ]
-    },
-    {
-      "id": "py-test-load-set",
-      "kind": "feature",
-      "requirements": [
-        "SCH-12"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_load_set.py",
-          "id": "test_returns_the_documents_with_the_external_ones_marked"
-        }
-      ]
-    },
-    {
-      "id": "py-test-model-fields",
-      "kind": "feature",
-      "requirements": [
-        "DBS-112"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_model_fields.py",
-          "id": "test_field_types"
         }
       ]
     },
@@ -16337,20 +16211,6 @@
           "implementation": "python",
           "test": "packages/python/tests/test_model_json_text.py",
           "id": "test_a_row_writes_the_stored_ordered_json_text_in_row_order"
-        }
-      ]
-    },
-    {
-      "id": "py-test-new-values",
-      "kind": "feature",
-      "requirements": [
-        "DSL-115"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_new_values.py",
-          "id": "test_created_model_writes_its_attached_value"
         }
       ]
     },
@@ -16379,68 +16239,16 @@
       "requirements": [
         "DIA-197"
       ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "dsn_connection",
+        "part": "owner/python"
+      },
       "bindings": [
         {
           "implementation": "python",
           "test": "packages/python/tests/test_placeholders.py",
           "id": "test_question_marks_become_format_markers_in_order"
-        }
-      ]
-    },
-    {
-      "id": "py-test-query-methods",
-      "kind": "feature",
-      "requirements": [
-        "DSL-154"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_query_methods.py",
-          "id": "test_every_query_method_is_declared_and_typed"
-        }
-      ]
-    },
-    {
-      "id": "py-test-related-output",
-      "kind": "feature",
-      "requirements": [
-        "CPX-1",
-        "DBS-118"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_related_output.py",
-          "id": "test_relation_model_is_written_under_its_relation_name"
-        }
-      ]
-    },
-    {
-      "id": "py-test-remove-columns",
-      "kind": "feature",
-      "requirements": [
-        "DSL-76"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_remove_columns.py",
-          "id": "test_keys_and_the_added_column_only"
-        }
-      ]
-    },
-    {
-      "id": "py-test-row-lock-event",
-      "kind": "feature",
-      "requirements": [
-        "INT-49"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_row_lock_event.py",
-          "id": "test_row_lock_take_names_the_row_lock_table"
         }
       ]
     },
@@ -16455,49 +16263,6 @@
           "implementation": "python",
           "test": "packages/python/tests/test_schema_inspection.py",
           "id": "test_stats_report_the_pool_of_the_db"
-        }
-      ]
-    },
-    {
-      "id": "py-test-schema-install-uses",
-      "kind": "feature",
-      "requirements": [
-        "DBS-102"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_schema_install_uses.py",
-          "id": "test_a_schema_text_with_use_lines_is_a_schema_text"
-        }
-      ]
-    },
-    {
-      "id": "py-test-schema-install",
-      "kind": "feature",
-      "requirements": [
-        "DBS-108",
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_schema_install.py",
-          "id": "test_a_database_that_differs_from_the_set_is_config"
-        }
-      ]
-    },
-    {
-      "id": "py-test-schema-utils",
-      "kind": "feature",
-      "requirements": [
-        "INT-54"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_schema_utils.py",
-          "id": "test_schema_returns_the_schema_tools_of_the_connection"
         }
       ]
     },
@@ -16556,22 +16321,6 @@
       ]
     },
     {
-      "id": "py-test-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "DSL-106",
-        "DSL-107",
-        "DSL-155"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_sqlite.py",
-          "id": "test_write_cycle"
-        }
-      ]
-    },
-    {
       "id": "py-test-statement-fault-entry",
       "kind": "feature",
       "requirements": [
@@ -16601,76 +16350,6 @@
           "implementation": "python",
           "test": "packages/python/tests/test_styled_sql_null.py",
           "id": "test_root_row_reads_sql_null_as_styled_value"
-        }
-      ]
-    },
-    {
-      "id": "py-test-subqueries",
-      "kind": "feature",
-      "requirements": [
-        "DSL-74"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_subqueries.py",
-          "id": "test_read_total_is_the_sum_of_the_correlated_rows"
-        }
-      ]
-    },
-    {
-      "id": "py-test-subscriber-error",
-      "kind": "feature",
-      "requirements": [
-        "INT-96"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_subscriber_error.py",
-          "id": "test_an_orm_error_of_a_subscriber"
-        }
-      ]
-    },
-    {
-      "id": "py-test-terminal-by",
-      "kind": "feature",
-      "requirements": [
-        "DSL-60"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_terminal_by.py",
-          "id": "test_terminal_by_after_a_condition_counts_the_joined_rows"
-        }
-      ]
-    },
-    {
-      "id": "py-test-utils-statements",
-      "kind": "feature",
-      "requirements": [
-        "DIA-2"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_utils_statements.py",
-          "id": "test_advisory_lock_statement_uses_numbered_markers"
-        }
-      ]
-    },
-    {
-      "id": "py-test-utils",
-      "kind": "feature",
-      "requirements": [
-        "INT-51"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_utils.py",
-          "id": "test_local_value_is_readable_inside_the_transaction"
         }
       ]
     },
@@ -16728,20 +16407,6 @@
       ]
     },
     {
-      "id": "py-test-schema-utils-mismatched-hash",
-      "kind": "feature",
-      "requirements": [
-        "INT-54"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_schema_utils.py",
-          "id": "test_mismatched_hash_is_config_and_registers_nothing"
-        }
-      ]
-    },
-    {
       "id": "schema-register-changed-manifest-config",
       "kind": "feature",
       "requirements": [
@@ -16767,6 +16432,70 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/schema-set.mjs",
           "id": "schema-set/register_sends_no_statement/sqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+          "id": "CoverageSchemaInstallNativeTest::testSchemaInstallExternalDocuments"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/register.rs",
+          "id": "register_sends_no_statement"
+        }
+      ]
+    },
+    {
+      "id": "schema-empty-content",
+      "kind": "feature",
+      "requirements": [
+        "INT-58"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/install_test.go",
+          "id": "TestSchemaEmpty"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testSchemaEmpty"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+          "id": "CoverageSchemaInstallNativeTest::testSchemaInstallExisting"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/SchemaUtilsNativeTest.php",
+          "id": "SchemaUtilsNativeTest::testNativeSchemaInspectionAndRegistration"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model.mjs",
+          "id": "schemaEmpty"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/schema_inspection.py",
+          "id": "test_sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/schema_inspection.py",
+          "id": "test_mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/schema_inspection.py",
+          "id": "test_postgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/integration.rs",
+          "id": "schema_empty"
         }
       ]
     },
@@ -16870,69 +16599,6 @@
         "artifact": "archive",
         "package": "polyspec-orm"
       }
-    },
-    {
-      "id": "php-internal-dbspec-introspect-stress-introspect-stress",
-      "kind": "feature",
-      "requirements": [
-        "DBS-102"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecIntrospectStressTest.php",
-          "id": "DbspecIntrospectStressTest::testIntrospectStress"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-dbspec-rules-rule",
-      "kind": "feature",
-      "requirements": [
-        "DBS-2",
-        "DBS-3",
-        "DBS-34",
-        "DBS-46",
-        "DBS-131",
-        "DBS-154",
-        "DBS-156",
-        "DBS-157",
-        "DBS-158",
-        "DBS-159",
-        "DBS-161",
-        "DBS-162",
-        "DBS-163",
-        "DBS-164",
-        "DBS-165",
-        "DBS-166",
-        "DBS-167",
-        "DBS-168",
-        "DBS-169",
-        "DBS-171"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecRulesTest.php",
-          "id": "DbspecRulesTest::testRule"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-dbspec-rules-limit",
-      "kind": "feature",
-      "requirements": [
-        "DBS-144",
-        "DBS-151",
-        "DBS-170"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecRulesTest.php",
-          "id": "DbspecRulesTest::testLimit"
-        }
-      ]
     },
     {
       "id": "php-dbspec-interface-compatibility",
@@ -17312,157 +16978,6 @@
       }
     },
     {
-      "id": "php-internal-add-tables-and-columns-add-tables-and-columns",
-      "kind": "feature",
-      "requirements": [
-        "SCH-8",
-        "SCH-10"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/AddTablesAndColumnsTest.php",
-          "id": "AddTablesAndColumnsTest::testAddTablesAndColumns"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-add-tables-and-columns-add-tables-and-columns-differs",
-      "kind": "feature",
-      "requirements": [
-        "SCH-9"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/AddTablesAndColumnsTest.php",
-          "id": "AddTablesAndColumnsTest::testAddTablesAndColumnsDiffers"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-add-tables-and-columns-add-tables-and-columns-index",
-      "kind": "feature",
-      "requirements": [
-        "SCH-8",
-        "SCH-9"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/AddTablesAndColumnsTest.php",
-          "id": "AddTablesAndColumnsTest::testAddTablesAndColumnsIndex"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-add-tables-and-columns-add-tables-and-columns-transaction",
-      "kind": "feature",
-      "requirements": [
-        "SCH-8"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/AddTablesAndColumnsTest.php",
-          "id": "AddTablesAndColumnsTest::testAddTablesAndColumnsTransaction"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-add-tables-and-columns-add-tables-and-columns-edited-manifest",
-      "kind": "feature",
-      "requirements": [
-        "SCH-8"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/AddTablesAndColumnsTest.php",
-          "id": "AddTablesAndColumnsTest::testAddTablesAndColumnsEditedManifest"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-aes-json-aes-json-column",
-      "kind": "feature",
-      "requirements": [
-        "DSL-8",
-        "COD-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/AesJsonTest.php",
-          "id": "AesJsonTest::testAesJsonColumn"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-dbspec-apply-runs",
-      "kind": "feature",
-      "requirements": [
-        "PLN-93",
-        "PLN-95",
-        "PLN-96",
-        "PLN-105"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyTest.php",
-          "id": "DbspecApplyTest::testRuns"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecApplyTest.php",
-          "id": "DbspecApplyTest::testRuns"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-decimal-model-db-generate",
-      "kind": "feature",
-      "requirements": [
-        "COD-2"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DecimalModelDbTest.php",
-          "id": "DecimalModelDbTest::testGenerate"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-decimal-model-db-setters",
-      "kind": "feature",
-      "requirements": [
-        "COD-2"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DecimalModelDbTest.php",
-          "id": "DecimalModelDbTest::testSetters"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-model-schema-empty",
-      "kind": "feature",
-      "requirements": [
-        "INT-58"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testSchemaEmpty"
-        }
-      ]
-    },
-    {
       "id": "php-internal-model-conditions",
       "kind": "feature",
       "requirements": [
@@ -17531,51 +17046,6 @@
       ]
     },
     {
-      "id": "php-internal-model-aes-rotation",
-      "kind": "feature",
-      "requirements": [
-        "COD-8"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testAesRotation"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-model-bind-limit-splitting",
-      "kind": "feature",
-      "requirements": [
-        "PRT-41",
-        "PRT-76"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testBindLimitSplitting"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-model-insert-parts",
-      "kind": "feature",
-      "requirements": [
-        "DSL-104",
-        "INT-35",
-        "PRT-41"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testInsertParts"
-        }
-      ]
-    },
-    {
       "id": "php-internal-rollback-rollback-fault",
       "kind": "feature",
       "requirements": [
@@ -17623,21 +17093,6 @@
           "implementation": "php",
           "test": "packages/php/tests/RuntimeDbTest.php",
           "id": "RuntimeDbTest::testI16ValuesAndDefaults"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-runtime-db-restore-of-soft-deleted-rows",
-      "kind": "feature",
-      "requirements": [
-        "DBS-108",
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RuntimeDbTest.php",
-          "id": "RuntimeDbTest::testRestoreOfSoftDeletedRows"
         }
       ]
     },
@@ -21631,67 +21086,6 @@
       ]
     },
     {
-      "id": "static-model-chains-declared-from-scan",
-      "kind": "feature",
-      "requirements": [
-        "PLN-1",
-        "INT-27",
-        "PLN-40"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_test.go",
-          "id": "TestScanGeneratesUsedMethods"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "generates_called_methods"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/generate-scan.mjs",
-          "id": "generate-scan/model_calls"
-        }
-      ]
-    },
-    {
-      "id": "dynamic-model-chains-resolve-at-call-time",
-      "kind": "feature",
-      "requirements": [
-        "PLN-1",
-        "INT-28"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testTheReceiverIsResolvedFromTheSource"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelMethodsTest.php",
-          "id": "ModelMethodsTest::testADeclaredMethodBuildsTheQueryOfItsChain"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelDslNativeTest.php",
-          "id": "ModelDslNativeTest::testDynamicConditionsAndBuilderCallsReturnTheNativeModel"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_chain_conditions"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_scan_reports_unknown_model_methods"
-        }
-      ]
-    },
-    {
       "id": "dynamic-vs-scanned-model-chain-dispatch",
       "kind": "feature",
       "requirements": [
@@ -21712,6 +21106,36 @@
           "implementation": "python",
           "test": "packages/python/tests/test_query_methods.py",
           "id": "test_a_declared_method_builds_the_query_of_its_chain"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_test.go",
+          "id": "TestScanGeneratesUsedMethods"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "generates_called_methods"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/generate-scan.mjs",
+          "id": "generate-scan/model_calls"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php-gen/tests/OrmGenScanTest.php",
+          "id": "OrmGenScanTest::testTheReceiverIsResolvedFromTheSource"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_chain_conditions"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_scan_reports_unknown_model_methods"
         }
       ]
     },
@@ -23648,7 +23072,8 @@
       "requirements": [
         "PRT-12",
         "INT-87",
-        "PRT-40"
+        "PRT-40",
+        "DSL-82"
       ],
       "bindings": [
         {
@@ -24076,6 +23501,21 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_constraints_and_relations::coverage_immutable_write"
           ]
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/refusal.rs",
+          "id": "trigger_refused_sqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/refusal.rs",
+          "id": "trigger_refused_mysql"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/refusal.rs",
+          "id": "trigger_refused_postgres"
         }
       ]
     },
@@ -24165,6 +23605,11 @@
           "id": "test_statement_events"
         },
         {
+          "implementation": "python",
+          "test": "packages/python/tests/test_event_placeholders.py",
+          "id": "test_clock_and_secret_binds_are_shown_as_placeholders"
+        },
+        {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/statement_events.rs",
           "id": "coverage_statement_events"
@@ -24175,7 +23620,12 @@
       "id": "coverage-conformance-verification-conformance-vector",
       "kind": "feature",
       "requirements": [
-        "DIA-37"
+        "DIA-37",
+        "DSL-137",
+        "DSL-139",
+        "DSL-144",
+        "DIA-11",
+        "DIA-14"
       ],
       "bindings": [
         {
@@ -24376,9 +23826,19 @@
           "id": "dbspec_analyze_tokens"
         },
         {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_analyze.py",
+          "id": "test_header_only"
+        },
+        {
           "implementation": "rust",
           "test": "packages/rust/schema/tests/coverage_schema_definition.rs",
           "id": "schema_definition::dbspec_analyze_tokens"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/schema/tests/dbspec_analyze.rs",
+          "id": "token_classes"
         }
       ]
     },
@@ -24546,6 +24006,11 @@
         "COD-5"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/hostcodec_test.go",
+          "id": "TestHostAESUsesAuthenticatedVersionTwoEnvelope"
+        },
         {
           "implementation": "go",
           "test": "packages/go/orm/coverage_authenticated_encryption_test.go",
@@ -25609,7 +25074,12 @@
           "test": "packages/ts/tests/replica.mjs",
           "id": "replica/primary_and_replica/postgres"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "dsn_connection",
+        "part": "owner/typescript"
+      }
     },
     {
       "id": "model-construction-connection-python",
@@ -25628,7 +25098,12 @@
           "test": "packages/python/tests/replica.py",
           "id": "test_primary_and_replica_postgres"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "dsn_connection",
+        "part": "owner/python"
+      }
     },
     {
       "id": "model-connection-and-join-methods",
@@ -25671,6 +25146,57 @@
           "implementation": "rust",
           "test": "packages/rust/tests/src/integration.rs",
           "id": "joins_and_relations"
+        }
+      ]
+    },
+    {
+      "id": "aes-current-version-write",
+      "kind": "feature",
+      "requirements": [
+        "COD-8"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/aes_keys_test.go",
+          "id": "TestAESWriteUsesKeyOfCurrentVersion"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testAesRotation"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testAesRotation",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "aes-rotation-php-extension-check"
+          ]
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model.mjs",
+          "id": "aesRotation"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/aes_rotation.py",
+          "id": "test_aes_rotation_on_each_database"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/aes_keys.rs",
+          "id": "aes_write_uses_key_of_current_version"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/aes_keys.rs",
+          "id": "invalid_aes_configuration_fails_before_connection"
         }
       ]
     },
@@ -25879,6 +25405,16 @@
           "id": "DecimalModelTest::testGeneratedDecimalType"
         },
         {
+          "implementation": "php",
+          "test": "packages/php/tests/DecimalModelDbTest.php",
+          "id": "DecimalModelDbTest::testGenerate"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DecimalModelDbTest.php",
+          "id": "DecimalModelDbTest::testSetters"
+        },
+        {
           "implementation": "php-extension",
           "test": "packages/php/tests/DecimalModelTest.php",
           "id": "DecimalModelTest::testGeneratedDecimalType"
@@ -25892,6 +25428,11 @@
           "implementation": "python",
           "test": "packages/python/tests/test_model_fields.py",
           "id": "ModelFieldsTest::test_field_types"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/decimal_model_db.py",
+          "id": "DecimalModelDbTest::test_setters"
         },
         {
           "implementation": "rust",
@@ -26216,6 +25757,97 @@
       ]
     },
     {
+      "id": "dbspec-limit-stop-no-tokens",
+      "kind": "feature",
+      "requirements": [
+        "DBS-136",
+        "DBS-144"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/engine/dbspec/analyze_test.go",
+          "id": "TestAnalyzeLimitHasNoTokens"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageSchemaDefinitionTest.php",
+          "id": "CoverageSchemaDefinitionTest::testDbspecLimitStopHasNoTokens"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
+          "id": "CoverageSchemaDefinitionExtensionTest::testDbspecLimitStopHasNoTokens"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-rules.mjs",
+          "id": "invalid 4097 tables"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_analyze.py",
+          "id": "test_limit_stop_gives_no_tokens"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/schema/tests/dbspec_analyze.rs",
+          "id": "limit_stop_gives_no_tokens"
+        }
+      ]
+    },
+    {
+      "id": "dbspec-document-and-table-limits",
+      "kind": "feature",
+      "requirements": [
+        "DBS-144",
+        "DBS-151",
+        "DBS-170"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/engine/dbspec/rules_test.go",
+          "id": "TestEncodingAndLimitDiagnostics"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecRulesTest.php",
+          "id": "DbspecRulesTest::testDocumentAndTableLimits"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecRulesNativeTest.php",
+          "id": "DbspecRulesNativeTest::testNativeDocumentAndTableLimits"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-rules.mjs",
+          "id": "invalid 32 MiB document"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-rules.mjs",
+          "id": "invalid 4097 tables"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-rules.mjs",
+          "id": "invalid 1001 columns"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_analyze.py",
+          "id": "test_document_and_table_limits"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/schema/tests/dbspec_rules.rs",
+          "id": "dbspec_limits"
+        }
+      ]
+    },
+    {
       "id": "dbspec-total-column-count-limit",
       "kind": "feature",
       "requirements": [
@@ -26495,6 +26127,11 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/collection_get_fetched.rs",
           "id": "get_and_fetched_value_use_the_typed_key"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_collection.py",
+          "id": "test_get_has_and_fetched_read_the_stored_key"
         }
       ]
     },
@@ -26726,6 +26363,11 @@
           "implementation": "rust",
           "test": "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs",
           "id": "db::sqlite_row_lock_restore_tests::failed_nowait_setup_still_restores_and_skips_lock_attempt"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_row_lock_event.py",
+          "id": "test_row_lock_take_names_the_row_lock_table"
         }
       ]
     },
@@ -26870,6 +26512,50 @@
           "id": "test_utils_exposes_utility_groups"
         },
         {
+          "implementation": "python",
+          "test": "packages/python/tests/test_schema_utils.py",
+          "id": "test_schema_returns_the_schema_tools_of_the_connection"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/integration.rs",
+          "id": "transactions"
+        }
+      ]
+    },
+    {
+      "id": "transaction-local-value-is-readable",
+      "kind": "feature",
+      "requirements": [
+        "INT-51"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/model_test.go",
+          "id": "TestTransactions"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testTransactions"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testTransactions"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model.mjs",
+          "id": "transactions"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_utils.py",
+          "id": "test_local_value_is_readable_inside_the_transaction"
+        },
+        {
           "implementation": "rust",
           "test": "packages/rust/tests/src/integration.rs",
           "id": "transactions"
@@ -26880,7 +26566,8 @@
       "id": "schema-add-tables-and-columns",
       "kind": "feature",
       "requirements": [
-        "INT-56"
+        "INT-56",
+        "SCH-8"
       ],
       "bindings": [
         {
@@ -26909,9 +26596,201 @@
           "id": "test_adds_the_new_table_and_the_nullable_column"
         },
         {
+          "implementation": "python",
+          "test": "packages/python/tests/test_add_tables_steps.py",
+          "id": "test_a_new_table_and_a_nullable_column_are_added_as_one_plan"
+        },
+        {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/add_tables_and_columns.rs",
           "id": "add_tables_and_columns"
+        }
+      ]
+    },
+    {
+      "id": "schema-add-tables-and-columns-differs",
+      "kind": "feature",
+      "requirements": [
+        "SCH-9"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/add_tables_and_columns_test.go",
+          "id": "TestAddTablesAndColumnsDiffersSQLite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AddTablesAndColumnsTest.php",
+          "id": "AddTablesAndColumnsTest::testAddTablesAndColumnsDiffers"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+          "id": "CoverageSchemaInstallNativeTest::testNativeAddTablesAndColumnsDiffers"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/add-tables-and-columns.mjs",
+          "id": "add-tables-and-columns/add_tables_and_columns_differs/sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_add_tables_and_columns.py",
+          "id": "test_a_column_without_null_or_default_is_refused_before_any_statement"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/add_tables_and_columns.rs",
+          "id": "add_tables_and_columns_differs"
+        }
+      ]
+    },
+    {
+      "id": "schema-add-tables-and-columns-index",
+      "kind": "feature",
+      "requirements": [
+        "SCH-8",
+        "SCH-9"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/add_tables_and_columns_test.go",
+          "id": "TestAddTablesAndColumnsIndexSQLite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AddTablesAndColumnsTest.php",
+          "id": "AddTablesAndColumnsTest::testAddTablesAndColumnsIndex"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+          "id": "CoverageSchemaInstallNativeTest::testNativeAddTablesAndColumnsIndex"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/add-tables-and-columns.mjs",
+          "id": "add-tables-and-columns/add_tables_and_columns_index/sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_add_tables_and_columns.py",
+          "id": "test_adds_a_missing_index_and_repeats_nothing"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_add_tables_and_columns.py",
+          "id": "test_adds_a_missing_index_mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_add_tables_and_columns.py",
+          "id": "test_adds_a_missing_index_postgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/add_tables_and_columns.rs",
+          "id": "add_tables_and_columns_index"
+        }
+      ]
+    },
+    {
+      "id": "schema-add-tables-and-columns-transaction",
+      "kind": "feature",
+      "requirements": [
+        "SCH-8"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/add_tables_and_columns_test.go",
+          "id": "TestAddTablesAndColumnsTransactionSQLite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AddTablesAndColumnsTest.php",
+          "id": "AddTablesAndColumnsTest::testAddTablesAndColumnsTransaction"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+          "id": "CoverageSchemaInstallNativeTest::testNativeAddTablesAndColumnsTransaction"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/add-tables-and-columns.mjs",
+          "id": "add-tables-and-columns/add_tables_and_columns_transaction/sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_add_tables_and_columns.py",
+          "id": "test_add_tables_and_columns_is_rejected_inside_a_transaction"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_add_tables_and_columns.py",
+          "id": "test_add_tables_and_columns_transaction_mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_add_tables_and_columns.py",
+          "id": "test_add_tables_and_columns_transaction_postgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/add_tables_and_columns.rs",
+          "id": "add_tables_and_columns_transaction"
+        }
+      ]
+    },
+    {
+      "id": "schema-add-tables-and-columns-edited-manifest",
+      "kind": "feature",
+      "requirements": [
+        "SCH-8"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/add_tables_and_columns_test.go",
+          "id": "TestAddTablesAndColumnsEditedManifestSQLite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AddTablesAndColumnsTest.php",
+          "id": "AddTablesAndColumnsTest::testAddTablesAndColumnsEditedManifest"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+          "id": "CoverageSchemaInstallNativeTest::testNativeAddTablesAndColumnsEditedManifest"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/add-tables-and-columns.mjs",
+          "id": "add-tables-and-columns/add_tables_and_columns_edited_manifest/sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_add_tables_and_columns.py",
+          "id": "test_edited_manifest_is_rejected_before_add_tables_and_columns"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_add_tables_and_columns.py",
+          "id": "test_edited_manifest_before_add_tables_mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_add_tables_and_columns.py",
+          "id": "test_edited_manifest_before_add_tables_postgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/add_tables_and_columns.rs",
+          "id": "add_tables_and_columns_edited_manifest"
         }
       ]
     },
@@ -26951,6 +26830,11 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs",
           "id": "coverage_model_queries::coverage_model_query_remove_columns"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_remove_columns.py",
+          "id": "test_keys_and_the_added_column_only"
         }
       ]
     },
@@ -27047,6 +26931,11 @@
           "implementation": "rust",
           "test": "packages/rust/schema/tests/dbspec_stress.rs",
           "id": "stress_document_round_trips_canonically"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/schema/tests/dbspec_model.rs",
+          "id": "model_is_read_changed_and_emitted"
         }
       ]
     },
@@ -27487,6 +27376,250 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/unit/bind_message.rs",
           "id": "markdown::bind_message_tests::message_vectors"
+        }
+      ]
+    },
+    {
+      "id": "relation-model-output-under-relation-name",
+      "kind": "feature",
+      "requirements": [
+        "DBS-118"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/model_test.go",
+          "id": "TestJoinsAndRelations"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testJoinsAndRelations"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testJoinsAndRelations"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model.mjs",
+          "id": "joinsAndRelations"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_related_output.py",
+          "id": "test_relation_model_is_written_under_its_relation_name"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/integration.rs",
+          "id": "joins_and_relations"
+        }
+      ]
+    },
+    {
+      "id": "terminal-count-by-preserves-the-query",
+      "kind": "feature",
+      "requirements": [
+        "DSL-60"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/model_test.go",
+          "id": "TestConditions"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testConditions"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testConditions"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model.mjs",
+          "id": "conditions"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_terminal_by.py",
+          "id": "test_terminal_by_after_a_condition_counts_the_joined_rows"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/integration.rs",
+          "id": "conditions"
+        }
+      ]
+    },
+    {
+      "id": "soft-delete-restore-updates-the-row",
+      "kind": "feature",
+      "requirements": [
+        "DBS-117"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_audit_triggers_test.go",
+          "id": "TestCoverageSoftDeleteRestore"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageAuditTriggersTest.php",
+          "id": "CoverageAuditTriggersTest::testSoftDeleteRestore"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RuntimeDbTest.php",
+          "id": "RuntimeDbTest::testRestoreOfSoftDeletedRows"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
+          "id": "CoverageAuditTriggersExtensionTest::testSoftDeleteRestore"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_audit_triggers.mjs",
+          "id": "soft_delete_restore [sqlite]"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_audit_triggers.py",
+          "id": "test_soft_delete_restore"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/coverage_audit_triggers.rs",
+          "id": "coverage_soft_delete_restore"
+        }
+      ]
+    },
+    {
+      "id": "model-attached-values-survive-create",
+      "kind": "feature",
+      "requirements": [
+        "DSL-115"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/model_test.go",
+          "id": "TestWrites"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testWrites"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testWrites"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model.mjs",
+          "id": "writes"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_sqlite.py",
+          "id": "test_write_cycle"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/integration.rs",
+          "id": "writes"
+        }
+      ]
+    },
+    {
+      "id": "optimistic-update-requires-fresh-version",
+      "kind": "feature",
+      "requirements": [
+        "DSL-155"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/model_test.go",
+          "id": "TestWrites"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testWrites"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testWrites"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model.mjs",
+          "id": "writes"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_sqlite.py",
+          "id": "test_write_cycle"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/integration.rs",
+          "id": "writes"
+        }
+      ]
+    },
+    {
+      "id": "statement-subscriber-failure-preserves-error",
+      "kind": "feature",
+      "requirements": [
+        "INT-96"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/statement_events_test.go",
+          "id": "TestStatementEvents/subscriber_error"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementEventsTest.php",
+          "id": "StatementEventsTest::testCase"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/StatementEventsTest.php",
+          "id": "StatementEventsTest::testCase"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement-events.mjs",
+          "id": "statement_events/subscriber_error/sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/statement_events.py",
+          "id": "subscriber_error"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_subscriber_error.py",
+          "id": "test_an_orm_error_of_a_subscriber"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/statement_events.rs",
+          "id": "statement_events::subscriber_error"
         }
       ]
     },

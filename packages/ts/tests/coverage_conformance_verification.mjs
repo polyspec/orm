@@ -1,6 +1,7 @@
+// Requirements: DIA-37, DSL-137, DSL-139, DSL-144, DIA-11, DIA-14.
 // DIA-37: the recorded conformance vectors of each dialect hold the expected result of every vector.
-// conformance_verification coverage: runs the TypeScript conformance runner read-only on the chosen database,
-// running only the selected vectors, and checks that each output equals the recorded expect of that database as a JSON value.
+// conformance_verification coverage: runs only the selected vectors on the chosen database and checks each output
+// against the recorded expectation as a JSON value. The creates_and_save vector removes the rows it creates.
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
@@ -9,7 +10,7 @@ import { promisify } from 'node:util';
 import { repositoryRoot, runCases } from './coverage_case.mjs';
 
 const vectorFiles = { mysql: 'vectors.json', postgres: 'vectors.postgres.json', sqlite: 'vectors.sqlite.json' };
-const selected = ['conditions_values', 'relations'];
+const selected = ['conditions_values', 'relations', 'functions', 'creates_and_save'];
 
 await runCases('coverage_conformance_verification.mjs', {
   async conformance_vector({ driver, dsn }) {
