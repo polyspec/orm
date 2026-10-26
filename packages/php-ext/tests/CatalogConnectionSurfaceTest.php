@@ -480,6 +480,44 @@ final class CatalogConnectionSurfaceTest extends TestCase
             }
         }
     }
+
+    // Requirements: INT-107.
+    public function testNativeRowBaselineIncludesGeneratedColumnOriginalValues(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'orm-catalog-baseline-');
+        self::assertNotFalse($path);
+        $setup = new PDO('sqlite:' . $path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $setup->exec(
+            'CREATE TABLE computed_values (id INTEGER PRIMARY KEY, value TEXT NOT NULL, '
+            . 'value_length INTEGER GENERATED ALWAYS AS (length(value)) STORED)'
+        );
+        $setup = null;
+
+        $catalog = null;
+        try {
+            $catalog = Catalog::connect('sqlite://' . $path);
+            $table = ['namespace' => 'main', 'name' => 'computed_values'];
+            $metadata = $catalog->describeTable($table);
+            self::assertTrue($metadata->columns[2]->generated);
+            $catalog->insertRow($metadata, ['id' => 1, 'value' => 'four']);
+            $snapshot = $catalog->rowSnapshotFromPage($catalog->tablePage($table, 1, 0), 0);
+            self::assertSame(4, $snapshot->cells[2]);
+
+            $external = new PDO('sqlite:' . $path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+            $external->exec("UPDATE computed_values SET value = 'changed' WHERE id = 1");
+            try {
+                $catalog->updateRow($snapshot, ['value' => 'write']);
+                self::fail('a changed generated-column value was accepted by the old baseline');
+            } catch (OrmException $error) {
+                self::assertSame(Code::ROW_CONFLICT, $error->code_);
+            }
+        } finally {
+            $catalog?->close();
+            if (is_file($path)) {
+                self::assertTrue(unlink($path), 'the temporary catalog database could not be removed');
+            }
+        }
+    }
 }
 final class CatalogPageMutationPdo extends UninitializedRecordingPdo
 {

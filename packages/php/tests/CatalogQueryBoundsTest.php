@@ -26,6 +26,10 @@ final class CatalogQueryBoundsTest extends TestCase
         $pdo = new PDO('sqlite:' . $path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
         $pdo->exec('CREATE TABLE values_table (id INTEGER PRIMARY KEY, value TEXT NOT NULL)');
         $pdo->exec('CREATE TABLE generated_values (id INTEGER PRIMARY KEY AUTOINCREMENT, value TEXT NOT NULL)');
+        $pdo->exec(
+            'CREATE TABLE computed_values (id INTEGER PRIMARY KEY, value TEXT NOT NULL, '
+            . 'value_length INTEGER GENERATED ALWAYS AS (length(value)) STORED)'
+        );
         $pdo->exec("INSERT INTO values_table (id, value) VALUES (1, 'alpha'), (2, 'beta')");
         $pdo = null;
         $this->catalog = Catalog::connect('sqlite://' . $path);
@@ -98,6 +102,38 @@ final class CatalogQueryBoundsTest extends TestCase
         $current = $this->catalog->rowSnapshotFromPage($page, 0);
         self::assertSame(1, $this->catalog->deleteRow($current));
         self::assertSame([['beta']], $this->catalog->readOnlyQuery('SELECT value FROM values_table ORDER BY id')->rows);
+    }
+
+    // Requirements: INT-107.
+    public function testRowBaselineComparesExactValuesIncludingGeneratedOriginals(): void
+    {
+        $sameRow = new \ReflectionMethod(Catalog::class, 'sameRow');
+        foreach (
+            [
+                [[0.0], [-0.0]],
+                [['100.23000'], ['100.23']],
+                [["\x00\xff"], ["\x00\xfe"]],
+                [[false], [0]],
+                [[1, 'generated-original'], [1, 'generated-current']],
+            ] as [$original, $current]
+        ) {
+            self::assertFalse($sameRow->invoke(null, $current, $original));
+        }
+
+        $table = ['namespace' => $this->catalog->currentNamespace(), 'name' => 'computed_values'];
+        $metadata = $this->catalog->describeTable($table);
+        self::assertTrue($metadata->columns[2]->generated);
+        $this->catalog->insertRow($metadata, ['id' => 1, 'value' => 'four']);
+        $snapshot = $this->catalog->rowSnapshotFromPage($this->catalog->tablePage($table, 1, 0), 0);
+        self::assertSame(4, $snapshot->cells[2]);
+        $setup = new PDO('sqlite:' . $this->path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $setup->exec("UPDATE computed_values SET value = 'changed' WHERE id = 1");
+        try {
+            $this->catalog->updateRow($snapshot, ['value' => 'write']);
+            self::fail('a changed generated-column value was accepted by the old baseline');
+        } catch (OrmException $error) {
+            self::assertSame(Code::ROW_CONFLICT, $error->code_);
+        }
     }
 
     public function testGeneratedKeyInsertVerifiesItsReturnedRow(): void

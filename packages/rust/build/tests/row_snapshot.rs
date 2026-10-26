@@ -11,10 +11,7 @@ fn fixture() -> TablePage {
         metadata: TableMetadata {
             table: TableRef { namespace: "main".into(), name: "fixture".into() },
             kind: TableKind::Table,
-            columns: vec![
-                plain_column("a", "INTEGER", false),
-                plain_column("b", "TEXT", false),
-            ],
+            columns: vec![plain_column("a", "INTEGER", false), plain_column("b", "TEXT", false)],
             primary_key: vec!["b".into(), "a".into()],
             reliable_row_identity: true,
         },
@@ -141,6 +138,15 @@ async fn row_baseline_compares_exact_bits_scale_and_binary() {
             assert!(snapshot.check_current(&page.metadata, &page.result).unwrap_err().starts_with("ROW_CONFLICT"));
             assert_ne!(snapshot.revision(), RowSnapshot::from_page(&page, 0).unwrap().revision());
         }
+
+        let mut generated = fixture();
+        generated.metadata.columns[1].generated = true;
+        generated.result.rows[0][1] = GridCell::Text("generated-original".into());
+        let snapshot = RowSnapshot::from_page(&generated, 0).unwrap();
+        assert_eq!(snapshot.cells()[1], GridCell::Text("generated-original".into()));
+        let mut changed = generated.result.clone();
+        changed.rows[0][1] = GridCell::Text("generated-current".into());
+        assert!(snapshot.check_current(&generated.metadata, &changed).unwrap_err().starts_with("ROW_CONFLICT"));
     })
     .await
     .expect("row snapshot exact deadline");

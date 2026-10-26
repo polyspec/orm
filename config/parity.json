@@ -14585,12 +14585,37 @@
       ]
     },
     {
-      "id": "rust-row-baseline-compares-exact-bits-scale-and-binary",
+      "id": "catalog-row-baseline-compares-exact-values",
       "kind": "feature",
       "requirements": [
         "INT-107"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/catalog_row_baseline_test.go",
+          "id": "TestCatalogRowBaselineComparesExactTypedValues"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CatalogQueryBoundsTest.php",
+          "id": "CatalogQueryBoundsTest::testRowBaselineComparesExactValuesIncludingGeneratedOriginals"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
+          "id": "CatalogConnectionSurfaceTest::testNativeRowBaselineIncludesGeneratedColumnOriginalValues"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog-mutation-helper.test.mjs",
+          "id": "row baseline compares exact typed values including generated-column originals"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_row_baseline.py",
+          "id": "CatalogRowBaselineTest.test_compares_exact_typed_values_and_preserves_generated_original"
+        },
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/row_snapshot.rs",

@@ -2160,7 +2160,8 @@
       "inputs": [
         "Makefile",
         "packages/python/src/polyspec/orm/catalog.py",
-        "packages/python/tests/test_catalog_mutation_helper.py"
+        "packages/python/tests/test_catalog_mutation_helper.py",
+        "packages/python/tests/test_catalog_row_baseline.py"
       ]
     },
     "dbspec-introspect-compare-check": {
@@ -3448,6 +3449,16 @@
         "packages/go/orm/catalog.go",
         "packages/go/orm/catalog_session_error_test.go",
         "packages/go/orm/failing_driver_test.go"
+      ]
+    },
+    "catalog-row-baseline-go-check": {
+      "scope": "owner",
+      "needs": [
+        "go"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/go/orm/catalog_row_baseline_test.go"
       ]
     },
     "catalog-php-extension-surface-check": {

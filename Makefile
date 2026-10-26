@@ -12,6 +12,7 @@
 .PHONY: request-hook-rust-check
 .PHONY: rust-causes-check rust-closed-executor-check
 .PHONY: go-catalog-session-error-check
+.PHONY: catalog-row-baseline-go-check
 .PHONY: go-sqlite-version-check
 .PHONY: schema-exists-sqlite-rust-check
 .PHONY: schema-exists-sqlite-typescript-check
@@ -462,6 +463,7 @@ dbspec-introspect-python-helper-check: python-venv-check
 
 catalog-mutation-helper-python-check: python-venv-check
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_catalog_mutation_helper
+	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_catalog_row_baseline
 
 catalog-mutation-helper-ts-check: typescript-build
 	$(RUN_TESTS) node -- --test packages/ts/tests/catalog-mutation-helper.test.mjs
@@ -2825,6 +2827,12 @@ rust-closed-executor-check: lease-tool
 
 go-catalog-session-error-check:
 	$(GO_TEST) ./packages/go/orm -run '^TestCatalogSessionEnd' -count=1
+
+catalog-row-baseline-go-check:
+	$(GO_TEST) ./packages/go/orm -run '^TestCatalogRowBaselineComparesExactTypedValues$$' -count=1
+
+CHECK_TARGETS += catalog-row-baseline-go-check
+CI_TARGETS_static += catalog-row-baseline-go-check
 
 go-sqlite-version-check:
 	$(GO_TEST) ./packages/go/orm -run '^TestSQLiteMinimumVersionThroughConnect$$' -count=1

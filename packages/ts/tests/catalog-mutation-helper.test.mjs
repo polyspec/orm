@@ -266,6 +266,44 @@ caseTest('locks, validates and returns the descriptor of an unchanged original r
   ]);
 });
 
+// Requirements: INT-107.
+caseTest('row baseline compares exact typed values including generated-column originals', DATABASE, async () => {
+  const connection = new CatalogConnection('mysql', {});
+  for (const [original, changed] of [
+    [0, -0],
+    ['100.23000', '100.23'],
+    [Buffer.from([0, 255]), Buffer.from([0, 254])],
+    [false, 0],
+  ]) {
+    const snapshot = new CatalogRowSnapshot(metadata, [1, original], [0], 'revision');
+    const session = {
+      async lookup() { return [[1, changed]]; },
+      async describe() { return metadata; },
+      async mysqlSafety() {},
+    };
+    await assert.rejects(
+      connection.lockOriginal(session, snapshot, [1]),
+      error => error instanceof OrmError && error.code === 'ROW_CONFLICT',
+    );
+  }
+
+  const generatedMetadata = {
+    ...metadata,
+    columns: [metadata.columns[0], { ...metadata.columns[1], generated: true }],
+  };
+  const generatedSnapshot = new CatalogRowSnapshot(generatedMetadata, [1, 'derived-original'], [0], 'revision');
+  const generatedSession = {
+    async lookup() { return [[1, 'derived-current']]; },
+    async describe() { return generatedMetadata; },
+    async mysqlSafety() {},
+  };
+  assert.deepEqual(generatedSnapshot.originalCells(), [1, 'derived-original']);
+  await assert.rejects(
+    connection.lockOriginal(generatedSession, generatedSnapshot, [1]),
+    error => error instanceof OrmError && error.code === 'ROW_CONFLICT',
+  );
+});
+
 caseTest('rejects a changed descriptor before applying MySQL safety', DATABASE, async () => {
   let safetyCalled = false;
   const session = {

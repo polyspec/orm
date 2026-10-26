@@ -11322,6 +11322,7 @@
       "parity": [
         "catalog-connection-read",
         "catalog-connection-row-mutation",
+        "catalog-row-baseline-compares-exact-values",
         "model-read-null-and-empty-text",
         "catalog-table-pages-preserve-descriptors-and-reject-changes"
       ],
@@ -11362,9 +11363,12 @@
         "packages/php-ext/tests/CatalogConnectionCoverageSurfaceTest.php",
         "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
         "packages/go/orm/coverage_catalog_connection_test.go",
+        "packages/go/orm/catalog_row_baseline_test.go",
         "packages/php/tests/CoverageCatalogConnectionTest.php",
         "packages/ts/tests/coverage_catalog_connection.mjs",
+        "packages/ts/tests/catalog-mutation-helper.test.mjs",
         "packages/python/tests/coverage_catalog_connection.py",
+        "packages/python/tests/test_catalog_row_baseline.py",
         "packages/python/tests/test_catalog_auto_key.py",
         "packages/php/tests/CatalogConnectionCoverageSurfaceTest.php",
         "packages/php/tests/CatalogQueryBoundsTest.php",
@@ -11465,6 +11469,48 @@
           "inputs": [
             "packages/rust/build/tests/row_insert_identity/expression.rs",
             "packages/rust/build/tests/lock_probe/mod.rs"
+          ]
+        },
+        {
+          "id": "catalog-row-baseline-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts catalog-row-baseline-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test row_snapshot row_baseline_compares_exact_bits_scale_and_binary -- --exact",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/build/tests/row_snapshot.rs"
+          ]
+        },
+        {
+          "id": "catalog-row-baseline-go",
+          "command": "make --no-print-directory catalog-row-baseline-go-check",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "packages/go/orm/catalog_row_baseline_test.go"
+          ]
+        },
+        {
+          "id": "catalog-row-baseline-php",
+          "command": "make --no-print-directory php-models && env ORM_PHP_MODE=library node ../kit/scripts/kit/run-tests.mts phpunit -- --configuration packages/php/phpunit.xml.dist --filter testRowBaselineComparesExactValuesIncludingGeneratedOriginals packages/php/tests/CatalogQueryBoundsTest.php",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "packages/php/tests/CatalogQueryBoundsTest.php"
+          ]
+        },
+        {
+          "id": "catalog-row-baseline-typescript",
+          "command": "node ../kit/scripts/kit/run-tests.mts node -- --test-name-pattern='^row baseline compares exact typed values including generated-column originals$' packages/ts/tests/catalog-mutation-helper.test.mjs",
+          "shard": "other",
+          "inputs": [
+            "packages/ts/tests/catalog-mutation-helper.test.mjs"
+          ]
+        },
+        {
+          "id": "catalog-row-baseline-python",
+          "command": "packages/python/.venv/bin/python -m unittest packages.python.tests.test_catalog_row_baseline.CatalogRowBaselineTest.test_compares_exact_typed_values_and_preserves_generated_original",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_catalog_row_baseline.py"
           ]
         },
         {
@@ -13640,7 +13686,8 @@
         "packages/python/src/polyspec/orm/catalog.py"
       ],
       "tests": [
-        "packages/python/tests/test_catalog_mutation_helper.py"
+        "packages/python/tests/test_catalog_mutation_helper.py",
+        "packages/python/tests/test_catalog_row_baseline.py"
       ],
       "command": "make --no-print-directory catalog-mutation-helper-python-check"
     },
