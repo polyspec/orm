@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a654db0fcea65215df764f30bb0be997e455fe266c149d7b730e1be0b7de71e3 -->
+<!-- source-sha256: 1cdb47d403b2977472a5c6c5f1b602ea4cd2f77d6d090e3b2e003a6883a9c993 -->
 # 변경 이력
 
 ## Unreleased
+
+- IR validation, codec, planning, binding, execution 및 runtime class를 포함한 native PHP client protocol을 완료했습니다. 공유 native planner와 bind 사례, 세 database의 여섯 클라이언트 conformance 및 parity 선언 검사로 실행 근거를 확인했으며 native class 이름과 생태계 라이브러리 선택은 유지합니다 (T182).
 
 - 전체 PHP ORM 표면을 같은 class 이름의 native C로 구현했으며 PHP 제품 코드 fallback 없이 세 database의 여섯 클라이언트 conformance가 일치합니다. 독립적인 수용 기준 검토에 따라 과거 schema 전용 구현을 이유로 한 보류를 완료된 구현과 일치시켰습니다 (T199).
 
