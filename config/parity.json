@@ -25232,10 +25232,20 @@
       "bindings": [
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/src/integration.rs",
-          "id": "primary_and_replica"
+          "test": "packages/rust/orm/tests/replica.rs",
+          "id": "primary_and_replica_mysql"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/replica.rs",
+          "id": "primary_and_replica_postgres"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "dsn_connection",
+        "part": "owner/rust"
+      }
     },
     {
       "id": "model-construction-connection-typescript",

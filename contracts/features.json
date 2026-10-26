@@ -879,7 +879,8 @@
           "rust": {
             "part": "packages/rust/orm",
             "tests": [
-              "packages/rust/orm/tests/coverage_dsn.rs"
+              "packages/rust/orm/tests/coverage_dsn.rs",
+              "packages/rust/orm/tests/replica.rs"
             ],
             "commands": {
               "mysql": [
@@ -926,7 +927,8 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
-              "packages/ts/tests/coverage_dsn.mjs"
+              "packages/ts/tests/coverage_dsn.mjs",
+              "packages/ts/tests/replica.mjs"
             ],
             "commands": {
               "mysql": [
@@ -964,7 +966,8 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_dsn.py"
+              "packages/python/tests/coverage_dsn.py",
+              "packages/python/tests/replica.py"
             ],
             "commands": {
               "mysql": [

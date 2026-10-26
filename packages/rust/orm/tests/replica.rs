@@ -135,12 +135,14 @@ async fn primary_and_replica(driver: &str) {
     database.drop().await;
 }
 
+// Requirements: PLN-31.
 #[tokio::test]
 async fn primary_and_replica_mysql() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     primary_and_replica("mysql").await;
 }
 
+// Requirements: PLN-31.
 #[tokio::test]
 async fn primary_and_replica_postgres() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
