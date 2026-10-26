@@ -145,7 +145,7 @@ func registerTexts(t *testing.T, names ...string) []string {
 // by wrapping the driver and counting (docs/spec/schema.md "Schema registration"). Register and ConnectSchema
 // registration does not read the database even for a set that uses external documents, and a request for a registered set is planned.
 // Manifest text that does not hash to the declared hash is CONFIG with no statement.
-// Requirements: INT-54.
+// Requirements: DBS-119, SCH-11, INT-54.
 func TestRegisterSendsNoStatement(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	schema := registerFixture(t)
@@ -170,6 +170,12 @@ func TestRegisterSendsNoStatement(t *testing.T) {
 			if err := db.Utils().Schema().Register(schema); err != nil {
 				t.Fatalf("second register: %v", err)
 			}
+			if err := db.Utils().Schema().Register(other); err != nil {
+				t.Fatalf("register of a second manifest hash: %v", err)
+			}
+			if err := db.Utils().Schema().Register(other); err != nil {
+				t.Fatalf("second register of the second manifest hash: %v", err)
+			}
 			// The manifest text of another set does not hash to the declared hash.
 			edited := &Schema{Hash: schema.Hash, Text: other.Text}
 			if err := db.Utils().Schema().Register(edited); ErrorCode(err) != CodeConfig {
@@ -178,8 +184,16 @@ func TestRegisterSendsNoStatement(t *testing.T) {
 			if sent := sentStatements.Load() - before; sent != 0 {
 				t.Fatalf("register sent %d statements, want 0", sent)
 			}
-			if _, err := db.engineFor(schema); err != nil {
+			memberEngine, err := db.engineFor(schema)
+			if err != nil {
 				t.Fatalf("the registered set is not planned: %v", err)
+			}
+			noteEngine, err := db.engineFor(other)
+			if err != nil {
+				t.Fatalf("the second registered set is not planned: %v", err)
+			}
+			if memberEngine == noteEngine || memberEngine.M.ManifestHash != schema.Hash || noteEngine.M.ManifestHash != other.Hash {
+				t.Fatalf("hash-selected engines = %p (%s), %p (%s); want separate engines for %s and %s", memberEngine, memberEngine.M.ManifestHash, noteEngine, noteEngine.M.ManifestHash, schema.Hash, other.Hash)
 			}
 			// ConnectSchema sends only the statements that Connect sends.
 			before = sentStatements.Load()

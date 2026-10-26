@@ -82,7 +82,7 @@ DBSPEC,
         });
     }
 
-    // Requirements: DBS-107, SCH-7, PLN-44, INT-132, INT-133.
+    // Requirements: DBS-107, DBS-119, SCH-7, SCH-11, PLN-44, INT-54, INT-132, INT-133.
     public function testSchemaInstallExternalDocuments(): void
     {
         self::forEachCoverageDatabase(static function ($db): void {
@@ -109,8 +109,26 @@ DBSPEC,
                 $events[] = $event->kind;
             });
             try {
-                $db->utils()->schema()->register($manifest);
+                $schema = $db->utils()->schema();
+                $schema->register($manifest);
+                $schema->register($manifest);
+                $badHash = new Schema(
+                    str_replace('coverage_external_post', 'coverage_external_post_changed', $manifest->manifestText),
+                    $manifest->manifestHash,
+                    $manifest->externalText,
+                );
+                try {
+                    $schema->register($badHash);
+                    Assert::fail('register accepted manifest text that does not hash to its declared hash');
+                } catch (OrmException $error) {
+                    Assert::assertSame(Code::CONFIG, $error->code_);
+                }
                 Assert::assertSame([], $events, 'register must not read or write the database');
+                Assert::assertSame(
+                    100000,
+                    (new \Polyspec\Orm\Tests\Model\Author())($db)->getCount(),
+                    'registering another manifest hash keeps the bench set selected'
+                );
                 try {
                     $db->utils()->schema()->install($drifted);
                     Assert::fail('an external schema difference was accepted');

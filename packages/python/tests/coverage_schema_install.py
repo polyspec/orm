@@ -118,6 +118,38 @@ def schema_install_external_documents(item):
     def body(db, driver, dsn):
         member = schema_of([EXTERNAL_MEMBER], [EXTERNAL_USER])
         expect_equal(member.external_text != "", True, "schema external document text")
+        events = []
+        unsubscribe = db.subscribe(events.append)
+        try:
+            db.utils().schema().register(member)
+            db.utils().schema().register(member)
+            bad_hash = Schema(
+                member.manifest_text.replace(
+                    "coverage_external_post", "coverage_external_post_changed"
+                ),
+                member.manifest_hash,
+                member.external_text,
+            )
+            try:
+                db.utils().schema().register(bad_hash)
+            except OrmError as error:
+                expect_equal(
+                    error.code,
+                    "CONFIG",
+                    "register of text that does not hash to its declared hash",
+                )
+            else:
+                raise AssertionError(
+                    "register accepted manifest text that does not hash to its declared hash"
+                )
+            expect_equal(events, [], "registration statements")
+        finally:
+            unsubscribe()
+        expect_equal(
+            models.Author().connect(db).get_count(),
+            100000,
+            "the bench manifest remains selected after registering another hash",
+        )
         Db.connect_schema(dsn, member).close()
         bad_hash = Schema(
             member.manifest_text.replace(
@@ -173,7 +205,7 @@ class CoverageTest(CoverageCase):
     def test_schema_install_partial(self):
         self.each_item("schema_install_partial", schema_install_partial)
 
-    # Requirements: SCH-7, SCH-11, DBS-107, PLN-44, INT-132, INT-133.
+    # Requirements: SCH-7, SCH-11, DBS-107, DBS-119, PLN-44, INT-54, INT-132, INT-133.
     def test_schema_install_external_documents(self):
         self.each_item(
             "schema_install_external_documents", schema_install_external_documents

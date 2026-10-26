@@ -582,7 +582,7 @@ final class SchemaSetTest extends TestCase
         }, static fn(string $dsn) => self::externalDocuments($dsn));
     }
 
-    // Requirements: INT-54.
+    // Requirements: DBS-119, SCH-11, INT-54.
     #[DataProvider('drivers')]
     public function testRegisterSendsNoStatement(string $driver): void
     {

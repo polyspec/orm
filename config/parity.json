@@ -6774,54 +6774,6 @@
       ]
     },
     {
-      "id": "ts-schema-set-register-sends-no-statement-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "DBS-119",
-        "SCH-11",
-        "INT-54"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/schema-set.mjs",
-          "id": "schema-set/register_sends_no_statement/sqlite"
-        }
-      ]
-    },
-    {
-      "id": "ts-schema-set-register-sends-no-statement-mysql",
-      "kind": "feature",
-      "requirements": [
-        "DBS-119",
-        "SCH-11",
-        "INT-54"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/schema-set.mjs",
-          "id": "schema-set/register_sends_no_statement/mysql"
-        }
-      ]
-    },
-    {
-      "id": "ts-schema-set-register-sends-no-statement-postgres",
-      "kind": "feature",
-      "requirements": [
-        "DBS-119",
-        "SCH-11",
-        "INT-54"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/schema-set.mjs",
-          "id": "schema-set/register_sends_no_statement/postgres"
-        }
-      ]
-    },
-    {
       "id": "plan-cache-in-list-shapes-share-ten-bucketed-keys",
       "kind": "feature",
       "requirements": [
@@ -11531,20 +11483,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-orm-register",
-      "kind": "feature",
-      "requirements": [
-        "INT-54"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/register_test.go",
-          "id": "TestRegisterSendsNoStatement"
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-orm-rollback-fault-entry",
       "kind": "feature",
       "requirements": [
@@ -13615,20 +13553,6 @@
       ]
     },
     {
-      "id": "rust-register-sends-no-statement",
-      "kind": "feature",
-      "requirements": [
-        "INT-54"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/register.rs",
-          "id": "register_sends_no_statement"
-        }
-      ]
-    },
-    {
       "id": "rust-rollback-fault-entry",
       "kind": "feature",
       "requirements": [
@@ -15100,6 +15024,47 @@
       ]
     },
     {
+      "id": "schema-register-no-statement",
+      "kind": "feature",
+      "requirements": [
+        "DBS-119",
+        "SCH-11",
+        "INT-54"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/register_test.go",
+          "id": "TestRegisterSendsNoStatement"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/SchemaSetTest.php",
+          "id": "SchemaSetTest::testRegisterSendsNoStatement"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+          "id": "CoverageSchemaInstallNativeTest::testSchemaInstallExternalDocuments"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/schema-set.mjs",
+          "id": "schema-set/register_sends_no_statement/sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_schema_install.py",
+          "id": "test_schema_install_external_documents"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/register.rs",
+          "id": "register_sends_no_statement"
+        }
+      ]
+    },
+    {
       "id": "py-test-rollback-fault-entry-package",
       "kind": "feature",
       "requirements": [
@@ -16514,20 +16479,6 @@
           "implementation": "php",
           "test": "packages/php/tests/RuntimeDbTest.php",
           "id": "RuntimeDbTest::testRestoreOfSoftDeletedRows"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-schema-set-register-sends-no-statement",
-      "kind": "feature",
-      "requirements": [
-        "INT-54"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/SchemaSetTest.php",
-          "id": "SchemaSetTest::testRegisterSendsNoStatement"
         }
       ]
     },
