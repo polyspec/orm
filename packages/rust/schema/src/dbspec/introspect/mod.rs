@@ -215,7 +215,16 @@ mod default_tests {
             CatalogValue::Text("table".into()),
             CatalogValue::Text("install_note".into()),
             CatalogValue::Text("install_note".into()),
-            CatalogValue::Text("CREATE TABLE \"install_note\" (junk INTEGER NULL)".into()),
+            CatalogValue::Text("CREATE TABLE \"install_note\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, junk INTEGER NULL)".into()),
+        ]);
+        sqlite[1].push(vec![
+            CatalogValue::Text("install_note".into()),
+            CatalogValue::Text("id".into()),
+            CatalogValue::Text("INTEGER".into()),
+            CatalogValue::Int(1),
+            CatalogValue::Null,
+            CatalogValue::Int(1),
+            CatalogValue::Int(0),
         ]);
         sqlite[1].push(vec![
             CatalogValue::Text("install_note".into()),
