@@ -35,7 +35,8 @@
         "packages/go/bench/coverage_performance_gate_shared_test.go",
         "packages/go/bench/coverage_process_cpu_unix_test.go",
         "packages/go/bench/coverage_process_cpu_windows_test.go",
-        "packages/go/bench/gate_helpers_test.go"
+        "packages/go/bench/gate_helpers_test.go",
+        "packages/go/internal/dialects/runner_environment_physical_test.go"
       ],
       "args": [
         "-tags",

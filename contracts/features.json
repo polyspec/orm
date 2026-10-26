@@ -14243,6 +14243,17 @@
         "packages/php-ext/tests/OrmGenScanNativeTest.php"
       ],
       "command": "make --no-print-directory php-orm-gen-scan-failure-case-check"
+    },
+    {
+      "id": "go-dialect-runner-environment",
+      "paths": [
+        "packages/go/internal/dialects/runner_environment_physical_test.go"
+      ],
+      "tests": [
+        "packages/go/internal/dialects/apply_clients_physical_test.go",
+        "packages/go/internal/dialects/introspect_compare_physical_test.go"
+      ],
+      "command": "node tests/go-test.mts -v -timeout 0 -tags physical ./packages/go/internal/dialects -run '^(TestApplyExtensionRunnerMode|TestIntrospectCompareRunnerEnvironment)$' -count=1"
     }
   ]
 }
