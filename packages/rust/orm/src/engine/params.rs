@@ -3,7 +3,7 @@
 
 use crate::ir;
 use crate::schema::Manifest;
-use crate::{Result, codes};
+use crate::{codes, Result};
 use polyspec_orm_schema::dbspec::{Entity, Field};
 
 /// One slot that a request parameter fills: the slot's logical type (dbspec type name), and, for a column slot, the column it compares or

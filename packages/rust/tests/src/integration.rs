@@ -580,7 +580,8 @@ async fn transactions(t: &Target) {
     let r: polyspec_orm::Result<()> = db.transaction(async || Ok(())).read_only().timeout_ms(500).await;
     let want = if t.driver == "postgres" { "ok" } else { "CAPABILITY_UNSUPPORTED" };
     assert_eq!(code(r), want, "{}: transaction timeoutMs", t.driver);
-    let schema = db.utils().schema();
+    let utils = db.utils();
+    let schema = utils.schema();
     assert!(!schema.empty().await.unwrap(), "schema().empty() on an installed schema");
     let (schema_name, expected) = match t.driver {
         "mysql" => (t.database.name().to_string(), true),

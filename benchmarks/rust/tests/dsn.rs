@@ -6,8 +6,15 @@ const DSN: &str = "ORM_BENCH_MYSQL_DSN";
 
 /// Runs native and driver_compare with the DSN variable set to `value` (or unset), and asserts that each refuses.
 fn assert_dsn_required_for_all(value: Option<&str>) {
-    for program in &[polyspec_orm_testcase::program("native"), polyspec_orm_testcase::program("driver_compare")] {
-        polyspec_orm_testcase::assert_env_required(program, polyspec_orm_testcase::run_with_env(program, &["10"], DSN, value), DSN);
+    for program in &[
+        polyspec_orm_testcase::program("native"),
+        polyspec_orm_testcase::program("driver_compare"),
+    ] {
+        polyspec_orm_testcase::assert_env_required(
+            program,
+            polyspec_orm_testcase::run_with_env(program, &["10"], DSN, value),
+            DSN,
+        );
     }
 }
 

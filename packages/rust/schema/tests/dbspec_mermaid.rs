@@ -15,16 +15,14 @@ use vector_file::{lines, vectors};
 
 use polyspec_orm_case_clock::CaseClock;
 use polyspec_orm_schema::dbspec::model::{DefaultValue, Document};
-use polyspec_orm_schema::dbspec::{self, Unsupported, export_mermaid, import_mermaid};
+use polyspec_orm_schema::dbspec::{self, export_mermaid, import_mermaid, Unsupported};
 use polyspec_orm_testcase::Trial;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-
 /// The deadline of one case.
 const DEADLINE: Duration = Duration::from_secs(5);
-
 
 fn cases<'v>(vectors: &'v Value, group: &str) -> &'v [Value] {
     let cases = vectors[group].as_array().unwrap_or_else(|| panic!("mermaid.json has no {group} cases"));

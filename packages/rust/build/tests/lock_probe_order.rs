@@ -1,8 +1,5 @@
 use polyspec_orm_build::catalog::MutationPhase;
-use std::sync::{
-    atomic::Ordering,
-    Arc, Mutex,
-};
+use std::sync::{atomic::Ordering, Arc, Mutex};
 
 /// A mutation that answers within one poll runs to its end before a test that only stops polling it can probe
 /// anything; a probe that runs inside the Locked publisher sees the mutation at Locked, whatever the scheduling.

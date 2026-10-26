@@ -339,10 +339,13 @@ testcase-check/runners:
 testcase-check/rust: cargo-downloads-check
 	cd packages/rust && $(CARGO_TEST) testcase-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-testcase
 
-# Runs only the two Rust cases that share the private SQLite fixture helper.
-.PHONY: temp-sqlite-fixture-rust-helper-check
-temp-sqlite-fixture-rust-helper-check: cargo-downloads-check lease-tool
+# Runs only the Rust cases that share the private SQLite fixture helper.
+.PHONY: temp-sqlite-fixture-rust-helper-check temp-sqlite-fixture-rust-helper-check/hot-path temp-sqlite-fixture-rust-helper-check/cpx5
+temp-sqlite-fixture-rust-helper-check:
+	+$(MAKE) --no-print-directory -k temp-sqlite-fixture-rust-helper-check/hot-path temp-sqlite-fixture-rust-helper-check/cpx5
+temp-sqlite-fixture-rust-helper-check/hot-path: cargo-downloads-check lease-tool
 	cd packages/rust && $(CARGO_TEST) temp-sqlite-fixture-hot-path -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test coverage_hot_path_read_correctness hot_path_read_correctness -- --test-threads=1 --exact
+temp-sqlite-fixture-rust-helper-check/cpx5: cargo-downloads-check lease-tool
 	cd packages/rust && $(CARGO_TEST) temp-sqlite-fixture-cpx5 -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test integration coverage_model_queries::duplicate_relation_name_reports_config_alias_hint -- --test-threads=1 --exact
 
 # client-pooler-check runs the client database tests through the PgBouncer
@@ -1427,7 +1430,7 @@ feature-verify-other: feature-check/build
 FEATURE_STRESS_MYSQL_HELPERS = dbspec-apply-stress-mysql
 FEATURE_STRESS_PG_SQLITE_HELPERS = dbspec-stress dbspec-apply-stress-pg-sqlite
 FEATURE_STRESS_HELPERS = $(FEATURE_STRESS_MYSQL_HELPERS) $(FEATURE_STRESS_PG_SQLITE_HELPERS)
-FEATURE_SUITE_HELPERS = bench-database case-database conformance-result conformance-runners native-query-probe python-test-harness phpstan-test-runner php-orm-gen-scan-failure-case audit-native-method-assertions dbspec-sqlite-literal-rows dbspec-introspect-case-rendering-python typescript-catalog-mutation-lock python-catalog-mutation-lock php-group-rows-test-cases php-model-types-test-cases php-dbspec-interface-program php-database-test-assertions php-extension-model-assembly-test-support typescript-internal-column-error typescript-dbspec-plan-fixture physical-command-output typescript-audit-history-rows typescript-captured-error typescript-check-state typescript-mysql-test-options typescript-database-case-tests typescript-dbspec-physical-database typescript-conditional-entry typescript-database-case-fixture
+FEATURE_SUITE_HELPERS = bench-database case-database conformance-result conformance-runners native-query-probe python-test-harness phpstan-test-runner php-orm-gen-scan-failure-case audit-native-method-assertions dbspec-sqlite-literal-rows dbspec-introspect-case-rendering-python typescript-catalog-mutation-lock python-catalog-mutation-lock php-group-rows-test-cases php-model-types-test-cases php-dbspec-interface-program php-database-test-assertions php-extension-model-assembly-test-support typescript-internal-column-error typescript-dbspec-plan-fixture physical-command-output typescript-audit-history-rows typescript-captured-error typescript-check-state typescript-mysql-test-options typescript-database-case-tests typescript-dbspec-physical-database typescript-conditional-entry typescript-database-case-fixture rust-temp-sqlite-fixture php-cpx5-duplicate-relation-cases
 feature-helper-check: feature-check/build
 	$(WITH_TEST_ENV) node scripts/features/check.mts --run --helpers $(addprefix --without-helper ,$(FEATURE_STRESS_HELPERS) $(FEATURE_SUITE_HELPERS))
 feature-stress-mysql-check:
@@ -1514,8 +1517,9 @@ php-gen-unit-check: php-vendor-check lease-tool
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php-gen/tests/OrmGenCliTest.php packages/php-gen/tests/OrmGenScanTest.php packages/php-gen/tests/OrmGenScanParityTest.php
 
 # generator-consumer-check runs the consumer tests of each generator as a part of its own, so a failed part does not stop the others.
-.PHONY: generator-consumer-check/go generator-consumer-check/php generator-consumer-check/php-extension generator-consumer-check/typescript generator-consumer-check/python generator-consumer-check/rust-field-types generator-consumer-check/rust-emission generator-consumer-check/rust-chain-scan generator-consumer-check/rust-integration
-generator-consumer-check: generator-consumer-check/go generator-consumer-check/php generator-consumer-check/php-extension generator-consumer-check/typescript generator-consumer-check/python generator-consumer-check/rust-field-types generator-consumer-check/rust-emission generator-consumer-check/rust-chain-scan generator-consumer-check/rust-integration
+.PHONY: generator-consumer-check/go generator-consumer-check/php generator-consumer-check/php-extension generator-consumer-check/typescript generator-consumer-check/python generator-consumer-check/rust-field-types generator-consumer-check/rust-field-types/generated-field-types generator-consumer-check/rust-field-types/fixed-method-list generator-consumer-check/rust-emission generator-consumer-check/rust-chain-scan generator-consumer-check/rust-chain-scan/generates-called-methods generator-consumer-check/rust-chain-scan/stored-column-name generator-consumer-check/rust-integration
+generator-consumer-check:
+	+$(MAKE) --no-print-directory -k generator-consumer-check/go generator-consumer-check/php generator-consumer-check/php-extension generator-consumer-check/typescript generator-consumer-check/python generator-consumer-check/rust-field-types generator-consumer-check/rust-emission generator-consumer-check/rust-chain-scan generator-consumer-check/rust-integration
 generator-consumer-check/go:
 	cd packages/go && $(NODE) $(abspath tests/go-test.mts) -v -timeout 0 ./generator -run '^(TestGoGeneratedScalarGetterRejectsUnselectedRead|TestGoGeneratedScalarGetterCompilesAtItsDeclaredType|TestGoGeneratedNonnullStyledSetterRejectsSqlNull|TestScanGeneratesUsedMethods)$$' -count=1
 generator-consumer-check/php: php-vendor-check php-models
@@ -1534,13 +1538,17 @@ generator-consumer-check/typescript:
 generator-consumer-check/python: python-venv-check
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_orm_gen.OrmGenTest.test_generated_typed_getter_is_the_public_column_api
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_orm_gen.OrmGenTest.test_chain_conditions packages.python.tests.test_orm_gen.OrmGenTest.test_scan_reports_unknown_model_methods packages.python.tests.test_query_methods.QueryMethodsTest.test_a_declared_method_builds_the_query_of_its_chain
-generator-consumer-check/rust-field-types: cargo-downloads-check lease-tool
+generator-consumer-check/rust-field-types: generator-consumer-check/rust-field-types/generated-field-types generator-consumer-check/rust-field-types/fixed-method-list
+generator-consumer-check/rust-field-types/generated-field-types: cargo-downloads-check lease-tool
 	cd packages/rust && $(CARGO_TEST) generator-consumer-rust-field-types -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-build --lib generate::field_type_tests::generated_field_types_follow_the_runtime_model -- --test-threads=1 --exact
+generator-consumer-check/rust-field-types/fixed-method-list: cargo-downloads-check lease-tool
 	cd packages/rust && $(CARGO_TEST) generator-consumer-rust-fixed-method-list -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-build --lib generate::fixed_method_tests::fixed_list_names_the_public_methods_of_the_fixed_impl -- --test-threads=1 --exact
 generator-consumer-check/rust-emission: cargo-downloads-check lease-tool
 	cd packages/rust && $(CARGO_TEST) generator-consumer-rust-emission -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-build --test generate generated_rows_reject_unselected_fields_and_separate_group_results -- --test-threads=1 --exact
-generator-consumer-check/rust-chain-scan: cargo-downloads-check lease-tool
+generator-consumer-check/rust-chain-scan: generator-consumer-check/rust-chain-scan/generates-called-methods generator-consumer-check/rust-chain-scan/stored-column-name
+generator-consumer-check/rust-chain-scan/generates-called-methods: cargo-downloads-check lease-tool
 	cd packages/rust && $(CARGO_TEST) generator-consumer-rust-chain-scan -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-build --test generate generates_called_methods -- --test-threads=1 --exact
+generator-consumer-check/rust-chain-scan/stored-column-name: cargo-downloads-check lease-tool
 	cd packages/rust && $(CARGO_TEST) generator-consumer-rust-stored-column-name -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-build --test generate stored_column_name_is_rejected_as_an_output_name -- --test-threads=1 --exact
 generator-consumer-check/rust-integration: cargo-downloads-check lease-tool
 	cd packages/rust && $(CARGO_TEST) generator-consumer-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-tests --bin integration generated_typed_getter_is_a_checked_public_consumer_api -- --test-threads=1 --exact
@@ -2847,10 +2855,10 @@ schema-exists-sqlite-php-check: php-vendor-check php-models
 schema-exists-sqlite-typescript-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	$(RUN_TESTS) node packages/ts/tests/model.mjs --case schemaExistsUnderscore --dialect sqlite
+	$(RUN_LONG) schema-exists-sqlite-typescript -- $(NODE) packages/ts/tests/model.mjs --case schemaExistsUnderscore --dialect sqlite
 
 schema-exists-sqlite-rust-check: cargo-downloads-check lease-tool
-	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --test schema_exists_underscore schema_exists_escapes_underscore_sqlite -- --test-threads=1 --exact
+	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --test schema_exists_underscore schema_exists_escapes_underscore_sqlite -- --exact
 
 catalog-php-extension-surface-check: php-vendor-check php-models
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)

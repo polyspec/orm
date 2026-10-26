@@ -2,7 +2,7 @@
 //! and changes nothing.
 use super::coverage_env::{code, connect, run};
 use super::model::{Author, NoteReader, SharedNote, User};
-use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, plan::Step};
+use polyspec_orm::{plan::Step, Core, Db, Entity, Model, Param, Schema};
 
 #[macro_use]
 #[path = "../../../orm/tests/common/model_row.rs"]

@@ -233,9 +233,7 @@ async fn pool_idle_size_and_lifetime() {
     assert_eq!(db.stats().open_connections, 1, "the connection opened by connect");
     sqlx::query("CREATE TABLE lifetime_probe (value INTEGER)").execute(&pool).await.unwrap();
     let mut waiter = sqlx::SqliteConnection::connect_with(
-        &sqlx::sqlite::SqliteConnectOptions::new()
-            .filename(tmp.join("pool.sqlite"))
-            .busy_timeout(std::time::Duration::from_secs(5)),
+        &sqlx::sqlite::SqliteConnectOptions::new().filename(tmp.join("pool.sqlite")).busy_timeout(std::time::Duration::from_secs(5)),
     )
     .await
     .unwrap();
@@ -245,13 +243,10 @@ async fn pool_idle_size_and_lifetime() {
     sqlx::query("BEGIN EXCLUSIVE").execute(&mut *conn).await.unwrap();
     sqlx::query("INSERT INTO lifetime_probe VALUES (1)").execute(&mut *conn).await.unwrap();
     conn.return_to_pool().await;
-    let result = tokio::time::timeout(
-        std::time::Duration::from_secs(5),
-        sqlx::query("INSERT INTO lifetime_probe VALUES (2)").execute(&mut waiter),
-    )
-    .await
-    .expect("pool lifetime did not close the expired connection and release SQLite's write lock")
-    .unwrap();
+    let result = tokio::time::timeout(std::time::Duration::from_secs(5), sqlx::query("INSERT INTO lifetime_probe VALUES (2)").execute(&mut waiter))
+        .await
+        .expect("pool lifetime did not close the expired connection and release SQLite's write lock")
+        .unwrap();
     assert_eq!(result.rows_affected(), 1);
     let values: Vec<i64> = sqlx::query_scalar("SELECT value FROM lifetime_probe ORDER BY value").fetch_all(&pool).await.unwrap();
     assert_eq!(values, [2], "closing the expired connection rolls back its uncommitted row");

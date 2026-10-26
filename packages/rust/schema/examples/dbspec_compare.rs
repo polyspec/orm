@@ -670,7 +670,7 @@ fn write_mermaid(out: &mut impl Write, mermaid: &MermaidVectors) -> Result<(), S
             Ok(document) => {
                 let text = write_export(out, &document).map_err(io)?;
                 writeln!(out, "mermaid/round_trip/{id}/import").map_err(io)?;
-        write_import(out, &text, "imported").map_err(io)?;
+                write_import(out, &text, "imported").map_err(io)?;
             }
         }
     }

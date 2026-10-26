@@ -298,10 +298,7 @@ fn pinned_flowmark() -> PathBuf {
     });
     let pinned_revision = pin.rsplit('-').next().unwrap_or("");
     let installed = main.path == FLOWMARK_MODULE && main.version == pin;
-    let checkout = main.path == FLOWMARK_MODULE
-        && main.version == "(devel)"
-        && main.revision.starts_with(pinned_revision)
-        && main.modified == "false";
+    let checkout = main.path == FLOWMARK_MODULE && main.version == "(devel)" && main.revision.starts_with(pinned_revision) && main.modified == "false";
     assert!(
         installed || checkout,
         "FLOWMARK {bin} is {main:?}, not the pinned {FLOWMARK_MODULE} {pin} or a clean checkout at that revision; run make orm-install-flowmark, or build the exact Flowmark revision"
@@ -339,12 +336,7 @@ fn main_module(binary: &[u8]) -> Option<GoBuildInfo> {
             modified = Some(value.to_owned());
         }
     }
-    Some(GoBuildInfo {
-        path: path?,
-        version: version?,
-        revision: revision.unwrap_or_default(),
-        modified: modified.unwrap_or_default(),
-    })
+    Some(GoBuildInfo { path: path?, version: version?, revision: revision.unwrap_or_default(), modified: modified.unwrap_or_default() })
 }
 
 /// Installs corpus/ as a new corpus, starts that server, and connects to it.

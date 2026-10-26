@@ -391,8 +391,7 @@ impl Val {
             // error of the second shape is reported with the text.
             Val::Str(s) => match NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S%.f") {
                 Ok(value) => Ok(value),
-                Err(_) => NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S")
-                    .map_err(|error| decode_value(format!("invalid datetime: {s:?}: {error}"))),
+                Err(_) => NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S").map_err(|error| decode_value(format!("invalid datetime: {s:?}: {error}"))),
             },
             other => Err(decode_value(format!("expected datetime, received {other:?}"))),
         }

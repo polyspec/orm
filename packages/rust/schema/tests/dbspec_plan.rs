@@ -16,10 +16,9 @@ mod vector_file;
 use vector_file::{lines, vectors};
 
 use polyspec_orm_case_clock::CaseClock;
-use polyspec_orm_schema::dbspec::{self, Dialect, Document, Plan, PlanStep, chain, compare_schemas, diff, emit_plan, parse_plan, plan_steps};
+use polyspec_orm_schema::dbspec::{self, chain, compare_schemas, diff, emit_plan, parse_plan, plan_steps, Dialect, Document, Plan, PlanStep};
 use polyspec_orm_testcase::Trial;
 use serde_json::Value;
-
 
 /// The plans.json object of a step (docs/spec/plans.md "Steps").
 fn step_fields(s: &PlanStep) -> Value {
@@ -60,7 +59,6 @@ use std::time::Duration;
 const DEADLINE: Duration = Duration::from_secs(5);
 
 const DIALECTS: [(&str, Dialect); 3] = [("mysql", Dialect::MySql), ("postgres", Dialect::Postgres), ("sqlite", Dialect::Sqlite)];
-
 
 fn strings(value: &Value) -> Vec<String> {
     value.as_array().expect("strings").iter().map(|s| s.as_str().expect("string").to_owned()).collect()

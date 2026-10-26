@@ -531,9 +531,13 @@ impl<'m> MdNode<'m> {
             "count" => Ok("i64".into()),
             "avg" => Ok("f64".into()),
             _ => {
-                let entity = self.m.model.entity(&sub.query.entity)
+                let entity = self
+                    .m
+                    .model
+                    .entity(&sub.query.entity)
                     .ok_or_else(|| engine::err(codes::INTERNAL, format!("scalar subquery entity {} is missing", sub.query.entity)))?;
-                let field = entity.field(&sub.column)
+                let field = entity
+                    .field(&sub.column)
                     .ok_or_else(|| engine::err(codes::INTERNAL, format!("{}.{} is missing from a validated scalar subquery", entity.name, sub.column)))?;
                 Ok(field.ty.name().to_owned())
             }
@@ -694,8 +698,7 @@ pub(crate) async fn markdown_scalar(ex: &Executor, req: &mut Req) -> Result<Val>
     let mut a: HashMap<String, Box<RawValue>> = serde_json::from_slice(&answer).map_err(|e| answer_err(format!("{}: {e}", text())))?;
     if req.ir.kind == "count" {
         let raw = a.get("count").ok_or_else(|| answer_err(format!("a count answer {} has no count", text())))?;
-        let count = serde_json::from_str::<i64>(raw.get())
-            .map_err(|error| answer_err(format!("a count answer {} is not a count: {error}", text())))?;
+        let count = serde_json::from_str::<i64>(raw.get()).map_err(|error| answer_err(format!("a count answer {} is not a count: {error}", text())))?;
         return Ok(Val::I64(count));
     }
     let raw = a.remove("value").ok_or_else(|| answer_err(format!("a {} answer {} has no value", req.ir.kind, text())))?;

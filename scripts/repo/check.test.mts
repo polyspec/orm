@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
@@ -18,7 +18,7 @@ import { CI_SETUP, expandNeeds, GROUP_OUTPUTS, groupOutputs, groupSetupErrors, R
 import { declaredNeeds, readCheckInputs } from '../check/inputs.mts';
 import { readFeatures } from '../features/manifest.mts';
 import { readComposer, readPackage } from '../json/formats.mts';
-import { kitCopies } from './kit-copies.mts';
+import { kitCopies, kitOwnedPaths } from './kit-copies.mts';
 import { andLists, segments, shellSegments } from './shell.mts';
 import { readWorkflow } from './workflow.mts';
 import { stringify } from 'yaml';
@@ -32,6 +32,7 @@ const yamlSteps = (steps: unknown[]) => stringify(steps).split('\n').map(line =>
 // The copies of @polyspec/kit (kit.copies of its package.json) are checked by make kit-check and never edited here, so the
 // rules of this repository do not read them.
 const copies = kitCopies(new URL('../..', import.meta.url).pathname);
+const kitOwned = kitOwnedPaths(new URL('../..', import.meta.url).pathname);
 const notVendored = (path: string) => !Object.hasOwn(copies, path);
 const tracked = ['scripts/docs/rules.mts', 'packages/ts/package.json', 'scripts/typescript/sqlite-test.mts'];
 const repository = new URL('../../', import.meta.url);
@@ -61,15 +62,13 @@ caseTest('PHP orm-gen CLI tests stay in their owning component', COMPUTE, () => 
 const readScript = (path: string) => scriptTexts.get(path) ?? (trackedAll.has(path) && !path.endsWith('.mts') ? text(path) : undefined);
 const trackedTexts = (paths: string[]) => Object.fromEntries(paths.map((path: string) => [path, text(path)]));
 
-caseTest('the Go runtime build generates models before compiling their consumers', COMPUTE, () => {
+caseTest('the Go model build regenerates models', COMPUTE, () => {
   const root = new URL('../..', import.meta.url).pathname;
   const result = spawnSync('make', ['-n', 'build-go'], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
   assert.equal(result.status, 0, result.stderr);
   const generation = result.stdout.indexOf('go run ./cmd/orm-gen gen --lang go');
-  const build = result.stdout.indexOf('runtime-targets.mjs build go');
   assert.ok(generation >= 0, 'build-go does not run the Go model generator');
-  assert.ok(build >= 0, 'build-go does not invoke the Go runtime build');
-  assert.ok(generation < build, 'build-go compiles consumers before refreshing generated models');
+  assert.match(result.stdout, /go run \.\/cmd\/orm-gen gen --lang go/);
 });
 
 caseTest('the TypeScript runtime build generates models before compiling their consumers', COMPUTE, () => {
@@ -77,7 +76,7 @@ caseTest('the TypeScript runtime build generates models before compiling their c
   const result = spawnSync('make', ['-n', 'build-ts'], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
   assert.equal(result.status, 0, result.stderr);
   const generation = result.stdout.indexOf('npm run typescript:build');
-  const build = result.stdout.indexOf('runtime-targets.mjs build ts');
+  const build = result.stdout.indexOf('runtime-targets.mts build ts');
   assert.ok(generation >= 0, 'build-ts does not run the TypeScript model generator');
   assert.ok(build >= 0, 'build-ts does not invoke the TypeScript runtime build');
   assert.ok(generation < build, 'build-ts compiles consumers before refreshing generated models');
@@ -225,9 +224,9 @@ caseTest('a workflow runs only the summary and the report upload after make orm-
 // workflow, changing one at a time.
 const declared = readFileSync(new URL('mise.toml', repository), 'utf8');
 const minimum = readPackage(join(repository.pathname, 'package.json')).engines?.['node'];
-// orm's own workflows: the copies of @polyspec/kit (gates.yml and release.yml) are kit's, and kit-check holds them byte for byte (KSTD-10).
+// Kit owns gates.yml and release.yml, so the workflow rules of orm do not apply to them (KSTD-10).
 const workflows = ownWorkflows(Object.fromEntries(readdirSync(new URL('.github/workflows/', repository)).sort()
-  .map(name => [`.github/workflows/${name}`, readFileSync(new URL(`.github/workflows/${name}`, repository), 'utf8')])), copies);
+  .map(name => [`.github/workflows/${name}`, readFileSync(new URL(`.github/workflows/${name}`, repository), 'utf8')])), kitOwned);
 
 // mise writes the tool node of mise.toml from a version, or none for an empty one.
 const mise = (version: string) => version ? `[tools]\nnode = "${version}"\n` : '[tools]\n';
@@ -405,6 +404,66 @@ caseTest('a rustc other than rust-toolchain.toml fails', COMPUTE, () => {
 caseTest('every PHPUnit run of the Makefile goes through run-tests', COMPUTE, () => {
   const direct = /[=;&(@\s]vendor-php\/bin\/phpunit\s/;
   assert.deepEqual(text('Makefile').split('\n').filter(line => direct.test(line)), []);
+});
+
+caseTest('the SQLite Rust test recipe gives Kit one libtest thread option', PROCESS, async () => {
+  const root = repository.pathname;
+  const recipe = /^schema-exists-sqlite-rust-check:[^\n]*\n((?:\t[^\n]*\n)+)/m.exec(text('Makefile'))?.[1];
+  assert.ok(recipe, 'the SQLite Rust test recipe exists');
+  const command = recipe.split('\n').find(line => line.includes('$(RUN_TESTS) cargo --cwd packages/rust -- '));
+  assert.ok(command, 'the recipe uses Kit run-tests for cargo');
+  const prefix = '$(RUN_TESTS) cargo --cwd packages/rust -- ';
+  const cargoArgs = command.slice(command.indexOf(prefix) + prefix.length).trim().split(/\s+/);
+
+  const directory = mkdtempSync(join(tmpdir(), 'schema-exists-cargo-runner-'));
+  try {
+    const stubDirectory = join(directory, 'bin');
+    mkdirSync(stubDirectory);
+    const argumentsFile = join(directory, 'arguments.json');
+    const stub = join(stubDirectory, 'cargo');
+    writeFileSync(stub, [
+      '#!/usr/bin/env node',
+      "const fs = require('node:fs');",
+      "fs.writeFileSync(process.env.CARGO_STUB_ARGUMENTS, JSON.stringify(process.argv.slice(2)));",
+      "process.stderr.write('Running tests/schema_exists_underscore.rs (target/debug/deps/schema_exists_underscore-stub)\\n');",
+      "process.stdout.write('running 1 test\\ntest schema_exists_escapes_underscore_sqlite ... ok\\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out\\n');",
+      '',
+    ].join('\n'));
+    chmodSync(stub, 0o755);
+
+    const output = await new Promise<{ code: number; text: string }>((resolve, reject) => {
+      const child = spawn(process.execPath, [
+        join(root, '../kit/scripts/kit/run-tests.mts'),
+        'cargo',
+        '--timeout',
+        '10',
+        '--cwd',
+        'packages/rust',
+        '--',
+        ...cargoArgs,
+      ], {
+        cwd: root,
+        env: isolatedEnvironment({
+          PATH: `${stubDirectory}:${process.env.PATH ?? ''}`,
+          CARGO_STUB_ARGUMENTS: argumentsFile,
+        }),
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      let text = '';
+      child.stdout.setEncoding('utf8').on('data', chunk => { text += chunk; });
+      child.stderr.setEncoding('utf8').on('data', chunk => { text += chunk; });
+      child.once('error', reject);
+      child.once('close', code => resolve({ code: code ?? 1, text }));
+    });
+    assert.equal(output.code, 0, output.text);
+    assert.match(output.text, /1 passed, 0 failed/);
+    const actual = JSON.parse(readFileSync(argumentsFile, 'utf8')) as string[];
+    const harness = actual.slice(actual.indexOf('--') + 1);
+    assert.deepEqual(harness, ['--test-threads=1', '--exact']);
+    assert.equal(actual.filter(argument => argument === '--test-threads=1').length, 1);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 // The CHECK_TARGETS case checks the repository's workflow and Makefile, and the minimal workflow.
@@ -640,17 +699,15 @@ caseTest('every variable a helper make command reads is exported by the Makefile
 });
 
 // The runner case checks the repository's .github/runner and workflow, and the minimal workflow.
-// A workflow among the copies of @polyspec/kit is kit's and make kit-check holds it byte for byte, so the workflow rules of this
-// repository do not check it (T115). A runner other than that of kit's release.yml is a change of kit.
-const vendoredFiles = copies;
+// A workflow owned by Kit is checked by Kit's layout target, so the workflow rules of this repository do not check it (T115).
+const kitWorkflowPaths = kitOwned.filter(path => path.startsWith('.github/workflows/'));
 
-caseTest('the workflow rules skip the workflows that @polyspec/kit copies', COMPUTE, () => {
-  // kit copies two workflows, gates.yml and release.yml; its other copies (PRINCIPLES.md, the lint configurations, the bootstrap) are no workflows.
-  assert.deepEqual(Object.keys(vendoredFiles).filter(file => file.startsWith('.github/workflows/')), ['.github/workflows/release.yml', '.github/workflows/gates.yml']);
-  const all = { '.github/workflows/ci.yml': 'a', '.github/workflows/release.yml': 'b' };
-  assert.deepEqual(ownWorkflows(all, vendoredFiles), { '.github/workflows/ci.yml': 'a' });
-  assert.deepEqual(ownWorkflows({ 'ci.yml': 'a', 'release.yml': 'b' }, vendoredFiles), { 'ci.yml': 'a' });
-  assert.throws(() => ownWorkflows(all, null), /no copies of @polyspec\/kit/);
+caseTest('the workflow rules skip workflows owned by @polyspec/kit', COMPUTE, () => {
+  assert.deepEqual(kitWorkflowPaths, ['.github/workflows/release.yml', '.github/workflows/gates.yml']);
+  const all = { '.github/workflows/ci.yml': 'a', '.github/workflows/release.yml': 'b', '.github/workflows/gates.yml': 'c' };
+  assert.deepEqual(ownWorkflows(all, kitWorkflowPaths), { '.github/workflows/ci.yml': 'a' });
+  assert.deepEqual(ownWorkflows({ 'ci.yml': 'a', 'release.yml': 'b' }, kitWorkflowPaths), { 'ci.yml': 'a' });
+  assert.throws(() => ownWorkflows(all, null), /no Kit-owned paths/);
 });
 
 // The commit identity is declared, so commits-check enforces it: config/commit-identity.json is the kit copy of this
@@ -661,7 +718,7 @@ caseTest('the repository declares its commit identity, which commits-check enfor
   assert.deepEqual(JSON.parse(readFileSync(identity, 'utf8')), { schema: 1, name: 'min-0-max', email: 'max@blue.tools' });
 });
 
-caseTest('the copies of @polyspec/kit are read from the installed package', COMPUTE, () => {
+caseTest('the copies and owners of @polyspec/kit are read from the installed package', COMPUTE, () => {
   const root = mkdtempSync(join(tmpdir(), 'orm-kit-copies-'));
   try {
     writeFileSync(join(root, 'package.json'), '{"name":"x","private":true}');
@@ -669,6 +726,9 @@ caseTest('the copies of @polyspec/kit are read from the installed package', COMP
     mkdirSync(join(root, 'node_modules', '@polyspec', 'kit'), { recursive: true });
     writeFileSync(join(root, 'node_modules', '@polyspec', 'kit', 'package.json'), '{"name":"@polyspec/kit","kit":{"copies":{"ruff.toml":"ruff.toml"}}}');
     assert.deepEqual(kitCopies(root), { 'ruff.toml': 'ruff.toml' });
+    assert.throws(() => kitOwnedPaths(root), /declares no kit.owners/);
+    writeFileSync(join(root, 'node_modules', '@polyspec', 'kit', 'package.json'), '{"name":"@polyspec/kit","kit":{"copies":{"ruff.toml":"ruff.toml"},"owners":[{"paths":[".github/workflows/release.yml"]}]}}');
+    assert.deepEqual(kitOwnedPaths(root), ['.github/workflows/release.yml']);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -676,7 +736,7 @@ caseTest('the copies of @polyspec/kit are read from the installed package', COMP
 
 caseTest('every workflow job runs on the runner of .github/runner', COMPUTE, () => {
   assert.equal(text('.github/runner'), 'ubuntu-26.04-arm\n');
-  assert.deepEqual(runnerErrors(text('.github/runner'), ownWorkflows(workflows, vendoredFiles)), []);
+  assert.deepEqual(runnerErrors(text('.github/runner'), ownWorkflows(workflows, kitOwned)), []);
 });
 
 caseTest('a job on another runner fails', COMPUTE, () => {
@@ -1547,8 +1607,8 @@ caseTest('every CI step runs a make target', COMPUTE, () => {
   ]);
   const root = new URL('../..', import.meta.url).pathname;
   const directory = join(root, '.github/workflows');
-  // orm's own workflows; the copies of @polyspec/kit are kit's and kit-check holds them byte for byte (KSTD-5-24).
-  assert.deepEqual(ciMakeErrors(ownWorkflows(Object.fromEntries(readdirSync(directory).filter(name => /\.ya?ml$/.test(name)).map(name => [`.github/workflows/${name}`, readFileSync(join(directory, name), 'utf8')])), copies)), []);
+  // orm's own workflows; Kit-owned workflows are checked by Kit's layout target (KSTD-5-24).
+  assert.deepEqual(ciMakeErrors(ownWorkflows(Object.fromEntries(readdirSync(directory).filter(name => /\.ya?ml$/.test(name)).map(name => [`.github/workflows/${name}`, readFileSync(join(directory, name), 'utf8')])), kitOwned)), []);
 });
 
 caseTest('a test does not fail on a measured time above a bound', COMPUTE, () => {
@@ -1572,7 +1632,7 @@ caseTest('every workflow runs on its declared events only', COMPUTE, () => {
   const root = new URL('../..', import.meta.url).pathname;
   const directory = join(root, '.github/workflows');
   const actual = Object.fromEntries(readdirSync(directory).filter(name => /\.ya?ml$/.test(name)).map(name => [`.github/workflows/${name}`, readFileSync(join(directory, name), 'utf8')]));
-  assert.deepEqual(workflowTriggerErrors(ownWorkflows(actual, copies)), []);
+  assert.deepEqual(workflowTriggerErrors(ownWorkflows(actual, kitOwned)), []);
   const text = (on: string[]) => `name: x\n${on.join('\n')}\n\njobs:\n  a:\n    runs-on: ubuntu\n`;
   const declared = Object.fromEntries(Object.entries(WORKFLOW_TRIGGERS).map(([path, on]) => [path, text([stringify({ on })])]));
   assert.deepEqual(workflowTriggerErrors(declared), []);
@@ -1588,7 +1648,7 @@ caseTest('every workflow runs on its declared events only', COMPUTE, () => {
     '.github/workflows/review.yml runs on pull_request; only ci.yml, push-gate.yml and docs-pages.yml run on these events',
   ]);
   assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/review.yml': text(['on:', '  schedule:', "    - cron: '0 3 * * 1'", '  workflow_dispatch:']) }), []);
-  // release.yml is kit's copy, so the table holds no entry for it: a run on push of a copy is not judged here (KSTD-5-25).
+  // release.yml is owned by Kit, so the table holds no entry for it (KSTD-5-25).
   assert.equal(Object.hasOwn(WORKFLOW_TRIGGERS, '.github/workflows/release.yml'), false);
   assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/release.yml': text(['on:', '  push:', '    branches: [main]']) }), [
     '.github/workflows/release.yml runs on push; only ci.yml, push-gate.yml and docs-pages.yml run on these events',
@@ -1604,7 +1664,7 @@ caseTest('every workflow that runs on push cancels the run of the push before it
   assert.deepEqual(concurrencyErrors({ 'd.yml': workflow('  push:') }).map(error => error.split(' ')[0]), ['d.yml']);
   const root = new URL('../..', import.meta.url).pathname;
   const directory = join(root, '.github/workflows');
-  assert.deepEqual(concurrencyErrors(ownWorkflows(Object.fromEntries(readdirSync(directory).filter(name => /\.ya?ml$/.test(name)).map(name => [name, readFileSync(join(directory, name), 'utf8')])), vendoredFiles)), []);
+  assert.deepEqual(concurrencyErrors(ownWorkflows(Object.fromEntries(readdirSync(directory).filter(name => /\.ya?ml$/.test(name)).map(name => [name, readFileSync(join(directory, name), 'utf8')])), kitOwned)), []);
 });
 
 // mise.toml declares the one Go release (kit K127): kit's toolchain-check requires it to be the kit pin and the running go

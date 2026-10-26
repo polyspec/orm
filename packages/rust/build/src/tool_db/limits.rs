@@ -65,7 +65,11 @@ impl ValueBudget {
         Ok(Self { limits, bytes: 0 })
     }
     pub(super) fn check_row_count(&self, count: usize) -> Result<(), sqlx::Error> {
-        if count >= self.limits.max_rows { Err(error()) } else { Ok(()) }
+        if count >= self.limits.max_rows {
+            Err(error())
+        } else {
+            Ok(())
+        }
     }
     pub(super) fn add_row<T: CellSize>(&mut self, row: &[T], _count: usize) -> Result<(), sqlx::Error> {
         let size = row.iter().try_fold(0usize, |bytes, value| bytes.checked_add(value.size_bytes()).filter(|total| *total <= self.limits.max_bytes));

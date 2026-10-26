@@ -1,5 +1,5 @@
 //! Checked original values for optimistic row editing, not write authorization.
-use super::{TableKind, TableMetadata, TablePage, metadata};
+use super::{metadata, TableKind, TableMetadata, TablePage};
 use crate::tool_db::{GridCell, GridQueryResult, P};
 use sha2::{Digest, Sha256};
 use std::{collections::HashSet, io::Write};

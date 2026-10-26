@@ -1,7 +1,8 @@
 // The comment language check reads each ecosystem's comments with that ecosystem's own tokenizer, so Hangul in a
 // string, a raw string or a template is accepted, and Hangul in a comment is rejected with its line.
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { after } from 'node:test';
+import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { caseTest, COMPUTE } from '../../tests/testcase.mts';
@@ -36,13 +37,24 @@ const cases: Array<{ name: string; path: string; text: string; lines: number[] }
 ];
 
 // Every case is written to its own directory, so one batch run of each tokenizer covers all of them.
-const dir = await mkdtemp(join(tmpdir(), 'orm-comments-'));
-const placed = cases.map((c, i) => ({ ...c, path: join(String(i), c.path) }));
-for (const c of placed) {
-  await mkdir(dirname(join(dir, c.path)), { recursive: true });
-  await writeFile(join(dir, c.path), c.text);
+async function commentFixtures(sourceCases: typeof cases, read = commentsByFile) {
+  const dir = await mkdtemp(join(tmpdir(), 'orm-comments-'));
+  try {
+    const placed = sourceCases.map((c, i) => ({ ...c, path: join(String(i), c.path) }));
+    for (const c of placed) {
+      await mkdir(dirname(join(dir, c.path)), { recursive: true });
+      await writeFile(join(dir, c.path), c.text);
+    }
+    const byFile = await read(dir, placed.map(c => c.path));
+    return { dir, placed, byFile };
+  } catch (error) {
+    await rm(dir, { recursive: true, force: true });
+    throw error;
+  }
 }
-const byFile = await commentsByFile(dir, placed.map(c => c.path));
+
+const { dir, placed, byFile } = await commentFixtures(cases);
+after(() => rm(dir, { recursive: true, force: true }));
 
 placed.forEach(({ name, lines, path }) => {
   caseTest(name, COMPUTE, () => {
@@ -58,10 +70,18 @@ caseTest('a file without comment syntax has no family', COMPUTE, () => {
   assert.equal(familyOf('config/a.json'), undefined);
 });
 
-caseTest('commentsByFile splits a block comment into its physical lines', COMPUTE, async () => {
+caseTest('commentsByFile splits block comments and removes fixtures after tokenizer failure', COMPUTE, async () => {
   const rel = join('block', 'a.go');
   await mkdir(dirname(join(dir, rel)), { recursive: true });
   await writeFile(join(dir, rel), 'x\n// one\n/* two\nthree */\n');
   const comments = (await commentsByFile(dir, [rel])).get(rel) ?? [];
   assert.deepEqual(comments.map(comment => comment.line), [2, 3, 4]);
+
+  const before = (await readdir(tmpdir())).filter(name => name.startsWith('orm-comments-')).sort();
+  await assert.rejects(
+    commentFixtures([cases[0]!], async () => { throw new Error('tokenizer failure'); }),
+    /tokenizer failure/,
+  );
+  const after = (await readdir(tmpdir())).filter(name => name.startsWith('orm-comments-')).sort();
+  assert.deepEqual(after, before, 'a tokenizer failure removes its partial comment fixture directory');
 });

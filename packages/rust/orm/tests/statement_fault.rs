@@ -20,13 +20,12 @@ mod model_row;
 mod model_connect;
 #[path = "common/rollback_probe.rs"]
 mod rollback_probe;
-use rollback_probe::{PROBE_SCHEMA, Probe};
 use model_connect::connected;
+use rollback_probe::{Probe, PROBE_SCHEMA};
 
 #[path = "common/or_panic.rs"]
 mod or_panic;
 use or_panic::OrPanic;
-
 
 #[path = "common/case_database_run.rs"]
 mod case_database_run;
@@ -59,8 +58,6 @@ fn named_case(case: &str) -> String {
     assert!(fixture.cases.iter().any(|c| c == case), "statement_fault.json does not name the case {case}");
     case.to_owned()
 }
-
-
 
 /// Opens the client and installs the probe table.
 async fn installed(driver: &str, dsn: &str) -> Db {

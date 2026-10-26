@@ -9,7 +9,7 @@
 mod or_panic;
 use or_panic::OrPanic;
 
-use std::sync::{Mutex};
+use std::sync::Mutex;
 
 use base64::Engine as _;
 use polyspec_orm::codec::{decode, encode, encode_ordered, hex_decode, host_decode, host_encode};
@@ -136,9 +136,7 @@ fn vector_case(v: &Vector) {
         Ok(output) => output,
         Err(poisoned) => poisoned.into_inner(),
     };
-    output
-        .get_or_insert_with(Map::new)
-        .insert(v.name.clone(), enc_b64.clone().map(Value::String).unwrap_or(Value::Null));
+    output.get_or_insert_with(Map::new).insert(v.name.clone(), enc_b64.clone().map(Value::String).unwrap_or(Value::Null));
     if v.deterministic && enc_b64 != v.encoded_b64 {
         fails.push(format!("encoded {enc_b64:?} want {:?}", v.encoded_b64));
     }

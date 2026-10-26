@@ -1,4 +1,4 @@
-use polyspec_orm_testcase::{PROCESS, case};
+use polyspec_orm_testcase::{case, PROCESS};
 use std::fs;
 use std::process::Command;
 

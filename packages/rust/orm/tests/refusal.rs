@@ -36,7 +36,6 @@ const CASE_DEADLINE: Duration = Duration::from_secs(30);
 
 model_row!(RefusedRow, REFUSED_ROW, COLUMNS);
 
-
 async fn installed(driver: &str, dsn: &str) -> Db {
     let db = Db::connect(dsn, 2, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: {e}"));
     db.utils().schema().install(&REFUSAL_SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));

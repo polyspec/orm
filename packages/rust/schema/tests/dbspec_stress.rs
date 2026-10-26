@@ -11,31 +11,17 @@ fn stress_document_round_trips_canonically() {
     let case = polyspec_orm_testcase::start("stress document canonical round trip", Duration::from_secs(60));
     // Discover the checkout from tracked markers instead of assuming a package-relative layout.
     let working_directory = std::env::current_dir().expect("read the test working directory");
-    let root = match working_directory
-        .ancestors()
-        .find(|directory| {
-            directory.join("go.work").is_file()
-                && directory.join("tests/dbspec/stress.mts").is_file()
-        })
+    let root = match working_directory.ancestors().find(|directory| directory.join("go.work").is_file() && directory.join("tests/dbspec/stress.mts").is_file())
     {
         Some(root) => root,
         None => panic!("could not find the repository root from the test working directory"),
     };
     let generator = root.join("tests/dbspec/stress.mts");
-    let generated = match Command::new("node")
-        .arg(&generator)
-        .current_dir(root)
-        .output()
-    {
+    let generated = match Command::new("node").arg(&generator).current_dir(root).output() {
         Ok(generated) => generated,
         Err(error) => panic!("node {} could not start: {error}", generator.display()),
     };
-    assert!(
-        generated.status.success(),
-        "node tests/dbspec/stress.mts failed with {}: {}",
-        generated.status,
-        String::from_utf8_lossy(&generated.stderr)
-    );
+    assert!(generated.status.success(), "node tests/dbspec/stress.mts failed with {}: {}", generated.status, String::from_utf8_lossy(&generated.stderr));
     let text = String::from_utf8(generated.stdout).expect("stress generator writes UTF-8");
     case.step(format_args!("generated {} bytes", text.len()));
 

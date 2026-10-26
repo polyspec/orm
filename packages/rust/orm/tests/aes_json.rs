@@ -23,9 +23,8 @@ mod model_row;
 mod secret_config;
 #[path = "common/secret_connected.rs"]
 mod secret_connected;
-use secret_connected::connected;
 use secret_config::SCHEMA;
-
+use secret_connected::connected;
 
 async fn open(dsn: &str, keys: &[(i32, &str)], version: i32) -> Db {
     let keys: BTreeMap<i32, String> = keys.iter().map(|(v, k)| (*v, (*k).to_owned())).collect();
@@ -81,13 +80,8 @@ async fn aes_json_column() {
         first.utils().schema().install(&SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));
         let mut row = connected(&first);
         row.core_mut().set_ordered("config", polyspec_orm::ordered_json::parse(text).unwrap());
-        let seq = polyspec_orm::model::create(&mut row)
-            .await
-            .or_panic(|e| format!("{driver}: create: {e}"))
-            .value("seq")
-            .expect("generated seq")
-            .as_i64()
-            .unwrap();
+        let seq =
+            polyspec_orm::model::create(&mut row).await.or_panic(|e| format!("{driver}: create: {e}")).value("seq").expect("generated seq").as_i64().unwrap();
         assert_eq!(read(&first).await, text, "{driver}: read back");
         let (cell, version) = stored(&first).await;
         assert!(cell.starts_with(b"ORM-AES2\0") && !cell.windows(12).any(|w| w == b"s3cret-token") && version == 1, "{driver}: stored version {version}");

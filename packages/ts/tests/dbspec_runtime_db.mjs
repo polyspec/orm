@@ -198,11 +198,17 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
     } else if (dialect === 'postgres') {
       await db.pool.execute("UPDATE probe SET ratio = 'NaN'::double precision WHERE seq = $1", [seq], undefined, () => undefined);
     } else {
-      await db.pool.execute('UPDATE probe SET wide = ? WHERE seq = ?', ['not-an-integer', seq], undefined, () => undefined);
+      await db.pool.execute('PRAGMA ignore_check_constraints = ON', [], undefined, () => undefined);
+      try {
+        await db.pool.execute('UPDATE probe SET wide = ? WHERE seq = ?', ['not-an-integer', seq], undefined, () => undefined);
+      } finally {
+        await db.pool.execute('PRAGMA ignore_check_constraints = OFF', [], undefined, () => undefined);
+      }
     }
-    const invalidColumn = dialect === 'postgres' ? 'ratio' : 'wide';
+    const invalidRead = new Probe().connect(db).seq(seq);
+    invalidRead[CORE].addColumn(dialect === 'postgres' ? 'ratio' : 'wide');
     await assert.rejects(
-      new Probe().connect(db).seq(seq).addColumn(invalidColumn).get(),
+      invalidRead.get(),
       error => error instanceof OrmError && error.code === 'CODEC_DECODE',
     );
     if (dialect === 'mysql') {

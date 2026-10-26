@@ -302,11 +302,7 @@ mod driver_error_tests {
     #[test]
     fn unknown_database_error_keeps_the_native_source_chain() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let mapped = Error::from(sqlx::Error::Database(Box::new(DatabaseErrorStub::new(
-            "trigger refused the write",
-            "trigger refused the write",
-            None,
-        ))));
+        let mapped = Error::from(sqlx::Error::Database(Box::new(DatabaseErrorStub::new("trigger refused the write", "trigger refused the write", None))));
         assert_eq!(mapped.code(), codes::DRIVER);
         assert!(mapped.to_string().contains("trigger refused the write"));
         let sqlx_source = StdError::source(&mapped).expect("mapped error keeps sqlx error");

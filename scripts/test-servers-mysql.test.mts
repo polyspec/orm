@@ -30,11 +30,19 @@ caseTest('countDifferences compares counts by lower case name', COMPUTE, () => {
 const repository = new URL('..', import.meta.url).pathname;
 const platformDefault = process.platform === 'darwin' ? 2 : 0;
 
+function fixtureEnvironment(root: string) {
+  return isolatedEnvironment({
+    LEASE: process.env.LEASE ?? '',
+    STOP_PROCESS: process.env.STOP_PROCESS ?? '',
+    LEASES: join(root, '.runtime/servers.leases'),
+  });
+}
+
 // earlier edits the copied script that starts the earlier servers; a case changes it to make the setup fail.
 function fixture(mysqlPort: number, replicaPort: number, earlier = (declared: string, _root: string) => declared) {
   const root = mkdtempSync('/tmp/orm-mig-');
   const close = () => {
-    spawnSync(process.execPath, [join(root, 'scripts/test-servers.mts'), 'mysql-stop'], { stdio: 'ignore' });
+    spawnSync(process.execPath, [join(root, 'scripts/test-servers.mts'), 'mysql-stop'], { stdio: 'ignore', env: fixtureEnvironment(root) });
     // Only stop removes the socket directory that mysql-start made (the socket folder of test-servers.mts), so it is removed here.
     // The script names its servers by its real path (Node resolves the module path); /tmp is a link on macOS.
     rmSync(paths(realpathSync(root)).socketDir, { recursive: true, force: true });
@@ -42,7 +50,8 @@ function fixture(mysqlPort: number, replicaPort: number, earlier = (declared: st
   };
   // A failed setup leaves nothing behind: the servers it started and its folders go, and the error is rethrown.
   try {
-    for (const file of ['scripts/test-servers.mts']) {
+    // The copied server script imports this helper through ../tests; keep that relative path inside the fixture root.
+    for (const file of ['scripts/test-servers.mts', 'tests/errors.mts']) {
       mkdirSync(join(root, file, '..'), { recursive: true });
       copyFileSync(join(repository, file), join(root, file));
     }
@@ -50,7 +59,8 @@ function fixture(mysqlPort: number, replicaPort: number, earlier = (declared: st
     assert.match(declared, /^export const MYSQL_LOWER_CASE = 1;$/m);
     writeFileSync(join(root, 'scripts/earlier-servers.mts'), earlier(declared.replace(/^export const MYSQL_LOWER_CASE = 1;$/m, `export const MYSQL_LOWER_CASE = ${platformDefault};`), root));
     mkdirSync(join(root, '.runtime/servers'), { recursive: true });
-    execFileSync(process.execPath, [join(root, 'scripts/earlier-servers.mts'), 'mysql-start', String(mysqlPort), String(replicaPort)], { stdio: 'ignore' });
+    execFileSync(process.execPath, [join(root, 'scripts/earlier-servers.mts'), 'mysql-start', String(mysqlPort), String(replicaPort)],
+      { stdio: 'ignore', env: fixtureEnvironment(root) });
   } catch (error) {
     close();
     throw error;
@@ -62,7 +72,7 @@ function fixture(mysqlPort: number, replicaPort: number, earlier = (declared: st
     leases: join(root, '.runtime/servers.leases'),
     // The migration takes every path as an argument, so the script of the checkout runs, with the modules it imports.
     migrate: () => spawnSync('node', [join(repository, 'scripts/test-servers-mysql.mts'), join(root, 'scripts/test-servers.mts'), join(root, '.runtime/servers'), String(mysqlPort), String(replicaPort), '1'],
-      { encoding: 'utf8', env: isolatedEnvironment({ LEASE: process.env.LEASE ?? '', LEASES: join(root, '.runtime/servers.leases') }) }),
+      { encoding: 'utf8', env: fixtureEnvironment(root) }),
     close,
   };
 }

@@ -2,14 +2,14 @@
 //! case that restores soft-deleted rows (in the same order as restoreCase in packages/go/orm/restore_test.go). restore.rs and
 //! coverage_audit_triggers.rs both use it.
 
-use crate::or_panic::OrPanic;
 use crate::model_connect;
+use crate::or_panic::OrPanic;
 use crate::result_code::code;
 
 use std::collections::BTreeMap;
 
-use polyspec_orm::{Db, Entity, Model, Param, Schema, Val};
 use crate::sql_text_rows::text_rows;
+use polyspec_orm::{Db, Entity, Model, Param, Schema, Val};
 
 pub static SCHEMA: Schema =
     Schema::new(include_str!("../../../../../contracts/fixtures/restore.dbs"), "sha256:a00c2b376b166195f8aabc29de2a2dee20313e5d9d253eeb4f601f55e9ba0aaf");
@@ -52,7 +52,11 @@ fn shown(values: &BTreeMap<String, Val>) -> String {
 
 /// A SQL expression that reads a column as text.
 fn cast_text(driver: &str, column: &str) -> String {
-    if driver == "mysql" { format!("CAST({column} AS CHAR)") } else { format!("CAST({column} AS TEXT)") }
+    if driver == "mysql" {
+        format!("CAST({column} AS CHAR)")
+    } else {
+        format!("CAST({column} AS TEXT)")
+    }
 }
 
 /// Installs restore.dbs in the dsn's database and restores soft-deleted rows. membership has a unique key

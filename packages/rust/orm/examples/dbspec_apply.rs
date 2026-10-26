@@ -9,7 +9,7 @@
 
 use chrono::{DateTime, TimeZone, Utc};
 use polyspec_orm::dbspec::{
-    ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, CatalogQuerier, CatalogValue, Dialect, Plan, apply, parse_plan, recover, rollback,
+    apply, parse_plan, recover, rollback, ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, CatalogQuerier, CatalogValue, Dialect, Plan,
 };
 use serde_json::Value;
 use sqlx::Connection;
@@ -17,7 +17,7 @@ use sqlx::Connection;
 #[path = "../tests/common/apply_stop.rs"]
 mod apply_stop;
 
-use apply_stop::{EventError, Stop, record_steps};
+use apply_stop::{record_steps, EventError, Stop};
 
 #[tokio::main]
 async fn main() {

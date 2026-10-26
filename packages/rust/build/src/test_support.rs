@@ -23,6 +23,4 @@ pub(crate) fn non_unicode_manifest_dir(base: &Path) -> OsString {
 }
 
 #[cfg(not(any(unix, windows)))]
-compile_error!(
-    "the build environment tests require a platform-native non-Unicode path constructor"
-);
+compile_error!("the build environment tests require a platform-native non-Unicode path constructor");

@@ -588,8 +588,8 @@ pub fn executor_stages(stages: &[String]) -> Vec<&str> {
 // ---- host stages (docs/spec/dialects.md): what MySQL does in SQL, PostgreSQL/SQLite leave to the executor ----
 
 use aes_gcm::{
-    Aes256Gcm, KeyInit as GcmKeyInit, Nonce,
     aead::{Aead, Payload},
+    Aes256Gcm, KeyInit as GcmKeyInit, Nonce,
 };
 use hmac::{Hmac, Mac};
 use sha2::{Digest, Sha256};

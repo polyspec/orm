@@ -99,12 +99,8 @@ fn aes_read_stored_version_codes() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let asm = aes_read_assemble();
     let keys = keys(&[(1, "old-key"), (2, "new-key")]);
-    let valid_cipher = polyspec_orm::codec::host_encode(
-        &polyspec_orm::Param::Str("value".into()),
-        &["aes".into(), "hex".into()],
-        "old-key",
-    )
-    .expect("valid AES fixture");
+    let valid_cipher =
+        polyspec_orm::codec::host_encode(&polyspec_orm::Param::Str("value".into()), &["aes".into(), "hex".into()], "old-key").expect("valid AES fixture");
     let polyspec_orm::Param::Str(valid_cipher) = valid_cipher else {
         panic!("AES hex encoding returns text");
     };

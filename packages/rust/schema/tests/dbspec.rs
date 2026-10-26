@@ -95,7 +95,6 @@ fn parsed(id: &str, text: &str, set: &BTreeMap<String, String>) -> Document {
     }
 }
 
-
 fn run(case: &Value, kind: &str) {
     let clock = CaseClock::start();
     let id = case["id"].as_str().unwrap();

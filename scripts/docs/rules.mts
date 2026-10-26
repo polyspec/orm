@@ -8,6 +8,7 @@ import { kitCopies } from '../repo/kit-copies.mts';
 import { readJsonFile } from '../json/schema.mts';
 import { errorCode } from '../../tests/errors.mts';
 import { filterRuleFailures, onlyRuleFromArgs } from './rules-filter.mts';
+import { countMismatches, declaredClientAliases, incompleteClientSets } from './implementation-count.mts';
 
 // rules check is one case that reads the documentation files and checks pairs and style.
 const log = sections();
@@ -150,20 +151,15 @@ if (clients.length === 0) fail('docs.implementation-count', 'config/parity.json 
 const runnersFromParity = /export const requiredLanguages = implementationLanguages\(\)/.test(runnerSource);
 if (!runnersFromParity && JSON.stringify([...clients].sort()) !== JSON.stringify([...runners].sort()))
   fail('docs.implementation-count', `tests/conformance/check/main.mts requiredLanguages (${runners.join(', ')}) differs from the declared implementations of config/parity.json (${clients.join(', ')})`);
-const numberWords: Record<string, number> = { two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
-const koreanNumbers: Record<string, number> = { '두': 2, '세': 3, '네': 4, '다섯': 5, '여섯': 6, '일곱': 7, '여덟': 8, '아홉': 9, '열': 10 };
-const countedEnglish = /\b(two|three|four|five|six|seven|eight|nine|ten|\d+)\b(?:[ -]+[\w-]+){0,2}?[ -]+(clients?|implementations?|runners?|planners?)\b|\b(two|three|four|five|six|seven|eight|nine|ten|\d+)[ -]+(outputs?)\b/gi;
-const countedKorean = /(?<![가-힣])(두|세|네|다섯|여섯|일곱|여덟|아홉|열|\d+)[ \t]*(?:개[ \t]*)?(클라이언트|구현|러너|플래너)/g;
 for (const file of [...sources, ...translations.values()]) {
   if (file.includes(`${path.sep}docs${path.sep}plans${path.sep}`) || path.basename(file).startsWith('CHANGELOG')) continue;
   const text = prose(await readFile(file, 'utf8'));
   const isKorean = file.endsWith('.ko.md');
-  for (const match of text.matchAll(isKorean ? countedKorean : countedEnglish)) {
-    const word = (match[1] ?? match[3] ?? '').toLowerCase();
-    const value = /^\d+$/.test(word) ? Number(word) : isKorean ? koreanNumbers[word] : numberWords[word];
-    if (value !== clients.length) fail('docs.implementation-count', `${relative(file)} counts ${JSON.stringify(match[0].trim())}; config/parity.json declares ${clients.length} clients (${clients.join(', ')})`);
+  for (const phrase of countMismatches(text, isKorean, clients.length)) {
+    fail('docs.implementation-count', `${relative(file)} counts ${JSON.stringify(phrase)}; config/parity.json declares ${clients.length} clients (${clients.join(', ')})`);
   }
 }
+
 
 // The planning table of protocol section 4 names every declared implementation, one row each.
 const clientNames: Record<string, string> = { go: 'Go', php: 'PHP', 'php-extension': 'PHP extension', rust: 'Rust', typescript: 'TypeScript', python: 'Python' };
@@ -181,11 +177,8 @@ for (const file of ['docs/spec/protocol.md', 'docs/spec/protocol.ko.md']) {
 // sentence that uses two or more client names as the set ("the clients", "implementations", "languages", "runners" or
 // "planners", in English or Korean) names all of them. A subset statement about some clients is not checked.
 const clientDisplay = [...new Set(clients.map(client => clientNames[client] ?? client))];
-// The longer name comes first, so that "PHP extension" is read as itself and not as PHP.
-const names = [...clientDisplay].sort((left, right) => right.length - left.length).join('|');
-const displayOf = (cell: string): string | undefined => [...clientDisplay].sort((left, right) => right.length - left.length).find(name => cell === name || cell.startsWith(`${name} `));
-const setNoun = /\b(clients?|implementations?|languages?|runners?|planners?)\b|클라이언트|구현|언어|러너|플래너/i;
-const enumerated = new RegExp(`\\b(?:${names})\\b(?: extension)?(?:(?:\\s*[,·]\\s*(?:(?:and|or)\\s+)?(?:the\\s+)?|\\s+(?:and|or)\\s+)(?:${names})\\b(?: extension)?)+`, 'g');
+const aliases = declaredClientAliases(clients, clientNames);
+const displayOf = (cell: string): string | undefined => aliases.find(value => cell === value.alias || cell.startsWith(`${value.alias} `))?.client;
 for (const file of [...sources, ...translations.values()]) {
   if (file.includes(`${path.sep}docs${path.sep}plans${path.sep}`) || path.basename(file).startsWith('CHANGELOG')) continue;
   const source = await readFile(file, 'utf8');
@@ -198,19 +191,9 @@ for (const file of [...sources, ...translations.values()]) {
       }
     }
   }
-  const lines = source.replace(/```[\s\S]*?```|<!--[\s\S]*?-->/g, block => block.replace(/[^\n]/g, '')).replace(/`/g, '').split('\n');
-  for (let index = 0; index < lines.length; index++) {
-    const line = lines[index] ?? '';
-    for (const match of line.matchAll(enumerated)) {
-      // The run is the set when a set noun stands within two words before or after it in the same sentence.
-      const start = match.index ?? 0;
-      const before = line.slice(0, start).split(/[.!?。]\s+/).pop()?.trim().split(/\s+/).slice(-2).join(' ') ?? '';
-      const after = line.slice(start + match[0].length).split(/[.!?。]\s+/)[0]?.trim().split(/\s+/).slice(0, 2).join(' ') ?? '';
-      if (!setNoun.test(before) && !setNoun.test(after)) continue;
-      const found = new Set([...match[0].matchAll(new RegExp(`\\b(${names})\\b`, 'g'))].map(item => item[1] ?? ''));
-      const missing = clientDisplay.filter(name => !found.has(name));
-      if (missing.length) fail('docs.implementation-count', `${relative(file)} line ${index + 1} uses ${JSON.stringify(match[0])} as the set and omits ${missing.join(', ')}`);
-    }
+  for (const finding of incompleteClientSets(source, aliases)) {
+    // A set noun within two words marks the enumerated names as the complete implementation set.
+    fail('docs.implementation-count', `${relative(file)} line ${finding.line} uses ${JSON.stringify(finding.phrase)} as the set and omits ${finding.missing.join(', ')}`);
   }
 }
 

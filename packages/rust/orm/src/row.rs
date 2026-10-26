@@ -343,12 +343,10 @@ pub fn decode_styled(asm: &crate::plan::Assemble, data: &mut [Vec<Val>], aes_key
 fn aes_row_version(row: &[Val], index: usize) -> Result<i32> {
     let value = row.get(index).ok_or_else(|| Error::internal(format!("AES version cell index {index} is absent from the selected row")))?;
     let stored = match value {
-        Val::Str(text) if !text.is_empty() && text.bytes().all(|byte| byte.is_ascii_digit()) => {
-            text.parse::<i64>().map_err(|error| Error::Engine {
-                code: crate::codes::CODEC_DECODE.into(),
-                msg: format!("aes version {text:?} is not a positive 32-bit integer: {error}"),
-            })?
-        }
+        Val::Str(text) if !text.is_empty() && text.bytes().all(|byte| byte.is_ascii_digit()) => text.parse::<i64>().map_err(|error| Error::Engine {
+            code: crate::codes::CODEC_DECODE.into(),
+            msg: format!("aes version {text:?} is not a positive 32-bit integer: {error}"),
+        })?,
         _ => value.as_i64()?,
     };
     let version = i32::try_from(stored).map_err(|error| Error::Engine {

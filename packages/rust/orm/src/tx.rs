@@ -12,11 +12,11 @@ use futures_util::FutureExt as _;
 
 use crate::db::{Db, Executor, Pool};
 use crate::driver::{CancellableConnection, MySqlOwnedTx, TxInner};
-use crate::events::{self, KIND_BEGIN, KIND_COMMIT, KIND_RELEASE, KIND_ROLLBACK, KIND_ROLLBACK_TO, KIND_SAVEPOINT, KIND_UTILITY, Sent};
-use crate::markdown::{MdControl, MdPool, begin_message};
+use crate::events::{self, Sent, KIND_BEGIN, KIND_COMMIT, KIND_RELEASE, KIND_ROLLBACK, KIND_ROLLBACK_TO, KIND_SAVEPOINT, KIND_UTILITY};
+use crate::markdown::{begin_message, MdControl, MdPool};
 use crate::schema::Schema;
 use crate::value::Param;
-use crate::{Error, Result, codes};
+use crate::{codes, Error, Result};
 
 /// One active transaction.
 pub(crate) struct TxShared {
@@ -534,7 +534,11 @@ impl<'a> OnceScope<'a> {
         match self {
             OnceScope::Transaction { db, tx } => Box::pin(async move {
                 let rolled_back = rollback(&tx).await;
-                if fault { rolled_back.and_then(|()| rollback_fault(db)) } else { rolled_back }
+                if fault {
+                    rolled_back.and_then(|()| rollback_fault(db))
+                } else {
+                    rolled_back
+                }
             }),
             OnceScope::Savepoint { tx, name, audit } => Box::pin(async move {
                 *tx.audit.lock().unwrap() = audit;
@@ -1185,7 +1189,11 @@ mod tests {
             .transaction_send(move || {
                 let attempts = callback_attempts.clone();
                 async move {
-                    if attempts.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0 { Err(transaction_conflict("retry Send callback")) } else { Ok(23) }
+                    if attempts.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0 {
+                        Err(transaction_conflict("retry Send callback"))
+                    } else {
+                        Ok(23)
+                    }
                 }
             })
             .retry(1)
@@ -1625,7 +1633,11 @@ mod tests {
     ) -> std::ffi::c_int {
         // SAFETY: SQLite passes a null or NUL-terminated string.
         let text = |p: *const std::ffi::c_char| {
-            if p.is_null() { "" } else { unsafe { std::ffi::CStr::from_ptr(p) }.to_str().or_panic(|e| format!("the SQLite text is not UTF-8: {e}")) }
+            if p.is_null() {
+                ""
+            } else {
+                unsafe { std::ffi::CStr::from_ptr(p) }.to_str().or_panic(|e| format!("the SQLite text is not UTF-8: {e}"))
+            }
         };
         let denied = match SQLITE_DENIED.load(Ordering::Acquire) {
             DENY_ROLLBACK => action == libsqlite3_sys::SQLITE_TRANSACTION && text(first) == "ROLLBACK",
@@ -1636,7 +1648,11 @@ mod tests {
             DENY_SAVEPOINT_END => action == libsqlite3_sys::SQLITE_SAVEPOINT && matches!(text(first), "ROLLBACK" | "RELEASE"),
             _ => false,
         };
-        if denied { libsqlite3_sys::SQLITE_DENY } else { libsqlite3_sys::SQLITE_OK }
+        if denied {
+            libsqlite3_sys::SQLITE_DENY
+        } else {
+            libsqlite3_sys::SQLITE_OK
+        }
     }
 
     /// Puts the authorizer on the pool's only connection so that it denies `denied`.

@@ -44,7 +44,7 @@ caseTest('tableUnder reads the table of its heading and not one below a later he
 });
 
 
-caseTest('angle-bracket examples in both Kit Standard checklists render as text', TIMEOUT, async () => {
+caseTest('angle-bracket examples in plan checklists render as text', TIMEOUT, async () => {
   const docs = path.resolve('docs');
   const vitepress: unknown = require('vitepress');
   const createMarkdownRenderer = method(vitepress, 'createMarkdownRenderer');
@@ -63,6 +63,16 @@ caseTest('angle-bracket examples in both Kit Standard checklists render as text'
       assert.match(rendered, /&lt;max@blue\.tools&gt;/, `${relativePath} renders the commit identity literally`);
       assert.match(rendered, /&lt;X&gt;/, `${relativePath} renders the generic type literally`);
       assert.match(rendered, /Refines &lt;id&gt;:/, `${relativePath} preserves the refinement prefix`);
+      assert.match(rendered, /test_&lt;id&gt;/, `${relativePath} renders the test id placeholder literally`);
+    }
+    for (const relativePath of [
+      'plans/execution/checklist.md',
+      'plans/execution/checklist.ko.md',
+    ]) {
+      const source = await readFile(path.join(docs, relativePath), 'utf8');
+      const rendered: unknown = Reflect.apply(render, markdown, [source, { relativePath, path: path.join(docs, relativePath) }]);
+      if (typeof rendered !== 'string') throw new Error(`${relativePath} did not render to HTML text`);
+      assert.match(rendered, /<code>&lt;limepie&gt;<\/code> and <code>&lt;polyspec&gt;<\/code>/, `${relativePath} preserves the checkout placeholders`);
     }
   } finally {
     Reflect.apply(disposeMdItInstance, vitepress, []);

@@ -21,10 +21,7 @@ fn error_code<T>(result: &Result<T>) -> Option<&str> {
 fn invalid_precision_is_schema_invalid_for_null_and_dotless_values() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let mut failures = Vec::new();
-    for (ty, dotless) in [
-        ("time", "12:34:56"),
-        ("datetime", "2024-01-02 03:04:05"),
-    ] {
+    for (ty, dotless) in [("time", "12:34:56"), ("datetime", "2024-01-02 03:04:05")] {
         for precision in [-1, 7] {
             for value in [Param::Null, Param::Str(dotless.to_owned())] {
                 let result = checked(ty, precision, value.clone());
@@ -57,10 +54,7 @@ fn temporal_precision_boundaries_and_fraction_semantics_are_preserved() {
     assert_eq!(datetime, Param::Str("2024-01-02 03:04:05.12".into()));
 
     assert_eq!(error_code(&checked("time", 2, Param::Str("12:34:56.123".into()))), Some(codes::CODEC_ENCODE));
-    assert_eq!(
-        error_code(&checked("datetime", 2, Param::Str("2024-01-02 03:04:05.123".into()))),
-        Some(codes::CODEC_ENCODE)
-    );
+    assert_eq!(error_code(&checked("datetime", 2, Param::Str("2024-01-02 03:04:05.123".into()))), Some(codes::CODEC_ENCODE));
 }
 
 #[test]

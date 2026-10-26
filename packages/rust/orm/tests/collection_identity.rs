@@ -85,11 +85,7 @@ fn every_fixture_key_has_its_own_identity() {
         assert_eq!(key, again, "key {name} has no stable identity");
         let preserves_native_type = matches!(
             (entry["type"].as_str(), &key),
-            (Some("text"), Key::S(_))
-                | (Some("bool"), Key::B(_))
-                | (Some("int"), Key::I(_))
-                | (Some("bytes"), Key::X(_))
-                | (Some("datetime"), Key::T(_))
+            (Some("text"), Key::S(_)) | (Some("bool"), Key::B(_)) | (Some("int"), Key::I(_)) | (Some("bytes"), Key::X(_)) | (Some("datetime"), Key::T(_))
         );
         assert!(preserves_native_type, "key {name} lost its native type: {key:?}");
         remember_key(name, key, entry["same_as"].as_str(), &mut seen);

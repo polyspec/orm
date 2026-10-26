@@ -6,7 +6,7 @@ use polyspec_orm_testcase::OrPanic;
 use sqlx::{MySqlPool, PgPool};
 
 use polyspec_orm_build::catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableRef};
-use polyspec_orm_build::tool_db::{GridCell, P, ParamType, QueryLimits, Val};
+use polyspec_orm_build::tool_db::{GridCell, ParamType, QueryLimits, Val, P};
 polyspec_orm::models!();
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
@@ -28,7 +28,11 @@ async fn connect() -> (String, CatalogConnection) {
 }
 
 fn quote(name: &str, driver: &str) -> String {
-    if driver == "mysql" { format!("`{name}`") } else { format!("\"{name}\"") }
+    if driver == "mysql" {
+        format!("`{name}`")
+    } else {
+        format!("\"{name}\"")
+    }
 }
 
 async fn within<F: std::future::Future<Output = ()>>(case: &str, body: F) {

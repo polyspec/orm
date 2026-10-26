@@ -1,8 +1,5 @@
 use super::*;
-use crate::{
-    catalog::TableKind,
-    tool_db::QueryColumn,
-};
+use crate::{catalog::TableKind, tool_db::QueryColumn};
 #[test]
 // Requirements: INT-121.
 fn page_assembly_rejects_column_or_descriptor_changes() {

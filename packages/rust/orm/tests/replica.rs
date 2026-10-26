@@ -14,8 +14,8 @@ mod model_row;
 mod model_connect;
 #[path = "common/rollback_probe.rs"]
 mod rollback_probe;
-use rollback_probe::{PROBE_SCHEMA, Probe};
 use model_connect::{connected, connected_with, with};
+use rollback_probe::{Probe, PROBE_SCHEMA};
 
 #[path = "common/or_panic.rs"]
 mod or_panic;

@@ -381,6 +381,7 @@ async function styledStates(db, dsn) {
 
 // Requirements: INT-51, INT-59, INT-61, INT-73, INT-134, INT-57, INT-79.
 async function transactions(db, dsn) {
+  const maxOpenConnections = db.driver === 'sqlite' ? 1 : 10;
   const utils = db.utils();
   check(utils.schema() !== null && utils.privileges() !== null && utils.aes() !== null && utils.stats() !== null, 'Utils exposes schema, privileges, AES and stats groups');
   const schema = utils.schema();
@@ -396,7 +397,7 @@ async function transactions(db, dsn) {
   check(await schema.exists(schemaName) === schemaExists, `${db.driver}: schema exists`);
   check(await schema.installed(schemaName, 'user') === schemaExists, `${db.driver}: schema table is installed`);
   const idleStats = db.utils().stats();
-  check(idleStats.maxOpenConnections === 10 && idleStats.openConnections === 1 && idleStats.inUse === 0 && idleStats.idle === 1,
+  check(idleStats.maxOpenConnections === maxOpenConnections && idleStats.openConnections === 1 && idleStats.inUse === 0 && idleStats.idle === 1,
     `idle connection statistics: ${JSON.stringify(idleStats)}`);
   const privileges = utils.privileges();
   if (db.driver !== 'postgres') {
@@ -436,7 +437,7 @@ async function transactions(db, dsn) {
   check(err === boom && await new User().connect(db).getCount() === 0, 'rollback');
   await db.transaction(async () => {
     const busyStats = db.utils().stats();
-    check(busyStats.maxOpenConnections === 10 && busyStats.openConnections === 1 && busyStats.inUse === 1 && busyStats.idle === 0,
+    check(busyStats.maxOpenConnections === maxOpenConnections && busyStats.openConnections === 1 && busyStats.inUse === 1 && busyStats.idle === 0,
       `busy connection statistics: ${JSON.stringify(busyStats)}`);
     await new User().setName('outer').create();
     let inner = null;
@@ -463,7 +464,7 @@ async function transactions(db, dsn) {
   check(await code(db.transaction(async () => { throw new OrmError('DEADLOCK', 'retry'); }, { retry: 0 })) === 'DEADLOCK', 'retry disabled');
   check(!(await db.utils().schema().empty()), 'schema().empty() on an installed schema');
   const releasedStats = db.utils().stats();
-  check(releasedStats.maxOpenConnections === 10 && releasedStats.openConnections === 1 && releasedStats.inUse === 0 && releasedStats.idle === 1,
+  check(releasedStats.maxOpenConnections === maxOpenConnections && releasedStats.openConnections === 1 && releasedStats.inUse === 0 && releasedStats.idle === 1,
     `released connection statistics: ${JSON.stringify(releasedStats)}`);
 }
 

@@ -1,6 +1,6 @@
-use super::{P, ParamType, params};
+use super::{params, ParamType, P};
 use polyspec_orm::chrono::{NaiveDate, NaiveDateTime, NaiveTime};
-use sqlx::{MySql, Postgres, Sqlite, mysql::MySqlArguments, postgres::PgArguments, query::Query, sqlite::SqliteArguments};
+use sqlx::{mysql::MySqlArguments, postgres::PgArguments, query::Query, sqlite::SqliteArguments, MySql, Postgres, Sqlite};
 
 pub(super) fn postgres_types(values: &[P]) -> Result<Vec<sqlx::postgres::PgTypeInfo>, sqlx::Error> {
     use sqlx::Type;

@@ -7,7 +7,7 @@
 mod model_row;
 #[path = "common/clock_test_support.rs"]
 mod clock_test_support;
-use clock_test_support::{CLOCK_SCHEMA, ClockEvent, OrPanic, connected};
+use clock_test_support::{connected, ClockEvent, OrPanic, CLOCK_SCHEMA};
 
 use std::time::Duration;
 

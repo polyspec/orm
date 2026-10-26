@@ -4,8 +4,8 @@
 //! unchanged. The DSNs from `make orm-test-servers` are ORM_TEST_MYSQL_TLS_DSN, ORM_TEST_MYSQL_TLS_OTHER_CA_DSN,
 //! and ORM_TEST_MYSQL_TLS_MISMATCH_DSN; the test fails if one is missing.
 
-use polyspec_orm::Db;
 use polyspec_orm::db::Pool;
+use polyspec_orm::Db;
 
 #[test]
 // Requirements: CFG-17.

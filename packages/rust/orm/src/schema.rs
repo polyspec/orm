@@ -6,7 +6,7 @@ use std::sync::{Arc, OnceLock};
 
 use polyspec_orm_schema::dbspec::{self, Document, Entity, RuntimeModel};
 
-use crate::{Error, Result, codes};
+use crate::{codes, Error, Result};
 
 /// The runtime model of manifest text whose hash has been checked.
 #[derive(Debug, Clone)]

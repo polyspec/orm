@@ -1259,9 +1259,7 @@ fn dbspec_foreign_key_count_limit() {
     for table in 0..21 {
         document.push_str(&format!("\ntable t{table} {{\n  id i64 identity\n  primary key (id)\n"));
         for foreign_key in 0..1000 {
-            document.push_str(&format!(
-                "  foreign key fk_{table}_{foreign_key} (id) references t{table} (id)\n"
-            ));
+            document.push_str(&format!("  foreign key fk_{table}_{foreign_key} (id) references t{table} (id)\n"));
         }
         document.push_str("}\n");
     }

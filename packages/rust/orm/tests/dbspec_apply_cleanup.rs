@@ -37,7 +37,6 @@ fn create_from_empty() -> Vec<Plan> {
     vec![parse_plan(&text).or_panic(|e| format!("create-from-empty: {e:?}"))]
 }
 
-
 /// Wraps a real SQLite connection so that when the `fail` statement runs, its message
 /// is returned as the error.
 struct Failing {

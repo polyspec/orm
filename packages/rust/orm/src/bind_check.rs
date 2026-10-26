@@ -107,7 +107,8 @@ pub(crate) fn check_param(i: usize, v: &Param, s: &ParamSlot<'_>, zone: &Zone) -
             }
             let n = text.chars().count();
             if ty == "varchar" && s.length > 0 {
-                let characters = i64::try_from(n).map_err(|error| encode_error(format!("parameter {i} has {n} characters, which does not fit a length: {error}")))?;
+                let characters =
+                    i64::try_from(n).map_err(|error| encode_error(format!("parameter {i} has {n} characters, which does not fit a length: {error}")))?;
                 if characters > s.length {
                     return Err(encode_error(format!("parameter {i} has {n} characters, more than varchar({})", s.length)));
                 }

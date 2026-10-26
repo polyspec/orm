@@ -21,11 +21,18 @@ fn required(variable: &str) -> String {
 
 fn native_sqlite_dsn(dsn: &str) -> String {
     let Some((path, query)) = dsn.split_once('?') else { return dsn.to_owned() };
-    let native_options = query.split('&').filter(|option| {
-        let key = option.split_once('=').map_or(*option, |(key, _)| key);
-        !matches!(key, "_pragma" | "timezone")
-    }).collect::<Vec<_>>();
-    if native_options.is_empty() { path.to_owned() } else { format!("{path}?{}", native_options.join("&")) }
+    let native_options = query
+        .split('&')
+        .filter(|option| {
+            let key = option.split_once('=').map_or(*option, |(key, _)| key);
+            !matches!(key, "_pragma" | "timezone")
+        })
+        .collect::<Vec<_>>();
+    if native_options.is_empty() {
+        path.to_owned()
+    } else {
+        format!("{path}?{}", native_options.join("&"))
+    }
 }
 
 #[derive(Clone, Copy)]

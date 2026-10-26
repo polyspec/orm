@@ -441,14 +441,14 @@ mod group_tests {
         let second = GroupRow::new(vec![("is_close".into(), Val::Bool(true)), ("row_count".into(), Val::I64(2))]).unwrap();
         let groups = GroupRows::new(vec![row, second]);
         assert_eq!(groups.len(), 2);
+        assert_eq!(groups.to_json().unwrap(), r#"[{"is_close":false,"row_count":3},{"is_close":true,"row_count":2}]"#);
         assert_eq!(
-            groups.to_json().unwrap(),
-            r#"[{"is_close":false,"row_count":3},{"is_close":true,"row_count":2}]"#
+            groups.to_array().unwrap(),
+            serde_json::json!([
+                {"is_close": false, "row_count": 3},
+                {"is_close": true, "row_count": 2}
+            ])
         );
-        assert_eq!(groups.to_array().unwrap(), serde_json::json!([
-            {"is_close": false, "row_count": 3},
-            {"is_close": true, "row_count": 2}
-        ]));
         // Requirements: INT-90.
         assert_eq!(GroupRow::new(vec![("row_count".into(), Val::I64(-1))]).err().unwrap().code(), "CODEC_DECODE");
         assert_eq!(GroupRow::new(vec![("row_count".into(), Val::Str("invalid".into()))]).err().unwrap().code(), "CODEC_DECODE");

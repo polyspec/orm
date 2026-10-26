@@ -24,7 +24,7 @@ const FOREIGN_KEY_ITEM =
 const CHECK_ITEM = /^CONSTRAINT "([^"]+)" CHECK \((.*)\)$/;
 const PRIMARY_KEY_ITEM = /^PRIMARY KEY \(([^)]*)\)$/;
 const IDENTITY_COLUMN = /^"([^"]+)" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT$/;
-const COLUMN_ITEM = /^"([^"]+)" /;
+const COLUMN_ITEM = /^(?:"([^"]+)"|([A-Za-z_][A-Za-z0-9_]*)) /;
 const CONSTRAINT_ITEM = /^(?:CONSTRAINT "([^"]+)" )?(CHECK|UNIQUE|FOREIGN KEY|PRIMARY KEY)\b/;
 const NUMBER_DEFAULT = /^-?\d+(\.\d+)?$/;
 
@@ -256,7 +256,7 @@ function parseSQLiteTable(text: string): { table: SqliteTable; unsupported: Dbsp
       unsupported.push({ kind, table: '', name: m[1] ?? '', reason: `the table item ${JSON.stringify(item)} has no dbspec definition` });
     } else if ((m = COLUMN_ITEM.exec(item)) !== null) {
       // The definition is read by pragma_table_xinfo, and its text is checked to be in renderer form.
-      st.columns.set(present(m[1], 'm[1]'), item);
+      st.columns.set(present(m[1] ?? m[2], 'column name'), item);
     } else {
       st.unsupported = `the table item ${JSON.stringify(item)} has no dbspec definition`;
       return { table: st, unsupported: [] };
@@ -300,7 +300,7 @@ function unquoteList(text: string): string[] {
  * in uppercase, so types are compared without regard to case.
  */
 function sqliteColumnText(item: string, name: string, declared: string, notNull: boolean, dflt: string | null): boolean {
-  const prefix = `"${name}" `;
+  const prefix = item.startsWith(`"${name}" `) ? `"${name}" ` : `${name} `;
   if (!item.startsWith(prefix)) return false;
   let rest = item.slice(prefix.length);
   if (rest.length < declared.length || rest.slice(0, declared.length).toUpperCase() !== declared.toUpperCase()) return false;

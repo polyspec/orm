@@ -2,11 +2,11 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::core::{Added, CondKind, CondNode, Core, PredSpec, PredValue, RelSpec, config};
+use crate::core::{config, Added, CondKind, CondNode, Core, PredSpec, PredValue, RelSpec};
 use crate::ir;
 use crate::schema::Schema;
 use crate::value::Param;
-use crate::{Error, Result, codes};
+use crate::{codes, Error, Result};
 
 /// The value-free IR of one statement plus its parameter values.
 #[derive(Clone)]

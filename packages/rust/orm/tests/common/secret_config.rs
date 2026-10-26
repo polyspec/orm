@@ -11,4 +11,3 @@ pub static SECRET: Entity =
 pub const COLUMNS: [&str; 3] = ["seq", "aes_key_version", "config"];
 
 model_row!(Secret, SECRET, COLUMNS);
-

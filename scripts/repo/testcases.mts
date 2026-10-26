@@ -72,7 +72,7 @@ export function rustTestCaseErrors(files: Record<string, string>) {
     if (!path.endsWith('.rs')) continue;
     const pattern = /#\[(?:tokio::)?test(?:\([^)]*\))?\]\s*(?:#\[[^\]]*\]\s*)*(?:pub\s+)?(?:async\s+)?fn\s+(\w+)/g;
     for (const match of text.matchAll(pattern))
-      if (!/\bcase!\(|\btestcase::(?:case!|start)\(/.test(body(text, (match.index ?? 0) + match[0].length)))
+      if (!/\bcase!\(|\bpolyspec_orm_testcase::(?:case!|start)\(/.test(body(text, (match.index ?? 0) + match[0].length)))
         errors.push(`${path}: ${match[1]} does not start its case with polyspec_orm_testcase, so it runs without a deadline or RUN line`);
   }
   return errors;

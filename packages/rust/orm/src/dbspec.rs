@@ -66,7 +66,10 @@ fn decode_error(message: String) -> sqlx::Error {
     sqlx::Error::Decode(message.into())
 }
 
-pub(super) fn catalog_rows<R: Row>(rows: &[R], mut value: impl FnMut(&R, usize) -> Result<CatalogValue, sqlx::Error>) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+pub(super) fn catalog_rows<R: Row>(
+    rows: &[R],
+    mut value: impl FnMut(&R, usize) -> Result<CatalogValue, sqlx::Error>,
+) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
     rows.iter().map(|row| (0..row.len()).map(|i| value(row, i)).collect()).collect()
 }
 

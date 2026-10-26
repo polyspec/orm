@@ -7,6 +7,6 @@ mod model_connect;
 #[path = "or_panic.rs"]
 mod or_panic;
 
-pub(crate) use clock_event::{CLOCK_SCHEMA, ClockEvent};
+pub(crate) use clock_event::{ClockEvent, CLOCK_SCHEMA};
 pub(crate) use model_connect::connected;
 pub(crate) use or_panic::OrPanic;

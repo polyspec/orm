@@ -26,7 +26,6 @@ use model_connect::connected;
 mod or_panic;
 use or_panic::OrPanic;
 
-
 #[path = "common/case_database_run.rs"]
 mod case_database_run;
 use case_database_run::run_case;
@@ -49,7 +48,6 @@ const COLUMNS: [&str; 2] = ["seq", "label"];
 const CASE_DEADLINE: Duration = Duration::from_secs(30);
 
 model_row!(RollbackProbe, ROLLBACK_PROBE, COLUMNS);
-
 
 /// Opens the client, installs the fixture and, on SQLite, the trigger that raises ROLLBACK.
 async fn installed(driver: &str, dsn: &str) -> Db {

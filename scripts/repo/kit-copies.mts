@@ -8,13 +8,26 @@ import { readPackage } from '../json/formats.mts';
 
 /** The copies of the @polyspec/kit installed for the checkout `root`, as { copy path: package path }. */
 export function kitCopies(root: string): Record<string, string> {
+  const { path, manifest } = kitPackage(root);
+  const copies = manifest.kit?.copies;
+  if (copies === undefined) throw new Error(`${path} declares no kit.copies; install a release of @polyspec/kit`);
+  return copies;
+}
+
+/** Paths owned by Kit in the checkout, including files that are no longer generated copies. */
+export function kitOwnedPaths(root: string): string[] {
+  const { manifest } = kitPackage(root);
+  const owners = (manifest.kit as { owners?: unknown } | undefined)?.owners;
+  if (!Array.isArray(owners)) throw new Error('@polyspec/kit package.json declares no kit.owners');
+  return owners.flatMap((owner: { paths?: unknown }) => Array.isArray(owner.paths) ? owner.paths.filter((path): path is string => typeof path === 'string') : []);
+}
+
+function kitPackage(root: string): { path: string; manifest: ReturnType<typeof readPackage> } {
   let manifest: string;
   try {
     manifest = createRequire(join(root, 'package.json')).resolve('@polyspec/kit/package.json');
   } catch (error) {
     throw new Error(`@polyspec/kit is not installed (${errorCode(error) ?? String(error)}); run make install-tools TOOLS=npm, then make install-packages`, { cause: error });
   }
-  const copies = readPackage(manifest).kit?.copies;
-  if (copies === undefined) throw new Error(`${manifest} declares no kit.copies; install a release of @polyspec/kit`);
-  return copies;
+  return { path: manifest, manifest: readPackage(manifest) };
 }

@@ -390,9 +390,11 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Duration;
 
     #[test]
     fn parses_an_optional_trailing_comma() {
+        let _case = polyspec_orm_testcase::start("interface extractor parses optional trailing commas", Duration::from_secs(1));
         let without_comma = syn::parse_str::<ApplyEntryPoint>("apply, Apply").expect("entrypoint without trailing comma");
         let with_comma = syn::parse_str::<ApplyEntryPoint>("apply, Apply,").expect("entrypoint with trailing comma");
         assert_eq!(without_comma.name.to_string(), "apply");
@@ -404,6 +406,7 @@ mod tests {
 
     #[test]
     fn extracts_public_dbspec_apply_entrypoint_macro_invocations() {
+        let _case = polyspec_orm_testcase::start("interface extractor expands dbspec apply entrypoints", Duration::from_secs(1));
         let source = r#"
             macro_rules! apply_entrypoint {
                 ($(#[$doc:meta])* $name:ident, $command:ident) => {
@@ -448,6 +451,7 @@ mod tests {
 
     #[test]
     fn extracts_public_transaction_macro_methods_and_future_contracts() {
+        let _case = polyspec_orm_testcase::start("interface extractor expands transaction methods and futures", Duration::from_secs(1));
         let source = r#"
             pub struct SendTransaction<'a, T>(&'a T);
             pub struct Transaction<'a, F>(&'a F);

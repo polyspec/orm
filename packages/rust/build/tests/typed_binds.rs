@@ -2,7 +2,7 @@
 mod physical_fixture;
 use physical_fixture::{dsn_for, sqlite_path};
 
-use polyspec_orm_build::tool_db::{self, GridCell, P, ParamType, QueryLimits};
+use polyspec_orm_build::tool_db::{self, GridCell, ParamType, QueryLimits, P};
 #[tokio::test]
 // Requirements: INT-116.
 async fn native_typed_binds_preserve_values_and_typed_nulls() {

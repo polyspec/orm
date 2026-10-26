@@ -1,10 +1,10 @@
 //! Delete an exact checked original row under an owning transaction.
 use super::{
-    CatalogConnection, MutationPhase, RowSnapshot, metadata,
-    mutation::{CommitPermit, Publisher, begin_mutation, cancelled, lock_original, lookup, predicate, prepare_mutation, qualified},
-    mutation_finish,
+    metadata,
+    mutation::{begin_mutation, cancelled, lock_original, lookup, predicate, prepare_mutation, qualified, CommitPermit, Publisher},
+    mutation_finish, CatalogConnection, MutationPhase, RowSnapshot,
 };
-use std::sync::{Arc, atomic::AtomicBool};
+use std::sync::{atomic::AtomicBool, Arc};
 
 impl CatalogConnection {
     pub async fn delete_row(&self, original: &RowSnapshot, cancellation: Arc<AtomicBool>, publish: Publisher, permit: CommitPermit) -> Result<u64, String> {

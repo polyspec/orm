@@ -1,8 +1,8 @@
 //! Reads SQL query rows as text, representing SQL NULL as the string "NULL".
 
 use crate::or_panic::OrPanic;
-use polyspec_orm::Db;
 use polyspec_orm::db::Pool;
+use polyspec_orm::Db;
 use sqlx::Row;
 
 pub async fn text_rows(db: &Db, query: &str) -> Vec<Vec<String>> {

@@ -15,7 +15,7 @@ pub(crate) use grid::is_temporal;
 pub use grid::{GridCell, GridQueryResult};
 pub use limits::QueryLimits;
 pub(crate) use params::decimal_valid;
-pub use params::{P, ParamType};
+pub use params::{ParamType, P};
 pub use result::{QueryColumn, QueryResult};
 
 pub(crate) fn validate_params(values: &[P], dialect: &str) -> Result<(), sqlx::Error> {
@@ -117,7 +117,11 @@ macro_rules! cell_common {
 macro_rules! cell {
     ($row:expr, $i:expr) => {{
         let (row, i) = ($row, $i);
-        if row.columns()[i].type_info().name().ends_with(" UNSIGNED") { cell_extra!(row, i) } else { cell_common!(row, i, cell_extra) }
+        if row.columns()[i].type_info().name().ends_with(" UNSIGNED") {
+            cell_extra!(row, i)
+        } else {
+            cell_common!(row, i, cell_extra)
+        }
     }};
 }
 
@@ -386,7 +390,11 @@ impl Conn {
 
 /// The bind placeholder of a driver.
 pub fn placeholder(driver: &str, n: usize) -> String {
-    if driver == "postgres" { format!("${n}") } else { "?".into() }
+    if driver == "postgres" {
+        format!("${n}")
+    } else {
+        "?".into()
+    }
 }
 
 /// A database named by the same DSN URI the clients accept: `mysql://`,

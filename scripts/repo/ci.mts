@@ -315,13 +315,11 @@ export function helperRunErrors(manifest: HelperManifest & Parameters<typeof sel
   return errors;
 }
 
-// ownWorkflows drops from workflows ({path: text}, the path `.github/workflows/<name>` or `<name>`) the copies of @polyspec/kit
-// (copies, { copy path: package path }, from kitCopies). A copy is kit's and make kit-check holds it byte for byte, so the
-// workflow rules of this repository do not apply to it.
-export function ownWorkflows(workflows: Record<string, string>, copies: Record<string, string> | null): Record<string, string> {
-  if (copies === null || typeof copies !== 'object') throw new Error('no copies of @polyspec/kit were given; read them with kitCopies of scripts/repo/kit-copies.mts');
-  const vendored = new Set(Object.keys(copies));
-  return Object.fromEntries(Object.entries(workflows).filter(([path]) => !vendored.has(path) && !vendored.has(`.github/workflows/${path}`)));
+// ownWorkflows drops workflow paths owned by Kit, whether or not Kit generates those files as copies.
+export function ownWorkflows(workflows: Record<string, string>, ownedPaths: string[] | null): Record<string, string> {
+  if (ownedPaths === null || !Array.isArray(ownedPaths)) throw new Error('no Kit-owned paths were given; read them with kitOwnedPaths of scripts/repo/kit-copies.mts');
+  const owned = new Set(ownedPaths);
+  return Object.fromEntries(Object.entries(workflows).filter(([path]) => !owned.has(path) && !owned.has(`.github/workflows/${path}`)));
 }
 
 // runnerErrors returns one error for each place where a job of the workflow does not run on the single runner that .github/runner declares,
@@ -675,8 +673,8 @@ export function ciMakeErrors(workflows: Record<string, string>): string[] {
 
 // WORKFLOW_TRIGGERS is the `on:` value of each workflow. ci.yml runs all check jobs on pushes to main and on manual runs,
 // push-gate.yml runs the push gate on every push,
-// docs-pages.yml builds and deploys the public site on pushes to main and on manual runs. The workflows that kit copies (release.yml
-// among them) are kit's and are not in this table. No other workflow of this repository runs on push, pull_request, or merge_group.
+// docs-pages.yml builds and deploys the public site on pushes to main and on manual runs. The workflows Kit owns (release.yml
+// among them) are not in this table. No other workflow of this repository runs on push, pull_request, or merge_group.
 export const WORKFLOW_TRIGGERS: Record<string, unknown> = {
   '.github/workflows/ci.yml': { push: { branches: ['main'] }, workflow_dispatch: null },
   '.github/workflows/push-gate.yml': { push: { branches: ['**'] } },

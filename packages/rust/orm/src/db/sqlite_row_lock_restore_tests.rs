@@ -11,17 +11,26 @@ struct FakeSequence {
 impl SqliteRowLockSequenceOps for FakeSequence {
     async fn set_nowait(&mut self) -> Result<()> {
         self.calls.push("set-zero");
-        match self.set_error.take() { Some(error) => Err(error), None => Ok(()) }
+        match self.set_error.take() {
+            Some(error) => Err(error),
+            None => Ok(()),
+        }
     }
 
     async fn take_row_lock(&mut self) -> Result<()> {
         self.calls.push("lock");
-        match self.primary_error.take() { Some(error) => Err(error), None => Ok(()) }
+        match self.primary_error.take() {
+            Some(error) => Err(error),
+            None => Ok(()),
+        }
     }
 
     async fn restore_timeout(&mut self) -> Result<()> {
         self.calls.push("restore");
-        match self.restore_error.take() { Some(error) => Err(error), None => Ok(()) }
+        match self.restore_error.take() {
+            Some(error) => Err(error),
+            None => Ok(()),
+        }
     }
 }
 
@@ -38,12 +47,8 @@ fn restore_error() -> Error {
 async fn production_nowait_sequence_preserves_both_errors_and_attempts_restore() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     for (primary, restore) in [(false, false), (false, true), (true, false), (true, true)] {
-        let mut sequence = FakeSequence {
-            set_error: None,
-            primary_error: primary.then(lock_error),
-            restore_error: restore.then(restore_error),
-            calls: Vec::new(),
-        };
+        let mut sequence =
+            FakeSequence { set_error: None, primary_error: primary.then(lock_error), restore_error: restore.then(restore_error), calls: Vec::new() };
         let result = run_sqlite_row_lock_sequence(&mut sequence).await;
         assert_eq!(sequence.calls, ["set-zero", "lock", "restore"]);
         match (primary, restore, result) {
