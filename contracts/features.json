@@ -11763,7 +11763,7 @@
                     "catalog_row_mutation": "coverage_catalog_row_mutation",
                     "model_read_null_and_empty_text": "coverage_model_read_null_and_empty_text",
                     "catalog_grid_column_and_row_order": "coverage_catalog_grid_column_and_row_order",
-                    "catalog_plain_query_bounds": "coverage_catalog_connection::coverage_catalog_read_budgets"
+                    "catalog_plain_query_bounds": "coverage_catalog_read_budgets"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -11784,7 +11784,7 @@
                     "catalog_row_mutation": "coverage_catalog_row_mutation",
                     "model_read_null_and_empty_text": "coverage_model_read_null_and_empty_text",
                     "catalog_grid_column_and_row_order": "coverage_catalog_grid_column_and_row_order",
-                    "catalog_plain_query_bounds": "coverage_catalog_connection::coverage_catalog_read_budgets"
+                    "catalog_plain_query_bounds": "coverage_catalog_read_budgets"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -11805,7 +11805,7 @@
                     "catalog_row_mutation": "coverage_catalog_row_mutation",
                     "model_read_null_and_empty_text": "coverage_model_read_null_and_empty_text",
                     "catalog_grid_column_and_row_order": "coverage_catalog_grid_column_and_row_order",
-                    "catalog_plain_query_bounds": "coverage_catalog_connection::coverage_catalog_read_budgets"
+                    "catalog_plain_query_bounds": "coverage_catalog_read_budgets"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
