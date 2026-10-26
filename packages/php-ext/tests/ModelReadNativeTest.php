@@ -98,6 +98,7 @@ final class ModelReadNativeTest extends TestCase
             'node' => 10,
             'key' => [],
             'children' => [],
+            // The result declaration supplies the name omitted from static column metadata.
             'columns' => [['index' => 0, 'name' => 'ratio', 'column' => 'ratio', 'hidden' => false]],
         ];
         $valid = $assembleRow->invoke($model, $assembly, $declaration, [1.25]);

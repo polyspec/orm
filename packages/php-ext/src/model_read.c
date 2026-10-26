@@ -17,6 +17,7 @@
 static bool read_aggregate(zval *model, const char *fn, zval *return_value);
 static zval *read_array(zval *array, const char *key);
 static bool exact_integer(zval *raw, zend_long *out);
+static int exact_number(zval *raw, double *out);
 
 static zend_class_entry *read_lookup_class(const char *name)
 {
@@ -309,7 +310,7 @@ static bool read_convert_resource(zval *value)
     return true;
 }
 
-static bool read_column_convert(zval *model, zval *db, zval *zone, zval *column, zval *raw, zval *out)
+static bool read_column_convert(zval *model, zval *db, zval *zone, zval *column, zval *column_name, zval *raw, zval *out)
 {
     if (Z_TYPE_P(raw) == IS_NULL) { ZVAL_NULL(out); return true; }
     zval value; ZVAL_COPY(&value, raw);
@@ -319,12 +320,21 @@ static bool read_column_convert(zval *model, zval *db, zval *zone, zval *column,
     }
     if (read_string_is(type, "i16") || read_string_is(type, "i32") || read_string_is(type, "i64") ||
         read_string_is(type, "f64") || read_string_is(type, "bool")) {
+        /* groupValue needs the emitted row column name; static column metadata does not carry it. */
+        zval context, name_copy, column_copy;
+        ZVAL_ARR(&context, zend_array_dup(Z_ARRVAL_P(column)));
+        ZVAL_COPY(&name_copy, column_name);
+        ZVAL_COPY(&column_copy, column_name);
+        zend_hash_str_update(Z_ARRVAL(context), "name", sizeof("name") - 1, &name_copy);
+        zend_hash_str_update(Z_ARRVAL(context), "column", sizeof("column") - 1, &column_copy);
         zval args[3], converted;
         ZVAL_COPY(&args[0], db);
-        ZVAL_COPY(&args[1], column);
+        ZVAL_COPY(&args[1], &context);
         ZVAL_COPY(&args[2], &value);
+        ZVAL_UNDEF(&converted);
         bool ok = read_model_call(model, "groupValue", &converted, 3, args);
         for (int i = 0; i < 3; i++) zval_ptr_dtor(&args[i]);
+        zval_ptr_dtor(&context);
         zval_ptr_dtor(&value);
         if (!ok) {
             if (!Z_ISUNDEF(converted)) zval_ptr_dtor(&converted);
@@ -349,9 +359,6 @@ static bool read_column_convert(zval *model, zval *db, zval *zone, zval *column,
         for (int i=0;i<3;i++) zval_ptr_dtor(&args[i]); zval_ptr_dtor(&value);
         if (!ok) return false;
         ZVAL_COPY_VALUE(out, &result); return true;
-    }
-    if (read_string_is(type, "bool")) {
-        ZVAL_BOOL(out, zend_is_true(&value)); zval_ptr_dtor(&value); return true;
     }
     if (read_string_is(type, "date") || read_string_is(type, "datetime")) {
         if (Z_TYPE(value) == IS_STRING) {
@@ -431,7 +438,7 @@ ZEND_METHOD(Polyspec_Orm_Model, assembleRow)
                 zval *meta_cols = read_array(&meta, "columns");
                 zval *column = meta_cols != NULL && Z_TYPE_P(meta_cols) == IS_ARRAY
                     ? zend_hash_find(Z_ARRVAL_P(meta_cols), Z_STR_P(column_name)) : NULL;
-                if (column == NULL || !read_column_convert(ZEND_THIS, db, zone, column, raw, &converted)) {
+                if (column == NULL || !read_column_convert(ZEND_THIS, db, zone, column, column_name, raw, &converted)) {
                     zval_ptr_dtor(&meta); zval_ptr_dtor(&values); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); RETURN_THROWS();
                 }
                 zval_ptr_dtor(&meta);
