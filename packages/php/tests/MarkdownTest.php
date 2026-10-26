@@ -23,9 +23,12 @@ use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
+use Polyspec\Orm\Markdown;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
 use Polyspec\Orm\RuntimeModel;
+use Polyspec\Orm\Request;
+use Polyspec\Orm\Schema;
 use Polyspec\Orm\Validator;
 
 const MARKDOWN_TOKEN = '0123456789abcdef0123456789abcdef';
@@ -288,6 +291,64 @@ final class MarkdownTest extends TestCase
         markdown_test_server_received_messages($server);
     }
 
+    // Requirements: PRT-67.
+    public function testPublicBindMessageVectors(): void
+    {
+        $vectors = json_decode(
+            (string) file_get_contents(__DIR__ . '/../../../tests/bind/vectors.json'),
+            true,
+            flags: JSON_THROW_ON_ERROR
+        );
+        $manifest = "dbspec 1 bind_message\n\ntable bind_message {\n"
+            . "  seq i64 identity\n  day date null\n  clock time(6) null\n  stamp datetime(6) null\n"
+            . "  primary key (seq)\n}\n";
+        $hash = 'sha256:' . hash('sha256', $manifest);
+        $valid = array_values(array_filter($vectors['message'], static fn(array $case): bool => !isset($case['code'])));
+        $server = start_markdown_test_server([
+            '{"ok":true}',
+            ...array_fill(0, count($valid), '{"rows":[]}'),
+        ]);
+        $db = Orm::connectSchema($server[2], new Schema($manifest, $hash), new Config());
+        self::assertSame('+00:00', $vectors['zone']);
+
+        $sent = [];
+        foreach ($vectors['message'] as $case) {
+            $column = match ($case['type']) {
+                'date' => 'day',
+                'time' => 'clock',
+                'datetime' => 'stamp',
+            };
+            $request = new Request('all', $hash);
+            $request->ir['entity'] = 'bind_message';
+            $request->ir['where'] = ['items' => [['pred' => [
+                'column' => $column,
+                'op' => 'eq',
+                'p' => $request->param($case['value']),
+            ]]]];
+
+            try {
+                Markdown::read($db, $request);
+                $error = null;
+            } catch (OrmException $caught) {
+                $error = $caught;
+            }
+            if (isset($case['code'])) {
+                self::assertSame($case['code'], $error?->code_, $case['name']);
+                continue;
+            }
+            self::assertNull($error, $case['name'] . ': ' . ($error?->getMessage() ?? ''));
+            $sent[] = $case;
+        }
+
+        $db->close();
+        $messages = markdown_test_server_received_messages($server);
+        self::assertCount(count($sent) + 1, $messages, 'invalid values must fail before sending a request');
+        foreach ($sent as $i => $case) {
+            $message = json_decode($messages[$i + 1], true, flags: JSON_THROW_ON_ERROR);
+            self::assertSame([$case['json']], $message['params'] ?? null, $case['name']);
+        }
+    }
+
     // Requirements: PRT-67, DIA-31.
     public function testBindVectors(): void
     {
@@ -350,6 +411,7 @@ final class MarkdownTest extends TestCase
         }
     }
 
+    // Requirements: DIA-31, PRT-67.
     public function testParamUses(): void
     {
         $model = RuntimeModel::build(RuntimeModel::parse(['params.dbs' => 'dbspec 1 params

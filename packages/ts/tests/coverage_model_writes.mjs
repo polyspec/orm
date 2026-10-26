@@ -1,7 +1,8 @@
 // model_writes coverage uses CompositeAccount for CRUD and seeded Author.read_count for arithmetic.
 // The arithmetic case rolls back its updates to preserve the seeded row and identity sequence.
 import assert from 'node:assert/strict';
-import { Account, Author, CompositeAccount, connect } from '../dist/index.js';
+import { Account, Author, CompositeAccount, StyledValue, connect } from '../dist/index.js';
+import { parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { errorCode, runCases, withCleanup } from './coverage_case.mjs';
 
 const tenant = 990002;
@@ -58,7 +59,7 @@ await runCases('coverage_model_writes.mjs', {
       }
     }
   },
-  // Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110.
+  // Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110, DIA-26, COD-15.
   async model_write_cycle({ driver, dsn }) {
     const db = await connect(dsn);
     try {
@@ -86,6 +87,23 @@ await runCases('coverage_model_writes.mjs', {
         // Even a failed run leaves no rows written by this case.
         await (await account().tenantId(tenant).gets()).delete();
       });
+
+      const text = '{"b":1,"a":[],"c":{},"n":1.50}';
+      const rollback = new Error('rollback ordered JSON text probe');
+      try {
+        await db.transaction(async () => {
+          const row = await new Author().connect(db).addAllColumns().getBySeq(1);
+          assert.ok(row, 'seed author row 1 exists');
+          await row.setJsonSetting(StyledValue.value(parseJson(text))).update();
+          const stored = await new Author().connect(db).addAllColumns().getBySeq(1);
+          assert.ok(stored, 'seed author row 1 remains after update');
+          assert.equal(stringifyJson(stored.getJsonSetting().payload()), text, 'ordered JSON text round trip');
+          throw rollback;
+        }, { retry: 0 });
+        assert.fail('ordered JSON text probe transaction unexpectedly committed');
+      } catch (error) {
+        assert.equal(error, rollback, 'ordered JSON probe rolls back its row update');
+      }
     } finally { await db.close(); }
   },
   // Requirements: DSL-109.

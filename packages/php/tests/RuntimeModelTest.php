@@ -44,6 +44,46 @@ final class RuntimeModelTest extends TestCase
         return 'no error';
     }
 
+    // Requirements: SCH-12.
+    public function testLoadSetReturnsExternalDocumentsMarked(): void
+    {
+        $owned = <<<'DBSPEC'
+dbspec 1 shop
+
+use core { account }
+
+table item {
+  seq i64
+  account_seq i64
+  primary key (seq)
+  index ix_item_account (account_seq)
+  foreign key fk_item_account (account_seq) references account (seq) on delete restrict on update restrict
+}
+DBSPEC;
+        $external = <<<'DBSPEC'
+dbspec 1 core
+
+table account {
+  seq i64
+  primary key (seq)
+}
+DBSPEC;
+        $documents = RuntimeModel::loadSet($owned, $external);
+        self::assertSame(
+            [['shop', false], ['core', true]],
+            array_map(static fn($document): array => [$document->name, $document->external], $documents),
+        );
+        self::assertSame(
+            [['core', false]],
+            array_map(
+                static fn($document): array => [$document->name, $document->external],
+                RuntimeModel::loadSet($external, ''),
+            ),
+        );
+        self::assertSame('SCHEMA_INVALID', self::errorCode(static fn() => RuntimeModel::loadSet("table item {}\n", $external)));
+        self::assertSame('SCHEMA_INVALID', self::errorCode(static fn() => RuntimeModel::loadSet($owned, "table account {}\n")));
+    }
+
     // Requirements: DBS-111.
     public function testEntitiesInDocumentOrder(): void
     {

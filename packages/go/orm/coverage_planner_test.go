@@ -650,30 +650,35 @@ func paramUsesCase(t *testing.T, id string) {
 
 // TestCoveragePlannerParamUsesColumnFunction: a parameter compared with a column function takes the
 // function's result type, or the column when the result has the column's type.
+// Requirements: DIA-31, PRT-67.
 func TestCoveragePlannerParamUsesColumnFunction(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	paramUsesCase(t, "param_uses_column_function")
 }
 
 // TestCoveragePlannerParamUsesInterval: the interval of a relative time function is i32, or f64 for seconds.
+// Requirements: DIA-31, PRT-67.
 func TestCoveragePlannerParamUsesInterval(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	paramUsesCase(t, "param_uses_interval")
 }
 
 // TestCoveragePlannerParamUsesContains: the value of contains and contains_binary is text.
+// Requirements: DIA-31, PRT-67.
 func TestCoveragePlannerParamUsesContains(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	paramUsesCase(t, "param_uses_contains")
 }
 
 // TestCoveragePlannerParamUsesIfParent: the value of if_parent takes the parent column.
+// Requirements: DIA-31, PRT-67.
 func TestCoveragePlannerParamUsesIfParent(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	paramUsesCase(t, "param_uses_if_parent")
 }
 
 // TestCoveragePlannerParamUsesOptimistic: the value of optimistic takes its column.
+// Requirements: DIA-31, PRT-67.
 func TestCoveragePlannerParamUsesOptimistic(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	paramUsesCase(t, "param_uses_optimistic")

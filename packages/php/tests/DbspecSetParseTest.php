@@ -15,6 +15,19 @@ use Polyspec\Orm\Dbspec\Dbspec;
 #[Small]
 final class DbspecSetParseTest extends TestCase
 {
+    // Requirements: DBS-2, DBS-171.
+    public function testByteOrderMark(): void
+    {
+        $result = Dbspec::parseSet(["\u{FEFF}dbspec 1 shop\n"], []);
+        self::assertSame('', $result[0]->name);
+        self::assertNull($result[0]->document);
+        $diagnostics = array_map(
+            static fn(object $error): array => [$error->rule, $error->line, $error->column],
+            $result[0]->diagnostics,
+        );
+        self::assertSame([['encoding', 1, 1]], $diagnostics);
+    }
+
     public static function setParseCases(): iterable
     {
         return dbspec_set_parse_sets(dirname(__DIR__, 3));

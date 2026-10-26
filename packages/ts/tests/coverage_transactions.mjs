@@ -22,9 +22,14 @@ async function withTenant({ driver, dsn }, body) {
 const exists = async (db, account) => await new CompositeAccount().connect(db).tenantId(tenant).andAccountId(account).getCount() === 1;
 
 await runCases('coverage_transactions.mjs', {
-  // Requirements: DSL-118, INT-45, INT-67, PLN-13, PLN-20, PLN-44.
+  // Requirements: DSL-118, INT-45, INT-67, PLN-13, PLN-16, PLN-20, PLN-44.
   async transaction_rollback(item) {
     await withTenant(item, async db => {
+      await assert.rejects(
+        () => new CompositeAccount().getCount(),
+        error => error instanceof OrmError && error.code === codes.CONFIG,
+        'an unconnected model outside a transaction returns CONFIG',
+      );
       const boom = new Error('rollback requested by the callback');
       let caught = null;
       try {
@@ -52,7 +57,7 @@ await runCases('coverage_transactions.mjs', {
     });
   },
 
-  // Requirements: DSL-119, INT-40, INT-41, INT-42, INT-43, INT-45, INT-46, INT-47, INT-48, PLN-17, PLN-44.
+  // Requirements: DSL-119, DSL-123, DSL-125, DSL-126, INT-40, INT-41, INT-42, INT-43, INT-45, INT-46, INT-47, INT-48, PLN-17, PLN-21, PLN-44.
   async transaction_savepoint(item) {
     await withTenant(item, async db => {
       const boom = new Error('inner transaction failed');
@@ -62,16 +67,35 @@ await runCases('coverage_transactions.mjs', {
       }
       await db.transaction(async () => {
         await new CompositeAccount().setTenantId(tenant).setAccountId(2).setName('outer').create();
+        for (const lock of ['forUpdate', 'forShare', 'forUpdateNoWait', 'forShareNoWait']) {
+          const row = await new CompositeAccount().connect(db).tenantId(tenant).andAccountId(2)[lock]().get();
+          assert.notEqual(row, null, `${lock} works inside a transaction`);
+        }
+        for (const options of [{ isolation: 'serializable' }, { readOnly: true }, { timeoutMs: 1 }]) {
+          let called = false;
+          await assert.rejects(() => db.transaction(() => { called = true; }, options), error => error instanceof OrmError && error.code === codes.CONFIG, 'a nested transaction rejects every option except retry');
+          assert.equal(called, false, 'an invalid nested option does not run its callback');
+        }
+        let innerCalls = 0;
         try {
           await db.transaction(async () => {
+            innerCalls++;
             await new CompositeAccount().setTenantId(tenant).setAccountId(3).setName('inner').create();
             throw boom;
-          });
+          }, { retry: 3 });
         } catch (error) { inner = error; }
+        assert.equal(innerCalls, 1, 'nested retry is accepted and ignored');
       });
       assert.equal(inner, boom, 'the nested transaction error reaches the outer callback');
       assert.equal(await exists(db, 2), true, 'the outer row is committed');
       assert.equal(await exists(db, 3), false, 'the inner row is rolled back to the savepoint');
+      for (const lock of ['forUpdate', 'forShare', 'forUpdateNoWait', 'forShareNoWait']) {
+        await assert.rejects(
+          () => new CompositeAccount().connect(db).tenantId(tenant).andAccountId(2)[lock]().get(),
+          error => error instanceof OrmError && error.code === codes.CONFIG,
+          `${lock} outside a transaction returns CONFIG`,
+        );
+      }
       await (await new CompositeAccount().connect(db).getByTenantIdAndAccountId(tenant, 2)).delete();
       assert.equal(await exists(db, 2), false, 'the outer row is deleted');
 

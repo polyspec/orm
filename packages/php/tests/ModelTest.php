@@ -216,7 +216,7 @@ final class ModelTest extends TestCase
             )->getCount() === 2,
             'time compare'
         );
-        $one = (new Author())($db)->getByName('gamma');
+        $one = (new Author())->connect($db)->getByName('gamma');
         self::check($one !== null && $one->getReadCount() === 20, 'getBy');
         self::check((new Author())($db)->getByName('missing') === null, 'get without a row');
         $q = (new Author())($db)->serviceSeq($svc);

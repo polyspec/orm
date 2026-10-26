@@ -4,6 +4,7 @@
 // read strictly: an unknown or a missing field is an error, and no case is skipped.
 //
 // Usage: node --test packages/ts/tests/dbspec-set-parse.mjs (after the build)
+// Requirements: DBS-2, DBS-171.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

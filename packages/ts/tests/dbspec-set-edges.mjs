@@ -12,7 +12,7 @@ import { parseSet as browserParseSet } from '../dist/dbspec/entry.js';
 
 const TIMEOUT = 15000;
 
-// DBS-11: the TypeScript set reader applies the rules that read no file through parseSet(bytes, path), which takes a Uint8Array.
+// DBS-176: the TypeScript package validates parseSet(bytes, path) inputs before parsing without reading a file.
 caseTest('set-files parseSet takes a Uint8Array and a string', TIMEOUT, () => {
   assert.throws(() => browserParseSet('{}', 'dbspec-set.json'), TypeError);
   assert.throws(() => browserParseSet(new Uint8Array(), 1), TypeError);

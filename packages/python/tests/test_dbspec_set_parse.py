@@ -1,6 +1,7 @@
 # The shared set parse vectors of tests/dbspec/set-parse.json (docs/spec/dbspec.md "Parsing a set"): every
 # case runs parse_dbspec_set on its owned and external texts and compares each document's name,
 # external mark, whether it parsed and its diagnostics.
+# Requirements: DBS-2, DBS-171.
 import json
 import unittest
 from pathlib import Path

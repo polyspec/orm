@@ -366,6 +366,7 @@ final class CollectionTest extends TestCase
     }
 
     // Requirements: INT-85.
+    // Requirements: PLN-6.
     public function testConnectAndInvokeReachEachModelAndReturnTheCollection(): void
     {
         [$collection, $first, $second] = self::collectionWithTwoModels();

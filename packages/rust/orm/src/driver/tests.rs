@@ -56,7 +56,6 @@ fn parent_expansion_rejects_duplicate_positional_slots() {
 }
 
 #[test]
-// Requirements: PRT-40.
 fn parent_expansion_keeps_single_value_and_composite_padding_order() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let single = relation_step("SELECT $1", &["parent"], 1);

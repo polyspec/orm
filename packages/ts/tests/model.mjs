@@ -151,7 +151,7 @@ async function holdRows(dialect, dsn, table) {
   return async () => { if (released) return; released = true; await client.query('ROLLBACK'); await client.end(); };
 }
 
-// Requirements: PLN-7, PLN-23, PLN-28, PLN-34, PLN-37, PLN-38, PLN-39.
+// Requirements: PLN-6, PLN-7, PLN-23, PLN-28, PLN-34, PLN-37, PLN-38, PLN-39.
 async function conditions(db) {
   const f = await seed(db);
   const svc = f.service.getSeq();

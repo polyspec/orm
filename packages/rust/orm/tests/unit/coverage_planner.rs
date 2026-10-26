@@ -633,30 +633,35 @@ mod planner {
     }
 
     #[test]
+    // Requirements: DIA-31, PRT-67.
     fn param_uses_column_function() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         super::run_param_uses("param_uses_column_function");
     }
 
     #[test]
+    // Requirements: DIA-31, PRT-67.
     fn param_uses_interval() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         super::run_param_uses("param_uses_interval");
     }
 
     #[test]
+    // Requirements: DIA-31, PRT-67.
     fn param_uses_contains() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         super::run_param_uses("param_uses_contains");
     }
 
     #[test]
+    // Requirements: DIA-31, PRT-67.
     fn param_uses_if_parent() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         super::run_param_uses("param_uses_if_parent");
     }
 
     #[test]
+    // Requirements: DIA-31, PRT-67.
     fn param_uses_optimistic() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         super::run_param_uses("param_uses_optimistic");

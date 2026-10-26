@@ -14,12 +14,13 @@ fn is_failure(r: &polyspec_orm::Result<()>, message: &str) -> bool {
 }
 
 #[tokio::test]
-// Requirements: DSL-118, INT-45, PLN-13, PLN-20, PLN-44.
+// Requirements: DSL-118, INT-45, PLN-13, PLN-16, PLN-20, PLN-44.
 async fn coverage_transaction_rollback() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("transaction_rollback", async {
         let db = connect().await;
         assert_eq!(CompositeAccount::new().connect(&db).tenant_id(TENANT).get_count().await.unwrap(), 0, "a row of tenant {TENANT} already exists");
+        assert_eq!(code(CompositeAccount::new().get_count().await), "CONFIG", "an unconnected model outside a transaction returns CONFIG");
         let r: polyspec_orm::Result<()> = db
             .transaction(async || {
                 CompositeAccount::new().set_tenant_id(TENANT).set_account_id(1).set_name("rolled").create().await?;
@@ -34,22 +35,65 @@ async fn coverage_transaction_rollback() {
 }
 
 #[tokio::test]
-// Requirements: DSL-119, INT-40, INT-41, INT-42, INT-43, INT-45, INT-46, INT-47, INT-48, PLN-17, PLN-44.
+// Requirements: DSL-119, DSL-123, DSL-125, DSL-126, INT-40, INT-41, INT-42, INT-43, INT-45, INT-46, INT-47, INT-48, PLN-17, PLN-21, PLN-44.
 async fn coverage_transaction_savepoint() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("transaction_savepoint", async {
         let db = connect().await;
         assert_eq!(CompositeAccount::new().connect(&db).tenant_id(TENANT).get_count().await.unwrap(), 0, "a row of tenant {TENANT} already exists");
         let inner_result = std::cell::Cell::new(None);
+        let nested_calls = std::cell::Cell::new(0);
         let r: polyspec_orm::Result<()> = db
             .transaction(async || {
                 CompositeAccount::new().set_tenant_id(TENANT).set_account_id(2).set_name("outer").create().await?;
+                for option in 0..3 {
+                    let callback_called = std::cell::Cell::new(false);
+                    let invalid: polyspec_orm::Result<()> = match option {
+                        0 => {
+                            db.transaction(async || {
+                                callback_called.set(true);
+                                Ok(())
+                            })
+                            .isolation(polyspec_orm::Isolation::Serializable)
+                            .await
+                        }
+                        1 => {
+                            db.transaction(async || {
+                                callback_called.set(true);
+                                Ok(())
+                            })
+                            .read_only()
+                            .await
+                        }
+                        _ => {
+                            db.transaction(async || {
+                                callback_called.set(true);
+                                Ok(())
+                            })
+                            .timeout_ms(1)
+                            .await
+                        }
+                    };
+                    assert_eq!(code(invalid), "CONFIG", "nested transaction rejects non-retry options");
+                    assert!(!callback_called.get(), "invalid nested option does not run callback");
+                }
+                for lock in [
+                    CompositeAccount::new().connect(&db).tenant_id(TENANT).and_account_id(2).for_update().get().await,
+                    CompositeAccount::new().connect(&db).tenant_id(TENANT).and_account_id(2).for_share().get().await,
+                    CompositeAccount::new().connect(&db).tenant_id(TENANT).and_account_id(2).for_update_no_wait().get().await,
+                    CompositeAccount::new().connect(&db).tenant_id(TENANT).and_account_id(2).for_share_no_wait().get().await,
+                ] {
+                    assert!(lock.unwrap().is_some(), "a row lock works inside a transaction");
+                }
                 let inner: polyspec_orm::Result<()> = db
                     .transaction(async || {
+                        nested_calls.set(nested_calls.get() + 1);
                         CompositeAccount::new().set_tenant_id(TENANT).set_account_id(3).set_name("inner").create().await?;
                         Err(failure("coverage savepoint"))
                     })
+                    .retry(3)
                     .await;
+                assert_eq!(nested_calls.get(), 1, "nested retry is accepted and ignored");
                 inner_result.set(Some(inner));
                 Ok(())
             })
@@ -60,6 +104,14 @@ async fn coverage_transaction_savepoint() {
         let account = || CompositeAccount::new().connect(&db);
         assert_eq!(account().get_by_tenant_id_and_account_id(TENANT, 2).await.unwrap().expect("a row").get_name().unwrap(), "outer", "committed outer row");
         assert!(account().get_by_tenant_id_and_account_id(TENANT, 3).await.unwrap().is_none(), "rolled back nested row");
+        for lock in [
+            code(CompositeAccount::new().connect(&db).tenant_id(TENANT).and_account_id(2).for_update().get().await),
+            code(CompositeAccount::new().connect(&db).tenant_id(TENANT).and_account_id(2).for_share().get().await),
+            code(CompositeAccount::new().connect(&db).tenant_id(TENANT).and_account_id(2).for_update_no_wait().get().await),
+            code(CompositeAccount::new().connect(&db).tenant_id(TENANT).and_account_id(2).for_share_no_wait().get().await),
+        ] {
+            assert_eq!(lock, "CONFIG", "row locks outside a transaction are refused");
+        }
         account().get_by_tenant_id_and_account_id(TENANT, 2).await.unwrap().expect("a row").delete(false).await.unwrap();
         assert_eq!(account().tenant_id(TENANT).get_count().await.unwrap(), 0, "rows left");
 

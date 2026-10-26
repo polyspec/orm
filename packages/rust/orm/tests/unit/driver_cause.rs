@@ -1,6 +1,7 @@
 use super::bind_pg;
 use crate::Param;
 
+// Requirements: PRT-79.
 #[test]
 fn postgres_bind_preserves_native_parse_cause_message() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -34,6 +35,7 @@ fn postgres_bind_preserves_native_parse_cause_message() {
     }
 }
 
+// Requirements: PRT-79.
 #[test]
 fn postgres_bind_preserves_utf8_cause_message() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -46,6 +48,7 @@ fn postgres_bind_preserves_utf8_cause_message() {
     assert!(error.to_string().contains("invalid utf-8 sequence"), "{error}");
 }
 
+// Requirements: PRT-79.
 #[test]
 fn postgres_datetime_bind_preserves_parse_cause_message() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

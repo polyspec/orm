@@ -158,12 +158,14 @@ const bind = JSON.parse(readFileSync(new URL('../../../tests/bind/vectors.json',
 // The control cases: the begin control message of a transaction with and without readOnly (docs/spec/protocol.md §5 Session).
 if (!Array.isArray(bind.control) || bind.control.length === 0) throw new Error('tests/bind/vectors.json has no control cases');
 for (const c of bind.control) {
+  // Requirements: PRT-67.
   caseTest(`markdown/bind-message/control/${c.name}`, COMPUTE, () => {
     const got = beginLine(c.read_only);
     if (!isDeepStrictEqual(JSON.parse(got), c.json)) throw new Error(`begin of readOnly ${c.read_only} = ${got}; want ${JSON.stringify(c.json)}`);
   });
 }
 for (const c of bind.message) {
+  // Requirements: PRT-67.
   caseTest(`markdown/bind-message/${c.name}`, COMPUTE, () => {
     const db = { zone: bind.zone, aesKey: '' };
     let got, code = '';

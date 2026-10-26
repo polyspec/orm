@@ -159,6 +159,30 @@ mod tests {
         Box::leak(text.into_boxed_str())
     }
 
+    // Requirements: SCH-12.
+    #[test]
+    fn load_set_returns_external_documents_marked() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        const OWNED: &str = "dbspec 1 shop\n\nuse core { account }\n\ntable item {\n  seq i64\n  account_seq i64\n  primary key (seq)\n  index ix_item_account (account_seq)\n  foreign key fk_item_account (account_seq) references account (seq) on delete restrict on update restrict\n}\n";
+        const EXTERNAL: &str = "dbspec 1 core\n\ntable account {\n  seq i64\n  primary key (seq)\n}\n";
+        let source_documents = dbspec::parse_manifest_set(OWNED, EXTERNAL).expect("fixture documents parse");
+        let source_refs: Vec<&Document> = source_documents.iter().collect();
+        let built = dbspec::manifest(&source_refs).expect("fixture manifest builds");
+        let built_hash = built.manifest_hash.clone();
+        let manifest = Manifest::load_set(&built.manifest_text, &built.external_text, &built.manifest_hash).expect("generated manifest loads");
+        let documents =
+            Schema::with_external(leak(built.manifest_text), leak(built.external_text), leak(built.manifest_hash)).documents().expect("schema documents load");
+        assert_eq!(documents.iter().map(|document| (document.name.text.as_str(), document.external)).collect::<Vec<_>>(), [("shop", false), ("core", true)],);
+        assert!(manifest.model.entity("account").expect("external entity").external);
+        let core_documents = dbspec::parse_manifest(EXTERNAL).expect("external-only document parses");
+        let core_refs: Vec<&Document> = core_documents.iter().collect();
+        let core = dbspec::manifest(&core_refs).expect("external-only manifest builds");
+        let core_documents = Schema::new(leak(core.manifest_text), leak(core.manifest_hash)).documents().expect("external-only manifest loads");
+        assert_eq!(core_documents.iter().map(|document| (document.name.text.as_str(), document.external)).collect::<Vec<_>>(), [("core", false)],);
+        assert_eq!(Manifest::load_set("table item {}\n", EXTERNAL, "").unwrap_err().code(), codes::SCHEMA_INVALID);
+        assert_eq!(Manifest::load_set(OWNED, "table account {}\n", &built_hash).unwrap_err().code(), codes::SCHEMA_INVALID);
+    }
+
     // Manifest text that does not hash to the declared hash is SCHEMA_HASH_MISMATCH, and text that is not a manifest is SCHEMA_INVALID.
     // Requirements: DBS-104, SCH-12.
     #[test]

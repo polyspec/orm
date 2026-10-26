@@ -32,7 +32,7 @@ function compositeValueOf(entry) {
   return valueOf(entry, true);
 }
 
-// Requirements: INT-81, INT-82, INT-83, INT-84, INT-85.
+// Requirements: PLN-6, INT-81, INT-82, INT-83, INT-84, INT-85.
 caseTest('collection-views/preserve-order-and-connect-every-model', COMPUTE, () => {
   const connections = [];
   const makeModel = label => ({

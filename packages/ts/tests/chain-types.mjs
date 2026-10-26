@@ -1,14 +1,16 @@
-// Type-checks uses of the client with tsc, as a program that uses it is compiled: the value types that a chain accepts
+// Type-checks uses of the client with tsc and checks runtime refusal of invalid nulls: the value types a chain accepts
 // are the parameter types of its method, and what the client does not make public does not compile. The test of
 // DSL-49 (TypeScript rejects null for a non-null column at compile time), DSL-50 (lists and null only without an
 // operator, with Eq and with Ne) and DSL-124 (begin, commit and rollback are not public) (docs/spec/dsl.md). Each use
 // is a file of its own, so tsc reports each rejected use at its file.
+import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
+import { Author } from '../dist/index.js';
 import { PROCESS, caseTest } from '../../../tests/testcase.mts';
 
 const source = fileURLToPath(new URL('../src/index.js', import.meta.url));
@@ -74,4 +76,12 @@ caseTest('chain argument types', PROCESS, async () => {
     if (!accept && byCall[i].length === 0) wrong.push(`${use} compiles; the client must reject it`);
   }
   if (wrong.length > 0) throw new Error(wrong.join('\n'));
+
+  // DSL-49: runtime calls that bypass the type check still reject null before resolving a connection.
+  const code = async promise => {
+    try { await promise; return null; } catch (error) { return error.code ?? String(error); }
+  };
+  assert.equal(await code(new Author().serviceSeq(null).getCount()), 'CONFIG', 'service_seq(null)');
+  assert.equal(await code(new Author().andServiceSeq(null).getCount()), 'CONFIG', 'and service_seq(null)');
+  assert.equal(await code(new Author().andNeReadCount(null).getCount()), 'CONFIG', 'and ne read_count(null)');
 });

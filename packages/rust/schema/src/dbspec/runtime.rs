@@ -232,7 +232,7 @@ pub fn parse_manifest_set(text: &str, external: &str) -> Result<Vec<Document>, V
     let set: BTreeMap<String, String> = owned.iter().chain(&externals).map(|(_, name, chunk)| (name.clone(), chunk.clone())).collect();
     let mut documents = Vec::with_capacity(owned.len() + externals.len());
     let mut errors = Vec::new();
-    for (chunks, is_external) in [(&externals, true), (&owned, false)] {
+    for (chunks, is_external) in [(&owned, false), (&externals, true)] {
         for (start, name, chunk) in chunks {
             let others: BTreeMap<String, String> = set.iter().filter(|(other, _)| *other != name).map(|(k, v)| (k.clone(), v.clone())).collect();
             match super::parse(chunk, &others) {

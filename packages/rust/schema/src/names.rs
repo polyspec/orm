@@ -16,6 +16,7 @@ pub fn snake_case(value: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    // Requirements: DBS-111.
     #[test]
     fn snake_case_separates_ascii_uppercase_characters() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

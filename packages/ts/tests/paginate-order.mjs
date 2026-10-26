@@ -4,7 +4,6 @@ import { paginate, query } from '../dist/database.js';
 import { Author, CompositeAccount, Engine } from '../dist/index.js';
 
 caseTest('parent-slot-expansion/pads-composite-keys-and-renumbers', COMPUTE, async () => {
-  // Requirements: PRT-40.
   const engine = new Engine(CompositeAccount.entity.model, 'sqlite');
   const request = {
     ir_version: 1,

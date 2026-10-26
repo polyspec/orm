@@ -3,11 +3,13 @@
 package model_test
 
 import (
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"slices"
 	"testing"
 
+	orderedjson "github.com/polyspec/ordered-json/packages/go"
 	"github.com/polyspec/orm/packages/go/engine/ir"
 	"github.com/polyspec/orm/packages/go/model"
 	"github.com/polyspec/orm/packages/go/orm"
@@ -20,7 +22,7 @@ const writeTenant = 990002
 // TestCoverageModelWriteCycle creates rows with the generated CompositeAccount model,
 // creates several rows, updates them, upserts with duplication, counts, and deletes.
 // Deleting all the rows written returns the database to its initial state.
-// Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110.
+// Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110, DIA-26, COD-15.
 func TestCoverageModelWriteCycle(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, _, _ := connectFeature(t)
@@ -61,6 +63,55 @@ func TestCoverageModelWriteCycle(t *testing.T) {
 	}
 	if n := must(account().TenantId(writeTenant).GetCount()); n != 4 {
 		t.Fatalf("tenant %d count = %d, want 4", writeTenant, n)
+	}
+
+	const jsonText = `{"b":1,"a":[],"c":{},"n":1.50}`
+	rollback := errors.New("rollback ordered JSON text probe")
+	err := db.Transaction(func() error {
+		row, err := model.Author().Connect(db).AddAllColumns().GetBySeq(1)
+		if err != nil {
+			return err
+		}
+		if row == nil {
+			return errors.New("seed author row 1 is missing")
+		}
+		row, err = row.SetJsonSetting(orm.Value(jsontext.Value(jsonText)))
+		if err != nil {
+			return err
+		}
+		if _, err := row.Update(); err != nil {
+			return err
+		}
+		stored, err := model.Author().Connect(db).AddAllColumns().GetBySeq(1)
+		if err != nil {
+			return err
+		}
+		if stored == nil {
+			return errors.New("seed author row 1 disappeared after ordered JSON update")
+		}
+		styled, err := stored.GetJsonSetting()
+		if err != nil {
+			return err
+		}
+		data, ok := styled.Data()
+		if !ok {
+			return errors.New("ordered JSON text read back as SQL NULL")
+		}
+		value, ok := data.(*orderedjson.Value)
+		if !ok {
+			return fmt.Errorf("ordered JSON value has type %T", data)
+		}
+		actual, err := orderedjson.Stringify(value)
+		if err != nil {
+			return err
+		}
+		if actual != jsonText {
+			return fmt.Errorf("ordered JSON text = %s, want %s", actual, jsonText)
+		}
+		return rollback
+	}, orm.Retry(0))
+	if !errors.Is(err, rollback) {
+		t.Fatalf("ordered JSON text transaction = %v, want rollback sentinel", err)
 	}
 
 	rows := must(account().TenantId(writeTenant).Gets())

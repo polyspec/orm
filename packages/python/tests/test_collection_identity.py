@@ -97,6 +97,7 @@ class CollectionIdentityTest(unittest.TestCase):
         self.assertIsNone(collection.fetched(8))
 
     # Requirements: INT-81, INT-82, INT-83, INT-84, INT-85.
+    # Requirements: PLN-6.
     def test_collection_views_preserve_order_and_connect_every_model(self):
         class Row:
             def __init__(self, label):

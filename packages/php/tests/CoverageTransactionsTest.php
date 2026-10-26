@@ -50,12 +50,17 @@ function accountExists(Db $db, int $accountId): bool
 #[Medium]
 class CoverageTransactionsTest extends TestCase
 {
-    // Requirements: DSL-118, INT-45, INT-67, PLN-13, PLN-20, PLN-44.
+    // Requirements: DSL-118, INT-45, INT-67, PLN-13, PLN-16, PLN-20, PLN-44.
     public function testTransactionRollback(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
             selectCoverageItem($item);
             transactionCase(function (Db $db): void {
+                Assert::assertSame(
+                    Code::CONFIG,
+                    self::code(fn() => (new CompositeAccount())->getCount()),
+                    'an unconnected model outside a transaction returns CONFIG'
+                );
                 $boom = new RuntimeException('rollback requested');
                 $caught = null;
                 try {
@@ -78,7 +83,7 @@ class CoverageTransactionsTest extends TestCase
         }
     }
 
-    // Requirements: DSL-119, INT-40, INT-41, INT-42, INT-43, INT-45, INT-46, INT-47, INT-48, PLN-17, PLN-44.
+    // Requirements: DSL-119, DSL-123, DSL-125, DSL-126, INT-40, INT-41, INT-42, INT-43, INT-45, INT-46, INT-47, INT-48, PLN-17, PLN-21, PLN-44.
     public function testTransactionSavepoint(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
@@ -91,21 +96,46 @@ class CoverageTransactionsTest extends TestCase
                         ->setAccountId(2)
                         ->setName('outer')
                         ->create();
+                    foreach (['forUpdate', 'forShare', 'forUpdateNoWait', 'forShareNoWait'] as $lock) {
+                        $row = (new CompositeAccount())($db)->tenantId(TRANSACTION_TENANT)
+                            ->andAccountId(2)->{$lock}()->get();
+                        Assert::assertNotNull($row, "$lock works inside a transaction");
+                    }
+                    foreach ([['isolation' => 'serializable'], ['readOnly' => true], ['timeoutMs' => 1]] as $options) {
+                        $called = false;
+                        Assert::assertSame(
+                            Code::CONFIG,
+                            self::code(fn() => $db->transaction(function () use (&$called): void { $called = true; }, ...$options)),
+                            'a nested transaction rejects every option except retry',
+                        );
+                        Assert::assertFalse($called, 'an invalid nested option does not run its callback');
+                    }
                     try {
-                        $db->transaction(function () use ($boom): void {
+                        $innerCalls = 0;
+                        $db->transaction(function () use ($boom, &$innerCalls): void {
+                            $innerCalls++;
                             (new CompositeAccount())->setTenantId(TRANSACTION_TENANT)
                                 ->setAccountId(3)
                                 ->setName('inner')
                                 ->create();
                             throw $boom;
-                        });
+                        }, retry: 3);
                     } catch (RuntimeException $e) {
                         $inner = $e;
                     }
+                    Assert::assertSame(1, $innerCalls, 'nested retry is accepted and ignored');
                 }, isolation: 'read_committed', retry: 0);
                 Assert::assertTrue($inner === $boom, 'the nested transaction error did not reach the outer callback');
                 Assert::assertTrue(accountExists($db, 2), 'the outer row was not committed');
                 Assert::assertTrue(!accountExists($db, 3), 'the savepoint row exists');
+                foreach (['forUpdate', 'forShare', 'forUpdateNoWait', 'forShareNoWait'] as $lock) {
+                    Assert::assertSame(
+                        Code::CONFIG,
+                        self::code(fn() => (new CompositeAccount())($db)->tenantId(TRANSACTION_TENANT)
+                            ->andAccountId(2)->{$lock}()->get()),
+                        "$lock outside a transaction returns CONFIG"
+                    );
+                }
                 (new CompositeAccount())($db)->getByTenantIdAndAccountId(TRANSACTION_TENANT, 2)->delete();
                 Assert::assertTrue(!accountExists($db, 2), 'the outer row was not deleted');
 

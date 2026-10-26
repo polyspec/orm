@@ -108,6 +108,7 @@ def compile_case(case: dict) -> None:
         expect_equal(statements, case["expected"][dialect], f"{dialect} statements")
 
 
+# Requirements: DIA-31, PRT-67. Each fixture case asserts the logical slot type and its column metadata.
 def param_uses_case(case: dict) -> None:
     """Validates the request of a param_uses case and compares the uses of each parameter."""
     expect_equal(case["operation"], "param_uses", f"operation of case {case['id']}")

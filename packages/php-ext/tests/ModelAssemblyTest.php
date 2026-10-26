@@ -78,7 +78,7 @@ final class ModelAssemblyTest extends TestCase
         }
     }
 
-    // Requirements: INT-69, INT-70, INT-71.
+    // Requirements: INT-68, INT-69, INT-70, INT-71.
     public function testGroupRowsUseAKeyPreservingSnapshotIterator(): void
     {
         $first = new GroupRow([['name', 'one'], ['row_count', 1]]);

@@ -249,7 +249,7 @@ def model_query_remove_columns(item):
 
 
 class CoverageTest(CoverageCase):
-    # Requirements: DBS-118, DSL-57, DSL-58, DSL-60, DSL-62, DSL-73, DSL-80, DSL-82, DSL-99, INT-16, INT-29, INT-30, INT-32, INT-33, PLN-7, PLN-8, PLN-9, PLN-10, PLN-11, PLN-14, PLN-23, PLN-25, PLN-28, PLN-34, PLN-35, PLN-37, PLN-38, PLN-39, PLN-41, PLN-42, PLN-43.
+    # Requirements: DBS-118, DSL-57, DSL-58, DSL-60, DSL-62, DSL-73, DSL-80, DSL-82, DSL-99, INT-16, INT-29, INT-30, INT-32, INT-33, PLN-6, PLN-7, PLN-8, PLN-9, PLN-10, PLN-11, PLN-14, PLN-23, PLN-25, PLN-28, PLN-34, PLN-35, PLN-37, PLN-38, PLN-39, PLN-41, PLN-42, PLN-43.
     def test_model_query_rows(self):
         self.each_item("model_query_rows", model_query_rows)
 

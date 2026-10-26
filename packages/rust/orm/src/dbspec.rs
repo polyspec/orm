@@ -75,6 +75,7 @@ mod catalog_row_tests {
     use super::*;
 
     #[tokio::test]
+    // Requirements: SCH-6a.
     async fn catalog_rows_preserves_row_and_column_order() {
         use sqlx::Connection as _;
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

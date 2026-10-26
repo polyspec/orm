@@ -14,7 +14,6 @@ use Polyspec\Orm\Tests\Model\Author;
 #[Small]
 final class RelationKeysTest extends TestCase
 {
-    // Requirements: PRT-40.
     public function testParentSlotExpansionPadsCompositeKeysAndRenumbersFollowingPlaceholders(): void
     {
         $expand = new \ReflectionMethod(Db::class, 'expandIn');

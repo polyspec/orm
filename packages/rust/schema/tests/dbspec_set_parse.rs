@@ -1,3 +1,4 @@
+//! Requirements: DBS-2, DBS-171.
 //! The set parse vectors (tests/dbspec/set-parse.json, docs/spec/dbspec.md "Parsing a set").
 //!
 //! Each case calls `dbspec::parse_set` with its owned and external texts and compares, per text,

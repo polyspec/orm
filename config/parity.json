@@ -974,6 +974,10 @@
       },
       "internal": [
         {
+          "glob": "packages/rust/orm/src/driver/tests.rs",
+          "reason": "test: calls the crate-private parent-slot expansion and SQLite binding helpers directly; public composite relation behavior is covered by the six-client composite-key feature cases"
+        },
+        {
           "glob": "packages/rust/tests/src/conformance.rs",
           "reason": "harness: an internal test of the Rust package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
@@ -3704,7 +3708,7 @@
       ]
     },
     {
-      "id": "ts-dbspec-rules",
+      "id": "dbspec-document-byte-order-mark",
       "kind": "feature",
       "requirements": [
         "DBS-2",
@@ -3712,9 +3716,39 @@
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/engine/dbspec/parseset_test.go",
+          "id": "TestParseSetVectors/byte-order-mark"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecSetParseTest.php",
+          "id": "DbspecSetParseTest::testByteOrderMark"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/DbspecSetParseTest.php",
+          "id": "DbspecSetParseTest::testByteOrderMark"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-set-parse.mjs",
+          "id": "byte-order-mark"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/dbspec-rules.mjs",
           "id": "invalid byte order mark"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_set_parse.py",
+          "id": "byte-order-mark"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/schema/tests/dbspec_set_parse.rs",
+          "id": "shared_set_parse_vectors::byte-order-mark"
         }
       ]
     },
@@ -3722,7 +3756,7 @@
       "id": "ts-dbspec-set-edges",
       "kind": "feature",
       "requirements": [
-        "DBS-11"
+        "DBS-176"
       ],
       "bindings": [
         {
@@ -3730,33 +3764,54 @@
           "test": "packages/ts/tests/dbspec-set-edges.mjs",
           "id": "set-files parseSet takes a Uint8Array and a string"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "@polyspec/orm"
+      }
     },
     {
-      "id": "ts-dbspec",
+      "id": "dbspec-repeated-document-name",
       "kind": "feature",
       "requirements": [
         "DBS-99"
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/engine/dbspec/manifest_test.go",
+          "id": "TestDocumentSets/repeated-document-name"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecManifestTest.php",
+          "id": "DbspecManifestTest::testRepeatedName"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/DbspecManifestTest.php",
+          "id": "DbspecManifestTest::testRepeatedName"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-sets.mjs",
+          "id": "repeated-document-name"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/dbspec.mjs",
           "id": "manifest rejects a repeated document name"
-        }
-      ]
-    },
-    {
-      "id": "ts-dbspec_runtime_db",
-      "kind": "feature",
-      "requirements": [
-        "DBS-119"
-      ],
-      "bindings": [
+        },
         {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "sqlite: connect takes the DSN and options without a schema path"
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_sets.py",
+          "id": "repeated-document-name"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/schema/tests/dbspec_manifest.rs",
+          "id": "set_vectors::repeated-document-name"
         }
       ]
     },
@@ -4724,7 +4779,9 @@
         "DSL-104",
         "DSL-105",
         "DSL-106",
-        "DSL-110"
+        "DSL-110",
+        "DIA-26",
+        "COD-15"
       ],
       "bindings": [
         {
@@ -5954,6 +6011,68 @@
       ]
     },
     {
+      "id": "model-transaction-unconnected-model-context",
+      "kind": "feature",
+      "requirements": [
+        "PLN-16"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_transactions_test.go",
+          "id": "TestCoverageTransactionRollback",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageTransactionRollback",
+            "FEATURE_PACKAGE=./model"
+          ]
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageTransactionsTest.php",
+          "id": "CoverageTransactionsTest::testTransactionRollback"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
+          "id": "CoverageTransactionsExtensionTest::testTransactionRollback"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_transactions.mjs",
+          "id": "transaction_rollback [sqlite]"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_transactions.py",
+          "id": "test_transaction_rollback"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
+          "id": "coverage_transactions::coverage_transaction_rollback",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test integration",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_transactions::coverage_transaction_rollback"
+          ]
+        }
+      ]
+    },
+    {
       "id": "handle-disposal-abort-or-unwind-rolls-back",
       "kind": "feature",
       "requirements": [
@@ -6091,6 +6210,9 @@
       "kind": "feature",
       "requirements": [
         "DSL-119",
+        "DSL-123",
+        "DSL-125",
+        "DSL-126",
         "INT-40",
         "INT-41",
         "INT-42",
@@ -6100,6 +6222,7 @@
         "INT-47",
         "INT-48",
         "PLN-17",
+        "PLN-21",
         "PLN-44"
       ],
       "bindings": [
@@ -6419,20 +6542,6 @@
       ]
     },
     {
-      "id": "ts-group_rows",
-      "kind": "feature",
-      "requirements": [
-        "INT-90"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/group_rows.mjs",
-          "id": "group_rows/owner"
-        }
-      ]
-    },
-    {
       "id": "ts-idle-connection-end",
       "kind": "feature",
       "requirements": [
@@ -6486,16 +6595,41 @@
       ]
     },
     {
-      "id": "ts-markdown-session-messages",
+      "id": "markdown-session-messages",
       "kind": "feature",
       "requirements": [
         "PRT-64"
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/orm/markdown_test.go",
+          "id": "TestMarkdownSessionMessages"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/MarkdownTest.php",
+          "id": "MarkdownTest::testSessionMessages"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/MarkdownTest.php",
+          "id": "MarkdownTest::testSessionMessages"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/markdown.mjs",
           "id": "markdown/session-messages"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_markdown.py",
+          "id": "test_markdown_session_messages"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/markdown.rs",
+          "id": "markdown_session_messages"
         }
       ]
     },
@@ -6519,16 +6653,177 @@
       }
     },
     {
-      "id": "ts-param-uses",
+      "id": "planner-param-uses",
       "kind": "feature",
       "requirements": [
-        "DIA-31"
+        "DIA-31",
+        "PRT-67"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_planner_test.go",
+          "id": "TestCoveragePlannerParamUsesColumnFunction"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_planner_test.go",
+          "id": "TestCoveragePlannerParamUsesInterval"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_planner_test.go",
+          "id": "TestCoveragePlannerParamUsesContains"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_planner_test.go",
+          "id": "TestCoveragePlannerParamUsesIfParent"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_planner_test.go",
+          "id": "TestCoveragePlannerParamUsesOptimistic"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoveragePlannerTest.php",
+          "id": "CoveragePlannerTest::testParamUsesColumnFunction"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoveragePlannerTest.php",
+          "id": "CoveragePlannerTest::testParamUsesInterval"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoveragePlannerTest.php",
+          "id": "CoveragePlannerTest::testParamUsesContains"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoveragePlannerTest.php",
+          "id": "CoveragePlannerTest::testParamUsesIfParent"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoveragePlannerTest.php",
+          "id": "CoveragePlannerTest::testParamUsesOptimistic"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/MarkdownTest.php",
+          "id": "MarkdownTest::testParamUses"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
+          "id": "CoveragePlannerExtensionTest::test_param_uses_column_function"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
+          "id": "CoveragePlannerExtensionTest::test_param_uses_interval"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
+          "id": "CoveragePlannerExtensionTest::test_param_uses_contains"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
+          "id": "CoveragePlannerExtensionTest::test_param_uses_if_parent"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
+          "id": "CoveragePlannerExtensionTest::test_param_uses_optimistic"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_planner.mjs",
+          "id": "param_uses_column_function"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_planner.mjs",
+          "id": "param_uses_interval"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_planner.mjs",
+          "id": "param_uses_contains"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_planner.mjs",
+          "id": "param_uses_if_parent"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_planner.mjs",
+          "id": "param_uses_optimistic"
+        },
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/param-uses.mjs",
           "id": "param-uses/kinds"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_planner.py",
+          "id": "param_uses_column_function"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_planner.py",
+          "id": "param_uses_interval"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_planner.py",
+          "id": "param_uses_contains"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_planner.py",
+          "id": "param_uses_if_parent"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_planner.py",
+          "id": "param_uses_optimistic"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/unit/coverage_planner.rs",
+          "id": "engine::coverage_planner::planner::param_uses_column_function"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/unit/coverage_planner.rs",
+          "id": "engine::coverage_planner::planner::param_uses_interval"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/unit/coverage_planner.rs",
+          "id": "engine::coverage_planner::planner::param_uses_contains"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/unit/coverage_planner.rs",
+          "id": "engine::coverage_planner::planner::param_uses_if_parent"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/unit/coverage_planner.rs",
+          "id": "engine::coverage_planner::planner::param_uses_optimistic"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/unit/param_uses.rs",
+          "id": "engine::param_uses_tests::param_uses_name_each_slot"
         }
       ]
     },
@@ -7182,6 +7477,11 @@
           "id": "schema-set/unregistered_schema/sqlite"
         },
         {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
+          "id": "sqlite: connect takes the DSN and options without a schema path"
+        },
+        {
           "implementation": "python",
           "test": "packages/python/tests/test_schema_set.py",
           "id": "test_unregistered_schema_sqlite"
@@ -7221,6 +7521,11 @@
           "id": "schema-set/unregistered_schema/mysql"
         },
         {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
+          "id": "mysql: connect takes the DSN and options without a schema path"
+        },
+        {
           "implementation": "python",
           "test": "packages/python/tests/test_schema_set.py",
           "id": "test_unregistered_schema_mysql"
@@ -7258,6 +7563,11 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/schema-set.mjs",
           "id": "schema-set/unregistered_schema/postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
+          "id": "postgres: connect takes the DSN and options without a schema path"
         },
         {
           "implementation": "python",
@@ -7417,6 +7727,16 @@
           "id": "SchemaSetTest::testExternalDocuments"
         },
         {
+          "implementation": "php",
+          "test": "packages/php/tests/AuditExternalSetsTest.php",
+          "id": "AuditExternalSetsTest::testGeneratedAfterValues"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AuditExternalSetsTest.php",
+          "id": "AuditExternalSetsTest::testMemberByValueFirst"
+        },
+        {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
           "id": "CoverageSchemaInstallNativeTest::testSchemaSetExternalDocuments"
@@ -7459,6 +7779,16 @@
           "implementation": "php",
           "test": "packages/php/tests/SchemaSetTest.php",
           "id": "SchemaSetTest::testExternalDocuments"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AuditExternalSetsTest.php",
+          "id": "AuditExternalSetsTest::testGeneratedAfterValues"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AuditExternalSetsTest.php",
+          "id": "AuditExternalSetsTest::testMemberByValueFirst"
         },
         {
           "implementation": "php-extension",
@@ -7505,6 +7835,16 @@
           "id": "SchemaSetTest::testExternalDocuments"
         },
         {
+          "implementation": "php",
+          "test": "packages/php/tests/AuditExternalSetsTest.php",
+          "id": "AuditExternalSetsTest::testGeneratedAfterValues"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AuditExternalSetsTest.php",
+          "id": "AuditExternalSetsTest::testMemberByValueFirst"
+        },
+        {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
           "id": "CoverageSchemaInstallNativeTest::testSchemaSetExternalDocuments"
@@ -7523,6 +7863,45 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/external_documents.rs",
           "id": "external_documents"
+        }
+      ]
+    },
+    {
+      "id": "schema-set-load-external-documents",
+      "kind": "feature",
+      "requirements": [
+        "SCH-12"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/engine/runtimemodel/runtimemodel_test.go",
+          "id": "TestLoadSetReturnsExternalDocumentsMarked"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RuntimeModelTest.php",
+          "id": "RuntimeModelTest::testLoadSetReturnsExternalDocumentsMarked"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RuntimeModelTest.php",
+          "id": "RuntimeModelTest::testNativeLoadSetReturnsExternalDocumentsMarked"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/engine.mjs",
+          "id": "load-set"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_load_set.py",
+          "id": "LoadSetTest::test_returns_the_documents_with_the_external_ones_marked"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/schema.rs",
+          "id": "schema::tests::load_set_returns_external_documents_marked"
         }
       ]
     },
@@ -9347,6 +9726,7 @@
       "requirements": [
         "DBS-30",
         "DBS-35",
+        "DBS-99",
         "DBS-101",
         "DBS-105",
         "DBS-106",
@@ -11232,7 +11612,8 @@
       "id": "model-constructor-forms-core",
       "kind": "feature",
       "requirements": [
-        "PLN-34"
+        "PLN-34",
+        "PLN-6"
       ],
       "bindings": [
         {
@@ -12005,39 +12386,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-orm-external-documents",
-      "kind": "feature",
-      "requirements": [
-        "DBS-105",
-        "DBS-107",
-        "DBS-108",
-        "SCH-7",
-        "SCH-8",
-        "SCH-11"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/external_documents_test.go",
-          "id": "TestExternalDocuments"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-group-rows",
-      "kind": "feature",
-      "requirements": [
-        "INT-90"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/group_rows_test.go",
-          "id": "TestGroupRowsRejectInvalidCountsAndPreserveSelectedValues"
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-orm-hostcodec",
       "kind": "feature",
       "requirements": [
@@ -12066,13 +12414,10 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-orm-codec-errors",
+      "id": "go-codec-json-byte-slice-encode-rejected",
       "kind": "feature",
       "requirements": [
-        "COD-23",
-        "COD-33",
-        "COD-34",
-        "COD-35"
+        "COD-23"
       ],
       "bindings": [
         {
@@ -12080,7 +12425,12 @@
           "test": "packages/go/orm/codec_test.go",
           "id": "TestCodecErrors"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "go-module",
+        "package": "github.com/polyspec/orm/packages/go"
+      }
     },
     {
       "id": "generator-rejects-a-column-named-after-a-model-method",
@@ -12447,34 +12797,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-orm-markdown-param",
-      "kind": "feature",
-      "requirements": [
-        "PRT-67"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/markdown_param_test.go",
-          "id": "TestBindMessageVectors"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-markdown-session-messages",
-      "kind": "feature",
-      "requirements": [
-        "PRT-64"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/markdown_test.go",
-          "id": "TestMarkdownSessionMessages"
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-orm-rollback-fault-entry",
       "kind": "feature",
       "requirements": [
@@ -12683,20 +13005,6 @@
           "implementation": "go",
           "test": "packages/go/orm/plan_cache_test.go",
           "id": "TestCanonicalizePadsInListAndRejectsOutOfRangeParam"
-        }
-      ]
-    },
-    {
-      "id": "rust-catalog-temporal-fraction-keeps-exactly-p-digits-and-rejects-dropped-digits",
-      "kind": "feature",
-      "requirements": [
-        "DIA-24"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/src/catalog/temporal.rs",
-          "id": "catalog::temporal::tests::fraction_keeps_exactly_p_digits_and_rejects_dropped_digits"
         }
       ]
     },
@@ -12928,20 +13236,6 @@
           "implementation": "rust",
           "test": "packages/rust/build/src/catalog/temporal.rs",
           "id": "catalog::temporal::tests::precision_follows_the_native_type_and_dialect_default"
-        }
-      ]
-    },
-    {
-      "id": "rust-catalog-temporal-temporal-text-follows-the-dbspec-forms",
-      "kind": "feature",
-      "requirements": [
-        "DBS-121"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/src/catalog/temporal.rs",
-          "id": "catalog::temporal::tests::temporal_text_follows_the_dbspec_forms"
         }
       ]
     },
@@ -14794,20 +15088,6 @@
       ]
     },
     {
-      "id": "rust-markdown-session-messages",
-      "kind": "feature",
-      "requirements": [
-        "PRT-64"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/markdown.rs",
-          "id": "markdown_session_messages"
-        }
-      ]
-    },
-    {
       "id": "rust-markdown-statement-timeout-refused",
       "kind": "feature",
       "requirements": [
@@ -14997,34 +15277,6 @@
       ]
     },
     {
-      "id": "rust-markdown-bind-message-tests-control-vectors",
-      "kind": "feature",
-      "requirements": [
-        "PRT-67"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/bind_message.rs",
-          "id": "markdown::bind_message_tests::control_vectors"
-        }
-      ]
-    },
-    {
-      "id": "rust-markdown-bind-message-tests-message-vectors",
-      "kind": "feature",
-      "requirements": [
-        "PRT-67"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/bind_message.rs",
-          "id": "markdown::bind_message_tests::message_vectors"
-        }
-      ]
-    },
-    {
       "id": "parameter-slot-validation-vectors",
       "kind": "feature",
       "requirements": [
@@ -15066,20 +15318,6 @@
           "implementation": "python",
           "test": "packages/python/tests/test_markdown.py",
           "id": "BindVectors::test_bind_cases"
-        }
-      ]
-    },
-    {
-      "id": "rust-engine-param-uses-tests-param-uses-name-each-slot",
-      "kind": "feature",
-      "requirements": [
-        "DIA-31"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/param_uses.rs",
-          "id": "engine::param_uses_tests::param_uses_name_each_slot"
         }
       ]
     },
@@ -15356,11 +15594,6 @@
           "implementation": "rust",
           "test": "packages/rust/schema/tests/dbspec_runtime.rs",
           "id": "runtime_model_names_entities_and_reads_settings"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/src/names.rs",
-          "id": "names::tests::snake_case_separates_ascii_uppercase_characters"
         }
       ]
     },
@@ -15375,6 +15608,11 @@
           "implementation": "rust",
           "test": "packages/rust/schema/tests/dbspec_runtime.rs",
           "id": "runtime_model_of_bench"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/schema/src/names.rs",
+          "id": "names::tests::snake_case_separates_ascii_uppercase_characters"
         }
       ]
     },
@@ -15419,6 +15657,55 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
           "id": "coverage_catalog_read"
+        }
+      ]
+    },
+    {
+      "id": "catalog-temporal-grid-cells-follow-declared-precision",
+      "kind": "feature",
+      "requirements": [
+        "INT-103"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_catalog_connection_test.go",
+          "id": "TestCoverageCatalogRead"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRead"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRead"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_read"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_catalog_connection.py",
+          "id": "test_read"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
+          "id": "coverage_catalog_read"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/src/catalog/temporal.rs",
+          "id": "catalog::temporal::tests::temporal_text_follows_the_dbspec_forms"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/src/catalog/temporal.rs",
+          "id": "catalog::temporal::tests::fraction_keeps_exactly_p_digits_and_rejects_dropped_digits"
         }
       ]
     },
@@ -16478,34 +16765,6 @@
       }
     },
     {
-      "id": "py-test-markdown-session-messages",
-      "kind": "feature",
-      "requirements": [
-        "PRT-64"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_markdown.py",
-          "id": "test_markdown_session_messages"
-        }
-      ]
-    },
-    {
-      "id": "py-test-markdown-message-cases",
-      "kind": "feature",
-      "requirements": [
-        "PRT-67"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_markdown.py",
-          "id": "test_message_cases"
-        }
-      ]
-    },
-    {
       "id": "php-internal-failing-pdo-cleanup-errors-release",
       "kind": "feature",
       "requirements": [
@@ -16691,20 +16950,6 @@
       }
     },
     {
-      "id": "php-internal-markdown-session-messages",
-      "kind": "feature",
-      "requirements": [
-        "PRT-64"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::testSessionMessages"
-        }
-      ]
-    },
-    {
       "id": "php-internal-markdown-rejected-surfaces",
       "kind": "feature",
       "requirements": [
@@ -16732,37 +16977,6 @@
           "implementation": "php",
           "test": "packages/php/tests/MarkdownTest.php",
           "id": "MarkdownTest::testRequestMessage"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-markdown-bind-message-vectors",
-      "kind": "feature",
-      "requirements": [
-        "PRT-67"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::testBindMessageVectors"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-markdown-param-uses",
-      "kind": "feature",
-      "requirements": [
-        "PRT-63",
-        "PRT-64",
-        "PRT-66",
-        "PRT-67"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::testParamUses"
         }
       ]
     },
@@ -17217,38 +17431,6 @@
           "implementation": "php",
           "test": "packages/php/tests/AesJsonTest.php",
           "id": "AesJsonTest::testAesJsonColumn"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-audit-external-sets-generated-after-values",
-      "kind": "feature",
-      "requirements": [
-        "DBS-110",
-        "SCH-11",
-        "SCH-12"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/AuditExternalSetsTest.php",
-          "id": "AuditExternalSetsTest::testGeneratedAfterValues"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-audit-external-sets-member-by-value-first",
-      "kind": "feature",
-      "requirements": [
-        "DBS-110",
-        "SCH-11",
-        "SCH-12"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/AuditExternalSetsTest.php",
-          "id": "AuditExternalSetsTest::testMemberByValueFirst"
         }
       ]
     },
@@ -21835,8 +22017,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/GroupRowsTest.php",
-          "id": "GroupRowsTest::testNegativeCountIsCodecDecode"
+          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
+          "id": "ModelAssemblyTest::testGroupRowCountEnforcesExactness"
         },
         {
           "implementation": "typescript",
@@ -21859,7 +22041,10 @@
       "id": "group-row-owner",
       "kind": "feature",
       "requirements": [
-        "INT-68"
+        "INT-68",
+        "INT-69",
+        "INT-70",
+        "INT-71"
       ],
       "bindings": [
         {
@@ -21876,6 +22061,11 @@
           "implementation": "php-extension",
           "test": "packages/php/tests/GroupRowsTest.php",
           "id": "GroupRowsTest::testOwner"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
+          "id": "ModelAssemblyTest::testGroupRowsUseAKeyPreservingSnapshotIterator"
         },
         {
           "implementation": "typescript",
@@ -26224,6 +26414,7 @@
       "id": "collection-output-views",
       "kind": "feature",
       "requirements": [
+        "PLN-6",
         "INT-81",
         "INT-82",
         "INT-83",
@@ -27225,6 +27416,110 @@
         "feature": "schema_definition",
         "part": "owner/php"
       }
+    },
+    {
+      "id": "markdown-message-vectors",
+      "kind": "feature",
+      "requirements": [
+        "PRT-67"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/markdown_param_test.go",
+          "id": "TestBindMessageVectors"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/MarkdownTest.php",
+          "id": "MarkdownTest::testBindMessageVectors"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/MarkdownTest.php",
+          "id": "MarkdownTest::testPublicBindMessageVectors"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/markdown.mjs",
+          "id": "markdown/bind-message/control/begin"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/markdown.mjs",
+          "id": "markdown/bind-message/control/begin-read-only"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/markdown.mjs",
+          "id": "markdown/bind-message/time-p0"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/markdown.mjs",
+          "id": "markdown/bind-message/time-p3"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/markdown.mjs",
+          "id": "markdown/bind-message/time-p3-whole"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/markdown.mjs",
+          "id": "markdown/bind-message/time-p6"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/markdown.mjs",
+          "id": "markdown/bind-message/datetime-p0"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/markdown.mjs",
+          "id": "markdown/bind-message/datetime-p3-t"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/markdown.mjs",
+          "id": "markdown/bind-message/datetime-offset"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/markdown.mjs",
+          "id": "markdown/bind-message/date"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/markdown.mjs",
+          "id": "markdown/bind-message/datetime-dst-gap"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/markdown.mjs",
+          "id": "markdown/bind-message/time-not-clock"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/markdown.mjs",
+          "id": "markdown/bind-message/datetime-not-date"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_markdown.py",
+          "id": "test_message_cases"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/unit/bind_message.rs",
+          "id": "markdown::bind_message_tests::control_vectors"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/unit/bind_message.rs",
+          "id": "markdown::bind_message_tests::message_vectors"
+        }
+      ]
     }
   ],
   "errors": {

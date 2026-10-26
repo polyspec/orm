@@ -137,6 +137,7 @@ final class DbspecManifestTest extends TestCase
         dbspec_sets_check(Dbspec::class, $case);
     }
 
+    // Requirements: DBS-99.
     public function testRepeatedName(): void
     {
         $text = ['dbspec 1 shop', '', 'table users {', '  id i64 identity', '  primary key (id)', '}'];

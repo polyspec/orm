@@ -200,7 +200,7 @@ fn names(c: &Collection<Author>) -> String {
     c.models().map(|b| b.get_name().unwrap().to_owned()).collect::<Vec<_>>().join(",")
 }
 
-// Requirements: PLN-7, PLN-23, PLN-28, PLN-34, PLN-37, PLN-38, PLN-39.
+// Requirements: PLN-6, PLN-7, PLN-23, PLN-28, PLN-34, PLN-37, PLN-38, PLN-39.
 async fn conditions(t: &Target) {
     let db = &t.db;
     let f = seed(db).await;

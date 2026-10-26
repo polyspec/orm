@@ -1,6 +1,8 @@
 //! The `hashes` cases of tests/dbspec/cases.json and the repeated document
 //! name rule through `dbspec::manifest`, and the `sets` cases through
 //! `dbspec::manifest` and `dbspec::render`.
+//!
+//! Requirements: DBS-99.
 
 #[path = "common/or_panic.rs"]
 mod or_panic;

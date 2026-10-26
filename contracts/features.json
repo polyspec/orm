@@ -62,7 +62,9 @@
         "sqlite-minimum-driver-version",
         "mysql-session",
         "php-python-session-initialization",
-        "parameter-slot-validation-vectors"
+        "parameter-slot-validation-vectors",
+        "markdown-session-messages",
+        "markdown-message-vectors"
       ],
       "fixtures": [
         "packages/go/orm/test_helpers_test.go",
@@ -111,6 +113,11 @@
         "tests/dsn/sqlite-paths.json",
         "packages/go/orm/markdown_test.go",
         "packages/php/tests/MarkdownTest.php",
+        "packages/php-ext/src/markdown_native.c",
+        "packages/php-ext/src/markdown_native.h",
+        "packages/php-ext/src/polyspec_orm.stub.php",
+        "packages/php-ext/src/orm.c",
+        "packages/php-ext/src/polyspec_orm.c",
         "packages/rust/orm/tests/markdown.rs",
         "packages/ts/tests/markdown.mjs",
         "packages/go/orm/markdown_param_test.go",
@@ -184,6 +191,22 @@
           ]
         },
         {
+          "id": "markdown-session-php-extension",
+          "command": "make dbspec-php-extension-check/markdown DBSPEC_MARKDOWN_TEST_FILTER='testSessionMessages'",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "packages/php/tests/MarkdownTest.php",
+            "packages/php/tests/markdown_test_server.php",
+            "packages/php-ext/src/config.m4",
+            "packages/php-ext/scripts/build.sh",
+            "packages/php-ext/src/markdown_native.c",
+            "packages/php-ext/src/markdown_native.h",
+            "packages/php-ext/src/orm.c",
+            "packages/php-ext/src/polyspec_orm.c"
+          ]
+        },
+        {
           "id": "markdown-session-rust",
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts markdown-session-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test markdown",
           "shard": "rust",
@@ -209,6 +232,44 @@
           "inputs": [
             "packages/rust/orm/tests/unit/bind_message.rs",
             "packages/rust/orm/src/markdown.rs",
+            "tests/bind/vectors.json"
+          ]
+        },
+        {
+          "id": "bind-message-php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter testBindMessageVectors packages/php/tests/MarkdownTest.php",
+          "shard": "other",
+          "inputs": [
+            "packages/php/tests/MarkdownTest.php",
+            "packages/php/tests/markdown_test_server.php",
+            "packages/php/src/Markdown.php",
+            "tests/bind/vectors.json"
+          ]
+        },
+        {
+          "id": "bind-message-php-extension",
+          "command": "make dbspec-php-extension-check/markdown DBSPEC_MARKDOWN_TEST_FILTER='testPublicBindMessageVectors'",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "packages/php/tests/MarkdownTest.php",
+            "packages/php/tests/markdown_test_server.php",
+            "packages/php-ext/src/config.m4",
+            "packages/php-ext/scripts/build.sh",
+            "packages/php-ext/src/markdown_native.c",
+            "packages/php-ext/src/markdown_native.h",
+            "packages/php-ext/src/orm.c",
+            "packages/php-ext/src/polyspec_orm.c",
+            "tests/bind/vectors.json"
+          ]
+        },
+        {
+          "id": "bind-message-typescript",
+          "command": "node --test --test-name-pattern='^markdown/bind-message/' packages/ts/tests/markdown.mjs",
+          "shard": "other",
+          "inputs": [
+            "packages/ts/tests/markdown.mjs",
+            "packages/ts/src/markdown.ts",
             "tests/bind/vectors.json"
           ]
         },
@@ -259,6 +320,15 @@
           "inputs": [
             "packages/ts/tests/markdown.mjs",
             "packages/ts/src/markdown.ts"
+          ]
+        },
+        {
+          "id": "markdown-session-python",
+          "command": "packages/python/.venv/bin/python -m unittest packages.python.tests.test_markdown.MarkdownTest.test_markdown_session_messages",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_markdown.py",
+            "packages/python/src/polyspec/orm/markdown.py"
           ]
         },
         {
@@ -1152,7 +1222,7 @@
         "packages/go/model/chain_types_test.go",
         "packages/php/tests/ModelJsonTextTest.php",
         "packages/php/tests/NativeCellReadTest.php",
-        "packages/ts/tests/chain-null.mjs",
+        "packages/ts/tests/chain-types.mjs",
         "packages/ts/tests/driver-cell-bytes.mjs",
         "packages/ts/tests/styled-value-checks.mjs",
         "packages/python/tests/test_chain_values.py",

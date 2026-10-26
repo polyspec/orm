@@ -7,10 +7,12 @@ import threading
 from polyspec.orm import codes
 from polyspec.orm.errors import OrmError
 from polyspec.orm.models import models
+
 from .coverage_case import (
-    expect_equal,
     CoverageCase,
     coverage_main,
+    error_code,
+    expect_equal,
     run_on_empty_tenant,
     with_cleanup,
 )
@@ -54,6 +56,11 @@ def caught(run):
 
 def transaction_rollback(item):
     def body(db):
+        expect_equal(
+            error_code(lambda: models.CompositeAccount().get_count()),
+            "CONFIG",
+            "an unconnected model outside a transaction returns CONFIG",
+        )
         boom = Requested("rollback requested by the callback")
 
         def callback():
@@ -87,7 +94,51 @@ def transaction_savepoint(item):
             models.CompositeAccount().set_tenant_id(TENANT).set_account_id(2).set_name(
                 "outer"
             ).create()
-            inner.append(caught(lambda: db.transaction(nested)))
+            for options in (
+                {"isolation": "serializable"},
+                {"readOnly": True},
+                {"timeoutMs": 1},
+            ):
+                called = []
+
+                def invoke_invalid_nested(options=options, called=called):
+                    def callback():
+                        called.append(True)
+
+                    return db.transaction(callback, options)
+
+                expect_equal(
+                    error_code(invoke_invalid_nested),
+                    "CONFIG",
+                    "a nested transaction rejects every option except retry",
+                )
+                expect_equal(
+                    called, [], "an invalid nested option does not run its callback"
+                )
+            for lock in (
+                "for_update",
+                "for_share",
+                "for_update_no_wait",
+                "for_share_no_wait",
+            ):
+                query = (
+                    models.CompositeAccount()
+                    .connect(db)
+                    .tenant_id(TENANT)
+                    .and_account_id(2)
+                )
+                row = getattr(query, lock)().get()
+                expect_equal(
+                    row is not None, True, f"{lock} works inside a transaction"
+                )
+            calls = []
+
+            def nested_once():
+                calls.append(True)
+                return nested()
+
+            inner.append(caught(lambda: db.transaction(nested_once, {"retry": 3})))
+            expect_equal(calls, [True], "nested retry is accepted and ignored")
 
         for isolation in (
             "read_uncommitted",
@@ -104,6 +155,23 @@ def transaction_savepoint(item):
         expect_equal(
             exists(db, 3), False, "the inner row is rolled back to the savepoint"
         )
+        for lock in (
+            "for_update",
+            "for_share",
+            "for_update_no_wait",
+            "for_share_no_wait",
+        ):
+            query = (
+                models.CompositeAccount()
+                .connect(db)
+                .tenant_id(TENANT)
+                .and_account_id(2)
+            )
+            expect_equal(
+                error_code(lambda query=query, lock=lock: getattr(query, lock)().get()),
+                "CONFIG",
+                f"{lock} outside a transaction returns CONFIG",
+            )
         models.CompositeAccount().connect(db).get_by_tenant_id_and_account_id(
             TENANT, 2
         ).delete()
@@ -413,11 +481,11 @@ def handle_abandoned_query(item):
 
 
 class CoverageTest(CoverageCase):
-    # Requirements: DSL-118, INT-45, INT-67, PLN-13, PLN-20, PLN-44.
+    # Requirements: DSL-118, INT-45, INT-67, PLN-13, PLN-16, PLN-20, PLN-44.
     def test_transaction_rollback(self):
         self.each_item("transaction_rollback", transaction_rollback)
 
-    # Requirements: DSL-119, INT-40, INT-41, INT-42, INT-43, INT-45, INT-46, INT-47, INT-48, PLN-17, PLN-44.
+    # Requirements: DSL-119, DSL-123, DSL-125, DSL-126, INT-40, INT-41, INT-42, INT-43, INT-45, INT-46, INT-47, INT-48, PLN-17, PLN-21, PLN-44.
     def test_transaction_savepoint(self):
         self.each_item("transaction_savepoint", transaction_savepoint)
 

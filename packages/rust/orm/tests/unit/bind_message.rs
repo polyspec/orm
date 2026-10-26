@@ -42,6 +42,7 @@ fn message_vectors() {
 
 /// The control cases of tests/bind/vectors.json: the begin control message of a transaction with and without its
 /// read_only option (docs/spec/protocol.md §5 "Session").
+/// Requirements: PRT-67.
 #[test]
 fn control_vectors() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

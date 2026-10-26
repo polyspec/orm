@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: 12b0c7221d104ea8eaaa10824cac38dd9d75b83ea3f5e630048e12b930051b0e -->
+<!-- source-sha256: 0796a7108e23bc513fb23666c367bc51eafc789e89993c570c1eeb3e7e2664fc -->
 # dbspec
 
 [English](dbspec.md)
@@ -75,7 +75,9 @@ table users {
 
 - **DBS-10** 그러므로 절대 경로, drive, backslash, 빈 segment, 끝의 `/`에는 정규형이 없으며, Windows가 담을 수 없는 이름에도 없다.
 
-- **DBS-11** 각 client에는 set reader가 하나 있다: Go `dbspec.ReadSet`, PHP `Dbspec::readSet`, TypeScript `readDbspecSet`, Python `read_dbspec_set`, Rust `dbspec::read_set`. TypeScript는 파일 읽기가 필요 없는 검사—DBS-12의 set-file 이름, DBS-13의 JSON, DBS-14의 경로 정규형—를 `@polyspec/orm/dbspec`의 순수 함수 `parseSet(bytes, path)`로 적용한다. 이 함수는 byte를 `Uint8Array`로 받아 `TextDecoder('utf-8', {fatal: true, ignoreBOM: true})`로 decode하므로 잘못된 UTF-8과 byte order mark가 드러나며, `readDbspecSet`과 editor 도구가 이를 호출한다. reader는 set 파일의 경로를 받아 이 순서로 검사한다:
+- **DBS-11** 각 client에는 set reader가 하나 있다: Go `dbspec.ReadSet`, PHP `Dbspec::readSet`, TypeScript `readDbspecSet`, Python `read_dbspec_set`, Rust `dbspec::read_set`. reader는 set 파일의 경로를 받아 이 순서로 검사한다:
+
+- **DBS-176** `@polyspec/orm`: TypeScript package는 `@polyspec/orm/dbspec`에서 `parseSet(bytes, path)`를 export한다. `bytes`는 `Uint8Array`, `path`는 string이어야 하며 그렇지 않으면 `TypeError`를 던진다. 파일을 읽지 않고 byte 내용과 path를 검사한다. `readDbspecSet`과 editor 도구는 이 순수 parser를 사용한다.
 
 - **DBS-12** set 파일. prefix는 주어진 경로에서 마지막 segment를 지운 것이며, segment는 `/`에서, Windows에서는 `/`나 `\`에서 끝난다; prefix는 비어 있거나 `/`, `a/`, `C:`일 수 있다. root는 prefix이며, prefix가 비어 있으면 `.`이다. 마지막 segment는 `dbspec-set.json`이고 root가 나열하는 이름과 같다(DBS-14의 비교). root(끝의 구분자를 뺀 것, `/`인 root는 `/` 그대로)와 파일은 symbolic link를 따르지 않고(`lstat`) 조사한다. POSIX에서 구분자로 끝나는 경로의 `lstat`은 link를 따르기 때문이다: 둘 다 symbolic link가 아니고, root는 directory이며 파일은 일반 파일이다. reader는 파일을 한 번 열어 그 handle에서 읽는다. root 위의 directory는 호출자의 것이므로 조사하지 않는다; 그 사이의 symbolic link는 platform이 해석한다.
 - **DBS-13** JSON, 이 순서로: byte는 parse 전에 검사하여 byte order mark 없는 올바른 UTF-8이다; 그 byte는 JSON object 하나(RFC 8259)를 담으며, 그 object는 그 자신을 하나로 세어 깊이 64 단계까지 중첩되고, 어떤 문자열도 짝 없는 surrogate를 escape하지 않으며, 어떤 깊이의 어떤 object에서도 key가 두 번 나오지 않는다; object에는 세 key 밖의 key가 없으며, 그 오류는 모르는 key를 모두 code point 순서로 적는다; `schema`는 RFC 8259가 상호 운용을 위해 권하는 대로 IEEE 754 double로 읽은 값이 1인 JSON 숫자이며(`1`, `1.0`, `1e0`은 모두 1), double 범위를 넘는 숫자를 포함해 다른 숫자는 1이 아니다; `documents`는 비어 있지 않은 문자열 배열이다; `external`은 있을 때 문자열 배열이며, `null`은 그렇지 않다.

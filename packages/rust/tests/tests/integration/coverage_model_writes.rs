@@ -63,7 +63,7 @@ async fn coverage_model_create_parts() {
 }
 
 #[tokio::test]
-// Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110.
+// Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110, DIA-26, COD-15.
 async fn coverage_model_write_cycle() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("model_write_cycle", async {
@@ -89,6 +89,23 @@ async fn coverage_model_write_cycle() {
         rows.delete(false).await.unwrap();
         assert!(account().get_by_tenant_id_and_account_id(TENANT, 1).await.unwrap().is_none(), "deleted row");
         assert_eq!(account().tenant_id(TENANT).get_count().await.unwrap(), 0, "rows left");
+
+        let text = r#"{"b":1,"a":[],"c":{},"n":1.50}"#;
+        let rollback: polyspec_orm::Result<()> = db
+            .transaction(async || {
+                let row = Author::new().connect(&db).add_all_columns().get_by_seq(1).await?.expect("seed author row 1");
+                let mut row = row.set_json_setting(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::parse(text).unwrap()))?;
+                row.update(false).await?;
+                let stored = Author::new().connect(&db).add_all_columns().get_by_seq(1).await?.expect("author row remains after update");
+                match stored.get_json_setting()? {
+                    polyspec_orm::StyledValue::Value(value) => assert_eq!(value.compact(), text, "ordered JSON text round trip"),
+                    polyspec_orm::StyledValue::SqlNull => panic!("ordered JSON text read back as SQL NULL"),
+                }
+                Err(polyspec_orm::Error::Config("rollback ordered JSON text probe".into()))
+            })
+            .retry(0)
+            .await;
+        assert!(matches!(rollback, Err(polyspec_orm::Error::Config(message)) if message == "rollback ordered JSON text probe"));
         db.close().await;
     })
     .await;

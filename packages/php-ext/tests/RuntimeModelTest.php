@@ -48,6 +48,55 @@ DBSPEC;
         );
     }
 
+    // Requirements: SCH-12.
+    public function testNativeLoadSetReturnsExternalDocumentsMarked(): void
+    {
+        self::assertTrue((new \ReflectionClass(RuntimeModel::class))->isInternal());
+        $owned = <<<'DBSPEC'
+dbspec 1 shop
+
+use core { account }
+
+table item {
+  seq i64
+  account_seq i64
+  primary key (seq)
+  index ix_item_account (account_seq)
+  foreign key fk_item_account (account_seq) references account (seq) on delete restrict on update restrict
+}
+DBSPEC;
+        $external = <<<'DBSPEC'
+dbspec 1 core
+
+table account {
+  seq i64
+  primary key (seq)
+}
+DBSPEC;
+        $documents = RuntimeModel::loadSet($owned, $external);
+        self::assertSame(
+            [['shop', false], ['core', true]],
+            array_map(static fn($document): array => [$document->name, $document->external], $documents),
+        );
+        self::assertSame(
+            [['core', false]],
+            array_map(
+                static fn($document): array => [$document->name, $document->external],
+                RuntimeModel::loadSet($external, ''),
+            ),
+        );
+        $code = static function (callable $call): string {
+            try {
+                $call();
+            } catch (OrmException $e) {
+                return $e->code_;
+            }
+            return 'no error';
+        };
+        self::assertSame('SCHEMA_INVALID', $code(static fn() => RuntimeModel::loadSet("table item {}\n", $external)));
+        self::assertSame('SCHEMA_INVALID', $code(static fn() => RuntimeModel::loadSet($owned, "table account {}\n")));
+    }
+
     // Requirements: PRT-9.
     public function testNativeDefaultSelectSetExcludesOnlySelectExplicit(): void
     {

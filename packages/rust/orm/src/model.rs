@@ -2030,7 +2030,7 @@ mod page_order_tests {
     row_model!(ChildRow, child_entity, &["seq", "parent_seq", "label"]);
 
     #[tokio::test]
-    // Requirements: INT-81, INT-82, INT-83, INT-84, INT-85.
+    // Requirements: PLN-6, INT-81, INT-82, INT-83, INT-84, INT-85.
     async fn collection_views_preserve_model_order_and_connect_every_model() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
         let path = std::env::temp_dir().join(format!("orm-collection-views-{}.sqlite", std::process::id()));

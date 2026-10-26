@@ -148,7 +148,7 @@ func TestCollectionLookupRejectsUnsupportedKey(t *testing.T) {
 	}
 }
 
-// Requirements: INT-81, INT-82, INT-83, INT-84, INT-85.
+// Requirements: PLN-6, INT-81, INT-82, INT-83, INT-84, INT-85.
 func TestCollectionViewsPreserveOrderAndConnectEveryModel(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	entity := &Entity{Value: func(model Model, name string) (any, bool) {

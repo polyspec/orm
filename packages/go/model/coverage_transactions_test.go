@@ -37,13 +37,54 @@ func accountExists(t *testing.T, db *orm.DB, tenant, account int64) bool {
 	return row != nil
 }
 
+func checkTransactionRowLockModes(db *orm.DB, outside bool) error {
+	locks := []struct {
+		name string
+		read func() error
+	}{
+		{"forUpdate", func() error {
+			_, err := model.CompositeAccount().Connect(db).TenantId(transactionTenant).AccountId(2).ForUpdate().Get()
+			return err
+		}},
+		{"forShare", func() error {
+			_, err := model.CompositeAccount().Connect(db).TenantId(transactionTenant).AccountId(2).ForShare().Get()
+			return err
+		}},
+		{"forUpdateNoWait", func() error {
+			_, err := model.CompositeAccount().Connect(db).TenantId(transactionTenant).AccountId(2).ForUpdateNoWait().Get()
+			return err
+		}},
+		{"forShareNoWait", func() error {
+			_, err := model.CompositeAccount().Connect(db).TenantId(transactionTenant).AccountId(2).ForShareNoWait().Get()
+			return err
+		}},
+	}
+	for _, lock := range locks {
+		err := lock.read()
+		if outside {
+			if orm.ErrorCode(err) != orm.CodeConfig {
+				if err == nil {
+					return fmt.Errorf("%s row lock outside a transaction was accepted; want CONFIG", lock.name)
+				}
+				return fmt.Errorf("%s row lock outside a transaction: %w; want CONFIG", lock.name, err)
+			}
+		} else if err != nil {
+			return fmt.Errorf("%s row lock inside a transaction: %w", lock.name, err)
+		}
+	}
+	return nil
+}
+
 // TestCoverageTransactionRollback checks that a transaction whose callback returns an error
 // passes that error to the caller and rolls back the callback's writes.
-// Requirements: DSL-118, INT-45, PLN-13, PLN-20, PLN-44.
+// Requirements: DSL-118, INT-45, PLN-13, PLN-16, PLN-20, PLN-44.
 func TestCoverageTransactionRollback(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, _, _ := connectFeature(t)
 	requireNoTransactionRows(t, db)
+	if _, err := model.CompositeAccount().GetCount(); orm.ErrorCode(err) != orm.CodeConfig {
+		t.Fatalf("unconnected model outside a transaction: %v", err)
+	}
 	boom := errors.New("transaction_rollback")
 	err := db.Transaction(func() error {
 		if _, err := model.CompositeAccount().SetTenantId(transactionTenant).SetAccountId(1).SetName("rolled").Create(); err != nil {
@@ -61,7 +102,7 @@ func TestCoverageTransactionRollback(t *testing.T) {
 
 // TestCoverageTransactionSavepoint checks that a failed nested transaction rolls back only to its savepoint
 // and the outer transaction is committed.
-// Requirements: DSL-119, INT-40, INT-41, INT-42, INT-43, INT-45, INT-46, INT-47, INT-48, PLN-17, PLN-44.
+// Requirements: DSL-119, DSL-123, DSL-125, DSL-126, INT-40, INT-41, INT-42, INT-43, INT-45, INT-46, INT-47, INT-48, PLN-17, PLN-21, PLN-44.
 func TestCoverageTransactionSavepoint(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, driver, _ := connectFeature(t)
@@ -71,13 +112,27 @@ func TestCoverageTransactionSavepoint(t *testing.T) {
 		if _, err := model.CompositeAccount().SetTenantId(transactionTenant).SetAccountId(2).SetName("outer").Create(); err != nil {
 			return err
 		}
+		for _, options := range [][]orm.TransactionOption{{orm.Isolation(orm.Serializable)}, {orm.ReadOnly()}, {orm.TimeoutMs(1)}} {
+			called := false
+			if err := db.Transaction(func() error { called = true; return nil }, options...); orm.ErrorCode(err) != orm.CodeConfig || called {
+				if err != nil {
+					return fmt.Errorf("nested transaction options: %w (callback called=%v)", err, called)
+				}
+				return fmt.Errorf("nested transaction options accepted (callback called=%v)", called)
+			}
+		}
+		if err := checkTransactionRowLockModes(db, false); err != nil {
+			return fmt.Errorf("inside transaction: %w", err)
+		}
+		innerCalls := 0
 		inner := db.Transaction(func() error {
+			innerCalls++
 			if _, err := model.CompositeAccount().SetTenantId(transactionTenant).SetAccountId(3).SetName("inner").Create(); err != nil {
 				return err
 			}
 			return boom
-		}, orm.Retry(0))
-		if !errors.Is(inner, boom) {
+		}, orm.Retry(3))
+		if !errors.Is(inner, boom) || innerCalls != 1 {
 			return errors.Join(errors.New("nested transaction did not return its callback error"), inner)
 		}
 		return nil
@@ -90,6 +145,9 @@ func TestCoverageTransactionSavepoint(t *testing.T) {
 	}
 	if accountExists(t, db, transactionTenant, 3) {
 		t.Fatal("the rolled back inner row exists")
+	}
+	if err := checkTransactionRowLockModes(db, true); err != nil {
+		t.Fatal(err)
 	}
 	if err := must(model.CompositeAccount().Connect(db).GetByTenantIdAndAccountId(transactionTenant, 2)).Delete(); err != nil {
 		t.Fatal(err)

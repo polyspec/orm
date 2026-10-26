@@ -12,8 +12,8 @@ use PDO;
 use ReflectionMethod;
 
 #[Medium]
-// Requirements: DSL-118, INT-45, PLN-13, PLN-20. The inherited rollback case runs against the native Db.
-// Requirements: DSL-119, INT-40, INT-41, INT-42, INT-43, INT-45, INT-46, INT-47, INT-48, PLN-17.
+// Requirements: DSL-118, INT-45, PLN-13, PLN-16, PLN-20. The inherited rollback case runs against the native Db.
+// Requirements: DSL-119, DSL-123, DSL-125, DSL-126, INT-40, INT-41, INT-42, INT-43, INT-45, INT-46, INT-47, INT-48, PLN-17, PLN-21.
 // The inherited savepoint case runs against the native Db.
 final class CoverageTransactionsExtensionTest extends CoverageTransactionsTest
 {
@@ -30,7 +30,8 @@ final class CoverageTransactionsExtensionTest extends CoverageTransactionsTest
         });
     }
 
-    // Requirements: DSL-118, INT-45, PLN-13, PLN-20, PLN-44. The inherited rollback case runs with the native Db.
+    // Requirements: DSL-118, INT-45, PLN-13, PLN-16, PLN-20, PLN-44.
+    // The inherited rollback case runs with the native Db.
     // Requirements: INT-40, INT-41, INT-42, INT-43, INT-47, INT-48. The inherited exact savepoint selector runs against
     // the native Db.
     // Requirements: DSL-124, PLN-19.

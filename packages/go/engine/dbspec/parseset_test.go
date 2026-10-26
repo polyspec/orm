@@ -33,6 +33,7 @@ func TestParseSet(t *testing.T) {
 	}
 }
 
+// Requirements: DBS-2, DBS-171.
 // TestParseSetVectors runs the shared vectors of tests/dbspec/set-parse.json (docs/spec/dbspec.md "Parsing a set"): the
 // name, the external mark, whether the text parsed and the rule, place and, when given, the message of each diagnostic.
 func TestParseSetVectors(t *testing.T) {

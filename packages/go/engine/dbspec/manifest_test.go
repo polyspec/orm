@@ -179,6 +179,7 @@ func expectSetErrors(want []vectorError, got []Diagnostic) error {
 	return nil
 }
 
+// Requirements: DBS-99.
 func TestDocumentSets(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	vectors := loadVectors(t)

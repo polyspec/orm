@@ -145,10 +145,15 @@ await runCases('coverage_planner.mjs', {
   async planner_rejects_scalar_column_subquery_without_limit() { compileCase('planner_rejects_scalar_column_subquery_without_limit'); },
   async planner_rejects_scalar_column_subquery_without_key_order() { compileCase('planner_rejects_scalar_column_subquery_without_key_order'); },
   async planner_rejects_in_subquery_limit() { compileCase('planner_rejects_in_subquery_limit'); },
+  // Requirements: DIA-31, PRT-67.
   async param_uses_column_function() { paramUsesCase('param_uses_column_function'); },
+  // Requirements: DIA-31, PRT-67.
   async param_uses_interval() { paramUsesCase('param_uses_interval'); },
+  // Requirements: DIA-31, PRT-67.
   async param_uses_contains() { paramUsesCase('param_uses_contains'); },
+  // Requirements: DIA-31, PRT-67.
   async param_uses_if_parent() { paramUsesCase('param_uses_if_parent'); },
+  // Requirements: DIA-31, PRT-67.
   async param_uses_optimistic() { paramUsesCase('param_uses_optimistic'); },
   async planner_join_inner_soft_delete() { compileCase('planner_join_inner_soft_delete'); },
   async planner_join_left_soft_delete() { compileCase('planner_join_left_soft_delete'); },

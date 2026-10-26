@@ -120,7 +120,7 @@ func names(t *testing.T, c *orm.Collection[*model.AuthorModel]) string {
 	return strings.Join(out, ",")
 }
 
-// Requirements: PLN-7, PLN-16, PLN-23, PLN-28, PLN-30, PLN-34, PLN-37, PLN-38, PLN-39.
+// Requirements: PLN-6, PLN-7, PLN-16, PLN-23, PLN-28, PLN-30, PLN-34, PLN-37, PLN-38, PLN-39.
 func TestConditions(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {

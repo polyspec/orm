@@ -120,7 +120,7 @@ final class CollectionIdentityTest extends TestCase
         self::assertTypedKeyGetAndFetch($integer, $text);
     }
 
-    // Requirements: INT-81, INT-82, INT-83, INT-84, INT-85.
+    // Requirements: PLN-6, INT-81, INT-82, INT-83, INT-84, INT-85.
     public function testToArrayPreservesCollectionModelOrder(): void
     {
         $first = new class extends Model {

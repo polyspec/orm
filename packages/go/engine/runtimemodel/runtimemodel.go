@@ -20,8 +20,8 @@ type Model struct {
 	ManifestHash string
 	// ExternalText is the text of the tables that external documents write, which the owning document uses (dbspec.Manifest).
 	ExternalText string
-	// Documents are the parsed documents in document-name order, and schema installation
-	// renders them.
+	// Documents are parsed in manifest order, then external-text order; each group is in document-name order.
+	// Schema installation renders only the manifest documents.
 	Documents []*dbspec.Document
 	// Order is the list of entity names of the set: documents in name order, tables in document
 	// order. A table of an external document that an owned document uses is an external entity,
@@ -127,7 +127,15 @@ func Build(documents []*dbspec.Document) (*Model, []dbspec.Diagnostic) {
 		return nil, diagnostics
 	}
 	ordered := slices.Clone(documents)
-	slices.SortStableFunc(ordered, func(a, b *dbspec.Document) int { return strings.Compare(a.Name, b.Name) })
+	slices.SortStableFunc(ordered, func(a, b *dbspec.Document) int {
+		if a.External != b.External {
+			if a.External {
+				return 1
+			}
+			return -1
+		}
+		return strings.Compare(a.Name, b.Name)
+	})
 	m := &Model{ManifestText: manifest.ManifestText, ManifestHash: manifest.ManifestHash, ExternalText: manifest.ExternalText, Documents: ordered, Entities: map[string]*Entity{}}
 	used := usedTables(ordered)
 	for _, document := range ordered {

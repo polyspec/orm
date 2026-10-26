@@ -1,5 +1,5 @@
 <!-- doc-id: codec -->
-<!-- source-sha256: 80cc2cc80f9e9c13e9216888804bc5deadd2393afb493a928b01e8a2e6d67165 -->
+<!-- source-sha256: 2a777d469a473dec86c41ba776e473f723dc425f57a2050277188324499ff6d3 -->
 # 코덱 — 컬럼 스타일의 읽기/쓰기 (S2)
 
 - **COD-1** Go 데이터베이스 값 변환은 잘못된 형식, null, 범위 초과, 유한하지 않은 값, 지원하지 않는 값에 `CODEC_DECODE`를 반환한다. Host 인코딩은 단계가 없거나 텍스트·바이트가 아닌 값에 `CODEC_ENCODE`를 반환한다. 생성 모델 대입은 컬럼 이름을 붙여 변환 오류를 보고한다. 행 조립은 오류를 호출자에게 반환하고 insert는 쓰기 전에 대입 필드를 검증한다. 빈 바이트 배열은 SQL NULL과 구분한다. scalar 집계 변환은 유효한 십진수를 가장 가까운 유한 binary64 값으로 받는다.
@@ -69,7 +69,7 @@ table service_config {
 
 - **COD-22** `json.Marshaler`를 구현한 Go 값은 `MarshalJSON` 결과를 즉시 ordered-json으로 파싱한다. 반환 바이트는 유효한 JSON이어야 하므로 custom marshaler도 ordered-json 모델에서 노드 종류 검사를 거치며 이를 우회할 수 없다.
 
-- **COD-23** Go `[]byte`는 공통 JSON 값이 아니므로 JSON encoding에서 `CODEC_ENCODE`로 거부한다. Go의 base64 JSON 문자열 표현으로 조용히 변환하지 않으며, JSON column에 대입하기 전에 byte를 공통 값 모델로 decode해야 한다.
+- **COD-23** `github.com/polyspec/orm/packages/go` Go 모듈은 `[]byte`를 공통 JSON 값으로 허용하지 않고 `CODEC_ENCODE`로 거부한다. Go의 base64 JSON 문자열 표현으로 조용히 변환하지 않으며, JSON column에 대입하기 전에 byte를 공통 값 모델로 decode해야 한다.
 - **COD-24** `ordered_json` 컬럼 getter — Go: `orm.StyledValue` containing `*orderedjson.Value`; Rust: `StyledValue<polyspec_orm::ordered_json::Value>`; PHP: `Polyspec\OrderedJson\Value`를 담은 `Polyspec\Orm\StyledValue`; TypeScript: `ordered-json`의 `StyledValue<Value>`; Python: `polyspec.ordered_json.Value`를 담은 `polyspec.orm.StyledValue`
 - **COD-25** 값 스타일 컬럼 setter 입력 — Go: portable 값이나 ordered-json 값을 담은 `orm.StyledValue`; Rust: `StyledValue<T>`; `T`는 스타일 값; PHP: 스타일 값을 담은 `Polyspec\Orm\StyledValue`; TypeScript: `StyledValue<T>`; `T`는 스타일 값; Python: 스타일 값을 담은 `polyspec.orm.StyledValue`
 - **COD-26** 모델 JSON 출력 — Go: `json.Marshal(model)`: 저장된 문서 텍스트를 포함한 값 스타일 컬럼의 바깥 표현; Rust: `to_json()`과 serde 직렬화: 저장된 문서 텍스트를 포함한 값 스타일 컬럼의 바깥 표현; PHP: `toJson()`: 값 스타일 컬럼의 바깥 표현, `json_encode`는 `CODEC_ENCODE`로 실패; TypeScript: `JSON.stringify(model)`과 `toJSONText()`: 값 스타일 컬럼의 바깥 표현; Python: `to_json_text()`: 저장된 문서 텍스트를 포함한 값 스타일 컬럼의 바깥 표현, `json.dumps`는 `TypeError`로 실패

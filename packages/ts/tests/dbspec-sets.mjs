@@ -2,6 +2,7 @@
 // Each case is a top-level test named by its id (dbspec_case.mjs).
 //
 // Usage: node --test packages/ts/tests/dbspec-sets.mjs (after the build)
+// Requirements: DBS-99.
 import { setCases } from './dbspec_case.mjs';
 
 setCases();

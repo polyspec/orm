@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Tests;
 
 use Polyspec\Orm\Code;
+use Polyspec\Orm\Db;
 use Polyspec\Orm\Request;
+use Polyspec\Orm\StyledValue;
 use Polyspec\Orm\Tests\Model\Account;
 use Polyspec\Orm\Tests\Model\Author;
 use Polyspec\Orm\Tests\Model\CompositeAccount;
@@ -13,6 +15,29 @@ use PHPUnit\Framework\Assert;
 
 final class CoverageModelWritesCase
 {
+    public static function orderedJsonTextRoundTrip(Db $db): void
+    {
+        $text = '{"b":1,"a":[],"c":{},"n":1.50}';
+        $rollback = new \RuntimeException('rollback ordered JSON text probe');
+        try {
+            $db->transaction(function () use ($db, $text, $rollback): void {
+                $row = (new Author())($db)->addAllColumns()->getBySeq(1);
+                Assert::assertNotNull($row, 'seed author row 1 exists');
+                $row->setJsonSetting(StyledValue::value(\Polyspec\OrderedJson\parse($text)))->update();
+
+                $stored = (new Author())($db)->addAllColumns()->getBySeq(1);
+                Assert::assertNotNull($stored, 'seed author row 1 remains after update');
+                Assert::assertSame($text, \Polyspec\OrderedJson\stringify($stored->getJsonSetting()->payload()));
+                $cell = $db->pdo()->query('SELECT json_setting FROM author WHERE seq = 1')->fetchColumn();
+                Assert::assertSame($text, $cell, 'database stores the ordered JSON text unchanged');
+                throw $rollback;
+            }, retry: 0);
+            Assert::fail('ordered JSON text probe transaction unexpectedly committed');
+        } catch (\Throwable $failure) {
+            Assert::assertSame($rollback, $failure, 'ordered JSON probe rolls back its row update');
+        }
+    }
+
     public static function saveKeyDispatch(string $ownerFile): void
     {
         foreach (coverageItemsOf($ownerFile) as $item) {

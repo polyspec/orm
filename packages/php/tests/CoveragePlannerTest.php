@@ -701,6 +701,7 @@ final class CoveragePlannerTest extends TestCase
         plannerCase($root, $fixture, 'planner_rejects_in_subquery_limit');
     }
 
+    // Requirements: DIA-31, PRT-67.
     public function testParamUsesColumnFunction(): void
     {
         $root = dirname(__DIR__, 3);
@@ -708,6 +709,7 @@ final class CoveragePlannerTest extends TestCase
         paramUsesCase($root, $fixture, 'param_uses_column_function');
     }
 
+    // Requirements: DIA-31, PRT-67.
     public function testParamUsesInterval(): void
     {
         $root = dirname(__DIR__, 3);
@@ -715,6 +717,7 @@ final class CoveragePlannerTest extends TestCase
         paramUsesCase($root, $fixture, 'param_uses_interval');
     }
 
+    // Requirements: DIA-31, PRT-67.
     public function testParamUsesContains(): void
     {
         $root = dirname(__DIR__, 3);
@@ -722,6 +725,7 @@ final class CoveragePlannerTest extends TestCase
         paramUsesCase($root, $fixture, 'param_uses_contains');
     }
 
+    // Requirements: DIA-31, PRT-67.
     public function testParamUsesIfParent(): void
     {
         $root = dirname(__DIR__, 3);
@@ -729,6 +733,7 @@ final class CoveragePlannerTest extends TestCase
         paramUsesCase($root, $fixture, 'param_uses_if_parent');
     }
 
+    // Requirements: DIA-31, PRT-67.
     public function testParamUsesOptimistic(): void
     {
         $root = dirname(__DIR__, 3);

@@ -18,6 +18,9 @@ class LoadSetTest(unittest.TestCase):
             [(d.name, d.external) for d in documents], [("shop", False), ("core", True)]
         )
         self.assertEqual([t.name for t in documents[0].tables], ["item"])
+        with self.assertRaises(OrmError) as caught:
+            RuntimeModel.load_set(OWNED, "table account {}\n")
+        self.assertEqual(caught.exception.code, "SCHEMA_INVALID")
 
     def test_an_empty_external_text_has_no_external_document(self):
         self.assertEqual(
