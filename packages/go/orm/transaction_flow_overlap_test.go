@@ -1,10 +1,15 @@
 package orm
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/polyspec/orm/packages/go/testcase"
+)
 
 // TestTransactionConnectionRejectsOverlappingStatement checks the transaction executor's statement guard.
 // Requirements: DSL-121 (docs/spec/dsl.md "Transactions").
 func TestTransactionConnectionRejectsOverlappingStatement(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	tx := &txConn{}
 	release, err := tx.enter()
 	if err != nil {
