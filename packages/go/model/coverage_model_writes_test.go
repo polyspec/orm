@@ -94,7 +94,7 @@ func TestCoverageModelSaveKeyDispatch(t *testing.T) {
 	})
 	assertRejected := func(err error) {
 		t.Helper()
-		if err != sentinel {
+		if !errors.Is(err, sentinel) {
 			t.Fatalf("Save error = %v, want request-hook sentinel", err)
 		}
 	}
