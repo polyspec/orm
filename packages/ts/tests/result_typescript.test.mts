@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { caseTest } from '../../../tests/testcase.mts';
 import { parse } from '@polyspec/ordered-json';
 import { StyledValue } from '../dist/index.js';
-import { derivedInteger, executeVector, resultValue } from '../testing/conformance/result_typescript.mts';
+import { resultValue } from '../testing/conformance/result_typescript.mts';
 
 // Deadline of each case 1 s: the case writes a few result values in memory and compares them.
 // COD-16 and COD-20: an ordered-json number keeps its exact text, and SQL NULL is its own styled state.
@@ -34,34 +34,4 @@ caseTest('a result never drops an undefined field or writes a non-finite number 
   const hidden = Object.defineProperty({}, 'hidden', { value: 1 });
   assert.throws(() => resultValue(hidden), /non-enumerable conformance result/);
   assert.throws(() => resultValue(new Date('2026-01-01T00:00:00Z')), /unsupported conformance result/);
-});
-
-// COD-45: a derived integer is a number only within 2^53, and any other value is refused as an invalid derived integer.
-caseTest('derived integer conversion preserves the exact numeric value', 1000, () => {
-  assert.equal(derivedInteger(2), 2);
-  assert.equal(derivedInteger('2'), 2);
-  assert.equal(derivedInteger(2n), 2);
-  assert.equal(derivedInteger(9007199254740992n), 9007199254740992);
-  assert.equal(derivedInteger('9007199254740992'), 9007199254740992);
-  for (const value of [null, true, '', 'bad', '2.0', '2.5', 2.5, Number.NaN, Number.POSITIVE_INFINITY, '9007199254740993', 9007199254740993n, 1n << 63n]) {
-    assert.throws(() => derivedInteger(value), /invalid derived integer/);
-  }
-});
-
-// COD-46: a failing vector reports its error with the original error as its cause, and a write vector runs in the transaction the runner gives it.
-caseTest('unexpected vector errors preserve their cause and write vectors use a transaction', 1000, async () => {
-  const cause = new Error('invalid row');
-  await assert.rejects(executeVector('invalid', async () => { throw cause; }), (error: unknown) => {
-    assert.ok(error instanceof Error, String(error));
-    assert.match(error.message, /invalid/);
-    assert.equal(error.cause, cause);
-    return true;
-  });
-  let transactionCalled = false;
-  const value = await executeVector('write', async () => 7, async (task: () => Promise<unknown>) => {
-    transactionCalled = true;
-    return task();
-  });
-  assert.equal(transactionCalled, true);
-  assert.equal(value, 7);
 });

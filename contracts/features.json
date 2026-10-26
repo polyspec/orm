@@ -13391,7 +13391,8 @@
         "packages/ts/testing/conformance/result_typescript.mts"
       ],
       "tests": [
-        "packages/ts/tests/result_typescript.test.mts"
+        "packages/ts/tests/result_typescript.test.mts",
+        "tests/conformance/check/result_typescript.test.mts"
       ],
       "command": "make --no-print-directory TEST_ENV=\"$ORM_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" conformance-result-check"
     },

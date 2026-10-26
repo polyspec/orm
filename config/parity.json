@@ -639,6 +639,10 @@
           "reason": "test: invokes the private paginate helper with a fake database to verify internal plan ordering and dispatch; public pagination behavior is covered by shared client cases"
         },
         {
+          "glob": "packages/ts/tests/result_typescript.test.mts",
+          "reason": "harness: tests the TypeScript conformance runner's private result encoder and vector adapter; public ordered JSON, styled values, and codec behavior remain covered by shared client units"
+        },
+        {
           "glob": "packages/ts/tests/dbspec-mermaid-errors.mjs",
           "reason": "test: injects an unexpected error into the private Mermaid catalog builder and verifies the same error object escapes; the public invalid-name diagnostic is covered by dbspec-mermaid-invalid"
         },
@@ -2079,6 +2083,30 @@
               "id": "TestPHPExtensionCommandLine"
             }
           ]
+        },
+        {
+          "id": "conformance-typescript-derived-integer",
+          "requirements": [
+            "COD-45"
+          ],
+          "bindings": [
+            {
+              "test": "tests/conformance/check/result_typescript.test.mts",
+              "id": "derived integer conversion preserves the exact numeric value"
+            }
+          ]
+        },
+        {
+          "id": "conformance-typescript-result-errors",
+          "requirements": [
+            "COD-46"
+          ],
+          "bindings": [
+            {
+              "test": "tests/conformance/check/result_typescript.test.mts",
+              "id": "unexpected vector errors preserve their cause and write vectors use a transaction"
+            }
+          ]
         }
       ]
     },
@@ -2328,77 +2356,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/listen_notify.rs",
           "id": "listen_notify"
-        }
-      ]
-    },
-    {
-      "id": "ts-conformance-result-exact-numbers",
-      "kind": "feature",
-      "requirements": [
-        "COD-16",
-        "COD-20"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/result_typescript.test.mts",
-          "id": "ordered-json numbers and styled states remain exact in result output"
-        }
-      ]
-    },
-    {
-      "id": "ts-conformance-result-member-key-order",
-      "kind": "feature",
-      "requirements": [
-        "COD-16"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/result_typescript.test.mts",
-          "id": "a member key that JavaScript reorders reports an error"
-        }
-      ]
-    },
-    {
-      "id": "ts-conformance-result-undefined-and-non-finite",
-      "kind": "feature",
-      "requirements": [
-        "COD-21"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/result_typescript.test.mts",
-          "id": "a result never drops an undefined field or writes a non-finite number as null"
-        }
-      ]
-    },
-    {
-      "id": "ts-conformance-result-derived-integer",
-      "kind": "feature",
-      "requirements": [
-        "COD-45"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/result_typescript.test.mts",
-          "id": "derived integer conversion preserves the exact numeric value"
-        }
-      ]
-    },
-    {
-      "id": "ts-conformance-result-vector-errors",
-      "kind": "feature",
-      "requirements": [
-        "COD-46"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/result_typescript.test.mts",
-          "id": "unexpected vector errors preserve their cause and write vectors use a transaction"
         }
       ]
     },
