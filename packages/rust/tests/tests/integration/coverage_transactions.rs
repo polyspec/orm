@@ -172,14 +172,17 @@ async fn coverage_transaction_savepoint() {
                     let holder_locked = std::sync::Mutex::new(Some(holder_locked));
                     holder
                         .transaction(async || {
+                            eprintln!("rust-savepoint: holder FOR UPDATE start");
                             match CompositeAccount::new().connect(&holder).tenant_id(TENANT).for_update().get().await {
                                 Ok(Some(_)) => {
+                                    eprintln!("rust-savepoint: holder FOR UPDATE acquired");
                                     let sender = holder_locked.lock().expect("lock readiness sender mutex").take();
                                     if let Some(sender) = sender {
                                         let _ = sender.send(Ok(()));
                                     }
                                 }
                                 Ok(None) => {
+                                    eprintln!("rust-savepoint: holder FOR UPDATE found no row");
                                     let sender = holder_locked.lock().expect("lock readiness sender mutex").take();
                                     if let Some(sender) = sender {
                                         let _ = sender.send(Err("lock probe row was not found".to_owned()));
@@ -187,6 +190,7 @@ async fn coverage_transaction_savepoint() {
                                     return Err(failure("lock probe row was not found"));
                                 }
                                 Err(error) => {
+                                    eprintln!("rust-savepoint: holder FOR UPDATE error: {error}");
                                     let sender = holder_locked.lock().expect("lock readiness sender mutex").take();
                                     if let Some(sender) = sender {
                                         let _ = sender.send(Err(format!("FOR UPDATE query failed: {error}")));
@@ -194,15 +198,20 @@ async fn coverage_transaction_savepoint() {
                                     return Err(error);
                                 }
                             }
+                            eprintln!("rust-savepoint: holder awaiting release");
                             holder_release.notified().await;
+                            eprintln!("rust-savepoint: holder released");
                             Ok(())
                         })
                         .retry(0)
                         .await
                 })
             });
+            eprintln!("rust-savepoint: parent awaiting lock readiness");
             match lock_ready.await {
-                Ok(Ok(())) => {}
+                Ok(Ok(())) => {
+                    eprintln!("rust-savepoint: parent observed lock readiness");
+                }
                 Ok(Err(message)) => {
                     release.notify_one();
                     let holder_result = holder_task.join().expect("the PostgreSQL lock-holder thread did not panic");
@@ -214,6 +223,7 @@ async fn coverage_transaction_savepoint() {
                     panic!("PostgreSQL lock-holder dropped its readiness signal; transaction: {holder_result:?}");
                 }
             }
+            eprintln!("rust-savepoint: timed transaction start");
             let timed: polyspec_orm::Result<()> = db
                 .transaction(async || {
                     account().tenant_id(TENANT).set_name("timed out").update(false).await?;
@@ -222,8 +232,12 @@ async fn coverage_transaction_savepoint() {
                 .timeout_ms(250)
                 .retry(0)
                 .await;
+            eprintln!("rust-savepoint: timed transaction end");
+            eprintln!("rust-savepoint: release notify");
             release.notify_one();
+            eprintln!("rust-savepoint: holder join start");
             holder_task.join().unwrap().unwrap();
+            eprintln!("rust-savepoint: holder join end");
             assert_eq!(code(timed), "CANCELED", "locked statement timeout");
             let timed_row = account().get_by_tenant_id_and_account_id(TENANT, 6).await.unwrap().expect("timeout probe row");
             assert_eq!(timed_row.get_name().unwrap(), "before timeout", "timed out update rolled back");
