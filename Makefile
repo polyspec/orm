@@ -1354,7 +1354,7 @@ orm-test-servers-stop:
 .PHONY: worktree-remove
 worktree-remove:
 	@test -n "$(WORKTREE)" || { echo "usage: make worktree-remove WORKTREE=<path>" >&2; exit 2; }
-	$(MAKE) -C "$(WORKTREE)" orm-test-servers-stop
+	@if test -d "$(WORKTREE)/.runtime/servers"; then $(MAKE) -C "$(WORKTREE)" orm-test-servers-stop; fi
 	git worktree remove "$(WORKTREE)"
 
 # orm-test-servers-leases lists the lease holders of the servers, and orm-test-servers-leases-clear, when a holder process is gone,
