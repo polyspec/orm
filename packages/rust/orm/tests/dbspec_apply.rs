@@ -734,7 +734,10 @@ async fn apply_stress_plan_on_three_databases() {
                 if planned.len() != count {
                     return Err(format!("{db}: planned {} steps, expected {count}", planned.len()));
                 }
-                let mut watch = Some(session.open().await?);
+                // SQLite keeps an exclusive file lock for the whole apply, so another connection cannot read the
+                // per-step history until the command releases it (PLN-89). The MySQL and PostgreSQL watchers can
+                // observe each committed history step; PostgreSQL also checks relation locks from that session.
+                let mut watch = if db == "sqlite" { None } else { Some(session.open().await?) };
                 if db == "postgres" {
                     let max_locks = scalar(conn, "SHOW max_locks_per_transaction").await?;
                     if max_locks != "64" {
@@ -749,17 +752,19 @@ async fn apply_stress_plan_on_three_databases() {
                         return Ok(());
                     }
                     applied += 1;
-                    let history_query = match db {
-                        "mysql" => "SELECT CONCAT(state, ' ', step) FROM `dbspec$plans`",
-                        _ => "SELECT state || ' ' || step FROM \"dbspec$plans\"",
-                    };
-                    let history = tokio::task::block_in_place(|| handle.block_on(scalar(watch.as_mut().expect("history watcher"), history_query)))
-                        .map_err(|error| Box::new(std::io::Error::other(error)) as EventError)?;
-                    if history != format!("applying {}", event.step) {
-                        return Err(Box::new(std::io::Error::other(format!(
-                            "after applied event {} history is {history:?}, want applying {}",
-                            event.step, event.step
-                        ))) as EventError);
+                    if let Some(watch) = watch.as_mut() {
+                        let history_query = match db {
+                            "mysql" => "SELECT CONCAT(state, ' ', step) FROM `dbspec$plans`",
+                            _ => "SELECT state || ' ' || step FROM \"dbspec$plans\"",
+                        };
+                        let history = tokio::task::block_in_place(|| handle.block_on(scalar(watch, history_query)))
+                            .map_err(|error| Box::new(std::io::Error::other(error)) as EventError)?;
+                        if history != format!("applying {}", event.step) {
+                            return Err(Box::new(std::io::Error::other(format!(
+                                "after applied event {} history is {history:?}, want applying {}",
+                                event.step, event.step
+                            ))) as EventError);
+                        }
                     }
                     if let (Some(watch), Some(pid)) = (watch.as_mut(), pid.as_ref()) {
                         let query = format!("SELECT count(*) FROM pg_locks WHERE pid = {pid} AND locktype = 'relation'");

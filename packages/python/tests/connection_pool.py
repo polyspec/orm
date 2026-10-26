@@ -146,24 +146,41 @@ class ConnectionPoolTest(unittest.TestCase):
         self.assertTrue(pooled.is_alive())
         self.assertIs(connection.reconnect, False, "ping never reconnects a session")
 
-    def test_postgres_idle_liveness_consumes_socket_without_query(self):
+    def test_postgres_idle_liveness_syncs_pipeline_without_query(self):
+        class Pipeline:
+            def __init__(self, error):
+                self.error = error
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, traceback):
+                if self.error is not None:
+                    raise self.error
+
         class Connection:
             closed = False
 
-            def __init__(self, status):
-                self.pgconn = SimpleNamespace(
-                    consume_input=lambda: None,
-                    status=status,
-                )
+            def __init__(self, status, error=None):
+                self.pgconn = SimpleNamespace(status=status)
+                self.pipeline_calls = 0
+                self.error = error
 
             def execute(self, *_args):
                 raise AssertionError("liveness check must not execute SQL")
 
+            def pipeline(self):
+                self.pipeline_calls += 1
+                return Pipeline(self.error)
+
         pooled = object.__new__(_PostgresConnection)
         pooled.connection = Connection(int(ConnStatus.OK))
         self.assertTrue(pooled.is_alive())
+        self.assertEqual(pooled.connection.pipeline_calls, 1)
 
-        pooled.connection = Connection(int(ConnStatus.BAD))
+        pooled.connection = Connection(
+            int(ConnStatus.BAD), psycopg.OperationalError("server ended idle session")
+        )
         self.assertFalse(pooled.is_alive())
 
     # Requirements: CFG-4, CFG-5.

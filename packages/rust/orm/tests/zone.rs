@@ -267,6 +267,7 @@ async fn pool_discards_ended_idle_connection() {
             .await
             .or_panic(|e| format!("{driver}: connect pool: {e}"));
         assert!(!db.utils().schema().exists("orm").await.or_panic(|e| format!("{driver}: warm pool: {e}")));
+        complete_idle_release(&db, driver).await;
         assert_eq!(db.stats().idle, 1, "{driver}: the pool holds one idle connection");
 
         let server_dsn = database.related_dsn(&require_dsn(&format!("ORM_TEST_{}_SERVER_DSN", driver.to_uppercase())));
@@ -313,9 +314,24 @@ async fn pool_discards_ended_idle_connection() {
         }
         admin.close().await;
         assert!(!db.utils().schema().exists("orm").await.or_panic(|e| format!("{driver}: statement after server ended idle connection: {e}")));
+        complete_idle_release(&db, driver).await;
         assert_eq!(db.stats().idle, 1, "{driver}: the pool retained a replacement connection");
         db.close().await;
         database.drop().await;
+    }
+}
+
+/// Waits for SQLx to finish returning the sole checked-out connection before reading pool statistics.
+async fn complete_idle_release(db: &Db, driver: &str) {
+    // SQLx returns a dropped PoolConnection from a spawned task; acquiring the only slot waits for that release.
+    match db.pool() {
+        Pool::MySql(pool) => {
+            pool.acquire().await.or_panic(|e| format!("{driver}: acquire MySQL pool release barrier: {e}")).return_to_pool().await;
+        }
+        Pool::Postgres(pool) => {
+            pool.acquire().await.or_panic(|e| format!("{driver}: acquire PostgreSQL pool release barrier: {e}")).return_to_pool().await;
+        }
+        Pool::Sqlite(_) | Pool::Markdown(_) => unreachable!("the idle server connection test selects MySQL or PostgreSQL"),
     }
 }
 

@@ -995,15 +995,22 @@ class _PostgresConnection:
     def is_alive(self) -> bool:
         if self.connection.closed:
             return False
-        from psycopg.pq import ConnStatus
-
         try:
-            self.connection.pgconn.consume_input()
+            # An idle backend can send a fatal response without changing libpq's
+            # connection status until a query is attempted. An empty pipeline
+            # sync checks the server connection without executing SQL.
+            with self.connection.pipeline():
+                pass
         except Exception as error:
             if _is_driver_error("postgres", error):
                 return False
             raise
-        return self.connection.pgconn.status == ConnStatus.OK
+        from psycopg.pq import ConnStatus
+
+        return (
+            not self.connection.closed
+            and self.connection.pgconn.status == ConnStatus.OK
+        )
 
     def in_transaction(self) -> bool:
         return not self.connection.autocommit and not self.connection.closed
