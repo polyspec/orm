@@ -76,3 +76,9 @@ On 2026-09-27, `make perf-check` passed with the seeded MySQL bench database. Th
 ## 7. Bench databases
 
 `scripts/bench-db.mts` recreates the databases named by `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN` and `BENCH_SQLITE_DSN`, installs `contracts/fixtures/bench/bench.dbs` through the TypeScript bench model, runs `benchmarks/sql/seed.mysql.sql`, `benchmarks/sql/seed.pg.sql` or `benchmarks/sql/seed.sqlite.sql`, and fills the AES and blind-index columns with the host codecs of the TypeScript client in the authenticated host format.
+
+## 8. Common client references
+
+`contracts/performance-references.json` declares one fixed ratio for each of the six clients, three databases and two workloads of `performance_gate`. The existing coverage runner compares the native measurements with that declaration. Measurements above a reference print a warning with the measurement, reference and machine; they do not fail correctness. Raw observations are never promoted automatically.
+
+For the initial final idle run, record the first attempt's observed ratio for each runtime/database/workload combination. Compare the second attempt with that reference as a diagnostic; add no tolerance and do not use the second attempt to raise the reference. Preserve both attempts and the raw record's path, SHA-256, capture time and machine identity. The Go and PHP `make perf-check` MySQL bounds in section 3 remain separate and unchanged.

@@ -1,5 +1,5 @@
 <!-- doc-id: perf -->
-<!-- source-sha256: 2abb6086cac684769ebd632f05c19a8199c8c8e163882e9ff0ade2c06e011e9b -->
+<!-- source-sha256: db44b56c5943165f661eefbaff0fc6465e7a5aa5ecf39cf54c1695efd93de28a -->
 # 성능
 
 모든 클라이언트는 호출한 프로세스 안에서 문장을 계획하고 네이티브 드라이버로 실행한다. 현재 클라이언트 오버헤드 기준은 아래 Go·PHP 실행 경로를 `make perf-check`로 측정하며 필수 데이터베이스 환경이 없으면 명령이 실패한다.
@@ -77,3 +77,9 @@ DB-free `hot_path_read_correctness` owner case는 각 client에서 자체 SQLite
 ## 7. bench database
 
 bench database는 `scripts/bench-db.mts`가 만든다. `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`의 database를 다시 만들고, TypeScript bench model로 `contracts/fixtures/bench/bench.dbs`를 설치하고, `benchmarks/sql/seed.mysql.sql`, `benchmarks/sql/seed.pg.sql`, `benchmarks/sql/seed.sqlite.sql`을 실행한 뒤 TypeScript client의 host codec으로 인증된 host 형식의 AES와 blind-index 값을 채운다.
+
+## 8. 공통 클라이언트 기준값
+
+`contracts/performance-references.json`은 `performance_gate`의 여섯 클라이언트, 세 database, 두 workload 조합마다 하나의 고정 비율을 선언한다. 기존 coverage runner가 native 측정값을 이 선언과 비교한다. 기준값을 넘으면 측정값, 기준값과 machine을 담은 경고를 출력하며 correctness 실패로 처리하지 않는다. 원시 관측값은 자동으로 기준값이 되지 않는다.
+
+최초 최종 idle 실행에서는 각 runtime/database/workload 조합의 첫 번째 실행에서 관측한 비율을 기록한다. 두 번째 실행은 그 기준값과 비교해 진단 정보로 보고하며, 여유값을 더하거나 두 번째 실행값으로 기준값을 높이지 않는다. 두 실행의 원시 측정값과 원시 기록의 경로, SHA-256, 측정 시각, machine identity를 보존한다. 3절의 Go 및 PHP `make perf-check` MySQL 한도는 별도로 유지하며 변경하지 않는다.
