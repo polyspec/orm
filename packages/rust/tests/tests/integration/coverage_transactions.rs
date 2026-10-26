@@ -163,14 +163,14 @@ async fn coverage_transaction_savepoint() {
 
         if db.driver() == "postgres" {
             account().set_tenant_id(TENANT).set_account_id(6).set_name("before timeout").create().await.unwrap();
-            let holder = connect().await;
             let release = std::sync::Arc::new(tokio::sync::Notify::new());
             let (holder_locked, lock_ready) = tokio::sync::oneshot::channel();
             let holder_release = release.clone();
             let holder_task = std::thread::spawn(move || {
                 tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(async move {
+                    let holder = connect().await;
                     let holder_locked = std::sync::Mutex::new(Some(holder_locked));
-                    holder
+                    let result = holder
                         .transaction(async || {
                             eprintln!("rust-savepoint: holder FOR UPDATE start");
                             match CompositeAccount::new().connect(&holder).tenant_id(TENANT).for_update().get().await {
@@ -204,7 +204,9 @@ async fn coverage_transaction_savepoint() {
                             Ok(())
                         })
                         .retry(0)
-                        .await
+                        .await;
+                    holder.close().await;
+                    result
                 })
             });
             eprintln!("rust-savepoint: parent awaiting lock readiness");
