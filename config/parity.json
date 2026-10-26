@@ -2444,7 +2444,7 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/PageCacheBoundCases.php",
+          "test": "packages/php/tests/PlanCacheBoundTest.php",
           "id": "testPagedReadsSharePlanAndBindPageValues"
         },
         {
