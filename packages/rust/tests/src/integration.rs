@@ -423,7 +423,7 @@ async fn writes(t: &Target) {
     assert_eq!(json["name"], "service", "serialize");
 }
 
-// Requirements: INT-51, INT-59, INT-61, INT-73, INT-134.
+// Requirements: INT-51, INT-59, INT-61, INT-73, INT-134, INT-57, INT-79.
 async fn transactions(t: &Target) {
     let _aes = t.db.utils().aes();
     let _schema = t.db.utils().schema();
@@ -580,10 +580,33 @@ async fn transactions(t: &Target) {
     let r: polyspec_orm::Result<()> = db.transaction(async || Ok(())).read_only().timeout_ms(500).await;
     let want = if t.driver == "postgres" { "ok" } else { "CAPABILITY_UNSUPPORTED" };
     assert_eq!(code(r), want, "{}: transaction timeoutMs", t.driver);
-    assert!(!db.utils().schema().empty().await.unwrap(), "schema().empty() on an installed schema");
-    db.utils().schema().installed("public", "user").await.unwrap();
+    let schema = db.utils().schema();
+    assert!(!schema.empty().await.unwrap(), "schema().empty() on an installed schema");
+    let (schema_name, expected) = match t.driver {
+        "mysql" => (t.database.name().to_string(), true),
+        "postgres" => ("public".to_string(), true),
+        _ => ("ormexample".to_string(), false),
+    };
+    assert_eq!(schema.exists(&schema_name).await.unwrap(), expected, "{}: schema exists", t.driver);
+    assert_eq!(schema.installed(&schema_name, "user").await.unwrap(), expected, "{}: schema table is installed", t.driver);
     assert_eq!(code(db.utils().privileges().inspect_table("public.user").await).as_str() == "CAPABILITY_UNSUPPORTED", t.driver != "postgres", "privileges");
-    assert!(db.utils().stats().open_connections >= 1, "stats");
+    let stats = db.utils().stats();
+    assert_eq!(stats.max_open_connections, 10, "{}: pool limit", t.driver);
+    assert_eq!(stats.open_connections, 1, "{}: open connections", t.driver);
+    assert_eq!(stats.in_use, 0, "{}: connections in use", t.driver);
+    assert_eq!(stats.idle, 1, "{}: idle connections", t.driver);
+    let stats_in_transaction: polyspec_orm::Result<()> = db
+        .transaction(async || {
+            let stats = db.utils().stats();
+            assert_eq!(stats.max_open_connections, 10, "{}: transaction pool limit", t.driver);
+            assert_eq!(stats.open_connections, 1, "{}: transaction open connections", t.driver);
+            assert_eq!(stats.in_use, 1, "{}: transaction connections in use", t.driver);
+            assert_eq!(stats.idle, 0, "{}: transaction idle connections", t.driver);
+            Ok(())
+        })
+        .retry(0)
+        .await;
+    stats_in_transaction.expect("stats available while a transaction holds its connection");
 }
 
 /// Returns after the replica has applied every change the primary committed

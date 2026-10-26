@@ -379,10 +379,25 @@ async function styledStates(db, dsn) {
   check(cells.json_setting === null && cells.jsons_tags === null && cells.serialize_data === null, 'SQL NULL storage');
 }
 
-// Requirements: INT-51, INT-59, INT-61, INT-73, INT-134.
+// Requirements: INT-51, INT-59, INT-61, INT-73, INT-134, INT-57, INT-79.
 async function transactions(db, dsn) {
   const utils = db.utils();
   check(utils.schema() !== null && utils.privileges() !== null && utils.aes() !== null && utils.stats() !== null, 'Utils exposes schema, privileges, AES and stats groups');
+  const schema = utils.schema();
+  let schemaName = 'ormexample';
+  let schemaExists = false;
+  if (db.driver === 'mysql') {
+    schemaName = new URL(dsn).pathname.replace(/^\//, '');
+    schemaExists = true;
+  } else if (db.driver === 'postgres') {
+    schemaName = 'public';
+    schemaExists = true;
+  }
+  check(await schema.exists(schemaName) === schemaExists, `${db.driver}: schema exists`);
+  check(await schema.installed(schemaName, 'user') === schemaExists, `${db.driver}: schema table is installed`);
+  const idleStats = db.utils().stats();
+  check(idleStats.maxOpenConnections === 10 && idleStats.openConnections === 1 && idleStats.inUse === 0 && idleStats.idle === 1,
+    `idle connection statistics: ${JSON.stringify(idleStats)}`);
   const privileges = utils.privileges();
   if (db.driver !== 'postgres') {
     check(await code(privileges.grantTable('public.user', 'ormtest_privilege')) === 'CAPABILITY_UNSUPPORTED', `${db.driver}: grantTable is unsupported`);
@@ -420,6 +435,9 @@ async function transactions(db, dsn) {
   try { await db.transaction(async () => { await new User().setName('rolled back').create(); throw boom; }); } catch (error) { err = error; }
   check(err === boom && await new User().connect(db).getCount() === 0, 'rollback');
   await db.transaction(async () => {
+    const busyStats = db.utils().stats();
+    check(busyStats.maxOpenConnections === 10 && busyStats.openConnections === 1 && busyStats.inUse === 1 && busyStats.idle === 0,
+      `busy connection statistics: ${JSON.stringify(busyStats)}`);
     await new User().setName('outer').create();
     let inner = null;
     try { await db.transaction(async () => { await new User().setName('inner').create(); throw boom; }); } catch (error) { inner = error; }
@@ -444,7 +462,9 @@ async function transactions(db, dsn) {
   check(attempts === 3, `retry: ${attempts}`);
   check(await code(db.transaction(async () => { throw new OrmError('DEADLOCK', 'retry'); }, { retry: 0 })) === 'DEADLOCK', 'retry disabled');
   check(!(await db.utils().schema().empty()), 'schema().empty() on an installed schema');
-  check(db.utils().stats().openConnections >= 1, `stats: ${JSON.stringify(db.utils().stats())}`);
+  const releasedStats = db.utils().stats();
+  check(releasedStats.maxOpenConnections === 10 && releasedStats.openConnections === 1 && releasedStats.inUse === 0 && releasedStats.idle === 1,
+    `released connection statistics: ${JSON.stringify(releasedStats)}`);
 }
 
 // Requirements: COD-8, PLN-44, INT-60, INT-75, INT-131.

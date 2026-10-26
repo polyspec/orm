@@ -359,12 +359,19 @@ pub struct Db {
 }
 
 /// The connection pool state.
+/// Requirements: INT-79.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DbStats {
     /// The pool size the connection was opened with.
     pub max_open_connections: u32,
     pub open_connections: u32,
+    /// The connections currently checked out of the pool.
+    pub in_use: u32,
     pub idle: u32,
+}
+
+pub(crate) fn pool_in_use(open: u32, idle: u32) -> u32 {
+    open.checked_sub(idle).expect("idle connections cannot exceed open connections")
 }
 
 /// The maximum of open connections when `Db::connect` receives a pool size of
@@ -679,7 +686,8 @@ impl Db {
             Pool::Sqlite(p) => (p.options().get_max_connections(), p.size(), p.num_idle()),
             Pool::Markdown(p) => return p.stats(),
         };
-        DbStats { max_open_connections: max, open_connections: size, idle: idle as u32 }
+        let idle = idle as u32;
+        DbStats { max_open_connections: max, open_connections: size, in_use: pool_in_use(size, idle), idle }
     }
 
     /// Closes the pool and clears cached plans. Calling it more than once is safe.
@@ -1057,6 +1065,24 @@ impl Db {
             return Err(Error::Config("database is closed".into()));
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod stats_tests {
+    use super::pool_in_use;
+
+    #[test]
+    fn pool_in_use_counts_open_connections_not_idle() {
+        assert_eq!(pool_in_use(1, 1), 0);
+        assert_eq!(pool_in_use(1, 0), 1);
+        assert_eq!(pool_in_use(4, 2), 2);
+    }
+
+    #[test]
+    #[should_panic(expected = "idle connections cannot exceed open connections")]
+    fn pool_in_use_rejects_an_impossible_pool_snapshot() {
+        pool_in_use(1, 2);
     }
 }
 

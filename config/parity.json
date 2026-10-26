@@ -16349,23 +16349,6 @@
       }
     },
     {
-      "id": "py-schema-inspection",
-      "kind": "feature",
-      "requirements": [
-        "INT-57",
-        "INT-58",
-        "INT-59",
-        "INT-79"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/schema_inspection.py",
-          "id": "test_sqlite"
-        }
-      ]
-    },
-    {
       "id": "py-test-driver-cells",
       "kind": "feature",
       "requirements": [
@@ -16463,20 +16446,6 @@
           "implementation": "python",
           "test": "packages/python/tests/test_placeholders.py",
           "id": "test_question_marks_become_format_markers_in_order"
-        }
-      ]
-    },
-    {
-      "id": "py-test-schema-inspection",
-      "kind": "feature",
-      "requirements": [
-        "INT-79"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_schema_inspection.py",
-          "id": "test_stats_report_the_pool_of_the_db"
         }
       ]
     },
@@ -16765,6 +16734,11 @@
           "implementation": "python",
           "test": "packages/python/tests/schema_inspection.py",
           "id": "test_postgres"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_schema_inspection.py",
+          "id": "test_empty_counts_tables_and_views_but_not_the_orm_tables"
         },
         {
           "implementation": "rust",
@@ -28271,6 +28245,114 @@
           "implementation": "python",
           "test": "packages/python/tests/test_styled_sql_null.py",
           "id": "test_root_row_reads_sql_null_as_styled_value"
+        }
+      ]
+    },
+    {
+      "id": "schema-existence-and-installation",
+      "kind": "feature",
+      "requirements": [
+        "INT-57"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/model_test.go",
+          "id": "TestTransactions"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testUtilities"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testUtilities"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/SchemaUtilsNativeTest.php",
+          "id": "testExistsEscapesUnderscoreInSqliteSchemaName"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model.mjs",
+          "id": "transactions"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/schema_inspection.py",
+          "id": "test_sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/schema_inspection.py",
+          "id": "test_mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/schema_inspection.py",
+          "id": "test_postgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/integration.rs",
+          "id": "transactions"
+        }
+      ]
+    },
+    {
+      "id": "connection-pool-statistics",
+      "kind": "feature",
+      "requirements": [
+        "INT-79"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/model_test.go",
+          "id": "TestTransactions"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testTransactions"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
+          "id": "CoverageTransactionsExtensionTest::testNativeUtilsExposeGroups"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model.mjs",
+          "id": "transactions"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_schema_inspection.py",
+          "id": "test_stats_report_the_pool_of_the_db"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/schema_inspection.py",
+          "id": "test_sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/schema_inspection.py",
+          "id": "test_mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/schema_inspection.py",
+          "id": "test_postgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/integration.rs",
+          "id": "transactions"
         }
       ]
     }

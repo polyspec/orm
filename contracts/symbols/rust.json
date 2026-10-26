@@ -3605,7 +3605,11 @@
   },
   "packages/rust/orm/src/db.rs::DbStats": {
     "exported": true,
-    "signature": "pub struct DbStats  { # [doc = \" The pool size the connection was opened with.\"] pub max_open_connections : u32 , pub open_connections : u32 , pub idle : u32 , }"
+    "signature": "pub struct DbStats  { # [doc = \" The pool size the connection was opened with.\"] pub max_open_connections : u32 , pub open_connections : u32 , # [doc = \" The connections currently checked out of the pool.\"] pub in_use : u32 , pub idle : u32 , }"
+  },
+  "packages/rust/orm/src/db.rs::DbStats#field.in_use": {
+    "exported": true,
+    "signature": "u32"
   },
   "packages/rust/orm/src/db.rs::DbStats#field.idle": {
     "exported": true,
@@ -3621,7 +3625,7 @@
   },
   "packages/rust/orm/src/db.rs::DbStats#wire": {
     "exported": true,
-    "signature": "{\"idle\":\"integer\",\"max_open_connections\":\"integer\",\"open_connections\":\"integer\"}"
+    "signature": "{\"idle\":\"integer\",\"in_use\":\"integer\",\"max_open_connections\":\"integer\",\"open_connections\":\"integer\"}"
   },
   "packages/rust/orm/src/db.rs::Executor": {
     "exported": false,
@@ -3882,6 +3886,10 @@
   "packages/rust/orm/src/db.rs::pool_options": {
     "exported": false,
     "signature": " fn pool_options \u003c DB : sqlx :: Database \u003e (size : u32 , idle : u32 , lifetime_ms : u32 , owner : \u0026 PoolOwner) -\u003e sqlx :: pool :: PoolOptions \u003c DB \u003e"
+  },
+  "packages/rust/orm/src/db.rs::pool_in_use": {
+    "exported": false,
+    "signature": "pub (crate) fn pool_in_use (open : u32 , idle : u32) -\u003e u32"
   },
   "packages/rust/orm/src/db.rs::precision_count": {
     "exported": false,

@@ -312,7 +312,8 @@ impl MdPool {
 
     pub(crate) fn stats(&self) -> DbStats {
         let state = self.state.lock().unwrap();
-        DbStats { max_open_connections: self.size, open_connections: state.open, idle: state.idle.len() as u32 }
+        let idle = state.idle.len() as u32;
+        DbStats { max_open_connections: self.size, open_connections: state.open, in_use: crate::db::pool_in_use(state.open, idle), idle }
     }
 }
 

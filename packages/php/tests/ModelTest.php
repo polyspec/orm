@@ -581,7 +581,19 @@ final class ModelTest extends TestCase
             self::check($e === $boom, 'rollback error');
         }
         self::check((new User())($db)->getCount() === 0, 'rollback');
+        $idleStats = $db->stats();
+        self::check(
+            $idleStats->maxOpenConnections === 1 && $idleStats->openConnections === 1
+                && $idleStats->inUse === 0 && $idleStats->idle === 1,
+            'idle connection statistics'
+        );
         $result = $db->transaction(function () use ($db, $boom): string {
+            $busyStats = $db->utils()->stats();
+            self::check(
+                $busyStats->maxOpenConnections === 1 && $busyStats->openConnections === 1
+                    && $busyStats->inUse === 1 && $busyStats->idle === 0,
+                'busy connection statistics'
+            );
             (new User())->setName('outer')->create();
             try {
                 $db->transaction(function () use ($boom): void {
@@ -621,7 +633,12 @@ final class ModelTest extends TestCase
             'nested options'
         );
         self::check($db->utils()->schema()->empty() === false, 'schema empty');
-        self::check($db->utils()->stats()->openConnections === 1, 'stats');
+        $releasedStats = $db->utils()->stats();
+        self::check(
+            $releasedStats->maxOpenConnections === 1 && $releasedStats->openConnections === 1
+                && $releasedStats->inUse === 0 && $releasedStats->idle === 1,
+            'released connection statistics'
+        );
         self::check($db->stats() == $db->utils()->stats(), 'Db stats are the utility stats');
     }
 
@@ -1650,7 +1667,7 @@ final class ModelTest extends TestCase
     }
 
     // transactions
-    // Requirements: PLN-13, PLN-16, PLN-17, PLN-20, PLN-21, INT-51, INT-61, INT-73, INT-134.
+    // Requirements: PLN-13, PLN-16, PLN-17, PLN-20, PLN-21, INT-51, INT-61, INT-73, INT-134, INT-79.
     #[DataProvider('drivers')]
     public function testTransactions(string $driver): void
     {

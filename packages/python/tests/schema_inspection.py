@@ -214,15 +214,14 @@ class SchemaInspectionTest(unittest.TestCase):
         )
 
     # Requirements: INT-57, INT-58, INT-59, INT-79.
-    # Requirements: INT-59.
     def test_sqlite(self):
         self.run_case("sqlite")
 
-    # Requirements: INT-58, INT-59.
+    # Requirements: INT-57, INT-58, INT-59, INT-79.
     def test_mysql(self):
         self.run_case("mysql")
 
-    # Requirements: INT-58, INT-59.
+    # Requirements: INT-57, INT-58, INT-59, INT-79.
     def test_postgres(self):
         self.run_case("postgres")
 

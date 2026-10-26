@@ -3,6 +3,7 @@ package model_test
 import (
 	"database/sql"
 	"errors"
+	"net/url"
 	"path/filepath"
 	"reflect"
 	"slices"
@@ -498,16 +499,24 @@ func TestWrites(t *testing.T) {
 
 // TestTransactions runs a transaction with its savepoint, lock, local and retry calls. A goroutine started inside the
 // callback has no active transaction, so an unconnected model there returns CONFIG.
-// Requirements: PLN-13, PLN-16, PLN-17, PLN-18, PLN-20, PLN-21, DSL-122, INT-51, INT-59, INT-61, INT-73, INT-134.
+// Requirements: PLN-13, PLN-16, PLN-17, PLN-18, PLN-20, PLN-21, DSL-122, INT-51, INT-59, INT-61, INT-73, INT-134, INT-57, INT-79.
 func TestTransactions(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
 		checkPrivilegeOperations(t, db)
-		if db.Utils().Aes() == nil || db.Utils().Privileges() == nil || db.Utils().Schema() == nil {
+		idle := db.Stats()
+		if idle.MaxOpenConnections != 10 || idle.OpenConnections != 1 || idle.InUse != 0 || idle.Idle != 1 {
+			t.Fatalf("idle connection statistics: %+v", idle)
+		}
+		if db.Utils().Aes() == nil || db.Utils().Privileges() == nil || db.Utils().Schema() == nil || db.Utils().Stats() == (orm.DBStats{}) {
 			t.Fatal("connection utilities are missing a group")
 		}
 		boom := errors.New("boom")
 		err := db.Transaction(func() error {
+			stats := db.Stats()
+			if stats.MaxOpenConnections != 10 || stats.OpenConnections != 1 || stats.InUse != 1 || stats.Idle != 0 {
+				return errors.New("connection statistics do not report the transaction's checked-out connection")
+			}
 			if _, err := model.User().SetName("rolled back").Create(); err != nil {
 				return err
 			}
@@ -515,6 +524,10 @@ func TestTransactions(t *testing.T) {
 		})
 		if !errors.Is(err, boom) || must(model.User().Connect(db).GetCount()) != 0 {
 			t.Fatalf("rollback: %v", err)
+		}
+		released := db.Stats()
+		if released.MaxOpenConnections != 10 || released.OpenConnections != 1 || released.InUse != 0 || released.Idle != 1 {
+			t.Fatalf("released connection statistics: %+v", released)
 		}
 		err = db.Transaction(func() error {
 			if _, err := model.User().SetName("outer").Create(); err != nil {
@@ -580,14 +593,37 @@ func TestTransactions(t *testing.T) {
 		if err != nil || attempts != 3 {
 			t.Fatalf("retry: %d %v", attempts, err)
 		}
-		empty := must(db.Utils().Schema().Empty())
-		installed := must(db.Utils().Schema().Installed("public", "user"))
-		_ = installed
+		schema := db.Utils().Schema()
+		empty := must(schema.Empty())
 		if empty {
 			t.Fatal("schema().empty() on an installed schema")
 		}
-		if db.Utils().Stats().OpenConnections < 1 {
-			t.Fatal("stats")
+		name := "ormexample"
+		wantExists := false
+		wantInstalled := false
+		switch db.Driver() {
+		case "mysql":
+			dsn, err := url.Parse(dsnOf(t, db))
+			if err != nil {
+				t.Fatal(err)
+			}
+			name = strings.TrimPrefix(dsn.Path, "/")
+			wantExists = true
+			wantInstalled = true
+		case "postgres":
+			name = "public"
+			wantExists = true
+			wantInstalled = true
+		}
+		if got := must(schema.Exists(name)); got != wantExists {
+			t.Fatalf("schema().exists(%q) = %v, want %v for %s", name, got, wantExists, db.Driver())
+		}
+		if got := must(schema.Installed(name, "user")); got != wantInstalled {
+			t.Fatalf("schema().installed(%q, user) = %v, want %v for %s", name, got, wantInstalled, db.Driver())
+		}
+		stats := db.Utils().Stats()
+		if stats.MaxOpenConnections != 10 || stats.OpenConnections != 1 || stats.InUse != 0 || stats.Idle != 1 {
+			t.Fatalf("idle pool statistics = %+v, want max=10 open=1 inUse=0 idle=1", stats)
 		}
 	})
 }
