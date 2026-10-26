@@ -20,6 +20,7 @@ function fakeDb() {
   return { db, plans, writes };
 }
 
+// Requirements: DSL-109.
 caseTest('save creates when the primary key is missing', COMPUTE, async () => {
   const { db, plans, writes } = fakeDb();
   await new Account().connect(db).setName('new').save();
@@ -27,6 +28,7 @@ caseTest('save creates when the primary key is missing', COMPUTE, async () => {
   assert.deepEqual(writes, ['INSERT']);
 });
 
+// Requirements: DSL-109.
 caseTest('save updates an explicitly assigned zero key', COMPUTE, async () => {
   const { db, plans, writes } = fakeDb();
   await new Account().connect(db).setSeq(0).setName('zero').save();
@@ -34,6 +36,7 @@ caseTest('save updates an explicitly assigned zero key', COMPUTE, async () => {
   assert.deepEqual(writes, ['UPDATE']);
 });
 
+// Requirements: DSL-109.
 caseTest('save updates a loaded row by its original key', COMPUTE, async () => {
   const { db, plans, writes } = fakeDb();
   const model = new Account().connect(db).setName('loaded');

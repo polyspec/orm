@@ -4578,6 +4578,21 @@
           "id": "save_key_dispatch [sqlite]"
         },
         {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/save-key-errors.test.mjs",
+          "id": "save creates when the primary key is missing"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/save-key-errors.test.mjs",
+          "id": "save updates an explicitly assigned zero key"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/save-key-errors.test.mjs",
+          "id": "save updates a loaded row by its original key"
+        },
+        {
           "implementation": "python",
           "test": "packages/python/tests/coverage_model_writes.py",
           "id": "test_save_key_dispatch"
