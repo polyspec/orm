@@ -145,6 +145,7 @@ def run_case(case: dict) -> None:
         compile_case(case)
 
 
+# Requirements: DSL-95. Joined-child fixture cases cover grouped placement and implicit AND appending.
 class Case(VectorCase):
     """A case of planner.json."""
 

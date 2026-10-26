@@ -112,14 +112,14 @@ final class AuditExternalSetsTest extends TestCase
         }
     }
 
-    // Requirements: DBS-110, SCH-11, SCH-12.
+    // Requirements: DBS-110.
     #[DataProvider('drivers')]
     public function testGeneratedAfterValues(string $driver): void
     {
         self::runOrder('generated_after_values', $driver);
     }
 
-    // Requirements: DBS-110, SCH-11, SCH-12.
+    // Requirements: DBS-110.
     #[DataProvider('drivers')]
     public function testMemberByValueFirst(string $driver): void
     {
