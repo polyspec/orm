@@ -264,3 +264,20 @@ def run_on_empty_tenant(models, item, tenant, run) -> None:
         run(db, account)
     finally:
         db.close()
+
+
+def connect_bench_author(models, item, *, all_columns=False):
+    """Connects the seeded bench database and returns its connected Author query factory."""
+    driver, dsn = item
+    db = models.connect(dsn, aesKey="bench-salt", blindIndexKey="bench-blind-index")
+    try:
+        expect_equal(db.driver, driver, "the driver")
+    except BaseException:
+        db.close()
+        raise
+
+    def author():
+        query = models.Author().connect(db)
+        return query.add_all_columns() if all_columns else query
+
+    return db, author, driver, dsn

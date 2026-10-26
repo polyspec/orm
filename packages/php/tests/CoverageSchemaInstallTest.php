@@ -133,24 +133,7 @@ final class CoverageSchemaInstallTest extends TestCase
             };
             $member = $schema(EXTERNAL_USER);
             Assert::assertNotSame('', $member->externalText, 'the schema value has no external document text');
-            $raw = Orm::connect($dsn, new Config());
-            $rawEvents = [];
-            $stopRaw = $raw->subscribe(static function ($event) use (&$rawEvents): void {
-                $rawEvents[] = $event->sql;
-            });
-            try {
-                try {
-                    (new \Polyspec\Orm\Tests\Model\Author())($raw)->getCount();
-                    $rawCode = '';
-                } catch (OrmException $error) {
-                    $rawCode = $error->code_;
-                }
-                Assert::assertSame(Code::SCHEMA_HASH_MISMATCH, $rawCode, 'a raw connection registers no set');
-                Assert::assertSame([], $rawEvents, 'an unregistered request sent no statement');
-            } finally {
-                $stopRaw();
-                $raw->close();
-            }
+            coverageAssertRawConnectionRejectsUnregisteredBenchRequest($dsn);
             Orm::connectSchema($dsn, $member, new Config())->close();
             $registeredDb = coverageConnect($dsn);
             $registrationEvents = [];

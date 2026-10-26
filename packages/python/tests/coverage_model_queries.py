@@ -5,18 +5,18 @@ from decimal import Decimal
 from polyspec.orm import orm
 from polyspec.orm.models import models
 
-from .coverage_case import CoverageCase, coverage_main, error_code, expect_equal
+from .coverage_case import (
+    CoverageCase,
+    connect_bench_author,
+    coverage_main,
+    error_code,
+    expect_equal,
+)
 
 
 def model_query_rows(item):
-    driver, dsn = item
-    db = models.connect(dsn, aesKey="bench-salt", blindIndexKey="bench-blind-index")
+    db, author, driver, dsn = connect_bench_author(models, item)
     try:
-        expect_equal(db.driver, driver, "the driver")
-
-        def author():
-            return models.Author().connect(db)
-
         rows = (
             author()
             .service_seq(7)

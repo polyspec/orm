@@ -6,6 +6,7 @@ from polyspec.orm.models import models
 
 from .coverage_case import (
     CoverageCase,
+    connect_bench_author,
     coverage_main,
     error_code,
     expect_equal,
@@ -90,14 +91,8 @@ def model_write_cycle(item):
 
 
 def optimistic_update(item):
-    driver, dsn = item
-    db = models.connect(dsn, aesKey="bench-salt", blindIndexKey="bench-blind-index")
+    db, author, _, _ = connect_bench_author(models, item, all_columns=True)
     try:
-        expect_equal(db.driver, driver, "the driver")
-
-        def author():
-            return models.Author().connect(db).add_all_columns()
-
         before = author().get_by_seq(1)
         stale = author().get_by_seq(1)
         sentinel = RuntimeError("rollback the optimistic update probe")

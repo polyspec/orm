@@ -17,6 +17,16 @@ use ReflectionClass;
 #[Small]
 final class ValidatorNativeTest extends TestCase
 {
+    /** @return array{RuntimeModel, Validator} */
+    private function nativeValidator(): array
+    {
+        self::assertTrue((new ReflectionClass(Validator::class))->isInternal());
+
+        $root = dirname(__DIR__, 3);
+        $model = RuntimeModel::build(RuntimeModel::files(["$root/contracts/fixtures/bench/bench.dbs"]));
+        return [$model, new Validator($model)];
+    }
+
     /** @return iterable<string, array{array<string, mixed>}> */
     public static function validateCases(): iterable
     {
@@ -29,11 +39,7 @@ final class ValidatorNativeTest extends TestCase
     #[DataProvider('validateCases')]
     public function testValidate(array $case): void
     {
-        self::assertTrue((new ReflectionClass(Validator::class))->isInternal());
-
-        $root = dirname(__DIR__, 3);
-        $model = RuntimeModel::build(RuntimeModel::files(["$root/contracts/fixtures/bench/bench.dbs"]));
-        $validator = new Validator($model);
+        [$model, $validator] = $this->nativeValidator();
         try {
             $validator->validate($case['request'] + ['manifest_hash' => $model->manifestHash]);
             $got = 'no error';
@@ -47,11 +53,7 @@ final class ValidatorNativeTest extends TestCase
     // Requirements: PRT-1.
     public function testRequestWithAnotherManifestHashIsRejected(): void
     {
-        self::assertTrue((new ReflectionClass(Validator::class))->isInternal());
-
-        $root = dirname(__DIR__, 3);
-        $model = RuntimeModel::build(RuntimeModel::files(["$root/contracts/fixtures/bench/bench.dbs"]));
-        $validator = new Validator($model);
+        [$model, $validator] = $this->nativeValidator();
         try {
             $validator->validate([
                 'ir_version' => 1,

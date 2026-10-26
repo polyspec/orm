@@ -91,24 +91,7 @@ DBSPEC,
             $manifest = self::externalSchema(NATIVE_EXTERNAL_USER);
             Assert::assertNotSame('', $manifest->externalText, 'the schema value has no external document text');
             [, $dsn] = coverageItem();
-            $raw = \Polyspec\Orm\Orm::connect($dsn, new \Polyspec\Orm\Config());
-            $rawEvents = [];
-            $stopRaw = $raw->subscribe(static function ($event) use (&$rawEvents): void {
-                $rawEvents[] = $event->sql;
-            });
-            try {
-                try {
-                    (new \Polyspec\Orm\Tests\Model\Author())($raw)->getCount();
-                    $rawCode = '';
-                } catch (OrmException $error) {
-                    $rawCode = $error->code_;
-                }
-                Assert::assertSame(Code::SCHEMA_HASH_MISMATCH, $rawCode, 'a raw connection registers no set');
-                Assert::assertSame([], $rawEvents, 'an unregistered request sent no statement');
-            } finally {
-                $stopRaw();
-                $raw->close();
-            }
+            coverageAssertRawConnectionRejectsUnregisteredBenchRequest($dsn);
             $badHash = new Schema(
                 str_replace('coverage_external_post', 'coverage_external_post_changed', $manifest->manifestText),
                 $manifest->manifestHash,

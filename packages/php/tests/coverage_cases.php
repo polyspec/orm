@@ -6,7 +6,9 @@ declare(strict_types=1);
 // runs those test methods with PHPUnit).
 
 use Polyspec\Orm\Config;
+use Polyspec\Orm\Code;
 use Polyspec\Orm\Db;
+use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
 use PHPUnit\Framework\Assert;
 
@@ -18,6 +20,29 @@ function coverageAssertEntryClassesAreInternal(): void
     }
     foreach (['Polyspec\\Orm\\Db', 'Polyspec\\Orm\\Planner'] as $entry) {
         Assert::assertTrue((new ReflectionClass($entry))->isInternal(), "$entry is the extension class");
+    }
+}
+
+/** A raw connection rejects a generated bench-model request before sending SQL. */
+function coverageAssertRawConnectionRejectsUnregisteredBenchRequest(string $dsn): void
+{
+    $raw = Orm::connect($dsn, new Config());
+    $events = [];
+    $stop = $raw->subscribe(static function ($event) use (&$events): void {
+        $events[] = $event->sql;
+    });
+    try {
+        try {
+            (new \Polyspec\Orm\Tests\Model\Author())($raw)->getCount();
+            $code = '';
+        } catch (OrmException $error) {
+            $code = $error->code_;
+        }
+        Assert::assertSame(Code::SCHEMA_HASH_MISMATCH, $code, 'a raw connection registers no set');
+        Assert::assertSame([], $events, 'an unregistered request sent no statement');
+    } finally {
+        $stop();
+        $raw->close();
     }
 }
 
