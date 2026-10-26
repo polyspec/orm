@@ -2330,6 +2330,7 @@
       ],
       "inputs": [
         "packages/ts/tests/models-scan.mjs",
+        "packages/ts/tests/model-new-output-name.mjs",
         "packages/ts/tsconfig.build.json",
         "contracts/fixtures/bench/dbspec-set.json",
         "contracts/fixtures/bench/bench.dbs",

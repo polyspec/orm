@@ -104,6 +104,22 @@ final class ModelQueriesWritesNativeTest extends TestCase
         }
     }
 
+    // Requirements: DSL-116.
+    public function testNewOutputNameRejectsAStoredColumnOnTheNativeModel(): void
+    {
+        self::assertTrue((new ReflectionClass(Model::class))->isInternal());
+        self::assertTrue((new ReflectionMethod(Model::class, '__call'))->isInternal());
+
+        $author = new Author();
+        try {
+            $author->newName('alias');
+            self::fail('A stored column cannot be attached as an output-only value.');
+        } catch (OrmException $error) {
+            self::assertSame(Code::CONFIG, $error->code_);
+        }
+        self::assertSame($author, $author->setName('stored'));
+    }
+
     public function testNativeModelDeleteLockKeepsLoadedChildren(): void
     {
         self::assertTrue((new ReflectionMethod(Model::class, 'deleteLock'))->isInternal());

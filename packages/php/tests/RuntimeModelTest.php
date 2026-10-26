@@ -120,6 +120,14 @@ final class RuntimeModelTest extends TestCase
         self::assertTrue($selected === $want, 'selected ' . implode(',', $selected));
     }
 
+    // Requirements: DSL-116.
+    public function testNewOutputNameRejectsAStoredColumn(): void
+    {
+        $author = new Author();
+        self::assertSame('CONFIG', self::errorCode(fn () => $author->newName('alias')));
+        self::assertSame($author, $author->setName('stored'));
+    }
+
     // Requirements: DBS-103, DBS-104, DBS-111, DBS-120.
     public function testGeneratedModelsCarryTheManifestHashAndTheModel(): void
     {

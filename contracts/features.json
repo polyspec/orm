@@ -1972,6 +1972,7 @@
       ],
       "parity": [
         "coverage-model-write-cycle",
+        "model-new-output-name-rejects-stored-column",
         "coverage-model-create-parts",
         "coverage-model-write-arithmetic-attributes",
         "coverage-model-save-key-dispatch",
@@ -2002,10 +2003,14 @@
       "tests": [
         "packages/go/model/model_test.go",
         "packages/go/model/assignment_test.go",
+        "packages/go/generator/gen_go_scan_test.go",
         "packages/php/tests/ModelTest.php",
+        "packages/php/tests/RuntimeModelTest.php",
         "packages/ts/tests/model.mjs",
+        "packages/ts/tests/model-new-output-name.mjs",
         "packages/ts/tests/styled-value.mjs",
         "packages/rust/tests/src/integration.rs",
+        "packages/rust/build/tests/generate.rs",
         "packages/go/decimalmodel/decimal_physical_test.go",
         "packages/php/tests/DecimalModelTest.php",
         "packages/php/tests/DecimalModelDbTest.php",

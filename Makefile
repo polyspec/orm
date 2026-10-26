@@ -1538,6 +1538,7 @@ generator-consumer-check/rust-emission: cargo-downloads-check lease-tool
 	cd packages/rust && $(CARGO_TEST) generator-consumer-rust-emission -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-build --test generate generated_rows_reject_unselected_fields_and_separate_group_results -- --test-threads=1 --exact
 generator-consumer-check/rust-chain-scan: cargo-downloads-check lease-tool
 	cd packages/rust && $(CARGO_TEST) generator-consumer-rust-chain-scan -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-build --test generate generates_called_methods -- --test-threads=1 --exact
+	cd packages/rust && $(CARGO_TEST) generator-consumer-rust-stored-column-name -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-build --test generate stored_column_name_is_rejected_as_an_output_name -- --test-threads=1 --exact
 generator-consumer-check/rust-integration: cargo-downloads-check lease-tool
 	cd packages/rust && $(CARGO_TEST) generator-consumer-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-tests --bin integration generated_typed_getter_is_a_checked_public_consumer_api -- --test-threads=1 --exact
 
@@ -2025,6 +2026,7 @@ ts-model-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NODE) --test packages/ts/tests/models-scan.mjs
+	$(NODE) --test packages/ts/tests/model-new-output-name.mjs
 
 perf-check:
 	$(WITH_TEST_ENV) node scripts/perf-test.mts

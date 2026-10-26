@@ -104,6 +104,18 @@ fn generates_called_methods() {
 }
 
 #[test]
+// Requirements: DSL-116.
+fn stored_column_name_is_rejected_as_an_output_name() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let setter = generate_with_schema(bench(), "fn main() { let _ = Author::new().set_name(\"stored\"); }").unwrap();
+    assert!(setter.contains("pub fn set_name"), "{setter}");
+
+    let error = generate_with_schema(bench(), "fn main() { let _ = Author::new().new_name(\"alias\"); }")
+        .expect_err("a stored column cannot be attached as an output-only name");
+    assert!(error.contains("name is a column name"), "{error}");
+}
+
+#[test]
 // Requirements: DSL-33, PRT-75.
 fn generates_fulltext_boolean_methods_for_multiple_columns() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

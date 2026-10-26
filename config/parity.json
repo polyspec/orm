@@ -27220,6 +27220,45 @@
       }
     },
     {
+      "id": "model-new-output-name-rejects-stored-column",
+      "kind": "feature",
+      "requirements": [
+        "DSL-116"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_scan_test.go",
+          "id": "TestStoredColumnNameIsNotGeneratedAsNewMethod"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RuntimeModelTest.php",
+          "id": "RuntimeModelTest::testNewOutputNameRejectsAStoredColumn"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
+          "id": "ModelQueriesWritesNativeTest::testNewOutputNameRejectsAStoredColumnOnTheNativeModel"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model-new-output-name.mjs",
+          "id": "a stored column name cannot be attached with new<Name>"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_new_values.py",
+          "id": "NewValuesTest::test_new_output_name_rejects_a_stored_column"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "stored_column_name_is_rejected_as_an_output_name"
+        }
+      ]
+    },
+    {
       "id": "dbspec-apply-cleanup-php",
       "kind": "feature",
       "requirements": [
