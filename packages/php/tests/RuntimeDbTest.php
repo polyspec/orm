@@ -142,17 +142,20 @@ final class RuntimeDbTest extends TestCase
         $pdo = $db->pdo();
         if ($driver === 'mysql') {
             $pdo->exec('ALTER TABLE sample MODIFY wide BIGINT UNSIGNED');
-            try {
-                $pdo->prepare('UPDATE sample SET wide = 18446744073709551615 WHERE seq = ?')->execute([$seq]);
-                $error = self::errorCode(fn() => (new Sample())($db)->getBySeq($seq)->getWide());
-                self::check($error === Code::CODEC_DECODE, 'invalid wide database cell is CODEC_DECODE');
-            } finally {
-                try {
-                    $pdo->prepare('UPDATE sample SET wide = 1 WHERE seq = ?')->execute([$seq]);
-                } finally {
-                    $pdo->exec('ALTER TABLE sample MODIFY wide BIGINT');
+            self::assertInvalidStoredWideCell(
+                $db,
+                $seq,
+                static fn() => $pdo->prepare(
+                    'UPDATE sample SET wide = 18446744073709551615 WHERE seq = ?'
+                )->execute([$seq]),
+                static function () use ($pdo, $seq): void {
+                    try {
+                        $pdo->prepare('UPDATE sample SET wide = 1 WHERE seq = ?')->execute([$seq]);
+                    } finally {
+                        $pdo->exec('ALTER TABLE sample MODIFY wide BIGINT');
+                    }
                 }
-            }
+            );
 
             $pdo->exec('ALTER TABLE sample ALTER CHECK `sample$active` NOT ENFORCED');
             try {
@@ -182,16 +185,29 @@ final class RuntimeDbTest extends TestCase
         }
 
         $pdo->exec('PRAGMA ignore_check_constraints = ON');
+        self::assertInvalidStoredWideCell(
+            $db,
+            $seq,
+            static fn() => $pdo->prepare('UPDATE sample SET wide = ? WHERE seq = ?')->execute(['not-an-integer', $seq]),
+            static function () use ($pdo, $seq): void {
+                try {
+                    $pdo->prepare('UPDATE sample SET wide = 1 WHERE seq = ?')->execute([$seq]);
+                } finally {
+                    $pdo->exec('PRAGMA ignore_check_constraints = OFF');
+                }
+            }
+        );
+    }
+
+    /** @param Closure(): mixed $writeInvalid @param Closure(): void $restore */
+    private static function assertInvalidStoredWideCell(Db $db, int $seq, Closure $writeInvalid, Closure $restore): void
+    {
         try {
-            $pdo->prepare('UPDATE sample SET wide = ? WHERE seq = ?')->execute(['not-an-integer', $seq]);
+            $writeInvalid();
             $error = self::errorCode(fn() => (new Sample())($db)->getBySeq($seq)->getWide());
             self::check($error === Code::CODEC_DECODE, 'invalid wide database cell is CODEC_DECODE');
         } finally {
-            try {
-                $pdo->prepare('UPDATE sample SET wide = 1 WHERE seq = ?')->execute([$seq]);
-            } finally {
-                $pdo->exec('PRAGMA ignore_check_constraints = OFF');
-            }
+            $restore();
         }
     }
 

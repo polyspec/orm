@@ -16,6 +16,8 @@ use Polyspec\Orm\OrmException;
 #[Small]
 final class ModelReadNativeTest extends TestCase
 {
+    use \Polyspec\Orm\Tests\DatabaseTestAssertions;
+
     public function testReadMethodsAreNativeExtensionEntries(): void
     {
         foreach (['get', 'gets', 'getsCount', 'getCount', 'getSum', 'getAvg', 'getsPage'] as $name) {
@@ -105,14 +107,15 @@ final class ModelReadNativeTest extends TestCase
             $valid = $assembleRow->invoke($model, $assembly, $declaration, [1.25]);
             self::assertSame(1.25, (new \ReflectionProperty(Model::class, 'values'))->getValue($valid)[$name]);
 
-            foreach ([NAN, 'NaN'] as $raw) {
-                try {
-                    $assembleRow->invoke($model, $assembly, $declaration, [$raw]);
-                    self::fail("A non-finite $name float cell must fail decoding.");
-                } catch (OrmException $error) {
-                    self::assertSame(Code::CODEC_DECODE, $error->code_);
-                }
-            }
+            $this->assertNonFiniteFloatCellDecodesAsError(
+                static fn(mixed $raw): mixed => $assembleRow->invoke(
+                    $model,
+                    $assembly,
+                    $declaration,
+                    [$raw]
+                ),
+                "A non-finite $name float cell"
+            );
         }
     }
 

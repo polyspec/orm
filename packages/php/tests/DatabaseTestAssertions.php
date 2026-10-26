@@ -98,6 +98,19 @@ trait DatabaseTestAssertions
         Assert::fail("unselected $column returned a value");
     }
 
+    /** @param Closure(mixed): mixed $decode */
+    protected function assertNonFiniteFloatCellDecodesAsError(Closure $decode, string $subject): void
+    {
+        foreach ([NAN, 'NaN'] as $raw) {
+            $error = self::raised(static fn() => $decode($raw));
+            $ormError = self::checkedOrmException($error, $subject);
+            self::check(
+                $ormError?->code_ === Code::CODEC_DECODE,
+                "$subject with " . var_export($raw, true) . ' returns CODEC_DECODE'
+            );
+        }
+    }
+
     protected function assertTuplePredicatePadsByRepeatingLastRow(Model $model): void
     {
         $request = new \Polyspec\Orm\Request('all', 'sha256:tuple-padding');

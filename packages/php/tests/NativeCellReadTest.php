@@ -8,17 +8,17 @@ use DateTimeZone;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Assembly;
-use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
 use Polyspec\Orm\Model;
-use Polyspec\Orm\OrmException;
 use ReflectionMethod;
 use ReflectionProperty;
 
 #[Small]
 final class NativeCellReadTest extends TestCase
 {
+    use DatabaseTestAssertions;
+
     // Requirements: INT-5, PRT-69.
     public function testRowAssemblyPreservesBinaryDriverCellBytes(): void
     {
@@ -65,14 +65,15 @@ final class NativeCellReadTest extends TestCase
             $valid = $assembleRow->invoke(new NativeByteCellFixture(), $assembly, $declaration, [1.25]);
             self::assertSame(1.25, (new ReflectionProperty(Model::class, 'values'))->getValue($valid)[$name]);
 
-            foreach ([NAN, 'NaN'] as $raw) {
-                try {
-                    $assembleRow->invoke(new NativeByteCellFixture(), $assembly, $declaration, [$raw]);
-                    self::fail("A non-finite $name float cell must fail decoding.");
-                } catch (OrmException $error) {
-                    self::assertSame(Code::CODEC_DECODE, $error->code_);
-                }
-            }
+            $this->assertNonFiniteFloatCellDecodesAsError(
+                static fn(mixed $raw): mixed => $assembleRow->invoke(
+                    new NativeByteCellFixture(),
+                    $assembly,
+                    $declaration,
+                    [$raw]
+                ),
+                "A non-finite $name float cell"
+            );
         }
     }
 }

@@ -68,6 +68,14 @@ final class DatabaseTestAssertionsTest extends TestCase
         );
     }
 
+    public function testNonFiniteFloatCellAssertionRequiresCodecDecode(): void
+    {
+        $this->assertNonFiniteFloatCellDecodesAsError(
+            static fn(mixed $raw): mixed => throw new OrmException(Code::CODEC_DECODE, 'invalid float'),
+            'non-finite float cell'
+        );
+    }
+
     public function testModelPredicateAssertionsPreserveTuplePaddingAndIpValidation(): void
     {
         $this->assertTuplePredicatePadsByRepeatingLastRow(new \Polyspec\Orm\Tests\Model\Author());
