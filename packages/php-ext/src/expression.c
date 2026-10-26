@@ -463,7 +463,6 @@ bool expression_parse(const tokens *t, zend_long line, zend_long end, const smap
         return false;
     }
     tree = disjunction(p);
-    expect(p, ")");
     if (p->at < t->n) {
         fail(p, SL("a check predicate ends with its closing parenthesis"));
     }

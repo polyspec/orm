@@ -386,11 +386,14 @@ static bool name_ok(parser *p, str name, zend_long column)
 {
     const char *rule;
     str message;
-    if (name_rule(name, &rule, &message)) {
+    bool invalid = name_rule(name, &rule, &message);
+    if (invalid) {
         error(p, rule, p->line, column, message);
-        return false;
     }
-    return true;
+    if (name.n > 63 && (!invalid || strcmp(rule, "name.length") != 0)) {
+        error(p, "name.length", p->line, column, fmt("name `%S` is longer than 63 bytes", name));
+    }
+    return !invalid;
 }
 
 static bool name_tok(parser *p, const token *t)
@@ -1565,10 +1568,10 @@ static void check_line(parser *p)
     PUSH(p->table->checks, k);
     declare(p, SL("constraint"), p->line, name->column, path2(p->table->name, name->text));
     tokens rest = {0};
-    for (size_t i = 3; i < p->t.n; i++) {
+    for (size_t i = 3; i + 1 < p->t.n; i++) {
         PUSH(rest, p->t.v[i]);
     }
-    PUSH(p->table_checks, ((tcheck_rec){k, p->line, rest, end_column(p)}));
+    PUSH(p->table_checks, ((tcheck_rec){k, p->line, rest, p->t.v[p->t.n - 1].column}));
 }
 
 /* Reads the audit's `exclude (<column>, ...)` and `include (<column>, ...)` lists. */
