@@ -17385,16 +17385,8 @@
       "id": "php-internal-model-conditions",
       "kind": "feature",
       "requirements": [
-        "PLN-6",
-        "PLN-7",
-        "PLN-16",
-        "PLN-23",
-        "PLN-28",
         "PLN-29",
-        "PLN-36",
-        "PLN-37",
-        "PLN-38",
-        "PLN-39"
+        "PLN-36"
       ],
       "bindings": [
         {
@@ -17402,51 +17394,18 @@
           "test": "packages/php/tests/ModelTest.php",
           "id": "ModelTest::testConditions"
         }
-      ]
-    },
-    {
-      "id": "php-internal-model-joins-and-relations",
-      "kind": "feature",
-      "requirements": [
-        "CPX-1",
-        "DBS-118",
-        "PLN-10",
-        "PLN-41",
-        "PLN-42",
-        "PLN-43"
       ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testJoinsAndRelations"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-model-columns-and-subqueries",
-      "kind": "feature",
-      "requirements": [
-        "PLN-8",
-        "PLN-9",
-        "PLN-14"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testColumnsAndSubqueries"
-        }
-      ]
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "model_queries",
+        "part": "owner/php"
+      }
     },
     {
       "id": "php-internal-model-writes",
       "kind": "feature",
       "requirements": [
-        "DSL-107",
-        "DSL-116",
-        "PLN-12",
-        "PLN-27"
+        "DSL-116"
       ],
       "bindings": [
         {

@@ -1047,7 +1047,8 @@
         "group-rows-database-query-preserves-values",
         "dsl-50-operator-value-shapes",
         "remove-columns-keeps-primary-foreign-and-added",
-        "go-model-constructor-api"
+        "go-model-constructor-api",
+        "php-internal-model-conditions"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
