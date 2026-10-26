@@ -58,11 +58,19 @@ function graph() {
   return { modules, violations };
 }
 
-// Requirements: ORE-6, ORES-53, ORES-54, ORES-55.
+// Requirements: ORE-6, ORES-53, ORES-55.
 caseTest('the subpath module reaches no Node module, undeclared package or Node global', TIMEOUT, () => {
   const { modules, violations } = graph();
   assert.ok(modules.size > 1, 'the graph follows the imports of the subpath module');
   assert.deepEqual(violations, [], `the browser entry reaches a Node or driver dependency:\n${violations.join('\n')}`);
+});
+
+// Requirement: ORES-54.
+caseTest('readDbspecBytes encodes the signature with TextEncoder', TIMEOUT, () => {
+  const { modules } = graph();
+  const source = readFileSync([...modules].find(file => file.endsWith('/read_bytes.js')), 'utf8');
+  assert.match(source, /new TextEncoder\(\)\.encode\(DBSPEC_SIGNATURE\)/);
+  assert.doesNotMatch(source, /\bBuffer\b/);
 });
 
 // Requirements: ORE-1, ORES-52.

@@ -2360,6 +2360,46 @@
       ]
     },
     {
+      "id": "ts-browser-entry",
+      "kind": "feature",
+      "requirements": [
+        "ORE-6",
+        "ORES-53",
+        "ORES-55"
+      ],
+      "bindings": [
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/browser-entry.mjs",
+          "id": "the subpath module reaches no Node module, undeclared package or Node global"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "@polyspec/orm"
+      }
+    },
+    {
+      "id": "ts-browser-entry-text-encoder",
+      "kind": "feature",
+      "requirements": [
+        "ORES-54"
+      ],
+      "bindings": [
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/browser-entry.mjs",
+          "id": "readDbspecBytes encodes the signature with TextEncoder"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "@polyspec/orm"
+      }
+    },
+    {
       "id": "ts-browser-entry-exports",
       "kind": "feature",
       "requirements": [
