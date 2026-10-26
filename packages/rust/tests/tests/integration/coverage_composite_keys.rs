@@ -128,7 +128,8 @@ async fn coverage_composite_key_rows() {
             ];
             for (sql, binds) in relation_events.iter() {
                 assert_eq!(binds, &expected_parent_binds, "three composite parent keys repeat the last tuple");
-                let placeholders = if sql.contains('?') { sql.matches('?').count() } else { (1..).take_while(|index| sql.contains(&format!("${index}"))).count() };
+                let placeholders =
+                    if sql.contains('?') { sql.matches('?').count() } else { (1..).take_while(|index| sql.contains(&format!("${index}"))).count() };
                 assert_eq!(placeholders, 8, "three composite parent keys expand to four two-column tuples");
             }
         }
