@@ -98,7 +98,7 @@ DBSPEC;
         self::assertSame('SCHEMA_INVALID', $code(static fn() => RuntimeModel::loadSet($owned, "table account {}\n")));
     }
 
-    // Requirements: PRT-9.
+    // Requirements: PRT-9, DBS-68.
     public function testNativeDefaultSelectSetExcludesOnlySelectExplicit(): void
     {
         self::assertTrue((new \ReflectionClass(RuntimeModel::class))->isInternal());

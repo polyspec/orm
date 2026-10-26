@@ -42,7 +42,7 @@ await run.run('engine', COMPUTE, async () => {
   check(code(() => new Engine(model, 'oracle')) === 'DIALECT_UNKNOWN', 'unknown dialect');
   const author = model.entities.get('author');
   const field = name => author.fields.find(f => f.name === name);
-  // Requirements: PRT-9.
+  // Requirements: PRT-9, DBS-68.
   const selected = author.fields.filter(f => f.selected).map(f => f.name);
   check(selected.join(',') === 'seq,name,created_ts,updated_ts,is_close,is_display,display_start_dt,display_end_dt,is_allday,target_club_reader_count,success_count,reader_count,read_count,photo_url,user_seq,service_seq,service_region_seq,service_member_seq,start_dt,end_dt,uuid,is_single_work,like_count,aes_hex_email,aes_hex_phone,price', 'the default select set excludes only select explicit columns in field order');
   check(field('json_setting').stages.join(',') === 'ordered_json' && field('aes_hex_email').stages.join(',') === 'aes,hex' && field('aes_hex_email').blindIndex === 'email_blind_index', 'codec stages and blind index');

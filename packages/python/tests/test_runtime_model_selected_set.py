@@ -7,7 +7,7 @@ from .coverage_case import REPOSITORY_ROOT
 
 
 class RuntimeModelSelectedSetTest(unittest.TestCase):
-    # Requirements: PRT-9.
+    # Requirements: PRT-9, DBS-68.
     def test_default_select_set_excludes_only_select_explicit(self):
         fixture_path = REPOSITORY_ROOT / "contracts/fixtures/bench/dbspec-set.json"
         fixture = json.loads(fixture_path.read_text(encoding="utf-8"))

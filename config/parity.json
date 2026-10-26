@@ -11757,45 +11757,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-engine-planner-runtime-model",
-      "kind": "feature",
-      "requirements": [
-        "PRT-9"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/planner/runtime_model_test.go",
-          "id": "TestDefaultSelectSetLeavesOutOnlySelectExplicit"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::testDefaultSelectSetExcludesOnlySelectExplicit"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::testNativeDefaultSelectSetExcludesOnlySelectExplicit"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/engine.mjs",
-          "id": "engine"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_runtime_model_selected_set.py",
-          "id": "RuntimeModelSelectedSetTest::test_default_select_set_excludes_only_select_explicit"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_runtime.rs",
-          "id": "runtime_model_of_bench"
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-generator-gen-go-packages",
       "kind": "feature",
       "requirements": [
@@ -15924,57 +15885,6 @@
       ]
     },
     {
-      "id": "runtime-value-types-and-styled-sql-null",
-      "kind": "feature",
-      "requirements": [
-        "INT-99",
-        "DBS-68",
-        "COD-20"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/value_types.rs",
-          "id": "runtime_value_types"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/value_types_test.go",
-          "id": "TestRuntimeValueTypes"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RuntimeDbTest.php",
-          "id": "RuntimeDbTest::testI16ValuesAndDefaults"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ConnectionUtcNativeTest.php",
-          "id": "ConnectionUtcNativeTest::testNativeStyledSqlNullIsPreservedOnDatabaseRead"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "sqlite: selected styled SQL NULL survives a database read"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "mysql: selected styled SQL NULL survives a database read"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "postgres: selected styled SQL NULL survives a database read"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_values.py",
-          "id": "RuntimeValueTypesDatabaseTest::test_runtime_value_types_and_styled_sql_null_read"
-        }
-      ]
-    },
-    {
       "id": "rust-postgres-float-round-trip",
       "kind": "feature",
       "requirements": [
@@ -17438,21 +17348,6 @@
           "implementation": "php",
           "test": "packages/php/tests/RuntimeDbTest.php",
           "id": "RuntimeDbTest::testInstallRendersTheDocumentSet"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-runtime-db-i16-values-and-defaults",
-      "kind": "feature",
-      "requirements": [
-        "DBS-108",
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RuntimeDbTest.php",
-          "id": "RuntimeDbTest::testI16ValuesAndDefaults"
         }
       ]
     },
@@ -28167,6 +28062,125 @@
           "implementation": "python",
           "test": "packages/python/tests/test_aes_rotate.py",
           "id": "test_rotates_every_row_not_at_the_current_version"
+        }
+      ]
+    },
+    {
+      "id": "runtime-model-default-select-set",
+      "kind": "feature",
+      "requirements": [
+        "PRT-9",
+        "DBS-68"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/engine/planner/runtime_model_test.go",
+          "id": "TestDefaultSelectSetLeavesOutOnlySelectExplicit"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RuntimeModelTest.php",
+          "id": "RuntimeModelTest::testDefaultSelectSetExcludesOnlySelectExplicit"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RuntimeModelTest.php",
+          "id": "RuntimeModelTest::testNativeDefaultSelectSetExcludesOnlySelectExplicit"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/engine.mjs",
+          "id": "engine"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_runtime_model_selected_set.py",
+          "id": "RuntimeModelSelectedSetTest::test_default_select_set_excludes_only_select_explicit"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/schema/tests/dbspec_runtime.rs",
+          "id": "runtime_model_of_bench"
+        }
+      ]
+    },
+    {
+      "id": "runtime-value-types",
+      "kind": "feature",
+      "requirements": [
+        "INT-99"
+      ],
+      "bindings": [
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/value_types.rs",
+          "id": "runtime_value_types"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/value_types_test.go",
+          "id": "TestRuntimeValueTypes"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RuntimeDbTest.php",
+          "id": "RuntimeDbTest::testI16ValuesAndDefaults"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConnectionUtcNativeTest.php",
+          "id": "ConnectionUtcNativeTest::testNativeI16ValuesAndDefaults"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
+          "id": "sqlite: an i16 column reads and writes its whole range"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
+          "id": "mysql: an i16 column reads and writes its whole range"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
+          "id": "postgres: an i16 column reads and writes its whole range"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
+          "id": "sqlite: an omitted column takes the database default and a required column is checked"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
+          "id": "mysql: an omitted column takes the database default and a required column is checked"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
+          "id": "postgres: an omitted column takes the database default and a required column is checked"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
+          "id": "sqlite: every codec stage and dbspec type reads its value type"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
+          "id": "mysql: every codec stage and dbspec type reads its value type"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
+          "id": "postgres: every codec stage and dbspec type reads its value type"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_values.py",
+          "id": "RuntimeValueTypesDatabaseTest::test_runtime_value_types_and_styled_sql_null_read"
         }
       ]
     }

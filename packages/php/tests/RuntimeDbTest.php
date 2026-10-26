@@ -210,13 +210,14 @@ final class RuntimeDbTest extends TestCase
         });
     }
 
-    // Requirements: DBS-108, SCH-7, INT-99, DBS-68, COD-20.
+    // Requirements: DBS-108, SCH-7.
     #[DataProvider('drivers')]
     public function testInstallRendersTheDocumentSet(string $driver): void
     {
         self::runCase($driver, 'Polyspec\\Orm\\Tests\\RuntimeDb', self::caseInstallRendersTheDocumentSet(...));
     }
 
+    // Requirements: INT-99.
     #[DataProvider('drivers')]
     public function testI16ValuesAndDefaults(string $driver): void
     {

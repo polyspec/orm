@@ -92,6 +92,7 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
     assert.equal(await new Item().connect(db).getCount(), 0);
   });
 
+  // Requirements: INT-99.
   caseTest(`${dialect}: an i16 column reads and writes its whole range`, 30_000, async () => {
     for (const small of [-32768, 32767]) {
       const row = new Probe().connect(db);
@@ -108,6 +109,7 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
     }
   });
 
+  // Requirements: INT-99.
   caseTest(`${dialect}: an omitted column takes the database default and a required column is checked`, 30_000, async () => {
     const row = new Probe().connect(db);
     row[CORE].setValue('small', 1);
@@ -141,6 +143,7 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
     assert.equal(all[CORE].column('hidden'), 'h');
   });
 
+  // Requirements: INT-99.
   caseTest(`${dialect}: every codec stage and dbspec type reads its value type`, 30_000, async () => {
     const row = new Probe().connect(db);
     row[CORE].setValue('small', 3);
@@ -167,7 +170,7 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
     assert.equal(read[CORE].column('stamp'), '2026-01-02 03:04:05.678');
   });
 
-  // Requirements: INT-99, DBS-68, COD-20.
+  // Requirements: COD-20.
   caseTest(`${dialect}: selected styled SQL NULL survives a database read`, 30_000, async () => {
     const row = new Probe().connect(db);
     row[CORE].setValue('small', 4);

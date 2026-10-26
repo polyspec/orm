@@ -1238,7 +1238,7 @@ connection-utc-php-extension-check: php-vendor-check php-models orm-install-php-
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/php-extension/polyspec_orm.so"; \
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testNativeConnectionsUseUtc|testNativeStyledSqlNullIsPreservedOnDatabaseRead|testNativeOutOfRangeDatabaseCellFailsTypedRead' packages/php-ext/tests/ConnectionUtcNativeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testNativeConnectionsUseUtc|testNativeStyledSqlNullIsPreservedOnDatabaseRead|testNativeI16ValuesAndDefaults|testNativeOutOfRangeDatabaseCellFailsTypedRead' packages/php-ext/tests/ConnectionUtcNativeTest.php
 
 # Runs the existing PHP library CFG-2 date cases by exact method and data provider.
 connection-utc-php-check: php-vendor-check php-models

@@ -61,7 +61,7 @@ fn manifest_text_without_header_is_rejected() {
     polyspec_orm_testcase::step(format_args!("dbspec runtime manifest without header cpu={cpu:?} wall={wall:?}"));
 }
 
-// Requirements: DBS-111, PRT-9.
+// Requirements: DBS-111, PRT-9, DBS-68.
 #[test]
 fn runtime_model_of_bench() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
