@@ -3,13 +3,40 @@
 //! the interpretation of error lines, and the SQL-only surface that the markdown connection rejects. These are the same cases as Go's markdown_test.go.
 
 use polyspec_orm::db::{parse_dsn, ConnectOptions};
-use polyspec_orm::{Config, Db, Isolation};
+use polyspec_orm::{AesKeyring, Config, Core, Db, Isolation, Model, Schema, Val};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 
 const TOKEN: &str = "0123456789abcdef0123456789abcdef";
 const CONNECT_LINE: &str = r#"{"op":"connect","corpus":"tracker","token":"0123456789abcdef0123456789abcdef"}"#;
+
+#[derive(Clone)]
+struct MarkdownUnsupportedModel;
+
+impl Model for MarkdownUnsupportedModel {
+    fn entity() -> &'static polyspec_orm::Entity {
+        panic!("an unsupported Markdown AES operation must return before reading the model")
+    }
+    fn core(&self) -> &Core {
+        panic!("an unsupported Markdown AES operation must return before reading the model")
+    }
+    fn core_mut(&mut self) -> &mut Core {
+        panic!("an unsupported Markdown AES operation must return before reading the model")
+    }
+    fn from_core(_: Core) -> Self {
+        panic!("an unsupported Markdown AES operation must return before reading the model")
+    }
+    fn into_core(self) -> Core {
+        panic!("an unsupported Markdown AES operation must return before reading the model")
+    }
+    fn assign(&mut self, _: &str, _: Val) -> polyspec_orm::Result<bool> {
+        panic!("an unsupported Markdown AES operation must return before reading the model")
+    }
+    fn value(&self, _: &str) -> Option<Val> {
+        panic!("an unsupported Markdown AES operation must return before reading the model")
+    }
+}
 
 #[test]
 fn parse_markdown_dsn() {
@@ -69,10 +96,7 @@ async fn start_markdown_test_server(answers: &[&str]) -> MarkdownTestServer {
             panic!("the fake server's receiver was dropped before the requests were sent");
         }
     });
-    MarkdownTestServer {
-        port,
-        received_messages,
-    }
+    MarkdownTestServer { port, received_messages }
 }
 
 impl MarkdownTestServer {
@@ -134,11 +158,14 @@ async fn markdown_connect_refused() {
 /// Checks that the markdown connection rejects the SQL-only surface with CAPABILITY_UNSUPPORTED (docs/spec/dialects.md
 /// "Markdown IR executor").
 #[tokio::test]
-// The test of DIA-183, DIA-184, DIA-185, DIA-188, DIA-189 (docs/spec).
+// Requirements: DIA-183, DIA-184, DIA-185, DIA-188, DIA-189.
 async fn markdown_rejected_surfaces() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let server = start_markdown_test_server(&[r#"{"ok":true}"#]).await;
     let db = Db::connect(&server.dsn(), 1, Config::default()).await.unwrap();
+    let schema = Schema::new("", "");
+    let keyring = AesKeyring::new([(1, "key".to_owned())].into(), 1).unwrap();
+    let model = MarkdownUnsupportedModel;
     let results: Vec<(&str, polyspec_orm::Result<()>)> = vec![
         ("isolation", db.transaction(async || Ok(())).isolation(Isolation::Serializable).await),
         ("timeout_ms", db.transaction(async || Ok(())).timeout_ms(100).await),
@@ -147,6 +174,11 @@ async fn markdown_rejected_surfaces() {
         ("set_local", db.utils().set_local("k", "v").await),
         ("local", db.utils().local("k").map(drop)),
         ("subscribe", db.subscribe(|_: &polyspec_orm::StatementEvent<'_>| Ok(())).map(|subscription| subscription.unsubscribe())),
+        ("privileges", db.utils().privileges().inspect_table("public.items").await.map(drop)),
+        ("AES status", db.utils().aes().status(&model, &keyring).await.map(drop)),
+        ("AES rotation", db.utils().aes().rotate(&model, &keyring).await.map(drop)),
+        ("schema install", db.utils().schema().install(&schema).await),
+        ("schema evolution", db.utils().schema().add_tables_and_columns(&schema).await.map(drop)),
         ("schema exists", db.utils().schema().exists("orm").await.map(drop)),
         ("backend_waiting_for_lock", db.utils().backend_waiting_for_lock().await.map(drop)),
     ];

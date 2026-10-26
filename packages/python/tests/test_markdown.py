@@ -147,21 +147,34 @@ class MarkdownTest(unittest.TestCase):
         self.assertEqual(server.received_messages(), [CONNECT_LINE])
 
     def test_markdown_rejected_surfaces(self):
+        # Requirements: DIA-183, DIA-184, DIA-185, DIA-188, DIA-189.
         server = MarkdownTestServer(self, '{"ok":true}')
         db = Db.connect(server.dsn())
         self.addCleanup(db.close)
+        dbutils = db.utils()
         for name, run in {
+            "audit": lambda: db.transaction(
+                lambda: None, {"audit": {"actor": "tester"}}
+            ),
             "isolation": lambda: db.transaction(
                 lambda: None, {"isolation": "serializable"}
             ),
             "timeoutMs": lambda: db.transaction(lambda: None, {"timeoutMs": 100}),
-            "lock": lambda: db.utils().lock("k"),
-            "setLocal": lambda: db.utils().set_local("k", "v"),
+            "lock": lambda: dbutils.lock("k"),
+            "setLocal": lambda: dbutils.set_local("k", "v"),
+            "local": lambda: dbutils.local("k"),
+            "backendWaitingForLock": lambda: dbutils.backend_waiting_for_lock(),
             "subscribe": lambda: db.subscribe(lambda event: None),
+            "privileges": lambda: dbutils.privileges().inspect_table("public.items"),
+            "AES rotation": lambda: dbutils.aes().rotate(None, None),
+            "schema install": lambda: dbutils.schema().install(None),
+            "schema evolution": lambda: dbutils.schema().add_tables_and_columns(None),
         }.items():
             error = raised(run)
             self.assertIsInstance(error, OrmError, name)
             self.assertEqual(error.code, "CAPABILITY_UNSUPPORTED", f"{name}: {error}")
+        db.close()
+        self.assertEqual(server.received_messages(), [CONNECT_LINE])
 
 
 class BindMessageVectors(unittest.TestCase):

@@ -190,6 +190,7 @@ final class MarkdownTest extends TestCase
         );
     }
 
+    // Requirements: DIA-183, DIA-184, DIA-185, DIA-188, DIA-189.
     public function testRejectedSurfaces(): void
     {
         $server = start_markdown_test_server(['{"ok":true}']);
@@ -206,6 +207,18 @@ final class MarkdownTest extends TestCase
             'local' => static fn() => $db->utils()->local('k'),
             'subscribe' => static fn() => $db->subscribe(static function (): void {
             }),
+            'privileges' => static fn() => $db->utils()->privileges()->inspectTable('public.items'),
+            'AES status' => static fn() => $db->utils()->aes()->status(
+                new \Polyspec\Orm\Tests\MarkdownModel\Tasks(),
+                new \Polyspec\Orm\AesKeyring([1 => 'key'], 1)
+            ),
+            'AES rotation' => static fn() => $db->utils()->aes()->rotate(
+                new \Polyspec\Orm\Tests\MarkdownModel\Tasks(),
+                new \Polyspec\Orm\AesKeyring([1 => 'key'], 1)
+            ),
+            'schema install' => static fn() => $db->utils()->schema()->install(new Schema('', '')),
+            'schema evolution' => static fn() => $db->utils()->schema()->addTablesAndColumns(new Schema('', '')),
+            'getQuery' => static fn() => (new \Polyspec\Orm\Tests\MarkdownModel\Tasks())->connect($db)->getQuery(),
         ];
         foreach ($surfaces as $name => $fn) {
             $e = markdown_error($fn);
@@ -511,6 +524,7 @@ final class MarkdownTest extends TestCase
         }
     }
 
+    // Requirements: PRT-67.
     public function testBindOffsetlessDatetimeUsesTheConnectionZoneUnderDst(): void
     {
         // An offset-less datetime is a wall clock in the connection zone (docs/spec/protocol.md §5). The process

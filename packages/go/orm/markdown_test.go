@@ -147,6 +147,7 @@ func TestMarkdownConnectRefused(t *testing.T) {
 // TestMarkdownRejectedSurfaces checks that a markdown connection refuses SQL-only surfaces with CAPABILITY_UNSUPPORTED
 // (docs/spec/dialects.md "Markdown IR executor").
 func TestMarkdownRejectedSurfaces(t *testing.T) {
+	// Requirements: DIA-183, DIA-184, DIA-185, DIA-188, DIA-189.
 	testcase.Start(t, testcase.Compute)
 	s := startMarkdownTestServer(t, `{"ok":true}`)
 	db, err := Connect(s.dsn(), Config{})
@@ -154,17 +155,29 @@ func TestMarkdownRejectedSurfaces(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer testcase.Close(t, db)
+	query := NewCore(&Entity{Name: "items", Schema: &Schema{}})
+	query.conn = db
 	for name, err := range map[string]error{
-		"isolation":   db.Transaction(func() error { return nil }, Isolation(Serializable)),
-		"timeoutMs":   db.Transaction(func() error { return nil }, TimeoutMs(100)),
-		"lock":        db.Utils().Lock("k"),
-		"setLocal":    db.Utils().SetLocal("k", "v"),
-		"subscribe":   subscribeErr(db),
-		"waitingLock": waitingErr(db),
+		"audit":            db.Transaction(func() error { return nil }, Audit(map[string]any{"actor": "tester"})),
+		"isolation":        db.Transaction(func() error { return nil }, Isolation(Serializable)),
+		"timeoutMs":        db.Transaction(func() error { return nil }, TimeoutMs(100)),
+		"getQuery":         func() error { _, err := query.GetQuery(); return err }(),
+		"lock":             db.Utils().Lock("k"),
+		"setLocal":         db.Utils().SetLocal("k", "v"),
+		"local":            func() error { _, err := db.Utils().Local("k"); return err }(),
+		"subscribe":        subscribeErr(db),
+		"waitingLock":      waitingErr(db),
+		"privileges":       func() error { _, err := db.Utils().Privileges().InspectTable("public.items"); return err }(),
+		"AES rotation":     func() error { _, err := db.Utils().Aes().Rotate(nil, AESKeyring{}); return err }(),
+		"schema install":   db.Utils().Schema().Install(nil),
+		"schema evolution": func() error { _, err := db.Utils().Schema().AddTablesAndColumns(nil); return err }(),
 	} {
 		if ErrorCode(err) != CodeCapabilityUnsupported {
 			t.Fatalf("%s: %v; want CAPABILITY_UNSUPPORTED", name, err)
 		}
+	}
+	if got := <-s.receivedMessages; len(got) != 1 || got[0] != connectLine {
+		t.Fatalf("messages = %q; want only the connect message", got)
 	}
 }
 

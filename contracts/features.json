@@ -64,7 +64,8 @@
         "php-python-session-initialization",
         "parameter-slot-validation-vectors",
         "markdown-session-messages",
-        "markdown-message-vectors"
+        "markdown-message-vectors",
+        "markdown-rejected-surfaces"
       ],
       "fixtures": [
         "packages/go/orm/test_helpers_test.go",
@@ -672,6 +673,22 @@
             "packages/ts/tests/markdown.mjs",
             "packages/ts/src/bind_check.ts",
             "tests/bind/vectors.json"
+          ]
+        },
+        {
+          "id": "markdown-rejected-surfaces-php-extension",
+          "command": "make dbspec-php-extension-check/markdown DBSPEC_MARKDOWN_TEST_FILTER='testRejectedSurfaces'",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "packages/php/tests/MarkdownTest.php",
+            "packages/php/tests/markdown_test_server.php",
+            "packages/php-ext/src/config.m4",
+            "packages/php-ext/scripts/build.sh",
+            "packages/php-ext/src/markdown_native.c",
+            "packages/php-ext/src/markdown_native.h",
+            "packages/php-ext/src/orm.c",
+            "packages/php-ext/src/polyspec_orm.c"
           ]
         }
       ],

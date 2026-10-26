@@ -127,18 +127,25 @@ caseTest('markdown/connect-refused', COMPUTE, async () => {
 });
 
 // A markdown connection rejects the SQL-only surface with CAPABILITY_UNSUPPORTED.
+// Requirements: DIA-183, DIA-184, DIA-185, DIA-188, DIA-189.
 caseTest('markdown/rejected-surfaces', COMPUTE, async () => {
   const s = await startMarkdownTestServer('{"ok":true}');
   try {
     const db = await Db.connect(s.dsn);
     try {
       const surfaces = {
+        audit: () => db.transaction(() => undefined, { audit: { actor: 'tester' } }),
         isolation: () => db.transaction(() => undefined, { isolation: 'serializable' }),
         timeoutMs: () => db.transaction(() => undefined, { timeoutMs: 100 }),
         lock: () => db.utils().lock('k'),
         setLocal: () => db.utils().setLocal('k', 'v'),
+        local: () => db.utils().local('k'),
         backendWaitingForLock: () => db.utils().backendWaitingForLock(),
         subscribe: async () => db.subscribe(() => undefined),
+        privileges: () => db.utils().privileges().inspectTable('public.items'),
+        AESRotation: () => db.utils().aes().rotate(null, null),
+        schemaInstall: () => db.utils().schema().install(null),
+        schemaEvolution: () => db.utils().schema().addTablesAndColumns(null),
         statementTimeoutMs: () => Db.connect(s.dsn, { statementTimeoutMs: 100 }),
       };
       for (const [name, work] of Object.entries(surfaces)) {
@@ -148,6 +155,8 @@ caseTest('markdown/rejected-surfaces', COMPUTE, async () => {
     } finally {
       await db.close();
     }
+    const got = await s.receivedMessages;
+    if (!isDeepStrictEqual(got, [connectLine])) throw new Error(`messages = ${JSON.stringify(got)}; want only connect`);
   } finally {
     await s.close();
   }
