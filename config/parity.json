@@ -1083,6 +1083,10 @@
           "reason": "test: exercises the crate-private Executor routing between pool and transaction connections and closed-database error propagation; it is not a shared client behavior unit (K313)"
         },
         {
+          "glob": "packages/rust/orm/src/db/pool_stats_tests.rs",
+          "reason": "test: checks the private pool_in_use arithmetic helper and its impossible-snapshot panic; public DbStats values are exercised by the six-client connection-pool-statistics feature (K313)"
+        },
+        {
           "glob": "packages/rust/build/tests/unit/assignment_budget.rs",
           "reason": "test: tests the private checked-add assignment budget helper at exact limits and overflow; its owner is rust-duplicate-catalog-check, while shared model assignment behavior remains covered by catalog-plain-query-budgets and model_writes cases"
         },

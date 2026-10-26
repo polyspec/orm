@@ -415,6 +415,10 @@ mod sqlite_row_lock_restore_tests;
 mod executor_route_tests;
 
 #[cfg(test)]
+#[path = "db/pool_stats_tests.rs"]
+mod pool_stats_tests;
+
+#[cfg(test)]
 #[path = "../tests/unit/time_precision.rs"]
 mod time_precision_tests;
 
@@ -1065,24 +1069,6 @@ impl Db {
             return Err(Error::Config("database is closed".into()));
         }
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod stats_tests {
-    use super::pool_in_use;
-
-    #[test]
-    fn pool_in_use_counts_open_connections_not_idle() {
-        assert_eq!(pool_in_use(1, 1), 0);
-        assert_eq!(pool_in_use(1, 0), 1);
-        assert_eq!(pool_in_use(4, 2), 2);
-    }
-
-    #[test]
-    #[should_panic(expected = "idle connections cannot exceed open connections")]
-    fn pool_in_use_rejects_an_impossible_pool_snapshot() {
-        pool_in_use(1, 2);
     }
 }
 
