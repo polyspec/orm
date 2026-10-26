@@ -6,7 +6,7 @@
 //   targets/<target>.log     the target's exact command, its Makefile recipe, input paths, and the full output
 //   targets/<target>/run/    files from the run directory (.runtime/run/<target>-<pid>) left by a failed target
 //   summary.md               per target: status, time, first failure line. In CI it is also written to GITHUB_STEP_SUMMARY
-//   record.json              that run's record from .runtime/full-run.json (written by the CI summary step)
+//   record.json              that run's record from .runtime/check/<run id>/record.json
 //   servers/*.log            test server logs (written by the CI summary step)
 //
 // A target log keeps the first LIMIT_BYTES and the last TAIL_BYTES (cappedLog), and among the files it moves, any file larger than LIMIT_BYTES

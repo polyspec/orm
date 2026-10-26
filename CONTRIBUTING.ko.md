@@ -1,5 +1,5 @@
 <!-- doc-id: contributing -->
-<!-- source-sha256: fd0595f1d062e6e5cf4392a195c82889a99168fd033745603a5891fb1c287d9e -->
+<!-- source-sha256: 7211f83f0a341633fd47a57b1b010778ad8320e0e782cb08b3f37bdaa4c51522 -->
 # 기여 안내
 
 ## 필수 작업 순서
@@ -15,12 +15,11 @@
 4. 영문과 한글 paired document를 함께 갱신한다.
 5. 바뀐 것의 unit test, 곧 그 Red/Green case를 실행하고 필요하면 commit 설명에 결과를 기록한다. end-to-end
    실행, `make owner-check`, 전체 묶음은 push 뒤 CI에서 실행하며, push 전에 필요한 로컬 검사는 없다.
-6. 전체 묶음은 `main`으로의 push 뒤 CI가 실행한다(`make check-run GROUP=<group>`). 로컬 `make orm-check`는 먼저
-   `@polyspec/kit`의 full-run 도구의 guard를 실행한다: `docs/plans/execution/checklist.md`의 항목이 `[~]`인 동안(각 ID와
-   제목을 적는다), 추적하는 file에 commit하지 않은 변경이 있는 동안, Git hook이 설치되지 않은 동안, 그리고
-   `var/full-run.json`이 같은 tree(`git rev-parse HEAD^{tree}`)의 전체 실행을 기록하고 있을 때 이유와 종료 상태 1로
-   거부한다. guard는 첫 단계 전과 각 단계마다 기록을 쓴다. `make rerun-failed`는 현재 tree의 기록에서 통과하지 못한
-   target만 실행하며, 그런 기록이 없으면 거부된다.
+6. 전체 묶음은 `main`으로의 push 뒤 CI가 실행한다(`make check-run GROUP=<group>`). 모든 checklist 항목이 terminal 상태일 때
+   명시적 로컬 최종 검증을 하려면 `make ci-targets FINAL_RUN=1 TARGETS=check-run`을 실행한다. Kit guard는 checklist를
+   확인하고 `var/report/ci-targets` 아래에 report를 기록한다. `make orm-check`는 `FINAL_RUN`을 설정하지 않고
+   `ci-targets TARGETS=check-run`에 위임한다. CI에서는 GitHub Actions 환경으로 허용되며, 로컬 호출자는 최종 실행을
+   요청할 때 `FINAL_RUN=1`을 명시해야 한다.
 
 ## Test database server
 

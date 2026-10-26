@@ -271,11 +271,10 @@ databases-create: typescript-build
 run-databases:
 	$(BUILD_LEASE) && VECTOR='$(VECTOR)' RECORD='$(RECORD)' $(NODE) scripts/check/run.mts --job-summary $(abspath $(TEST_ENV)) $(TARGETS)
 
-# check is the guard of the full suite, the full-run tool of @polyspec/kit: it prints the reason and refuses while a checklist
-# item is [~], while tracked files have uncommitted changes, or when var/full-run.json records a full run of the same tree;
-# otherwise it runs the target check-run with `make -k` and records the result. make rerun-failed (the kit.mk of
-# @polyspec/kit) reruns on the same tree the targets that did not pass. The full suite runs on GitHub CI after a push
-# (.github/workflows/ci.yml), and a local check is no step required before a push. check-run runs the runner
+# orm-check delegates to Kit's ci-targets guard without setting FINAL_RUN: CI accepts it on GitHub Actions, while a local
+# final verification must explicitly pass FINAL_RUN=1 after every checklist item is terminal. ci-targets records its report
+# under CI_REPORT. The full suite runs on GitHub CI after a push (.github/workflows/ci.yml), and a local check is no step
+# required before a push. check-run runs the runner
 # (scripts/check/run.mts): each run creates its own bench and decimal databases, runs the targets one by one and writes the
 # record of the run to .runtime/check/<id>/record.json. The runner reads TEST_ENV as the setup step servers and holds the
 # shared lease of those servers: when the file is missing (make orm-test-servers failed), it records only the targets that need
@@ -284,7 +283,7 @@ run-databases:
 # so it is accepted only when GITHUB_ACTIONS is true.
 CHECK_RUN_TARGETS = $(if $(GROUP),$(CI_TARGETS_$(GROUP)),$(CHECK_TARGETS))
 orm-check:
-	$(NODE) $(KIT)/full-run.$(KIT_EXT) run check-run
+	$(MAKE) ci-targets TARGETS=check-run
 check-run:
 	$(if $(GROUP),$(if $(filter $(GROUP),$(CI_GROUPS)),,$(error GROUP $(GROUP) names no CI group; give one of CI_GROUPS: $(CI_GROUPS))))
 	$(if $(GROUP),$(if $(filter true,$(GITHUB_ACTIONS)),,$(error GROUP runs one CI group of make check-run on GitHub Actions only; run make orm-check without GROUP, which runs every target of CHECK_TARGETS)))

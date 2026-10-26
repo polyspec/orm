@@ -1,8 +1,8 @@
 // The record of one run of the check runner (scripts/check/run.mts): the targets and the setup steps of the run with their
 // status and times, written to .runtime/check/<run id>/record.json. The runner writes it before the first step and at the
 // start and the end of each step, so a run that is killed stays recorded as `incomplete`. The report (scripts/check/report.mts)
-// and the summary step of CI (scripts/check/summary.mts) read it. The guard of the full suite, the one run per tree and the
-// push check are the tools of @polyspec/kit (make orm-check, make rerun-failed, make hooks-check).
+// and the summary step of CI (scripts/check/summary.mts) read it. The suite guard and push check are tools of @polyspec/kit
+// (make ci-targets, make hooks-check).
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
