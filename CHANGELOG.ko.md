@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 00331accb5098c3d7fffecd1f119e6301f9255d8f73f309733cab7c205cd7875 -->
+<!-- source-sha256: f72f89202138f3343151cdef7074d3a0151af56297f27d391139f275af99b07a -->
 # 변경 이력
 
 ## Unreleased
 
+- `make kit-sync`가 설치한 로컬 Kit package에서 공유 파일 여섯 개를 갱신했습니다. 추적하던 link 네 개는 일반 사본이 되었고 release/gates workflow는 Kit source와 일치합니다. `kit-check`의 초기 finding 열 개를 해결했습니다(T240).
 - protocol/tooling parity 선언이 모든 지원 client의 native case 요구를 추적한다. 커밋된 tree의 선언 검사가 통과하며 사용자 보류 취소 기능은 실행 증거로 계산하지 않고 별도로 표시한다 (KSTD-2-7).
 - 잘못된 단독 parity 선언과 helper test 소유 관계를 정리하면서 native assertion과 정확한 owner 실행 명령을 보존했다. 선언 gate가 통과한다 (KSTD-2-11).
 
