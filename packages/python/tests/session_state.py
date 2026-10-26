@@ -5,7 +5,7 @@
 # a statement on that one connection reads, and another connection takes the same lock. SQLite has no session setting,
 # so it checks the lock alone. MySQL and PostgreSQL need ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN; a missing
 # variable fails the case.
-# Requirements: CFG-30.
+# Requirements: CFG-30, INT-50, INT-51.
 # Usage: python -m packages.python.tests.session_state
 import os
 import tempfile

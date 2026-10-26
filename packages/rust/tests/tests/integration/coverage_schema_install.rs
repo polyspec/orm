@@ -20,13 +20,20 @@ table coverage_install_missing {
 }
 ";
 
-// Requirements: SCH-7, DBS-108, PLN-44.
+// Requirements: SCH-7, DBS-108, PLN-44, INT-55.
 #[tokio::test]
 async fn coverage_schema_install_existing() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("schema_install_existing", async {
         let db = connect().await;
         db.utils().schema().install(&super::model::SCHEMA).await.unwrap();
+        if std::env::var("ORM_FEATURE_DATABASE").as_deref() == Ok("mysql") {
+            assert_eq!(
+                code(db.transaction(async || db.utils().schema().install(&super::model::SCHEMA)).await),
+                polyspec_orm::codes::CONFIG,
+                "MySQL install inside a transaction returns CONFIG"
+            );
+        }
         db.close().await;
     })
     .await;
@@ -37,9 +44,8 @@ async fn coverage_schema_install_existing() {
 async fn coverage_schema_install_partial() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("schema_install_partial", async {
-        let document = polyspec_orm::dbspec::parse(PARTIAL, &Default::default())
-            .map(|parsed| parsed.document)
-            .or_panic(|errors| format!("partial document: {errors:?}"));
+        let document =
+            polyspec_orm::dbspec::parse(PARTIAL, &Default::default()).map(|parsed| parsed.document).or_panic(|errors| format!("partial document: {errors:?}"));
         let manifest = polyspec_orm::dbspec::manifest(&[&document]).or_panic(|errors| format!("partial manifest: {errors:?}"));
         // Schema takes 'static text, as the generated model does.
         let schema = polyspec_orm::Schema::new(Box::leak(manifest.manifest_text.into_boxed_str()), Box::leak(manifest.manifest_hash.into_boxed_str()));

@@ -21,6 +21,7 @@ async function database(name) {
 
 const stop = new Error('stop');
 
+// Requirements: PLN-18.
 caseTest('transaction flow: asynchronous work inside the callback shares the transaction', DATABASE, async () => {
   const db = await database('shared');
   try {
@@ -35,6 +36,7 @@ caseTest('transaction flow: asynchronous work inside the callback shares the tra
   } finally { await db.close(); }
 });
 
+// Requirements: PLN-18.
 caseTest('transaction flow: overlapping statements on the transaction connection return CONFIG', DATABASE, async () => {
   const db = await database('overlap');
   try {

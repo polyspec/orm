@@ -10,7 +10,7 @@ namespace Polyspec\Orm\Tests;
 // session holds no value: PostgreSQL has no setting ormtest.session and MySQL no user variable orm.ormtest.session,
 // which a statement on that PDO connection reads, and another connection takes the same lock. SQLite has no session
 // setting, so it checks the lock alone. Each case runs in a case database of its own (case_database.php).
-// Requirements: CFG-30.
+// Requirements: CFG-30, INT-50, INT-51.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/SessionStateTest.php
 
 use Polyspec\Orm\Config;

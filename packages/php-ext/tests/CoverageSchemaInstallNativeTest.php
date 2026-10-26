@@ -42,12 +42,18 @@ final class CoverageSchemaInstallNativeTest extends TestCase
 {
     private static bool $nativeSchemaSetFixtureReady = false;
 
-    // Requirements: DBS-108, SCH-7, PLN-44.
+    // Requirements: DBS-108, SCH-7, PLN-44, INT-55.
     public function testSchemaInstallExisting(): void
     {
-        self::forEachCoverageDatabase(static function ($db): void {
+        self::forEachCoverageDatabase(static function ($db, string $driver): void {
             Assert::assertTrue(coverageTableExists($db, 'author'), 'the bench database has no author table');
             $db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema());
+            if ($driver === 'mysql') {
+                $inside = coverageCode(fn() => $db->transaction(
+                    fn() => $db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema())
+                ));
+                Assert::assertSame(Code::CONFIG, $inside, 'MySQL install inside a transaction returns CONFIG');
+            }
         });
     }
 
@@ -186,18 +192,18 @@ DBSPEC,
         }
     }
 
-    /** @param callable(mixed): void $case */
+    /** @param callable(mixed, string): void $case */
     private static function forEachCoverageDatabase(callable $case): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
             selectCoverageItem($item);
-            [, $dsn] = coverageItem();
+            [$driver, $dsn] = coverageItem();
             Assert::assertIsString($dsn);
             coverageAssertEntryClassesAreInternal();
             self::assertNativeSchemaUtils();
             $db = coverageConnect($dsn);
             try {
-                $case($db);
+                $case($db, $driver);
             } finally {
                 $db->close();
             }

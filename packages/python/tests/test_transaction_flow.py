@@ -9,8 +9,8 @@ from pathlib import Path
 from polyspec.orm import Db, OrmError
 from polyspec.orm.database import Executor, TxFrame, _guarded
 
-from .test_sqlite import DDL, generate, run_script
 from . import testcase
+from .test_sqlite import DDL, generate, run_script
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -34,6 +34,7 @@ class TransactionFlowTest(unittest.TestCase):
     def tearDownClass(cls):
         cls.db.close()
 
+    # Requirements: PLN-18.
     def test_a_thread_started_in_the_callback_has_no_transaction(self):
         seen = {}
 
@@ -60,7 +61,7 @@ class TransactionFlowTest(unittest.TestCase):
 
 
 class TransactionConcurrencyTest(unittest.TestCase):
-    # Requirements: DSL-121 (docs/spec/dsl.md "Transactions").
+    # Requirements: DSL-121, PLN-18 (docs/spec/dsl.md "Transactions").
     def test_overlapping_statement_is_rejected(self):
         executor = Executor(None, TxFrame(None, 1, {}))
         result = {}

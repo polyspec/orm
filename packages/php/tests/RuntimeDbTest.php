@@ -192,6 +192,7 @@ final class RuntimeDbTest extends TestCase
         self::runCase($driver, 'Polyspec\\Orm\\Tests\\RuntimeDb', self::caseI16ValuesAndDefaults(...));
     }
 
+    // Requirements: CFG-8, INT-44.
     #[DataProvider('drivers')]
     public function testAuditRecordOfATransaction(string $driver): void
     {

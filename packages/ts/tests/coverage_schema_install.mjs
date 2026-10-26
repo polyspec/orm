@@ -61,11 +61,16 @@ async function withDatabase({ driver, dsn }, body) {
 }
 
 await runCases('coverage_schema_install.mjs', {
-  // Requirements: SCH-7, DBS-108, PLN-44.
+  // Requirements: SCH-7, DBS-108, PLN-44, INT-55.
   async schema_install_existing(item) {
-    await withDatabase(item, async db => {
+    await withDatabase(item, async (db, driver) => {
       await db.utils().schema().install(SCHEMA);
       assert.equal(await new Author().connect(db).getCount(), 100000, 'the installed tables keep their rows');
+      if (driver === 'mysql') {
+        let inside;
+        await db.transaction(async () => { inside = await code(db.utils().schema().install(SCHEMA)); });
+        assert.equal(inside, 'CONFIG', 'MySQL install inside a transaction returns CONFIG');
+      }
     });
   },
 

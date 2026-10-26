@@ -4,7 +4,7 @@
 // setting ormtest.session and MySQL no user variable orm.ormtest.session, which a statement on that one connection reads,
 // and another connection takes the same lock. SQLite has no session setting, so it checks the lock alone. Each case runs on a case database of its own (case-database.mjs);
 // the test fails when ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
-// Requirements: CFG-30.
+// Requirements: CFG-30, INT-50, INT-51.
 //
 // Usage: node packages/ts/tests/session_state.mjs (after npm run typescript:build)
 import { Db } from '../dist/index.js';

@@ -18,7 +18,7 @@ import (
 // and a driver that implements driver.SessionResetter and driver.Validator
 // returns its connection to the pool. The next transaction in a pool with one connection
 // reuses the same session and reads its state.
-// Requirements: CFG-30.
+// Requirements: CFG-30, INT-50, INT-51.
 func TestCancelledTransactionClearsSessionState(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "contracts", "fixtures", "bench", "bench.dbs"))

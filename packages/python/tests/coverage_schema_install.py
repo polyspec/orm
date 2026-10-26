@@ -85,6 +85,19 @@ def schema_install_existing(item):
             100000,
             "the installed tables keep their rows",
         )
+        if driver == "mysql":
+            inside = None
+
+            def install_inside_transaction():
+                nonlocal inside
+                inside = install_error(db, models.SCHEMA)
+
+            db.transaction(install_inside_transaction, {"retry": 0})
+            expect_equal(
+                inside.code if inside else None,
+                "CONFIG",
+                "MySQL install inside a transaction returns CONFIG",
+            )
 
     with_database(item, body)
 
@@ -219,7 +232,7 @@ def schema_install_external_documents(item):
 
 
 class CoverageTest(CoverageCase):
-    # Requirements: SCH-7, DBS-108, PLN-44.
+    # Requirements: SCH-7, DBS-108, PLN-44, INT-55.
     def test_schema_install_existing(self):
         self.each_item("schema_install_existing", schema_install_existing)
 

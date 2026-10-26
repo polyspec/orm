@@ -3976,6 +3976,11 @@
           "id": "CoverageAuditTriggersTest::testAuditTransactionEntryPoints"
         },
         {
+          "implementation": "php",
+          "test": "packages/php/tests/RuntimeDbTest.php",
+          "id": "RuntimeDbTest::testAuditRecordOfATransaction"
+        },
+        {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
           "id": "CoverageAuditTriggersExtensionTest::testAuditTransactionEntryPoints"
@@ -6118,6 +6123,11 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/zone.rs",
           "id": "dropping_a_transaction_frees_a_single_connection"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/tx.rs",
+          "id": "tx::tests::dropped_transaction_closes_its_connection"
         }
       ]
     },
@@ -11873,25 +11883,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-model-transactions",
-      "kind": "feature",
-      "requirements": [
-        "PLN-13",
-        "PLN-16",
-        "PLN-17",
-        "PLN-18",
-        "PLN-20",
-        "PLN-21"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/model_test.go",
-          "id": "TestTransactions"
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-model-styled-state",
       "kind": "feature",
       "requirements": [
@@ -11972,7 +11963,9 @@
       "id": "connection-transaction-session-state-ends",
       "kind": "feature",
       "requirements": [
-        "CFG-30"
+        "CFG-30",
+        "INT-50",
+        "INT-51"
       ],
       "bindings": [
         {
@@ -12806,6 +12799,251 @@
           "implementation": "python",
           "test": "packages/python/tests/test_transaction_flow.py",
           "id": "TransactionConcurrencyTest.test_overlapping_statement_is_rejected"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/transaction_flow.rs",
+          "id": "overlapping_statements_on_the_transaction_connection_return_config"
+        }
+      ]
+    },
+    {
+      "id": "transaction-savepoint-nested-rollback",
+      "kind": "feature",
+      "requirements": [
+        "DSL-119"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_transactions_test.go",
+          "id": "TestCoverageTransactionSavepoint"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageTransactionsTest.php",
+          "id": "CoverageTransactionsTest::testTransactionSavepoint"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
+          "id": "CoverageTransactionsExtensionTest::testTransactionSavepoint"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_transactions.py",
+          "id": "test_transaction_savepoint"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
+          "id": "coverage_transactions::coverage_transaction_savepoint"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/tx_send_tests.rs",
+          "id": "tx::send_tests::sqlite_send_savepoint"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/tx_send_tests.rs",
+          "id": "tx::send_tests::mysql_send_savepoint"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/tx_send_tests.rs",
+          "id": "tx::send_tests::postgres_send_savepoint"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_transactions.mjs",
+          "id": "transaction_savepoint [sqlite]"
+        }
+      ]
+    },
+    {
+      "id": "transaction-timeout-options",
+      "kind": "feature",
+      "requirements": [
+        "DSL-125"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_transactions_test.go",
+          "id": "TestCoverageTransactionSavepoint"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageTransactionsTest.php",
+          "id": "CoverageTransactionsTest::testTransactionSavepoint"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
+          "id": "CoverageTransactionsExtensionTest::testTransactionSavepoint"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_transactions.py",
+          "id": "test_transaction_savepoint"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
+          "id": "coverage_transactions::coverage_transaction_savepoint"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/tx.rs",
+          "id": "tx::tests::transaction_timeout_is_the_postgres_statement_timeout"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_transactions.mjs",
+          "id": "transaction_savepoint [sqlite]"
+        }
+      ]
+    },
+    {
+      "id": "transaction-callback-error-rolls-back",
+      "kind": "feature",
+      "requirements": [
+        "DSL-118"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_transactions_test.go",
+          "id": "TestCoverageTransactionRollback"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageTransactionsTest.php",
+          "id": "CoverageTransactionsTest::testTransactionRollback"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
+          "id": "CoverageTransactionsExtensionTest::testTransactionRollback"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_transactions.py",
+          "id": "test_transaction_rollback"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
+          "id": "coverage_transactions::coverage_transaction_rollback"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/tx.rs",
+          "id": "tx::tests::one_shot_transaction_preserves_callback_error_and_rolls_back"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_transactions.mjs",
+          "id": "transaction_rollback [sqlite]"
+        }
+      ]
+    },
+    {
+      "id": "transaction-retry-on-deadlock",
+      "kind": "feature",
+      "requirements": [
+        "PLN-24"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_transactions_test.go",
+          "id": "TestCoverageTransactionSavepoint"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageTransactionsTest.php",
+          "id": "CoverageTransactionsTest::testTransactionSavepoint"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testDeadlockRetry"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
+          "id": "CoverageTransactionsExtensionTest::testTransactionSavepoint"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_transactions.mjs",
+          "id": "transaction_savepoint [sqlite]"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_transactions.py",
+          "id": "test_transaction_savepoint"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
+          "id": "coverage_transactions::coverage_transaction_savepoint"
+        }
+      ]
+    },
+    {
+      "id": "transaction-concurrent-use-and-flow-isolation",
+      "kind": "feature",
+      "requirements": [
+        "PLN-18"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/model_test.go",
+          "id": "TestTransactions"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/transaction_flow_overlap_test.go",
+          "id": "TestTransactionConnectionRejectsOverlappingStatement"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/TransactionFailureTest.php",
+          "id": "TransactionFailureTest::testAnotherFiberCannotUseAnActiveTransactionConnection"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/TransactionFailureNativeTest.php",
+          "id": "TransactionFailureNativeTest::testAnotherFiberCannotUseAnActiveNativeTransactionConnection"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/transaction-flow.mjs",
+          "id": "transaction flow: asynchronous work inside the callback shares the transaction"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/transaction-flow.mjs",
+          "id": "transaction flow: overlapping statements on the transaction connection return CONFIG"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_transaction_flow.py",
+          "id": "test_a_thread_started_in_the_callback_has_no_transaction"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_transaction_flow.py",
+          "id": "TransactionConcurrencyTest.test_overlapping_statement_is_rejected"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/transaction_flow.rs",
+          "id": "spawned_task_has_no_transaction"
         },
         {
           "implementation": "rust",
@@ -14801,216 +15039,6 @@
       ]
     },
     {
-      "id": "rust-tx-send-tests-mysql-send-savepoint",
-      "kind": "feature",
-      "requirements": [
-        "DSL-119"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx_send_tests.rs",
-          "id": "tx::send_tests::mysql_send_savepoint"
-        }
-      ]
-    },
-    {
-      "id": "rust-tx-send-tests-postgres-send-savepoint",
-      "kind": "feature",
-      "requirements": [
-        "DSL-119"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx_send_tests.rs",
-          "id": "tx::send_tests::postgres_send_savepoint"
-        }
-      ]
-    },
-    {
-      "id": "rust-tx-send-tests-sqlite-send-savepoint",
-      "kind": "feature",
-      "requirements": [
-        "DSL-119"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx_send_tests.rs",
-          "id": "tx::send_tests::sqlite_send_savepoint"
-        }
-      ]
-    },
-    {
-      "id": "rust-tx-dropped-transaction-closes-its-connection",
-      "kind": "feature",
-      "requirements": [
-        "INT-52"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx.rs",
-          "id": "tx::tests::dropped_transaction_closes_its_connection"
-        }
-      ]
-    },
-    {
-      "id": "rust-tx-every-failed-cleanup-step-is-reported",
-      "kind": "feature",
-      "requirements": [
-        "INT-52"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx.rs",
-          "id": "tx::tests::every_failed_cleanup_step_is_reported"
-        }
-      ]
-    },
-    {
-      "id": "rust-tx-failed-cleanup-discards-the-connection",
-      "kind": "feature",
-      "requirements": [
-        "INT-52"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx.rs",
-          "id": "tx::tests::failed_cleanup_discards_the_connection"
-        }
-      ]
-    },
-    {
-      "id": "rust-tx-failed-local-reset-is-reported",
-      "kind": "feature",
-      "requirements": [
-        "INT-52"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx.rs",
-          "id": "tx::tests::failed_local_reset_is_reported"
-        }
-      ]
-    },
-    {
-      "id": "rust-tx-lock-not-held-at-transaction-end-is-reported",
-      "kind": "feature",
-      "requirements": [
-        "INT-52"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx.rs",
-          "id": "tx::tests::lock_not_held_at_transaction_end_is_reported"
-        }
-      ]
-    },
-    {
-      "id": "rust-tx-one-shot-transaction-preserves-callback-error-and-rolls-back",
-      "kind": "feature",
-      "requirements": [
-        "INT-52"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx.rs",
-          "id": "tx::tests::one_shot_transaction_preserves_callback_error_and_rolls_back"
-        }
-      ]
-    },
-    {
-      "id": "rust-tx-one-shot-transaction-reports-callback-and-rollback-errors",
-      "kind": "feature",
-      "requirements": [
-        "INT-52"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx.rs",
-          "id": "tx::tests::one_shot_transaction_reports_callback_and_rollback_errors"
-        }
-      ]
-    },
-    {
-      "id": "rust-tx-panicking-callback-ends-its-transaction",
-      "kind": "feature",
-      "requirements": [
-        "INT-52"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx.rs",
-          "id": "tx::tests::panicking_callback_ends_its_transaction"
-        }
-      ]
-    },
-    {
-      "id": "rust-tx-savepoint-end-failures-are-reported",
-      "kind": "feature",
-      "requirements": [
-        "INT-52"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx.rs",
-          "id": "tx::tests::savepoint_end_failures_are_reported"
-        }
-      ]
-    },
-    {
-      "id": "rust-tx-sqlite-transaction-end-failures-are-reported",
-      "kind": "feature",
-      "requirements": [
-        "INT-52"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx.rs",
-          "id": "tx::tests::sqlite_transaction_end_failures_are_reported"
-        }
-      ]
-    },
-    {
-      "id": "rust-tx-transaction-send-future-contract-is-checked",
-      "kind": "feature",
-      "requirements": [
-        "INT-52"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx.rs",
-          "id": "tx::tests::transaction_send_future_contract_is_checked"
-        }
-      ]
-    },
-    {
-      "id": "rust-tx-transaction-timeout-is-the-postgres-statement-timeout",
-      "kind": "feature",
-      "requirements": [
-        "INT-52"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx.rs",
-          "id": "tx::tests::transaction_timeout_is_the_postgres_statement_timeout"
-        }
-      ]
-    },
-    {
       "id": "rust-utils-keyring-tests-versions-lists-the-declared-versions-in-ascending-order",
       "kind": "feature",
       "requirements": [
@@ -15462,20 +15490,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/value_types.rs",
           "id": "runtime_value_types"
-        }
-      ]
-    },
-    {
-      "id": "rust-mysql-install-inside-transaction",
-      "kind": "feature",
-      "requirements": [
-        "INT-55"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "mysql_install_inside_transaction"
         }
       ]
     },
@@ -16924,101 +16938,6 @@
       }
     },
     {
-      "id": "php-internal-failing-pdo-cleanup-errors-release",
-      "kind": "feature",
-      "requirements": [
-        "PLN-98"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyCleanupTest.php",
-          "id": "FailingPdo::test_cleanup_errors_release"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecApplyCleanupTest.php",
-          "id": "FailingPdo::test_cleanup_errors_release"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-failing-pdo-cleanup-errors-begin-restore",
-      "kind": "feature",
-      "requirements": [
-        "PLN-98"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyCleanupTest.php",
-          "id": "FailingPdo::test_cleanup_errors_begin_restore"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecApplyCleanupTest.php",
-          "id": "FailingPdo::test_cleanup_errors_begin_restore"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-failing-pdo-rollback-step-outside",
-      "kind": "feature",
-      "requirements": [
-        "PLN-98"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyCleanupTest.php",
-          "id": "FailingPdo::test_rollback_step_outside"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecApplyCleanupTest.php",
-          "id": "FailingPdo::test_rollback_step_outside"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-failing-pdo-effect-row",
-      "kind": "feature",
-      "requirements": [
-        "PLN-98"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyCleanupTest.php",
-          "id": "FailingPdo::test_effect_row"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecApplyCleanupTest.php",
-          "id": "FailingPdo::test_effect_row"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-failing-pdo-effect-close",
-      "kind": "feature",
-      "requirements": [
-        "PLN-98"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyCleanupTest.php",
-          "id": "FailingPdo::test_effect_close"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecApplyCleanupTest.php",
-          "id": "FailingPdo::test_effect_close"
-        }
-      ]
-    },
-    {
       "id": "php-internal-dbspec-introspect-stress-introspect-stress",
       "kind": "feature",
       "requirements": [
@@ -17658,48 +17577,6 @@
       ]
     },
     {
-      "id": "php-internal-model-install-inside-a-transaction",
-      "kind": "feature",
-      "requirements": [
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testInstallInsideATransaction"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-model-failed-local-reset",
-      "kind": "feature",
-      "requirements": [
-        "INT-51"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testFailedLocalReset"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-model-failed-lock-release",
-      "kind": "feature",
-      "requirements": [
-        "INT-50"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testFailedLockRelease"
-        }
-      ]
-    },
-    {
       "id": "php-internal-model-conditions",
       "kind": "feature",
       "requirements": [
@@ -17750,30 +17627,6 @@
       ]
     },
     {
-      "id": "php-internal-model-transactions",
-      "kind": "feature",
-      "requirements": [
-        "DSL-118",
-        "DSL-119",
-        "DSL-123",
-        "DSL-125",
-        "DSL-126",
-        "PLN-13",
-        "PLN-16",
-        "PLN-17",
-        "PLN-20",
-        "PLN-21",
-        "DSL-124"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testTransactions"
-        }
-      ]
-    },
-    {
       "id": "php-internal-model-utilities",
       "kind": "feature",
       "requirements": [
@@ -17788,20 +17641,6 @@
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
           "id": "ModelTest::testUtilities"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-model-deadlock-retry",
-      "kind": "feature",
-      "requirements": [
-        "PLN-24"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testDeadlockRetry"
         }
       ]
     },
@@ -17864,7 +17703,12 @@
           "test": "packages/php/tests/RollbackTest.php",
           "id": "RollbackTest::testRollbackFault"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "transactions",
+        "part": "owner/php"
+      }
     },
     {
       "id": "php-internal-runtime-db-install-renders-the-document-set",
@@ -17893,21 +17737,6 @@
           "implementation": "php",
           "test": "packages/php/tests/RuntimeDbTest.php",
           "id": "RuntimeDbTest::testI16ValuesAndDefaults"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-runtime-db-audit-record-of-a-transaction",
-      "kind": "feature",
-      "requirements": [
-        "DBS-108",
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RuntimeDbTest.php",
-          "id": "RuntimeDbTest::testAuditRecordOfATransaction"
         }
       ]
     },
@@ -23488,6 +23317,16 @@
           "id": "TransactionFailureTest::testTransactionKeepsCallbackAndFailedRollbackErrors"
         },
         {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testFailedLocalReset"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testFailedLockRelease"
+        },
+        {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/TransactionFailureNativeTest.php",
           "id": "TransactionFailureNativeTest::testTransactionKeepsCallbackAndFailedRollbackErrors"
@@ -23516,6 +23355,41 @@
           "implementation": "go",
           "test": "packages/go/orm/catalog_session_error_test.go",
           "id": "TestCatalogSessionEndReportsRollbackCauseWithoutPrimary"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/tx.rs",
+          "id": "tx::tests::dropped_transaction_closes_its_connection"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/tx.rs",
+          "id": "tx::tests::every_failed_cleanup_step_is_reported"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/tx.rs",
+          "id": "tx::tests::failed_cleanup_discards_the_connection"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/tx.rs",
+          "id": "tx::tests::failed_local_reset_is_reported"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/tx.rs",
+          "id": "tx::tests::lock_not_held_at_transaction_end_is_reported"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/tx.rs",
+          "id": "tx::tests::panicking_callback_ends_its_transaction"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/tx.rs",
+          "id": "tx::tests::one_shot_transaction_preserves_callback_error_and_rolls_back"
         }
       ]
     },
@@ -23649,7 +23523,8 @@
       "requirements": [
         "DBS-108",
         "SCH-7",
-        "PLN-44"
+        "PLN-44",
+        "INT-55"
       ],
       "bindings": [
         {
@@ -27607,6 +27482,11 @@
           "implementation": "php",
           "test": "packages/php/tests/DbspecApplyCleanupTest.php",
           "id": "DbspecApplyCleanupTest::testCleanupErrorsRelease"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecApplyCleanupTest.php",
+          "id": "DbspecApplyCleanupTest::testCleanupErrorsBeginRestore"
         }
       ],
       "owner": {

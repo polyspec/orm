@@ -12,11 +12,11 @@ use futures_util::FutureExt as _;
 
 use crate::db::{Db, Executor, Pool};
 use crate::driver::{CancellableConnection, MySqlOwnedTx, TxInner};
-use crate::events::{self, Sent, KIND_BEGIN, KIND_COMMIT, KIND_RELEASE, KIND_ROLLBACK, KIND_ROLLBACK_TO, KIND_SAVEPOINT, KIND_UTILITY};
-use crate::markdown::{begin_message, MdControl, MdPool};
+use crate::events::{self, KIND_BEGIN, KIND_COMMIT, KIND_RELEASE, KIND_ROLLBACK, KIND_ROLLBACK_TO, KIND_SAVEPOINT, KIND_UTILITY, Sent};
+use crate::markdown::{MdControl, MdPool, begin_message};
 use crate::schema::Schema;
 use crate::value::Param;
-use crate::{codes, Error, Result};
+use crate::{Error, Result, codes};
 
 /// One active transaction.
 pub(crate) struct TxShared {
@@ -95,7 +95,7 @@ fn audit_record(db: &Db, values: &AuditValues) -> Result<AuditInsert> {
             return Err(Error::Config(format!(
                 "the audited tables of the connection record their audits in {}; one audit record table is required",
                 tables.join(", ")
-            )))
+            )));
         }
     };
     let Some((schema, entity)) = target else {
@@ -534,11 +534,7 @@ impl<'a> OnceScope<'a> {
         match self {
             OnceScope::Transaction { db, tx } => Box::pin(async move {
                 let rolled_back = rollback(&tx).await;
-                if fault {
-                    rolled_back.and_then(|()| rollback_fault(db))
-                } else {
-                    rolled_back
-                }
+                if fault { rolled_back.and_then(|()| rollback_fault(db)) } else { rolled_back }
             }),
             OnceScope::Savepoint { tx, name, audit } => Box::pin(async move {
                 *tx.audit.lock().unwrap() = audit;
@@ -1189,11 +1185,7 @@ mod tests {
             .transaction_send(move || {
                 let attempts = callback_attempts.clone();
                 async move {
-                    if attempts.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0 {
-                        Err(transaction_conflict("retry Send callback"))
-                    } else {
-                        Ok(23)
-                    }
+                    if attempts.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0 { Err(transaction_conflict("retry Send callback")) } else { Ok(23) }
                 }
             })
             .retry(1)
@@ -1251,6 +1243,7 @@ mod tests {
     }
 
     #[tokio::test]
+    // Requirements: DSL-118, PLN-20, INT-72.
     async fn one_shot_transaction_preserves_callback_error_and_rolls_back() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
         let tmp = Scratch::new("orm-once");
@@ -1335,6 +1328,7 @@ mod tests {
     /// fails with CAPABILITY_UNSUPPORTED before it starts, and the callback does not run (docs/spec/interfaces.md).
     /// 0 is the same as not giving the option. Mismatches from each database are collected and reported together at the end.
     #[tokio::test]
+    // Requirements: DSL-125.
     async fn transaction_timeout_is_the_postgres_statement_timeout() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
         let tmp = Scratch::new("orm-timeout");
@@ -1424,6 +1418,7 @@ mod tests {
     // If the MySQL RELEASE_LOCK at the end of the transaction fails to release the lock (result is not 1), its result is reported.
     // An unreleased named lock remains on the connection after COMMIT and ROLLBACK.
     #[tokio::test]
+    // Requirements: INT-72.
     async fn lock_not_held_at_transaction_end_is_reported() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
         let db = Db::connect(&required_dsn("ORM_TEST_MYSQL_DSN"), 2, crate::Config::default()).await.expect("connect");
@@ -1447,6 +1442,7 @@ mod tests {
     // closes the connection, and rollback must too. A transaction that finishes cleanly reuses the same session.
     // This test looks at the session, so it connects to the server at ORM_TEST_MYSQL_SERVER_DSN, not through a pooler.
     #[tokio::test]
+    // Requirements: INT-72.
     async fn failed_cleanup_discards_the_connection() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
         let db = Db::connect(&required_dsn("ORM_TEST_MYSQL_SERVER_DSN"), 1, crate::Config::default()).await.expect("connect");
@@ -1483,6 +1479,7 @@ mod tests {
 
     // Even if RELEASE_LOCK fails, the local value reset is still attempted, and both failures are reported.
     #[tokio::test]
+    // Requirements: INT-72.
     async fn every_failed_cleanup_step_is_reported() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
         let db = Db::connect(&required_dsn("ORM_TEST_MYSQL_SERVER_DSN"), 2, crate::Config::default()).await.expect("connect");
@@ -1498,6 +1495,7 @@ mod tests {
     // The transaction of a callback that panicked ends by closing the connection. The server ends that session's transaction and
     // named lock, so another connection takes the lock.
     #[tokio::test]
+    // Requirements: INT-72.
     async fn panicking_callback_ends_its_transaction() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
         use futures_util::FutureExt as _;
@@ -1532,6 +1530,7 @@ mod tests {
     // ORM_TEST_POSTGRES_SERVER_DSN, not through a pooler.
     // On SQLite, the write transaction of the closed connection ends, so another connection takes the write lock.
     #[tokio::test]
+    // Requirements: INT-72, INT-67.
     async fn dropped_transaction_closes_its_connection() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
         let tmp = Scratch::new("orm-dropped");
@@ -1626,11 +1625,7 @@ mod tests {
     ) -> std::ffi::c_int {
         // SAFETY: SQLite passes a null or NUL-terminated string.
         let text = |p: *const std::ffi::c_char| {
-            if p.is_null() {
-                ""
-            } else {
-                unsafe { std::ffi::CStr::from_ptr(p) }.to_str().or_panic(|e| format!("the SQLite text is not UTF-8: {e}"))
-            }
+            if p.is_null() { "" } else { unsafe { std::ffi::CStr::from_ptr(p) }.to_str().or_panic(|e| format!("the SQLite text is not UTF-8: {e}")) }
         };
         let denied = match SQLITE_DENIED.load(Ordering::Acquire) {
             DENY_ROLLBACK => action == libsqlite3_sys::SQLITE_TRANSACTION && text(first) == "ROLLBACK",
@@ -1641,11 +1636,7 @@ mod tests {
             DENY_SAVEPOINT_END => action == libsqlite3_sys::SQLITE_SAVEPOINT && matches!(text(first), "ROLLBACK" | "RELEASE"),
             _ => false,
         };
-        if denied {
-            libsqlite3_sys::SQLITE_DENY
-        } else {
-            libsqlite3_sys::SQLITE_OK
-        }
+        if denied { libsqlite3_sys::SQLITE_DENY } else { libsqlite3_sys::SQLITE_OK }
     }
 
     /// Puts the authorizer on the pool's only connection so that it denies `denied`.
@@ -1762,6 +1753,7 @@ mod tests {
     // If the MySQL local value reset at the end of the transaction fails, that error is reported. The MySQL user
     // variable remains after COMMIT and ROLLBACK (mysql.context.user_variable_session_scope).
     #[tokio::test]
+    // Requirements: INT-72.
     async fn failed_local_reset_is_reported() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
         let db = Db::connect(&required_dsn("ORM_TEST_MYSQL_SERVER_DSN"), 2, crate::Config::default()).await.expect("connect");

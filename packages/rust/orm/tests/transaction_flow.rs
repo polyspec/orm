@@ -22,6 +22,7 @@ mod service_model;
 use service_model::service;
 
 #[tokio::test]
+// Requirements: PLN-18.
 async fn spawned_task_has_no_transaction() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let file = database("spawned").await;
@@ -41,6 +42,7 @@ async fn spawned_task_has_no_transaction() {
 }
 
 #[tokio::test]
+// Requirements: PLN-18.
 async fn overlapping_statements_on_the_transaction_connection_return_config() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let file = database("overlap").await;

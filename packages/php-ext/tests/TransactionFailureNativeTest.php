@@ -24,7 +24,7 @@ final class TransactionFailureNativeTest extends TestCase
         self::assertTrue((new ReflectionClass(Db::class))->isInternal());
     }
 
-    // Requirements: DSL-121, DSL-122, INT-47.
+    // Requirements: DSL-121, DSL-122, INT-47, PLN-18.
     public function testAnotherFiberCannotUseAnActiveNativeTransactionConnection(): void
     {
         $db = new Db(new PDO('sqlite::memory:'), 'sqlite', new Config(), new DateTimeZone('UTC'));

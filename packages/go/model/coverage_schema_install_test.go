@@ -15,10 +15,22 @@ import (
 // TestCoverageSchemaInstallExisting checks that the bench manifest contained in the generated model
 // installs successfully and changes nothing when reinstalled into a database
 // where it is already installed.
-// Requirements: SCH-7, DBS-108, PLN-44.
+// Requirements: SCH-7, DBS-108, PLN-44, INT-55.
 func TestCoverageSchemaInstallExisting(t *testing.T) {
 	testcase.Start(t, testcase.Database)
-	db, _, _ := connectFeature(t)
+	db, driver, _ := connectFeature(t)
+	if driver == "mysql" {
+		var inside error
+		if err := db.Transaction(func() error {
+			inside = db.Utils().Schema().Install(model.Schema)
+			return nil
+		}); err != nil {
+			t.Fatalf("transaction around install: %v", err)
+		}
+		if orm.ErrorCode(inside) != orm.CodeConfig {
+			t.Fatalf("install inside a transaction = %v, want CONFIG", inside)
+		}
+	}
 	before := must(model.Author().Connect(db).GetCount())
 	if err := db.Utils().Schema().Install(model.Schema); err != nil {
 		t.Fatalf("install of the installed bench manifest: %v", err)

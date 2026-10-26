@@ -26,7 +26,7 @@ final class TransactionFailureTest extends TestCase
         $this->assertCloseDuringTransactionRollsBack($pdo, static fn(): array => $pdo->statements);
     }
 
-    // Requirements: DSL-121, DSL-122, INT-47.
+    // Requirements: DSL-121, DSL-122, INT-47, PLN-18.
     public function testAnotherFiberCannotUseAnActiveTransactionConnection(): void
     {
         $db = new Db(new \PDO('sqlite::memory:'), 'sqlite', new Config(), new DateTimeZone('UTC'));

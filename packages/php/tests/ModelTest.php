@@ -1280,7 +1280,7 @@ final class ModelTest extends TestCase
         }
     }
 
-    // Requirements: SCH-7.
+    // Requirements: INT-55.
     public function testInstallInsideATransaction(): void
     {
         $db = self::database('mysql', self::caseDsn('mysql'));
@@ -1406,7 +1406,7 @@ final class ModelTest extends TestCase
     // If the MySQL local value reset at the end of the transaction fails, commit and rollback report that error.
     // A MySQL user variable remains after COMMIT and ROLLBACK.
     // (mysql.context.user_variable_session_scope).
-    // Requirements: INT-51.
+    // Requirements: INT-72.
     public function testFailedLocalReset(): void
     {
         [, $pdoDsn, $user, $password] = Orm::parseDsn(self::$targets['mysql']);
@@ -1432,7 +1432,7 @@ final class ModelTest extends TestCase
 
     // If the MySQL RELEASE_LOCK at the end of the transaction fails, or does not release the lock, commit and
     // rollback report that error. A named lock that is not released remains on the connection.
-    // Requirements: INT-50.
+    // Requirements: INT-72.
     public function testFailedLockRelease(): void
     {
         [, $pdoDsn, $user, $password] = Orm::parseDsn(self::$targets['mysql']);

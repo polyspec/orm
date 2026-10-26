@@ -7,7 +7,7 @@ import (
 )
 
 // TestTransactionConnectionRejectsOverlappingStatement checks the transaction executor's statement guard.
-// Requirements: DSL-121 (docs/spec/dsl.md "Transactions").
+// Requirements: DSL-121, PLN-18 (docs/spec/dsl.md "Transactions").
 func TestTransactionConnectionRejectsOverlappingStatement(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	tx := &txConn{}

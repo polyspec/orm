@@ -2931,6 +2931,7 @@
         "coverage-transactions-transaction-savepoint",
         "transaction-failure-rollback",
         "transaction-failure-rollback-fault",
+        "php-internal-rollback-rollback-fault",
         "transaction-failure-savepoint-end",
         "transaction-control-methods-are-private",
         "mysql-lock-wait-canceled",
