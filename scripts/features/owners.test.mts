@@ -117,9 +117,8 @@ caseTest('a fixture selects the units whose declared data names it', 5000, async
   const [first] = owners;
   assert.ok(first);
   assert.deepEqual(first.parts[0]?.reasons, ['contracts/fixtures/audit.dbs (named by contracts/fixtures/schema_definition.json)']);
-  // contracts/symbols/rust.json records the symbols of the Rust source, so that source selects the Rust coverage unit, and that file
-  // also selects the command of the test it contains (transaction-end-rust).
-  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/rust/orm/src/tx_send_tests.rs'])), ['transactions/transaction-end-rust', 'interface_contract/coverage/owner/rust']);
+  // The Rust send tests are a declared input of transaction-end-rust; they are not inputs to interface extraction.
+  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/rust/orm/src/tx_send_tests.rs'])), ['transactions/transaction-end-rust']);
 });
 
 caseTest('a missing named fixture is optional and a directory named as a fixture keeps its read error', 5000, async () => {
