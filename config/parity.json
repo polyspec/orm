@@ -3588,14 +3588,7 @@
         {
           "implementation": "go",
           "test": "packages/go/internal/dialects/introspect_physical_test.go",
-          "id": "TestIntrospectRoundTrip",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "dbspec-introspect-check"
-          ]
+          "id": "TestIntrospectRoundTrip"
         },
         {
           "implementation": "php",
@@ -3634,14 +3627,7 @@
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/dbspec-introspect-round-trip.mjs",
-          "id": "mysql.introspect.ddl_types_and_defaults",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "dbspec-introspect-ts-check"
-          ]
+          "id": "mysql.introspect.ddl_types_and_defaults"
         },
         {
           "implementation": "python",

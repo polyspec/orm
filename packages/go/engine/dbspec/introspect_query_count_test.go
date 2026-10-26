@@ -57,6 +57,36 @@ func TestQueryCountIsIndependentOfSQLiteTableCount(t *testing.T) {
 	}
 }
 
+// Requirements: DIA-133.
+func TestIntrospectSQLiteSkipsFulltextShadowTables(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.SetMaxOpenConns(1)
+	if _, err := db.ExecContext(context.Background(), `CREATE VIRTUAL TABLE "ft_orders" USING fts5("name")`); err != nil {
+		if closeErr := db.Close(); closeErr != nil {
+			t.Errorf("close SQLite memory connection after FTS table creation failure: %v", closeErr)
+		}
+		t.Fatalf("create SQLite FTS5 table: %v", err)
+	}
+	document, unsupported, err := Introspect(context.Background(), db, DialectSQLite, "introspected")
+	closeErr := db.Close()
+	if err != nil {
+		t.Fatalf("introspect SQLite FTS5 table: %v", err)
+	}
+	if closeErr != nil {
+		t.Fatalf("close SQLite memory connection: %v", closeErr)
+	}
+	if document == nil || len(document.Tables) != 0 {
+		t.Fatalf("virtual table should not become a dbspec table: %+v", document)
+	}
+	if len(unsupported) != 1 || unsupported[0].Kind != "table" || unsupported[0].Table != "ft_orders" || unsupported[0].Name != "ft_orders" {
+		t.Fatalf("FTS5 should report only its virtual table, not its shadow tables: %+v", unsupported)
+	}
+}
+
 // Requirements: DIA-191.
 func TestSQLiteUnsupportedColumnReasonQuotesMissingCheck(t *testing.T) {
 	testcase.Start(t, testcase.Compute)

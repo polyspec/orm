@@ -139,6 +139,31 @@ class Case(VectorCase):
     deadline = testcase.DATABASE
 
 
+class SqliteShadowColumnsTest(unittest.TestCase):
+    def test_virtual_table_shadow_columns_are_not_reported(self):
+        connection = sqlite3.connect(":memory:", isolation_level=None)
+        try:
+            db = Adapter(connection)
+            db.execute('CREATE VIRTUAL TABLE "ft_orders" USING fts5("name")')
+            result = introspect_dbspec(db, "sqlite", "introspected")
+        finally:
+            connection.close()
+
+        shadow_tables = {
+            "ft_orders_config",
+            "ft_orders_content",
+            "ft_orders_data",
+            "ft_orders_docsize",
+            "ft_orders_idx",
+        }
+        shadow_columns = [
+            (item["table"], item["name"])
+            for item in result["unsupported"]
+            if item["kind"] == "column" and item["table"] in shadow_tables
+        ]
+        self.assertEqual([], shadow_columns)
+
+
 def load_tests(
     loader: unittest.TestLoader, tests: unittest.TestSuite, _pattern: object
 ) -> unittest.TestSuite:
@@ -162,6 +187,7 @@ def load_tests(
             lambda item: item[1]["id"],
         )
     )
+    tests.addTests(loader.loadTestsFromTestCase(SqliteShadowColumnsTest))
     return tests
 
 
