@@ -1,1 +1,25 @@
-../kit/.editorconfig
+# The EditorConfig of every polyspec repository, copied by kit; change it in kit, never in a copy. Each language follows the
+# indentation of its formatter: gofmt, cargo fmt, ruff format and the PSR-12 of phpcs. A folder whose files keep their bytes,
+# such as the inputs and expected outputs of tests, holds a .editorconfig of its own that unsets these properties, as
+# EditorConfig applies the nearest file last.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 2
+trim_trailing_whitespace = true
+
+[*.go]
+indent_style = tab
+
+[{go.mod,go.work}]
+indent_style = tab
+
+[*.{php,rs,py,c,h}]
+indent_size = 4
+
+[{Makefile,*.mk}]
+indent_style = tab
