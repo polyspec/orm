@@ -41,6 +41,57 @@ trait PageCacheBoundCases
         }
     }
 
+    // Requirements: CPX-4.
+    public function testInListPaddingKeepsTheCompiledShape(): void
+    {
+        if (getenv('ORM_PHP_MODE') === 'extension') {
+            $this->assertTrue((new ReflectionClass(Request::class))->isInternal());
+            $this->assertTrue((new ReflectionClass(Request::class))->getMethod('canonicalize')->isInternal());
+            $this->assertTrue((new ReflectionClass(Planner::class))->isInternal());
+            $this->assertTrue((new ReflectionClass(Planner::class))->getMethod('compile')->isInternal());
+        }
+        $model = RuntimeModel::build(
+            RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/identity_load.dbs'])
+        );
+        $makeRequest = static function (array $values) use ($model): Request {
+            $inIndexes = range(0, count($values) - 2);
+            $request = new Request('all', $model->manifestHash);
+            $request->ir = [
+                'ir_version' => 1,
+                'manifest_hash' => $model->manifestHash,
+                'kind' => 'all',
+                'entity' => 'load_probe',
+                'where' => ['items' => [
+                    ['pred' => ['column' => 'seq', 'op' => 'in', 'ps' => $inIndexes]],
+                    ['pred' => ['column' => 'label', 'op' => 'eq', 'p' => count($values) - 1]],
+                ]],
+            ];
+            $request->params = $values;
+            $request->canonicalize();
+            return $request;
+        };
+        foreach (['mysql', 'postgres', 'sqlite'] as $driver) {
+            $firstSql = null;
+            foreach ([['a', 'b', 'c', 'tail'], ['a', 'b', 'c', 'd', 'tail']] as $index => $values) {
+                $request = $makeRequest($values);
+                $this->assertSame([0, 1, 2, 3], $request->ir['where']['items'][0]['pred']['ps']);
+                $this->assertSame(4, $request->ir['where']['items'][1]['pred']['p']);
+                $this->assertSame(
+                    $index === 0 ? ['a', 'b', 'c', 'c', 'tail'] : ['a', 'b', 'c', 'd', 'tail'],
+                    $request->params
+                );
+                $plan = (new Engine($model, $driver, 8))->plan($request->shape());
+                $step = $plan['steps'][0];
+                $this->assertSame([0, 1, 2, 3, 4], array_column($step['bind_slots'], 'param'));
+                if ($firstSql === null) {
+                    $firstSql = $step['sql'];
+                } else {
+                    $this->assertSame($firstSql, $step['sql'], "$driver SQL changed within one IN bucket");
+                }
+            }
+        }
+    }
+
     // Requirements: PRT-78; T236.
     public function testPagedReadsSharePlanAndBindPageValues(): void
     {

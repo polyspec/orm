@@ -97,6 +97,81 @@ func TestCanonicalizePadsInListAndRejectsOutOfRangeParam(t *testing.T) {
 	}
 }
 
+// TestInListPaddingKeepsTheCompiledShape checks that 3 and 4 values in one bucket
+// produce the same canonical IR, bind order, and SQL shape.
+// Requirements: CPX-4.
+func TestInListPaddingKeepsTheCompiledShape(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	m, err := runtimemodel.LoadFiles("../../../contracts/fixtures/identity_load.dbs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	schema := &Schema{Hash: m.ManifestHash, Text: m.ManifestText}
+	makeRequest := func(values []any) *request {
+		ps := make([]int, len(values)-1)
+		for i := range ps {
+			ps[i] = i
+		}
+		followingParam := len(values) - 1
+		return &request{
+			ir: ir.Request{
+				IRVersion: 1, ManifestHash: m.ManifestHash, Kind: "all", NParams: len(values),
+				Query: ir.Query{Entity: "load_probe", Where: &ir.Group{Items: []ir.Item{
+					{Pred: &ir.Pred{Column: "seq", Op: "in", Ps: ps}},
+					{Pred: &ir.Pred{Column: "label", Op: "eq", P: &followingParam}},
+				}}},
+			},
+			params: values,
+			schema: schema,
+		}
+	}
+	inputs := [][]any{{"a", "b", "c", "tail"}, {"a", "b", "c", "d", "tail"}}
+	for _, dialect := range []string{"mysql", "postgres", "sqlite"} {
+		eng, err := engine.New(m, dialect)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var firstSQL string
+		for i, values := range inputs {
+			r := makeRequest(values)
+			if err := canonicalize(r); err != nil {
+				t.Fatalf("%s input %d: canonicalize: %v", dialect, i, err)
+			}
+			predicates := r.ir.Query.Where.Items
+			if got, want := predicates[0].Pred.Ps, []int{0, 1, 2, 3}; !slices.Equal(got, want) {
+				t.Fatalf("%s input %d IN indexes = %v, want %v", dialect, i, got, want)
+			}
+			if got := *predicates[1].Pred.P; got != 4 {
+				t.Fatalf("%s input %d following parameter = %d, want 4", dialect, i, got)
+			}
+			wantParams := []any{"a", "b", "c", "c", "tail"}
+			if i == 1 {
+				wantParams[3] = "d"
+			}
+			if !reflect.DeepEqual(r.params, wantParams) || r.ir.NParams != 5 {
+				t.Fatalf("%s input %d canonical values = %#v, n_params %d; want %#v, 5", dialect, i, r.params, r.ir.NParams, wantParams)
+			}
+			compiled, err := eng.P.Compile(&r.ir)
+			if err != nil {
+				t.Fatalf("%s input %d: compile: %v", dialect, i, err)
+			}
+			step := compiled.Steps[0]
+			var params []int
+			for _, slot := range step.BindSlots {
+				params = append(params, slot.Param)
+			}
+			if !slices.Equal(params, []int{0, 1, 2, 3, 4}) {
+				t.Fatalf("%s input %d bind slots = %v, want [0 1 2 3 4]", dialect, i, params)
+			}
+			if i == 0 {
+				firstSQL = step.SQL
+			} else if step.SQL != firstSQL {
+				t.Fatalf("%s compiled SQL changed within bucket: %q != %q", dialect, step.SQL, firstSQL)
+			}
+		}
+	}
+}
+
 // Requirements: PRT-78; T236.
 func TestPlanCachePagedReadBindsPageValues(t *testing.T) {
 	testcase.Start(t, testcase.Compute)

@@ -2,11 +2,11 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::core::{config, Added, CondKind, CondNode, Core, PredSpec, PredValue, RelSpec};
+use crate::core::{Added, CondKind, CondNode, Core, PredSpec, PredValue, RelSpec, config};
 use crate::ir;
 use crate::schema::Schema;
 use crate::value::Param;
-use crate::{codes, Error, Result};
+use crate::{Error, Result, codes};
 
 /// The value-free IR of one statement plus its parameter values.
 #[derive(Clone)]
@@ -481,6 +481,7 @@ mod plan_cache_tests {
         collect: |_, _| unreachable!("the planner test collects no rows"),
     };
     const SEQ: ChainKey = ChainKey { conn: "", op: "", column: "seq", columns: &[], compare: "" };
+    const LABEL: ChainKey = ChainKey { conn: "and", op: "eq", column: "label", columns: &[], compare: "" };
     const FULLTEXT_BOOLEAN_LABEL: ChainKey = ChainKey { conn: "", op: "fulltext_boolean", column: "", columns: &["label"], compare: "" };
 
     /// One IN statement over lists of 1 to 300 values: the shape key takes one value per power-of-two bucket
@@ -499,6 +500,41 @@ mod plan_cache_tests {
             keys.insert(req.shape_key());
         }
         assert!(keys.len() <= 10, "{} distinct plan keys for lengths 1 to 300, want at most 10", keys.len());
+    }
+
+    /// Lists of three and four values share one compiled SQL shape, with later parameters renumbered after the padded list.
+    // Requirements: CPX-4.
+    #[test]
+    fn in_list_padding_keeps_the_compiled_shape() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let manifest = IDENTITY_SCHEMA.manifest().expect("identity load manifest");
+        for dialect in [crate::engine::Dialect::MySql, crate::engine::Dialect::Postgres, crate::engine::Dialect::Sqlite] {
+            let mut first_sql: Option<String> = None;
+            for values in [vec![Param::I64(10), Param::I64(11), Param::I64(12)], vec![Param::I64(10), Param::I64(11), Param::I64(12), Param::I64(13)]] {
+                let mut core = crate::core::Core::new(&PROBE);
+                core.chain("", &[SEQ], vec![Arg::Value(Value::List(values.clone()))]);
+                core.chain("and", &[LABEL], vec![Arg::Value(Value::One(Param::from("tail")))]);
+                let request = build(&core, "all");
+                assert!(request.error().is_none(), "request build failed: {:?}", request.error());
+                let group = request.ir.query.where_.as_ref().expect("where group");
+                let ir::Item::Pred { pred: in_pred } = &group.items[0] else { panic!("IN predicate missing") };
+                assert_eq!(in_pred.ps, [0, 1, 2, 3]);
+                let ir::Item::Pred { pred: tail_pred } = &group.items[1] else { panic!("following predicate missing") };
+                assert_eq!(tail_pred.p, Some(4));
+                let mut expected_params = vec![Param::I64(10), Param::I64(11), Param::I64(12)];
+                expected_params.push(if values.len() == 3 { Param::I64(12) } else { Param::I64(13) });
+                expected_params.push(Param::from("tail"));
+                assert_eq!(request.params, expected_params);
+                let plan = crate::engine::compile(&manifest, dialect, &request.ir).expect("compiled plan");
+                let step = &plan.steps[0];
+                assert_eq!(step.bind_slots.iter().map(|slot| slot.param).collect::<Vec<_>>(), [0, 1, 2, 3, 4]);
+                if let Some(sql) = first_sql.as_ref() {
+                    assert_eq!(&step.sql, sql, "compiled SQL changed within one IN bucket");
+                } else {
+                    first_sql = Some(step.sql.clone());
+                }
+            }
+        }
     }
 
     // Requirements: PRT-78; T236.

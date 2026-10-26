@@ -6861,16 +6861,41 @@
       ]
     },
     {
-      "id": "ts-plan-cache-in-pads-to-bucket",
+      "id": "in-list-padding-keeps-compiled-shape",
       "kind": "feature",
       "requirements": [
         "CPX-4"
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/orm/plan_cache_test.go",
+          "id": "TestInListPaddingKeepsTheCompiledShape"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/PlanCacheBoundTest.php",
+          "id": "PlanCacheBoundTest::testInListPaddingKeepsTheCompiledShape"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PlanCacheBoundNativeTest.php",
+          "id": "PlanCacheBoundNativeTest::testInListPaddingKeepsTheCompiledShape"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/plan-cache-in.mjs",
           "id": "an IN list pads to its bucket by repeating its last value and renumbers its parameters"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_plan_cache_bound.py",
+          "id": "test_in_list_padding_keeps_the_compiled_shape"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/request.rs",
+          "id": "request::plan_cache_tests::in_list_padding_keeps_the_compiled_shape"
         }
       ]
     },

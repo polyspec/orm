@@ -60,6 +60,40 @@ class PlanCacheBoundTest(unittest.TestCase):
                 f"length {n}: plan cache holds {len(db.plans)} entries, want at most 10",
             )
 
+    # Requirements: CPX-4.
+    def test_in_list_padding_keeps_the_compiled_shape(self):
+        def canonical(size):
+            values = ["a", "b", "c", "tail"] if size == 3 else ["a", "b", "c", "d", "tail"]
+            request = {
+                "ir_version": 1,
+                "manifest_hash": MODEL.manifest_hash,
+                "kind": "all",
+                "entity": "load_probe",
+                "where": {
+                    "items": [
+                        {"pred": {"column": "seq", "op": "in", "ps": list(range(size))}},
+                        {"pred": {"column": "label", "op": "eq", "p": size}},
+                    ]
+                },
+                "n_params": len(values),
+            }
+            return canonical_request(request, values)
+
+        first_ir, first_params = canonical(3)
+        full_ir, full_params = canonical(4)
+        for request in (first_ir, full_ir):
+            self.assertEqual(request["where"]["items"][0]["pred"]["ps"], [0, 1, 2, 3])
+            self.assertEqual(request["where"]["items"][1]["pred"]["p"], 4)
+            self.assertEqual(request["n_params"], 5)
+        self.assertEqual(first_params, ["a", "b", "c", "c", "tail"])
+        self.assertEqual(full_params, ["a", "b", "c", "d", "tail"])
+        for driver in ("mysql", "postgres", "sqlite"):
+            first_step = Engine(MODEL, driver).compile(first_ir)["steps"][0]
+            full_step = Engine(MODEL, driver).compile(full_ir)["steps"][0]
+            self.assertEqual([slot["param"] for slot in first_step["bind_slots"]], [0, 1, 2, 3, 4])
+            self.assertEqual([slot["param"] for slot in full_step["bind_slots"]], [0, 1, 2, 3, 4])
+            self.assertEqual(first_step["sql"], full_step["sql"], f"{driver} SQL shape within one IN bucket")
+
     def test_out_of_range_in_param_is_refused(self):
         db = handle()
         request, params = in_request(2)

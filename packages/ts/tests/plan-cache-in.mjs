@@ -31,13 +31,39 @@ caseTest('IN lists of lengths 1 to 300 share at most ten plan cache keys', COMPU
 
 // Requirements: CPX-4.
 caseTest('an IN list pads to its bucket by repeating its last value and renumbers its parameters', COMPUTE, () => {
-  const request = { ir_version: 1, manifest_hash: 'h', kind: 'all', entity: 'load_probe', where: { items: [{ pred: { column: 'seq', op: 'in', ps: [0, 1, 2] } }, { pred: { column: 'label', op: 'eq', p: 3 } }] }, n_params: 4 };
-  const out = canonicalize(request, ['a', 'b', 'c', 'tail']);
-  assert.deepEqual(out.request.where.items[0].pred.ps, [0, 1, 2, 3]);
-  assert.equal(out.request.where.items[1].pred.p, 4);
-  assert.deepEqual(out.params, ['a', 'b', 'c', 'c', 'tail']);
-  assert.equal(out.request.n_params, 5);
-  assert.equal(request.where.items[0].pred.ps.length, 3, 'the input request is not changed');
+  const makeRequest = values => ({
+    request: {
+      ir_version: 1,
+      manifest_hash: manifest.manifestHash,
+      kind: 'all',
+      entity: 'load_probe',
+      where: { items: [
+        { pred: { column: 'seq', op: 'in', ps: Array.from({ length: values.length - 1 }, (_, i) => i) } },
+        { pred: { column: 'label', op: 'eq', p: values.length - 1 } },
+      ] },
+      n_params: values.length,
+    },
+    values,
+  });
+  const first = makeRequest(['a', 'b', 'c', 'tail']);
+  const full = makeRequest(['a', 'b', 'c', 'd', 'tail']);
+  const firstOut = canonicalize(first.request, first.values);
+  const fullOut = canonicalize(full.request, full.values);
+  for (const out of [firstOut, fullOut]) {
+    assert.deepEqual(out.request.where.items[0].pred.ps, [0, 1, 2, 3]);
+    assert.equal(out.request.where.items[1].pred.p, 4);
+    assert.equal(out.request.n_params, 5);
+  }
+  assert.deepEqual(firstOut.params, ['a', 'b', 'c', 'c', 'tail']);
+  assert.deepEqual(fullOut.params, ['a', 'b', 'c', 'd', 'tail']);
+  assert.equal(first.request.where.items[0].pred.ps.length, 3, 'the input request is not changed');
+  for (const dialect of ['mysql', 'postgres', 'sqlite']) {
+    const firstPlan = new Engine(model, dialect).compile(firstOut.request).steps[0];
+    const fullPlan = new Engine(model, dialect).compile(fullOut.request).steps[0];
+    assert.deepEqual(firstPlan.bind_slots.map(slot => slot.param), [0, 1, 2, 3, 4], `${dialect} first bind order`);
+    assert.deepEqual(fullPlan.bind_slots.map(slot => slot.param), [0, 1, 2, 3, 4], `${dialect} full bind order`);
+    assert.equal(firstPlan.sql, fullPlan.sql, `${dialect} SQL shape within one IN bucket`);
+  }
 });
 
 caseTest('a parameter index past the parameters is IR_INVALID', COMPUTE, () => {
