@@ -27,6 +27,7 @@ def check_case(test: unittest.TestCase, case: dict) -> None:
         test.assertIsNone(got, f"{case['name']} read as {got!r}, want not found")
     else:
         test.assertEqual(got, case["expected"])
+    check_introspected_case(test, case)
 
 
 class Case(VectorCase):
@@ -117,10 +118,6 @@ def check_introspected_case(test: unittest.TestCase, case: dict) -> None:
     )
 
 
-class IntrospectionCase(VectorCase):
-    """A shared SHOW CREATE vector through public MySQL introspection."""
-
-
 def load_tests(
     loader: unittest.TestLoader, tests: unittest.TestSuite, _pattern: object
 ) -> unittest.TestSuite:
@@ -128,14 +125,6 @@ def load_tests(
     if not DATA["cases"]:
         raise AssertionError("tests/dbspec/show-create.json has no cases")
     tests.addTests(vector_tests(Case, DATA["cases"], check_case))
-    tests.addTests(
-        vector_tests(
-            IntrospectionCase,
-            DATA["cases"],
-            check_introspected_case,
-            case_id=lambda case: f"introspection/{case['id']}",
-        )
-    )
     return tests
 
 
