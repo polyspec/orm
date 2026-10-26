@@ -121,6 +121,9 @@ ONLINE := env -u CARGO_NET_OFFLINE -u GOPROXY -u npm_config_offline -u COMPOSER_
 # The bootstrap is source in the sibling kit checkout, not a copy in this repository (K614). It installs npm before the
 # package exists, then installs package-lock.json so the kit's built tools can run.
 include ../kit/scripts/kit/kit-bootstrap.mk
+# kit.mk unexports CARGO_TARGET_DIR so its tools cannot inherit a checkout-specific target. ORM cargo recipes need
+# this checkout's canonical target, so restore the export after kit.mk is included.
+export CARGO_TARGET_DIR := $(abspath packages/rust/target)
 # The tools of mise.toml that a recipe starts by its absolute path (kit K171): make 3.81, the make of macOS, looks a
 # recipe line without shell syntax up on the PATH that make started with, not on the PATH that kit.mk exports.
 GO := $(KIT_TOOLS)/mise/shims/go

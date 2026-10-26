@@ -82,6 +82,14 @@ caseTest('the TypeScript runtime build generates models before compiling their c
   assert.ok(generation < build, 'build-ts compiles consumers before refreshing generated models');
 });
 
+caseTest('the ORM Rust target export follows the Kit Makefile include', COMPUTE, () => {
+  const makefile = text('Makefile');
+  const kit = makefile.indexOf('include ../kit/scripts/kit/kit-bootstrap.mk');
+  const target = makefile.indexOf('export CARGO_TARGET_DIR := $(abspath packages/rust/target)', kit);
+  assert.ok(kit >= 0, 'the Makefile includes the Kit bootstrap');
+  assert.ok(target > kit, 'the ORM re-exports its canonical cargo target after Kit unexports it');
+});
+
 caseTest('the Kit package path holds its lint configurations', COMPUTE, () => {
   const root = new URL('../..', import.meta.url).pathname;
   const directory = mkdtempSync(join(tmpdir(), 'orm-kit-package-path-'));
