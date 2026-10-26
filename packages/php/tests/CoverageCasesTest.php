@@ -178,6 +178,114 @@ final class CoverageCasesTest extends TestCase
         );
     }
 
+    public function testRestoresWholeConformanceCounterSnapshotAfterSuccessAndFailure(): void
+    {
+        $directory = sys_get_temp_dir() . '/orm-counter-restore-' . bin2hex(random_bytes(8));
+        self::assertTrue(mkdir($directory, 0700), 'temporary counter fixture directory');
+        $initialPath = "$directory/initial.json";
+        $statePath = "$directory/state.json";
+        $restorePath = "$directory/restores.jsonl";
+        $logPath = "$directory/calls.log";
+        $nodePath = "$directory/node";
+        $original = [
+            'audit_record' => ['value' => '17', 'called' => true, 'owner' => ''],
+            'audited_note' => ['value' => '29', 'called' => true, 'owner' => ''],
+            'unrelated_identity' => ['value' => '41', 'called' => false, 'owner' => 'other_table'],
+        ];
+        $encodedOriginal = json_encode($original, JSON_THROW_ON_ERROR);
+        $node = <<<'SH'
+#!/bin/sh
+set -eu
+previous=
+restore=
+snapshot=
+while [ "$#" -gt 0 ]; do
+    if [ "$previous" = restore-json ]; then
+        snapshot=$1
+        restore=1
+        break
+    fi
+    if [ "$1" = --restore-json ]; then previous=restore-json; else previous=; fi
+    shift
+done
+if [ "$restore" = 1 ]; then
+    printf 'restore\n' >> "$COUNTER_FIXTURE_LOG"
+    printf '%s\n' "$snapshot" >> "$COUNTER_FIXTURE_RESTORES"
+    printf '%s' "$snapshot" > "$COUNTER_FIXTURE_STATE"
+else
+    printf 'read\n' >> "$COUNTER_FIXTURE_LOG"
+    if [ -f "$COUNTER_FIXTURE_STATE" ]; then cat "$COUNTER_FIXTURE_STATE"; else cat "$COUNTER_FIXTURE_INITIAL"; fi
+fi
+SH;
+        $previousPath = getenv('PATH');
+        $previousInitial = getenv('COUNTER_FIXTURE_INITIAL');
+        $previousState = getenv('COUNTER_FIXTURE_STATE');
+        $previousRestores = getenv('COUNTER_FIXTURE_RESTORES');
+        $previousLog = getenv('COUNTER_FIXTURE_LOG');
+        try {
+            self::assertSame(strlen($encodedOriginal), file_put_contents($initialPath, $encodedOriginal));
+            self::assertSame(strlen($node), file_put_contents($nodePath, $node));
+            self::assertTrue(chmod($nodePath, 0700), 'counter CLI fixture is executable');
+            putenv('PATH=' . $directory . PATH_SEPARATOR . ($previousPath === false ? '' : $previousPath));
+            putenv("COUNTER_FIXTURE_INITIAL=$initialPath");
+            putenv("COUNTER_FIXTURE_STATE=$statePath");
+            putenv("COUNTER_FIXTURE_RESTORES=$restorePath");
+            putenv("COUNTER_FIXTURE_LOG=$logPath");
+            $mutated = $original;
+            $mutated['audit_record']['value'] = '18';
+            $mutated['audited_note']['value'] = '30';
+            $mutated['unrelated_identity']['value'] = '42';
+            $encodedMutation = json_encode($mutated, JSON_THROW_ON_ERROR);
+            coverageWithConformanceCountersRestored(
+                'sqlite',
+                'sqlite:///unused-by-counter-fixture',
+                static function () use ($statePath, $encodedMutation): void {
+                    self::assertSame(strlen($encodedMutation), file_put_contents($statePath, $encodedMutation));
+                },
+            );
+            self::assertSame($encodedOriginal, file_get_contents($statePath), 'success restores every counter');
+
+            $failure = new RuntimeException('conformance body failed');
+            try {
+                coverageWithConformanceCountersRestored(
+                    'sqlite',
+                    'sqlite:///unused-by-counter-fixture',
+                    static function () use ($statePath, $encodedMutation, $failure): void {
+                        file_put_contents($statePath, $encodedMutation);
+                        throw $failure;
+                    },
+                );
+                self::fail('the conformance body failure must propagate');
+            } catch (RuntimeException $caught) {
+                self::assertSame($failure, $caught, 'cleanup preserves the original body exception');
+            }
+
+            self::assertSame($encodedOriginal, file_get_contents($statePath), 'failure restores every counter');
+            self::assertSame(
+                ['read', 'restore', 'read', 'read', 'restore', 'read'],
+                file($logPath, FILE_IGNORE_NEW_LINES),
+                'each success and failure path reads, restores, and verifies counters',
+            );
+            self::assertSame(
+                [$encodedOriginal, $encodedOriginal],
+                file($restorePath, FILE_IGNORE_NEW_LINES),
+                'both cleanup calls serialize the complete original counter map',
+            );
+        } finally {
+            $previousPath === false ? putenv('PATH') : putenv("PATH=$previousPath");
+            $previousInitial === false ? putenv('COUNTER_FIXTURE_INITIAL') : putenv("COUNTER_FIXTURE_INITIAL=$previousInitial");
+            $previousState === false ? putenv('COUNTER_FIXTURE_STATE') : putenv("COUNTER_FIXTURE_STATE=$previousState");
+            $previousRestores === false ? putenv('COUNTER_FIXTURE_RESTORES') : putenv("COUNTER_FIXTURE_RESTORES=$previousRestores");
+            $previousLog === false ? putenv('COUNTER_FIXTURE_LOG') : putenv("COUNTER_FIXTURE_LOG=$previousLog");
+            foreach ([$initialPath, $statePath, $restorePath, $logPath, $nodePath] as $path) {
+                if (file_exists($path)) {
+                    unlink($path);
+                }
+            }
+            rmdir($directory);
+        }
+    }
+
     public function testRequiresTheSelectedDatabase(): void
     {
         $GLOBALS['orm_coverage_item'] = null;

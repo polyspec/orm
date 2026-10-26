@@ -285,7 +285,7 @@ function coverageWithConformanceCountersRestored(
         }
         $run();
     }, static function () use ($command, $root, $snapshot): void {
-        coverageRestoreConformanceCounters($command, $root, $snapshot);
+        coverageRestoreConformanceCounters($command, $root, json_encode($snapshot, JSON_THROW_ON_ERROR));
         $current = coverageReadConformanceCounters($command, $root);
         if (!coverageConformanceCountersEqual($snapshot, $current)) {
             throw new RuntimeException('conformance counters differ from the original snapshot after restore');
