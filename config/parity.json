@@ -16572,6 +16572,45 @@
       ]
     },
     {
+      "id": "schema-manifest-text-hash-mismatch-is-reported",
+      "kind": "feature",
+      "requirements": [
+        "DBS-104"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/register_test.go",
+          "id": "TestRegisterSendsNoStatement"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageSchemaInstallTest.php",
+          "id": "CoverageSchemaInstallTest::testSchemaInstallExternalDocuments"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+          "id": "CoverageSchemaInstallNativeTest::testSchemaInstallExternalDocuments"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/engine.mjs",
+          "id": "engine"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_schema_install.py",
+          "id": "test_schema_install_external_documents"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/schema.rs",
+          "id": "schema::tests::manifest_hash_mismatch_is_reported"
+        }
+      ]
+    },
+    {
       "id": "schema-register-changed-manifest-config",
       "kind": "feature",
       "requirements": [

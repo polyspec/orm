@@ -122,7 +122,7 @@ final class CoverageSchemaInstallTest extends TestCase
     // The install of a set that uses external documents checks the external tables in the database. If an external
     // document's column is missing from the database, install is CONFIG and does not create the table it owns.
     // Registration does not read the database, so it connects with that set too.
-    // Requirements: DBS-107, DBS-108, DBS-119, DBS-120, SCH-7, SCH-11, PLN-44, INT-54, INT-132, INT-133.
+    // Requirements: DBS-104, DBS-107, DBS-108, DBS-119, DBS-120, SCH-7, SCH-11, PLN-44, INT-54, INT-132, INT-133.
     public function testSchemaInstallExternalDocuments(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {

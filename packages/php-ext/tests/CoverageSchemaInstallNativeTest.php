@@ -125,7 +125,7 @@ DBSPEC,
         });
     }
 
-    // Requirements: DBS-107, DBS-108, DBS-119, DBS-120, SCH-7, SCH-11, PLN-44, INT-54, INT-132, INT-133.
+    // Requirements: DBS-104, DBS-107, DBS-108, DBS-119, DBS-120, SCH-7, SCH-11, PLN-44, INT-54, INT-132, INT-133.
     public function testSchemaInstallExternalDocuments(): void
     {
         self::forEachCoverageDatabase(static function ($db): void {

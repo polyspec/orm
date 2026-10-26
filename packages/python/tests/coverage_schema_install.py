@@ -240,7 +240,7 @@ class CoverageTest(CoverageCase):
     def test_schema_install_partial(self):
         self.each_item("schema_install_partial", schema_install_partial)
 
-    # Requirements: DBS-105, DBS-107, DBS-108, DBS-110, DBS-119, DBS-120, SCH-7, SCH-8, SCH-11, PLN-44, INT-54, INT-132, INT-133.
+    # Requirements: DBS-104, DBS-105, DBS-107, DBS-108, DBS-110, DBS-119, DBS-120, SCH-7, SCH-8, SCH-11, PLN-44, INT-54, INT-132, INT-133.
     def test_schema_install_external_documents(self):
         self.each_item(
             "schema_install_external_documents", schema_install_external_documents
