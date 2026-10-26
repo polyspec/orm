@@ -4587,12 +4587,34 @@
         {
           "implementation": "go",
           "test": "packages/go/orm/coverage_dsn_test.go",
-          "id": "TestCoverageDSNConnection"
+          "id": "TestCoverageDSNConnection",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageDSNConnection",
+            "FEATURE_PACKAGE=./orm"
+          ]
         },
         {
           "implementation": "go",
           "test": "packages/go/model/coverage_dsn_test.go",
-          "id": "TestCoverageGeneratedModelConnection"
+          "id": "TestCoverageGeneratedModelConnection",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageGeneratedModelConnection",
+            "FEATURE_PACKAGE=./model"
+          ]
         },
         {
           "implementation": "php",
@@ -13149,7 +13171,18 @@
         {
           "implementation": "go",
           "test": "packages/go/model/coverage_transactions_test.go",
-          "id": "TestCoverageTransactionSavepoint"
+          "id": "TestCoverageTransactionSavepoint",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageTransactionSavepoint",
+            "FEATURE_PACKAGE=./model"
+          ]
         },
         {
           "implementation": "php",
@@ -13203,7 +13236,18 @@
         {
           "implementation": "go",
           "test": "packages/go/model/coverage_transactions_test.go",
-          "id": "TestCoverageTransactionSavepoint"
+          "id": "TestCoverageTransactionSavepoint",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageTransactionSavepoint",
+            "FEATURE_PACKAGE=./model"
+          ]
         },
         {
           "implementation": "php",
@@ -13247,7 +13291,18 @@
         {
           "implementation": "go",
           "test": "packages/go/model/coverage_transactions_test.go",
-          "id": "TestCoverageTransactionRollback"
+          "id": "TestCoverageTransactionRollback",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageTransactionRollback",
+            "FEATURE_PACKAGE=./model"
+          ]
         },
         {
           "implementation": "php",
@@ -13291,7 +13346,18 @@
         {
           "implementation": "go",
           "test": "packages/go/model/coverage_transactions_test.go",
-          "id": "TestCoverageTransactionSavepoint"
+          "id": "TestCoverageTransactionSavepoint",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageTransactionSavepoint",
+            "FEATURE_PACKAGE=./model"
+          ]
         },
         {
           "implementation": "php",
