@@ -23,8 +23,8 @@ FIXTURE = json.loads(
 )
 # A model with a styled column of each nullability, for the getter and setter cases.
 PROBE = (
-    "dbspec 1 styled_probe\n\ntable styled_probe {\n  seq i64\n  payload text\n  maybe text null\n"
-    "  primary key (seq)\n  settings {\n    codec payload ordered_json\n    codec maybe ordered_json\n  }\n}\n"
+    "dbspec 1 styled_probe\n\ntable styled_probe {\n  seq i64\n  payload text\n  maybe text null\n  address bytes\n"
+    "  primary key (seq)\n  settings {\n    codec payload ordered_json\n    codec maybe ordered_json\n    codec address ip\n  }\n}\n"
 )
 
 
@@ -89,6 +89,16 @@ def check_case(test: unittest.TestCase, case: dict) -> None:
             row.column(column).to_json(), case["getter"], "the getter after the setter"
         )
     test.assertTrue(ran, "the case has no operation")
+
+
+class ModelHostInputTest(unittest.TestCase):
+    def test_ip_setter_rejects_whitespace_without_changing_value(self):
+        row, _column = probe(False)
+        row.set_value("address", "10.0.0.1")
+        with self.assertRaises(OrmError) as caught:
+            row.set_value("address", "10. 0.0.1")
+        self.assertEqual(caught.exception.code, "CODEC_ENCODE")
+        self.assertEqual(row.column("address"), "10.0.0.1")
 
 
 class Case(VectorCase):

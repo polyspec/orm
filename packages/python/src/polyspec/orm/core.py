@@ -1,6 +1,7 @@
 # Query-building state: the query being built, and the state of a row that was read. The Model chain fills this
 # and the planner turns it into IR (docs/spec/protocol.md).
 from polyspec.orm import codes
+from polyspec.orm.codec import CodecError, host_encode
 from polyspec.orm.engine.model import Field, field_of
 from polyspec.orm.errors import OrmError
 from polyspec.orm.names import ChainKey
@@ -499,6 +500,13 @@ class Core:
             if value.kind == "value":
                 value.payload()
         elif value is not None:
+            if "ip" in field.stages:
+                try:
+                    host_encode(value, ["ip"], "")
+                except CodecError as error:
+                    raise OrmError(
+                        error.code, str(error).partition(": ")[2], error
+                    ) from error
             rng = _INTEGER_RANGES.get(field.type)
             if rng is not None and (
                 not _is_safe_integer(value) or not rng[0] <= value <= rng[1]
