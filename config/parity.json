@@ -1059,7 +1059,7 @@
         },
         {
           "glob": "packages/rust/schema/src/dbspec/set_internal_tests.rs",
-          "reason": "test: checks only private set-path and schema-number helpers; public set reader behavior is exercised by the six-client dbspec-set-files cases"
+          "reason": "test: checks private set path, schema number, and nested JSON scanner mechanics; public set-reader diagnostics remain exercised by the six-client dbspec-set-files cases"
         },
         {
           "glob": "packages/rust/build/src/lib.rs",
@@ -14022,6 +14022,11 @@
           "implementation": "rust",
           "test": "packages/rust/build/tests/generate.rs",
           "id": "manifest_text_is_embedded_with_its_hash"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/schema/src/names.rs",
+          "id": "tests::snake_case_separates_ascii_uppercase_characters"
         },
         {
           "implementation": "typescript",

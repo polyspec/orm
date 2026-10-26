@@ -521,41 +521,6 @@ mod windows {
 #[path = "set_internal_tests.rs"]
 mod internal_tests;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    // Nested values are checked by the same rules as the top object: a number beyond a double
-    // stays valid JSON, a key twice is set.key, and a lone surrogate is set.json at any level.
-    // Requirements: DBS-13, DBS-21, DBS-23.
-    #[test]
-    fn nested_json_rules() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let path = Path::new("dbspec-set.json");
-        for (text, rule) in [
-            (r#"{"schema": 1, "documents": ["a.dbs"], "x": [1e400]}"#, RULE_SET_KEY),
-            (r#"{"schema": 1, "documents": ["a.dbs"], "x": {"a": 1, "a": 2}}"#, RULE_SET_KEY),
-            (r#"{"schema": 1, "documents": ["a.dbs"], "x": [{"k": "\ud800"}]}"#, RULE_SET_JSON),
-            (r#"{"schema": 1, "documents": ["a.dbs"], "x": {"\udc00": 1}}"#, RULE_SET_JSON),
-            (r#"{"schema": 1, "documents": ["a.dbs"], "x": "😀"}"#, RULE_SET_KEY),
-            (r#"{"schema": 1, "documents": ["a.dbs"]}  "#, ""),
-            // A key twice is reported only after the set.json conditions of the whole text.
-            (r#"{"schema": {"a": 1, "a": 2}, "documents": ["a.dbs"]}"#, RULE_SET_KEY),
-            (r#"{"a": 1, "a": 2, "x": "\ud800"}"#, RULE_SET_JSON),
-            (
-                r#"{"x": {"a": 1, "a": 2}, "y": [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}"#,
-                RULE_SET_JSON,
-            ),
-            (r#"{"a": 1, "a": 2,"#, RULE_SET_JSON),
-            (r#"{"schema": NaN, "documents": ["a.dbs"]}"#, RULE_SET_JSON),
-            (r#"{"schema": Infinity, "documents": ["a.dbs"]}"#, RULE_SET_JSON),
-        ] {
-            let got = parse(text.as_bytes(), path).err().map_or(String::new(), |e| e.rule);
-            assert_eq!(got, rule, "{text}");
-        }
-    }
-}
-
 /// The result of one text of a set (docs/spec/dbspec.md "Parsing a set"): the name that the parser reads
 /// from its header, `None` when the header fails; whether the text is external; and what one parse
 /// of the text returns, its document and positions or its diagnostics.

@@ -1,5 +1,33 @@
 use super::*;
 
+// Checks nested JSON scanner mechanics directly; public set-reader diagnostics remain in dbspec-set-files.
+#[test]
+fn nested_json_rules() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let path = Path::new("dbspec-set.json");
+    for (text, rule) in [
+        (r#"{"schema": 1, "documents": ["a.dbs"], "x": [1e400]}"#, RULE_SET_KEY),
+        (r#"{"schema": 1, "documents": ["a.dbs"], "x": {"a": 1, "a": 2}}"#, RULE_SET_KEY),
+        (r#"{"schema": 1, "documents": ["a.dbs"], "x": [{"k": "\ud800"}]}"#, RULE_SET_JSON),
+        (r#"{"schema": 1, "documents": ["a.dbs"], "x": {"\udc00": 1}}"#, RULE_SET_JSON),
+        (r#"{"schema": 1, "documents": ["a.dbs"], "x": "😀"}"#, RULE_SET_KEY),
+        (r#"{"schema": 1, "documents": ["a.dbs"]}  "#, ""),
+        // A key twice is reported only after the set.json conditions of the whole text.
+        (r#"{"schema": {"a": 1, "a": 2}, "documents": ["a.dbs"]}"#, RULE_SET_KEY),
+        (r#"{"a": 1, "a": 2, "x": "\ud800"}"#, RULE_SET_JSON),
+        (
+            r#"{"x": {"a": 1, "a": 2}, "y": [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}"#,
+            RULE_SET_JSON,
+        ),
+        (r#"{"a": 1, "a": 2,"#, RULE_SET_JSON),
+        (r#"{"schema": NaN, "documents": ["a.dbs"]}"#, RULE_SET_JSON),
+        (r#"{"schema": Infinity, "documents": ["a.dbs"]}"#, RULE_SET_JSON),
+    ] {
+        let got = parse(text.as_bytes(), path).err().map_or(String::new(), |e| e.rule);
+        assert_eq!(got, rule, "{text}");
+    }
+}
+
 // Checks only the private normal-form helper; public set-path behavior is covered by shared set-file cases.
 #[test]
 fn normal_form_cases() {
