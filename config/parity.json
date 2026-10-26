@@ -28626,7 +28626,7 @@
             "-count=1",
             "-run",
             "^TestStressDocument$",
-            "./engine/dbspec"
+            "./dbspec"
           ]
         },
         {

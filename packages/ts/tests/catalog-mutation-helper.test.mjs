@@ -281,6 +281,30 @@ caseTest('catalog page columns retain descriptor names and order', COMPUTE, asyn
 });
 
 // Requirements: INT-111.
+caseTest('rejects byte capacity updates before changing the row', COMPUTE, async () => {
+  await withSqliteCatalog('orm-catalog-update-byte-capacity-', `
+    CREATE TABLE account (id INTEGER NOT NULL PRIMARY KEY, payload VARBINARY(3) NOT NULL);
+    INSERT INTO account (id, payload) VALUES (1, X'010203');
+  `, async catalog => {
+    const page = await catalog.tablePage({ namespace: 'main', name: 'account' }, 1, 0);
+    const original = catalog.rowSnapshotFromPage(page, 0);
+    await catalog.updateRow(original, [{ name: 'payload', value: Uint8Array.of(4, 5, 6) }]);
+    const currentPage = await catalog.tablePage({ namespace: 'main', name: 'account' }, 1, 0);
+    const current = catalog.rowSnapshotFromPage(currentPage, 0);
+    await assert.rejects(
+      catalog.updateRow(current, [{ name: 'payload', value: Uint8Array.of(7, 8, 9, 10) }]),
+      error => error instanceof OrmError && error.code === 'ROW_UPDATE_INVALID',
+    );
+    await assert.rejects(
+      catalog.updateRow(current, [{ name: 'payload', value: 'éé' }]),
+      error => error instanceof OrmError && error.code === 'ROW_UPDATE_INVALID',
+      'four UTF-8 bytes exceed VARBINARY(3)',
+    );
+    const stored = await catalog.readOnlyQuery('SELECT payload FROM account WHERE id = ?', [1]);
+    assert.deepEqual(stored.rows, [[Uint8Array.of(4, 5, 6)]], 'rejected oversized updates leave the row unchanged');
+  });
+});
+
 caseTest('rejects over-capacity text updates before changing the row', COMPUTE, async () => {
   await withSqliteCatalog('orm-catalog-update-capacity-', `
     CREATE TABLE account (id INTEGER NOT NULL PRIMARY KEY, name VARCHAR(3) NOT NULL CHECK(length(name) <= 3));

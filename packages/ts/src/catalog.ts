@@ -745,8 +745,10 @@ function checkChanges(metadata: CatalogTableMetadata, values: readonly CatalogAs
 /** Whether an assigned text or byte value exceeds the length declared by its native column type. */
 function exceedsDeclaredCapacity(column: CatalogColumn, value: DriverValue): boolean {
   if (typeof value === 'string') {
-    const match = /^(?:varchar|character varying)\s*\((\d+)\)/i.exec(column.nativeType);
-    return match !== null && Array.from(value).length > Number(match[1]);
+    const textCapacity = /^(?:varchar|character varying)\s*\((\d+)\)/i.exec(column.nativeType);
+    if (textCapacity !== null) return Array.from(value).length > Number(textCapacity[1]);
+    const byteCapacity = /^(?:varbinary|binary)\s*\((\d+)\)/i.exec(column.nativeType);
+    return byteCapacity !== null && Buffer.byteLength(value, 'utf8') > Number(byteCapacity[1]);
   }
   if (value instanceof Uint8Array) {
     const match = /^(?:varbinary|binary)\s*\((\d+)\)/i.exec(column.nativeType);

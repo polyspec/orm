@@ -99,8 +99,8 @@ function run_compile_case(RuntimeModel $model, array $case): void
             continue;
         }
         $plan = compile_load($model, $dialect, $case['input']);
-        $got = array_map('load_statement', $plan['steps']);
-        $want = array_map('expected_statement', $expected[$dialect] ?? []);
+        $got = array_map(__NAMESPACE__ . '\\load_statement', $plan['steps']);
+        $want = array_map(__NAMESPACE__ . '\\expected_statement', $expected[$dialect] ?? []);
         Assert::assertNotSame([], $want, "$dialect: the case states no statements");
         Assert::assertSame($want, $got, "$dialect statements");
     }
