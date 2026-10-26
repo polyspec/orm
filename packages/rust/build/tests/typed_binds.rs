@@ -2,7 +2,7 @@
 mod physical_fixture;
 use physical_fixture::{dsn_for, sqlite_path};
 
-use polyspec_orm_build::tool_db::{self, GridCell, ParamType, QueryLimits, P};
+use polyspec_orm_build::tool_db::{self, GridCell, P, ParamType, QueryLimits};
 #[tokio::test]
 // Requirements: INT-116.
 async fn native_typed_binds_preserve_values_and_typed_nulls() {
@@ -142,10 +142,10 @@ async fn native_typed_writes_roundtrip_reject_and_rollback() {
                 let error = connection
                     .exec(&format!("UPDATE {table} SET note={}", tool_db::placeholder(dialect, 1)), &[value])
                     .await
-                    .expect_err("invalid bind must reject")
-                    .to_string();
+                    .expect_err("invalid bind must reject");
                 let code = if index == 1 { "TOOL_BIND_LIMIT" } else { "TOOL_BIND_INVALID" };
-                if !error.starts_with(code) || error.contains("private") {
+                let source = std::error::Error::source(&error).map(ToString::to_string);
+                if !source.is_some_and(|message| message.starts_with(code) && !message.contains("private")) {
                     failures.push("bind-rejection");
                 }
             }

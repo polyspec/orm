@@ -373,7 +373,7 @@
         },
         {
           "glob": "packages/php/tests/DbspecIntrospectStressTest.php",
-          "reason": "benchmark: the 2000-table SQLite introspection workload records PHP memory and elapsed-time measurements for dbspec-stress-bench; canonical stress-document behavior is covered by dbspec-stress-canonical-roundtrip"
+          "reason": "test: the PHP-specific 2000-table SQLite workload records memory and elapsed-time measurements for dbspec-stress-bench; canonical stress-document behavior is covered by dbspec-stress-canonical-roundtrip"
         },
         {
           "glob": "packages/php/tests/DbspecMermaidErrorBoundaryTest.php",

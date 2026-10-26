@@ -2211,6 +2211,7 @@
         "packages/go/orm/styled_state_test.go",
         "packages/go/orm/styled_state_physical_test.go",
         "packages/go/model/styled_state_test.go",
+        "packages/go/orm/model_host_input_test.go",
         "packages/php/tests/StyledValueTest.php",
         "packages/rust/orm/tests/decimal_model.rs",
         "packages/go/model/coverage_model_writes_test.go",
@@ -2374,6 +2375,14 @@
           "shard": "other",
           "inputs": [
             "packages/ts/tests/decimal_model_db.mjs"
+          ]
+        },
+        {
+          "id": "ip-host-input-go",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestIPHostInputIsValidatedBeforeModelAndPredicateBinding$' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/go/orm/model_host_input_test.go"
           ]
         },
         {
@@ -4601,6 +4610,7 @@
         "packages/php/tests/DbspecApplyCleanupTest.php",
         "packages/php/tests/DbspecApplyTest.php",
         "packages/php/tests/dbspec_cases.php",
+        "packages/php/tests/DbspecCatalogChecksTest.php",
         "packages/php/tests/DbspecIntrospectStressTest.php",
         "packages/php/tests/DbspecIntrospectTest.php",
         "packages/php/tests/DbspecManifestTest.php",
@@ -12161,7 +12171,7 @@
         },
         {
           "id": "request-hook-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts request-hook-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test request_hook",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts request-hook-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test request_hook -- --skip coverage_request_hook_",
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/tests/request_hook.rs",

@@ -6,7 +6,7 @@ use polyspec_orm_testcase::OrPanic;
 use sqlx::{MySqlPool, PgPool};
 
 use polyspec_orm_build::catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableRef};
-use polyspec_orm_build::tool_db::{GridCell, ParamType, QueryLimits, Val, P};
+use polyspec_orm_build::tool_db::{GridCell, P, ParamType, QueryLimits, Val};
 polyspec_orm::models!();
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
@@ -28,11 +28,7 @@ async fn connect() -> (String, CatalogConnection) {
 }
 
 fn quote(name: &str, driver: &str) -> String {
-    if driver == "mysql" {
-        format!("`{name}`")
-    } else {
-        format!("\"{name}\"")
-    }
+    if driver == "mysql" { format!("`{name}`") } else { format!("\"{name}\"") }
 }
 
 async fn within<F: std::future::Future<Output = ()>>(case: &str, body: F) {
@@ -176,10 +172,12 @@ async fn temporal_default_precision_check(driver: &str, catalog: &mut CatalogCon
             let invalid = format!("CREATE TABLE {name}_invalid (id BIGINT PRIMARY KEY, t TIME(7))");
             match sqlx::query(sqlx::AssertSqlSafe(invalid)).execute(&pool).await {
                 Ok(_) => return Err("MySQL accepted temporal precision 7".into()),
-                Err(error) if !error.to_string().to_lowercase().contains("precision") => {
-                    return Err(format!("MySQL precision 7 failed for another reason: {error}"));
+                Err(error) => {
+                    let message = error.to_string();
+                    if !message.to_lowercase().contains("precision") {
+                        return Err(format!("MySQL precision 7 failed for another reason: {message}"));
+                    }
                 }
-                Err(_) => {}
             }
             let page = catalog.table_page(&table, 1, 0).await.map_err(|error| error.to_string())?;
             Ok(page.result.rows)
