@@ -19511,6 +19511,10 @@
     "exported": false,
     "signature": "func(kind string, v any) (any, error)"
   },
+  "packages/go/orm/exec.go::validateRuntimeScalars": {
+    "exported": false,
+    "signature": "func(vals []any, asm *plan.Assemble) error"
+  },
   "packages/go/orm/exec.go::write": {
     "exported": false,
     "signature": "func(ex executor, r *request) (key any, affected int64, err error)"
@@ -20218,6 +20222,10 @@
   "packages/go/orm/model.go::Core.restoreStep": {
     "exported": false,
     "signature": "receiver=*Core func() (int64, *Core, error)"
+  },
+  "packages/go/orm/model.go::Core.retainUpdateState": {
+    "exported": false,
+    "signature": "receiver=*Core func(ent *runtimemodel.Entity, keys map[string]any, loaded bool, updatedColumn string)"
   },
   "packages/go/orm/model.go::Core.revisionChecked": {
     "exported": false,
