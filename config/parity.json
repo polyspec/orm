@@ -22974,7 +22974,22 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/test_group_rows.py",
-          "id": "test_group_row_owner_selected_values_counts_and_types"
+          "id": "test_count_exactness"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_group_rows.py",
+          "id": "test_group_rows_length_and_to_array_follow_result_order"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_group_rows.py",
+          "id": "test_group_boolean_rejects_non_boolean_float"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_group_rows.py",
+          "id": "test_group_result_preserves_exact_i64_value"
         },
         {
           "implementation": "rust",
@@ -26627,7 +26642,7 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/test_cpx5_duplicate_relation.py",
-          "id": "duplicate_relation_name"
+          "id": "test_duplicate_relation_name"
         },
         {
           "implementation": "rust",
