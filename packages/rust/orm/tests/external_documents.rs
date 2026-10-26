@@ -26,7 +26,6 @@ mod pool_scalar;
 use pool_exec::exec;
 use pool_scalar::scalar as pool_scalar;
 
-
 #[macro_use]
 #[path = "common/model_row.rs"]
 mod model_row;
