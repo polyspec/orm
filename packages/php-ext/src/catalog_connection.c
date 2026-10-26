@@ -2344,16 +2344,19 @@ static bool cat_exceeds_char_limit(zval *column, zval *value)
     size_t length = Z_STRLEN_P(native);
     size_t prefix = 0;
     bool binary = false;
-    if (length >= sizeof("varchar") - 1 && zend_strncasecmp(text, "varchar", sizeof("varchar") - 1) == 0) {
+    if (length >= sizeof("varchar") - 1
+        && zend_binary_strncasecmp(text, length, "varchar", sizeof("varchar") - 1, sizeof("varchar") - 1) == 0) {
         prefix = sizeof("varchar") - 1;
     } else if (length >= sizeof("character varying") - 1
-               && zend_strncasecmp(text, "character varying", sizeof("character varying") - 1) == 0) {
+               && zend_binary_strncasecmp(text, length, "character varying", sizeof("character varying") - 1,
+                                          sizeof("character varying") - 1) == 0) {
         prefix = sizeof("character varying") - 1;
     } else if (length >= sizeof("varbinary") - 1
-               && zend_strncasecmp(text, "varbinary", sizeof("varbinary") - 1) == 0) {
+               && zend_binary_strncasecmp(text, length, "varbinary", sizeof("varbinary") - 1, sizeof("varbinary") - 1) == 0) {
         prefix = sizeof("varbinary") - 1;
         binary = true;
-    } else if (length >= sizeof("binary") - 1 && zend_strncasecmp(text, "binary", sizeof("binary") - 1) == 0) {
+    } else if (length >= sizeof("binary") - 1
+               && zend_binary_strncasecmp(text, length, "binary", sizeof("binary") - 1, sizeof("binary") - 1) == 0) {
         prefix = sizeof("binary") - 1;
         binary = true;
     } else {

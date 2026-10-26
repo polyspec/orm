@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 import { paginate } from '../dist/database.js';
-import { Author } from '../dist/index.js';
+import { Author, Engine } from '../dist/index.js';
 
 caseTest('paginate/internal-plan-order-and-dispatch', COMPUTE, async () => {
   const request = {
