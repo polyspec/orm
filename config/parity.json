@@ -1060,7 +1060,7 @@
     }
   ],
   "suites": [
-    "contracts/fixtures/**/!(dbspec-set|complex_query).json",
+    "contracts/fixtures/**/!(dbspec-set|complex_query|composite_key_collision).json",
     "tests/codec/*.json",
     "tests/conformance/*.json",
     "tests/dbspec/*.json",

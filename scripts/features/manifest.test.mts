@@ -135,7 +135,21 @@ caseTest('the schema of a shared fixture refuses a fixture without its feature o
   assert.notDeepEqual(read({ feature: 'f', cases: [{ id: 'a', operation: 'o' }] }), []);
 });
 
-caseTest('the composite-key collision fixture has distinct bounded tuples with equal concatenations', COMPUTE, () => {
+caseTest('the composite-key rows fixture has distinct bounded tuples with equal concatenations', COMPUTE, () => {
+  const fixturePath = 'contracts/fixtures/composite_key_collision.json';
+  const feature = manifest.features.find(item => item.id === 'composite_keys');
+  assert.ok(feature, 'contracts/features.json declares composite_keys');
+  assert.ok(feature.fixtures.includes(fixturePath), 'composite_keys declares the shared input fixture');
+  const coverageOwners = feature.coverage?.owners ?? {};
+  assert.deepEqual(
+    Object.keys(coverageOwners).sort(),
+    ['go', 'php', 'php-extension', 'python', 'rust', 'typescript'],
+    'composite_keys declares all six client owners',
+  );
+  const owners = Object.values(coverageOwners);
+  for (const owner of owners) {
+    assert.ok(owner.inputs?.includes(fixturePath), `${owner.part} declares the shared input fixture`);
+  }
   const fixtureSchema = new URL('./schema/fixture.schema.json', import.meta.url).pathname;
   const fixtureValue = parseJson<unknown>(
     readFileSync(new URL('../../contracts/fixtures/composite_key_collision.json', import.meta.url), 'utf8'),
@@ -151,7 +165,7 @@ caseTest('the composite-key collision fixture has distinct bounded tuples with e
   const compositeCaseValue = fixture.cases[0];
   assert.ok(isJsonObject(compositeCaseValue));
   const compositeCase = compositeCaseValue;
-  assert.equal(compositeCase.id, 'concatenated_relation_keys');
+  assert.equal(compositeCase.id, 'composite_key_rows');
   assert.equal(compositeCase.operation, 'relation_assembly');
   assert.ok(isJsonArray(compositeCase.expected));
   assert.equal(compositeCase.expected.length, 2);

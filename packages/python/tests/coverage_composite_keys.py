@@ -4,11 +4,12 @@
 import json
 
 from polyspec.orm.models import models
+
 from .coverage_case import (
     REPOSITORY_ROOT,
-    expect_equal,
     CoverageCase,
     coverage_main,
+    expect_equal,
     with_cleanup,
 )
 
@@ -21,7 +22,7 @@ COLLISION_FIXTURE = json.loads(
 COLLISION_ROWS = next(
     case["expected"]
     for case in COLLISION_FIXTURE["cases"]
-    if case["id"] == "concatenated_relation_keys"
+    if case["id"] == "composite_key_rows"
 )
 COLLISION_TENANT = COLLISION_ROWS[0]["tenant_id"]
 COLLISION_OTHER_TENANT = COLLISION_ROWS[1]["tenant_id"]

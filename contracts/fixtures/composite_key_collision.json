@@ -3,7 +3,7 @@
   "tenant_namespace": "990004",
   "cases": [
     {
-      "id": "concatenated_relation_keys",
+      "id": "composite_key_rows",
       "operation": "relation_assembly",
       "expected": [
         {

@@ -50,6 +50,8 @@ final class CompositeKeysNativeTest extends TestCase
             512,
             JSON_THROW_ON_ERROR
         );
+        Assert::assertSame('composite_keys', $fixture['feature']);
+        Assert::assertSame('composite_key_rows', $fixture['cases'][0]['id']);
         $collisionRows = $fixture['cases'][0]['expected'];
         Assert::assertSame(
             (string)$collisionRows[0]['tenant_id'] . $collisionRows[0]['account_id'],

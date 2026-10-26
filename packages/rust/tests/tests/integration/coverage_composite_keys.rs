@@ -34,6 +34,7 @@ async fn coverage_composite_key_rows() {
         let fixture_text = std::fs::read_to_string(fixture_path).expect("composite-key collision fixture");
         let fixture: serde_json::Value = serde_json::from_str(&fixture_text).expect("valid composite-key fixture JSON");
         assert_eq!(fixture["feature"], "composite_keys");
+        assert_eq!(fixture["cases"][0]["id"], "composite_key_rows");
         let collision_rows: Vec<(i64, i64, String, String)> = fixture["cases"][0]["expected"]
             .as_array()
             .expect("collision fixture rows")

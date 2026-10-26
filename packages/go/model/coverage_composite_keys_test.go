@@ -70,7 +70,7 @@ func readCompositeCollisionRows(t *testing.T) []compositeCollisionRow {
 		t.Fatal(err)
 	}
 	if fixture.Feature != "composite_keys" || len(fixture.Cases) != 1 ||
-		fixture.Cases[0].ID != "concatenated_relation_keys" || fixture.Cases[0].Operation != "relation_assembly" ||
+		fixture.Cases[0].ID != "composite_key_rows" || fixture.Cases[0].Operation != "relation_assembly" ||
 		len(fixture.Cases[0].Expected) != 2 {
 		t.Fatalf("unexpected composite collision fixture: %+v", fixture)
 	}

@@ -10,7 +10,7 @@ import { runCases, withCleanup } from './coverage_case.mjs';
 const tenant = 990004;
 const otherTenant = 990006;
 const collisionFixture = JSON.parse(await readFile(new URL('../../../contracts/fixtures/composite_key_collision.json', import.meta.url), 'utf8'));
-const collisionRows = collisionFixture.cases.find(item => item.id === 'concatenated_relation_keys').expected;
+const collisionRows = collisionFixture.cases.find(item => item.id === 'composite_key_rows').expected;
 const collisionTenant = collisionRows[0].tenant_id;
 const collisionOtherTenant = collisionRows[1].tenant_id;
 

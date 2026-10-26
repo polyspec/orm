@@ -37,6 +37,8 @@ final class CoverageCompositeKeysCase
         $accounts = static fn(int $keyTenant) => (new CompositeAccount())($db)->tenantId($keyTenant)->getCount();
         $memberships = static fn(int $keyTenant) => (new CompositeMembership())($db)->tenantId($keyTenant)->getCount();
         $fixture = coverageJson(dirname(__DIR__, 3) . '/contracts/fixtures/composite_key_collision.json');
+        Assert::assertSame('composite_keys', $fixture['feature']);
+        Assert::assertSame('composite_key_rows', $fixture['cases'][0]['id']);
         $collisionRows = $fixture['cases'][0]['expected'];
         $collisionTenant = $collisionRows[0]['tenant_id'];
         $collisionOtherTenant = $collisionRows[1]['tenant_id'];
