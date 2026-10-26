@@ -10562,6 +10562,7 @@
         "DBS-93",
         "DBS-95",
         "DBS-96",
+        "DIA-25",
         "DIA-28",
         "DIA-30",
         "DIA-113",
@@ -14089,11 +14090,6 @@
           "implementation": "rust",
           "test": "packages/rust/build/tests/generate.rs",
           "id": "manifest_text_is_embedded_with_its_hash"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/src/names.rs",
-          "id": "tests::snake_case_separates_ascii_uppercase_characters"
         },
         {
           "implementation": "typescript",

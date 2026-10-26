@@ -7,7 +7,7 @@ from . import testcase
 
 
 class SqliteDecimalDdlTest(unittest.TestCase):
-    # This unit repeats the SQLite rendering detail; the six-client dbspec-ddl vector owns DIA-25.
+    # This unit repeats the SQLite decimal rendering assertion in the shared dbspec-ddl vector.
     def test_a_sqlite_decimal_column_is_scaled_integer_storage(self) -> None:
         document, _positions, diagnostics = parse_dbspec(
             "dbspec 1 decimal\n\ntable t {\n  seq i64\n  amount decimal(13,4)\n  primary key (seq)\n}\n",

@@ -217,7 +217,7 @@ final class RuntimeDbTest extends TestCase
         self::runCase($driver, 'Polyspec\\Orm\\Tests\\RuntimeDb', self::caseInstallRendersTheDocumentSet(...));
     }
 
-    // Requirements: INT-99.
+    // Requirements: INT-99, COD-20.
     #[DataProvider('drivers')]
     public function testI16ValuesAndDefaults(string $driver): void
     {
