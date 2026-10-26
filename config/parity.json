@@ -10784,20 +10784,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-engine-compile-errors",
-      "kind": "feature",
-      "requirements": [
-        "PRT-1"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/engine_test.go",
-          "id": "TestCompileErrors"
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-engine-functions-physical",
       "kind": "feature",
       "requirements": [
@@ -16312,16 +16298,41 @@
       ]
     },
     {
-      "id": "ts-engine",
+      "id": "request-manifest-hash-mismatch",
       "kind": "feature",
       "requirements": [
         "PRT-1"
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/engine/engine_test.go",
+          "id": "TestCompileErrors"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/EngineTest.php",
+          "id": "EngineTest::testEngine"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ValidatorNativeTest.php",
+          "id": "ValidatorNativeTest::testRequestWithAnotherManifestHashIsRejected"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/engine.mjs",
           "id": "engine"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_ir_validate.py",
+          "id": "test_a_request_of_another_manifest_is_schema_hash_mismatch"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/ir_validate.rs",
+          "id": "manifest_hash_mismatch"
         }
       ]
     },
@@ -16470,20 +16481,6 @@
       }
     },
     {
-      "id": "py-test-ir-validate-manifest-hash",
-      "kind": "feature",
-      "requirements": [
-        "PRT-1"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_ir_validate.py",
-          "id": "test_a_request_of_another_manifest_is_schema_hash_mismatch"
-        }
-      ]
-    },
-    {
       "id": "py-test-markdown-session-messages",
       "kind": "feature",
       "requirements": [
@@ -16508,20 +16505,6 @@
           "implementation": "python",
           "test": "packages/python/tests/test_markdown.py",
           "id": "test_message_cases"
-        }
-      ]
-    },
-    {
-      "id": "rust-ir-validate-manifest-hash-mismatch",
-      "kind": "feature",
-      "requirements": [
-        "PRT-1"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/ir_validate.rs",
-          "id": "manifest_hash_mismatch"
         }
       ]
     },
@@ -17616,20 +17599,6 @@
           "implementation": "php",
           "test": "packages/php/tests/RuntimeDbTest.php",
           "id": "RuntimeDbTest::testRestoreOfSoftDeletedRows"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-engine-engine",
-      "kind": "feature",
-      "requirements": [
-        "PRT-1"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/EngineTest.php",
-          "id": "EngineTest::testEngine"
         }
       ]
     },
