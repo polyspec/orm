@@ -211,14 +211,19 @@ func schemaSetUnregistered(t *testing.T, driver string) {
 	}
 }
 
+// Requirements: DBS-119.
 func TestSchemaSetUnregisteredSQLite(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	schemaSetUnregistered(t, "sqlite")
 }
+
+// Requirements: DBS-119.
 func TestSchemaSetUnregisteredMySQL(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	schemaSetUnregistered(t, "mysql")
 }
+
+// Requirements: DBS-119.
 func TestSchemaSetUnregisteredPostgres(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	schemaSetUnregistered(t, "postgres")
@@ -268,14 +273,19 @@ func schemaSetEditedManifest(t *testing.T, driver string) {
 	}
 }
 
+// Requirements: DBS-120, SCH-7, SCH-11.
 func TestSchemaSetEditedManifestSQLite(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	schemaSetEditedManifest(t, "sqlite")
 }
+
+// Requirements: DBS-120, SCH-7, SCH-11.
 func TestSchemaSetEditedManifestMySQL(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	schemaSetEditedManifest(t, "mysql")
 }
+
+// Requirements: DBS-120, SCH-7, SCH-11.
 func TestSchemaSetEditedManifestPostgres(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	schemaSetEditedManifest(t, "postgres")

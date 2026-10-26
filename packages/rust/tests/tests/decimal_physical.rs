@@ -279,21 +279,21 @@ async fn schema_set_unregistered_sqlite() {
     schema_set_unregistered("sqlite").await;
 }
 
-// Requirements: SCH-7.
+// Requirements: DBS-120, SCH-7, SCH-11.
 #[tokio::test]
 async fn schema_set_edited_manifest_mysql() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     schema_set_edited_manifest("mysql").await;
 }
 
-// Requirements: SCH-7.
+// Requirements: DBS-120, SCH-7, SCH-11.
 #[tokio::test]
 async fn schema_set_edited_manifest_postgres() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     schema_set_edited_manifest("postgres").await;
 }
 
-// Requirements: SCH-7.
+// Requirements: DBS-120, SCH-7, SCH-11.
 #[tokio::test]
 async fn schema_set_edited_manifest_sqlite() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
