@@ -16,6 +16,7 @@
 
 static bool read_aggregate(zval *model, const char *fn, zval *return_value);
 static zval *read_array(zval *array, const char *key);
+static bool exact_integer(zval *raw, zend_long *out);
 
 static zend_class_entry *read_lookup_class(const char *name)
 {
@@ -317,7 +318,21 @@ static bool read_column_convert(zval *model, zval *db, zval *zone, zval *column,
         ZVAL_COPY_VALUE(out, &value); return true;
     }
     if (read_string_is(type, "i16") || read_string_is(type, "i32") || read_string_is(type, "i64")) {
-        ZVAL_LONG(out, zval_get_long(&value)); zval_ptr_dtor(&value); return true;
+        zend_long integer;
+        if (!exact_integer(&value, &integer)) {
+            zval_ptr_dtor(&value);
+            read_throw("CODEC_DECODE", "integer column value is not an exact integer");
+            return false;
+        }
+        if ((read_string_is(type, "i16") && (integer < INT16_MIN || integer > INT16_MAX)) ||
+            (read_string_is(type, "i32") && (integer < INT32_MIN || integer > INT32_MAX))) {
+            zend_string *message = strpprintf(0, "integer column value exceeds %s range", Z_STRVAL_P(type));
+            zval_ptr_dtor(&value);
+            read_throw("CODEC_DECODE", ZSTR_VAL(message));
+            zend_string_release(message);
+            return false;
+        }
+        ZVAL_LONG(out, integer); zval_ptr_dtor(&value); return true;
     }
     if (read_string_is(type, "f64")) {
         ZVAL_DOUBLE(out, zval_get_double(&value)); zval_ptr_dtor(&value); return true;

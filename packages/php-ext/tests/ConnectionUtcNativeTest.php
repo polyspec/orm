@@ -120,7 +120,8 @@ final class ConnectionUtcNativeTest extends TestCase
         $startUtc = $instant->setTimezone(new DateTimeZone('UTC'));
         $before = new DateTimeImmutable('now', new DateTimeZone('UTC'));
         $created = self::createNativeAuthor($db, $startUtc->format('Y-m-d H:i:s'));
-        $row = (new Author())($db)->getBySeq($created->getSeq());
+        $row = (new Author())($db)
+            ->removeAllColumns()->addColumnStartDt()->addColumnCreatedTs()->getBySeq($created->getSeq());
         self::assertNotNull($row);
         $start = $row->getStartDt();
         self::assertInstanceOf(DateTimeImmutable::class, $start);
@@ -257,14 +258,21 @@ final class ConnectionUtcNativeTest extends TestCase
             $pdo->exec('ALTER TABLE author ALTER COLUMN target_club_reader_count TYPE BIGINT');
             $sql = 'UPDATE author SET target_club_reader_count = 2147483648 WHERE seq = ?';
         } else {
+            $pdo->exec('PRAGMA ignore_check_constraints = ON');
             $sql = 'UPDATE author SET target_club_reader_count = 2147483648 WHERE seq = ?';
         }
-        $pdo->prepare($sql)->execute([$seq]);
         try {
-            (new Author())($db)->removeAllColumns()->addColumnTargetClubReaderCount()->getBySeq($seq);
-            self::fail("$driver accepted an out-of-range i32 cell");
-        } catch (OrmException $error) {
-            self::assertSame(Code::CODEC_DECODE, $error->code_, "$driver i32 cell read error");
+            $pdo->prepare($sql)->execute([$seq]);
+            try {
+                (new Author())($db)->removeAllColumns()->addColumnTargetClubReaderCount()->getBySeq($seq);
+                self::fail("$driver accepted an out-of-range i32 cell");
+            } catch (OrmException $error) {
+                self::assertSame(Code::CODEC_DECODE, $error->code_, "$driver i32 cell read error");
+            }
+        } finally {
+            if ($driver === 'sqlite') {
+                $pdo->exec('PRAGMA ignore_check_constraints = OFF');
+            }
         }
     }
 }

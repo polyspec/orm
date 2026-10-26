@@ -47,32 +47,35 @@ final class PgsqlPdoAdapterNativeTest extends TestCase
 
     public function testNativePgsqlAdapterReportErrorRespectsPdoErrorMode(): void
     {
-        $adapter = (new \ReflectionClass(\Polyspec\Orm\Internal\PgsqlPdoAdapter::class))->newInstanceWithoutConstructor();
-        $error = new \PDOException('native adapter error');
+        self::onPostgresDb(static function (\Polyspec\Orm\Db $db): void {
+            $adapter = $db->pdo();
+            self::assertInstanceOf(\Polyspec\Orm\Internal\PgsqlPdoAdapter::class, $adapter);
+            $error = new \PDOException('native adapter error');
 
-        $adapter->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_SILENT);
-        $adapter->reportError($error);
+            $adapter->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_SILENT);
+            $adapter->reportError($error);
 
-        $warning = null;
-        set_error_handler(static function (int $severity, string $message) use (&$warning): bool {
-            $warning = [$severity, $message];
-            return true;
+            $warning = null;
+            set_error_handler(static function (int $severity, string $message) use (&$warning): bool {
+                $warning = [$severity, $message];
+                return true;
+            });
+            try {
+                $adapter->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_WARNING);
+                $adapter->reportError($error);
+            } finally {
+                restore_error_handler();
+            }
+            self::assertSame([E_USER_WARNING, 'native adapter error'], $warning);
+
+            $adapter->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+            try {
+                $adapter->reportError($error);
+                self::fail('exception mode did not throw the supplied PDOException');
+            } catch (\PDOException $caught) {
+                self::assertSame($error, $caught);
+            }
         });
-        try {
-            $adapter->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_WARNING);
-            $adapter->reportError($error);
-        } finally {
-            restore_error_handler();
-        }
-        self::assertSame([E_USER_WARNING, 'native adapter error'], $warning);
-
-        $adapter->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-        try {
-            $adapter->reportError($error);
-            self::fail('exception mode did not throw the supplied PDOException');
-        } catch (\PDOException $caught) {
-            self::assertSame($error, $caught);
-        }
     }
 
     public function testNativePgsqlAdapterBoundParametersPreserveReferencesAndTypes(): void
