@@ -54,6 +54,35 @@ final class CoverageCasesTest extends TestCase
         }
     }
 
+    public function testPendingAuditIdentityIsMaskedOnlyForTheGuardedUpdate(): void
+    {
+        $GLOBALS['maskSeqs'] = [];
+        try {
+            $pending = '900005';
+            \maskPendingAuditSequence($pending, 'update', ['audited_note']);
+            self::assertNull($pending);
+            self::assertSame('$SEQ', \norm(900005));
+
+            $pending = '900006';
+            \maskPendingAuditSequence($pending, 'insert', ['audited_note']);
+            self::assertNull($pending);
+            self::assertSame(900006, \norm(900006));
+        } finally {
+            $GLOBALS['maskSeqs'] = [];
+        }
+    }
+
+    public function testAuditIdentityIsNotMaskedWhenItBecomesAnInsertForeignKey(): void
+    {
+        $GLOBALS['maskSeqs'] = [];
+        try {
+            \maskGeneratedSequence('900006', 'insert', ['audited_note']);
+            self::assertSame(900006, \norm(900006));
+        } finally {
+            $GLOBALS['maskSeqs'] = [];
+        }
+    }
+
     public function testEntryClassAssertionAllowsLibraryMode(): void
     {
         self::assertNotSame('extension', getenv('ORM_PHP_MODE'), 'this helper unit runs in library mode');

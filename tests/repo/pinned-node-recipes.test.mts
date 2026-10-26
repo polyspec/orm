@@ -1,10 +1,25 @@
 import assert from 'node:assert/strict';
 import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, COMPUTE } from '../testcase.mts';
 import { isolatedEnvironment } from '../environment.mts';
+
+function checkSuccessAndFailure(
+  run: (exitCode: number) => { result: SpawnSyncReturns<string>; verify: () => void },
+): void {
+  for (const exitCode of [0, 23]) {
+    const { result, verify } = run(exitCode);
+    if (exitCode === 0) {
+      assert.equal(result.status, 0, result.stdout + result.stderr);
+    } else {
+      assert.notEqual(result.status, 0, result.stdout + result.stderr);
+      assert.match(result.stdout + result.stderr, /Error 23/);
+    }
+    verify();
+  }
+}
 
 caseTest('the dbspec verification and TypeScript package entry recipes use the pinned Node wrapper', COMPUTE, () => {
   const makefile = readFileSync(new URL('../../Makefile', import.meta.url), 'utf8');
@@ -33,20 +48,14 @@ caseTest('the collection PHPStan recipe removes its private cache after success 
     ].join('\n'));
     chmodSync(fakePhpstan, 0o755);
 
-    for (const exitCode of [0, 23]) {
-      const result = spawnSync(
+    checkSuccessAndFailure(exitCode => ({
+      result: spawnSync(
         'make',
         ['--no-print-directory', 'collection-get-phpstan-check', `PHPSTAN=${fakePhpstan}`],
         { cwd: root, encoding: 'utf8', env: isolatedEnvironment({ TMPDIR: temporary, PHPSTAN_EXIT: String(exitCode) }) },
-      );
-      if (exitCode === 0) {
-        assert.equal(result.status, 0, result.stdout + result.stderr);
-      } else {
-        assert.notEqual(result.status, 0, result.stdout + result.stderr);
-        assert.match(result.stdout + result.stderr, /Error 23/);
-      }
-      assert.deepEqual(readdirSync(temporary), [], `PHPStan left temporary entries after exit ${exitCode}`);
-    }
+      ),
+      verify: () => assert.deepEqual(readdirSync(temporary), [], `PHPStan left temporary entries after exit ${exitCode}`),
+    }));
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -154,25 +163,24 @@ caseTest('the dbspec PHP extension aggregate owns the shared module until every 
     ].join('\n'));
     chmodSync(fakeMake, 0o755);
 
-    for (const exitCode of [0, 23]) {
+    checkSuccessAndFailure(exitCode => {
       const runDirectory = join(directory, `run-${exitCode}`);
       const result = spawnSync(
         'make',
         ['--no-print-directory', 'dbspec-php-extension-check', `MAKE=${fakeMake}`, `RUN_DIR=${runDirectory}`],
         { cwd: root, encoding: 'utf8', env: isolatedEnvironment({ TMPDIR: temporary, FAKE_MAKE_ARGUMENTS: argumentsFile, FAKE_MAKE_EXIT: String(exitCode) }) },
       );
-      if (exitCode === 0) {
-        assert.equal(result.status, 0, result.stdout + result.stderr);
-      } else {
-        assert.notEqual(result.status, 0, result.stdout + result.stderr);
-        assert.match(result.stdout + result.stderr, /Error 23/);
-      }
-      assert.ok(!existsSync(runDirectory), `aggregate left its module directory after submake exit ${exitCode}`);
-      const childArguments = readFileSync(argumentsFile, 'utf8');
-      assert.match(childArguments, /-k/);
-      assert.match(childArguments, /DBSPEC_PHP_EXTENSION_SHARED_RUN=1/);
-      assert.match(childArguments, /dbspec-php-extension-check\/analyze/);
-    }
+      return {
+        result,
+        verify: () => {
+          assert.ok(!existsSync(runDirectory), `aggregate left its module directory after submake exit ${exitCode}`);
+          const childArguments = readFileSync(argumentsFile, 'utf8');
+          assert.match(childArguments, /-k/);
+          assert.match(childArguments, /DBSPEC_PHP_EXTENSION_SHARED_RUN=1/);
+          assert.match(childArguments, /dbspec-php-extension-check\/analyze/);
+        },
+      };
+    });
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

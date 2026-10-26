@@ -67,6 +67,7 @@ $transactions = [];
 $maskSeqs = [];
 $maskTs = [];
 $activeVector = '';
+$pendingAuditSequence = null;
 
 $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(
     aesKey: 'bench-salt',
@@ -76,13 +77,12 @@ $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(
 $db->transaction(static function (): void {
 }, retry: 0);
 $db->subscribe(static function (StatementEvent $e): void {
-    global $activeVector, $db, $log, $maskSeqs, $transactions;
-    // The guarded no-match write binds an audit key before a later model key can mask it.
-    if (
-        $activeVector === 'audit_lazy' && $e->kind === StatementEvent::INSERT && $e->error === null
-        && $e->tables === ['audit_record']
-    ) {
-        maskGeneratedSequence($db->pdo()->lastInsertId());
+    global $activeVector, $db, $log, $maskSeqs, $pendingAuditSequence, $transactions;
+    if ($activeVector === 'audit_lazy') {
+        maskPendingAuditSequence($pendingAuditSequence, $e->kind, $e->tables);
+        if ($e->kind === StatementEvent::INSERT && $e->error === null && $e->tables === ['audit_record']) {
+            $pendingAuditSequence = $db->pdo()->lastInsertId();
+        }
     }
     $transaction = null;
     if ($e->transaction !== null) {
