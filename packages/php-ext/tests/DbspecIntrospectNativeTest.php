@@ -24,6 +24,28 @@ final class DbspecIntrospectNativeTest extends TestCase
         );
     }
 
+    // Requirements: DIA-191.
+    public function testNativeSQLiteUnsupportedColumnReasonQuotesMissingCheck(): void
+    {
+        self::assertTrue((new ReflectionMethod(Dbspec::class, 'introspect'))->isInternal());
+        $pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $pdo->exec('CREATE TABLE "probe" ("id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, "junk" INTEGER NULL)');
+        $result = Dbspec::introspect($pdo, 'sqlite', 'introspected');
+
+        self::assertSame(
+            ['declared type INTEGER with CHECK "" has no dbspec type'],
+            array_map(
+                static fn($unsupported): string => $unsupported->reason,
+                array_values(
+                    array_filter(
+                        $result->unsupported,
+                        static fn($unsupported): bool => $unsupported->name === 'junk'
+                    )
+                )
+            )
+        );
+    }
+
     public function testPostgresSequenceAndRoutineCatalogNamesAreReported(): void
     {
         $pdo = new class ('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]) extends PDO {

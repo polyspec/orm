@@ -37,3 +37,22 @@ async fn sqlite_memory_query_count_is_independent_of_table_count() -> Result<(),
     }
     Ok(())
 }
+
+// Requirements: DIA-191.
+#[tokio::test]
+async fn sqlite_unsupported_column_reason_quotes_missing_check() -> Result<(), IntrospectError> {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let mut connection = SqliteConnection::connect("sqlite::memory:").await.expect("SQLite memory connection");
+    sqlx::query(sqlx::AssertSqlSafe("CREATE TABLE \"probe\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"junk\" INTEGER NULL)"))
+        .execute(&mut connection)
+        .await
+        .expect("create SQLite table");
+    let Introspection { unsupported, .. } = dbspec::introspect(&mut connection, Dialect::Sqlite, "introspected").await?;
+    assert_eq!(unsupported.len(), 1, "only column junk is unsupported: {unsupported:?}");
+    assert_eq!(unsupported[0].kind, "column");
+    assert_eq!(unsupported[0].table, "probe");
+    assert_eq!(unsupported[0].name, "junk");
+    assert_eq!(unsupported[0].reason, "declared type INTEGER with CHECK \"\" has no dbspec type");
+    connection.close().await.expect("close SQLite memory connection");
+    Ok(())
+}

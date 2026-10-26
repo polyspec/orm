@@ -16250,9 +16250,24 @@
           "id": "dbspec.introspect.sqlite-empty-check-reason"
         },
         {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecIntrospectTest.php",
+          "id": "DbspecIntrospectTest::testSQLiteUnsupportedColumnReasonQuotesMissingCheck"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecIntrospectNativeTest.php",
+          "id": "DbspecIntrospectNativeTest::testNativeSQLiteUnsupportedColumnReasonQuotesMissingCheck"
+        },
+        {
           "implementation": "python",
           "test": "packages/python/tests/test_introspect_messages.py",
           "id": "test_a_column_without_check_is_quoted_as_the_empty_string"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/dbspec_introspect_query_count.rs",
+          "id": "sqlite_unsupported_column_reason_quotes_missing_check"
         }
       ]
     },

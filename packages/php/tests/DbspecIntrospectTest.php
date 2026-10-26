@@ -334,6 +334,27 @@ final class DbspecIntrospectTest extends TestCase
         }
     }
 
+    // Requirements: DIA-191.
+    public function testSQLiteUnsupportedColumnReasonQuotesMissingCheck(): void
+    {
+        $pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $pdo->exec('CREATE TABLE "probe" ("id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, "junk" INTEGER NULL)');
+        $result = Dbspec::introspect($pdo, 'sqlite', 'introspected');
+
+        self::assertSame(
+            ['declared type INTEGER with CHECK "" has no dbspec type'],
+            array_map(
+                static fn($unsupported): string => $unsupported->reason,
+                array_values(
+                    array_filter(
+                        $result->unsupported,
+                        static fn($unsupported): bool => $unsupported->name === 'junk'
+                    )
+                )
+            )
+        );
+    }
+
     public function testUnknownDialect(): void
     {
         $this->expectException(InvalidArgumentException::class);
