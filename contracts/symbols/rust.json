@@ -1815,6 +1815,10 @@
     "exported": false,
     "signature": "pub (super) fn new (limits : QueryLimits) -\u003e Result \u003c Self , sqlx :: Error \u003e"
   },
+  "packages/rust/build/src/tool_db/limits.rs::check_row_count": {
+    "exported": false,
+    "signature": " fn check_row_count (limits : QueryLimits , count : usize) -\u003e Result \u003c () , sqlx :: Error \u003e"
+  },
   "packages/rust/build/src/tool_db/limits.rs::error": {
     "exported": false,
     "signature": " fn error () -\u003e sqlx :: Error"
@@ -6765,11 +6769,7 @@
   },
   "packages/rust/orm/src/model.rs::Built": {
     "exported": false,
-    "signature": " struct Built  { model : Box \u003c dyn AnyModel \u003e , builder : u64 , }"
-  },
-  "packages/rust/orm/src/model.rs::Built#field.builder": {
-    "exported": false,
-    "signature": "u64"
+    "signature": " struct Built  { model : Box \u003c dyn AnyModel \u003e , }"
   },
   "packages/rust/orm/src/model.rs::Built#field.model": {
     "exported": false,
@@ -6777,7 +6777,7 @@
   },
   "packages/rust/orm/src/model.rs::Built#wire": {
     "exported": false,
-    "signature": "{\"builder\":\"integer\",\"model\":\"unsupported:dyn AnyModel\"}"
+    "signature": "{\"model\":\"unsupported:dyn AnyModel\"}"
   },
   "packages/rust/orm/src/model.rs::Core::related_many": {
     "exported": true,
@@ -7291,6 +7291,10 @@
     "exported": false,
     "signature": " fn val_param_key (p : \u0026 Param) -\u003e String"
   },
+  "packages/rust/orm/src/model.rs::validate_host_value": {
+    "exported": false,
+    "signature": " fn validate_host_value (styles : \u0026 [String] , value : \u0026 Param) -\u003e Result \u003c () \u003e"
+  },
   "packages/rust/orm/src/model.rs::value_key": {
     "exported": false,
     "signature": " fn value_key (v : \u0026 Option \u003c Val \u003e) -\u003e Result \u003c String \u003e"
@@ -7757,7 +7761,7 @@
   },
   "packages/rust/orm/src/request.rs::pad_in": {
     "exported": false,
-    "signature": " fn pad_in (vs : \u0026 [Param]) -\u003e Vec \u003c Param \u003e"
+    "signature": "pub (crate) fn pad_in \u003c T : Clone \u003e (vs : \u0026 [T]) -\u003e Vec \u003c T \u003e"
   },
   "packages/rust/orm/src/request.rs::pred": {
     "exported": false,

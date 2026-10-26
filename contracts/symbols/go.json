@@ -16937,7 +16937,7 @@
   },
   "packages/go/orm/build.go::padIn": {
     "exported": false,
-    "signature": "func(vs []any) []any"
+    "signature": "func[T any](vs []T) []T"
   },
   "packages/go/orm/build.go::request": {
     "exported": false,
@@ -17010,6 +17010,10 @@
   "packages/go/orm/build.go::request.subquery": {
     "exported": false,
     "signature": "receiver=*request func(m Model, outer *Core, scalar bool) *ir.Sub"
+  },
+  "packages/go/orm/build.go::validatePredicateHostInput": {
+    "exported": false,
+    "signature": "func(owner *Core, p *predSpec) error"
   },
   "packages/go/orm/canonical.go::canonicalize": {
     "exported": false,
@@ -20527,6 +20531,10 @@
     "exported": false,
     "signature": "func[T Model](v any) (*Collection[T], error)"
   },
+  "packages/go/orm/model.go::validateIPHostInput": {
+    "exported": false,
+    "signature": "func(col *runtimemodel.Field, value any) error"
+  },
   "packages/go/orm/model.go::validateIdentityAssignment": {
     "exported": false,
     "signature": "func(ent *runtimemodel.Entity, generated *Entity, m Model) error"
@@ -20610,6 +20618,10 @@
   "packages/go/orm/pg/pg.go::mapErr": {
     "exported": false,
     "signature": "func(err error) error"
+  },
+  "packages/go/orm/pg/pg.go::pingReusedConnection": {
+    "exported": false,
+    "signature": "func(context.Context, stdlib.ShouldPingParams) bool"
   },
   "packages/go/orm/root_in.go::DB.splitReadPlan": {
     "exported": false,

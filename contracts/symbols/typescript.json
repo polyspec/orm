@@ -1583,6 +1583,10 @@
     "exported": true,
     "signature": "export function styledField(f: Field): boolean"
   },
+  "packages/ts/src/core.ts::validateHostInput": {
+    "exported": false,
+    "signature": "function validateHostInput(field: Field | undefined, value: unknown): void"
+  },
   "packages/ts/src/database.ts::AuditInsert": {
     "exported": false,
     "signature": "interface AuditInsert"

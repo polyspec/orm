@@ -2999,6 +2999,10 @@
     "exported": true,
     "signature": "public function quote(string $string, int $type=2): string|false"
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::reportError": {
+    "exported": true,
+    "signature": "public function reportError(PDOException $error): void"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::rollBack": {
     "exported": true,
     "signature": "public function rollBack(): bool"

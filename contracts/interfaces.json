@@ -40,10 +40,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:87eb0e6b4a0bf7fa50176bcf3c486ecff334305864a8660da1c1b6734b468313",
-    "php": "sha256:f3fe242ac801fcc839c047170085abeabb30a3a31c17ebc4ed9bda360913f809",
-    "rust": "sha256:08ec8f3ecb2ce62578661f597d3b76301c4df0b1a30eb5dd7267aa5a249697a2",
-    "typescript": "sha256:e632a0191717580fd976ec3b38b202e3e25ea36712b7b686ec0200fbcf901c28",
+    "go": "sha256:a0782b7dc50b824f352e5ac393313fd1a1b5a595ed6c70e996138212f5fefe22",
+    "php": "sha256:9b2b0ab29de9723b0f3ac0e13189caf3a914e72b74f82cf5f24c3295cd1e6a2a",
+    "rust": "sha256:6884438183ee21c1aa31160a7c0f6e1d139641fb4fcf1c14acbdeffb6b2289ff",
+    "typescript": "sha256:a728b56593adeecbbb6e0956f99ce8c16046e0edf1081d8a9d52b5b06e2d3863",
     "python": "sha256:18503d6dced72e8791848318102f77fc117281d247d56a29fdc06f1e616918fc"
   },
   "native_surfaces": [
@@ -151,7 +151,7 @@
         "packages/php-ext/src"
       ],
       "symbols": "contracts/symbols/php-extension.json",
-      "symbol_hash": "sha256:2d1fb139eab77e6d2699308acab7b8ead9c2dc25b8e3b69f3ba1ef1f76ca8a8a",
+      "symbol_hash": "sha256:740b17d8010ef493b0fd4672a9708272617111dc48032281fd62bbb7aaa7b2e0",
       "rules": [
         "Model.connect",
         "Model.and",

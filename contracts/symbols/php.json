@@ -5715,6 +5715,10 @@
     "exported": false,
     "signature": "private function endRead(PDO $pdo): void"
   },
+  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::exceedsDeclaredCapacity": {
+    "exported": false,
+    "signature": "private static function exceedsDeclaredCapacity(Polyspec\\Orm\\CatalogColumn $column, string $value): bool"
+  },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::exec": {
     "exported": false,
     "signature": "private function exec(PDO $pdo, string $sql, array $args): int"
