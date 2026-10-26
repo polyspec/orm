@@ -8,7 +8,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { testDirectoryOf } from './packages.mts';
-import { cargoTargetArgs, checkCoverage, coverageItems, databaseDsn, databases, executeCoverage, observedCases, languages, NATIVE_DEADLINE, run, goPerformanceMeasurements, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
+import { cargoBuildArgs, cargoFeaturesForPackage, cargoTargetArgs, cargoWorkspaceManifestPath, checkCoverage, coverageItems, databaseDsn, databases, executeCoverage, observedCases, languages, NATIVE_DEADLINE, run, goPerformanceMeasurements, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
 import { readFeatures } from './manifest.mts';
 import { readParityConfig, type ParityConfig } from '../json/formats.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
@@ -233,6 +233,35 @@ caseTest('Rust coverage maps nested modules to the most specific Cargo test targ
     { name: 'integration', kind: ['test'], src_path: join(root, 'packages/rust/tests/tests/integration.rs'), test: true },
     { name: 'nested', kind: ['test'], src_path: join(root, 'packages/rust/tests/tests/integration/main.rs'), test: true },
   ], [nestedIntegration]), /maps to 2 Cargo test targets at its most specific module root/);
+});
+
+caseTest('Rust coverage uses the workspace manifest and applies only supported features to the selected crate', COMPUTE, () => {
+  const root = new URL('../..', import.meta.url).pathname;
+  const workspaceManifest = cargoWorkspaceManifestPath(join(root, 'packages/rust'));
+  assert.equal(workspaceManifest, join(root, 'packages/rust/Cargo.toml'));
+  assert.throws(() => cargoWorkspaceManifestPath(undefined), /cargo metadata has no workspace_root/);
+  const orm = { name: 'polyspec-orm', manifest_path: '', targets: [], features: { 'test-faults': [] }, dependencies: [] };
+  const build = { name: 'polyspec-orm-build', manifest_path: '', targets: [], features: { 'live-db': [] }, dependencies: [] };
+  const tests = {
+    name: 'polyspec-orm-tests', manifest_path: '', targets: [], features: {},
+    dependencies: [{ name: orm.name }, { name: build.name }],
+  };
+  const schema = { name: 'polyspec-orm-schema', manifest_path: '', targets: [], features: {}, dependencies: [] };
+  const project = { packages: [orm, build, tests, schema] };
+  const requestedFeatures = ['polyspec-orm/test-faults', 'polyspec-orm-build/live-db'];
+  assert.deepEqual(cargoFeaturesForPackage(project, schema, requestedFeatures), []);
+  assert.deepEqual(cargoFeaturesForPackage(project, orm, requestedFeatures), ['--features', 'polyspec-orm/test-faults']);
+  assert.deepEqual(cargoFeaturesForPackage(project, build, requestedFeatures), ['--features', 'polyspec-orm-build/live-db']);
+  assert.deepEqual(cargoFeaturesForPackage(project, tests, requestedFeatures), ['--features', requestedFeatures.join(',')]);
+  assert.deepEqual(cargoBuildArgs(
+    workspaceManifest,
+    'polyspec-orm-schema',
+    cargoFeaturesForPackage(project, schema, requestedFeatures),
+    ['--test', 'dbspec_rules'],
+  ), [
+    'cargo', 'test', '--no-run', '--manifest-path', workspaceManifest, '--package', 'polyspec-orm-schema',
+    '--test', 'dbspec_rules', '--message-format=json-render-diagnostics',
+  ]);
 });
 
 caseTest('PHP extension catalog coverage selects the exact native methods', 1000, () => {

@@ -597,7 +597,8 @@ async function buildNative(plans: Plans, directory: string): Promise<Builds> {
 // buildCargo builds only the Rust test targets selected by the coverage plans.
 // A failure stays as an error in builds.cargo, so this promise is not rejected.
 type CargoTarget = { name: string; kind: string[]; src_path: string; test: boolean; harness?: boolean };
-type CargoPackage = { name: string; manifest_path: string; targets: CargoTarget[] };
+type CargoDependency = { name: string; rename?: string | null };
+type CargoPackage = { name: string; manifest_path: string; targets: CargoTarget[]; features: Record<string, string[]>; dependencies: CargoDependency[] };
 type CargoMetadata = { packages?: CargoPackage[]; workspace_root?: string };
 
 /** The field `key` of the JSON object `value`, read as unknown. */
@@ -646,7 +647,18 @@ function cargoMetadataOf(text: string): CargoMetadata {
         ...(harness === undefined ? {} : { harness }),
       };
     });
-    return { name: jsonString(jsonField(entry, 'name'), `${where}.name`), manifest_path: jsonString(jsonField(entry, 'manifest_path'), `${where}.manifest_path`), targets };
+    const rawFeatures = jsonObject(jsonField(entry, 'features'), `${where}.features`);
+    const features = Object.fromEntries(Object.entries(rawFeatures).map(([name, value]) => {
+      if (!Array.isArray(value)) throw new Error(`${where}.features.${name} is no array`);
+      return [name, value.map((feature: unknown, number) => jsonString(feature, `${where}.features.${name}[${number}]`))];
+    }));
+    const dependencies = jsonObjects(jsonField(entry, 'dependencies'), `${where}.dependencies`).map((dependency, number): CargoDependency => {
+      const at = `${where}.dependencies[${number}]`;
+      const rename = jsonField(dependency, 'rename');
+      if (rename !== undefined && rename !== null && typeof rename !== 'string') throw new Error(`${at}.rename is not a string or null`);
+      return { name: jsonString(jsonField(dependency, 'name'), `${at}.name`), ...(rename === undefined ? {} : { rename }) };
+    });
+    return { name: jsonString(jsonField(entry, 'name'), `${where}.name`), manifest_path: jsonString(jsonField(entry, 'manifest_path'), `${where}.manifest_path`), targets, features, dependencies };
   });
   return { packages, ...(root === undefined ? {} : { workspace_root: jsonString(root, 'cargo metadata workspace_root') }) };
 }
@@ -685,12 +697,40 @@ export function cargoTargetArgs(targets: CargoTarget[], testPaths: string[]): st
   }
   return args;
 }
+
+/** Returns the canonical manifest of the workspace reported by Cargo metadata. */
+export function cargoWorkspaceManifestPath(workspaceRoot: string | undefined): string {
+  if (!workspaceRoot) throw new Error('cargo metadata has no workspace_root');
+  return resolve(workspaceRoot, 'Cargo.toml');
+}
+
+/** Keep only shared feature requests applicable to the selected package or its direct dependencies. */
+export function cargoFeaturesForPackage(project: CargoMetadata, selectedPackage: CargoPackage, requested: string[]): string[] {
+  const dependencies = new Map(selectedPackage.dependencies.map(dependency => [dependency.rename ?? dependency.name, dependency.name]));
+  const applicable = requested.filter(request => {
+    const slash = request.indexOf('/');
+    if (slash <= 0 || slash === request.length - 1) throw new Error(`invalid qualified Rust test feature ${request}`);
+    const packageName = request.slice(0, slash);
+    const featureName = request.slice(slash + 1);
+    if (packageName === selectedPackage.name) return Object.hasOwn(selectedPackage.features, featureName);
+    const dependencyName = dependencies.get(packageName);
+    const dependency = project.packages?.find(packageInfo => packageInfo.name === dependencyName);
+    return dependency !== undefined && Object.hasOwn(dependency.features, featureName);
+  });
+  return applicable.length ? ['--features', applicable.join(',')] : [];
+}
+
+/** Builds only the selected package's Rust test targets from the canonical workspace manifest. */
+export function cargoBuildArgs(workspaceManifestPath: string, packageName: string, features: string[], targetArgs: string[]): string[] {
+  return ['cargo', 'test', '--no-run', '--manifest-path', workspaceManifestPath, '--package', packageName,
+    ...features, ...targetArgs, '--message-format=json-render-diagnostics'];
+}
 async function buildCargo(plans: Plans, directory: string, builds: Builds, build: Build): Promise<void> {
   const specs = plans.flatMap(plan => plan.native);
   const cargoCrates = new Map<string, CargoSpec[]>();
   for (const spec of specs.filter((entry): entry is CargoSpec => entry.format === 'cargo'))
     cargoCrates.set(spec.cwd, [...(cargoCrates.get(spec.cwd) ?? []), spec]);
-  const features = process.env.ORM_RUST_TEST_FEATURES ? ['--features', process.env.ORM_RUST_TEST_FEATURES] : [];
+  const requestedFeatures = process.env.ORM_RUST_TEST_FEATURES?.split(',').filter(Boolean) ?? [];
   for (const [crate, crateSpecs] of cargoCrates) {
     const files = new Map<string, string[]>();
     let programPaths: Record<string, string> = {};
@@ -706,13 +746,14 @@ async function buildCargo(plans: Plans, directory: string, builds: Builds, build
       const project = cargoMetadataOf(metadata.stdout ?? '');
       const selectedPackage = project.packages?.find(packageInfo => resolve(packageInfo.manifest_path) === manifestPath);
       if (!selectedPackage) throw new Error(`cargo metadata did not return package for ${manifestPath}`);
-      const dependencyRoot = project.workspace_root ? resolve(project.workspace_root) : crate;
+      const workspaceManifestPath = cargoWorkspaceManifestPath(project.workspace_root);
+      const features = cargoFeaturesForPackage(project, selectedPackage, requestedFeatures);
+      const dependencyRoot = resolve(project.workspace_root);
       const targetArgs = cargoTargetArgs(selectedPackage.targets, crateSpecs.map(spec => spec.testPath));
       const copies = resolve(directory, `cargo-${builds.cargo.size}-${relative(plans.root, crate).replaceAll('/', '_') || 'root'}`);
       await mkdir(copies, { recursive: true });
       const result = await run(lease, ['run', leases, 'exclusive', '--wait', '--', process.execPath, cargoTestScript, '--copy', copies, '--',
-        'cargo', 'test', '--no-run', '--manifest-path', manifestPath, '--package', selectedPackage.name, ...features, ...targetArgs,
-        '--message-format=json-render-diagnostics'], crate, null, process.env, step, 100_000_000);
+        ...cargoBuildArgs(workspaceManifestPath, selectedPackage.name, features, targetArgs)], crate, null, process.env, step, 100_000_000);
       if (result.error) throw new Error(result.error);
       const copied = readBinaries(copies);
       programPaths = programEnvironment(copied.programs);
