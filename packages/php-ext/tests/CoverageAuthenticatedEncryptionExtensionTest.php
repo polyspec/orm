@@ -124,6 +124,21 @@ final class CoverageAuthenticatedEncryptionExtensionTest extends TestCase
         }
     }
 
+    // Requirements: COD-4, COD-34.
+    public function testCodecValueEdges(): void
+    {
+        Assert::assertSame(
+            '1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8',
+            Codec::blindIndex('member@example.test', 'blind-key')
+        );
+        try {
+            Codec::decode(['serialize'], 'O:8:"stdClass":0:{}');
+            self::fail('serialized PHP objects must be rejected');
+        } catch (OrmException $error) {
+            Assert::assertSame('CODEC_UNSUPPORTED', $error->code_);
+        }
+    }
+
     // Requirements: COD-33, COD-35 (docs/spec).
     public function testCodecMalformedInputUsesDecodeCode(): void
     {

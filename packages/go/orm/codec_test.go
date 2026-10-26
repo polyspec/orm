@@ -375,6 +375,18 @@ func TestCodecErrors(t *testing.T) {
 	}
 }
 
+func TestCodecValueEdges(t *testing.T) {
+	// Requirements: COD-4, COD-34.
+	testcase.Start(t, testcase.Compute)
+	got, err := BlindIndex("member@example.test", "blind-key")
+	if err != nil || got != "1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8" {
+		t.Fatalf("blind index = %q (%v)", got, err)
+	}
+	if _, err := Decode([]string{"serialize"}, `O:8:"stdClass":0:{}`); ErrorCode(err) != CodeCodecUnsupported {
+		t.Fatalf("serialized object error = %v, want %s", err, CodeCodecUnsupported)
+	}
+}
+
 func TestOrderedJSONCodecPreservesKindsAndObjectOrder(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	const source = `{"z":{},"a":[],"nested":{"second":2,"first":1}}`

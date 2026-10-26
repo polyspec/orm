@@ -2428,9 +2428,34 @@
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/orm/codec_test.go",
+          "id": "TestCodecValueEdges"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CodecVectorsTest.php",
+          "id": "CodecVectorsTest::testCodecValueEdges"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
+          "id": "CoverageAuthenticatedEncryptionExtensionTest::testCodecValueEdges"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/codec-values.mjs",
           "id": "codec values"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/codec_vector.py",
+          "id": "CodecVectorTest::test_value_edges"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/codec.rs",
+          "id": "codec::tests::codec_value_edges"
         }
       ]
     },

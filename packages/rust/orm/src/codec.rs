@@ -588,8 +588,8 @@ pub fn executor_stages(stages: &[String]) -> Vec<&str> {
 // ---- host stages (docs/spec/dialects.md): what MySQL does in SQL, PostgreSQL/SQLite leave to the executor ----
 
 use aes_gcm::{
-    aead::{Aead, Payload},
     Aes256Gcm, KeyInit as GcmKeyInit, Nonce,
+    aead::{Aead, Payload},
 };
 use hmac::{Hmac, Mac};
 use sha2::{Digest, Sha256};
@@ -795,6 +795,17 @@ mod tests {
             blind_index(&Param::Str("member@example.test".into()), "blind-key").unwrap(),
             "1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8"
         );
+    }
+
+    #[test]
+    // Requirements: COD-4, COD-34.
+    fn codec_value_edges() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        assert_eq!(
+            blind_index(&Param::Str("member@example.test".into()), "blind-key").unwrap(),
+            "1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8"
+        );
+        assert_eq!(decode(&["serialize".to_owned()], &Val::Str("O:8:\"stdClass\":0:{}".into())).unwrap_err().code(), CODEC_UNSUPPORTED);
     }
 
     #[test]

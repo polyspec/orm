@@ -7,9 +7,10 @@ import json
 import unittest
 from pathlib import Path
 
-
 from polyspec.ordered_json import (
     Value as OrderedJson,
+)
+from polyspec.ordered_json import (
     stringify as ordered_json_stringify,
 )
 from polyspec.orm.codec import (
@@ -21,6 +22,7 @@ from polyspec.orm.codec import (
     host_encode,
 )
 from polyspec.orm.styled_value import StyledValue
+
 from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -82,12 +84,15 @@ def check_vector(test: unittest.TestCase, vector: dict) -> None:
     if not isinstance(decoded, StyledValue) or decoded.kind != kind:
         test.fail(f"{name}: decoded state {shown(decoded)} want {kind}")
     payload = decoded.payload() if kind == "value" else None
-    if "ordered_json" in stages_of(vector["styles"]) and kind == "value":
-        if not isinstance(payload, OrderedJson):
-            failures.append(
-                f"{name}: a json stage decoded {type(payload).__name__}, "
-                f"not an ordered-json value"
-            )
+    if (
+        "ordered_json" in stages_of(vector["styles"])
+        and kind == "value"
+        and not isinstance(payload, OrderedJson)
+    ):
+        failures.append(
+            f"{name}: a json stage decoded {type(payload).__name__}, "
+            f"not an ordered-json value"
+        )
     if not same(payload, vector["value"]):
         failures.append(
             f"{name}: decoded {shown(payload)} want "
@@ -143,7 +148,7 @@ def check_aes_vector(test: unittest.TestCase, vector: dict) -> None:
 
 
 class CodecVectorTest(unittest.TestCase):
-    # The test of COD-33, COD-34, COD-35 (docs/spec).
+    # Requirements: COD-33, COD-34, COD-35.
     def test_error_cases(self):
         cases = [
             ("bad JSON", lambda: decode(["ordered_json"], b"{bad"), "CODEC_DECODE"),
@@ -231,6 +236,16 @@ class CodecVectorTest(unittest.TestCase):
             blind_index("member@example.test", "blind-key"),
             "1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8",
         )
+
+    # Requirements: COD-4, COD-34.
+    def test_value_edges(self):
+        self.assertEqual(
+            blind_index("member@example.test", "blind-key"),
+            "1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8",
+        )
+        with self.assertRaises(CodecError) as raised:
+            decode(["serialize"], b'O:8:"stdClass":0:{}')
+        self.assertEqual(raised.exception.code, "CODEC_UNSUPPORTED")
 
 
 def codec_vectors() -> list:

@@ -243,6 +243,21 @@ final class CodecVectorsTest extends TestCase
         );
     }
 
+    // Requirements: COD-4, COD-34.
+    public function testCodecValueEdges(): void
+    {
+        self::assertSame(
+            '1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8',
+            Codec::blindIndex('member@example.test', 'blind-key')
+        );
+        try {
+            Codec::decode(['serialize'], 'O:8:"stdClass":0:{}');
+            self::fail('serialized PHP objects must be rejected');
+        } catch (OrmException $error) {
+            self::assertSame(Code::CODEC_UNSUPPORTED, $error->code_);
+        }
+    }
+
     /**
      * The output of Go(TestCodecVectors), Rust(codec test), TypeScript(codec-vector.mjs), and Python(codec_vector.py)
      * is checked by make codec-check, which in this run runs that test and reads only what it wrote to the
