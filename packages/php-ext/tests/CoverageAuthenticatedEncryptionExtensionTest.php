@@ -127,10 +127,11 @@ final class CoverageAuthenticatedEncryptionExtensionTest extends TestCase
     // Requirements: COD-33, COD-35 (docs/spec).
     public function testCodecMalformedInputUsesDecodeCode(): void
     {
-        foreach ([
+        $cases = [
             [['ordered_json'], '{'],
             [['yaml'], "a: 1\na: 2\n"],
-        ] as [$styles, $raw]) {
+        ];
+        foreach ($cases as [$styles, $raw]) {
             try {
                 Codec::decode($styles, $raw);
                 self::fail('malformed codec input must be rejected');
