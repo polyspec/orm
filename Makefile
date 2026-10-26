@@ -118,9 +118,8 @@ export GOPROXY := off
 export npm_config_offline := true
 export COMPOSER_DISABLE_NETWORK := 1
 ONLINE := env -u CARGO_NET_OFFLINE -u GOPROXY -u npm_config_offline -u COMPOSER_DISABLE_NETWORK
-# The bootstrap is source in the sibling kit checkout, not a copy in this repository (K614). It installs npm before the
-# package exists, then installs package-lock.json so the kit's built tools can run.
-include ../kit/scripts/kit/kit-bootstrap.mk
+# The bootstrap comes from the installed kit package; a native npm link may resolve it to the local source checkout.
+include node_modules/@polyspec/kit/scripts/kit/kit-bootstrap.mk
 # kit.mk unexports CARGO_TARGET_DIR so its tools cannot inherit a checkout-specific target. ORM cargo recipes need
 # this checkout's canonical target, so restore the export after kit.mk is included.
 export CARGO_TARGET_DIR := $(abspath packages/rust/target)

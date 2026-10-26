@@ -84,7 +84,7 @@ caseTest('the TypeScript runtime build generates models before compiling their c
 
 caseTest('the ORM Rust target export follows the Kit Makefile include', COMPUTE, () => {
   const makefile = text('Makefile');
-  const kit = makefile.indexOf('include ../kit/scripts/kit/kit-bootstrap.mk');
+  const kit = makefile.indexOf('include node_modules/@polyspec/kit/scripts/kit/kit-bootstrap.mk');
   const target = makefile.indexOf('export CARGO_TARGET_DIR := $(abspath packages/rust/target)', kit);
   assert.ok(kit >= 0, 'the Makefile includes the Kit bootstrap');
   assert.ok(target > kit, 'the ORM re-exports its canonical cargo target after Kit unexports it');
