@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
+use Closure;
 use PHPUnit\Framework\Assert;
 use Polyspec\Orm\Db;
 use Polyspec\Orm\GroupRow;
