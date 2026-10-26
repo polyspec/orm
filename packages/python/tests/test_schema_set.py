@@ -1,4 +1,5 @@
 """The generated bench and decimal sets are isolated by their registered manifest hashes."""
+
 import tempfile
 import unittest
 
@@ -120,7 +121,9 @@ class SchemaSetTest(unittest.TestCase):
                 dsn, aesKey="bench-salt", blindIndexKey="bench-blind-index"
             )
             try:
-                self.assertEqual(self.decimal.DecimalCase().connect(decimal).get_count(), 1)
+                self.assertEqual(
+                    self.decimal.DecimalCase().connect(decimal).get_count(), 1
+                )
             finally:
                 decimal.close()
 

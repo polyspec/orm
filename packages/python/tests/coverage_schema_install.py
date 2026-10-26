@@ -133,7 +133,9 @@ def schema_install_external_documents(item):
                     "a raw connection registers no set",
                 )
             else:
-                raise AssertionError("a raw connection accepted a generated model request")
+                raise AssertionError(
+                    "a raw connection accepted a generated model request"
+                )
             expect_equal(raw_events, [], "an unregistered request sent no statement")
         finally:
             unsubscribe_raw()

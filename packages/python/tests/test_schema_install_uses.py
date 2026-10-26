@@ -94,9 +94,7 @@ class SchemaInstallUsesTest(unittest.TestCase):
             ROOT / "contracts" / "fixtures" / "decimal_schema.dbs",
         )
         dsn = f"sqlite://{self.tmp.name}/schema-sets.sqlite3"
-        db = bench.connect(
-            dsn, aesKey="bench-salt", blindIndexKey="bench-blind-index"
-        )
+        db = bench.connect(dsn, aesKey="bench-salt", blindIndexKey="bench-blind-index")
         try:
             tools = db.utils().schema()
             tools.install(bench_shared())
