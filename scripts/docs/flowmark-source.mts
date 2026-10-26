@@ -6,6 +6,12 @@ import { fileURLToPath } from 'node:url';
 const FLOWMARK_REPOSITORY = 'https://github.com/polyspec/flowmark.git';
 const FLOWMARK_MODULE = 'github.com/polyspec/flowmark/packages/go';
 
+type GoModuleDownload = {
+  Path?: string;
+  Version?: string;
+  Origin?: { VCS?: string; URL?: string; Subdir?: string; Hash?: string };
+};
+
 function git(directory: string, args: string[]): string {
   try {
     return execFileSync('git', ['-C', directory, ...args], { encoding: 'utf8' }).trim();
@@ -42,9 +48,46 @@ export function flowmarkSpecRoot(version: string): string {
   return checkedSpecRoot(source, version);
 }
 
-function installSource(destination: string, shortRevision: string): void {
+function pinnedOriginHash(version: string, shortRevision: string, moduleJson: string): string {
+  const pin = /^v0\.0\.0-(\d{14})-([0-9a-f]{12})$/.exec(version);
+  if (pin === null || pin[2] !== shortRevision) throw new Error(`tests/markdown/flowmark.version does not pin revision ${shortRevision}`);
+  let module: GoModuleDownload;
+  try {
+    module = JSON.parse(moduleJson) as GoModuleDownload;
+  } catch (error) {
+    throw new Error(`go mod download -json ${FLOWMARK_MODULE}@${version} returned invalid JSON`, { cause: error });
+  }
+  if (module.Path !== FLOWMARK_MODULE || module.Version !== version) throw new Error(`Go module metadata is not for ${FLOWMARK_MODULE}@${version}`);
+  const origin = module.Origin;
+  if (origin?.VCS !== 'git' || origin.URL !== FLOWMARK_REPOSITORY.slice(0, -4) || origin.Subdir !== 'packages/go') {
+    throw new Error(`Go module metadata for ${FLOWMARK_MODULE}@${version} has no pinned Flowmark Git origin`);
+  }
+  const hash = origin.Hash;
+  if (hash === undefined || !/^[0-9a-f]{40}$/.test(hash) || !hash.startsWith(shortRevision)) {
+    throw new Error(`Go module origin hash for ${FLOWMARK_MODULE}@${version} does not match the pinned revision ${shortRevision}`);
+  }
+  return hash;
+}
+
+function moduleDownloadJson(version: string): string {
+  try {
+    return execFileSync('go', ['mod', 'download', '-json', `${FLOWMARK_MODULE}@${version}`], { cwd: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..'), encoding: 'utf8' });
+  } catch (error) {
+    throw new Error(`could not read the pinned Go module origin for ${FLOWMARK_MODULE}@${version}; run make orm-install-flowmark`, { cause: error });
+  }
+}
+
+export function installFlowmarkSource(
+  destination: string,
+  shortRevision: string,
+  options: { repository?: string; moduleJson?: string; version?: string } = {},
+): void {
   if (!path.isAbsolute(destination)) throw new Error(`the Flowmark source destination must be absolute, got ${destination}`);
   if (!/^[0-9a-f]{12}$/.test(shortRevision)) throw new Error(`the Flowmark revision must be the 12-character hash in flowmark.version, got ${shortRevision}`);
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+  const version = options.version ?? readFileSync(path.join(root, 'tests/markdown/flowmark.version'), 'utf8').trim();
+  const fullRevision = pinnedOriginHash(version, shortRevision, options.moduleJson ?? moduleDownloadJson(version));
+  const repository = options.repository ?? FLOWMARK_REPOSITORY;
   if (existsSync(destination)) {
     const timestamp = new Date(Number(git(destination, ['show', '-s', '--format=%ct', 'HEAD'])) * 1000).toISOString().replace(/[-:T]/g, '').slice(0, 14);
     checkedSpecRoot(destination, `v0.0.0-${timestamp}-${shortRevision}`);
@@ -56,8 +99,8 @@ function installSource(destination: string, shortRevision: string): void {
   try {
     const commands: string[][] = [
       ['init'],
-      ['remote', 'add', 'origin', FLOWMARK_REPOSITORY],
-      ['fetch', '--progress', '--depth=1', 'origin', shortRevision],
+      ['remote', 'add', 'origin', repository],
+      ['fetch', '--progress', '--depth=1', 'origin', fullRevision],
       ['checkout', '--detach', 'FETCH_HEAD'],
     ];
     for (const args of commands) {
@@ -79,5 +122,5 @@ if (process.argv[1] !== undefined && realpathSync(process.argv[1]) === fileURLTo
   const destination = process.argv[3] ?? '';
   const revision = process.argv[4] ?? '';
   if (destination === '' || revision === '') throw new Error('usage: node scripts/docs/flowmark-source.mts install <absolute destination> <12-character revision>');
-  installSource(destination, revision);
+  installFlowmarkSource(destination, revision);
 }

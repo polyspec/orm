@@ -10,6 +10,7 @@ import path from 'node:path';
 import { caseTest } from '../testcase.mts';
 import { isolatedEnvironment } from '../environment.mts';
 import { runFixture } from './fixture.mts';
+import { installFlowmarkSource } from '../../scripts/docs/flowmark-source.mts';
 
 const TIMEOUT = 120_000;
 const version = 'v0.0.0-20261013184618-8b5d16a81141';
@@ -68,6 +69,34 @@ caseTest('the pinned Flowmark source checkout supplies the dialect spec', TIMEOU
     assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
     assert.match(result.stdout, /2 tables mirror flowmark spec 60/);
   } finally {
+    source.clean();
+  }
+});
+
+caseTest('Flowmark source installation fetches the full Go module origin hash', TIMEOUT, () => {
+  const source = flowmarkSource();
+  const installRoot = mkdtempSync(path.join(tmpdir(), 'orm-flowmark-install-test-'));
+  const destination = path.join(installRoot, 'source');
+  try {
+    const hash = source.git('rev-parse', 'HEAD');
+    const module = {
+      Path: 'github.com/polyspec/flowmark/packages/go',
+      Version: source.version,
+      Origin: { VCS: 'git', URL: 'https://github.com/polyspec/flowmark', Subdir: 'packages/go', Hash: hash },
+    };
+    assert.throws(
+      () => installFlowmarkSource(destination, hash.slice(0, 12), {
+        repository: source.root,
+        moduleJson: JSON.stringify({ ...module, Origin: { ...module.Origin, Hash: '0'.repeat(40) } }),
+        version: source.version,
+      }),
+      /does not match the pinned revision/,
+    );
+    installFlowmarkSource(destination, hash.slice(0, 12), { repository: source.root, moduleJson: JSON.stringify(module), version: source.version });
+    assert.equal(source.git('-C', destination, 'rev-parse', 'HEAD'), hash);
+    assert.equal(source.git('-C', destination, 'status', '--porcelain', '--untracked-files=all'), '');
+  } finally {
+    rmSync(installRoot, { recursive: true, force: true });
     source.clean();
   }
 });

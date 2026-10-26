@@ -166,7 +166,7 @@ func TestCoverageModelWriteCycle(t *testing.T) {
 				return fmt.Errorf("%s codec column = %#v, want value", want.name, got)
 			}
 		}
-		n, err := model.Author().Connect(db).Ip(&ip).GetCount()
+		n, err := model.Author().Connect(db).Ip(ip).GetCount()
 		if err != nil {
 			return err
 		}
