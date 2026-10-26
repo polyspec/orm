@@ -345,7 +345,7 @@ class DbspecApplyTest(unittest.TestCase):
                         rows[0],
                         [
                             plans[0]["name"],
-                            "",
+                            "empty",
                             plans[0]["to"],
                             "applied",
                             len(plan_steps(None, plans[0], dialect)["steps"]),
@@ -358,7 +358,7 @@ class DbspecApplyTest(unittest.TestCase):
                         rows[1][0:4],
                         [plans[1]["name"], plans[1]["from"], plans[1]["to"], "applied"],
                     )
-                    second_steps = len(plan_steps(plans[0], plans[1], dialect)["steps"])
+                    second_steps = len(plan_steps(plans[0]["schema"], plans[1], dialect)["steps"])
                     self.assertEqual(
                         rows[1][4:6],
                         [second_steps, second_steps],
