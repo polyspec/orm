@@ -688,7 +688,7 @@ func TestCoverageCatalogClosed(t *testing.T) {
 	}
 }
 
-// Requirements: INT-4, INT-8.
+// Requirements: COD-31, INT-4, INT-8.
 func TestCoverageModelReadNullAndEmptyText(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	ctx := context.Background()
@@ -773,5 +773,8 @@ func TestCoverageModelReadNullAndEmptyText(t *testing.T) {
 		if body == nil != (want.body == nil) || body != nil && *body != *want.body {
 			t.Fatalf("%s: row %d body = %v, want %v", driver, want.seq, body, want.body)
 		}
+	}
+	if _, err := orm.Decode([]string{"ordered_json"}, ""); orm.ErrorCode(err) != orm.CodeCodecDecode {
+		t.Errorf("%s: empty text with ordered_json: got %v, want %s", driver, err, orm.CodeCodecDecode)
 	}
 }

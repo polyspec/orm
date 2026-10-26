@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { randomInt } from 'node:crypto';
 import { runCases } from './coverage_case.mjs';
-import { BindCell, connect as connectModel, connectCatalog } from '../dist/index.js';
+import { BindCell, connect as connectModel, connectCatalog, decode } from '../dist/index.js';
 import { DatabaseSync } from 'node:sqlite';
 
 const TENANT = 990005;
@@ -53,7 +53,7 @@ async function readCase(item) {
   }
 }
 
-// Requirements: INT-4, INT-8.
+// Requirements: COD-31, INT-4, INT-8.
 async function nullAndEmptyTextCase(item) {
   const seq = -1_000_000_000_000 - randomInt(0, 1_000_000_000);
   const { catalog } = await connect(item);
@@ -72,6 +72,7 @@ async function nullAndEmptyTextCase(item) {
     const emptyRead = await new BindCell().connect(db).seq(seq - 1).get();
     assert.equal(nullRead.getBody(), null, 'SQL NULL remains null when read through the model');
     assert.equal(emptyRead.getBody(), '', 'empty text remains an empty string when read through the model');
+    assert.throws(() => decode(['ordered_json'], ''), { code: 'CODEC_DECODE' }, 'empty text with ordered_json');
   } finally {
     const snapshots = [];
     for (let offset = 0; ; ) {

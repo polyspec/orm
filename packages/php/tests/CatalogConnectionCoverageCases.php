@@ -148,7 +148,7 @@ trait CatalogConnectionCoverageCases
         self::assertSame([['abc']], $catalog->readOnlyQuery($bytes, [], 2, 3)->rows);
     }
 
-    // Requirements: INT-4, INT-8.
+    // Requirements: COD-31, INT-4, INT-8.
     public function testModelReadNullAndEmptyText(): void
     {
         $this->assertModelImplementation();
@@ -173,6 +173,12 @@ trait CatalogConnectionCoverageCases
                 $emptyRead->getBody(),
                 'empty text remains an empty string when read through the model',
             );
+            try {
+                Codec::decode(['ordered_json'], '');
+                self::fail('empty text with ordered_json was accepted');
+            } catch (OrmException $error) {
+                self::assertSame(Code::CODEC_DECODE, $error->code_);
+            }
         } finally {
             $snapshots = [];
             for ($offset = 0;;) {

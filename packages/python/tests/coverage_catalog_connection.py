@@ -14,6 +14,7 @@ from pathlib import Path
 
 from polyspec.orm import OrmError, codes, connect_catalog
 from polyspec.orm.catalog import GridCell
+from polyspec.orm.codec import decode as decode_styled
 from .coverage_case import run_cases
 from .test_sqlite import generate
 
@@ -163,7 +164,7 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
             )
         self.test_grid_cells()
 
-    # Requirements: INT-4, INT-8.
+    # Requirements: COD-31, INT-4, INT-8.
     def test_model_read_null_and_empty_text(self):
         root = Path(__file__).resolve().parents[3]
         with tempfile.TemporaryDirectory(prefix="orm-null-empty-model-") as directory:
@@ -200,6 +201,9 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
                     "",
                     "empty text remains an empty string when read through the model",
                 )
+                with self.assertRaises(OrmError) as empty_json:
+                    decode_styled(["ordered_json"], "")
+                self.assertEqual(empty_json.exception.code, codes.CODEC_DECODE)
             finally:
                 snapshots = []
                 offset = 0

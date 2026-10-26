@@ -1,6 +1,7 @@
 <?php
 
 // catalog_connection coverage exercises the PHP library through its owning client test.
+// Requirements: COD-31.
 // Requirements: SCH-3, SCH-5, SCH-6a, DBS-113, INT-4, INT-8, INT-103, INT-109, INT-113, INT-114, INT-115, INT-123.
 declare(strict_types=1);
 

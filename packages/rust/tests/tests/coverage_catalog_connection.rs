@@ -5,7 +5,7 @@
 use polyspec_orm_testcase::OrPanic;
 
 use polyspec_orm_build::catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableRef};
-use polyspec_orm_build::tool_db::{GridCell, ParamType, QueryLimits, Val, P};
+use polyspec_orm_build::tool_db::{GridCell, P, ParamType, QueryLimits, Val};
 polyspec_orm::models!();
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
@@ -27,11 +27,7 @@ async fn connect() -> (String, CatalogConnection) {
 }
 
 fn quote(name: &str, driver: &str) -> String {
-    if driver == "mysql" {
-        format!("`{name}`")
-    } else {
-        format!("\"{name}\"")
-    }
+    if driver == "mysql" { format!("`{name}`") } else { format!("\"{name}\"") }
 }
 
 async fn within<F: std::future::Future<Output = ()>>(case: &str, body: F) {
@@ -244,7 +240,7 @@ async fn coverage_catalog_row_mutation() {
 }
 
 #[tokio::test]
-// Requirements: INT-4, INT-8.
+// Requirements: COD-31, INT-4, INT-8.
 async fn coverage_model_read_null_and_empty_text() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     within("model_read_null_and_empty_text", async {
@@ -267,6 +263,8 @@ async fn coverage_model_read_null_and_empty_text() {
         let empty_read = model::BindCell::new().connect(&db).seq(seq - 1).get().await.expect("read empty-text row").expect("empty-text row selected");
         assert_eq!(null_read.get_body().expect("SQL NULL body loaded"), None, "SQL NULL stays distinct on model read");
         assert_eq!(empty_read.get_body().expect("empty body loaded"), Some(""), "empty text stays distinct on model read");
+        let decoded = polyspec_orm::codec::decode(&["ordered_json".to_owned()], &polyspec_orm::Val::Str(String::new()));
+        assert_eq!(decoded.err().map(|error| error.code().to_owned()).as_deref(), Some(polyspec_orm::codes::CODEC_DECODE), "empty text with ordered_json");
 
         let mut snapshots = Vec::new();
         let mut offset = 0;
