@@ -282,6 +282,7 @@ final class ModelTest extends TestCase
             ->orderBySeqAsc()->gets();
         $b = $loaded->first();
         self::check($b->getWriter()?->getName() === 'kim', 'relation alias');
+        self::check($b($db) === $b, 'loaded row short connection call');
         self::check(count($b->getMembers()) === 1 && $b->getServiceRegionModel()->getName() === 'module', 'relations');
         $limited = (new User())($db)->relations((new Author())->matchSeqWithUserSeq()->orderBySeqDesc()->groupLimit(1))
             ->orderBySeqAsc()
@@ -1616,7 +1617,7 @@ final class ModelTest extends TestCase
 
     // joins and relations
     // Requirements: DBS-118, CPX-1.
-    // Requirements: PLN-10, PLN-35, PLN-41, PLN-42, PLN-43.
+    // Requirements: DSL-8, PLN-10, PLN-35, PLN-41, PLN-42, PLN-43.
     #[DataProvider('drivers')]
     public function testJoinsAndRelations(string $driver): void
     {

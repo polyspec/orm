@@ -60,6 +60,7 @@
         "model-construction-connection-typescript",
         "model-construction-connection-python",
         "php-public-connection-call",
+        "php-loaded-row-short-connection-call",
         "rust-public-connection-call",
         "typescript-public-connection-call",
         "sqlite-minimum-driver-version",
@@ -4212,7 +4213,8 @@
         "coverage-model-generation-model-generation-check",
         "rust-model-generation-repeat-and-build-equivalence",
         "dynamic-vs-scanned-model-chain-dispatch",
-        "model-connection-and-join-methods"
+        "model-connection-and-join-methods",
+        "mechanically-derived-chain-method-names"
       ],
       "fixtures": [
         "packages/go/model/coverage_helpers_test.go",

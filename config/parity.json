@@ -7562,6 +7562,64 @@
       }
     },
     {
+      "id": "php-loaded-row-short-connection-call",
+      "kind": "feature",
+      "requirements": [
+        "DSL-8"
+      ],
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testJoinsAndRelations"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "dsn_connection",
+        "part": "owner/php"
+      }
+    },
+    {
+      "id": "mechanically-derived-chain-method-names",
+      "kind": "feature",
+      "requirements": [
+        "PLN-1"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_test.go",
+          "id": "TestScanGeneratesUsedMethods"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php-gen/tests/OrmGenScanTest.php",
+          "id": "OrmGenScanTest::testVector"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelDslNativeTest.php",
+          "id": "ModelDslNativeTest::testDynamicConditionsAndBuilderCallsReturnTheNativeModel"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/generate-scan.mjs",
+          "id": "generate-scan/model_calls"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_chain_conditions"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "generates_called_methods"
+        }
+      ]
+    },
+    {
       "id": "rust-public-connection-call",
       "kind": "feature",
       "requirements": [
