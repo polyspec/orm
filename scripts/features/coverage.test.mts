@@ -686,7 +686,8 @@ caseTest('a slow but healthy coverage build runs to its end without a deadline',
   const manifest = sampleManifest(owner);
   const path = process.env.PATH;
   try {
-    const realGo = execFileSync('sh', ['-c', 'command -v go']).toString().trim();
+    const goRoot = execFileSync('go', ['env', 'GOROOT']).toString().trim();
+    const realGo = join(goRoot, 'bin/go');
     await mkdir(join(root, 'bin'), { recursive: true });
     await writeFile(join(root, 'bin/go'), `#!/bin/sh\nsleep 1.5\nexec ${JSON.stringify(realGo)} "$@"\n`);
     await chmod(join(root, 'bin/go'), 0o755);

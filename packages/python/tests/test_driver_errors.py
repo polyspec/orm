@@ -132,6 +132,7 @@ class SqliteDriverErrorTest(unittest.TestCase):
         self.db = Db.connect_schema(
             f"sqlite://{self.path}?_pragma=busy_timeout(0)", self.models.SCHEMA
         )
+        self.addCleanup(self.db.close)
         self.events = []
         self.db.subscribe(self.events.append)
         holder = sqlite3.connect(self.path, isolation_level=None)
@@ -149,6 +150,7 @@ class SqliteDriverErrorTest(unittest.TestCase):
         self.db = Db.connect_schema(
             f"sqlite://{self.path}?_pragma=busy_timeout(0)", self.models.SCHEMA
         )
+        self.addCleanup(self.db.close)
         holder = sqlite3.connect(self.path, isolation_level=None)
         try:
             holder.execute("BEGIN IMMEDIATE")

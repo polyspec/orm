@@ -176,7 +176,9 @@ final class ConnectionUtcNativeTest extends TestCase
     public function testNativeI16ValuesAndDefaults(string $driver): void
     {
         self::assertTrue((new ReflectionClass(\Polyspec\Orm\Model::class))->isInternal());
-        $dir = \Polyspec\Orm\Tests\OrmGenTestSupport::createWorkDirectory('orm-php-ext-runtime-i16-');
+        $dir = \Polyspec\Orm\Tests\OrmGenTestSupport::createWorkDirectory(
+            'orm-php-ext-runtime-i16-' . $driver . '-'
+        );
         $document = "dbspec 1 native_i16_$driver\n\ntable item {\n"
             . "  seq i64 identity\n  small i16\n  defaulted i16 default 3\n  primary key (seq)\n}\n";
         try {
@@ -185,6 +187,7 @@ final class ConnectionUtcNativeTest extends TestCase
                 'Polyspec\\Orm\\Extension\\Tests\\RuntimeI16' . ucfirst($driver),
                 $document
             );
+            require_once "$dir/model/bootstrap.php";
             $parsed = Dbspec::parse($document, []);
             self::assertNotNull($parsed->document, 'the native i16 fixture parses');
             $manifest = Dbspec::manifest([$parsed->document])->manifest;

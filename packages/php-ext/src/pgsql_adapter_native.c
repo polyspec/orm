@@ -442,7 +442,7 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, reportError)
         if (!pg_call_method(error, "getMessage", &message, 0, NULL)) RETURN_THROWS();
         zend_string *text = zval_get_string(&message);
         zval_ptr_dtor(&message);
-        php_error_docref(NULL, E_USER_WARNING, "%s", ZSTR_VAL(text));
+        zend_error(E_USER_WARNING, "%s", ZSTR_VAL(text));
         zend_string_release(text);
         if (EG(exception) != NULL) RETURN_THROWS();
     } else if (current == exception) {
