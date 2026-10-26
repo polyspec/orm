@@ -258,6 +258,7 @@
         "packages/php/tests/CallbackFailed.php",
         "packages/php/tests/CannedCatalogPdo.php",
         "packages/php/tests/CatalogConnectionCoverageCases.php",
+        "packages/php/tests/CatalogMysqlVisibilityPdo.php",
         "packages/php/tests/CodecYamlProbe.php",
         "packages/php/tests/CollectionIdentityCases.php",
         "packages/php/tests/CollectionWeakTypedKeyCases.php",
