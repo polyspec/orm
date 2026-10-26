@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f72f89202138f3343151cdef7074d3a0151af56297f27d391139f275af99b07a -->
+<!-- source-sha256: a68ac7201b02bbce0238a2d4d31d756ae68de2e101aa431f249d7289719db4d8 -->
 # 변경 이력
 
 ## Unreleased
+
+- PHP C 확장이 명세된 NULL key 거부 conformance 벡터를 실행하며 MySQL, PostgreSQL, SQLite에서 여섯 클라이언트의 결과가 일치합니다. 이 사례는 문서에 정의한 SQL 실행 전 IR_INVALID 거부를 유지합니다 (T77-6-1-1).
 
 - `make kit-sync`가 설치한 로컬 Kit package에서 공유 파일 여섯 개를 갱신했습니다. 추적하던 link 네 개는 일반 사본이 되었고 release/gates workflow는 Kit source와 일치합니다. `kit-check`의 초기 finding 열 개를 해결했습니다(T240).
 - protocol/tooling parity 선언이 모든 지원 client의 native case 요구를 추적한다. 커밋된 tree의 선언 검사가 통과하며 사용자 보류 취소 기능은 실행 증거로 계산하지 않고 별도로 표시한다 (KSTD-2-7).

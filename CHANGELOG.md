@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The native PHP extension executes the specified NULL-key refusal conformance vector with identical results in all six clients on MySQL, PostgreSQL and SQLite; the case preserves the documented IR_INVALID rejection before SQL (T77-6-1-1).
+
 - `make kit-sync` refreshed six shared files from the installed local Kit package: four tracked links became regular copies, and release/gates workflows now match Kit source. `kit-check`'s ten initial findings are cleared (T240).
 - Protocol/tooling parity declarations now trace their native case requirements across all supported clients; committed-tree declaration checks pass, with user-held cancellation shown separately rather than counted as execution evidence (KSTD-2-7).
 - Incorrect standalone parity declarations and helper-test ownership are reconciled while preserving native assertions and exact owner execution commands; the declaration gate passes (KSTD-2-11).
