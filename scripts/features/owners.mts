@@ -113,7 +113,9 @@ export function readsComplexQueryFixtures(owners: Owner[], targets: string[], de
 async function inputMatcher(root: string, patterns: string[]): Promise<(path: string) => string | undefined> {
   const globs = patterns.map((pattern: string) => globPattern(pattern));
   const named = new Map<string, string>();
-  for (const input of patterns.filter((pattern: string) => !pattern.includes('*') && /\.(?:json|dbs)$/.test(pattern) && pattern !== 'contracts/features.json'))
+  // check-inputs is metadata, not a fixture: paths in it are not recursive data dependencies.
+  for (const input of patterns.filter((pattern: string) => !pattern.includes('*') && /\.(?:json|dbs)$/.test(pattern) &&
+    pattern !== 'contracts/features.json' && pattern !== 'contracts/check-inputs.json'))
     for (const path of await namedPaths(root, input))
       if (!named.has(path) && !patterns.includes(path)) named.set(path, input);
   return (path: string) => {

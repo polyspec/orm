@@ -38,6 +38,7 @@ caseTest('a changed test selects only the commands that run it', 5000, async () 
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/orm/mysql_tls_test.go'])), ['dsn_connection/dsn-go', 'dsn_connection/dsn-mysql-tls-go']);
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/orm/external_documents_test.go'])), ['schema_install/install-register-go']);
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/php/tests/CoverageDsnTest.php'])), ['dsn_connection/coverage/owner/php', 'dsn_connection/coverage/owner/php-extension']);
+  assert.ok(selected(await selectOwners(manifest, root, ['contracts/check-inputs.json'])).includes('authenticated_encryption/aes-json-php-extension'));
 });
 
 // An owner rule of config/owner-checks.json: its paths, and the make targets it selects when a path matches.
@@ -191,10 +192,10 @@ caseTest('a declared pattern matches by path segment', 5000, async () => {
 
 caseTest('every target of CHECK_TARGETS declares inputs that match tracked files', 5000, async () => {
   const makefile = await readFile(new URL('Makefile', `file://${root}`), 'utf8');
-  const declaredTargets = /^CHECK_TARGETS = (.*)$/m.exec(makefile)?.[1];
-  assert.ok(declaredTargets, 'the Makefile declares CHECK_TARGETS');
-  const checkTargets = declaredTargets.trim().split(/\s+/);
+  const checkTargets = [...makefile.matchAll(/^CHECK_TARGETS (?:\+)?= (.*)$/gm)].flatMap(match => match[1]?.trim().split(/\s+/) ?? []);
+  assert.ok(checkTargets.length > 0, 'the Makefile declares CHECK_TARGETS');
   assert.ok(checkTargets.includes('group-rows-db-php-extension'), 'CHECK_TARGETS keeps the PHP extension database target');
+  assert.ok(checkTargets.includes('catalog-row-baseline-go-check'), 'CHECK_TARGETS includes appended owner targets');
   const tracked = (await import('node:child_process')).execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean);
   assert.deepEqual(checkInputErrors(inputs, checkTargets, tracked), []);
   assert.deepEqual(checkInputErrors({ a: { scope: 'owner', needs: [], inputs: ['docs/**'] }, b: { scope: 'owner', needs: [], inputs: ['nothing/**'] } }, ['a', 'c'], ['docs/x.md']), [

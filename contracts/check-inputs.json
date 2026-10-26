@@ -3867,6 +3867,15 @@
         "packages/rust/orm/src/utils.rs",
         "packages/rust/orm/tests/schema_exists_underscore.rs"
       ]
+    },
+    "aes-json-php-extension-check": {
+      "scope": "suite",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases"
+      ]
     }
   },
   "paths": {
@@ -4054,14 +4063,5 @@
       "scope": "suite",
       "reason": "WITH_TEST_ENV adds it to the PHP ini scan path of every target that runs database clients, so it sets the time zone of every PHP client the suite starts"
     }
-  },
-  "aes-json-php-extension-check": {
-    "scope": "suite",
-    "needs": [
-      "php",
-      "composer",
-      "php-extension-tools",
-      "databases"
-    ]
   }
 }
