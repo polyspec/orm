@@ -8,6 +8,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/polyspec/orm/packages/go/engine/ir"
 	"github.com/polyspec/orm/packages/go/model"
 	"github.com/polyspec/orm/packages/go/orm"
 	"github.com/polyspec/orm/packages/go/testcase"
@@ -74,6 +75,60 @@ func TestCoverageModelWriteCycle(t *testing.T) {
 	}
 	if n := must(account().TenantId(writeTenant).GetCount()); n != 0 {
 		t.Fatalf("tenant %d count after delete = %d, want 0", writeTenant, n)
+	}
+}
+
+// TestCoverageModelSaveKeyDispatch checks Save's insert/update choice for missing, zero, and loaded keys.
+// Requirements: DSL-109.
+func TestCoverageModelSaveKeyDispatch(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	db, _, _ := connectFeature(t)
+	var writes []string
+	sentinel := errors.New("DSL-109 request hook stopped the write")
+	hooked := db.WithRequestHook(func(request *ir.Request, _ func(any) int, _ []any) error {
+		if request.Kind == orm.KindInsert || request.Kind == orm.KindUpdate {
+			writes = append(writes, request.Kind)
+			return sentinel
+		}
+		return nil
+	})
+	assertRejected := func(err error) {
+		t.Helper()
+		if err != sentinel {
+			t.Fatalf("Save error = %v, want request-hook sentinel", err)
+		}
+	}
+	if _, err := model.Account().Connect(hooked).SetName("missing").Save(); err != nil {
+		assertRejected(err)
+	} else {
+		t.Fatal("missing-key Save reached execution")
+	}
+	if !slices.Equal(writes, []string{orm.KindInsert}) {
+		t.Fatalf("missing-key Save requests = %v, want insert", writes)
+	}
+
+	writes = nil
+	if _, err := model.Account().Connect(hooked).SetSeq(0).SetName("zero").Save(); err != nil {
+		assertRejected(err)
+	} else {
+		t.Fatal("zero-key Save reached execution")
+	}
+	if !slices.Equal(writes, []string{orm.KindUpdate}) {
+		t.Fatalf("zero-key Save requests = %v, want update", writes)
+	}
+
+	writes = nil
+	loaded := must(model.Author().Connect(hooked).AddAllColumns().GetBySeq(1))
+	if loaded == nil {
+		t.Fatal("seed author 1 is missing")
+	}
+	if _, err := loaded.SetReadCount(readColumn(t, loaded.GetReadCount)).Save(); err != nil {
+		assertRejected(err)
+	} else {
+		t.Fatal("loaded-key Save reached execution")
+	}
+	if !slices.Equal(writes, []string{orm.KindUpdate}) {
+		t.Fatalf("loaded-key Save requests = %v, want update", writes)
 	}
 }
 

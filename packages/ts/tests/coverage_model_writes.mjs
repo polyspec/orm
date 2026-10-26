@@ -1,7 +1,7 @@
 // model_writes coverage uses CompositeAccount for CRUD and seeded Author.read_count for arithmetic.
 // The arithmetic case rolls back its updates to preserve the seeded row and identity sequence.
 import assert from 'node:assert/strict';
-import { Author, CompositeAccount, connect } from '../dist/index.js';
+import { Account, Author, CompositeAccount, connect } from '../dist/index.js';
 import { errorCode, runCases, withCleanup } from './coverage_case.mjs';
 
 const tenant = 990002;
@@ -87,6 +87,37 @@ await runCases('coverage_model_writes.mjs', {
         await (await account().tenantId(tenant).gets()).delete();
       });
     } finally { await db.close(); }
+  },
+  // Requirements: DSL-109.
+  async save_key_dispatch({ driver, dsn }) {
+    const db = await connect(dsn);
+    const writes = [];
+    const sentinel = new Error('DSL-109 request hook stopped the write');
+    const hooked = db.withRequestHook(request => {
+      if (request.kind === 'insert' || request.kind === 'update') {
+        writes.push(request.kind);
+        throw sentinel;
+      }
+      return request;
+    });
+    const rejectedByHook = async promise => assert.rejects(promise, error => error === sentinel);
+    try {
+      assert.equal(db.driver, driver);
+      await rejectedByHook(new Account().connect(hooked).setName('missing').save());
+      assert.deepEqual(writes, ['insert'], 'missing key dispatches INSERT before execution');
+
+      writes.length = 0;
+      await rejectedByHook(new Account().connect(hooked).setSeq(0).setName('zero').save());
+      assert.deepEqual(writes, ['update'], 'explicit zero dispatches UPDATE before execution');
+
+      writes.length = 0;
+      const loaded = await new Author().connect(hooked).addAllColumns().getBySeq(1);
+      assert.ok(loaded, 'seeded author row loads through the hooked handle');
+      await rejectedByHook(loaded.setReadCount(loaded.getReadCount()).save());
+      assert.deepEqual(writes, ['update'], 'loaded original key dispatches UPDATE before execution');
+    } finally {
+      await db.close();
+    }
   },
   // Requirements: PLN-26.
   async model_write_arithmetic_attributes({ driver, dsn }) {

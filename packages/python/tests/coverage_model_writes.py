@@ -1,6 +1,7 @@
 # model_writes coverage uses CompositeAccount for CRUD and seeded Author.read_count for arithmetic.
 # The arithmetic case rolls back its updates to preserve the seeded row and identity sequence.
 
+from polyspec.orm import OrmError, codes
 from polyspec.orm.models import models
 
 from .coverage_case import (
@@ -85,6 +86,47 @@ def model_write_cycle(item):
         with_cleanup(body, lambda: account().tenant_id(TENANT).gets().delete())
 
     run_on_empty_tenant(models, item, TENANT, case)
+
+
+def save_key_dispatch(item):
+    driver, dsn = item
+    db = models.connect(dsn)
+    writes = []
+    sentinel = OrmError(codes.CONFIG, "DSL-109 request hook stopped the write")
+
+    def hook(request, _add_param, _params):
+        if request.kind in ("insert", "update"):
+            writes.append(request.kind)
+            raise sentinel
+        return request
+
+    hooked = db.with_request_hook(hook)
+    account = lambda: models.Account().connect(hooked)
+
+    def assert_rejected(save):
+        try:
+            save()
+        except OrmError as error:
+            expect_equal(error is sentinel, True, "Save propagates the request-hook sentinel")
+            return
+        raise AssertionError("Save reached execution instead of the request hook")
+
+    try:
+        expect_equal(db.driver, driver, "the driver")
+        assert_rejected(lambda: account().set_name("missing").save())
+        expect_equal(writes, ["insert"], "missing key Save selects INSERT")
+
+        writes.clear()
+        assert_rejected(lambda: account().set_seq(0).set_name("zero").save())
+        expect_equal(writes, ["update"], "explicit zero Save selects UPDATE")
+
+        writes.clear()
+        loaded = models.Author().connect(hooked).add_all_columns().get_by_seq(1)
+        expect_equal(loaded is not None, True, "seed author 1 loads through the hooked handle")
+        assert_rejected(lambda: loaded.set_read_count(loaded.get_read_count()).save())
+        expect_equal(writes, ["update"], "loaded original key Save selects UPDATE")
+    finally:
+        db.close()
 
 
 def model_write_arithmetic_attributes(item):
@@ -281,6 +323,10 @@ class CoverageTest(CoverageCase):
     # Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110.
     def test_model_write_cycle(self):
         self.each_item("model_write_cycle", model_write_cycle)
+
+    # Requirements: DSL-109.
+    def test_save_key_dispatch(self):
+        self.each_item("save_key_dispatch", save_key_dispatch)
 
     # Requirements: PLN-26.
     def test_model_write_arithmetic_attributes(self):

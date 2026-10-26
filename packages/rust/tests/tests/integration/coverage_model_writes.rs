@@ -1,7 +1,7 @@
 //! model_writes: runs create, creates, update, duplication,
 //! create, and delete on CompositeAccount; arithmetic coverage rolls back updates to seeded Author.read_count.
 use super::coverage_env::{code, connect, run};
-use super::model::{Author, CompositeAccount};
+use super::model::{Account, Author, CompositeAccount};
 use std::sync::{Arc, Mutex};
 
 const TENANT: i64 = 990002;
@@ -89,6 +89,42 @@ async fn coverage_model_write_cycle() {
         rows.delete(false).await.unwrap();
         assert!(account().get_by_tenant_id_and_account_id(TENANT, 1).await.unwrap().is_none(), "deleted row");
         assert_eq!(account().tenant_id(TENANT).get_count().await.unwrap(), 0, "rows left");
+        db.close().await;
+    })
+    .await;
+}
+
+#[tokio::test]
+// Requirements: DSL-109.
+async fn coverage_model_save_key_dispatch() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    run("save_key_dispatch", async {
+        let db = connect().await;
+        let writes = Arc::new(Mutex::new(Vec::<String>::new()));
+        let sink = writes.clone();
+        let hooked = db.with_request_hook(move |request: &mut polyspec_orm::ir::Request, _| {
+            if request.kind == "insert" || request.kind == "update" {
+                sink.lock().unwrap().push(request.kind.clone());
+                return Err(polyspec_orm::Error::Config("DSL-109 request hook stopped the write".into()));
+            }
+            Ok(())
+        });
+
+        let mut missing = Account::new().connect(&hooked).set_name("missing");
+        assert!(matches!(missing.save().await, Err(polyspec_orm::Error::Config(message)) if message == "DSL-109 request hook stopped the write"));
+        assert_eq!(writes.lock().unwrap().as_slice(), &["insert".to_owned()], "missing key Save selects INSERT");
+
+        writes.lock().unwrap().clear();
+        let mut zero = Account::new().connect(&hooked).set_seq(0).set_name("zero");
+        assert!(matches!(zero.save().await, Err(polyspec_orm::Error::Config(message)) if message == "DSL-109 request hook stopped the write"));
+        assert_eq!(writes.lock().unwrap().as_slice(), &["update".to_owned()], "explicit zero Save selects UPDATE");
+
+        writes.lock().unwrap().clear();
+        let mut loaded = Author::new().connect(&hooked).add_all_columns().get_by_seq(1).await.unwrap().expect("seed author 1");
+        loaded = loaded.set_read_count(loaded.get_read_count().unwrap());
+        assert!(matches!(loaded.save().await, Err(polyspec_orm::Error::Config(message)) if message == "DSL-109 request hook stopped the write"));
+        assert_eq!(writes.lock().unwrap().as_slice(), &["update".to_owned()], "loaded original key Save selects UPDATE");
+
         db.close().await;
     })
     .await;

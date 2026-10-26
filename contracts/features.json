@@ -2308,7 +2308,8 @@
         "cases": [
           "model_write_cycle",
           "create_parts",
-          "model_write_arithmetic_attributes"
+          "model_write_arithmetic_attributes",
+          "save_key_dispatch"
         ],
         "owners": {
           "go": {
@@ -2327,12 +2328,14 @@
                   "cases": [
                     "model_write_cycle",
                     "create_parts",
-                    "model_write_arithmetic_attributes"
+                    "model_write_arithmetic_attributes",
+                    "save_key_dispatch"
                   ],
                   "symbols": {
                     "model_write_cycle": "TestCoverageModelWriteCycle",
                     "create_parts": "TestCoverageModelCreateParts",
-                    "model_write_arithmetic_attributes": "TestCoverageModelArithmeticAttributes"
+                    "model_write_arithmetic_attributes": "TestCoverageModelArithmeticAttributes",
+                    "save_key_dispatch": "TestCoverageModelSaveKeyDispatch"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2344,12 +2347,14 @@
                   "cases": [
                     "model_write_cycle",
                     "create_parts",
-                    "model_write_arithmetic_attributes"
+                    "model_write_arithmetic_attributes",
+                    "save_key_dispatch"
                   ],
                   "symbols": {
                     "model_write_cycle": "TestCoverageModelWriteCycle",
                     "create_parts": "TestCoverageModelCreateParts",
-                    "model_write_arithmetic_attributes": "TestCoverageModelArithmeticAttributes"
+                    "model_write_arithmetic_attributes": "TestCoverageModelArithmeticAttributes",
+                    "save_key_dispatch": "TestCoverageModelSaveKeyDispatch"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2361,12 +2366,14 @@
                   "cases": [
                     "model_write_cycle",
                     "create_parts",
-                    "model_write_arithmetic_attributes"
+                    "model_write_arithmetic_attributes",
+                    "save_key_dispatch"
                   ],
                   "symbols": {
                     "model_write_cycle": "TestCoverageModelWriteCycle",
                     "create_parts": "TestCoverageModelCreateParts",
-                    "model_write_arithmetic_attributes": "TestCoverageModelArithmeticAttributes"
+                    "model_write_arithmetic_attributes": "TestCoverageModelArithmeticAttributes",
+                    "save_key_dispatch": "TestCoverageModelSaveKeyDispatch"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -2389,12 +2396,14 @@
                   "cases": [
                     "model_write_cycle",
                     "create_parts",
-                    "model_write_arithmetic_attributes"
+                    "model_write_arithmetic_attributes",
+                    "save_key_dispatch"
                   ],
                   "symbols": {
                     "model_write_cycle": "testModelWriteCycle",
                     "create_parts": "testCreateParts",
-                    "model_write_arithmetic_attributes": "testModelWriteArithmeticAttributes"
+                    "model_write_arithmetic_attributes": "testModelWriteArithmeticAttributes",
+                    "save_key_dispatch": "testSaveKeyDispatch"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2406,12 +2415,14 @@
                   "cases": [
                     "model_write_cycle",
                     "create_parts",
-                    "model_write_arithmetic_attributes"
+                    "model_write_arithmetic_attributes",
+                    "save_key_dispatch"
                   ],
                   "symbols": {
                     "model_write_cycle": "testModelWriteCycle",
                     "create_parts": "testCreateParts",
-                    "model_write_arithmetic_attributes": "testModelWriteArithmeticAttributes"
+                    "model_write_arithmetic_attributes": "testModelWriteArithmeticAttributes",
+                    "save_key_dispatch": "testSaveKeyDispatch"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2423,12 +2434,14 @@
                   "cases": [
                     "model_write_cycle",
                     "create_parts",
-                    "model_write_arithmetic_attributes"
+                    "model_write_arithmetic_attributes",
+                    "save_key_dispatch"
                   ],
                   "symbols": {
                     "model_write_cycle": "testModelWriteCycle",
                     "create_parts": "testCreateParts",
-                    "model_write_arithmetic_attributes": "testModelWriteArithmeticAttributes"
+                    "model_write_arithmetic_attributes": "testModelWriteArithmeticAttributes",
+                    "save_key_dispatch": "testSaveKeyDispatch"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -2451,12 +2464,14 @@
                   "cases": [
                     "model_write_cycle",
                     "create_parts",
-                    "model_write_arithmetic_attributes"
+                    "model_write_arithmetic_attributes",
+                    "save_key_dispatch"
                   ],
                   "symbols": {
                     "model_write_cycle": "coverage_model_writes::coverage_model_write_cycle",
                     "create_parts": "coverage_model_writes::coverage_model_create_parts",
-                    "model_write_arithmetic_attributes": "coverage_model_writes::coverage_model_write_arithmetic_attributes"
+                    "model_write_arithmetic_attributes": "coverage_model_writes::coverage_model_write_arithmetic_attributes",
+                    "save_key_dispatch": "coverage_model_writes::coverage_model_save_key_dispatch"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2468,12 +2483,14 @@
                   "cases": [
                     "model_write_cycle",
                     "create_parts",
-                    "model_write_arithmetic_attributes"
+                    "model_write_arithmetic_attributes",
+                    "save_key_dispatch"
                   ],
                   "symbols": {
                     "model_write_cycle": "coverage_model_writes::coverage_model_write_cycle",
                     "create_parts": "coverage_model_writes::coverage_model_create_parts",
-                    "model_write_arithmetic_attributes": "coverage_model_writes::coverage_model_write_arithmetic_attributes"
+                    "model_write_arithmetic_attributes": "coverage_model_writes::coverage_model_write_arithmetic_attributes",
+                    "save_key_dispatch": "coverage_model_writes::coverage_model_save_key_dispatch"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2485,12 +2502,14 @@
                   "cases": [
                     "model_write_cycle",
                     "create_parts",
-                    "model_write_arithmetic_attributes"
+                    "model_write_arithmetic_attributes",
+                    "save_key_dispatch"
                   ],
                   "symbols": {
                     "model_write_cycle": "coverage_model_writes::coverage_model_write_cycle",
                     "create_parts": "coverage_model_writes::coverage_model_create_parts",
-                    "model_write_arithmetic_attributes": "coverage_model_writes::coverage_model_write_arithmetic_attributes"
+                    "model_write_arithmetic_attributes": "coverage_model_writes::coverage_model_write_arithmetic_attributes",
+                    "save_key_dispatch": "coverage_model_writes::coverage_model_save_key_dispatch"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -2513,7 +2532,8 @@
                   "cases": [
                     "model_write_cycle",
                     "create_parts",
-                    "model_write_arithmetic_attributes"
+                    "model_write_arithmetic_attributes",
+                    "save_key_dispatch"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2525,7 +2545,8 @@
                   "cases": [
                     "model_write_cycle",
                     "create_parts",
-                    "model_write_arithmetic_attributes"
+                    "model_write_arithmetic_attributes",
+                    "save_key_dispatch"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2537,7 +2558,8 @@
                   "cases": [
                     "model_write_cycle",
                     "create_parts",
-                    "model_write_arithmetic_attributes"
+                    "model_write_arithmetic_attributes",
+                    "save_key_dispatch"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -2560,7 +2582,8 @@
                   "cases": [
                     "model_write_cycle",
                     "create_parts",
-                    "model_write_arithmetic_attributes"
+                    "model_write_arithmetic_attributes",
+                    "save_key_dispatch"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2572,7 +2595,8 @@
                   "cases": [
                     "model_write_cycle",
                     "create_parts",
-                    "model_write_arithmetic_attributes"
+                    "model_write_arithmetic_attributes",
+                    "save_key_dispatch"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2584,7 +2608,8 @@
                   "cases": [
                     "model_write_cycle",
                     "create_parts",
-                    "model_write_arithmetic_attributes"
+                    "model_write_arithmetic_attributes",
+                    "save_key_dispatch"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -2607,12 +2632,14 @@
                   "cases": [
                     "model_write_cycle",
                     "create_parts",
-                    "model_write_arithmetic_attributes"
+                    "model_write_arithmetic_attributes",
+                    "save_key_dispatch"
                   ],
                   "symbols": {
                     "model_write_cycle": "testModelWriteCycle",
                     "create_parts": "testCreateParts",
-                    "model_write_arithmetic_attributes": "testModelWriteArithmeticAttributes"
+                    "model_write_arithmetic_attributes": "testModelWriteArithmeticAttributes",
+                    "save_key_dispatch": "testSaveKeyDispatch"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2624,12 +2651,14 @@
                   "cases": [
                     "model_write_cycle",
                     "create_parts",
-                    "model_write_arithmetic_attributes"
+                    "model_write_arithmetic_attributes",
+                    "save_key_dispatch"
                   ],
                   "symbols": {
                     "model_write_cycle": "testModelWriteCycle",
                     "create_parts": "testCreateParts",
-                    "model_write_arithmetic_attributes": "testModelWriteArithmeticAttributes"
+                    "model_write_arithmetic_attributes": "testModelWriteArithmeticAttributes",
+                    "save_key_dispatch": "testSaveKeyDispatch"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2641,12 +2670,14 @@
                   "cases": [
                     "model_write_cycle",
                     "create_parts",
-                    "model_write_arithmetic_attributes"
+                    "model_write_arithmetic_attributes",
+                    "save_key_dispatch"
                   ],
                   "symbols": {
                     "model_write_cycle": "testModelWriteCycle",
                     "create_parts": "testCreateParts",
-                    "model_write_arithmetic_attributes": "testModelWriteArithmeticAttributes"
+                    "model_write_arithmetic_attributes": "testModelWriteArithmeticAttributes",
+                    "save_key_dispatch": "testSaveKeyDispatch"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
