@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: dc2305bfaf3640499107d66727e814ae7a638cc16db2c800c9f34078ffd70830 -->
+<!-- source-sha256: a654db0fcea65215df764f30bb0be997e455fe266c149d7b730e1be0b7de71e3 -->
 # 변경 이력
 
 ## Unreleased
+
+- 전체 PHP ORM 표면을 같은 class 이름의 native C로 구현했으며 PHP 제품 코드 fallback 없이 세 database의 여섯 클라이언트 conformance가 일치합니다. 독립적인 수용 기준 검토에 따라 과거 schema 전용 구현을 이유로 한 보류를 완료된 구현과 일치시켰습니다 (T199).
 
 - PHP C 확장의 query, model, collection 클라이언트를 완료했습니다. 필수 model 및 fixture 사례가 PHP 제품 코드 fallback 없이 실행되고, 감사 순번 비교를 집중 수정한 뒤 MySQL, PostgreSQL, SQLite의 59개 conformance 벡터가 여섯 클라이언트에서 일치하며 보존된 결과 계약 검사도 통과합니다 (T182-6).
 
