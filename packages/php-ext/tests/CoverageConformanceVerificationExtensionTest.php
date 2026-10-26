@@ -6,6 +6,7 @@ namespace Polyspec\Orm\Extension\Tests;
 
 use Polyspec\Orm\Model;
 use PHPUnit\Framework\Assert;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -51,30 +52,60 @@ final class CoverageConformanceVerificationExtensionTest extends TestCase
         return $environment;
     }
 
-    // Requirements: DSL-87.
-    // Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39, DIA-24.
-    public function testMysql(): void
+    /** @return iterable<string, array{string, mixed}> */
+    public static function mysqlVectors(): iterable
     {
-        $this->assertNativeConformanceVectors('mysql');
+        return \Polyspec\Orm\Tests\CoverageConformanceVerificationTest::mysqlVectors();
     }
 
-    // Requirements: DSL-87.
-    // Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39, DIA-24.
-    public function testPostgres(): void
+    /** @return iterable<string, array{string, mixed}> */
+    public static function postgresVectors(): iterable
     {
-        $this->assertNativeConformanceVectors('postgres');
+        return \Polyspec\Orm\Tests\CoverageConformanceVerificationTest::postgresVectors();
     }
 
-    // Requirements: DSL-87.
-    // Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39, DIA-24, DBS-115.
-    public function testSqlite(): void
+    /** @return iterable<string, array{string, mixed}> */
+    public static function sqliteVectors(): iterable
     {
-        $this->assertNativeConformanceVectors('sqlite');
+        return \Polyspec\Orm\Tests\CoverageConformanceVerificationTest::sqliteVectors();
     }
 
-    private function assertNativeConformanceVectors(string $driver): void
+    /** @var array<string, \stdClass> */
+    private static array $outputs = [];
+
+    /** @return array<string, mixed> */
+    private static function expectedVectors(string $driver): array
     {
-        Assert::assertTrue((new ReflectionClass(Model::class))->isInternal());
+        $vectors = match ($driver) {
+            'mysql' => self::mysqlVectors(),
+            'postgres' => self::postgresVectors(),
+            'sqlite' => self::sqliteVectors(),
+            default => throw new \InvalidArgumentException("unsupported conformance driver $driver"),
+        };
+        $expected = [];
+        foreach ($vectors as $name => $dataset) {
+            if (
+                !is_string($name)
+                || $name === ''
+                || array_key_exists($name, $expected)
+                || !isset($dataset[0], $dataset[1])
+                || $dataset[0] !== $name
+                || $dataset[1] === null
+            ) {
+                throw new \RuntimeException(
+                    "$driver conformance vectors contain an empty, repeated, or missing expectation"
+                );
+            }
+            $expected[$name] = $dataset[1];
+        }
+        return $expected;
+    }
+
+    private static function runnerOutput(string $driver): \stdClass
+    {
+        if (isset(self::$outputs[$driver])) {
+            return self::$outputs[$driver];
+        }
         $variable = 'BENCH_' . strtoupper($driver) . '_DSN';
         $dsn = getenv('ORM_FEATURE_DSN') ?: getenv($variable);
         if (!is_string($dsn) || $dsn === '') {
@@ -84,24 +115,13 @@ final class CoverageConformanceVerificationExtensionTest extends TestCase
         }
 
         $root = dirname(__DIR__, 3);
-        $file = $driver === 'mysql' ? 'vectors.json' : "vectors.$driver.json";
-        $recorded = coverageJson("$root/tests/conformance/$file", false);
-        $expected = [];
-        foreach ($recorded->vectors as $vector) {
-            if (isset($expected[$vector->name]) || $vector->expect === null) {
-                throw new \RuntimeException("$file: vector {$vector->name} is repeated or has no expectation");
-            }
-            $expected[$vector->name] = $vector->expect;
-        }
-
-        \coverageWithConformanceCountersRestored($driver, $dsn, function () use (
-            $driver,
+        $output = null;
+        \coverageWithConformanceCountersRestored($driver, $dsn, static function () use (
             $root,
             $dsn,
-            $expected,
-            $file,
+            &$output,
         ): void {
-            [$status, $stdout, $stderr] = coverageProcess(
+            [$status, $stdout, $stderr] = \coverageProcess(
                 self::childCommand("$root/packages/php/testing/conformance/runner.php", '--dsn', $dsn),
                 $root,
                 self::childEnvironment(),
@@ -111,20 +131,52 @@ final class CoverageConformanceVerificationExtensionTest extends TestCase
                     str_replace($dsn, '[dsn]', "native conformance child exited $status: $stderr$stdout")
                 );
             }
+            $output = json_decode($stdout, false, 512, JSON_THROW_ON_ERROR);
+        }, true);
+        if (!$output instanceof \stdClass) {
+            throw new \RuntimeException('native conformance runner returned no object');
+        }
+        $expectedNames = array_keys(self::expectedVectors($driver));
+        $actualNames = array_keys(get_object_vars($output));
+        sort($expectedNames);
+        sort($actualNames);
+        Assert::assertSame($expectedNames, $actualNames, "native {$driver} vector set");
+        return self::$outputs[$driver] = $output;
+    }
 
-            $actual = json_decode($stdout, false, 512, JSON_THROW_ON_ERROR);
-            $expectedNames = array_keys($expected);
-            $actualNames = array_keys(get_object_vars($actual));
-            sort($expectedNames);
-            sort($actualNames);
-            Assert::assertSame($expectedNames, $actualNames, "native {$driver} vector set");
-            foreach ($expected as $name => $expect) {
-                Assert::assertTrue(
-                    \Polyspec\Orm\Tests\sameJson($actual->$name, $expect),
-                    "native extension vector $name differs from $file",
-                );
-            }
-        });
+    private function assertNativeConformanceVector(string $driver, string $name, mixed $expect): void
+    {
+        Assert::assertTrue((new ReflectionClass(Model::class))->isInternal());
+        $output = self::runnerOutput($driver);
+        Assert::assertTrue(property_exists($output, $name), "the native runner gave no output for $name");
+        Assert::assertTrue(
+            \Polyspec\Orm\Tests\sameJson($output->$name, $expect),
+            "native extension vector $name differs from the recorded expectation",
+        );
+    }
+
+    // Requirements: DSL-87.
+    // Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39, DIA-24.
+    #[DataProvider('mysqlVectors')]
+    public function testMysql(string $name, mixed $expect): void
+    {
+        $this->assertNativeConformanceVector('mysql', $name, $expect);
+    }
+
+    // Requirements: DSL-87.
+    // Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39, DIA-24.
+    #[DataProvider('postgresVectors')]
+    public function testPostgres(string $name, mixed $expect): void
+    {
+        $this->assertNativeConformanceVector('postgres', $name, $expect);
+    }
+
+    // Requirements: DSL-87.
+    // Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39, DIA-24, DBS-115.
+    #[DataProvider('sqliteVectors')]
+    public function testSqlite(string $name, mixed $expect): void
+    {
+        $this->assertNativeConformanceVector('sqlite', $name, $expect);
     }
 
     public function testConformanceChildLoadsTheNativeModelEntrypoint(): void
@@ -241,6 +293,7 @@ final class CoverageConformanceVerificationExtensionTest extends TestCase
                             "native extension vector $vector differs from $file",
                         );
                     },
+                    $vector === 'audit_lazy',
                 );
             }
         }

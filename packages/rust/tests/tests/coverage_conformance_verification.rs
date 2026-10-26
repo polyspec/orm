@@ -10,12 +10,18 @@
 //! Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39, DBS-115.
 use polyspec_orm_testcase::OrPanic;
 
+polyspec_orm::models!();
+
 mod common;
 
 use serde_json::Value;
+use std::collections::BTreeMap;
+use std::path::Path;
 use std::process::Command;
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
+
+use model::{AuditRecord, AuditedNote};
 
 const SELECTED_VECTORS: [&str; 4] = ["conditions_values", "relations", "functions", "creates_and_save"];
 const OUTPUT_VECTOR_KEYS: [&str; 4] = ["conditions_values", "creates_and_save", "functions", "relations"];
@@ -102,14 +108,143 @@ type FullRun = Arc<OnceLock<Result<serde_json::Map<String, Value>, String>>>;
 fn full_run(run: &FullRun, dsn_variable: &str) -> Result<serde_json::Map<String, Value>, String> {
     run.get_or_init(|| {
         let dsn = common::required(dsn_variable);
-        let redact = |bytes: &[u8]| String::from_utf8_lossy(bytes).replace(&dsn, "[dsn]");
-        let output = common::run("conformance", runner(&dsn, &[]), DEADLINE);
-        if !output.status.success() {
-            return Err(format!("conformance runner failed with {}: {}", output.status, redact(&output.stderr)));
-        }
-        serde_json::from_slice(&output.stdout).map_err(|e| format!("runner output is not a JSON object: {e}"))
+        let driver = conformance_driver(dsn_variable)?;
+        run_with_audit_lazy_counter_baseline(&dsn, &driver, || {
+            let output = common::run("conformance", runner(&dsn, &[]), DEADLINE);
+            if !output.status.success() {
+                let stderr = String::from_utf8_lossy(&output.stderr).replace(&dsn, "[dsn]");
+                return Err(format!("conformance runner failed with {}: {stderr}", output.status));
+            }
+            serde_json::from_slice(&output.stdout).map_err(|e| format!("runner output is not a JSON object: {e}"))
+        })
     })
     .clone()
+}
+
+#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+struct CounterValue {
+    value: String,
+    called: bool,
+    owner: String,
+}
+
+type CounterSnapshot = BTreeMap<String, CounterValue>;
+
+fn conformance_driver(dsn_variable: &str) -> Result<String, String> {
+    match dsn_variable {
+        "BENCH_MYSQL_DSN" => Ok("mysql".into()),
+        "BENCH_POSTGRES_DSN" => Ok("postgres".into()),
+        "BENCH_SQLITE_DSN" => Ok("sqlite".into()),
+        other => Err(format!("unsupported conformance DSN variable {other:?}")),
+    }
+}
+
+/// Normalizes the two tables written by audit_lazy, then restores every counter after the full runner finishes.
+fn run_with_audit_lazy_counter_baseline<T>(dsn: &str, driver: &str, run: impl FnOnce() -> Result<T, String>) -> Result<T, String> {
+    let root = polyspec_orm_testcase::manifest_dir().join("../../../");
+    let original = read_conformance_counters(&root, driver, dsn)?;
+    let run_result = (|| {
+        assert_audit_lazy_tables_empty(dsn)?;
+        let baseline = audit_lazy_counter_baseline(&original, driver)?;
+        restore_conformance_counters(&root, driver, dsn, &baseline)?;
+        run()
+    })();
+    let restore_result =
+        restore_conformance_counters(&root, driver, dsn, &original).and_then(|()| read_conformance_counters(&root, driver, dsn)).and_then(|current| {
+            if current == original {
+                Ok(())
+            } else {
+                Err(format!("{driver} conformance counters differ after restore: got {current:?}, want {original:?}"))
+            }
+        });
+    match (run_result, restore_result) {
+        (Ok(value), Ok(())) => Ok(value),
+        (Err(error), Ok(())) => Err(error),
+        (Ok(_), Err(error)) => Err(format!("restore {driver} conformance counters: {error}")),
+        (Err(run_error), Err(restore_error)) => Err(format!("{run_error}; restore {driver} conformance counters: {restore_error}")),
+    }
+}
+
+fn audit_lazy_counter_baseline(original: &CounterSnapshot, driver: &str) -> Result<CounterSnapshot, String> {
+    let mut baseline = original.clone();
+    for table in ["audit_record", "audited_note"] {
+        match driver {
+            "mysql" => {
+                let counter = baseline.get_mut(table).ok_or_else(|| format!("MySQL counter snapshot has no {table} AUTO_INCREMENT"))?;
+                counter.value = "1".into();
+                counter.called = true;
+            }
+            "postgres" => {
+                let mut found = false;
+                for counter in baseline.values_mut().filter(|counter| counter.owner == table) {
+                    counter.value = "1".into();
+                    counter.called = false;
+                    found = true;
+                }
+                if !found {
+                    return Err(format!("PostgreSQL counter snapshot has no sequence owned by {table}"));
+                }
+            }
+            "sqlite" => {
+                if let Some(counter) = baseline.get_mut(table) {
+                    counter.value = "0".into();
+                    counter.called = true;
+                }
+            }
+            other => return Err(format!("unsupported conformance driver {other:?}")),
+        }
+    }
+    Ok(baseline)
+}
+
+fn assert_audit_lazy_tables_empty(dsn: &str) -> Result<(), String> {
+    let runtime =
+        tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| format!("create audit_lazy counter-check runtime: {error}"))?;
+    runtime.block_on(async {
+        let db = model::connect(dsn, 1, polyspec_orm::Config::default()).await.map_err(|error| format!("connect to the conformance database: {error}"))?;
+        let result = async {
+            let records = AuditRecord::new().connect(&db).get_count().await.map_err(|error| format!("count audit_record before audit_lazy: {error}"))?;
+            let notes = AuditedNote::new().connect(&db).get_count().await.map_err(|error| format!("count audited_note before audit_lazy: {error}"))?;
+            if records != 0 {
+                return Err(format!("cannot normalize audit_record identity counter: table has {records} rows"));
+            }
+            if notes != 0 {
+                return Err(format!("cannot normalize audited_note identity counter: table has {notes} rows"));
+            }
+            Ok(())
+        }
+        .await;
+        db.close().await;
+        result
+    })
+}
+
+fn read_conformance_counters(root: &Path, driver: &str, dsn: &str) -> Result<CounterSnapshot, String> {
+    let output = common::run("conformance counters", counter_command(root, driver, dsn, None)?, DEADLINE);
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).replace(dsn, "[dsn]");
+        return Err(format!("read {driver} conformance counters failed with {}: {stderr}", output.status));
+    }
+    serde_json::from_slice(&output.stdout).map_err(|error| format!("decode {driver} conformance counters: {error}"))
+}
+
+fn restore_conformance_counters(root: &Path, driver: &str, dsn: &str, counters: &CounterSnapshot) -> Result<(), String> {
+    let output = common::run("restore conformance counters", counter_command(root, driver, dsn, Some(counters))?, DEADLINE);
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).replace(dsn, "[dsn]");
+        return Err(format!("restore {driver} conformance counters failed with {}: {stderr}", output.status));
+    }
+    Ok(())
+}
+
+fn counter_command(root: &Path, driver: &str, dsn: &str, restore: Option<&CounterSnapshot>) -> Result<Command, String> {
+    let mut command = Command::new("node");
+    command.current_dir(root).args(["tests/conformance/check/main.mts", "counters", "--driver", driver, "--dsn", dsn]);
+    if let Some(snapshot) = restore {
+        let json = serde_json::to_string(snapshot).map_err(|error| format!("encode {driver} counter snapshot: {error}"))?;
+        command.arg("--restore-json").arg(json);
+    }
+    Ok(command)
 }
 
 /// Requirements: DIA-24. Cases: conformance_mysql::datetime_p0_roundtrip, conformance_mysql::time_p3_roundtrip,

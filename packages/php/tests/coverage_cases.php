@@ -266,25 +266,132 @@ function coverageRestoring(Closure $body, Closure $restore): void
     $restore();
 }
 
-/** Runs a conformance child and restores only its declared auto-increment counters afterward. */
-function coverageWithConformanceCountersRestored(string $driver, string $dsn, Closure $run): void
+/** Runs a conformance child and restores its original auto-increment counters afterward. */
+function coverageWithConformanceCountersRestored(
+    string $driver,
+    string $dsn,
+    Closure $run,
+    bool $auditLazyBaseline = false
+): void
 {
     $root = coverageRepositoryRoot();
     $command = ['node', "$root/tests/conformance/check/main.mts", 'counters', '--driver', $driver, '--dsn', $dsn];
+    $snapshot = coverageReadConformanceCounters($command, $root);
+    coverageRestoring(static function () use ($run, $auditLazyBaseline, $driver, $dsn, $command, $root, $snapshot): void {
+        if ($auditLazyBaseline) {
+            coverageAssertAuditLazyTablesEmpty($driver, $dsn);
+            $baseline = coverageAuditLazyCounterBaseline($driver, $snapshot);
+            coverageRestoreConformanceCounters($command, $root, json_encode($baseline, JSON_THROW_ON_ERROR));
+        }
+        $run();
+    }, static function () use ($command, $root, $snapshot): void {
+        coverageRestoreConformanceCounters($command, $root, $snapshot);
+        $current = coverageReadConformanceCounters($command, $root);
+        if (!coverageConformanceCountersEqual($snapshot, $current)) {
+            throw new RuntimeException('conformance counters differ from the original snapshot after restore');
+        }
+    });
+}
+
+/** @param list<string> $command @return array<string, array<string, mixed>> */
+function coverageReadConformanceCounters(array $command, string $root): array
+{
     [$status, $stdout, $stderr] = coverageProcess($command, $root);
     if ($status !== 0) {
         throw new RuntimeException("cannot read conformance counters: $stderr$stdout");
     }
     $snapshot = trim($stdout);
-    if ($snapshot === '' || !is_array(json_decode($snapshot, true, 512, JSON_THROW_ON_ERROR))) {
+    $counters = $snapshot === '' ? null : json_decode($snapshot, true, 512, JSON_THROW_ON_ERROR);
+    if (!is_array($counters) || $counters === []) {
         throw new RuntimeException('conformance counter reader returned an invalid snapshot');
     }
-    coverageRestoring($run, static function () use ($command, $root, $snapshot): void {
-        [$status, $stdout, $stderr] = coverageProcess([...$command, '--restore-json', $snapshot], $root);
-        if ($status !== 0) {
-            throw new RuntimeException("cannot restore conformance counters: $stderr$stdout");
+    return $counters;
+}
+
+/** @param array<string, array<string, mixed>> $snapshot @return array<string, array<string, mixed>> */
+function coverageAuditLazyCounterBaseline(string $driver, array $snapshot): array
+{
+    $baseline = $snapshot;
+    foreach (['audit_record', 'audited_note'] as $table) {
+        if ($driver === 'mysql') {
+            if (!isset($baseline[$table])) {
+                throw new RuntimeException("MySQL counter snapshot has no $table AUTO_INCREMENT");
+            }
+            $baseline[$table]['value'] = '1';
+            $baseline[$table]['called'] = true;
+            continue;
         }
-    });
+        if ($driver === 'postgres') {
+            $found = false;
+            foreach ($baseline as $name => $counter) {
+                if (($counter['owner'] ?? null) !== $table) {
+                    continue;
+                }
+                $baseline[$name]['value'] = '1';
+                $baseline[$name]['called'] = false;
+                $found = true;
+            }
+            if (!$found) {
+                throw new RuntimeException("PostgreSQL counter snapshot has no sequence owned by $table");
+            }
+            continue;
+        }
+        if ($driver === 'sqlite') {
+            if (isset($baseline[$table])) {
+                $baseline[$table]['value'] = '0';
+                $baseline[$table]['called'] = true;
+            }
+            continue;
+        }
+        throw new RuntimeException("unsupported conformance driver $driver");
+    }
+    return $baseline;
+}
+
+function coverageAssertAuditLazyTablesEmpty(string $driver, string $dsn): void
+{
+    $db = Orm::connect($dsn, new Config());
+    $quote = $driver === 'mysql' ? '`' : '"';
+    try {
+        foreach (['audit_record', 'audited_note'] as $table) {
+            $quotedTable = $quote . $table . $quote;
+            $count = (int) $db->pdo()->query('SELECT COUNT(*) FROM ' . $quotedTable)->fetchColumn();
+            if ($count !== 0) {
+                throw new RuntimeException("cannot normalize $table identity counter: table has $count rows");
+            }
+        }
+    } finally {
+        $db->close();
+    }
+}
+
+/** @param list<string> $command Restores the whole counter map rather than only counters the selected vector touched. */
+function coverageRestoreConformanceCounters(array $command, string $root, string $snapshot): void
+{
+    [$status, $stdout, $stderr] = coverageProcess([...$command, '--restore-json', $snapshot], $root);
+    if ($status !== 0) {
+        throw new RuntimeException("cannot restore conformance counters: $stderr$stdout");
+    }
+}
+
+/** @param array<string, array<string, mixed>> $left @param array<string, array<string, mixed>> $right */
+function coverageConformanceCountersEqual(array $left, array $right): bool
+{
+    if (array_diff_key($left, $right) !== [] || array_diff_key($right, $left) !== []) {
+        return false;
+    }
+    foreach ($left as $name => $counter) {
+        $current = $right[$name];
+        if (array_diff_key($counter, $current) !== [] || array_diff_key($current, $counter) !== []) {
+            return false;
+        }
+        foreach ($counter as $key => $value) {
+            if ($current[$key] !== $value) {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 /**

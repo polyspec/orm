@@ -7022,7 +7022,7 @@
                 },
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/orm/src/engine/mod.rs",
+                  "test": "packages/rust/orm/tests/unit/coverage_planner.rs",
                   "cases": [
                     "planner_tables",
                     "planner_scalar_column_subquery",
@@ -7030,10 +7030,10 @@
                     "planner_unplaced_child_conditions_append_and"
                   ],
                   "symbols": {
-                    "planner_tables": "engine::coverage_cases::planner_tables",
-                    "planner_scalar_column_subquery": "engine::coverage_cases::planner_scalar_column_subquery",
-                    "planner_joined_child_conditions_grouped": "engine::coverage_cases::planner_joined_child_conditions_grouped",
-                    "planner_unplaced_child_conditions_append_and": "engine::coverage_cases::planner_unplaced_child_conditions_append_and"
+                    "planner_tables": "engine::coverage_planner::planner::planner_tables",
+                    "planner_scalar_column_subquery": "engine::coverage_planner::planner::planner_scalar_column_subquery",
+                    "planner_joined_child_conditions_grouped": "engine::coverage_planner::planner::planner_joined_child_conditions_grouped",
+                    "planner_unplaced_child_conditions_append_and": "engine::coverage_planner::planner::planner_unplaced_child_conditions_append_and"
                   }
                 }
               ]

@@ -50,6 +50,46 @@ def vectors(dialect):
     return [{**v, "expect": expect[v["name"]]} for v in declared]
 
 
+def audit_lazy_baseline(dialect, original):
+    """Return the canonical empty-table identity counters used by audit_lazy."""
+    baseline = {name: dict(counter) for name, counter in original.items()}
+    for table in ("audit_record", "audited_note"):
+        if dialect == "mysql":
+            if table not in baseline:
+                raise AssertionError(f"MySQL counter snapshot has no {table} AUTO_INCREMENT")
+            baseline[table].update(value="1", called=True)
+        elif dialect == "postgres":
+            sequences = [counter for counter in baseline.values() if counter["owner"] == table]
+            if not sequences:
+                raise AssertionError(f"PostgreSQL counter snapshot has no sequence owned by {table}")
+            for counter in sequences:
+                counter.update(value="1", called=False)
+        elif dialect == "sqlite":
+            if table in baseline:
+                baseline[table].update(value="0", called=True)
+        else:
+            raise AssertionError(f"unsupported conformance driver {dialect!r}")
+    return baseline
+
+
+def assert_audit_lazy_tables_empty(dsn):
+    """Refuse to normalize identity counters when audit_lazy's tables already contain rows."""
+    from polyspec.orm.models import models
+
+    db = models.connect(dsn)
+    try:
+        for name, count in (
+            ("audit_record", models.AuditRecord().connect(db).get_count()),
+            ("audited_note", models.AuditedNote().connect(db).get_count()),
+        ):
+            if count != 0:
+                raise AssertionError(
+                    f"cannot normalize {name} identity counter: table has {count} rows"
+                )
+    finally:
+        db.close()
+
+
 class Run:
     """The output of one runner run over every vector, by vector name."""
 
@@ -65,8 +105,35 @@ class Run:
                 f"{variable} is required; run the test through make run-databases or make orm-check, which create the "
                 "bench database of the run; conformance tests never skip"
             )
+        original = self._counters(dsn)
+        try:
+            assert_audit_lazy_tables_empty(dsn)
+            self._restore_counters(dsn, audit_lazy_baseline(self.dialect, original))
+            result = subprocess.run(
+                [sys.executable, str(RUNNER), "--models", str(MODELS), "--dsn", dsn],
+                cwd=REPOSITORY_ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if result.returncode != 0:
+                raise RuntimeError(
+                    f"runner_python.py on {self.dialect} exited with {result.returncode}: "
+                    + result.stderr.replace(dsn, "[redacted]")[-2000:]
+                )
+            self.output = exact(result.stdout)
+        finally:
+            self._restore_counters(dsn, original)
+            restored = self._counters(dsn)
+            if restored != original:
+                raise AssertionError(
+                    f"{self.dialect} conformance counters changed after the owner run: "
+                    f"got {restored}, want {original}"
+                )
+
+    def _counters(self, dsn):
         result = subprocess.run(
-            [sys.executable, str(RUNNER), "--models", str(MODELS), "--dsn", dsn],
+            ["node", "tests/conformance/check/main.mts", "counters", "--driver", self.dialect, "--dsn", dsn],
             cwd=REPOSITORY_ROOT,
             capture_output=True,
             text=True,
@@ -74,10 +141,43 @@ class Run:
         )
         if result.returncode != 0:
             raise RuntimeError(
-                f"runner_python.py on {self.dialect} exited with {result.returncode}: "
+                f"read {self.dialect} conformance counters: "
                 + result.stderr.replace(dsn, "[redacted]")[-2000:]
             )
-        self.output = exact(result.stdout)
+        try:
+            counters = json.loads(result.stdout)
+        except json.JSONDecodeError as error:
+            raise RuntimeError(
+                f"decode {self.dialect} conformance counters: {error}"
+            ) from error
+        if not isinstance(counters, dict):
+            raise TypeError(f"{self.dialect} conformance counters are not an object")
+        return counters
+
+    def _restore_counters(self, dsn, counters):
+        snapshot = json.dumps(counters, separators=(",", ":"))
+        result = subprocess.run(
+            [
+                "node",
+                "tests/conformance/check/main.mts",
+                "counters",
+                "--driver",
+                self.dialect,
+                "--dsn",
+                dsn,
+                "--restore-json",
+                snapshot,
+            ],
+            cwd=REPOSITORY_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"restore {self.dialect} conformance counters: "
+                + result.stderr.replace(dsn, "[redacted]")[-2000:]
+            )
 
 
 def check(run):

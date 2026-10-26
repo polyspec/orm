@@ -17,6 +17,7 @@ use Polyspec\Orm\Planner;
 use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Validator;
 use PHPUnit\Framework\Assert;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
@@ -96,6 +97,15 @@ function plannerFixtureCase(string $root, string $id): array
     return $found[0];
 }
 
+/** @return iterable<string, array{string}> The planner fixture's exact named case ids. */
+function plannerFixtureCases(string $root): iterable
+{
+    $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+    foreach ($fixture['cases'] as $case) {
+        yield $case['id'] => [$case['id']];
+    }
+}
+
 function plannerScalarColumnSubqueryRequest(string $root): array
 {
     $case = plannerFixtureCase($root, 'planner_scalar_column_subquery');
@@ -144,6 +154,26 @@ function paramUsesCase(string $root, array $fixture, string $id): void
 #[Small]
 final class CoveragePlannerTest extends TestCase
 {
+    /** @return iterable<string, array{string}> */
+    public static function vectorCases(): iterable
+    {
+        return plannerFixtureCases(dirname(__DIR__, 3));
+    }
+
+    #[DataProvider('vectorCases')]
+    public function testVector(string $id): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        $case = plannerFixtureCase($root, $id);
+        if ($case['operation'] === 'compile') {
+            plannerCase($root, $fixture, $id);
+            return;
+        }
+        Assert::assertSame('param_uses', $case['operation'], "case $id has an unknown operation");
+        paramUsesCase($root, $fixture, $id);
+    }
+
     public static function setUpBeforeClass(): void
     {
         parent::setUpBeforeClass();

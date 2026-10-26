@@ -241,6 +241,64 @@ final class CoverageCasesTest extends TestCase
         }
     }
 
+    public function testAuditLazyCounterBaselineCopiesAndChangesOnlyOwnedCounters(): void
+    {
+        $mysql = [
+            'audit_record' => ['value' => '43', 'called' => false],
+            'audited_note' => ['value' => '8', 'called' => false],
+            'other_table' => ['value' => '12', 'called' => true],
+        ];
+        $mysqlBaseline = coverageAuditLazyCounterBaseline('mysql', $mysql);
+        self::assertSame([
+            'audit_record' => ['value' => '1', 'called' => true],
+            'audited_note' => ['value' => '1', 'called' => true],
+            'other_table' => ['value' => '12', 'called' => true],
+        ], $mysqlBaseline);
+        self::assertSame('43', $mysql['audit_record']['value'], 'the original snapshot remains unchanged');
+
+        $postgres = [
+            'audit_record_id_seq' => ['value' => '43', 'called' => true, 'owner' => 'audit_record'],
+            'audited_note_id_seq' => ['value' => '8', 'called' => true, 'owner' => 'audited_note'],
+            'other_id_seq' => ['value' => '12', 'called' => true, 'owner' => 'other_table'],
+        ];
+        self::assertSame([
+            'audit_record_id_seq' => ['value' => '1', 'called' => false, 'owner' => 'audit_record'],
+            'audited_note_id_seq' => ['value' => '1', 'called' => false, 'owner' => 'audited_note'],
+            'other_id_seq' => ['value' => '12', 'called' => true, 'owner' => 'other_table'],
+        ], coverageAuditLazyCounterBaseline('postgres', $postgres));
+
+        $sqlite = [
+            'audit_record' => ['value' => '43', 'called' => false],
+            'unrelated' => ['value' => '12', 'called' => true],
+        ];
+        self::assertSame([
+            'audit_record' => ['value' => '0', 'called' => true],
+            'unrelated' => ['value' => '12', 'called' => true],
+        ], coverageAuditLazyCounterBaseline('sqlite', $sqlite));
+        self::assertSame(['value' => '43', 'called' => false], $sqlite['audit_record']);
+    }
+
+    public function testAuditLazyCounterBaselineRejectsIncompleteSnapshots(): void
+    {
+        try {
+            coverageAuditLazyCounterBaseline('mysql', []);
+            self::fail('missing MySQL audit counters must fail');
+        } catch (RuntimeException $error) {
+            self::assertStringContainsString('audit_record AUTO_INCREMENT', $error->getMessage());
+        }
+        try {
+            coverageAuditLazyCounterBaseline('postgres', [
+                'audit_record_id_seq' => ['value' => '4', 'called' => true, 'owner' => 'audit_record'],
+            ]);
+            self::fail('missing PostgreSQL owned sequence must fail');
+        } catch (RuntimeException $error) {
+            self::assertStringContainsString('no sequence owned by audited_note', $error->getMessage());
+        }
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('unsupported conformance driver oracle');
+        coverageAuditLazyCounterBaseline('oracle', []);
+    }
+
     public function testModelQueryRunnerSelectsOwnerAndClosesItsConnection(): void
     {
         $connections = [];

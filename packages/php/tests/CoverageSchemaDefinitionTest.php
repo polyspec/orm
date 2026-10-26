@@ -16,6 +16,7 @@ use RuntimeException;
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Dbspec\Document;
 use PHPUnit\Framework\Assert;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
@@ -66,6 +67,46 @@ function fixtureCase(array $fixture, string $id, string $operation): array
 #[Small]
 class CoverageSchemaDefinitionTest extends TestCase
 {
+    /** @return iterable<string, array{string}> The fixture's exact named case ids. */
+    public static function vectorCases(): iterable
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/schema_definition.json");
+        foreach ($fixture['cases'] as $case) {
+            yield $case['id'] => [$case['id']];
+        }
+    }
+
+    #[DataProvider('vectorCases')]
+    public function testVector(string $id): void
+    {
+        switch ($id) {
+            case 'dbspec_emit_round_trip':
+                $this->testDbspecEmitRoundTrip();
+                return;
+            case 'dbspec_manifest_hash':
+                $this->testDbspecManifestHash();
+                return;
+            case 'dbspec_render_ddl':
+                $this->testDbspecRenderDdl();
+                return;
+            case 'dbspec_analyze_tokens':
+                $this->testDbspecAnalyzeTokens();
+                return;
+            case 'dbspec_format':
+                $this->testDbspecFormat();
+                return;
+            case 'dbspec_format_refusal':
+                $this->testDbspecFormatRefusal();
+                return;
+            case 'dbspec_parse_positions':
+                $this->testDbspecParsePositions();
+                return;
+            default:
+                throw new RuntimeException("unknown schema_definition case $id");
+        }
+    }
+
     /** The dbspec implementation the cases run on: the PHP client here, the extension in its subclass. */
     protected static function dbspec(): string
     {

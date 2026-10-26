@@ -5,13 +5,17 @@ package model_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 
+	"github.com/polyspec/orm/packages/go/model"
+	"github.com/polyspec/orm/packages/go/orm"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
@@ -99,6 +103,15 @@ func runConformanceVectors(t *testing.T, dsnVariable, expectFile string) {
 	}
 	root := filepath.Join("..", "..", "..")
 	recorded := readRecorded(t, root, expectFile)
+	driver := map[string]string{
+		"BENCH_MYSQL_DSN":    "mysql",
+		"BENCH_POSTGRES_DSN": "postgres",
+		"BENCH_SQLITE_DSN":   "sqlite",
+	}[dsnVariable]
+	if driver == "" {
+		t.Fatalf("unsupported conformance DSN variable %q", dsnVariable)
+	}
+	withAuditLazyCounterBaseline(t, root, driver, dsn)
 	output := runConformanceGo(t, root, dsn, "-tags", "ormtest", "./packages/go/internal/conformance", "-dsn", dsn)
 	if len(output) != len(recorded.Vectors) {
 		t.Errorf("runner_go printed %d vectors, %s has %d", len(output), expectFile, len(recorded.Vectors))
@@ -117,6 +130,126 @@ func runConformanceVectors(t *testing.T, dsnVariable, expectFile string) {
 			}
 		})
 	}
+}
+
+type conformanceCounter struct {
+	Value  string `json:"value"`
+	Called bool   `json:"called"`
+	Owner  string `json:"owner"`
+}
+
+// withAuditLazyCounterBaseline temporarily gives the audit_lazy vector its canonical empty-table identity
+// counters, then restores every counter to the value that the owner test observed before it ran.
+func withAuditLazyCounterBaseline(t *testing.T, root, driver, dsn string) {
+	t.Helper()
+	original := readConformanceCounters(t, root, driver, dsn)
+	t.Cleanup(func() {
+		if err := restoreConformanceCounters(root, driver, dsn, original); err != nil {
+			t.Errorf("restore %s conformance counters: %v", driver, err)
+			return
+		}
+		current := readConformanceCounters(t, root, driver, dsn)
+		if !reflect.DeepEqual(current, original) {
+			t.Errorf("conformance counter state changed after the owner run: got %v, want %v", current, original)
+		}
+	})
+
+	assertAuditLazyTablesEmpty(t, dsn)
+	baseline := make(map[string]conformanceCounter, len(original))
+	for name, value := range original {
+		baseline[name] = value
+	}
+	for _, table := range []string{"audit_record", "audited_note"} {
+		switch driver {
+		case "mysql":
+			counter, ok := baseline[table]
+			if !ok {
+				t.Fatalf("MySQL counter snapshot has no %s AUTO_INCREMENT", table)
+			}
+			counter.Value = "1"
+			counter.Called = true
+			baseline[table] = counter
+		case "postgres":
+			found := false
+			for name, counter := range baseline {
+				if counter.Owner != table {
+					continue
+				}
+				counter.Value = "1"
+				counter.Called = false
+				baseline[name] = counter
+				found = true
+			}
+			if !found {
+				t.Fatalf("PostgreSQL counter snapshot has no sequence owned by %s", table)
+			}
+		case "sqlite":
+			if counter, ok := baseline[table]; ok {
+				counter.Value = "0"
+				counter.Called = true
+				baseline[table] = counter
+			}
+		default:
+			t.Fatalf("unsupported conformance driver %q", driver)
+		}
+	}
+	if err := restoreConformanceCounters(root, driver, dsn, baseline); err != nil {
+		t.Fatalf("set the %s audit_lazy counter baseline: %v", driver, err)
+	}
+}
+
+func assertAuditLazyTablesEmpty(t *testing.T, dsn string) {
+	t.Helper()
+	db, err := model.Connect(dsn, orm.Config{})
+	if err != nil {
+		t.Fatalf("connect to the conformance database: %v", err)
+	}
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close the conformance database: %v", err)
+		}
+	}()
+	for name, count := range map[string]func() (int64, error){
+		"audit_record": func() (int64, error) { return model.AuditRecord().Connect(db).GetCount() },
+		"audited_note": func() (int64, error) { return model.AuditedNote().Connect(db).GetCount() },
+	} {
+		rows, err := count()
+		if err != nil {
+			t.Fatalf("count %s before audit_lazy: %v", name, err)
+		}
+		if rows != 0 {
+			t.Fatalf("cannot normalize %s identity counter: table has %d rows", name, rows)
+		}
+	}
+}
+
+func readConformanceCounters(t *testing.T, root, driver, dsn string) map[string]conformanceCounter {
+	t.Helper()
+	command := exec.Command("node", "tests/conformance/check/main.mts", "counters", "--driver", driver, "--dsn", dsn)
+	command.Dir = root
+	output, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("read %s conformance counters: %v\n%s", driver, err, strings.ReplaceAll(string(output), dsn, "[dsn]"))
+	}
+	var counters map[string]conformanceCounter
+	if err := json.Unmarshal(output, &counters); err != nil {
+		t.Fatalf("decode %s conformance counters: %v", driver, err)
+	}
+	return counters
+}
+
+func restoreConformanceCounters(root, driver, dsn string, counters map[string]conformanceCounter) error {
+	snapshot, err := json.Marshal(counters)
+	if err != nil {
+		return fmt.Errorf("encode %s counters: %w", driver, err)
+	}
+	command := exec.Command("node", "tests/conformance/check/main.mts", "counters", "--driver", driver, "--dsn", dsn, "--restore-json", string(snapshot))
+	command.Dir = root
+	output, err := command.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%w\n%s", err, strings.ReplaceAll(string(output), dsn, "[dsn]"))
+	}
+	return nil
 }
 
 // readRecorded reads the recorded vectors of the conformance file expectFile under

@@ -9,6 +9,7 @@ use Polyspec\Orm\Planner;
 use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Validator;
 use PHPUnit\Framework\Assert;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -16,6 +17,19 @@ use ReflectionClass;
 #[Small]
 final class CoveragePlannerExtensionTest extends TestCase
 {
+    /** @return iterable<string, array{string}> */
+    public static function vectorCases(): iterable
+    {
+        require_once dirname(__DIR__, 2) . '/php/tests/CoveragePlannerTest.php';
+        return plannerFixtureCases(dirname(__DIR__, 3));
+    }
+
+    #[DataProvider('vectorCases')]
+    public function testVector(string $id): void
+    {
+        $this->runPlannerCoverageCase($id);
+    }
+
     private function runPlannerCoverageCase(string $id): void
     {
         require_once dirname(__DIR__, 2) . '/php/tests/CoveragePlannerTest.php';

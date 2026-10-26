@@ -3356,14 +3356,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/DbspecApplyCleanupTestExtensionTest.php",
-          "id": "DbspecApplyCleanupTestExtensionTest::testCleanupErrorsRelease",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "dbspec-php-extension-check/apply-cleanup"
-          ]
+          "id": "DbspecApplyCleanupTestExtensionTest::testCleanupErrorsRelease"
         }
       ]
     },
@@ -3404,14 +3397,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/DbspecVerifyErrorsTest.php",
-          "id": "DbspecVerifyErrorsTest::testNativeVerificationErrorsPreserveCauseAndDistinguishDrift",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "dbspec-verify-errors-php-extension-check"
-          ]
+          "id": "DbspecVerifyErrorsTest::testNativeVerificationErrorsPreserveCauseAndDistinguishDrift"
         },
         {
           "implementation": "python",
@@ -3673,14 +3659,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/DbspecIntrospectNativeTest.php",
-          "id": "DbspecIntrospectNativeTest::testSQLiteMemoryCountIndependentOfTableCount",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "dbspec-introspect-php-extension-query-count-check"
-          ]
+          "id": "DbspecIntrospectNativeTest::testSQLiteMemoryCountIndependentOfTableCount"
         },
         {
           "implementation": "typescript",
@@ -3690,14 +3669,7 @@
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/dbspec-introspect-round-trip.mjs",
-          "id": "introspection query count per dialect",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "dbspec-introspect-ts-check"
-          ]
+          "id": "introspection query count per dialect"
         },
         {
           "implementation": "python",
@@ -3767,14 +3739,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/DbspecPlanApplyTestExtensionTest.php",
-          "id": "DbspecPlanApplyTestExtensionTest::testPlan",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "dbspec-php-extension-check/plan-apply"
-          ]
+          "id": "DbspecPlanApplyTestExtensionTest::testPlan"
         },
         {
           "implementation": "typescript",
@@ -4782,7 +4747,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php",
-          "id": "CoverageModelQueriesExtensionTest::test_model_query_rows"
+          "id": "CoverageModelQueriesExtensionTest::testModelQueryRows"
         },
         {
           "implementation": "typescript",
@@ -4844,7 +4809,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php",
-          "id": "CoverageModelQueriesExtensionTest::test_model_query_rows"
+          "id": "CoverageModelQueriesExtensionTest::testModelQueryRows"
         },
         {
           "implementation": "typescript",
@@ -4911,7 +4876,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php",
-          "id": "CoverageModelQueriesExtensionTest::test_model_query_rows"
+          "id": "CoverageModelQueriesExtensionTest::testModelQueryRows"
         },
         {
           "implementation": "php-extension",
@@ -5062,7 +5027,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
-          "id": "CoverageModelWritesExtensionTest::test_model_write_cycle"
+          "id": "CoverageModelWritesExtensionTest::testModelWriteCycle"
         },
         {
           "implementation": "typescript",
@@ -5130,7 +5095,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
-          "id": "CoverageModelWritesExtensionTest::test_model_write_cycle"
+          "id": "CoverageModelWritesExtensionTest::testModelWriteCycle"
         },
         {
           "implementation": "typescript",
@@ -5195,7 +5160,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
-          "id": "CoverageModelWritesExtensionTest::test_model_write_cycle"
+          "id": "CoverageModelWritesExtensionTest::testModelWriteCycle"
         },
         {
           "implementation": "php-extension",
@@ -5262,7 +5227,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
-          "id": "CoverageModelWritesExtensionTest::test_model_write_cycle"
+          "id": "CoverageModelWritesExtensionTest::testModelWriteCycle"
         },
         {
           "implementation": "php-extension",
@@ -8574,7 +8539,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageNativeFixtureExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageNativeFixtureExtensionTest::testAggregateNumeric"
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageNativeFixtureExtensionTest::testAggregateNumericVector"
         },
         {
           "implementation": "typescript",
@@ -8611,14 +8576,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/AesJsonTestExtensionTest.php",
-          "id": "AesJsonTestExtensionTest::testAesJsonColumn",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "aes-json-php-extension-check"
-          ]
+          "id": "AesJsonTestExtensionTest::testAesJsonColumn"
         },
         {
           "implementation": "typescript",
@@ -8709,7 +8667,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageNativeFixtureExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageNativeFixtureExtensionTest::testDecimalModel"
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageNativeFixtureExtensionTest::testDecimalModelVector"
         },
         {
           "implementation": "typescript",
@@ -8756,7 +8714,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageNativeFixtureExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageNativeFixtureExtensionTest::testIdentityLoad"
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageNativeFixtureExtensionTest::testIdentityLoadVector"
         },
         {
           "implementation": "typescript",
@@ -8834,11 +8792,13 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoveragePlannerTest.php"
+          "test": "packages/php/tests/CoveragePlannerTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\CoveragePlannerTest::testVector"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php"
+          "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\CoveragePlannerExtensionTest::testVector"
         },
         {
           "implementation": "typescript",
@@ -8850,8 +8810,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/src/engine/mod.rs",
-          "symbol": "engine"
+          "test": "packages/rust/orm/tests/unit/coverage_planner.rs",
+          "symbol": "engine::coverage_planner::planner"
         }
       ]
     },
@@ -8889,8 +8849,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/src/engine/mod.rs",
-          "id": "engine::coverage_cases::planner_joined_child_conditions_grouped"
+          "test": "packages/rust/orm/tests/unit/coverage_planner.rs",
+          "id": "engine::coverage_planner::planner::planner_joined_child_conditions_grouped"
         }
       ]
     },
@@ -9025,7 +8985,8 @@
       "bindings": [
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php"
+          "test": "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageSchemaDefinitionExtensionTest::testVector"
         },
         {
           "implementation": "go",
@@ -9034,7 +8995,8 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageSchemaDefinitionTest.php"
+          "test": "packages/php/tests/CoverageSchemaDefinitionTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\CoverageSchemaDefinitionTest::testVector"
         },
         {
           "implementation": "typescript",
@@ -9071,7 +9033,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/ModelNativeTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\ModelNativeTest::testStyledColumnDistinguishesUnselectedSqlNullAndEncodedNull"
+          "symbol": "Polyspec\\Orm\\Tests\\ModelNativeTest::testStyledColumnStateVector"
         },
         {
           "implementation": "go",
@@ -9162,7 +9124,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageNativeChangedDatabaseExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageNativeChangedDatabaseExtensionTest::testInstallChangedDatabase"
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageNativeChangedDatabaseExtensionTest::testInstallChangedDatabaseVector"
         },
         {
           "implementation": "typescript",
@@ -11671,14 +11633,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/DbspecShowCreateIntrospectTestExtensionTest.php",
-          "id": "DbspecShowCreateIntrospectTestExtensionTest::testIntrospect",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "dbspec-php-extension-check/show-create"
-          ]
+          "id": "DbspecShowCreateIntrospectTestExtensionTest::testIntrospect"
         },
         {
           "implementation": "rust",
@@ -15723,7 +15678,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/ModelAssemblyTest.php",
-          "id": "ModelAssemblyTest::testGroupValuePreservesExactI64"
+          "id": "ModelAssemblyTest::testGroupResultPreservesExactI64Value"
         },
         {
           "implementation": "typescript",
@@ -17381,7 +17336,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
-          "id": "CoverageModelWritesExtensionTest::test_model_write_cycle"
+          "id": "CoverageModelWritesExtensionTest::testModelWriteCycle"
         },
         {
           "implementation": "typescript",
@@ -24165,7 +24120,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageStatementEventsTest.php",
-          "id": "CoverageStatementEventsTest::test_statement_events"
+          "id": "CoverageStatementEventsTest::testStatementEvents"
         },
         {
           "implementation": "typescript",
@@ -25752,14 +25707,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testAesRotation",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "aes-rotation-php-extension-check"
-          ]
+          "id": "ModelTestExtensionTest::testAesRotation"
         },
         {
           "implementation": "typescript",
@@ -25817,14 +25765,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testAesRotation",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "aes-rotation-php-extension-check"
-          ]
+          "id": "ModelTestExtensionTest::testAesRotation"
         },
         {
           "implementation": "php-extension",
@@ -26872,12 +26813,12 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/DbspecSqliteLockNativeTest.php",
-          "id": "DbspecSqliteLockTest::testOnlySqliteBusyAndLockedErrorInfoCodesAreClassifiedAsLocks"
+          "id": "DbspecSqliteLockNativeTest::testOnlySqliteBusyAndLockedErrorInfoCodesAreClassifiedAsLocks"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/DbspecSqliteLockNativeTest.php",
-          "id": "DbspecSqliteLockTest::testNonLockAndMissingPdoCodesPreserveTheOriginalException"
+          "id": "DbspecSqliteLockNativeTest::testNonLockAndMissingPdoCodesPreserveTheOriginalException"
         },
         {
           "implementation": "typescript",
@@ -28266,14 +28207,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testAesRotation",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "aes-rotation-php-extension-check"
-          ]
+          "id": "ModelTestExtensionTest::testAesRotation"
         },
         {
           "implementation": "typescript",
@@ -28318,14 +28252,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testAesRotation",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "aes-rotation-php-extension-check"
-          ]
+          "id": "ModelTestExtensionTest::testAesRotation"
         },
         {
           "implementation": "typescript",

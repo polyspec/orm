@@ -131,7 +131,7 @@ final class CoverageConformanceVerificationTest extends TestCase
                 ));
             }
             $output = json_decode($stdout, false, 512, JSON_THROW_ON_ERROR);
-        });
+        }, true);
         if (!$output instanceof stdClass) {
             throw new RuntimeException('conformance runner returned no object');
         }
@@ -208,6 +208,7 @@ final class CoverageConformanceVerificationTest extends TestCase
                             "vector $name differs from $file: " . json_encode($output->$name)
                         );
                     },
+                    $name === 'audit_lazy',
                 );
             }
         }

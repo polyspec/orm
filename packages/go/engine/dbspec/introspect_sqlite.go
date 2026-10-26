@@ -12,11 +12,11 @@ import (
 // SQLite catalog queries. They join sqlite_master with table-valued pragmas, to read every
 // table at once.
 const (
-	sqliteMasterQuery = `SELECT m.type, m.name, m.tbl_name, IFNULL(m.sql, ''), IFNULL(l.type, '') FROM sqlite_master m
-LEFT JOIN pragma_table_list l ON l.schema = 'main' AND l.name = m.name
-WHERE m.name NOT LIKE 'sqlite_%' AND m.tbl_name NOT LIKE 'dbspec$%' ORDER BY m.type, m.name`
-	sqliteColumnsQuery = `SELECT m.name, p.name, p.type, p."notnull", p.dflt_value, p.pk, p.hidden FROM sqlite_master m
-JOIN pragma_table_xinfo(m.name) p WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND p.name NOT LIKE 'dbspec$%' ORDER BY m.name, p.cid`
+	sqliteMasterQuery = `SELECT type, name, tbl_name, IFNULL(sql, '') FROM sqlite_master
+WHERE name NOT LIKE 'sqlite_%' AND tbl_name NOT LIKE 'dbspec$%' ORDER BY type, name`
+	sqliteColumnsQuery = `SELECT m.name, p.name, p.type, p."notnull", p.dflt_value, p.pk, p.hidden, l.type FROM sqlite_master m
+JOIN pragma_table_xinfo(m.name) p JOIN pragma_table_list l ON l.schema = 'main' AND l.name = m.name
+WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND p.name NOT LIKE 'dbspec$%' ORDER BY m.name, p.cid`
 	sqliteIndexesQuery = `SELECT m.name, l.name, l."unique", l.origin, l.partial,
 IFNULL((SELECT group_concat(IFNULL(x.name, ''), ',') FROM (SELECT name FROM pragma_index_xinfo(l.name) WHERE key = 1 ORDER BY seqno) x), ''),
 IFNULL((SELECT group_concat(x."desc", ',') FROM (SELECT "desc" FROM pragma_index_xinfo(l.name) WHERE key = 1 ORDER BY seqno) x), '')
@@ -51,15 +51,12 @@ func readSQLite(ctx context.Context, q Querier) (*catalog, error) {
 	parsed := map[string]*sqliteTable{}
 	var triggers = map[string][]itrigger{}
 	err := eachRow(ctx, q, sqliteMasterQuery, func(r scanner) error {
-		var kind, name, table, text, tableKind string
-		if err := r.Scan(&kind, &name, &table, &text, &tableKind); err != nil {
+		var kind, name, table, text string
+		if err := r.Scan(&kind, &name, &table, &text); err != nil {
 			return err
 		}
 		switch kind {
 		case "table":
-			if tableKind == "shadow" {
-				return nil
-			}
 			if strings.HasPrefix(text, "CREATE VIRTUAL TABLE") || strings.HasSuffix(text, "WITHOUT ROWID") {
 				c.report("table", name, name, "a virtual or WITHOUT ROWID table has no dbspec definition")
 				return nil
@@ -86,11 +83,14 @@ func readSQLite(ctx context.Context, q Querier) (*catalog, error) {
 	}
 	r := renderer{d: DialectSQLite}
 	err = eachRow(ctx, q, sqliteColumnsQuery, func(row scanner) error {
-		var table, name, declared string
+		var table, name, declared, tableKind string
 		var notNull, pk, hidden int
 		var dflt sql.NullString
-		if err := row.Scan(&table, &name, &declared, &notNull, &dflt, &pk, &hidden); err != nil {
+		if err := row.Scan(&table, &name, &declared, &notNull, &dflt, &pk, &hidden, &tableKind); err != nil {
 			return err
+		}
+		if tableKind == "shadow" {
+			return nil
 		}
 		t := c.table(table)
 		if t == nil {

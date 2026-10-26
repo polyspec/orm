@@ -97,8 +97,8 @@ pub(super) fn run(id: &str) {
     polyspec_orm_testcase::step(format_args!("{id} cpu={cpu:?} wall={:?}", clock.wall()));
 }
 
-/// The cases of the suite, one test `planner::<case id>` per case.
-mod planner {
+/// Tests of planner invariants that are not cases in the public fixture.
+mod internal_tests {
     use super::*;
 
     #[test]
@@ -163,6 +163,39 @@ mod planner {
             .expect_err("planner must reject missing post-validation column-function metadata");
         assert_eq!(error.code(), crate::codes::INTERNAL);
         assert!(error.to_string().contains("author.missing_column"), "{error}");
+    }
+}
+
+/// The cases of the suite, one test `planner::<case id>` per case.
+mod planner {
+    use super::*;
+
+    // Requirements: PRT-37.
+    #[test]
+    fn planner_tables() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_tables");
+    }
+
+    // Requirements: PRT-78.
+    #[test]
+    fn planner_scalar_column_subquery() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_scalar_column_subquery");
+    }
+
+    // Requirements: DSL-95.
+    #[test]
+    fn planner_joined_child_conditions_grouped() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_joined_child_conditions_grouped");
+    }
+
+    // Requirements: DSL-95.
+    #[test]
+    fn planner_unplaced_child_conditions_append_and() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_unplaced_child_conditions_append_and");
     }
 
     #[test]
