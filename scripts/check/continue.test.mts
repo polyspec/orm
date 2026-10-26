@@ -23,6 +23,9 @@ caseTest('Rust workspace dispatch skips only the database cases owned by the fea
   assert.ok(skipped.has('coverage_dsn_connection'));
   assert.ok(skipped.has('coverage_catalog_read'));
   assert.ok(skipped.has('coverage_catalog_connection::coverage_catalog_read'));
+  assert.ok(skipped.has('coverage_catalog_read_budgets'));
+  assert.ok(skipped.has('coverage_catalog_connection::coverage_catalog_read_budgets'));
+  assert.ok(skipped.has('coverage_group_rows_db::coverage_group_rows_db'));
   assert.ok(skipped.has('coverage_complex_query::coverage_complex_query_product_search'));
   assert.ok(skipped.has('coverage_schema_install::coverage_schema_install_external_documents'));
   assert.ok(!skipped.has('coverage_'));

@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { Author, ServiceMember, User, connect, orm } from '../dist/index.js';
 import { runCases } from './coverage_case.mjs';
+import { checkGroupRowsDatabase } from './group_rows_db.mjs';
 
 await runCases('coverage_model_queries.mjs', {
   // Requirements: DSL-57, DSL-58, DSL-60, DSL-62, DSL-73, DSL-74, DSL-80, DSL-82, DSL-99, INT-16, INT-29, INT-30, INT-32, INT-33, PLN-11, PLN-25, PLN-35.
@@ -49,6 +50,8 @@ await runCases('coverage_model_queries.mjs', {
       assert.equal(author.getUserModel()?.getName(), 'user-1', 'user loaded through the relation');
     } finally { await db.close(); }
   },
+  // Requirements: INT-31.
+  group_rows_database: checkGroupRowsDatabase,
   // Requirements: DSL-76.
   async remove_columns_keys_and_added_column({ driver, dsn }) {
     const db = await connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });

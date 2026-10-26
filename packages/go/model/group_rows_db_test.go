@@ -22,6 +22,11 @@ func TestGroupRowsDatabase(t *testing.T) {
 	}
 	db := must(model.Connect(dsn, orm.Config{AESKey: "bench-salt", BlindIndexKey: "bench-blind-index"}))
 	defer testcase.Close(t, db)
+	checkGroupRowsDatabase(t, db)
+}
+
+func checkGroupRowsDatabase(t *testing.T, db *orm.DB) {
+	t.Helper()
 	groups := must(model.Author().Connect(db).GroupByIsClose().OrderByIsCloseAsc().GetsCount())
 	if groups.Len() != 2 {
 		t.Fatalf("getsCount returned %d rows, want 2", groups.Len())

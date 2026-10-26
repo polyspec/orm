@@ -3,13 +3,13 @@
 //! count, and a SQL NULL group is kept.
 use super::coverage_env::{connect, run};
 use super::model::Author;
-use polyspec_orm::{codes, Val};
+use polyspec_orm::{Val, codes};
 
 #[tokio::test]
 // Requirements: INT-31.
 async fn coverage_group_rows_db() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    run("group_rows_db", async {
+    run("group_rows_database", async {
         let db = connect().await;
         let groups = Author::new().connect(&db).group_by_is_close().order_by_is_close_asc().gets_count().await.unwrap();
         assert_eq!(groups.len(), 2, "getsCount returned partial models");

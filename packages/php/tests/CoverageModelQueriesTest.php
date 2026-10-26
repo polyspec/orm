@@ -34,4 +34,13 @@ final class CoverageModelQueriesTest extends TestCase
             CoverageModelQueriesCase::removeColumns($db);
         });
     }
+
+    // Requirements: INT-31.
+    public function testGroupRowsDatabase(): void
+    {
+        require_once __DIR__ . '/GroupRowsDbCases.php';
+        coverageRunDatabaseItems(__FILE__, static function (\Polyspec\Orm\Db $db): void {
+            GroupRowsDbCase::run($db);
+        });
+    }
 }

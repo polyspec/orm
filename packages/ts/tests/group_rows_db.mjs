@@ -1,13 +1,10 @@
 import { Author, GroupRow, GroupRows, OrmError, connect } from '../dist/index.js';
 import { caseTest, DATABASE } from '../../../tests/testcase.mts';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 // Requirements: INT-31.
-const { ORM_GROUP_DATABASE: driver, ORM_GROUP_DSN: dsn } = process.env;
-if (!['mysql', 'postgres', 'sqlite'].includes(driver) || !dsn) {
-  throw new Error('ORM_GROUP_DATABASE and ORM_GROUP_DSN are required');
-}
-// The case reports its PASS or FAIL line through caseTest, with its deadline (KSTD-10-4).
-caseTest('group_rows_database', DATABASE, async () => {
+export async function checkGroupRowsDatabase({ driver, dsn }) {
   const db = await connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
   try {
     if (db.driver !== driver) throw new Error('DSN selected the wrong database');
@@ -51,4 +48,13 @@ caseTest('group_rows_database', DATABASE, async () => {
   } finally {
     await db.close();
   }
-});
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  const { ORM_GROUP_DATABASE: driver, ORM_GROUP_DSN: dsn } = process.env;
+  if (!['mysql', 'postgres', 'sqlite'].includes(driver) || !dsn) {
+    throw new Error('ORM_GROUP_DATABASE and ORM_GROUP_DSN are required');
+  }
+  // The case reports its PASS or FAIL line through caseTest, with its deadline (KSTD-10-4).
+  caseTest('group_rows_database', DATABASE, () => checkGroupRowsDatabase({ driver, dsn }));
+}

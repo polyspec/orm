@@ -106,6 +106,14 @@ func TestCoverageModelQueryRows(t *testing.T) {
 	}
 }
 
+// TestCoverageGroupRowsDatabase runs the shared grouped-row assertions on the selected database.
+// Requirements: INT-31.
+func TestCoverageGroupRowsDatabase(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	db, _, _ := connectFeature(t)
+	checkGroupRowsDatabase(t, db)
+}
+
 // Requirements: DSL-76.
 func TestCoverageModelRemoveColumns(t *testing.T) {
 	testcase.Start(t, testcase.Database)

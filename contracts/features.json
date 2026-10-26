@@ -1783,7 +1783,8 @@
         "kind": "database",
         "cases": [
           "model_query_rows",
-          "remove_columns_keys_and_added_column"
+          "remove_columns_keys_and_added_column",
+          "group_rows_database"
         ],
         "owners": {
           "go": {
@@ -1792,7 +1793,8 @@
               "packages/go/model/coverage_model_queries_test.go"
             ],
             "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "contracts/fixtures/bench/bench.dbs",
+              "packages/go/model/group_rows_db_test.go"
             ],
             "commands": {
               "mysql": [
@@ -1801,11 +1803,13 @@
                   "test": "packages/go/model/coverage_model_queries_test.go",
                   "cases": [
                     "model_query_rows",
-                    "remove_columns_keys_and_added_column"
+                    "remove_columns_keys_and_added_column",
+                    "group_rows_database"
                   ],
                   "symbols": {
                     "model_query_rows": "TestCoverageModelQueryRows",
-                    "remove_columns_keys_and_added_column": "TestCoverageModelRemoveColumns"
+                    "remove_columns_keys_and_added_column": "TestCoverageModelRemoveColumns",
+                    "group_rows_database": "TestCoverageGroupRowsDatabase"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -1816,11 +1820,13 @@
                   "test": "packages/go/model/coverage_model_queries_test.go",
                   "cases": [
                     "model_query_rows",
-                    "remove_columns_keys_and_added_column"
+                    "remove_columns_keys_and_added_column",
+                    "group_rows_database"
                   ],
                   "symbols": {
                     "model_query_rows": "TestCoverageModelQueryRows",
-                    "remove_columns_keys_and_added_column": "TestCoverageModelRemoveColumns"
+                    "remove_columns_keys_and_added_column": "TestCoverageModelRemoveColumns",
+                    "group_rows_database": "TestCoverageGroupRowsDatabase"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -1831,11 +1837,13 @@
                   "test": "packages/go/model/coverage_model_queries_test.go",
                   "cases": [
                     "model_query_rows",
-                    "remove_columns_keys_and_added_column"
+                    "remove_columns_keys_and_added_column",
+                    "group_rows_database"
                   ],
                   "symbols": {
                     "model_query_rows": "TestCoverageModelQueryRows",
-                    "remove_columns_keys_and_added_column": "TestCoverageModelRemoveColumns"
+                    "remove_columns_keys_and_added_column": "TestCoverageModelRemoveColumns",
+                    "group_rows_database": "TestCoverageGroupRowsDatabase"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -1849,7 +1857,8 @@
             ],
             "inputs": [
               "contracts/fixtures/bench/bench.dbs",
-              "packages/php/tests/CoverageModelQueriesCase.php"
+              "packages/php/tests/CoverageModelQueriesCase.php",
+              "packages/php/tests/GroupRowsDbCases.php"
             ],
             "commands": {
               "mysql": [
@@ -1858,11 +1867,13 @@
                   "test": "packages/php/tests/CoverageModelQueriesTest.php",
                   "cases": [
                     "model_query_rows",
-                    "remove_columns_keys_and_added_column"
+                    "remove_columns_keys_and_added_column",
+                    "group_rows_database"
                   ],
                   "symbols": {
                     "model_query_rows": "testModelQueryRows",
-                    "remove_columns_keys_and_added_column": "testRemoveColumnsKeysAndAddedColumn"
+                    "remove_columns_keys_and_added_column": "testRemoveColumnsKeysAndAddedColumn",
+                    "group_rows_database": "testGroupRowsDatabase"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -1873,11 +1884,13 @@
                   "test": "packages/php/tests/CoverageModelQueriesTest.php",
                   "cases": [
                     "model_query_rows",
-                    "remove_columns_keys_and_added_column"
+                    "remove_columns_keys_and_added_column",
+                    "group_rows_database"
                   ],
                   "symbols": {
                     "model_query_rows": "testModelQueryRows",
-                    "remove_columns_keys_and_added_column": "testRemoveColumnsKeysAndAddedColumn"
+                    "remove_columns_keys_and_added_column": "testRemoveColumnsKeysAndAddedColumn",
+                    "group_rows_database": "testGroupRowsDatabase"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -1888,11 +1901,13 @@
                   "test": "packages/php/tests/CoverageModelQueriesTest.php",
                   "cases": [
                     "model_query_rows",
-                    "remove_columns_keys_and_added_column"
+                    "remove_columns_keys_and_added_column",
+                    "group_rows_database"
                   ],
                   "symbols": {
                     "model_query_rows": "testModelQueryRows",
-                    "remove_columns_keys_and_added_column": "testRemoveColumnsKeysAndAddedColumn"
+                    "remove_columns_keys_and_added_column": "testRemoveColumnsKeysAndAddedColumn",
+                    "group_rows_database": "testGroupRowsDatabase"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -1902,7 +1917,8 @@
           "rust": {
             "part": "packages/rust/tests",
             "tests": [
-              "packages/rust/tests/tests/integration/coverage_model_queries.rs"
+              "packages/rust/tests/tests/integration/coverage_model_queries.rs",
+              "packages/rust/tests/tests/integration/coverage_group_rows_db.rs"
             ],
             "inputs": [
               "contracts/fixtures/bench/bench.dbs"
@@ -1921,6 +1937,17 @@
                     "remove_columns_keys_and_added_column": "coverage_model_queries::coverage_model_query_remove_columns"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/integration/coverage_group_rows_db.rs",
+                  "cases": [
+                    "group_rows_database"
+                  ],
+                  "symbols": {
+                    "group_rows_database": "coverage_group_rows_db::coverage_group_rows_db"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
               "postgres": [
@@ -1936,6 +1963,17 @@
                     "remove_columns_keys_and_added_column": "coverage_model_queries::coverage_model_query_remove_columns"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/integration/coverage_group_rows_db.rs",
+                  "cases": [
+                    "group_rows_database"
+                  ],
+                  "symbols": {
+                    "group_rows_database": "coverage_group_rows_db::coverage_group_rows_db"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
               "sqlite": [
@@ -1949,6 +1987,17 @@
                   "symbols": {
                     "model_query_rows": "coverage_model_queries::coverage_model_query_rows",
                     "remove_columns_keys_and_added_column": "coverage_model_queries::coverage_model_query_remove_columns"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/integration/coverage_group_rows_db.rs",
+                  "cases": [
+                    "group_rows_database"
+                  ],
+                  "symbols": {
+                    "group_rows_database": "coverage_group_rows_db::coverage_group_rows_db"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -1961,7 +2010,8 @@
               "packages/ts/tests/coverage_model_queries.mjs"
             ],
             "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "contracts/fixtures/bench/bench.dbs",
+              "packages/ts/tests/group_rows_db.mjs"
             ],
             "commands": {
               "mysql": [
@@ -1970,7 +2020,8 @@
                   "test": "packages/ts/tests/coverage_model_queries.mjs",
                   "cases": [
                     "model_query_rows",
-                    "remove_columns_keys_and_added_column"
+                    "remove_columns_keys_and_added_column",
+                    "group_rows_database"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -1981,7 +2032,8 @@
                   "test": "packages/ts/tests/coverage_model_queries.mjs",
                   "cases": [
                     "model_query_rows",
-                    "remove_columns_keys_and_added_column"
+                    "remove_columns_keys_and_added_column",
+                    "group_rows_database"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -1992,7 +2044,8 @@
                   "test": "packages/ts/tests/coverage_model_queries.mjs",
                   "cases": [
                     "model_query_rows",
-                    "remove_columns_keys_and_added_column"
+                    "remove_columns_keys_and_added_column",
+                    "group_rows_database"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -2005,7 +2058,8 @@
               "packages/python/tests/coverage_model_queries.py"
             ],
             "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "contracts/fixtures/bench/bench.dbs",
+              "packages/python/tests/test_group_rows_db.py"
             ],
             "commands": {
               "mysql": [
@@ -2014,7 +2068,8 @@
                   "test": "packages/python/tests/coverage_model_queries.py",
                   "cases": [
                     "model_query_rows",
-                    "remove_columns_keys_and_added_column"
+                    "remove_columns_keys_and_added_column",
+                    "group_rows_database"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2025,7 +2080,8 @@
                   "test": "packages/python/tests/coverage_model_queries.py",
                   "cases": [
                     "model_query_rows",
-                    "remove_columns_keys_and_added_column"
+                    "remove_columns_keys_and_added_column",
+                    "group_rows_database"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2036,7 +2092,8 @@
                   "test": "packages/python/tests/coverage_model_queries.py",
                   "cases": [
                     "model_query_rows",
-                    "remove_columns_keys_and_added_column"
+                    "remove_columns_keys_and_added_column",
+                    "group_rows_database"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -2050,7 +2107,8 @@
             ],
             "inputs": [
               "contracts/fixtures/bench/bench.dbs",
-              "packages/php/tests/CoverageModelQueriesCase.php"
+              "packages/php/tests/CoverageModelQueriesCase.php",
+              "packages/php/tests/GroupRowsDbCases.php"
             ],
             "commands": {
               "mysql": [
@@ -2059,11 +2117,13 @@
                   "test": "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php",
                   "cases": [
                     "model_query_rows",
-                    "remove_columns_keys_and_added_column"
+                    "remove_columns_keys_and_added_column",
+                    "group_rows_database"
                   ],
                   "symbols": {
                     "model_query_rows": "testModelQueryRows",
-                    "remove_columns_keys_and_added_column": "testRemoveColumnsKeysAndAddedColumn"
+                    "remove_columns_keys_and_added_column": "testRemoveColumnsKeysAndAddedColumn",
+                    "group_rows_database": "testGroupRowsDatabase"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2074,11 +2134,13 @@
                   "test": "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php",
                   "cases": [
                     "model_query_rows",
-                    "remove_columns_keys_and_added_column"
+                    "remove_columns_keys_and_added_column",
+                    "group_rows_database"
                   ],
                   "symbols": {
                     "model_query_rows": "testModelQueryRows",
-                    "remove_columns_keys_and_added_column": "testRemoveColumnsKeysAndAddedColumn"
+                    "remove_columns_keys_and_added_column": "testRemoveColumnsKeysAndAddedColumn",
+                    "group_rows_database": "testGroupRowsDatabase"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2089,11 +2151,13 @@
                   "test": "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php",
                   "cases": [
                     "model_query_rows",
-                    "remove_columns_keys_and_added_column"
+                    "remove_columns_keys_and_added_column",
+                    "group_rows_database"
                   ],
                   "symbols": {
                     "model_query_rows": "testModelQueryRows",
-                    "remove_columns_keys_and_added_column": "testRemoveColumnsKeysAndAddedColumn"
+                    "remove_columns_keys_and_added_column": "testRemoveColumnsKeysAndAddedColumn",
+                    "group_rows_database": "testGroupRowsDatabase"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }

@@ -78,10 +78,16 @@ export function rustDatabaseCoverageSkipArguments(manifest: FeatureManifest, rep
     const moduleFile = explicitPath === undefined ? resolve(integrationDirectory, `${name}.rs`) : resolve(integrationDirectory, explicitPath);
     const declared = rustCommands.filter(({ command }) => resolve(repository, command.test) === moduleFile);
     for (const { command } of declared) {
+      const standaloneTarget = !command.test.replaceAll('\\', '/').includes('/integration/');
       for (const id of command.cases) {
         const symbol = command.symbols?.[id];
         if (typeof symbol !== 'string' || symbol === '') throw new Error(`Rust case ${id} in ${command.test} has no declared native test symbol`);
-        testSymbols.add(symbol.includes('::') ? symbol : `${name}::${symbol}`);
+        if (symbol.startsWith(`${name}::`)) {
+          testSymbols.add(symbol);
+          if (standaloneTarget) testSymbols.add(symbol.slice(name.length + 2));
+        } else {
+          testSymbols.add(`${name}::${symbol}`);
+        }
       }
     }
   }

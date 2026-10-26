@@ -12,6 +12,7 @@ from .coverage_case import (
     error_code,
     expect_equal,
 )
+from .test_group_rows_db import check_group_rows_database
 
 
 def model_query_rows(item):
@@ -255,6 +256,15 @@ def model_query_remove_columns(item):
         db.close()
 
 
+def model_query_group_rows(item, test_case):
+    db, author, driver, _ = connect_bench_author(models, item)
+    try:
+        expect_equal(db.driver, driver, "the driver")
+        check_group_rows_database(test_case, db, author)
+    finally:
+        db.close()
+
+
 class CoverageTest(CoverageCase):
     # Requirements: DBS-118, DSL-57, DSL-58, DSL-60, DSL-62, DSL-73, DSL-74, DSL-80, DSL-82, DSL-99, INT-16, INT-29, INT-30, INT-32, INT-33, PLN-6, PLN-7, PLN-8, PLN-9, PLN-10, PLN-11, PLN-14, PLN-23, PLN-25, PLN-28, PLN-34, PLN-35, PLN-37, PLN-38, PLN-39, PLN-41, PLN-42, PLN-43.
     def test_model_query_rows(self):
@@ -264,6 +274,12 @@ class CoverageTest(CoverageCase):
     def test_remove_columns_keys_and_added_column(self):
         self.each_item(
             "remove_columns_keys_and_added_column", model_query_remove_columns
+        )
+
+    # Requirements: INT-31.
+    def test_group_rows_database(self):
+        self.each_item(
+            "group_rows_database", lambda item: model_query_group_rows(item, self)
         )
 
 
