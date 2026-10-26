@@ -80,6 +80,7 @@ class AesRotationPhysicalTest(unittest.TestCase):
                         )
                         if index == 0:
                             author.set_aes_hex_email("person@example.com")
+                            author.set_aes_hex_phone("01012345678")
                         authors.append(author.create())
 
                     keyring = AesKeyring({1: "test-aes-key", 2: "next-aes-key"}, 2)
@@ -105,8 +106,10 @@ class AesRotationPhysicalTest(unittest.TestCase):
                     # COD-8: write with the active key; read with that version alone.
                     versioned = models.connect(
                         dsn,
-                        aesKey="next-aes-key",
                         aesVersion=2,
+                        aesKeyring=AesKeyring(
+                            {1: "test-aes-key", 2: "next-aes-key"}, 2
+                        ),
                         blindIndexKey="test-blind-key",
                     )
                     current = models.connect(
@@ -140,13 +143,20 @@ class AesRotationPhysicalTest(unittest.TestCase):
                         aesKeyring=AesKeyring({2: "next-aes-key"}, 2),
                         blindIndexKey="test-blind-key",
                     )
-                    self.assertEqual(
+                    rotated = (
                         models.Author()
                         .connect(current)
                         .get_by_seq(authors[0].get_seq())
-                        .get_aes_hex_email(),
+                    )
+                    self.assertEqual(
+                        rotated.get_aes_hex_email(),
                         "person@example.com",
-                        "read with only the rotated key",
+                        "rotated email uses only the current key",
+                    )
+                    self.assertEqual(
+                        rotated.get_aes_hex_phone(),
+                        "01012345678",
+                        "rotated phone uses only the current key",
                     )
                 finally:
                     if current is not None:

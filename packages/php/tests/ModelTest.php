@@ -788,7 +788,7 @@ final class ModelTest extends TestCase
     {
         $f = self::seed($db);
         $b = (new Author())($db)->getBySeq($f['authors'][0]->getSeq());
-        $b->setAesHexEmail('person@example.com')->update();
+        $b->setAesHexEmail('person@example.com')->setAesHexPhone('01012345678')->update();
         self::check((new Author())($db)->aesHexEmail('person@example.com')->getCount() === 1, 'blind index condition');
         $keyring = new AesKeyring([1 => 'test-aes-key', 2 => 'next-aes-key'], 2);
         $status = $db->utils()->aes()->status(new Author(), $keyring);
@@ -818,6 +818,9 @@ final class ModelTest extends TestCase
             $dsn,
             new Config(blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: [2 => 'next-aes-key'])
         );
+        $rotated = (new Author())($current)->getBySeq($f['authors'][0]->getSeq());
+        self::check($rotated->getAesHexEmail() === 'person@example.com', 'rotated email uses current key');
+        self::check($rotated->getAesHexPhone() === '01012345678', 'rotated phone uses current key');
         self::check(
             (new Author())($current)->getBySeq($f['authors'][1]->getSeq())->getAesHexEmail() === 'second@example.com',
             'write with the key of aesVersion'

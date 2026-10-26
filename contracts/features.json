@@ -7753,7 +7753,8 @@
         "packages/rust/orm/tests/unit/blind_index_source.rs",
         "packages/python/tests/test_blind_index_source.py",
         "packages/ts/tests/aes-read-row-without-version-cell.mjs",
-        "packages/python/tests/aes_json.py"
+        "packages/python/tests/aes_json.py",
+        "packages/php/tests/ModelTest.php"
       ],
       "docs": [
         "docs/spec/codec.md",
@@ -7883,7 +7884,7 @@
         },
         {
           "id": "encryption-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_authenticated_encryption && packages/python/.venv/bin/python -m packages.python.tests.test_aes_rotate && packages/python/.venv/bin/python -m packages.python.tests.test_codec_aes_vectors && packages/python/.venv/bin/python -m packages.python.tests.test_codec_vectors && packages/python/.venv/bin/python -m packages.python.tests.test_codec_decode_vectors && packages/python/.venv/bin/python -m packages.python.tests.aes_json",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_authenticated_encryption && packages/python/.venv/bin/python -m packages.python.tests.test_aes_rotate && packages/python/.venv/bin/python -m packages.python.tests.test_codec_aes_vectors && packages/python/.venv/bin/python -m packages.python.tests.test_codec_vectors && packages/python/.venv/bin/python -m packages.python.tests.test_codec_decode_vectors && packages/python/.venv/bin/python -m packages.python.tests.aes_json && packages/python/.venv/bin/python -m packages.python.tests.aes_rotation && packages/python/.venv/bin/python -m packages.python.tests.test_aes_version_codes",
           "shard": "other",
           "inputs": [
             "packages/python/tests/test_authenticated_encryption.py",
@@ -7897,7 +7898,10 @@
             "tests/codec/aes-vectors.json",
             "contracts/fixtures/authenticated_encryption.json",
             "packages/python/tests/aes_json.py",
-            "contracts/fixtures/secret_config.dbs"
+            "contracts/fixtures/secret_config.dbs",
+            "packages/python/src/polyspec/orm/database.py",
+            "packages/python/tests/aes_rotation.py",
+            "packages/python/tests/test_aes_version_codes.py"
           ]
         },
         {
@@ -7909,6 +7913,24 @@
             "contracts/check-inputs.json",
             "packages/php/tests/AesJsonTest.php",
             "contracts/fixtures/secret_config.dbs"
+          ]
+        },
+        {
+          "id": "aes-rotation-php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter testAesRotation packages/php/tests/ModelTest.php",
+          "shard": "other",
+          "inputs": [
+            "packages/php/tests/ModelTest.php"
+          ]
+        },
+        {
+          "id": "aes-rotation-php-extension",
+          "command": "make -s aes-rotation-php-extension-check",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "contracts/check-inputs.json",
+            "packages/php/tests/ModelTest.php"
           ]
         }
       ],

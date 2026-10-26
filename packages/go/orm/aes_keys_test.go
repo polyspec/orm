@@ -73,6 +73,7 @@ func TestAESWriteUsesKeyOfCurrentVersion(t *testing.T) {
 
 // TestAESKeyMustMatchKeyOfCurrentVersion rejects a configuration whose AESKey
 // differs from AESKeys[AESVersion].
+// Requirements: COD-8.
 func TestAESKeyMustMatchKeyOfCurrentVersion(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	s := documentSchema(t, aesKeysSchema)

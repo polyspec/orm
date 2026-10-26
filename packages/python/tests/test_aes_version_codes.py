@@ -3,12 +3,14 @@
 # 32-bit integer is CODEC_DECODE on the read path and on the rotation path, and an AES column or version column that the
 # client selected but did not get is INTERNAL.
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 
 from . import testcase
 from polyspec.orm.aes import AesKeyring, _stored_version
 from polyspec.orm.codec import host_encode
-from polyspec.orm.database import _decode_assembly
+from polyspec.orm.database import Db, _decode_assembly
 from polyspec.orm.errors import OrmError
 
 KEYRING = AesKeyring({1: "old-key", 2: "new-key"}, 2)
@@ -35,6 +37,22 @@ def code_of(run) -> str:
 
 
 class AesVersionCodesTest(unittest.TestCase):
+    # Requirements: COD-8.
+    def test_connection_rejects_aes_key_that_differs_from_current_keyring_key(self):
+        with TemporaryDirectory(prefix="orm-aes-key-conflict-") as directory:
+            database = Path(directory) / "must-not-open.sqlite"
+            with self.assertRaises(OrmError) as caught:
+                Db.connect(
+                    f"sqlite://{database}",
+                    {
+                        "aesKey": "different-key",
+                        "aesVersion": 1,
+                        "aesKeyring": AesKeyring({1: "current-key"}, 1),
+                    },
+                )
+            self.assertEqual(caught.exception.code, "CONFIG")
+            self.assertFalse(database.exists(), "config validation opened SQLite")
+
     # Requirements: INT-74, INT-130.
     def test_keyring_exposes_current_version_and_sorted_versions(self):
         keyring = AesKeyring({3: "third", 1: "first", 2: "second"}, 2)

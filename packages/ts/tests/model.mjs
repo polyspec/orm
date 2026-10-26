@@ -450,7 +450,7 @@ async function transactions(db, dsn) {
 async function aesRotation(db, dsn) {
   const f = await seed(db);
   const b = await new Author().connect(db).getBySeq(f.authors[0].getSeq());
-  await b.setAesHexEmail('person@example.com').update();
+  await b.setAesHexEmail('person@example.com').setAesHexPhone('01012345678').update();
   const found = await new Author().connect(db).aesHexEmail('person@example.com').getBySeq(b.getSeq());
   check(found?.getAesHexEmail() === 'person@example.com', 'aes round trip and blind index');
   const keyring = new AesKeyring(new Map([[1, 'test-aes-key'], [2, 'next-aes-key']]), 2);
@@ -464,6 +464,9 @@ async function aesRotation(db, dsn) {
   const versioned = await connectBench(dsn, { blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: new Map([[1, 'test-aes-key'], [2, 'next-aes-key']]) });
   const current = await connectBench(dsn, { blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: new Map([[2, 'next-aes-key']]) });
   try {
+    const rotated = await new Author().connect(current).getBySeq(f.authors[0].getSeq());
+    check(rotated?.getAesHexEmail() === 'person@example.com', 'rotated email uses current key');
+    check(rotated?.getAesHexPhone() === '01012345678', 'rotated phone uses current key');
     check(await code((async () => { await (await new Author().connect(versioned).getBySeq(f.authors[1].getSeq())).setAesHexEmail('second@example.com').update(); })()) === null, 'write with aesKeys and aesVersion');
     check((await new Author().connect(current).getBySeq(f.authors[1].getSeq())).getAesHexEmail() === 'second@example.com', 'write with the key of aesVersion');
     check(await code(connectBench(dsn, { aesKey: 'other-key', aesKeys: new Map([[1, 'test-aes-key']]) })) === 'CONFIG', 'aesKey differs from aesKeys[aesVersion]');

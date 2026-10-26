@@ -669,8 +669,9 @@ func TestAESRotation(t *testing.T) {
 	each(t, func(t *testing.T, db *orm.DB) {
 		f := seed(t, db)
 		email := "person@example.com"
+		phone := "01012345678"
 		b := must(model.Author().Connect(db).GetBySeq(readColumn(t, f.authors[0].GetSeq)))
-		must(b.SetAesHexEmail(&email).Update())
+		must(b.SetAesHexEmail(&email).SetAesHexPhone(&phone).Update())
 		keyring, err := orm.NewAESKeyring(map[int32]string{1: "test-aes-key", 2: "next-aes-key"}, 2)
 		if err != nil {
 			t.Fatal(err)
@@ -685,6 +686,20 @@ func TestAESRotation(t *testing.T) {
 		status = must(db.Utils().Aes().Status(model.Author(), keyring))
 		if status.Current != 2 || status.Total != 4 || status.Pending != 0 || !reflect.DeepEqual(status.Versions, map[int32]int64{2: 4}) {
 			t.Fatalf("after rotation: %+v", status)
+		}
+		current, err := model.Connect(dsnOf(t, db), orm.Config{
+			AESKey: "next-aes-key", AESVersion: 2, AESKeys: map[int32]string{2: "next-aes-key"},
+			BlindIndexKey: "test-blind-key",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { testcase.Close(t, current) })
+		rotated := must(model.Author().Connect(current).GetBySeq(readColumn(t, f.authors[0].GetSeq)))
+		gotEmail := readColumn(t, rotated.GetAesHexEmail)
+		gotPhone := readColumn(t, rotated.GetAesHexPhone)
+		if gotEmail == nil || *gotEmail != email || gotPhone == nil || *gotPhone != phone {
+			t.Fatalf("rotated AES values: email=%v phone=%v", gotEmail, gotPhone)
 		}
 	})
 }

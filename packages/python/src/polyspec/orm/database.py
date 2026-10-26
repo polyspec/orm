@@ -1590,6 +1590,15 @@ class Db:
         self.blind_index_key = options.get("blindIndexKey", "")
         self.aes_version = options.get("aesVersion", 1)
         self.aes_keyring = options.get("aesKeyring")
+        if self.aes_keyring is not None:
+            current_key = self.aes_keyring.key(self.aes_version)
+            if self.aes_key and self.aes_key != current_key:
+                raise OrmError(
+                    codes.CONFIG,
+                    f"aesKey differs from aesKeys[{self.aes_version}]",
+                )
+            if not self.aes_key:
+                self.aes_key = current_key
         self.audit_source = options.get("auditSource")
         self.pool_config = _connection_config(options)
         self.statement_timeout_ms = self.pool_config.statement_timeout_ms
