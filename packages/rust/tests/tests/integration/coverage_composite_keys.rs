@@ -113,24 +113,25 @@ async fn coverage_composite_key_rows() {
                 "{path}: memberships of tenant {TENANT} accounts"
             );
         }
-        let relation_events = relation_events.lock().unwrap();
-        assert_eq!(relation_events.len(), 2, "both relation paths execute one relation statement");
-        let expected_parent_binds = [
-            polyspec_orm::Param::I64(TENANT),
-            polyspec_orm::Param::I64(1),
-            polyspec_orm::Param::I64(TENANT),
-            polyspec_orm::Param::I64(2),
-            polyspec_orm::Param::I64(TENANT),
-            polyspec_orm::Param::I64(3),
-            polyspec_orm::Param::I64(TENANT),
-            polyspec_orm::Param::I64(3),
-        ];
-        for (sql, binds) in relation_events.iter() {
-            assert_eq!(binds, &expected_parent_binds, "three composite parent keys repeat the last tuple");
-            let placeholders = if sql.contains('?') { sql.matches('?').count() } else { (1..).take_while(|index| sql.contains(&format!("${index}"))).count() };
-            assert_eq!(placeholders, 8, "three composite parent keys expand to four two-column tuples");
+        {
+            let relation_events = relation_events.lock().unwrap();
+            assert_eq!(relation_events.len(), 2, "both relation paths execute one relation statement");
+            let expected_parent_binds = [
+                polyspec_orm::Param::I64(TENANT),
+                polyspec_orm::Param::I64(1),
+                polyspec_orm::Param::I64(TENANT),
+                polyspec_orm::Param::I64(2),
+                polyspec_orm::Param::I64(TENANT),
+                polyspec_orm::Param::I64(3),
+                polyspec_orm::Param::I64(TENANT),
+                polyspec_orm::Param::I64(3),
+            ];
+            for (sql, binds) in relation_events.iter() {
+                assert_eq!(binds, &expected_parent_binds, "three composite parent keys repeat the last tuple");
+                let placeholders = if sql.contains('?') { sql.matches('?').count() } else { (1..).take_while(|index| sql.contains(&format!("${index}"))).count() };
+                assert_eq!(placeholders, 8, "three composite parent keys expand to four two-column tuples");
+            }
         }
-        drop(relation_events);
         for (path, child) in [("same statement", CompositeMembership::new()), ("own connection", CompositeMembership::new().connect(&db))] {
             assert_eq!(
                 format!("{}{}", collision_rows[0].0, collision_rows[0].1),
