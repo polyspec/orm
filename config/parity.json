@@ -2384,6 +2384,28 @@
           ]
         }
       ]
+    },
+    {
+      "files": [
+        "packages/go/internal/dialects/apply_clients_physical_test.go"
+      ],
+      "reason": "harness: TestApplyChainAcrossClients orchestrates all six native dbspec apply runners as peers and checks the cross-client history and schema matrix, so it is shared integration tooling rather than a Go-only implementation test. The existing dbspec-apply-pairs-check target still executes the test and all assertions in CI.",
+      "units": [
+        {
+          "id": "dbspec-apply-cross-client",
+          "requirements": [
+            "PLN-90",
+            "PLN-94",
+            "PLN-103"
+          ],
+          "bindings": [
+            {
+              "test": "packages/go/internal/dialects/apply_clients_physical_test.go",
+              "id": "TestApplyChainAcrossClients"
+            }
+          ]
+        }
+      ]
     }
   ],
   "requirements": {
@@ -13460,30 +13482,7 @@
         "package": "github.com/polyspec/orm/packages/go"
       }
     },
-    {
-      "id": "dbspec-apply-cross-client",
-      "kind": "feature",
-      "requirements": [
-        "PLN-90",
-        "PLN-94",
-        "PLN-103"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/internal/dialects/apply_clients_physical_test.go",
-          "id": "TestApplyChainAcrossClients",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "dbspec-apply-pairs-check",
-            "GO_TEST_FLAGS=-json"
-          ]
-        }
-      ]
-    },
+
     {
       "id": "dbspec-apply-chain-finalization",
       "kind": "feature",
