@@ -110,9 +110,7 @@
           "primitive": "Db.with_future",
           "surface": "Db.withFuture",
           "cases": [
-            { "test": "packages/python/tests/coverage_transactions.py", "id": "handle_abandoned_query [sqlite]" },
-            { "test": "packages/python/tests/coverage_transactions.py", "id": "handle_abandoned_query [mysql]" },
-            { "test": "packages/python/tests/coverage_transactions.py", "id": "handle_abandoned_query [postgres]" },
+            { "test": "packages/python/tests/coverage_transactions.py", "id": "test_handle_abandoned_query" },
             { "test": "packages/python/tests/test_query_cancel.py", "id": "test_cancel_interrupts_active_statement_and_root_is_reusable" }
           ]
         },
