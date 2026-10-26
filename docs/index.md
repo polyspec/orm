@@ -25,7 +25,7 @@ features:
 ---
 <!-- doc-id: index -->
 
-## One query under the shared client contract
+## One query under the shared client API
 
 ### Go
 

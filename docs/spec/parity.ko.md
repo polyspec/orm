@@ -1,5 +1,5 @@
 <!-- doc-id: parity-spec -->
-<!-- source-sha256: 8d7dc63b06792eb5a9a84548036089c69e7bcfae907e58bb7e13f6152f6aa209 -->
+<!-- source-sha256: dac112ae1f596022481588c456caa1d9ce6545d22d48a4a4dd75bd26df841564 -->
 # 언어 parity
 
 ## 구현 내부 test

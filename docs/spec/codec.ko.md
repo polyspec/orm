@@ -1,5 +1,5 @@
 <!-- doc-id: codec -->
-<!-- source-sha256: af6587fac66f7922a9f41b37e14f192233d10ff5b68f89e7aaf2b12a05715989 -->
+<!-- source-sha256: cab8f81e295395808ca64895c8a8e9d211a5c5932063021f88a72481673ec574 -->
 # 코덱 — 컬럼 스타일의 읽기/쓰기 (S2)
 
 - **COD-1** Go 데이터베이스 값 변환은 잘못된 형식, null, 범위 초과, 유한하지 않은 값, 지원하지 않는 값에 `CODEC_DECODE`를 반환한다. Host 인코딩은 단계가 없거나 텍스트·바이트가 아닌 값에 `CODEC_ENCODE`를 반환한다. 생성 모델 대입은 컬럼 이름을 붙여 변환 오류를 보고한다. 행 조립은 오류를 호출자에게 반환하고 insert는 쓰기 전에 대입 필드를 검증한다. 빈 바이트 배열은 SQL NULL과 구분한다. scalar 집계 변환은 유효한 십진수를 가장 가까운 유한 binary64 값으로 받는다.
@@ -91,9 +91,9 @@ table service_config {
 ## 디코딩은 정확하다 {#decoding-is-exact}
 - **COD-37** 저장 셀은 인코더의 출력이므로, 읽기는 모든 클라이언트와 모든 데이터베이스에서 인코더가 쓰는 형태의 셀만 디코딩한다. 인코더는 `base64`를 padding을 붙인 표준 알파벳으로, padding bit는 0으로, 공백이나 줄바꿈 없이 쓰고, `hex`는 대문자 hex 숫자로만 쓰며, 그 둘레에 어떤 문자도 쓰지 않는다. 그래서 `base64`나 `hex` 단계는 그 밖의 형태에서 `CODEC_DECODE`로 실패한다: 둘레나 안쪽의 모든 종류의 공백(space, 줄바꿈, form feed, NUL, U+001C 같은 information separator, byte order mark), 빠진 padding 문자, 0이 아닌 padding bit, 알파벳 밖의 문자. 어떤 클라이언트도 디코딩 전에 문자를 잘라 내거나 건너뛰지 않는다. 이유는 다음과 같다.
 
-- 둘 이상의 저장 형태에서 디코딩되는 값은 왕복하지 않는다. 다시 인코딩하면 다른 바이트를 쓰므로, 읽기가 저장 셀이 ORM이 쓰는 것과 다르다는 사실을 감춘다.
-- 언어마다 trim이 지우는 문자 집합이 다르다(예를 들어 Go와 Python은 form feed를, PHP는 NUL을, JavaScript는 byte order mark를 지운다). 그래서 너그러운 읽기는 클라이언트마다 다른 셀을 받는다. 정확한 읽기만이 모든 클라이언트가 똑같이 구현하는 규칙이다.
-- 클라이언트가 모든 `hex` 셀을 디코딩하므로 이 규칙은 모든 데이터베이스에서 성립한다. MySQL `UNHEX`는 홀수 길이 text를 받고 공백이 있는 셀에 NULL을 내므로, 어떤 dialect도 `hex`를 SQL에서 읽지 않는다. 어떤 dialect도 `hex`를 SQL에서 쓰지 않는다: 모든 데이터베이스에서 클라이언트 인코더가 대문자 text를 쓰고, 모든 dialect는 저장된 셀을 그대로 읽어 host 디코딩에 넘긴다.
+  - 둘 이상의 저장 형태에서 디코딩되는 값은 왕복하지 않는다. 다시 인코딩하면 다른 바이트를 쓰므로, 읽기가 저장 셀이 ORM이 쓰는 것과 다르다는 사실을 감춘다.
+  - 언어마다 trim이 지우는 문자 집합이 다르다(예를 들어 Go와 Python은 form feed를, PHP는 NUL을, JavaScript는 byte order mark를 지운다). 그래서 너그러운 읽기는 클라이언트마다 다른 셀을 받는다. 정확한 읽기만이 모든 클라이언트가 똑같이 구현하는 규칙이다.
+  - 클라이언트가 모든 `hex` 셀을 디코딩하므로 이 규칙은 모든 데이터베이스에서 성립한다. MySQL `UNHEX`는 홀수 길이 text를 받고 공백이 있는 셀에 NULL을 내므로, 어떤 dialect도 `hex`를 SQL에서 읽지 않는다. 어떤 dialect도 `hex`를 SQL에서 쓰지 않는다: 모든 데이터베이스에서 클라이언트 인코더가 대문자 text를 쓰고, 모든 dialect는 저장된 셀을 그대로 읽어 host 디코딩에 넘긴다.
 
 - **COD-38** `ip` 인코더도 쓰기 쪽에서 같은 규칙을 지킨다: 모든 클라이언트에서 주소의 정확한 text만 pack하고, 그 둘레나 안의 공백(space, tab, 줄바꿈, form feed, NUL, no-break space)은 모두 `CODEC_ENCODE`로 실패한다. 어떤 클라이언트도 입력을 trim하지 않는다. trim하면 두 입력이 같은 바이트로 저장되고 저장 값이 입력으로 읽히지 않기 때문이다. `tests/codec/vectors.json`의 `ip.*` vector가 이 사례를 담는다.
 

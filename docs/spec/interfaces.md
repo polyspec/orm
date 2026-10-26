@@ -199,7 +199,7 @@ Utilities that change data open a transaction when none is active and join the a
 
 ## 7. Planning and assembly — IF-18 to IF-20
 
-`Request` contains the schema hash, IR version, entity, predicate tree, relation requests, projection, and parameter count. Parameter values are stored separately from the request shape. The client planner produces an immutable plan with dialect-specific SQL and positional assembly metadata. The shared contract requires all six configured implementations (Go, PHP, PHP extension, TypeScript, Python and Rust) to produce the same SQL for the same request; conformance vectors check executable behavior separately.
+`Request` contains the schema hash, IR version, entity, predicate tree, relation requests, projection, and parameter count. Parameter values are stored separately from the request shape. The client planner produces an immutable plan with dialect-specific SQL and positional assembly metadata. The shared interface requires all six configured implementations (Go, PHP, PHP extension, TypeScript, Python and Rust) to produce the same SQL for the same request; conformance vectors check executable behavior separately.
 
 Assembly uses `{alias, column, output_name, index}`. Join aliases remain separate from the root namespace. Duplicate output names return `COLUMN_ALIAS_CONFLICT`. A schema hash mismatch returns `SCHEMA_HASH_MISMATCH` before execution.
 
@@ -255,7 +255,7 @@ Secrets and parameter values are excluded from logs.
 
 The PHP runtime package does not depend on its generator. The separate `polyspec/orm-gen` Composer package depends on `polyspec/orm` and provides the PHP CLI, generator, and source scanner. The generator reads the schema manifest and emits models, fields, column methods, and error types. Go and Rust generation also reads the scanned source and emits the chain, relation key, join, and `new<Name>` methods that the source calls. It must not emit a method for an undeclared column or operator. Generated code is checked against the manifest and the interface symbol list.
 
-- **INT-66** The code that the generator emits passes the standard compiler of its language and the formatter and linter that the lint gates of this repository run for that language, and the generated text suppresses no finding: it carries no Rust `allow` attribute, Go `//nolint`, Python `# noqa`, PHP `@phpstan-ignore` or `phpcs:ignore`, or TypeScript `eslint-disable` or `@ts-ignore`.
+- **INT-66** The code that the generator emits passes the standard compiler of its language and the formatter and linter that the lint checks of this repository run for that language, and the generated text suppresses no finding: it carries no Rust `allow` attribute, Go `//nolint`, Python `# noqa`, PHP `@phpstan-ignore` or `phpcs:ignore`, or TypeScript `eslint-disable` or `@ts-ignore`.
 
 Relations use `relation(child)` and `relations(child)` with `match<L>With<R>()` on the child. Joins use `join<L>With<R>(child)` and `leftJoin<L>With<R>(child)`. Unknown names fail during PHP and TypeScript call resolution and during Go and Rust generation.
 
@@ -340,7 +340,7 @@ types fail explicitly with `CATALOG_VALUE`.
 
 Floating-point cells preserve the exact IEEE-754 bits, including signed zero
 and nonfinite values, without JSON number coercion. Implementations may use
-their native typed representation at their public boundary. The MySQL unsigned
+their native typed representation at their public API. The MySQL unsigned
 integer cell preserves the full unsigned 64-bit range. These grid values do not
 change schema/catalog scalar conversion rules.
 

@@ -291,7 +291,7 @@ text lives in T128's Cause and Acceptance, plus `docs/spec/editor.md`.
     `dbspec/parse.py`, Rust `orm-schema/src/dbspec/parser.rs`.
   - `tests/dbspec/syntax.json` runs in dbspec-go, dbspec-ts, dbspec-php,
     dbspec-php-extension, dbspec-rust, python-check and dbspec-compare-check.
-  - Contracts:
+  - requirements:
     - interfaces rules `Dbspec.analyze` and `Dbspec.format`, with a mapping in every language;
     - the symbol snapshots and hashes;
     - parity API units;
@@ -299,7 +299,7 @@ text lives in T128's Cause and Acceptance, plus `docs/spec/editor.md`.
     - the php-extension rules list and stubs;
     - the Dbspec row of `docs/spec/interfaces-model.md` (+ko).
 - **T128-4 The browser-safe subpath** of `@polyspec/orm` (ruling 8). It goes into the
-  interfaces/symbols contracts. A test asserts that its module graph holds no `node:` module,
+  interfaces/symbols requirements. A test asserts that its module graph holds no `node:` module,
   no driver, and none of the Node globals `Buffer`, `process`, `__dirname` and `require`.
 - **T128-5 `packages/dbspec-language`.**
   - `openDocument(text, {set})`: diagnostics with ranges, tokens, folding (table, settings and

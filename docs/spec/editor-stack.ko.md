@@ -1,5 +1,5 @@
 <!-- doc-id: plans-editor-stack -->
-<!-- source-sha256: 49d12ea6758192ea1851e7cf9def440099236c03e7a0452ee20c03983b61a7dd -->
+<!-- source-sha256: f2a0237b68f30259ffdb5b1e9290c686d5bf89ea1ec62583b8d1a1450506708d -->
 # 계획: 표준으로서의 dbspec editor stack
 
 [English](editor-stack.md)

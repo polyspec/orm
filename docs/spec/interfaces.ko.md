@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: ef38896815443ff71ec254dd7e41976daf4ce9d8b02841b17c8d8d8a0a6c702f -->
+<!-- source-sha256: cfda48486bd951c6fd3aed900fe1d135cad4ab0c9e84092272ef8090fef1f058 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -151,7 +151,7 @@ classDiagram
 트랜잭션 밖에서 연결 없는 종단 작업은 `CONFIG`를 반환한다. 연결은 생성된 요청이 사용하는 스키마 엔진을 가져야 하며, 아니면 종단 작업이 `CONFIG`를 반환한다.
 
 - **INT-68** `GroupRows`에는 일부 필드만 채운 모델이 없다. 각 행에는 선택한 그룹 값과 음이 아닌 `row_count` 하나만 있다. 개수가 없거나 중복되거나 형식이 잘못되었거나 손실되면 실패한다. 선택한 값은 불리언과 SQL NULL을 포함해 선언된 타입을 유지하며, 선택하지 않은 값을 요청하면 `COLUMN_UNSELECTED`를 반환한다.
-- **INT-69** `GroupRow.toArray`(Go `GroupRow.ToArray`, PHP `GroupRow::toArray`, TypeScript `GroupRow#toArray`, Python `GroupRow.to_array`)는 선택한 값을 이름으로 가진 map 하나를 돌려준다. `row_count`는 검사한 정수 개수이고 SQL NULL은 null이다.
+- **INT-69** `GroupRow.toArray`(Go `GroupRow.ToArray`, PHP `GroupRow::toArray`, TypeScript `GroupRow#toArray`, Python `GroupRow.to_array`)는 선택한 값을 이름을 기준으로 가진 map 하나를 돌려준다. `row_count`는 검사한 정수 개수이고 SQL NULL은 null이다.
 - **INT-70** `GroupRows.length`(Go `Len`, PHP `count`, TypeScript `length`, Python `length`)는 그룹 행의 개수를 돌려주며, 행은 결과 순서로 순회한다.
 - **INT-71** `GroupRows.toArray`(Go `ToArray`, PHP `toArray`, TypeScript `toArray`, Python `to_array`)는 각 그룹 행의 `toArray` map을 결과 순서대로 돌려준다.
 - **INT-90** 음수 `row_count`를 가진 `GroupRow`는 `CODEC_DECODE`로 실패하며, 음이 아닌 정수가 아닌 모든 `row_count`(불리언, 손실, 안전 정수 범위 밖)도 같다. `row_count`가 없는 행은 `INTERNAL`이다. 행 개수는 데이터베이스의 `COUNT`이며 음수가 될 수 없으므로, 음수 값은 library 불변식의 깨짐이 아니라 개수로 디코드되지 않는 수신 값이다.
@@ -238,7 +238,7 @@ Go key 변환은 부호 있는 정수, 불리언, 문자열, 바이트, 유한 �
 - **INT-65** 모든 구현(Go, PHP, PHP extension, TypeScript, Python, Rust)은 [errors.yaml](errors.yaml)의 모든 code를 값이 그 code인 error-code catalog의 native 상수로 노출하며, 그 catalog는 errors.yaml과 같다: 빠진 code도 더한 code도 없다.
 - **INT-89** 모든 client의 오류는 [errors.yaml](errors.yaml)의 안정된 code 하나를 가진 라이브러리 오류이며 그 code로 분류한다: Go `ir.Error`(`orm.Error`)는 `Code`, PHP `OrmException`은 `code_`, TypeScript `OrmError`는 `code`, Python `OrmError`는 `code`를 가진다.
 
-- **INT-91** 모든 client의 statement event는 연결이 보낸 statement 하나를, 정확히 다음 일곱 필드로 기록한다: `sql`은 보낸 그대로의 statement이다; `binds`는 순서대로의 바인드 값이며 secret은 `$SECRET`, executor clock 값은 `$NOW`이다; `kind`는 `select`, `insert`, `update`, `delete`, `begin`, `commit`, `rollback`, `savepoint`, `release`, `rollback_to`, `schema`, `utility` 중 하나인 statement 종류이다; `tables`는 statement가 가리키는 table을 정렬한 목록이다; `elapsed`는 statement를 보낸 때부터 client가 결과를 읽을 때까지의 시간이다; `transaction`은 statement가 실행된 연결 transaction의 번호이며 가장 바깥 begin마다 1부터 센고, transaction 밖이면 없음이다; `error`는 statement가 끝난 오류이며 없으면 없음이다. 각 client는 필드를 자기 표기로 노출하고 "없음"은 native 형태로 나타낸다: Go는 `SQL`, `Binds`, `Kind`, `Tables`, `Elapsed`, `Transaction`(transaction 밖이면 0), `Err`(nil)이며 `Elapsed`는 `time.Duration`이다; PHP는 `Polyspec\Orm\StatementEvent`의 속성 `sql`, `binds`, `kind`, `tables`, `elapsed`(초), `transaction`(null), `error`(null)이다; TypeScript는 같은 이름의 `StatementEvent`로 `elapsed`는 초, `transaction`과 `error`는 `null`이다; Python은 같은 이름의 `StatementEvent`로 `elapsed`는 초, `transaction`과 `error`는 `None`이며, `error`는 statement가 일으킨 예외로 그 타입이 무엇이든 그대로이다; Rust는 같은 이름의 `StatementEvent`로 `elapsed`는 `Duration`, `transaction`과 `error`는 `None`이다.
+- **INT-91** 모든 client의 statement event는 연결이 보낸 statement 하나를, 정확히 다음 일곱 필드로 기록한다: `sql`은 보낸 그대로의 statement이다; `binds`는 순서대로의 바인드 값이며 secret은 `$SECRET`, executor clock 값은 `$NOW`이다; `kind`는 `select`, `insert`, `update`, `delete`, `begin`, `commit`, `rollback`, `savepoint`, `release`, `rollback_to`, `schema`, `utility` 중 하나인 statement 종류이다; `tables`는 statement가 가리키는 table을 정렬한 목록이다; `elapsed`는 statement를 보낸 때부터 client가 결과를 읽을 때까지의 시간이다; `transaction`은 statement가 실행된 연결 transaction의 번호이며 가장 바깥 begin마다 1부터 센고, transaction 밖이면 없음이다; `error`는 statement가 끝난 오류이며 없으면 없음이다. 각 client는 필드를 자기 표기로 노출하고 "없음"은 native 형태로 나타반환한다: Go는 `SQL`, `Binds`, `Kind`, `Tables`, `Elapsed`, `Transaction`(transaction 밖이면 0), `Err`(nil)이며 `Elapsed`는 `time.Duration`이다; PHP는 `Polyspec\Orm\StatementEvent`의 속성 `sql`, `binds`, `kind`, `tables`, `elapsed`(초), `transaction`(null), `error`(null)이다; TypeScript는 같은 이름의 `StatementEvent`로 `elapsed`는 초, `transaction`과 `error`는 `null`이다; Python은 같은 이름의 `StatementEvent`로 `elapsed`는 초, `transaction`과 `error`는 `None`이며, `error`는 statement가 일으킨 예외로 그 타입이 무엇이든 그대로이다; Rust는 같은 이름의 `StatementEvent`로 `elapsed`는 `Duration`, `transaction`과 `error`는 `None`이다.
 - **INT-92** pool이 idle로 들고 있는 connection을 server가 끝내면, pool은 그 connection을 버리고 process는 계속 실행된다: 그 connection의 error는 pool이 처리하며, 다음 statement는 새 connection에서 실행된다.
 - **INT-93** `@polyspec/orm` package의 공개 TypeScript 선언은 driver 타입(`pg`, `@types/pg`, `mysql2`)이 설치되지 않은 project에서 type-check된다. 선언은 driver module을 import하지 않으므로, 애플리케이션은 쓰는 driver의 타입만 필요하다.
 - **INT-94** `polyspec/orm-php-ext` package의 PHP 확장 `polyspec_orm`은 `pdo` module을 필수 module로 선언하므로, PHP는 pdo가 있을 때에만 확장을 로드한다.
@@ -339,7 +339,7 @@ symbol 검사 통과는 선언된 표면만 증명한다. 적합성 벡터 통�
 미지원 타입은 `CATALOG_VALUE`로 명시적으로 실패한다.
 
 그리드 실수 셀은 부호 있는 0과 비유한 값을 포함해 IEEE-754 비트를 정확히
-보존하며 JSON 숫자로 변환하지 않는다. 구현은 각 native 공개 경계에 맞는 타입을
+보존하며 JSON 숫자로 변환하지 않는다. 구현은 각 native 공개 한계에 맞는 타입을
 사용할 수 있다. MySQL unsigned 정수 셀은 전체 unsigned 64비트 범위를 보존한다.
 그리드 값은 스키마/카탈로그 스칼라 변환 규칙을 바꾸지 않는다.
 
@@ -534,13 +534,13 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 - **INT-116** `polyspec-orm-build` Rust 도구는 타입 있는 바인드의 값을 데이터베이스에서 보존한다. 타입 있는 NULL은 빈 텍스트나 0이 아니라 선택된 네이티브 바인드 종류를 쓴다.
 - **INT-117** 타입 있는 카탈로그 쓰기는 값이 열의 선언된 소수 자릿수를 가질 때 쓴 셀을 다시 읽는다. 기록 후 검증이나 충돌이 거부한 쓰기는 롤백한다.
 - **INT-118** 명시적인 PostgreSQL 제약 또는 트랜잭션 거부는 확인 응답 누락과 구분되며, `ROW_COMMIT_REJECTED`를 보고하기 전에 롤백 확인이 필요하다. 확인되지 않은 커밋 오류는 불확실하며 자동으로 재시도하지 않는다.
-- **INT-119** 트리거가 없다는 판단은 검증된 직접 계정 권한이 있을 때만 유효하다. 역할로만 받은 권한과 활성화된 부분 회수는 보이는 것으로 가정하지 않고 거부한다.
+- **INT-119** 트리거가 없다는 판단은 검증된 직접 계정 권한이 있을 때만 유효하다. 역할로만 받은 권한과 활성화된 부분 수집는 보이는 것으로 가정하지 않고 거부한다.
 - **INT-120** `polyspec-orm-build` 네이티브 도구는 65535개를 넘는 파라미터 또는 총 값 바이트가 16 MiB를 넘는 바인드 목록을 준비나 실행 전에 `TOOL_BIND_LIMIT`로 거부한다.
 - **INT-121** 테이블 페이지는 준비된 열 이름이 descriptor와 맞지 않거나, 읽기 범위 안에서 메타데이터가 바뀌면 거부된다.
 - **INT-122** `polyspec-orm-build` Rust 도구는 실행 전에 잘못된 decimal, 비유한 MySQL float, SQLite NaN, NUL이 있는 PostgreSQL 텍스트를 `TOOL_BIND_INVALID`로 거부한다.
 - **INT-123** `insert_row`는 생략된 기본키 구성요소마다 `automatic_key` 또는 `default_expression`을 요구하고, 없으면 `ROW_INSERT_IDENTITY_REQUIRED`를 반환한다. 데이터베이스에서 생략된 키를 돌려주며 dialect가 키 형태를 만들 수 없으면 `ROW_INSERT_UNSUPPORTED`를 반환한다. 기존 키와 알 수 없거나 중복되거나 생성 열 대상인 할당을 거부하며, 정확히 한 행의 영향, 선언된 키로 재조회 및 제공된 값의 정확한 비교를 요구한다.
 - **INT-124** `polyspec-orm-build` crate의 Rust `tool_db` 질의 결과는 열 메타데이터가 2048개를 넘거나, 열 이름과 네이티브 타입을 합한 크기가 64 KiB를 넘으면 `TOOL_QUERY_COLUMNS`로 실패한다.
-- **INT-125** `polyspec-orm-build` crate의 Rust `tool_db` 경계가 있는 질의는 텍스트가 정확히 한 개의 statement로 나뉘지 않으면 `TOOL_QUERY_STATEMENT`로 실패한다.
+- **INT-125** `polyspec-orm-build` crate의 Rust `tool_db` 범위가 있는 질의는 텍스트가 정확히 한 개의 statement로 나뉘지 않으면 `TOOL_QUERY_STATEMENT`로 실패한다.
 - **INT-135** `polyspec-orm-build` crate의 Rust `tool_db` 질의 결과는 statement 열을 순서대로 네이티브 타입과 함께 나열하며 중복 이름을 포함하고, 행이 없어도 그 열을 유지한다.
 - **INT-136** 읽기 전용 grid 질의는 읽기만 하는 statement 하나를 받아들인다: `SELECT`, 또는 그 부분이 읽기만 하는 `WITH` 질의. 주석이나 문자열 리터럴 안의 `;`는 statement를 끝내지 않는다. 쓰기, commit, 프로시저 호출, `INTO` 선택, `FOR UPDATE` 잠금, 또는 뒤따르는 두 번째 statement가 있는 문장은 거부하며, PostgreSQL에서는 `UNION ALL` 피연산자 200개 또는 `+` 항 200개인 질의도 거부한다.
 - **INT-137** `polyspec-orm-build` crate의 Rust 카탈로그 연결은 취소된 task가 열어 둔 읽기 전용 scope를 pool에 돌려보내지 않는다: connection을 폐기하고 다음 checkout은 쓸 수 있다.

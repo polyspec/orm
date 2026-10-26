@@ -1,5 +1,5 @@
 <!-- doc-id: interface-implementation -->
-<!-- source-sha256: 2c583cfe3d1be2686ad6073eee1e7807b77229b8d26514ae063c8f95697e2d47 -->
+<!-- source-sha256: 8dd6f74d4dcdf09b8efec77df3956ed09b2c1334b5b74b194282a798ef1f26a3 -->
 # 공통 인터페이스 구현 대조표
 
 기준: [공통 인터페이스 v1](../spec/interfaces.md), [기계 명세](../../contracts/interfaces.json), [생성 도표](../spec/interfaces-model.md). 재현 명령과 검사 범위는 [검사 안내](../../tests/interfaces/README.md)에 있다.

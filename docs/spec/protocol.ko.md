@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: b2d0dfb376bd2109fd2cf9406770a87bb6c8ccb5df0b1b0dc4b3d4e752f2f501 -->
+<!-- source-sha256: 76679118c2ac3981d7df866e594db342ec7942906d2f51d56529375780459ae3 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -180,14 +180,14 @@ PostgreSQL identity는 명시한 key를 지나 나아가지 않으므로 다시 
 - **PRT-38** 관계마다 부모 단계 뒤에 `relation` 단계가 하나 있다. 중첩 관계도 같은 규칙을 따르며, `paginate`의 단계 순서는 본문, 관계, 개수다.
 - **PRT-39** 클라이언트는 모든 부모 행의 키를 순서대로 읽고, 키가 null인 행과 중복을 제거한다. 남은 키가 없으면 문장을 실행하지 않는다. `if_parent`가 있으면 컬럼 값이 매개변수와 같은 부모만 사용한다.
 - **PRT-40** `parent` 슬롯은 클라이언트가 키 목록으로 확장하는 자리표시자 하나다. 목록은 마지막 키를 반복해 2의 거듭제곱 길이로 맞추므로 크기 구간마다 준비된 문장 하나를 사용한다. 드라이버 바인드 한도보다 긴 목록은 나누어 실행한다.
-- **PRT-41** 여러 행 insert(`creates(rows, batch)`)는 행을 주어진 순서대로 batch로 나누어 실행한다. 각 batch는 `batch`개 행이고 마지막 batch는 남은 행이 더 적으면 그만큼이며, 각 batch는 하나의 multi-row INSERT다. client는 다른 크기를 고르지 않고 batch를 나누지 않는다. `batch`는 양의 정수이며, 아니면 어떤 statement보다 먼저 `CONFIG`다. 바인드 수(행 수 × 컬럼 수)가 바인드 한도(SQLite 999, MySQL과 PostgreSQL 65535)를 넘는 batch는 어떤 statement보다 먼저 `BATCH_TOO_LARGE`로 실패하고, message는 그 batch와 바인드 수와 한도를 밝힌다. 반복된 행은 insert되므로 행은 padding하지 않는다. 모든 batch는 한 transaction(활성 transaction 안에서는 savepoint)에서 실행되므로 실패한 batch는 그 호출의 어떤 행도 남기지 않으며, insert된 행과 생성된 key와 statement event는 주어진 행의 순서를 따른다. 공유 case는 `contracts/fixtures/insert_parts.json`이다.
+- **PRT-41** 여러 행 insert(`creates(rows, batch)`)는 행을 주어진 순서대로 batch로 나누어 실행한다. 각 batch는 `batch`개 행이고 마지막 batch는 남은 행이 더 적으면 그만큼이며, 각 batch는 하나의 multi-row INSERT다. client는 다른 크기를 고르지 않고 batch를 나누지 않는다. `batch`는 양의 정수이며, 아니면 어떤 statement보다 먼저 `CONFIG`다. 바인드 수(행 수 × 컬럼 수)가 바인드 한도(SQLite 999, MySQL과 PostgreSQL 65535)를 넘는 batch는 어떤 statement보다 먼저 `BATCH_TOO_LARGE`로 실패하고, message는 그 batch와 바인드 수와 한도를 명시한다. 반복된 행은 insert되므로 행은 padding하지 않는다. 모든 batch는 한 transaction(활성 transaction 안에서는 savepoint)에서 실행되므로 실패한 batch는 그 호출의 어떤 행도 남기지 않으며, insert된 행과 생성된 key와 statement event는 주어진 행의 순서를 따른다. 공유 case는 `contracts/fixtures/insert_parts.json`이다.
 - **PRT-42** `one`은 첫 자식 행을, `many`는 자식 순서의 컬렉션을 붙인다. 컬렉션 키가 겹치면 마지막 행을 유지한다.
 
 ## 3. 오류
 
 오류는 [errors.yaml](errors.yaml)의 코드와 메시지를 가진다. 예를 들어 `IR_INVALID`, `SCHEMA_HASH_MISMATCH`, `COLUMN_UNKNOWN`, `OPERATOR_NOT_ALLOWED`, `FUNCTION_UNKNOWN`, `EMPTY_IN`, `LIMIT_IN_RELATION`, `COLUMN_ALIAS_CONFLICT`가 있다. 실행기는 `CONFIG`, `OPTIMISTIC_LOCK`, `LOCK_NOT_AVAILABLE`, `DEADLOCK`, `DUPLICATE_KEY`, `FOREIGN_KEY`, `CONSTRAINT`, `READ_ONLY`, `CONNECTION_LOST`, `DRIVER`를 추가한다. 클라이언트는 모든 드라이버 오류를 ORM 오류로 반환한다. catalog에 있는 조건은 그 코드를, 그 밖의 드라이버 오류는 `DRIVER`를 가지며, 모두 드라이버 메시지와 원인인 드라이버 오류를 유지한다. 서버가 끝냈거나 끊긴 연결은 모든 클라이언트에서 `CONNECTION_LOST`다. 어떤 클라이언트도 그 판단에 메시지 text를 비교하지 않는다([설정](config.ko.md#lost-connections)). `audit`이나 `immutable` trigger가 거부한 쓰기는 `DRIVER`다. 트랜잭션이나 savepoint의 callback이 실패하고 rollback도 실패하면 클라이언트는 code `ROLLBACK`을 가진 오류 하나를 반환한다. 그 메시지는 두 오류를 적고, 오류는 callback 오류와 rollback 오류를 유지한다(PHP: previous exception과 `rollback`, TypeScript: `cause`와 `rollback`, Go: 두 오류를 이 순서로 담은 `errors.Join`, Rust: `Error::Rollback { callback, rollback }`, Python: `cause`와 `rollback`). `ROLLBACK` 오류는 재시도하지 않는다. SQLite NOWAIT 작업과 `busy_timeout` 복원이 모두 실패하면 primary 잠금 오류의 코드를 유지하고 두 오류 객체를 순서대로 보존한다(PHP: `previous`와 `cleanup`, TypeScript: `cause`의 `AggregateError`, Go: `errors.Join`, Rust: `Error::Cleanup { primary, cleanup }`, Python: `cause`의 `ExceptionGroup`). 하나만 실패하면 그 오류를 그대로 반환한다. NOWAIT 설정, 테이블 설정 또는 잠금 작업이 실패한 뒤에도 `busy_timeout` 복원을 시도한다. NOWAIT 잠금 실패는 `LOCK_NOT_AVAILABLE`이며 transaction conflict로 재시도하지 않는다.
 
-- **PRT-79** **Native driver errors.** 각 클라이언트는 인식한 native driver 조건을 catalog code로 매핑하고, 인식하지 못한 driver 오류는 `DRIVER`로 매핑한다. ORM 오류는 driver 메시지를 유지하고 native driver 오류를 cause로 보존한다. 각 구현은 database server 없이 native 오류 매핑 경계에서 이를 검사한다.
+- **PRT-79** **Native driver errors.** 각 클라이언트는 인식한 native driver 조건을 catalog code로 매핑하고, 인식하지 못한 driver 오류는 `DRIVER`로 매핑한다. ORM 오류는 driver 메시지를 유지하고 native driver 오류를 cause로 보존한다. 각 구현은 database server 없이 native 오류 매핑 단계에서 이를 검사한다.
 
 ### 3.1 Test faults
 
@@ -277,5 +277,5 @@ DSN scheme은 SQL dialect 대신 IR executor를 고를 수 있다. `markdown://`
 ## 6. Notifications
 
 - **PRT-74** **클라이언트 작업.** `notify`, `listen`, `unlisten`은 IR이 아니다: 클라이언트가 PostgreSQL 연결에서 [DIA-192](dialects.ko.md#notifications)~[DIA-196](dialects.ko.md#notifications)이 정의하는 대로 실행하며, IR 요청에는 들어가지 않는다. markdown executor와 MySQL, SQLite dialect는 이를 `CAPABILITY_UNSUPPORTED`로 거부한다.
-- **PRT-75** **전문 검색 조건.** `fulltext`와 `fulltext_boolean`은 [DSL-32](dsl.ko.md)와 [DSL-33](dsl.ko.md)의 Pred 연산자다. `cols`는 튜플 연산자처럼 한 table의 열을 담은 비어 있지 않은 배열이고, `p`는 검색어 문자열의 매개변수이며, boolean 모드는 이것을 transform `fulltext_boolean`([DIA-6](dialects.ko.md))으로 바인드한다. planner는 연산자의 모드로 그 열들에 대한 매치를 만들며, dialect별 형태는 [DIA-6](dialects.ko.md)이 정의한다. 전문 검색 조건에는 `column`이 없고, 다른 연산자에는 `cols`가 없다. 비어 있는 `cols`의 전문 검색 연산자는 `IR_INVALID`로 실패한다. 전문 검색이 없는 dialect(SQLite)에서 `fulltext` 조건은 `OPERATOR_NOT_ALLOWED`로 답한다([DIA-187](dialects.ko.md)).
-- **PRT-76** driver의 bind limit보다 긴 request의 root `in` 목록은 chunk로 나뉘며, 각 chunk는 그 수 이하의 값을 바인딩하는 statement 하나다; chunk들의 각 row는 한 번만 반환되므로, 목록에서 반복된 값은 그 row를 한 번만 센다. 나뉜 목록의 `limit`은 어떤 statement보다 먼저 `IR_INVALID`로 실패한다.
+- **PRT-75** **전문 검색 조건.** `fulltext`와 `fulltext_boolean`은 [DSL-32](dsl.ko.md)와 [DSL-33](dsl.ko.md)의 Pred 연산자다. `cols`는 튜플 연산자처럼 한 table의 열을 담은 비어 있지 않은 배열이고, `p`는 검색어 문자열의 매개변수이며, boolean 모드는 이것을 transform `fulltext_boolean`([DIA-6](dialects.ko.md))으로 바인드한다. planner는 연산자의 모드로 그 열들에 대한 매치를 만들며, dialect별 형태는 [DIA-6](dialects.ko.md)이 정의한다. 전문 검색 조건에는 `column`이 없고, 다른 연산자에는 `cols`가 없다. 비어 있는 `cols`의 전문 검색 연산자는 `IR_INVALID`로 실패한다. 전문 검색이 없는 dialect(SQLite)에서 `fulltext` 조건은 `OPERATOR_NOT_ALLOWED`로 반환한다([DIA-187](dialects.ko.md)).
+- **PRT-76** driver의 bind limit보다 긴 request의 root `in` 목록은 chunk로 나뉘며, 각 chunk는 그 수 이하의 값을 바인딩하는 statement 하나다; chunk들의 각 row는 한 번만 반환되므로, 목록에서 반복된 값은 그 row를 한 번만 계산한다. 나뉜 목록의 `limit`은 어떤 statement보다 먼저 `IR_INVALID`로 실패한다.

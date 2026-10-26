@@ -247,6 +247,9 @@
 - lint-php가 통과한다. PHP는 PSR-12 배치, camelCase test method(config/parity.json의 PHP binding 218개와 Makefile filter 포함), 파일당 class 하나, 모든 test class의 namespace, PHPUnit bootstrap이 require하는 test helper, 빈 catch 없음, 이유 없는 silenced call 없음을 따르고, test는 생성한 model을 autoloader 없이 불러온다(KSTD-5-9). red: root, packages/php, packages/php-ext의 phpcs와 phpstan이 실패했다.
 - 손으로 쓴 PHP는 120자 줄 길이를 지킨다. 긴 호출, chain, 목록, 문자열, 주석을 token 그대로 PSR-12 방식으로 감싸고, Unicode word table 생성기는 설명을 두 줄로 쓴다(KSTD-5-9-1). red: phpcs가 긴 줄 1450개를 보고했다.
 - config/rebuild.json은 scripts/typescript/models.mts와 scripts/php/vendor-autoload-check.mjs를 분류하므로 make rebuild-check가 통과한다(KSTD-5-5-1-1). red: rebuild-check가 두 도구를 분류 없이 보고했다.
+- config/rebuild.json은 scripts/typescript/models.mts와 scripts/php/vendor-autoload-check.mjs를 분류하므로 make rebuild-check가 통과한다(KSTD-5-5-1-1). red: rebuild-check가 두 도구를 분류 없이 보고했다.
+- KSTD-10-5를 main에서 다시 완료로 표시한다: autoload 검사 사례는 KSTD-3-2 commit이 node:test로 다시 쓴 뒤 KSTD-10-5-1이 복구한 대로 `caseTest`로 선언된다(KSTD-10-5). red: 규칙이 다시 쓰인 test에서 실패했다.
+- PHP extension은 조용히 실패하던 경로에서도 명시적으로 실패한다: `Validator::restoreKey`와 `conflictKey`는 `OrmException` class가 없으면 null 대신 누락 class를 이름 짓는 Error를 던지고, `scall`은 callable이 아닌 호출에서 예외를 던진다. `record_inserted`는 실패한 `TxFrame::recordInserted`를 버리지 않고 전달하며, build는 `-Werror`를 사용한다(T182-2-4). red: `make dbspec-php-extension-check/silent-paths`는 두 호출 모두 예외 없이 null을 반환했다.
 - KSTD-10-5를 main에서 다시 완료로 표시한다: autoload 검사 사례는 KSTD-3-2 commit이 node:test로 다시 쓴 뒤 KSTD-10-5-1이 복구한 대로 `caseTest`로 선언된다(KSTD-10-5). red: 규칙이 다시 쓰인 test에서 실패했다.
 - 테스트 서버의 startLogged는 더는 영원히 기다리지 않는다: 준비 줄이 오지 않으면 단계와 로그를 밝히며 실패하고, 로그도 주기적으로 읽는다 (KSTD-5-37).
 - `scripts/check/run.test.mts`의 가드 test는 로컬에서 CI group의 거부만 검사하고 CI identity를 설정하지 않는다. 수락 사례는 GitHub Actions 프로세스에서만 실행된다(KSTD-5-13). red: 부모의 test가 로컬 실행에서 CI identity를 설정해 bypass 검사가 실패했다.
