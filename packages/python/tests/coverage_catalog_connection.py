@@ -1,7 +1,7 @@
 # catalog_connection coverage runs the two shared cases against the bench database that the
 # feature check selected (ORM_FEATURE_DATABASE, ORM_FEATURE_DSN) through connect_catalog. The read case only reads; the
 # mutation case inserts, updates and deletes one row of composite_account in tenant 990005 and ends in the state it started in.
-# Requirements: SCH-3, SCH-5, SCH-6, SCH-6a, INT-97, INT-101, INT-102, INT-103, INT-104, INT-109, INT-112, INT-113, INT-114, INT-115, INT-121, INT-123, INT-136.
+# Requirements: SCH-3, SCH-5, SCH-6, SCH-6a, INT-97, INT-101, INT-102, INT-103, INT-104, INT-109, INT-112, INT-113, INT-114, INT-115, INT-121, INT-123, INT-136, INT-117.
 # Its SQLite path also checks generated primary keys in a temporary file, outside the bench database.
 import io
 import os
@@ -113,7 +113,7 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
     def tearDown(self):
         self.catalog.close()
 
-    # Requirements: INT-101, INT-136.
+    # Requirements: INT-101, INT-136, INT-117.
     # Requirements: INT-115.
     def test_read(self):
         with self.assertRaises(Exception):
@@ -317,8 +317,6 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
             native.close()
 
     def _assert_temporal_default_precision(self):
-        if self.driver == "sqlite":
-            return
         url = urlsplit(self.dsn)
         query = parse_qs(url.query)
         if self.driver == "mysql":
@@ -334,7 +332,7 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
                 autocommit=True,
             )
             columns = "id BIGINT NOT NULL PRIMARY KEY, t0 TIME NULL, dt0 DATETIME NULL, t3 TIME(3) NULL, dt3 DATETIME(3) NULL"
-        else:
+        elif self.driver == "postgres":
             import psycopg
 
             native = psycopg.connect(
@@ -350,6 +348,15 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
                 "dt0 TIMESTAMP WITHOUT TIME ZONE NULL, t3 TIME(3) WITHOUT TIME ZONE NULL, "
                 "dt3 TIMESTAMP(3) WITHOUT TIME ZONE NULL"
             )
+        else:
+            native = sqlite3.connect(unquote(url.path), isolation_level=None)
+            columns = (
+                "id INTEGER NOT NULL PRIMARY KEY, "
+                't0 TIME NOT NULL CHECK (length("t0") = 8 AND "t0" IS time("t0") AND "t0" < \'24:00:00\'), '
+                'dt0 DATETIME NOT NULL CHECK (length("dt0") = 19 AND "dt0" IS datetime("dt0") AND substr("dt0", 12, 2) < \'24\'), '
+                't3 TIME NOT NULL CHECK (length("t3") = 12 AND substr("t3", 1, 8) IS time(substr("t3", 1, 8)) AND "t3" < \'24:00:00\' AND substr("t3", 9, 1) = \'.\' AND substr("t3", 10) GLOB \'[0-9][0-9][0-9]\'), '
+                'dt3 DATETIME NOT NULL CHECK (length("dt3") = 23 AND substr("dt3", 1, 19) IS datetime(substr("dt3", 1, 19)) AND substr("dt3", 12, 2) < \'24\' AND substr("dt3", 20, 1) = \'.\' AND substr("dt3", 21) GLOB \'[0-9][0-9][0-9]\')'
+            )
         name = f"catalog_temporal_precision_{os.getpid()}_{secrets.token_hex(4)}"
         qualified = f"{quote(self.catalog.current_namespace(), self.driver)}.{quote(name, self.driver)}"
         invalid = quote(f"{name}_invalid", self.driver)
@@ -357,21 +364,65 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
             with native.cursor() as cursor:
                 cursor.execute(f"DROP TABLE IF EXISTS {qualified}")
                 cursor.execute(f"CREATE TABLE {qualified} ({columns})")
-                cursor.execute(
-                    f"INSERT INTO {qualified} VALUES "
-                    "(1, '12:34:56.123456', '2026-01-02 03:04:05.123456', "
-                    "'12:34:56.123456', '2026-01-02 03:04:05.123456')"
+                metadata = self.catalog.describe_table(
+                    {"namespace": self.catalog.current_namespace(), "name": name}
                 )
+                with self.assertRaises(OrmError):
+                    self.catalog.insert_row(
+                        metadata,
+                        [
+                            ("id", 2),
+                            ("t0", "12:34:56"),
+                            ("dt0", "2026-01-02 03:04:05"),
+                            ("t3", "12:34:56.1234"),
+                            ("dt3", "2026-01-02 03:04:05.1234"),
+                        ],
+                    )
+                unchanged = self.catalog.read_only_query(
+                    f"SELECT COUNT(*) FROM {qualified} WHERE id=2", []
+                )
+                self.assertEqual(int(unchanged.rows[0][0]), 0)
+                t0 = "12:34:56.123456" if self.driver == "postgres" else "12:34:56"
+                dt0 = (
+                    "2026-01-02 03:04:05.123456"
+                    if self.driver == "postgres"
+                    else "2026-01-02 03:04:05"
+                )
+                inserted = self.catalog.insert_row(
+                    metadata,
+                    [
+                        ("id", 1),
+                        ("t0", t0),
+                        ("dt0", dt0),
+                        ("t3", "12:34:56.123"),
+                        ("dt3", "2026-01-02 03:04:05.123"),
+                    ],
+                )
+                self.assertEqual(len(inserted.rows), 1)
                 page = self.catalog.table_page(
                     {"namespace": self.catalog.current_namespace(), "name": name}, 1, 0
                 )
-                fractions = [
-                    getattr(value, "microsecond", getattr(value, "microseconds", 0))
-                    for value in page.result.rows[0][1:]
-                ]
+                values = page.result.rows[0][1:]
+                fractions = (
+                    [
+                        len(value.split(".", 1)[1]) if "." in value else 0
+                        for value in values
+                    ]
+                    if self.driver == "sqlite"
+                    else [
+                        getattr(value, "microsecond", getattr(value, "microseconds", 0))
+                        for value in values
+                    ]
+                )
                 self.assertEqual(
-                    [0, 0, 123000, 123000]
+                    (
+                        [0, 0, 3, 3]
+                        if self.driver == "sqlite"
+                        else [0, 0, 123000, 123000]
+                    )
                     if self.driver == "mysql"
+                    else [0, 0, 3, 3]
+                    if self.driver == "sqlite"
                     else [123456, 123456, 123000, 123000],
                     fractions,
                     f"{self.driver}: temporal table reads use native defaults and declared precision",

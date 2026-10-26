@@ -14911,6 +14911,45 @@
       ]
     },
     {
+      "id": "catalog-typed-temporal-write-returns-declared-fraction-digits-and-rolls-back-invalid-write",
+      "kind": "feature",
+      "requirements": [
+        "INT-117"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_catalog_connection_test.go",
+          "id": "TestCoverageCatalogRead"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRead"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRead"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_read"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_catalog_connection.py",
+          "id": "test_read"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/row_insert_identity.rs",
+          "id": "typed_catalog_writes_return_declared_temporal_fraction_digits"
+        }
+      ]
+    },
+    {
       "id": "rust-catalog-mutation-finish-broken-commit-acknowledgement-is-not-explicit-rejection",
       "kind": "feature",
       "requirements": [

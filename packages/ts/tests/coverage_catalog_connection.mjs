@@ -1,7 +1,7 @@
 // catalog_connection coverage runs the two shared cases against the bench database that the
 // feature check selected (ORM_FEATURE_DATABASE, ORM_FEATURE_DSN) through connectCatalog. The read case only reads; the mutation
 // case inserts, updates and deletes one row of composite_account in tenant 990005 and ends in the state it started in.
-// Requirements: SCH-3, SCH-5, SCH-6, SCH-6a, INT-97, INT-101, INT-102, INT-103, INT-104, INT-109, INT-112, INT-113, INT-114, INT-115, INT-121, INT-123, INT-136.
+// Requirements: SCH-3, SCH-5, SCH-6, SCH-6a, INT-97, INT-101, INT-102, INT-103, INT-104, INT-109, INT-112, INT-113, INT-114, INT-115, INT-121, INT-123, INT-136, INT-117.
 import assert from 'node:assert/strict';
 import { randomInt } from 'node:crypto';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
@@ -28,7 +28,7 @@ async function connect(item = {
 
 const quote = (name, driver) => (driver === 'mysql' ? `\`${name}\`` : `"${name}"`);
 
-// Requirements: INT-101, INT-121, INT-136.
+// Requirements: INT-101, INT-121, INT-136, INT-117.
 async function readCase(item) {
   const { driver, catalog } = await connect(item);
   try {
@@ -149,25 +149,50 @@ async function readCase(item) {
 }
 
 
-// Requirements: INT-101.
+// Requirements: INT-101, INT-117.
 async function temporalDefaultPrecisionCase(driver, dsn, catalog) {
-  if (driver === 'sqlite') return;
   const name = `catalog_temporal_precision_${process.pid}_${randomInt(0, 1_000_000_000)}`;
   const columns = driver === 'mysql'
     ? 'id BIGINT NOT NULL PRIMARY KEY, t0 TIME NULL, dt0 DATETIME NULL, t3 TIME(3) NULL, dt3 DATETIME(3) NULL'
-    : 'id BIGINT NOT NULL PRIMARY KEY, t0 TIME WITHOUT TIME ZONE NULL, dt0 TIMESTAMP WITHOUT TIME ZONE NULL, t3 TIME(3) WITHOUT TIME ZONE NULL, dt3 TIMESTAMP(3) WITHOUT TIME ZONE NULL';
+    : driver === 'postgres'
+      ? 'id BIGINT NOT NULL PRIMARY KEY, t0 TIME WITHOUT TIME ZONE NULL, dt0 TIMESTAMP WITHOUT TIME ZONE NULL, t3 TIME(3) WITHOUT TIME ZONE NULL, dt3 TIMESTAMP(3) WITHOUT TIME ZONE NULL'
+      : `id INTEGER NOT NULL PRIMARY KEY,
+        t0 TIME NOT NULL CHECK (length("t0") = 8 AND "t0" IS time("t0") AND "t0" < '24:00:00'),
+        dt0 DATETIME NOT NULL CHECK (length("dt0") = 19 AND "dt0" IS datetime("dt0") AND substr("dt0", 12, 2) < '24'),
+        t3 TIME NOT NULL CHECK (length("t3") = 12 AND substr("t3", 1, 8) IS time(substr("t3", 1, 8)) AND "t3" < '24:00:00' AND substr("t3", 9, 1) = '.' AND substr("t3", 10) GLOB '[0-9][0-9][0-9]'),
+        dt3 DATETIME NOT NULL CHECK (length("dt3") = 23 AND substr("dt3", 1, 19) IS datetime(substr("dt3", 1, 19)) AND substr("dt3", 12, 2) < '24' AND substr("dt3", 20, 1) = '.' AND substr("dt3", 21) GLOB '[0-9][0-9][0-9]')`;
   try {
     await nativeQuery(driver, dsn, [
       `DROP TABLE IF EXISTS ${name}`,
       `CREATE TABLE ${name} (${columns})`,
-      `INSERT INTO ${name} VALUES (1, '12:34:56.123456', '2026-01-02 03:04:05.123456', '12:34:56.123456', '2026-01-02 03:04:05.123456')`,
     ]);
+    const metadata = await catalog.describeTable({ namespace: await catalog.currentNamespace(), name });
+    await assert.rejects(catalog.insertRow(metadata, [
+      { name: 'id', value: 2 },
+      { name: 't0', value: '12:34:56' },
+      { name: 'dt0', value: '2026-01-02 03:04:05' },
+      { name: 't3', value: '12:34:56.1234' },
+      { name: 'dt3', value: '2026-01-02 03:04:05.1234' },
+    ]), undefined, `${driver}: typed write beyond declared precision is rejected`);
+    const unchanged = await catalog.readOnlyQuery(`SELECT COUNT(*) FROM ${quote(name, driver)} WHERE id=2`, []);
+    assert.equal(Number(unchanged.rows[0][0]), 0, `${driver}: rejected typed write rolled back`);
+    const t0 = driver === 'postgres' ? '12:34:56.123456' : '12:34:56';
+    const dt0 = driver === 'postgres' ? '2026-01-02 03:04:05.123456' : '2026-01-02 03:04:05';
+    const inserted = await catalog.insertRow(metadata, [
+      { name: 'id', value: 1 },
+      { name: 't0', value: t0 },
+      { name: 'dt0', value: dt0 },
+      { name: 't3', value: '12:34:56.123' },
+      { name: 'dt3', value: '2026-01-02 03:04:05.123' },
+    ]);
+    assert.equal(inserted.rows.length, 1, `${driver}: typed temporal Catalog insert returned its row`);
     const page = await catalog.tablePage({ namespace: await catalog.currentNamespace(), name }, 1, 0);
     const fractions = page.result.rows[0].slice(1).map(value => {
+      if (typeof value !== 'string') return value.microsecond === 0 ? 0 : 6;
       const dot = value.indexOf('.');
       return dot === -1 ? 0 : value.length - dot - 1;
     });
-    assert.deepEqual(fractions, driver === 'mysql' ? [0, 0, 3, 3] : [6, 6, 3, 3], `${driver}: temporal table reads use native defaults and declared precision`);
+    assert.deepEqual(fractions, driver === 'postgres' ? [6, 6, 3, 3] : [0, 0, 3, 3], `${driver}: typed temporal writes read back at declared precision`);
   } finally {
     await nativeQuery(driver, dsn, [`DROP TABLE IF EXISTS ${name}`]);
   }

@@ -73,7 +73,7 @@ func catalogQuote(name, driver string) string {
 	return `"` + name + `"`
 }
 
-// Requirements: SCH-3, SCH-5, SCH-6, SCH-6a, INT-97, INT-101, INT-102, INT-103, INT-104, INT-112, INT-113, INT-114, INT-115, INT-121, INT-136.
+// Requirements: SCH-3, SCH-5, SCH-6, SCH-6a, INT-97, INT-101, INT-102, INT-103, INT-104, INT-112, INT-113, INT-114, INT-115, INT-121, INT-136, INT-117.
 func TestCoverageCatalogRead(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	if _, err := orm.ConnectCatalog("unsupported://host/database"); err == nil {
@@ -238,20 +238,22 @@ func TestCoverageCatalogRead(t *testing.T) {
 	catalogGridCellsCheck(t, ctx, driver, c)
 }
 
-// Requirements: INT-101.
+// Requirements: INT-101, INT-117.
 func catalogTemporalDefaultPrecisionCheck(t *testing.T, driver string, c *orm.CatalogConnection) {
 	t.Helper()
-	if driver == "sqlite" {
-		return
-	}
 	_, dsn := featureDatabase(t)
 	table := fmt.Sprintf("catalog_temporal_precision_%d", time.Now().UnixNano())
 	columns := "id BIGINT NOT NULL PRIMARY KEY, t0 TIME NULL, dt0 DATETIME NULL, t3 TIME(3) NULL, dt3 DATETIME(3) NULL"
-	if driver == "postgres" {
+	if driver == "sqlite" {
+		columns = `id INTEGER NOT NULL PRIMARY KEY,
+			t0 TIME NOT NULL CHECK (length("t0") = 8 AND "t0" IS time("t0") AND "t0" < '24:00:00'),
+			dt0 DATETIME NOT NULL CHECK (length("dt0") = 19 AND "dt0" IS datetime("dt0") AND substr("dt0", 12, 2) < '24'),
+			t3 TIME NOT NULL CHECK (length("t3") = 12 AND substr("t3", 1, 8) IS time(substr("t3", 1, 8)) AND "t3" < '24:00:00' AND substr("t3", 9, 1) = '.' AND substr("t3", 10) GLOB '[0-9][0-9][0-9]'),
+			dt3 DATETIME NOT NULL CHECK (length("dt3") = 23 AND substr("dt3", 1, 19) IS datetime(substr("dt3", 1, 19)) AND substr("dt3", 12, 2) < '24' AND substr("dt3", 20, 1) = '.' AND substr("dt3", 21) GLOB '[0-9][0-9][0-9]')`
+	} else if driver == "postgres" {
 		columns = "id BIGINT NOT NULL PRIMARY KEY, t0 TIME WITHOUT TIME ZONE NULL, dt0 TIMESTAMP WITHOUT TIME ZONE NULL, t3 TIME(3) WITHOUT TIME ZONE NULL, dt3 TIMESTAMP(3) WITHOUT TIME ZONE NULL"
 	}
-	raw := catalogProbe(t, driver, dsn, table, "CREATE TABLE "+table+" ("+columns+")",
-		"INSERT INTO "+table+" VALUES (1, '12:34:56.123456', '2026-01-02 03:04:05.123456', '12:34:56.123456', '2026-01-02 03:04:05.123456')")
+	raw := catalogProbe(t, driver, dsn, table, "CREATE TABLE "+table+" ("+columns+")")
 	if driver == "mysql" {
 		_, err := raw.Exec("CREATE TABLE " + table + "_invalid (id BIGINT PRIMARY KEY, t TIME(7))")
 		if err == nil {
@@ -268,13 +270,55 @@ func catalogTemporalDefaultPrecisionCheck(t *testing.T, driver string, c *orm.Ca
 	if err != nil {
 		t.Fatalf("%s: temporal precision namespace: %v", driver, err)
 	}
-	page, err := c.TablePage(context.Background(), orm.CatalogTableRef{Namespace: namespace, Name: table}, 1, 0)
+	metadata, err := c.DescribeTable(context.Background(), orm.CatalogTableRef{Namespace: namespace, Name: table})
 	if err != nil {
-		t.Fatalf("%s: temporal precision page: %v", driver, err)
+		t.Fatalf("%s: temporal precision metadata: %v", driver, err)
+	}
+	t0Value, dt0Value, t3Value, dt3Value := catalogTemporalWriteValues(driver)
+	invalidT3, invalidDT3 := any(time.Date(2026, time.January, 2, 12, 34, 56, 123400000, time.UTC)),
+		time.Date(2026, time.January, 2, 3, 4, 5, 123400000, time.UTC)
+	if driver == "sqlite" {
+		invalidT3, invalidDT3 = "12:34:56.1234", "2026-01-02 03:04:05.1234"
+	}
+	_, err = c.InsertRow(context.Background(), metadata, []orm.CatalogAssignment{
+		{Name: "id", Value: int64(2)},
+		{Name: "t0", Value: t0Value},
+		{Name: "dt0", Value: dt0Value},
+		{Name: "t3", Value: invalidT3},
+		{Name: "dt3", Value: invalidDT3},
+	})
+	if err == nil {
+		t.Fatalf("%s: typed temporal catalog insert accepted values beyond declared precision", driver)
+	}
+	unchanged, err := c.ReadOnlyQuery(context.Background(), "SELECT COUNT(*) FROM "+catalogQuote(table, driver)+" WHERE id=2", nil, orm.CatalogQueryLimits{})
+	if err != nil || unchanged.Rows[0][0] != int64(0) {
+		t.Fatalf("%s: rejected typed temporal insert left a row: rows %v, error %v", driver, unchanged.Rows, err)
+	}
+	inserted, err := c.InsertRow(context.Background(), metadata, []orm.CatalogAssignment{
+		{Name: "id", Value: int64(1)},
+		{Name: "t0", Value: t0Value},
+		{Name: "dt0", Value: dt0Value},
+		{Name: "t3", Value: t3Value},
+		{Name: "dt3", Value: dt3Value},
+	})
+	if err != nil || len(inserted.Rows) != 1 {
+		t.Fatalf("%s: typed temporal catalog insert rows %v, error %v", driver, inserted.Rows, err)
 	}
 	got := make([]int, 4)
 	for i, name := range []string{"t0", "dt0", "t3", "dt3"} {
-		value := page.Column(page.Result.Rows[0], name)
+		column := slices.IndexFunc(metadata.Columns, func(column orm.CatalogColumn) bool { return column.Name == name })
+		value := inserted.Rows[0][column]
+		if driver == "sqlite" {
+			text, ok := value.(string)
+			want := []string{"12:34:56", "2026-01-02 03:04:05", "12:34:56.123", "2026-01-02 03:04:05.123"}[i]
+			if !ok || text != want {
+				t.Fatalf("sqlite: typed temporal Catalog insert %s = %T(%v), want %q", name, value, value, want)
+			}
+			if dot := strings.IndexByte(text, '.'); dot >= 0 {
+				got[i] = len(text) - dot - 1
+			}
+			continue
+		}
 		timestamp, ok := value.(time.Time)
 		if !ok {
 			t.Fatalf("%s: %s has type %T, want time.Time", driver, name, value)
@@ -284,10 +328,26 @@ func catalogTemporalDefaultPrecisionCheck(t *testing.T, driver string, c *orm.Ca
 	want := []int{0, 0, 123000000, 123000000}
 	if driver == "postgres" {
 		want[0], want[1] = 123456000, 123456000
+	} else if driver == "sqlite" {
+		want[2], want[3] = 3, 3
 	}
 	if !slices.Equal(got, want) {
 		t.Fatalf("%s: temporal precision nanos %v, want %v", driver, got, want)
 	}
+}
+
+func catalogTemporalWriteValues(driver string) (any, any, any, any) {
+	if driver == "sqlite" {
+		return "12:34:56", "2026-01-02 03:04:05", "12:34:56.123", "2026-01-02 03:04:05.123"
+	}
+	defaultNanos := 0
+	if driver == "postgres" {
+		defaultNanos = 123456000
+	}
+	return time.Date(2026, time.January, 2, 12, 34, 56, defaultNanos, time.UTC),
+		time.Date(2026, time.January, 2, 3, 4, 5, defaultNanos, time.UTC),
+		time.Date(2026, time.January, 2, 12, 34, 56, 123000000, time.UTC),
+		time.Date(2026, time.January, 2, 3, 4, 5, 123000000, time.UTC)
 }
 
 // Requirements: INT-115.

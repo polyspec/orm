@@ -3,8 +3,8 @@ use polyspec_orm_build::{
     tool_db::{self, GridCell, P},
 };
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
     Arc,
+    atomic::{AtomicBool, Ordering},
 };
 
 #[path = "row_insert_identity/expression.rs"]
@@ -43,6 +43,83 @@ async fn sqlite_automatic_primary_key_returns_and_stores_the_inserted_row() {
     seed.exec("DROP TABLE generated", &[]).await.expect("remove owned table");
     drop(seed);
     database.close().await;
+}
+
+#[tokio::test]
+// Requirements: INT-117.
+async fn typed_catalog_writes_return_declared_temporal_fraction_digits() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let path = std::env::temp_dir().join(format!("orm-catalog-typed-temporal-{}.sqlite", std::process::id()));
+    assert!(!path.exists(), "SQLite fixture path must be unowned before this run");
+    let mut failures = Vec::new();
+    for dialect in ["sqlite", "mysql", "postgres"] {
+        polyspec_orm_testcase::step(format_args!("running {dialect}"));
+        let dsn = match dialect {
+            "sqlite" => format!("sqlite://{}", path.display()),
+            "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("MySQL owner fixture DSN"),
+            _ => std::env::var("ORM_TOOLS_POSTGRES_DSN").expect("PostgreSQL owner fixture DSN"),
+        };
+        let (database, mut seed, _) = tool_db::open(&dsn).await.expect("fixture connection");
+        let name = format!("orm_typed_temporal_{}", std::process::id());
+        let columns = if dialect == "sqlite" {
+            "id INTEGER NOT NULL PRIMARY KEY, \
+             t0 TIME NOT NULL CHECK (length(\"t0\") = 8 AND \"t0\" IS time(\"t0\") AND \"t0\" < '24:00:00'), \
+             dt0 DATETIME NOT NULL CHECK (length(\"dt0\") = 19 AND \"dt0\" IS datetime(\"dt0\") AND substr(\"dt0\", 12, 2) < '24'), \
+             t3 TIME NOT NULL CHECK (length(\"t3\") = 12 AND substr(\"t3\", 1, 8) IS time(substr(\"t3\", 1, 8)) AND \"t3\" < '24:00:00' AND substr(\"t3\", 9, 1) = '.' AND substr(\"t3\", 10) GLOB '[0-9][0-9][0-9]'), \
+             dt3 DATETIME NOT NULL CHECK (length(\"dt3\") = 23 AND substr(\"dt3\", 1, 19) IS datetime(substr(\"dt3\", 1, 19)) AND substr(\"dt3\", 12, 2) < '24' AND substr(\"dt3\", 20, 1) = '.' AND substr(\"dt3\", 21) GLOB '[0-9][0-9][0-9]')"
+        } else if dialect == "mysql" {
+            "id BIGINT NOT NULL PRIMARY KEY, t0 TIME NULL, dt0 DATETIME NULL, t3 TIME(3) NULL, dt3 DATETIME(3) NULL"
+        } else {
+            "id BIGINT NOT NULL PRIMARY KEY, t0 TIME WITHOUT TIME ZONE NULL, dt0 TIMESTAMP WITHOUT TIME ZONE NULL, t3 TIME(3) WITHOUT TIME ZONE NULL, dt3 TIMESTAMP(3) WITHOUT TIME ZONE NULL"
+        };
+        seed.exec(&format!("CREATE TABLE {name} ({columns}){}", if dialect == "mysql" { " ENGINE=InnoDB" } else { "" }), &[])
+            .await
+            .expect("create typed temporal table");
+        let mut catalog = CatalogConnection::connect(&dsn).await.expect("catalog connection");
+        let table = TableRef { namespace: catalog.current_namespace().await.expect("namespace"), name: name.clone() };
+        let metadata = catalog.describe_table(&table).await.expect("typed temporal metadata");
+        let (t0, dt0) = if dialect == "postgres" { ("12:34:56.123456", "2026-01-02 03:04:05.123456") } else { ("12:34:56", "2026-01-02 03:04:05") };
+        let values = [
+            ("id".into(), P::I(1)),
+            ("t0".into(), P::Time(t0.into())),
+            ("dt0".into(), P::DateTime(dt0.into())),
+            ("t3".into(), P::Time("12:34:56.123".into())),
+            ("dt3".into(), P::DateTime("2026-01-02 03:04:05.123".into())),
+        ];
+        let expected = vec![vec![
+            GridCell::Integer(1),
+            GridCell::Time(t0.into()),
+            GridCell::DateTime(dt0.into()),
+            GridCell::Time("12:34:56.123".into()),
+            GridCell::DateTime("2026-01-02 03:04:05.123".into()),
+        ]];
+        match insert_without_hooks(&catalog, &metadata, &values).await {
+            Ok(result) if result.rows == expected => {}
+            Ok(result) => failures.push(format!("{dialect}: typed temporal write returned {:?}", result.rows)),
+            Err(error) => failures.push(format!("{dialect}: typed temporal write failed: {}", error.split(':').next().unwrap_or("unknown"))),
+        }
+        let invalid = [
+            ("id".into(), P::I(2)),
+            ("t0".into(), P::Time(t0.into())),
+            ("dt0".into(), P::DateTime(dt0.into())),
+            ("t3".into(), P::Time("12:34:56.1234".into())),
+            ("dt3".into(), P::DateTime("2026-01-02 03:04:05.1234".into())),
+        ];
+        if insert_without_hooks(&catalog, &metadata, &invalid).await.is_ok() {
+            failures.push(format!("{dialect}: excess temporal fraction digits were accepted"));
+        }
+        let stored = catalog.table_page(&table, 3, 0).await.expect("typed temporal stored rows");
+        if stored.result.rows != expected {
+            failures.push(format!("{dialect}: rejected typed write did not roll back: {:?}", stored.result.rows));
+        }
+        catalog.close().await;
+        seed.exec(&format!("DROP TABLE {name}"), &[]).await.expect("remove typed temporal table");
+        drop(seed);
+        database.close().await;
+        polyspec_orm_testcase::step(format_args!("{dialect} finished"));
+    }
+    std::fs::remove_file(path).expect("remove owned SQLite fixture");
+    assert!(failures.is_empty(), "typed catalog temporal write failures: {failures:?}");
 }
 
 #[tokio::test]
