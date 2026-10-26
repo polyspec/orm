@@ -40,6 +40,8 @@ DBSPEC;
 #[Medium]
 final class CoverageSchemaInstallNativeTest extends TestCase
 {
+    private static bool $nativeSchemaSetFixtureReady = false;
+
     // Requirements: DBS-108, SCH-7, PLN-44.
     public function testSchemaInstallExisting(): void
     {
@@ -82,12 +84,31 @@ DBSPEC,
         });
     }
 
-    // Requirements: DBS-107, DBS-119, SCH-7, SCH-11, PLN-44, INT-54, INT-132, INT-133.
+    // Requirements: DBS-107, DBS-108, DBS-119, DBS-120, SCH-7, SCH-11, PLN-44, INT-54, INT-132, INT-133.
     public function testSchemaInstallExternalDocuments(): void
     {
         self::forEachCoverageDatabase(static function ($db): void {
             $manifest = self::externalSchema(NATIVE_EXTERNAL_USER);
             Assert::assertNotSame('', $manifest->externalText, 'the schema value has no external document text');
+            [, $dsn] = coverageItem();
+            $raw = \Polyspec\Orm\Orm::connect($dsn, new \Polyspec\Orm\Config());
+            $rawEvents = [];
+            $stopRaw = $raw->subscribe(static function ($event) use (&$rawEvents): void {
+                $rawEvents[] = $event->sql;
+            });
+            try {
+                try {
+                    (new \Polyspec\Orm\Tests\Model\Author())($raw)->getCount();
+                    $rawCode = '';
+                } catch (OrmException $error) {
+                    $rawCode = $error->code_;
+                }
+                Assert::assertSame(Code::SCHEMA_HASH_MISMATCH, $rawCode, 'a raw connection registers no set');
+                Assert::assertSame([], $rawEvents, 'an unregistered request sent no statement');
+            } finally {
+                $stopRaw();
+                $raw->close();
+            }
             $badHash = new Schema(
                 str_replace('coverage_external_post', 'coverage_external_post_changed', $manifest->manifestText),
                 $manifest->manifestHash,
@@ -141,6 +162,45 @@ DBSPEC,
                 $unsubscribe();
             }
         });
+    }
+
+    // Requirements: DBS-108, SCH-7.
+    public function testSchemaSetSeveralSchemas(): void
+    {
+        self::runNativeSchemaSet('testSeveralSchemas');
+    }
+
+    // Requirements: DBS-119.
+    public function testSchemaSetUnregisteredSchema(): void
+    {
+        self::runNativeSchemaSet('testUnregisteredSchema');
+    }
+
+    // Requirements: DBS-120, SCH-7, SCH-11.
+    public function testSchemaSetEditedManifest(): void
+    {
+        self::runNativeSchemaSet('testEditedManifest');
+    }
+
+    // Requirements: DBS-105, DBS-107, DBS-108, DBS-110, SCH-7, SCH-8.
+    public function testSchemaSetExternalDocuments(): void
+    {
+        self::runNativeSchemaSet('testExternalDocuments');
+    }
+
+    /** Runs the library-owned scenario with the loaded native entry points and the same per-driver case databases. */
+    private static function runNativeSchemaSet(string $method): void
+    {
+        \Polyspec\Orm\Extension\Tests\PhpExtensionBootstrapAssertions::requireLoaded();
+        coverageAssertEntryClassesAreInternal();
+        if (!self::$nativeSchemaSetFixtureReady) {
+            \Polyspec\Orm\Tests\SchemaSetTest::setUpBeforeClass();
+            self::$nativeSchemaSetFixtureReady = true;
+        }
+        $owner = new \Polyspec\Orm\Tests\SchemaSetTest($method);
+        foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
+            $owner->{$method}($driver);
+        }
     }
 
     /** @param callable(mixed): void $case */

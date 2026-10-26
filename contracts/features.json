@@ -5258,7 +5258,8 @@
         "packages/php-ext/tests/DbspecRulesNativeTest.php",
         "packages/go/orm/schema_exists_underscore_test.go",
         "packages/php/tests/SchemaExistsSqliteTest.php",
-        "packages/rust/orm/tests/schema_exists_underscore.rs"
+        "packages/rust/orm/tests/schema_exists_underscore.rs",
+        "packages/python/tests/test_schema_set.py"
       ],
       "docs": [
         "docs/spec/schema.md",
@@ -5337,12 +5338,15 @@
         },
         {
           "id": "install-register-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'test_(register_sends_no_statement|install_verifies_the_database|external_documents)' packages/php/tests/SchemaSetTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'test(RegisterSendsNoStatement|InstallVerifiesTheDatabase|ExternalDocuments|SeveralSchemas|UnregisteredSchema|EditedManifest)' packages/php/tests/SchemaSetTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/SchemaSetTest.php",
             "packages/php/tests/case_database.php",
-            "contracts/fixtures/install/changed_database.json"
+            "contracts/fixtures/install/changed_database.json",
+            "contracts/fixtures/decimal_schema.dbs",
+            "packages/php/tests/three_drivers.php",
+            "contracts/fixtures/external/*.dbs"
           ]
         },
         {
@@ -5354,6 +5358,18 @@
             "packages/ts/tests/install_changed_database.mjs",
             "packages/ts/tests/case-database.mjs",
             "contracts/fixtures/install/changed_database.json"
+          ]
+        },
+        {
+          "id": "install-schema-set-typescript",
+          "command": "node packages/ts/tests/schema-set.mjs several_schemas unregistered_schema edited_manifest external_documents",
+          "shard": "other",
+          "inputs": [
+            "packages/ts/tests/schema-set.mjs",
+            "packages/ts/tests/case-database.mjs",
+            "contracts/fixtures/bench/bench.dbs",
+            "contracts/fixtures/decimal_schema.dbs",
+            "contracts/fixtures/external/*.dbs"
           ]
         },
         {
@@ -5375,7 +5391,8 @@
             "packages/rust/orm/tests/register.rs",
             "packages/rust/orm/tests/install.rs",
             "packages/rust/orm/tests/external_documents.rs",
-            "contracts/fixtures/install/changed_database.json"
+            "contracts/fixtures/install/changed_database.json",
+            "contracts/fixtures/external/*.dbs"
           ]
         },
         {
@@ -5388,7 +5405,7 @@
         },
         {
           "id": "orm-install-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_schema_install && packages/python/.venv/bin/python -m packages.python.tests.test_schema_install_uses && packages/python/.venv/bin/python -m packages.python.tests.test_add_tables_and_columns && packages/python/.venv/bin/python -m packages.python.tests.test_add_tables_steps && packages/python/.venv/bin/python -m packages.python.tests.test_installed_differences && packages/python/.venv/bin/python -m packages.python.tests.test_schema_inspection && packages/python/.venv/bin/python -m packages.python.tests.test_schema_utils && packages/python/.venv/bin/python -m packages.python.tests.test_load_set",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_schema_install && packages/python/.venv/bin/python -m packages.python.tests.test_schema_install_uses && packages/python/.venv/bin/python -m packages.python.tests.test_add_tables_and_columns && packages/python/.venv/bin/python -m packages.python.tests.test_add_tables_steps && packages/python/.venv/bin/python -m packages.python.tests.test_installed_differences && packages/python/.venv/bin/python -m packages.python.tests.test_schema_inspection && packages/python/.venv/bin/python -m packages.python.tests.test_schema_utils && packages/python/.venv/bin/python -m packages.python.tests.test_load_set && packages/python/.venv/bin/python -m packages.python.tests.test_schema_set",
           "shard": "other",
           "inputs": [
             "packages/python/tests/test_schema_install.py",
@@ -5400,7 +5417,14 @@
             "packages/python/tests/test_schema_utils.py",
             "packages/python/tests/test_load_set.py",
             "packages/python/src/polyspec/orm/schema.py",
-            "packages/python/src/polyspec/orm/utils.py"
+            "packages/python/src/polyspec/orm/utils.py",
+            "packages/python/tests/test_schema_set.py",
+            "packages/python/tests/test_sqlite.py",
+            "packages/python/tests/case_database.py",
+            "contracts/fixtures/bench/dbspec-set.json",
+            "contracts/fixtures/bench/bench.dbs",
+            "contracts/fixtures/bench/bench_shared.dbs",
+            "contracts/fixtures/decimal_schema.dbs"
           ]
         },
         {
@@ -5431,7 +5455,44 @@
             "packages/php/tests/case_database.php",
             "packages/php-ext/src/schema_utils.c",
             "contracts/fixtures/install/changed_database.json",
-            "contracts/fixtures/install/note.dbs"
+            "contracts/fixtures/install/note.dbs",
+            "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+            "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+            "contracts/fixtures/external/*.dbs"
+          ]
+        },
+        {
+          "id": "install-schema-set-go",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/decimalmodel -run '^(TestSchemaSet(MySQL|Postgres|SQLite)|TestSchemaSetUnregistered(MySQL|Postgres|SQLite)|TestSchemaSetEditedManifest(MySQL|Postgres|SQLite))$' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/go/decimalmodel/schema_set_test.go",
+            "contracts/fixtures/decimal_schema.dbs",
+            "contracts/fixtures/bench/bench.dbs"
+          ]
+        },
+        {
+          "id": "install-schema-set-php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'test(SeveralSchemas|UnregisteredSchema|EditedManifest|ExternalDocuments)' packages/php/tests/SchemaSetTest.php",
+          "shard": "other",
+          "inputs": [
+            "packages/php/tests/SchemaSetTest.php",
+            "packages/php/tests/case_database.php",
+            "packages/php/tests/three_drivers.php",
+            "contracts/fixtures/decimal_schema.dbs",
+            "contracts/fixtures/external/*.dbs"
+          ]
+        },
+        {
+          "id": "install-schema-set-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts install-schema-set-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test decimal_physical schema_set",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/tests/tests/decimal_physical.rs",
+            "packages/rust/orm/tests/external_documents.rs",
+            "contracts/fixtures/decimal_schema.dbs",
+            "contracts/fixtures/bench/bench.dbs",
+            "contracts/fixtures/external/*.dbs"
           ]
         },
         {

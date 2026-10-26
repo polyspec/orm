@@ -95,7 +95,7 @@ fn external_schema(external: &str) -> &'static polyspec_orm::Schema {
 
 /// Checks whether installing a set that uses an external document confirms the external table in the database. If an external document's column is not in the database,
 /// the install fails with CONFIG and does not create the tables it owns. Registration does not read the database, so it connects with that set too.
-// Requirements: DBS-107, SCH-7, SCH-11, PLN-44, INT-132, INT-133.
+// Requirements: DBS-107, DBS-108, DBS-119, DBS-120, SCH-7, SCH-11, PLN-44, INT-54, INT-132, INT-133.
 #[tokio::test]
 async fn coverage_schema_install_external_documents() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -104,13 +104,45 @@ async fn coverage_schema_install_external_documents() {
             std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required; run it through make feature-check, which sets it for each coverage case");
         let member = external_schema(EXTERNAL_USER);
         assert!(!member.external().is_empty(), "schema value external document text");
+        let raw = polyspec_orm::Db::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap();
+        let raw_statements = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let raw_count = raw_statements.clone();
+        let _raw_subscription = raw
+            .subscribe(move |_| {
+                raw_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                Ok(())
+            })
+            .unwrap();
+        let error = super::model::Author::new().connect(&raw).get_count().await.expect_err("a raw connection registers no set");
+        assert_eq!(error.code(), polyspec_orm::codes::SCHEMA_HASH_MISMATCH, "a request on a raw connection");
+        assert_eq!(raw_statements.load(std::sync::atomic::Ordering::Relaxed), 0, "an unregistered request sent no statement");
+        raw.close().await;
         let connected = polyspec_orm::Db::connect_schema(&dsn, member, 2, polyspec_orm::Config::default())
             .await
             .or_panic(|e| format!("connect of a set whose external table user matches the database: {e}"));
         connected.close().await;
         let bad_text = Box::leak(member.text().replace("coverage_external_post", "coverage_external_post_changed").into_boxed_str());
         let bad_hash = polyspec_orm::Schema::with_external(bad_text, member.external(), member.hash());
-        assert_eq!(code(polyspec_orm::Db::connect_schema(&dsn, &bad_hash, 2, polyspec_orm::Config::default()).await), polyspec_orm::codes::CONFIG, "connect with manifest text that does not match its hash");
+        assert_eq!(
+            code(polyspec_orm::Db::connect_schema(&dsn, &bad_hash, 2, polyspec_orm::Config::default()).await),
+            polyspec_orm::codes::CONFIG,
+            "connect with manifest text that does not match its hash"
+        );
+        let db = connect().await;
+        let registered_statements = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let registered_count = registered_statements.clone();
+        let _registered_subscription = db
+            .subscribe(move |_| {
+                registered_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                Ok(())
+            })
+            .unwrap();
+        db.utils().schema().register(member).unwrap();
+        db.utils().schema().register(member).unwrap();
+        assert_eq!(code(db.utils().schema().register(&bad_hash)), polyspec_orm::codes::CONFIG, "register with a manifest text that does not match its hash");
+        assert_eq!(registered_statements.load(std::sync::atomic::Ordering::Relaxed), 0, "register sent no statement");
+        assert_eq!(super::model::Author::new().connect(&db).get_count().await.unwrap(), 100000, "registering another set keeps the bench set selected");
+        db.close().await;
         let drifted = external_schema(&EXTERNAL_USER.replace("  name varchar(191)\n", "  name varchar(191)\n  coverage_missing varchar(8) null\n"));
         let want = "the tables that the set uses from external documents differ from the database: column user.coverage_missing does not exist";
         let config = |r: polyspec_orm::Result<()>| match r {

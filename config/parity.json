@@ -7019,37 +7019,87 @@
       }
     },
     {
-      "id": "ts-schema-set-several-schemas-sqlite",
+      "id": "schema-set-several-schemas-sqlite",
       "kind": "feature",
       "requirements": [
         "DBS-108",
         "SCH-7"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/decimalmodel/schema_set_test.go",
+          "id": "TestSchemaSetSQLite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/SchemaSetTest.php",
+          "id": "SchemaSetTest::testSeveralSchemas"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+          "id": "CoverageSchemaInstallNativeTest::testSchemaSetSeveralSchemas"
+        },
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/schema-set.mjs",
           "id": "schema-set/several_schemas/sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_schema_set.py",
+          "id": "test_several_schemas_sqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/decimal_physical.rs",
+          "id": "schema_set_sqlite"
         }
       ]
     },
     {
-      "id": "ts-schema-set-several-schemas-mysql",
+      "id": "schema-set-several-schemas-mysql",
       "kind": "feature",
       "requirements": [
         "DBS-108",
         "SCH-7"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/decimalmodel/schema_set_test.go",
+          "id": "TestSchemaSetMySQL"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/SchemaSetTest.php",
+          "id": "SchemaSetTest::testSeveralSchemas"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+          "id": "CoverageSchemaInstallNativeTest::testSchemaSetSeveralSchemas"
+        },
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/schema-set.mjs",
           "id": "schema-set/several_schemas/mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_schema_set.py",
+          "id": "test_several_schemas_mysql"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/decimal_physical.rs",
+          "id": "schema_set_mysql"
         }
       ]
     },
     {
-      "id": "ts-schema-set-several-schemas-postgres",
+      "id": "schema-set-several-schemas-postgres",
       "kind": "feature",
       "requirements": [
         "DBS-108",
@@ -7057,56 +7107,156 @@
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/decimalmodel/schema_set_test.go",
+          "id": "TestSchemaSetPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/SchemaSetTest.php",
+          "id": "SchemaSetTest::testSeveralSchemas"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+          "id": "CoverageSchemaInstallNativeTest::testSchemaSetSeveralSchemas"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/schema-set.mjs",
           "id": "schema-set/several_schemas/postgres"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_schema_set.py",
+          "id": "test_several_schemas_postgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/decimal_physical.rs",
+          "id": "schema_set_postgres"
         }
       ]
     },
     {
-      "id": "ts-schema-set-unregistered-schema-sqlite",
+      "id": "schema-set-unregistered-schema-sqlite",
       "kind": "feature",
       "requirements": [
         "DBS-119"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/decimalmodel/schema_set_test.go",
+          "id": "TestSchemaSetUnregisteredSQLite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/SchemaSetTest.php",
+          "id": "SchemaSetTest::testUnregisteredSchema"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+          "id": "CoverageSchemaInstallNativeTest::testSchemaSetUnregisteredSchema"
+        },
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/schema-set.mjs",
           "id": "schema-set/unregistered_schema/sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_schema_set.py",
+          "id": "test_unregistered_schema_sqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/decimal_physical.rs",
+          "id": "schema_set_unregistered_sqlite"
         }
       ]
     },
     {
-      "id": "ts-schema-set-unregistered-schema-mysql",
+      "id": "schema-set-unregistered-schema-mysql",
       "kind": "feature",
       "requirements": [
         "DBS-119"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/decimalmodel/schema_set_test.go",
+          "id": "TestSchemaSetUnregisteredMySQL"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/SchemaSetTest.php",
+          "id": "SchemaSetTest::testUnregisteredSchema"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+          "id": "CoverageSchemaInstallNativeTest::testSchemaSetUnregisteredSchema"
+        },
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/schema-set.mjs",
           "id": "schema-set/unregistered_schema/mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_schema_set.py",
+          "id": "test_unregistered_schema_mysql"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/decimal_physical.rs",
+          "id": "schema_set_unregistered_mysql"
         }
       ]
     },
     {
-      "id": "ts-schema-set-unregistered-schema-postgres",
+      "id": "schema-set-unregistered-schema-postgres",
       "kind": "feature",
       "requirements": [
         "DBS-119"
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/decimalmodel/schema_set_test.go",
+          "id": "TestSchemaSetUnregisteredPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/SchemaSetTest.php",
+          "id": "SchemaSetTest::testUnregisteredSchema"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+          "id": "CoverageSchemaInstallNativeTest::testSchemaSetUnregisteredSchema"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/schema-set.mjs",
           "id": "schema-set/unregistered_schema/postgres"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_schema_set.py",
+          "id": "test_unregistered_schema_postgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/decimal_physical.rs",
+          "id": "schema_set_unregistered_postgres"
         }
       ]
     },
     {
-      "id": "ts-schema-set-edited-manifest-sqlite",
+      "id": "schema-set-edited-manifest-sqlite",
       "kind": "feature",
       "requirements": [
         "DBS-120",
@@ -7114,15 +7264,40 @@
         "SCH-11"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/decimalmodel/schema_set_test.go",
+          "id": "TestSchemaSetEditedManifestSQLite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/SchemaSetTest.php",
+          "id": "SchemaSetTest::testEditedManifest"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+          "id": "CoverageSchemaInstallNativeTest::testSchemaSetEditedManifest"
+        },
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/schema-set.mjs",
           "id": "schema-set/edited_manifest/sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_schema_set.py",
+          "id": "test_edited_manifest_sqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/decimal_physical.rs",
+          "id": "schema_set_edited_manifest_sqlite"
         }
       ]
     },
     {
-      "id": "ts-schema-set-edited-manifest-mysql",
+      "id": "schema-set-edited-manifest-mysql",
       "kind": "feature",
       "requirements": [
         "DBS-120",
@@ -7130,15 +7305,40 @@
         "SCH-11"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/decimalmodel/schema_set_test.go",
+          "id": "TestSchemaSetEditedManifestMySQL"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/SchemaSetTest.php",
+          "id": "SchemaSetTest::testEditedManifest"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+          "id": "CoverageSchemaInstallNativeTest::testSchemaSetEditedManifest"
+        },
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/schema-set.mjs",
           "id": "schema-set/edited_manifest/mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_schema_set.py",
+          "id": "test_edited_manifest_mysql"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/decimal_physical.rs",
+          "id": "schema_set_edited_manifest_mysql"
         }
       ]
     },
     {
-      "id": "ts-schema-set-edited-manifest-postgres",
+      "id": "schema-set-edited-manifest-postgres",
       "kind": "feature",
       "requirements": [
         "DBS-120",
@@ -7147,14 +7347,39 @@
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/decimalmodel/schema_set_test.go",
+          "id": "TestSchemaSetEditedManifestPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/SchemaSetTest.php",
+          "id": "SchemaSetTest::testEditedManifest"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+          "id": "CoverageSchemaInstallNativeTest::testSchemaSetEditedManifest"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/schema-set.mjs",
           "id": "schema-set/edited_manifest/postgres"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_schema_set.py",
+          "id": "test_edited_manifest_postgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/decimal_physical.rs",
+          "id": "schema_set_edited_manifest_postgres"
         }
       ]
     },
     {
-      "id": "ts-schema-set-external-documents-sqlite",
+      "id": "schema-set-external-documents-sqlite",
       "kind": "feature",
       "requirements": [
         "DBS-105",
@@ -7165,15 +7390,40 @@
         "SCH-8"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/external_documents_test.go",
+          "id": "TestExternalDocuments"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/SchemaSetTest.php",
+          "id": "SchemaSetTest::testExternalDocuments"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+          "id": "CoverageSchemaInstallNativeTest::testSchemaSetExternalDocuments"
+        },
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/schema-set.mjs",
           "id": "schema-set/external_documents/sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_schema_install.py",
+          "id": "test_schema_install_external_documents"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/external_documents.rs",
+          "id": "external_documents"
         }
       ]
     },
     {
-      "id": "ts-schema-set-external-documents-mysql",
+      "id": "schema-set-external-documents-mysql",
       "kind": "feature",
       "requirements": [
         "DBS-105",
@@ -7184,15 +7434,40 @@
         "SCH-8"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/external_documents_test.go",
+          "id": "TestExternalDocuments"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/SchemaSetTest.php",
+          "id": "SchemaSetTest::testExternalDocuments"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+          "id": "CoverageSchemaInstallNativeTest::testSchemaSetExternalDocuments"
+        },
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/schema-set.mjs",
           "id": "schema-set/external_documents/mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_schema_install.py",
+          "id": "test_schema_install_external_documents"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/external_documents.rs",
+          "id": "external_documents"
         }
       ]
     },
     {
-      "id": "ts-schema-set-external-documents-postgres",
+      "id": "schema-set-external-documents-postgres",
       "kind": "feature",
       "requirements": [
         "DBS-105",
@@ -7204,9 +7479,34 @@
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/orm/external_documents_test.go",
+          "id": "TestExternalDocuments"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/SchemaSetTest.php",
+          "id": "SchemaSetTest::testExternalDocuments"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+          "id": "CoverageSchemaInstallNativeTest::testSchemaSetExternalDocuments"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/schema-set.mjs",
           "id": "schema-set/external_documents/postgres"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_schema_install.py",
+          "id": "test_schema_install_external_documents"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/external_documents.rs",
+          "id": "external_documents"
         }
       ]
     },
@@ -10291,21 +10591,6 @@
           "implementation": "rust",
           "test": "packages/rust/schema/tests/dbspec_set_parse.rs",
           "symbol": "shared_set_parse_vectors"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-decimalmodel-schema-set",
-      "kind": "feature",
-      "requirements": [
-        "DBS-108",
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/decimalmodel/schema_set_test.go",
-          "id": "TestSchemaSetSQLite"
         }
       ]
     },
@@ -15253,138 +15538,6 @@
           "implementation": "rust",
           "test": "packages/rust/build/tests/row_mutation.rs",
           "id": "native_updates_lock_compare_verify_and_rollback"
-        }
-      ]
-    },
-    {
-      "id": "rust-decimal-physical-schema-set-mysql",
-      "kind": "feature",
-      "requirements": [
-        "DBS-108",
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "schema_set_mysql"
-        }
-      ]
-    },
-    {
-      "id": "rust-decimal-physical-schema-set-postgres",
-      "kind": "feature",
-      "requirements": [
-        "DBS-108",
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "schema_set_postgres"
-        }
-      ]
-    },
-    {
-      "id": "rust-decimal-physical-schema-set-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "DBS-108",
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "schema_set_sqlite"
-        }
-      ]
-    },
-    {
-      "id": "rust-decimal-physical-schema-set-unregistered-mysql",
-      "kind": "feature",
-      "requirements": [
-        "DBS-119",
-        "SCH-11"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "schema_set_unregistered_mysql"
-        }
-      ]
-    },
-    {
-      "id": "rust-decimal-physical-schema-set-unregistered-postgres",
-      "kind": "feature",
-      "requirements": [
-        "DBS-119",
-        "SCH-11"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "schema_set_unregistered_postgres"
-        }
-      ]
-    },
-    {
-      "id": "rust-decimal-physical-schema-set-unregistered-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "DBS-119",
-        "SCH-11"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "schema_set_unregistered_sqlite"
-        }
-      ]
-    },
-    {
-      "id": "rust-decimal-physical-schema-set-edited-manifest-mysql",
-      "kind": "feature",
-      "requirements": [
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "schema_set_edited_manifest_mysql"
-        }
-      ]
-    },
-    {
-      "id": "rust-decimal-physical-schema-set-edited-manifest-postgres",
-      "kind": "feature",
-      "requirements": [
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "schema_set_edited_manifest_postgres"
-        }
-      ]
-    },
-    {
-      "id": "rust-decimal-physical-schema-set-edited-manifest-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "schema_set_edited_manifest_sqlite"
         }
       ]
     },

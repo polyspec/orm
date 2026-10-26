@@ -93,7 +93,7 @@ table coverage_external_post {
 // sees the external table in the database. If it is the same table, it links; if an external document's column
 // is not in the database, the install is CONFIG and does not create the table it owns. Registration does not
 // read the database, so it links with that set too.
-// Requirements: DBS-107, SCH-7, PLN-44, INT-132, INT-133.
+// Requirements: DBS-107, DBS-108, DBS-119, DBS-120, SCH-7, SCH-11, PLN-44, INT-54, INT-132, INT-133.
 func TestCoverageSchemaInstallExternalDocuments(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, driver, dsn := connectFeature(t)
@@ -108,6 +108,28 @@ func TestCoverageSchemaInstallExternalDocuments(t *testing.T) {
 	if member.External == "" || member.Hash == "" || member.Text == "" {
 		t.Fatalf("external schema value is incomplete: %+v", member)
 	}
+	raw, err := orm.Connect(dsn, orm.Config{})
+	if err != nil {
+		t.Fatalf("raw connection: %v", err)
+	}
+	rawStatements := 0
+	stopRaw, err := raw.Subscribe(func(orm.StatementEvent) error {
+		rawStatements++
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := model.Author().Connect(raw).GetCount(); orm.ErrorCode(err) != orm.CodeSchemaHashMismatch {
+		t.Fatalf("request on an unregistered raw connection = %v, want SCHEMA_HASH_MISMATCH", err)
+	}
+	stopRaw()
+	if err := raw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if rawStatements != 0 {
+		t.Fatalf("unregistered request ran %d statements, want 0", rawStatements)
+	}
 	connected, err := orm.ConnectSchema(dsn, member, orm.Config{})
 	if err != nil {
 		t.Fatalf("connect of a set whose external table user matches the database: %v", err)
@@ -115,7 +137,31 @@ func TestCoverageSchemaInstallExternalDocuments(t *testing.T) {
 	if err := connected.Close(); err != nil {
 		t.Fatal(err)
 	}
+	registeredStatements := 0
+	stopRegistered, err := db.Subscribe(func(orm.StatementEvent) error {
+		registeredStatements++
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Utils().Schema().Register(member); err != nil {
+		t.Fatalf("register external schema: %v", err)
+	}
+	if err := db.Utils().Schema().Register(member); err != nil {
+		t.Fatalf("register external schema again: %v", err)
+	}
 	badHash := &orm.Schema{Hash: member.Hash, Text: strings.ReplaceAll(member.Text, "coverage_external_post", "coverage_external_post_changed"), External: member.External}
+	if err := db.Utils().Schema().Register(badHash); orm.ErrorCode(err) != orm.CodeConfig {
+		t.Fatalf("register with a manifest text that does not match its hash = %v, want CONFIG", err)
+	}
+	stopRegistered()
+	if registeredStatements != 0 {
+		t.Fatalf("register sent %d statements, want 0", registeredStatements)
+	}
+	if got := must(model.Author().Connect(db).GetCount()); got != 100000 {
+		t.Fatalf("bench request after registering another set = %d, want 100000", got)
+	}
 	if _, err := orm.ConnectSchema(dsn, badHash, orm.Config{}); orm.ErrorCode(err) != orm.CodeConfig {
 		t.Fatalf("connect with a manifest text that does not match its hash = %v, want CONFIG", err)
 	}

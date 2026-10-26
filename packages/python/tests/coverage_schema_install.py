@@ -118,6 +118,26 @@ def schema_install_external_documents(item):
     def body(db, driver, dsn):
         member = schema_of([EXTERNAL_MEMBER], [EXTERNAL_USER])
         expect_equal(member.external_text != "", True, "schema external document text")
+        raw = Db.connect(
+            dsn, {"aesKey": "bench-salt", "blindIndexKey": "bench-blind-index"}
+        )
+        raw_events = []
+        unsubscribe_raw = raw.subscribe(raw_events.append)
+        try:
+            try:
+                models.Author().connect(raw).get_count()
+            except OrmError as error:
+                expect_equal(
+                    error.code,
+                    "SCHEMA_HASH_MISMATCH",
+                    "a raw connection registers no set",
+                )
+            else:
+                raise AssertionError("a raw connection accepted a generated model request")
+            expect_equal(raw_events, [], "an unregistered request sent no statement")
+        finally:
+            unsubscribe_raw()
+            raw.close()
         events = []
         unsubscribe = db.subscribe(events.append)
         try:
@@ -205,7 +225,7 @@ class CoverageTest(CoverageCase):
     def test_schema_install_partial(self):
         self.each_item("schema_install_partial", schema_install_partial)
 
-    # Requirements: SCH-7, SCH-11, DBS-107, DBS-119, PLN-44, INT-54, INT-132, INT-133.
+    # Requirements: DBS-107, DBS-108, DBS-119, DBS-120, SCH-7, SCH-11, PLN-44, INT-54, INT-132, INT-133.
     def test_schema_install_external_documents(self):
         self.each_item(
             "schema_install_external_documents", schema_install_external_documents

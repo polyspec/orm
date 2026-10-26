@@ -116,7 +116,7 @@ final class CoverageSchemaInstallTest extends TestCase
     // The install of a set that uses external documents checks the external tables in the database. If an external
     // document's column is missing from the database, install is CONFIG and does not create the table it owns.
     // Registration does not read the database, so it connects with that set too.
-    // Requirements: DBS-107, SCH-7, PLN-44, INT-132, INT-133.
+    // Requirements: DBS-107, DBS-108, DBS-119, DBS-120, SCH-7, SCH-11, PLN-44, INT-54, INT-132, INT-133.
     public function testSchemaInstallExternalDocuments(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
@@ -133,7 +133,54 @@ final class CoverageSchemaInstallTest extends TestCase
             };
             $member = $schema(EXTERNAL_USER);
             Assert::assertNotSame('', $member->externalText, 'the schema value has no external document text');
+            $raw = Orm::connect($dsn, new Config());
+            $rawEvents = [];
+            $stopRaw = $raw->subscribe(static function ($event) use (&$rawEvents): void {
+                $rawEvents[] = $event->sql;
+            });
+            try {
+                try {
+                    (new \Polyspec\Orm\Tests\Model\Author())($raw)->getCount();
+                    $rawCode = '';
+                } catch (OrmException $error) {
+                    $rawCode = $error->code_;
+                }
+                Assert::assertSame(Code::SCHEMA_HASH_MISMATCH, $rawCode, 'a raw connection registers no set');
+                Assert::assertSame([], $rawEvents, 'an unregistered request sent no statement');
+            } finally {
+                $stopRaw();
+                $raw->close();
+            }
             Orm::connectSchema($dsn, $member, new Config())->close();
+            $registeredDb = coverageConnect($dsn);
+            $registrationEvents = [];
+            $stopRegistration = $registeredDb->subscribe(static function ($event) use (&$registrationEvents): void {
+                $registrationEvents[] = $event->sql;
+            });
+            try {
+                $registeredDb->utils()->schema()->register($member);
+                $registeredDb->utils()->schema()->register($member);
+                $badHash = new Schema(
+                    str_replace('coverage_external_post', 'coverage_external_post_changed', $member->manifestText),
+                    $member->manifestHash,
+                    $member->externalText,
+                );
+                try {
+                    $registeredDb->utils()->schema()->register($badHash);
+                    Assert::fail('register accepted manifest text that does not hash to its declared hash');
+                } catch (OrmException $error) {
+                    Assert::assertSame(Code::CONFIG, $error->code_);
+                }
+                Assert::assertSame([], $registrationEvents, 'registering a second set sent no statement');
+                Assert::assertSame(
+                    100000,
+                    (new \Polyspec\Orm\Tests\Model\Author())($registeredDb)->getCount(),
+                    'the bench set remains selected after registering an external set'
+                );
+            } finally {
+                $stopRegistration();
+                $registeredDb->close();
+            }
             $badHash = new Schema(
                 str_replace('coverage_external_post', 'coverage_external_post_changed', $member->manifestText),
                 $member->manifestHash,

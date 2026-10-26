@@ -550,6 +550,7 @@ final class SchemaSetTest extends TestCase
         }
     }
 
+    // Requirements: DBS-108, SCH-7.
     #[DataProvider('drivers')]
     public function testSeveralSchemas(string $driver): void
     {
@@ -558,6 +559,7 @@ final class SchemaSetTest extends TestCase
         }, static fn(string $dsn) => self::severalSchemas($dsn));
     }
 
+    // Requirements: DBS-119.
     #[DataProvider('drivers')]
     public function testUnregisteredSchema(string $driver): void
     {
@@ -566,6 +568,7 @@ final class SchemaSetTest extends TestCase
         }, static fn(string $dsn) => self::unregisteredSchema($dsn));
     }
 
+    // Requirements: DBS-120, SCH-7, SCH-11.
     #[DataProvider('drivers')]
     public function testEditedManifest(string $driver): void
     {
@@ -574,6 +577,7 @@ final class SchemaSetTest extends TestCase
         }, static fn(string $dsn) => self::editedManifest($dsn));
     }
 
+    // Requirements: DBS-105, DBS-107, DBS-108, DBS-110, SCH-7, SCH-8.
     #[DataProvider('drivers')]
     public function testExternalDocuments(string $driver): void
     {

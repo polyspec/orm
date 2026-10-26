@@ -82,11 +82,36 @@ await runCases('coverage_schema_install.mjs', {
 
   // Install of a set that uses external documents checks the external tables in the database. If an external document's column is missing from the database,
   // install is CONFIG and creates no table it owns. Registration does not read the database, so the set is also connected with it.
-  // Requirements: SCH-7, SCH-11, DBS-107, PLN-44, INT-132, INT-133.
+  // Requirements: DBS-107, DBS-108, DBS-119, DBS-120, SCH-7, SCH-11, PLN-44, INT-54, INT-132, INT-133.
   async schema_install_external_documents(item) {
     await withDatabase(item, async (db, driver, dsn) => {
       const member = externalSchema(externalUser);
       assert.ok(member.externalText.length > 0, 'schema value has external document text');
+      const raw = await Db.connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
+      const rawEvents = [];
+      const unsubscribeRaw = raw.subscribe(event => rawEvents.push(event.sql));
+      try {
+        let rawCode = '';
+        try { await new Author().connect(raw).getCount(); } catch (error) { rawCode = error.code ?? ''; }
+        assert.equal(rawCode, 'SCHEMA_HASH_MISMATCH', 'a raw connection registers no set');
+        assert.deepEqual(rawEvents, [], 'an unregistered request sent no statement');
+      } finally {
+        unsubscribeRaw();
+        await raw.close();
+      }
+
+      const registrationEvents = [];
+      const unsubscribeRegistration = db.subscribe(event => registrationEvents.push(event.sql));
+      try {
+        db.utils().schema().register(member);
+        db.utils().schema().register(member);
+        const badHash = { ...member, manifestText: member.manifestText.replaceAll('coverage_external_post', 'coverage_external_post_changed') };
+        let registerError = null;
+        try { db.utils().schema().register(badHash); } catch (error) { registerError = error; }
+        assert.equal(registerError?.code, 'CONFIG', 'register with a mismatched manifest hash');
+        assert.deepEqual(registrationEvents, [], 'registering a second set sent no statement');
+        assert.equal(await new Author().connect(db).getCount(), 100000, 'the bench set remains selected');
+      } finally { unsubscribeRegistration(); }
       const connected = await Db.connectSchema(dsn, member);
       await connected.close();
       const badHash = { ...member, manifestText: member.manifestText.replaceAll('coverage_external_post', 'coverage_external_post_changed') };
