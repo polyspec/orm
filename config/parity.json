@@ -17379,20 +17379,6 @@
       }
     },
     {
-      "id": "php-internal-model-writes",
-      "kind": "feature",
-      "requirements": [
-        "DSL-116"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testWrites"
-        }
-      ]
-    },
-    {
       "id": "php-internal-model-styled-value-states",
       "kind": "feature",
       "requirements": [
