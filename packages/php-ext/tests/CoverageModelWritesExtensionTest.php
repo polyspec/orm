@@ -32,7 +32,7 @@ final class CoverageModelWritesExtensionTest extends TestCase
         \Polyspec\Orm\Tests\CoverageModelWritesCase::createParts(__FILE__, 990003);
     }
 
-    // Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110, DIA-26, COD-15.
+    // Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110, DIA-26, COD-11, COD-12, COD-15, COD-38.
     public function testModelWriteCycle(): void
     {
         require_once dirname(__DIR__, 2) . '/php/tests/CoverageModelWritesCase.php';
@@ -73,6 +73,7 @@ final class CoverageModelWritesExtensionTest extends TestCase
                     Assert::assertSame(0, (new CompositeAccount())($db)->tenantId(990002)->getCount());
                 }, fn() => (new CompositeAccount())($db)->tenantId(990002)->gets()->delete());
                 \Polyspec\Orm\Tests\CoverageModelWritesCase::orderedJsonTextRoundTrip($db);
+                \Polyspec\Orm\Tests\CoverageModelWritesCase::codecColumnsRoundTrip($db);
             } finally {
                 $db->close();
             }

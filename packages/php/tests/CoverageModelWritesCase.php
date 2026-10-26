@@ -38,6 +38,38 @@ final class CoverageModelWritesCase
         }
     }
 
+    public static function codecColumnsRoundTrip(Db $db): void
+    {
+        $rollback = new \RuntimeException('rollback codec columns probe');
+        try {
+            $db->transaction(function () use ($db, $rollback): void {
+                $row = (new Author())($db)->addAllColumns()->getBySeq(1);
+                Assert::assertNotNull($row, 'seed author row 1 exists for codec columns');
+                $row->setIp('10.0.0.1')
+                    ->setGzExtend(StyledValue::value('compressed text'))
+                    ->setBase64Extra(StyledValue::value('plain'))
+                    ->update();
+                $stored = (new Author())($db)->addAllColumns()->getBySeq(1);
+                Assert::assertNotNull($stored, 'author row remains after codec update');
+                Assert::assertSame('10.0.0.1', $stored->getIp(), 'ip codec column round trip');
+                Assert::assertSame('compressed text', $stored->getGzExtend()->payload(), 'gz codec column round trip');
+                Assert::assertSame('plain', $stored->getBase64Extra()->payload(), 'base64 codec column round trip');
+                Assert::assertSame(1, (new Author())($db)->ip('10.0.0.1')->getCount(), 'ip codec equality');
+                Assert::assertSame(
+                    Code::CODEC_ENCODE,
+                    coverageCode(static fn() => $stored->setIp('10. 0.0.1')->update()),
+                    'ip input with embedded whitespace is rejected',
+                );
+                $cell = $db->pdo()->query('SELECT base64_extra FROM author WHERE seq = 1')->fetchColumn();
+                Assert::assertSame(base64_encode('plain'), $cell, 'database stores the base64 codec output');
+                throw $rollback;
+            }, retry: 0);
+            Assert::fail('codec columns probe transaction unexpectedly committed');
+        } catch (\Throwable $failure) {
+            Assert::assertSame($rollback, $failure, 'codec columns probe rolls back its row update');
+        }
+    }
+
     public static function saveKeyDispatch(string $ownerFile): void
     {
         foreach (coverageItemsOf($ownerFile) as $item) {

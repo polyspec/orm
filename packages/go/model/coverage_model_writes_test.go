@@ -22,7 +22,7 @@ const writeTenant = 990002
 // TestCoverageModelWriteCycle creates rows with the generated CompositeAccount model,
 // creates several rows, updates them, upserts with duplication, counts, and deletes.
 // Deleting all the rows written returns the database to its initial state.
-// Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110, DIA-26, COD-15.
+// Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110, DIA-26, COD-11, COD-12, COD-15, COD-38.
 func TestCoverageModelWriteCycle(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, _, _ := connectFeature(t)
@@ -112,6 +112,75 @@ func TestCoverageModelWriteCycle(t *testing.T) {
 	}, orm.Retry(0))
 	if !errors.Is(err, rollback) {
 		t.Fatalf("ordered JSON text transaction = %v, want rollback sentinel", err)
+	}
+
+	codecRollback := errors.New("rollback codec columns probe")
+	err = db.Transaction(func() error {
+		row, err := model.Author().Connect(db).AddAllColumns().GetBySeq(1)
+		if err != nil {
+			return err
+		}
+		if row == nil {
+			return errors.New("seed author row 1 is missing")
+		}
+		ip := "10.0.0.1"
+		row = row.SetIp(&ip)
+		row, err = row.SetGzExtend(orm.Value("compressed text"))
+		if err != nil {
+			return err
+		}
+		row, err = row.SetBase64Extra(orm.Value("plain"))
+		if err != nil {
+			return err
+		}
+		row, err = row.Update()
+		if err != nil {
+			return err
+		}
+		stored, err := model.Author().Connect(db).AddAllColumns().GetBySeq(1)
+		if err != nil {
+			return err
+		}
+		if stored == nil {
+			return errors.New("author row disappeared after codec update")
+		}
+		gotIP, err := stored.GetIp()
+		if err != nil {
+			return err
+		}
+		if gotIP == nil || *gotIP != ip {
+			return fmt.Errorf("ip column = %v, want %q", gotIP, ip)
+		}
+		for _, want := range []struct {
+			name string
+			get  func() (orm.StyledValue, error)
+		}{
+			{"gz", stored.GetGzExtend}, {"base64", stored.GetBase64Extra},
+		} {
+			value, err := want.get()
+			if err != nil {
+				return err
+			}
+			got, ok := value.Data()
+			if !ok || got != map[string]string{"gz": "compressed text", "base64": "plain"}[want.name] {
+				return fmt.Errorf("%s codec column = %#v, want value", want.name, got)
+			}
+		}
+		n, err := model.Author().Connect(db).Ip(&ip).GetCount()
+		if err != nil {
+			return err
+		}
+		if n != 1 {
+			return fmt.Errorf("ip equality count = %d, want 1", n)
+		}
+		badIP := "10. 0.0.1"
+		if _, err := stored.SetIp(&badIP).Update(); orm.ErrorCode(err) != orm.CodeCodecEncode {
+			return fmt.Errorf("ip with embedded whitespace error = %q, want %q", orm.ErrorCode(err), orm.CodeCodecEncode)
+		}
+		return codecRollback
+	}, orm.Retry(0))
+	if !errors.Is(err, codecRollback) {
+		t.Fatalf("codec columns transaction = %v, want rollback sentinel", err)
 	}
 
 	rows := must(account().TenantId(writeTenant).Gets())

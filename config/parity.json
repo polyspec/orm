@@ -17332,7 +17332,7 @@
       ]
     },
     {
-      "id": "php-internal-model-codec-columns",
+      "id": "model-codec-columns",
       "kind": "feature",
       "requirements": [
         "COD-11",
@@ -17340,6 +17340,59 @@
         "COD-38"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_model_writes_test.go",
+          "id": "TestCoverageModelWriteCycle",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageModelWriteCycle",
+            "FEATURE_PACKAGE=./model"
+          ]
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageModelWritesTest.php",
+          "id": "CoverageModelWritesTest::testModelWriteCycle"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
+          "id": "CoverageModelWritesExtensionTest::test_model_write_cycle"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_model_writes.mjs",
+          "id": "model_write_cycle [sqlite]"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_model_writes.py",
+          "id": "test_model_write_cycle"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
+          "id": "coverage_model_writes::coverage_model_write_cycle",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test integration",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_model_writes::coverage_model_write_cycle"
+          ]
+        },
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",

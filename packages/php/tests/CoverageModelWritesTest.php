@@ -32,7 +32,7 @@ final class CoverageModelWritesTest extends TestCase
         CoverageModelWritesCase::createParts(__FILE__, WRITE_TENANT + 1);
     }
 
-    // Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110, DIA-26, COD-15.
+    // Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110, DIA-26, COD-11, COD-12, COD-15, COD-38.
     public function testModelWriteCycle(): void
     {
         require_once __DIR__ . '/CoverageModelWritesCase.php';
@@ -80,6 +80,7 @@ final class CoverageModelWritesTest extends TestCase
                     Assert::assertTrue($left === 0, "$left rows left after delete");
                 }, fn() => (new CompositeAccount())($db)->tenantId(WRITE_TENANT)->gets()->delete());
                 CoverageModelWritesCase::orderedJsonTextRoundTrip($db);
+                CoverageModelWritesCase::codecColumnsRoundTrip($db);
             } finally {
                 $db->close();
             }

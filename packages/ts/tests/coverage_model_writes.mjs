@@ -59,7 +59,7 @@ await runCases('coverage_model_writes.mjs', {
       }
     }
   },
-  // Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110, DIA-26, COD-15.
+  // Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110, DIA-26, COD-11, COD-12, COD-15, COD-38.
   async model_write_cycle({ driver, dsn }) {
     const db = await connect(dsn);
     try {
@@ -104,6 +104,30 @@ await runCases('coverage_model_writes.mjs', {
       } catch (error) {
         assert.equal(error, rollback, 'ordered JSON probe rolls back its row update');
       }
+
+      const codecRollback = new Error('rollback codec columns probe');
+      let codecCaught = null;
+      try {
+        await db.transaction(async () => {
+          const row = await new Author().connect(db).addAllColumns().getBySeq(1);
+          assert.ok(row, 'seed author row 1 exists for codec columns');
+          await row.setIp('10.0.0.1')
+            .setGzExtend(StyledValue.value('compressed text'))
+            .setBase64Extra(StyledValue.value('plain'))
+            .update();
+          const stored = await new Author().connect(db).addAllColumns().getBySeq(1);
+          assert.ok(stored, 'author row remains after codec update');
+          assert.equal(stored.getIp(), '10.0.0.1', 'ip codec column round trip');
+          assert.equal(stored.getGzExtend().payload(), 'compressed text', 'gz codec column round trip');
+          assert.equal(stored.getBase64Extra().payload(), 'plain', 'base64 codec column round trip');
+          assert.equal(await new Author().connect(db).ip('10.0.0.1').getCount(), 1, 'ip codec equality');
+          assert.equal(await errorCode(stored.setIp('10. 0.0.1').update()), 'CODEC_ENCODE', 'ip rejects embedded whitespace');
+          throw codecRollback;
+        }, { retry: 0 });
+      } catch (error) {
+        codecCaught = error;
+      }
+      assert.equal(codecCaught, codecRollback, 'codec column probe rolls back its row update');
     } finally { await db.close(); }
   },
   // Requirements: DSL-109.

@@ -18,6 +18,7 @@ from .coverage_case import (
 TENANT = 990002
 
 
+# Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110, DIA-26, COD-11, COD-12, COD-15, COD-38.
 def model_write_cycle(item):
     def case(_db, account):
         def body():
@@ -106,6 +107,33 @@ def model_write_cycle(item):
                 expect_equal(error is rollback, True, "ordered JSON probe rolls back its row update")
             else:
                 raise AssertionError("ordered JSON text probe transaction unexpectedly committed")
+
+            codec_rollback = RuntimeError("rollback codec columns probe")
+
+            def codec_column_probe():
+                row = models.Author().connect(_db).add_all_columns().get_by_seq(1)
+                expect_equal(row is not None, True, "seed author row 1 exists for codec columns")
+                row.set_ip("10.0.0.1").set_gz_extend(StyledValue.value("compressed text"))
+                row.set_base64_extra(StyledValue.value("plain")).update()
+                stored = models.Author().connect(_db).add_all_columns().get_by_seq(1)
+                expect_equal(stored is not None, True, "author row remains after codec update")
+                expect_equal(stored.get_ip(), "10.0.0.1", "ip codec column round trip")
+                expect_equal(stored.get_gz_extend().payload(), "compressed text", "gz codec column round trip")
+                expect_equal(stored.get_base64_extra().payload(), "plain", "base64 codec column round trip")
+                expect_equal(models.Author().connect(_db).ip("10.0.0.1").get_count(), 1, "ip codec equality")
+                expect_equal(
+                    error_code(lambda: stored.set_ip("10. 0.0.1").update()),
+                    "CODEC_ENCODE",
+                    "ip rejects embedded whitespace",
+                )
+                raise codec_rollback
+
+            try:
+                _db.transaction(codec_column_probe, {"retry": 0})
+            except RuntimeError as error:
+                expect_equal(error is codec_rollback, True, "codec columns probe rolls back its row update")
+            else:
+                raise AssertionError("codec columns probe transaction unexpectedly committed")
 
         # A failed run leaves no row of this case either.
         with_cleanup(body, lambda: account().tenant_id(TENANT).gets().delete())

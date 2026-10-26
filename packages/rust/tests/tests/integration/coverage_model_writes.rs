@@ -63,7 +63,7 @@ async fn coverage_model_create_parts() {
 }
 
 #[tokio::test]
-// Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110, DIA-26, COD-15.
+// Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110, DIA-26, COD-11, COD-12, COD-15, COD-38.
 async fn coverage_model_write_cycle() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("model_write_cycle", async {
@@ -106,6 +106,32 @@ async fn coverage_model_write_cycle() {
             .retry(0)
             .await;
         assert!(matches!(rollback, Err(polyspec_orm::Error::Config(message)) if message == "rollback ordered JSON text probe"));
+
+        let codec_rollback: polyspec_orm::Result<()> = db
+            .transaction(async || {
+                let row = Author::new().connect(&db).add_all_columns().get_by_seq(1).await?.expect("seed author row 1 for codec columns");
+                let mut row = row
+                    .set_ip("10.0.0.1")
+                    .set_gz_extend(polyspec_orm::StyledValue::Value(polyspec_orm::serde_json::Value::String("compressed text".into())))?
+                    .set_base64_extra(polyspec_orm::StyledValue::Value(polyspec_orm::serde_json::Value::String("plain".into())))?;
+                row.update(false).await?;
+                let stored = Author::new().connect(&db).add_all_columns().get_by_seq(1).await?.expect("author row remains after codec update");
+                assert_eq!(stored.get_ip()?, Some("10.0.0.1"), "ip codec column round trip");
+                match stored.get_gz_extend()? {
+                    polyspec_orm::StyledValue::Value(value) => assert_eq!(value.as_str(), Some("compressed text"), "gz codec column round trip"),
+                    polyspec_orm::StyledValue::SqlNull => panic!("gz codec column read back as SQL NULL"),
+                }
+                match stored.get_base64_extra()? {
+                    polyspec_orm::StyledValue::Value(value) => assert_eq!(value.as_str(), Some("plain"), "base64 codec column round trip"),
+                    polyspec_orm::StyledValue::SqlNull => panic!("base64 codec column read back as SQL NULL"),
+                }
+                assert_eq!(Author::new().connect(&db).ip("10.0.0.1").get_count().await?, 1, "ip codec equality");
+                assert_eq!(code(stored.set_ip("10. 0.0.1").update(false).await), "CODEC_ENCODE", "ip rejects embedded whitespace");
+                Err(polyspec_orm::Error::Config("rollback codec columns probe".into()))
+            })
+            .retry(0)
+            .await;
+        assert!(matches!(codec_rollback, Err(polyspec_orm::Error::Config(message)) if message == "rollback codec columns probe"));
         db.close().await;
     })
     .await;

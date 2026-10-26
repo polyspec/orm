@@ -2152,6 +2152,7 @@
       ],
       "parity": [
         "coverage-model-write-cycle",
+        "model-codec-columns",
         "model-new-output-name-rejects-stored-column",
         "coverage-model-create-parts",
         "coverage-model-write-arithmetic-attributes",
@@ -2213,6 +2214,7 @@
         "packages/rust/orm/tests/decimal_model.rs",
         "packages/go/model/coverage_model_writes_test.go",
         "packages/php/tests/CoverageModelWritesTest.php",
+        "packages/php/tests/CoverageModelWritesCase.php",
         "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
         "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
         "packages/rust/tests/tests/integration/coverage_model_writes.rs",
