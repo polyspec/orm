@@ -56,7 +56,7 @@ class OrmGenTest(unittest.TestCase):
         cls.addClassCleanup(sys.modules.pop, "models", None)
         exec(compile(source.read_text(), module.__file__, "exec"), module.__dict__)
 
-    # Requirements: DBS-104, DBS-120, DSL-38, DSL-43.
+    # Requirements: DBS-104, DBS-111, DBS-120, DSL-38, DSL-43.
     # Requirements: SCH-1.
     def test_generated_module_imports_and_builds_the_model(self):
         import models
@@ -68,6 +68,7 @@ class OrmGenTest(unittest.TestCase):
         author = models.Author()
         self.assertEqual(author.entity_def.entity.name, "author")
         self.assertEqual(len(models.model.entities), 25)
+        self.assertEqual(list(models.model.entities)[:3], ["author", "user", "service"])
         self.assertTrue(models.SCHEMA.manifest_text.startswith("dbspec 1 bench"))
         self.assertEqual(
             models.MANIFEST_HASH,
@@ -818,6 +819,7 @@ class OrmGenTest(unittest.TestCase):
             )
             self.assertFalse(out.exists())
 
+    # Requirements: DBS-112, DBS-116, DBS-121, INT-2, INT-3, INT-4, INT-5, INT-6, INT-7, INT-8, COD-2.
     def test_generated_field_types_follow_runtime_model(self):
         # Requirements: DBS-112, DBS-121, INT-2, INT-3, INT-4, INT-5, INT-6, INT-7, INT-8.
         from polyspec.orm import StyledValue

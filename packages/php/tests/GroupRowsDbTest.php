@@ -16,6 +16,7 @@ use Polyspec\Orm\GroupRows;
 use Polyspec\Orm\Tests\Model\Author;
 
 #[Medium]
+// Requirements: INT-31.
 final class GroupRowsDbTest extends TestCase
 {
     use DatabaseTestAssertions;

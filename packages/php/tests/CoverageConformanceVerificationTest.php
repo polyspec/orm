@@ -156,7 +156,7 @@ final class CoverageConformanceVerificationTest extends TestCase
     }
 
     #[DataProvider('sqliteVectors')]
-    // Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26.
+    // Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, DBS-115.
     public function testSqlite(string $name, mixed $expect): void
     {
         self::check('sqlite', $name, $expect);

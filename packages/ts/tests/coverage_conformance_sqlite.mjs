@@ -2,7 +2,7 @@
 // TypeScript conformance runner on a bench database of this run (conformance_case.mjs).
 // Usage: node --test --conditions=orm-test packages/ts/tests/coverage_conformance_sqlite.mjs (after npm run typescript:build,
 // with the environment of make orm-test-servers)
-// Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39.
+// Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39, DBS-115.
 import { conformanceSuite } from './conformance_case.mjs';
 
 await conformanceSuite('sqlite');

@@ -120,7 +120,7 @@ final class RuntimeModelTest extends TestCase
         self::assertTrue($selected === $want, 'selected ' . implode(',', $selected));
     }
 
-    // Requirements: DBS-103, DBS-104, DBS-120.
+    // Requirements: DBS-103, DBS-104, DBS-111, DBS-120.
     public function testGeneratedModelsCarryTheManifestHashAndTheModel(): void
     {
         $root = dirname(__DIR__, 3);
@@ -160,7 +160,7 @@ final class RuntimeModelTest extends TestCase
         );
     }
 
-    // Requirements: DBS-120.
+    // Requirements: DBS-104, DBS-111, DBS-120.
     public function testAGeneratedModelThatItsManifestContradictsIsRefused(): void
     {
         // A model generated before orm-gen wrote the varchar length: its meta() lacks columns.name.length.
@@ -174,6 +174,10 @@ final class RuntimeModelTest extends TestCase
         };
         $hash = Author::meta()['manifest_hash'];
         $text = Registry::manifestText($hash);
+        self::assertTrue(
+            array_keys(Registry::model($hash)->entities) === array_keys(self::bench()->entities),
+            'entity order follows the manifest'
+        );
         self::assertTrue(
             RuntimeModel::fromModels(
                 $hash,
@@ -200,6 +204,7 @@ final class RuntimeModelTest extends TestCase
         );
     }
 
+    // Requirements: DBS-104, DBS-111, DBS-120.
     public function testGeneratedFilesAreCurrent(): void
     {
         $root = dirname(__DIR__, 3);
@@ -347,10 +352,14 @@ final class RuntimeModelTest extends TestCase
         self::assertTrue(self::errorCode(fn() => new Config(aesVersion: 0)) === Code::CONFIG, 'invalid config');
     }
 
-    // Requirements: DBS-104.
+    // Requirements: DBS-104, DBS-111, DBS-120.
     public function testRequestsCarryTheManifestHash(): void
     {
         $bench = self::bench();
+        self::assertTrue(
+            array_keys(Registry::model($bench->manifestHash)->entities) === array_keys($bench->entities),
+            'entity order follows the manifest'
+        );
         $engine = new Engine($bench, 'sqlite', 4);
         $ir = [
             'ir_version' => 1,

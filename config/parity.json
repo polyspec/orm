@@ -8333,7 +8333,8 @@
         "DBS-87",
         "DBS-113",
         "DBS-117",
-        "CPX-3"
+        "CPX-3",
+        "DBS-115"
       ],
       "file": "tests/conformance/vectors.sqlite.json",
       "cases": "$.vectors[*].name",
@@ -12196,7 +12197,9 @@
       "id": "generated-manifest-text-and-hash-match",
       "kind": "feature",
       "requirements": [
-        "DBS-104"
+        "DBS-104",
+        "DBS-111",
+        "DBS-120"
       ],
       "bindings": [
         {
@@ -12206,8 +12209,8 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/OrmGenTest.php",
-          "id": "OrmGenTest::testGeneratedTypedGetterUsesPrivateModelStorageAndRejectsUnselectedRead"
+          "test": "packages/php/tests/RuntimeModelTest.php",
+          "id": "RuntimeModelTest::testGeneratedModelsCarryTheManifestHashAndTheModel"
         },
         {
           "implementation": "php-extension",
@@ -12228,6 +12231,26 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/generate.mjs",
           "id": "generated manifest text and hash match"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/engine/runtimemodel/runtimemodel_test.go",
+          "id": "TestLoadRebuildsTheModelOfTheManifestText"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RuntimeModelTest.php",
+          "id": "RuntimeModelTest::testAGeneratedModelThatItsManifestContradictsIsRefused"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RuntimeModelTest.php",
+          "id": "RuntimeModelTest::testRequestsCarryTheManifestHash"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RuntimeModelTest.php",
+          "id": "RuntimeModelTest::testOwnedAndExternalManifestEntities"
         }
       ]
     },
@@ -16259,146 +16282,6 @@
       }
     },
     {
-      "id": "php-internal-runtime-model-entities-in-document-order",
-      "kind": "feature",
-      "requirements": [
-        "DBS-111"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::testEntitiesInDocumentOrder"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-runtime-model-generated-models-carry-the-manifest-hash-and-the-model",
-      "kind": "feature",
-      "requirements": [
-        "DBS-103",
-        "DBS-104",
-        "DBS-120"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::testGeneratedModelsCarryTheManifestHashAndTheModel"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-runtime-model-a-generated-model-that-its-manifest-contradicts-is-refused",
-      "kind": "feature",
-      "requirements": [
-        "DBS-120"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::testAGeneratedModelThatItsManifestContradictsIsRefused"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-runtime-model-generated-files-are-current",
-      "kind": "feature",
-      "requirements": [
-        "DBS-68",
-        "DBS-103",
-        "DBS-104",
-        "DBS-111",
-        "DBS-112",
-        "DBS-114",
-        "DBS-115",
-        "DBS-116",
-        "DBS-119",
-        "DBS-120",
-        "DIA-24",
-        "PRT-9"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::testGeneratedFilesAreCurrent"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-runtime-model-codec-value-types",
-      "kind": "feature",
-      "requirements": [
-        "DBS-116"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::testCodecValueTypes"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-runtime-model-i16-field",
-      "kind": "feature",
-      "requirements": [
-        "DBS-112"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::testI16Field"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-runtime-model-insert-binds-the-clock-of-an-omitted-default-now-column-except-on-my-sql",
-      "kind": "feature",
-      "requirements": [
-        "DBS-115",
-        "DIA-24"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::testInsertBindsTheClockOfAnOmittedDefaultNowColumnExceptOnMySQL"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-runtime-model-configuration-without-a-schema-path",
-      "kind": "feature",
-      "requirements": [
-        "DBS-119"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::testConfigurationWithoutASchemaPath"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-runtime-model-requests-carry-the-manifest-hash",
-      "kind": "feature",
-      "requirements": [
-        "DBS-104"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::testRequestsCarryTheManifestHash"
-        }
-      ]
-    },
-    {
       "id": "php-internal-add-tables-and-columns-add-tables-and-columns",
       "kind": "feature",
       "requirements": [
@@ -16564,20 +16447,6 @@
           "implementation": "php",
           "test": "packages/php/tests/DecimalModelDbTest.php",
           "id": "DecimalModelDbTest::testSetters"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-group-rows-db-group-rows",
-      "kind": "feature",
-      "requirements": [
-        "INT-31"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/GroupRowsDbTest.php",
-          "id": "GroupRowsDbTest::testGroupRows"
         }
       ]
     },
@@ -25027,7 +24896,8 @@
         "INT-5",
         "INT-6",
         "INT-7",
-        "INT-8"
+        "INT-8",
+        "DBS-116"
       ],
       "bindings": [
         {

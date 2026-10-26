@@ -265,7 +265,7 @@ fn reports_every_error_of_the_set_and_writes_nothing() {
     assert!(!wrote_after_documents, "documents with diagnostics wrote the output");
 }
 
-// Requirements: DBS-100, DBS-104.
+// Requirements: DBS-100, DBS-104, DBS-111, DBS-120.
 #[test]
 fn manifest_text_is_embedded_with_its_hash() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -284,10 +284,13 @@ fn manifest_text_is_embedded_with_its_hash() {
     let digest = sha2::Sha256::digest(embedded.as_bytes());
     let hash = format!("sha256:{digest:x}");
     assert!(generated.contains(&format!("pub const MANIFEST_HASH: &str = {hash:?};")), "generated hash does not match embedded manifest text");
+    let audit_position = generated.find("pub struct Audit").expect("the manifest audit entity is generated");
+    let zone_position = generated.find("pub struct ZoneEvent").expect("the manifest zone entity is generated");
+    assert!(audit_position < zone_position, "generated entities follow manifest document order");
 }
 
 #[test]
-// Requirements: DBS-112, DBS-121, INT-2, INT-3, INT-4, INT-5, INT-6, INT-7, INT-8, COD-2.
+// Requirements: DBS-112, DBS-116, DBS-121, INT-2, INT-3, INT-4, INT-5, INT-6, INT-7, INT-8, COD-2.
 fn generated_field_types_follow_the_runtime_model() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let text = generate_with_schema(

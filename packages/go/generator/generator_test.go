@@ -13,7 +13,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// Requirements: DBS-104, SCH-2.
+// Requirements: DBS-104, DBS-111, DBS-120, SCH-2.
 func TestGenerateUsesCanonicalManifestForGoClient(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	manifest := sampleModel(t)
@@ -21,8 +21,12 @@ func TestGenerateUsesCanonicalManifestForGoClient(t *testing.T) {
 	if err := Generate(Options{Model: manifest, OutputDir: out}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(out, "sample.go")); err != nil {
+	sample, err := os.ReadFile(filepath.Join(out, "sample.go"))
+	if err != nil {
 		t.Fatalf("generated ORM client is missing: %v", err)
+	}
+	if !strings.Contains(string(sample), "type SampleModel struct") {
+		t.Fatal("generated entity does not match the manifest")
 	}
 	orm, err := os.ReadFile(filepath.Join(out, "orm.go"))
 	if err != nil {

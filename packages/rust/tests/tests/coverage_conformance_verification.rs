@@ -7,7 +7,7 @@
 //! database of BENCH_<DIALECT>_DSN, and the output of each vector equals its recorded expectation. A vector run alone
 //! differs, since an earlier vector of the full run makes the first-use statements of each connection. The feature-check case `coverage_conformance_vector` is an ignored trial, which feature-check
 //! runs with --include-ignored.
-//! Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39.
+//! Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39, DBS-115.
 use polyspec_orm_testcase::OrPanic;
 
 mod common;
@@ -42,8 +42,8 @@ fn coverage_conformance_vector() {
         other => panic!("ORM_FEATURE_DATABASE {other:?} is not mysql, postgres or sqlite"),
     };
     let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/conformance").join(file);
-    let recorded: Value = serde_json::from_str(&std::fs::read_to_string(&path).or_panic(|e| format!("{}: {e}", path.display())))
-        .or_panic(|e| format!("{}: {e}", path.display()));
+    let recorded: Value =
+        serde_json::from_str(&std::fs::read_to_string(&path).or_panic(|e| format!("{}: {e}", path.display()))).or_panic(|e| format!("{}: {e}", path.display()));
     let recorded = recorded["vectors"].as_array().unwrap_or_else(|| panic!("{}: no vectors array", path.display()));
     let redact = |bytes: &[u8]| String::from_utf8_lossy(bytes).replace(&dsn, "[dsn]");
 
@@ -69,8 +69,8 @@ fn coverage_conformance_vector() {
 /// The recorded vectors of `file` in tests/conformance.
 fn recorded(file: &str) -> Vec<Value> {
     let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/conformance").join(file);
-    let recorded: Value = serde_json::from_str(&std::fs::read_to_string(&path).or_panic(|e| format!("{}: {e}", path.display())))
-        .or_panic(|e| format!("{}: {e}", path.display()));
+    let recorded: Value =
+        serde_json::from_str(&std::fs::read_to_string(&path).or_panic(|e| format!("{}: {e}", path.display()))).or_panic(|e| format!("{}: {e}", path.display()));
     recorded["vectors"].as_array().unwrap_or_else(|| panic!("{}: no vectors array", path.display())).clone()
 }
 

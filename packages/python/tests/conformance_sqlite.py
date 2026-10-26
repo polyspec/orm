@@ -1,6 +1,6 @@
 # The conformance vectors on sqlite: one test for each vector of the sqlite expectations, named by the vector name
 # (conformance_case). The bench database comes from BENCH_SQLITE_DSN.
-# Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39.
+# Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39, DBS-115.
 # Run: python -m packages.python.tests.conformance_sqlite
 from .conformance_case import conformance_module
 from .vector_case import VectorCase

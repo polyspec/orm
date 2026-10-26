@@ -293,7 +293,7 @@ caseTest('generated method collision', PROCESS, async () => {
   }
 });
 
-// Requirements: DBS-112, DBS-121, INT-2, INT-3, INT-4, INT-5, INT-6, INT-7, INT-8, COD-2.
+// Requirements: DBS-112, DBS-116, DBS-121, INT-2, INT-3, INT-4, INT-5, INT-6, INT-7, INT-8, COD-2.
 caseTest('generated field types follow the runtime model', PROCESS, async () => {
   const runDir = join(root, '.runtime/run');
   await mkdir(runDir, { recursive: true });
@@ -347,10 +347,11 @@ if (row.getMoment() !== '2026-01-02 03:04:05.006' || row.getDay() !== '2026-01-0
 });
 
 // Requirements: DBS-104.
+// Requirements: DBS-104, DBS-111, DBS-120.
 caseTest('generated manifest text and hash match', PROCESS, async () => {
   const dir = await mkdtemp(join(tmpdir(), 'orm-ts-manifest-'));
   try {
-    const manifestText = 'dbspec 1 manifest\n\ntable item {\n  id i64 identity\n  primary key (id)\n}\n';
+    const manifestText = 'dbspec 1 manifest\n\ntable first_item {\n  id i64 identity\n  primary key (id)\n}\n\ntable second_item {\n  id i64 identity\n  primary key (id)\n}\n';
     const set = await setOf(join(dir, 'set'), [['manifest.dbs', manifestText]]);
     const output = join(dir, 'generated');
     const generated = run('gen', '--set', set, '--out', output);
@@ -359,6 +360,9 @@ caseTest('generated manifest text and hash match', PROCESS, async () => {
     const hash = `sha256:${createHash('sha256').update(manifestText).digest('hex')}`;
     assert.ok(source.includes(`export const MANIFEST_TEXT = \`${manifestText}\`;`));
     assert.ok(source.includes(`export const MANIFEST_HASH = '${hash}';`));
+    assert.ok(source.includes('export class FirstItem extends Model'), 'generated first entity comes from the manifest');
+    assert.ok(source.includes('export class SecondItem extends Model'), 'generated second entity comes from the manifest');
+    assert.ok(source.indexOf('export class FirstItem') < source.indexOf('export class SecondItem'), 'generated entities follow document order');
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

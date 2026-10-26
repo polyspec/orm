@@ -17,6 +17,7 @@ use Polyspec\Orm\Tests\Model\Author;
 use ReflectionClass;
 
 #[Medium]
+// Requirements: INT-31.
 final class GroupRowsDbNativeTest extends TestCase
 {
     use DatabaseTestAssertions;

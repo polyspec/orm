@@ -80,7 +80,7 @@ final class ModelNativeTest extends TestCase
         }
     }
 
-    // Requirements: DBS-112, DBS-121, INT-2, INT-3, INT-4, INT-5, INT-6, INT-7, INT-8.
+    // Requirements: DBS-112, DBS-116, DBS-121, INT-2, INT-3, INT-4, INT-5, INT-6, INT-7, INT-8.
     public function testPhpGeneratedFieldTypesFollowTheRuntimeModel(): void
     {
         $dir = sys_get_temp_dir() . '/orm-php-ext-generated-types-' . getmypid();

@@ -76,6 +76,7 @@ DBSPEC;
         self::assertSame(array_values(array_diff(array_keys($columns), $explicit)), $selected);
     }
 
+    // Requirements: DBS-104, DBS-111, DBS-120.
     public function testOwnedAndExternalManifestEntities(): void
     {
         $external = <<<'DBSPEC'
@@ -107,6 +108,8 @@ DBSPEC;
         self::assertFalse($docs[0]->external);
         self::assertTrue($docs[1]->external);
         $model = RuntimeModel::build($docs);
+        self::assertSame(['local', 'shared'], array_keys($model->entities));
+        self::assertSame($model->manifestHash, 'sha256:' . hash('sha256', $model->manifestText . $model->externalText));
         self::assertTrue($model->entities['shared']['external']);
         self::assertSame([], $model->entities['shared']['indexes']);
         self::assertSame(['uq_label' => ['label']], $model->entities['shared']['unique']);

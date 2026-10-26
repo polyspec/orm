@@ -12,7 +12,7 @@ use PHPUnit\Framework\TestCase;
 
 final class CoverageModelGenerationNativeTest extends TestCase
 {
-    // Requirements: DBS-104, DBS-112, INT-66.
+    // Requirements: DBS-104, DBS-111, DBS-112, DBS-120, INT-66.
     // Requirements: DBS-175.
     public function testModelGenerationCheck(): void
     {
