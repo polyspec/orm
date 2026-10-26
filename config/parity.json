@@ -9808,6 +9808,96 @@
           "implementation": "rust",
           "test": "packages/rust/schema/src/dbspec/introspect/mysql.rs",
           "id": "dbspec::introspect::mysql::show_create_tests::every_show_create_case_reads_to_its_expected_body"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-show-create.mjs",
+          "id": "introspection/non-ascii-literal"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-show-create.mjs",
+          "id": "introspection/literal-with-quote"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-show-create.mjs",
+          "id": "introspection/literal-with-backslash"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-show-create.mjs",
+          "id": "introspection/literal-with-parentheses"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-show-create.mjs",
+          "id": "introspection/two-checks-target-non-ascii"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-show-create.mjs",
+          "id": "introspection/two-checks-target-ascii"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-show-create.mjs",
+          "id": "introspection/literal-ends-with-backslash"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-show-create.mjs",
+          "id": "introspection/non-ascii-literal-with-quote"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-show-create.mjs",
+          "id": "introspection/name-without-check"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_show_create.py",
+          "id": "introspection/non-ascii-literal"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_show_create.py",
+          "id": "introspection/literal-with-quote"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_show_create.py",
+          "id": "introspection/literal-with-backslash"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_show_create.py",
+          "id": "introspection/literal-with-parentheses"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_show_create.py",
+          "id": "introspection/two-checks-target-non-ascii"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_show_create.py",
+          "id": "introspection/two-checks-target-ascii"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_show_create.py",
+          "id": "introspection/literal-ends-with-backslash"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_show_create.py",
+          "id": "introspection/non-ascii-literal-with-quote"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_show_create.py",
+          "id": "introspection/name-without-check"
         }
       ]
     },
