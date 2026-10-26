@@ -1661,7 +1661,7 @@ final class ModelTest extends TestCase
     }
 
     // utilities
-    // Requirements: INT-55, INT-57, INT-58, INT-59, INT-61.
+    // Requirements: INT-55, INT-57, INT-59.
     #[DataProvider('drivers')]
     public function testUtilities(string $driver): void
     {

@@ -17299,24 +17299,6 @@
       ]
     },
     {
-      "id": "php-internal-model-utilities",
-      "kind": "feature",
-      "requirements": [
-        "INT-55",
-        "INT-57",
-        "INT-58",
-        "INT-59",
-        "INT-61"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testUtilities"
-        }
-      ]
-    },
-    {
       "id": "php-internal-rollback-rollback-fault",
       "kind": "feature",
       "requirements": [
