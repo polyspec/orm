@@ -169,18 +169,28 @@ async fn coverage_transaction_savepoint() {
             let holder_release = release.clone();
             let holder_task = std::thread::spawn(move || {
                 tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(async move {
+                    let holder_locked = std::sync::Mutex::new(Some(holder_locked));
                     holder
                         .transaction(async || {
                             match CompositeAccount::new().connect(&holder).tenant_id(TENANT).for_update().get().await {
                                 Ok(Some(_)) => {
-                                    let _ = holder_locked.send(Ok(()));
+                                    let sender = holder_locked.lock().expect("lock readiness sender mutex").take();
+                                    if let Some(sender) = sender {
+                                        let _ = sender.send(Ok(()));
+                                    }
                                 }
                                 Ok(None) => {
-                                    let _ = holder_locked.send(Err("lock probe row was not found".to_owned()));
+                                    let sender = holder_locked.lock().expect("lock readiness sender mutex").take();
+                                    if let Some(sender) = sender {
+                                        let _ = sender.send(Err("lock probe row was not found".to_owned()));
+                                    }
                                     return Err(failure("lock probe row was not found"));
                                 }
                                 Err(error) => {
-                                    let _ = holder_locked.send(Err(format!("FOR UPDATE query failed: {error}")));
+                                    let sender = holder_locked.lock().expect("lock readiness sender mutex").take();
+                                    if let Some(sender) = sender {
+                                        let _ = sender.send(Err(format!("FOR UPDATE query failed: {error}")));
+                                    }
                                     return Err(error);
                                 }
                             }
