@@ -273,6 +273,7 @@
         "packages/php/tests/CoverageModelWritesCase.php",
         "packages/php/tests/Cpx5DuplicateRelationCases.php",
         "packages/php/tests/DatabaseTestAssertions.php",
+        "packages/php/tests/DbspecDialectRejectionCases.php",
         "packages/php/tests/DbspecIntrospectQueryCountCases.php",
         "packages/php/tests/DbspecSqliteLockCases.php",
         "packages/php/tests/DbspecStressTestSupport.php",
@@ -637,10 +638,6 @@
         {
           "glob": "packages/ts/tests/paginate-order.mjs",
           "reason": "test: invokes the private paginate helper with a fake database to verify internal plan ordering and dispatch; public pagination behavior is covered by shared client cases"
-        },
-        {
-          "glob": "packages/ts/tests/result_typescript.test.mts",
-          "reason": "harness: tests the TypeScript conformance runner's private result encoder and vector adapter; public ordered JSON, styled values, and codec behavior remain covered by shared client units"
         },
         {
           "glob": "packages/ts/tests/dbspec-mermaid-errors.mjs",
