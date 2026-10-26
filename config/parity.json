@@ -8594,12 +8594,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/AggregateNumericTest.php",
-          "symbol": "AggregateNumericTest::testAggregateNumeric"
+          "symbol": "Polyspec\\Orm\\Tests\\AggregateNumericTest::testAggregateNumeric"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageNativeFixtureExtensionTest.php",
-          "symbol": "CoverageNativeFixtureExtensionTest::testAggregateNumeric"
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageNativeFixtureExtensionTest::testAggregateNumeric"
         },
         {
           "implementation": "typescript",
@@ -8727,12 +8727,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DecimalModelTest.php",
-          "symbol": "DecimalModelTest::testDecimalModel"
+          "symbol": "Polyspec\\Orm\\Tests\\DecimalModelTest::testDecimalModel"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageNativeFixtureExtensionTest.php",
-          "symbol": "CoverageNativeFixtureExtensionTest::testDecimalModel"
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageNativeFixtureExtensionTest::testDecimalModel"
         },
         {
           "implementation": "typescript",
@@ -8774,12 +8774,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/IdentityLoadTest.php",
-          "symbol": "IdentityLoadTest::testIdentityLoad"
+          "symbol": "Polyspec\\Orm\\Tests\\IdentityLoadTest::testIdentityLoad"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageNativeFixtureExtensionTest.php",
-          "symbol": "CoverageNativeFixtureExtensionTest::testIdentityLoad"
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageNativeFixtureExtensionTest::testIdentityLoad"
         },
         {
           "implementation": "typescript",
@@ -9094,7 +9094,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/ModelNativeTest.php",
-          "symbol": "ModelNativeTest::testStyledColumnDistinguishesUnselectedSqlNullAndEncodedNull"
+          "symbol": "Polyspec\\Orm\\Tests\\ModelNativeTest::testStyledColumnDistinguishesUnselectedSqlNullAndEncodedNull"
         },
         {
           "implementation": "go",
@@ -9104,7 +9104,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/StyledValueTest.php",
-          "symbol": "StyledValueTest::testStyledValue"
+          "symbol": "Polyspec\\Orm\\Tests\\StyledValueTest::testStyledValue"
         },
         {
           "implementation": "typescript",
@@ -9180,12 +9180,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/SchemaSetTest.php",
-          "symbol": "SchemaSetTest::testInstallVerifiesTheDatabase"
+          "symbol": "Polyspec\\Orm\\Tests\\SchemaSetTest::testInstallVerifiesTheDatabase"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageNativeChangedDatabaseExtensionTest.php",
-          "symbol": "CoverageNativeChangedDatabaseExtensionTest::testInstallChangedDatabase"
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageNativeChangedDatabaseExtensionTest::testInstallChangedDatabase"
         },
         {
           "implementation": "typescript",
@@ -9234,12 +9234,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CodecVectorsTest.php",
-          "symbol": "CodecVectorsTest::testPhpVector"
+          "symbol": "Polyspec\\Orm\\Tests\\CodecVectorsTest::testPhpVector"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/CodecVectorsTest.php",
-          "symbol": "CodecVectorsTest::testPhpVector"
+          "symbol": "Polyspec\\Orm\\Tests\\CodecVectorsTest::testPhpVector"
         },
         {
           "implementation": "typescript",
@@ -9276,12 +9276,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CodecAesVectorsTest.php",
-          "symbol": "CodecAesVectorsTest::testVector"
+          "symbol": "Polyspec\\Orm\\Tests\\CodecAesVectorsTest::testVector"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/CodecAesVectorsTest.php",
-          "symbol": "CodecAesVectorsTest::testVector"
+          "symbol": "Polyspec\\Orm\\Tests\\CodecAesVectorsTest::testVector"
         },
         {
           "implementation": "rust",
@@ -9321,12 +9321,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/HostcodecTest.php",
-          "symbol": "HostcodecTest::testDecodeVector"
+          "symbol": "Polyspec\\Orm\\Tests\\HostcodecTest::testDecodeVector"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/HostcodecTest.php",
-          "symbol": "HostcodecTest::testDecodeVector"
+          "symbol": "Polyspec\\Orm\\Tests\\HostcodecTest::testDecodeVector"
         },
         {
           "implementation": "typescript",
@@ -9427,12 +9427,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/EngineTest.php",
-          "symbol": "EngineTest::testValidate"
+          "symbol": "Polyspec\\Orm\\Tests\\EngineTest::testValidate"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/ValidatorNativeTest.php",
-          "symbol": "ValidatorNativeTest::testValidate"
+          "symbol": "Polyspec\\Orm\\Tests\\ValidatorNativeTest::testValidate"
         },
         {
           "implementation": "typescript",
@@ -9640,12 +9640,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "symbol": "CoverageConformanceVerificationTest::testMysql"
+          "symbol": "Polyspec\\Orm\\Tests\\CoverageConformanceVerificationTest::testMysql"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-          "symbol": "CoverageConformanceVerificationExtensionTest::testMysql"
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageConformanceVerificationExtensionTest::testMysql"
         },
         {
           "implementation": "typescript",
@@ -9852,12 +9852,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "symbol": "CoverageConformanceVerificationTest::testPostgres"
+          "symbol": "Polyspec\\Orm\\Tests\\CoverageConformanceVerificationTest::testPostgres"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-          "symbol": "CoverageConformanceVerificationExtensionTest::testPostgres"
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageConformanceVerificationExtensionTest::testPostgres"
         },
         {
           "implementation": "typescript",
@@ -10065,12 +10065,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "symbol": "CoverageConformanceVerificationTest::testSqlite"
+          "symbol": "Polyspec\\Orm\\Tests\\CoverageConformanceVerificationTest::testSqlite"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-          "symbol": "CoverageConformanceVerificationExtensionTest::testSqlite"
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageConformanceVerificationExtensionTest::testSqlite"
         },
         {
           "implementation": "typescript",
@@ -10160,12 +10160,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "DbspecTest::testCanonical"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecTest::testCanonical"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "DbspecTest::testCanonical"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecTest::testCanonical"
         },
         {
           "implementation": "typescript",
@@ -10218,12 +10218,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "DbspecTest::testNormalize"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecTest::testNormalize"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "DbspecTest::testNormalize"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecTest::testNormalize"
         },
         {
           "implementation": "typescript",
@@ -10331,12 +10331,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "DbspecTest::testInvalid"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecTest::testInvalid"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "DbspecTest::testInvalid"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecTest::testInvalid"
         },
         {
           "implementation": "typescript",
@@ -10378,12 +10378,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecManifestTest.php",
-          "symbol": "DbspecManifestTest::testHashes"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecManifestTest::testHashes"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecManifestTest.php",
-          "symbol": "DbspecManifestTest::testHashes"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecManifestTest::testHashes"
         },
         {
           "implementation": "typescript",
@@ -10418,7 +10418,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecManifestTest.php",
-          "symbol": "DbspecManifestTest::testSets"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecManifestTest::testSets"
         },
         {
           "implementation": "go",
@@ -10428,7 +10428,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecManifestTest.php",
-          "symbol": "DbspecManifestTest::testSets"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecManifestTest::testSets"
         },
         {
           "implementation": "typescript",
@@ -10464,12 +10464,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "DbspecTest::testFiles"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecTest::testFiles"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "DbspecTest::testFiles"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecTest::testFiles"
         },
         {
           "implementation": "typescript",
@@ -10521,12 +10521,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "DbspecTest::testPositions"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecTest::testPositions"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "DbspecTest::testPositions"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecTest::testPositions"
         },
         {
           "implementation": "typescript",
@@ -10589,12 +10589,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecSetTest.php",
-          "symbol": "DbspecSetTest::testSet"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecSetTest::testSet"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecSetTest.php",
-          "symbol": "DbspecSetTest::testSet"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecSetTest::testSet"
         },
         {
           "implementation": "typescript",
@@ -10645,12 +10645,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecAnalyzeTest.php",
-          "symbol": "DbspecAnalyzeTest::testSyntax"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecAnalyzeTest::testSyntax"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecAnalyzeTest.php",
-          "symbol": "DbspecAnalyzeTest::testSyntax"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecAnalyzeTest::testSyntax"
         },
         {
           "implementation": "typescript",
@@ -10717,12 +10717,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecRenderTest.php",
-          "symbol": "DbspecRenderTest::testDdl"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecRenderTest::testDdl"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecRenderTest.php",
-          "symbol": "DbspecRenderTest::testDdl"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecRenderTest::testDdl"
         },
         {
           "implementation": "typescript",
@@ -10788,12 +10788,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecIntrospectTest.php",
-          "symbol": "DbspecIntrospectTest::testUnsupported"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecIntrospectTest::testUnsupported"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecIntrospectTest.php",
-          "symbol": "DbspecIntrospectTest::testUnsupported"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecIntrospectTest::testUnsupported"
         },
         {
           "implementation": "typescript",
@@ -10827,12 +10827,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecShowCreateTest.php",
-          "symbol": "DbspecShowCreateTest::testShowCreate"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecShowCreateTest::testShowCreate"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecShowCreateIntrospectTest.php",
-          "symbol": "DbspecShowCreateIntrospectTest::testIntrospect"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecShowCreateIntrospectTest::testIntrospect"
         },
         {
           "implementation": "typescript",
@@ -10871,12 +10871,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecMermaidTest.php",
-          "symbol": "DbspecMermaidTest::testExport"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecMermaidTest::testExport"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecMermaidTest.php",
-          "symbol": "DbspecMermaidTest::testExport"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecMermaidTest::testExport"
         },
         {
           "implementation": "typescript",
@@ -10916,12 +10916,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecMermaidTest.php",
-          "symbol": "DbspecMermaidTest::testImport"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecMermaidTest::testImport"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecMermaidTest.php",
-          "symbol": "DbspecMermaidTest::testImport"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecMermaidTest::testImport"
         },
         {
           "implementation": "typescript",
@@ -10955,12 +10955,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecMermaidTest.php",
-          "symbol": "DbspecMermaidTest::testInvalid"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecMermaidTest::testInvalid"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecMermaidTest.php",
-          "symbol": "DbspecMermaidTest::testInvalid"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecMermaidTest::testInvalid"
         },
         {
           "implementation": "typescript",
@@ -10994,12 +10994,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecMermaidTest.php",
-          "symbol": "DbspecMermaidTest::testRoundTrip"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecMermaidTest::testRoundTrip"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecMermaidTest.php",
-          "symbol": "DbspecMermaidTest::testRoundTrip"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecMermaidTest::testRoundTrip"
         },
         {
           "implementation": "typescript",
@@ -11076,12 +11076,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "DbspecPlanTest::testCase"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecPlanTest::testCase"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "DbspecPlanTest::testCase"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecPlanTest::testCase"
         },
         {
           "implementation": "typescript",
@@ -11147,12 +11147,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "DbspecPlanTest::testInvalid"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecPlanTest::testInvalid"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "DbspecPlanTest::testInvalid"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecPlanTest::testInvalid"
         },
         {
           "implementation": "typescript",
@@ -11218,12 +11218,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "DbspecPlanTest::testChain"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecPlanTest::testChain"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "DbspecPlanTest::testChain"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecPlanTest::testChain"
         },
         {
           "implementation": "typescript",
@@ -11290,12 +11290,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "DbspecPlanTest::testParse"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecPlanTest::testParse"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "DbspecPlanTest::testParse"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecPlanTest::testParse"
         },
         {
           "implementation": "typescript",
@@ -11361,12 +11361,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "DbspecPlanTest::testComparison"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecPlanTest::testComparison"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "DbspecPlanTest::testComparison"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecPlanTest::testComparison"
         },
         {
           "implementation": "typescript",
@@ -11400,12 +11400,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DsnTest.php",
-          "symbol": "DsnTest::testSqlitePath"
+          "symbol": "Polyspec\\Orm\\Tests\\DsnTest::testSqlitePath"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DsnTest.php",
-          "symbol": "DsnTest::testSqlitePath"
+          "symbol": "Polyspec\\Orm\\Tests\\DsnTest::testSqlitePath"
         },
         {
           "implementation": "typescript",
@@ -11442,12 +11442,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/StatementEventsTest.php",
-          "symbol": "StatementEventsTest::testCase"
+          "symbol": "Polyspec\\Orm\\Tests\\StatementEventsTest::testCase"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/StatementEventsTest.php",
-          "symbol": "StatementEventsTest::testCase"
+          "symbol": "Polyspec\\Orm\\Tests\\StatementEventsTest::testCase"
         },
         {
           "implementation": "python",
@@ -11485,12 +11485,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/StatementFaultTest.php",
-          "symbol": "StatementFaultTest::testStatementFault"
+          "symbol": "Polyspec\\Orm\\Tests\\StatementFaultTest::testStatementFault"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/StatementFaultTest.php",
-          "symbol": "StatementFaultTest::testStatementFault"
+          "symbol": "Polyspec\\Orm\\Tests\\StatementFaultTest::testStatementFault"
         },
         {
           "implementation": "typescript",
@@ -11566,12 +11566,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/MarkdownConformanceTest.php",
-          "symbol": "MarkdownConformanceTest::testMarkdownConformance"
+          "symbol": "Polyspec\\Orm\\Tests\\MarkdownConformanceTest::testMarkdownConformance"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/MarkdownConformanceNativeTest.php",
-          "symbol": "MarkdownConformanceNativeTest::testMarkdownConformance"
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\MarkdownConformanceNativeTest::testMarkdownConformance"
         },
         {
           "implementation": "python",
@@ -11606,12 +11606,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/InsertPartsTest.php",
-          "symbol": "InsertPartsTest::testCase"
+          "symbol": "Polyspec\\Orm\\Tests\\InsertPartsTest::testCase"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/InsertPartsTest.php",
-          "symbol": "InsertPartsTest::testCase"
+          "symbol": "Polyspec\\Orm\\Tests\\InsertPartsTest::testCase"
         },
         {
           "implementation": "typescript",
@@ -11652,12 +11652,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecSetParseTest.php",
-          "symbol": "DbspecSetParseTest::testSetParse"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecSetParseTest::testSetParse"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecSetParseTest.php",
-          "symbol": "DbspecSetParseTest::testSetParse"
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecSetParseTest::testSetParse"
         },
         {
           "implementation": "typescript",
@@ -17485,12 +17485,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/IrAnswersTest.php",
-          "symbol": "IrAnswersTest::testIrAnswer"
+          "symbol": "Polyspec\\Orm\\Tests\\IrAnswersTest::testIrAnswer"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/IrAnswersTest.php",
-          "symbol": "IrAnswersTest::testIrAnswer"
+          "symbol": "Polyspec\\Orm\\Tests\\IrAnswersTest::testIrAnswer"
         },
         {
           "implementation": "typescript",
@@ -17524,12 +17524,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/MysqlTlsTest.php",
-          "symbol": "MysqlTlsTest::testSessionSqlMode"
+          "symbol": "Polyspec\\Orm\\Tests\\MysqlTlsTest::testSessionSqlMode"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/MysqlSessionNativeTest.php",
-          "symbol": "MysqlSessionNativeTest::testNativeConnectionSetsDeclaredSqlMode"
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\MysqlSessionNativeTest::testNativeConnectionSetsDeclaredSqlMode"
         },
         {
           "implementation": "typescript",
