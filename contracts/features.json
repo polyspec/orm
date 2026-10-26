@@ -2154,6 +2154,7 @@
       "parity": [
         "coverage-model-write-cycle",
         "model-codec-columns",
+        "model-ip-input-rejects-whitespace",
         "model-new-output-name-rejects-stored-column",
         "coverage-model-create-parts",
         "coverage-model-write-arithmetic-attributes",
@@ -2212,6 +2213,8 @@
         "packages/go/orm/styled_state_physical_test.go",
         "packages/go/model/styled_state_test.go",
         "packages/go/orm/model_host_input_test.go",
+        "packages/go/orm/exec_decode_test.go",
+        "packages/go/orm/model_update_state_test.go",
         "packages/php/tests/StyledValueTest.php",
         "packages/rust/orm/tests/decimal_model.rs",
         "packages/go/model/coverage_model_writes_test.go",
@@ -2255,6 +2258,22 @@
         "docs/spec/protocol.md"
       ],
       "verification": [
+        {
+          "id": "decode-selected-row-invalid-scalars-go",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestDecodeSelectedRowRejectsInvalidRuntimeScalars$' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/go/orm/exec_decode_test.go"
+          ]
+        },
+        {
+          "id": "unloaded-update-state-go",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestUnloadedUpdateKeepsAssignedValuesSelectedAndKeyed$' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/go/orm/model_update_state_test.go"
+          ]
+        },
         {
           "id": "native-model-query-write-sqlite-unit",
           "command": "make model-query-write-php-extension-unit-check",
@@ -8275,6 +8294,7 @@
         "packages/go/model/chunk_test.go",
         "packages/rust/tests/src/integration.rs",
         "packages/php/tests/RelationKeysTest.php",
+        "packages/php/tests/ParentSlotPaddingTest.php",
         "packages/php/tests/ModelTest.php",
         "packages/ts/tests/model.mjs",
         "packages/go/model/coverage_parameter_chunking_test.go",
@@ -8324,10 +8344,11 @@
         },
         {
           "id": "chunking-php-keys",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php packages/php/tests/ParentSlotPaddingTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/RelationKeysTest.php"
+            "packages/php/tests/RelationKeysTest.php",
+            "packages/php/tests/ParentSlotPaddingTest.php"
           ]
         },
         {

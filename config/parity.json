@@ -364,6 +364,10 @@
       },
       "internal": [
         {
+          "glob": "packages/php/tests/DbspecCatalogChecksTest.php",
+          "reason": "test: directly exercises the @internal Dbspec\\CatalogChecks adapter; accepted and rejected check introspection remains covered across all clients by dbspec-introspect cases"
+        },
+        {
           "glob": "packages/php/tests/CodecYamlCauseTest.php",
           "reason": "test: injects PHP YAML parser and dumper dependency failures through CodecYamlProbe to verify wrapper codes and exact cause identity; shared codec vectors cover invalid caller input"
         },
@@ -2688,6 +2692,50 @@
           "implementation": "rust",
           "test": "packages/rust/orm/src/codec.rs",
           "id": "codec::tests::errors_and_keys"
+        }
+      ]
+    },
+    {
+      "id": "model-ip-input-rejects-whitespace",
+      "kind": "feature",
+      "requirements": [
+        "COD-38"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_model_writes_test.go",
+          "id": "TestCoverageModelWriteCycle"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/model_host_input_test.go",
+          "id": "TestIPHostInputIsValidatedBeforeModelAndPredicateBinding"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageModelWritesTest.php",
+          "id": "CoverageModelWritesTest::testModelWriteCycle"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
+          "id": "CoverageModelWritesExtensionTest::testModelWriteCycle"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_model_writes.mjs",
+          "id": "model_write_cycle [sqlite]"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_model_writes.py",
+          "id": "test_model_write_cycle"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
+          "id": "coverage_model_writes::coverage_model_write_cycle"
         }
       ]
     },
@@ -5301,6 +5349,11 @@
             "FEATURE_TEST=TestCoverageModelSaveKeyDispatch",
             "FEATURE_PACKAGE=./model"
           ]
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/model_update_state_test.go",
+          "id": "TestUnloadedUpdateKeepsAssignedValuesSelectedAndKeyed"
         },
         {
           "implementation": "php",
@@ -15987,6 +16040,11 @@
           "id": "TestRuntimeInvalidCellsFailTypedReads"
         },
         {
+          "implementation": "go",
+          "test": "packages/go/orm/exec_decode_test.go",
+          "id": "TestDecodeSelectedRowRejectsInvalidRuntimeScalars"
+        },
+        {
           "implementation": "php",
           "test": "packages/php/tests/RuntimeDbTest.php",
           "id": "RuntimeDbTest::testInvalidStoredCellsFailTypedReads"
@@ -21505,6 +21563,45 @@
           "implementation": "rust",
           "test": "packages/rust/orm/src/driver_parent_slot_tests.rs",
           "id": "driver::parent_slot_tests::preserves_bare_dollar"
+        }
+      ]
+    },
+    {
+      "id": "parent-slot-padding-repeats-last-composite-key",
+      "kind": "feature",
+      "requirements": [
+        "PRT-40"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/collection_key_test.go",
+          "id": "TestParentSlotExpansionPadsCompositeKeysAndRenumbersFollowingSlots"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ParentSlotPaddingTest.php",
+          "id": "ParentSlotPaddingTest::testTuplePredicatePadsByRepeatingTheLastRow"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelNativeTest.php",
+          "id": "ModelNativeTest::testTuplePredicatePadsByRepeatingTheLastRow"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/parent-slot-expansion.mjs",
+          "id": "parent-slot-expansion/pads-composite-keys"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_query_methods.py",
+          "id": "test_tuple_predicate_pads_by_repeating_the_last_row"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/request.rs",
+          "id": "request::tuple_padding_tests::composite_tuple_padding_repeats_the_last_row"
         }
       ]
     },

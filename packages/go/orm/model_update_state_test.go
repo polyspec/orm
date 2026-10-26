@@ -7,6 +7,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
+// Requirements: DSL-109.
 func TestUnloadedUpdateKeepsAssignedValuesSelectedAndKeyed(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	ent := &runtimemodel.Entity{Name: "account", PK: []string{"seq"}}

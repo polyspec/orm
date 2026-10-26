@@ -575,6 +575,7 @@
         "packages/php/tests/MarkdownTest.php",
         "packages/php/tests/markdown_test_server.php",
         "packages/php/tests/RelationKeysTest.php",
+        "packages/php/tests/ParentSlotPaddingTest.php",
         "packages/php/tests/HostcodecTest.php",
         "packages/php/tests/CodecAesVectorsTest.php",
         "tests/codec/aes-vectors.json",

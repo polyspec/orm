@@ -9,9 +9,6 @@ namespace Polyspec\Orm\Tests;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Db;
-use Polyspec\Orm\Frame;
-use Polyspec\Orm\Model;
-use Polyspec\Orm\Request;
 use Polyspec\Orm\Tests\Model\Author;
 
 #[Small]
@@ -78,11 +75,5 @@ final class RelationKeysTest extends TestCase
         ) {
             self::assertFalse(method_exists(Author::class, $method), "removed method $method remains public");
         }
-    }
-
-    // Requirements: PRT-40.
-    public function testTuplePredicatePadsByRepeatingTheLastRow(): void
-    {
-        $this->assertTuplePredicatePadsByRepeatingLastRow(new Author());
     }
 }

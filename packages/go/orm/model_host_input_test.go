@@ -7,6 +7,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
+// Requirements: COD-38.
 func TestIPHostInputIsValidatedBeforeModelAndPredicateBinding(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	const document = `dbspec 1 ip_host_input

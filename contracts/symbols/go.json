@@ -20627,10 +20627,6 @@
     "exported": false,
     "signature": "func(err error) error"
   },
-  "packages/go/orm/pg/pg.go::pingReusedConnection": {
-    "exported": false,
-    "signature": "func(context.Context, stdlib.ShouldPingParams) bool"
-  },
   "packages/go/orm/root_in.go::DB.splitReadPlan": {
     "exported": false,
     "signature": "receiver=*DB func(r *request) (*cached, int, error)"

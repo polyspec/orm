@@ -483,6 +483,7 @@ pub(crate) fn pad_in<T: Clone>(vs: &[T]) -> Vec<T> {
 mod tuple_padding_tests {
     use super::pad_in;
 
+    // Requirements: PRT-40.
     #[test]
     fn composite_tuple_padding_repeats_the_last_row() {
         let rows = vec![vec![990004i64, 1], vec![990004, 2], vec![990004, 3]];
