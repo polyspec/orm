@@ -201,6 +201,38 @@ static void pg_raise_statement(zval *object, zend_string *state, zend_string *me
     zval_ptr_dtor(&info);
 }
 
+/* Preserve ext-pgsql's connection diagnostic and classify a lost PGconn as SQLSTATE 08006. */
+static void pg_raise_connection_failure(zval *object, zval *connection, const char *fallback)
+{
+    zval status_arg, status;
+    ZVAL_COPY(&status_arg, connection);
+    if (!pg_call_function("pg_connection_status", &status, 1, &status_arg)) {
+        zval_ptr_dtor(&status_arg);
+        return;
+    }
+    zval_ptr_dtor(&status_arg);
+    zend_long bad_status = 1;
+    pg_constant_long("PGSQL_CONNECTION_BAD", &bad_status);
+    bool lost = Z_TYPE(status) == IS_LONG && Z_LVAL(status) == bad_status;
+    zval_ptr_dtor(&status);
+
+    zval error_arg, error;
+    ZVAL_COPY(&error_arg, connection);
+    if (!pg_call_function("pg_last_error", &error, 1, &error_arg)) {
+        zval_ptr_dtor(&error_arg);
+        return;
+    }
+    zval_ptr_dtor(&error_arg);
+    zend_string *detail = Z_TYPE(error) == IS_STRING && Z_STRLEN(error) > 0
+        ? zend_string_copy(Z_STR(error))
+        : zend_string_init(fallback, strlen(fallback), 0);
+    zval_ptr_dtor(&error);
+    zend_string *state = zend_string_init(lost ? "08006" : "HY000", 5, 0);
+    pg_raise_statement(object, state, detail);
+    zend_string_release(state);
+    zend_string_release(detail);
+}
+
 static void pg_clear_error(zval *object)
 {
     zval info, code;
@@ -797,6 +829,21 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, executeSql)
     pg_clear_error(ZEND_THIS);
     zval connection, values, send_args[3], sent;
     if (!pg_get_connection(ZEND_THIS, &connection)) RETURN_THROWS();
+    zval status_arg, connection_status;
+    ZVAL_COPY(&status_arg, &connection);
+    if (!pg_call_function("pg_connection_status", &connection_status, 1, &status_arg)) {
+        zval_ptr_dtor(&status_arg); zval_ptr_dtor(&connection); RETURN_THROWS();
+    }
+    zval_ptr_dtor(&status_arg);
+    zend_long bad_status = 1;
+    pg_constant_long("PGSQL_CONNECTION_BAD", &bad_status);
+    bool already_lost = Z_TYPE(connection_status) == IS_LONG && Z_LVAL(connection_status) == bad_status;
+    zval_ptr_dtor(&connection_status);
+    if (already_lost) {
+        pg_raise_connection_failure(ZEND_THIS, &connection, "PostgreSQL connection was lost before sending a query");
+        zval_ptr_dtor(&connection);
+        RETURN_THROWS();
+    }
     array_init_size(&values, zend_hash_num_elements(params));
     zval *param; zend_ulong param_index;
     ZEND_HASH_FOREACH_NUM_KEY_VAL(params, param_index, param) {
@@ -840,6 +887,12 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, executeSql)
         }
         for (int i = 0; i < 3; i++) zval_ptr_dtor(&send_args[i]);
     }
+    if (!zend_is_true(&sent)) {
+        zval_ptr_dtor(&sent); zval_ptr_dtor(&values);
+        pg_raise_connection_failure(ZEND_THIS, &connection, "PostgreSQL query send failed");
+        zval_ptr_dtor(&connection);
+        RETURN_THROWS();
+    }
     zval_ptr_dtor(&sent); zval_ptr_dtor(&values);
     zval socket_arg, socket;
     ZVAL_COPY(&socket_arg, &connection);
@@ -871,7 +924,12 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, executeSql)
         if (!pg_call_function("pg_consume_input", &consumed, 1, &consume_arg)) { zval_ptr_dtor(&consume_arg); zval_ptr_dtor(&socket); zval_ptr_dtor(&connection); RETURN_THROWS(); }
         zval_ptr_dtor(&consume_arg);
         bool ok = zend_is_true(&consumed); zval_ptr_dtor(&consumed);
-        if (!ok) { zval_ptr_dtor(&socket); zval_ptr_dtor(&connection); pg_raise("PostgreSQL connection was lost while waiting for a query"); RETURN_THROWS(); }
+        if (!ok) {
+            zval_ptr_dtor(&socket);
+            pg_raise_connection_failure(ZEND_THIS, &connection, "PostgreSQL connection was lost while waiting for a query");
+            zval_ptr_dtor(&connection);
+            RETURN_THROWS();
+        }
         zval parsed_busy_arg, parsed_busy;
         ZVAL_COPY(&parsed_busy_arg, &connection);
         if (!pg_call_function("pg_connection_busy", &parsed_busy, 1, &parsed_busy_arg)) { zval_ptr_dtor(&parsed_busy_arg); zval_ptr_dtor(&socket); zval_ptr_dtor(&connection); RETURN_THROWS(); }
@@ -964,7 +1022,14 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, executeSql)
         RETURN_THROWS();
     }
     zval_ptr_dtor(&query_state); zval_ptr_dtor(&query_message);
-    if (Z_ISUNDEF(last_result)) { if (!Z_ISUNDEF(result)) zval_ptr_dtor(&result); pg_raise("PostgreSQL connection was lost before receiving a result"); RETURN_THROWS(); }
+    if (Z_ISUNDEF(last_result)) {
+        if (!Z_ISUNDEF(result)) zval_ptr_dtor(&result);
+        zval lost_connection;
+        if (!pg_get_connection(ZEND_THIS, &lost_connection)) RETURN_THROWS();
+        pg_raise_connection_failure(ZEND_THIS, &lost_connection, "PostgreSQL connection was lost before receiving a result");
+        zval_ptr_dtor(&lost_connection);
+        RETURN_THROWS();
+    }
     ZVAL_COPY_VALUE(&result, &last_result);
     zval affected_arg, affected;
     ZVAL_COPY(&affected_arg, &result);
