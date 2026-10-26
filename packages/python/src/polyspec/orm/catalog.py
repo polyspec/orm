@@ -208,7 +208,14 @@ def _exceeds_declared_capacity(column: CatalogColumn, value) -> bool:
             column.native_type,
             re.IGNORECASE,
         )
-        return match is not None and len(value) > int(match.group(1))
+        if match is not None and len(value) > int(match.group(1)):
+            return True
+        match = re.match(
+            r"^(?:varbinary|binary)\s*\((\d+)\)",
+            column.native_type,
+            re.IGNORECASE,
+        )
+        return match is not None and len(value.encode("utf-8")) > int(match.group(1))
     if isinstance(value, bytes):
         match = re.match(
             r"^(?:varbinary|binary)\s*\((\d+)\)",

@@ -53,17 +53,18 @@ class CatalogPageValidationTest(unittest.TestCase):
             kind="table",
             columns=[
                 CatalogColumn("id", "INTEGER", False, False),
-                CatalogColumn("varchar_value", "varchar(2)", False, False),
-                CatalogColumn("varying_value", "character varying(2)", False, False),
-                CatalogColumn("varbinary_value", "varbinary(2)", False, False),
-                CatalogColumn("binary_value", "binary(2)", False, False),
+                CatalogColumn("varchar_value", "varchar(3)", False, False),
+                CatalogColumn("varying_value", "character varying(3)", False, False),
+                CatalogColumn("varbinary_text_value", "varbinary(3)", False, False),
+                CatalogColumn("varbinary_value", "varbinary(3)", False, False),
+                CatalogColumn("binary_value", "binary(3)", False, False),
             ],
             primary_key=["id"],
             reliable_row_identity=True,
         )
         original = CatalogRowSnapshot(
             metadata,
-            [1, "ok", "ok", b"ok", b"ok"],
+            [1, "ok", "ok", "ok", b"ok", b"ok"],
             [0],
             "original revision",
         )
@@ -80,20 +81,22 @@ class CatalogPageValidationTest(unittest.TestCase):
         result = catalog.update_row(
             original,
             [
-                ("varchar_value", "é😀"),
-                ("varying_value", "é😀"),
-                ("varbinary_value", b"\x00\xff"),
-                ("binary_value", b"\x00\xff"),
+                ("varchar_value", "éxy"),
+                ("varying_value", "éxy"),
+                ("varbinary_text_value", "éx"),
+                ("varbinary_value", b"\x00\xffx"),
+                ("binary_value", b"\x00\xffx"),
             ],
         )
         self.assertIs(result, marker)
         self.assertEqual(len(writes), 1)
 
         for name, value in (
-            ("varchar_value", "é😀x"),
-            ("varying_value", "é😀x"),
-            ("varbinary_value", b"\x00\xffx"),
-            ("binary_value", b"\x00\xffx"),
+            ("varchar_value", "éxyz"),
+            ("varying_value", "éxyz"),
+            ("varbinary_text_value", "éxy"),
+            ("varbinary_value", b"\x00\xffxy"),
+            ("binary_value", b"\x00\xffxy"),
         ):
             with self.subTest(column=name):
                 with self.assertRaises(OrmError) as raised:
