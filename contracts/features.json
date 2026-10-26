@@ -2752,10 +2752,8 @@
         "transaction-failure-savepoint-end",
         "transaction-control-methods-are-private",
         "mysql-lock-wait-canceled",
-        "ts-transaction-flow-shared-context",
-        "ts-transaction-flow-overlap",
-        "rust-transaction-flow-spawned-task",
-        "rust-transaction-flow-overlap"
+        "transaction-execution-flow-context",
+        "transaction-flow-overlap-rejected"
       ],
       "fixtures": [
         "packages/php/tests/deadlock_child.php",
@@ -2769,6 +2767,7 @@
       ],
       "tests": [
         "packages/go/model/model_test.go",
+        "packages/go/orm/transaction_flow_overlap_test.go",
         "packages/go/orm/cancel_test.go",
         "packages/php/tests/QueryCancellationTest.php",
         "packages/php/tests/ModelTest.php",
@@ -2860,6 +2859,22 @@
           "shard": "other",
           "inputs": [
             "packages/go/model/model_test.go"
+          ]
+        },
+        {
+          "id": "transaction-flow-overlap-go",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestTransactionConnectionRejectsOverlappingStatement$' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/go/orm/transaction_flow_overlap_test.go"
+          ]
+        },
+        {
+          "id": "transaction-flow-overlap-python",
+          "command": "packages/python/.venv/bin/python -m unittest packages.python.tests.test_transaction_flow.TransactionConcurrencyTest.test_overlapping_statement_is_rejected",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_transaction_flow.py"
           ]
         },
         {

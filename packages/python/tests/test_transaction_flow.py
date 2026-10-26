@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 from polyspec.orm import Db, OrmError
+from polyspec.orm.database import Executor, TxFrame, _guarded
 
 from .test_sqlite import DDL, generate, run_script
 from . import testcase
@@ -56,6 +57,22 @@ class TransactionFlowTest(unittest.TestCase):
         public = {name.lower() for name in dir(Db) if not name.startswith("_")}
         self.assertIn("transaction", public)
         self.assertEqual(public & {"begin", "commit", "rollback"}, set())
+
+
+class TransactionConcurrencyTest(unittest.TestCase):
+    # Requirements: DSL-121 (docs/spec/dsl.md "Transactions").
+    def test_overlapping_statement_is_rejected(self):
+        executor = Executor(None, TxFrame(None, 1, {}))
+        result = {}
+
+        def overlapping_statement():
+            try:
+                _guarded(executor, lambda: None)
+            except OrmError as error:
+                result["code"] = error.code
+
+        _guarded(executor, overlapping_statement)
+        self.assertEqual(result, {"code": "CONFIG"})
 
 
 if __name__ == "__main__":
