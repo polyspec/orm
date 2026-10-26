@@ -125,7 +125,7 @@ async function readCase(item) {
       `${driver}: a write through readOnlyQuery`,
     );
     for (const sql of ["SELECT ';' AS value /* ; */", 'WITH values_cte AS (SELECT 1 AS value) SELECT value FROM values_cte']) {
-      await catalog.readOnlyGridQuery(sql);
+      await catalog.readOnlyGridQuery(sql, []);
     }
     const readOnlyRefusals = [
       'COMMIT',
@@ -135,12 +135,22 @@ async function readCase(item) {
       'SELECT 1; SELECT 2',
       'WITH changed AS (UPDATE user SET name=name WHERE seq=1 RETURNING seq) SELECT seq FROM changed',
     ];
-    if (driver === 'postgres') {
-      readOnlyRefusals.push(`SELECT ${Array(200).fill('1').join(' UNION ALL ')}`);
-      readOnlyRefusals.push(`SELECT ${Array(200).fill('1').join('+')}`);
-    }
     for (const sql of readOnlyRefusals) {
-      await assert.rejects(catalog.readOnlyGridQuery(sql), /QUERY_READ_ONLY/, `${driver}: read-only grid refusal: ${sql}`);
+      await assert.rejects(catalog.readOnlyGridQuery(sql, []), /QUERY_READ_ONLY/, `${driver}: read-only grid refusal: ${sql}`);
+    }
+    if (driver === 'postgres') {
+      const manyRows = Array(200).fill('SELECT 1').join(' UNION ALL ');
+      const longExpression = `SELECT ${Array(200).fill('1').join('+')}`;
+      await assert.rejects(
+        catalog.readOnlyGridQuery(manyRows, [], { maxRows: 199 }),
+        codeIs('CATALOG_LIMIT'),
+        `${driver}: bounded read grid stops at the first row past its limit`,
+      );
+      await assert.rejects(
+        catalog.readOnlyGridQuery(longExpression, [], { maxBytes: 7 }),
+        codeIs('CATALOG_LIMIT'),
+        `${driver}: bounded read grid stops when a value exceeds its byte limit`,
+      );
     }
     await assertGridCells(driver, catalog);
   } finally {

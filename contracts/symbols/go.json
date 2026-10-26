@@ -17155,6 +17155,10 @@
     "exported": false,
     "signature": "func(code, format string, args ...any) error"
   },
+  "packages/go/orm/catalog.go::catalogNativeTimeType": {
+    "exported": false,
+    "signature": "func(nativeType string) bool"
+  },
   "packages/go/orm/catalog.go::catalogParams": {
     "exported": false,
     "signature": "func(params []any) ([]any, error)"
@@ -17543,6 +17547,10 @@
     "exported": false,
     "signature": "func(metadata CatalogTableMetadata, dialect string) string"
   },
+  "packages/go/orm/catalog_mutation.go::catalogDateTimePrecision": {
+    "exported": false,
+    "signature": "func(nativeType, dialect string) (int, bool)"
+  },
   "packages/go/orm/catalog_mutation.go::catalogDeclaredCapacity": {
     "exported": false,
     "signature": "func(pattern *regexp.Regexp, nativeType string) (uint64, bool)"
@@ -17558,6 +17566,10 @@
   "packages/go/orm/catalog_mutation.go::catalogSameCell": {
     "exported": false,
     "signature": "func(a, b any) (bool, error)"
+  },
+  "packages/go/orm/catalog_mutation.go::catalogSameWrittenCell": {
+    "exported": false,
+    "signature": "func(db *DB, stored, requested any, column CatalogColumn, dialect string) (bool, error)"
   },
   "packages/go/orm/catalog_mutation.go::catalogSession.lookup": {
     "exported": false,

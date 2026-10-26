@@ -387,6 +387,11 @@ func catalogBytesValue(value []byte, nativeType string) (any, error) {
 	switch {
 	case strings.Contains(t, "BLOB"), strings.Contains(t, "BINARY"), strings.Contains(t, "BYTEA"):
 		return append([]byte(nil), value...), nil
+	case catalogNativeTimeType(t):
+		if !utf8.Valid(value) {
+			return nil, catalogErr(catalogCodeValue, "time of native type %q is not valid UTF-8", nativeType)
+		}
+		return string(value), nil
 	case strings.Contains(t, "DECIMAL"), strings.Contains(t, "NUMERIC"), strings.Contains(t, "MONEY"):
 		return string(value), nil
 	case strings.Contains(t, "INT"):
@@ -410,6 +415,20 @@ func catalogBytesValue(value []byte, nativeType string) (any, error) {
 	default:
 		return nil, catalogErr(catalogCodeValue, "unsupported native type %q", nativeType)
 	}
+}
+
+// catalogNativeTimeType recognizes the supported time-of-day types, excluding time-zone-bearing forms such as TIMETZ.
+func catalogNativeTimeType(nativeType string) bool {
+	nativeType = strings.TrimSpace(nativeType)
+	nativeType = strings.TrimSuffix(nativeType, " WITHOUT TIME ZONE")
+	if nativeType == "TIME" {
+		return true
+	}
+	if !strings.HasPrefix(nativeType, "TIME(") || !strings.HasSuffix(nativeType, ")") {
+		return false
+	}
+	precision, err := strconv.Atoi(nativeType[len("TIME(") : len(nativeType)-1])
+	return err == nil && precision >= 0 && precision <= 6
 }
 
 // catalogParams checks the bound parameters of a statement and returns them with int widened to int64.

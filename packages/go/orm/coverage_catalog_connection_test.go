@@ -229,17 +229,24 @@ func TestCoverageCatalogRead(t *testing.T) {
 		"SELECT 1; SELECT 2",
 		"WITH changed AS (UPDATE user SET name=name WHERE seq=1 RETURNING seq) SELECT seq FROM changed",
 	}
-	if driver == "postgres" {
-		readOnlyRefusals = append(readOnlyRefusals,
-			"SELECT "+strings.TrimSuffix(strings.Repeat("1 UNION ALL ", 200), " UNION ALL "),
-			"SELECT "+strings.TrimSuffix(strings.Repeat("1+", 200), "+"),
-		)
-	}
 	for _, sql := range readOnlyRefusals {
 		_, err := c.ReadOnlyGridQuery(ctx, sql, nil, orm.CatalogQueryLimits{})
 		var coded *ir.Error
 		if !errors.As(err, &coded) || coded.Code != orm.CodeQueryReadOnly {
 			t.Fatalf("%s: read-only grid query %q returned %v, want QUERY_READ_ONLY", driver, sql, err)
+		}
+	}
+	if driver == "postgres" {
+		manyRows := "SELECT 1" + strings.Repeat(" UNION ALL SELECT 1", 199)
+		_, err := c.ReadOnlyGridQuery(ctx, manyRows, nil, orm.CatalogQueryLimits{MaxRows: 199})
+		var coded *ir.Error
+		if !errors.As(err, &coded) || coded.Code != orm.CodeCatalogLimit {
+			t.Fatalf("%s: bounded read grid returned %v, want CATALOG_LIMIT after the row limit", driver, err)
+		}
+		longExpression := "SELECT " + strings.TrimSuffix(strings.Repeat("1+", 200), "+")
+		_, err = c.ReadOnlyGridQuery(ctx, longExpression, nil, orm.CatalogQueryLimits{MaxBytes: 7})
+		if !errors.As(err, &coded) || coded.Code != orm.CodeCatalogLimit {
+			t.Fatalf("%s: bounded scalar read grid returned %v, want CATALOG_LIMIT after the byte limit", driver, err)
 		}
 	}
 	catalogGridCellsCheck(t, ctx, driver, c)
@@ -283,11 +290,7 @@ func catalogTemporalDefaultPrecisionCheck(t *testing.T, driver string, c *orm.Ca
 		t.Fatalf("%s: temporal precision metadata: %v", driver, err)
 	}
 	t0Value, dt0Value, t3Value, dt3Value := catalogTemporalWriteValues(driver)
-	invalidT3, invalidDT3 := any(time.Date(2026, time.January, 2, 12, 34, 56, 123400000, time.UTC)),
-		any(time.Date(2026, time.January, 2, 3, 4, 5, 123400000, time.UTC))
-	if driver == "sqlite" {
-		invalidT3, invalidDT3 = "12:34:56.1234", "2026-01-02 03:04:05.1234"
-	}
+	invalidT3, invalidDT3 := "12:34:56.1234", "2026-01-02 03:04:05.1234"
 	_, err = c.InsertRow(context.Background(), metadata, []orm.CatalogAssignment{
 		{Name: "id", Value: int64(2)},
 		{Name: "t0", Value: t0Value},
@@ -316,11 +319,11 @@ func catalogTemporalDefaultPrecisionCheck(t *testing.T, driver string, c *orm.Ca
 	for i, name := range []string{"t0", "dt0", "t3", "dt3"} {
 		column := slices.IndexFunc(metadata.Columns, func(column orm.CatalogColumn) bool { return column.Name == name })
 		value := inserted.Rows[0][column]
-		if driver == "sqlite" {
+		if i == 0 || i == 2 {
 			text, ok := value.(string)
-			want := []string{"12:34:56", "2026-01-02 03:04:05", "12:34:56.123", "2026-01-02 03:04:05.123"}[i]
+			want := []string{t0Value.(string), dt0Value.(string), t3Value.(string), dt3Value.(string)}[i]
 			if !ok || text != want {
-				t.Fatalf("sqlite: typed temporal Catalog insert %s = %T(%v), want %q", name, value, value, want)
+				t.Fatalf("%s: typed temporal Catalog insert %s = %T(%v), want %q", driver, name, value, value, want)
 			}
 			if dot := strings.IndexByte(text, '.'); dot >= 0 {
 				got[i] = len(text) - dot - 1
@@ -331,14 +334,11 @@ func catalogTemporalDefaultPrecisionCheck(t *testing.T, driver string, c *orm.Ca
 		if !ok {
 			t.Fatalf("%s: %s has type %T, want time.Time", driver, name, value)
 		}
-		got[i] = timestamp.Nanosecond()
+		got[i] = len(strings.TrimRight(fmt.Sprintf("%09d", timestamp.Nanosecond()), "0"))
 	}
-	want := []int{0, 0, 123000000, 123000000}
-	switch driver {
-	case "postgres":
-		want[0], want[1] = 123456000, 123456000
-	case "sqlite":
-		want[2], want[3] = 3, 3
+	want := []int{0, 0, 3, 3}
+	if driver == "postgres" {
+		want[0], want[1] = 6, 6
 	}
 	if !slices.Equal(got, want) {
 		t.Fatalf("%s: temporal precision nanos %v, want %v", driver, got, want)
@@ -346,17 +346,12 @@ func catalogTemporalDefaultPrecisionCheck(t *testing.T, driver string, c *orm.Ca
 }
 
 func catalogTemporalWriteValues(driver string) (any, any, any, any) {
-	if driver == "sqlite" {
-		return "12:34:56", "2026-01-02 03:04:05", "12:34:56.123", "2026-01-02 03:04:05.123"
-	}
-	defaultNanos := 0
+	t0, dt0 := "12:34:56", "2026-01-02 03:04:05"
 	if driver == "postgres" {
-		defaultNanos = 123456000
+		t0 += ".123456"
+		dt0 += ".123456"
 	}
-	return time.Date(2026, time.January, 2, 12, 34, 56, defaultNanos, time.UTC),
-		time.Date(2026, time.January, 2, 3, 4, 5, defaultNanos, time.UTC),
-		time.Date(2026, time.January, 2, 12, 34, 56, 123000000, time.UTC),
-		time.Date(2026, time.January, 2, 3, 4, 5, 123000000, time.UTC)
+	return t0, dt0, "12:34:56.123", "2026-01-02 03:04:05.123"
 }
 
 // Requirements: INT-115.
@@ -440,7 +435,11 @@ func TestCoverageCatalogRowMutation(t *testing.T) {
 		return result.Rows[0][0]
 	}
 	if got := tenantRows(); got != int64(0) {
-		t.Fatalf("%s: a composite_account row of tenant %d already exists: %v", driver, catalogTenant, got)
+		existing, err := c.ReadOnlyQuery(ctx, "SELECT tenant_id,account_id,name FROM "+account+" WHERE tenant_id = 990005 ORDER BY account_id", nil, orm.CatalogQueryLimits{})
+		if err != nil {
+			t.Fatalf("%s: tenant %d already has %v rows; unable to inspect them: %v", driver, catalogTenant, got, err)
+		}
+		t.Fatalf("%s: tenant %d already has %v rows; refusing to mutate them: %v", driver, catalogTenant, got, existing.Rows)
 	}
 
 	namespace, err := c.CurrentNamespace(ctx)
@@ -452,6 +451,19 @@ func TestCoverageCatalogRowMutation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s: composite_account metadata: %v", driver, err)
 	}
+	defer func() {
+		snapshot, accountID, name, found := catalogTenantRowSnapshot(t, ctx, c, table, driver)
+		if !found {
+			return
+		}
+		if accountID != int64(1) || name != "catalog" && name != "catalog-updated" {
+			t.Errorf("%s: refusing to delete tenant %d row with account %v and name %v", driver, catalogTenant, accountID, name)
+			return
+		}
+		if _, err := c.DeleteRow(ctx, snapshot); err != nil {
+			t.Errorf("%s: delete this test's composite_account row: %v", driver, err)
+		}
+	}()
 
 	inserted, err := c.InsertRow(ctx, meta, []orm.CatalogAssignment{
 		{Name: "tenant_id", Value: int64(catalogTenant)},
@@ -667,6 +679,18 @@ func validCatalogGeneratedKey(driver, value string, length int) bool {
 // with its name, which must be wantName.
 func catalogFindTenantRow(t *testing.T, ctx context.Context, c *orm.CatalogConnection, table orm.CatalogTableRef, driver, wantName string) orm.CatalogRowSnapshot {
 	t.Helper()
+	snapshot, _, name, found := catalogTenantRowSnapshot(t, ctx, c, table, driver)
+	if !found {
+		t.Fatalf("%s: no row of tenant %d", driver, catalogTenant)
+	}
+	if name != wantName {
+		t.Fatalf("%s: name %v, want %s", driver, name, wantName)
+	}
+	return snapshot
+}
+
+func catalogTenantRowSnapshot(t *testing.T, ctx context.Context, c *orm.CatalogConnection, table orm.CatalogTableRef, driver string) (orm.CatalogRowSnapshot, any, any, bool) {
+	t.Helper()
 	page, err := c.TablePage(ctx, table, 1000, 0)
 	if err != nil {
 		t.Fatalf("%s: composite_account page: %v", driver, err)
@@ -684,16 +708,14 @@ func catalogFindTenantRow(t *testing.T, ctx context.Context, c *orm.CatalogConne
 		}
 	}
 	if found < 0 {
-		t.Fatalf("%s: no row of tenant %d", driver, catalogTenant)
-	}
-	if got := page.Column(page.Result.Rows[found], "name"); got != wantName {
-		t.Fatalf("%s: name %v, want %s", driver, got, wantName)
+		return orm.CatalogRowSnapshot{}, nil, nil, false
 	}
 	snapshot, err := orm.CatalogSnapshotFromPage(page, found)
 	if err != nil {
 		t.Fatalf("%s: row snapshot: %v", driver, err)
 	}
-	return snapshot
+	row := page.Result.Rows[found]
+	return snapshot, page.Column(row, "account_id"), page.Column(row, "name"), true
 }
 
 // catalogGridCells returns the query of one row of typed grid cells for the dialect and the cells it must read back

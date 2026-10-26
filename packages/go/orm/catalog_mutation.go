@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -271,7 +272,7 @@ func (c *CatalogConnection) InsertRow(ctx context.Context, declared CatalogTable
 			return CatalogMutationResult{}, catalogErr(catalogCodeRowSchema, "insertion descriptor changed")
 		}
 		for _, change := range changes {
-			same, err := catalogSameCell(after[0][change.index], change.value)
+			same, err := catalogSameWrittenCell(c.db, after[0][change.index], change.value, descriptor.Columns[change.index], c.dialect)
 			if err != nil {
 				return CatalogMutationResult{}, err
 			}
@@ -365,7 +366,7 @@ func (c *CatalogConnection) UpdateRow(ctx context.Context, original CatalogRowSn
 				// A generated column may be recomputed by the database.
 				continue
 			}
-			same, err := catalogSameCell(after[0][i], updated[i])
+			same, err := catalogSameWrittenCell(c.db, after[0][i], updated[i], descriptor.Columns[i], c.dialect)
 			if err != nil {
 				return CatalogMutationResult{}, err
 			}
@@ -452,6 +453,61 @@ func catalogCheckCurrent(current [][]any, original []any) error {
 // catalogSameCell reports whether two cells are equal by type and exact value.
 func catalogSameCell(a, b any) (bool, error) {
 	return catalogSameRow([]any{a}, []any{b})
+}
+
+// catalogSameWrittenCell compares a requested value with its stored form. A database driver may read DATETIME or
+// TIMESTAMP text as time.Time, while catalog temporal bind values use the dbspec text form. Compare those forms by
+// instant only for temporal columns; every other value keeps the exact typed comparison.
+func catalogSameWrittenCell(db *DB, stored, requested any, column CatalogColumn, dialect string) (bool, error) {
+	if slices.Contains([]string{"mysql", "postgres", "sqlite"}, dialect) {
+		if value, ok := stored.(time.Time); ok {
+			if text, ok := requested.(string); ok {
+				if precision, ok := catalogDateTimePrecision(column.NativeType, dialect); ok {
+					canonical, err := db.bindTimeValue(text, "datetime", precision)
+					if err != nil {
+						return false, nil
+					}
+					canonicalText, ok := canonical.(string)
+					if !ok {
+						return false, nil
+					}
+					parsed, err := time.Parse(time.RFC3339Nano, strings.Replace(canonicalText, " ", "T", 1)+"Z")
+					if err == nil {
+						return value.Equal(parsed), nil
+					}
+				}
+			}
+		}
+	}
+	return catalogSameCell(stored, requested)
+}
+
+// catalogDateTimePrecision reads the precision of the supported timezone-free native timestamp types. A PostgreSQL
+// timestamp without an explicit precision defaults to six fraction digits; MySQL and SQLite default to zero.
+func catalogDateTimePrecision(nativeType, dialect string) (int, bool) {
+	nativeType = strings.ToUpper(strings.TrimSpace(nativeType))
+	nativeType = strings.TrimSuffix(nativeType, " WITHOUT TIME ZONE")
+	base := ""
+	switch {
+	case strings.HasPrefix(nativeType, "DATETIME"):
+		base = "DATETIME"
+	case strings.HasPrefix(nativeType, "TIMESTAMP"):
+		base = "TIMESTAMP"
+	default:
+		return 0, false
+	}
+	remainder := strings.TrimSpace(strings.TrimPrefix(nativeType, base))
+	if remainder == "" {
+		if dialect == "postgres" && base == "TIMESTAMP" {
+			return 6, true
+		}
+		return 0, true
+	}
+	if !strings.HasPrefix(remainder, "(") || !strings.HasSuffix(remainder, ")") {
+		return 0, false
+	}
+	precision, err := strconv.Atoi(remainder[1 : len(remainder)-1])
+	return precision, err == nil && precision >= 0 && precision <= 6
 }
 
 // columnNames lists the column names of a descriptor.

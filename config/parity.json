@@ -17517,7 +17517,7 @@
         {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
-          "id": "coverage_catalog_connection::coverage_catalog_read_budgets",
+          "id": "coverage_catalog_read_budgets",
           "command": [
             "make",
             "-s",
@@ -17528,7 +17528,7 @@
             "FEATURE_CARGO_TARGET=--test coverage_catalog_connection",
             "FEATURE_DATABASE=sqlite",
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_catalog_connection::coverage_catalog_read_budgets"
+            "FEATURE_TEST=coverage_catalog_read_budgets"
           ]
         },
         {
