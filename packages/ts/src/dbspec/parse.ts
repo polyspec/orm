@@ -1195,7 +1195,10 @@ class DocumentParser {
     }
     i++;
     const cols: IKeyColumn[] = [];
-    if (isPunct(toks[i], ')')) return [cols, i + 1];
+    if (isPunct(toks[i], ')')) {
+      this.syntax(toks, i, line, 'expected a column name');
+      return null;
+    }
     for (;;) {
       const w = toks[i];
       if (w === undefined || w.k !== K.Word) {

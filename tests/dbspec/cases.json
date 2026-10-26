@@ -12522,6 +12522,27 @@
       ]
     },
     {
+      "id": "rule-diagnostics-empty-key-list",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key ()",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 5,
+          "column": 16,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
       "id": "rule-diagnostics-use-after-table",
       "documents": {
         "core": [

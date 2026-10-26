@@ -1509,7 +1509,8 @@ class DocumentParser:
         i += 1
         cols = []
         if is_punct(toks[i] if i < len(toks) else None, ")"):
-            return cols, i + 1
+            self._syntax(toks, i, line, "expected a column name")
+            return None
         while True:
             w = toks[i] if i < len(toks) else None
             if w is None or w.k != WORD:
