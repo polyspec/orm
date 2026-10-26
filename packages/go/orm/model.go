@@ -1177,6 +1177,12 @@ func (c *Core) keyValues(ent *runtimemodel.Entity) (map[string]any, error) {
 			keys[pk], _ = c.row.original.get(pk)
 			continue
 		}
+		if c.row != nil {
+			if value, ok := c.row.original.get(pk); ok {
+				keys[pk] = value
+				continue
+			}
+		}
 		found := false
 		for _, s := range c.sets {
 			if s.column == pk && !s.plus && !s.minus && !s.null {
@@ -1274,16 +1280,33 @@ func (c *Core) Update(optimistic []bool) error {
 	if err := c.revisionChecked(revision, affected); err != nil {
 		return err
 	}
-	if loaded {
-		for _, s := range c.sets {
-			if slices.Contains(ent.PK, s.column) && !s.plus && !s.minus {
-				c.row.original.set(s.column, s.value)
-			}
-		}
-		c.row.original.remove(column)
-	}
+	c.retainUpdateState(ent, keys, loaded, column)
 	c.sets = nil
 	return nil
+}
+
+func (c *Core) retainUpdateState(ent *runtimemodel.Entity, keys map[string]any, loaded bool, updatedColumn string) {
+	if c.row == nil {
+		c.row = &rowState{}
+	}
+	for _, set := range c.sets {
+		if set.plus || set.minus {
+			continue
+		}
+		c.row.addName(set.column)
+		if !set.null && slices.Contains(ent.PK, set.column) {
+			c.row.original.set(set.column, set.value)
+		}
+	}
+	if loaded {
+		c.row.original.remove(updatedColumn)
+		return
+	}
+	for _, pk := range ent.PK {
+		if _, ok := c.row.original.get(pk); !ok {
+			c.row.original.set(pk, keys[pk])
+		}
+	}
 }
 
 // withAESColumns adds the other AES columns of a loaded row when one AES

@@ -934,7 +934,45 @@ func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyri
 		}
 		vals[sc.index] = v
 	}
+	if err := validateRuntimeScalars(vals, st.Assemble); err != nil {
+		return err
+	}
 	return restoreByteColumns(vals, st.Assemble)
+}
+
+func validateRuntimeScalars(vals []any, asm *plan.Assemble) error {
+	for _, col := range asm.Columns {
+		if col.Index < 0 || col.Index >= len(vals) {
+			return codecErr(CodeInternal, "column %q index %d is out of bounds", col.Name, col.Index)
+		}
+		if len(col.Styles) != 0 || vals[col.Index] == nil {
+			continue
+		}
+		var err error
+		switch col.Type {
+		case "i16":
+			_, err = AsInt16(vals[col.Index])
+		case "i32":
+			_, err = AsInt32(vals[col.Index])
+		case "i64":
+			_, err = AsInt64(vals[col.Index])
+		case "f64":
+			_, err = AsFloat64(vals[col.Index])
+		case "bool":
+			_, err = AsBool(vals[col.Index])
+		}
+		if err != nil {
+			return fmt.Errorf("%s.%s: %w", asm.Entity, col.Name, err)
+		}
+	}
+	for _, child := range asm.Children {
+		if child.Kind == "join" && child.Assemble != nil {
+			if err := validateRuntimeScalars(vals, child.Assemble); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // selectedRowVersion reads the key version of a row from the version column of its assembly (COD-44).

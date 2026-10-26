@@ -136,6 +136,10 @@ func TestRuntimeInvalidCellsFailTypedReads(t *testing.T) {
 		case "postgres":
 			mutation = "UPDATE typed_value SET ratio = 'NaN'::double precision WHERE seq = " + bind
 		case "sqlite":
+			raw.SetMaxOpenConns(1)
+			if _, err := raw.Exec("PRAGMA ignore_check_constraints = ON"); err != nil {
+				t.Fatal(err)
+			}
 			mutation = "UPDATE typed_value SET wide = 'not-an-integer' WHERE seq = " + bind
 		}
 		if _, err := raw.Exec(mutation, seq); err != nil {

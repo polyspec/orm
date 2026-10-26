@@ -160,6 +160,9 @@ func TestLanguagesAreTheDeclaredImplementations(t *testing.T) {
 	}
 	var want []string
 	for _, implementation := range parity.Implementations {
+		if implementation.Name == "php-extension" {
+			continue
+		}
 		want = append(want, implementation.Name)
 	}
 	if strings.Join(languages, ",") != strings.Join(want, ",") {

@@ -71,7 +71,9 @@ func TestSQLiteUnsupportedColumnReasonQuotesMissingCheck(t *testing.T) {
 			}
 			statement := `CREATE TABLE "probe" ("id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, ` + tc.column + `)`
 			if _, err := db.ExecContext(context.Background(), statement); err != nil {
-				_ = db.Close()
+				if closeErr := db.Close(); closeErr != nil {
+					t.Errorf("close SQLite memory connection after table creation failure: %v", closeErr)
+				}
 				t.Fatal(err)
 			}
 			_, unsupported, err := Introspect(context.Background(), db, DialectSQLite, "introspected")
