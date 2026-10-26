@@ -44,12 +44,7 @@ trait PageCacheBoundCases
     // Requirements: CPX-4.
     public function testInListPaddingKeepsTheCompiledShape(): void
     {
-        if (getenv('ORM_PHP_MODE') === 'extension') {
-            $this->assertTrue((new ReflectionClass(Request::class))->isInternal());
-            $this->assertTrue((new ReflectionClass(Request::class))->getMethod('canonicalize')->isInternal());
-            $this->assertTrue((new ReflectionClass(Planner::class))->isInternal());
-            $this->assertTrue((new ReflectionClass(Planner::class))->getMethod('compile')->isInternal());
-        }
+        $this->assertNativePlanCacheImplementation();
         $model = $this->planCacheIdentityLoadModel();
         $makeRequest = static function (array $values) use ($model): Request {
             $inIndexes = range(0, count($values) - 2);
@@ -68,7 +63,7 @@ trait PageCacheBoundCases
             $request->canonicalize();
             return $request;
         };
-        foreach (['mysql', 'postgres', 'sqlite'] as $driver) {
+        foreach ($this->planCacheDialects() as $driver) {
             $firstSql = null;
             foreach ([['a', 'b', 'c', 'tail'], ['a', 'b', 'c', 'd', 'tail']] as $index => $values) {
                 $request = $makeRequest($values);
@@ -93,14 +88,9 @@ trait PageCacheBoundCases
     // Requirements: PRT-78; T236.
     public function testPagedReadsSharePlanAndBindPageValues(): void
     {
-        if (getenv('ORM_PHP_MODE') === 'extension') {
-            $this->assertTrue((new ReflectionClass(Request::class))->isInternal());
-            $this->assertTrue((new ReflectionClass(Request::class))->getMethod('canonicalize')->isInternal());
-            $this->assertTrue((new ReflectionClass(Planner::class))->isInternal());
-            $this->assertTrue((new ReflectionClass(Planner::class))->getMethod('compile')->isInternal());
-        }
+        $this->assertNativePlanCacheImplementation();
         $model = $this->planCacheIdentityLoadModel();
-        foreach (['mysql', 'postgres', 'sqlite'] as $driver) {
+        foreach ($this->planCacheDialects() as $driver) {
             $engine = new Engine($model, $driver, 1024);
             $cache = new ReflectionProperty(Engine::class, 'plans');
             for ($page = 0; $page < 300; $page++) {
@@ -285,5 +275,23 @@ trait PageCacheBoundCases
         return RuntimeModel::build(
             RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/identity_load.dbs'])
         );
+    }
+
+    /** The extension owner must exercise native Request and Planner methods. */
+    private function assertNativePlanCacheImplementation(): void
+    {
+        if (getenv('ORM_PHP_MODE') !== 'extension') {
+            return;
+        }
+        $this->assertTrue((new ReflectionClass(Request::class))->isInternal());
+        $this->assertTrue((new ReflectionClass(Request::class))->getMethod('canonicalize')->isInternal());
+        $this->assertTrue((new ReflectionClass(Planner::class))->isInternal());
+        $this->assertTrue((new ReflectionClass(Planner::class))->getMethod('compile')->isInternal());
+    }
+
+    /** @return list<string> */
+    private function planCacheDialects(): array
+    {
+        return ['mysql', 'postgres', 'sqlite'];
     }
 }
