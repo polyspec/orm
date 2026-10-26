@@ -576,7 +576,6 @@
           "shard": "other",
           "inputs": [
             "Makefile",
-            "packages/php/models.txt",
             "packages/php/tests/MarkdownTest.php",
             "packages/php/src/ParamCheck.php",
             "packages/php/src/Transform.php",
@@ -589,7 +588,6 @@
           "shard": "other",
           "inputs": [
             "Makefile",
-            "packages/php/models.txt",
             "packages/php/tests/MarkdownTest.php",
             "packages/php-ext/src/param_check_native.c",
             "packages/php-ext/src/value_classes_native.c",
