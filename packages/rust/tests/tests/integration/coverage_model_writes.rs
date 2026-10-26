@@ -120,7 +120,8 @@ async fn coverage_model_save_key_dispatch() {
         assert_eq!(writes.lock().unwrap().as_slice(), &["update".to_owned()], "explicit zero Save selects UPDATE");
 
         writes.lock().unwrap().clear();
-        let mut loaded = Author::new().connect(&hooked).add_all_columns().get_by_seq(1).await.unwrap().expect("seed author 1");
+        let mut loaded =
+            Author::new().connect(&hooked).remove_all_columns().add_column_seq().add_column_read_count().get_by_seq(1).await.unwrap().expect("seed author 1");
         let read_count = loaded.get_read_count().unwrap();
         loaded = loaded.set_read_count(read_count);
         assert!(matches!(loaded.save().await, Err(polyspec_orm::Error::Config(message)) if message == "DSL-109 request hook stopped the write"));
@@ -150,13 +151,12 @@ async fn coverage_model_write_arithmetic_attributes() {
                 loaded = loaded.set_read_count(1);
                 loaded.update(false).await?;
                 let event_sink = sink.clone();
-                let subscription = db
-                    .subscribe(move |event: &polyspec_orm::StatementEvent<'_>| {
-                        if event.kind == polyspec_orm::events::KIND_UPDATE && event.tables.iter().any(|table| table == "author") {
-                            event_sink.lock().unwrap().push(event.binds.to_vec());
-                        }
-                        Ok(())
-                    })?;
+                let subscription = db.subscribe(move |event: &polyspec_orm::StatementEvent<'_>| {
+                    if event.kind == polyspec_orm::events::KIND_UPDATE && event.tables.iter().any(|table| table == "author") {
+                        event_sink.lock().unwrap().push(event.binds.to_vec());
+                    }
+                    Ok(())
+                })?;
                 let checks: polyspec_orm::Result<()> = async {
                     let mut loaded = author().add_all_columns().get_by_seq(1).await?.ok_or(polyspec_orm::Error::NoRows)?;
                     loaded = loaded.plus_read_count(7);
@@ -190,7 +190,10 @@ async fn coverage_model_write_arithmetic_attributes() {
                 Err(polyspec_orm::Error::Config("PLN-26 rollback sentinel".into()))
             })
             .await;
-        assert!(matches!(&result, Err(polyspec_orm::Error::Config(message)) if message == "PLN-26 rollback sentinel"), "transaction must return the rollback sentinel: {result:?}");
+        assert!(
+            matches!(&result, Err(polyspec_orm::Error::Config(message)) if message == "PLN-26 rollback sentinel"),
+            "transaction must return the rollback sentinel: {result:?}"
+        );
         let after = author().add_all_columns().get_by_seq(1).await.unwrap().expect("seed author 1 after rollback");
         assert_eq!(after.get_read_count().unwrap(), before_read_count, "rollback restores read_count");
         assert_eq!(after.get_updated_ts().unwrap(), before_updated_ts, "rollback restores updated_ts");

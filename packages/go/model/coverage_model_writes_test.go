@@ -118,7 +118,7 @@ func TestCoverageModelSaveKeyDispatch(t *testing.T) {
 	}
 
 	writes = nil
-	loaded := must(model.Author().Connect(hooked).AddAllColumns().GetBySeq(1))
+	loaded := must(model.Author().Connect(hooked).RemoveAllColumns().AddColumnSeq().AddColumnReadCount().GetBySeq(1))
 	if loaded == nil {
 		t.Fatal("seed author 1 is missing")
 	}

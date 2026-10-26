@@ -111,7 +111,7 @@ await runCases('coverage_model_writes.mjs', {
       assert.deepEqual(writes, ['update'], 'explicit zero dispatches UPDATE before execution');
 
       writes.length = 0;
-      const loaded = await new Author().connect(hooked).addAllColumns().getBySeq(1);
+      const loaded = await new Author().connect(hooked).removeAllColumns().addColumnSeq().addColumnReadCount().getBySeq(1);
       assert.ok(loaded, 'seeded author row loads through the hooked handle');
       await rejectedByHook(loaded.setReadCount(loaded.getReadCount()).save());
       assert.deepEqual(writes, ['update'], 'loaded original key dispatches UPDATE before execution');

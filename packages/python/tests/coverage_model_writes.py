@@ -101,13 +101,17 @@ def save_key_dispatch(item):
         return request
 
     hooked = db.with_request_hook(hook)
-    account = lambda: models.Account().connect(hooked)
+
+    def account():
+        return models.Account().connect(hooked)
 
     def assert_rejected(save):
         try:
             save()
         except OrmError as error:
-            expect_equal(error is sentinel, True, "Save propagates the request-hook sentinel")
+            expect_equal(
+                error is sentinel, True, "Save propagates the request-hook sentinel"
+            )
             return
         raise AssertionError("Save reached execution instead of the request hook")
 
@@ -121,8 +125,17 @@ def save_key_dispatch(item):
         expect_equal(writes, ["update"], "explicit zero Save selects UPDATE")
 
         writes.clear()
-        loaded = models.Author().connect(hooked).add_all_columns().get_by_seq(1)
-        expect_equal(loaded is not None, True, "seed author 1 loads through the hooked handle")
+        loaded = (
+            models.Author()
+            .connect(hooked)
+            .remove_all_columns()
+            .add_column_seq()
+            .add_column_read_count()
+            .get_by_seq(1)
+        )
+        expect_equal(
+            loaded is not None, True, "seed author 1 loads through the hooked handle"
+        )
         assert_rejected(lambda: loaded.set_read_count(loaded.get_read_count()).save())
         expect_equal(writes, ["update"], "loaded original key Save selects UPDATE")
     finally:

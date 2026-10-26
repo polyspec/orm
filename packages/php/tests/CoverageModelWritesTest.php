@@ -56,7 +56,11 @@ final class CoverageModelWritesTest extends TestCase
                 Assert::assertSame(['update'], $writes, 'explicit zero Save selects UPDATE');
 
                 $writes = [];
-                $loaded = (new Author())($hooked)->addAllColumns()->getBySeq(1);
+                $loaded = (new Author())($hooked)
+                    ->removeAllColumns()
+                    ->addColumnSeq()
+                    ->addColumnReadCount()
+                    ->getBySeq(1);
                 Assert::assertNotNull($loaded, 'seeded author row loads through the hooked handle');
                 $rejectWrite(static fn() => $loaded->setReadCount($loaded->getReadCount())->save());
                 Assert::assertSame(['update'], $writes, 'loaded original key Save selects UPDATE');
