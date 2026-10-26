@@ -16,7 +16,7 @@ use Polyspec\Orm\Codec;
 use Polyspec\Orm\OrmException;
 
 #[Small]
-final class CodecAesVectorsTest extends TestCase
+class CodecAesVectorsTest extends TestCase
 {
     public static function vectors(): iterable
     {

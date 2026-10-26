@@ -38,7 +38,7 @@ use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 #[Medium]
-final class RollbackTest extends TestCase
+class RollbackTest extends TestCase
 {
     use ThreeDrivers;
     use DatabaseTestAssertions;

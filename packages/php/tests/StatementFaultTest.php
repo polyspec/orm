@@ -31,7 +31,7 @@ use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 #[Large]
-final class StatementFaultTest extends TestCase
+class StatementFaultTest extends TestCase
 {
     use DatabaseTestAssertions;
 

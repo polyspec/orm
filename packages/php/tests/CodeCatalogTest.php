@@ -13,7 +13,7 @@ use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
 #[Small]
-final class CodeCatalogTest extends TestCase
+class CodeCatalogTest extends TestCase
 {
     /** @return list<array{string, string}> each code of docs/spec/errors.yaml with its note */
     private static function catalog(): array

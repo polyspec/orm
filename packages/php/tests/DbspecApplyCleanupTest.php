@@ -68,7 +68,7 @@ function want_message(Closure $operation, string $want): void
 
 // Each case applies one plan to a SQLite file (memory computation and one small database file).
 #[Small]
-final class DbspecApplyCleanupTest extends TestCase
+class DbspecApplyCleanupTest extends TestCase
 {
     private static array $plans;
 

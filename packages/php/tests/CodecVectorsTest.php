@@ -19,7 +19,7 @@ use Polyspec\Orm\OrmException;
 use Polyspec\Orm\StyledValue;
 
 #[Small]
-final class CodecVectorsTest extends TestCase
+class CodecVectorsTest extends TestCase
 {
     private static function throwingJsonValue(\Throwable $failure): \JsonSerializable
     {

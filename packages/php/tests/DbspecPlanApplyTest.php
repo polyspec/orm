@@ -106,7 +106,7 @@ function plan_steps(PDO $pdo, string $dialect, array $steps): void
 // Each run creates a database, schema or file, applies, rolls back, applies again and finalizes a plan, introspecting
 // it each time, and drops it.
 #[Medium]
-final class DbspecPlanApplyTest extends TestCase
+class DbspecPlanApplyTest extends TestCase
 {
     public static function planCases(): iterable
     {

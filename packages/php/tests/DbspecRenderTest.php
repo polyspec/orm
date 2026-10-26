@@ -14,7 +14,7 @@ use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Dbspec\Dbspec;
 
 #[Small]
-final class DbspecRenderTest extends TestCase
+class DbspecRenderTest extends TestCase
 {
     use DbspecTimedCases;
 

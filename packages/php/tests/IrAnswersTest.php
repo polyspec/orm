@@ -22,7 +22,7 @@ use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
 #[Medium]
-final class IrAnswersTest extends TestCase
+class IrAnswersTest extends TestCase
 {
     /** @return iterable<string, array{array{id: string, chain: string, answer: mixed, expect: mixed}}> */
     public static function cases(): iterable

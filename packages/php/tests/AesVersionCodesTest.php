@@ -17,7 +17,7 @@ use Polyspec\Orm\OrmException;
 use Polyspec\Orm\Tests\Model\Author;
 
 #[Small]
-final class AesVersionCodesTest extends TestCase
+class AesVersionCodesTest extends TestCase
 {
     // Requirements: INT-88, INT-89.
     public function testTerminalReturnsTheFirstRecordedBuilderError(): void

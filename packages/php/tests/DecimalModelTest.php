@@ -15,7 +15,7 @@ use Polyspec\Orm\OrmException;
 use Polyspec\Orm\Tests\Model\Author;
 
 #[Small]
-final class DecimalModelTest extends TestCase
+class DecimalModelTest extends TestCase
 {
     /**
      * @return iterable<string, array{array<string, mixed>, array<string, mixed>}> the case and its column of

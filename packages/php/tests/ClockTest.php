@@ -28,7 +28,7 @@ use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 #[Medium]
-final class ClockTest extends TestCase
+class ClockTest extends TestCase
 {
     use ThreeDrivers;
 

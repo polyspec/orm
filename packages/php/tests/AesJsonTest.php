@@ -33,7 +33,7 @@ use function Polyspec\OrderedJson\parse;
 use function Polyspec\OrderedJson\stringify;
 
 #[Medium]
-final class AesJsonTest extends TestCase
+class AesJsonTest extends TestCase
 {
     use GeneratedFixtureLifecycle;
 

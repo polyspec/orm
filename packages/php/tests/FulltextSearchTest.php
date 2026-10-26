@@ -20,7 +20,7 @@ use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Transform;
 use PHPUnit\Framework\TestCase;
 
-final class FulltextSearchTest extends TestCase
+class FulltextSearchTest extends TestCase
 {
     public function testModelBuilderParsesTheDocumentedFulltextNames(): void
     {

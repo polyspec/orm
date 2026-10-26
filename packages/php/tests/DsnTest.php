@@ -18,7 +18,7 @@ use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
 
 #[Small]
-final class DsnTest extends TestCase
+class DsnTest extends TestCase
 {
     public static function assertValueFunctionIr(): void
     {

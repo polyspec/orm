@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 // Each case runs orm-gen as a Composer-installed child process and reads models from a temporary directory,
 // except the bin cases, which run the bin in a new process.
 #[Small]
-final class OrmGenCliTest extends TestCase
+class OrmGenCliTest extends TestCase
 {
     private static string $work;
 

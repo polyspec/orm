@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Dbspec\Dbspec;
 
 #[Small]
-final class DbspecSetParseTest extends TestCase
+class DbspecSetParseTest extends TestCase
 {
     // Requirements: DBS-2, DBS-171.
     public function testByteOrderMark(): void

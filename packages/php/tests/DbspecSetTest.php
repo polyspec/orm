@@ -14,7 +14,7 @@ use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Dbspec\Dbspec;
 
 #[Small]
-final class DbspecSetTest extends TestCase
+class DbspecSetTest extends TestCase
 {
     private string $work;
 

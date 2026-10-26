@@ -14,7 +14,7 @@ use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
 #[Small]
-final class OrmGenScanTest extends TestCase
+class OrmGenScanTest extends TestCase
 {
     use OrmGenScanFailureCase;
 

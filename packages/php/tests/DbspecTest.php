@@ -17,7 +17,7 @@ use Polyspec\Orm\Dbspec\Diagnostic;
 use Polyspec\Orm\Dbspec\ReadResult;
 
 #[Small]
-final class DbspecTest extends TestCase
+class DbspecTest extends TestCase
 {
     use DbspecTimedCases;
 

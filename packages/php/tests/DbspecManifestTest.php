@@ -39,7 +39,7 @@ function manifest_expect(array $case, array $documents): void
 }
 
 #[Small]
-final class DbspecManifestTest extends TestCase
+class DbspecManifestTest extends TestCase
 {
     private static array $started;
 

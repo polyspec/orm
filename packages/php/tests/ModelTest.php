@@ -44,7 +44,7 @@ use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 #[Medium]
-final class ModelTest extends TestCase
+class ModelTest extends TestCase
 {
     use ThreeDrivers;
 

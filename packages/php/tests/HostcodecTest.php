@@ -16,7 +16,7 @@ use Polyspec\Orm\Codec;
 use Polyspec\Orm\OrmException;
 
 #[Small]
-final class HostcodecTest extends TestCase
+class HostcodecTest extends TestCase
 {
     /** Checks that $call throws an OrmException with the code. */
     private static function assertCode(string $code, callable $call, string $what): void

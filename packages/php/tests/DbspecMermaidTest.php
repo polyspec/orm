@@ -89,7 +89,7 @@ function mermaid_skeleton(Document $d): array
 }
 
 #[Small]
-final class DbspecMermaidTest extends TestCase
+class DbspecMermaidTest extends TestCase
 {
     public static function exportCases(): iterable
     {

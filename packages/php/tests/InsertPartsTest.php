@@ -14,7 +14,7 @@ use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Db;
 
 #[Small]
-final class InsertPartsTest extends TestCase
+class InsertPartsTest extends TestCase
 {
     public static function cases(): iterable
     {

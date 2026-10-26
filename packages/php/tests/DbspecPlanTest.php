@@ -94,7 +94,7 @@ function plan_messages(string $id, string $rule, array $diagnostics): array
 }
 
 #[Small]
-final class DbspecPlanTest extends TestCase
+class DbspecPlanTest extends TestCase
 {
     public function testComparisonHarnessParsesPlanVectorsAndWritesDiagnostics(): void
     {

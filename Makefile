@@ -424,7 +424,7 @@ dbspec-introspect-php-check: php-vendor-check
 .PHONY: dbspec-introspect-php-extension-check
 dbspec-introspect-php-extension-check: php-vendor-check
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
-	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/DbspecIntrospectTest.php
+	$(WITH_TEST_ENV) $(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecIntrospectExtensionTest.php
 	rm -rf $(RUN_DIR)
 
 # dbspec-introspect-rust-check runs the same round trip and the cases of tests/dbspec/introspect.json with the Rust
@@ -926,6 +926,9 @@ dbspec-php-check/set-parse: php-vendor-check
 # class from packages/php/src can load. A run that holds results of a whole document set runs twice. The build uses the phpize and
 # php-config on PATH, which make orm-install-php-extension-tools checks; make php-ext-arginfo rewrites the header from the stub.
 PHP_EXTENSION_LIBRARY = $(RUN_DIR)/php-extension/polyspec_orm.so
+# Kit's test-php-ext runner starts PHP children outside the invoking make recipe; expose the same built module to those children.
+test-php-ext: export ORM_PHP_MODE = extension
+test-php-ext: export POLYSPEC_ORM_EXTENSION ?= $(CURDIR)/var/php-ext/polyspec_orm.so
 # PHP_EXTENSION_TESTS runs PHPUnit files of packages/php with the extension loaded, through kit's run-tests, which gives each test
 # its own timeout (K436); both extension PHPUnit commands exclude userland fallbacks (T182-6-19).
 PHP_EXTENSION_TESTS = env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) --without-library packages/php -- --configuration packages/php/phpunit.xml.dist
@@ -1176,7 +1179,7 @@ dbspec-php-extension-check/set: php-vendor-check dbspec-php-extension-check/prep
 # to its value and encodes as the file says, with the YAML and error cases of the test). The outputs of the other languages are read by
 # codec-check/compare, which runs them; this target does not read them.
 dbspec-php-extension-check/codec: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_TESTS) packages/php/tests/CodecVectorsTest.php --filter 'testPhpVector|test_yaml_core|testPhpError|testPhpYamlIntegerMapKey'
+	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/CodecVectorsExtensionTest.php --filter 'testPhpVector|test_yaml_core|testPhpError|testPhpYamlIntegerMapKey'
 # dbspec-php-extension-check/code-catalog runs CodeCatalogTest with the extension: the codes of docs/spec/errors.yaml against Code.php, and the
 # class that the extension registers as Polyspec\Orm\Code, which must hold the same codes.
 dbspec-php-extension-check/code-catalog: php-vendor-check dbspec-php-extension-check/prepare

@@ -96,7 +96,7 @@ function markdown_test_server_received_messages(array $server): array
 }
 
 #[Large]
-final class MarkdownTest extends TestCase
+class MarkdownTest extends TestCase
 {
     // Requirements: PRT-63.
     public function testParseDsn(): void

@@ -636,7 +636,7 @@ function apply_scenarios(): array
 // Each run creates a database, schema or file, runs one plan chain scenario (apply, stop, recover, rollback, finalize)
 // and drops it.
 #[Medium]
-final class DbspecApplyTest extends TestCase
+class DbspecApplyTest extends TestCase
 {
     public static function scenarioCases(): iterable
     {

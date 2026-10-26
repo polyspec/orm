@@ -37,7 +37,7 @@ function calls(Item $item): Item
 PHP;
 
 #[Small]
-final class ModelMethodsTest extends TestCase
+class ModelMethodsTest extends TestCase
 {
     use DatabaseTestAssertions;
 

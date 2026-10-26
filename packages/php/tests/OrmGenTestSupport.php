@@ -199,6 +199,7 @@ final class OrmGenTestSupport
     /** @param list<string> $command @return array{int, string, string}|null */
     public static function runProcess(array $command, ?string $cwd = null): ?array
     {
+        $command = self::nativePhpCommand($command);
         $process = proc_open($command, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, $cwd);
         if (!is_resource($process)) {
             return null;
@@ -208,6 +209,31 @@ final class OrmGenTestSupport
         fclose($pipes[1]);
         fclose($pipes[2]);
         return [proc_close($process), $out, $err];
+    }
+
+    /** @param list<string> $command @return list<string> */
+    private static function nativePhpCommand(array $command): array
+    {
+        if (
+            getenv('ORM_PHP_MODE') !== 'extension'
+            || ($command[0] ?? null) !== PHP_BINARY
+        ) {
+            return $command;
+        }
+
+        $extension = getenv('POLYSPEC_ORM_EXTENSION');
+        if ($extension === false || $extension === '') {
+            throw new \RuntimeException(
+                'POLYSPEC_ORM_EXTENSION is required to run PHP children in extension mode; run make test-php-ext'
+            );
+        }
+
+        $prefix = ['-d', "extension=$extension"];
+        $prepend = ini_get('auto_prepend_file');
+        if (is_string($prepend) && $prepend !== '') {
+            array_push($prefix, '-d', "auto_prepend_file=$prepend");
+        }
+        return [$command[0], ...$prefix, ...array_slice($command, 1)];
     }
 
     /** @param list<string> $args @return array{int, string, string} */

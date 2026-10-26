@@ -15,7 +15,7 @@ use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Dbspec\Token;
 
 #[Small]
-final class DbspecAnalyzeTest extends TestCase
+class DbspecAnalyzeTest extends TestCase
 {
     /** @return list<array{0:int,1:int,2:int,3:string}> */
     private static function tokens(string $text, array $documents): array

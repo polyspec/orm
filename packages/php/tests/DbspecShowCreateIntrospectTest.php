@@ -19,7 +19,7 @@ use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Dbspec\Unsupported;
 
 #[Small]
-final class DbspecShowCreateIntrospectTest extends TestCase
+class DbspecShowCreateIntrospectTest extends TestCase
 {
     private static function data(): array
     {

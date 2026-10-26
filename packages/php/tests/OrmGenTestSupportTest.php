@@ -108,6 +108,40 @@ final class OrmGenTestSupportTest extends TestCase
         );
     }
 
+    public function testRunProcessLoadsTheExtensionForNativePhpChildren(): void
+    {
+        $dir = OrmGenTestSupport::createWorkDirectory('orm-gen-native-child-');
+        $oldMode = getenv('ORM_PHP_MODE');
+        $oldExtension = getenv('POLYSPEC_ORM_EXTENSION');
+        $module = "$dir/mock.so";
+        $script = "$dir/child.php";
+        try {
+            file_put_contents($module, '');
+            file_put_contents($script, "<?php fwrite(STDOUT, 'native-child');\n");
+            putenv('ORM_PHP_MODE=extension');
+            putenv("POLYSPEC_ORM_EXTENSION=$module");
+            $command = [PHP_BINARY, $script];
+            $method = new \ReflectionMethod(OrmGenTestSupport::class, 'nativePhpCommand');
+            $actual = $method->invoke(null, $command);
+            $expected = [PHP_BINARY, '-d', "extension=$module"];
+            $prepend = ini_get('auto_prepend_file');
+            if (is_string($prepend) && $prepend !== '') {
+                array_push($expected, '-d', "auto_prepend_file=$prepend");
+            }
+            $expected[] = $script;
+            self::assertSame($expected, $actual);
+
+            [$code, $stdout, $stderr] = OrmGenTestSupport::runProcess($actual);
+            self::assertSame(0, $code);
+            self::assertStringContainsString('native-child', $stdout);
+            self::assertStringContainsString($module, $stderr, 'the child attempted to load the supplied module');
+        } finally {
+            $oldMode === false ? putenv('ORM_PHP_MODE') : putenv("ORM_PHP_MODE=$oldMode");
+            $oldExtension === false ? putenv('POLYSPEC_ORM_EXTENSION') : putenv("POLYSPEC_ORM_EXTENSION=$oldExtension");
+            OrmGenTestSupport::removeWorkDirectory($dir);
+        }
+    }
+
     public function testTypedGetterAssertionPassesForAModelWithPrivateStorage(): void
     {
         $model = new class {

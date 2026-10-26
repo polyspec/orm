@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Polyspec\Orm\Tests;
+namespace Polyspec\Orm\Extension\Tests;
 
 use Polyspec\Orm\Dbspec\Dbspec;
+use Polyspec\Orm\Tests\CoverageSchemaDefinitionTest;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Small;
 

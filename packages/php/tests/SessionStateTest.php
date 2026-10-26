@@ -20,7 +20,7 @@ use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
 #[Medium]
-final class SessionStateTest extends TestCase
+class SessionStateTest extends TestCase
 {
     use ThreeDrivers;
 

@@ -2493,8 +2493,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/FulltextSearchTest.php",
-          "id": "FulltextSearchTest::testFulltextSearch"
+          "test": "packages/php-ext/tests/FulltextSearchTestExtensionTest.php",
+          "id": "FulltextSearchTestExtensionTest::testFulltextSearch"
         },
         {
           "implementation": "typescript",
@@ -2760,8 +2760,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::testReadPathCodes"
+          "test": "packages/php-ext/tests/AesVersionCodesTestExtensionTest.php",
+          "id": "AesVersionCodesTestExtensionTest::testReadPathCodes"
         },
         {
           "implementation": "python",
@@ -2794,8 +2794,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::testRotationCodes"
+          "test": "packages/php-ext/tests/AesVersionCodesTestExtensionTest.php",
+          "id": "AesVersionCodesTestExtensionTest::testRotationCodes"
         },
         {
           "implementation": "python",
@@ -3077,8 +3077,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::testRotationCodes"
+          "test": "packages/php-ext/tests/AesVersionCodesTestExtensionTest.php",
+          "id": "AesVersionCodesTestExtensionTest::testRotationCodes"
         },
         {
           "implementation": "python",
@@ -3116,8 +3116,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::testRotationCodes"
+          "test": "packages/php-ext/tests/AesVersionCodesTestExtensionTest.php",
+          "id": "AesVersionCodesTestExtensionTest::testRotationCodes"
         },
         {
           "implementation": "python",
@@ -3150,8 +3150,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::testReadPlanWithoutVersionColumnIsInternal"
+          "test": "packages/php-ext/tests/AesVersionCodesTestExtensionTest.php",
+          "id": "AesVersionCodesTestExtensionTest::testReadPlanWithoutVersionColumnIsInternal"
         },
         {
           "implementation": "typescript",
@@ -3199,8 +3199,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::testReadKeyringLacksStoredVersionIsConfig"
+          "test": "packages/php-ext/tests/AesVersionCodesTestExtensionTest.php",
+          "id": "AesVersionCodesTestExtensionTest::testReadKeyringLacksStoredVersionIsConfig"
         },
         {
           "implementation": "rust",
@@ -3238,8 +3238,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::testReadNullVersionWithAesValueIsCodecDecode"
+          "test": "packages/php-ext/tests/AesVersionCodesTestExtensionTest.php",
+          "id": "AesVersionCodesTestExtensionTest::testReadNullVersionWithAesValueIsCodecDecode"
         },
         {
           "implementation": "rust",
@@ -3277,8 +3277,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::testReadNullAesWithNullVersionStaysNull"
+          "test": "packages/php-ext/tests/AesVersionCodesTestExtensionTest.php",
+          "id": "AesVersionCodesTestExtensionTest::testReadNullAesWithNullVersionStaysNull"
         },
         {
           "implementation": "rust",
@@ -3316,8 +3316,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::testRotationNullAesIsLeftUnchanged"
+          "test": "packages/php-ext/tests/AesVersionCodesTestExtensionTest.php",
+          "id": "AesVersionCodesTestExtensionTest::testRotationNullAesIsLeftUnchanged"
         },
         {
           "implementation": "rust",
@@ -3360,8 +3360,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecApplyCleanupTest.php",
-          "id": "DbspecApplyCleanupTest::testCleanupErrorsRelease",
+          "test": "packages/php-ext/tests/DbspecApplyCleanupTestExtensionTest.php",
+          "id": "DbspecApplyCleanupTestExtensionTest::testCleanupErrorsRelease",
           "command": [
             "make",
             "-s",
@@ -3462,8 +3462,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecApplyTest.php",
-          "id": "DbspecApplyTest::testScenario"
+          "test": "packages/php-ext/tests/DbspecApplyTestExtensionTest.php",
+          "id": "DbspecApplyTestExtensionTest::testScenario"
         },
         {
           "implementation": "typescript",
@@ -3519,8 +3519,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecApplyTest.php",
-          "id": "DbspecApplyTest::testScenario"
+          "test": "packages/php-ext/tests/DbspecApplyTestExtensionTest.php",
+          "id": "DbspecApplyTestExtensionTest::testScenario"
         },
         {
           "implementation": "typescript",
@@ -3558,8 +3558,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecApplyTest.php",
-          "id": "DbspecApplyTest::testScenario"
+          "test": "packages/php-ext/tests/DbspecApplyTestExtensionTest.php",
+          "id": "DbspecApplyTestExtensionTest::testScenario"
         },
         {
           "implementation": "typescript",
@@ -3604,8 +3604,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecIntrospectTest.php",
-          "id": "DbspecIntrospectTest::testRoundTrip",
+          "test": "packages/php-ext/tests/DbspecIntrospectExtensionTest.php",
+          "id": "DbspecIntrospectExtensionTest::testRoundTrip",
           "command": [
             "make",
             "-s",
@@ -3792,8 +3792,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecPlanApplyTest.php",
-          "id": "DbspecPlanApplyTest::testPlan",
+          "test": "packages/php-ext/tests/DbspecPlanApplyTestExtensionTest.php",
+          "id": "DbspecPlanApplyTestExtensionTest::testPlan",
           "command": [
             "make",
             "-s",
@@ -3924,8 +3924,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecSetParseTest.php",
-          "id": "DbspecSetParseTest::testByteOrderMark"
+          "test": "packages/php-ext/tests/DbspecSetParseTestExtensionTest.php",
+          "id": "DbspecSetParseTestExtensionTest::testByteOrderMark"
         },
         {
           "implementation": "typescript",
@@ -3987,8 +3987,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecManifestTest.php",
-          "id": "DbspecManifestTest::testRepeatedName"
+          "test": "packages/php-ext/tests/DbspecManifestTestExtensionTest.php",
+          "id": "DbspecManifestTestExtensionTest::testRepeatedName"
         },
         {
           "implementation": "typescript",
@@ -6682,8 +6682,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testACallOnAClassOfAnotherSetIsNotThisSetsCall"
+          "test": "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
+          "id": "OrmGenScanTestExtensionTest::testACallOnAClassOfAnotherSetIsNotThisSetsCall"
         },
         {
           "implementation": "typescript",
@@ -6726,8 +6726,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testAReceiverHeldInAReassignedVariableResolvesToItsClass"
+          "test": "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
+          "id": "OrmGenScanTestExtensionTest::testAReceiverHeldInAReassignedVariableResolvesToItsClass"
         },
         {
           "implementation": "typescript",
@@ -6804,8 +6804,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testAUsedExternalTableThatNoSourceCallsKeepsItsModel"
+          "test": "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
+          "id": "OrmGenScanTestExtensionTest::testAUsedExternalTableThatNoSourceCallsKeepsItsModel"
         },
         {
           "implementation": "typescript",
@@ -6843,8 +6843,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/CodeCatalogTest.php",
-          "id": "CodeCatalogTest::testCatalogMatchesErrorsYaml"
+          "test": "packages/php-ext/tests/CodeCatalogTestExtensionTest.php",
+          "id": "CodeCatalogTestExtensionTest::testCatalogMatchesErrorsYaml"
         },
         {
           "implementation": "typescript",
@@ -6884,8 +6884,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-gen/tests/OrmGenCliTest.php",
-          "id": "OrmGenCliTest::testGenTakesTheDocumentsOnlyFromTheSetFile"
+          "test": "packages/php-ext/tests/OrmGenCliTestExtensionTest.php",
+          "id": "OrmGenCliTestExtensionTest::testGenTakesTheDocumentsOnlyFromTheSetFile"
         },
         {
           "implementation": "typescript",
@@ -7006,8 +7006,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::testSessionMessages"
+          "test": "packages/php-ext/tests/MarkdownTestExtensionTest.php",
+          "id": "MarkdownTestExtensionTest::testSessionMessages"
         },
         {
           "implementation": "typescript",
@@ -7245,8 +7245,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/RevisionTest.php",
-          "id": "RevisionTest::testUpdateMatchBumpsTheRevision"
+          "test": "packages/php-ext/tests/RevisionTestExtensionTest.php",
+          "id": "RevisionTestExtensionTest::testUpdateMatchBumpsTheRevision"
         },
         {
           "implementation": "python",
@@ -7285,8 +7285,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/RevisionTest.php",
-          "id": "RevisionTest::testUpdateMismatchChangesNothing"
+          "test": "packages/php-ext/tests/RevisionTestExtensionTest.php",
+          "id": "RevisionTestExtensionTest::testUpdateMismatchChangesNothing"
         },
         {
           "implementation": "python",
@@ -7325,8 +7325,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/RevisionTest.php",
-          "id": "RevisionTest::testDeleteMatchDeletes"
+          "test": "packages/php-ext/tests/RevisionTestExtensionTest.php",
+          "id": "RevisionTestExtensionTest::testDeleteMatchDeletes"
         },
         {
           "implementation": "python",
@@ -7365,8 +7365,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/RevisionTest.php",
-          "id": "RevisionTest::testDeleteMismatchChangesNothing"
+          "test": "packages/php-ext/tests/RevisionTestExtensionTest.php",
+          "id": "RevisionTestExtensionTest::testDeleteMismatchChangesNothing"
         },
         {
           "implementation": "python",
@@ -7414,13 +7414,13 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/RollbackTest.php",
-          "id": "RollbackTest::testRollbackFailed"
+          "test": "packages/php-ext/tests/RollbackTestExtensionTest.php",
+          "id": "RollbackTestExtensionTest::testRollbackFailed"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/RollbackTest.php",
-          "id": "RollbackTest::testFirstStatementLost"
+          "test": "packages/php-ext/tests/RollbackTestExtensionTest.php",
+          "id": "RollbackTestExtensionTest::testFirstStatementLost"
         },
         {
           "implementation": "typescript",
@@ -7498,8 +7498,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/RollbackTest.php",
-          "id": "RollbackTest::testSavepointRollbackFailed"
+          "test": "packages/php-ext/tests/RollbackTestExtensionTest.php",
+          "id": "RollbackTestExtensionTest::testSavepointRollbackFailed"
         },
         {
           "implementation": "typescript",
@@ -8636,8 +8636,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/AesJsonTest.php",
-          "id": "AesJsonTest::testAesJsonColumn",
+          "test": "packages/php-ext/tests/AesJsonTestExtensionTest.php",
+          "id": "AesJsonTestExtensionTest::testAesJsonColumn",
           "command": [
             "make",
             "-s",
@@ -9049,7 +9049,7 @@
       "bindings": [
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/CoverageSchemaDefinitionTest.php"
+          "test": "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php"
         },
         {
           "implementation": "go",
@@ -9239,8 +9239,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/CodecVectorsTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\CodecVectorsTest::testPhpVector"
+          "test": "packages/php-ext/tests/CodecVectorsExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CodecVectorsExtensionTest::testPhpVector"
         },
         {
           "implementation": "typescript",
@@ -9281,8 +9281,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/CodecAesVectorsTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\CodecAesVectorsTest::testVector"
+          "test": "packages/php-ext/tests/CodecAesVectorsTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CodecAesVectorsTestExtensionTest::testVector"
         },
         {
           "implementation": "rust",
@@ -9326,8 +9326,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/HostcodecTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\HostcodecTest::testDecodeVector"
+          "test": "packages/php-ext/tests/HostcodecTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\HostcodecTestExtensionTest::testDecodeVector"
         },
         {
           "implementation": "typescript",
@@ -10165,8 +10165,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecTest::testCanonical"
+          "test": "packages/php-ext/tests/DbspecTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecTestExtensionTest::testCanonical"
         },
         {
           "implementation": "typescript",
@@ -10223,8 +10223,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecTest::testNormalize"
+          "test": "packages/php-ext/tests/DbspecTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecTestExtensionTest::testNormalize"
         },
         {
           "implementation": "typescript",
@@ -10336,8 +10336,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecTest::testInvalid"
+          "test": "packages/php-ext/tests/DbspecTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecTestExtensionTest::testInvalid"
         },
         {
           "implementation": "typescript",
@@ -10383,8 +10383,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecManifestTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecManifestTest::testHashes"
+          "test": "packages/php-ext/tests/DbspecManifestTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecManifestTestExtensionTest::testHashes"
         },
         {
           "implementation": "typescript",
@@ -10418,8 +10418,8 @@
       "bindings": [
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecManifestTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecManifestTest::testSets"
+          "test": "packages/php-ext/tests/DbspecManifestTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecManifestTestExtensionTest::testSets"
         },
         {
           "implementation": "go",
@@ -10469,8 +10469,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecTest::testFiles"
+          "test": "packages/php-ext/tests/DbspecTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecTestExtensionTest::testFiles"
         },
         {
           "implementation": "typescript",
@@ -10526,8 +10526,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecTest::testPositions"
+          "test": "packages/php-ext/tests/DbspecTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecTestExtensionTest::testPositions"
         },
         {
           "implementation": "typescript",
@@ -10594,8 +10594,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecSetTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecSetTest::testSet"
+          "test": "packages/php-ext/tests/DbspecSetTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecSetTestExtensionTest::testSet"
         },
         {
           "implementation": "typescript",
@@ -10650,8 +10650,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecAnalyzeTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecAnalyzeTest::testSyntax"
+          "test": "packages/php-ext/tests/DbspecAnalyzeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecAnalyzeTestExtensionTest::testSyntax"
         },
         {
           "implementation": "typescript",
@@ -10722,8 +10722,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecRenderTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecRenderTest::testDdl"
+          "test": "packages/php-ext/tests/DbspecRenderTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecRenderTestExtensionTest::testDdl"
         },
         {
           "implementation": "typescript",
@@ -10793,8 +10793,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecIntrospectTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecIntrospectTest::testUnsupported"
+          "test": "packages/php-ext/tests/DbspecIntrospectExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecIntrospectExtensionTest::testUnsupported"
         },
         {
           "implementation": "typescript",
@@ -10832,8 +10832,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecShowCreateIntrospectTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecShowCreateIntrospectTest::testIntrospect"
+          "test": "packages/php-ext/tests/DbspecShowCreateIntrospectTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecShowCreateIntrospectTestExtensionTest::testIntrospect"
         },
         {
           "implementation": "typescript",
@@ -10876,8 +10876,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecMermaidTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecMermaidTest::testExport"
+          "test": "packages/php-ext/tests/DbspecMermaidTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecMermaidTestExtensionTest::testExport"
         },
         {
           "implementation": "typescript",
@@ -10921,8 +10921,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecMermaidTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecMermaidTest::testImport"
+          "test": "packages/php-ext/tests/DbspecMermaidTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecMermaidTestExtensionTest::testImport"
         },
         {
           "implementation": "typescript",
@@ -10960,8 +10960,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecMermaidTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecMermaidTest::testInvalid"
+          "test": "packages/php-ext/tests/DbspecMermaidTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecMermaidTestExtensionTest::testInvalid"
         },
         {
           "implementation": "typescript",
@@ -10999,8 +10999,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecMermaidTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecMermaidTest::testRoundTrip"
+          "test": "packages/php-ext/tests/DbspecMermaidTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecMermaidTestExtensionTest::testRoundTrip"
         },
         {
           "implementation": "typescript",
@@ -11081,8 +11081,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecPlanTest::testCase"
+          "test": "packages/php-ext/tests/DbspecPlanTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecPlanTestExtensionTest::testCase"
         },
         {
           "implementation": "typescript",
@@ -11152,8 +11152,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecPlanTest::testInvalid"
+          "test": "packages/php-ext/tests/DbspecPlanTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecPlanTestExtensionTest::testInvalid"
         },
         {
           "implementation": "typescript",
@@ -11223,8 +11223,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecPlanTest::testChain"
+          "test": "packages/php-ext/tests/DbspecPlanTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecPlanTestExtensionTest::testChain"
         },
         {
           "implementation": "typescript",
@@ -11295,8 +11295,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecPlanTest::testParse"
+          "test": "packages/php-ext/tests/DbspecPlanTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecPlanTestExtensionTest::testParse"
         },
         {
           "implementation": "typescript",
@@ -11366,8 +11366,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecPlanTest::testComparison"
+          "test": "packages/php-ext/tests/DbspecPlanTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecPlanTestExtensionTest::testComparison"
         },
         {
           "implementation": "typescript",
@@ -11405,8 +11405,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DsnTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DsnTest::testSqlitePath"
+          "test": "packages/php-ext/tests/DsnTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DsnTestExtensionTest::testSqlitePath"
         },
         {
           "implementation": "typescript",
@@ -11447,8 +11447,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/StatementEventsTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\StatementEventsTest::testCase"
+          "test": "packages/php-ext/tests/StatementEventsTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\StatementEventsTestExtensionTest::testCase"
         },
         {
           "implementation": "python",
@@ -11490,8 +11490,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/StatementFaultTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\StatementFaultTest::testStatementFault"
+          "test": "packages/php-ext/tests/StatementFaultTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\StatementFaultTestExtensionTest::testStatementFault"
         },
         {
           "implementation": "typescript",
@@ -11611,8 +11611,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/InsertPartsTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\InsertPartsTest::testCase"
+          "test": "packages/php-ext/tests/InsertPartsTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\InsertPartsTestExtensionTest::testCase"
         },
         {
           "implementation": "typescript",
@@ -11657,8 +11657,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecSetParseTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecSetParseTest::testSetParse"
+          "test": "packages/php-ext/tests/DbspecSetParseTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecSetParseTestExtensionTest::testSetParse"
         },
         {
           "implementation": "typescript",
@@ -11694,8 +11694,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecShowCreateIntrospectTest.php",
-          "id": "DbspecShowCreateIntrospectTest::testIntrospect",
+          "test": "packages/php-ext/tests/DbspecShowCreateIntrospectTestExtensionTest.php",
+          "id": "DbspecShowCreateIntrospectTestExtensionTest::testIntrospect",
           "command": [
             "make",
             "-s",
@@ -11940,8 +11940,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testAnAliasNamedMatchDeclaresItsGetter"
+          "test": "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
+          "id": "OrmGenScanTestExtensionTest::testAnAliasNamedMatchDeclaresItsGetter"
         },
         {
           "implementation": "typescript",
@@ -11998,8 +11998,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testANestedRelationAliasDeclaresItsGetterOnTheModelItAliasesOn"
+          "test": "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
+          "id": "OrmGenScanTestExtensionTest::testANestedRelationAliasDeclaresItsGetterOnTheModelItAliasesOn"
         },
         {
           "implementation": "typescript",
@@ -12037,8 +12037,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testAGetterCallThatNothingAttachesStopsGeneration"
+          "test": "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
+          "id": "OrmGenScanTestExtensionTest::testAGetterCallThatNothingAttachesStopsGeneration"
         },
         {
           "implementation": "typescript",
@@ -12208,8 +12208,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testConditions"
+          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
+          "id": "ModelTestExtensionTest::testConditions"
         },
         {
           "implementation": "typescript",
@@ -12248,8 +12248,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testConditions"
+          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
+          "id": "ModelTestExtensionTest::testConditions"
         },
         {
           "implementation": "typescript",
@@ -12289,8 +12289,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testColumnsAndSubqueries"
+          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
+          "id": "ModelTestExtensionTest::testColumnsAndSubqueries"
         },
         {
           "implementation": "typescript",
@@ -12329,8 +12329,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testWrites"
+          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
+          "id": "ModelTestExtensionTest::testWrites"
         },
         {
           "implementation": "typescript",
@@ -12389,8 +12389,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/SessionStateTest.php",
-          "id": "SessionStateTest::testSessionStateEndsWithTransaction"
+          "test": "packages/php-ext/tests/SessionStateTestExtensionTest.php",
+          "id": "SessionStateTestExtensionTest::testSessionStateEndsWithTransaction"
         },
         {
           "implementation": "typescript",
@@ -12974,8 +12974,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-gen/tests/OrmGenCliTest.php",
-          "id": "OrmGenCliTest::testGenRejectsAColumnNamedAfterAModelMethod"
+          "test": "packages/php-ext/tests/OrmGenCliTestExtensionTest.php",
+          "id": "OrmGenCliTestExtensionTest::testGenRejectsAColumnNamedAfterAModelMethod"
         },
         {
           "implementation": "typescript",
@@ -13013,8 +13013,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-gen/tests/OrmGenCliTest.php",
-          "id": "OrmGenCliTest::testGenRejectsAColumnNameWithAnOperatorOrConnectorSegment"
+          "test": "packages/php-ext/tests/OrmGenCliTestExtensionTest.php",
+          "id": "OrmGenCliTestExtensionTest::testGenRejectsAColumnNameWithAnOperatorOrConnectorSegment"
         },
         {
           "implementation": "typescript",
@@ -13589,8 +13589,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecApplyTest.php",
-          "id": "DbspecApplyTest::testScenario"
+          "test": "packages/php-ext/tests/DbspecApplyTestExtensionTest.php",
+          "id": "DbspecApplyTestExtensionTest::testScenario"
         },
         {
           "implementation": "typescript",
@@ -13638,8 +13638,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecApplyTest.php",
-          "id": "DbspecApplyTest::testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks"
+          "test": "packages/php-ext/tests/DbspecApplyTestExtensionTest.php",
+          "id": "DbspecApplyTestExtensionTest::testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks"
         },
         {
           "implementation": "typescript",
@@ -14120,8 +14120,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-gen/tests/OrmGenCliTest.php",
-          "id": "OrmGenCliTest::testGenGeneratesTheOwnedAndTheUsedExternalTablesOfASet"
+          "test": "packages/php-ext/tests/OrmGenCliTestExtensionTest.php",
+          "id": "OrmGenCliTestExtensionTest::testGenGeneratesTheOwnedAndTheUsedExternalTablesOfASet"
         },
         {
           "implementation": "typescript",
@@ -14259,8 +14259,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-gen/tests/OrmGenCliTest.php",
-          "id": "OrmGenCliTest::testGenRejectsAFileWithoutTheDbspecSignature"
+          "test": "packages/php-ext/tests/OrmGenCliTestExtensionTest.php",
+          "id": "OrmGenCliTestExtensionTest::testGenRejectsAFileWithoutTheDbspecSignature"
         },
         {
           "implementation": "typescript",
@@ -14298,8 +14298,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-gen/tests/OrmGenCliTest.php",
-          "id": "OrmGenCliTest::testGenPrintsEveryErrorOfTheSetFileAndWritesNothing"
+          "test": "packages/php-ext/tests/OrmGenCliTestExtensionTest.php",
+          "id": "OrmGenCliTestExtensionTest::testGenPrintsEveryErrorOfTheSetFileAndWritesNothing"
         },
         {
           "implementation": "typescript",
@@ -14342,8 +14342,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testVector"
+          "test": "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
+          "id": "OrmGenScanTestExtensionTest::testVector"
         },
         {
           "implementation": "typescript",
@@ -15435,8 +15435,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/CodecAesVectorsTest.php",
-          "id": "CodecAesVectorsTest::testVector"
+          "test": "packages/php-ext/tests/CodecAesVectorsTestExtensionTest.php",
+          "id": "CodecAesVectorsTestExtensionTest::testVector"
         },
         {
           "implementation": "typescript",
@@ -15477,8 +15477,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/CodecVectorsTest.php",
-          "id": "CodecVectorsTest::testPhpError"
+          "test": "packages/php-ext/tests/CodecVectorsExtensionTest.php",
+          "id": "CodecVectorsExtensionTest::testPhpError"
         },
         {
           "implementation": "typescript",
@@ -15555,8 +15555,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/CodecVectorsTest.php",
-          "id": "CodecVectorsTest::testOrderedJsonPreservesOrderAndNumberText"
+          "test": "packages/php-ext/tests/CodecVectorsExtensionTest.php",
+          "id": "CodecVectorsExtensionTest::testOrderedJsonPreservesOrderAndNumberText"
         },
         {
           "implementation": "typescript",
@@ -15594,8 +15594,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/CodecVectorsTest.php",
-          "id": "CodecVectorsTest::testPhpVector"
+          "test": "packages/php-ext/tests/CodecVectorsExtensionTest.php",
+          "id": "CodecVectorsExtensionTest::testPhpVector"
         },
         {
           "implementation": "typescript",
@@ -15633,8 +15633,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/CodecVectorsTest.php",
-          "id": "CodecVectorsTest::testYamlCoreSchema"
+          "test": "packages/php-ext/tests/CodecVectorsExtensionTest.php",
+          "id": "CodecVectorsExtensionTest::testYamlCoreSchema"
         },
         {
           "implementation": "typescript",
@@ -15672,8 +15672,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/CodecVectorsTest.php",
-          "id": "CodecVectorsTest::testPhpVector"
+          "test": "packages/php-ext/tests/CodecVectorsExtensionTest.php",
+          "id": "CodecVectorsExtensionTest::testPhpVector"
         },
         {
           "implementation": "typescript",
@@ -15850,8 +15850,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecApplyTest.php",
-          "id": "DbspecApplyTest::testPooler"
+          "test": "packages/php-ext/tests/DbspecApplyTestExtensionTest.php",
+          "id": "DbspecApplyTestExtensionTest::testPooler"
         }
       ]
     },
@@ -16009,8 +16009,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::testBindVectors"
+          "test": "packages/php-ext/tests/MarkdownTestExtensionTest.php",
+          "id": "MarkdownTestExtensionTest::testBindVectors"
         },
         {
           "implementation": "typescript",
@@ -17059,8 +17059,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/ModelMethodsTest.php",
-          "id": "ModelMethodsTest::testATimeSetterTakesTheTextForm"
+          "test": "packages/php-ext/tests/ModelMethodsTestExtensionTest.php",
+          "id": "ModelMethodsTestExtensionTest::testATimeSetterTakesTheTextForm"
         },
         {
           "implementation": "typescript",
@@ -17098,8 +17098,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/ModelMethodsTest.php",
-          "id": "ModelMethodsTest::testPhpstanFindsEveryQueryMethodOfAGeneratedModel"
+          "test": "packages/php-ext/tests/ModelMethodsTestExtensionTest.php",
+          "id": "ModelMethodsTestExtensionTest::testPhpstanFindsEveryQueryMethodOfAGeneratedModel"
         },
         {
           "implementation": "typescript",
@@ -17256,8 +17256,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-gen/tests/OrmGenCliTest.php",
-          "id": "OrmGenCliTest::testGenCheckComparesTheModelsWithoutWriting"
+          "test": "packages/php-ext/tests/OrmGenCliTestExtensionTest.php",
+          "id": "OrmGenCliTestExtensionTest::testGenCheckComparesTheModelsWithoutWriting"
         },
         {
           "implementation": "typescript",
@@ -17485,8 +17485,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/IrAnswersTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\IrAnswersTest::testIrAnswer"
+          "test": "packages/php-ext/tests/IrAnswersTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\IrAnswersTestExtensionTest::testIrAnswer"
         },
         {
           "implementation": "typescript",
@@ -21740,8 +21740,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/CollectionIdentityTest.php",
-          "id": "CollectionIdentityTest::testANullKeyIsCodecDecode"
+          "test": "packages/php-ext/tests/CollectionIdentityTestExtensionTest.php",
+          "id": "CollectionIdentityTestExtensionTest::testANullKeyIsCodecDecode"
         },
         {
           "implementation": "typescript",
@@ -21821,8 +21821,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/GroupRowsTest.php",
-          "id": "GroupRowsTest::testOwner"
+          "test": "packages/php-ext/tests/GroupRowsTestExtensionTest.php",
+          "id": "GroupRowsTestExtensionTest::testOwner"
         },
         {
           "implementation": "php-extension",
@@ -24975,8 +24975,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testARelationToAnEntityOfAUsedDocumentAttachesItsGetter"
+          "test": "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
+          "id": "OrmGenScanTestExtensionTest::testARelationToAnEntityOfAUsedDocumentAttachesItsGetter"
         },
         {
           "implementation": "typescript",
@@ -25014,8 +25014,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testANameIsTypedByItsBindingInItsOwnScope"
+          "test": "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
+          "id": "OrmGenScanTestExtensionTest::testANameIsTypedByItsBindingInItsOwnScope"
         },
         {
           "implementation": "typescript",
@@ -25053,8 +25053,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testVector"
+          "test": "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
+          "id": "OrmGenScanTestExtensionTest::testVector"
         },
         {
           "implementation": "typescript",
@@ -25121,8 +25121,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/ClockTest.php",
-          "id": "ClockTest::testClockMicroseconds"
+          "test": "packages/php-ext/tests/ClockTestExtensionTest.php",
+          "id": "ClockTestExtensionTest::testClockMicroseconds"
         },
         {
           "implementation": "typescript",
@@ -25200,8 +25200,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/ClockTest.php",
-          "id": "ClockTest::testClockSoftDeleteMicroseconds"
+          "test": "packages/php-ext/tests/ClockTestExtensionTest.php",
+          "id": "ClockTestExtensionTest::testClockSoftDeleteMicroseconds"
         },
         {
           "implementation": "typescript",
@@ -25280,8 +25280,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/ClockTest.php",
-          "id": "ClockTest::testClockNowCondition"
+          "test": "packages/php-ext/tests/ClockTestExtensionTest.php",
+          "id": "ClockTestExtensionTest::testClockNowCondition"
         },
         {
           "implementation": "typescript",
@@ -25521,8 +25521,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testPrimaryAndReplica"
+          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
+          "id": "ModelTestExtensionTest::testPrimaryAndReplica"
         },
         {
           "implementation": "python",
@@ -25585,13 +25585,13 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testReadOnly"
+          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
+          "id": "ModelTestExtensionTest::testReadOnly"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testPrimaryAndReplica"
+          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
+          "id": "ModelTestExtensionTest::testPrimaryAndReplica"
         },
         {
           "implementation": "python",
@@ -25736,8 +25736,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testJoinsAndRelations"
+          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
+          "id": "ModelTestExtensionTest::testJoinsAndRelations"
         },
         {
           "implementation": "typescript",
@@ -25775,8 +25775,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testAesRotation",
+          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
+          "id": "ModelTestExtensionTest::testAesRotation",
           "command": [
             "make",
             "-s",
@@ -25840,8 +25840,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testAesRotation",
+          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
+          "id": "ModelTestExtensionTest::testAesRotation",
           "command": [
             "make",
             "-s",
@@ -26033,8 +26033,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DecimalModelTest.php",
-          "id": "DecimalModelTest::testGeneratedDecimalType"
+          "test": "packages/php-ext/tests/DecimalModelTestExtensionTest.php",
+          "id": "DecimalModelTestExtensionTest::testGeneratedDecimalType"
         },
         {
           "implementation": "typescript",
@@ -26954,8 +26954,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/SqliteRowLockRestoreTest.php",
-          "id": "SqliteRowLockRestoreTest::testProductionCallerPreservesPrimaryAndRestorationOutcomes"
+          "test": "packages/php-ext/tests/SqliteRowLockRestoreTestExtensionTest.php",
+          "id": "SqliteRowLockRestoreTestExtensionTest::testProductionCallerPreservesPrimaryAndRestorationOutcomes"
         },
         {
           "implementation": "typescript",
@@ -27046,8 +27046,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testUtilities"
+          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
+          "id": "ModelTestExtensionTest::testUtilities"
         },
         {
           "implementation": "php-extension",
@@ -27146,8 +27146,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testTransactions"
+          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
+          "id": "ModelTestExtensionTest::testTransactions"
         },
         {
           "implementation": "typescript",
@@ -27898,8 +27898,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::testPublicBindMessageVectors"
+          "test": "packages/php-ext/tests/MarkdownTestExtensionTest.php",
+          "id": "MarkdownTestExtensionTest::testPublicBindMessageVectors"
         },
         {
           "implementation": "typescript",
@@ -28002,8 +28002,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testJoinsAndRelations"
+          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
+          "id": "ModelTestExtensionTest::testJoinsAndRelations"
         },
         {
           "implementation": "typescript",
@@ -28041,8 +28041,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testConditions"
+          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
+          "id": "ModelTestExtensionTest::testConditions"
         },
         {
           "implementation": "typescript",
@@ -28124,8 +28124,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testWrites"
+          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
+          "id": "ModelTestExtensionTest::testWrites"
         },
         {
           "implementation": "typescript",
@@ -28163,8 +28163,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testWrites"
+          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
+          "id": "ModelTestExtensionTest::testWrites"
         },
         {
           "implementation": "typescript",
@@ -28202,8 +28202,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/StatementEventsTest.php",
-          "id": "StatementEventsTest::testCase"
+          "test": "packages/php-ext/tests/StatementEventsTestExtensionTest.php",
+          "id": "StatementEventsTestExtensionTest::testCase"
         },
         {
           "implementation": "typescript",
@@ -28250,8 +28250,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::testRejectedSurfaces"
+          "test": "packages/php-ext/tests/MarkdownTestExtensionTest.php",
+          "id": "MarkdownTestExtensionTest::testRejectedSurfaces"
         },
         {
           "implementation": "typescript",
@@ -28289,8 +28289,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testAesRotation",
+          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
+          "id": "ModelTestExtensionTest::testAesRotation",
           "command": [
             "make",
             "-s",
@@ -28341,8 +28341,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testAesRotation",
+          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
+          "id": "ModelTestExtensionTest::testAesRotation",
           "command": [
             "make",
             "-s",
@@ -28570,8 +28570,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testUtilities"
+          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
+          "id": "ModelTestExtensionTest::testUtilities"
         },
         {
           "implementation": "php-extension",

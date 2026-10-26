@@ -13,7 +13,7 @@ use Polyspec\Orm\Db;
 use Polyspec\Orm\OrmException;
 use RuntimeException;
 
-final class SqliteRowLockRestoreTest extends TestCase
+class SqliteRowLockRestoreTest extends TestCase
 {
     // Requirements: INT-49.
     public function testProductionCallerPreservesPrimaryAndRestorationOutcomes(): void

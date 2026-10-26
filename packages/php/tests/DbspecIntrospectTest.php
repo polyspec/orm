@@ -184,7 +184,7 @@ function unsupported_entries(array $unsupported): array
 
 // Each case creates a database, schema or file, applies a document set, introspects it and drops it.
 #[Medium]
-final class DbspecIntrospectTest extends TestCase
+class DbspecIntrospectTest extends TestCase
 {
     // round trip: all cases of ddl.json and all schema documents, in the three dialects.
     public static function roundTripCases(): iterable

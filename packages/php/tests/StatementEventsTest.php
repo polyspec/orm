@@ -20,7 +20,7 @@ use PHPUnit\Framework\TestCase;
 
 // A case creates its case database, installs the fixture, runs about ten statements and drops the database.
 #[Medium]
-final class StatementEventsTest extends TestCase
+class StatementEventsTest extends TestCase
 {
     public static function setUpBeforeClass(): void
     {
