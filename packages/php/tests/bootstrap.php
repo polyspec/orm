@@ -74,6 +74,7 @@ require_once __DIR__ . '/PageCacheBoundCases.php';
 require_once dirname(__DIR__) . '/testing/conformance/result_php_helpers.php';
 require_once dirname(__DIR__) . '/testing/required_dsn.php';
 require_once __DIR__ . '/coverage_cases.php';
+require_once __DIR__ . '/AuthenticatedEncryptionFixtureCases.php';
 require_once __DIR__ . '/CatalogConnectionCoverageCases.php';
 require_once __DIR__ . '/CatalogMysqlVisibilityPdo.php';
 require_once __DIR__ . '/CatalogMysqlVisibilityStatement.php';

@@ -8663,11 +8663,13 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageAuthenticatedEncryptionTest.php"
+          "test": "packages/php/tests/CoverageAuthenticatedEncryptionTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\CoverageAuthenticatedEncryptionTest::testVector"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php"
+          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\CoverageAuthenticatedEncryptionExtensionTest::testVector"
         },
         {
           "implementation": "typescript",

@@ -8167,7 +8167,8 @@
               "packages/php/tests/CoverageAuthenticatedEncryptionTest.php"
             ],
             "inputs": [
-              "contracts/fixtures/authenticated_encryption.json"
+              "contracts/fixtures/authenticated_encryption.json",
+              "packages/php/tests/AuthenticatedEncryptionFixtureCases.php"
             ],
             "commands": {
               "none": [
@@ -8277,7 +8278,8 @@
               "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php"
             ],
             "inputs": [
-              "contracts/fixtures/authenticated_encryption.json"
+              "contracts/fixtures/authenticated_encryption.json",
+              "packages/php/tests/AuthenticatedEncryptionFixtureCases.php"
             ],
             "commands": {
               "none": [

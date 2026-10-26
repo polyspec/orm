@@ -17,6 +17,8 @@ use ReflectionMethod;
 #[Small]
 final class CoverageAuthenticatedEncryptionExtensionTest extends TestCase
 {
+    use \AuthenticatedEncryptionFixtureCases;
+
     public static function setUpBeforeClass(): void
     {
         Assert::assertTrue((new ReflectionClass(Codec::class))->isInternal());
