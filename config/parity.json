@@ -3593,14 +3593,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/DbspecIntrospectExtensionTest.php",
-          "id": "DbspecIntrospectExtensionTest::testRoundTrip",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "dbspec-introspect-php-extension-check"
-          ]
+          "id": "DbspecIntrospectExtensionTest::testRoundTrip"
         },
         {
           "implementation": "rust",

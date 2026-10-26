@@ -339,7 +339,10 @@ class DbspecPlanTest extends TestCase
     public function testDbspecDsnsPreserveMissingVariableErrors(): void
     {
         $names = ['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN'];
-        $old = array_map(static fn(string $name): string|false => getenv($name), $names);
+        $old = [];
+        foreach ($names as $name) {
+            $old[$name] = getenv($name);
+        }
         try {
             foreach ($names as $name) {
                 putenv($name);
@@ -374,6 +377,9 @@ class DbspecPlanTest extends TestCase
                     putenv("$name=$value");
                 }
             }
+        }
+        foreach ($old as $name => $value) {
+            self::assertSame($value, getenv($name));
         }
     }
 
