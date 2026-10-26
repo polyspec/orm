@@ -242,9 +242,11 @@ caseTest('Rust coverage maps explicit library path modules to the library test t
   const project = JSON.parse(metadata.stdout ?? '{}') as { packages: { name: string; manifest_path: string; targets: { name: string; kind: string[]; src_path: string; test: boolean; harness?: boolean }[] }[] };
   const pkg = project.packages.find(item => item.name === 'polyspec-orm');
   assert.ok(pkg, 'Cargo metadata has no ORM package');
+  const libTarget = pkg.targets.find(target => target.kind.includes('lib'));
+  assert.ok(libTarget, 'Cargo metadata has no ORM library test target');
   const path = join(root, 'packages/rust/orm/tests/unit/coverage_planner.rs');
   const modules = await cargoPathModuleFiles(pkg.targets);
-  assert.ok(modules.some(module => module.target === 'polyspec-orm' && module.file === path), 'the ORM library no longer declares the planner unit module');
+  assert.ok(modules.some(module => module.target === libTarget.name && module.file === path), 'the ORM library no longer declares the planner unit module');
   assert.deepEqual(cargoTargetArgs(pkg.targets, [path], modules), ['--lib']);
 });
 

@@ -1,8 +1,8 @@
 //! Per-case deadlines and stage output for Rust tests (the Go format of internal/testcase; it uses the same deadline tiers as tests/testcase.mts).
 //!
 //! The result is cargo test's native output. A case is one libtest test that appears as `test <name> ... ok` or `FAILED`
-//! A failure is a panic, so libtest records the reason. Stages are written with `println!`, so they follow libtest's output capture:
-//! a stage of a passing test is not shown without `--nocapture`, and a stage of a failing test is shown as that test's output.
+//! A failure is a panic, so libtest records the reason. Stages are written to stderr, keeping them separate from the
+//! `libtest-mimic` result lines on stdout; the standard libtest harness captures stderr for passing tests unless `--nocapture` is set.
 //! The deadline is wall-clock time, because it is the timer that ends a stuck case, not a limit on the case's own computation time
 //! (AGENTS.md testing rule). Rust has no means to cut off a case, so once the deadline plus [`GRACE`] has passed, it writes a diagnosis to
 //! stderr and ends the test process. A code that keeps the deadline itself (e.g. `tokio::time::timeout`) first fails with its own error
@@ -109,9 +109,9 @@ pub fn warning(text: impl Display) {
     emit(&format!("WARNING {text}; machine {} {}", std::env::consts::OS, std::env::consts::ARCH));
 }
 
-/// Prints one stage line. Used by helper functions that take no case value. libtest captures the test's output, so it is seen only for a failed test.
+/// Prints one diagnostic stage line to stderr, separate from test result lines on stdout.
 pub fn step(text: impl Display) {
-    println!("{text}");
+    eprintln!("{text}");
 }
 
 /// Runs one asynchronous database case under its wall-clock deadline and reports its elapsed time.
@@ -190,7 +190,7 @@ pub fn start(name: impl Into<String>, deadline: Duration) -> Case {
 impl Case {
     /// Prints one stage line. A case that can last over a minute calls it at each stage.
     pub fn step(&self, text: impl Display) {
-        println!("{text}");
+        eprintln!("{text}");
     }
 
     /// The case name.
