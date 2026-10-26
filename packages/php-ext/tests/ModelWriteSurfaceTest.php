@@ -64,6 +64,7 @@ final class ModelWriteSurfaceTest extends TestCase
 
     public function testNativeUpdateClearsAnIncompleteKeyBeforeThrowingConfig(): void
     {
+        // Requirements: DSL-106
         $db = new \Polyspec\Orm\Db(
             new \PDO('sqlite::memory:'),
             'sqlite',

@@ -4704,6 +4704,11 @@
           "id": "CoverageModelWritesExtensionTest::test_model_write_cycle"
         },
         {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelWriteSurfaceTest.php",
+          "id": "ModelWriteSurfaceTest::testNativeUpdateClearsAnIncompleteKeyBeforeThrowingConfig"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_model_writes.mjs",
           "id": "model_write_cycle [sqlite]"
@@ -7094,6 +7099,11 @@
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/PlanCacheBoundNativeTest.php",
           "id": "PlanCacheBoundNativeTest::testInListPaddingKeepsTheCompiledShape"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelTypesSurfaceTest.php",
+          "id": "ModelTypesSurfaceTest::testPadInMatchesUserlandForBucketSizesSparseAndStringKeys"
         },
         {
           "implementation": "typescript",
@@ -11230,6 +11240,11 @@
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/DriverErrorTest.php",
           "id": "DriverErrorTest::testNativeDbMapperKeepsTheDriverErrorAsPrevious"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PgsqlPdoAdapterNativeTest.php",
+          "id": "PgsqlPdoAdapterNativeTest::testNativePgsqlAdapterStatementErrorCarriesItsSqlState"
         },
         {
           "implementation": "typescript",
@@ -23332,6 +23347,11 @@
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
           "id": "CoverageSchemaDefinitionExtensionTest::testDbspecManifestHash"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RegistrySchemaNativeTest.php",
+          "id": "RegistrySchemaNativeTest::testNativeOriginsAndReadonlySchemaRoundTrip"
         },
         {
           "implementation": "typescript",
