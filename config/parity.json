@@ -6303,7 +6303,17 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_transaction_rollback"
+          "id": "test_transaction_rollback",
+          "command": [
+            "env",
+            "ORM_FEATURE_DATABASE=sqlite",
+            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
+            "packages/python/.venv/bin/python",
+            "-m",
+            "unittest",
+            "-v",
+            "tests.coverage_transactions.CoverageTest.test_transaction_rollback"
+          ]
         },
         {
           "implementation": "rust",
@@ -6370,7 +6380,17 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_transaction_rollback"
+          "id": "test_transaction_rollback",
+          "command": [
+            "env",
+            "ORM_FEATURE_DATABASE=sqlite",
+            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
+            "packages/python/.venv/bin/python",
+            "-m",
+            "unittest",
+            "-v",
+            "tests.coverage_transactions.CoverageTest.test_transaction_rollback"
+          ]
         },
         {
           "implementation": "rust",
@@ -6458,21 +6478,6 @@
           "id": "TestWithContextCancels"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_transactions.py",
-          "id": "handle_abandoned_query [sqlite]"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_transactions.py",
-          "id": "handle_abandoned_query [mysql]"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_transactions.py",
-          "id": "handle_abandoned_query [postgres]"
-        },
-        {
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_transactions.mjs",
           "id": "handle_abandoned_query [sqlite]"
@@ -6526,6 +6531,22 @@
           "implementation": "python",
           "test": "packages/python/tests/test_query_cancel.py",
           "id": "test_cancel_interrupts_active_statement_and_root_is_reusable"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_transactions.py",
+          "id": "test_handle_abandoned_query",
+          "command": [
+            "env",
+            "BENCH_SQLITE_DSN=${BENCH_SQLITE_DSN}",
+            "BENCH_MYSQL_DSN=${BENCH_MYSQL_DSN}",
+            "BENCH_POSTGRES_DSN=${BENCH_POSTGRES_DSN}",
+            "packages/python/.venv/bin/python",
+            "-m",
+            "unittest",
+            "-v",
+            "tests.coverage_transactions.CoverageTest.test_handle_abandoned_query"
+          ]
         }
       ]
     },
@@ -6579,7 +6600,17 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_transaction_savepoint"
+          "id": "test_transaction_savepoint",
+          "command": [
+            "env",
+            "ORM_FEATURE_DATABASE=sqlite",
+            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
+            "packages/python/.venv/bin/python",
+            "-m",
+            "unittest",
+            "-v",
+            "tests.coverage_transactions.CoverageTest.test_transaction_savepoint"
+          ]
         },
         {
           "implementation": "rust",
@@ -8161,7 +8192,17 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/coverage_schema_install.py",
-          "id": "test_schema_install_external_documents"
+          "id": "test_schema_install_external_documents",
+          "command": [
+            "env",
+            "ORM_FEATURE_DATABASE=sqlite",
+            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
+            "packages/python/.venv/bin/python",
+            "-m",
+            "unittest",
+            "-v",
+            "tests.coverage_schema_install.CoverageTest.test_schema_install_external_documents"
+          ]
         },
         {
           "implementation": "rust",
@@ -8205,7 +8246,17 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/coverage_schema_install.py",
-          "id": "test_schema_install_external_documents"
+          "id": "test_schema_install_external_documents",
+          "command": [
+            "env",
+            "ORM_FEATURE_DATABASE=mysql",
+            "ORM_FEATURE_DSN=${BENCH_MYSQL_DSN}",
+            "packages/python/.venv/bin/python",
+            "-m",
+            "unittest",
+            "-v",
+            "tests.coverage_schema_install.CoverageTest.test_schema_install_external_documents"
+          ]
         },
         {
           "implementation": "rust",
@@ -8249,7 +8300,17 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/coverage_schema_install.py",
-          "id": "test_schema_install_external_documents"
+          "id": "test_schema_install_external_documents",
+          "command": [
+            "env",
+            "ORM_FEATURE_DATABASE=postgres",
+            "ORM_FEATURE_DSN=${BENCH_POSTGRES_DSN}",
+            "packages/python/.venv/bin/python",
+            "-m",
+            "unittest",
+            "-v",
+            "tests.coverage_schema_install.CoverageTest.test_schema_install_external_documents"
+          ]
         },
         {
           "implementation": "rust",
@@ -8298,7 +8359,17 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/coverage_schema_install.py",
-          "id": "test_schema_install_external_documents"
+          "id": "test_schema_install_external_documents",
+          "command": [
+            "env",
+            "ORM_FEATURE_DATABASE=sqlite",
+            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
+            "packages/python/.venv/bin/python",
+            "-m",
+            "unittest",
+            "-v",
+            "tests.coverage_schema_install.CoverageTest.test_schema_install_external_documents"
+          ]
         },
         {
           "implementation": "rust",
@@ -8347,7 +8418,17 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/coverage_schema_install.py",
-          "id": "test_schema_install_external_documents"
+          "id": "test_schema_install_external_documents",
+          "command": [
+            "env",
+            "ORM_FEATURE_DATABASE=mysql",
+            "ORM_FEATURE_DSN=${BENCH_MYSQL_DSN}",
+            "packages/python/.venv/bin/python",
+            "-m",
+            "unittest",
+            "-v",
+            "tests.coverage_schema_install.CoverageTest.test_schema_install_external_documents"
+          ]
         },
         {
           "implementation": "rust",
@@ -8396,7 +8477,17 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/coverage_schema_install.py",
-          "id": "test_schema_install_external_documents"
+          "id": "test_schema_install_external_documents",
+          "command": [
+            "env",
+            "ORM_FEATURE_DATABASE=postgres",
+            "ORM_FEATURE_DSN=${BENCH_POSTGRES_DSN}",
+            "packages/python/.venv/bin/python",
+            "-m",
+            "unittest",
+            "-v",
+            "tests.coverage_schema_install.CoverageTest.test_schema_install_external_documents"
+          ]
         },
         {
           "implementation": "rust",
@@ -13197,7 +13288,17 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_transaction_savepoint"
+          "id": "test_transaction_savepoint",
+          "command": [
+            "env",
+            "ORM_FEATURE_DATABASE=sqlite",
+            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
+            "packages/python/.venv/bin/python",
+            "-m",
+            "unittest",
+            "-v",
+            "tests.coverage_transactions.CoverageTest.test_transaction_savepoint"
+          ]
         },
         {
           "implementation": "rust",
@@ -13262,7 +13363,17 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_transaction_savepoint"
+          "id": "test_transaction_savepoint",
+          "command": [
+            "env",
+            "ORM_FEATURE_DATABASE=sqlite",
+            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
+            "packages/python/.venv/bin/python",
+            "-m",
+            "unittest",
+            "-v",
+            "tests.coverage_transactions.CoverageTest.test_transaction_savepoint"
+          ]
         },
         {
           "implementation": "rust",
@@ -13317,7 +13428,17 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_transaction_rollback"
+          "id": "test_transaction_rollback",
+          "command": [
+            "env",
+            "ORM_FEATURE_DATABASE=sqlite",
+            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
+            "packages/python/.venv/bin/python",
+            "-m",
+            "unittest",
+            "-v",
+            "tests.coverage_transactions.CoverageTest.test_transaction_rollback"
+          ]
         },
         {
           "implementation": "rust",
@@ -13382,7 +13503,17 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_transaction_savepoint"
+          "id": "test_transaction_savepoint",
+          "command": [
+            "env",
+            "ORM_FEATURE_DATABASE=sqlite",
+            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
+            "packages/python/.venv/bin/python",
+            "-m",
+            "unittest",
+            "-v",
+            "tests.coverage_transactions.CoverageTest.test_transaction_savepoint"
+          ]
         },
         {
           "implementation": "rust",
@@ -17904,7 +18035,17 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/coverage_schema_install.py",
-          "id": "test_schema_install_external_documents"
+          "id": "test_schema_install_external_documents",
+          "command": [
+            "env",
+            "ORM_FEATURE_DATABASE=sqlite",
+            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
+            "packages/python/.venv/bin/python",
+            "-m",
+            "unittest",
+            "-v",
+            "tests.coverage_schema_install.CoverageTest.test_schema_install_external_documents"
+          ]
         },
         {
           "implementation": "rust",
@@ -18043,7 +18184,17 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/coverage_schema_install.py",
-          "id": "test_schema_install_external_documents"
+          "id": "test_schema_install_external_documents",
+          "command": [
+            "env",
+            "ORM_FEATURE_DATABASE=sqlite",
+            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
+            "packages/python/.venv/bin/python",
+            "-m",
+            "unittest",
+            "-v",
+            "tests.coverage_schema_install.CoverageTest.test_schema_install_external_documents"
+          ]
         },
         {
           "implementation": "rust",
@@ -24443,7 +24594,17 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/coverage_schema_install.py",
-          "id": "test_schema_install_existing"
+          "id": "test_schema_install_existing",
+          "command": [
+            "env",
+            "ORM_FEATURE_DATABASE=sqlite",
+            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
+            "packages/python/.venv/bin/python",
+            "-m",
+            "unittest",
+            "-v",
+            "tests.coverage_schema_install.CoverageTest.test_schema_install_existing"
+          ]
         },
         {
           "implementation": "rust",
@@ -24548,7 +24709,17 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/coverage_schema_install.py",
-          "id": "test_schema_install_partial"
+          "id": "test_schema_install_partial",
+          "command": [
+            "env",
+            "ORM_FEATURE_DATABASE=sqlite",
+            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
+            "packages/python/.venv/bin/python",
+            "-m",
+            "unittest",
+            "-v",
+            "tests.coverage_schema_install.CoverageTest.test_schema_install_partial"
+          ]
         },
         {
           "implementation": "rust",
@@ -24676,7 +24847,17 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/coverage_schema_install.py",
-          "id": "test_schema_install_external_documents"
+          "id": "test_schema_install_external_documents",
+          "command": [
+            "env",
+            "ORM_FEATURE_DATABASE=sqlite",
+            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
+            "packages/python/.venv/bin/python",
+            "-m",
+            "unittest",
+            "-v",
+            "tests.coverage_schema_install.CoverageTest.test_schema_install_external_documents"
+          ]
         },
         {
           "implementation": "rust",
