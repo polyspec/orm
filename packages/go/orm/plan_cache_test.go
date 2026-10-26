@@ -12,6 +12,15 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
+func planCacheIdentityLoadFixture(t *testing.T) (*runtimemodel.Model, *Schema) {
+	t.Helper()
+	m, err := runtimemodel.LoadFiles("../../../contracts/fixtures/identity_load.dbs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return m, &Schema{Hash: m.ManifestHash, Text: m.ManifestText}
+}
+
 // TestPlanCacheBoundedByInListShape runs one IN statement with lists of 1 to
 // 300 values. The plan cache holds one entry per statement shape with the list
 // length bucketed to a power of two, so the entry count stays at most the number
@@ -102,11 +111,7 @@ func TestCanonicalizePadsInListAndRejectsOutOfRangeParam(t *testing.T) {
 // Requirements: CPX-4.
 func TestInListPaddingKeepsTheCompiledShape(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	m, err := runtimemodel.LoadFiles("../../../contracts/fixtures/identity_load.dbs")
-	if err != nil {
-		t.Fatal(err)
-	}
-	schema := &Schema{Hash: m.ManifestHash, Text: m.ManifestText}
+	m, schema := planCacheIdentityLoadFixture(t)
 	makeRequest := func(values []any) *request {
 		ps := make([]int, len(values)-1)
 		for i := range ps {
@@ -175,11 +180,7 @@ func TestInListPaddingKeepsTheCompiledShape(t *testing.T) {
 // Requirements: PRT-78; T236.
 func TestPlanCachePagedReadBindsPageValues(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	m, err := runtimemodel.LoadFiles("../../../contracts/fixtures/identity_load.dbs")
-	if err != nil {
-		t.Fatal(err)
-	}
-	schema := &Schema{Hash: m.ManifestHash, Text: m.ManifestText}
+	m, schema := planCacheIdentityLoadFixture(t)
 	for _, driver := range []string{"mysql", "postgres", "sqlite"} {
 		eng, err := engine.New(m, driver)
 		if err != nil {

@@ -50,9 +50,7 @@ trait PageCacheBoundCases
             $this->assertTrue((new ReflectionClass(Planner::class))->isInternal());
             $this->assertTrue((new ReflectionClass(Planner::class))->getMethod('compile')->isInternal());
         }
-        $model = RuntimeModel::build(
-            RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/identity_load.dbs'])
-        );
+        $model = $this->planCacheIdentityLoadModel();
         $makeRequest = static function (array $values) use ($model): Request {
             $inIndexes = range(0, count($values) - 2);
             $request = new Request('all', $model->manifestHash);
@@ -101,9 +99,7 @@ trait PageCacheBoundCases
             $this->assertTrue((new ReflectionClass(Planner::class))->isInternal());
             $this->assertTrue((new ReflectionClass(Planner::class))->getMethod('compile')->isInternal());
         }
-        $model = RuntimeModel::build(
-            RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/identity_load.dbs'])
-        );
+        $model = $this->planCacheIdentityLoadModel();
         foreach (['mysql', 'postgres', 'sqlite'] as $driver) {
             $engine = new Engine($model, $driver, 1024);
             $cache = new ReflectionProperty(Engine::class, 'plans');
@@ -282,5 +278,12 @@ trait PageCacheBoundCases
         $request->ir = $ir;
         $request->params = $params;
         $request->canonicalize();
+    }
+
+    private function planCacheIdentityLoadModel(): RuntimeModel
+    {
+        return RuntimeModel::build(
+            RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/identity_load.dbs'])
+        );
     }
 }
