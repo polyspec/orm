@@ -60,6 +60,61 @@ caseTest('the catalog PHP extension surface recipe removes its build directory o
   assert.match(recipe, /trap 'rm -rf "\$\$run_dir"' EXIT/);
 });
 
+caseTest('the GroupRows PHP extension target builds in its own run directory', COMPUTE, () => {
+  const makefile = readFileSync(new URL('../../Makefile', import.meta.url), 'utf8');
+  const target = makefile.split('group-rows-db-php-extension: RUN_DIR = ')[1]?.split('\n# group-rows-db-rust')[0];
+  assert.ok(target, 'GroupRows PHP extension target is missing');
+  assert.match(target, /^\$\(abspath \.runtime\/run\)\/group-rows-db-php-extension-\$\$PPID/m);
+  assert.match(target, /run_dir="\$\(RUN_DIR\)"/);
+  assert.match(target, /trap 'rm -rf "\$\$run_dir"' EXIT/);
+  assert.match(target, /build\.sh "\$\$run_dir\/php-extension\/polyspec_orm\.so"/);
+  assert.match(target, /\$\(PHP_EXTENSION_NATIVE_TESTS\) packages\/php-ext\/tests\/GroupRowsDbNativeTest\.php/);
+
+  const root = new URL('../..', import.meta.url).pathname;
+  const directory = mkdtempSync(join(tmpdir(), 'orm-group-rows-extension-run-dir-'));
+  const temporary = join(directory, 'step-tmp');
+  const fakeBuild = join(directory, 'fake-build');
+  const fakeTest = join(directory, 'fake-test');
+  const moduleRecord = join(directory, 'module-path');
+  try {
+    mkdirSync(temporary);
+    writeFileSync(fakeBuild, [
+      '#!/bin/sh',
+      'set -eu',
+      'test "$1" = php-extension-build',
+      'module=',
+      'for argument do module=$argument; done',
+      'case "$module" in */group-rows-db-php-extension-*/php-extension/polyspec_orm.so) ;; *) exit 41 ;; esac',
+      'mkdir -p "$(dirname "$module")"',
+      'printf module > "$module"',
+      'printf %s "$module" > "$FAKE_MODULE_RECORD"',
+      '',
+    ].join('\n'));
+    writeFileSync(fakeTest, [
+      '#!/bin/sh',
+      'set -eu',
+      'test "$1" = packages/php-ext/tests/GroupRowsDbNativeTest.php',
+      'module=$(cat "$FAKE_MODULE_RECORD")',
+      'test -f "$module"',
+      'case "$module" in */group-rows-db-php-extension-*/php-extension/polyspec_orm.so) ;; *) exit 42 ;; esac',
+      '',
+    ].join('\n'));
+    chmodSync(fakeBuild, 0o755);
+    chmodSync(fakeTest, 0o755);
+
+    const result = spawnSync(
+      'make',
+      ['--no-print-directory', '-o', 'php-vendor-check', 'group-rows-db-php-extension', `RUN_LONG=${fakeBuild}`, `PHP_EXTENSION_NATIVE_TESTS=${fakeTest}`],
+      { cwd: root, encoding: 'utf8', env: isolatedEnvironment({ TMPDIR: temporary, FAKE_MODULE_RECORD: moduleRecord }) },
+    );
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    const module = readFileSync(moduleRecord, 'utf8');
+    assert.ok(!existsSync(join(module, '..', '..')), `target left its run directory: ${module}`);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 caseTest('the dbspec PHP extension aggregate owns the shared module until every case finishes', COMPUTE, () => {
   const makefile = readFileSync(new URL('../../Makefile', import.meta.url), 'utf8');
   const aggregate = makefile.split('dbspec-php-extension-check:\n')[1]?.split('\ndbspec-php-extension-check/arginfo:')[0];

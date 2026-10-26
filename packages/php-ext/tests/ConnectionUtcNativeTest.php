@@ -24,6 +24,7 @@ use Polyspec\Orm\Tests\Model\ServiceMember;
 use Polyspec\Orm\Tests\Model\ServiceRegion;
 use Polyspec\Orm\Tests\Model\User;
 use Polyspec\Orm\Tests\ThreeDrivers;
+use ReflectionClass;
 use ReflectionMethod;
 
 use function Polyspec\Orm\Tests\case_admin;

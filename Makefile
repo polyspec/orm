@@ -1837,7 +1837,13 @@ group-rows-db-go:
 group-rows-db-php: php-vendor-check
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/GroupRowsDbTest.php
 # group-rows-db-php-extension runs the extension-owned native group-row case on BENCH_MYSQL_DSN, BENCH_POSTGRES_DSN and BENCH_SQLITE_DSN.
-group-rows-db-php-extension: php-vendor-check dbspec-php-extension-check/prepare
+group-rows-db-php-extension: RUN_DIR = $(abspath .runtime/run)/group-rows-db-php-extension-$$PPID
+group-rows-db-php-extension: php-vendor-check
+	@set -eu; \
+	run_dir="$(RUN_DIR)"; \
+	trap 'rm -rf "$$run_dir"' EXIT; \
+	mkdir -p "$$run_dir/php-extension"; \
+	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/php-extension/polyspec_orm.so"; \
 	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/GroupRowsDbNativeTest.php
 # group-rows-db-rust runs coverage_group_rows_db on BENCH_SQLITE_DSN.
 group-rows-db-rust:
