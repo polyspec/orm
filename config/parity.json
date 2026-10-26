@@ -12670,7 +12670,12 @@
           "test": "packages/rust/build/tests/tool_cells.rs",
           "id": "physical_tool_cells_reject_loss_without_substituting_values"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "rust-physical-query-columns-preserve-empty-results-and-duplicate-aliases",
@@ -12683,20 +12688,6 @@
           "implementation": "rust",
           "test": "packages/rust/build/tests/tool_columns.rs",
           "id": "physical_query_columns_preserve_empty_results_and_duplicate_aliases"
-        }
-      ]
-    },
-    {
-      "id": "rust-physical-tool-queries-reject-budgets-without-partial-success",
-      "kind": "feature",
-      "requirements": [
-        "INT-115"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/tool_limits.rs",
-          "id": "physical_tool_queries_reject_budgets_without_partial_success"
         }
       ]
     },
@@ -12726,7 +12717,12 @@
           "test": "packages/rust/build/tests/tool_values.rs",
           "id": "physical_tool_accessors_preserve_errors_on_all_databases"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "rust-tool-accessors-reject-invalid-values-without-defaults-or-contents",
@@ -12740,7 +12736,12 @@
           "test": "packages/rust/build/tests/tool_values.rs",
           "id": "tool_accessors_reject_invalid_values_without_defaults_or_contents"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "rust-native-typed-binds-preserve-values-and-typed-nulls",
@@ -14426,6 +14427,11 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
           "id": "coverage_catalog_connection::coverage_catalog_read_budgets"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/tool_limits.rs",
+          "id": "physical_tool_queries_reject_budgets_without_partial_success"
         },
         {
           "implementation": "php",

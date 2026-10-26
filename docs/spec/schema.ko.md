@@ -1,5 +1,5 @@
 <!-- doc-id: schema -->
-<!-- source-sha256: a8eac82d3ddb81b98ef2210d02409756ead927148fa015c69389fca0a7c6484d -->
+<!-- source-sha256: 7a2a68905826a1e06dfa8a02c8d76579492aa4f62ec29fd397a2f98674e5d6b8 -->
 # 스키마
 
 스키마 source는 dbspec document(`.dbs`)의 집합이다. [dbspec.md](dbspec.md)가 언어, 검증 규칙, manifest text와 두 hash를 정의한다. `contracts/fixtures/bench/bench.dbs`는 테스트와 벤치마크의 스키마다. 다른 스키마 파일은 없으며 모든 generator, runtime, 스키마 작업이 document set을 읽는다.
@@ -42,9 +42,9 @@ PHP extension은 extension 선언을 통해 PHP API의 `Dbspec` parse/render/int
 
 ## 3. Rust build-time catalog helpers {#_3-rust-build-time-catalog-helpers}
 
-- **SCH-3** Rust build-time `tool_db` decoder는 실제 SQL NULL과 지원되는 정수·텍스트·boolean을 보존하되 미지원 타입·잘못된 UTF-8·signed 64비트 범위를 넘는 unsigned 정수를 거부한다. SQL NULL·대체 문자열·순환한 정수로 대체하지 않는다. 이 build-time helper 값은 [인터페이스](interfaces.md)의 공유 catalog 연결이 반환하는 typed grid cell과 별개다.
+- **SCH-3** `polyspec-orm-build` crate의 build-time `tool_db` decoder는 실제 SQL NULL과 지원되는 정수·텍스트·boolean을 보존하되 미지원 타입·잘못된 UTF-8·signed 64비트 범위를 넘는 unsigned 정수를 거부한다. SQL NULL·대체 문자열·순환한 정수로 대체하지 않는다. 이 build-time helper 값은 [인터페이스](interfaces.md)의 공유 catalog 연결이 반환하는 typed grid cell과 별개다.
 
-- **SCH-4** Rust build-time `Val::int()`, `opt_int()`, `bool()`은 검증된 결과를 반환한다. 필수 정수·boolean 변환은 SQL NULL을 거부하며 선택적 정수는 NULL을 `None`으로 보존한다. Boolean은 실제 boolean, 정수 0/1, 문자열 `t`, `f`, `true`, `false`, `1`, `0`만 허용하며 잘못된 값을 기본값으로 바꾸지 않는다. 오류는 입력값을 포함하지 않으며 트랜잭션 정리를 포함한 build-time catalog 작업에 전달된다.
+- **SCH-4** `polyspec-orm-build` crate의 build-time `Val::int()`, `opt_int()`, `bool()`은 검증된 결과를 반환한다. 필수 정수·boolean 변환은 SQL NULL을 거부하며 선택적 정수는 NULL을 `None`으로 보존한다. Boolean은 실제 boolean, 정수 0/1, 문자열 `t`, `f`, `true`, `false`, `1`, `0`만 허용하며 잘못된 값을 기본값으로 바꾸지 않는다. 오류는 입력값을 포함하지 않으며 트랜잭션 정리를 포함한 build-time catalog 작업에 전달된다.
 
 ### Catalog 연결 {#_catalog-connections}
 

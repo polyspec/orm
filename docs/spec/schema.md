@@ -41,9 +41,9 @@ The PHP extension declarations expose the PHP-facing `Dbspec` parse/render/intro
 
 ## 3. Rust build-time catalog helpers
 
-- **SCH-3** The Rust build-time `tool_db` decoder preserves actual SQL NULL and supported integer/text/boolean values, but rejects unsupported types, invalid UTF-8 and unsigned integers beyond signed 64-bit range. It must not substitute SQL NULL, replacement text or wrapped integers. These build-time helper values are separate from the typed grid cells of the shared catalog connection in [interfaces](interfaces.md).
+- **SCH-3** The `polyspec-orm-build` crate's build-time `tool_db` decoder preserves actual SQL NULL and supported integer/text/boolean values, but rejects unsupported types, invalid UTF-8 and unsigned integers beyond signed 64-bit range. It must not substitute SQL NULL, replacement text or wrapped integers. These build-time helper values are separate from the typed grid cells of the shared catalog connection in [interfaces](interfaces.md).
 
-- **SCH-4** Rust build-time `Val::int()`, `opt_int()` and `bool()` return checked results. Required integer/boolean conversions reject SQL NULL. Optional integers preserve NULL as `None`. Booleans accept only native booleans, integer 0/1 and text `t`, `f`, `true`, `false`, `1`, `0`; malformed values never become defaults. Errors omit the input value and propagate through build-time catalog operations, including transaction cleanup.
+- **SCH-4** The `polyspec-orm-build` crate's build-time `Val::int()`, `opt_int()` and `bool()` return checked results. Required integer/boolean conversions reject SQL NULL. Optional integers preserve NULL as `None`. Booleans accept only native booleans, integer 0/1 and text `t`, `f`, `true`, `false`, `1`, `0`; malformed values never become defaults. Errors omit the input value and propagate through build-time catalog operations, including transaction cleanup.
 
 ### Catalog connections
 
