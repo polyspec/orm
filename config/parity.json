@@ -22832,7 +22832,19 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/ParentSlotExpansionNativeTest.php",
-          "id": "ParentSlotExpansionNativeTest::testBareDollarInLiteralIsPreserved"
+          "id": "ParentSlotExpansionNativeTest::testBareDollarInLiteralIsPreserved",
+          "command": [
+            "env",
+            "ORM_PHP_MODE=extension",
+            "php",
+            "-d",
+            "extension=${ORM_PARITY_PHP_EXTENSION_NATIVE_TEST}",
+            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
+            "--teamcity",
+            "--configuration",
+            "phpunit.xml.dist",
+            "tests/ParentSlotExpansionNativeTest.php"
+          ]
         },
         {
           "implementation": "typescript",

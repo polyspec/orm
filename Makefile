@@ -1970,11 +1970,13 @@ FLOWMARK_SOURCE ?= $(abspath var/tools/flowmark-source/$(FLOWMARK_REVISION))
 # PARITY_RUN_DIR is the run directory of the parity-check step, which the check runner owns (scripts/check/step.mts) and
 # removes when the step ends, pass or fail. parity-prepare refuses to run outside that step.
 PARITY_RUN_DIR = $(STEP_RUN_DIR)
+PARITY_NATIVE_TEST_EXTENSION = $(PARITY_RUN_DIR)/native-test/polyspec_orm.so
 .PHONY: parity-prepare
 parity-prepare: lease-tool
 	test -n "$(STEP_RUN_DIR)" || { echo "parity-prepare: STEP_RUN_DIR is unset; run the parity-check through make run-databases TARGETS=parity-check, whose step owns the directory"; exit 1; }
 	mkdir -p $(PARITY_RUN_DIR)
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PARITY_RUN_DIR)/polyspec_orm.so
+	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PARITY_NATIVE_TEST_EXTENSION) native-test
 	$(RUN_LONG) rust-build/parity-conformance --cwd packages/rust -- $(CARGO_LEASED) node $(abspath scripts/cargo-build-copy.mts) $(PARITY_RUN_DIR)/target debug/conformance -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm-tests --bin conformance
 parity-check: parity-prepare
 # interface-check runs first: it reads the API units of config/parity.json and the symbol snapshots that parity-check reads.
@@ -2005,6 +2007,7 @@ flowmark-check:
 parity-check: parity-bench-env-check flowmark-check interface-check
 parity-check: export FLOWMARK := $(FLOWMARK)
 parity-check: export ORM_PARITY_PHP_EXTENSION = $(PARITY_RUN_DIR)/polyspec_orm.so
+parity-check: export ORM_PARITY_PHP_EXTENSION_NATIVE_TEST = $(PARITY_NATIVE_TEST_EXTENSION)
 parity-check: export POLYSPEC_ORM_EXTENSION = $(PARITY_RUN_DIR)/polyspec_orm.so
 parity-check: export ORM_SEND_SQLITE_DSN = $(SEND_SQLITE_DSN)
 # ORM_SEND_SQLITE_DSN names a file in the run directory of this step: parity-prepare creates it, while the RUN_DIR of
