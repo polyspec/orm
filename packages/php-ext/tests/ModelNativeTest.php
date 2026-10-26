@@ -14,6 +14,8 @@ use WeakReference;
 
 final class ModelNativeTest extends TestCase
 {
+    use DatabaseTestAssertions;
+
     // Requirements: DBS-112, DBS-114.
 
     public function testGenerationToolingIsNotLoaded(): void
@@ -527,18 +529,7 @@ final class ModelNativeTest extends TestCase
     // Requirements: PRT-40.
     public function testTuplePredicatePadsByRepeatingTheLastRow(): void
     {
-        $model = new NativeModelFixture();
-        $request = new Request('all', 'sha256:tuple-padding');
-        $predicate = (new \ReflectionMethod(Model::class, 'predIr'))->invoke($model, [
-            'kind' => 'tuple',
-            'column' => '',
-            'op' => 'tuple_in',
-            'cols' => ['tenant_id', 'account_id'],
-            'value' => [[10, 1], [10, 2], [10, 3]],
-        ], $request, new Frame($model, null));
-
-        self::assertSame(range(0, 7), $predicate['ps']);
-        self::assertSame([10, 1, 10, 2, 10, 3, 10, 3], $request->params);
+        $this->assertTuplePredicatePadsByRepeatingLastRow(new NativeModelFixture());
     }
 
     public function testRelationAndSubqueryIrUseFramedQueryResults(): void
@@ -1235,13 +1226,8 @@ final class ModelNativeTest extends TestCase
     // Requirements: COD-38.
     public function testIpHostStyleValidatesBeforeRequestBindingAndPreservesValidText(): void
     {
-        $column = ['codec' => ['ip']];
-        self::assertSame('10.0.0.1', Model::encodeValue($column, '10.0.0.1'));
-        try {
-            Model::encodeValue($column, '10. 0.0.1');
-            self::fail('an IP address with embedded whitespace was accepted before request binding');
-        } catch (OrmException $error) {
-            self::assertSame(\Polyspec\Orm\Code::CODEC_ENCODE, $error->code_);
-        }
+        $this->assertIpHostStyleValidation(
+            'an IP address with embedded whitespace was accepted before request binding'
+        );
     }
 }

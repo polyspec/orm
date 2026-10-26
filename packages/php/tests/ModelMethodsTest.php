@@ -39,6 +39,8 @@ PHP;
 #[Small]
 final class ModelMethodsTest extends TestCase
 {
+    use DatabaseTestAssertions;
+
     private static string $work;
 
     public static function setUpBeforeClass(): void
@@ -177,13 +179,6 @@ final class ModelMethodsTest extends TestCase
     // Requirements: COD-38.
     public function testIpHostStyleValidatesBeforeRequestBindingAndPreservesValidText(): void
     {
-        $column = ['codec' => ['ip']];
-        self::assertSame('10.0.0.1', Model::encodeValue($column, '10.0.0.1'));
-        try {
-            Model::encodeValue($column, '10. 0.0.1');
-            self::fail('an IP address with embedded whitespace was accepted');
-        } catch (\Polyspec\Orm\OrmException $error) {
-            self::assertSame(Code::CODEC_ENCODE, $error->code_);
-        }
+        $this->assertIpHostStyleValidation('an IP address with embedded whitespace was accepted');
     }
 }

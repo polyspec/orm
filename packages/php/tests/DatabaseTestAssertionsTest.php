@@ -68,6 +68,12 @@ final class DatabaseTestAssertionsTest extends TestCase
         );
     }
 
+    public function testModelPredicateAssertionsPreserveTuplePaddingAndIpValidation(): void
+    {
+        $this->assertTuplePredicatePadsByRepeatingLastRow(new \Polyspec\Orm\Tests\Model\Author());
+        $this->assertIpHostStyleValidation('an IP address with embedded whitespace was accepted');
+    }
+
     public function testWarningStreamProtocolKeepsWrapperOperationsAndWarning(): void
     {
         $stream = new class {

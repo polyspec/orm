@@ -17,6 +17,8 @@ use Polyspec\Orm\Tests\Model\Author;
 #[Small]
 final class RelationKeysTest extends TestCase
 {
+    use DatabaseTestAssertions;
+
     public function testParentSlotExpansionPadsCompositeKeysAndRenumbersFollowingPlaceholders(): void
     {
         $expand = new \ReflectionMethod(Db::class, 'expandIn');
@@ -81,18 +83,6 @@ final class RelationKeysTest extends TestCase
     // Requirements: PRT-40.
     public function testTuplePredicatePadsByRepeatingTheLastRow(): void
     {
-        $model = new Author();
-        $request = new Request('all', 'sha256:tuple-padding');
-        $predicate = (new \ReflectionMethod(Model::class, 'predIr'))->invoke($model, [
-            'kind' => 'tuple',
-            'column' => '',
-            'op' => 'tuple_in',
-            'cols' => ['tenant_id', 'account_id'],
-            'value' => [[10, 1], [10, 2], [10, 3]],
-        ], $request, new Frame($model, null));
-
-        self::assertSame(range(0, 7), $predicate['ps']);
-        self::assertSame([10, 1, 10, 2, 10, 3, 10, 3], $request->params);
+        $this->assertTuplePredicatePadsByRepeatingLastRow(new Author());
     }
-
 }

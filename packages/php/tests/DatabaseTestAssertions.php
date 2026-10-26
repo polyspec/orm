@@ -12,6 +12,7 @@ use Polyspec\Orm\Db;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\OrmException;
+use Polyspec\Orm\Model;
 use PHPUnit\Framework\Assert;
 
 trait DatabaseTestAssertions
@@ -95,6 +96,33 @@ trait DatabaseTestAssertions
             return;
         }
         Assert::fail("unselected $column returned a value");
+    }
+
+    protected function assertTuplePredicatePadsByRepeatingLastRow(Model $model): void
+    {
+        $request = new \Polyspec\Orm\Request('all', 'sha256:tuple-padding');
+        $predicate = (new \ReflectionMethod(Model::class, 'predIr'))->invoke($model, [
+            'kind' => 'tuple',
+            'column' => '',
+            'op' => 'tuple_in',
+            'cols' => ['tenant_id', 'account_id'],
+            'value' => [[10, 1], [10, 2], [10, 3]],
+        ], $request, new \Polyspec\Orm\Frame($model, null));
+
+        Assert::assertSame(range(0, 7), $predicate['ps']);
+        Assert::assertSame([10, 1, 10, 2, 10, 3, 10, 3], $request->params);
+    }
+
+    protected function assertIpHostStyleValidation(string $rejectedInputMessage): void
+    {
+        $column = ['codec' => ['ip']];
+        Assert::assertSame('10.0.0.1', Model::encodeValue($column, '10.0.0.1'));
+        try {
+            Model::encodeValue($column, '10. 0.0.1');
+            Assert::fail($rejectedInputMessage);
+        } catch (OrmException $error) {
+            Assert::assertSame(Code::CODEC_ENCODE, $error->code_);
+        }
     }
 
     /** @return array{string, PDO} the parsed driver and a direct test connection */
