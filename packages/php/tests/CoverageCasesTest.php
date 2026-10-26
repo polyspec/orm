@@ -8,8 +8,6 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-require_once dirname(__DIR__) . '/testing/conformance/runner_functions.php';
-
 use DateTimeZone;
 use PDO;
 use PDOStatement;
@@ -25,6 +23,12 @@ use Polyspec\Orm\OrmException;
 #[Small]
 final class CoverageCasesTest extends TestCase
 {
+    public static function setUpBeforeClass(): void
+    {
+        parent::setUpBeforeClass();
+        require_once dirname(__DIR__) . '/testing/conformance/runner_functions.php';
+    }
+
     /** @return iterable<string, array{string}> */
     public static function databaseDrivers(): iterable
     {

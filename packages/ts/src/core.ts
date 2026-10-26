@@ -36,7 +36,7 @@ function validateHostInput(field: Field | undefined, value: unknown): void {
     hostEncode(value, ['ip'], '');
   } catch (error) {
     if (typeof error === 'object' && error !== null && 'code' in error && error.code === codes.CODEC_ENCODE) {
-      const message = error instanceof Error ? error.message.replace(/^CODEC_ENCODE: /, '') : String(error);
+      const message = (error instanceof Error ? error.message : Object.prototype.toString.call(error)).replace(/^CODEC_ENCODE: /, '');
       throw new OrmError(codes.CODEC_ENCODE, message, error);
     }
     throw error;
