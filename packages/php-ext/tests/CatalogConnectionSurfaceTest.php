@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
+require_once __DIR__ . '/../../php/tests/CatalogMysqlVisibilityPdo.php';
+
 // DB-free native tests for the Catalog DTOs and the extension's public connection boundary.
 
 use DateTimeZone;
@@ -30,6 +32,16 @@ use mysqli;
 #[Small]
 final class CatalogConnectionSurfaceTest extends TestCase
 {
+    // Requirements: INT-119.
+    public function testNativePublicInsertVerifiesMysqlTriggerVisibility(): void
+    {
+        CatalogMysqlVisibilityCases::assertPublicInsert(
+            static function (CatalogMysqlVisibilityPdo $pdo): Catalog {
+                return self::catalogWith(new Db($pdo, 'mysql', new Config(), new DateTimeZone('UTC')), 'mysql');
+            },
+        );
+    }
+
     public function testNativeGridCellsPreserveDeclaredValues(): void
     {
         $values = [

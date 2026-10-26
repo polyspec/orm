@@ -142,9 +142,7 @@ pub(super) async fn mysql_safety(connection: &mut Conn, metadata: &TableMetadata
         .grid_query_bounded("SELECT @@GLOBAL.partial_revokes", &[], QueryLimits { max_rows: 1, max_bytes: 65536 })
         .await
         .map_err(|e| e.to_string())?;
-    if !matches!(revokes.rows.as_slice(),[row] if matches!(row.as_slice(),[GridCell::Integer(0)]|[GridCell::Unsigned(0)]|[GridCell::Boolean(false)])) {
-        return Err("ROW_MUTATION_UNSUPPORTED: MySQL partial-revoke visibility requires verification".into());
-    }
+    require_partial_revokes_disabled(&revokes)?;
     let account =
         connection.grid_query_bounded("SELECT CURRENT_USER()", &[], QueryLimits { max_rows: 1, max_bytes: 65536 }).await.map_err(|e| e.to_string())?;
     let grantee = match account.rows.as_slice() {
@@ -184,6 +182,13 @@ pub(super) async fn mysql_safety(connection: &mut Conn, metadata: &TableMetadata
         return Err("ROW_MUTATION_UNSUPPORTED: MySQL triggers require effect verification".into());
     }
     Ok(())
+}
+fn require_partial_revokes_disabled(result: &GridQueryResult) -> Result<(), String> {
+    if matches!(result.rows.as_slice(), [row] if matches!(row.as_slice(), [GridCell::Integer(0)] | [GridCell::Unsigned(0)] | [GridCell::Boolean(false)])) {
+        Ok(())
+    } else {
+        Err("ROW_MUTATION_UNSUPPORTED: MySQL partial-revoke visibility requires verification".into())
+    }
 }
 fn require_trigger_privilege(result: &GridQueryResult) -> Result<(), String> {
     if result.rows.iter().any(|row| matches!(row.as_slice(),[GridCell::Text(value)] if value=="TRIGGER")) {

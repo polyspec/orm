@@ -13714,7 +13714,8 @@
       ],
       "tests": [
         "packages/python/tests/test_catalog_mutation_helper.py",
-        "packages/python/tests/test_catalog_row_baseline.py"
+        "packages/python/tests/test_catalog_row_baseline.py",
+        "packages/python/tests/test_catalog_mysql_visibility.py"
       ],
       "command": "make --no-print-directory catalog-mutation-helper-python-check"
     },

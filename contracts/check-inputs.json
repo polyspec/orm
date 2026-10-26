@@ -2161,7 +2161,8 @@
         "Makefile",
         "packages/python/src/polyspec/orm/catalog.py",
         "packages/python/tests/test_catalog_mutation_helper.py",
-        "packages/python/tests/test_catalog_row_baseline.py"
+        "packages/python/tests/test_catalog_row_baseline.py",
+        "packages/python/tests/test_catalog_mysql_visibility.py"
       ]
     },
     "dbspec-introspect-compare-check": {
@@ -3474,12 +3475,15 @@
         "packages/php/src/**",
         "packages/php-ext/**",
         "packages/php/tests/bootstrap.php",
+        "packages/php/tests/CatalogPageValidationTest.php",
+        "packages/php/tests/CatalogMysqlVisibilityPdo.php",
         "packages/php/tests/UninitializedRecordingPdo.php",
         "packages/php/tests/CatalogConnectionCoverageCases.php",
         "packages/php/tests/StatementEventsCoverageCases.php",
         "packages/php/tests/CoverageSchemaDefinitionTest.php",
         "packages/php/tests/coverage_cases.php",
-        "packages/php/tests/statement_events_run.php"
+        "packages/php/tests/statement_events_run.php",
+        "packages/php-ext/tests/CatalogConnectionSurfaceTest.php"
       ]
     },
     "native-arginfo-php-extension-check": {

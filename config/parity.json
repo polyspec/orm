@@ -15055,16 +15055,41 @@
       ]
     },
     {
-      "id": "rust-catalog-mutation-safety-tests-absent-trigger-privilege-is-not-proof-of-absent-triggers",
+      "id": "catalog-mysql-row-mutation-requires-visible-direct-trigger-grant-and-no-partial-revokes",
       "kind": "feature",
       "requirements": [
         "INT-119"
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/orm/catalog_session_error_test.go",
+          "id": "TestCatalogInsertVerifiesMySQLTriggerVisibility"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CatalogPageValidationTest.php",
+          "id": "CatalogPageValidationTest::testPublicInsertVerifiesMysqlTriggerVisibility"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
+          "id": "CatalogConnectionSurfaceTest::testNativePublicInsertVerifiesMysqlTriggerVisibility"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog-mutation-helper.test.mjs",
+          "id": "catalog/mysql-trigger-privilege-visibility"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_mysql_visibility.py",
+          "id": "CatalogMysqlVisibilityTest.test_public_insert_verifies_mysql_trigger_visibility"
+        },
+        {
           "implementation": "rust",
           "test": "packages/rust/build/tests/unit/mutation_safety.rs",
-          "id": "catalog::mutation::safety_tests::absent_trigger_privilege_is_not_proof_of_absent_triggers"
+          "id": "catalog::mutation::safety_tests::mysql_row_mutation_requires_direct_trigger_visibility_and_disabled_partial_revokes"
         }
       ]
     },

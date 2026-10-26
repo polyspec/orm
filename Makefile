@@ -464,6 +464,7 @@ dbspec-introspect-python-helper-check: python-venv-check
 catalog-mutation-helper-python-check: python-venv-check
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_catalog_mutation_helper
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_catalog_row_baseline
+	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_catalog_mysql_visibility
 
 catalog-mutation-helper-ts-check: typescript-build
 	$(RUN_TESTS) node -- --test packages/ts/tests/catalog-mutation-helper.test.mjs
@@ -2826,7 +2827,7 @@ rust-closed-executor-check: lease-tool
 # Focused split-merge NULL boundary cases in each native client.
 
 go-catalog-session-error-check:
-	$(GO_TEST) ./packages/go/orm -run '^TestCatalogSessionEnd' -count=1
+	$(GO_TEST) ./packages/go/orm -run '^(TestCatalogSessionEnd|TestCatalogInsertVerifiesMySQLTriggerVisibility)$$' -count=1
 
 catalog-row-baseline-go-check:
 	$(GO_TEST) ./packages/go/orm -run '^TestCatalogRowBaselineComparesExactTypedValues$$' -count=1
@@ -2853,6 +2854,7 @@ schema-exists-sqlite-rust-check: cargo-downloads-check lease-tool
 
 catalog-php-extension-surface-check: php-vendor-check php-models
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CatalogPageValidationTest.php
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CatalogConnectionSurfaceTest.php
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CatalogConnectionCoverageSurfaceTest.php
 # Builds the extension in an isolated run directory and executes only its native Collection unit cases.

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { caseTest, DATABASE } from '../../../tests/testcase.mts';
+import { caseTest, COMPUTE, DATABASE } from '../../../tests/testcase.mts';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -28,7 +28,7 @@ function catalogFixturePool(session) {
   };
 }
 
-function mysqlCatalogFixture({ expressionDefault = false, autoKey = false, priorRows = [], postRows } = {}) {
+function mysqlCatalogFixture({ expressionDefault = false, autoKey = false, priorRows = [], postRows, partialRevokes = 0, directTriggerGrant = true } = {}) {
   const queries = [];
   const columns = autoKey
     ? [
@@ -65,9 +65,9 @@ function mysqlCatalogFixture({ expressionDefault = false, autoKey = false, prior
       rows: columns.map(column => [column.name, column.nativeType, column.nullable, column.generated,
         keyOrdinals.get(column.name) ?? 0, column.automaticKey, column.defaultExpression, column.expressionDefault]),
     };
-    if (sql === 'SELECT CAST(@@GLOBAL.partial_revokes AS SIGNED)') return { names: ['partial_revokes'], rows: [[0]] };
+    if (sql === 'SELECT CAST(@@GLOBAL.partial_revokes AS SIGNED)') return { names: ['partial_revokes'], rows: [[partialRevokes]] };
     if (sql === 'SELECT CURRENT_USER()') return { names: ['CURRENT_USER()'], rows: [['orm@localhost']] };
-    if (sql.includes('information_schema.USER_PRIVILEGES')) return { names: ['PRIVILEGE_TYPE'], rows: [['TRIGGER']] };
+    if (sql.includes('information_schema.USER_PRIVILEGES')) return { names: ['PRIVILEGE_TYPE'], rows: directTriggerGrant ? [['TRIGGER']] : [] };
     if (sql.startsWith('SELECT ENGINE')) return { names: ['ENGINE'], rows: [['InnoDB']] };
     if (sql.startsWith('SELECT TRIGGER_NAME')) return { names: ['TRIGGER_NAME'], rows: [] };
     if (sql.startsWith('SELECT ' + columns.map(column => `\`${column.name}\``).join(','))) {
@@ -98,6 +98,38 @@ function mysqlCatalogFixture({ expressionDefault = false, autoKey = false, prior
   };
   return { catalog: new CatalogConnection('mysql', catalogFixturePool(session)), columns, metadata, queries, stored };
 }
+
+// Requirements: INT-119.
+caseTest('catalog/mysql-trigger-privilege-visibility', COMPUTE, async () => {
+  const direct = mysqlCatalogFixture();
+  const result = await direct.catalog.insertRow(direct.metadata, [
+    { name: 'tenant', value: 2 },
+    { name: 'n', value: 50 },
+  ]);
+  assert.deepEqual(result.rows, [direct.stored], 'a direct TRIGGER grant permits the public catalog insert');
+  assert.equal(direct.queries.filter(([, sql]) => sql.startsWith('INSERT INTO')).length, 1);
+
+  for (const [scenario, options] of [
+    ['role-only TRIGGER grant', { directTriggerGrant: false }],
+    ['enabled partial revokes', { partialRevokes: 1 }],
+  ]) {
+    const fixture = mysqlCatalogFixture(options);
+    await assert.rejects(
+      fixture.catalog.insertRow(fixture.metadata, [
+        { name: 'tenant', value: 2 },
+        { name: 'n', value: 50 },
+      ]),
+      error => error instanceof OrmError && error.code === 'ROW_MUTATION_UNSUPPORTED',
+      `${scenario} must reject the public catalog insert`,
+    );
+    assert.equal(fixture.queries.some(([, sql]) => sql.startsWith('INSERT INTO')), false, `${scenario} must reject before writing`);
+    if (scenario === 'enabled partial revokes') {
+      assert.equal(fixture.queries.some(([, sql]) => sql === 'SELECT CURRENT_USER()'), false, 'partial revokes reject before privilege lookup');
+    } else {
+      assert.ok(fixture.queries.some(([, sql]) => sql.includes('information_schema.USER_PRIVILEGES')), 'role-only grants are absent from direct privilege views');
+    }
+  }
+});
 
 function postgresCatalogFixture() {
   const queries = [];

@@ -4,17 +4,29 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
+require_once __DIR__ . '/CatalogMysqlVisibilityPdo.php';
+
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Catalog;
 use Polyspec\Orm\CatalogColumn;
 use Polyspec\Orm\CatalogTableMetadata;
 use Polyspec\Orm\Code;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Db;
 use Polyspec\Orm\OrmException;
 
 #[Small]
 final class CatalogPageValidationTest extends TestCase
 {
+    // Requirements: INT-119.
+    public function testPublicInsertVerifiesMysqlTriggerVisibility(): void
+    {
+        CatalogMysqlVisibilityCases::assertPublicInsert(
+            static fn (CatalogMysqlVisibilityPdo $pdo): Catalog => self::catalogWithVisibilityPdo($pdo),
+        );
+    }
+
     // Requirements: INT-121.
     public function testRejectsPreparedColumnAndDescriptorChanges(): void
     {
@@ -43,5 +55,14 @@ final class CatalogPageValidationTest extends TestCase
         } catch (OrmException $error) {
             self::assertSame(Code::TABLE_PAGE_METADATA_CHANGED, $error->code_);
         }
+    }
+
+    private static function catalogWithVisibilityPdo(CatalogMysqlVisibilityPdo $pdo): Catalog
+    {
+        $db = new Db($pdo, 'mysql', new Config(), new \DateTimeZone('UTC'));
+        $catalog = (new \ReflectionClass(Catalog::class))->newInstanceWithoutConstructor();
+        (new \ReflectionProperty(Catalog::class, 'db'))->setValue($catalog, $db);
+        (new \ReflectionProperty(Catalog::class, 'dialect'))->setValue($catalog, 'mysql');
+        return $catalog;
     }
 }
