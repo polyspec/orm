@@ -16362,20 +16362,6 @@
       ]
     },
     {
-      "id": "py-test-model-json-text",
-      "kind": "feature",
-      "requirements": [
-        "COD-26"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_model_json_text.py",
-          "id": "test_a_row_writes_the_stored_ordered_json_text_in_row_order"
-        }
-      ]
-    },
-    {
       "id": "py-test-orm-gen",
       "kind": "feature",
       "requirements": [
@@ -16499,20 +16485,6 @@
         "artifact": "archive",
         "package": "polyspec-orm"
       }
-    },
-    {
-      "id": "py-test-styled-sql-null",
-      "kind": "feature",
-      "requirements": [
-        "COD-20"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_styled_sql_null.py",
-          "id": "test_root_row_reads_sql_null_as_styled_value"
-        }
-      ]
     },
     {
       "id": "value-function-ir-parameter-indexes",
@@ -17231,20 +17203,6 @@
         "feature": "model_queries",
         "part": "owner/php"
       }
-    },
-    {
-      "id": "php-internal-model-styled-value-states",
-      "kind": "feature",
-      "requirements": [
-        "COD-20"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testStyledValueStates"
-        }
-      ]
     },
     {
       "id": "model-codec-columns",
@@ -28181,6 +28139,65 @@
           "implementation": "python",
           "test": "packages/python/tests/test_values.py",
           "id": "RuntimeValueTypesDatabaseTest::test_runtime_value_types_and_styled_sql_null_read"
+        }
+      ]
+    },
+    {
+      "id": "styled-sql-null-database-read",
+      "kind": "feature",
+      "requirements": [
+        "COD-20"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/value_types_test.go",
+          "id": "TestRuntimeValueTypes"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/value_types.rs",
+          "id": "runtime_value_types"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RuntimeDbTest.php",
+          "id": "RuntimeDbTest::testI16ValuesAndDefaults"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testStyledValueStates"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConnectionUtcNativeTest.php",
+          "id": "ConnectionUtcNativeTest::testNativeStyledSqlNullIsPreservedOnDatabaseRead"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
+          "id": "sqlite: selected styled SQL NULL survives a database read"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
+          "id": "mysql: selected styled SQL NULL survives a database read"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
+          "id": "postgres: selected styled SQL NULL survives a database read"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_values.py",
+          "id": "RuntimeValueTypesDatabaseTest::test_runtime_value_types_and_styled_sql_null_read"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_styled_sql_null.py",
+          "id": "test_root_row_reads_sql_null_as_styled_value"
         }
       ]
     }
