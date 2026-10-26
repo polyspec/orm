@@ -1,4 +1,4 @@
-use polyspec_orm_testcase::{case, PROCESS};
+use polyspec_orm_testcase::{PROCESS, case};
 use std::fs;
 use std::process::Command;
 
@@ -40,4 +40,18 @@ fn dsl50_ordering_list_is_rejected() {
 fn dsl49_nonnull_null_is_rejected() {
     let _case = case!(PROCESS);
     run_fixture("dsl49-nonnull-null-e0277");
+}
+
+// Requirements: DBS-174.
+#[test]
+fn dbs174_render_rejects_unrepresentable_unknown_dialect() {
+    let _case = case!(PROCESS);
+    run_fixture("dbs174-render-unknown-dialect-e0308");
+}
+
+// Requirements: DBS-174.
+#[test]
+fn dbs174_plan_steps_reject_unrepresentable_unknown_dialect() {
+    let _case = case!(PROCESS);
+    run_fixture("dbs174-plan-unknown-dialect-e0308");
 }

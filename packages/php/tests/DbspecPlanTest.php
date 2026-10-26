@@ -318,6 +318,7 @@ final class DbspecPlanTest extends TestCase
         cpuCaseEnd($id, $caseStarted);
     }
 
+    // Requirements: DBS-174.
     public function testUnknownDialect(): void
     {
         $plan = plan_of('plan/unknown-dialect', plan_vectors()['cases'][0]['plan']);

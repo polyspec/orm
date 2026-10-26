@@ -3482,9 +3482,34 @@
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/engine/dbspec/plan_test.go",
+          "id": "TestPlanStepsRejectsUnknownDialect"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecPlanTest.php",
+          "id": "DbspecPlanTest::testUnknownDialect"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecRulesNativeTest.php",
+          "id": "DbspecRulesNativeTest::testNativePlanStepsRejectUnknownDialect"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/dbspec-plan.mjs",
           "id": "plan steps reject an unknown dialect"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_render_dialect.py",
+          "id": "test_plan_steps_reject_unknown_dialect_before_writing_statements"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "dbs174_plan_steps_reject_unrepresentable_unknown_dialect"
         }
       ]
     },
@@ -3496,9 +3521,34 @@
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/engine/dbspec/render_test.go",
+          "id": "TestRenderRejectsUnknownDialect"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecRenderTest.php",
+          "id": "DbspecRenderTest::testUnknownDialect"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecRulesNativeTest.php",
+          "id": "DbspecRulesNativeTest::testNativeRenderRejectsUnknownDialect"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/dbspec-render-dialect.mjs",
           "id": "render rejects an unknown dialect"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_render_dialect.py",
+          "id": "test_unknown_dialect_is_a_type_error"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "dbs174_render_rejects_unrepresentable_unknown_dialect"
         }
       ]
     },

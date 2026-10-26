@@ -188,6 +188,30 @@ func TestPlanInvalidVectors(t *testing.T) {
 	}
 }
 
+// Requirements: DBS-174.
+func TestPlanStepsRejectsUnknownDialect(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	runTimed(t, "plan steps reject an unknown dialect", 5*time.Second, func() (err error) {
+		c := loadPlanVectors(t).Cases[0]
+		return withPlanCase(c.Source, c.Plan, func(source *Document, plan *Plan, diagnostics []Diagnostic) (err error) {
+			if len(diagnostics) != 0 {
+				return fmt.Errorf("parse plan: %v", diagnostics)
+			}
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					if !strings.Contains(fmt.Sprint(recovered), "oracle") {
+						err = fmt.Errorf("panic %v does not name oracle", recovered)
+					}
+				} else if err == nil {
+					err = fmt.Errorf("PlanSteps accepted unknown dialect oracle")
+				}
+			}()
+			_, _ = PlanSteps(source, plan, Dialect("oracle"))
+			return nil
+		})
+	})
+}
+
 func checkPlanCase(t *testing.T, c planCase) {
 	runTimed(t, c.ID, 5*time.Second, func() error {
 		return withPlanCase(c.Source, c.Plan, func(source *Document, p *Plan, diagnostics []Diagnostic) error {

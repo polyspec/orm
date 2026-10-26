@@ -66,5 +66,21 @@
     "diagnostic": "no method named `rollback` found for struct `Db`",
     "sourceLine": "db.rollback()",
     "source": "polyspec_orm::models!();\n// Requirements: PLN-19.\nfn db() -> polyspec_orm::Db { panic!(\"compile-only\") }\nfn main() { let db = db(); let _ = db.rollback(); }\n"
+  },
+  {
+    "id": "dbs174-render-unknown-dialect-e0308",
+    "expect": "error",
+    "code": "E0308",
+    "diagnostic": "mismatched types",
+    "sourceLine": "render(&[], \"oracle\")",
+    "source": "use polyspec_orm::dbspec::render;\n// Requirements: DBS-174. Dialect is a closed enum, so an unsupported name cannot enter this public API.\nfn main() { let _ = render(&[], \"oracle\"); }\n"
+  },
+  {
+    "id": "dbs174-plan-unknown-dialect-e0308",
+    "expect": "error",
+    "code": "E0308",
+    "diagnostic": "mismatched types",
+    "sourceLine": "plan_steps(None, plan, \"oracle\")",
+    "source": "use polyspec_orm::dbspec::{plan_steps, Plan};\n// Requirements: DBS-174. Dialect is a closed enum, so an unsupported name cannot enter this public API.\nfn reject(plan: &Plan) { let _ = plan_steps(None, plan, \"oracle\"); }\nfn main() {}\n"
   }
 ]

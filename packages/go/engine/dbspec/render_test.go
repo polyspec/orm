@@ -2,6 +2,7 @@ package dbspec
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -87,4 +88,26 @@ func TestRenderVectors(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Requirements: DBS-174.
+func TestRenderRejectsUnknownDialect(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	runTimed(t, "render rejects an unknown dialect", 5*time.Second, func() (err error) {
+		documents, err := parseDDLSet(loadDDL(t).Cases[0])
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				if !strings.Contains(fmt.Sprint(recovered), "oracle") {
+					err = fmt.Errorf("panic %v does not name oracle", recovered)
+				}
+			} else if err == nil {
+				err = fmt.Errorf("Render accepted unknown dialect oracle")
+			}
+		}()
+		_, _ = Render(documents, Dialect("oracle"))
+		return nil
+	})
 }
