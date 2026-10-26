@@ -1,5 +1,5 @@
 <!-- doc-id: plans-editor-stack -->
-<!-- source-sha256: 20db027fdbda4eae4bac447c88e05c976b1ddebf9e9f6091857fdd2e345efc77 -->
+<!-- source-sha256: 49d12ea6758192ea1851e7cf9def440099236c03e7a0452ee20c03983b61a7dd -->
 # 계획: 표준으로서의 dbspec editor stack
 
 [English](editor-stack.md)
@@ -253,7 +253,7 @@ Cause, Acceptance, 그리고 `docs/spec/editor.md`에 있다.
   - **ORES-71** 모든 runtime의 parse 결과는 같은 모양이며, kind마다 parity와 vector를 가진다.
   - cases.json의 vector, interfaces, symbol, parity 연결, `docs/spec/dbspec.md`(+ko)의 서술이 필요하다.
   - **ORES-72** 분석 token은 highlight에만 쓰인다. 도구는 token이나 text를 훑지 않고 이 위치로 선언을 찾는다.
-  - **ORES-83** Python의 parse position은 바꿀 수 없는 기록이다. `kind`, `path`(목록이 아닌 이름의 tuple), `line`, `column`은 만들 때 정해지며, 그중 하나에 대입하면 오류가 난다.
+  - **ORES-83** `polyspec-orm` wheel의 Python parse position은 바꿀 수 없는 기록이다. `kind`, `path`(목록이 아닌 이름의 tuple), `line`, `column`은 만들 때 정해지며, 그중 하나에 대입하면 오류가 난다.
 - **T128-3 모든 runtime의 `analyze`와 `format`.**
   - TS `parse.ts`: 문맥으로 `Tk`를 분류하고 comment token을 기록한다.
   - Go `engine/dbspec`, PHP `Dbspec/Parser.php`, PHP extension `parse.c`, Python `dbspec/parse.py`,

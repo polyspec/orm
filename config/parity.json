@@ -16133,7 +16133,12 @@
           "test": "packages/python/tests/dbspec_cases.py",
           "id": "test_position_is_frozen_with_tuple_path"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec-orm"
+      }
     },
     {
       "id": "py-schema-inspection",
