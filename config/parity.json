@@ -1059,6 +1059,18 @@
         {
           "glob": "packages/rust/orm/src/db/executor_route_tests.rs",
           "reason": "test: exercises the crate-private Executor routing between pool and transaction connections and closed-database error propagation; it is not a shared client behavior unit (K313)"
+        },
+        {
+          "glob": "packages/rust/build/tests/unit/assignment_budget.rs",
+          "reason": "test: tests the private checked-add assignment budget helper at exact limits and overflow; its owner is rust-duplicate-catalog-check, while shared model assignment behavior remains covered by catalog-plain-query-budgets and model_writes cases"
+        },
+        {
+          "glob": "packages/rust/build/tests/unit/insert_values.rs",
+          "reason": "test: tests the private insert-values assignment budget validator and ROW_INSERT_LIMIT diagnostic; its owner is rust-duplicate-catalog-check, while shared insert behavior remains covered by model_writes cases"
+        },
+        {
+          "glob": "packages/rust/build/tests/unit/row_update_budget.rs",
+          "reason": "test: tests the private row-snapshot update budget validator and ROW_UPDATE_LIMIT diagnostic; its owner is rust-duplicate-catalog-check, while shared update behavior remains covered by model_writes cases"
         }
       ]
     }
@@ -24956,6 +24968,50 @@
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/ModelNativeTest.php",
           "id": "ModelNativeTest::testSharedPhpGeneratorRejectsTheMethodCollisionUsedWithNativeModels"
+        }
+      ]
+    },
+    {
+      "id": "generated-field-types-follow-runtime-model-dbs-112",
+      "kind": "feature",
+      "requirements": [
+        "DBS-112"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_test.go",
+          "id": "TestGeneratedFieldTypes"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenTest.php",
+          "id": "OrmGenTest::testGeneratedFieldTypesFollowTheRuntimeModel"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelNativeTest.php",
+          "id": "ModelNativeTest::testPhpGeneratedFieldTypesFollowTheRuntimeModel"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/generate.mjs",
+          "id": "generated field types follow the runtime model"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_generated_field_types_follow_runtime_model"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "generated_field_types_follow_the_runtime_model"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/src/generate.rs",
+          "id": "field_type_tests::generated_field_types_follow_the_runtime_model"
         }
       ]
     },
