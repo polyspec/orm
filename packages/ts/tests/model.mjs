@@ -78,6 +78,7 @@ async function install(dsn) {
  * schema other than public, and with the installed tables.
  * Requirements: INT-58.
  */
+// Requirements: INT-58.
 async function schemaEmpty(dialect, dsn) {
   const db = await connect(dsn);
   try {
