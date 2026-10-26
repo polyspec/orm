@@ -2721,8 +2721,8 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_model_writes.mjs",
-          "id": "model_write_cycle [sqlite]"
+          "test": "packages/ts/tests/styled-value.mjs",
+          "id": "styled-value/ip-host-input"
         },
         {
           "implementation": "python",
@@ -2732,7 +2732,7 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/src/model.rs",
-          "id": "host_assignment_tests::invalid_ip_assignment_is_codec_encode"
+          "id": "model::host_assignment_tests::invalid_ip_assignment_is_codec_encode"
         }
       ]
     },

@@ -49,6 +49,7 @@ await suite.run('styled-value/model-states', COMPUTE, () => {
   }
 });
 
+// Requirements: COD-38.
 await suite.run('styled-value/ip-host-input', COMPUTE, () => {
   const ipText = 'dbspec 1 ip_probe\n\ntable ip_probe {\n  seq i64\n  address bytes null\n  primary key (seq)\n  settings {\n    codec address ip\n  }\n}\n';
   const { manifest: ipManifest } = orm.dbspecManifest([orm.parseDbspec(ipText, {}).document]);
