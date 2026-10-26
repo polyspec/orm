@@ -121,7 +121,8 @@ async fn coverage_model_save_key_dispatch() {
 
         writes.lock().unwrap().clear();
         let mut loaded = Author::new().connect(&hooked).add_all_columns().get_by_seq(1).await.unwrap().expect("seed author 1");
-        loaded = loaded.set_read_count(loaded.get_read_count().unwrap());
+        let read_count = loaded.get_read_count().unwrap();
+        loaded = loaded.set_read_count(read_count);
         assert!(matches!(loaded.save().await, Err(polyspec_orm::Error::Config(message)) if message == "DSL-109 request hook stopped the write"));
         assert_eq!(writes.lock().unwrap().as_slice(), &["update".to_owned()], "loaded original key Save selects UPDATE");
 
