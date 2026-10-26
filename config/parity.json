@@ -10474,20 +10474,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-model-time-text",
-      "kind": "feature",
-      "requirements": [
-        "DIA-24"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/time_text_test.go",
-          "id": "TestTimeSetterRecordsBadText"
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-orm-add-tables-and-columns",
       "kind": "feature",
       "requirements": [
@@ -11592,20 +11578,6 @@
         "artifact": "go-module",
         "package": "github.com/polyspec/orm/packages/go"
       }
-    },
-    {
-      "id": "go-internal-packages-go-orm-time-precision",
-      "kind": "feature",
-      "requirements": [
-        "DIA-24"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/time_precision_test.go",
-          "id": "TestSQLiteTimePrecision"
-        }
-      ]
     },
     {
       "id": "dbspec-apply-cross-client",

@@ -1,5 +1,5 @@
 <!-- doc-id: tests-bind-readme -->
-<!-- source-sha256: 98141e6156d2881a2bd0a8c0e45f0051f88ebdadd82c4cf3a2f61c33dc76bfec -->
+<!-- source-sha256: a1cf3c509bd9af2be6c7c01a4c5e778a67ae7f7d36c84c2cac449e4fcc3521f9 -->
 # Bind vector
 
 `vectors.json`은 클라이언트 bind 경로의 공유 case다. 각 구현이 자기 package의 test에서 실행하며, 모든 case는
@@ -23,6 +23,6 @@ transaction은 member가 없는 `{"op": "begin"}`이다. 표의 message runner�
 |---|---|
 | Go | `go test ./packages/go/orm -run '^(TestBindVectors\|TestBindMessageVectors)$'` |
 | TypeScript | `node packages/ts/tests/markdown.mjs` (case `bind/*`와 `markdown/bind-message/*`) |
-| PHP | `vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'test_bind_(message_)?vectors' packages/php/tests/MarkdownTest.php` |
+| PHP | `vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'testBind(Message)?Vectors' packages/php/tests/MarkdownTest.php` |
 | Python | `python -m unittest packages.python.tests.test_markdown.BindVectors packages.python.tests.test_markdown.BindMessageVectors` |
 | Rust | `cargo test -p polyspec-orm --lib bind_` (`packages/rust`에서) |

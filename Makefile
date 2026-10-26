@@ -2481,7 +2481,7 @@ bind-check/typescript: lease-tool
 bind-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase packages.python.tests.test_markdown.BindMessageVectors packages.python.tests.test_markdown.BindVectors
 bind-check/php: php-vendor-check
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter 'test_bind_(message_)?vectors' packages/php/tests/MarkdownTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter 'testBind(Message)?Vectors' packages/php/tests/MarkdownTest.php
 
 # ir-answers-check runs the read answers of contracts/fixtures/ir_answers.json in the five clients (docs/spec/protocol.md
 # section 5, Read): each runner runs the chain of the markdown conformance case that a case names on a listener that

@@ -25,6 +25,6 @@ read-only transaction and `{"op": "begin"}` without the member otherwise. The me
 |---|---|
 | Go | `go test ./packages/go/orm -run '^(TestBindVectors\|TestBindMessageVectors)$'` |
 | TypeScript | `node packages/ts/tests/markdown.mjs` (cases `bind/*` and `markdown/bind-message/*`) |
-| PHP | `vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'test_bind_(message_)?vectors' packages/php/tests/MarkdownTest.php` |
+| PHP | `vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'testBind(Message)?Vectors' packages/php/tests/MarkdownTest.php` |
 | Python | `python -m unittest packages.python.tests.test_markdown.BindVectors packages.python.tests.test_markdown.BindMessageVectors` |
 | Rust | `cargo test -p polyspec-orm --lib bind_` (in `packages/rust`) |

@@ -827,7 +827,24 @@ final class ModelNativeTest extends TestCase
         \Polyspec\Orm\ParamCheck::check(3, false, ['type' => 'bool'], $zone);
         \Polyspec\Orm\ParamCheck::check(3, '12.30', ['type' => 'decimal', 'precision' => 4, 'scale' => 2], $zone);
         \Polyspec\Orm\ParamCheck::check(3, "éé", ['type' => 'varchar', 'length' => 2], $zone);
-        \Polyspec\Orm\ParamCheck::check(3, "12:34:56.120", ['type' => 'time', 'precision' => 2], $zone);
+        \Polyspec\Orm\ParamCheck::check(3, '12:34:56.5', ['type' => 'time', 'precision' => 1], $zone);
+        \Polyspec\Orm\ParamCheck::check(3, '12:34:56.500000', ['type' => 'time', 'precision' => 1], $zone);
+        \Polyspec\Orm\ParamCheck::check(3, '12:34:56.12', ['type' => 'time', 'precision' => 2], $zone);
+        \Polyspec\Orm\ParamCheck::check(3, '12:34:56.120000', ['type' => 'time', 'precision' => 2], $zone);
+        \Polyspec\Orm\ParamCheck::check(3, '2024-01-02 03:04:05.5', ['type' => 'datetime', 'precision' => 1], $zone);
+        \Polyspec\Orm\ParamCheck::check(
+            3,
+            '2024-01-02 03:04:05.500000',
+            ['type' => 'datetime', 'precision' => 1],
+            $zone
+        );
+        \Polyspec\Orm\ParamCheck::check(3, '2024-01-02 03:04:05.12', ['type' => 'datetime', 'precision' => 2], $zone);
+        \Polyspec\Orm\ParamCheck::check(
+            3,
+            '2024-01-02 03:04:05.120000',
+            ['type' => 'datetime', 'precision' => 2],
+            $zone
+        );
         \Polyspec\Orm\ParamCheck::check(3, new \Polyspec\Orm\Bytes("\0\xFF"), ['type' => 'bytes'], $zone);
 
         try {
@@ -851,6 +868,23 @@ final class ModelNativeTest extends TestCase
             );
         }
         try {
+            \Polyspec\Orm\ParamCheck::check(6, '12:34:56.51', ['type' => 'time', 'precision' => 1], $zone);
+            self::fail('Expected ParamCheck to reject non-zero time precision loss at p=1');
+        } catch (\Polyspec\Orm\OrmException $error) {
+            self::assertSame('CODEC_ENCODE', $error->code_);
+        }
+        try {
+            \Polyspec\Orm\ParamCheck::check(
+                6,
+                '2024-01-02 03:04:05.51',
+                ['type' => 'datetime', 'precision' => 1],
+                $zone
+            );
+            self::fail('Expected ParamCheck to reject non-zero datetime precision loss at p=1');
+        } catch (\Polyspec\Orm\OrmException $error) {
+            self::assertSame('CODEC_ENCODE', $error->code_);
+        }
+        try {
             \Polyspec\Orm\ParamCheck::check(6, '12:34:56.123', ['type' => 'time', 'precision' => 2], $zone);
             self::fail('Expected ParamCheck to reject non-zero time precision loss');
         } catch (\Polyspec\Orm\OrmException $error) {
@@ -865,6 +899,17 @@ final class ModelNativeTest extends TestCase
                     . 'past its 2 fraction digits',
                 $error->getPrevious()->getMessage()
             );
+        }
+        try {
+            \Polyspec\Orm\ParamCheck::check(
+                6,
+                '2024-01-02 03:04:05.123',
+                ['type' => 'datetime', 'precision' => 2],
+                $zone
+            );
+            self::fail('Expected ParamCheck to reject non-zero datetime precision loss at p=2');
+        } catch (\Polyspec\Orm\OrmException $error) {
+            self::assertSame('CODEC_ENCODE', $error->code_);
         }
     }
 
