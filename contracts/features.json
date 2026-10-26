@@ -1006,7 +1006,6 @@
         "model-ordered-json-output-text",
         "native-row-cell-bytes",
         "page-cache-root-limit-values",
-        "rust-val-text-null-and-empty",
         "plan-cache-in-list-shapes-share-ten-bucketed-keys",
         "group-rows-database-query-preserves-values",
         "dsl-50-operator-value-shapes",

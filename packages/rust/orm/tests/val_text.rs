@@ -1,6 +1,6 @@
 //! How Rust reads a text column, on a SQLite file: SQL NULL arrives as `Val::Null` and empty text as `Val::Str("")`, two
-//! values that stay apart, and the ordered_json stage of a json or jsons column refuses empty text. The test of COD-31
-//! (docs/spec/codec.md).
+//! values that stay apart, and the ordered_json stage of a json or jsons column refuses empty text. The test of COD-31,
+//! INT-4 and INT-8 (docs/spec/codec.md and docs/spec/interfaces.md).
 
 use std::sync::LazyLock;
 
