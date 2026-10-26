@@ -1,5 +1,5 @@
 <!-- doc-id: perf -->
-<!-- source-sha256: db44b56c5943165f661eefbaff0fc6465e7a5aa5ecf39cf54c1695efd93de28a -->
+<!-- source-sha256: 3bd1875e2a26e46365c64ca72887d184b0dcbfd32066a4d7b6e631b1d8f66b33 -->
 # 성능
 
 모든 클라이언트는 호출한 프로세스 안에서 문장을 계획하고 네이티브 드라이버로 실행한다. 현재 클라이언트 오버헤드 기준은 아래 Go·PHP 실행 경로를 `make perf-check`로 측정하며 필수 데이터베이스 환경이 없으면 명령이 실패한다.
@@ -82,4 +82,6 @@ bench database는 `scripts/bench-db.mts`가 만든다. `BENCH_MYSQL_DSN`, `BENCH
 
 `contracts/performance-references.json`은 `performance_gate`의 여섯 클라이언트, 세 database, 두 workload 조합마다 하나의 고정 비율을 선언한다. 기존 coverage runner가 native 측정값을 이 선언과 비교한다. 기준값을 넘으면 측정값, 기준값과 machine을 담은 경고를 출력하며 correctness 실패로 처리하지 않는다. 원시 관측값은 자동으로 기준값이 되지 않는다.
 
-최초 최종 idle 실행에서는 각 runtime/database/workload 조합의 첫 번째 실행에서 관측한 비율을 기록한다. 두 번째 실행은 그 기준값과 비교해 진단 정보로 보고하며, 여유값을 더하거나 두 번째 실행값으로 기준값을 높이지 않는다. 두 실행의 원시 측정값과 원시 기록의 경로, SHA-256, 측정 시각, machine identity를 보존한다. 3절의 Go 및 PHP `make perf-check` MySQL 한도는 별도로 유지하며 변경하지 않는다.
+격리된 CI runner의 최초 실행에서 각 runtime/database/workload 조합의 첫 번째 실행에서 관측한 비율을 기록한다. 두 번째 실행은 그 기준값과 비교해 진단 정보로 보고하며, 여유값을 더하거나 두 번째 실행값으로 기준값을 높이지 않는다. 두 실행의 원시 측정값과 원시 기록의 경로, SHA-256, 측정 시각, machine identity를 보존한다. 3절의 Go 및 PHP `make perf-check` MySQL 한도는 별도로 유지하며 변경하지 않는다.
+
+기존 CI feature-coverage job이 일반 사례와 native build를 마친 뒤 exclusive 단계에서 측정한다. 로컬 관측값은 진단용이다. 다른 개발이 동시에 진행되므로 최초 고정 기준값으로 사용하지 않는다. machine 및 원시 관측값 digest와 함께 CI run ID와 source commit을 기록하며, idle 측정을 위해 다른 로컬 개발을 멈추지 않는다.

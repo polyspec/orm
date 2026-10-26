@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
@@ -463,13 +463,37 @@ caseTest('the summary step keeps the record and the server logs in the report of
     writeFileSync(join(servers, 'mysql', 'ibdata1'), 'data');
     writeFileSync(join(servers, 'postgres.log'), 'FATAL:  role "orm" does not exist\n');
     writeFileSync(join(servers, 'mysql.log'), `${'y'.repeat(2 * 1024 * 1024)}[ERROR] Aborting\n`);
+    const record = c.record();
+    const observationName = 'observations-2026-10-27T000001000Z-1.json';
+    const evidence = join(c.root, 'var/evidence/performance_gate');
+    mkdirSync(evidence, { recursive: true });
+    const observation = join(evidence, observationName);
+    const rawObservation = '{"run":"555-1","measurements":[]}\n';
+    writeFileSync(observation, rawObservation);
+    writeFileSync(join(evidence, 'observations-2020-01-01T000000000Z-1.json'), '{"stale":true}\n');
+    const targetLog = join(c.root, '.runtime/check/ci_555_1/report/targets/feature-coverage.log');
+    mkdirSync(join(c.root, '.runtime/check/ci_555_1/report/targets'), { recursive: true });
+    writeFileSync(targetLog, `performance_gate raw observations: ${observation}\n`);
+    record.targets.push({
+      name: 'feature-coverage', status: 'passed', started: '2026-10-27T00:00:00.000Z', ended: '2026-10-27T00:00:02.000Z',
+      elapsed: 2000, log: relative(c.root, targetLog),
+    });
+    writeFileSync(join(c.root, '.runtime/check/ci_555_1/record.json'), `${JSON.stringify(record, null, 2)}\n`);
     const { runSummary } = await import('./summary.mts');
     runSummary(c.root, '555-1', servers);
     const report = join(c.root, '.runtime/check/ci_555_1/report');
-    assert.deepEqual(JSON.parse(readFileSync(join(report, 'record.json'), 'utf8')), c.record());
+    assert.deepEqual(JSON.parse(readFileSync(join(report, 'record.json'), 'utf8')), record);
+    assert.equal(readFileSync(join(report, 'performance_gate', observationName), 'utf8'), rawObservation);
+    assert.equal(existsSync(join(report, 'performance_gate', 'observations-2020-01-01T000000000Z-1.json')), false);
     assert.equal(readFileSync(join(report, 'servers/postgres.log'), 'utf8'), 'FATAL:  role "orm" does not exist\n');
     assert.match(readFileSync(join(report, 'servers/mysql.log'), 'utf8'), /^\[the last 262144 of 2097169 bytes of .*mysql\.log\]\ny+\[ERROR\] Aborting\n$/);
     assert.equal(existsSync(join(report, 'servers/mysql')), false);
+
+    const outside = join(c.root, 'outside-observations.json');
+    writeFileSync(outside, '{"outside":true}\n');
+    writeFileSync(targetLog, `performance_gate raw observations: ${outside}\n`);
+    assert.throws(() => runSummary(c.root, '555-1', servers), /reports a performance observation outside/);
+    assert.equal(existsSync(join(report, 'performance_gate', 'outside-observations.json')), false);
   } finally {
     cleanup();
   }

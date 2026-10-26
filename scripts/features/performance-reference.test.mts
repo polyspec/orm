@@ -33,6 +33,9 @@ function referenceDeclaration() {
       file: 'var/evidence/performance_gate/observations-approved.json',
       sha256: 'a'.repeat(64),
       recordedAt: '2026-10-27T00:00:00Z',
+      ciRunId: '1234567890',
+      ciRunAttempt: 1,
+      sourceCommit: 'b'.repeat(40),
     },
     references: PERFORMANCE_RUNTIMES.flatMap(runtime => PERFORMANCE_DATABASES.flatMap(database =>
       PERFORMANCE_WORKLOADS.map(workload => ({ runtime, database, workload, ratio: 1.25, machine: 'Linux arm64 CPU model' })))),
@@ -52,6 +55,19 @@ caseTest('official child output yields an identified paired measurement for ever
     });
   }
   assert.throws(() => performanceMeasurementsFromOutput('php', 'sqlite', 1, line('php', 'mysql', 'pk')), /identity php\/mysql differs from child php\/sqlite/);
+});
+
+caseTest('Rust libtest diagnostic prefixes retain the exact saved PK observation and case identity', COMPUTE, () => {
+  const saved = 'PERF hot_path_gate rust mysql pk: native p50=217.1µs client p50=316.0µs ratio=1.46 samples=1000 cpu=451.4ms wall=532.3ms machine=macos aarch64 reference=not-recorded';
+  assert.deepEqual(performanceMeasurementsFromOutput('rust', 'mysql', 1,
+    `test coverage_hot_path_gate_mysql ... ${saved}\n`, 'coverage_hot_path_gate_mysql'), [{
+    runtime: 'rust', database: 'mysql', workload: 'pk', attempt: 1, nativeP50Us: 217.1,
+    clientP50Us: 316, ratio: 1.46, samples: 1000, cpuMs: 451.4, wallMs: 532.3, machine: 'macos aarch64',
+  }]);
+  assert.deepEqual(performanceMeasurementsFromOutput('rust', 'mysql', 1,
+    `test coverage_hot_path_gate_postgres ... ${saved}\n`, 'coverage_hot_path_gate_mysql'), []);
+  assert.throws(() => performanceMeasurementsFromOutput('rust', 'postgres', 1,
+    `test coverage_hot_path_gate_mysql ... ${saved}\n`, 'coverage_hot_path_gate_mysql'), /identity rust\/mysql differs from child rust\/postgres/);
 });
 
 caseTest('only the Rust performance owner disables libtest output capture', COMPUTE, () => {
@@ -91,8 +107,11 @@ caseTest('fixed references require provenance and the exact 36 runtime database 
   assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, references: declaration.references.map((entry, index) => index === 0 ? { ...entry, ratio: Number.POSITIVE_INFINITY } : entry) }), /reference ratio is not a positive finite number/);
   assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, references: declaration.references.map((entry, index) => index === 0 ? { ...entry, runtime: 'unknown' } : entry) }), /performance runtime "unknown" is none of/);
   assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, references: declaration.references.map((entry, index) => index === 0 ? { ...entry, extra: 1 } : entry) }), /unknown fields or is not an object/);
-  assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, evidence: { ...declaration.evidence, sha256: 'not-a-hash' } }), /require file, SHA-256, and UTC evidence provenance/);
-  assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, evidence: { ...declaration.evidence, file: '/tmp/observations.json' } }), /require file, SHA-256, and UTC evidence provenance/);
+  assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, evidence: { ...declaration.evidence, sha256: 'not-a-hash' } }), /require CI run, attempt, source commit, file, SHA-256, and UTC evidence provenance/);
+  assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, evidence: { ...declaration.evidence, file: '/tmp/observations.json' } }), /require CI run, attempt, source commit, file, SHA-256, and UTC evidence provenance/);
+  assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, evidence: { ...declaration.evidence, ciRunId: undefined } }), /require CI run, attempt, source commit, file, SHA-256, and UTC evidence provenance/);
+  assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, evidence: { ...declaration.evidence, ciRunAttempt: 0 } }), /require CI run, attempt, source commit, file, SHA-256, and UTC evidence provenance/);
+  assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, evidence: { ...declaration.evidence, sourceCommit: 'not-a-commit' } }), /require CI run, attempt, source commit, file, SHA-256, and UTC evidence provenance/);
   assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, references: declaration.references.map((entry, index) => index === 1 ? { ...entry, machine: 'another machine' } : entry) }), /machine identity differs within go references/);
   assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, unexpected: true }), /unknown fields or status/);
 });

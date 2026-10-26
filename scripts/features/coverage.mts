@@ -97,10 +97,25 @@ function requirements(feature: Feature, coverage: Coverage, errors: string[], pa
       errors.push(`${feature.id}/owner/${language}: tests must reside in owning part`);
       continue;
     }
+    if (coverage.kind === 'database') {
+      const boundTests = new Set(Object.entries(owner.commands ?? {})
+        .filter(([database]) => databases.includes(database))
+        .flatMap(([, commands]) => Array.isArray(commands) ? commands.map(entry => entry?.test) : []));
+      for (const [, commands] of Object.entries(owner.commands ?? {}).filter(([database]) => databases.includes(database))) {
+        if (Array.isArray(commands)) for (const entry of commands) {
+          if (typeof entry?.test === 'string' && !owner.tests.includes(entry.test))
+            errors.push(`${feature.id}/owner/${language}: database command test is undeclared: ${entry.test}`);
+        }
+      }
+      for (const test of owner.tests) {
+        if (!boundTests.has(test)) errors.push(`${feature.id}/owner/${language}: test has no database command: ${test}`);
+      }
+    }
     const ownerCases = selectedCases ? coverage.cases.filter(id => selectedCases.has(id)) : coverage.cases;
     for (const database of required) {
       const command = selectCommandCases(owner.commands?.[database], selectedCases);
-      const tests = selectedCases ? (command ?? []).map(entry => entry.test) : owner.tests;
+      const tests = coverage.kind === 'database' || selectedCases
+        ? [...new Set((command ?? []).map(entry => entry.test))] : owner.tests;
       items.push({ key: `${feature.id}/owner/${language}/${database}`,
         role: 'owner', language, database, part: owner.part, tests, cases: ownerCases, command });
     }
@@ -975,7 +990,8 @@ export async function executeCoverage(
             if (result.error) throw new Error(result.error);
             if (first.feature.id === 'performance_gate') {
               const runtime = performanceRuntimeOf(first.item.language);
-              const measurements = performanceMeasurementsFromOutput(runtime, undefined, performanceAttemptOf(attempt), result.value ?? '');
+              const symbol = first.item.command?.[0]?.symbols?.[first.item.cases[0] ?? ''];
+              const measurements = performanceMeasurementsFromOutput(runtime, undefined, performanceAttemptOf(attempt), result.value ?? '', symbol);
               performanceObservations.push(...measurements);
               for (const measurement of measurements) step(`performance measurement ${JSON.stringify(measurement)}`);
             }
@@ -1052,6 +1068,7 @@ export async function executeCoverage(
                       performanceDatabaseOf(item.database),
                       performanceAttemptOf(attempt),
                       result.value ?? '',
+                      spec.format === 'cargo' ? entry.symbols?.[entry.cases[0] ?? ''] : undefined,
                     );
                     performanceObservations.push(...measurements);
                     for (const measurement of measurements) step(`performance measurement ${JSON.stringify(measurement)}`);

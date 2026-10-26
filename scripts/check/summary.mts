@@ -5,11 +5,46 @@
 // directory and the partial record.
 //
 // Usage: ORM_CHECK_RUN_ID=<id> node scripts/check/summary.mts
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { relative, resolve } from 'node:path';
+import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
+import { basename, isAbsolute, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readRecord, recordPath } from './record.mts';
-import { keepLogs, publish, reportDirectory, runName, summary } from './report.mts';
+import { readRecord, recordPath, type CheckRecord } from './record.mts';
+import { LIMIT_BYTES, keepFile, keepLogs, publish, reportDirectory, runName, summary } from './report.mts';
+
+function keepPerformanceObservations(root: string, report: string, record: CheckRecord): void {
+  const target = record.targets.find(step => step.name === 'feature-coverage');
+  if (!target?.log || !target.started) return;
+  const log = resolve(root, target.log);
+  const expectedLog = resolve(report, 'targets', 'feature-coverage.log');
+  if (log !== expectedLog || !existsSync(log)) return;
+
+  const lines = readFileSync(log, 'utf8').match(/^performance_gate raw observations: (.+)$/gm) ?? [];
+  if (lines.length === 0) return;
+  if (lines.length !== 1) throw new Error(`${relative(root, log)} has ${lines.length} performance observation paths, expected one`);
+  const reported = lines[0]?.slice('performance_gate raw observations: '.length) ?? '';
+  const evidenceDirectory = resolve(root, 'var/evidence/performance_gate');
+  const source = resolve(reported);
+  const sourceRelative = relative(evidenceDirectory, source);
+  if (!isAbsolute(reported) || reported !== source || !sourceRelative || sourceRelative.startsWith(`..${sep}`) || sourceRelative.includes(sep) ||
+      !/^observations-\d{4}-\d{2}-\d{2}T\d{9}Z-\d+\.json$/.test(basename(source)))
+    throw new Error(`${relative(root, log)} reports a performance observation outside ${relative(root, evidenceDirectory)}`);
+
+  if (!existsSync(evidenceDirectory) || realpathSync(evidenceDirectory) !== evidenceDirectory || !existsSync(source) ||
+      !lstatSync(source).isFile() || lstatSync(source).isSymbolicLink() || realpathSync(source) !== source)
+    throw new Error(`${relative(root, log)} reports a missing or linked performance observation ${reported}`);
+
+  const stamp = /^observations-(\d{4}-\d{2}-\d{2}T)(\d{2})(\d{2})(\d{2})(\d{3})Z-/.exec(basename(source));
+  const created = stamp ? Date.parse(`${stamp[1]}${stamp[2]}:${stamp[3]}:${stamp[4]}.${stamp[5]}Z`) : Number.NaN;
+  const started = Date.parse(target.started);
+  const ended = target.ended ? Date.parse(target.ended) : Date.now();
+  if (!Number.isFinite(created) || !Number.isFinite(started) || !Number.isFinite(ended) || created < started || created > ended)
+    throw new Error(`${relative(root, log)} reports an observation not created during this feature-coverage target`);
+
+  const destination = resolve(report, 'performance_gate', basename(source));
+  if (statSync(source).size > LIMIT_BYTES)
+    throw new Error(`${relative(root, source)} is too large to retain byte-for-byte in the report`);
+  keepFile(source, destination);
+}
 
 // runSummary writes the summary of the run id. The report also includes the record (record.json) and the test server logs (servers/): the upload
 // step uploads only that run's report directory, so files left by earlier runs are not included.
@@ -32,6 +67,7 @@ export function runSummary(root: string, id: string, servers = resolve(root, '.r
     : record.result === 'incomplete' ? `the runner process ended without recording the end of run ${name}` : null;
   const text = summary(record, { run: record, report: relative(root, report), crashed });
   publish(text, report, { step: true });
+  keepPerformanceObservations(root, report, record);
   return { text, passed: record.result === 'passed' };
 }
 

@@ -321,8 +321,17 @@ caseTest('Rust coverage maps explicit library path modules to the library test t
   const root = new URL('../..', import.meta.url).pathname;
   const metadata = await run('cargo', ['metadata', '--no-deps', '--format-version=1', '--manifest-path', join(root, 'packages/rust/orm/Cargo.toml')], root, null, process.env, () => {});
   assert.ifError(metadata.error);
-  const project = JSON.parse(metadata.stdout ?? '{}') as { packages: { name: string; manifest_path: string; targets: { name: string; kind: string[]; src_path: string; test: boolean; harness?: boolean }[] }[] };
-  const pkg = project.packages.find(item => item.name === 'polyspec-orm');
+  const project: unknown = JSON.parse(metadata.stdout ?? '{}');
+  assert.ok(typeof project === 'object' && project !== null && 'packages' in project && Array.isArray(project.packages),
+    'Cargo metadata has no packages array');
+  const isTarget = (value: unknown): value is { name: string; kind: string[]; src_path: string; test: boolean; harness?: boolean } =>
+    typeof value === 'object' && value !== null && 'name' in value && typeof value.name === 'string' &&
+    'kind' in value && Array.isArray(value.kind) && value.kind.every((kind: unknown) => typeof kind === 'string') &&
+    'src_path' in value && typeof value.src_path === 'string' && 'test' in value && typeof value.test === 'boolean' &&
+    (!('harness' in value) || typeof value.harness === 'boolean');
+  const pkg = project.packages.find((value: unknown): value is { name: string; targets: { name: string; kind: string[]; src_path: string; test: boolean; harness?: boolean }[] } =>
+    typeof value === 'object' && value !== null && 'name' in value && value.name === 'polyspec-orm' &&
+    'targets' in value && Array.isArray(value.targets) && value.targets.every(isTarget));
   assert.ok(pkg, 'Cargo metadata has no ORM package');
   const libTarget = pkg.targets.find(target => target.kind.includes('lib'));
   assert.ok(libTarget, 'Cargo metadata has no ORM library test target');
@@ -576,8 +585,12 @@ function contract(kind = 'database'): SampleManifest {
   return { features: [{ id: 'sample', status: 'implemented',
     parity: parityOf(languages),
     coverage: { kind, cases: ['first', 'second'],
-      owners: Object.fromEntries(languages.map(language => [language, { part: testDirectoryOf(language),
-        tests: [ownerTests[language] ?? ''], commands: {} }])),
+      owners: Object.fromEntries(languages.map(language => {
+        const test = ownerTests[language] ?? '';
+        return [language, { part: testDirectoryOf(language), tests: [test], commands: kind === 'database'
+          ? Object.fromEntries(databases.map(database => [database, [{ runner: 'node', test, cases: ['first', 'second'] }]]))
+          : {} }];
+      })),
       dependents: [{ id: 'service', language: 'go', part: 'packages/go/model',
         tests: [dependentTest], cases: ['first'], commands: {} }] } }] };
 }
@@ -678,6 +691,58 @@ caseTest('an implemented feature must claim every client language in its parity 
     delete m.features[0].coverage.owners.python;
     for (const database of databases) delete r[`sample/owner/python/${database}`];
   }), /sample: implemented feature lacks a parity unit in a client language/);
+});
+
+// Database requirements use the files explicitly assigned to each database command; shared native files may serve several databases.
+caseTest('database owner files are scoped by command and every declared owner file has a database binding', COMPUTE, () => {
+  const manifest = contract();
+  const feature = defined(manifest.features[0]);
+  const owner = defined(feature.coverage.owners.go);
+  const files = ['packages/go/bench/mysql.go', 'packages/go/bench/postgres.go', 'packages/go/bench/sqlite.go'];
+  owner.tests = files;
+  owner.commands = Object.fromEntries(databases.map((database, index) => [database, [{
+    runner: 'go', test: defined(files[index]), cases: ['first', 'second'],
+  }]]));
+  const reports = complete();
+  for (let index = 0; index < databases.length; index++) {
+    const database = defined(databases[index]);
+    const report = defined(reports[`sample/owner/go/${database}`]);
+    for (const execution of report) execution.tests = [defined(files[index])];
+  }
+  assert.deepEqual(checkSampleCoverage(manifest, reports), []);
+
+  const rust = defined(feature.coverage.owners.rust);
+  rust.tests = ['packages/rust/tests/shared.rs'];
+  rust.commands = Object.fromEntries(databases.map(database => [database, [{
+    runner: 'cargo', test: 'packages/rust/tests/shared.rs', cases: ['first', 'second'],
+  }]]));
+  for (const database of databases) {
+    const report = defined(reports[`sample/owner/rust/${database}`]);
+    for (const execution of report) execution.tests = ['packages/rust/tests/shared.rs'];
+  }
+  assert.deepEqual(checkSampleCoverage(manifest, reports), []);
+
+  delete owner.commands.sqlite;
+  assert.match(checkSampleCoverage(manifest, reports).join('\n'), /test has no database command: packages\/go\/bench\/sqlite\.go/);
+});
+
+caseTest('selected independent cases retain only the files bound to the selected case', COMPUTE, () => {
+  const manifest = contract('independent');
+  const feature = defined(manifest.features[0]);
+  const owner = defined(feature.coverage.owners.go);
+  const files = ['packages/go/bench/first.go', 'packages/go/bench/second.go'];
+  owner.tests = files;
+  owner.commands = { none: files.map((test, index) => ({ runner: 'go', test, cases: [index === 0 ? 'first' : 'second'] })) };
+  const selected = selectFeatures(manifest, 'sample', ['owner/go'], undefined, ['first']);
+  const reports = complete('independent');
+  const report = defined(reports['sample/owner/go/none']);
+  for (const execution of report) {
+    execution.tests = [defined(files[0])];
+    execution.cases = ['first'];
+    execution.results = [{ id: 'first', database: 'none', value_json: '1' }];
+  }
+  for (const key of Object.keys(reports)) if (key !== 'sample/owner/go/none') delete reports[key];
+  assert.deepEqual(checkSampleCoverage(selected, reports), []);
 });
 
 // Requirements: FCV-5.

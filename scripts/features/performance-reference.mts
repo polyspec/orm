@@ -58,7 +58,7 @@ export type PerformanceReference = {
 
 export type PerformanceReferenceDeclaration =
   | { schema: 1; kind: 'fixed-performance-references'; status: 'pending'; references: [] }
-  | { schema: 1; kind: 'fixed-performance-references'; status: 'recorded'; evidence: { file: string; sha256: string; recordedAt: string }; references: PerformanceReference[] };
+  | { schema: 1; kind: 'fixed-performance-references'; status: 'recorded'; evidence: { file: string; sha256: string; recordedAt: string; ciRunId: string; ciRunAttempt: number; sourceCommit: string }; references: PerformanceReference[] };
 
 export type PerformanceReferenceReport =
   | { status: 'pending'; missing: string[] }
@@ -84,11 +84,14 @@ export function validatePerformanceReferenceDeclaration(value: unknown): Perform
   if (value.status !== 'recorded' || !exactKeys(value, ['schema', 'kind', 'status', 'evidence', 'references']))
     throw new Error('performance reference declaration has unknown fields or status');
   const evidence = value.evidence;
-  if (!isRecord(evidence) || !exactKeys(evidence, ['file', 'sha256', 'recordedAt']) ||
+  if (!isRecord(evidence) || !exactKeys(evidence, ['file', 'sha256', 'recordedAt', 'ciRunId', 'ciRunAttempt', 'sourceCommit']) ||
       typeof evidence.file !== 'string' || !/^var\/evidence\/performance_gate\/observations-[^/]+\.json$/.test(evidence.file) ||
       typeof evidence.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(evidence.sha256) ||
-      typeof evidence.recordedAt !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(evidence.recordedAt))
-    throw new Error('recorded performance references require file, SHA-256, and UTC evidence provenance');
+      typeof evidence.recordedAt !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(evidence.recordedAt) ||
+      typeof evidence.ciRunId !== 'string' || !/^\d+$/.test(evidence.ciRunId) ||
+      typeof evidence.ciRunAttempt !== 'number' || !Number.isInteger(evidence.ciRunAttempt) || evidence.ciRunAttempt < 1 ||
+      typeof evidence.sourceCommit !== 'string' || !/^[a-f0-9]{40}$/.test(evidence.sourceCommit))
+    throw new Error('recorded performance references require CI run, attempt, source commit, file, SHA-256, and UTC evidence provenance');
   if (!Array.isArray(value.references)) throw new Error('performance references must be an array');
   const expected = new Set<string>();
   const machines = new Map<PerformanceRuntime, string>();
@@ -115,7 +118,8 @@ export function validatePerformanceReferenceDeclaration(value: unknown): Perform
   if (expected.size) throw new Error(`performance references are missing: ${[...expected].join(', ')}`);
   return {
     schema: 1, kind: 'fixed-performance-references', status: 'recorded',
-    evidence: { file: evidence.file, sha256: evidence.sha256, recordedAt: evidence.recordedAt },
+    evidence: { file: evidence.file, sha256: evidence.sha256, recordedAt: evidence.recordedAt,
+      ciRunId: evidence.ciRunId, ciRunAttempt: evidence.ciRunAttempt, sourceCommit: evidence.sourceCommit },
     references: validated,
   };
 }
@@ -188,11 +192,15 @@ export function performanceMeasurementsFromOutput(
   database: PerformanceDatabase | undefined,
   attempt: 1 | 2,
   output: string,
+  rustTestSymbol?: string,
 ): PerformanceMeasurement[] {
   const measurements: PerformanceMeasurement[] = [];
   const visit = (text: string): void => {
     for (const line of text.split(/\r?\n/)) {
-      const direct = parseMeasurement(line, attempt);
+      const direct = parseMeasurement(line, attempt) ??
+        (runtime === 'rust' && rustTestSymbol && line.startsWith(`test ${rustTestSymbol} ... `)
+          ? parseMeasurement(line.slice(`test ${rustTestSymbol} ... `.length), attempt)
+          : null);
       if (direct) {
         if (direct.runtime !== runtime || (database !== undefined && direct.database !== database))
           throw new Error(`performance measurement identity ${direct.runtime}/${direct.database} differs from child ${runtime}/${database ?? 'all databases'}`);
