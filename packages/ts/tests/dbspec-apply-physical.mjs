@@ -379,6 +379,11 @@ const scenarios = [
       await applyPlans(session.connection, dialect, [stress], fixedNow, async event => {
         if (event.kind !== 'applied') return;
         applied++;
+        assert.equal(event.step, applied - 1, 'applied event step order');
+        const historyQuery = dialect === 'mysql'
+          ? `SELECT CONCAT(state, ' ', step) FROM ${historyTable(dialect)}`
+          : `SELECT state || ' ' || step FROM ${historyTable(dialect)}`;
+        assert.equal(await firstValue(session, historyQuery), `applying ${event.step}`, `history after applied event ${event.step}`);
         if (watcher) {
           const rows = await watcher.rows(`SELECT count(*) FROM pg_locks WHERE pid = ${pid} AND locktype = 'relation'`);
           assert.equal(Number(rows[0][0]), 0, `applying session relation locks after step ${applied}`);

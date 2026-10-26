@@ -734,15 +734,13 @@ async fn apply_stress_plan_on_three_databases() {
                 if planned.len() != count {
                     return Err(format!("{db}: planned {} steps, expected {count}", planned.len()));
                 }
-                let mut watch = if db == "postgres" {
+                let mut watch = Some(session.open().await?);
+                if db == "postgres" {
                     let max_locks = scalar(conn, "SHOW max_locks_per_transaction").await?;
                     if max_locks != "64" {
                         return Err(format!("max_locks_per_transaction is {max_locks}; the case needs the default 64"));
                     }
-                    Some(session.open().await?)
-                } else {
-                    None
-                };
+                }
                 let pid = if db == "postgres" { Some(scalar(conn, "SELECT pg_backend_pid()").await?) } else { None };
                 let handle = tokio::runtime::Handle::current();
                 let mut applied = 0;
@@ -751,6 +749,18 @@ async fn apply_stress_plan_on_three_databases() {
                         return Ok(());
                     }
                     applied += 1;
+                    let history_query = match db {
+                        "mysql" => "SELECT CONCAT(state, ' ', step) FROM `dbspec$plans`",
+                        _ => "SELECT state || ' ' || step FROM \"dbspec$plans\"",
+                    };
+                    let history = tokio::task::block_in_place(|| handle.block_on(scalar(watch.as_mut().expect("history watcher"), history_query)))
+                        .map_err(|error| Box::new(std::io::Error::other(error)) as EventError)?;
+                    if history != format!("applying {}", event.step) {
+                        return Err(Box::new(std::io::Error::other(format!(
+                            "after applied event {} history is {history:?}, want applying {}",
+                            event.step, event.step
+                        ))) as EventError);
+                    }
                     if let (Some(watch), Some(pid)) = (watch.as_mut(), pid.as_ref()) {
                         let query = format!("SELECT count(*) FROM pg_locks WHERE pid = {pid} AND locktype = 'relation'");
                         let locks = tokio::task::block_in_place(|| handle.block_on(scalar(watch, &query)))
