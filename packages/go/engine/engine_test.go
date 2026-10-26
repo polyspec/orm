@@ -63,7 +63,7 @@ func compile(t *testing.T, e *Engine, irBody string) *plan.Plan {
 }
 
 func TestSelectAll(t *testing.T) {
-	// The test of DIA-33, COD-4 (docs/spec).
+	// The test of COD-4 (docs/spec).
 	testcase.Start(t, testcase.Compute)
 	e := testEngine(t)
 	p := compile(t, e, `"kind":"all","entity":"author",
@@ -526,8 +526,9 @@ func TestCompositeRelationKeys(t *testing.T) {
 	}
 }
 
-// TestAllColumnsSelectAESVersionOnce checks that a node that selects all columns reads the AES key
-// version column only once, and marks that column as the version.
+// TestAllColumnsSelectAESVersionOnce checks that explicit and default projections read the AES key
+// version column once, marking it visible when selected and hidden otherwise.
+// Requirements: DIA-33.
 func TestAllColumnsSelectAESVersionOnce(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	e := testEngine(t)
@@ -544,6 +545,20 @@ func TestAllColumnsSelectAESVersionOnce(t *testing.T) {
 	col := asm.Columns[*asm.AESVersion]
 	if col.Column != "aes_key_version" || col.Hidden {
 		t.Fatalf("AES version column %+v", col)
+	}
+	defaultPlan := compile(t, e, `"kind":"one","entity":"author",
+	 "where":{"items":[{"pred":{"column":"seq","op":"eq","p":0}}]}`)
+	defaultSQL := defaultPlan.Steps[0].SQL
+	if n := strings.Count(defaultSQL, "`a`.`aes_key_version` AS"); n != 1 {
+		t.Fatalf("default projection selected aes_key_version %d times: %s", n, defaultSQL)
+	}
+	defaultAssemble := defaultPlan.Steps[0].Assemble
+	if defaultAssemble.AESVersion == nil {
+		t.Fatalf("default projection has no AES version column: %+v", defaultAssemble)
+	}
+	defaultColumn := defaultAssemble.Columns[*defaultAssemble.AESVersion]
+	if defaultColumn.Column != "aes_key_version" || !defaultColumn.Hidden {
+		t.Fatalf("default projection AES version column %+v", defaultColumn)
 	}
 }
 

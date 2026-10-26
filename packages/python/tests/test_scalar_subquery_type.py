@@ -8,6 +8,7 @@ from polyspec.orm.engine.planner import Planner
 from polyspec.orm.engine.validate import validate
 from polyspec.orm.errors import OrmError
 from polyspec.orm.markdown import MdNode
+
 from .coverage_case import REPOSITORY_ROOT
 
 
@@ -28,6 +29,45 @@ def scalar_subquery_case():
 
 
 class ScalarSubqueryTypeTest(unittest.TestCase):
+    # Requirements: DIA-33.
+    def test_all_columns_select_aes_version_once(self):
+        schema = (REPOSITORY_ROOT / "contracts/fixtures/bench/bench.dbs").read_text(
+            encoding="utf-8"
+        )
+        model = model_of_documents(parse_document_set([schema]))
+        request = {
+            "ir_version": 1,
+            "manifest_hash": model.manifest_hash,
+            "kind": "one",
+            "entity": "author",
+            "n_params": 1,
+            "where": {"items": [{"pred": {"column": "seq", "op": "eq", "p": 0}}]},
+        }
+        validate(model, request)
+        for dialect in ("mysql", "postgres", "sqlite"):
+            with self.subTest(dialect=dialect):
+                for selection, columns in (
+                    ("selected", {"mode": "all"}),
+                    ("default", None),
+                ):
+                    with self.subTest(selection=selection):
+                        selected_request = dict(request)
+                        if columns is not None:
+                            selected_request["columns"] = columns
+                        step = Planner(model, dialect_of(dialect)()).compile(
+                            selected_request
+                        )["steps"][0]
+                        quote = "`" if dialect == "mysql" else '"'
+                        version_column = (
+                            f"{quote}a{quote}.{quote}aes_key_version{quote} AS "
+                        )
+                        self.assertEqual(step["sql"].count(version_column), 1)
+                        assemble = step["assemble"]
+                        version = assemble["aes_version"]
+                        column = assemble["columns"][version]
+                        self.assertEqual(column["column"], "aes_key_version")
+                        self.assertEqual(column["hidden"], selection == "default")
+
     def test_missing_post_validation_column_is_internal(self):
         case, model = scalar_subquery_case()
         request = dict(case["input"], manifest_hash=model.manifest_hash)

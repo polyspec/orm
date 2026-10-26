@@ -8,6 +8,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Code;
+use Polyspec\Orm\Engine;
 use Polyspec\Orm\OrmException;
 use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Validator;
@@ -63,5 +64,13 @@ final class ValidatorNativeTest extends TestCase
         } catch (OrmException $error) {
             self::assertSame(Code::SCHEMA_HASH_MISMATCH, $error->code_);
         }
+    }
+
+    // Requirements: DIA-33.
+    public function testAllColumnsSelectAesVersionOnce(): void
+    {
+        require_once dirname(__DIR__, 2) . '/php/tests/EngineTest.php';
+        self::assertTrue((new ReflectionClass(Engine::class))->isInternal());
+        assertAllColumnsSelectAesVersionOnce(dirname(__DIR__, 3));
     }
 }

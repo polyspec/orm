@@ -24,7 +24,7 @@ async function codeOf(promise) {
 
 // The engine check runs model registration, request validation, and the plan in memory as one case.
 const run = cases();
-// Requirements: PRT-1, COD-4.
+// Requirements: DIA-33, PRT-1, COD-4.
 await run.run('engine', COMPUTE, async () => {
   // The generated models embed the manifest and the external text of the bench set (contracts/fixtures/bench/dbspec-set.json).
   const { manifest } = dbspecManifest(setDocuments);
@@ -191,11 +191,15 @@ table record {
   check(plan.steps.length === 1 && plan.steps[0].sql === want, `plan SQL: ${plan.steps[0].sql}`);
   check(plan.steps[0].bind_slots.map(s => s.param).join(',') === '0,1', 'plan binds');
 
-  // A node that selects every column reads the AES key version column only once and marks its position.
+  // Explicit and default projections read the AES version column once, visibly when selected and hidden otherwise.
   const allPlan = engine.compile({ ...base, kind: 'one', n_params: 1, columns: { mode: 'all' }, where: { items: [{ pred: { column: 'seq', op: 'eq', p: 0 } }] } });
   const allAsm = allPlan.steps[0].assemble;
   check(allPlan.steps[0].sql.split('"a"."aes_key_version" AS').length - 1 === 1, `aes_key_version selected once: ${allPlan.steps[0].sql}`);
   check(allAsm.aes_version !== undefined && allAsm.columns[allAsm.aes_version].column === 'aes_key_version' && !allAsm.columns[allAsm.aes_version].hidden, `AES version column marked: ${JSON.stringify(allAsm.aes_version)}`);
+  const defaultPlan = engine.compile({ ...base, kind: 'one', n_params: 1, where: { items: [{ pred: { column: 'seq', op: 'eq', p: 0 } }] } });
+  const defaultAsm = defaultPlan.steps[0].assemble;
+  check(defaultPlan.steps[0].sql.split('"a"."aes_key_version" AS').length - 1 === 1, `default projection reads aes_key_version once: ${defaultPlan.steps[0].sql}`);
+  check(defaultAsm.aes_version !== undefined && defaultAsm.columns[defaultAsm.aes_version].column === 'aes_key_version' && defaultAsm.columns[defaultAsm.aes_version].hidden, `default AES version column marked hidden: ${JSON.stringify(defaultAsm.aes_version)}`);
 
   // Soft delete: reads filter rows with a deleted_at value and a delete
   // rewrites to a guarded update that sets the timestamp.

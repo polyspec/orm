@@ -10757,17 +10757,41 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-engine-engine",
+      "id": "aes-version-column-is-selected-once",
       "kind": "feature",
       "requirements": [
-        "DIA-33",
-        "COD-4"
+        "DIA-33"
       ],
       "bindings": [
         {
           "implementation": "go",
           "test": "packages/go/engine/engine_test.go",
-          "id": "TestSelectAll"
+          "id": "TestAllColumnsSelectAESVersionOnce"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/EngineTest.php",
+          "id": "EngineTest::testAllColumnsSelectAesVersionOnce"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ValidatorNativeTest.php",
+          "id": "ValidatorNativeTest::testAllColumnsSelectAesVersionOnce"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/engine.mjs",
+          "id": "engine"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_scalar_subquery_type.py",
+          "id": "test_all_columns_select_aes_version_once"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/engine/mod.rs",
+          "id": "engine::tests::all_columns_select_the_aes_version_once"
         }
       ]
     },
@@ -14120,20 +14144,6 @@
           "implementation": "python",
           "test": "packages/python/tests/test_codec_vectors.py",
           "id": "yaml.nested_map"
-        }
-      ]
-    },
-    {
-      "id": "rust-engine-all-columns-select-the-aes-version-once",
-      "kind": "feature",
-      "requirements": [
-        "DIA-33"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/engine/mod.rs",
-          "id": "engine::tests::all_columns_select_the_aes_version_once"
         }
       ]
     },
