@@ -19,5 +19,6 @@ use Polyspec\Orm\Tests\Model\Author;
 final class GroupRowsDbTest extends TestCase
 {
     use DatabaseTestAssertions;
+    // Requirements: INT-31. The imported database case checks grouped values and counts on each dialect.
     use GroupRowsDbCases;
 }

@@ -94,6 +94,7 @@ def case_database(dialect, name, dsn, sqlite_dir):
         assert left["rows"][0][0] == 0, f"schema {name} remains after cleanup"
 
 
+# Requirements: DIA-133.
 def check_case(case, index, dsns, sqlite_dir):
     dialect, case_id = case["dialect"], case["id"]
     statements = rendered_case_statements(case, dialect)

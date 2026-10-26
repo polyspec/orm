@@ -12,7 +12,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// Requirements: DBS-113.
+// Requirements: DBS-113, SCH-6a, INT-123.
 func TestCatalogInsertReturnsSQLiteAutomaticPrimaryKey(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	catalog, metadata := openCatalogSQLiteDefaultFixture(t, "sample", "CREATE TABLE sample (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)")
@@ -102,7 +102,7 @@ func requireCatalogInsertedRow(t *testing.T, result CatalogMutationResult, want 
 	}
 }
 
-// Requirements: DBS-113.
+// Requirements: DBS-113, SCH-6a, INT-123.
 func TestCatalogInsertRequiresIdentityWithoutDatabaseGeneration(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	catalog, metadata := openCatalogSQLiteDefaultFixture(t, "required_identity", "CREATE TABLE required_identity (id TEXT NOT NULL PRIMARY KEY, payload TEXT NOT NULL)")
@@ -119,7 +119,7 @@ func TestCatalogInsertRequiresIdentityWithoutDatabaseGeneration(t *testing.T) {
 	}
 }
 
-// Requirements: DBS-113.
+// Requirements: DBS-113, SCH-6a, INT-123.
 func TestCatalogInsertReturnsSQLiteLiteralDefaultCompositePrimaryKey(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	catalog, metadata := openCatalogSQLiteDefaultFixture(t, "generated_default", "CREATE TABLE generated_default (tenant BIGINT NOT NULL, seq VARCHAR(30) NOT NULL DEFAULT 'generated', n BIGINT NOT NULL, PRIMARY KEY(tenant,seq))")
@@ -148,7 +148,7 @@ func TestCatalogInsertReturnsSQLiteLiteralDefaultCompositePrimaryKey(t *testing.
 	}
 }
 
-// Requirements: DBS-113.
+// Requirements: DBS-113, SCH-6a, INT-123.
 func TestCatalogInsertReturnsSQLiteExpressionDefaultPrimaryKey(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	catalog, metadata := openCatalogSQLiteDefaultFixture(t, "generated_expression", "CREATE TABLE generated_expression (seq TEXT NOT NULL PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))), n BIGINT NOT NULL UNIQUE, label VARCHAR(20) NULL)")
@@ -196,7 +196,7 @@ func TestCatalogInsertReturnsSQLiteExpressionDefaultPrimaryKey(t *testing.T) {
 	}
 }
 
-// Requirements: DBS-113.
+// Requirements: DBS-113, SCH-6a, INT-123.
 func TestCatalogInsertReturnsSQLiteDefaultOnlyCompositePrimaryKey(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	catalog, metadata := openCatalogSQLiteDefaultFixture(t, "generated_defaults_only", "CREATE TABLE generated_defaults_only (tenant BIGINT NOT NULL DEFAULT 2, seq VARCHAR(30) NOT NULL DEFAULT 'generated', n BIGINT NOT NULL DEFAULT 50, PRIMARY KEY(tenant,seq))")

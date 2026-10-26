@@ -3368,8 +3368,7 @@
       "id": "dbspec-introspect-round-trip",
       "kind": "feature",
       "requirements": [
-        "DIA-133",
-        "DIA-198"
+        "DIA-133"
       ],
       "bindings": [
         {
@@ -3408,8 +3407,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/dbspec_introspect_queries.py",
-          "id": "test_sqlite",
+          "test": "packages/python/tests/dbspec_introspect.py",
+          "id": "sqlite-unsupported",
           "command": [
             "make",
             "-s",
@@ -3431,21 +3430,9 @@
           ]
         },
         {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-introspect-round-trip.mjs",
-          "id": "introspection query count per dialect",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "dbspec-introspect-ts-check"
-          ]
-        },
-        {
           "implementation": "python",
-          "test": "packages/python/tests/dbspec_introspect_queries.py",
-          "id": "test_mysql",
+          "test": "packages/python/tests/dbspec_introspect.py",
+          "id": "mysql-unsupported",
           "command": [
             "make",
             "-s",
@@ -3456,8 +3443,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/dbspec_introspect_queries.py",
-          "id": "test_postgres",
+          "test": "packages/python/tests/dbspec_introspect.py",
+          "id": "postgres-unsupported",
           "command": [
             "make",
             "-s",
@@ -3503,9 +3490,33 @@
           "id": "SQLite memory catalog query count is independent of table count"
         },
         {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-introspect-round-trip.mjs",
+          "id": "introspection query count per dialect",
+          "command": ["make", "-s", "-C", "${ORM_CHECKOUT}", "dbspec-introspect-ts-check"]
+        },
+        {
           "implementation": "python",
           "test": "packages/python/tests/test_dbspec_introspect_query_count.py",
           "id": "test_sqlite_memory_count_independent_of_table_count"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/dbspec_introspect_queries.py",
+          "id": "test_sqlite",
+          "command": ["make", "-s", "-C", "${ORM_CHECKOUT}", "dbspec-introspect-python-check"]
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/dbspec_introspect_queries.py",
+          "id": "test_mysql",
+          "command": ["make", "-s", "-C", "${ORM_CHECKOUT}", "dbspec-introspect-python-check"]
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/dbspec_introspect_queries.py",
+          "id": "test_postgres",
+          "command": ["make", "-s", "-C", "${ORM_CHECKOUT}", "dbspec-introspect-python-check"]
         },
         {
           "implementation": "rust",
@@ -14484,7 +14495,18 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
           "id": "coverage_catalog_row_mutation"
-        },
+        }
+      ]
+    },
+    {
+      "id": "catalog-generated-key-identity",
+      "kind": "feature",
+      "requirements": [
+        "SCH-6a",
+        "INT-123",
+        "DBS-113"
+      ],
+      "bindings": [
         {
           "implementation": "go",
           "test": "packages/go/orm/catalog_auto_identity_test.go",
@@ -14509,6 +14531,31 @@
           "implementation": "go",
           "test": "packages/go/orm/catalog_auto_identity_test.go",
           "id": "TestCatalogInsertReturnsSQLiteDefaultOnlyCompositePrimaryKey"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRowMutation"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRowMutation"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_row_mutation"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_catalog_connection.py",
+          "id": "test_row_mutation"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
+          "id": "coverage_catalog_row_mutation"
         }
       ]
     },
@@ -15736,7 +15783,6 @@
       "kind": "feature",
       "requirements": [
         "DBS-2",
-        "DBS-32",
         "DBS-99",
         "DBS-171",
         "DBS-172"
@@ -22390,8 +22436,7 @@
       "id": "transaction-failure-rollback",
       "kind": "feature",
       "requirements": [
-        "INT-72",
-        "DIA-180"
+        "INT-72"
       ],
       "bindings": [
         {

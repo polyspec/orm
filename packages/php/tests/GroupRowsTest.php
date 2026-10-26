@@ -15,6 +15,7 @@ use Polyspec\Orm\OrmException;
 #[Small]
 final class GroupRowsTest extends TestCase
 {
+    // Requirements: PRT-36. The imported case rejects invalid stored group booleans.
     // Requirements: INT-68, PRT-69, INT-1, INT-90. The imported cases assert the public group-row output values.
     use GroupRowsCases;
 

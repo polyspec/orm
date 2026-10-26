@@ -20,6 +20,7 @@ use ReflectionClass;
 final class GroupRowsDbNativeTest extends TestCase
 {
     use DatabaseTestAssertions;
+    // Requirements: INT-31. The imported database case checks grouped values and counts on each dialect.
     use GroupRowsDbCases;
 
     public static function setUpBeforeClass(): void
