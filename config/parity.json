@@ -4438,6 +4438,21 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/coverage_dsn.rs",
           "id": "coverage_dsn_connection"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/integration.rs",
+          "id": "coverage_generated_model_connection",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-unit",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--bin integration",
+            "FEATURE_TEST=coverage_generated_model_connection"
+          ]
         }
       ]
     },
