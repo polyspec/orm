@@ -57,6 +57,19 @@ fn apply_chain() -> Vec<Plan> {
     plans
 }
 
+/// The same 100-table generated plan that the Go physical apply test uses.
+fn stress_plan() -> Plan {
+    const STRESS_TABLES: usize = 100;
+    let generator = repository().join("tests/dbspec/stress.mts");
+    let output = std::process::Command::new("node").arg(generator).arg(STRESS_TABLES.to_string()).output().expect("run tests/dbspec/stress.mts");
+    assert!(output.status.success(), "stress generator failed: {}", String::from_utf8_lossy(&output.stderr));
+    let document = String::from_utf8(output.stdout).expect("stress document is UTF-8");
+    let schema = document.replacen("dbspec 1 stress\n", "dbspec 1 schema\n", 1);
+    let plan = parse_plan(&format!("dbplan 1 stress\nfrom empty\n\n{schema}")).or_panic(|e| format!("stress plan: {e:?}"));
+    assert_eq!(plan.schema().tables.len(), STRESS_TABLES, "stress plan table count");
+    plan
+}
+
 /// Right after the statement that starts with `after` runs, runs statement `then` once
 /// on the same connection. An event handler cannot use the connection apply borrowed, so, unlike Go,
 /// the test runs at this point the statement it would run in the event.
@@ -694,6 +707,88 @@ async fn apply_chain_on_three_databases() {
     if started.elapsed() >= Duration::from_secs(300) {
         polyspec_orm_testcase::warning(format_args!("apply exceeded 300s"));
     }
+}
+
+// Requirements: PLN-104.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn apply_stress_plan_on_three_databases() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let plan = stress_plan();
+    let steps: BTreeMap<&str, usize> = DIALECTS
+        .iter()
+        .map(|&(db, dialect)| {
+            let steps = plan_steps(None, &plan, dialect).or_panic(|e| format!("{db}: {e:?}"));
+            (db, steps.len())
+        })
+        .collect();
+    let mut servers = Servers::open("apply-stress").await;
+    let mut failures = Vec::new();
+    for (index, &(db, dialect)) in DIALECTS.iter().enumerate() {
+        let session = servers.session(db, index + 1);
+        let current = plan.clone();
+        let count = steps[db];
+        let result = run_probe(&mut servers, &format!("{db}.apply.stress_plan"), db, index + 1, move |conn| {
+            Box::pin(async move {
+                conn.exec_all(&connection_rules(db).iter().map(|s| (*s).to_owned()).collect::<Vec<_>>()).await?;
+                let planned = plan_steps(None, &current, dialect).or_panic(|e| format!("{db}: {e:?}"));
+                if planned.len() != count {
+                    return Err(format!("{db}: planned {} steps, expected {count}", planned.len()));
+                }
+                let mut watch = if db == "postgres" {
+                    let max_locks = scalar(conn, "SHOW max_locks_per_transaction").await?;
+                    if max_locks != "64" {
+                        return Err(format!("max_locks_per_transaction is {max_locks}; the case needs the default 64"));
+                    }
+                    Some(session.open().await?)
+                } else {
+                    None
+                };
+                let pid = if db == "postgres" { Some(scalar(conn, "SELECT pg_backend_pid()").await?) } else { None };
+                let handle = tokio::runtime::Handle::current();
+                let mut applied = 0;
+                let mut progress = |event: &ApplyEvent| -> Result<(), EventError> {
+                    if event.kind != ApplyEventKind::Applied {
+                        return Ok(());
+                    }
+                    applied += 1;
+                    if let (Some(watch), Some(pid)) = (watch.as_mut(), pid.as_ref()) {
+                        let query = format!("SELECT count(*) FROM pg_locks WHERE pid = {pid} AND locktype = 'relation'");
+                        let locks = tokio::task::block_in_place(|| handle.block_on(scalar(watch, &query)))
+                            .map_err(|error| Box::new(std::io::Error::other(error)) as EventError)?;
+                        if locks != "0" {
+                            return Err(Box::new(std::io::Error::other(format!(
+                                "after step {applied} the applying session holds {locks} relation locks, want 0"
+                            ))));
+                        }
+                    }
+                    Ok(())
+                };
+                apply(conn, dialect, &[current], &fixed_now, &mut progress).await.map_err(|e| format!("apply: {e:?}"))?;
+                drop(progress);
+                if applied != count {
+                    return Err(format!("{db}: {applied} applied events; want {count}"));
+                }
+                let query = match db {
+                    "mysql" => "SELECT CONCAT(state, ' ', step) FROM `dbspec$plans`",
+                    _ => "SELECT state || ' ' || step FROM \"dbspec$plans\"",
+                };
+                let history = scalar(conn, query).await?;
+                if history != format!("applied {count}") {
+                    return Err(format!("history row {history:?}, want applied {count}"));
+                }
+                if let Some(watch) = watch {
+                    watch.close().await?;
+                }
+                Ok(())
+            })
+        })
+        .await;
+        if let Err(error) = result {
+            failures.push(format!("{db}.apply.stress_plan: {error}"));
+        }
+    }
+    servers.close().await;
+    assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
 }
 
 /// A connection with the database of the PgBouncer DSN replaced by `name`. The server connection behind the pooler

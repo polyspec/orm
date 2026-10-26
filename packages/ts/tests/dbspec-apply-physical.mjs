@@ -15,14 +15,19 @@
 // Usage: ORM_TEST_MYSQL_SERVER_DSN=... ORM_TEST_POSTGRES_SERVER_DSN=... ORM_TEST_PGBOUNCER_DSN=... node --test packages/ts/tests/dbspec-apply-physical.mjs (after the build)
 import { caseTest } from '../../../tests/testcase.mts';
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import pg from 'pg';
+import { isolatedEnvironment } from '../../../tests/environment.mts';
 import { DbspecApplyError, applyPlans, dbspecManifest, finalizePlans, introspectDbspec, parsePlan, planSteps, recoverPlans, rollbackPlans } from '../dist/dbspec/index.js';
 import { createDbspecPhysicalDatabaseRunner } from './dbspec-physical-database.mjs';
 
 const root = new URL('../../../', import.meta.url);
 // TIMEOUT is the deadline (ms) of one case. One apply scenario creates one database, applies, stops, recovers, and rolls back the plan chain, then drops it.
 const TIMEOUT = 60000;
+const STRESS_TABLES = 100;
 // The statements that every client runs on a new connection (packages/go/internal/dialects connectionRules).
 const CONNECTION_RULES = {
   mysql: ["SET time_zone = '+00:00'"],
@@ -37,6 +42,18 @@ if (!mysqlDSN || !postgresDSN) throw new Error('ORM_TEST_MYSQL_SERVER_DSN and OR
 
 // tool clock: 2026-10-01T00:00:00.123456789Z truncated to microseconds (microseconds since the epoch).
 const fixedNow = () => Date.UTC(2026, 9, 1, 0, 0, 0) * 1000 + 123456;
+
+async function stressPlan() {
+  const generator = fileURLToPath(new URL('tests/dbspec/stress.mts', root));
+  const { stdout } = await promisify(execFile)(process.execPath, [generator, String(STRESS_TABLES)], {
+    cwd: fileURLToPath(root),
+    env: isolatedEnvironment(),
+    maxBuffer: 16 * 1024 * 1024,
+    timeout: TIMEOUT,
+  });
+  const schema = stdout.replace('dbspec 1 stress\n', 'dbspec 1 schema\n');
+  return parse('stress', `dbplan 1 stress\nfrom empty\n\n${schema}`);
+}
 
 const cases = new Map(JSON.parse(readFileSync(new URL('tests/dbspec/plans.json', root), 'utf8')).cases.map(c => [c.id, c]));
 function parse(id, text) {
@@ -77,6 +94,7 @@ const repCounts = counts(representative);
 const required = caseChain('drop-required-column');
 const requiredTarget = schemaText(required[1]);
 const requiredCounts = counts(required);
+const stress = await stressPlan();
 
 // vector runs one case with its own deadline and reports its start, result
 // and elapsed time.
@@ -342,6 +360,38 @@ const scenarios = [
     await assert.rejects(rollbackPlans(session.connection, dialect, required, fixedNow, null), error => error instanceof DbspecApplyError && error.code === 'nulls' && error.message.includes('has 1 NULL rows'));
     await schemaIs(session, dialect, requiredTarget);
     await historyIs(session, dialect, `base|applied|${c[0][1]},drop_required_column|applied|${c[1][1]}`);
+  }],
+  // Requirements: PLN-104.
+  ['stress_plan', ALL, async (session, dialect, open) => {
+    const steps = planSteps(null, stress, dialect).steps;
+    assert.equal(stress.schema.tables.length, STRESS_TABLES, 'stress plan table count');
+    assert(steps.length > 100, `stress plan has only ${steps.length} steps`);
+    let applied = 0;
+    let watcher;
+    let pid;
+    if (dialect === 'postgres') {
+      pid = Number((await session.rows('SELECT pg_backend_pid()'))[0][0]);
+      watcher = await open();
+      const locks = await watcher.rows('SHOW max_locks_per_transaction');
+      assert.equal(Number(locks[0][0]), 64, 'PostgreSQL default max_locks_per_transaction');
+    }
+    try {
+      await applyPlans(session.connection, dialect, [stress], fixedNow, async event => {
+        if (event.kind !== 'applied') return;
+        applied++;
+        if (watcher) {
+          const rows = await watcher.rows(`SELECT count(*) FROM pg_locks WHERE pid = ${pid} AND locktype = 'relation'`);
+          assert.equal(Number(rows[0][0]), 0, `applying session relation locks after step ${applied}`);
+        }
+      });
+      assert.equal(applied, steps.length, 'applied event count');
+      const query = dialect === 'mysql'
+        ? `SELECT CONCAT(state, ' ', step) FROM ${historyTable(dialect)}`
+        : `SELECT state || ' ' || step FROM ${historyTable(dialect)}`;
+      assert.equal(await firstValue(session, query), `applied ${steps.length}`, 'history row state and step');
+    } finally {
+      await watcher?.close();
+    }
   }],
 ];
 // For each step k of the representative plan: stop the apply after the statement, roll back, stop again,
