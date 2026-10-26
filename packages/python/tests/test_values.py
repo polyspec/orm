@@ -236,37 +236,50 @@ class RuntimeValueTypesDatabaseTest(unittest.TestCase):
                             read_column(db, seq, "wide").get_wide()
                         self.assertEqual(caught.exception.code, "CODEC_DECODE")
                         db._connection.execute(
-                            "ALTER TABLE value_record DROP CHECK `value_record$active`",
+                            "ALTER TABLE value_record ALTER CHECK `value_record$active` NOT ENFORCED",
                             [],
                         )
-                        db._connection.execute(
-                            "UPDATE value_record SET wide = 42, active = 2 WHERE seq = ?",
-                            [seq],
-                        )
-                        with self.assertRaises(OrmError) as caught:
-                            read_column(db, seq, "active").get_active()
-                        self.assertEqual(caught.exception.code, "CODEC_DECODE")
+                        try:
+                            db._connection.execute(
+                                "UPDATE value_record SET wide = 42, active = 2 WHERE seq = ?",
+                                [seq],
+                            )
+                            with self.assertRaises(OrmError) as caught:
+                                read_column(db, seq, "active").get_active()
+                            self.assertEqual(caught.exception.code, "CODEC_DECODE")
+                        finally:
+                            try:
+                                db._connection.execute(
+                                    "UPDATE value_record SET active = 0 WHERE seq = ?",
+                                    [seq],
+                                )
+                            finally:
+                                db._connection.execute(
+                                    "ALTER TABLE value_record ALTER CHECK `value_record$active` ENFORCED",
+                                    [],
+                                )
                     elif driver == "postgres":
                         db._connection.execute(
-                            "UPDATE value_record SET ratio = 'NaN' WHERE seq = $1",
+                            "UPDATE value_record SET ratio = 'NaN' WHERE seq = ?",
                             [seq],
                         )
                         with self.assertRaises(OrmError) as caught:
                             read_column(db, seq, "ratio").get_ratio()
                         self.assertEqual(caught.exception.code, "CODEC_DECODE")
                     else:
-                        db._connection.execute(
-                            "PRAGMA ignore_check_constraints = ON", []
-                        )
-                        try:
-                            db._connection.execute(
-                                "UPDATE value_record SET wide = 'not-an-integer' WHERE seq = ?",
-                                [seq],
+                        with db._held() as connection:
+                            connection.execute(
+                                "PRAGMA ignore_check_constraints = ON", []
                             )
-                        finally:
-                            db._connection.execute(
-                                "PRAGMA ignore_check_constraints = OFF", []
-                            )
+                            try:
+                                connection.execute(
+                                    "UPDATE value_record SET wide = 'not-an-integer' WHERE seq = ?",
+                                    [seq],
+                                )
+                            finally:
+                                connection.execute(
+                                    "PRAGMA ignore_check_constraints = OFF", []
+                                )
                         with self.assertRaises(OrmError) as caught:
                             read_column(db, seq, "wide").get_wide()
                         self.assertEqual(caught.exception.code, "CODEC_DECODE")
