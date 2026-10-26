@@ -38,12 +38,46 @@ const cases = [
   ['read: stored version read as a bigint decodes', [cipher, 1n], ''],
   ['read: stored version read as a bigint above i32', [cipher, 2147483648n], 'CODEC_DECODE'],
 ];
+// Requirements: COD-44. Read paths distinguish invalid stored versions from undeclared key versions.
+check('aes version codes: read path codes', wrong => {
+  const rows = [
+    ['abc', 'CODEC_DECODE'],
+    [0, 'CODEC_DECODE'],
+    [2147483648, 'CODEC_DECODE'],
+    [9, 'CONFIG'],
+    ['1', ''],
+  ];
+  for (const [version, want] of rows) {
+    const got = codeOf(() => decodeAssembly([cipher, version], assemble, db));
+    if (got !== want) wrong.push(`stored version ${String(version)}: got ${got || 'no error'}, want ${want || 'no error'}`);
+  }
+  for (const [entries, current] of [[[[1, '']], 1], [[[1, 'key']], 2]]) {
+    const got = codeOf(() => new AesKeyring(new Map(entries), current));
+    if (got !== 'CONFIG') wrong.push(`invalid keyring: got ${got || 'no error'}, want CONFIG`);
+  }
+});
 for (const [name, row, want] of cases) {
   check(`aes version codes: ${name}`, wrong => {
     const got = codeOf(() => decodeAssembly([...row], assemble, db));
     if (got !== want) wrong.push(`got ${got || 'no error'}, want ${want || 'no error'}`);
   });
 }
+// Requirements: COD-47. Rotation uses the same stored-version errors and reports missing row cells as INTERNAL.
+check('aes version codes: rotation path codes', wrong => {
+  const columns = [{ name: 'email', styles: ['aes', 'hex'] }];
+  const rows = [
+    [{ aes_key_version: 0, email: cipher }, 'CODEC_DECODE'],
+    [{ aes_key_version: 'bad', email: cipher }, 'CODEC_DECODE'],
+    [{ aes_key_version: 2147483648, email: cipher }, 'CODEC_DECODE'],
+    [{ aes_key_version: 9, email: cipher }, 'CONFIG'],
+    [{ aes_key_version: 1 }, 'INTERNAL'],
+    [{ email: cipher }, 'INTERNAL'],
+  ];
+  for (const [row, want] of rows) {
+    const got = codeOf(() => keyring.rotateRow({ ...row }, 'aes_key_version', columns, 2, undefined));
+    if (got !== want) wrong.push(`${JSON.stringify(row)}: got ${got || 'no error'}, want ${want}`);
+  }
+});
 // Requirements: COD-56. A read plan cannot infer a missing version column.
 check('aes version codes: read: plan has an AES column and no version column', wrong => {
   const noVersion = { ...assemble, aes_version: undefined };

@@ -111,7 +111,7 @@ class AesVersionCodesTest(unittest.TestCase):
                 got = KEYRING.rotate_row(dict(row), "aes_key_version", [COLUMN], 2)
                 self.assertEqual(got, row)
 
-    # Requirements: COD-47. Rotation uses the stored-version errors from the read path.
+    # Requirements: COD-47, COD-54, COD-55. Rotation uses the stored-version errors from the read path.
     def test_rotation_codes(self):
         cases = [
             ({"aes_key_version": 0, "email": CIPHER}, "CODEC_DECODE"),

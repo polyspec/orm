@@ -2508,6 +2508,11 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/aes_keys.rs",
           "id": "aes_read_version_codes_match_the_other_clients"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/aes-version-codes.mjs",
+          "id": "aes version codes: read path codes"
         }
       ]
     },
@@ -2532,6 +2537,21 @@
           "implementation": "python",
           "test": "packages/python/tests/test_aes_version_codes.py",
           "id": "test_rotation_codes"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/aes_rotation_test.go",
+          "id": "TestAESVersionCodesAreTheSameInEveryClient"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/utils.rs",
+          "id": "utils::keyring_tests::rotation_path_uses_read_path_error_codes"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/aes-version-codes.mjs",
+          "id": "aes version codes: rotation path codes"
         }
       ]
     },
@@ -2780,6 +2800,31 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/aes-version-codes.mjs",
           "id": "aes version codes: rotation: stored version is zero"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/aes_rotation_test.go",
+          "id": "TestAESVersionCodesAreTheSameInEveryClient"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AesVersionCodesTest.php",
+          "id": "AesVersionCodesTest::testRotationCodes"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/AesVersionCodesTest.php",
+          "id": "AesVersionCodesTest::testRotationCodes"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_aes_version_codes.py",
+          "id": "test_rotation_codes"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/utils.rs",
+          "id": "utils::keyring_tests::rotation_stored_version_zero_is_codec_decode"
         }
       ]
     },
@@ -2794,6 +2839,31 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/aes-version-codes.mjs",
           "id": "aes version codes: rotation: AES column missing from the row"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/aes_rotation_test.go",
+          "id": "TestAESVersionCodesAreTheSameInEveryClient"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AesVersionCodesTest.php",
+          "id": "AesVersionCodesTest::testRotationCodes"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/AesVersionCodesTest.php",
+          "id": "AesVersionCodesTest::testRotationCodes"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_aes_version_codes.py",
+          "id": "test_rotation_codes"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/utils.rs",
+          "id": "utils::keyring_tests::rotation_row_without_aes_column_is_internal"
         }
       ]
     },

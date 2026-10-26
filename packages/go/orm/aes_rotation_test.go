@@ -71,7 +71,7 @@ func TestRotateAESRowDoesNotReturnPartialResult(t *testing.T) {
 	}
 }
 
-// Requirements: COD-44.
+// Requirements: COD-44, COD-47, COD-54, COD-55.
 func TestAESVersionCodesAreTheSameInEveryClient(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	keys := mustAESKeyring(t, map[int32]string{1: "old", 2: "new"}, 2)

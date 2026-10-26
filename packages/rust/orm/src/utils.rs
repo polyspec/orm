@@ -210,9 +210,7 @@ impl<'a> Utils<'a> {
         if self.db.driver() != "postgres" {
             return Ok(false);
         }
-        let rows = self
-            .query(&Executor::Db(self.db.clone()), KIND_UTILITY, &[], BACKEND_WAITING_FOR_LOCK.into(), &[], &[])
-            .await?;
+        let rows = self.query(&Executor::Db(self.db.clone()), KIND_UTILITY, &[], BACKEND_WAITING_FOR_LOCK.into(), &[], &[]).await?;
         Ok(matches!(rows.first().and_then(|r| r.first()), Some(Val::Bool(true))))
     }
 
@@ -554,6 +552,15 @@ fn row_version(v: &Val) -> Result<i32> {
     Ok(n)
 }
 
+fn rotation_columns(row: &[Val], key_count: usize, column_count: usize) -> Result<&[Val]> {
+    row.get(key_count + 1..key_count + 1 + column_count).ok_or_else(|| Error::internal("AES rotation row is missing a selected AES column"))
+}
+
+fn rotation_key<'a>(version: Option<&Val>, keyring: &'a AesKeyring) -> Result<&'a str> {
+    let version = version.ok_or_else(|| Error::internal("AES rotation row is missing its key version"))?;
+    keyring.key(row_version(version)?)
+}
+
 /// AES key version status and rotation.
 pub struct AesUtils<'a> {
     u: &'a Utils<'a>,
@@ -641,8 +648,9 @@ impl AesUtils<'_> {
                     for row in batch {
                         let k = spec.keys.len();
                         // The stored version is read only for a non-NULL AES value; a NULL value has no bytes to decrypt (COD-44).
-                        let aes_present = row[k + 1..k + 1 + n].iter().any(|v| !matches!(v, Val::Null));
-                        let old_key = if aes_present { keyring.key(row_version(&row[k])?)? } else { "" };
+                        let aes_columns = rotation_columns(&row, k, n)?;
+                        let aes_present = aes_columns.iter().any(|v| !matches!(v, Val::Null));
+                        let old_key = if aes_present { rotation_key(row.get(k), keyring)? } else { "" };
                         let mut args = Vec::with_capacity(n + k + 2);
                         for (i, (_, styles)) in spec.columns.iter().enumerate() {
                             let plain = crate::codec::host_decode(&row[k + 1 + i], styles, old_key)?;
@@ -853,7 +861,8 @@ fn external_error(differences: Vec<String>) -> Result<()> {
 
 #[cfg(test)]
 mod keyring_tests {
-    use super::AesKeyring;
+    use super::{rotation_columns, rotation_key, row_version, AesKeyring};
+    use crate::value::Val;
     use std::collections::BTreeMap;
 
     #[test]
@@ -864,5 +873,31 @@ mod keyring_tests {
         let keyring = AesKeyring::new(keys, 2).unwrap();
         assert_eq!(keyring.versions(), vec![1, 2, 3]);
         assert_eq!(keyring.current(), 2);
+    }
+
+    // Requirements: COD-47. Rotation resolves the stored version through the same declared keyring and decoder codes.
+    #[test]
+    fn rotation_path_uses_read_path_error_codes() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let ring = AesKeyring::new(BTreeMap::from([(1, "old".to_owned()), (2, "new".to_owned())]), 2).unwrap();
+        assert_eq!(rotation_key(Some(&Val::I64(9)), &ring).unwrap_err().code(), crate::codes::CONFIG);
+        assert_eq!(rotation_key(Some(&Val::Str("bad".into())), &ring).unwrap_err().code(), crate::codes::CODEC_DECODE);
+        assert_eq!(row_version(&Val::I64(i64::from(i32::MAX) + 1)).unwrap_err().code(), crate::codes::CODEC_DECODE);
+    }
+
+    // Requirements: COD-54. A zero stored version is invalid during key rotation.
+    #[test]
+    fn rotation_stored_version_zero_is_codec_decode() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let ring = AesKeyring::new(BTreeMap::from([(1, "old".to_owned())]), 1).unwrap();
+        assert_eq!(rotation_key(Some(&Val::I64(0)), &ring).unwrap_err().code(), crate::codes::CODEC_DECODE);
+    }
+
+    // Requirements: COD-55. Rotation requires every selected AES column in its row.
+    #[test]
+    fn rotation_row_without_aes_column_is_internal() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let row = [Val::I64(7), Val::I64(1)];
+        assert_eq!(rotation_columns(&row, 1, 1).unwrap_err().code(), crate::codes::INTERNAL);
     }
 }

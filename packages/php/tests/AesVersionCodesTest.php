@@ -145,7 +145,7 @@ final class AesVersionCodesTest extends TestCase
         }
     }
 
-    // Requirements: COD-47. Rotation uses the stored-version errors from the read path.
+    // Requirements: COD-47, COD-54, COD-55. Rotation uses the stored-version errors from the read path.
     public function testRotationCodes(): void
     {
         $keyring = new AesKeyring([1 => 'old-key', 2 => 'new-key'], 2);
