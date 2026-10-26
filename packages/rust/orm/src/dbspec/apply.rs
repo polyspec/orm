@@ -399,10 +399,21 @@ struct HistoryRow {
 
 /// Session settings the command reverts at the end.
 enum Restore {
-    MySql { lock_wait: i64, row_wait: i64 },
-    Postgres { lock_timeout: String },
+    MySql {
+        lock_wait: i64,
+        row_wait: i64,
+    },
+    Postgres {
+        lock_timeout: String,
+    },
     /// locked: another connection holds the database, so this one took no lock that the release read would release.
-    Sqlite { foreign_keys: i64, legacy: i64, mode: String, busy: i64, locked: bool },
+    Sqlite {
+        foreign_keys: i64,
+        legacy: i64,
+        mode: String,
+        busy: i64,
+        locked: bool,
+    },
 }
 
 /// The state of one command run.
@@ -1183,8 +1194,8 @@ impl_apply_connection!(SqliteConnection, sqlx::Sqlite, super::sqlite_value);
 #[cfg(test)]
 mod sqlite_lock_result_tests {
     use super::{Applier, ApplyClock, ApplyConnection, ApplyError, ApplyEvents, CatalogQuerier, CatalogValue, Dialect};
-    use chrono::Utc;
     use crate::test_support::DatabaseErrorStub;
+    use chrono::Utc;
 
     #[derive(Debug, Clone, PartialEq, Eq)]
     struct SqlitePragmas {
