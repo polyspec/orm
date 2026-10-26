@@ -17543,6 +17543,14 @@
     "exported": false,
     "signature": "func(metadata CatalogTableMetadata, dialect string) string"
   },
+  "packages/go/orm/catalog_mutation.go::catalogDeclaredCapacity": {
+    "exported": false,
+    "signature": "func(pattern *regexp.Regexp, nativeType string) (uint64, bool)"
+  },
+  "packages/go/orm/catalog_mutation.go::catalogExceedsDeclaredCapacity": {
+    "exported": false,
+    "signature": "func(nativeType string, value any) bool"
+  },
   "packages/go/orm/catalog_mutation.go::catalogKeyPredicate": {
     "exported": false,
     "signature": "func(metadata CatalogTableMetadata, dialect string, start int) string"

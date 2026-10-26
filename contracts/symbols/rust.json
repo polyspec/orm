@@ -551,6 +551,14 @@
     "exported": true,
     "signature": "pub fn validate_update (\u0026 self , changes : \u0026 [(String , GridCell)]) -\u003e Result \u003c () , String \u003e"
   },
+  "packages/rust/build/src/catalog/row_update.rs::declared_capacity": {
+    "exported": false,
+    "signature": " fn declared_capacity (native_type : \u0026 str , names : \u0026 [\u0026 str]) -\u003e Option \u003c usize \u003e"
+  },
+  "packages/rust/build/src/catalog/row_update.rs::exceeds_declared_capacity": {
+    "exported": false,
+    "signature": " fn exceeds_declared_capacity (native_type : \u0026 str , cell : \u0026 GridCell) -\u003e bool"
+  },
   "packages/rust/build/src/catalog/row_update.rs::invalid": {
     "exported": false,
     "signature": " fn invalid () -\u003e String"

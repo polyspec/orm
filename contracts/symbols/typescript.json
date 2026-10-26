@@ -607,6 +607,10 @@
     "exported": false,
     "signature": "function err(code: string, message: string, cause?: unknown): OrmError"
   },
+  "packages/ts/src/catalog.ts::exceedsDeclaredCapacity": {
+    "exported": false,
+    "signature": "function exceedsDeclaredCapacity(column: CatalogColumn, value: DriverValue): boolean"
+  },
   "packages/ts/src/catalog.ts::float32BitsOfText": {
     "exported": false,
     "signature": "function float32BitsOfText(text: string): number"
