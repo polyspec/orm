@@ -106,6 +106,14 @@ function rules_vectors(): array
         ),
         rules_case('header-name-format', ['dbspec 1 Shop'], [['name.format', 1, 'Shop']]),
         rules_case(
+            'reserved-word-and-tie-order',
+            users(
+                ['  Aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa i32'],
+                ['  index identity (id)']
+            ),
+            [['name.format', 5, 3], ['name.length', 5, 3], ['name.format', 7, 9]]
+        ),
+        rules_case(
             'order-use-after-table',
             [
                 'dbspec 1 shop',
@@ -338,6 +346,23 @@ function rules_vectors(): array
             '  check ck_users_empty ()',
             '  check ck_users_upper (a > 1 AND a < 3)',
         ]), [['syntax', 8, '%'], ['check', 9, 'zzz'], ['check', 10, '< 2'], ['check', 11, ')'], ['check', 12, 'AND']]),
+        rules_case(
+            'check-outside-neutral-set',
+            users([], [
+                '  check ck_a (id like 1)',
+                '  check ck_b (id > -id)',
+                '  check ck_c (id AND 1)',
+                '  check ck_d (id in (id))',
+                '  check ck_e ((id > 0)',
+            ]),
+            [
+                ['check', 6, 18],
+                ['check', 7, 20],
+                ['check', 8, 18],
+                ['check', 9, 22],
+                ['check', 10, 22],
+            ]
+        ),
         rules_case(
             'check-set-null-column',
             [
@@ -957,7 +982,7 @@ final class DbspecRulesTest extends TestCase
     }
 
     // Requirements: DBS-2, DBS-3, DBS-34, DBS-46, DBS-131, DBS-154, DBS-156, DBS-157, DBS-158, DBS-159, DBS-161,
-    // DBS-162, DBS-163, DBS-164, DBS-165, DBS-166, DBS-167, DBS-168, DBS-169, DBS-171.
+    // DBS-160, DBS-162, DBS-163, DBS-164, DBS-165, DBS-166, DBS-167, DBS-168, DBS-169, DBS-171.
     #[DataProvider('ruleCases')]
     public function testRule(string $kind, array $case): void
     {

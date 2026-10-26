@@ -1630,7 +1630,7 @@ final class Parser
         $check = new Check($name[0], '', $this->takeComments());
         $this->table->checks[] = $check;
         $this->declare('constraint', [$this->table->name, $name[0]], $name);
-        $this->tableChecks[] = [$check, $this->line, array_slice($this->tokens, 3), $this->endColumn()];
+        $this->tableChecks[] = [$check, $this->line, array_slice($this->tokens, 3), end($rest)[1]];
     }
 
     /**
@@ -3486,16 +3486,17 @@ final class Parser
         $this->mark($token, 'name');
         [$name, $column] = $token;
         $line ??= $this->line;
-        if (!preg_match('/^[a-z][a-z0-9_]*$/D', $name) || in_array($name, self::RESERVED, true)) {
+        $matchesFormat = preg_match('/^[a-z][a-z0-9_]*$/D', $name) === 1
+            && !in_array($name, self::RESERVED, true);
+        if (!$matchesFormat) {
             $this->error('name.format', $line, $column, "name `$name` does not match [a-z][a-z0-9_]* or is a "
                 . "reserved word");
-            return false;
         }
-        if (strlen($name) > 63) {
+        $matchesLength = strlen($name) <= 63;
+        if (!$matchesLength) {
             $this->error('name.length', $line, $column, "name `$name` is longer than 63 bytes");
-            return false;
         }
-        return true;
+        return $matchesFormat && $matchesLength;
     }
 
     /** Checks an index, unique key, foreign key or check name and reserves it in the schema. */
