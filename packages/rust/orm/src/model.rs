@@ -1772,6 +1772,7 @@ mod host_assignment_tests {
     use super::validate_host_value;
     use crate::{codes, value::Param};
 
+    // Requirements: COD-38.
     #[test]
     fn invalid_ip_assignment_is_codec_encode() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
