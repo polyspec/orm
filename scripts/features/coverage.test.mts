@@ -238,7 +238,7 @@ caseTest('Rust coverage maps nested modules to the most specific Cargo test targ
 caseTest('Rust coverage maps explicit library path modules to the library test target', COMPUTE, async () => {
   const root = new URL('../..', import.meta.url).pathname;
   const metadata = await run('cargo', ['metadata', '--no-deps', '--format-version=1', '--manifest-path', join(root, 'packages/rust/orm/Cargo.toml')], root, null, process.env, () => {});
-  assert.equal(metadata.error, undefined);
+  assert.ifError(metadata.error);
   const project = JSON.parse(metadata.stdout ?? '{}') as { packages: { name: string; manifest_path: string; targets: { name: string; kind: string[]; src_path: string; test: boolean; harness?: boolean }[] }[] };
   const pkg = project.packages.find(item => item.name === 'polyspec-orm');
   assert.ok(pkg, 'Cargo metadata has no ORM package');

@@ -179,7 +179,7 @@ PUBLISH = node $(abspath scripts/publish-output.mts)
 # LEASE is the program that handles holding a test resource shared by several runs (tests/lease). Its build is a long-running
 # task, so it runs with no deadline under RUN_LONG.
 LEASE = $(abspath .runtime/bin/lease)
-BUILD_LEASE = $(RUN_LONG) go-build/lease -- $(PUBLISH) $(LEASE) go build -o @OUT@ ./tests/lease
+BUILD_LEASE = $(RUN_LONG) go-build/lease -- $(PUBLISH) $(LEASE) go build -o @OUT@ ./tests/lease >&2
 # CARGO_LEASED runs cargo's build of the Rust target directory (CARGO_TARGET_DIR, which the concurrent runs of this checkout share)
 # under an exclusive lease. If a build of another run in this checkout holds the lease, it waits for the directory change notice
 # (--wait). Builds run one at a time anyway, because of cargo's own lock.
@@ -219,7 +219,7 @@ SEND_SQLITE_DSN = sqlite://$(RUN_DIR)/send-savepoint.sqlite
 .PHONY: lease-tool
 lease-tool:
 	$(BUILD_LEASE)
-TSC_BUILD = $(RUN_LONG) typescript-build -- node scripts/typescript/build.mts
+TSC_BUILD = $(RUN_LONG) typescript-build -- node scripts/typescript/build.mts >&2
 
 # check runs CHECK_TARGETS one at a time with scripts/check/run.mts. The runner creates its own bench
 # database and decimal database for each run, passes them as TEST_ENV and DECIMAL_ENV, and deletes them at the end, and for each target
