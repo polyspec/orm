@@ -7544,6 +7544,120 @@
       ]
     },
     {
+      "id": "planner-upsert-conflict-key-validation",
+      "kind": "feature",
+      "requirements": [
+        "PRT-6"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_planner_test.go",
+          "id": "TestCoveragePlannerRejectsUpsertPrimaryAndUniqueKey"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_planner_test.go",
+          "id": "TestCoveragePlannerRejectsUpsertUniqueKeyNotAssigned"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_planner_test.go",
+          "id": "TestCoveragePlannerRejectsUpsertWithoutAKey"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoveragePlannerTest.php",
+          "id": "CoveragePlannerTest::testPlannerRejectsUpsertPrimaryAndUniqueKey"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoveragePlannerTest.php",
+          "id": "CoveragePlannerTest::testPlannerRejectsUpsertUniqueKeyNotAssigned"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoveragePlannerTest.php",
+          "id": "CoveragePlannerTest::testPlannerRejectsUpsertWithoutAKey"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
+          "id": "CoveragePlannerExtensionTest::test_planner_rejects_upsert_primary_and_unique_key"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
+          "id": "CoveragePlannerExtensionTest::test_planner_rejects_upsert_unique_key_not_assigned"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
+          "id": "CoveragePlannerExtensionTest::test_planner_rejects_upsert_without_a_key"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_planner.mjs",
+          "id": "planner_rejects_upsert_primary_and_unique_key"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_planner.mjs",
+          "id": "planner_rejects_upsert_unique_key_not_assigned"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_planner.mjs",
+          "id": "planner_rejects_upsert_without_a_key"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_planner.py",
+          "id": "planner_rejects_upsert_primary_and_unique_key"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_planner.py",
+          "id": "planner_rejects_upsert_unique_key_not_assigned"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_planner.py",
+          "id": "planner_rejects_upsert_without_a_key"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/unit/coverage_planner.rs",
+          "id": "planner_rejects_upsert_primary_and_unique_key"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/unit/coverage_planner.rs",
+          "id": "planner_rejects_upsert_unique_key_not_assigned"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/unit/coverage_planner.rs",
+          "id": "planner_rejects_upsert_without_a_key"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/unit/upsert_conflict.rs",
+          "id": "missing_conflict_key_error_is_preserved"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/unit/upsert_conflict.rs",
+          "id": "ambiguous_primary_and_unique_conflict_keys_are_rejected"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/unit/upsert_conflict.rs",
+          "id": "fully_assigned_composite_primary_key_is_a_valid_conflict_target"
+        }
+      ]
+    },
+    {
       "id": "schema-definition",
       "kind": "suite",
       "requirements": [
@@ -22993,7 +23107,8 @@
       "kind": "feature",
       "requirements": [
         "PRT-12",
-        "INT-87"
+        "INT-87",
+        "PRT-40"
       ],
       "bindings": [
         {

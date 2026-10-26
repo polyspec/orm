@@ -329,6 +329,28 @@ func TestExpandInKeepsBareDollar(t *testing.T) {
 	}
 }
 
+// Requirements: PRT-40.
+func TestParentSlotExpansionPadsCompositeKeysAndRenumbersFollowingSlots(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	step := &plan.Step{
+		SQL:       "SELECT $1 WHERE (a, b) IN (($2)) AND active = $3",
+		BindSlots: []plan.BindSlot{{From: "param"}, {From: "parent"}, {From: "param"}},
+		Parent:    &plan.ParentRef{Keys: []plan.KeyRef{{Column: "a", Index: 0}, {Column: "b", Index: 1}}},
+	}
+	sql, args, err := expandIn(step, []any{int64(10), int64(11), int64(20), int64(21), int64(30), int64(31)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const wantSQL = "SELECT $1 WHERE (a, b) IN (($2, $3), ($4, $5), ($6, $7), ($8, $9)) AND active = $10"
+	if sql != wantSQL {
+		t.Fatalf("expanded statement = %q, want %q", sql, wantSQL)
+	}
+	wantArgs := []any{int64(10), int64(11), int64(20), int64(21), int64(30), int64(31), int64(30), int64(31)}
+	if !reflect.DeepEqual(args, wantArgs) {
+		t.Fatalf("expanded parent values = %#v, want %#v", args, wantArgs)
+	}
+}
+
 // indexedParams returns count parameters whose values are the int64 of their
 // position, and the list of their positions.
 func indexedParams(count int) ([]any, []int) {

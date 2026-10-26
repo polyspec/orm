@@ -359,18 +359,21 @@ final class CoveragePlannerExtensionTest extends TestCase
     }
 
     // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
+    // Requirements: PRT-6.
     public function test_planner_rejects_upsert_primary_and_unique_key(): void
     {
         $this->runPlannerCoverageCase('planner_rejects_upsert_primary_and_unique_key');
     }
 
     // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
+    // Requirements: PRT-6.
     public function test_planner_rejects_upsert_unique_key_not_assigned(): void
     {
         $this->runPlannerCoverageCase('planner_rejects_upsert_unique_key_not_assigned');
     }
 
     // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
+    // Requirements: PRT-6.
     public function test_planner_rejects_upsert_without_a_key(): void
     {
         $this->runPlannerCoverageCase('planner_rejects_upsert_without_a_key');

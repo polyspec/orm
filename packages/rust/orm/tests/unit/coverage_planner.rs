@@ -503,18 +503,21 @@ mod planner {
     }
 
     #[test]
+    // Requirements: PRT-6.
     fn planner_rejects_upsert_primary_and_unique_key() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         run("planner_rejects_upsert_primary_and_unique_key");
     }
 
     #[test]
+    // Requirements: PRT-6.
     fn planner_rejects_upsert_unique_key_not_assigned() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         run("planner_rejects_upsert_unique_key_not_assigned");
     }
 
     #[test]
+    // Requirements: PRT-6.
     fn planner_rejects_upsert_without_a_key() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         run("planner_rejects_upsert_without_a_key");

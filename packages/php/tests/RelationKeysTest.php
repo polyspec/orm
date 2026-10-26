@@ -14,6 +14,37 @@ use Polyspec\Orm\Tests\Model\Author;
 #[Small]
 final class RelationKeysTest extends TestCase
 {
+    // Requirements: PRT-40.
+    public function testParentSlotExpansionPadsCompositeKeysAndRenumbersFollowingPlaceholders(): void
+    {
+        $expand = new \ReflectionMethod(Db::class, 'expandIn');
+        $single = [
+            'sql' => 'SELECT $1 WHERE id IN ($2) AND active = $3',
+            'bind_slots' => [['from' => 'param'], ['from' => 'parent'], ['from' => 'param']],
+            'parent' => ['keys' => [['column' => 'id', 'index' => 0]]],
+        ];
+        [$singleSql, $singleValues] = $expand->invoke(null, $single, [7]);
+        self::assertSame('SELECT $1 WHERE id IN ($2) AND active = $3', $singleSql);
+        self::assertSame([7], $singleValues);
+
+        $composite = [
+            'sql' => 'SELECT $1 WHERE (a, b) IN (($2)) AND active = $3',
+            'bind_slots' => [['from' => 'param'], ['from' => 'parent'], ['from' => 'param']],
+            'parent' => ['keys' => [['column' => 'a', 'index' => 0], ['column' => 'b', 'index' => 1]]],
+        ];
+        [$numberedSql, $numberedValues] = $expand->invoke(null, $composite, [10, 11, 20, 21, 30, 31]);
+        self::assertSame(
+            'SELECT $1 WHERE (a, b) IN (($2, $3), ($4, $5), ($6, $7), ($8, $9)) AND active = $10',
+            $numberedSql,
+        );
+        self::assertSame([10, 11, 20, 21, 30, 31, 30, 31], $numberedValues);
+
+        $composite['sql'] = 'SELECT ? WHERE (a, b) IN ((?)) AND active = ?';
+        [$positionalSql, $positionalValues] = $expand->invoke(null, $composite, [10, 11, 20, 21, 30, 31]);
+        self::assertSame('SELECT ? WHERE (a, b) IN ((?, ?), (?, ?), (?, ?), (?, ?)) AND active = ?', $positionalSql);
+        self::assertSame([10, 11, 20, 21, 30, 31, 30, 31], $positionalValues);
+    }
+
     public function testRelationKeys(): void
     {
         $refs = [['column' => 'tenant_id', 'index' => 0], ['column' => 'account_id', 'index' => 1]];

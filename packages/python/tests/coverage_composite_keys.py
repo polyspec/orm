@@ -2,6 +2,7 @@
 # both components of its foreign key (tenant_id, account_id), and deleting an account removes its membership through
 # ON DELETE CASCADE, as the composite_keys coverage of Go, PHP, TypeScript and Rust does. Every written row is removed.
 import json
+import re
 
 from polyspec.orm.models import models
 
@@ -29,6 +30,7 @@ COLLISION_OTHER_TENANT = COLLISION_ROWS[1]["tenant_id"]
 
 
 def composite_key_rows(item):
+    # Requirements: PRT-40.
     driver, dsn = item
     db = models.connect(dsn)
     try:
@@ -55,6 +57,7 @@ def composite_key_rows(item):
         def body():
             account().set_tenant_id(TENANT).set_account_id(1).set_name("a").create()
             account().set_tenant_id(TENANT).set_account_id(2).set_name("b").create()
+            account().set_tenant_id(TENANT).set_account_id(3).set_name("d").create()
             account().set_tenant_id(OTHER_TENANT).set_account_id(2).set_name(
                 "c"
             ).create()
@@ -63,6 +66,9 @@ def composite_key_rows(item):
             ).create()
             membership().set_tenant_id(TENANT).set_account_id(2).set_role(
                 "owner"
+            ).create()
+            membership().set_tenant_id(TENANT).set_account_id(3).set_role(
+                "editor"
             ).create()
             membership().set_tenant_id(OTHER_TENANT).set_account_id(2).set_role(
                 "guest"
@@ -78,6 +84,14 @@ def composite_key_rows(item):
                 account().get_by_tenant_id_and_account_id(TENANT, 2).get_name(),
                 "b",
                 "row read by both key components",
+            )
+            relation_events = []
+            unsubscribe = db.subscribe(
+                lambda event: (
+                    relation_events.append(event)
+                    if "composite_membership" in event.sql and " IN (" in event.sql
+                    else None
+                )
             )
             # The relation joins both components of the foreign key in key order. A child with a connection of its own is
             # read apart after the parent rows; both paths give the same result.
@@ -104,6 +118,26 @@ def composite_key_rows(item):
                 )
                 .gets()
             )
+            unsubscribe()
+            expect_equal(
+                len(relation_events),
+                2,
+                "both relation paths execute one relation statement",
+            )
+            for event in relation_events:
+                expect_equal(
+                    event.binds,
+                    [TENANT, 1, TENANT, 2, TENANT, 3, TENANT, 3],
+                    "three composite parent keys pad by repeating the last tuple",
+                )
+                placeholders = (
+                    re.findall(r"\$\d+", event.sql)
+                    if "$" in event.sql
+                    else re.findall(r"\?", event.sql)
+                )
+                expect_equal(
+                    len(placeholders), 8, "four two-column parent placeholders are sent"
+                )
             for path, loaded in (("same statement", same), ("own connection", own)):
                 got = [
                     f"{a.get_tenant_id()}/{a.get_account_id()}:{m.get_tenant_id()}/{m.get_account_id()}/{m.get_role()}"
@@ -112,7 +146,11 @@ def composite_key_rows(item):
                 ]
                 expect_equal(
                     got,
-                    [f"{TENANT}/1:{TENANT}/1/member", f"{TENANT}/2:{TENANT}/2/owner"],
+                    [
+                        f"{TENANT}/1:{TENANT}/1/member",
+                        f"{TENANT}/2:{TENANT}/2/owner",
+                        f"{TENANT}/3:{TENANT}/3/editor",
+                    ],
                     f"{path}: memberships of tenant {TENANT} accounts",
                 )
             expect_equal(
@@ -163,7 +201,7 @@ def composite_key_rows(item):
             account().get_by_tenant_id_and_account_id(TENANT, 2).delete()
             expect_equal(
                 membership().tenant_id(TENANT).get_count(),
-                1,
+                2,
                 "ON DELETE CASCADE removed the membership of account 2",
             )
             for tenant in (

@@ -4,7 +4,7 @@ import unittest
 from datetime import datetime
 from pathlib import Path
 
-from polyspec.orm.database import key_of_values, row_key
+from polyspec.orm.database import _expand_parent, key_of_values, row_key
 from polyspec.orm.errors import OrmError
 from polyspec.orm.core import Core
 from polyspec.orm.model import Collection
@@ -43,6 +43,31 @@ def composite_value_of(entry):
 
 
 class CollectionIdentityTest(unittest.TestCase):
+    # Requirements: PRT-40.
+    def test_parent_slot_expansion_pads_composite_keys_and_renumbers_following_slots(
+        self,
+    ):
+        step = {
+            "sql": "SELECT $1 WHERE (a, b) IN (($2)) AND active = $3",
+            "bind_slots": [
+                {"from": "param"},
+                {"from": "parent"},
+                {"from": "param"},
+            ],
+            "parent": {
+                "keys": [
+                    {"column": "a", "index": 0},
+                    {"column": "b", "index": 1},
+                ]
+            },
+        }
+        sql, values = _expand_parent(step, [10, 11, 20, 21, 30, 31])
+        self.assertEqual(
+            sql,
+            "SELECT $1 WHERE (a, b) IN (($2, $3), ($4, $5), ($6, $7), ($8, $9)) AND active = $10",
+        )
+        self.assertEqual(values, [10, 11, 20, 21, 30, 31, 30, 31])
+
     # Requirements: INT-88, INT-89.
     def test_terminal_returns_the_first_recorded_builder_error(self):
         core = Core(None)

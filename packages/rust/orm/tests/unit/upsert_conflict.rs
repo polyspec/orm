@@ -45,6 +45,7 @@ fn missing_entity_error_is_preserved() {
     assert_eq!(error_code(&result), Some(codes::ENTITY_UNKNOWN), "{result:?}");
 }
 
+// Requirements: PRT-6.
 #[test]
 fn missing_conflict_key_error_is_preserved() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -57,6 +58,7 @@ fn missing_conflict_key_error_is_preserved() {
     assert_eq!(error_code(&result), Some(codes::IR_INVALID), "{result:?}");
 }
 
+// Requirements: PRT-6.
 #[test]
 fn ambiguous_primary_and_unique_conflict_keys_are_rejected() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -70,6 +72,7 @@ fn ambiguous_primary_and_unique_conflict_keys_are_rejected() {
     assert_eq!(error_code(&result), Some(codes::IR_INVALID), "{result:?}");
 }
 
+// Requirements: PRT-6.
 #[test]
 fn fully_assigned_composite_primary_key_is_a_valid_conflict_target() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

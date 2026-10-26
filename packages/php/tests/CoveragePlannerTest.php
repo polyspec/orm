@@ -613,6 +613,7 @@ final class CoveragePlannerTest extends TestCase
         plannerCase($root, $fixture, 'planner_rejects_relation_integer_varchar');
     }
 
+    // Requirements: PRT-6.
     public function testPlannerRejectsUpsertPrimaryAndUniqueKey(): void
     {
         $root = dirname(__DIR__, 3);
@@ -620,6 +621,7 @@ final class CoveragePlannerTest extends TestCase
         plannerCase($root, $fixture, 'planner_rejects_upsert_primary_and_unique_key');
     }
 
+    // Requirements: PRT-6.
     public function testPlannerRejectsUpsertUniqueKeyNotAssigned(): void
     {
         $root = dirname(__DIR__, 3);
@@ -627,6 +629,7 @@ final class CoveragePlannerTest extends TestCase
         plannerCase($root, $fixture, 'planner_rejects_upsert_unique_key_not_assigned');
     }
 
+    // Requirements: PRT-6.
     public function testPlannerRejectsUpsertWithoutAKey(): void
     {
         $root = dirname(__DIR__, 3);

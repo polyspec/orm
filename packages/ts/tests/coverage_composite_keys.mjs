@@ -15,7 +15,7 @@ const collisionTenant = collisionRows[0].tenant_id;
 const collisionOtherTenant = collisionRows[1].tenant_id;
 
 await runCases('coverage_composite_keys.mjs', {
-  // Requirements: INT-87, PRT-12.
+  // Requirements: INT-87, PRT-12, PRT-40.
   async composite_key_rows({ driver, dsn }) {
     const db = await connect(dsn);
     try {
@@ -29,9 +29,11 @@ await runCases('coverage_composite_keys.mjs', {
       await withCleanup(async () => {
         await account().setTenantId(tenant).setAccountId(1).setName('a').create();
         await account().setTenantId(tenant).setAccountId(2).setName('b').create();
+        await account().setTenantId(tenant).setAccountId(3).setName('d').create();
         await account().setTenantId(otherTenant).setAccountId(2).setName('c').create();
         await membership().setTenantId(tenant).setAccountId(1).setRole('member').create();
         await membership().setTenantId(tenant).setAccountId(2).setRole('owner').create();
+        await membership().setTenantId(tenant).setAccountId(3).setRole('editor').create();
         await membership().setTenantId(otherTenant).setAccountId(2).setRole('guest').create();
         for (const row of collisionRows) {
           await account().setTenantId(row.tenant_id).setAccountId(row.account_id).setName(row.name).create();
@@ -40,18 +42,33 @@ await runCases('coverage_composite_keys.mjs', {
         assert.equal((await account().getByTenantIdAndAccountId(tenant, 2)).getName(), 'b', 'row read by both key components');
         // A relation links the two parts of a foreign key in key order. When a child has its own link, after reading the parent row
         // it is read separately. The two paths give the same result.
+        const relationEvents = [];
+        const unsubscribe = db.subscribe(event => {
+          if (event.sql.includes('composite_membership') && event.sql.includes(' IN (')) relationEvents.push(event);
+        });
         const same = await account().tenantId(tenant)
           .relations(new CompositeMembership().matchTenantIdWithTenantId().matchAccountIdWithAccountId().aliasMemberships())
           .gets();
         const own = await account().tenantId(tenant)
           .relations(new CompositeMembership().connect(db).matchTenantIdWithTenantId().matchAccountIdWithAccountId().aliasMemberships())
           .gets();
+        unsubscribe();
+        assert.equal(relationEvents.length, 2, 'each relation path sends one padded query');
+        for (const event of relationEvents) {
+          assert.deepEqual(event.binds, [tenant, 1, tenant, 2, tenant, 3, tenant, 3]);
+          const placeholders = event.sql.match(/\?/g) ?? event.sql.match(/\$\d+/g) ?? [];
+          assert.equal(placeholders.length, 8, 'three composite parent keys pad to four tuples');
+        }
         for (const [path, loaded] of [['same statement', same], ['own connection', own]]) {
           const got = [];
           for (const a of loaded.values()) {
             for (const m of a.getMemberships().values()) got.push(`${a.getTenantId()}/${a.getAccountId()}:${m.getTenantId()}/${m.getAccountId()}/${m.getRole()}`);
           }
-          assert.deepEqual(got, [`${tenant}/1:${tenant}/1/member`, `${tenant}/2:${tenant}/2/owner`], `${path}: memberships of tenant ${tenant} accounts`);
+          assert.deepEqual(got, [
+            `${tenant}/1:${tenant}/1/member`,
+            `${tenant}/2:${tenant}/2/owner`,
+            `${tenant}/3:${tenant}/3/editor`,
+          ], `${path}: memberships of tenant ${tenant} accounts`);
         }
         assert.equal(
           `${collisionRows[0].tenant_id}${collisionRows[0].account_id}`,
@@ -75,7 +92,7 @@ await runCases('coverage_composite_keys.mjs', {
           ), `${path}: colliding concatenated composite keys keep relations separate`);
         }
         await (await account().getByTenantIdAndAccountId(tenant, 2)).delete();
-        assert.equal(await membership().tenantId(tenant).getCount(), 1, 'ON DELETE CASCADE removed the membership of account 2');
+        assert.equal(await membership().tenantId(tenant).getCount(), 2, 'ON DELETE CASCADE removed the membership of account 2');
         for (const t of [tenant, otherTenant, collisionTenant, collisionOtherTenant]) {
           await (await account().tenantId(t).gets()).delete();
           assert.equal(await account().tenantId(t).getCount(), 0, `no account of tenant ${t} remains`);

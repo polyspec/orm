@@ -129,8 +129,11 @@ await runCases('coverage_planner.mjs', {
   async planner_rejects_in_subquery_integer_varchar() { compileCase('planner_rejects_in_subquery_integer_varchar'); },
   async planner_rejects_join_integer_varchar() { compileCase('planner_rejects_join_integer_varchar'); },
   async planner_rejects_relation_integer_varchar() { compileCase('planner_rejects_relation_integer_varchar'); },
+  // Requirements: PRT-6.
   async planner_rejects_upsert_primary_and_unique_key() { compileCase('planner_rejects_upsert_primary_and_unique_key'); },
+  // Requirements: PRT-6.
   async planner_rejects_upsert_unique_key_not_assigned() { compileCase('planner_rejects_upsert_unique_key_not_assigned'); },
+  // Requirements: PRT-6.
   async planner_rejects_upsert_without_a_key() { compileCase('planner_rejects_upsert_without_a_key'); },
   async planner_order_nullable_column() { compileCase('planner_order_nullable_column'); },
   async planner_order_not_null_column() { compileCase('planner_order_not_null_column'); },

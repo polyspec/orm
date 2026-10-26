@@ -66,6 +66,7 @@ def planner_slot(slot: dict) -> dict:
 
 def compile_case(case: dict) -> None:
     """Validates and compiles the request of a case in every dialect and compares the expectation."""
+    # Requirements: PRT-6. The upsert conflict-key cases are listed below in planner.json.
     # The planner_tables case checks PRT-37; planner_scalar_column_subquery checks PRT-78.
     expect_equal(case["operation"], "compile", f"operation of case {case['id']}")
     model = model_of(case)

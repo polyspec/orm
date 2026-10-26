@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Tests;
 
 use Polyspec\Orm\Db;
+use Polyspec\Orm\StatementEvent;
 use Polyspec\Orm\Tests\Model\CompositeAccount;
 use Polyspec\Orm\Tests\Model\CompositeMembership;
 use PHPUnit\Framework\Assert;
@@ -30,6 +31,15 @@ final class CoverageCompositeKeysCase
             }
         }
         return $rows;
+    }
+
+    private static function parentPlaceholderCount(string $sql): int
+    {
+        if (str_contains($sql, '?')) {
+            return substr_count($sql, '?');
+        }
+        preg_match_all('/\$\d+/', $sql, $matches);
+        return count($matches[0]);
     }
 
     public static function run(Db $db, int $tenant, int $otherTenant): void
@@ -69,9 +79,11 @@ final class CoverageCompositeKeysCase
         ): void {
             (new CompositeAccount())($db)->setTenantId($tenant)->setAccountId(1)->setName('a')->create();
             (new CompositeAccount())($db)->setTenantId($tenant)->setAccountId(2)->setName('b')->create();
+            (new CompositeAccount())($db)->setTenantId($tenant)->setAccountId(3)->setName('d')->create();
             (new CompositeAccount())($db)->setTenantId($otherTenant)->setAccountId(2)->setName('c')->create();
             (new CompositeMembership())($db)->setTenantId($tenant)->setAccountId(1)->setRole('member')->create();
             (new CompositeMembership())($db)->setTenantId($tenant)->setAccountId(2)->setRole('owner')->create();
+            (new CompositeMembership())($db)->setTenantId($tenant)->setAccountId(3)->setRole('editor')->create();
             (new CompositeMembership())($db)->setTenantId($otherTenant)->setAccountId(2)->setRole('guest')->create();
             foreach ($collisionRows as $row) {
                 (new CompositeAccount())($db)->setTenantId($row['tenant_id'])
@@ -83,6 +95,16 @@ final class CoverageCompositeKeysCase
             $name = (new CompositeAccount())($db)->getByTenantIdAndAccountId($tenant, 2)->getName();
             Assert::assertSame('b', $name, 'lookup uses both components of the composite key');
 
+            $relationEvents = [];
+            $unsubscribe = $db->subscribe(static function (StatementEvent $event) use (&$relationEvents): void {
+                if (
+                    $event->kind === StatementEvent::SELECT
+                    && str_contains($event->sql, 'composite_membership')
+                    && str_contains($event->sql, ' IN (')
+                ) {
+                    $relationEvents[] = $event;
+                }
+            });
             foreach (self::childFactories($db) as $path => $newChild) {
                 $child = $newChild();
                 $loaded = (new CompositeAccount())($db)->tenantId($tenant)
@@ -94,8 +116,23 @@ final class CoverageCompositeKeysCase
                 $want = [
                     "$tenant/1:$tenant/1/member",
                     "$tenant/2:$tenant/2/owner",
+                    "$tenant/3:$tenant/3/editor",
                 ];
                 Assert::assertSame($want, $got, "$path: relation matches both components of the composite key");
+            }
+            $unsubscribe();
+            Assert::assertCount(2, $relationEvents, 'both relation paths execute one relation statement');
+            foreach ($relationEvents as $event) {
+                Assert::assertSame(
+                    [$tenant, 1, $tenant, 2, $tenant, 3, $tenant, 3],
+                    $event->binds,
+                    'three composite parent keys pad by repeating the last tuple'
+                );
+                Assert::assertSame(
+                    8,
+                    self::parentPlaceholderCount($event->sql),
+                    'four two-column placeholders are sent'
+                );
             }
 
             Assert::assertSame(
@@ -130,7 +167,7 @@ final class CoverageCompositeKeysCase
             }
 
             (new CompositeAccount())($db)->getByTenantIdAndAccountId($tenant, 2)->delete();
-            Assert::assertSame(1, $memberships($tenant), 'ON DELETE CASCADE removes account 2 membership');
+            Assert::assertSame(2, $memberships($tenant), 'ON DELETE CASCADE removes account 2 membership');
             foreach ($tenants as $keyTenant) {
                 (new CompositeAccount())($db)->tenantId($keyTenant)->gets()->delete();
                 Assert::assertSame(0, $accounts($keyTenant), "tenant $keyTenant accounts are deleted");

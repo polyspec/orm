@@ -36,7 +36,7 @@ final class CompositeKeysNativeTest extends TestCase
         Assert::assertSame([], $pdo->executions, 'fixture setup is not recorded as ORM query execution');
     }
 
-    // Requirements: INT-87, PRT-12.
+    // Requirements: INT-87, PRT-12, PRT-40.
     // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
     public function test_composite_relation_binds_and_assembles_both_key_components(): void
     {
@@ -58,7 +58,7 @@ final class CompositeKeysNativeTest extends TestCase
             (string)$collisionRows[1]['tenant_id'] . $collisionRows[1]['account_id'],
             'the shared fixture has equal concatenated composite keys'
         );
-        $pdo = NativeQueryProbePdo::withCompositeRows(array_map(
+        $nativeRows = array_map(
             static fn(array $row): array => [
                 'tenantId' => $row['tenant_id'],
                 'accountId' => $row['account_id'],
@@ -66,7 +66,9 @@ final class CompositeKeysNativeTest extends TestCase
                 'role' => $row['role'],
             ],
             $collisionRows
-        ));
+        );
+        $nativeRows[] = ['tenantId' => 990004, 'accountId' => 3, 'name' => 'd', 'role' => 'editor'];
+        $pdo = NativeQueryProbePdo::withCompositeRows($nativeRows);
         $db = $pdo->connectOrm();
         try {
             $membership = (new CompositeMembership())
@@ -87,6 +89,7 @@ final class CompositeKeysNativeTest extends TestCase
             foreach ($collisionRows as $row) {
                 $expectedRelations[$row['tenant_id'] . '/' . $row['account_id']] = [$row['role']];
             }
+            $expectedRelations['990004/3'] = ['editor'];
             Assert::assertSame($expectedRelations, $relations);
             Assert::assertCount(2, $pdo->executions, 'the root and relation each execute one native statement');
             Assert::assertSame(
@@ -95,11 +98,15 @@ final class CompositeKeysNativeTest extends TestCase
                     $collisionRows[0]['account_id'],
                     $collisionRows[1]['tenant_id'],
                     $collisionRows[1]['account_id'],
+                    990004,
+                    3,
+                    990004,
+                    3,
                 ],
                 $pdo->executions[1]['params']
             );
             Assert::assertMatchesRegularExpression(
-                '/WHERE \("a"\."tenant_id", "a"\."account_id"\) IN \(\(\?, \?\), \(\?, \?\)\)/',
+                '/WHERE \("a"\."tenant_id", "a"\."account_id"\) IN \(\(\?, \?\), \(\?, \?\), \(\?, \?\), \(\?, \?\)\)/',
                 $pdo->executions[1]['sql']
             );
         } finally {

@@ -18,7 +18,7 @@ const COMPOSITE_NATIVE_OTHER_TENANT = 990006;
 #[Medium]
 final class CoverageCompositeKeysExtensionTest extends TestCase
 {
-    // Requirements: INT-87, PRT-12.
+    // Requirements: INT-87, PRT-12, PRT-40.
     // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
     public function test_composite_key_rows(): void
     {

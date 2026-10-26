@@ -95,7 +95,8 @@ final class ParameterChunkingNativeTest extends TestCase
         }
     }
 
-    // PRT-76: relation key tuples split at the bind limit and the tail pads to a power-of-two size class.
+    // Requirements: PRT-40, PRT-76.
+    // Relation key tuples split at the bind limit and the tail pads to a power-of-two size class.
     // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
     public function test_composite_relation_keys_split_and_pad_to_bind_safe_size_classes(): void
     {

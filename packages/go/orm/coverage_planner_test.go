@@ -459,18 +459,21 @@ func TestCoveragePlannerRejectsRelationIntegerVarchar(t *testing.T) {
 }
 
 // TestCoveragePlannerRejectsUpsertPrimaryAndUniqueKey checks that the rejects upsert primary and unique key case compiles as expected.
+// Requirements: PRT-6.
 func TestCoveragePlannerRejectsUpsertPrimaryAndUniqueKey(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_upsert_primary_and_unique_key")
 }
 
 // TestCoveragePlannerRejectsUpsertUniqueKeyNotAssigned checks that the rejects upsert unique key not assigned case compiles as expected.
+// Requirements: PRT-6.
 func TestCoveragePlannerRejectsUpsertUniqueKeyNotAssigned(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_upsert_unique_key_not_assigned")
 }
 
 // TestCoveragePlannerRejectsUpsertWithoutAKey checks that the rejects upsert without a key case compiles as expected.
+// Requirements: PRT-6.
 func TestCoveragePlannerRejectsUpsertWithoutAKey(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_upsert_without_a_key")
