@@ -49,7 +49,7 @@ def state(case_state: dict) -> StyledValue:
     )
 
 
-# Requirements: COD-20.
+# Requirements: COD-20, COD-25.
 def check_case(test: unittest.TestCase, case: dict) -> None:
     # The fixture names the Mermaid styles; json and jsons are both the ordered_json stage.
     styles = ["ordered_json" if case["style"] in ("json", "jsons") else case["style"]]

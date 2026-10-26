@@ -161,7 +161,7 @@ func TestPriceGetterSelection(t *testing.T) {
 	testScannedModule(t)
 }
 
-// Requirements: COD-20.
+// Requirements: COD-20, COD-25.
 func TestGoGeneratedNonnullStyledSetterRejectsSqlNull(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	write := scannedModule(t)

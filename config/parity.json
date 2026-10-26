@@ -373,6 +373,10 @@
           "reason": "test: probes PHP-specific array element type guards in the @internal dbspec Graph validator; public parse/emit is covered by every-line-kind, plan emission by rename-table-and-column, and manifest output by the shared hashes and sets vectors"
         },
         {
+          "glob": "packages/php/tests/DbspecIntrospectStressTest.php",
+          "reason": "benchmark: the 2000-table SQLite introspection workload records PHP memory and elapsed-time measurements for dbspec-stress-bench; canonical stress-document behavior is covered by dbspec-stress-canonical-roundtrip"
+        },
+        {
           "glob": "packages/php/tests/DbspecMermaidErrorBoundaryTest.php",
           "reason": "test: injects an unexpected exception into the private Mermaid catalog builder and verifies the same exception object escapes; the public invalid-name diagnostic is covered by dbspec-mermaid-invalid"
         },
@@ -864,6 +868,10 @@
         {
           "glob": "packages/python/tests/test_utils_statements.py",
           "reason": "test: verifies the private Python driver adapter that translates PostgreSQL statement markers for psycopg; public utility behavior is exercised through the transaction-local-value owner case"
+        },
+        {
+          "glob": "packages/python/tests/test_installed_differences.py",
+          "reason": "test: tests the Python-only installed_differences helper with constructed parsed schemas and unsupported-object records; public database comparison and install errors are covered by the six-client add_tables_and_columns and install feature cases"
         }
       ],
       "roots": [
@@ -4612,7 +4620,8 @@
       "id": "generated-nonnull-styled-setter-rejects-sql-null",
       "kind": "feature",
       "requirements": [
-        "COD-20"
+        "COD-20",
+        "COD-25"
       ],
       "bindings": [
         {
@@ -4653,6 +4662,21 @@
             "FEATURE_CRATE=packages/rust/tests",
             "FEATURE_CARGO_TARGET=--bin integration",
             "FEATURE_TEST=generated_nonnull_styled_setter_rejects_sql_null"
+          ]
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/result_chains.rs",
+          "id": "result_chains::generated_model_result_chains_preserve_assigned_values",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-unit",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test integration",
+            "FEATURE_TEST=result_chains::generated_model_result_chains_preserve_assigned_values"
           ]
         }
       ]
@@ -7646,6 +7670,11 @@
           "id": "test_several_schemas_sqlite"
         },
         {
+          "implementation": "python",
+          "test": "packages/python/tests/test_schema_install_uses.py",
+          "id": "test_generated_schema_sets_share_only_their_registered_connections"
+        },
+        {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/decimal_physical.rs",
           "id": "schema_set_sqlite"
@@ -7768,6 +7797,11 @@
           "implementation": "python",
           "test": "packages/python/tests/test_schema_set.py",
           "id": "test_unregistered_schema_sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_schema_install_uses.py",
+          "id": "test_generated_schema_sets_share_only_their_registered_connections"
         },
         {
           "implementation": "rust",
@@ -16198,31 +16232,6 @@
       ]
     },
     {
-      "id": "rust-integration-result-chains-generated-model-result-chains-preserve-assigned-values",
-      "kind": "feature",
-      "requirements": [
-        "COD-20",
-        "COD-25"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/result_chains.rs",
-          "id": "result_chains::generated_model_result_chains_preserve_assigned_values",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-unit",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_TEST=result_chains::generated_model_result_chains_preserve_assigned_values"
-          ]
-        }
-      ]
-    },
-    {
       "id": "py-dbspec-cases",
       "kind": "feature",
       "requirements": [
@@ -23025,6 +23034,11 @@
           "id": "test_schema_install_existing"
         },
         {
+          "implementation": "python",
+          "test": "packages/python/tests/test_schema_install.py",
+          "id": "test_installs_into_an_empty_database_and_then_creates_nothing"
+        },
+        {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/integration/coverage_schema_install.rs",
           "id": "coverage_schema_install::coverage_schema_install_existing",
@@ -23087,6 +23101,11 @@
           "implementation": "python",
           "test": "packages/python/tests/coverage_schema_install.py",
           "id": "test_schema_install_partial"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_schema_install.py",
+          "id": "test_a_partial_set_is_config"
         },
         {
           "implementation": "rust",
@@ -23153,6 +23172,11 @@
           "implementation": "python",
           "test": "packages/python/tests/coverage_schema_install.py",
           "id": "test_schema_install_external_documents"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_schema_install_uses.py",
+          "id": "test_installs_a_set_that_uses_an_external_document"
         },
         {
           "implementation": "rust",

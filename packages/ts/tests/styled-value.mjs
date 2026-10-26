@@ -36,7 +36,7 @@ const cases = Object.fromEntries(fixture.cases.map(entry => [entry.id, entry]));
 const probeText = 'dbspec 1 styled_probe\n\ntable styled_probe {\n  seq i64\n  payload text\n  primary key (seq)\n  settings {\n    codec payload ordered_json\n  }\n}\n';
 const { manifest } = orm.dbspecManifest([orm.parseDbspec(probeText, {}).document]);
 const model = orm.registerModel(manifest.manifestText, manifest.manifestHash);
-// Requirements: COD-20.
+// Requirements: COD-20, COD-25.
 await suite.run('styled-value/model-states', COMPUTE, () => {
   const probe = new orm.Core({ model, entity: model.entities.get('styled_probe'), create: () => { throw new Error('not used'); } });
   try { probe.column('payload'); throw new Error('unselected getter was accepted'); }

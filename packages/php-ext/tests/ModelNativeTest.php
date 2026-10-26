@@ -358,7 +358,7 @@ final class ModelNativeTest extends TestCase
         }
     }
 
-    // Requirements: COD-20.
+    // Requirements: COD-20, COD-25.
     public function testStyledColumnDistinguishesUnselectedSqlNullAndEncodedNull(): void
     {
         $model = new NativeModelFixture();
