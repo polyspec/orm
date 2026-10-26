@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- Complete the native PHP query, model and collection client: required model/fixture cases run without PHP product fallback, all 59 conformance vectors agree across six clients on MySQL, PostgreSQL and SQLite after the focused audit-identity correction, and retained result contracts pass (T182-6).
+
 - The native PHP extension executes the specified NULL-key refusal conformance vector with identical results in all six clients on MySQL, PostgreSQL and SQLite; the case preserves the documented IR_INVALID rejection before SQL (T77-6-1-1).
 
 - `make kit-sync` refreshed six shared files from the installed local Kit package: four tracked links became regular copies, and release/gates workflows now match Kit source. `kit-check`'s ten initial findings are cleared (T240).

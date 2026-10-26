@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a68ac7201b02bbce0238a2d4d31d756ae68de2e101aa431f249d7289719db4d8 -->
+<!-- source-sha256: dc2305bfaf3640499107d66727e814ae7a638cc16db2c800c9f34078ffd70830 -->
 # 변경 이력
 
 ## Unreleased
+
+- PHP C 확장의 query, model, collection 클라이언트를 완료했습니다. 필수 model 및 fixture 사례가 PHP 제품 코드 fallback 없이 실행되고, 감사 순번 비교를 집중 수정한 뒤 MySQL, PostgreSQL, SQLite의 59개 conformance 벡터가 여섯 클라이언트에서 일치하며 보존된 결과 계약 검사도 통과합니다 (T182-6).
 
 - PHP C 확장이 명세된 NULL key 거부 conformance 벡터를 실행하며 MySQL, PostgreSQL, SQLite에서 여섯 클라이언트의 결과가 일치합니다. 이 사례는 문서에 정의한 SQL 실행 전 IR_INVALID 거부를 유지합니다 (T77-6-1-1).
 
