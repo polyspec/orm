@@ -12,6 +12,7 @@
  * is active.
  */
 #include "engine_native.h"
+#include "parent_slot_sql.h"
 #include "php.h"
 #include "ext/pdo/php_pdo_driver.h"
 #include "Zend/zend_exceptions.h"
@@ -2385,27 +2386,9 @@ static bool expand_in(zval *step, zval *vals, zval *sql_out, zval *vals_out)
             bi++;
         }
         ZEND_HASH_FOREACH_END();
-        for (size_t p = 0; p < len; p++) {
-            if (src[p] != '$' || p + 1 >= len || src[p + 1] < '0' || src[p + 1] > '9') {
-                smart_str_appendc(&b, src[p]);
-                continue;
-            }
-            size_t q = p + 1;
-            zend_long k = 0;
-            while (q < len && src[q] >= '0' && src[q] <= '9') {
-                k = k * 10 + (src[q] - '0');
-                q++;
-            }
-            if (k == parent) {
-                append_repeated_placeholders(&b, sep, n, width, true, k);
-            } else if (k > parent) {
-                smart_str_appendc(&b, '$');
-                smart_str_append_long(&b, k + n * width - 1);
-            } else {
-                smart_str_appendl(&b, src + p, q - p);
-            }
-            p = q - 1;
-        }
+        zend_string *expanded = expand_numbered_parent_slots(src, len, parent, n, width);
+        smart_str_append(&b, expanded);
+        zend_string_release(expanded);
     } else {
         zend_long slot = 0;
         for (size_t p = 0; p < len; p++) {

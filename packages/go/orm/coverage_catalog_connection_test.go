@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"os"
 	"reflect"
 	"slices"
@@ -71,7 +72,7 @@ func catalogQuote(name, driver string) string {
 	return `"` + name + `"`
 }
 
-// Requirements: SCH-3, SCH-5, SCH-6a, INT-103, INT-113, INT-114, INT-115.
+// Requirements: SCH-3, SCH-5, SCH-6a, INT-101, INT-103, INT-113, INT-114, INT-115.
 func TestCoverageCatalogRead(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	ctx := context.Background()
@@ -100,6 +101,7 @@ func TestCoverageCatalogRead(t *testing.T) {
 	if len(page.Result.Rows) != 3 {
 		t.Fatalf("%s: author page rows %d, want 3", driver, len(page.Result.Rows))
 	}
+	catalogTemporalDefaultPrecisionCheck(t, driver, c)
 
 	count, err := c.ReadOnlyQuery(ctx, "SELECT COUNT(*) FROM "+catalogQuote("user", driver), nil, orm.CatalogQueryLimits{})
 	if err != nil {
@@ -123,6 +125,58 @@ func TestCoverageCatalogRead(t *testing.T) {
 		t.Fatalf("%s: a write through ReadOnlyQuery returned %v, want QUERY_READ_ONLY", driver, err)
 	}
 	catalogGridCellsCheck(t, ctx, driver, c)
+}
+
+// Requirements: INT-101.
+func catalogTemporalDefaultPrecisionCheck(t *testing.T, driver string, c *orm.CatalogConnection) {
+	t.Helper()
+	if driver == "sqlite" {
+		return
+	}
+	_, dsn := featureDatabase(t)
+	table := fmt.Sprintf("catalog_temporal_precision_%d", time.Now().UnixNano())
+	columns := "id BIGINT NOT NULL PRIMARY KEY, t0 TIME NULL, dt0 DATETIME NULL, t3 TIME(3) NULL, dt3 DATETIME(3) NULL"
+	if driver == "postgres" {
+		columns = "id BIGINT NOT NULL PRIMARY KEY, t0 TIME WITHOUT TIME ZONE NULL, dt0 TIMESTAMP WITHOUT TIME ZONE NULL, t3 TIME(3) WITHOUT TIME ZONE NULL, dt3 TIMESTAMP(3) WITHOUT TIME ZONE NULL"
+	}
+	raw := catalogProbe(t, driver, dsn, table, "CREATE TABLE "+table+" ("+columns+")",
+		"INSERT INTO "+table+" VALUES (1, '12:34:56.123456', '2026-01-02 03:04:05.123456', '12:34:56.123456', '2026-01-02 03:04:05.123456')")
+	if driver == "mysql" {
+		_, err := raw.Exec("CREATE TABLE " + table + "_invalid (id BIGINT PRIMARY KEY, t TIME(7))")
+		if err == nil {
+			if _, dropErr := raw.Exec("DROP TABLE " + table + "_invalid"); dropErr != nil {
+				t.Errorf("%s: drop unexpectedly accepted precision table: %v", driver, dropErr)
+			}
+			t.Fatalf("%s: accepted temporal precision 7", driver)
+		}
+		if !strings.Contains(strings.ToLower(err.Error()), "precision") {
+			t.Fatalf("%s: precision 7 failed for another reason: %v", driver, err)
+		}
+	}
+	namespace, err := c.CurrentNamespace(context.Background())
+	if err != nil {
+		t.Fatalf("%s: temporal precision namespace: %v", driver, err)
+	}
+	page, err := c.TablePage(context.Background(), orm.CatalogTableRef{Namespace: namespace, Name: table}, 1, 0)
+	if err != nil {
+		t.Fatalf("%s: temporal precision page: %v", driver, err)
+	}
+	got := make([]int, 4)
+	for i, name := range []string{"t0", "dt0", "t3", "dt3"} {
+		value := page.Column(page.Result.Rows[0], name)
+		timestamp, ok := value.(time.Time)
+		if !ok {
+			t.Fatalf("%s: %s has type %T, want time.Time", driver, name, value)
+		}
+		got[i] = timestamp.Nanosecond()
+	}
+	want := []int{0, 0, 123000000, 123000000}
+	if driver == "postgres" {
+		want[0], want[1] = 123456000, 123456000
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("%s: temporal precision nanos %v, want %v", driver, got, want)
+	}
 }
 
 // Requirements: INT-115.

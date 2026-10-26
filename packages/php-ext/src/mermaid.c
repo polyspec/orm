@@ -8,7 +8,7 @@
 #include "ext/spl/spl_exceptions.h"
 #include "literal_match.h"
 
-#ifdef POLYSPEC_ORM_MERMAID_TEST
+#ifdef POLYSPEC_ORM_NATIVE_TEST
 document *mermaid_test_catalog_document(catalog *c, str name, unsupportedv *out);
 #define MERMAID_CATALOG_DOCUMENT(c, name, out) mermaid_test_catalog_document(c, name, out)
 #else

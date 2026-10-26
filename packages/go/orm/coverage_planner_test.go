@@ -588,6 +588,18 @@ func TestCoveragePlannerStyledColumnIsNull(t *testing.T) {
 	compilePlannerCase(t, "planner_styled_column_is_null")
 }
 
+// Requirements: DSL-95.
+func TestCoveragePlannerJoinedChildConditionsGrouped(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_joined_child_conditions_grouped")
+}
+
+// Requirements: DSL-95.
+func TestCoveragePlannerUnplacedChildConditionsAppendAnd(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_unplaced_child_conditions_append_and")
+}
+
 // paramUseOut is one use of a parameter as planner.json writes it: the slot's logical type and, for a
 // column slot, the column with its length, precision, scale and nullability.
 type paramUseOut struct {
@@ -764,6 +776,8 @@ func TestCoveragePlanner(t *testing.T) {
 		"planner_rejects_column_function_on_varchar":               TestCoveragePlannerRejectsColumnFunctionOnVarchar,
 		"planner_rejects_styled_column_equality":                   TestCoveragePlannerRejectsStyledColumnEquality,
 		"planner_styled_column_is_null":                            TestCoveragePlannerStyledColumnIsNull,
+		"planner_joined_child_conditions_grouped":                  TestCoveragePlannerJoinedChildConditionsGrouped,
+		"planner_unplaced_child_conditions_append_and":             TestCoveragePlannerUnplacedChildConditionsAppendAnd,
 		"planner_uuid_select":                                      TestCoveragePlannerUuidSelect,
 		"planner_uuid_insert":                                      TestCoveragePlannerUuidInsert,
 		"param_uses_column_function":                               TestCoveragePlannerParamUsesColumnFunction,

@@ -1,7 +1,7 @@
 # catalog_connection coverage runs the two shared cases against the bench database that the
 # feature check selected (ORM_FEATURE_DATABASE, ORM_FEATURE_DSN) through connect_catalog. The read case only reads; the
 # mutation case inserts, updates and deletes one row of composite_account in tenant 990005 and ends in the state it started in.
-# Requirements: SCH-3, SCH-5, SCH-6a, INT-103, INT-109, INT-113, INT-114, INT-115, INT-123.
+# Requirements: SCH-3, SCH-5, SCH-6a, INT-101, INT-103, INT-109, INT-113, INT-114, INT-115, INT-123.
 # Its SQLite path also checks generated primary keys in a temporary file, outside the bench database.
 import io
 import os
@@ -11,6 +11,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from urllib.parse import parse_qs, unquote, urlsplit
 
 from polyspec.orm import OrmError, codes, connect_catalog
 from polyspec.orm.catalog import GridCell
@@ -96,6 +97,7 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
             dsn = os.environ.get("ORM_FEATURE_DSN")
         else:
             self.driver, dsn = item
+        self.dsn = dsn
         self.assertIn(
             self.driver,
             ("mysql", "postgres", "sqlite"),
@@ -111,7 +113,7 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
     def tearDown(self):
         self.catalog.close()
 
-    # Requirements: INT-115.
+    # Requirements: INT-101.
     # Requirements: INT-115.
     def test_read(self):
         driver = self.driver
@@ -129,6 +131,7 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
             f"SELECT COUNT(*) FROM {quote('user', driver)}", []
         )
         self.assertEqual(int(count.rows[0][0]), 5000)
+        self._assert_temporal_default_precision()
         plain_rows = "SELECT 'alpha' AS value UNION ALL SELECT 'beta' AS value"
         exact_rows = self.catalog.read_only_query(
             plain_rows, [], max_rows=2, max_bytes=128
@@ -163,6 +166,82 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
                 f"UPDATE {quote('user', driver)} SET name = name WHERE seq = 1", []
             )
         self.test_grid_cells()
+
+    def _assert_temporal_default_precision(self):
+        if self.driver == "sqlite":
+            return
+        url = urlsplit(self.dsn)
+        query = parse_qs(url.query)
+        if self.driver == "mysql":
+            import pymysql
+
+            native = pymysql.connect(
+                host=url.hostname or "localhost",
+                port=url.port or 3306,
+                user=unquote(url.username or ""),
+                password=unquote(url.password or ""),
+                database=unquote(url.path.lstrip("/")),
+                unix_socket=query.get("socket", [None])[0],
+                autocommit=True,
+            )
+            columns = "id BIGINT NOT NULL PRIMARY KEY, t0 TIME NULL, dt0 DATETIME NULL, t3 TIME(3) NULL, dt3 DATETIME(3) NULL"
+        else:
+            import psycopg
+
+            native = psycopg.connect(
+                host=query.get("host", [url.hostname or "localhost"])[-1],
+                port=url.port or 5432,
+                user=unquote(url.username or ""),
+                password=unquote(url.password or ""),
+                dbname=unquote(url.path.lstrip("/")),
+                autocommit=True,
+            )
+            columns = (
+                "id BIGINT NOT NULL PRIMARY KEY, t0 TIME WITHOUT TIME ZONE NULL, "
+                "dt0 TIMESTAMP WITHOUT TIME ZONE NULL, t3 TIME(3) WITHOUT TIME ZONE NULL, "
+                "dt3 TIMESTAMP(3) WITHOUT TIME ZONE NULL"
+            )
+        name = f"catalog_temporal_precision_{os.getpid()}_{secrets.token_hex(4)}"
+        qualified = f"{quote(self.catalog.current_namespace(), self.driver)}.{quote(name, self.driver)}"
+        invalid = quote(f"{name}_invalid", self.driver)
+        try:
+            with native.cursor() as cursor:
+                cursor.execute(f"DROP TABLE IF EXISTS {qualified}")
+                cursor.execute(f"CREATE TABLE {qualified} ({columns})")
+                cursor.execute(
+                    f"INSERT INTO {qualified} VALUES "
+                    "(1, '12:34:56.123456', '2026-01-02 03:04:05.123456', "
+                    "'12:34:56.123456', '2026-01-02 03:04:05.123456')"
+                )
+                page = self.catalog.table_page(
+                    {"namespace": self.catalog.current_namespace(), "name": name}, 1, 0
+                )
+                fractions = [
+                    getattr(value, "microsecond", getattr(value, "microseconds", 0))
+                    for value in page.result.rows[0][1:]
+                ]
+                self.assertEqual(
+                    [0, 0, 123000, 123000]
+                    if self.driver == "mysql"
+                    else [123456, 123456, 123000, 123000],
+                    fractions,
+                    f"{self.driver}: temporal table reads use native defaults and declared precision",
+                )
+                if self.driver == "mysql":
+                    with self.assertRaises(
+                        Exception, msg="MySQL rejects temporal precision above 6"
+                    ) as rejected:
+                        cursor.execute(
+                            f"CREATE TABLE {invalid} (id BIGINT PRIMARY KEY, t TIME(7))"
+                        )
+                    self.assertIn("precision", str(rejected.exception).lower())
+        finally:
+            try:
+                with native.cursor() as cursor:
+                    cursor.execute(f"DROP TABLE IF EXISTS {qualified}")
+                    cursor.execute(f"DROP TABLE IF EXISTS {invalid}")
+            finally:
+                native.close()
 
     # Requirements: COD-31, INT-4, INT-8.
     def test_model_read_null_and_empty_text(self):

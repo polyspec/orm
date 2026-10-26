@@ -35,7 +35,7 @@ fn case_of(id: &str, operation: &str) -> (String, Value, Value) {
     (schema.to_owned(), case["input"].clone(), case["expected"].clone())
 }
 
-fn run(id: &str) {
+pub(super) fn run(id: &str) {
     let clock = CaseClock::start();
     polyspec_orm_testcase::step(format_args!("start {id}"));
     let (at, input, expected) = case(id);
@@ -236,13 +236,6 @@ mod planner {
     fn planner_restore_first_unique_by_name() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         run("planner_restore_first_unique_by_name");
-    }
-
-    #[test]
-    // Requirements: PRT-37.
-    fn planner_tables() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        run("planner_tables");
     }
 
     #[test]
@@ -551,13 +544,6 @@ mod planner {
     fn planner_order_nullable_limit_per_parent() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         run("planner_order_nullable_limit_per_parent");
-    }
-
-    #[test]
-    // Requirements: PRT-78.
-    fn planner_scalar_column_subquery() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        run("planner_scalar_column_subquery");
     }
 
     #[test]

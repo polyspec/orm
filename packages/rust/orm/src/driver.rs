@@ -114,6 +114,11 @@ pub(crate) fn expand_in(st: &Step, mut vals: Vec<Param>, numbered: bool, parent_
             while j < bytes.len() && bytes[j].is_ascii_digit() {
                 j += 1;
             }
+            if j == i + 1 {
+                sql.push('$');
+                i += 1;
+                continue;
+            }
             let k: usize = st.sql[i + 1..j].parse().map_err(|error| Error::Config(format!("placeholder {} is not a slot index: {error}", &st.sql[i..j])))?;
             if k == parent {
                 for m in 0..n * width {
@@ -565,6 +570,9 @@ pub(crate) fn relation_chunks(st: &Step, vals: Vec<Param>, driver: &str) -> Resu
     Ok(chunks)
 }
 
+#[cfg(test)]
+#[path = "driver_parent_slot_tests.rs"]
+mod parent_slot_tests;
 #[cfg(test)]
 mod tests;
 

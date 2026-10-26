@@ -164,4 +164,8 @@ await runCases('coverage_planner.mjs', {
   async planner_rejects_column_function_on_varchar() { compileCase('planner_rejects_column_function_on_varchar'); },
   async planner_rejects_styled_column_equality() { compileCase('planner_rejects_styled_column_equality'); },
   async planner_styled_column_is_null() { compileCase('planner_styled_column_is_null'); },
+  // Requirements: DSL-95.
+  async planner_joined_child_conditions_grouped() { compileCase('planner_joined_child_conditions_grouped'); },
+  // Requirements: DSL-95.
+  async planner_unplaced_child_conditions_append_and() { compileCase('planner_unplaced_child_conditions_append_and'); },
 }, 60_000);

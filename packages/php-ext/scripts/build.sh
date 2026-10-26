@@ -1,8 +1,8 @@
 #!/bin/sh
 # Delegate extension builds to the canonical Kit builder, which stages the tracked source-copy declarations for each run.
-# Usage: sh packages/php-ext/scripts/build.sh <published polyspec_orm.so> [release|mermaid-test]
+# Usage: sh packages/php-ext/scripts/build.sh <published polyspec_orm.so> [release|native-test]
 set -eu
-out=${1:?usage: sh packages/php-ext/scripts/build.sh <published polyspec_orm.so> [release|mermaid-test]}
+out=${1:?usage: sh packages/php-ext/scripts/build.sh <published polyspec_orm.so> [release|native-test]}
 mode=${2:-release}
 package=$(cd "$(dirname "$0")/.." && pwd)
 repository=$(git -C "$package" rev-parse --show-toplevel)
@@ -22,10 +22,10 @@ out=$(cd "$(dirname "$out")" && pwd)/$(basename "$out")
 cd "$repository"
 set -- "$builder" build --output "$out" --configure-arg
 case "$mode" in
-  release) set -- "$@" --disable-polyspec-orm-mermaid-test ;;
-  mermaid-test)
-    set -- "$@" --enable-polyspec-orm-mermaid-test --source-copy \
-      packages/php-ext/testing/mermaid/module.c src/mermaid_test.c ;;
-  *) echo "build.sh: unknown build mode $mode (expected release or mermaid-test)" >&2; exit 2 ;;
+  release) set -- "$@" --disable-polyspec-orm-native-test ;;
+  native-test)
+    set -- "$@" --enable-polyspec-orm-native-test --source-copy \
+      packages/php-ext/testing/native/module.c src/native_test.c ;;
+  *) echo "build.sh: unknown build mode $mode (expected release or native-test)" >&2; exit 2 ;;
 esac
 exec "$node" "$@"

@@ -54,7 +54,7 @@ trait CatalogConnectionCoverageCases
             : $this->quote($namespace) . '.' . $this->quote($name);
     }
 
-    // Requirements: SCH-3, SCH-5, SCH-6a, INT-103, INT-113, INT-114, INT-115.
+    // Requirements: SCH-3, SCH-5, SCH-6a, INT-101, INT-103, INT-113, INT-114, INT-115.
     public function testCatalogRead(): void
     {
         $namespace = $this->catalog->currentNamespace();
@@ -83,6 +83,7 @@ trait CatalogConnectionCoverageCases
         }
         $snapshot = $this->catalog->rowSnapshotFromPage($page, 0);
         self::assertMatchesRegularExpression('/^[0-9a-f]{64}$/', $snapshot->revision());
+        $this->assertTemporalDefaultPrecision();
         $this->assertGridCells();
         try {
             $this->catalog->readOnlyQuery('UPDATE ' . $this->quote('user') . ' SET name = name WHERE seq = 1', []);
@@ -98,6 +99,58 @@ trait CatalogConnectionCoverageCases
             self::fail('a database operation after close succeeded');
         } catch (OrmException $e) {
             self::assertSame(Code::CATALOG_CLOSED, $e->code_);
+        }
+    }
+
+    /** Requirements: INT-101. */
+    private function assertTemporalDefaultPrecision(): void
+    {
+        if ($this->driver === 'sqlite') {
+            return;
+        }
+        $columns = $this->driver === 'mysql'
+            ? 'id BIGINT NOT NULL PRIMARY KEY, t0 TIME NULL, dt0 DATETIME NULL, t3 TIME(3) NULL, dt3 DATETIME(3) NULL'
+            : 'id BIGINT NOT NULL PRIMARY KEY, t0 TIME WITHOUT TIME ZONE NULL, dt0 TIMESTAMP WITHOUT TIME ZONE NULL, '
+                . 't3 TIME(3) WITHOUT TIME ZONE NULL, dt3 TIMESTAMP(3) WITHOUT TIME ZONE NULL';
+        $this->withTemporaryCatalogTable('catalog_temporal_precision_', $columns, function (string $namespace, string $name): void {
+            $setup = Orm::connect((string) getenv('ORM_FEATURE_DSN'), new Config());
+            try {
+                $qualified = $this->qualifiedReference($namespace, $name);
+                $setup->pdo()->exec(
+                    "INSERT INTO {$qualified} VALUES "
+                    . "(1, '12:34:56.123456', '2026-01-02 03:04:05.123456', "
+                    . "'12:34:56.123456', '2026-01-02 03:04:05.123456')"
+                );
+            } finally {
+                $setup->close();
+            }
+            $page = $this->catalog->tablePage(['namespace' => $namespace, 'name' => $name], 1, 0);
+            $values = array_slice($page->result->rows[0], 1);
+            $fractionDigits = array_map(static function (string $value): int {
+                $dot = strpos($value, '.');
+                return $dot === false ? 0 : strlen(substr($value, $dot + 1));
+            }, $values);
+            self::assertSame(
+                $this->driver === 'mysql' ? [0, 0, 3, 3] : [6, 6, 3, 3],
+                $fractionDigits,
+                "{$this->driver}: temporal table reads use the native default or declared precision"
+            );
+        });
+
+        if ($this->driver === 'mysql') {
+            $setup = Orm::connect((string) getenv('ORM_FEATURE_DSN'), new Config());
+            $name = 'catalog_temporal_precision_invalid_' . bin2hex(random_bytes(6));
+            try {
+                try {
+                    $setup->pdo()->exec("CREATE TABLE {$this->quote($name)} (id BIGINT PRIMARY KEY, t TIME(7))");
+                    self::fail('MySQL accepted temporal precision 7');
+                } catch (\PDOException $error) {
+                    self::assertStringContainsString('precision', strtolower($error->getMessage()));
+                }
+            } finally {
+                $setup->pdo()->exec('DROP TABLE IF EXISTS ' . $this->quote($name));
+                $setup->close();
+            }
         }
     }
 

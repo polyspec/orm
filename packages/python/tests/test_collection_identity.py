@@ -43,6 +43,17 @@ def composite_value_of(entry):
 
 
 class CollectionIdentityTest(unittest.TestCase):
+    # Requirements: DSL-153.
+    def test_parent_expansion_keeps_bare_dollar(self):
+        step = {
+            "sql": "SELECT '$' AS sign, id FROM items WHERE key IN ($1)",
+            "bind_slots": [{"from": "parent"}],
+            "parent": {"keys": [{"column": "key", "index": 0}]},
+        }
+        sql, values = _expand_parent(step, [7])
+        self.assertEqual(sql, "SELECT '$' AS sign, id FROM items WHERE key IN ($1)")
+        self.assertEqual(values, [7])
+
     # Requirements: PRT-40.
     def test_parent_slot_expansion_pads_composite_keys_and_renumbers_following_slots(
         self,

@@ -3299,8 +3299,28 @@
         "packages/php-ext/src/dbspec.h",
         "packages/php-ext/src/config.m4",
         "packages/php-ext/scripts/build.sh",
-        "packages/php-ext/testing/mermaid/module.c",
+        "packages/php-ext/testing/native/module.c",
         "packages/php-ext/tests/MermaidErrorBoundaryTest.php",
+        "Makefile"
+      ]
+    },
+    "parent-slot-expansion-php-extension-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "packages/php-ext/src/db.c",
+        "packages/php-ext/src/mermaid.c",
+        "packages/php-ext/src/polyspec_orm.c",
+        "packages/php-ext/src/parent_slot_sql.c",
+        "packages/php-ext/src/parent_slot_sql.h",
+        "packages/php-ext/src/config.m4",
+        "packages/php-ext/scripts/build.sh",
+        "packages/php-ext/testing/native/module.c",
+        "packages/php-ext/tests/ParentSlotExpansionNativeTest.php",
         "Makefile"
       ]
     },

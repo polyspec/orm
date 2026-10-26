@@ -567,4 +567,18 @@ final class CoveragePlannerExtensionTest extends TestCase
     {
         $this->runPlannerCoverageCase('param_uses_optimistic');
     }
+
+    // Requirements: DSL-95.
+    // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
+    public function test_planner_joined_child_conditions_grouped(): void
+    {
+        $this->runPlannerCoverageCase('planner_joined_child_conditions_grouped');
+    }
+
+    // Requirements: DSL-95.
+    // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
+    public function test_planner_unplaced_child_conditions_append_and(): void
+    {
+        $this->runPlannerCoverageCase('planner_unplaced_child_conditions_append_and');
+    }
 }

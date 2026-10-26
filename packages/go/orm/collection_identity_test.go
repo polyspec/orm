@@ -165,6 +165,21 @@ func TestCollectionKeyIdentityFromFixture(t *testing.T) {
 		}
 		keys[entry.Name] = key
 	}
+	for _, pair := range [][2]any{
+		{int64(1), "1"},
+		{true, int64(1)},
+		{false, int64(0)},
+		{[]byte("a"), "a"},
+	} {
+		left, leftErr := KeyOf(pair[0])
+		right, rightErr := KeyOf(pair[1])
+		if leftErr != nil || rightErr != nil {
+			t.Fatalf("supported key values: %v, %v", leftErr, rightErr)
+		}
+		if left == right {
+			t.Errorf("distinct values have the same key: %T %v and %T %v", pair[0], pair[0], pair[1], pair[1])
+		}
+	}
 }
 
 // Requirements: INT-80, INT-86.
@@ -181,8 +196,8 @@ func TestCollectionGetAndFetchedValueUseTypedKey(t *testing.T) {
 	integerModel := &rejectingModel{}
 	textModel := &rejectingModel{}
 	collection := &Collection[*rejectingModel]{
-		keys: []Key{integerKey, textKey},
-		items: map[Key]*rejectingModel{integerKey: integerModel, textKey: textModel},
+		keys:    []Key{integerKey, textKey},
+		items:   map[Key]*rejectingModel{integerKey: integerModel, textKey: textModel},
 		fetched: map[Key]any{integerKey: "integer", textKey: "text"},
 	}
 	if got, err := collection.Get(int64(7)); err != nil || got != integerModel {

@@ -803,4 +803,20 @@ final class CoveragePlannerTest extends TestCase
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_styled_column_is_null');
     }
+
+    // Requirements: DSL-95.
+    public function testPlannerJoinedChildConditionsGrouped(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        plannerCase($root, $fixture, 'planner_joined_child_conditions_grouped');
+    }
+
+    // Requirements: DSL-95.
+    public function testPlannerUnplacedChildConditionsAppendAnd(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        plannerCase($root, $fixture, 'planner_unplaced_child_conditions_append_and');
+    }
 }

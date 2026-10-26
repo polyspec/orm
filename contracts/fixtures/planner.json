@@ -42,7 +42,8 @@
     "PRT-33",
     "PRT-7",
     "PRT-19",
-    "PRT-67"
+    "PRT-67",
+    "DSL-95"
   ],
   "cases": [
     {
@@ -5718,6 +5719,292 @@
               "pred": {
                 "column": "json_setting",
                 "op": "is_null"
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/bench/bench.dbs"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "length": 191,
+                "param": 1,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "length": 191,
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `writer`.`seq` AS `writer__seq` FROM `author` AS `a` LEFT JOIN `user` AS `writer` ON `a`.`user_seq` = `writer`.`seq` WHERE `a`.`name` = ? AND (`a`.`seq` > ? OR (`writer`.`name` = ?))",
+            "tables": [
+              "author",
+              "user"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "length": 191,
+                "param": 1,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "length": 191,
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"writer\".\"seq\" AS \"writer__seq\" FROM \"author\" AS \"a\" LEFT JOIN \"user\" AS \"writer\" ON \"a\".\"user_seq\" = \"writer\".\"seq\" WHERE \"a\".\"name\" = $1 AND (\"a\".\"seq\" > $2 OR (\"writer\".\"name\" = $3))",
+            "tables": [
+              "author",
+              "user"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "length": 191,
+                "param": 1,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "length": 191,
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"writer\".\"seq\" AS \"writer__seq\" FROM \"author\" AS \"a\" LEFT JOIN \"user\" AS \"writer\" ON \"a\".\"user_seq\" = \"writer\".\"seq\" WHERE \"a\".\"name\" = ? AND (\"a\".\"seq\" > ? OR (\"writer\".\"name\" = ?))",
+            "tables": [
+              "author",
+              "user"
+            ]
+          }
+        ]
+      },
+      "id": "planner_joined_child_conditions_grouped",
+      "input": {
+        "columns": {
+          "add": [
+            "seq"
+          ],
+          "mode": "none"
+        },
+        "entity": "author",
+        "ir_version": 1,
+        "joins": [
+          {
+            "kind": "left",
+            "left": "user_seq",
+            "query": {
+              "columns": {
+                "mode": "none"
+              },
+              "entity": "user",
+              "where": {
+                "items": [
+                  {
+                    "pred": {
+                      "column": "name",
+                      "op": "eq",
+                      "p": 0
+                    }
+                  }
+                ]
+              }
+            },
+            "rel": "writer",
+            "right": "seq"
+          }
+        ],
+        "kind": "all",
+        "n_params": 3,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "name",
+                "op": "eq",
+                "p": 1
+              }
+            },
+            {
+              "group": {
+                "conn": "and",
+                "items": [
+                  {
+                    "pred": {
+                      "column": "seq",
+                      "op": "gt",
+                      "p": 2
+                    }
+                  },
+                  {
+                    "joined": {
+                      "conn": "or",
+                      "join": "writer"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/bench/bench.dbs"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 1,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "length": 191,
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `writer`.`seq` AS `writer__seq` FROM `author` AS `a` LEFT JOIN `user` AS `writer` ON `a`.`user_seq` = `writer`.`seq` WHERE `a`.`seq` > ? AND (`writer`.`name` = ?)",
+            "tables": [
+              "author",
+              "user"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 1,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "length": 191,
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"writer\".\"seq\" AS \"writer__seq\" FROM \"author\" AS \"a\" LEFT JOIN \"user\" AS \"writer\" ON \"a\".\"user_seq\" = \"writer\".\"seq\" WHERE \"a\".\"seq\" > $1 AND (\"writer\".\"name\" = $2)",
+            "tables": [
+              "author",
+              "user"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 1,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "length": 191,
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"writer\".\"seq\" AS \"writer__seq\" FROM \"author\" AS \"a\" LEFT JOIN \"user\" AS \"writer\" ON \"a\".\"user_seq\" = \"writer\".\"seq\" WHERE \"a\".\"seq\" > ? AND (\"writer\".\"name\" = ?)",
+            "tables": [
+              "author",
+              "user"
+            ]
+          }
+        ]
+      },
+      "id": "planner_unplaced_child_conditions_append_and",
+      "input": {
+        "columns": {
+          "add": [
+            "seq"
+          ],
+          "mode": "none"
+        },
+        "entity": "author",
+        "ir_version": 1,
+        "joins": [
+          {
+            "kind": "left",
+            "left": "user_seq",
+            "query": {
+              "columns": {
+                "mode": "none"
+              },
+              "entity": "user",
+              "where": {
+                "items": [
+                  {
+                    "pred": {
+                      "column": "name",
+                      "op": "eq",
+                      "p": 0
+                    }
+                  }
+                ]
+              }
+            },
+            "rel": "writer",
+            "right": "seq"
+          }
+        ],
+        "kind": "all",
+        "n_params": 2,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "seq",
+                "op": "gt",
+                "p": 1
               }
             }
           ]

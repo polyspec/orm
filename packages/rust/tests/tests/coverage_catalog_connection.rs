@@ -3,6 +3,7 @@
 //! The database ends in the state it started in.
 //! Requirements: SCH-5, SCH-6a, INT-109, INT-113, INT-114, INT-115, INT-123.
 use polyspec_orm_testcase::OrPanic;
+use sqlx::{MySqlPool, PgPool};
 
 use polyspec_orm_build::catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableRef};
 use polyspec_orm_build::tool_db::{GridCell, P, ParamType, QueryLimits, Val};
@@ -54,7 +55,7 @@ fn recorded_mutation_hooks() -> (Arc<Mutex<Vec<MutationPhase>>>, Publish, Permit
 }
 
 #[tokio::test]
-// Requirements: SCH-3, INT-103, INT-113, INT-114, INT-115.
+// Requirements: INT-101, SCH-3, INT-103, INT-113, INT-114, INT-115.
 async fn coverage_catalog_read() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     within("catalog_read", async {
@@ -83,6 +84,7 @@ async fn coverage_catalog_read() {
         let start_cell = GridCell::DateTime("2026-06-01 00:00:00.000000".into());
         let want: Vec<[GridCell; 3]> = (1..=3).map(|i| [GridCell::Integer(i), GridCell::Text(format!("author-{i}")), start_cell.clone()]).collect();
         assert_eq!(rows, want, "{driver}: first author page");
+        temporal_default_precision_check(&driver, &mut catalog).await;
 
         let count =
             catalog.read_only_query(&format!("SELECT COUNT(*) FROM {}", quote("user", &driver)), &[], QueryLimits::default()).await.expect("user count");
@@ -125,6 +127,82 @@ async fn coverage_catalog_read() {
         catalog.close().await;
     })
     .await;
+}
+
+// Requirements: INT-101.
+async fn temporal_default_precision_check(driver: &str, catalog: &mut CatalogConnection) {
+    if driver == "sqlite" {
+        return;
+    }
+    let (_, dsn) = coverage_database::feature_database();
+    let suffix = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).expect("clock after UNIX epoch").as_nanos();
+    let name = format!("catalog_temporal_precision_{}_{}", std::process::id(), suffix);
+    let namespace = catalog.current_namespace().await.expect("temporal precision namespace");
+    let table = TableRef { namespace, name: name.clone() };
+    let (columns, expected) = if driver == "mysql" {
+        (
+            "id BIGINT NOT NULL PRIMARY KEY, t0 TIME NULL, dt0 DATETIME NULL, t3 TIME(3) NULL, dt3 DATETIME(3) NULL",
+            vec![
+                GridCell::Integer(1),
+                GridCell::Time("12:34:56".into()),
+                GridCell::DateTime("2026-01-02 03:04:05".into()),
+                GridCell::Time("12:34:56.123".into()),
+                GridCell::DateTime("2026-01-02 03:04:05.123".into()),
+            ],
+        )
+    } else {
+        (
+            "id BIGINT NOT NULL PRIMARY KEY, t0 TIME WITHOUT TIME ZONE NULL, dt0 TIMESTAMP WITHOUT TIME ZONE NULL, t3 TIME(3) WITHOUT TIME ZONE NULL, dt3 TIMESTAMP(3) WITHOUT TIME ZONE NULL",
+            vec![
+                GridCell::Integer(1),
+                GridCell::Time("12:34:56.123456".into()),
+                GridCell::DateTime("2026-01-02 03:04:05.123456".into()),
+                GridCell::Time("12:34:56.123".into()),
+                GridCell::DateTime("2026-01-02 03:04:05.123".into()),
+            ],
+        )
+    };
+    let create = format!("CREATE TABLE {name} ({columns})");
+    let insert = format!("INSERT INTO {name} VALUES (1, '12:34:56.123456', '2026-01-02 03:04:05.123456', '12:34:56.123456', '2026-01-02 03:04:05.123456')");
+    if driver == "mysql" {
+        let pool = MySqlPool::connect(&dsn).await.or_panic(|error| format!("MySQL precision fixture connection: {error}"));
+        let actual: Result<Vec<Vec<GridCell>>, String> = async {
+            sqlx::query(sqlx::AssertSqlSafe(create)).execute(&pool).await.map_err(|error| error.to_string())?;
+            sqlx::query(sqlx::AssertSqlSafe(insert)).execute(&pool).await.map_err(|error| error.to_string())?;
+            let invalid = format!("CREATE TABLE {name}_invalid (id BIGINT PRIMARY KEY, t TIME(7))");
+            match sqlx::query(sqlx::AssertSqlSafe(invalid)).execute(&pool).await {
+                Ok(_) => return Err("MySQL accepted temporal precision 7".into()),
+                Err(error) if !error.to_string().to_lowercase().contains("precision") => {
+                    return Err(format!("MySQL precision 7 failed for another reason: {error}"));
+                }
+                Err(_) => {}
+            }
+            let page = catalog.table_page(&table, 1, 0).await.map_err(|error| error.to_string())?;
+            Ok(page.result.rows)
+        }
+        .await;
+        let invalid_cleanup = sqlx::query(sqlx::AssertSqlSafe(format!("DROP TABLE IF EXISTS {name}_invalid"))).execute(&pool).await;
+        let table_cleanup = sqlx::query(sqlx::AssertSqlSafe(format!("DROP TABLE IF EXISTS {name}"))).execute(&pool).await;
+        pool.close().await;
+        invalid_cleanup.or_panic(|error| format!("MySQL precision rejection cleanup: {error}"));
+        table_cleanup.or_panic(|error| format!("MySQL precision fixture cleanup: {error}"));
+        let rows = actual.or_panic(|error| format!("MySQL precision fixture: {error}"));
+        assert_eq!(rows, vec![expected], "MySQL default temporal precision is 0 and declared precision 3 is retained");
+    } else {
+        let pool = PgPool::connect(&dsn).await.or_panic(|error| format!("PostgreSQL precision fixture connection: {error}"));
+        let actual: Result<Vec<Vec<GridCell>>, String> = async {
+            sqlx::query(sqlx::AssertSqlSafe(create)).execute(&pool).await.map_err(|error| error.to_string())?;
+            sqlx::query(sqlx::AssertSqlSafe(insert)).execute(&pool).await.map_err(|error| error.to_string())?;
+            let page = catalog.table_page(&table, 1, 0).await.map_err(|error| error.to_string())?;
+            Ok(page.result.rows)
+        }
+        .await;
+        let cleanup = sqlx::query(sqlx::AssertSqlSafe(format!("DROP TABLE IF EXISTS {name}"))).execute(&pool).await;
+        pool.close().await;
+        cleanup.or_panic(|error| format!("PostgreSQL precision fixture cleanup: {error}"));
+        let rows = actual.or_panic(|error| format!("PostgreSQL precision fixture: {error}"));
+        assert_eq!(rows, vec![expected], "PostgreSQL default temporal precision is 6 and declared precision 3 is retained");
+    }
 }
 
 #[tokio::test]

@@ -13,25 +13,6 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-func TestTypedKeyValuesCannotCollide(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	for _, pair := range [][2]any{
-		{int64(1), "1"},
-		{true, int64(1)},
-		{false, int64(0)},
-		{[]byte("a"), "a"},
-	} {
-		left, leftErr := KeyOf(pair[0])
-		right, rightErr := KeyOf(pair[1])
-		if leftErr != nil || rightErr != nil {
-			t.Fatalf("supported key values: %v, %v", leftErr, rightErr)
-		}
-		if left == right {
-			t.Errorf("distinct values have the same key: %T %v and %T %v", pair[0], pair[0], pair[1], pair[1])
-		}
-	}
-}
-
 func TestUnsupportedKeyIsAnError(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, value := range []any{nil, []byte(nil), struct{ Name string }{"a"}, uint64(math.MaxUint64), math.NaN()} {

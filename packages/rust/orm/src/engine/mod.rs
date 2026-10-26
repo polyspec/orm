@@ -42,6 +42,36 @@ use crate::or_panic::OrPanic;
 mod coverage_planner;
 
 #[cfg(test)]
+mod coverage_cases {
+    // Requirements: PRT-37.
+    #[test]
+    fn planner_tables() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        super::coverage_planner::run("planner_tables");
+    }
+
+    // Requirements: PRT-78.
+    #[test]
+    fn planner_scalar_column_subquery() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        super::coverage_planner::run("planner_scalar_column_subquery");
+    }
+    // Requirements: DSL-95.
+    #[test]
+    fn planner_joined_child_conditions_grouped() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        super::coverage_planner::run("planner_joined_child_conditions_grouped");
+    }
+
+    // Requirements: DSL-95.
+    #[test]
+    fn planner_unplaced_child_conditions_append_and() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        super::coverage_planner::run("planner_unplaced_child_conditions_append_and");
+    }
+}
+
+#[cfg(test)]
 #[path = "../../tests/unit/blind_index_source.rs"]
 mod blind_index_source;
 

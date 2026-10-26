@@ -1,4 +1,5 @@
 #include "dbspec.h"
+#include "parent_slot_sql.h"
 #include "ext/spl/spl_exceptions.h"
 
 static int mermaid_test_mode;
@@ -67,7 +68,17 @@ PHP_FUNCTION(mermaid_test_import)
     dbs_leave(&arena, saved);
 }
 
-const zend_function_entry mermaid_test_functions[] = {
+ZEND_BEGIN_ARG_INFO_EX(arginfo_expand_numbered_parent_slots_test, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+PHP_FUNCTION(expand_numbered_parent_slots_test)
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+    RETURN_STR(expand_numbered_parent_slots("SELECT '$' AS sign WHERE id = $1 AND status = $2", sizeof("SELECT '$' AS sign WHERE id = $1 AND status = $2") - 1, 1, 2, 1));
+}
+
+const zend_function_entry native_test_functions[] = {
     ZEND_FE(mermaid_test_import, arginfo_mermaid_test_import)
+    ZEND_FE(expand_numbered_parent_slots_test, arginfo_expand_numbered_parent_slots_test)
     ZEND_FE_END
 };

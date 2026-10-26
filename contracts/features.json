@@ -1213,6 +1213,10 @@
         "packages/python/tests/coverage_model_queries.py",
         "packages/go/orm/collection_identity_test.go",
         "packages/php/tests/CollectionIdentityTest.php",
+        "packages/php/tests/ParentSlotExpansionTest.php",
+        "packages/php-ext/tests/ParentSlotExpansionNativeTest.php",
+        "packages/ts/tests/parent-slot-expansion.mjs",
+        "packages/rust/orm/src/driver_parent_slot_tests.rs",
         "packages/rust/orm/tests/collection_identity.rs",
         "packages/ts/tests/collection_identity.mjs",
         "packages/python/tests/test_collection_identity.py",
@@ -1305,6 +1309,59 @@
             "packages/php/tests/ModelTest.php",
             "packages/php/tests/case_database.php",
             "packages/php/tests/deadlock_child.php"
+          ]
+        },
+        {
+          "id": "parent-slot-expansion-php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ParentSlotExpansionTest.php",
+          "shard": "other",
+          "inputs": [
+            "packages/php/tests/ParentSlotExpansionTest.php",
+            "packages/php/src/Db.php"
+          ]
+        },
+        {
+          "id": "parent-slot-expansion-php-extension",
+          "command": "make parent-slot-expansion-php-extension-check",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "packages/php-ext/src/db.c",
+            "packages/php-ext/src/parent_slot_sql.c",
+            "packages/php-ext/src/parent_slot_sql.h",
+            "packages/php-ext/src/config.m4",
+            "packages/php-ext/src/mermaid.c",
+            "packages/php-ext/src/polyspec_orm.c",
+            "packages/php-ext/scripts/build.sh",
+            "packages/php-ext/testing/native/module.c",
+            "packages/php-ext/tests/ParentSlotExpansionNativeTest.php"
+          ]
+        },
+        {
+          "id": "parent-slot-expansion-typescript",
+          "command": "node packages/ts/tests/parent-slot-expansion.mjs",
+          "shard": "other",
+          "inputs": [
+            "packages/ts/src/database.ts",
+            "packages/ts/tests/parent-slot-expansion.mjs"
+          ]
+        },
+        {
+          "id": "parent-slot-expansion-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts parent-slot-expansion-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked -p polyspec-orm --features \"$ORM_RUST_TEST_FEATURES\" --lib driver::parent_slot_tests::preserves_bare_dollar -- --exact --test-threads=1",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/orm/src/driver.rs",
+            "packages/rust/orm/src/driver_parent_slot_tests.rs"
+          ]
+        },
+        {
+          "id": "parent-slot-expansion-python",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_collection_identity CollectionIdentityTest.test_parent_expansion_keeps_bare_dollar",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_collection_identity.py",
+            "packages/python/src/polyspec/orm/database.py"
           ]
         },
         {
@@ -1504,7 +1561,7 @@
         },
         {
           "id": "queries-orm-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCollectionLookupRejectsUnsupportedKey|TestCompositeTypedKeyPreservesBoundaries|TestDecimalModelFixture|TestGroupColumnDeclarationRejectsMissingAndDuplicateCount|TestGroupColumnValueChecksDeclaredType|TestGroupCountRejectsInvalidStoredBoolean|TestGroupRowsRejectInvalidCountsAndPreserveSelectedValues|TestInsertPartsFixture|TestJoinedByteColumnsAndInvalidValues|TestJsonTextOrderPreservation|TestKeyValuesPreserveTheirTypes|TestModelCollectionKeyRejectsInvalidCallbackAndMissingColumn|TestRelatedAsReportsMismatch|TestRelationKeyCollectionPropagatesInvalidValue|TestRuntimeValueTypes|TestScalarComparisonPreservesTypesAndRejectsInvalidValues|TestSelectedByteKeyPreservesByteType|TestShapeCoversEveryField|TestShapeIgnoresParamValues|TestSplitQueryPropagatesInvalidKey|TestSplitQueryRetainsDistinctTypedValues|TestStyledColumnStateFixture|TestStyledFixturePhysicalCells|TestTypedKeyValuesCannotCollide|TestUnknownStyleRejectsSQLNull|TestUnsupportedKeyIsAnError)$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCollectionLookupRejectsUnsupportedKey|TestCompositeTypedKeyPreservesBoundaries|TestDecimalModelFixture|TestExpandInKeepsBareDollar|TestGroupColumnDeclarationRejectsMissingAndDuplicateCount|TestGroupColumnValueChecksDeclaredType|TestGroupCountRejectsInvalidStoredBoolean|TestGroupRowsRejectInvalidCountsAndPreserveSelectedValues|TestInsertPartsFixture|TestJoinedByteColumnsAndInvalidValues|TestJsonTextOrderPreservation|TestKeyValuesPreserveTheirTypes|TestModelCollectionKeyRejectsInvalidCallbackAndMissingColumn|TestRelatedAsReportsMismatch|TestRelationKeyCollectionPropagatesInvalidValue|TestRuntimeValueTypes|TestScalarComparisonPreservesTypesAndRejectsInvalidValues|TestSelectedByteKeyPreservesByteType|TestShapeCoversEveryField|TestShapeIgnoresParamValues|TestSplitQueryPropagatesInvalidKey|TestSplitQueryRetainsDistinctTypedValues|TestStyledColumnStateFixture|TestStyledFixturePhysicalCells|TestUnknownStyleRejectsSQLNull|TestUnsupportedKeyIsAnError)$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/collection_key_test.go",
@@ -6246,7 +6303,9 @@
           "param_uses_interval",
           "param_uses_contains",
           "param_uses_if_parent",
-          "param_uses_optimistic"
+          "param_uses_optimistic",
+          "planner_joined_child_conditions_grouped",
+          "planner_unplaced_child_conditions_append_and"
         ],
         "owners": {
           "go": {
@@ -6345,7 +6404,9 @@
                     "param_uses_interval",
                     "param_uses_contains",
                     "param_uses_if_parent",
-                    "param_uses_optimistic"
+                    "param_uses_optimistic",
+                    "planner_joined_child_conditions_grouped",
+                    "planner_unplaced_child_conditions_append_and"
                   ],
                   "symbols": {
                     "planner_statement": "TestCoveragePlannerStatement",
@@ -6429,7 +6490,9 @@
                     "planner_rejects_column_function_on_varchar": "TestCoveragePlannerRejectsColumnFunctionOnVarchar",
                     "planner_rejects_styled_column_equality": "TestCoveragePlannerRejectsStyledColumnEquality",
                     "planner_styled_column_is_null": "TestCoveragePlannerStyledColumnIsNull",
-                    "planner_rejects_column_function_unknown_column": "TestCoveragePlannerRejectsColumnFunctionUnknownColumn"
+                    "planner_rejects_column_function_unknown_column": "TestCoveragePlannerRejectsColumnFunctionUnknownColumn",
+                    "planner_joined_child_conditions_grouped": "TestCoveragePlannerJoinedChildConditionsGrouped",
+                    "planner_unplaced_child_conditions_append_and": "TestCoveragePlannerUnplacedChildConditionsAppendAnd"
                   }
                 }
               ]
@@ -6531,7 +6594,9 @@
                     "param_uses_interval",
                     "param_uses_contains",
                     "param_uses_if_parent",
-                    "param_uses_optimistic"
+                    "param_uses_optimistic",
+                    "planner_joined_child_conditions_grouped",
+                    "planner_unplaced_child_conditions_append_and"
                   ],
                   "symbols": {
                     "planner_statement": "testPlannerStatement",
@@ -6615,7 +6680,9 @@
                     "param_uses_contains": "testParamUsesContains",
                     "param_uses_if_parent": "testParamUsesIfParent",
                     "param_uses_optimistic": "testParamUsesOptimistic",
-                    "planner_rejects_column_function_unknown_column": "testPlannerRejectsColumnFunctionUnknownColumn"
+                    "planner_rejects_column_function_unknown_column": "testPlannerRejectsColumnFunctionUnknownColumn",
+                    "planner_joined_child_conditions_grouped": "testPlannerJoinedChildConditionsGrouped",
+                    "planner_unplaced_child_conditions_append_and": "testPlannerUnplacedChildConditionsAppendAnd"
                   }
                 }
               ]
@@ -6624,7 +6691,8 @@
           "rust": {
             "part": "packages/rust/orm",
             "tests": [
-              "packages/rust/orm/tests/unit/coverage_planner.rs"
+              "packages/rust/orm/tests/unit/coverage_planner.rs",
+              "packages/rust/orm/src/engine/mod.rs"
             ],
             "inputs": [
               "contracts/fixtures/planner.json",
@@ -6643,7 +6711,6 @@
                     "planner_rejects_unknown_column",
                     "planner_rejects_column_function_unknown_column",
                     "planner_restore",
-                    "planner_tables",
                     "planner_restore_rejects_non_key",
                     "planner_restore_key_from_set",
                     "planner_restore_extra_condition",
@@ -6700,7 +6767,6 @@
                     "planner_order_nullable_column_function",
                     "planner_order_nullable_group_count",
                     "planner_order_nullable_limit_per_parent",
-                    "planner_scalar_column_subquery",
                     "planner_rejects_scalar_column_subquery_without_limit",
                     "planner_rejects_scalar_column_subquery_without_key_order",
                     "planner_rejects_in_subquery_limit",
@@ -6741,7 +6807,6 @@
                     "planner_clock_compare": "engine::coverage_planner::planner::planner_clock_compare",
                     "planner_clock_insert": "engine::coverage_planner::planner::planner_clock_insert",
                     "planner_parent_key_types": "engine::coverage_planner::planner::planner_parent_key_types",
-                    "planner_tables": "engine::coverage_planner::planner::planner_tables",
                     "planner_not_group": "engine::coverage_planner::planner::planner_not_group",
                     "planner_rejects_top_not": "engine::coverage_planner::planner::planner_rejects_top_not",
                     "planner_rejects_top_group_conn": "engine::coverage_planner::planner::planner_rejects_top_group_conn",
@@ -6783,7 +6848,6 @@
                     "planner_order_nullable_column_function": "engine::coverage_planner::planner::planner_order_nullable_column_function",
                     "planner_order_nullable_group_count": "engine::coverage_planner::planner::planner_order_nullable_group_count",
                     "planner_order_nullable_limit_per_parent": "engine::coverage_planner::planner::planner_order_nullable_limit_per_parent",
-                    "planner_scalar_column_subquery": "engine::coverage_planner::planner::planner_scalar_column_subquery",
                     "planner_rejects_scalar_column_subquery_without_limit": "engine::coverage_planner::planner::planner_rejects_scalar_column_subquery_without_limit",
                     "planner_rejects_scalar_column_subquery_without_key_order": "engine::coverage_planner::planner::planner_rejects_scalar_column_subquery_without_key_order",
                     "planner_rejects_in_subquery_limit": "engine::coverage_planner::planner::planner_rejects_in_subquery_limit",
@@ -6802,6 +6866,22 @@
                     "planner_rejects_styled_column_equality": "engine::coverage_planner::planner::planner_rejects_styled_column_equality",
                     "planner_styled_column_is_null": "engine::coverage_planner::planner::planner_styled_column_is_null",
                     "planner_rejects_column_function_unknown_column": "engine::coverage_planner::planner::planner_rejects_column_function_unknown_column"
+                  }
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/orm/src/engine/mod.rs",
+                  "cases": [
+                    "planner_tables",
+                    "planner_scalar_column_subquery",
+                    "planner_joined_child_conditions_grouped",
+                    "planner_unplaced_child_conditions_append_and"
+                  ],
+                  "symbols": {
+                    "planner_tables": "engine::coverage_cases::planner_tables",
+                    "planner_scalar_column_subquery": "engine::coverage_cases::planner_scalar_column_subquery",
+                    "planner_joined_child_conditions_grouped": "engine::coverage_cases::planner_joined_child_conditions_grouped",
+                    "planner_unplaced_child_conditions_append_and": "engine::coverage_cases::planner_unplaced_child_conditions_append_and"
                   }
                 }
               ]
@@ -6903,7 +6983,9 @@
                     "param_uses_interval",
                     "param_uses_contains",
                     "param_uses_if_parent",
-                    "param_uses_optimistic"
+                    "param_uses_optimistic",
+                    "planner_joined_child_conditions_grouped",
+                    "planner_unplaced_child_conditions_append_and"
                   ]
                 }
               ]
@@ -7005,7 +7087,9 @@
                     "param_uses_interval",
                     "param_uses_contains",
                     "param_uses_if_parent",
-                    "param_uses_optimistic"
+                    "param_uses_optimistic",
+                    "planner_joined_child_conditions_grouped",
+                    "planner_unplaced_child_conditions_append_and"
                   ]
                 }
               ]
@@ -7103,7 +7187,9 @@
                     "param_uses_interval",
                     "param_uses_contains",
                     "param_uses_if_parent",
-                    "param_uses_optimistic"
+                    "param_uses_optimistic",
+                    "planner_joined_child_conditions_grouped",
+                    "planner_unplaced_child_conditions_append_and"
                   ]
                 }
               ]

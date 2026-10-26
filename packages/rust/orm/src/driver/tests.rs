@@ -1,6 +1,6 @@
-use super::{BindSlot, ParentRef, Step, bind_sqlite, statement};
+use super::{bind_sqlite, statement, BindSlot, ParentRef, Step};
 use crate::plan::KeyRef;
-use crate::{Error, Param, codes};
+use crate::{codes, Error, Param};
 use chrono::{NaiveDate, NaiveDateTime};
 use sqlx::{Connection, Row};
 

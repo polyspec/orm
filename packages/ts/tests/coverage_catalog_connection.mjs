@@ -1,10 +1,10 @@
 // catalog_connection coverage runs the two shared cases against the bench database that the
 // feature check selected (ORM_FEATURE_DATABASE, ORM_FEATURE_DSN) through connectCatalog. The read case only reads; the mutation
 // case inserts, updates and deletes one row of composite_account in tenant 990005 and ends in the state it started in.
-// Requirements: SCH-3, SCH-5, SCH-6a, INT-103, INT-109, INT-113, INT-114, INT-115, INT-123.
+// Requirements: SCH-3, SCH-5, SCH-6a, INT-101, INT-103, INT-109, INT-113, INT-114, INT-115, INT-123.
 import assert from 'node:assert/strict';
 import { randomInt } from 'node:crypto';
-import { runCases } from './coverage_case.mjs';
+import { nativeQuery, runCases } from './coverage_case.mjs';
 import { BindCell, connect as connectModel, connectCatalog, decode } from '../dist/index.js';
 import { DatabaseSync } from 'node:sqlite';
 
@@ -25,6 +25,7 @@ async function connect(item = {
 
 const quote = (name, driver) => (driver === 'mysql' ? `\`${name}\`` : `"${name}"`);
 
+// Requirements: INT-101.
 async function readCase(item) {
   const { driver, catalog } = await connect(item);
   try {
@@ -42,6 +43,7 @@ async function readCase(item) {
 
     const count = await catalog.readOnlyQuery(`SELECT COUNT(*) FROM ${quote('user', driver)}`, []);
     assert.equal(Number(count.rows[0][0]), 5000, `${driver}: user count`);
+    await temporalDefaultPrecisionCase(driver, item.dsn, catalog);
     await assert.rejects(
       catalog.readOnlyQuery(`UPDATE ${quote('user', driver)} SET name = name WHERE seq = 1`, []),
       /QUERY_READ_ONLY/,
@@ -50,6 +52,42 @@ async function readCase(item) {
     await assertGridCells(driver, catalog);
   } finally {
     await catalog.close();
+  }
+}
+
+// Requirements: INT-101.
+async function temporalDefaultPrecisionCase(driver, dsn, catalog) {
+  if (driver === 'sqlite') return;
+  const name = `catalog_temporal_precision_${process.pid}_${randomInt(0, 1_000_000_000)}`;
+  const columns = driver === 'mysql'
+    ? 'id BIGINT NOT NULL PRIMARY KEY, t0 TIME NULL, dt0 DATETIME NULL, t3 TIME(3) NULL, dt3 DATETIME(3) NULL'
+    : 'id BIGINT NOT NULL PRIMARY KEY, t0 TIME WITHOUT TIME ZONE NULL, dt0 TIMESTAMP WITHOUT TIME ZONE NULL, t3 TIME(3) WITHOUT TIME ZONE NULL, dt3 TIMESTAMP(3) WITHOUT TIME ZONE NULL';
+  try {
+    await nativeQuery(driver, dsn, [
+      `DROP TABLE IF EXISTS ${name}`,
+      `CREATE TABLE ${name} (${columns})`,
+      `INSERT INTO ${name} VALUES (1, '12:34:56.123456', '2026-01-02 03:04:05.123456', '12:34:56.123456', '2026-01-02 03:04:05.123456')`,
+    ]);
+    const page = await catalog.tablePage({ namespace: await catalog.currentNamespace(), name }, 1, 0);
+    const fractions = page.result.rows[0].slice(1).map(value => {
+      const dot = value.indexOf('.');
+      return dot === -1 ? 0 : value.length - dot - 1;
+    });
+    assert.deepEqual(fractions, driver === 'mysql' ? [0, 0, 3, 3] : [6, 6, 3, 3], `${driver}: temporal table reads use native defaults and declared precision`);
+  } finally {
+    await nativeQuery(driver, dsn, [`DROP TABLE IF EXISTS ${name}`]);
+  }
+  if (driver === 'mysql') {
+    const invalid = `${name}_invalid`;
+    try {
+      await assert.rejects(
+        nativeQuery(driver, dsn, [`CREATE TABLE ${invalid} (id BIGINT PRIMARY KEY, t TIME(7))`]),
+        /precision/i,
+        'MySQL rejects temporal precision above 6',
+      );
+    } finally {
+      await nativeQuery(driver, dsn, [`DROP TABLE IF EXISTS ${invalid}`]);
+    }
   }
 }
 
