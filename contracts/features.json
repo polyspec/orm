@@ -1932,6 +1932,7 @@
         "coverage-model-write-cycle",
         "coverage-model-create-parts",
         "coverage-model-write-arithmetic-attributes",
+        "coverage-model-save-key-dispatch",
         "ts-revision-update-match",
         "ts-revision-update-mismatch",
         "ts-revision-delete-match",
