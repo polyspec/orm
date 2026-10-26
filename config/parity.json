@@ -13482,7 +13482,6 @@
         "package": "github.com/polyspec/orm/packages/go"
       }
     },
-
     {
       "id": "dbspec-apply-chain-finalization",
       "kind": "feature",
@@ -14985,7 +14984,8 @@
       "id": "rust-native-typed-writes-roundtrip-reject-and-rollback",
       "kind": "feature",
       "requirements": [
-        "INT-117"
+        "INT-116",
+        "INT-122"
       ],
       "bindings": [
         {
@@ -14993,7 +14993,12 @@
           "test": "packages/rust/build/tests/typed_binds.rs",
           "id": "native_typed_writes_roundtrip_reject_and_rollback"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "catalog-typed-temporal-write-returns-declared-fraction-digits-and-rolls-back-invalid-write",

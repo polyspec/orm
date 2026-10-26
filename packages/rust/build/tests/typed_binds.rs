@@ -2,7 +2,7 @@
 mod physical_fixture;
 use physical_fixture::{dsn_for, sqlite_path};
 
-use polyspec_orm_build::tool_db::{self, GridCell, ParamType, QueryLimits, P};
+use polyspec_orm_build::tool_db::{self, GridCell, P, ParamType, QueryLimits};
 #[tokio::test]
 // Requirements: INT-116.
 async fn native_typed_binds_preserve_values_and_typed_nulls() {
@@ -42,7 +42,7 @@ async fn native_typed_binds_preserve_values_and_typed_nulls() {
 }
 
 #[tokio::test]
-// Requirements: INT-117.
+// Requirements: INT-116, INT-122.
 async fn native_typed_writes_roundtrip_reject_and_rollback() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), async {
@@ -138,13 +138,14 @@ async fn native_typed_writes_roundtrip_reject_and_rollback() {
                     invalid.push(P::Float64(f64::NAN.to_bits()));
                 }
             }
-            for value in invalid {
+            for (index, value) in invalid.into_iter().enumerate() {
                 let error = connection
                     .exec(&format!("UPDATE {table} SET note={}", tool_db::placeholder(dialect, 1)), &[value])
                     .await
                     .expect_err("invalid bind must reject")
                     .to_string();
-                if !error.contains("TOOL_BIND_") || error.contains("private") {
+                let code = if index == 1 { "TOOL_BIND_LIMIT" } else { "TOOL_BIND_INVALID" };
+                if !error.starts_with(code) || error.contains("private") {
                     failures.push("bind-rejection");
                 }
             }

@@ -11475,6 +11475,30 @@
           ]
         },
         {
+          "id": "tool-db-bind-validation-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts tool-db-bind-validation-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib tool_db::params::tests::bind_validation_checks_exact_bounds_before_driver_encoding -- --exact",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/build/tests/unit/typed_bind_validation.rs"
+          ]
+        },
+        {
+          "id": "tool-db-native-typed-binds-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts tool-db-native-typed-binds-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test typed_binds native_typed_binds_preserve_values_and_typed_nulls -- --exact",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/build/tests/typed_binds.rs"
+          ]
+        },
+        {
+          "id": "tool-db-native-typed-writes-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts tool-db-native-typed-writes-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test typed_binds native_typed_writes_roundtrip_reject_and_rollback -- --exact",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/build/tests/typed_binds.rs"
+          ]
+        },
+        {
           "id": "catalog-row-baseline-rust",
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts catalog-row-baseline-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test row_snapshot row_baseline_compares_exact_bits_scale_and_binary -- --exact",
           "shard": "rust",
