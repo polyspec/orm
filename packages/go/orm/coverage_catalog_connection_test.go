@@ -354,7 +354,7 @@ func TestCoverageCatalogGridColumnAndRowOrder(t *testing.T) {
 	}
 }
 
-// Requirements: SCH-5, SCH-6a, DBS-113, INT-34, INT-106, INT-108, INT-109, INT-111.
+// Requirements: SCH-5, SCH-6a, DBS-113, INT-34, INT-106, INT-108, INT-109, INT-110, INT-111.
 func TestCoverageCatalogRowMutation(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	ctx := context.Background()
@@ -402,10 +402,14 @@ func TestCoverageCatalogRowMutation(t *testing.T) {
 		{{Name: "name", Value: "first"}, {Name: "name", Value: "second"}},
 		{{Name: "absent", Value: "value"}},
 		{{Name: "name", Value: nil}},
+		{{Name: "name", Value: strings.Repeat("x", 192)}},
 	} {
 		if _, err := c.UpdateRow(ctx, snapshot, values); orm.ErrorCode(err) != orm.CodeRowUpdateInvalid {
 			t.Fatalf("invalid update %v error = %v, want %s", values, err, orm.CodeRowUpdateInvalid)
 		}
+	}
+	if got := catalogFindTenantRow(t, ctx, c, table, driver, "catalog").Revision(); got != originalRevision {
+		t.Fatalf("invalid assignments changed the row revision: got %s, want %s", got, originalRevision)
 	}
 	page, err := c.TablePage(ctx, table, 1000, 0)
 	if err != nil {

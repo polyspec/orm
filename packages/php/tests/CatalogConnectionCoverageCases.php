@@ -370,7 +370,7 @@ trait CatalogConnectionCoverageCases
         }
     }
 
-    // Requirements: DBS-113, INT-34, INT-106, INT-108, INT-109, INT-111.
+    // Requirements: DBS-113, INT-34, INT-106, INT-108, INT-109, INT-110, INT-111.
     public function testCatalogRowMutation(): void
     {
         $account = $this->quote('composite_account');
@@ -421,6 +421,7 @@ trait CatalogConnectionCoverageCases
             [
                 ['absent' => 'value'],
                 ['name' => null],
+                ['name' => str_repeat('x', 192)],
             ] as $invalid
         ) {
             try {
@@ -430,6 +431,7 @@ trait CatalogConnectionCoverageCases
                 self::assertSame(Code::ROW_UPDATE_INVALID, $error->code_);
             }
         }
+        self::assertSame($originalRevision, $find('catalog')->revision());
         $updated = $this->catalog->updateRow($original, ['name' => 'catalog-updated']);
         self::assertCount(1, $updated->rows);
         self::assertSame($originalCells, $original->cells);

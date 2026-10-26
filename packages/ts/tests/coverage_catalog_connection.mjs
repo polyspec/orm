@@ -222,7 +222,7 @@ async function nullAndEmptyTextCase(item) {
   }
 }
 
-// Requirements: DBS-113, INT-106, INT-108, INT-109, INT-111.
+// Requirements: DBS-113, INT-106, INT-108, INT-109, INT-110, INT-111.
 async function mutationCase(item) {
   const { driver, catalog } = await connect(item);
   try {
@@ -261,11 +261,14 @@ async function mutationCase(item) {
     const originalCells = original.originalCells();
     const originalRevision = original.revision;
     for (const values of [
+      [{ name: 'name', value: 'first' }, { name: 'name', value: 'second' }],
       [{ name: 'absent', value: 'value' }],
       [{ name: 'name', value: null }],
+      [{ name: 'name', value: 'x'.repeat(192) }],
     ]) {
       await assert.rejects(catalog.updateRow(original, values), codeIs('ROW_UPDATE_INVALID'), `${driver}: invalid assignment is rejected`);
     }
+    assert.equal((await find('catalog')).revision, originalRevision, `${driver}: rejected assignments leave the stored row unchanged`);
     const updated = await catalog.updateRow(original, [{ name: 'name', value: 'catalog-updated' }]);
     assert.equal(updated.rows.length, 1, `${driver}: updated rows`);
     assert.deepEqual(original.originalCells(), originalCells, `${driver}: captured cells remain immutable`);

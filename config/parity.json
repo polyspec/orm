@@ -14593,6 +14593,31 @@
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_catalog_connection_test.go",
+          "id": "TestCoverageCatalogRowMutation"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRowMutation"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRowMutation"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_row_mutation"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_catalog_connection.py",
+          "id": "test_row_mutation"
+        },
+        {
           "implementation": "rust",
           "test": "packages/rust/build/tests/row_snapshot.rs",
           "id": "row_update_verification_rejects_coercion_and_unrequested_changes"

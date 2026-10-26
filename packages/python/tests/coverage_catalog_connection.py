@@ -450,7 +450,7 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
                     self.catalog.delete_row(snapshot)
                 db.close()
 
-    # Requirements: DBS-113, INT-106, INT-108, INT-109, INT-111.
+    # Requirements: DBS-113, INT-106, INT-108, INT-109, INT-110, INT-111.
     def test_row_mutation(self):
         driver = self.driver
         account = quote("composite_account", driver)
@@ -493,10 +493,16 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
         self.assertEqual(original.keys(), [TENANT, 1])
         original_cells = list(original.cells)
         original_revision = original.revision
-        for values in [[("absent", "value")], [("name", None)]]:
+        for values in [
+            [("name", "first"), ("name", "second")],
+            [("absent", "value")],
+            [("name", None)],
+            [("name", "x" * 192)],
+        ]:
             with self.assertRaises(OrmError) as raised:
                 self.catalog.update_row(original, values)
             self.assertEqual(raised.exception.code, codes.ROW_UPDATE_INVALID)
+        self.assertEqual(find("catalog").revision, original_revision)
         updated = self.catalog.update_row(original, [("name", "catalog-updated")])
         self.assertEqual(len(updated.rows), 1)
         self.assertEqual(original.cells, original_cells)
