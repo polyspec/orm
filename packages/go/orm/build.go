@@ -384,7 +384,7 @@ func (r *request) subquery(m Model, outer *Core, scalar bool) *ir.Sub {
 
 // padIn rounds a list up to a power of two by repeating its last value, so
 // the number of distinct statements stays logarithmic in the list length.
-func padIn(vs []any) []any {
+func padIn[T any](vs []T) []T {
 	n := 1
 	for n < len(vs) {
 		n <<= 1
@@ -392,7 +392,7 @@ func padIn(vs []any) []any {
 	if n == len(vs) {
 		return vs
 	}
-	out := make([]any, n)
+	out := make([]T, n)
 	copy(out, vs)
 	for i := len(vs); i < n; i++ {
 		out[i] = vs[len(vs)-1]

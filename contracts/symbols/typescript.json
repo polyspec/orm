@@ -14687,6 +14687,10 @@
     "exported": true,
     "signature": "(v0: readonly [number, number]) =\u003e this"
   },
+  "packages/ts/src/models/models.ts::Author#field.betweenStartDt": {
+    "exported": true,
+    "signature": "(v0: readonly [string | Date, string | Date]) =\u003e this"
+  },
   "packages/ts/src/models/models.ts::Author#field.descriptionNeName": {
     "exported": true,
     "signature": "(v0: Author | User | Service | ServiceRegion | CompositeAccount | SoftRecord | Account | Project) =\u003e this"
@@ -14918,6 +14922,10 @@
   "packages/ts/src/models/models.ts::Author#field.serviceSeq": {
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::Author#field.startDt": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.userSeq": {
     "exported": true,

@@ -21,6 +21,19 @@ func planCacheIdentityLoadFixture(t *testing.T) (*runtimemodel.Model, *Schema) {
 	return m, &Schema{Hash: m.ManifestHash, Text: m.ManifestText}
 }
 
+func TestPadInRepeatsTheLastCompositeTuple(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	rows := [][]any{{int64(990004), int64(1)}, {int64(990004), int64(2)}, {int64(990004), int64(3)}}
+	got := padIn(rows)
+	want := [][]any{{int64(990004), int64(1)}, {int64(990004), int64(2)}, {int64(990004), int64(3)}, {int64(990004), int64(3)}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("padded composite tuples = %#v, want %#v", got, want)
+	}
+	if len(rows) != 3 || !reflect.DeepEqual(rows[2], []any{int64(990004), int64(3)}) {
+		t.Fatalf("padding changed the caller's tuples: %#v", rows)
+	}
+}
+
 // TestPlanCacheBoundedByInListShape runs one IN statement with lists of 1 to
 // 300 values. The plan cache holds one entry per statement shape with the list
 // length bucketed to a power of two, so the entry count stays at most the number

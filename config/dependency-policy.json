@@ -41,10 +41,10 @@
   "advisoryExceptions": [
     {
       "lock": "package-lock.json",
-      "package": "sprintf-js",
-      "advisory": "1241202",
-      "reason": "GHSA-hp3w-g68c-fv3c (npm advisory 1241202) covers every release of sprintf-js, so no release fixes it. orm pulls sprintf-js 1.0.3 in only through @polyspec/kit -> @microsoft/api-extractor -> @rushstack/ts-command-line -> argparse 1.0.10 -> sprintf-js, which formats the help and error texts of the api-extractor command with its own format strings; no input of a user reaches it. kit accepts the same advisory with the same reason.",
-      "removalCondition": "a release of sprintf-js fixes GHSA-hp3w-g68c-fv3c, or @microsoft/api-extractor no longer depends on argparse; make dependency-review then reports the exception as stale"
+      "package": "@azure/msal-node",
+      "advisory": "1243111",
+      "reason": "GHSA-xcx6-jx8p-x3h5 (npm advisory 1243111) affects the auth_code flow in @azure/msal-node 6.0.1, pulled by @azure/identity 4.13.3 through @vscode/vsce 4.0.0. The only checked-in invocation is `vsce package --no-dependencies --skip-license --out dist/polyspec-dbspec.vsix`; no repository command uses vsce publish/login or its --azure-credential option, so the vulnerable authorization-code entry point is not used by the checked workflows. The latest compatible @azure/identity 4.14.0 still requires @azure/msal-node ^6.0.0 and releases 6.0.0/6.0.1 are the only published 6.x versions, while the advisory is fixed in 7.1.0. Forcing the unsupported major would violate the parent package range.",
+      "removalCondition": "A release of @azure/identity supports patched @azure/msal-node >=7.1.0, or @vscode/vsce no longer depends on the vulnerable packages; rerun make dependency-review."
     }
   ]
 }

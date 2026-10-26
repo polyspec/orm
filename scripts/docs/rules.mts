@@ -4,7 +4,7 @@ import path from 'node:path';
 import { docs, root, files } from './lib.mts';
 import { tablesIn } from './tables.mts';
 import { COMPUTE, sections } from '../../tests/testcase.mts';
-import { kitCopies } from '../repo/kit-copies.mts';
+import { kitCopies, kitOwnedPaths } from '../repo/kit-copies.mts';
 import { readJsonFile } from '../json/schema.mts';
 import { errorCode } from '../../tests/errors.mts';
 import { filterRuleFailures, onlyRuleFromArgs } from './rules-filter.mts';
@@ -26,11 +26,10 @@ const relative = (file: string) => path.relative(root, file).split(path.sep).joi
 const allDocs = (await files(docs)).filter(file => file.endsWith('.md') && !file.includes(`${path.sep}.vitepress${path.sep}`));
 // The tracked Korean documents outside docs/ (AGENTS.ko.md, README.ko.md, CHANGELOG.ko.md, etc.) also receive the same
 // structural checks as their English originals.
-// The copies of @polyspec/kit (kit.copies of its package.json) are kit's documents: the rules of this repository do not read
-// them (AGENTS.md), and kit checks them where they are written.
-const vendored = new Set(Object.keys(kitCopies(root)));
+// Kit-owned documents are checked in kit, whether a checkout holds them as copies or as linked owner files (AGENTS.md).
+const kitDocuments = new Set([...Object.keys(kitCopies(root)), ...kitOwnedPaths(root)]);
 const pairedOutside = execFileSync('git', ['ls-files', '-z', '*.ko.md'], { cwd: root }).toString().split('\0')
-  .filter(file => file && !file.startsWith('docs/') && !vendored.has(file)).map(file => path.join(root, file));
+  .filter(file => file && !file.startsWith('docs/') && !kitDocuments.has(file)).map(file => path.join(root, file));
 const sources = [...allDocs.filter(file => !file.endsWith('.ko.md')),
   ...pairedOutside.map(file => file.slice(0, -'.ko.md'.length) + '.md')];
 const translations = new Map([...allDocs.filter(file => file.endsWith('.ko.md')), ...pairedOutside]

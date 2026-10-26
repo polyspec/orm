@@ -468,7 +468,7 @@ mod page_parameter_tests {
 
 /// Rounds a list up to a power of two by repeating its last value, so the
 /// number of distinct statements stays logarithmic in the list length.
-fn pad_in(vs: &[Param]) -> Vec<Param> {
+pub(crate) fn pad_in<T: Clone>(vs: &[T]) -> Vec<T> {
     let mut n = 1;
     while n < vs.len() {
         n <<= 1;
@@ -477,6 +477,19 @@ fn pad_in(vs: &[Param]) -> Vec<Param> {
     let last = vs[vs.len() - 1].clone();
     out.resize(n, last);
     out
+}
+
+#[cfg(test)]
+mod tuple_padding_tests {
+    use super::pad_in;
+
+    #[test]
+    fn composite_tuple_padding_repeats_the_last_row() {
+        let rows = vec![vec![990004i64, 1], vec![990004, 2], vec![990004, 3]];
+        let padded = pad_in(&rows);
+        assert_eq!(padded, [rows[0].clone(), rows[1].clone(), rows[2].clone(), rows[2].clone()]);
+        assert_eq!(rows, [vec![990004, 1], vec![990004, 2], vec![990004, 3]]);
+    }
 }
 
 #[cfg(test)]

@@ -1751,9 +1751,23 @@ final class Catalog
             if ($value === null && !$column->nullable) {
                 throw new OrmException($code, "NULL in non-null column \"$name\"");
             }
+            if (is_string($value) && self::exceedsDeclaredCapacity($column, $value)) {
+                throw new OrmException($code, "value exceeds the declared capacity of column \"$name\"");
+            }
             $changes[] = [$index, $value];
         }
         return $changes;
+    }
+
+    private static function exceedsDeclaredCapacity(CatalogColumn $column, string $value): bool
+    {
+        if (preg_match('/^(?:varchar|character varying)\\s*\\((\\d+)\\)/iD', $column->nativeType, $match) === 1) {
+            return mb_strlen($value, 'UTF-8') > (int) $match[1];
+        }
+        if (preg_match('/^(?:varbinary|binary)\\s*\\((\\d+)\\)/iD', $column->nativeType, $match) === 1) {
+            return strlen($value) > (int) $match[1];
+        }
+        return false;
     }
 
     /** The position of the named column in the descriptor, or -1. */

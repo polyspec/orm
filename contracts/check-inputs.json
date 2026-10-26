@@ -3971,6 +3971,10 @@
       "scope": "suite",
       "reason": "the command that parity runs for each Go feature unit (config/parity.json command): it runs one feature test under the environment feature-check gives it and prints go test -json, so the parity units that bind it run it"
     },
+    "packages/python/uv.lock": {
+      "scope": "suite",
+      "reason": "it pins the native uv development environment of the Python client used by its checks"
+    },
     "packages/php-ext/testing/dbspec/apply/php-extension.php": {
       "scope": "suite",
       "reason": "the dbspec apply runner of the PHP extension client, run by the cross-client runners (tests/dbspec/compare/runners.mts)"

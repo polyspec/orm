@@ -52,14 +52,14 @@ caseTest('angle-bracket examples in plan checklists render as text', TIMEOUT, as
   const markdown: unknown = await Reflect.apply(createMarkdownRenderer, vitepress, [docs]);
   const render = method(markdown, 'render');
   try {
-    for (const relativePath of [
-      'plans/kit-standard/checklist.md',
-      'plans/kit-standard/checklist.ko.md',
+    for (const [relativePath, placeholder] of [
+      ['plans/kit-standard/checklist.md', 'check'],
+      ['plans/kit-standard/checklist.ko.md', 'gate'],
     ]) {
       const source = await readFile(path.join(docs, relativePath), 'utf8');
       const rendered: unknown = Reflect.apply(render, markdown, [source, { relativePath, path: path.join(docs, relativePath) }]);
       if (typeof rendered !== 'string') throw new Error(`${relativePath} did not render to HTML text`);
-      assert.match(rendered, /&lt;check&gt;/, `${relativePath} renders the check placeholder literally`);
+      assert.match(rendered, new RegExp(`&lt;${placeholder}&gt;`), `${relativePath} renders the ${placeholder} placeholder literally`);
       assert.match(rendered, /&lt;max@blue\.tools&gt;/, `${relativePath} renders the commit identity literally`);
       assert.match(rendered, /&lt;X&gt;/, `${relativePath} renders the generic type literally`);
       assert.match(rendered, /Refines &lt;id&gt;:/, `${relativePath} preserves the refinement prefix`);

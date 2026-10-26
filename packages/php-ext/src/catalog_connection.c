@@ -1235,6 +1235,9 @@ static bool cat_float_cell(zval *v, bool single, zval *kind_out, zval *value_out
     double d;
     if (Z_TYPE_P(v) == IS_DOUBLE) d = Z_DVAL_P(v);
     else if (Z_TYPE_P(v) == IS_LONG) d = (double)Z_LVAL_P(v);
+    else if (Z_TYPE_P(v) == IS_STRING && zend_string_equals_literal_ci(Z_STR_P(v), "NaN")) {
+        d = NAN;
+    }
     else if (Z_TYPE_P(v) == IS_STRING && is_numeric_string(Z_STRVAL_P(v), Z_STRLEN_P(v), NULL, NULL, 0)) d = zend_strtod(Z_STRVAL_P(v), NULL);
     else {
         cat_refuse("expected a number");
@@ -1674,6 +1677,28 @@ static void cat_mysqli_abort(zval *link)
     zval_ptr_dtor(&rollback_error);
 }
 
+/* A MySQL function can write even though its SELECT passed the static read-only check. */
+static void cat_mysqli_grid_error(void)
+{
+    if (EG(exception) == NULL) return;
+    zval code_rv;
+    zval *code = zend_read_property(EG(exception)->ce, EG(exception), "code_", sizeof("code_") - 1, true, &code_rv);
+    bool read_only = Z_TYPE_P(code) == IS_STRING && zend_string_equals_literal(Z_STR_P(code), "READ_ONLY");
+    if (code == &code_rv) zval_ptr_dtor(&code_rv);
+    if (!read_only) return;
+
+    zval previous, args[3], wrapped;
+    ZVAL_OBJ(&previous, EG(exception));
+    EG(exception) = NULL;
+    ZVAL_STRING(&args[0], "QUERY_READ_ONLY");
+    ZVAL_STRING(&args[1], "the database rejected a read-only grid query");
+    ZVAL_COPY_VALUE(&args[2], &previous);
+    if (newobj("Polyspec\\Orm\\OrmException", &wrapped, 3, args)) zend_throw_exception_object(&wrapped);
+    zval_ptr_dtor(&args[0]);
+    zval_ptr_dtor(&args[1]);
+    zval_ptr_dtor(&previous);
+}
+
 /* The MySQL grid query on the grid connection: one read-only transaction, a prepared statement, and the flags of its fields. */
 static bool cat_grid_mysqli(zval *link, zval *sql, zval *args, zend_long max_rows, zend_long max_bytes, zval *names, zval *rows)
 {
@@ -1755,6 +1780,7 @@ static bool cat_grid_mysqli(zval *link, zval *sql, zval *args, zend_long max_row
     zval_ptr_dtor(&ret);
     if (!pdo_call(link, "commit", &ret, 0, NULL, NULL)) {
         cat_mysqli_abort(link);
+        cat_mysqli_grid_error();
         zval_ptr_dtor(names);
         zval_ptr_dtor(rows);
         return false;
@@ -1769,6 +1795,7 @@ abort_stmt:
     zval_ptr_dtor(&stmt);
 abort:
     cat_mysqli_abort(link);
+    cat_mysqli_grid_error();
     zval_ptr_dtor(names);
     zval_ptr_dtor(rows);
     return false;
@@ -2306,6 +2333,52 @@ static void cat_rewrap(const char *code, const char *prefix)
 }
 
 /* The assignments of a change: each named column's index and its normalized value, as [index, value] pairs (Catalog::changes). */
+static bool cat_exceeds_char_limit(zval *column, zval *value)
+{
+    if (Z_TYPE_P(value) != IS_STRING) return false;
+    zval rv, *native = catalog_prop(column, "nativeType", &rv);
+    if (Z_TYPE_P(native) != IS_STRING) {
+        return false;
+    }
+    const char *text = Z_STRVAL_P(native);
+    size_t length = Z_STRLEN_P(native);
+    size_t prefix = 0;
+    bool binary = false;
+    if (length >= sizeof("varchar") - 1 && zend_strncasecmp(text, "varchar", sizeof("varchar") - 1) == 0) {
+        prefix = sizeof("varchar") - 1;
+    } else if (length >= sizeof("character varying") - 1
+               && zend_strncasecmp(text, "character varying", sizeof("character varying") - 1) == 0) {
+        prefix = sizeof("character varying") - 1;
+    } else if (length >= sizeof("varbinary") - 1
+               && zend_strncasecmp(text, "varbinary", sizeof("varbinary") - 1) == 0) {
+        prefix = sizeof("varbinary") - 1;
+        binary = true;
+    } else if (length >= sizeof("binary") - 1 && zend_strncasecmp(text, "binary", sizeof("binary") - 1) == 0) {
+        prefix = sizeof("binary") - 1;
+        binary = true;
+    } else {
+        return false;
+    }
+    const char *open = memchr(text, '(', length);
+    if (open == NULL || (size_t)(open - text) != prefix) return false;
+    const char *close = memchr(open + 1, ')', length - (size_t)(open + 1 - text));
+    if (close == NULL || close == open + 1) return false;
+    zend_ulong limit = 0;
+    for (const char *digit = open + 1; digit < close; digit++) {
+        if (*digit < '0' || *digit > '9' || limit > ((zend_ulong)-1 - 9) / 10) return false;
+        limit = limit * 10 + (zend_ulong)(*digit - '0');
+    }
+    zend_ulong actual = Z_STRLEN_P(value);
+    if (!binary) {
+        actual = 0;
+        const unsigned char *bytes = (const unsigned char *)Z_STRVAL_P(value);
+        for (size_t i = 0; i < Z_STRLEN_P(value); i++) {
+            if ((bytes[i] & 0xc0) != 0x80) actual++;
+        }
+    }
+    return actual > limit;
+}
+
 static bool cat_changes(zval *metadata, zval *values, const char *code, zval *out)
 {
     zval rv_cols, *columns = catalog_prop(metadata, "columns", &rv_cols);
@@ -2344,6 +2417,11 @@ static bool cat_changes(zval *metadata, zval *values, const char *code, zval *ou
                 }
                 if (Z_TYPE_P(value) == IS_NULL && Z_TYPE_P(nullable) != IS_TRUE) {
                     db_throw_orm(code, "NULL in non-null column \"%s\"", ZSTR_VAL(key));
+                    zval_ptr_dtor(out);
+                    return false;
+                }
+                if (cat_exceeds_char_limit(column, value)) {
+                    db_throw_orm(code, "value exceeds the declared character length of column \"%s\"", ZSTR_VAL(key));
                     zval_ptr_dtor(out);
                     return false;
                 }

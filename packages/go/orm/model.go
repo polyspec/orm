@@ -567,6 +567,7 @@ func attachExternal(parents []*Core, rel relSpec) error {
 				}
 				rows[i] = key
 			}
+			rows = padIn(rows)
 			match = condNode{pred: &predSpec{op: "tuple_in", cols: matchColumns(ch.matches, true), value: rows, tuple: true}}
 		}
 		if len(q.where.items) > 0 {

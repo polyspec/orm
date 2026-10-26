@@ -939,10 +939,19 @@ php-codec-causes-check: php-models build-php-ext
 	if env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --timeout 300 --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php/phpunit.xml.dist --filter '$(PHP_CODEC_CAUSE_NATIVE_FILTER)' packages/php/tests/CodecVectorsTest.php; then :; else status=1; fi; \
 	if env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --timeout 300 --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist --filter '$(PHP_CODEC_CAUSE_NATIVE_YAML_FILTER)' packages/php-ext/tests/CodecCauseTest.php; then :; else status=1; fi; \
 	exit "$$status"
-dbspec-php-extension-check/%: RUN_DIR = $(abspath .runtime/run)/dbspec-php-extension-check-$$PPID
+dbspec-php-extension-check/%: RUN_DIR = $(if $(DBSPEC_PHP_EXTENSION_CHILD_RUN_DIR),$(DBSPEC_PHP_EXTENSION_CHILD_RUN_DIR),$(abspath .runtime/run)/dbspec-php-extension-check-$$PPID)
+dbspec-php-extension-check/analyze: DBSPEC_PHP_EXTENSION_CHILD_RUN_DIR = $(abspath .runtime/run)/dbspec-php-extension-check-analyze-$$PPID
+dbspec-php-extension-check/ir: DBSPEC_PHP_EXTENSION_CHILD_RUN_DIR = $(abspath .runtime/run)/dbspec-php-extension-check-ir-$$PPID
 .PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/plan-apply dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/codec dbspec-php-extension-check/code-catalog dbspec-php-extension-check/decode dbspec-php-extension-check/aes dbspec-php-extension-check/hostcodec dbspec-php-extension-check/ir dbspec-php-extension-check/planner dbspec-php-extension-check/executor
-dbspec-php-extension-check: dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/stress-canonical dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/plan-apply dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/codec dbspec-php-extension-check/code-catalog dbspec-php-extension-check/decode dbspec-php-extension-check/aes dbspec-php-extension-check/hostcodec dbspec-php-extension-check/planner dbspec-php-extension-check/executor
-	rm -rf $(RUN_DIR)
+DBSPEC_PHP_EXTENSION_PARTS = dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/stress-canonical dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/plan-apply dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/codec dbspec-php-extension-check/code-catalog dbspec-php-extension-check/decode dbspec-php-extension-check/aes dbspec-php-extension-check/hostcodec dbspec-php-extension-check/planner dbspec-php-extension-check/executor
+.PHONY: dbspec-php-extension-check
+dbspec-php-extension-check:
+	@set -eu; \
+	run_dir="$(RUN_DIR)"; \
+	trap 'rm -rf "$$run_dir"' EXIT; \
+	status=0; \
+	if $(MAKE) --no-print-directory -k RUN_DIR="$$run_dir" DBSPEC_PHP_EXTENSION_SHARED_RUN=1 $(DBSPEC_PHP_EXTENSION_PARTS); then :; else status=$$?; fi; \
+	exit "$$status"
 dbspec-php-extension-check/arginfo:
 	$(NODE) $(KIT)/php-extension.$(KIT_EXT) check
 dbspec-php-extension-check/prepare:
@@ -958,7 +967,7 @@ collection-php-extension-check: php-vendor-check
 	mkdir -p "$$run_dir/php-extension"; \
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/php-extension/polyspec_orm.so"; \
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CollectionTest.php $(if $(COLLECTION_TEST_FILTER),--filter '$(COLLECTION_TEST_FILTER)',); \
-	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES='$(ORM_PHP_DYNAMIC_MODULES)' $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testDeclarations|testClient|testRequiredModules' packages/php-ext/tests/DeclarationsTest.php; \
+	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES='$(ORM_PHP_DYNAMIC_MODULES)' POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testDeclarations|testClient|testRequiredModules' packages/php-ext/tests/DeclarationsTest.php; \
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CollectionIdentityTest.php
 
 # The native PHP extension planner runs the same blind-index source cases as the PHP client.
@@ -979,7 +988,7 @@ model-types-php-extension-check: php-vendor-check
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/php-extension/polyspec_orm.so"; \
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelTypesSurfaceTest.php packages/php-ext/tests/PlanCacheBoundNativeTest.php packages/php-ext/tests/PlanCacheMemoryNativeTest.php; \
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testPlanCacheRetainsAtMostTheBoundOfPlaceholders|testPlanCacheRetainsAtMostAFewMibOfPlans|testPlanCachePromotesHitsAndEvictsTheLeastRecentlyUsedPlan|testStatementCacheRetainsAtMostTheBoundOfPlaceholders|testStatementCacheRetainsAtMostAFewMibOfStatements' packages/php/tests/PlanCacheMemoryTest.php; \
-	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES='$(ORM_PHP_DYNAMIC_MODULES)' $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DeclarationsTest.php; \
+	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES='$(ORM_PHP_DYNAMIC_MODULES)' POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DeclarationsTest.php; \
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelTypesSourceTest.php packages/php/tests/FuncSourceAdapterTest.php
 
 # Exercises native model query assembly and write round trips on an owned SQLite in-memory database.
@@ -1024,7 +1033,7 @@ model-native-php-extension-check: php-vendor-check php-model-check
 	mkdir -p "$$run_dir/php-extension"; \
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/php-extension/polyspec_orm.so"; \
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelNativeTest.php packages/php-ext/tests/MarkdownNativeTest.php packages/php-ext/tests/AuditLazyFakePdoTest.php packages/php-ext/tests/ModelDslNativeTest.php packages/php-ext/tests/ModelReadNativeTest.php packages/php-ext/tests/ModelWriteSurfaceTest.php packages/php-ext/tests/ModelAssemblyTest.php packages/php-ext/tests/ModelStreamReadTest.php packages/php-ext/tests/RuntimeModelTest.php packages/php-ext/tests/ChainNativeSurfaceTest.php packages/php-ext/tests/RegistrySchemaNativeTest.php packages/php-ext/tests/PlanCacheMemoryNativeTest.php packages/php-ext/tests/DecimalModelSqliteNativeTest.php $(if $(MODEL_NATIVE_TEST_FILTER),packages/php/tests/PlanCacheMemoryTest.php,) $(if $(MODEL_NATIVE_TEST_FILTER),--filter '$(MODEL_NATIVE_TEST_FILTER)',); \
-	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES='$(ORM_PHP_DYNAMIC_MODULES)' $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testDeclarations|testClient|testRequiredModules' packages/php-ext/tests/DeclarationsTest.php; \
+	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES='$(ORM_PHP_DYNAMIC_MODULES)' POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testDeclarations|testClient|testRequiredModules' packages/php-ext/tests/DeclarationsTest.php; \
 	if [ -z '$(MODEL_NATIVE_TEST_FILTER)' ]; then env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelMethodsTest.php packages/php/tests/ModelTypesSourceTest.php; fi
 
 # Runs the native root-IN chunking and composite-key probes against in-memory SQLite.
@@ -1106,7 +1115,7 @@ dbspec-php-extension-check/statement-event: php-vendor-check dbspec-php-extensio
 # CI sets pdo for Ubuntu, where pdo is a shared module.
 ORM_PHP_DYNAMIC_MODULES ?=
 dbspec-php-extension-check/declarations: php-vendor-check dbspec-php-extension-check/prepare
-	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES=$(ORM_PHP_DYNAMIC_MODULES) $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DeclarationsTest.php
+	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES=$(ORM_PHP_DYNAMIC_MODULES) POLYSPEC_ORM_EXTENSION="$(PHP_EXTENSION_LIBRARY)" $(RUN_TESTS) phpunit --php-extension "$(PHP_EXTENSION_LIBRARY)" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DeclarationsTest.php
 # dbspec-php-extension-check/vectors runs DbspecTest with the extension: the canonical, normalize, invalid, files, positions, bytes and arguments cases of tests/dbspec/cases.json, introspection and apply on SQLite.
 dbspec-php-extension-check/vectors: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecTest.php
@@ -1135,7 +1144,7 @@ dbspec-php-extension-check/stress-canonical: php-vendor-check dbspec-php-extensi
 dbspec-php-extension-check/analyze: php-vendor-check dbspec-php-extension-check/prepare
 	@set -eu; \
 	run_dir="$(RUN_DIR)"; \
-	trap 'rm -rf "$$run_dir"' EXIT; \
+	if [ -z '$(DBSPEC_PHP_EXTENSION_SHARED_RUN)' ]; then trap 'rm -rf "$$run_dir"' EXIT; fi; \
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecAnalyzeTest.php; \
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecAnalyzeTest.php; \
 	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecRulesNativeTest.php
@@ -1186,7 +1195,7 @@ PHP_EXTENSION_IR_TEST_FILTER ?= testValidate
 dbspec-php-extension-check/ir: php-vendor-check dbspec-php-extension-check/prepare
 	@set -eu; \
 	run_dir="$(RUN_DIR)"; \
-	trap 'rm -rf "$$run_dir"' EXIT; \
+	if [ -z '$(DBSPEC_PHP_EXTENSION_SHARED_RUN)' ]; then trap 'rm -rf "$$run_dir"' EXIT; fi; \
 	$(PHP_EXTENSION_NATIVE_TESTS) --filter '$(PHP_EXTENSION_IR_TEST_FILTER)' packages/php-ext/tests/ValidatorNativeTest.php
 # dbspec-php-extension-check/set-parse runs DbspecSetParseTest with the extension: Dbspec::parseSet on every case of tests/dbspec/set-parse.json.
 dbspec-php-extension-check/set-parse: php-vendor-check dbspec-php-extension-check/prepare
@@ -2777,7 +2786,7 @@ collection-get-phpstan-check:
 	@set -eu; \
 	phpstan_tmp=$$(mktemp -d "$${TMPDIR:?}/collection-get-phpstan.XXXXXX"); \
 	trap 'rm -rf "$$phpstan_tmp"' EXIT; \
-	printf 'includes:\n    - %s\nparameters:\n    tmpDir: %s/cache\n' "$(KIT_PACKAGE)/phpstan.dist.neon" "$$phpstan_tmp" > "$$phpstan_tmp/phpstan.neon"; \
+	$(PUBLISH) "$$phpstan_tmp/phpstan.neon" printf 'includes:\n    - %s\nparameters:\n    tmpDir: %s/cache\n' "$(KIT_PACKAGE)/phpstan.dist.neon" "$$phpstan_tmp"; \
 	cd packages/php; \
 	$(PHPSTAN) analyse --no-progress --error-format=raw --memory-limit=-1 --level=9 --configuration="$$phpstan_tmp/phpstan.neon" --autoload-file=../../vendor-php/autoload.php tests/phpstan/CollectionGet.php
 
@@ -3031,7 +3040,7 @@ php-extension-package-entry-check: php-vendor-check php-models
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir"; \
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/polyspec_orm.so"; \
-	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES='$(ORM_PHP_DYNAMIC_MODULES)' $(RUN_TESTS) phpunit --php-extension "$$run_dir/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist --filter 'test(Package|Client)' packages/php-ext/tests/DeclarationsTest.php
+	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES='$(ORM_PHP_DYNAMIC_MODULES)' POLYSPEC_ORM_EXTENSION="$$run_dir/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist --filter 'test(Package|Client)' packages/php-ext/tests/DeclarationsTest.php
 
 rust-package-entry-check: cargo-downloads-check
 	cd packages/rust && $(CARGO_TEST) rust-package-entry-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --test package_entry public_package_entry -- --exact --nocapture

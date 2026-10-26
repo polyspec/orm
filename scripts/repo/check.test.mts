@@ -532,7 +532,9 @@ caseTest('a CI group set that omits, repeats or adds a target of CHECK_TARGETS f
   const make = (groups: string[]) => ['CHECK_TARGETS = a-check b-check c-check', ...groups, ''].join('\n');
   const good = make(['CI_GROUPS = one two', 'CI_TARGETS_one = a-check c-check', 'CI_TARGETS_two = b-check']);
   assert.deepEqual(ciCheckTargetErrors(grouped(), good), []);
-  assert.deepEqual(ciCheckTargetErrors(grouped(), 'CHECK_TARGETS = a-check\nCHECK_TARGETS += b-check\nCI_GROUPS = one\nCI_TARGETS_one = a-check\nCI_TARGETS_one += b-check\n'), []);
+  assert.deepEqual(ciCheckTargetErrors(grouped(), 'CHECK_TARGETS = a-check\nCHECK_TARGETS += b-check\nCI_GROUPS = one\nCI_TARGETS_one = a-check\nCI_TARGETS_one += b-check\n'), [
+    'ci.yml job test has the matrix group two, which is not in CI_GROUPS',
+  ]);
   const multipleMissing = [
     'CHECK_TARGETS = a-check b-check c-check d-check e-check f-check',
     'CI_GROUPS = one two',

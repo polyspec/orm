@@ -506,7 +506,6 @@ struct Assembler<'a> {
 /// A model under assembly: children attach before it is moved into its parent.
 struct Built {
     model: Box<dyn AnyModel>,
-    builder: u64,
 }
 
 impl<'a> Assembler<'a> {
@@ -607,7 +606,7 @@ impl<'a> Assembler<'a> {
             }
         }
         m.core_dyn_mut().row = Some(st);
-        Ok(Built { model: m, builder: b.id })
+        Ok(Built { model: m })
     }
 }
 
@@ -658,21 +657,20 @@ async fn load(c: &Core, kind: &str) -> Result<Loaded> {
 async fn assemble(c: &Core, req: &Req, res: &QueryResult) -> Result<Loaded> {
     let asm = res.plan.steps[0].assemble.clone().expect("select plan has an assemble");
     let mut a = Assembler { res, conn: c.conn.clone() };
-    let mut items = Vec::new();
+    let mut keys = Vec::new();
+    let mut models = Vec::new();
     for row in res.rows() {
         let built = a.model(c, &asm, row)?;
         let key = collection_key(c, built.model.as_ref(), &asm, row.vals())?;
-        items.push((key, built.model, built.builder));
+        keys.push(key);
+        models.push(built.model);
     }
-    let mut out: Vec<(Key, Box<dyn AnyModel>)> = Vec::new();
-    for (key, mut model, builder) in items {
-        if let Some(rels) = req.external.get(&builder) {
-            for rel in rels {
-                attach_external(std::slice::from_mut(&mut model), rel).await?;
-            }
+    if let Some(rels) = req.external.get(&c.id) {
+        for rel in rels {
+            attach_external(&mut models, rel).await?;
         }
-        out.push((key, model));
     }
+    let out: Vec<(Key, Box<dyn AnyModel>)> = keys.into_iter().zip(models).collect();
     let mut fetched = HashMap::new();
     if let Some(f) = &c.fetch_value {
         for (k, m) in &out {
@@ -749,7 +747,7 @@ async fn attach_external(parents: &mut [Box<dyn AnyModel>], rel: &RelSpec) -> Re
         let spec = if rights.len() == 1 {
             PredSpec { column: rights[0].into(), op: "in", value: PredValue::List(values.into_iter().flatten().collect()) }
         } else {
-            PredSpec { column: String::new(), op: "tuple_in", value: PredValue::Tuples(rights, values) }
+            PredSpec { column: String::new(), op: "tuple_in", value: PredValue::Tuples(rights, crate::request::pad_in(&values)) }
         };
         let pred = CondNode { conn: "", kind: CondKind::Pred(spec) };
         if q.where_.items.is_empty() {
@@ -999,7 +997,11 @@ fn assign(r: &mut Req, ent: &dbspec::Entity, s: &SetSpec) -> Result<ir::Assign> 
     let mut a = ir::Assign { column: s.column.clone(), ..Default::default() };
     match &s.value {
         SetValue::Null => a.null = true,
-        SetValue::Value(v) => a.p = Some(r.p(v.clone())),
+        SetValue::Value(v) => {
+            let field = ent.field(&s.column).ok_or_else(|| Error::Engine { code: codes::COLUMN_UNKNOWN.into(), msg: format!("{}.{}", ent.name, s.column) })?;
+            validate_host_value(&field.codec, v)?;
+            a.p = Some(r.p(v.clone()));
+        }
         SetValue::Json(v) => match encode(ent, &s.column, v)? {
             Param::Null => a.null = true,
             p => a.p = Some(r.p(p)),
@@ -1012,6 +1014,14 @@ fn assign(r: &mut Req, ent: &dbspec::Entity, s: &SetSpec) -> Result<ir::Assign> 
         SetValue::Minus(n) => a.minus_p = Some(r.p(n.clone())),
     }
     Ok(a)
+}
+
+fn validate_host_value(styles: &[String], value: &Param) -> Result<()> {
+    // Some dialects apply `ip` in SQL; validate it here so bad text returns CODEC_ENCODE before it reaches the driver.
+    if styles.iter().any(|style| style == "ip") {
+        crate::codec::host_encode(value, &["ip".to_owned()], "")?;
+    }
+    Ok(())
 }
 
 /// Runs insert, update, delete, and restore, and returns the key of the inserted row and the number of changed rows: on SQL databases
@@ -1216,7 +1226,13 @@ pub async fn creates<M: Model>(m: &M, rows: Vec<M>, batch: usize) -> Result<u64>
                         return Err(config("every model of creates must set the same columns in the same order"));
                     }
                     let v = match &s.value {
-                        SetValue::Value(v) => v.clone(),
+                        SetValue::Value(v) => {
+                            let field = ent
+                                .field(&s.column)
+                                .ok_or_else(|| Error::Engine { code: codes::COLUMN_UNKNOWN.into(), msg: format!("{}.{}", ent.name, s.column) })?;
+                            validate_host_value(&field.codec, v)?;
+                            v.clone()
+                        }
                         SetValue::Null => Param::Null,
                         SetValue::Json(v) => encode(&ent, &s.column, v)?,
                         SetValue::Ordered(v) => encode_ordered(&ent, &s.column, v)?,
@@ -1748,6 +1764,21 @@ fn missing_output_column(c: &Core, name: &str) -> Error {
         Error::Engine { code: codes::COLUMN_UNSELECTED.into(), msg: format!("{}.{} has no decoded value", c.ent.name, name) }
     } else {
         Error::internal(format!("model output column {name} is missing"))
+    }
+}
+
+#[cfg(test)]
+mod host_assignment_tests {
+    use super::validate_host_value;
+    use crate::{codes, value::Param};
+
+    #[test]
+    fn invalid_ip_assignment_is_codec_encode() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let ip = vec!["ip".to_owned()];
+        assert_eq!(validate_host_value(&ip, &Param::Str("10. 0.0.1".into())).unwrap_err().code(), codes::CODEC_ENCODE);
+        assert!(validate_host_value(&ip, &Param::Str("10.0.0.1".into())).is_ok());
+        assert!(validate_host_value(&["hex".to_owned()], &Param::Str("10. 0.0.1".into())).is_ok());
     }
 }
 

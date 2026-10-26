@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Tests;
 
 use Polyspec\Orm\Catalog;
+use Polyspec\Orm\CatalogColumn;
+use Polyspec\Orm\CatalogTableMetadata;
+use Polyspec\Orm\Code;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
@@ -25,5 +28,31 @@ final class CatalogConnectionCoverageSurfaceTest extends TestCase
             (new \ReflectionClass(StatementEventsCoverageCases::class))->getMethods(),
         );
         self::assertContains('testStatementEvents', $eventMethods);
+    }
+
+    public function testRowUpdateChecksDeclaredCharacterCapacityBeforeWriting(): void
+    {
+        $metadata = new CatalogTableMetadata(
+            ['namespace' => 'main', 'name' => 'sample'],
+            'table',
+            [new CatalogColumn('name', 'varchar(191)', false, false, false, null, false)],
+            [],
+            false,
+        );
+        $changes = new \ReflectionMethod(Catalog::class, 'changes');
+
+        self::assertSame(
+            [[0, str_repeat('界', 191)]],
+            $changes->invoke(null, $metadata, ['name' => str_repeat('界', 191)], Code::ROW_UPDATE_INVALID),
+        );
+        try {
+            $changes->invoke(null, $metadata, ['name' => str_repeat('界', 192)], Code::ROW_UPDATE_INVALID);
+            self::fail('an overlength multibyte value was accepted');
+        } catch (\ReflectionException $error) {
+            throw $error;
+        } catch (\Throwable $error) {
+            self::assertInstanceOf(\Polyspec\Orm\OrmException::class, $error);
+            self::assertSame(Code::ROW_UPDATE_INVALID, $error->code_);
+        }
     }
 }

@@ -1,27 +1,19 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mts) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-21T11:22:02Z",
+  "reviewed": "2026-10-26T00:00:00Z",
   "locks": [
     {
       "lock": "package-lock.json",
-      "sha256": "617058c6c74f8462cb561fb86c524aa129a239f93f9f5f62811e908f3e912f19",
+      "sha256": "a1e31b38c6cdd9237489c3d1335b311598d2e3b78930183fb4a158155ee02a7a",
       "advisories": [
         {
-          "package": "markdown-it",
-          "version": "14.3.2",
-          "id": "1242672",
+          "package": "@azure/msal-node",
+          "version": "6.0.1",
+          "id": "1243111",
           "severity": "high",
-          "title": "markdown-it: Quadratic-time rendering of a single multi-line link reference definition with default options (regression since 14.0)",
-          "url": "https://github.com/advisories/GHSA-gfr2-rv44-r23c"
-        },
-        {
-          "package": "sprintf-js",
-          "version": "1.0.3",
-          "id": "1241202",
-          "severity": "moderate",
-          "title": "sprintf-js vulnerable to denial of service through unbounded precision specifiers",
-          "url": "https://github.com/advisories/GHSA-hp3w-g68c-fv3c"
+          "title": "MSAL Node authorization code flow may disclose parameters to an attacker-controlled endpoint",
+          "url": "https://github.com/advisories/GHSA-xcx6-jx8p-x3h5"
         }
       ]
     },
@@ -48,30 +40,12 @@
     {
       "lock": "examples/go.sum",
       "sha256": "490489fee9a8c18911d6c50658de08c876fd2810e283c8bab07202ae90cad76f",
-      "advisories": [
-        {
-          "package": "stdlib",
-          "version": "v1.27.2",
-          "id": "GO-2026-6809",
-          "severity": "vulnerability",
-          "title": "Distrust compromised intermediate certificates in crypto/x509",
-          "url": "https://pkg.go.dev/vuln/GO-2026-6809"
-        }
-      ]
+      "advisories": []
     },
     {
       "lock": "packages/go/go.sum",
       "sha256": "9545122fa0eb0ffd811a65adba688aa6b1bff4acde4d97e3212f11a07e145ab9",
-      "advisories": [
-        {
-          "package": "stdlib",
-          "version": "v1.27.2",
-          "id": "GO-2026-6809",
-          "severity": "vulnerability",
-          "title": "Distrust compromised intermediate certificates in crypto/x509",
-          "url": "https://pkg.go.dev/vuln/GO-2026-6809"
-        }
-      ]
+      "advisories": []
     },
     {
       "lock": "tests/go.sum",
@@ -80,35 +54,17 @@
     },
     {
       "lock": "benchmarks/rust/Cargo.lock",
-      "sha256": "55a5fb4e57c5dbb4592e33307080536bfd722e88a32388cf7b642b7cd93bfdeb",
-      "advisories": [
-        {
-          "package": "rustls-webpki",
-          "version": "0.103.15",
-          "id": "RUSTSEC-2026-0382",
-          "severity": "vulnerability",
-          "title": "Certificate verification may accept distrusted intermediates",
-          "url": "https://github.com/rustls/webpki/pull/546"
-        }
-      ]
+      "sha256": "d685da2e25557cddfe8f1432f0b9c52420781ab9ad3b3a852d6daae63b6048c8",
+      "advisories": []
     },
     {
       "lock": "packages/rust/Cargo.lock",
-      "sha256": "843509d9db15bc9e2e5b498679eabbad4055e64b560559fbd719dcc444a277cc",
-      "advisories": [
-        {
-          "package": "rustls-webpki",
-          "version": "0.103.15",
-          "id": "RUSTSEC-2026-0382",
-          "severity": "vulnerability",
-          "title": "Certificate verification may accept distrusted intermediates",
-          "url": "https://github.com/rustls/webpki/pull/546"
-        }
-      ]
+      "sha256": "10d03be6a3e93422c68450536a0b70f0c5f3bc607bed9b07714af6a00b240864",
+      "advisories": []
     },
     {
       "lock": "packages/rust/testing/interfaces/Cargo.lock",
-      "sha256": "b4b5ec07cbcc9f32f28899d15e670daff171f5f3447837e9d17409cce51c9348",
+      "sha256": "291af186379b584bd51fe133979efe1d61744799f6fdf55f5913f15184b9be44",
       "advisories": []
     }
   ],
@@ -140,6 +96,13 @@
       "package": "ajv",
       "version": "8.20.0",
       "latest": "8.20.0"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "package.json",
+      "package": "markdown-it",
+      "version": "14.3.3",
+      "latest": "14.3.3"
     },
     {
       "ecosystem": "npm",
@@ -179,6 +142,13 @@
     {
       "ecosystem": "npm",
       "manifest": "package.json",
+      "package": "oxc-parser",
+      "version": "0.154.0",
+      "latest": "0.154.0"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "package.json",
       "package": "parse5",
       "version": "8.0.1",
       "latest": "8.0.1"
@@ -209,7 +179,7 @@
       "manifest": "package.json",
       "package": "unbash",
       "version": "5.1.0",
-      "latest": "6.0.1"
+      "latest": "5.1.0"
     },
     {
       "ecosystem": "npm",
@@ -251,7 +221,14 @@
       "manifest": "packages/dbspec-codemirror/package.json",
       "package": "@codemirror/view",
       "version": "6.43.14",
-      "latest": "6.43.15"
+      "latest": "6.43.14"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/dbspec-codemirror/package.json",
+      "package": "esbuild",
+      "version": "0.28.2",
+      "latest": "0.28.2"
     },
     {
       "ecosystem": "npm",
@@ -266,13 +243,6 @@
       "package": "@types/node",
       "version": "26.6.5",
       "latest": "26.6.5"
-    },
-    {
-      "ecosystem": "npm",
-      "manifest": "packages/dbspec-language/package.json",
-      "package": "oxc-parser",
-      "version": "0.154.0",
-      "latest": "0.155.0"
     },
     {
       "ecosystem": "npm",
@@ -384,7 +354,7 @@
       "manifest": "packages/ts/package.json",
       "package": "oxc-parser",
       "version": "0.154.0",
-      "latest": "0.155.0"
+      "latest": "0.154.0"
     },
     {
       "ecosystem": "npm",
@@ -426,14 +396,14 @@
       "manifest": "packages/ts/testing/interfaces/typescript/package.json",
       "package": "typescript",
       "version": "6.0.3",
-      "latest": "7.0.2"
+      "latest": "6.0.3"
     },
     {
       "ecosystem": "composer",
       "manifest": "composer.json",
       "package": "phpstan/phpstan",
       "version": "2.3.1",
-      "latest": "2.3.1"
+      "latest": "2.3.2"
     },
     {
       "ecosystem": "composer",
@@ -458,13 +428,6 @@
     },
     {
       "ecosystem": "composer",
-      "manifest": "packages/php-gen/composer.json",
-      "package": "nikic/php-parser",
-      "version": "v5.9.0",
-      "latest": "v5.9.0"
-    },
-    {
-      "ecosystem": "composer",
       "manifest": "packages/php/composer.json",
       "package": "purrphp/yaml",
       "version": "v1.0.0-p1",
@@ -476,6 +439,13 @@
       "package": "symfony/yaml",
       "version": "v8.1.9",
       "latest": "v8.1.9"
+    },
+    {
+      "ecosystem": "composer",
+      "manifest": "packages/php-gen/composer.json",
+      "package": "nikic/php-parser",
+      "version": "v5.9.0",
+      "latest": "v5.9.0"
     },
     {
       "ecosystem": "pypi",
@@ -524,7 +494,7 @@
       "manifest": "packages/python/pylock.toml",
       "package": "pycparser",
       "version": "3.11",
-      "latest": "3.11"
+      "latest": "3.12"
     },
     {
       "ecosystem": "pypi",
@@ -566,14 +536,14 @@
       "manifest": "packages/python/pyproject.toml",
       "package": "jsonschema-rs",
       "version": "0.58.6",
-      "latest": "0.59.0"
+      "latest": "0.60.1"
     },
     {
       "ecosystem": "pypi",
       "manifest": "mise.toml",
       "package": "ruff",
       "version": "0.17.1",
-      "latest": "0.17.1"
+      "latest": "0.17.2"
     },
     {
       "ecosystem": "go",
@@ -636,7 +606,7 @@
       "manifest": "packages/go/go.mod",
       "package": "modernc.org/sqlite",
       "version": "v1.60.1",
-      "latest": "v1.60.1"
+      "latest": "v1.61.0"
     },
     {
       "ecosystem": "go",
@@ -678,7 +648,7 @@
       "manifest": "tests/go.mod",
       "package": "modernc.org/sqlite",
       "version": "v1.60.1",
-      "latest": "v1.60.1"
+      "latest": "v1.61.0"
     }
   ],
   "vcs": []

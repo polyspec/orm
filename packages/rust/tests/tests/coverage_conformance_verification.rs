@@ -17,7 +17,8 @@ use std::process::Command;
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
-const VECTORS: [&str; 4] = ["creates_and_save", "conditions_values", "functions", "relations"];
+const SELECTED_VECTORS: [&str; 4] = ["conditions_values", "relations", "functions", "creates_and_save"];
+const OUTPUT_VECTOR_KEYS: [&str; 4] = ["conditions_values", "creates_and_save", "functions", "relations"];
 
 /// The deadline of one runner run. It is wall-clock time because it limits what the database does.
 const DEADLINE: Duration = Duration::from_secs(300);
@@ -47,13 +48,13 @@ fn coverage_conformance_vector() {
     let recorded = recorded["vectors"].as_array().unwrap_or_else(|| panic!("{}: no vectors array", path.display()));
     let redact = |bytes: &[u8]| String::from_utf8_lossy(bytes).replace(&dsn, "[dsn]");
 
-    let output = common::run("conformance", runner(&dsn, &VECTORS), DEADLINE);
+    let output = common::run("conformance", runner(&dsn, &SELECTED_VECTORS), DEADLINE);
     assert!(output.status.success(), "conformance runner failed with {}: {}", output.status, redact(&output.stderr));
     let got: serde_json::Map<String, Value> = serde_json::from_slice(&output.stdout).or_panic(|e| format!("runner output is not a JSON object: {e}"));
     let mut names: Vec<&str> = got.keys().map(String::as_str).collect();
     names.sort_unstable();
-    assert_eq!(names, VECTORS, "the runner must print exactly the selected vectors");
-    for name in VECTORS {
+    assert_eq!(names, OUTPUT_VECTOR_KEYS, "the runner output uses canonical JSON object-key order, independent of --vector arguments");
+    for name in SELECTED_VECTORS {
         let matching: Vec<&Value> = recorded.iter().filter(|vector| vector["name"] == name).collect();
         let [vector] = matching.as_slice() else { panic!("{}: vector {name} is recorded {} times", path.display(), matching.len()) };
         let expect = vector.get("expect").filter(|expect| !expect.is_null()).unwrap_or_else(|| panic!("{}: vector {name} has no expectation", path.display()));
@@ -64,6 +65,15 @@ fn coverage_conformance_vector() {
     assert!(!unknown.status.success(), "an unknown vector name must fail");
     assert!(unknown.stdout.is_empty(), "an unknown vector name printed output: {}", redact(&unknown.stdout));
     assert!(redact(&unknown.stderr).contains("unknown vector coverage_unknown_vector"), "unknown vector error: {}", redact(&unknown.stderr));
+}
+
+fn selected_vector_order_matches_document_and_canonical_json_order() {
+    let vectors = recorded("vectors.json");
+    let names: Vec<&str> = vectors.iter().map(|vector| vector["name"].as_str().expect("vector name")).filter(|name| SELECTED_VECTORS.contains(name)).collect();
+    assert_eq!(names, SELECTED_VECTORS, "selected names follow the document's vector declaration order");
+    let mut keys = SELECTED_VECTORS.to_vec();
+    keys.sort_unstable();
+    assert_eq!(keys, OUTPUT_VECTOR_KEYS, "serialized JSON object keys use canonical lexical order");
 }
 
 /// The recorded vectors of `file` in tests/conformance.
@@ -134,7 +144,12 @@ fn dialect_trials(dialect: &'static str, file: &'static str, dsn_variable: &'sta
 }
 
 fn main() {
-    let mut trials = dialect_trials("mysql", "vectors.json", "BENCH_MYSQL_DSN");
+    let mut trials = vec![polyspec_orm_testcase::trial(
+        "selected_vector_order_matches_document_and_canonical_json_order",
+        polyspec_orm_testcase::PROCESS,
+        selected_vector_order_matches_document_and_canonical_json_order,
+    )];
+    trials.extend(dialect_trials("mysql", "vectors.json", "BENCH_MYSQL_DSN"));
     trials.extend(dialect_trials("postgres", "vectors.postgres.json", "BENCH_POSTGRES_DSN"));
     trials.extend(dialect_trials("sqlite", "vectors.sqlite.json", "BENCH_SQLITE_DSN"));
     trials
