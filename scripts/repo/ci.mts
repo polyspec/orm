@@ -654,9 +654,16 @@ export function chainedCommandErrors(features: { features?: { id: string; verifi
   return errors;
 }
 
-// CI_RUN_EXCEPTIONS are the steps that may run a command that is not a make target: summary runs even when make orm-check has not finished,
-// and it writes that run's summary, so it does not go through make.
-export const CI_RUN_EXCEPTIONS: Record<string, Record<string, string>> = { '.github/workflows/ci.yml': { summary: 'node scripts/check/summary.mts' } };
+// CI_RUN_EXCEPTIONS are the steps that may run a command that is not a make target: the bootstrap installs Kit before the first make
+// command can read its Makefile, and summary writes the run's record after make orm-check.
+const KIT_BOOTSTRAP_COMMAND = `if [ "$(node -p 'require("./package.json").name')" != '@polyspec/kit' ]; then
+  npm_config_cache="$PWD/var/bootstrap/npm-cache" npm exec --yes --package="$(node -p 'require("./package.json").packageManager.split("+")[0]')" -- npm ci --ignore-scripts --allow-remote=root
+fi`;
+export const CI_RUN_EXCEPTIONS: Record<string, Record<string, string>> = {
+  '.github/workflows/ci.yml': { 'bootstrap the installed kit package': KIT_BOOTSTRAP_COMMAND, summary: 'node scripts/check/summary.mts' },
+  '.github/workflows/push-gate.yml': { 'bootstrap the installed kit package': KIT_BOOTSTRAP_COMMAND },
+  '.github/workflows/docs-pages.yml': { 'bootstrap the installed kit package': KIT_BOOTSTRAP_COMMAND },
+};
 
 // ciMakeErrors returns one error for each place where a workflow step runs a command that is not a make target. Every step
 // runs the same make targets as locally, so there is no command that only CI knows. workflows is {path: text}.
@@ -665,7 +672,7 @@ export function ciMakeErrors(workflows: Record<string, string>): string[] {
   for (const [path, workflow] of Object.entries(workflows)) {
     for (const step of workflowSteps(workflow)) {
       if (!step.run) continue;
-      if (CI_RUN_EXCEPTIONS[path]?.[step.name] === step.run) continue;
+      if (CI_RUN_EXCEPTIONS[path]?.[step.name] === step.run.trimEnd()) continue;
       for (const segment of runSegments(step))
         if (!/^make(\s|$)/.test(segment)) errors.push(`${path} step "${step.name}" runs ${segment}; run it through a make target`);
     }
@@ -726,7 +733,8 @@ export const CI_PASSED_STEP: Record<string, unknown> = { name: 'every job passed
 export const CI_PASSED_STEPS: Record<string, unknown>[] = [
   { uses: 'actions/checkout@v5' },
   { uses: 'actions/setup-node@v7', with: { 'node-version-file': 'mise.toml' } },
-  // make reads the kit.mk of @polyspec/kit, which these two steps install before make ci-passed runs.
+  { name: 'bootstrap the installed kit package', id: 'kit-bootstrap', if: NOT_CANCELLED, run: KIT_BOOTSTRAP_COMMAND },
+  // These steps install the pinned npm and the packages before make ci-passed runs.
   { name: 'npm of packageManager', id: 'npm', if: NOT_CANCELLED, run: 'make install-tools TOOLS=npm' },
   { name: 'install Node dependencies', id: 'node-modules', if: NOT_CANCELLED, run: 'make install-packages' },
   CI_PASSED_STEP,

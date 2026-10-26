@@ -17,9 +17,11 @@ import { parseJson } from '../json/schema.mts';
 // a conditional setup step is skipped, and the targets declaring its need become not-run).
 export const CI_SETUP: Record<string, string | null> = {
   'group-needs': null,
+  // The bootstrap installs @polyspec/kit so the first make command can read its Makefile.
+  'kit-bootstrap': 'node-modules',
   go: 'go',
   'go-modules': 'go',
-  // npm and node-modules install @polyspec/kit, whose kit.mk every make target reads, with the other npm packages.
+  // npm and node-modules install the pinned npm and packages after Kit's bootstrap makes the first Makefile available.
   npm: 'node-modules',
   'node-modules': 'node-modules',
   rust: 'rust',
@@ -63,9 +65,10 @@ export const GROUP_OUTPUTS: Record<string, string[]> = {
 // make orm-check builds the lease program in Go (BUILD_LEASE), and group-needs is itself the step that decides which steps run.
 export const STEP_OUTPUT: Record<string, string | null> = {
   'group-needs': null,
+  'kit-bootstrap': null,
   go: null,
   'go-modules': null,
-  // npm and node-modules run in every group, before group-needs: make ci-group-needs reads the kit.mk that they install.
+  // Kit bootstrap, npm and node-modules run in every group before group-needs: the first Make target reads Kit's Makefile.
   npm: null,
   'node-modules': null,
   rust: 'rust',

@@ -7,14 +7,14 @@ import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { errorCode } from '../../tests/errors.mts';
 import { main as startServers, paths as serverPaths, SERVER_VARIABLES, TestServerError } from '../test-servers.mts';
-import { AFTER_GROUP_CHECK, CI_PASSED_STEPS, ciPassedErrors, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
+import { AFTER_GROUP_CHECK, CI_PASSED_STEPS, CI_RUN_EXCEPTIONS, ciPassedErrors, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { fixlessMessageErrors } from './messages.mts';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mts';
 import { connectProbeErrors } from './probes.mts';
 import { composerVersionErrors, goModulePathErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mts';
 import { execFileSync } from 'node:child_process';
-import { CI_SETUP, expandNeeds, GROUP_OUTPUTS, groupOutputs, groupSetupErrors, RUNNER_STEPS, stepCondition } from '../check/ci-setup.mts';
+import { CI_SETUP, expandNeeds, failedCiSetup, GROUP_OUTPUTS, groupOutputs, groupSetupErrors, RUNNER_STEPS, stepCondition } from '../check/ci-setup.mts';
 import { declaredNeeds, readCheckInputs } from '../check/inputs.mts';
 import { readFeatures } from '../features/manifest.mts';
 import { readComposer, readPackage } from '../json/formats.mts';
@@ -1556,6 +1556,11 @@ caseTest('AGENTS states that the full suite runs on CI after a push', COMPUTE, (
 // The CI setup case (G5.52) checks that, when a setup step in the workflow fails, the steps after it and make orm-check still run and pass the failure on to the runner.
 // A setup step without an id, as in main's workflow, a step with no condition, continue-on-error, and a make orm-check without ORM_CI_SETUP are errors.
 caseTest('a workflow runs every setup step and make orm-check after a failed setup step and passes the results on', COMPUTE, () => {
+  assert.equal(CI_SETUP['kit-bootstrap'], 'node-modules');
+  assert.equal(stepCondition('kit-bootstrap'), '${{ !cancelled() }}');
+  assert.deepEqual(failedCiSetup(JSON.stringify({ 'kit-bootstrap': { outcome: 'failure' } })), [
+    { id: 'kit-bootstrap', need: 'node-modules', outcome: 'failure' },
+  ]);
   const setup = { go: 'go', rust: 'rust' };
   const runner = ['checkout'];
   const workflow = (steps: string, check: string) => `jobs:\n  test:\n    steps:\n${steps}${check}`;
@@ -1632,6 +1637,13 @@ caseTest('every CI step runs a make target', COMPUTE, () => {
   assert.deepEqual(ciMakeErrors({ '.github/workflows/docs-pages.yml': workflow('node scripts/check/summary.mts') }), [
     '.github/workflows/docs-pages.yml step "summary" runs node scripts/check/summary.mts; run it through a make target',
   ]);
+  const bootstrap = CI_RUN_EXCEPTIONS['.github/workflows/ci.yml']?.['bootstrap the installed kit package'] ?? '';
+  const bootstrapWorkflow = (command: string) => `jobs:\n  test:\n    steps:\n      - uses: actions/checkout@v5\n      - name: bootstrap the installed kit package\n        run: |\n${command.split('\n').map(line => `          ${line}`).join('\n')}\n`;
+  assert.deepEqual(ciMakeErrors({ '.github/workflows/ci.yml': bootstrapWorkflow(bootstrap) }), []);
+  const changedBootstrap = ciMakeErrors({ '.github/workflows/ci.yml': bootstrapWorkflow(bootstrap.replace('--ignore-scripts', '')) });
+  assert.equal(changedBootstrap.length, 2);
+  for (const error of changedBootstrap)
+    assert.match(error, /step "bootstrap the installed kit package" runs .*; run it through a make target/);
   const root = new URL('../..', import.meta.url).pathname;
   const directory = join(root, '.github/workflows');
   // orm's own workflows; Kit-owned workflows are checked by Kit's layout target (KSTD-5-24).
