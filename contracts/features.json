@@ -12897,6 +12897,17 @@
   ],
   "helpers": [
     {
+      "id": "php-dbspec-dialect-rejection-cases",
+      "paths": [
+        "packages/php/tests/DbspecDialectRejectionCases.php"
+      ],
+      "tests": [
+        "packages/php/tests/DbspecRenderTest.php",
+        "packages/php-ext/tests/DbspecRulesNativeTest.php"
+      ],
+      "command": "env ORM_PHP_MODE=library node ../kit/scripts/kit/run-tests.mts phpunit -- --configuration packages/php/phpunit.xml.dist --filter DbspecRenderTest::testUnknownDialect packages/php/tests/DbspecRenderTest.php"
+    },
+    {
       "id": "dbspec-sqlite-literal-rows",
       "paths": [
         "packages/php/tests/SqliteLiteralRowsPdo.php"

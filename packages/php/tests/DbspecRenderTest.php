@@ -7,7 +7,6 @@ namespace Polyspec\Orm\Tests;
 // The statement vectors of tests/dbspec/ddl.json through
 // Polyspec\Orm\Dbspec\Dbspec::render, and the unknown dialect rule.
 
-use InvalidArgumentException;
 use RuntimeException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
@@ -87,10 +86,6 @@ final class DbspecRenderTest extends TestCase
     // Requirements: DBS-174.
     public function testUnknownDialect(): void
     {
-        $parsed = Dbspec::parse("dbspec 1 dialect\n\ntable item {\n  id i64\n  primary key (id)\n}\n", []);
-        self::assertNotNull($parsed->document, json_encode($parsed->diagnostics, JSON_THROW_ON_ERROR));
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('oracle');
-        Dbspec::render([$parsed->document], 'oracle');
+        DbspecDialectRejectionCases::assertRenderRejectsUnknownDialect($this);
     }
 }

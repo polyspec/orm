@@ -197,17 +197,9 @@ func TestPlanStepsRejectsUnknownDialect(t *testing.T) {
 			if len(diagnostics) != 0 {
 				return fmt.Errorf("parse plan: %v", diagnostics)
 			}
-			defer func() {
-				if recovered := recover(); recovered != nil {
-					if !strings.Contains(fmt.Sprint(recovered), "oracle") {
-						err = fmt.Errorf("panic %v does not name oracle", recovered)
-					}
-				} else if err == nil {
-					err = fmt.Errorf("PlanSteps accepted unknown dialect oracle")
-				}
-			}()
-			_, _ = PlanSteps(source, plan, Dialect("oracle"))
-			return nil
+			return unknownDialectPanic("PlanSteps", func() {
+				_, _ = PlanSteps(source, plan, Dialect("oracle"))
+			})
 		})
 	})
 }

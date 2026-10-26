@@ -2,7 +2,6 @@ package dbspec
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
@@ -98,16 +97,8 @@ func TestRenderRejectsUnknownDialect(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		defer func() {
-			if recovered := recover(); recovered != nil {
-				if !strings.Contains(fmt.Sprint(recovered), "oracle") {
-					err = fmt.Errorf("panic %v does not name oracle", recovered)
-				}
-			} else if err == nil {
-				err = fmt.Errorf("Render accepted unknown dialect oracle")
-			}
-		}()
-		_, _ = Render(documents, Dialect("oracle"))
-		return nil
+		return unknownDialectPanic("Render", func() {
+			_, _ = Render(documents, Dialect("oracle"))
+		})
 	})
 }

@@ -91,6 +91,7 @@ require_once __DIR__ . '/dbspec_cases.php';
 require_once __DIR__ . '/dbspec_analysis_cases.php';
 require_once __DIR__ . '/dbspec_syntax_vectors.php';
 require_once __DIR__ . '/dbspec_plan_cases.php';
+require_once __DIR__ . '/DbspecDialectRejectionCases.php';
 require_once __DIR__ . '/dbspec_behaviour.php';
 require_once __DIR__ . '/dbspec_sets_cases.php';
 require_once __DIR__ . '/dbspec_set_parse_cases.php';

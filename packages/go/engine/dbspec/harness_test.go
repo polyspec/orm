@@ -52,6 +52,21 @@ func runTimed(t *testing.T, name string, deadline time.Duration, work func() err
 	t.Logf("PASS %s elapsed=%s", name, elapsed)
 }
 
+// unknownDialectPanic checks that a public dbspec entry point rejects oracle before producing output.
+func unknownDialectPanic(api string, call func()) (err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			if !strings.Contains(fmt.Sprint(recovered), "oracle") {
+				err = fmt.Errorf("panic %v does not name oracle", recovered)
+			}
+		} else if err == nil {
+			err = fmt.Errorf("%s accepted unknown dialect oracle", api)
+		}
+	}()
+	call()
+	return nil
+}
+
 // failingCaseFixture is the build tag that makes TestFailingCaseFixture (harness_fixture_test.go) build.
 // Only TestCaseHarnessReportsOnlyFailure gives this tag, to the go test that it runs as a subprocess.
 const failingCaseFixture = "dbspecfixture"

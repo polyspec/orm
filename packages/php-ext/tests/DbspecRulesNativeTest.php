@@ -4,20 +4,16 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
+use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Dbspec\Dbspec;
-use InvalidArgumentException;
 
 final class DbspecRulesNativeTest extends TestCase
 {
     // Requirements: DBS-174.
     public function testNativeRenderRejectsUnknownDialect(): void
     {
-        $parsed = Dbspec::parse("dbspec 1 dialect\n\ntable item {\n  id i64\n  primary key (id)\n}\n", []);
-        self::assertNotNull($parsed->document, json_encode($parsed->diagnostics, JSON_THROW_ON_ERROR));
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('oracle');
-        Dbspec::render([$parsed->document], 'oracle');
+        DbspecDialectRejectionCases::assertRenderRejectsUnknownDialect($this);
     }
 
     // Requirements: DBS-174.
