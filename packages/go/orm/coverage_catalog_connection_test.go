@@ -113,9 +113,10 @@ func TestCoverageCatalogRead(t *testing.T) {
 		t.Fatalf("%s: qualified metadata fixture: %v", driver, err)
 	}
 	wantNativeTypes := []string{"bigint", "bigint", "varchar(50)", "bigint"}
-	if driver == "postgres" {
+	switch driver {
+	case "postgres":
 		wantNativeTypes[2] = "character varying(50)"
-	} else if driver == "sqlite" {
+	case "sqlite":
 		wantNativeTypes = []string{"BIGINT", "BIGINT", "VARCHAR(50)", "BIGINT"}
 	}
 	gotNames := make([]string, len(metadata.Columns))
@@ -250,13 +251,14 @@ func catalogTemporalDefaultPrecisionCheck(t *testing.T, driver string, c *orm.Ca
 	_, dsn := featureDatabase(t)
 	table := fmt.Sprintf("catalog_temporal_precision_%d", time.Now().UnixNano())
 	columns := "id BIGINT NOT NULL PRIMARY KEY, t0 TIME NULL, dt0 DATETIME NULL, t3 TIME(3) NULL, dt3 DATETIME(3) NULL"
-	if driver == "sqlite" {
+	switch driver {
+	case "sqlite":
 		columns = `id INTEGER NOT NULL PRIMARY KEY,
 			t0 TIME NOT NULL CHECK (length("t0") = 8 AND "t0" IS time("t0") AND "t0" < '24:00:00'),
 			dt0 DATETIME NOT NULL CHECK (length("dt0") = 19 AND "dt0" IS datetime("dt0") AND substr("dt0", 12, 2) < '24'),
 			t3 TIME NOT NULL CHECK (length("t3") = 12 AND substr("t3", 1, 8) IS time(substr("t3", 1, 8)) AND "t3" < '24:00:00' AND substr("t3", 9, 1) = '.' AND substr("t3", 10) GLOB '[0-9][0-9][0-9]'),
 			dt3 DATETIME NOT NULL CHECK (length("dt3") = 23 AND substr("dt3", 1, 19) IS datetime(substr("dt3", 1, 19)) AND substr("dt3", 12, 2) < '24' AND substr("dt3", 20, 1) = '.' AND substr("dt3", 21) GLOB '[0-9][0-9][0-9]')`
-	} else if driver == "postgres" {
+	case "postgres":
 		columns = "id BIGINT NOT NULL PRIMARY KEY, t0 TIME WITHOUT TIME ZONE NULL, dt0 TIMESTAMP WITHOUT TIME ZONE NULL, t3 TIME(3) WITHOUT TIME ZONE NULL, dt3 TIMESTAMP(3) WITHOUT TIME ZONE NULL"
 	}
 	raw := catalogProbe(t, driver, dsn, table, "CREATE TABLE "+table+" ("+columns+")")
@@ -332,9 +334,10 @@ func catalogTemporalDefaultPrecisionCheck(t *testing.T, driver string, c *orm.Ca
 		got[i] = timestamp.Nanosecond()
 	}
 	want := []int{0, 0, 123000000, 123000000}
-	if driver == "postgres" {
+	switch driver {
+	case "postgres":
 		want[0], want[1] = 123456000, 123456000
-	} else if driver == "sqlite" {
+	case "sqlite":
 		want[2], want[3] = 3, 3
 	}
 	if !slices.Equal(got, want) {

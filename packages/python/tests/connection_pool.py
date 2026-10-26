@@ -154,7 +154,7 @@ class ConnectionPoolTest(unittest.TestCase):
             def __enter__(self):
                 return self
 
-            def __exit__(self, exc_type, exc, traceback):
+            def __exit__(self, *_args):
                 if self.error is not None:
                     raise self.error
 
