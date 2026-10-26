@@ -11441,6 +11441,14 @@
             "packages/rust/build/tests/row_insert_identity/expression.rs",
             "packages/rust/build/tests/lock_probe/mod.rs"
           ]
+        },
+        {
+          "id": "catalog-typed-temporal-write-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts catalog-typed-temporal-write-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test row_insert_identity typed_catalog_writes_return_declared_temporal_fraction_digits -- --exact",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/build/tests/row_insert_identity.rs"
+          ]
         }
       ],
       "coverage": {
