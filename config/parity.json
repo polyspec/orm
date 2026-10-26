@@ -245,6 +245,10 @@
         {
           "glob": "packages/go/testcase/testcase_test.go",
           "reason": "harness: tests testcase output formatting and runner/group/deadline primitives; its subject is the Go test harness rather than an ORM client behavior"
+        },
+        {
+          "glob": "packages/go/engine/dbspec/literal_test.go",
+          "reason": "test: directly checks the Go engine's CanonicalLiteral helper; public default literal parsing and diagnostics are exercised by the six-client dbspec-canonical and dbspec-invalid vectors"
         }
       ]
     },
@@ -10588,22 +10592,6 @@
           "implementation": "rust",
           "test": "packages/rust/schema/tests/dbspec_set_parse.rs",
           "symbol": "shared_set_parse_vectors"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-engine-dbspec-literal",
-      "kind": "feature",
-      "requirements": [
-        "DBS-40",
-        "DBS-128",
-        "DBS-131"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/dbspec/literal_test.go",
-          "id": "TestCanonicalLiteral"
         }
       ]
     },
