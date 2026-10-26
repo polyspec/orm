@@ -337,7 +337,7 @@ final class PgsqlStatementAdapter extends PDOStatement
             'bool' => $value === 't',
             'int2', 'int4' => (int) $value,
             'int8' => filter_var($value, FILTER_VALIDATE_INT) === false ? $value : (int) $value,
-            'float4', 'float8' => (float) $value,
+            'float4', 'float8' => is_numeric($value) ? (float) $value : $value,
             default => $value,
         };
     }

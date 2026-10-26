@@ -1247,7 +1247,11 @@ static bool pg_statement_row(zval *self, zend_long mode, zval *row_value)
                 }
                 else if (!stringify_values && (zend_string_equals_literal(Z_STR_P(type), "int2") || zend_string_equals_literal(Z_STR_P(type), "int4"))) { zend_long n = zval_get_long(&value); zval_ptr_dtor(&value); ZVAL_LONG(&value, n); }
                 else if (!stringify_values && zend_string_equals_literal(Z_STR_P(type), "int8")) { zend_long n; if (is_numeric_string(Z_STRVAL(value), Z_STRLEN(value), &n, NULL, 0) == IS_LONG) { zval_ptr_dtor(&value); ZVAL_LONG(&value, n); } }
-                else if (!stringify_values && (zend_string_equals_literal(Z_STR_P(type), "float4") || zend_string_equals_literal(Z_STR_P(type), "float8"))) { double n = zval_get_double(&value); zval_ptr_dtor(&value); ZVAL_DOUBLE(&value, n); }
+                else if (!stringify_values && (zend_string_equals_literal(Z_STR_P(type), "float4") || zend_string_equals_literal(Z_STR_P(type), "float8"))) {
+                    if (is_numeric_string(Z_STRVAL(value), Z_STRLEN(value), NULL, NULL, 0) != 0) {
+                        double n = zval_get_double(&value); zval_ptr_dtor(&value); ZVAL_DOUBLE(&value, n);
+                    }
+                }
             }
         }
         zend_hash_index_update(Z_ARRVAL(converted), index, &value);

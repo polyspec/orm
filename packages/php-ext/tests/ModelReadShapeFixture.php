@@ -16,6 +16,7 @@ final class ModelReadShapeFixture extends Model
                 'title' => ['type' => 'text', 'codec' => [], 'nullable' => true],
                 'id' => ['type' => 'i64', 'codec' => []],
                 'active' => ['type' => 'bool', 'codec' => []],
+                'ratio' => ['type' => 'f64', 'codec' => []],
                 'payload' => ['type' => 'text', 'codec' => ['name' => 'json']],
                 'updated_ts' => ['type' => 'datetime', 'codec' => []],
             ],

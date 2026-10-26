@@ -8,9 +8,11 @@ use DateTimeZone;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Assembly;
+use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
 use Polyspec\Orm\Model;
+use Polyspec\Orm\OrmException;
 use ReflectionMethod;
 use ReflectionProperty;
 
@@ -45,6 +47,30 @@ final class NativeCellReadTest extends TestCase
             self::assertSame($source, $values['body']);
         } finally {
             fclose($stream);
+        }
+    }
+
+    public function testRowAssemblyRejectsNonFiniteFloatCells(): void
+    {
+        $db = new Db(null, 'sqlite', new Config(), new DateTimeZone('UTC'));
+        $assembly = new Assembly($db, null, []);
+        $assembleRow = new ReflectionMethod(Model::class, 'assembleRow');
+        $declaration = [
+            'node' => 48118,
+            'key' => [],
+            'children' => [],
+            'columns' => [['index' => 0, 'name' => 'ratio', 'column' => 'ratio', 'hidden' => false]],
+        ];
+        $valid = $assembleRow->invoke(new NativeByteCellFixture(), $assembly, $declaration, [1.25]);
+        self::assertSame(1.25, (new ReflectionProperty(Model::class, 'values'))->getValue($valid)['ratio']);
+
+        foreach ([NAN, 'NaN'] as $raw) {
+            try {
+                $assembleRow->invoke(new NativeByteCellFixture(), $assembly, $declaration, [$raw]);
+                self::fail('A non-finite float cell must fail decoding.');
+            } catch (OrmException $error) {
+                self::assertSame(Code::CODEC_DECODE, $error->code_);
+            }
         }
     }
 }

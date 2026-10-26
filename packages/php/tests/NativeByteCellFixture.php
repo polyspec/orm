@@ -15,6 +15,7 @@ final class NativeByteCellFixture extends Model
             'updated' => '',
             'columns' => [
                 'body' => ['type' => 'bytes', 'codec' => [], 'nullable' => true],
+                'ratio' => ['type' => 'f64', 'codec' => [], 'nullable' => true],
             ],
         ];
     }

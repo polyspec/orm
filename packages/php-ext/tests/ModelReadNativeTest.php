@@ -89,6 +89,30 @@ final class ModelReadNativeTest extends TestCase
         }
     }
 
+    public function testNativeRowAssemblyRejectsNonFiniteFloatCells(): void
+    {
+        $assembly = ModelAssemblyTestSupport::uninitializedAssembly();
+        $model = new ModelReadShapeFixture();
+        $assembleRow = new \ReflectionMethod(Model::class, 'assembleRow');
+        $declaration = [
+            'node' => 10,
+            'key' => [],
+            'children' => [],
+            'columns' => [['index' => 0, 'name' => 'ratio', 'column' => 'ratio', 'hidden' => false]],
+        ];
+        $valid = $assembleRow->invoke($model, $assembly, $declaration, [1.25]);
+        self::assertSame(1.25, (new \ReflectionProperty(Model::class, 'values'))->getValue($valid)['ratio']);
+
+        foreach ([NAN, 'NaN'] as $raw) {
+            try {
+                $assembleRow->invoke($model, $assembly, $declaration, [$raw]);
+                self::fail('A non-finite float cell must fail decoding.');
+            } catch (OrmException $error) {
+                self::assertSame(Code::CODEC_DECODE, $error->code_);
+            }
+        }
+    }
+
     public function testCompositeRelationKeysUseLengthPrefixedScalarText(): void
     {
         $method = new \ReflectionMethod(Model::class, 'matchKey');

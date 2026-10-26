@@ -142,7 +142,6 @@ final class RuntimeDbTest extends TestCase
         $pdo = $db->pdo();
         if ($driver === 'mysql') {
             $pdo->exec('ALTER TABLE sample MODIFY wide BIGINT UNSIGNED');
-            $pdo->exec('ALTER TABLE sample ALTER CHECK `sample$wide` NOT ENFORCED');
             try {
                 $pdo->prepare('UPDATE sample SET wide = 18446744073709551615 WHERE seq = ?')->execute([$seq]);
                 $error = self::errorCode(fn() => (new Sample())($db)->getBySeq($seq)->getWide());
@@ -151,7 +150,7 @@ final class RuntimeDbTest extends TestCase
                 try {
                     $pdo->prepare('UPDATE sample SET wide = 1 WHERE seq = ?')->execute([$seq]);
                 } finally {
-                    $pdo->exec('ALTER TABLE sample ALTER CHECK `sample$wide` ENFORCED');
+                    $pdo->exec('ALTER TABLE sample MODIFY wide BIGINT');
                 }
             }
 

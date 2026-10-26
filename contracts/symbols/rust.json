@@ -10119,6 +10119,10 @@
     "exported": false,
     "signature": "{\"checks\":\"map\u003ctext\u003e\",\"columns\":\"map\u003ctext\u003e\",\"fks\":\"list\u003cIForeignKey\u003e\",\"identity\":\"text\",\"order\":\"list\u003ctext\u003e\",\"primary\":\"list\u003ctext\u003e\",\"unsupported\":\"text\"}"
   },
+  "packages/rust/schema/src/dbspec/introspect/sqlite.rs::column_item_name": {
+    "exported": false,
+    "signature": " fn column_item_name \u003c 't \u003e (captures : \u0026 regex :: Captures \u003c 't \u003e) -\u003e \u0026 't str"
+  },
   "packages/rust/schema/src/dbspec/introspect/sqlite.rs::column_text": {
     "exported": false,
     "signature": " fn column_text (item : \u0026 str , name : \u0026 str , declared : \u0026 str , not_null : bool , dflt : Option \u003c \u0026 str \u003e) -\u003e bool"
