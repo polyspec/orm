@@ -11,11 +11,15 @@ import threading
 import time
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from types import SimpleNamespace
 from urllib.parse import urlsplit
 
 import psycopg
+from psycopg.pq import ConnStatus
 from polyspec.orm.errors import OrmError
+from polyspec.orm.database import _MysqlConnection, _PostgresConnection
 from polyspec.orm.models import models
+from polyspec.orm.database import _Pool, _PoolConfig
 
 from . import testcase
 from .bench_set import install_bench
@@ -60,6 +64,107 @@ class ConnectionPoolTest(unittest.TestCase):
                 install_bench(setup)
                 setup.close()
                 body(dialect, dsn)
+
+    def test_idle_pool_discards_connection_that_fails_liveness_check(self):
+        class Connection:
+            def __init__(self, alive):
+                self.alive = alive
+                self.closed = False
+
+            def is_alive(self):
+                return self.alive
+
+            def close(self):
+                self.closed = True
+
+        opened = []
+
+        def open_connection():
+            connection = Connection(True)
+            opened.append(connection)
+            return connection
+
+        pool = _Pool(open_connection, _PoolConfig(1, 1, 0, 0))
+        stale = pool.acquire()
+        pool.release(stale)
+        stale.alive = False
+
+        replacement = pool.acquire()
+        try:
+            self.assertEqual(len(opened), 2, "one replacement connection was opened")
+            self.assertTrue(stale.closed, "the dead idle connection was discarded")
+            self.assertIs(replacement, opened[1], "the replacement was leased")
+            self.assertEqual(pool.stats(), (1, 1, 0), "pool accounting")
+        finally:
+            pool.release(replacement)
+            pool.close()
+
+    def test_idle_pool_reuses_connection_that_passes_liveness_check(self):
+        class Connection:
+            def __init__(self):
+                self.closed = False
+                self.checks = 0
+
+            def is_alive(self):
+                self.checks += 1
+                return True
+
+            def close(self):
+                self.closed = True
+
+        opened = []
+
+        def open_connection():
+            connection = Connection()
+            opened.append(connection)
+            return connection
+
+        pool = _Pool(open_connection, _PoolConfig(1, 1, 0, 0))
+        original = pool.acquire()
+        pool.release(original)
+        reused = pool.acquire()
+        try:
+            self.assertIs(reused, original, "a healthy idle connection is reused")
+            self.assertEqual(len(opened), 1, "no replacement was opened")
+            self.assertEqual(original.checks, 1, "the idle connection was checked")
+        finally:
+            pool.release(reused)
+            pool.close()
+
+    def test_mysql_idle_liveness_uses_non_reconnecting_ping(self):
+        class Connection:
+            def __init__(self):
+                self.reconnect = None
+
+            def ping(self, reconnect=False):
+                self.reconnect = reconnect
+
+        connection = Connection()
+        pooled = object.__new__(_MysqlConnection)
+        pooled.connection = connection
+
+        self.assertTrue(pooled.is_alive())
+        self.assertIs(connection.reconnect, False, "ping never reconnects a session")
+
+    def test_postgres_idle_liveness_consumes_socket_without_query(self):
+        class Connection:
+            closed = False
+
+            def __init__(self, status):
+                self.pgconn = SimpleNamespace(
+                    consume_input=lambda: None,
+                    status=status,
+                )
+
+            def execute(self, *_args):
+                raise AssertionError("liveness check must not execute SQL")
+
+        pooled = object.__new__(_PostgresConnection)
+        pooled.connection = Connection(int(ConnStatus.OK))
+        self.assertTrue(pooled.is_alive())
+
+        pooled.connection = Connection(int(ConnStatus.BAD))
+        self.assertFalse(pooled.is_alive())
 
     # Requirements: CFG-4, CFG-5.
     def test_options(self):

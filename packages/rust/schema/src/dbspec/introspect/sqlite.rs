@@ -39,7 +39,7 @@ static CHECK_ITEM: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"^CONSTRAINT 
 static PRIMARY_KEY_ITEM: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^PRIMARY KEY \(([^)]*)\)$").expect("SQLite primary key pattern"));
 static IDENTITY_COLUMN: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"^"([^"]+)" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT$"#).expect("SQLite identity pattern"));
-static COLUMN_ITEM: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"^"([^"]+)" "#).expect("SQLite column pattern"));
+static COLUMN_ITEM: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"^(?:"([^"]+)"|([A-Za-z_][A-Za-z0-9_]*)) "#).expect("SQLite column pattern"));
 static CONSTRAINT_ITEM: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"^(?:CONSTRAINT "([^"]+)" )?(CHECK|UNIQUE|FOREIGN KEY|PRIMARY KEY)\b"#).expect("SQLite constraint pattern"));
 static NUMBER_DEFAULT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^-?\d+(\.\d+)?$").expect("SQLite number pattern"));
@@ -269,7 +269,7 @@ fn parse_table(text: &str) -> (SqliteTable, Vec<Unsupported>) {
             unsupported.push(Unsupported { kind: kind.to_owned(), table: String::new(), name, reason });
         } else if let Some(m) = COLUMN_ITEM.captures(item) {
             // The definition is read by pragma_table_xinfo, and its text is checked to be in renderer form.
-            st.columns.insert(group(&m, 1).to_owned(), item.to_owned());
+            st.columns.insert(column_item_name(&m).to_owned(), item.to_owned());
         } else {
             st.unsupported = format!("the table item {item:?} has no dbspec definition");
             return (st, Vec::new());
@@ -282,7 +282,11 @@ fn parse_table(text: &str) -> (SqliteTable, Vec<Unsupported>) {
 /// NULL, and, if present, only DEFAULT. SQLite reports a type name that is a keyword
 /// in uppercase, so types are compared without regard to case.
 fn column_text(item: &str, name: &str, declared: &str, not_null: bool, dflt: Option<&str>) -> bool {
-    let Some(rest) = item.strip_prefix(&format!("\"{name}\" ")) else { return false };
+    let Some(captures) = COLUMN_ITEM.captures(item) else { return false };
+    if column_item_name(&captures) != name {
+        return false;
+    }
+    let Some(rest) = captures.get(0).and_then(|matched| item.get(matched.end()..)) else { return false };
     let Some(head) = rest.get(..declared.len()) else { return false };
     if !head.eq_ignore_ascii_case(declared) {
         return false;
@@ -292,6 +296,14 @@ fn column_text(item: &str, name: &str, declared: &str, not_null: bool, dflt: Opt
     match dflt {
         None => rest == tail,
         Some(d) => rest == format!("{tail} DEFAULT {d}") || rest == format!("{tail} DEFAULT ({d})"),
+    }
+}
+
+fn column_item_name<'t>(captures: &regex::Captures<'t>) -> &'t str {
+    if group(captures, 1).is_empty() {
+        group(captures, 2)
+    } else {
+        group(captures, 1)
     }
 }
 

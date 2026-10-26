@@ -10,8 +10,26 @@ import { fileURLToPath } from 'node:url';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { complexQueryDatabaseEnvironment, complexQueryDatabasePlan, complexQuerySeedSql, dropComplexQueryFixtures, environmentFile, parseComplexQueryFixture } from './databases.mts';
+import { readFeatures } from '../features/manifest.mts';
+import { COMMANDS as CLIENT_DB_COMMANDS, rustDatabaseCoverageSkipArguments } from '../client-db-test.mts';
 
 const repo = resolve(fileURLToPath(new URL('../..', import.meta.url)));
+
+caseTest('Rust workspace dispatch skips only the database cases owned by the feature matrix', COMPUTE, () => {
+  const args = rustDatabaseCoverageSkipArguments(readFeatures(repo), repo);
+  assert.equal(args.length % 2, 0);
+  const skipped = new Set(args.filter((_, index) => index % 2 === 1));
+  assert.ok(skipped.has('coverage_request_hook_insert_assign'));
+  assert.ok(skipped.has('coverage_dsn_connection'));
+  assert.ok(skipped.has('coverage_catalog_read'));
+  assert.ok(skipped.has('coverage_catalog_connection::coverage_catalog_read'));
+  assert.ok(skipped.has('coverage_complex_query::coverage_complex_query_product_search'));
+  assert.ok(skipped.has('coverage_schema_install::coverage_schema_install_external_documents'));
+  assert.ok(!skipped.has('coverage_'));
+  assert.ok(!skipped.has('coverage_request_hook_'));
+  const rustCommand = CLIENT_DB_COMMANDS.find(command => command.includes('tests/cargo-test.mts workspace-tests'));
+  assert.ok(rustCommand?.endsWith('--exact'), 'libtest skips must match the full declared symbol');
+});
 
 // fake logs each program's arguments, and provides a fake program that prints one line and exits with 3 when an argument contains failing.
 function fake(programs: string[], failing: string) {

@@ -304,6 +304,29 @@ final class DbspecIntrospectTest extends TestCase
         );
     }
 
+    public function testSQLiteAlterAddedUnquotedColumnIsReportedAsUnsupportedColumn(): void
+    {
+        self::assertSQLiteAlterAddedUnquotedColumnIsReportedAsUnsupportedColumn(
+            static fn(PDO $pdo) => Dbspec::introspect($pdo, 'sqlite', 'introspected')
+        );
+    }
+
+    public static function assertSQLiteAlterAddedUnquotedColumnIsReportedAsUnsupportedColumn(callable $introspect): void
+    {
+        $pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $pdo->exec('CREATE TABLE "probe" ("id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT)');
+        $pdo->exec('ALTER TABLE "probe" ADD COLUMN junk INTEGER NULL');
+        $result = $introspect($pdo);
+
+        self::assertSame(
+            [['column', 'probe', 'junk', 'declared type INTEGER with CHECK "" has no dbspec type']],
+            array_map(
+                static fn(Unsupported $item): array => [$item->kind, $item->table, $item->name, $item->reason],
+                $result->unsupported
+            )
+        );
+    }
+
     public static function assertUnsupportedColumnReasonQuotesMissingCheck(callable $introspect): void
     {
         $pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);

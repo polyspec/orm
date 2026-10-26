@@ -914,6 +914,15 @@ class _MysqlConnection:
         finally:
             control.close()
 
+    def is_alive(self) -> bool:
+        try:
+            self.connection.ping(reconnect=False)
+        except Exception as error:
+            if _is_driver_error("mysql", error):
+                return False
+            raise
+        return True
+
     def in_transaction(self) -> bool:
         return not self.connection.get_autocommit() and self.connection.open
 
@@ -982,6 +991,19 @@ class _PostgresConnection:
     def cancel_query(self) -> None:
         # psycopg's cancel request is safe to issue from a worker while the query thread is blocked.
         self.connection.cancel_safe()
+
+    def is_alive(self) -> bool:
+        if self.connection.closed:
+            return False
+        from psycopg.pq import ConnStatus
+
+        try:
+            self.connection.pgconn.consume_input()
+        except Exception as error:
+            if _is_driver_error("postgres", error):
+                return False
+            raise
+        return self.connection.pgconn.status == ConnStatus.OK
 
     def in_transaction(self) -> bool:
         return not self.connection.autocommit and not self.connection.closed
@@ -1383,24 +1405,39 @@ class _Pool:
         connection.close()
 
     def acquire(self):
-        with self._condition:
-            while True:
+        while True:
+            connection = None
+            with self._condition:
                 if self._closed:
                     raise OrmError(codes.CONFIG, "database is closed")
                 while self._idle:
-                    connection = self._idle.pop()
-                    if self._expired(connection):
-                        self._drop(connection)
+                    candidate = self._idle.pop()
+                    if self._expired(candidate):
+                        self._drop(candidate)
                         continue
                     self._in_use += 1
-                    return connection
-                if len(self._opened) < self.size:
+                    connection = candidate
+                    break
+                if connection is None and len(self._opened) < self.size:
                     # The slot is taken before the connection opens, so no other caller passes the size meanwhile.
                     self._in_use += 1
                     slot = object()
                     self._opened[id(slot)] = None
-                    break
-                self._condition.wait()
+                elif connection is None:
+                    self._condition.wait()
+                    continue
+            if connection is not None:
+                check = getattr(connection, "is_alive", None)
+                try:
+                    alive = check is None or check()
+                except BaseException:
+                    self.release(connection, broken=True)
+                    raise
+                if alive:
+                    return connection
+                self.release(connection, broken=True)
+                continue
+            break
         try:
             connection = self._open()
         except BaseException:

@@ -12,12 +12,13 @@
 //
 // Rust builds and runs the workspace tests once with ORM_RUST_TEST_FEATURES (Makefile: test-faults and live-db); the
 // rollback fault cases and the live-db cases of orm-build are in that run.
-import { rmSync } from 'node:fs';
+import { readFileSync, rmSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { delimiter, join, resolve } from 'node:path';
+import { delimiter, dirname, join, resolve } from 'node:path';
 import { keepAll, render, run, runLanes, variable, type Command } from './check/commands.mts';
 import { COMMANDS as TYPESCRIPT_COMMANDS, sqliteTest } from './typescript/sqlite-test.mts';
 import { implementationLanguages } from './features/languages.mts';
+import { readFeatures, type FeatureManifest, type NativeCommand } from './features/manifest.mts';
 
 const root = resolve(import.meta.dirname, '..');
 // The lanes are the declared implementations of config/parity.json, the one language set.
@@ -43,9 +44,61 @@ const PHP_EXTENSION: Command[] = PHP_TESTS.map(test => ({
 // The Python database tests run as modules of packages.python.tests with the Python of the venv (ORM_PYTHON).
 const PYTHON_TESTS = ['mysql_session', 'statement_fault', 'identity_load', 'schema_inspection', 'statement_events', 'install_changed_database', 'mysql_tls', 'connection_config', 'replica', 'connection_utc', 'connection_pool', 'aes_rotation'];
 const PYTHON: Command[] = PYTHON_TESTS.map(test => ({ program: variable('ORM_PYTHON'), args: ['-m', `packages.python.tests.${test}`], cwd: root }));
+/** Returns the exact Rust symbols that the database feature matrix owns, for the generic client test run to skip. */
+export function rustDatabaseCoverageSkipArguments(manifest: FeatureManifest, repository: string): string[] {
+  const testSymbols = new Set<string>();
+  const rustCommands: { feature: string; command: NativeCommand }[] = [];
+  for (const feature of manifest.features) {
+    const coverage = feature.coverage;
+    if (coverage?.kind !== 'database') continue;
+    const parts = [coverage.owners.rust, ...coverage.dependents.filter(part => part.language === 'rust')].filter(part => part !== undefined);
+    for (const part of parts) {
+      for (const commands of Object.values(part.commands)) {
+        for (const command of commands ?? []) if (command.runner === 'cargo') rustCommands.push({ feature: feature.id, command });
+      }
+    }
+  }
+  for (const { feature, command } of rustCommands) {
+    for (const id of command.cases) {
+      const symbol = command.symbols?.[id];
+      if (typeof symbol !== 'string' || symbol === '') throw new Error(`${feature}: Rust case ${id} has no declared native test symbol`);
+      testSymbols.add(symbol);
+    }
+  }
+
+  // The integration harness also includes the top-level catalog test file under a module name. Discover that alias
+  // from its Rust module declaration so the workspace run excludes both compiled copies of the same declared test.
+  const integrationRoot = resolve(repository, 'packages/rust/tests/tests/integration/main.rs');
+  const integrationDirectory = dirname(integrationRoot);
+  const integrationSource = readFileSync(integrationRoot, 'utf8');
+  const declaration = /(?:#\[path\s*=\s*"([^"]+)"\]\s*)?mod\s+([A-Za-z_][A-Za-z0-9_]*)\s*;/g;
+  for (const match of integrationSource.matchAll(declaration)) {
+    const [, explicitPath, name] = match;
+    if (name === undefined) continue;
+    const moduleFile = explicitPath === undefined ? resolve(integrationDirectory, `${name}.rs`) : resolve(integrationDirectory, explicitPath);
+    const declared = rustCommands.filter(({ command }) => resolve(repository, command.test) === moduleFile);
+    for (const { command } of declared) {
+      for (const id of command.cases) {
+        const symbol = command.symbols?.[id];
+        if (typeof symbol !== 'string' || symbol === '') throw new Error(`Rust case ${id} in ${command.test} has no declared native test symbol`);
+        testSymbols.add(symbol.includes('::') ? symbol : `${name}::${symbol}`);
+      }
+    }
+  }
+  return [...testSymbols].sort().flatMap(symbol => ['--skip', symbol]);
+}
+
 // tests/cargo-test.mts builds the test binaries under the lease of the shared target directory as a long operation with no
 // deadline, copies them into the directory of one run and runs the copies.
-const RUST_TESTS: Command = { program: 'node', args: ['../../tests/cargo-test.mts', 'workspace-tests', '--', 'cargo', 'test', '--locked', '--workspace', '--features', variable('ORM_RUST_TEST_FEATURES')], cwd: join(root, 'packages/rust') };
+const RUST_TESTS: Command = {
+  program: 'node',
+  args: [
+    '../../tests/cargo-test.mts', 'workspace-tests', '--', 'cargo', 'test', '--locked', '--workspace', '--features', variable('ORM_RUST_TEST_FEATURES'), '--',
+    ...rustDatabaseCoverageSkipArguments(readFeatures(root), root), '--exact',
+  ],
+  cwd: join(root, 'packages/rust'),
+  env: { ORM_BUILD_TEST_ROOT: resolve(root, 'packages/rust/build') },
+};
 // The integration program is built under the lease of the shared Rust target directory and copied into the directory of
 // this run (scripts/cargo-build-copy.mts), which runs the copy; the build reports no case, so it runs through
 // tests/run-long.mts with no deadline.

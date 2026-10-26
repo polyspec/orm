@@ -134,7 +134,7 @@ fn apply_column_default(
 
 #[cfg(test)]
 mod default_tests {
-    use super::{parse_column_default, read_catalog, CatalogValue, Dialect};
+    use super::{parse_column_default, read_catalog, CatalogValue, Dialect, Unsupported};
     use crate::dbspec::model::{DefaultValue, Type};
 
     // Requirements: DIA-133.
@@ -204,6 +204,40 @@ mod default_tests {
         let sqlite_column = sqlite.document.tables[0].column("value").expect("SQLite column");
         assert_eq!(sqlite_column.ty, Type::I32);
         assert_eq!(sqlite_column.default, Some(DefaultValue::Literal("7".into())));
+    }
+
+    // Requirements: DIA-191, SCH-7.
+    #[test]
+    fn sqlite_reports_an_unquoted_unsupported_column_without_rejecting_its_table() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let mut sqlite = vec![Vec::new(); super::sqlite::QUERIES.len()];
+        sqlite[0].push(vec![
+            CatalogValue::Text("table".into()),
+            CatalogValue::Text("install_note".into()),
+            CatalogValue::Text("install_note".into()),
+            CatalogValue::Text("CREATE TABLE \"install_note\" (junk INTEGER NULL)".into()),
+        ]);
+        sqlite[1].push(vec![
+            CatalogValue::Text("install_note".into()),
+            CatalogValue::Text("junk".into()),
+            CatalogValue::Text("INTEGER".into()),
+            CatalogValue::Int(0),
+            CatalogValue::Null,
+            CatalogValue::Int(0),
+            CatalogValue::Int(0),
+        ]);
+
+        let result = read_catalog(Dialect::Sqlite, &sqlite, "sample").expect("read SQLite catalog");
+        assert_eq!(result.document.tables.len(), 1);
+        assert_eq!(
+            result.unsupported,
+            vec![Unsupported {
+                kind: "column".into(),
+                table: "install_note".into(),
+                name: "junk".into(),
+                reason: "declared type INTEGER with CHECK \"\" has no dbspec type".into(),
+            }]
+        );
     }
 }
 

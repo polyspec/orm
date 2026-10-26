@@ -925,7 +925,7 @@ const CASES: &[Case] = &[
             "  users at 1 1",
             "}",
         ]],
-        expect: Expect::Errors(&[("diagram", 7, 12), ("diagram", 8, 14), ("diagram", 10, 3)]),
+        expect: Expect::Errors(&[("diagram", 7, 12), ("diagram", 8, 3), ("diagram", 8, 14), ("diagram", 9, 3), ("diagram", 10, 3)]),
     },
     // syntax and comments
     Case {

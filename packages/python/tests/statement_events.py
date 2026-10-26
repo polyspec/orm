@@ -131,12 +131,10 @@ class EventRun:
         except OrmError as error:
             if step.get("error") != error.code:
                 raise
-            if (
-                error.code == "SUBSCRIBER"
-                and (
-                    str(error) != "SUBSCRIBER: statement event subscriber failed: subscriber refused the event"
-                    or str(error.cause) != "subscriber refused the event"
-                )
+            if error.code == "SUBSCRIBER" and (
+                str(error)
+                != "SUBSCRIBER: statement event subscriber failed: subscriber refused the event"
+                or str(error.cause) != "subscriber refused the event"
             ):
                 self.problems.append(
                     f"SUBSCRIBER message or cause differs: {error!r}, {error.cause!r}"

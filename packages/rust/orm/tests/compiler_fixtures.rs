@@ -13,6 +13,7 @@ fn run_fixture(id: &str) {
     let runner = root.join("scripts/rust/compiler-fixtures.mts");
     let status = Command::new(lease)
         .args(["run", &leases, "exclusive", "--wait", "--", "node", runner.to_str().expect("runner path is valid UTF-8"), toolchain, "--case", id])
+        .current_dir(&root)
         .env("ORM_RUST_TEST_FEATURES", features)
         .status()
         .expect("run selected compiler fixture under the cargo target lease");

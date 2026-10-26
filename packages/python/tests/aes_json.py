@@ -85,7 +85,9 @@ class AesJsonPhysicalTest(unittest.TestCase):
                             stringify_json(loaded.get_config().payload()), value
                         )
                         self.assertEqual(
-                            both.utils().aes().rotate(
+                            both.utils()
+                            .aes()
+                            .rotate(
                                 models.SecretConfig(),
                                 AesKeyring(
                                     {1: "config-key-one", 2: "config-key-two"}, 2

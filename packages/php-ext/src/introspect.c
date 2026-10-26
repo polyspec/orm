@@ -2515,6 +2515,25 @@ static bool dq_name(str s, size_t *i, str *out)
     return true;
 }
 
+/* Reads the quoted renderer form or an unquoted ASCII SQLite identifier. */
+static bool sqlite_column_name(str s, size_t *i, str *out)
+{
+    if (dq_name(s, i, out)) {
+        return true;
+    }
+    size_t p = *i;
+    if (p >= s.n || !(calpha(s.s[p]) || s.s[p] == '_')) {
+        return false;
+    }
+    size_t q = p + 1;
+    while (q < s.n && (calpha(s.s[q]) || cdigit(s.s[q]) || s.s[q] == '_')) {
+        q++;
+    }
+    *out = str_sub(s, p, q - p);
+    *i = q;
+    return true;
+}
+
 static bool paren_list(str s, size_t *i, str *out)
 {
     if (!slit(s, i, "(")) {
@@ -2632,7 +2651,7 @@ static sqlite_table *sqlite_parse_table(str text, sqlite_unsupportedv *unsupport
             }
         }
         i = 0;
-        if (dq_name(item, &i, &name) && slit(item, &i, " ")) {
+        if (sqlite_column_name(item, &i, &name) && slit(item, &i, " ")) {
             /* The definition is read by pragma_table_xinfo, and its text is checked to be in renderer form. */
             str *v = dbs_alloc(sizeof *v);
             *v = item;
@@ -2648,11 +2667,12 @@ static sqlite_table *sqlite_parse_table(str text, sqlite_unsupportedv *unsupport
 /* Reports whether the column definition text is only the renderer's column form (name, declared type, NULL or NOT NULL, and DEFAULT if present). */
 static bool sqlite_column_text(str item, str name, str declared, bool not_null, bool def_null, str def)
 {
-    str prefix = fmt("\"%S\" ", name);
-    if (item.n < prefix.n || memcmp(item.s, prefix.s, prefix.n) != 0) {
+    size_t i = 0;
+    str parsed_name;
+    if (!sqlite_column_name(item, &i, &parsed_name) || !str_eq(parsed_name, name) || !slit(item, &i, " ")) {
         return false;
     }
-    str rest = str_sub(item, prefix.n, item.n - prefix.n);
+    str rest = str_sub(item, i, item.n - i);
     if (rest.n < declared.n || !ascii_ieq(rest.s, declared.s, declared.n)) {
         return false;
     }

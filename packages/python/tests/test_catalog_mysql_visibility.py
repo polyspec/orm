@@ -1,7 +1,12 @@
 import unittest
 
 from . import testcase
-from polyspec.orm.catalog import CatalogColumn, CatalogConnection, CatalogTableMetadata, _Session
+from polyspec.orm.catalog import (
+    CatalogColumn,
+    CatalogConnection,
+    CatalogTableMetadata,
+    _Session,
+)
 from polyspec.orm.database import parse_dsn
 from polyspec.orm.errors import OrmError, codes
 
@@ -61,7 +66,19 @@ class CatalogMysqlVisibilityTest(unittest.TestCase):
                         self.description = [("TABLE_TYPE", 253)]
                         self.rows = [("BASE TABLE",)]
                     elif sql.startswith("SELECT c.COLUMN_NAME"):
-                        self.description = [(name, 253) for name in ("COLUMN_NAME", "COLUMN_TYPE", "IS_NULLABLE", "GENERATED", "ORDINAL_POSITION", "AUTO_KEY", "COLUMN_DEFAULT", "EXPRESSION_DEFAULT")]
+                        self.description = [
+                            (name, 253)
+                            for name in (
+                                "COLUMN_NAME",
+                                "COLUMN_TYPE",
+                                "IS_NULLABLE",
+                                "GENERATED",
+                                "ORDINAL_POSITION",
+                                "AUTO_KEY",
+                                "COLUMN_DEFAULT",
+                                "EXPRESSION_DEFAULT",
+                            )
+                        ]
                         self.rows = [
                             ("id", "BIGINT", 0, 0, 1, 0, None, 0),
                             ("value", "VARCHAR(32)", 0, 0, 0, 0, None, 0),
@@ -106,8 +123,15 @@ class CatalogMysqlVisibilityTest(unittest.TestCase):
         direct, direct_state = fixture()
         result = direct.insert_row(metadata, [("id", 1), ("value", "visible")])
         self.assertEqual(result.rows, [[1, "visible"]])
-        self.assertTrue(any("information_schema.USER_PRIVILEGES" in sql for sql in direct_state["queries"]))
-        self.assertTrue(any(sql.startswith("INSERT INTO") for sql in direct_state["queries"]))
+        self.assertTrue(
+            any(
+                "information_schema.USER_PRIVILEGES" in sql
+                for sql in direct_state["queries"]
+            )
+        )
+        self.assertTrue(
+            any(sql.startswith("INSERT INTO") for sql in direct_state["queries"])
+        )
 
         for scenario, options in (
             ("role-only TRIGGER grant", {"direct_trigger_grant": False}),
@@ -117,12 +141,18 @@ class CatalogMysqlVisibilityTest(unittest.TestCase):
             with self.subTest(scenario=scenario), self.assertRaises(OrmError) as raised:
                 catalog.insert_row(metadata, [("id", 1), ("value", "visible")])
             self.assertEqual(raised.exception.code, codes.ROW_MUTATION_UNSUPPORTED)
-            self.assertFalse(any(sql.startswith("INSERT INTO") for sql in state["queries"]))
+            self.assertFalse(
+                any(sql.startswith("INSERT INTO") for sql in state["queries"])
+            )
             if scenario == "enabled partial revokes":
                 self.assertNotIn("SELECT CURRENT_USER()", state["queries"])
             else:
-                self.assertTrue(any("information_schema.USER_PRIVILEGES" in sql for sql in state["queries"]))
-
+                self.assertTrue(
+                    any(
+                        "information_schema.USER_PRIVILEGES" in sql
+                        for sql in state["queries"]
+                    )
+                )
 
 
 if __name__ == "__main__":

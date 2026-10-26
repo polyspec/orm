@@ -140,6 +140,7 @@ class AesRotationPhysicalTest(unittest.TestCase):
 
                     current = models.connect(
                         dsn,
+                        aesVersion=2,
                         aesKeyring=AesKeyring({2: "next-aes-key"}, 2),
                         blindIndexKey="test-blind-key",
                     )
