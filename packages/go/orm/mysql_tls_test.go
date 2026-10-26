@@ -109,6 +109,7 @@ func TestMySQLTLSConnection(t *testing.T) {
 // TestMySQLSessionSQLMode checks the session sql_mode that the client sets per connection
 // against the value in tests/dsn/mysql-session.json: the connection reads the mode it declares,
 // not the server default (docs/spec/config.md "Runtime connection").
+// Requirements: CFG-3.
 func TestMySQLSessionSQLMode(t *testing.T) {
 	ctx := testcase.Start(t, testcase.Database).Context()
 	dsn := os.Getenv("ORM_TEST_MYSQL_DSN")

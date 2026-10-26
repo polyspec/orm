@@ -12,7 +12,7 @@ use RuntimeException;
 
 final class MysqlSessionNativeTest extends TestCase
 {
-    // Requirements: CFG-7.
+    // Requirements: CFG-3, CFG-7.
     public function testNativeConnectionSetsDeclaredSqlMode(): void
     {
         self::assertTrue((new ReflectionMethod(Orm::class, 'connect'))->isInternal());

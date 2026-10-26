@@ -123,7 +123,7 @@ final class MysqlTlsTest extends TestCase
      * The session sql_mode that the client sets on every MySQL connection equals sql_mode.session of
      * tests/dsn/mysql-session.json, not the server default (docs/spec/config.md "Runtime connection").
      */
-    // Requirements: CFG-7.
+    // Requirements: CFG-3, CFG-7.
     public function testSessionSqlMode(): void
     {
         $dsn = requiredDsn('ORM_TEST_MYSQL_DSN');

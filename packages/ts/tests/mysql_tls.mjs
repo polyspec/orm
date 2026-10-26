@@ -104,6 +104,7 @@ caseTest('mysql_tls/connections', DATABASE, async ({ step }) => {
 });
 // The session sql_mode that the client sets on every MySQL connection equals sql_mode.session of
 // tests/dsn/mysql-session.json, not the server default (docs/spec/config.md "Runtime connection").
+// Requirements: CFG-3.
 caseTest('mysql_tls/session_sql_mode', DATABASE, async ({ step }) => {
   const dsn = process.env.ORM_TEST_MYSQL_DSN;
   if (!dsn) throw new Error('ORM_TEST_MYSQL_DSN is not set; run make orm-test-servers');

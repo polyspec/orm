@@ -1120,7 +1120,7 @@
     "tests/codec/*.json",
     "tests/conformance/*.json",
     "tests/dbspec/*.json",
-    "tests/dsn/*.json",
+    "tests/dsn/sqlite-paths.json",
     "tests/ir/*.json",
     "tests/events/*.json",
     "tests/markdown/*.json"
@@ -17510,40 +17510,40 @@
     },
     {
       "id": "mysql-session",
-      "kind": "suite",
+      "kind": "feature",
       "requirements": [
         "CFG-3"
       ],
-      "file": "tests/dsn/mysql-session.json",
-      "cases": "$.sql_mode.~",
       "bindings": [
         {
           "implementation": "go",
           "test": "packages/go/orm/mysql_tls_test.go",
-          "symbol": "TestMySQLSessionSQLMode"
+          "id": "TestMySQLSessionSQLMode"
         },
         {
           "implementation": "php",
           "test": "packages/php/tests/MysqlTlsTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\MysqlTlsTest::testSessionSqlMode"
+          "id": "MysqlTlsTest::testSessionSqlMode"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/MysqlSessionNativeTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\MysqlSessionNativeTest::testNativeConnectionSetsDeclaredSqlMode"
+          "id": "MysqlSessionNativeTest::testNativeConnectionSetsDeclaredSqlMode"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/mysql_tls.mjs"
+          "test": "packages/ts/tests/mysql_tls.mjs",
+          "id": "mysql_tls/session_sql_mode"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/mysql_session.py"
+          "test": "packages/python/tests/mysql_session.py",
+          "id": "test_session_sql_mode"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/mysql_tls.rs",
-          "symbol": "session_sql_mode_is_the_declared_one"
+          "id": "session_sql_mode_is_the_declared_one"
         }
       ]
     },
@@ -27003,11 +27003,6 @@
       "bindings": [
         {
           "implementation": "php",
-          "test": "packages/php/tests/MysqlTlsTest.php",
-          "id": "MysqlTlsTest::testSessionSqlMode"
-        },
-        {
-          "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
           "id": "ModelTest::testPostgresSessionSettingsAreStartupParameters"
         },
@@ -27019,17 +27014,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/MysqlSessionNativeTest.php",
-          "id": "MysqlSessionNativeTest::testNativeConnectionSetsDeclaredSqlMode"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/MysqlSessionNativeTest.php",
           "id": "MysqlSessionNativeTest::testNativePostgresSessionSettingsAreStartupParameters"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/mysql_session.py",
-          "id": "MysqlSessionTest.test_session_sql_mode"
         },
         {
           "implementation": "python",
