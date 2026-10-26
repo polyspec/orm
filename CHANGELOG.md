@@ -4,6 +4,7 @@
 ## Unreleased
 
 - Protocol/tooling parity declarations now trace their native case requirements across all supported clients; committed-tree declaration checks pass, with user-held cancellation shown separately rather than counted as execution evidence (KSTD-2-7).
+- Incorrect standalone parity declarations and helper-test ownership are reconciled while preserving native assertions and exact owner execution commands; the declaration gate passes (KSTD-2-11).
 
 - The KSTD-5-89 static-gate scope passes on main: the six original verification commands, nine additional static checks (9/9, including 18 pinned tools and 2,421 owned paths), and the source-specific lint gates are recorded with their commits and logs in the checklist. Duplication and parity/divergence checks remain in their existing rows (KSTD-5-89).
 - The Rust schema stress test reports repository discovery, Node startup and parse failures with explicit matches; the interface-symbols parser consumes a trailing comma only when present and propagates parse errors (KSTD-5-93-1-1).

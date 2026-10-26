@@ -1,10 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f77495a1c4646aa1d0cc6758121ad88a525a55532de887191d3a9318d34645e4 -->
+<!-- source-sha256: 00331accb5098c3d7fffecd1f119e6301f9255d8f73f309733cab7c205cd7875 -->
 # 변경 이력
 
 ## Unreleased
 
 - protocol/tooling parity 선언이 모든 지원 client의 native case 요구를 추적한다. 커밋된 tree의 선언 검사가 통과하며 사용자 보류 취소 기능은 실행 증거로 계산하지 않고 별도로 표시한다 (KSTD-2-7).
+- 잘못된 단독 parity 선언과 helper test 소유 관계를 정리하면서 native assertion과 정확한 owner 실행 명령을 보존했다. 선언 gate가 통과한다 (KSTD-2-11).
 
 - KSTD-5-89의 static gate 범위가 main에서 통과한다: 기존 검증 명령 여섯 개, 추가 정적 검사 아홉 개(9/9, pinned tool 18개와 소유 경로 2,421개 포함), 소유 범위별 lint 결과를 checklist에 commit과 log로 기록한다. duplication 및 parity/divergence 검사는 기존 별도 항목에 남는다 (KSTD-5-89).
 - Rust schema stress test가 repository discovery, Node 시작, parse 실패를 명시적인 match로 보고한다. interface-symbols parser는 trailing comma가 있을 때만 소비하고 parse 오류를 전달한다 (KSTD-5-93-1-1).
