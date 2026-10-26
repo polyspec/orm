@@ -1,7 +1,10 @@
+import sqlite3
 import unittest
 
+from polyspec.orm.dbspec.introspect import introspect_dbspec
+
 from . import testcase
-from .dbspec_introspect import ROOT, rendered_case_statements
+from .dbspec_introspect import Adapter, ROOT, rendered_case_statements
 
 
 class DbspecIntrospectSupportTest(unittest.TestCase):
@@ -29,5 +32,30 @@ class DbspecIntrospectSupportTest(unittest.TestCase):
                 )
 
 
+class SqliteShadowColumnsTest(unittest.TestCase):
+    deadline = testcase.COMPUTE
+
+    def test_virtual_table_shadow_columns_are_not_reported(self):
+        connection = sqlite3.connect(":memory:", isolation_level=None)
+        try:
+            db = Adapter(connection)
+            db.execute('CREATE VIRTUAL TABLE "ft_orders" USING fts5("name")')
+            result = introspect_dbspec(db, "sqlite", "introspected")
+        finally:
+            connection.close()
+
+        shadow_tables = {
+            "ft_orders_config",
+            "ft_orders_content",
+            "ft_orders_data",
+            "ft_orders_docsize",
+            "ft_orders_idx",
+        }
+        shadow_columns = [
+            (item["table"], item["name"])
+            for item in result["unsupported"]
+            if item["kind"] == "column" and item["table"] in shadow_tables
+        ]
+        self.assertEqual([], shadow_columns)
 if __name__ == "__main__":
     testcase.main()
