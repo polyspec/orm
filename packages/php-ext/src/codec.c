@@ -1187,6 +1187,7 @@ static zend_string *hex_encode_upper(zend_string *in);
 
 bool codec_host_encode(zval *v, HashTable *styles, zend_string *aes_key, zval *ret)
 {
+    ZVAL_UNDEF(ret);
     if (Z_TYPE_P(v) == IS_NULL) {
         ZVAL_NULL(ret);
         return true;

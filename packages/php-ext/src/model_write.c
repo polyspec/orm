@@ -317,6 +317,7 @@ static bool write_request(zval *model, const char *kind, zval *db, zval *request
 
 static bool encode_value(zval *column, zval *value, zval *result)
 {
+    ZVAL_UNDEF(result);
     zval *codec = array_key(column, "codec");
     if (codec == NULL || Z_TYPE_P(codec) != IS_ARRAY) {
         zend_throw_error(NULL, "Model column codec must be an array");
@@ -333,6 +334,7 @@ static bool encode_value(zval *column, zval *value, zval *result)
         } ZEND_HASH_FOREACH_END();
         if (has_ip) {
             zval styles, checked;
+            ZVAL_UNDEF(&checked);
             array_init(&styles);
             add_next_index_string(&styles, "ip");
             zend_string *empty_key = zend_string_init("", 0, 0);
@@ -433,6 +435,7 @@ static bool assign_ir(zval *model, zval *request, zend_string *column, zval *spe
             return false;
         }
         zval encoded;
+        ZVAL_UNDEF(&encoded);
         if (!encode_value(col, value, &encoded)) {
             zval_ptr_dtor(result); ZVAL_UNDEF(result);
             zval_ptr_dtor(&meta);
