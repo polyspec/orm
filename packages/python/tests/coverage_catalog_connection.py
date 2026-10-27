@@ -11,6 +11,7 @@ import sys
 import tempfile
 import unittest
 from contextlib import closing
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
 
@@ -408,27 +409,33 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
                     {"namespace": self.catalog.current_namespace(), "name": name}, 1, 0
                 )
                 values = page.result.rows[0][1:]
-                fractions = (
-                    [
+                if self.driver == "mysql":
+                    self.assertIsInstance(values[0], str)
+                    self.assertIsInstance(values[1], datetime)
+                    self.assertIsInstance(values[2], str)
+                    self.assertIsInstance(values[3], datetime)
+                    fractions = [
+                        int(value.split(".", 1)[1].ljust(6, "0")) if "." in value else 0
+                        for value in (values[0], values[2])
+                    ]
+                    fractions = [
+                        fractions[0],
+                        values[1].microsecond,
+                        fractions[1],
+                        values[3].microsecond,
+                    ]
+                    expected_fractions = [0, 0, 123000, 123000]
+                elif self.driver == "sqlite":
+                    fractions = [
                         len(value.split(".", 1)[1]) if "." in value else 0
                         for value in values
                     ]
-                    if self.driver == "sqlite"
-                    else [
-                        getattr(value, "microsecond", getattr(value, "microseconds", 0))
-                        for value in values
-                    ]
-                )
+                    expected_fractions = [0, 0, 3, 3]
+                else:
+                    fractions = [value.microsecond for value in values]
+                    expected_fractions = [123456, 123456, 123000, 123000]
                 self.assertEqual(
-                    (
-                        [0, 0, 3, 3]
-                        if self.driver == "sqlite"
-                        else [0, 0, 123000, 123000]
-                    )
-                    if self.driver == "mysql"
-                    else [0, 0, 3, 3]
-                    if self.driver == "sqlite"
-                    else [123456, 123456, 123000, 123000],
+                    expected_fractions,
                     fractions,
                     f"{self.driver}: temporal table reads use native defaults and declared precision",
                 )

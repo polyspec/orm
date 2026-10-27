@@ -169,8 +169,7 @@ def _text(value) -> str:
 
 
 def _check_value(value):
-    """A driver value that the catalog reads: NULL, a boolean, an integer, a finite float, text, bytes or a datetime. A date,
-    a time or an interval has no catalog value in a plain read; the grid query reads them."""
+    """Checks plain driver values after dialect-specific temporal values have been decoded."""
     if value is None or isinstance(value, (bool, int, str, bytes, datetime)):
         return value
     if isinstance(value, float):
@@ -178,6 +177,79 @@ def _check_value(value):
             raise _error(codes.CATALOG_VALUE, "non-finite float value")
         return value
     raise _error(codes.CATALOG_VALUE, f"unsupported native type {type(value).__name__}")
+
+
+def _mysql_time_value(value, precision: int) -> str:
+    """A PyMySQL TIME result as its exact dbspec time text at the server's declared precision."""
+    if not isinstance(value, timedelta):
+        raise _error(
+            codes.CATALOG_VALUE,
+            f"unsupported native type {type(value).__name__}",
+        )
+    micros = (value.days * 86400 + value.seconds) * 1000000 + value.microseconds
+    if not 0 <= micros < 86400 * 1000000:
+        raise _error(codes.CATALOG_VALUE, "time outside 00:00:00 to 23:59:59.999999")
+    if not 0 <= precision <= 6:
+        raise _error(codes.CATALOG_VALUE, f"invalid MySQL TIME precision {precision}")
+    if micros % 10 ** (6 - precision) != 0:
+        raise _error(codes.CATALOG_VALUE, "time exceeds its declared precision")
+    seconds, fraction = divmod(micros, 1000000)
+    clock = f"{seconds // 3600:02d}:{seconds // 60 % 60:02d}:{seconds % 60:02d}"
+    return (
+        clock
+        if precision == 0
+        else f"{clock}.{fraction:06d}"[: len(clock) + precision + 1]
+    )
+
+
+def _mysql_datetime_text(value, precision: int) -> str:
+    """A PyMySQL DATETIME value as exact dbspec text for mutation comparison."""
+    if not isinstance(value, datetime):
+        raise _error(
+            codes.CATALOG_VALUE,
+            f"unsupported native type {type(value).__name__}",
+        )
+    if value.tzinfo is not None:
+        raise _error(codes.CATALOG_VALUE, "MySQL DATETIME unexpectedly has a time zone")
+    if not 0 <= precision <= 6:
+        raise _error(
+            codes.CATALOG_VALUE, f"invalid MySQL DATETIME precision {precision}"
+        )
+    if value.microsecond % 10 ** (6 - precision) != 0:
+        raise _error(codes.CATALOG_VALUE, "datetime exceeds its declared precision")
+    base = (
+        f"{value.year:04d}-{value.month:02d}-{value.day:02d} "
+        f"{value.hour:02d}:{value.minute:02d}:{value.second:02d}"
+    )
+    return (
+        base
+        if precision == 0
+        else f"{base}.{value.microsecond:06d}"[: len(base) + precision + 1]
+    )
+
+
+def _mysql_catalog_value(value, code, precision: int):
+    """Decodes MySQL TIME driver values to canonical text; other values keep their native form."""
+    if value is None:
+        return None
+    if code == _MYSQL_TIME:
+        return _mysql_time_value(value, precision)
+    return _check_value(value)
+
+
+def _same_column_value(actual, expected, column: CatalogColumn, dialect: str) -> bool:
+    """Compares a MySQL DATETIME driver value with canonical text using its descriptor precision."""
+    if dialect == "mysql":
+        match = re.fullmatch(
+            r"datetime(?:\((\d+)\))?", column.native_type, re.IGNORECASE
+        )
+        if match is not None:
+            precision = int(match.group(1) or 0)
+            if isinstance(actual, datetime) and isinstance(expected, str):
+                return _mysql_datetime_text(actual, precision) == expected
+            if isinstance(expected, datetime) and isinstance(actual, str):
+                return _mysql_datetime_text(expected, precision) == actual
+    return _same_row([actual], [expected])
 
 
 def _params(values) -> list:
@@ -547,12 +619,18 @@ def _revision(metadata: CatalogTableMetadata, cells: list) -> str:
 
 
 def _validate_inserted_locator_row(
-    metadata: CatalogTableMetadata, cells: list, changes, mismatch_message: str
+    metadata: CatalogTableMetadata,
+    cells: list,
+    changes,
+    mismatch_message: str,
+    dialect: str,
 ) -> None:
     _check_cells(metadata, cells)
     _revision(metadata, cells)
     for index, value in changes:
-        if not _same_row([cells[index]], [value]):
+        if not _same_column_value(
+            cells[index], value, metadata.columns[index], dialect
+        ):
             raise _error(codes.ROW_WRITE_MISMATCH, mismatch_message)
 
 
@@ -828,16 +906,29 @@ class _Session:
                         raise _error(
                             codes.CATALOG_LIMIT, f"result has more than {max_rows} rows"
                         )
-                    for value in row:
+                    converted = (
+                        list(row)
+                        if grid
+                        else [
+                            _mysql_catalog_value(
+                                value,
+                                type_codes[index],
+                                cursor.description[index][5] or 0,
+                            )
+                            if self.dialect == "mysql"
+                            and type_codes[index] == _MYSQL_TIME
+                            else _check_value(value)
+                            for index, value in enumerate(row)
+                        ]
+                    )
+                    for value in converted:
                         budget += len(value) if isinstance(value, (str, bytes)) else 8
                     if max_bytes is not None and budget > max_bytes:
                         raise _error(
                             codes.CATALOG_LIMIT,
                             f"result has more than {max_bytes} bytes of values",
                         )
-                    rows.append(
-                        list(row) if grid else [_check_value(value) for value in row]
-                    )
+                    rows.append(converted)
             affected = cursor.rowcount if cursor.rowcount is not None else 0
             insert_id = cursor.lastrowid if self.dialect == "mysql" else None
         except Exception as error:
@@ -1398,6 +1489,7 @@ class CatalogConnection:
                         returned,
                         changes,
                         "locator values differ from requested values",
+                        self._dialect,
                     )
                     keys = [returned[index] for index in key_indexes]
                 elif self._dialect == "mysql":
@@ -1447,7 +1539,11 @@ class CatalogConnection:
                         )
                     returned = located.rows[0]
                     _validate_inserted_locator_row(
-                        descriptor, returned, changes, "stored inserted values differ"
+                        descriptor,
+                        returned,
+                        changes,
+                        "stored inserted values differ",
+                        self._dialect,
                     )
                     keys = [returned[index] for index in key_indexes]
                 else:
@@ -1483,7 +1579,9 @@ class CatalogConnection:
             if session.describe(declared.table) != descriptor:
                 raise _error(codes.ROW_SCHEMA_CHANGED, "insertion descriptor changed")
             for index, value in changes:
-                if not _same_row([after[0][index]], [value]):
+                if not _same_column_value(
+                    after[0][index], value, descriptor.columns[index], self._dialect
+                ):
                     raise _error(
                         codes.ROW_WRITE_MISMATCH,
                         f"stored inserted values of {descriptor.columns[index].name!r} differ",
@@ -1547,7 +1645,9 @@ class CatalogConnection:
                 if column.generated:
                     # A generated column may be recomputed by the database.
                     continue
-                if not _same_row([after[0][index]], [updated[index]]):
+                if not _same_column_value(
+                    after[0][index], updated[index], column, self._dialect
+                ):
                     raise _error(
                         codes.ROW_WRITE_MISMATCH,
                         f"stored ordinary values of {column.name!r} differ",
