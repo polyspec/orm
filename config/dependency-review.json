@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mts) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-27T01:05:22.929Z",
+  "reviewed": "2026-10-27T04:21:09.029Z",
   "locks": [
     {
       "lock": "package-lock.json",
-      "sha256": "98e3d78e0e123147d9505c937290123e453c897dd69d3db32bc1fb1017244b9d",
+      "sha256": "9a3907d7eab2507a4da35ee53cf2356d8aa4f5d52329879ae09393b05d9ed8bf",
       "advisories": [
         {
           "package": "@azure/msal-node",
@@ -145,7 +145,7 @@
       "manifest": "package.json",
       "package": "oxc-parser",
       "version": "0.154.0",
-      "latest": "0.155.0"
+      "latest": "0.156.0"
     },
     {
       "ecosystem": "npm",
@@ -355,7 +355,7 @@
       "manifest": "packages/ts/package.json",
       "package": "oxc-parser",
       "version": "0.154.0",
-      "latest": "0.155.0"
+      "latest": "0.156.0"
     },
     {
       "ecosystem": "npm",
@@ -411,7 +411,7 @@
       "manifest": "composer.json",
       "package": "phpunit/phpunit",
       "version": "13.4.3",
-      "latest": "13.4.3"
+      "latest": "13.4.5"
     },
     {
       "ecosystem": "composer",
