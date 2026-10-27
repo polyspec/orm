@@ -11329,7 +11329,7 @@
   },
   "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::raiseConnectionError": {
     "exported": false,
-    "signature": "private function raiseConnectionError(): never"
+    "signature": "private function raiseConnectionError(?string $notice=null): never"
   },
   "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::reportError": {
     "exported": true,
@@ -11359,13 +11359,13 @@
     "exported": false,
     "signature": "private static function toConninfo(string $dsn, ?string $username, ?string $password, array $options): string"
   },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::withPhpDiagnostic": {
+    "exported": false,
+    "signature": "private static function withPhpDiagnostic(Closure $call, int $errorLevel=2): array"
+  },
   "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::withReason": {
     "exported": false,
     "signature": "private static function withReason(string $message, ?string $warning): string"
-  },
-  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::withWarning": {
-    "exported": false,
-    "signature": "private static function withWarning(Closure $call): array"
   },
   "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter": {
     "exported": true,

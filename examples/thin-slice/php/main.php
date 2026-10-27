@@ -27,7 +27,7 @@ $db->subscribe(static function (StatementEvent $e) use (&$lastSql, &$lastArgs): 
     $lastSql = $e->sql;
     $lastArgs = array_map(static fn(mixed $v): mixed => $v === Db::SECRET ? AES_KEY : $v, $e->binds);
 });
-$now = new DateTimeImmutable('2026-09-11 00:00:00', new DateTimeZone('UTC'));
+$now = '2026-09-11 00:00:00';
 
 $query = static fn() => (new Author())->connect($db)
     ->serviceSeq(7)

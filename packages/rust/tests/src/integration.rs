@@ -116,6 +116,30 @@ struct Target {
     database: CaseDatabase,
 }
 
+/// Waits for SQLx to finish returning checked-out connections before asserting pool statistics.
+async fn complete_pool_returns(db: &Db, driver: &str) {
+    let stats = db.utils().stats();
+    if stats.in_use == 0 {
+        return;
+    }
+    match db.pool() {
+        Pool::MySql(pool) => complete_sqlx_pool_returns(pool, stats.max_open_connections, driver).await,
+        Pool::Postgres(pool) => complete_sqlx_pool_returns(pool, stats.max_open_connections, driver).await,
+        Pool::Sqlite(pool) => complete_sqlx_pool_returns(pool, stats.max_open_connections, driver).await,
+        Pool::Markdown(_) => unreachable!("the integration database selects SQLite, MySQL, or PostgreSQL"),
+    }
+}
+
+async fn complete_sqlx_pool_returns<DB: sqlx::Database>(pool: &sqlx::Pool<DB>, max: u32, driver: &str) {
+    let mut connections = Vec::with_capacity(max as usize);
+    for _ in 0..max {
+        connections.push(pool.acquire().await.unwrap_or_else(|error| panic!("{driver}: acquire pool return barrier: {error}")));
+    }
+    for connection in &mut connections {
+        connection.return_to_pool().await;
+    }
+}
+
 fn config() -> polyspec_orm::Config {
     polyspec_orm::Config { aes_key: "test-aes-key".into(), blind_index_key: "test-blind-key".into(), ..Default::default() }
 }
@@ -593,6 +617,7 @@ async fn transactions(t: &Target) {
     assert_eq!(schema.exists(&schema_name).await.unwrap(), expected, "{}: schema exists", t.driver);
     assert_eq!(schema.installed(&schema_name, "user").await.unwrap(), expected, "{}: schema table is installed", t.driver);
     assert_eq!(code(db.utils().privileges().inspect_table("public.user").await).as_str() == "CAPABILITY_UNSUPPORTED", t.driver != "postgres", "privileges");
+    complete_pool_returns(db, t.driver).await;
     let stats = db.utils().stats();
     assert_eq!(stats.max_open_connections, TARGET_POOL_SIZE, "{}: pool limit", t.driver);
     assert!((1..=TARGET_POOL_SIZE).contains(&stats.open_connections), "{}: open connections {} outside pool bounds", t.driver, stats.open_connections);
@@ -615,6 +640,7 @@ async fn transactions(t: &Target) {
         .retry(0)
         .await;
     stats_in_transaction.expect("stats available while a transaction holds its connection");
+    complete_pool_returns(db, t.driver).await;
     let returned = db.utils().stats();
     assert_eq!(returned.max_open_connections, TARGET_POOL_SIZE, "{}: returned transaction pool limit", t.driver);
     assert!(
