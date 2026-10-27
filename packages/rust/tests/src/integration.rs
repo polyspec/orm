@@ -801,7 +801,7 @@ async fn aes_rotation(t: &Target) {
     assert_eq!(db.utils().aes().rotate(&Author::new(), &keyring).await.unwrap(), 4, "rotated");
     let status = db.utils().aes().status(&Author::new(), &keyring).await.unwrap();
     assert_eq!((status.current, status.total, status.pending, status.versions), (2, 4, 0, [(2, 4)].into_iter().collect()), "after rotation");
-    let current = Db::connect(
+    let current = model::connect(
         &t.dsn,
         2,
         polyspec_orm::Config {
