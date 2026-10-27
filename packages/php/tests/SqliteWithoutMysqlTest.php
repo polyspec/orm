@@ -1,6 +1,7 @@
 <?php
 
-// The sqlite path loads no MySQL dialect class (N17): a child process with php -n runs the sqlite path and an
+// The sqlite path loads no MySQL dialect class (N17): a child process uses php -n and the launcher's explicit module
+// list to run the sqlite path and an
 // autoloader that refuses orm's MySQL dialect classes. The child also asserts that a sqlite:// DSN selects the sqlite
 // dialect and SQLite PDO driver, and rejects MySQL driver modules. The launcher refuses a PHP whose MySQL drivers are
 // compiled in because php -n cannot unload them.
@@ -89,10 +90,19 @@ final class SqliteWithoutMysqlTest extends TestCase
             throw new RuntimeException("cannot create $work");
         }
         try {
+            $extensions = getenv('ORM_PHP_WITHOUT_MYSQL_EXTENSIONS');
+            self::assertIsString($extensions, 'the php-without-mysql launcher must declare its -n extensions');
+            $extensionOptions = [];
+            foreach (array_filter(explode(',', $extensions), static fn(string $name): bool => $name !== '') as $name) {
+                self::assertMatchesRegularExpression('/^[a-z0-9_]+$/', $name, 'invalid -n extension name');
+                $extensionOptions[] = '-d';
+                $extensionOptions[] = "extension=$name";
+            }
             $process = proc_open(
                 [
                     PHP_BINARY,
                     '-n',
+                    ...$extensionOptions,
                     '-r',
                     self::CHILD,
                     '--',

@@ -1031,7 +1031,7 @@ t182-php-extension-schema-check: php-vendor-check php-model-check
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/php-extension/polyspec_orm.so"; \
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CoverageNativeChangedDatabaseExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CoverageNativeChangedDatabaseExtensionTest.php; \
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testSchemaSet(SeveralSchemas|UnregisteredSchema|EditedManifest|ExternalDocuments)' packages/php-ext/tests/CoverageSchemaInstallNativeTest.php
 
 # Runs the complete native Model surface and its native helper classes against a fresh extension; generated PHP models use their normal bootstrap.
