@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "branches": [
+    {
+      "branch": "backup/cancellation-KSTD-2-11-16",
+      "commit": "11b64d2744ffba6f09449b928ea158d7a3e20d62",
+      "reason": "The maintainer deferred database cancellation and required its implementation to remain preserved outside active development.",
+      "removalCondition": "Remove only after resumed cancellation work preserves this implementation on main, or the maintainer explicitly authorizes discarding this backup."
+    }
+  ]
+}
