@@ -155,12 +155,21 @@ trait CatalogConnectionCoverageCases
             self::assertSame([], $systemView->primaryKey);
             self::assertFalse($systemView->reliableRowIdentity);
         }
-        foreach (
-            [
-                [['maxRows' => 1, 'maxBytes' => 1024], "SELECT 'abc' AS value UNION ALL SELECT 'def'"],
-                [['maxRows' => 2, 'maxBytes' => 2], "SELECT 'abc' AS value"],
-            ] as [$limits, $sql]
-        ) {
+        $budgetCases = [
+            [['maxRows' => 1, 'maxBytes' => 1024], "SELECT 'abc' AS value UNION ALL SELECT 'def'"],
+            [['maxRows' => 2, 'maxBytes' => 2], "SELECT 'abc' AS value"],
+        ];
+        if ($this->driver === 'postgres') {
+            $budgetCases[] = [
+                ['maxRows' => 199, 'maxBytes' => 1024],
+                'SELECT 1' . str_repeat(' UNION ALL SELECT 1', 199),
+            ];
+            $budgetCases[] = [
+                ['maxRows' => 2, 'maxBytes' => 7],
+                'SELECT ' . implode('+', array_fill(0, 200, '1')),
+            ];
+        }
+        foreach ($budgetCases as [$limits, $sql]) {
             try {
                 $this->catalog->readOnlyGridQuery($sql, [], $limits['maxRows'], $limits['maxBytes']);
                 self::fail('a grid query over its result budget returned partial success');
@@ -194,10 +203,6 @@ trait CatalogConnectionCoverageCases
             'SELECT 1; SELECT 2',
             'WITH changed AS (UPDATE user SET name=name WHERE seq=1 RETURNING seq) SELECT seq FROM changed',
         ];
-        if ($this->driver === 'postgres') {
-            $readOnlyRefusals[] = 'SELECT ' . rtrim(str_repeat('1 UNION ALL ', 200), ' UNION ALL ');
-            $readOnlyRefusals[] = 'SELECT ' . rtrim(str_repeat('1+', 200), '+');
-        }
         foreach ($readOnlyRefusals as $sql) {
             try {
                 $this->catalog->readOnlyGridQuery($sql);

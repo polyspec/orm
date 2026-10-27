@@ -357,6 +357,20 @@ final class CatalogConnectionSurfaceTest extends TestCase
                 self::assertSame(Code::CATALOG_LIMIT, $error->code_);
                 self::assertSame('CATALOG_LIMIT: result has more than 1 rows', $error->getMessage());
             }
+            $manyRows = 'SELECT 1' . str_repeat(' UNION ALL SELECT 1', 199);
+            try {
+                $catalog->readOnlyGridQuery($manyRows, [], 199);
+                self::fail('a 200-row grid over its row limit was accepted');
+            } catch (OrmException $error) {
+                self::assertSame(Code::CATALOG_LIMIT, $error->code_);
+            }
+            $longExpression = 'SELECT ' . implode('+', array_fill(0, 200, '1'));
+            try {
+                $catalog->readOnlyGridQuery($longExpression, [], 2, 7);
+                self::fail('a grid value over its byte limit was accepted');
+            } catch (OrmException $error) {
+                self::assertSame(Code::CATALOG_LIMIT, $error->code_);
+            }
             try {
                 $catalog->readOnlyGridQuery("SELECT 'too large' AS value", [], 10, 1);
                 self::fail('a grid result over the byte limit was accepted');
