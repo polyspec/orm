@@ -48,7 +48,7 @@ func run() (code int) {
 		return nil
 	})
 	check(err)
-	now := time.Date(2026, 9, 11, 0, 0, 0, 0, time.UTC)
+	now := "2026-09-11 00:00:00"
 
 	query := func() (*orm.Collection[*model.AuthorModel], error) {
 		return model.Author().Connect(db).

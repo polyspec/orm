@@ -108,23 +108,34 @@ func TestExtensionContractRejectsDrift(t *testing.T) {
 	find := func(d *document, id string) *rule {
 		return findRule(t, d, id)
 	}
+	rewrite := func(d *document, id, from, to string) {
+		r := find(d, id)
+		n := r.Native["php-extension"]
+		if !strings.Contains(n.Signature, from) {
+			t.Fatalf("%s PHP-extension signature %q does not contain drifted type fixture %q", id, n.Signature, from)
+		}
+		n.Signature = strings.Replace(n.Signature, from, to, 1)
+		r.Native["php-extension"] = n
+	}
 	for name, mutate := range map[string]func(*document){
 		"return type": func(d *document) {
-			r := find(d, "Dbspec.parse")
-			n := r.Native["php-extension"]
-			n.Signature = strings.Replace(n.Signature, "Polyspec\\Orm\\Dbspec\\Native\\ParseResult", "Polyspec\\Orm\\Dbspec\\ParseResult", 1)
-			r.Native["php-extension"] = n
+			rewrite(d, "Dbspec.parse", "Polyspec\\Orm\\Dbspec\\ParseResult", "Polyspec\\Orm\\Dbspec\\DriftedParseResult")
 		},
 		"argument": func(d *document) {
-			r := find(d, "Dbspec.emit")
-			n := r.Native["php-extension"]
-			n.Signature = strings.Replace(n.Signature, "Polyspec\\Orm\\Dbspec\\Native\\Document", "Polyspec\\Orm\\Dbspec\\Document", 1)
-			r.Native["php-extension"] = n
+			rewrite(d, "Dbspec.emit", "Polyspec\\Orm\\Dbspec\\Document", "Polyspec\\Orm\\Dbspec\\DriftedDocument")
 		},
 		"missing adapter": func(d *document) { delete(find(d, "Dbspec.render").Native, "php-extension") },
 		"unlisted adapter": func(d *document) {
-			r := find(d, "Model.gets")
-			r.Native["php-extension"] = r.Native["php"]
+			const id = "Dbspec.emit"
+			e := d.Extensions["php-extension"]
+			filtered := make([]string, 0, len(e.Rules)-1)
+			for _, rule := range e.Rules {
+				if rule != id {
+					filtered = append(filtered, rule)
+				}
+			}
+			e.Rules = filtered
+			d.Extensions["php-extension"] = e
 		},
 		"unknown rule": func(d *document) {
 			e := d.Extensions["php-extension"]
