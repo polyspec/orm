@@ -152,9 +152,7 @@ def extract(root: str, roots: list) -> dict:
             dirnames[:] = sorted(d for d in dirnames if d != "__pycache__")
             if packages is None or package in packages:
                 files.extend(
-                    os.path.join(directory, f)
-                    for f in filenames
-                    if f.endswith(".py")
+                    os.path.join(directory, f) for f in filenames if f.endswith(".py")
                 )
     symbols: dict = {}
     for file in sorted(files):

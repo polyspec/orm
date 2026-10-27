@@ -298,7 +298,9 @@ def model_query_collection_null_identity(item):
             raise AssertionError("a selected SQL NULL collection key must fail")
         finally:
             unsubscribe()
-        expect_equal(len(selects), 1, "the NULL identity error follows one physical SELECT")
+        expect_equal(
+            len(selects), 1, "the NULL identity error follows one physical SELECT"
+        )
     finally:
         db.close()
 
@@ -322,9 +324,7 @@ class CoverageTest(CoverageCase):
 
     # Requirements: PRT-35.
     def test_collection_null_identity(self):
-        self.each_item(
-            "collection_null_identity", model_query_collection_null_identity
-        )
+        self.each_item("collection_null_identity", model_query_collection_null_identity)
 
 
 if __name__ == "__main__":

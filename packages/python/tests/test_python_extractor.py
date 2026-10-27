@@ -21,6 +21,16 @@ EXTRACTOR = (
 class PythonExtractorTest(unittest.TestCase):
     deadline = testcase.PROCESS
 
+    def extract_package(self, root: str, package: str) -> dict:
+        result = subprocess.run(
+            [sys.executable, str(EXTRACTOR), root, package],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return json.loads(result.stdout)
+
     def extract(self, source: str) -> dict:
         with tempfile.TemporaryDirectory(prefix="interfaces-python-") as root:
             package = Path(root) / "pkg"
@@ -85,14 +95,7 @@ class PythonExtractorTest(unittest.TestCase):
             (source / "models" / "models.py").write_text(
                 "class GeneratedAuthor:\n    pass\n", encoding="utf-8"
             )
-            result = subprocess.run(
-                [sys.executable, str(EXTRACTOR), root, "packages/client/src"],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            self.assertEqual(result.returncode, 0, result.stderr)
-            symbols = json.loads(result.stdout)
+            symbols = self.extract_package(root, "packages/client/src")
             self.assertIn("packages/client/src/polyspec/orm/api.py::Client", symbols)
             self.assertNotIn(
                 "packages/client/src/polyspec/orm/models/models.py::GeneratedAuthor",
@@ -120,14 +123,7 @@ class PythonExtractorTest(unittest.TestCase):
             (source / "models.py").write_text(
                 "class GeneratedAuthor:\n    pass\n", encoding="utf-8"
             )
-            result = subprocess.run(
-                [sys.executable, str(EXTRACTOR), root, "packages/client/src"],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            self.assertEqual(result.returncode, 0, result.stderr)
-            symbols = json.loads(result.stdout)
+            symbols = self.extract_package(root, "packages/client/src")
             self.assertIn(
                 "packages/client/src/polyspec/orm/models/bench/models.py::GeneratedAuthor",
                 symbols,

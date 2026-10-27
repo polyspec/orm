@@ -12,9 +12,7 @@ from .test_ir_validate import FILE, ROOT
 
 
 def validation_model():
-    return model_of_documents(
-        parse_document_set([(ROOT / FILE["schema"]).read_text()])
-    )
+    return model_of_documents(parse_document_set([(ROOT / FILE["schema"]).read_text()]))
 
 
 class ManifestHashTest(unittest.TestCase):

@@ -56,12 +56,18 @@ def audit_lazy_baseline(dialect, original):
     for table in ("audit_record", "audited_note"):
         if dialect == "mysql":
             if table not in baseline:
-                raise AssertionError(f"MySQL counter snapshot has no {table} AUTO_INCREMENT")
+                raise AssertionError(
+                    f"MySQL counter snapshot has no {table} AUTO_INCREMENT"
+                )
             baseline[table].update(value="1", called=True)
         elif dialect == "postgres":
-            sequences = [counter for counter in baseline.values() if counter["owner"] == table]
+            sequences = [
+                counter for counter in baseline.values() if counter["owner"] == table
+            ]
             if not sequences:
-                raise AssertionError(f"PostgreSQL counter snapshot has no sequence owned by {table}")
+                raise AssertionError(
+                    f"PostgreSQL counter snapshot has no sequence owned by {table}"
+                )
             for counter in sequences:
                 counter.update(value="1", called=False)
         elif dialect == "sqlite":
@@ -133,7 +139,15 @@ class Run:
 
     def _counters(self, dsn):
         result = subprocess.run(
-            ["node", "tests/conformance/check/main.mts", "counters", "--driver", self.dialect, "--dsn", dsn],
+            [
+                "node",
+                "tests/conformance/check/main.mts",
+                "counters",
+                "--driver",
+                self.dialect,
+                "--dsn",
+                dsn,
+            ],
             cwd=REPOSITORY_ROOT,
             capture_output=True,
             text=True,

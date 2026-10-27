@@ -57,5 +57,7 @@ class SqliteShadowColumnsTest(unittest.TestCase):
             if item["kind"] == "column" and item["table"] in shadow_tables
         ]
         self.assertEqual([], shadow_columns)
+
+
 if __name__ == "__main__":
     testcase.main()
