@@ -42,6 +42,7 @@ require_once dirname(__DIR__, 2) . '/php/tests/CoverageRequestHookTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/AggregateNumericTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DecimalModelTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/IdentityLoadTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/AddTablesAndColumnsTest.php';
 require_once __DIR__ . '/model-weak-caller.php';
 require_once __DIR__ . '/AuditLazyFakePdo.php';
 require_once __DIR__ . '/AuditLazyFakeStatement.php';

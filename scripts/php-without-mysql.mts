@@ -10,7 +10,10 @@ import { readFileSync, realpathSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 const root = realpathSync(resolve(import.meta.dirname, '..'));
-const EXTENSIONS = ['pdo', 'pdo_sqlite', 'openssl', 'zlib', 'ctype', 'mbstring', 'libxml', 'dom', 'xml', 'xmlwriter', 'tokenizer'];
+// PDO_PGSQL supplies the parent class of the optional Postgres adapter referenced by the Composer class map.
+const EXTENSIONS = [
+  'pdo', 'pdo_sqlite', 'pdo_pgsql', 'openssl', 'zlib', 'ctype', 'mbstring', 'libxml', 'dom', 'xml', 'xmlwriter', 'tokenizer',
+];
 const DRIVERS = ['mysqlnd', 'pdo_mysql', 'mysqli'];
 
 const modules = spawnSync('php', ['-n', '-m'], { encoding: 'utf8' });

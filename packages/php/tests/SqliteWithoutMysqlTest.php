@@ -2,8 +2,8 @@
 
 // The sqlite path loads no MySQL dialect class (N17): a child process with php -n runs the sqlite path and an
 // autoloader that refuses orm's MySQL dialect classes. The child also asserts that a sqlite:// DSN selects the sqlite
-// dialect and the sqlite PDO driver. The MySQL drivers may be compiled into the PHP that runs the case; the case proves
-// only the class-load claim.
+// dialect and SQLite PDO driver, and rejects MySQL driver modules. The launcher refuses a PHP whose MySQL drivers are
+// compiled in because php -n cannot unload them.
 declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
@@ -15,13 +15,25 @@ use PHPUnit\Framework\TestCase;
 #[Medium]
 final class SqliteWithoutMysqlTest extends TestCase
 {
-    // The child program: it refuses a MySQL driver, then runs the SQLite case with the autoloader, the bench install
+    // The child program refuses MySQL driver modules, then runs the SQLite case with the autoloader, the bench install
     // helper and the work directory it is given.
     private const CHILD = <<<'PHP'
         $autoload = $argv[1];
         $work = $argv[2];
         require $autoload;
         require $argv[3];
+        $mysqlModules = array_values(array_filter(
+            ['mysqlnd', 'pdo_mysql', 'mysqli'],
+            static fn(string $module): bool => extension_loaded($module)
+        ));
+        if ($mysqlModules !== []) {
+            fwrite(STDERR, 'php -n loaded MySQL modules: ' . implode(', ', $mysqlModules));
+            exit(7);
+        }
+        if (!extension_loaded('pdo_sqlite') || !in_array('sqlite', PDO::getAvailableDrivers(), true)) {
+            fwrite(STDERR, 'php -n must load pdo_sqlite for the SQLite-only case');
+            exit(8);
+        }
         // orm's MySQL dialect classes: a load of one of them fails the child, before its code runs. It is registered
         // after the Composer loader, which prepends itself, so this guard sees every class load first.
         $mysqlDialect = ['Polyspec\\Orm\\Dbspec\\MysqlCatalog'];
@@ -97,7 +109,7 @@ final class SqliteWithoutMysqlTest extends TestCase
             fclose($pipes[1]);
             fclose($pipes[2]);
             $status = proc_close($process);
-            self::assertSame(0, $status, "the child exited with $status: $errors");
+            self::assertSame(0, $status, "the child exited with $status: stderr: $errors; stdout: $output");
             self::assertSame('without-mysql', $output, "the child read the name $output");
         } finally {
             foreach (glob("$work/*") ?: [] as $file) {

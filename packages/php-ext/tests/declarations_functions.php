@@ -112,6 +112,12 @@ function declarations(array $classes, bool $public): array
         )
             . ' implements ' . implode(',', $interfaces)];
         foreach ($class->getReflectionConstants() as $constant) {
+            // PDO driver classes inherit constants from whichever optional PDO drivers this PHP loaded. Compare only
+            // constants declared by the class itself; the parent class is checked by name, and its installed driver
+            // set is environment-specific.
+            if ($constant->getDeclaringClass()->getName() !== $name) {
+                continue;
+            }
             $members["$name::{$constant->getName()}"] = $modifiers($constant->getModifiers()) . ' const = '
                 . json_encode($constant->getValue(), JSON_THROW_ON_ERROR);
         }

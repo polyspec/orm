@@ -11,4 +11,10 @@ use Polyspec\Orm\Tests\MarkdownTest;
 #[\PHPUnit\Framework\Attributes\Large]
 final class MarkdownTestExtensionTest extends MarkdownTest
 {
+    public function testBindMessageVectors(): void
+    {
+        // In extension mode, exercise the same vectors through the public Markdown request boundary instead of the
+        // PHP library's private Markdown::param helper. testPublicBindMessageVectors runs that complete vector set.
+        $this->testPublicBindMessageVectors();
+    }
 }
