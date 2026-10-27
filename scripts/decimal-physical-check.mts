@@ -76,10 +76,17 @@ export function observed(language: string, database: string, output: string): bo
     const wanted = ['round_trip', 'setters'].map(name => `PASS __main__.DecimalModelDbTest.test_${name}`);
     return JSON.stringify(results) === JSON.stringify(wanted);
   }
-  // TypeScript tests write a RUN and PASS line for each case. All the expected cases must pass, and there must be no other result line.
+  // The TypeScript owner uses node:test's spec reporter. Match both named pass events and the complete summary;
+  // a zero exit alone would also accept a filtered or empty run.
   const cases = ['setters', 'round_trip'].map(name => `decimal_db/${database}/${name}`);
-  const results = output.split('\n').filter((line: string) => /^(?:PASS|FAIL) /.test(line)).map((line: string) => line.split(' ').slice(0, 2).join(' '));
-  return JSON.stringify(results) === JSON.stringify(cases.map(name => `PASS ${name}`));
+  const results = output.split('\n').filter((line: string) => /^[✔✖] /.test(line));
+  const names = results.map(line => /^[✔✖] (.*?) \(\d+(?:\.\d+)?ms\)$/.exec(line)?.[1] ?? '');
+  return results.length === cases.length && JSON.stringify(names) === JSON.stringify(cases)
+    && results.every(line => line.startsWith('✔ '))
+    && /^ℹ tests 2$/m.test(output)
+    && /^ℹ pass 2$/m.test(output)
+    && /^ℹ fail 0$/m.test(output)
+    && /^ℹ skipped 0$/m.test(output);
 }
 
 async function main(): Promise<void> {

@@ -65,6 +65,24 @@ caseTest('matches the exact PHP decimal PHPUnit class and data-set events', COMP
   assert.equal(observed('php', database, `${output}\n##teamcity[testFailed name='testSetters']`), false);
 });
 
+caseTest('matches both exact TypeScript decimal node:test pass events', COMPUTE, () => {
+  const output = [
+    '✔ decimal_db/mysql/setters (0.317458ms)',
+    '✔ decimal_db/mysql/round_trip (0.0525ms)',
+    'ℹ tests 2',
+    'ℹ suites 0',
+    'ℹ pass 2',
+    'ℹ fail 0',
+    'ℹ cancelled 0',
+    'ℹ skipped 0',
+  ].join('\n');
+  assert.equal(observed('typescript', 'mysql', output), true);
+  assert.equal(observed('typescript', 'mysql', output.replace('ℹ fail 0', 'ℹ fail 1')), false);
+  assert.equal(observed('typescript', 'mysql', output.replace('✔ decimal_db/mysql/round_trip', '✖ decimal_db/mysql/round_trip')), false);
+  assert.equal(observed('typescript', 'mysql', output.replace('ℹ tests 2', 'ℹ tests 1')), false);
+  assert.equal(observed('typescript', 'mysql', `${output}\n✔ decimal_db/mysql/unexpected (0.1ms)`), false);
+});
+
 caseTest('redacts the DSN from command failures', COMPUTE, async () => {
   const cause = new TypeError('failed for dsn-secret');
   cause.stack = `${cause.stack}\ncommand context dsn-secret`;
