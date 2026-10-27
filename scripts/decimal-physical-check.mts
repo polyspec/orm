@@ -73,7 +73,7 @@ export function observed(language: string, database: string, output: string): bo
   // The Python test uses unittest's TextTestRunner, which reports each named test and a complete summary.
   if (language === 'python') {
     const cases = ['round_trip', 'setters'];
-    const results = output.split(/\r?\n/).filter(line => /^test_/.test(line));
+    const results = output.split(/\r?\n/).filter(line => line.startsWith('test_'));
     const names = results.map(line => /^test_(round_trip|setters) \(__main__\.DecimalModelDbTest\.test_\1\) \.\.\. (ok)$/.exec(line)?.[1] ?? '');
     return results.length === cases.length && JSON.stringify(names) === JSON.stringify(cases)
       && /^Ran 2 tests in \d+(?:\.\d+)?s$/m.test(output)
