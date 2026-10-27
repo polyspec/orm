@@ -8,13 +8,13 @@ import { fileURLToPath } from 'node:url';
 import { isolatedEnvironment } from '../environment.mts';
 
 const checkout = fileURLToPath(new URL('../../', import.meta.url));
-// The fixture lives under var/ of the checkout, so the packages of its node_modules resolve from it.
-const scratch = path.join(checkout, 'var/docs-fixture');
+// Each fixture lives under var/ of the checkout, so packages in the checkout's node_modules resolve from it.
+const scratch = path.join(checkout, 'var');
 
 /** runFixture runs `script` (a path under the fixture) with the files of `files` written beneath the fixture root. */
 export function runFixture(script: string, files: Record<string, string>, env: Record<string, string>): SpawnSyncReturns<string> {
   mkdirSync(scratch, { recursive: true });
-  const dir = mkdtempSync(path.join(scratch, 'case-'));
+  const dir = mkdtempSync(path.join(scratch, 'docs-fixture-'));
   try {
     cpSync(path.join(checkout, 'scripts/docs'), path.join(dir, 'scripts/docs'), { recursive: true });
     cpSync(path.join(checkout, 'tests/testcase.mts'), path.join(dir, 'tests/testcase.mts'));
@@ -23,6 +23,7 @@ export function runFixture(script: string, files: Record<string, string>, env: R
       writeFileSync(path.join(dir, name), text);
     }
     const fixtureEnv = Object.fromEntries(Object.entries(env).map(([key, value]) => [key, value.replaceAll('{dir}', dir)]));
+    fixtureEnv.GOMODCACHE ??= path.join(dir, 'mod');
     return spawnSync(process.execPath, [path.join(dir, script)], { cwd: dir, encoding: 'utf8', env: isolatedEnvironment(fixtureEnv), timeout: 60_000 });
   } finally {
     rmSync(dir, { recursive: true, force: true });

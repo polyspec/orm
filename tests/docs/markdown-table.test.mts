@@ -54,7 +54,7 @@ caseTest('an escaped pipe in a spec cell stays in its cell, so the row of the ta
     [`mod/github.com/polyspec/flowmark/packages/go@${version}/docs/spec/60-dialect.ko.md`]: spec,
     'docs/spec/dialects.md': table('| Surface | Result | Rule |'),
     'docs/spec/dialects.ko.md': table('| 표면 | 결과 | 규칙 |'),
-  }, { GOMODCACHE: '{dir}/mod' });
+  }, { GOMODCACHE: '{dir}/mod', PATH: '{dir}' });
   assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
 });
 

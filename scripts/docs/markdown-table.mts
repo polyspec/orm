@@ -22,7 +22,8 @@ const version = (await readFile(path.join(root, 'tests/markdown/flowmark.version
 const revision = version.split('-').pop();
 // The module source of the pinned flowmark, which make orm-install-flowmark downloads into the module cache; a check
 // downloads nothing, so a missing module names the install target instead of fetching.
-const cache = execFileSync('go', ['env', 'GOMODCACHE'], { cwd: root, encoding: 'utf8' }).trim();
+const cache = process.env.GOMODCACHE
+  || execFileSync('go', ['env', 'GOMODCACHE'], { cwd: root, encoding: 'utf8' }).trim();
 const module = { Dir: path.join(cache, 'github.com', 'polyspec', 'flowmark', 'packages', `go@${version}`) };
 const specRoot = process.env.FLOWMARK_SOURCE === undefined ? module.Dir : flowmarkSpecRoot(version);
 if (!existsSync(specRoot)) throw new Error(`${specRoot} is missing; run make orm-install-flowmark, which downloads the module and checks out the source of tests/markdown/flowmark.version`);
