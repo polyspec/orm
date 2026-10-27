@@ -1,14 +1,15 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mts) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-26T00:00:00Z",
+  "reviewed": "2026-10-27T01:05:22.929Z",
   "locks": [
     {
       "lock": "package-lock.json",
-      "sha256": "a1e31b38c6cdd9237489c3d1335b311598d2e3b78930183fb4a158155ee02a7a",
+      "sha256": "98e3d78e0e123147d9505c937290123e453c897dd69d3db32bc1fb1017244b9d",
       "advisories": [
         {
           "package": "@azure/msal-node",
+          "nodePath": "node_modules/@azure/msal-node",
           "version": "6.0.1",
           "id": "1243111",
           "severity": "high",
@@ -24,7 +25,7 @@
     },
     {
       "lock": "composer.lock",
-      "sha256": "f5d6c89ee9cfc21fc5c8da91550e5cbe127583911d35326eec8241c36c114670",
+      "sha256": "8e5dba1713556a5b974e126f068a876046925510e2fb799f52657d8d643c10e9",
       "advisories": []
     },
     {
@@ -34,32 +35,32 @@
     },
     {
       "lock": "packages/python/pylock.toml",
-      "sha256": "3eecd40691b0182af16ed03f2f1ca001f675425163fea0ee2b7b9979d22ce399",
+      "sha256": "2fd5766579d8ab4c74da786eeec8c88f38a4a906de7f29fd77839e92d8e1e7f0",
       "advisories": []
     },
     {
       "lock": "examples/go.sum",
-      "sha256": "490489fee9a8c18911d6c50658de08c876fd2810e283c8bab07202ae90cad76f",
+      "sha256": "5f6ac354bad8f6fa24d7b6ce8ed503a03e89613c42b2fd9a2ccb8b0e0c4ba93e",
       "advisories": []
     },
     {
       "lock": "packages/go/go.sum",
-      "sha256": "9545122fa0eb0ffd811a65adba688aa6b1bff4acde4d97e3212f11a07e145ab9",
+      "sha256": "ff8f6ce794655031babd8e4a57388e896daa0f8108f6817b1bc64cf88f541825",
       "advisories": []
     },
     {
       "lock": "tests/go.sum",
-      "sha256": "1d33e009a1b3ffc97c82b50d7a18d5546e410d29b57bd5ed92f834255b04bb66",
+      "sha256": "626b49091fa9a03d0d62f61d09c0aad9293dbe31f9f05c33fd6ebee4363ebf94",
       "advisories": []
     },
     {
       "lock": "benchmarks/rust/Cargo.lock",
-      "sha256": "d685da2e25557cddfe8f1432f0b9c52420781ab9ad3b3a852d6daae63b6048c8",
+      "sha256": "2f051d48dea68b2eb23b3c7cb4eabe2d30166115350d52f1a6ea10c9c51087cf",
       "advisories": []
     },
     {
       "lock": "packages/rust/Cargo.lock",
-      "sha256": "10d03be6a3e93422c68450536a0b70f0c5f3bc607bed9b07714af6a00b240864",
+      "sha256": "0bba39818d09b23723593c3990ebc45e46336b50e52fb878b7e7a358b62c4cf4",
       "advisories": []
     },
     {
@@ -102,7 +103,7 @@
       "manifest": "package.json",
       "package": "markdown-it",
       "version": "14.3.3",
-      "latest": "14.3.3"
+      "latest": "15.0.3"
     },
     {
       "ecosystem": "npm",
@@ -144,7 +145,7 @@
       "manifest": "package.json",
       "package": "oxc-parser",
       "version": "0.154.0",
-      "latest": "0.154.0"
+      "latest": "0.155.0"
     },
     {
       "ecosystem": "npm",
@@ -179,7 +180,7 @@
       "manifest": "package.json",
       "package": "unbash",
       "version": "5.1.0",
-      "latest": "5.1.0"
+      "latest": "6.0.1"
     },
     {
       "ecosystem": "npm",
@@ -221,7 +222,7 @@
       "manifest": "packages/dbspec-codemirror/package.json",
       "package": "@codemirror/view",
       "version": "6.43.14",
-      "latest": "6.43.14"
+      "latest": "6.43.15"
     },
     {
       "ecosystem": "npm",
@@ -256,14 +257,14 @@
       "manifest": "packages/dbspec-lsp/package.json",
       "package": "vscode-languageserver",
       "version": "10.1.2",
-      "latest": "10.1.2"
+      "latest": "11.0.0"
     },
     {
       "ecosystem": "npm",
       "manifest": "packages/dbspec-lsp/package.json",
       "package": "vscode-languageserver-textdocument",
       "version": "1.0.15",
-      "latest": "1.0.15"
+      "latest": "1.0.16"
     },
     {
       "ecosystem": "npm",
@@ -277,7 +278,7 @@
       "manifest": "packages/dbspec-lsp/package.json",
       "package": "vscode-jsonrpc",
       "version": "9.0.3",
-      "latest": "9.0.3"
+      "latest": "10.0.0"
     },
     {
       "ecosystem": "npm",
@@ -319,21 +320,21 @@
       "manifest": "packages/dbspec-vscode/package.json",
       "package": "vscode-jsonrpc",
       "version": "9.0.3",
-      "latest": "9.0.3"
+      "latest": "10.0.0"
     },
     {
       "ecosystem": "npm",
       "manifest": "packages/dbspec-vscode/package.json",
       "package": "vscode-languageclient",
       "version": "10.1.2",
-      "latest": "10.1.2"
+      "latest": "11.0.0"
     },
     {
       "ecosystem": "npm",
       "manifest": "packages/dbspec-vscode/package.json",
       "package": "vscode-languageserver",
       "version": "10.1.2",
-      "latest": "10.1.2"
+      "latest": "11.0.0"
     },
     {
       "ecosystem": "npm",
@@ -354,7 +355,7 @@
       "manifest": "packages/ts/package.json",
       "package": "oxc-parser",
       "version": "0.154.0",
-      "latest": "0.154.0"
+      "latest": "0.155.0"
     },
     {
       "ecosystem": "npm",
@@ -396,7 +397,7 @@
       "manifest": "packages/ts/testing/interfaces/typescript/package.json",
       "package": "typescript",
       "version": "6.0.3",
-      "latest": "6.0.3"
+      "latest": "7.0.2"
     },
     {
       "ecosystem": "composer",
@@ -423,8 +424,8 @@
       "ecosystem": "composer",
       "manifest": "packages/php/composer.json",
       "package": "polyspec/ordered-json",
-      "version": "0.0.9",
-      "latest": "0.0.9"
+      "version": "0.0.10",
+      "latest": "0.0.10"
     },
     {
       "ecosystem": "composer",
@@ -543,14 +544,14 @@
       "manifest": "mise.toml",
       "package": "ruff",
       "version": "0.17.1",
-      "latest": "0.17.2"
+      "latest": "0.17.3"
     },
     {
       "ecosystem": "go",
       "manifest": "examples/go.mod",
-      "package": "github.com/go-sql-driver/mysql",
-      "version": "v1.10.1",
-      "latest": "v1.10.1"
+      "package": "github.com/polyspec/orm/packages/go",
+      "version": "v0.0.18",
+      "latest": "v0.0.18"
     },
     {
       "ecosystem": "go",
@@ -577,8 +578,15 @@
       "ecosystem": "go",
       "manifest": "packages/go/go.mod",
       "package": "github.com/polyspec/ordered-json/packages/go",
-      "version": "v0.0.9",
-      "latest": "v0.0.9"
+      "version": "v0.0.10",
+      "latest": "v0.0.10"
+    },
+    {
+      "ecosystem": "go",
+      "manifest": "packages/go/go.mod",
+      "package": "github.com/santhosh-tekuri/jsonschema/v6",
+      "version": "v6.0.3",
+      "latest": "v6.0.3"
     },
     {
       "ecosystem": "go",
@@ -611,23 +619,9 @@
     {
       "ecosystem": "go",
       "manifest": "tests/go.mod",
-      "package": "github.com/go-sql-driver/mysql",
-      "version": "v1.10.1",
-      "latest": "v1.10.1"
-    },
-    {
-      "ecosystem": "go",
-      "manifest": "tests/go.mod",
-      "package": "github.com/jackc/pgx/v5",
-      "version": "v5.11.0",
-      "latest": "v5.11.0"
-    },
-    {
-      "ecosystem": "go",
-      "manifest": "tests/go.mod",
-      "package": "github.com/santhosh-tekuri/jsonschema/v6",
-      "version": "v6.0.3",
-      "latest": "v6.0.3"
+      "package": "github.com/polyspec/orm/packages/go",
+      "version": "v0.0.18",
+      "latest": "v0.0.18"
     },
     {
       "ecosystem": "go",
@@ -642,13 +636,6 @@
       "package": "golang.org/x/tools",
       "version": "v0.52.0",
       "latest": "v0.52.0"
-    },
-    {
-      "ecosystem": "go",
-      "manifest": "tests/go.mod",
-      "package": "modernc.org/sqlite",
-      "version": "v1.60.1",
-      "latest": "v1.61.0"
     }
   ],
   "vcs": []

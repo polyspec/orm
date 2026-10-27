@@ -18,7 +18,7 @@ test-faults = []
 
 [dependencies]
 polyspec-orm-schema = { version = "=0.0.18", path = "../schema" }
-ordered-json = { package = "polyspec-ordered-json", version = ">=0.0.9, <0.1.0", git = "https://github.com/polyspec/ordered-json.git", tag = "v0.0.9" }
+ordered-json = { package = "polyspec-ordered-json", version = ">=0.0.10, <0.1.0", git = "https://github.com/polyspec/ordered-json.git", tag = "v0.0.10" }
 sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres", "sqlite", "tls-rustls-ring-native-roots", "chrono", "rust_decimal", "json", "ipnet"] }
 # The SQLite library bundled with sqlx. The connection does not ask for that version via SQL; it reads it from this crate.
 libsqlite3-sys = "0.37"

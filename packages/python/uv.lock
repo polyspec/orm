@@ -181,10 +181,10 @@ wheels = [
 
 [[package]]
 name = "polyspec-ordered-json"
-version = "0.0.9"
-source = { url = "https://github.com/polyspec/ordered-json/releases/download/v0.0.9/polyspec_ordered_json-0.0.9-py3-none-any.whl" }
+version = "0.0.10"
+source = { url = "https://github.com/polyspec/ordered-json/releases/download/v0.0.10/polyspec_ordered_json-0.0.10-py3-none-any.whl" }
 wheels = [
-    { url = "https://github.com/polyspec/ordered-json/releases/download/v0.0.9/polyspec_ordered_json-0.0.9-py3-none-any.whl", hash = "sha256:bc4d26a9d5dcd42a72d7bb40f6b7c7dc749c710d3c60f2e9f4fe3e733102f01d" },
+    { url = "https://github.com/polyspec/ordered-json/releases/download/v0.0.10/polyspec_ordered_json-0.0.10-py3-none-any.whl", hash = "sha256:4574bf88674587432f911871935f4e656963796e195a7bd1bddd289a84eb5307" },
 ]
 
 [[package]]
@@ -211,7 +211,7 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "cryptography", specifier = "==50.0.2" },
-    { name = "polyspec-ordered-json", url = "https://github.com/polyspec/ordered-json/releases/download/v0.0.9/polyspec_ordered_json-0.0.9-py3-none-any.whl" },
+    { name = "polyspec-ordered-json", url = "https://github.com/polyspec/ordered-json/releases/download/v0.0.10/polyspec_ordered_json-0.0.10-py3-none-any.whl" },
     { name = "psycopg", specifier = "==3.3.6" },
     { name = "psycopg-binary", specifier = "==3.3.6" },
     { name = "pymysql", specifier = "==1.2.3" },

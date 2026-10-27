@@ -11,8 +11,8 @@ requires-python = ">=3.14"
 # Wheels support CPython only (docs/operations/packaging.md, Python client release). The toolchain is python-build-standalone CPython.
 classifiers = ["Programming Language :: Python :: Implementation :: CPython"]
 dependencies = [
-    # Python wheel of ordered-json (release v0.0.9). The polyspec dependency is a direct reference to the release asset and its sha256 (docs/operations/packaging.md, kit K49).
-    "polyspec-ordered-json @ https://github.com/polyspec/ordered-json/releases/download/v0.0.9/polyspec_ordered_json-0.0.9-py3-none-any.whl#sha256=bc4d26a9d5dcd42a72d7bb40f6b7c7dc749c710d3c60f2e9f4fe3e733102f01d",
+    # Python wheel of ordered-json (release v0.0.10). The polyspec dependency is a direct reference to the release asset and its sha256 (docs/operations/packaging.md, kit K49).
+    "polyspec-ordered-json @ https://github.com/polyspec/ordered-json/releases/download/v0.0.10/polyspec_ordered_json-0.0.10-py3-none-any.whl#sha256=4574bf88674587432f911871935f4e656963796e195a7bd1bddd289a84eb5307",
     "cryptography==50.0.2",
     "PyMySQL==1.2.3",
     # Same install as psycopg[binary]==3.3.6: the extra binary requires psycopg-binary==3.3.6.

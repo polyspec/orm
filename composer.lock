@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a9fe0e5b3d34628cd2e26ee77b2c4a05",
+    "content-hash": "cbce94438ed53bea3e565668dcd9d6af",
     "packages": [
         {
             "name": "nikic/php-parser",
@@ -65,11 +65,11 @@
         },
         {
             "name": "polyspec/ordered-json",
-            "version": "0.0.9",
+            "version": "0.0.10",
             "dist": {
                 "type": "zip",
-                "url": "https://github.com/polyspec/ordered-json/releases/download/v0.0.9/polyspec-ordered-json-php-0.0.9.zip",
-                "shasum": "5f93a2c0df5967163801cb3d4d087e44834bb456"
+                "url": "https://github.com/polyspec/ordered-json/releases/download/v0.0.10/polyspec-ordered-json-php-0.0.10.zip",
+                "shasum": "efa11f67aa6191755cdf716396ef543ab1e8e412"
             },
             "require": {
                 "ext-json": "*",
@@ -95,7 +95,7 @@
             "dist": {
                 "type": "path",
                 "url": "packages/php",
-                "reference": "292d2abdcf6552bc0def6f703d6283ee21f65c15"
+                "reference": "a04c2e88e4dd611eca2fbc5cb09b1cec78ceb90c"
             },
             "require": {
                 "composer-runtime-api": "^2.2",
@@ -103,17 +103,21 @@
                 "ext-pdo": "*",
                 "ext-zlib": "*",
                 "php": ">=8.4",
-                "polyspec/ordered-json": "0.0.9",
+                "polyspec/ordered-json": "0.0.10",
                 "purrphp/yaml": "1.0.0-p1",
                 "symfony/yaml": "^8.1"
             },
             "suggest": {
                 "ext-openssl": "host-side AES on PostgreSQL and SQLite (aes columns)",
                 "ext-pdo_mysql": "mysql:// DSNs",
-                "ext-pdo_pgsql": "postgres:// DSNs",
+                "ext-pdo_pgsql": "postgres:// PDO handle type and DSNs",
                 "ext-pdo_sqlite": "sqlite:// DSNs",
+                "ext-pgsql": "postgres:// query, notification, and in-flight cancellation support",
                 "ext-polyspec_orm": "the dbspec surface and the error codes of this client implemented in C under the same class names (packages/php-ext)"
             },
+            "bin": [
+                "bin/orm-sqlite-cancel-build.php"
+            ],
             "type": "library",
             "autoload": {
                 "psr-4": {
@@ -142,7 +146,7 @@
             "dist": {
                 "type": "path",
                 "url": "packages/php-gen",
-                "reference": "506573a93eeaee33c0e509ff555d5ec84e26f03b"
+                "reference": "b0c3015fa89901e66faf10b9a46401d691aff4fc"
             },
             "require": {
                 "composer-runtime-api": "^2.2",
@@ -157,6 +161,11 @@
             "autoload": {
                 "psr-4": {
                     "Polyspec\\Orm\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Polyspec\\Orm\\Tests\\": "tests/"
                 }
             },
             "license": [
