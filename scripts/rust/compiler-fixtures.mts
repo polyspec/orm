@@ -33,7 +33,7 @@ const toolchain = process.argv[2];
 const target = process.env.CARGO_TARGET_DIR;
 const features = process.env.ORM_RUST_TEST_FEATURES;
 const checkout = resolve(process.cwd());
-const expectedTarget = resolve(checkout, 'packages/rust/target');
+const expectedTarget = resolve(dirname(manifest), 'target');
 if (typeof toolchain !== 'string' || toolchain === '' || typeof features !== 'string' || features === ''
   || checkout !== root || typeof target !== 'string' || target === '' || resolve(target) !== expectedTarget) {
   throw new Error('compiler fixtures need the pinned Rust toolchain, test features, and this checkout’s CARGO_TARGET_DIR; run make rust-compiler-fixtures-check');

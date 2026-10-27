@@ -415,7 +415,7 @@ caseTest('every PHPUnit run of the Makefile goes through run-tests', COMPUTE, ()
   assert.deepEqual(text('Makefile').split('\n').filter(line => direct.test(line)), []);
 });
 
-caseTest('the PHP extension suite and codec output comparison use their owning inputs', COMPUTE, () => {
+caseTest('the PHP extension suite and its profiled native cases use their owning inputs', COMPUTE, () => {
   const makefile = text('Makefile');
   const filterText = /^PHP_EXTENSION_NATIVE_CASES = (.+)$/m.exec(makefile)?.[1];
   assert.ok(filterText, 'the extension suite declares its native test selection');
@@ -428,12 +428,46 @@ caseTest('the PHP extension suite and codec output comparison use their owning i
       `${runtime} output vectors need the writers of codec-check`,
     );
   }
+  for (const test of [
+    'Polyspec\\Orm\\Extension\\Tests\\MermaidErrorBoundaryTest::testCatalogBuildFailureBecomesDiagnostic',
+    'Polyspec\\Orm\\Extension\\Tests\\MermaidErrorBoundaryTest::testUnexpectedNativeCatalogErrorKeepsIdentity',
+    'Polyspec\\Orm\\Extension\\Tests\\ParentSlotExpansionNativeTest::testBareDollarInLiteralIsPreserved',
+    'Polyspec\\Orm\\Extension\\Tests\\MarkdownConformanceNativeTest::testMarkdownConformance "insert_one"',
+  ]) {
+    assert.ok(!nativeCases.test(test), `${test} requires its dedicated native-test profile`);
+  }
   assert.match(makefile, /test-php-ext: export CASES \?= \$\(PHP_EXTENSION_NATIVE_CASES\)/);
   assert.match(makefile, /^codec-check\/compare: .*build-php-ext$/m);
   assert.match(
     makefile,
     /ORM_CODEC_OUT=\$\(CODEC_OUT\) env ORM_PHP_MODE=extension .*--configuration packages\/php-ext\/phpunit\.xml\.dist --filter 'test\(Go\|Rust\|Typescript\|Python\)Output' packages\/php-ext\/tests\/CodecVectorsExtensionTest\.php/,
   );
+  for (const [target, source] of [
+    ['mermaid-error-php-extension-check', 'packages/php-ext/tests/MermaidErrorBoundaryTest.php'],
+    ['parent-slot-expansion-php-extension-check', 'packages/php-ext/tests/ParentSlotExpansionNativeTest.php'],
+  ]) {
+    const checkTargets = /^CHECK_TARGETS = (.+)$/m.exec(makefile)?.[1]?.split(/\s+/) ?? [];
+    assert.ok(checkTargets.includes(target), `${target} must remain in CHECK_TARGETS`);
+    const start = makefile.indexOf(`${target}:`);
+    assert.notEqual(start, -1, `${target} must remain a repository check target`);
+    const nextTarget = makefile.indexOf('\n\n', start);
+    const recipe = makefile.slice(start, nextTarget === -1 ? undefined : nextTarget);
+    assert.ok(recipe.includes('native-test'), `${target} must build the test-only module`);
+    assert.ok(recipe.includes(source), `${target} must run ${source}`);
+  }
+  const dbspecTargets = /^CI_TARGETS_dbspec = (.+)$/m.exec(makefile)?.[1]?.split(/\s+/) ?? [];
+  assert.ok(dbspecTargets.includes('mermaid-error-php-extension-check'));
+  assert.ok(dbspecTargets.includes('parent-slot-expansion-php-extension-check'));
+  const markdownTarget = makefile.indexOf('markdown-conformance-check/php-extension:');
+  assert.notEqual(markdownTarget, -1, 'the markdown extension conformance target must remain registered');
+  const checkTargets = /^CHECK_TARGETS = (.+)$/m.exec(makefile)?.[1]?.split(/\s+/) ?? [];
+  const conformanceTargets = /^CI_TARGETS_conformance = (.+)$/m.exec(makefile)?.[1]?.split(/\s+/) ?? [];
+  assert.ok(checkTargets.includes('markdown-conformance-check'));
+  assert.ok(conformanceTargets.includes('markdown-conformance-check'));
+  const markdownRecipeEnd = makefile.indexOf('\n\n', markdownTarget);
+  const markdownRecipe = makefile.slice(markdownTarget, markdownRecipeEnd === -1 ? undefined : markdownRecipeEnd);
+  assert.ok(markdownRecipe.includes('FLOWMARK=$(FLOWMARK)'));
+  assert.ok(markdownRecipe.includes('packages/php-ext/tests/MarkdownConformanceNativeTest.php'));
 });
 
 caseTest('the SQLite Rust test recipe gives Kit one libtest thread option', PROCESS, async () => {
@@ -1177,6 +1211,7 @@ caseTest('a run command names the Rust target directory through CARGO_TARGET_DIR
     'tests/b/main.go:1 names packages/rust/target instead of CARGO_TARGET_DIR',
   ]);
   assert.deepEqual(targetPathErrors({ 'tests/x/main.go': '\t// cargo builds into packages/rust/target by default\n' }), []);
+  assert.deepEqual(targetPathErrors({ 'scripts/rust/compiler-fixtures.mts': text('scripts/rust/compiler-fixtures.mts') }), []);
   assert.ok(runFile('contracts/features.json') && runFile('tests/dbspec/compare/runners.mts'));
   assert.ok(!runFile('examples/complex/rust/main.rs') && !runFile('packages/rust/README.md') && !runFile('scripts/repo/target.mts'));
 });

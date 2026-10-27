@@ -680,7 +680,7 @@ export function ciMakeErrors(workflows: Record<string, string>): string[] {
   for (const [path, workflow] of Object.entries(workflows)) {
     for (const step of workflowSteps(workflow)) {
       if (!step.run) continue;
-      if (CI_RUN_EXCEPTIONS[path]?.[step.name] === step.run.trimEnd()) continue;
+      if (CI_RUN_EXCEPTIONS[path]?.[step.name]?.trimEnd() === step.run.trimEnd()) continue;
       for (const segment of runSegments(step))
         if (!/^make(\s|$)/.test(segment)) errors.push(`${path} step "${step.name}" runs ${segment}; run it through a make target`);
     }
