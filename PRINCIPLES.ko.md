@@ -1,5 +1,5 @@
 <!-- doc-id: principles -->
-<!-- source-sha256: 3d3d2a44c9ba71a9c2d29898f38d6d4218c3c6b656284f817d2dbd9ed70a675d -->
+<!-- source-sha256: 327a5f77868b04023ed9e98c3c0ba8aba5fdbf022c5f7d594e21c38694e65b4b -->
 # 원칙
 
 [English](PRINCIPLES.md)
@@ -44,7 +44,9 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-check`�
 - P10 main에 작업이 들어가는 길은 둘입니다. main에서 직접 하는 작업은 P38의 gate를 거친 commit으로 들어갑니다. 병렬이나 격리된
   작업은 자기 worktree와 branch를 가지며, `{type}/{shortname}-{체크리스트 id}`와 `{프로젝트}-{shortname}-{체크리스트 id}`로
   이름 짓고 `make worktree-setup`으로 만듭니다. 이 작업은 `make land`의
-  fast-forward로만 main에 들어가며, worktree와 그 branch는 merge된 직후 `make land`가 지웁니다. merge될 수 없는 test나
+  fast-forward로만 main에 들어가며, `config/retained-branches.json`이 의도적인 취소 백업의 정확한 local branch와 전체 commit을
+  pin하지 않으면 merge 직후 `make land`가 worktree와 branch를 지웁니다. record에는 사유와 제거 조건이 있습니다. cleanup은 local ref가
+  이동했으면 거부하고, 일치하는 branch와 worktree를 보존합니다. merge될 수 없는 test나
   실험 code는 남길 가치가 있으면 cherry-pick하고 아니면 폐기하며, 항상 commit 전에 합니다; 바로 지울 수 없으면 checklist
   하위 항목에 제거 조건을 적습니다.
   Enforced by: `.githooks/pre-push`, `.githooks/pre-merge-commit`
@@ -111,9 +113,10 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-check`�
   변경은 등록된 행에서 시작한다: `make item-new`가 어떤 작업보다 먼저 행을 등록하며, commit은 그 행을 이름으로 적는다
   (P28).
   Enforced by: `make docs-check`, `make commits-check`
-- P25 item은 `[ ]` waiting, `[~]` active, `[o]` done, `[!] cause: <cause>; retry: <condition>` bypassed 또는
-  `[-] cause: <cause>` impossible이며, `make item-state`의 전이로만 움직인다. done item에 대한 새 발견은 그 자신의
-  sub-item이 되고, done item은 state를 유지한다.
+- P25 item은 `[ ]` waiting, `[~]` active, `[v]` verification, `[o]` done, `[!] cause: <cause>; retry: <condition>` bypassed 또는
+  `[-] cause: <cause>` impossible이며, `make item-state`의 전이로만 움직인다. verification은 구현이 commit되었고 선언한 unit test가
+  통과했음을 뜻한다. push는 허용하지만 done이 되기 전 tag 생성과 release를 막으며, verification이 실패하면 active로 되돌린다.
+  done item에 대한 새 발견은 그 자신의 sub-item이 되고, done item은 state를 유지한다.
   Enforced by: `make docs-check`, `make commits-check`
 - P26 열린 item은 Verification cell에 자기 unit test의 command를 명시한다. 어떤 item도 suite로 검증하지 않는다. Suite는 CI에서
   실행하거나 모든 checklist item이 종결된 뒤 명시적인 final verification으로 한 번 실행한다. `make item-test`가 그 command를 실행한다.
@@ -166,7 +169,7 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-check`�
 ## Repository 기준
 
 owner가 2026-10-13에 이 기준을 승인했습니다. 각 기준은 위반 시 실패하는 tool로 강제합니다. tool, 순서, 예측한 실패는
-[standards enforcement 계획](https://github.com/polyspec/kit/blob/main/docs/plans/standards-enforcement/plan.ko.md)(kit에만 있음)에 있습니다. tool이 착지하기 전에는 여기 적힌 대로
+[standards enforcement 계획](https://github.com/polyspec/kit/blob/main/docs/plans/standards-enforcement/plan.md)(kit에만 있음)에 있습니다. tool이 착지하기 전에는 여기 적힌 대로
 작업을 구속합니다.
 
 - S1 재발명 금지: 각 생태계의 규칙을 따르고, 그 tool과 library를 있는 그대로 씁니다. 우리 규칙은 우리가 만드는 것에만

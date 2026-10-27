@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mts) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-27T05:26:04.110Z",
+  "reviewed": "2026-10-27T07:40:09.144Z",
   "locks": [
     {
       "lock": "package-lock.json",
-      "sha256": "6ebde056158bb5ea124fa4f88a4fcc169c872ca78c90b401f53812ce42acf1db",
+      "sha256": "c0d1294a1193548ad1944f7b277f1c8775186ebb172a155f0a0524aaec038c16",
       "advisories": [
         {
           "package": "@azure/msal-node",
@@ -26,7 +26,16 @@
     {
       "lock": "composer.lock",
       "sha256": "8e5dba1713556a5b974e126f068a876046925510e2fb799f52657d8d643c10e9",
-      "advisories": []
+      "advisories": [
+        {
+          "package": "phpunit/phpunit",
+          "version": "13.4.3",
+          "id": "PKSA-qhjm-rpqc-qkn6",
+          "severity": "unknown",
+          "title": "PHPUnit vulnerable to code execution by other local users via shared temporary directory in PHPT code coverage handling",
+          "url": "https://github.com/sebastianbergmann/phpunit/security/advisories/GHSA-9vw2-f4vp-x7gf"
+        }
+      ]
     },
     {
       "lock": "packages/php-ext/composer.lock",

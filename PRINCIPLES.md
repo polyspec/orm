@@ -44,7 +44,9 @@ in kit, with its grounding.
 - P10 Work reaches main in one of two ways. Direct work on main is committed through the gated commits of P38. Parallel or
   isolated work has its own worktree and branch, named `{type}/{shortname}-{checklist id}` and `{project}-{shortname}-{checklist id}`,
   made by `make worktree-setup`; it reaches main only by the fast-forward of `make land`,
-  and its worktree and branch are removed right after the merge, by `make land`. Test or experiment code that cannot merge is
+  and `make land` removes its worktree and branch right after the merge unless `config/retained-branches.json` pins that exact
+  local branch and full commit for an intentional cancellation backup. A record states its reason and removal condition; cleanup
+  rejects a moved local ref and preserves a matching branch and worktree. Test or experiment code that cannot merge is
   cherry-picked when it is worth keeping and otherwise discarded, always before the commit; when it cannot be removed at once, a
   checklist sub-item states the condition of its removal.
   Enforced by: `.githooks/pre-push`, `.githooks/pre-merge-commit`
@@ -117,9 +119,10 @@ repository.
   A change starts from its registered row: `make item-new` registers the row before any work, and its commit names the row
   (P28).
   Enforced by: `make docs-check`, `make commits-check`
-- P25 An item is `[ ]` waiting, `[~]` active, `[o]` done, `[!] cause: <cause>; retry: <condition>` bypassed or
-  `[-] cause: <cause>` impossible, and moves only along the transitions of `make item-state`. A new finding on a done item
-  is a sub-item of its own; the done item keeps its state.
+- P25 An item is `[ ]` waiting, `[~]` active, `[v]` verification, `[o]` done, `[!] cause: <cause>; retry: <condition>` bypassed or
+  `[-] cause: <cause>` impossible, and moves only along the transitions of `make item-state`. Verification means the implementation is
+  committed and its declared unit tests passed. It permits a push, but blocks tag creation and release until it is done; a failed
+  verification returns it to active. A new finding on a done item is a sub-item of its own; the done item keeps its state.
   Enforced by: `make docs-check`, `make commits-check`
 - P26 An open item names, in its Verification cell, the commands of its own unit tests; no item is verified by a suite. A suite runs in CI, or once as an explicit final verification after all checklist
   items are terminal. `make item-test` runs the commands.
