@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mts) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-27T07:40:09.144Z",
+  "reviewed": "2026-10-27T07:43:17.745Z",
   "locks": [
     {
       "lock": "package-lock.json",
@@ -25,17 +25,8 @@
     },
     {
       "lock": "composer.lock",
-      "sha256": "8e5dba1713556a5b974e126f068a876046925510e2fb799f52657d8d643c10e9",
-      "advisories": [
-        {
-          "package": "phpunit/phpunit",
-          "version": "13.4.3",
-          "id": "PKSA-qhjm-rpqc-qkn6",
-          "severity": "unknown",
-          "title": "PHPUnit vulnerable to code execution by other local users via shared temporary directory in PHPT code coverage handling",
-          "url": "https://github.com/sebastianbergmann/phpunit/security/advisories/GHSA-9vw2-f4vp-x7gf"
-        }
-      ]
+      "sha256": "495e5fb6ef2582c4bac4febcff6801705dd5a71f558ff6adc140f21e9ee65922",
+      "advisories": []
     },
     {
       "lock": "packages/php-ext/composer.lock",
@@ -419,7 +410,7 @@
       "ecosystem": "composer",
       "manifest": "composer.json",
       "package": "phpunit/phpunit",
-      "version": "13.4.3",
+      "version": "13.4.5",
       "latest": "13.4.5"
     },
     {
