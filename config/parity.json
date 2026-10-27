@@ -11807,47 +11807,47 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "introspection/non-ascii-literal"
+          "id": "non-ascii-literal"
         },
         {
           "implementation": "python",
           "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "introspection/literal-with-quote"
+          "id": "literal-with-quote"
         },
         {
           "implementation": "python",
           "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "introspection/literal-with-backslash"
+          "id": "literal-with-backslash"
         },
         {
           "implementation": "python",
           "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "introspection/literal-with-parentheses"
+          "id": "literal-with-parentheses"
         },
         {
           "implementation": "python",
           "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "introspection/two-checks-target-non-ascii"
+          "id": "two-checks-target-non-ascii"
         },
         {
           "implementation": "python",
           "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "introspection/two-checks-target-ascii"
+          "id": "two-checks-target-ascii"
         },
         {
           "implementation": "python",
           "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "introspection/literal-ends-with-backslash"
+          "id": "literal-ends-with-backslash"
         },
         {
           "implementation": "python",
           "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "introspection/non-ascii-literal-with-quote"
+          "id": "non-ascii-literal-with-quote"
         },
         {
           "implementation": "python",
           "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "introspection/name-without-check"
+          "id": "name-without-check"
         }
       ]
     },
