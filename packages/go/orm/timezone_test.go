@@ -281,7 +281,10 @@ func TestPoolDiscardsEndedIdleConnection(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	for _, driver := range []string{"mysql", "postgres"} {
 		t.Run(driver, func(t *testing.T) {
-			dsn := newDatabase(t, driver)
+			caseDSN := newDatabase(t, driver)
+			// The case ends a server-side session, so both handles must bypass
+			// any transaction or multiplexing proxy.
+			dsn := serverSession(t, driver, caseDSN)
 			db, err := orm.Connect(dsn, orm.Config{PoolSize: 1, PoolIdleSize: 1})
 			if err != nil {
 				t.Fatal(err)
@@ -294,7 +297,7 @@ func TestPoolDiscardsEndedIdleConnection(t *testing.T) {
 				t.Fatalf("pool before server end: %+v, want one idle connection", stats)
 			}
 
-			admin := openNative(t, driver, serverSession(t, driver, dsn))
+			admin := openNative(t, driver, dsn)
 			defer testcase.Close(t, admin)
 			var killed int
 			switch driver {

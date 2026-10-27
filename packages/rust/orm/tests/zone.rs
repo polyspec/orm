@@ -256,21 +256,22 @@ async fn pool_idle_size_and_lifetime() {
     remove_dir(&tmp);
 }
 
-/// An idle server connection is discarded; the next statement uses a new one.
+/// An idle direct server connection is discarded; the next statement uses a new one. Poolers may multiplex a client
+/// connection without retaining an idle server session, so this lifetime case uses the direct server DSN.
 #[tokio::test]
 // Requirements: INT-92.
 async fn pool_discards_ended_idle_connection() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     for driver in ["mysql", "postgres"] {
         let database = CaseDatabase::create(driver).await;
-        let db = Db::connect(database.dsn(), 1, polyspec_orm::Config { pool_idle_size: 1, ..polyspec_orm::Config::default() })
+        let server_dsn = database.related_dsn(&require_dsn(&format!("ORM_TEST_{}_SERVER_DSN", driver.to_uppercase())));
+        let db = Db::connect(&server_dsn, 1, polyspec_orm::Config { pool_idle_size: 1, ..polyspec_orm::Config::default() })
             .await
             .or_panic(|e| format!("{driver}: connect pool: {e}"));
         assert!(!db.utils().schema().exists("orm").await.or_panic(|e| format!("{driver}: warm pool: {e}")));
         complete_idle_release(&db, driver).await;
         assert_eq!(db.stats().idle, 1, "{driver}: the pool holds one idle connection");
 
-        let server_dsn = database.related_dsn(&require_dsn(&format!("ORM_TEST_{}_SERVER_DSN", driver.to_uppercase())));
         let admin = Db::connect(&server_dsn, 1, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: connect direct server session: {e}"));
         match admin.pool() {
             Pool::Postgres(pool) => {

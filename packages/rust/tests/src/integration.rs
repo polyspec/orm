@@ -457,7 +457,12 @@ async fn transactions(t: &Target) {
     let _stats = t.db.utils().stats();
     let db = &t.db;
     if t.driver == "postgres" {
-        let pool = sqlx::PgPool::connect(&t.dsn).await.unwrap();
+        // The raw SQLx fixture connection sends `extra_float_digits` at startup, which PgBouncer rejects; privilege API calls still use `db` above.
+        let server_dsn = std::env::var("ORM_TEST_POSTGRES_SERVER_DSN").ok().filter(|dsn| !dsn.is_empty()).unwrap_or_else(|| {
+            panic!("ORM_TEST_POSTGRES_SERVER_DSN is required; run through make client-db-check, which supplies the direct PostgreSQL server DSN")
+        });
+        let privilege_dsn = t.database.related_dsn(&server_dsn);
+        let pool = sqlx::PgPool::connect(&privilege_dsn).await.unwrap();
         let table = "public.privilege_probe";
         // CaseDatabase names use only `orm_case_<pid>_<counter>` ASCII identifier characters.
         let role = format!("orm_priv_{}", t.database.name());

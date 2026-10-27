@@ -63,7 +63,6 @@ impl CaseDatabase {
     /// Creates a new database for `driver` ("sqlite", "mysql", "postgres"). MySQL and PostgreSQL
     /// are created using ORM_TEST_<DRIVER>_DSN as the management connection.
     pub async fn create(driver: &str) -> CaseDatabase {
-        let name = case_name();
         let (driver, var) = match driver {
             "sqlite" => ("sqlite", None),
             "mysql" => ("mysql", Some("ORM_TEST_MYSQL_DSN")),
@@ -71,6 +70,7 @@ impl CaseDatabase {
             other => panic!("case database: unknown driver {other:?}"),
         };
         let Some(var) = var else {
+            let name = case_name();
             let path = std::env::temp_dir().join(format!("{}.sqlite", name.replace('_', "-")));
             let name = path.display().to_string();
             assert!(!path.exists(), "case database {name}: the file already exists");
@@ -78,7 +78,20 @@ impl CaseDatabase {
             return CaseDatabase { driver, dsn: format!("sqlite://{name}"), name, admin: None, path: Some(path), dropped: false };
         };
         let admin = require_dsn(var);
-        let db = match polyspec_orm::Db::connect(&admin, 1, polyspec_orm::Config::default()).await {
+        Self::create_with_admin_dsn(driver, &admin).await
+    }
+
+    /// Creates a MySQL or PostgreSQL case database through the supplied direct server DSN.
+    /// Use this when the client DSN is a pooler that does not support the required session behavior.
+    pub async fn create_with_admin_dsn(driver: &str, admin: &str) -> CaseDatabase {
+        let driver = match driver {
+            "mysql" => "mysql",
+            "postgres" => "postgres",
+            other => panic!("case database with admin DSN: expected mysql or postgres, got {other:?}"),
+        };
+        assert!(!admin.is_empty(), "case database {driver}: the admin DSN is empty");
+        let name = case_name();
+        let db = match polyspec_orm::Db::connect(admin, 1, polyspec_orm::Config::default()).await {
             Ok(db) => db,
             Err(e) => panic!("case database {name}: admin connection: {e}"),
         };
@@ -88,7 +101,7 @@ impl CaseDatabase {
             panic!("case database {name}: create: {e}");
         }
         polyspec_orm_testcase::step(format_args!("database {name} created"));
-        CaseDatabase { driver, dsn: with_database(&admin, &name), name, admin: Some(admin), path: None, dropped: false }
+        CaseDatabase { driver, dsn: with_database(admin, &name), name, admin: Some(admin.to_owned()), path: None, dropped: false }
     }
 
     /// The driver name of the database.

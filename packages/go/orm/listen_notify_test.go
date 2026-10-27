@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/url"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -23,6 +22,9 @@ import (
 func TestListenNotify(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	dsn := newDatabase(t, "postgres")
+	// LISTEN is session state, so this case database must connect directly to
+	// PostgreSQL instead of reusing a backend through a transaction pooler.
+	dsn = serverSession(t, "postgres", dsn)
 	db, err := orm.Connect(dsn, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
@@ -157,6 +159,7 @@ func TestListenNotify(t *testing.T) {
 	}
 
 	lostDSN := newDatabase(t, "postgres")
+	lostDSN = serverSession(t, "postgres", lostDSN)
 	lostDB, err := orm.Connect(lostDSN, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
@@ -174,7 +177,7 @@ func TestListenNotify(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	admin := openNative(t, "postgres", os.Getenv("ORM_TEST_POSTGRES_DSN"))
+	admin := openNative(t, "postgres", lostDSN)
 	defer testcase.Close(t, admin)
 	var listenerPID int
 	if err := admin.QueryRowContext(context.Background(),

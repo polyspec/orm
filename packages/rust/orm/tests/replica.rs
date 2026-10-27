@@ -4,7 +4,8 @@
 //! connection inside a transaction uses the transaction, and a write through the replica or to the read-only file
 //! returns READ_ONLY. Each case runs in a case database of its own (polyspec-orm-case-database) on the servers of
 //! ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN, whose replicas ORM_TEST_MYSQL_REPLICA_DSN and
-//! ORM_TEST_POSTGRES_REPLICA_DSN name; the test fails when a variable is unset.
+//! ORM_TEST_POSTGRES_REPLICA_DSN name; the test fails when a variable is unset. Its PostgreSQL replication barrier uses the
+//! direct server DSN because its raw SQLx connection sends a startup parameter that PgBouncer rejects.
 // Requirements: CFG-21, CFG-22, CFG-23, CFG-24, CFG-25.
 
 #[macro_use]
@@ -98,12 +99,13 @@ async fn primary_and_replica(driver: &str) {
     let database = CaseDatabase::create(driver).await;
     let primary = database.dsn().to_owned();
     let replica = database.related_dsn(&required(&format!("ORM_TEST_{}_REPLICA_DSN", driver.to_uppercase())));
+    let barrier_primary = if driver == "postgres" { database.related_dsn(&required("ORM_TEST_POSTGRES_SERVER_DSN")) } else { primary.clone() };
     let run = async {
         let master = Db::connect(&primary, 2, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: primary: {e}"));
         master.utils().schema().install(&PROBE_SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));
         let name = format!("replica-{}", std::process::id());
         create(&master, &name).await.or_panic(|e| format!("{driver}: create through the primary: {e}"));
-        await_replica(driver, &primary, &replica).await;
+        await_replica(driver, &barrier_primary, &replica).await;
         let slave1 = Db::connect_schema(&replica, &PROBE_SCHEMA, 2, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: replica: {e}"));
         assert_eq!(count(&slave1, &[&name]).await, 1, "{driver}: the replica reads the row written through the primary");
         let refused = create(&slave1, &format!("{name}-replica")).await.err().map(|e| e.code().to_owned());
@@ -126,7 +128,7 @@ async fn primary_and_replica(driver: &str) {
             })
             .await
             .or_panic(|e| format!("{driver}: transaction: {e}"));
-        await_replica(driver, &primary, &replica).await;
+        await_replica(driver, &barrier_primary, &replica).await;
         assert_eq!(count(&slave1, &[&format!("{name}-renamed"), &tx_name]).await, 2, "{driver}: the replica reads the committed rows");
         slave1.close().await;
         master.close().await;

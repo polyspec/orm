@@ -1,8 +1,9 @@
 //! LISTEN and NOTIFY on PostgreSQL (DIA-192 to DIA-196, PRT-74). A notification sent inside a transaction is delivered
 //! with its commit and dropped by a rollback; one sent outside a transaction is delivered at once; unlisten stops a
 //! channel; a receive whose deadline expires fails with CANCELED and closes the subscription; and MySQL and SQLite refuse
-//! notify and listen with CAPABILITY_UNSUPPORTED. Each case runs in a case database of its own
-//! (polyspec-orm-case-database). The test fails when ORM_TEST_POSTGRES_DSN or ORM_TEST_MYSQL_DSN is unset.
+//! notify and listen with CAPABILITY_UNSUPPORTED. The PostgreSQL case uses the direct server DSN because LISTEN owns
+//! a server session and cannot run through a transaction pooler. Each case runs in a case database of its own
+//! (polyspec-orm-case-database). The test fails when ORM_TEST_POSTGRES_SERVER_DSN or ORM_TEST_MYSQL_DSN is unset.
 //! Requirements: DIA-192, DIA-193, DIA-194, DIA-195, DIA-196, PRT-74.
 
 #[path = "common/or_panic.rs"]
@@ -21,7 +22,10 @@ const WAIT: Duration = Duration::from_millis(50);
 #[tokio::test]
 async fn listen_notify() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    let database = CaseDatabase::create("postgres").await;
+    let server_dsn = std::env::var("ORM_TEST_POSTGRES_SERVER_DSN").ok().filter(|dsn| !dsn.is_empty()).unwrap_or_else(|| {
+        panic!("ORM_TEST_POSTGRES_SERVER_DSN is required; run through make client-db-check, which supplies the direct PostgreSQL server DSN")
+    });
+    let database = CaseDatabase::create_with_admin_dsn("postgres", &server_dsn).await;
     let db = Db::connect(database.dsn(), 2, polyspec_orm::Config::default()).await.or_panic(|e| format!("postgres: {e}"));
 
     let mut subscription = db.listen(EVENTS).await.or_panic(|e| format!("postgres: listen: {e}"));
