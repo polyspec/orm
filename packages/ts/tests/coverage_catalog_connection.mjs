@@ -1,6 +1,6 @@
 // catalog_connection coverage runs the two shared cases against the bench database that the
-// feature check selected (ORM_FEATURE_DATABASE, ORM_FEATURE_DSN) through connectCatalog. The read case only reads; the mutation
-// case inserts, updates and deletes one row of composite_account in tenant 990005 and ends in the state it started in.
+// feature check selected (ORM_FEATURE_DATABASE, ORM_FEATURE_DSN) through connectCatalog. The read case cleans up its scratch
+// temporal table; the mutation case inserts, updates and deletes one row of composite_account in tenant 990005 and restores state.
 // Requirements: SCH-3, SCH-5, SCH-6, SCH-6a, INT-97, INT-101, INT-102, INT-103, INT-104, INT-109, INT-112, INT-113, INT-114, INT-115, INT-121, INT-123, INT-136, INT-117.
 import assert from 'node:assert/strict';
 import { randomInt } from 'node:crypto';
@@ -227,6 +227,17 @@ async function nullAndEmptyTextCase(item) {
   const table = { namespace: await catalog.currentNamespace(), name: 'bind_cell' };
   const metadata = await catalog.describeTable(table);
   const db = await connectModel(item.dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
+  let sqliteSequence;
+  if (item.driver === 'sqlite') {
+    const [[sequenceTable]] = await nativeQuery(item.driver, item.dsn, [
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'sqlite_sequence'",
+    ]);
+    assert.ok(sequenceTable, 'SQLite bench schema has sqlite_sequence');
+    const [sequenceRows] = await nativeQuery(item.driver, item.dsn, [
+      "SELECT quote(seq) AS seq FROM sqlite_sequence WHERE name = 'bind_cell'",
+    ]);
+    sqliteSequence = sequenceRows[0]?.seq ?? null;
+  }
   try {
     await catalog.insertRow(metadata, [
       { name: 'seq', value: seq }, { name: 'label', value: 'null-v' }, { name: 'body', value: null },
@@ -252,6 +263,14 @@ async function nullAndEmptyTextCase(item) {
       offset += page.result.rows.length;
     }
     for (const snapshot of snapshots) await catalog.deleteRow(snapshot);
+    if (item.driver === 'sqlite') {
+      await nativeQuery(item.driver, item.dsn, [
+        "DELETE FROM sqlite_sequence WHERE name = 'bind_cell'",
+        ...(sqliteSequence === null
+          ? []
+          : [`INSERT INTO sqlite_sequence (name, seq) VALUES ('bind_cell', ${sqliteSequence})`]),
+      ]);
+    }
     await db.close();
     await catalog.close();
   }
