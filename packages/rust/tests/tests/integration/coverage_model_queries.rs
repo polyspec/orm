@@ -2,6 +2,7 @@
 //! bench database.
 use super::coverage_env::{connect, run};
 use super::model::{Author, ServiceMember, User};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 #[tokio::test]
@@ -121,6 +122,41 @@ async fn coverage_model_query_remove_columns() {
         let mut keys = values.as_object().unwrap().keys().map(String::as_str).collect::<Vec<_>>();
         keys.sort_unstable();
         assert_eq!(keys, ["name", "seq", "service_member_seq", "service_region_seq", "service_seq", "user_seq"]);
+        db.close().await;
+    })
+    .await;
+}
+
+#[tokio::test]
+// Requirements: PRT-35.
+async fn coverage_collection_null_identity() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    run("collection_null_identity", async {
+        let db = connect().await;
+        let selects = Arc::new(AtomicUsize::new(0));
+        let count = selects.clone();
+        let subscription = db
+            .subscribe(move |event: &polyspec_orm::StatementEvent<'_>| {
+                if event.kind == polyspec_orm::events::KIND_SELECT {
+                    count.fetch_add(1, Ordering::SeqCst);
+                }
+                Ok(())
+            })
+            .unwrap();
+        let result = Author::new().connect(&db).remove_all_columns().add_column_price().seq(99).key_name_price().gets().await;
+        subscription.unsubscribe();
+        let error = match result {
+            Err(error) => error,
+            Ok(_) => panic!("a selected SQL NULL collection key must fail"),
+        };
+        match error {
+            polyspec_orm::Error::Engine { code, msg } => {
+                assert_eq!(code, "CODEC_DECODE");
+                assert_eq!(msg, "collection row identity contains SQL NULL");
+            }
+            other => panic!("expected CODEC_DECODE, got {other}"),
+        }
+        assert_eq!(selects.load(Ordering::SeqCst), 1, "the NULL identity error follows one physical SELECT");
         db.close().await;
     })
     .await;

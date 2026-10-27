@@ -3,6 +3,7 @@
 from decimal import Decimal
 
 from polyspec.orm import orm
+from polyspec.orm.errors import OrmError
 from polyspec.orm.models import models
 
 from .coverage_case import (
@@ -265,6 +266,43 @@ def model_query_group_rows(item, test_case):
         db.close()
 
 
+def model_query_collection_null_identity(item):
+    db, author, driver, _ = connect_bench_author(models, item)
+    try:
+        expect_equal(db.driver, driver, "the driver")
+        selects = []
+        unsubscribe = db.subscribe(
+            lambda event: selects.append(event) if event.kind == "select" else None
+        )
+        try:
+            (
+                author()
+                .remove_all_columns()
+                .add_column_price()
+                .seq(99)
+                .key_name_price()
+                .gets()
+            )
+        except OrmError as error:
+            expect_equal(
+                error.code,
+                "CODEC_DECODE",
+                "a selected SQL NULL collection key is rejected",
+            )
+            expect_equal(
+                str(error),
+                "CODEC_DECODE: collection row identity contains SQL NULL",
+                "the collection identity error message",
+            )
+        else:
+            raise AssertionError("a selected SQL NULL collection key must fail")
+        finally:
+            unsubscribe()
+        expect_equal(len(selects), 1, "the NULL identity error follows one physical SELECT")
+    finally:
+        db.close()
+
+
 class CoverageTest(CoverageCase):
     # Requirements: DBS-118, DSL-57, DSL-58, DSL-60, DSL-62, DSL-73, DSL-74, DSL-80, DSL-82, DSL-99, INT-16, INT-29, INT-30, INT-32, INT-33, PLN-6, PLN-7, PLN-8, PLN-9, PLN-10, PLN-11, PLN-14, PLN-23, PLN-25, PLN-28, PLN-34, PLN-35, PLN-37, PLN-38, PLN-39, PLN-41, PLN-42, PLN-43.
     def test_model_query_rows(self):
@@ -280,6 +318,12 @@ class CoverageTest(CoverageCase):
     def test_group_rows_database(self):
         self.each_item(
             "group_rows_database", lambda item: model_query_group_rows(item, self)
+        )
+
+    # Requirements: PRT-35.
+    def test_collection_null_identity(self):
+        self.each_item(
+            "collection_null_identity", model_query_collection_null_identity
         )
 
 

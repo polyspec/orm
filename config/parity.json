@@ -23159,6 +23159,45 @@
       ]
     },
     {
+      "id": "collection-null-identity-from-physical-row",
+      "kind": "feature",
+      "requirements": [
+        "PRT-35"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_model_queries_test.go",
+          "id": "TestCoverageCollectionNullIdentity"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageModelQueriesTest.php",
+          "id": "CoverageModelQueriesTest::testCollectionNullIdentity"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php",
+          "id": "CoverageModelQueriesExtensionTest::testCollectionNullIdentity"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_model_queries.mjs",
+          "id": "collection_null_identity"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_model_queries.py",
+          "id": "test_collection_null_identity"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs",
+          "id": "coverage_model_queries::coverage_collection_null_identity"
+        }
+      ]
+    },
+    {
       "id": "group-rows-negative-count",
       "kind": "feature",
       "requirements": [

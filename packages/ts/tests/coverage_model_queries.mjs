@@ -52,6 +52,26 @@ await runCases('coverage_model_queries.mjs', {
   },
   // Requirements: INT-31.
   group_rows_database: checkGroupRowsDatabase,
+  // Requirements: PRT-35.
+  async collection_null_identity({ driver, dsn }) {
+    const db = await connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
+    try {
+      assert.equal(db.driver, driver);
+      let selects = 0;
+      const unsubscribe = db.subscribe(event => { if (event.kind === 'select') selects++; });
+      let failure;
+      try {
+        await new Author().connect(db).removeAllColumns().addColumnPrice().seq(99).keyNamePrice().gets();
+      } catch (error) {
+        failure = error;
+      } finally {
+        unsubscribe();
+      }
+      assert.equal(failure?.code, 'CODEC_DECODE', 'a selected SQL NULL collection key is rejected');
+      assert.equal(failure?.message, 'CODEC_DECODE: collection row identity contains SQL NULL');
+      assert.equal(selects, 1, 'the NULL identity error follows one physical SELECT');
+    } finally { await db.close(); }
+  },
   // Requirements: DSL-76.
   async remove_columns_keys_and_added_column({ driver, dsn }) {
     const db = await connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });

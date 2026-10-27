@@ -29,6 +29,18 @@ final class CoverageModelQueriesExtensionTest extends TestCase
         });
     }
 
+    // Requirements: PRT-35.
+    public function testCollectionNullIdentity(): void
+    {
+        Assert::assertTrue((new ReflectionClass(Model::class))->isInternal());
+        Assert::assertTrue((new ReflectionMethod(Model::class, 'gets'))->isInternal());
+        Assert::assertTrue((new ReflectionClass(Collection::class))->isInternal());
+        require_once dirname(__DIR__, 2) . '/php/tests/CoverageModelQueriesCase.php';
+        coverageRunDatabaseItems(__FILE__, static function (\Polyspec\Orm\Db $db): void {
+            CoverageModelQueriesCase::collectionNullIdentity($db);
+        });
+    }
+
     // Requirements: DSL-76.
     public function testRemoveColumnsKeysAndAddedColumn(): void
     {

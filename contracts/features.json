@@ -1172,7 +1172,8 @@
         "dsl-50-operator-value-shapes",
         "remove-columns-keeps-primary-foreign-and-added",
         "go-model-constructor-api",
-        "php-internal-model-conditions"
+        "php-internal-model-conditions",
+        "collection-null-identity-from-physical-row"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -1784,7 +1785,8 @@
         "cases": [
           "model_query_rows",
           "remove_columns_keys_and_added_column",
-          "group_rows_database"
+          "group_rows_database",
+          "collection_null_identity"
         ],
         "owners": {
           "go": {
@@ -1804,12 +1806,14 @@
                   "cases": [
                     "model_query_rows",
                     "remove_columns_keys_and_added_column",
-                    "group_rows_database"
+                    "group_rows_database",
+                    "collection_null_identity"
                   ],
                   "symbols": {
                     "model_query_rows": "TestCoverageModelQueryRows",
                     "remove_columns_keys_and_added_column": "TestCoverageModelRemoveColumns",
-                    "group_rows_database": "TestCoverageGroupRowsDatabase"
+                    "group_rows_database": "TestCoverageGroupRowsDatabase",
+                    "collection_null_identity": "TestCoverageCollectionNullIdentity"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -1821,12 +1825,14 @@
                   "cases": [
                     "model_query_rows",
                     "remove_columns_keys_and_added_column",
-                    "group_rows_database"
+                    "group_rows_database",
+                    "collection_null_identity"
                   ],
                   "symbols": {
                     "model_query_rows": "TestCoverageModelQueryRows",
                     "remove_columns_keys_and_added_column": "TestCoverageModelRemoveColumns",
-                    "group_rows_database": "TestCoverageGroupRowsDatabase"
+                    "group_rows_database": "TestCoverageGroupRowsDatabase",
+                    "collection_null_identity": "TestCoverageCollectionNullIdentity"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -1838,12 +1844,14 @@
                   "cases": [
                     "model_query_rows",
                     "remove_columns_keys_and_added_column",
-                    "group_rows_database"
+                    "group_rows_database",
+                    "collection_null_identity"
                   ],
                   "symbols": {
                     "model_query_rows": "TestCoverageModelQueryRows",
                     "remove_columns_keys_and_added_column": "TestCoverageModelRemoveColumns",
-                    "group_rows_database": "TestCoverageGroupRowsDatabase"
+                    "group_rows_database": "TestCoverageGroupRowsDatabase",
+                    "collection_null_identity": "TestCoverageCollectionNullIdentity"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -1868,12 +1876,14 @@
                   "cases": [
                     "model_query_rows",
                     "remove_columns_keys_and_added_column",
-                    "group_rows_database"
+                    "group_rows_database",
+                    "collection_null_identity"
                   ],
                   "symbols": {
                     "model_query_rows": "testModelQueryRows",
                     "remove_columns_keys_and_added_column": "testRemoveColumnsKeysAndAddedColumn",
-                    "group_rows_database": "testGroupRowsDatabase"
+                    "group_rows_database": "testGroupRowsDatabase",
+                    "collection_null_identity": "testCollectionNullIdentity"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -1885,12 +1895,14 @@
                   "cases": [
                     "model_query_rows",
                     "remove_columns_keys_and_added_column",
-                    "group_rows_database"
+                    "group_rows_database",
+                    "collection_null_identity"
                   ],
                   "symbols": {
                     "model_query_rows": "testModelQueryRows",
                     "remove_columns_keys_and_added_column": "testRemoveColumnsKeysAndAddedColumn",
-                    "group_rows_database": "testGroupRowsDatabase"
+                    "group_rows_database": "testGroupRowsDatabase",
+                    "collection_null_identity": "testCollectionNullIdentity"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -1902,12 +1914,14 @@
                   "cases": [
                     "model_query_rows",
                     "remove_columns_keys_and_added_column",
-                    "group_rows_database"
+                    "group_rows_database",
+                    "collection_null_identity"
                   ],
                   "symbols": {
                     "model_query_rows": "testModelQueryRows",
                     "remove_columns_keys_and_added_column": "testRemoveColumnsKeysAndAddedColumn",
-                    "group_rows_database": "testGroupRowsDatabase"
+                    "group_rows_database": "testGroupRowsDatabase",
+                    "collection_null_identity": "testCollectionNullIdentity"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -1930,11 +1944,13 @@
                   "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs",
                   "cases": [
                     "model_query_rows",
-                    "remove_columns_keys_and_added_column"
+                    "remove_columns_keys_and_added_column",
+                    "collection_null_identity"
                   ],
                   "symbols": {
                     "model_query_rows": "coverage_model_queries::coverage_model_query_rows",
-                    "remove_columns_keys_and_added_column": "coverage_model_queries::coverage_model_query_remove_columns"
+                    "remove_columns_keys_and_added_column": "coverage_model_queries::coverage_model_query_remove_columns",
+                    "collection_null_identity": "coverage_model_queries::coverage_collection_null_identity"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 },
@@ -1956,11 +1972,13 @@
                   "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs",
                   "cases": [
                     "model_query_rows",
-                    "remove_columns_keys_and_added_column"
+                    "remove_columns_keys_and_added_column",
+                    "collection_null_identity"
                   ],
                   "symbols": {
                     "model_query_rows": "coverage_model_queries::coverage_model_query_rows",
-                    "remove_columns_keys_and_added_column": "coverage_model_queries::coverage_model_query_remove_columns"
+                    "remove_columns_keys_and_added_column": "coverage_model_queries::coverage_model_query_remove_columns",
+                    "collection_null_identity": "coverage_model_queries::coverage_collection_null_identity"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 },
@@ -1982,11 +2000,13 @@
                   "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs",
                   "cases": [
                     "model_query_rows",
-                    "remove_columns_keys_and_added_column"
+                    "remove_columns_keys_and_added_column",
+                    "collection_null_identity"
                   ],
                   "symbols": {
                     "model_query_rows": "coverage_model_queries::coverage_model_query_rows",
-                    "remove_columns_keys_and_added_column": "coverage_model_queries::coverage_model_query_remove_columns"
+                    "remove_columns_keys_and_added_column": "coverage_model_queries::coverage_model_query_remove_columns",
+                    "collection_null_identity": "coverage_model_queries::coverage_collection_null_identity"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 },
@@ -2021,7 +2041,8 @@
                   "cases": [
                     "model_query_rows",
                     "remove_columns_keys_and_added_column",
-                    "group_rows_database"
+                    "group_rows_database",
+                    "collection_null_identity"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2033,7 +2054,8 @@
                   "cases": [
                     "model_query_rows",
                     "remove_columns_keys_and_added_column",
-                    "group_rows_database"
+                    "group_rows_database",
+                    "collection_null_identity"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2045,7 +2067,8 @@
                   "cases": [
                     "model_query_rows",
                     "remove_columns_keys_and_added_column",
-                    "group_rows_database"
+                    "group_rows_database",
+                    "collection_null_identity"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -2069,7 +2092,8 @@
                   "cases": [
                     "model_query_rows",
                     "remove_columns_keys_and_added_column",
-                    "group_rows_database"
+                    "group_rows_database",
+                    "collection_null_identity"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2081,7 +2105,8 @@
                   "cases": [
                     "model_query_rows",
                     "remove_columns_keys_and_added_column",
-                    "group_rows_database"
+                    "group_rows_database",
+                    "collection_null_identity"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2093,7 +2118,8 @@
                   "cases": [
                     "model_query_rows",
                     "remove_columns_keys_and_added_column",
-                    "group_rows_database"
+                    "group_rows_database",
+                    "collection_null_identity"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -2118,12 +2144,14 @@
                   "cases": [
                     "model_query_rows",
                     "remove_columns_keys_and_added_column",
-                    "group_rows_database"
+                    "group_rows_database",
+                    "collection_null_identity"
                   ],
                   "symbols": {
                     "model_query_rows": "testModelQueryRows",
                     "remove_columns_keys_and_added_column": "testRemoveColumnsKeysAndAddedColumn",
-                    "group_rows_database": "testGroupRowsDatabase"
+                    "group_rows_database": "testGroupRowsDatabase",
+                    "collection_null_identity": "testCollectionNullIdentity"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2135,12 +2163,14 @@
                   "cases": [
                     "model_query_rows",
                     "remove_columns_keys_and_added_column",
-                    "group_rows_database"
+                    "group_rows_database",
+                    "collection_null_identity"
                   ],
                   "symbols": {
                     "model_query_rows": "testModelQueryRows",
                     "remove_columns_keys_and_added_column": "testRemoveColumnsKeysAndAddedColumn",
-                    "group_rows_database": "testGroupRowsDatabase"
+                    "group_rows_database": "testGroupRowsDatabase",
+                    "collection_null_identity": "testCollectionNullIdentity"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2152,12 +2182,14 @@
                   "cases": [
                     "model_query_rows",
                     "remove_columns_keys_and_added_column",
-                    "group_rows_database"
+                    "group_rows_database",
+                    "collection_null_identity"
                   ],
                   "symbols": {
                     "model_query_rows": "testModelQueryRows",
                     "remove_columns_keys_and_added_column": "testRemoveColumnsKeysAndAddedColumn",
-                    "group_rows_database": "testGroupRowsDatabase"
+                    "group_rows_database": "testGroupRowsDatabase",
+                    "collection_null_identity": "testCollectionNullIdentity"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -10302,10 +10334,13 @@
       "verification": [
         {
           "id": "interface-self-test",
-          "command": "node tests/run-long.mts typescript-build -- npm run typescript:build && PATH=\"$HOME/.cargo/bin:$PATH\" node tests/interfaces/check/main.mts --self-test",
+          "command": "node tests/run-long.mts typescript-build -- npm run typescript:build && ORM_PYTHON=packages/python/.venv/bin/python PATH=\"$HOME/.cargo/bin:$PATH\" node tests/interfaces/check/main.mts --self-test",
           "shard": "rust",
           "inputs": [
             "tests/interfaces/**",
+            "packages/python/testing/interfaces/python.py",
+            "packages/python/pyproject.toml",
+            "packages/python/uv.lock",
             "contracts/interfaces.json",
             "contracts/symbols/*.json",
             "scripts/schema/interface*.json"
@@ -10350,7 +10385,9 @@
           "inputs": [
             "packages/python/testing/interfaces/python.py",
             "packages/python/tests/test_python_extractor.py",
-            "packages/python/tests/test_python_natives.py"
+            "packages/python/tests/test_python_natives.py",
+            "packages/python/pyproject.toml",
+            "packages/python/uv.lock"
           ]
         }
       ],

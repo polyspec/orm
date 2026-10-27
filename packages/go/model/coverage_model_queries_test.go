@@ -114,6 +114,32 @@ func TestCoverageGroupRowsDatabase(t *testing.T) {
 	checkGroupRowsDatabase(t, db)
 }
 
+// TestCoverageCollectionNullIdentity requires a selected SQL NULL field to fail when used as a collection key.
+// Requirements: PRT-35.
+func TestCoverageCollectionNullIdentity(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	db, _, _ := connectFeature(t)
+	selects := 0
+	unsubscribe, err := db.Subscribe(func(event orm.StatementEvent) error {
+		if event.Kind == orm.KindSelect {
+			selects++
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unsubscribe()
+
+	_, err = model.Author().Connect(db).RemoveAllColumns().AddColumnPrice().Seq(99).KeyNamePrice().Gets()
+	if orm.ErrorCode(err) != orm.CodeCodecDecode || !strings.Contains(err.Error(), "collection row identity contains SQL NULL") {
+		t.Fatalf("collection keyed by a NULL price = (%q, %v), want CODEC_DECODE with the collection identity message", orm.ErrorCode(err), err)
+	}
+	if selects != 1 {
+		t.Fatalf("collection NULL identity emitted %d SELECT events, want exactly one", selects)
+	}
+}
+
 // Requirements: DSL-76.
 func TestCoverageModelRemoveColumns(t *testing.T) {
 	testcase.Start(t, testcase.Database)

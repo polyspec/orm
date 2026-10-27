@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Tests;
 
 use Polyspec\Orm\Db;
+use Polyspec\Orm\OrmException;
 use Polyspec\Orm\StatementEvent;
 use Polyspec\Orm\Tests\Model\Author;
 use Polyspec\Orm\Tests\Model\ServiceMember;
@@ -23,6 +24,31 @@ final class CoverageModelQueriesCase
             $keys,
             'removeAllColumns keeps keys and the added column'
         );
+    }
+
+    public static function collectionNullIdentity(Db $db): void
+    {
+        $selects = 0;
+        $unsubscribe = $db->subscribe(static function (StatementEvent $event) use (&$selects): void {
+            if ($event->kind === StatementEvent::SELECT) {
+                $selects++;
+            }
+        });
+        try {
+            (new Author())($db)
+                ->removeAllColumns()
+                ->addColumnPrice()
+                ->seq(99)
+                ->keyNamePrice()
+                ->gets();
+            Assert::fail('a SQL NULL collection key must fail');
+        } catch (OrmException $error) {
+            Assert::assertSame('CODEC_DECODE', $error->code_);
+            Assert::assertSame('CODEC_DECODE: collection row identity contains SQL NULL', $error->getMessage());
+        } finally {
+            $unsubscribe();
+        }
+        Assert::assertSame(1, $selects, 'the NULL identity error follows one physical SELECT');
     }
 
     public static function run(Db $db): void

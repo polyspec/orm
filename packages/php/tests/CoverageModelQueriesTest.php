@@ -26,6 +26,15 @@ final class CoverageModelQueriesTest extends TestCase
         });
     }
 
+    // Requirements: PRT-35.
+    public function testCollectionNullIdentity(): void
+    {
+        require_once __DIR__ . '/CoverageModelQueriesCase.php';
+        coverageRunDatabaseItems(__FILE__, static function (\Polyspec\Orm\Db $db): void {
+            CoverageModelQueriesCase::collectionNullIdentity($db);
+        });
+    }
+
     // Requirements: DSL-76.
     public function testRemoveColumnsKeysAndAddedColumn(): void
     {
