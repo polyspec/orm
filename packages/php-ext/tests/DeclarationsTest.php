@@ -42,7 +42,32 @@ function dynamicModules(): array
             'ORM_PHP_DYNAMIC_MODULES is not declared; the make variable declares it, empty by default',
         );
     }
-    return array_values(array_filter(explode(',', $declared), static fn(string $module): bool => $module !== ''));
+    $modules = array_values(array_filter(explode(',', $declared), static fn(string $module): bool => $module !== ''));
+    // The stub extends Pdo\Pgsql when the running PHP has pdo_pgsql. The declarations child uses -n, so load that
+    // optional module there when it came from php.ini; do not load it again when this PHP has it without an ini.
+    if (
+        extension_loaded('pdo_pgsql')
+        && !in_array('pdo_pgsql', modulesWithoutIni(), true)
+        && !in_array('pdo_pgsql', $modules, true)
+    ) {
+        $modules[] = 'pdo_pgsql';
+    }
+    return $modules;
+}
+
+/** Modules that PHP_BINARY provides without php.ini, as used by the declarations child. @return list<string> */
+function modulesWithoutIni(): array
+{
+    static $modules;
+    if (is_array($modules)) {
+        return $modules;
+    }
+    [$code, $out, $err] = run([PHP_BINARY, '-n', '-r', 'echo implode(",", get_loaded_extensions());']);
+    if ($code !== 0) {
+        throw new RuntimeException("cannot inspect modules of PHP -n: stderr: $err; stdout: $out");
+    }
+    $modules = $out === '' ? [] : explode(',', $out);
+    return $modules;
 }
 
 /**
@@ -174,6 +199,12 @@ final class DeclarationsTest extends TestCase
         Assert::assertTrue(
             in_array('pdo', $required, true),
             'src/polyspec_orm.c requires ' . implode(', ', $required) . ', without pdo'
+        );
+        $loaded = dynamicModules();
+        Assert::assertSame(
+            extension_loaded('pdo_pgsql') && !in_array('pdo_pgsql', modulesWithoutIni(), true),
+            in_array('pdo_pgsql', $loaded, true),
+            'the -n declarations child loads optional pdo_pgsql only when the parent has it and the child lacks it'
         );
         $shared = moduleArguments(['pdo'], '/usr/lib/php/20250925');
         Assert::assertSame(

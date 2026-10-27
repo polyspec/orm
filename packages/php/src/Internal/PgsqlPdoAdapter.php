@@ -21,27 +21,26 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
     private int $errmode = PDO::ERRMODE_EXCEPTION;
 
     /**
-     * Runs $call with an error handler of its own that keeps the E_WARNING PHP raises for a failing call, so the
-     * failure reports its reason in the PDOException of the caller and no warning leaves the ORM; a notice or
-     * deprecation still reaches PHP's handling. Returns the result and the warning, null when the call raised none.
+     * Runs $call with an error handler that captures only $errorLevel. Other levels reach PHP's handling.
+     * Returns the result and diagnostic, null when the call raised none.
      *
      * @template T
      * @param \Closure(): T $call
      * @return array{0: T, 1: ?string}
      */
-    private static function withWarning(\Closure $call): array
+    private static function withPhpDiagnostic(\Closure $call, int $errorLevel = E_WARNING): array
     {
-        $warning = null;
-        set_error_handler(static function (int $level, string $message) use (&$warning): bool {
-            $warning = $message;
+        $diagnostic = null;
+        set_error_handler(static function (int $level, string $message) use (&$diagnostic): bool {
+            $diagnostic = $message;
             return true;
-        }, E_WARNING);
+        }, $errorLevel);
         try {
             $result = $call();
         } finally {
             restore_error_handler();
         }
-        return [$result, $warning];
+        return [$result, $diagnostic];
     }
 
     /** The message of a failure: its own text, and the warning of PHP that states its reason when there is one. */
@@ -63,7 +62,9 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
     public function __construct(string $dsn, ?string $username = null, ?string $password = null, ?array $options = null)
     {
         $conninfo = self::toConninfo($dsn, $username, $password, $options ?? []);
-        [$connection, $warning] = self::withWarning(static fn() => pg_connect($conninfo, PGSQL_CONNECT_FORCE_NEW));
+        [$connection, $warning] = self::withPhpDiagnostic(
+            static fn() => pg_connect($conninfo, PGSQL_CONNECT_FORCE_NEW)
+        );
         if (!$connection instanceof Connection) {
             throw new PDOException(self::withReason('cannot connect to PostgreSQL', $warning));
         }
@@ -222,7 +223,7 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
             . ') FROM STDIN WITH (FORMAT text, DELIMITER ' . pg_escape_literal($this->connection, $separator)
             . ', NULL ' . pg_escape_literal($this->connection, $nullAs) . ')';
         $connection = $this->connection;
-        [$started, $warning] = self::withWarning(static fn() => pg_query($connection, $command));
+        [$started, $warning] = self::withPhpDiagnostic(static fn() => pg_query($connection, $command));
         if (!$started instanceof Result || pg_result_status($started) !== PGSQL_COPY_IN) {
             throw new PDOException(
                 pg_last_error($this->connection) ?: self::withReason('PostgreSQL COPY FROM did not start', $warning),
@@ -248,7 +249,7 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
         string $nullAs = "\\N",
         ?string $fields = null
     ): bool {
-        [$contents, $warning] = self::withWarning(static fn() => file_get_contents($filename));
+        [$contents, $warning] = self::withPhpDiagnostic(static fn() => file_get_contents($filename));
         if (!is_string($contents)) {
             throw new PDOException(self::withReason("cannot read PostgreSQL COPY file $filename", $warning));
         }
@@ -304,7 +305,7 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
             return false;
         }
         $contents = $rows === [] ? '' : implode("\n", $rows) . "\n";
-        [$written, $warning] = self::withWarning(static fn() => file_put_contents($filename, $contents));
+        [$written, $warning] = self::withPhpDiagnostic(static fn() => file_put_contents($filename, $contents));
         if ($written === false) {
             throw new PDOException(self::withReason("cannot write PostgreSQL COPY file $filename", $warning));
         }
@@ -452,7 +453,7 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
         $except = null;
         $seconds = intdiv($timeoutMilliseconds, 1000);
         $microseconds = ($timeoutMilliseconds % 1000) * 1000;
-        [$ready, $warning] = self::withWarning(
+        [$ready, $warning] = self::withPhpDiagnostic(
             static function () use (&$read, &$write, &$except, $seconds, $microseconds): int|false {
                 return stream_select($read, $write, $except, $seconds, $microseconds);
             },
@@ -487,9 +488,15 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
             $params,
             array_keys($params)
         );
-        $sent = $simpleQuery
-            ? pg_send_query($this->connection, $sql)
-            : pg_send_query_params($this->connection, $sql, $values);
+        [$sent, $notice] = self::withPhpDiagnostic(
+            fn() => $simpleQuery
+                ? pg_send_query($this->connection, $sql)
+                : pg_send_query_params($this->connection, $sql, $values),
+            E_NOTICE
+        );
+        if ($notice !== null) {
+            $this->raiseConnectionError($notice);
+        }
         if (!$sent) {
             $this->raiseConnectionError();
         }
@@ -500,12 +507,22 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
         $lastResult = null;
         $queryError = null;
         while (true) {
-            while (pg_connection_busy($this->connection)) {
+            while (true) {
+                [$busy, $notice] = self::withPhpDiagnostic(
+                    fn() => pg_connection_busy($this->connection),
+                    E_NOTICE
+                );
+                if ($notice !== null) {
+                    $this->raiseConnectionError($notice);
+                }
+                if (!$busy) {
+                    break;
+                }
                 $read = [$socket];
                 $write = null;
                 $except = null;
                 // A select interrupted by a signal fails with a warning; the signal is dispatched and the wait repeats.
-                [$ready] = self::withWarning(static function () use (&$read, &$write, &$except): int|false {
+                [$ready] = self::withPhpDiagnostic(static function () use (&$read, &$write, &$except): int|false {
                     return stream_select($read, $write, $except, null);
                 });
                 if ($ready === false) {
@@ -518,7 +535,6 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
                     $this->raiseConnectionError();
                 }
                 if ($ready > 0) {
-                    pg_connection_busy($this->connection);
                     $this->dispatchNotices();
                 }
                 if (function_exists('pcntl_signal_dispatch')) {
@@ -677,9 +693,9 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
         }
     }
 
-    private function raiseConnectionError(): never
+    private function raiseConnectionError(?string $notice = null): never
     {
-        $message = pg_last_error($this->connection) ?: 'PostgreSQL query failed';
+        $message = pg_last_error($this->connection) ?: $notice ?: 'PostgreSQL query failed';
         throw $this->failure(['08006', null, $message]);
     }
 
