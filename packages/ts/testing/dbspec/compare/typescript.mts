@@ -338,8 +338,8 @@ function writeExport(document: DbspecDocument): string {
 }
 
 // writeImport prints the document emitted by the import and the missing objects, or the diagnostic.
-function writeImport(text: string) {
-  const result = importMermaid(text, 'imported');
+function writeImport(text: string, name = 'imported') {
+  const result = importMermaid(text, name);
   if (result.document === null) {
     writePlanDiagnostics(result.diagnostics);
     return;
@@ -356,11 +356,13 @@ for (const c of mermaid.export) {
   if (parsed.document === null) writePlanDiagnostics(parsed.diagnostics);
   else writeExport(parsed.document);
 }
-for (const kind of ['import', 'invalid'] as const) {
-  for (const c of mermaid[kind]) {
-    out.push(`mermaid/${kind}/${c.id}`);
-    writeImport(join(c.mermaid, false));
-  }
+for (const c of mermaid.import) {
+  out.push(`mermaid/import/${c.id}`);
+  writeImport(join(c.mermaid, false));
+}
+for (const c of mermaid.invalid) {
+  out.push(`mermaid/invalid/${c.id}`);
+  writeImport(join(c.mermaid, false), c.name ?? 'imported');
 }
 for (const c of mermaid.round_trip) {
   out.push(`mermaid/round_trip/${c.id}`);

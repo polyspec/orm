@@ -35,7 +35,7 @@ type MermaidVectors = {
   version: 1; note: string;
   export: { id: string; document: Lines; documents: Record<string, Lines>; mermaid: Lines; dropped: [string, string, string][] }[];
   import: { id: string; mermaid: Lines; document: Lines; dropped: [string, string, string][] }[];
-  invalid: { id: string; mermaid: Lines; errors: [string, number, number][] }[];
+  invalid: { id: string; name?: string; mermaid: Lines; errors: [string, number, number][] }[];
   round_trip: { id: string; path: string; imported: [string, string, string][]; dropped: [string, string, string][] }[];
 };
 /** tests/dbspec/syntax.json. */
