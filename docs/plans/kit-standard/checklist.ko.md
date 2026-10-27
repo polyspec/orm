@@ -1,11 +1,11 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: ed580f423a19eb677b41123d9f34e3109306e23bf9ccc3f49c68434ed810ebb2 -->
+<!-- source-sha256: a5d3047f1abe7e7c528bdd216e0c0142f24f047d45d8919e40822b11e3bea571 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
 |---|---|---|---|---|
 | KSTD | 이 저장소는 kit 표준 0.0.54를 따른다 | the layout, plans, pins and lint fixes of the rollout | `make layout-check`, `make lint-ts` | [!] 원인: 이 계획의 parity, 문서, Go lint 항목은 CI 실행을 기다린다; 재시도: 이 계획의 항목이 차례로 끝난 뒤 |
-| KSTD-2 | config/parity.json의 모든 unit은 모든 구현에서 성립하고, test가 명칭으로 적은 spec requirement를 인용한다 (kit K273, K275, K276) | config/parity.json, docs/spec, the tests of every implementation | `make parity-declarations-check` | [~] |
+| KSTD-2 | config/parity.json의 모든 unit은 모든 구현에서 성립하고, test가 명칭으로 적은 spec requirement를 인용한다 (kit K273, K275, K276) | config/parity.json, docs/spec, the tests of every implementation | `make parity-declarations-check` | [v] |
 | KSTD-2-2 | 미구현 PHP 확장 동작을 지원한다고 주장하지 않으면서 여섯 구현을 열거하는 모든 문서 설명을 맞춘다 (KSTD-2에 따름). 원인: 수정 전 main 0898f6f1에서 전용 source RED로 75건을 확인했다 (개수 문장 50개, 열거 집합 17개, 표 머리글 6개, protocol 행 2개). | All affected spec, operations, feature, index, root and test README documents and Korean twins; Makefile, contracts/check-inputs.json and the focused docs rules selector/unit test. Keep capability statements scoped to implemented PHP extension behavior. | `make docs-implementation-count-check` | [o] |
 | KSTD-2-3 | logical contract가 모든 rule에 php-extension native를 둔다(KSTD-2에 이어). 원인: S10에 따라 extension이 PHP library 전체를 구현하는데 tests/interfaces/contracts/validate.go와 contracts/interfaces.json의 native contract 표에 php-extension 항목이 없어 TestLogicalContractRejectsNativeDrift가 Model.connect missing php-extension으로 실패한다 | contracts/interfaces.json, tests/interfaces/contracts/validate.go, packages/php-ext | `go test ./tests/interfaces/contracts/ -run TestLogicalContractRejectsNativeDrift` | [o] |
 | KSTD-2-4 | 모든 error-code unit이 php-extension symbol을 둔다(KSTD-2에 이어). 원인: php-extension이 errors catalog 파일을 선언하지 않고 unit에 php-extension symbol이 없어, API check가 error-code-version-mismatch 등을 선언된 구현과 다른 구현을 표현한다고 보고한다 | config/parity.json, packages/php-ext/src/polyspec_orm.stub.php | `node --test tests/interfaces/check/api.test.mts` | [o] |
