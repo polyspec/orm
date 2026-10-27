@@ -993,6 +993,16 @@ func TestCoverageModelReadNullAndEmptyText(t *testing.T) {
 		t.Fatalf("ORM_FEATURE_DSN selects %s, not %s", c.Dialect(), driver)
 	}
 	ref, metadata := catalogCurrentTable(t, ctx, driver, c, "bind_cell", "bind_cell metadata")
+	var sequenceDB *sql.DB
+	var sequenceBefore sqliteSequenceSnapshot
+	if driver == "sqlite" {
+		sequenceDB = openRaw(t, driver, os.Getenv("ORM_FEATURE_DSN"))
+		defer testcase.Close(t, sequenceDB)
+		sequenceBefore, err = readSQLiteSequence(ctx, sequenceDB, "bind_cell")
+		if err != nil {
+			t.Fatalf("sqlite: read bind_cell sequence before fixture: %v", err)
+		}
+	}
 	seq := -1_000_000_000_000 - time.Now().UnixNano()%1_000_000_000
 	targets := []int64{seq, seq - 1}
 	defer func() {
@@ -1026,6 +1036,11 @@ func TestCoverageModelReadNullAndEmptyText(t *testing.T) {
 		for _, snapshot := range snapshots {
 			if _, err := c.DeleteRow(ctx, snapshot); err != nil {
 				t.Errorf("%s: delete fixture row %v: %v", driver, snapshot, err)
+			}
+		}
+		if sequenceDB != nil {
+			if err := restoreSQLiteSequence(ctx, sequenceDB, "bind_cell", sequenceBefore); err != nil {
+				t.Errorf("sqlite: restore bind_cell sequence: %v", err)
 			}
 		}
 	}()

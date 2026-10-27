@@ -11632,6 +11632,7 @@
         "packages/php-ext/tests/CatalogConnectionCoverageSurfaceTest.php",
         "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
         "packages/go/orm/coverage_catalog_connection_test.go",
+        "packages/go/orm/catalog_sqlite_sequence_test.go",
         "packages/go/orm/catalog_row_baseline_test.go",
         "packages/php/tests/CoverageCatalogConnectionTest.php",
         "packages/ts/tests/coverage_catalog_connection.mjs",
