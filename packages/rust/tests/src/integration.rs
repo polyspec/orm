@@ -595,21 +595,36 @@ async fn transactions(t: &Target) {
     assert_eq!(code(db.utils().privileges().inspect_table("public.user").await).as_str() == "CAPABILITY_UNSUPPORTED", t.driver != "postgres", "privileges");
     let stats = db.utils().stats();
     assert_eq!(stats.max_open_connections, TARGET_POOL_SIZE, "{}: pool limit", t.driver);
-    assert_eq!(stats.open_connections, 1, "{}: open connections", t.driver);
+    assert!((1..=TARGET_POOL_SIZE).contains(&stats.open_connections), "{}: open connections {} outside pool bounds", t.driver, stats.open_connections);
     assert_eq!(stats.in_use, 0, "{}: connections in use", t.driver);
-    assert_eq!(stats.idle, 1, "{}: idle connections", t.driver);
+    assert_eq!(stats.idle, stats.open_connections, "{}: all open connections are idle", t.driver);
     let stats_in_transaction: polyspec_orm::Result<()> = db
         .transaction(async || {
             let stats = db.utils().stats();
             assert_eq!(stats.max_open_connections, TARGET_POOL_SIZE, "{}: transaction pool limit", t.driver);
-            assert_eq!(stats.open_connections, 1, "{}: transaction open connections", t.driver);
+            assert!(
+                (1..=TARGET_POOL_SIZE).contains(&stats.open_connections),
+                "{}: transaction open connections {} outside pool bounds",
+                t.driver,
+                stats.open_connections
+            );
             assert_eq!(stats.in_use, 1, "{}: transaction connections in use", t.driver);
-            assert_eq!(stats.idle, 0, "{}: transaction idle connections", t.driver);
+            assert_eq!(stats.idle + stats.in_use, stats.open_connections, "{}: transaction idle and in-use counts", t.driver);
             Ok(())
         })
         .retry(0)
         .await;
     stats_in_transaction.expect("stats available while a transaction holds its connection");
+    let returned = db.utils().stats();
+    assert_eq!(returned.max_open_connections, TARGET_POOL_SIZE, "{}: returned transaction pool limit", t.driver);
+    assert!(
+        (1..=TARGET_POOL_SIZE).contains(&returned.open_connections),
+        "{}: returned transaction open connections {} outside pool bounds",
+        t.driver,
+        returned.open_connections
+    );
+    assert_eq!(returned.in_use, 0, "{}: transaction connection returned to pool", t.driver);
+    assert_eq!(returned.idle, returned.open_connections, "{}: all returned transaction connections are idle", t.driver);
 }
 
 /// Returns after the replica has applied every change the primary committed

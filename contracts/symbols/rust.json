@@ -553,11 +553,11 @@
   },
   "packages/rust/build/src/catalog/row_update.rs::declared_capacity": {
     "exported": false,
-    "signature": " fn declared_capacity (native_type : \u0026 str , names : \u0026 [\u0026 str]) -\u003e Option \u003c usize \u003e"
+    "signature": " fn declared_capacity (native_type : \u0026 str , names : \u0026 [\u0026 str]) -\u003e Result \u003c Option \u003c usize \u003e , std :: num :: ParseIntError \u003e"
   },
   "packages/rust/build/src/catalog/row_update.rs::exceeds_declared_capacity": {
     "exported": false,
-    "signature": " fn exceeds_declared_capacity (native_type : \u0026 str , cell : \u0026 GridCell) -\u003e bool"
+    "signature": " fn exceeds_declared_capacity (native_type : \u0026 str , cell : \u0026 GridCell) -\u003e Result \u003c bool , std :: num :: ParseIntError \u003e"
   },
   "packages/rust/build/src/catalog/row_update.rs::invalid": {
     "exported": false,
