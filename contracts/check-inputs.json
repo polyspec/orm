@@ -1522,7 +1522,7 @@
       ]
     },
     "codec-check": {
-      "scope": "suite",
+      "scope": "owner",
       "needs": [
         "go",
         "rust",
