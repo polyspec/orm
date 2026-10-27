@@ -16,6 +16,7 @@ func TestCatalogSameWrittenCellMatchesDateTimeTextToDriverTime(t *testing.T) {
 		columnType string
 		dialect    string
 		want       bool
+		wantCode   string
 	}{
 		{name: "default precision", stored: defaultStored, requested: "2026-01-02 03:04:05", columnType: "DATETIME", dialect: "sqlite", want: true},
 		{name: "SQLite flexible datetime preserves declared fractional text", stored: stored, requested: "2026-01-02 03:04:05.123", columnType: "DATETIME", dialect: "sqlite", want: true},
@@ -23,8 +24,8 @@ func TestCatalogSameWrittenCellMatchesDateTimeTextToDriverTime(t *testing.T) {
 		{name: "PostgreSQL default precision", stored: stored, requested: "2026-01-02 03:04:05.123", columnType: "timestamp without time zone", dialect: "postgres", want: true},
 		{name: "MySQL native datetime", stored: defaultStored, requested: "2026-01-02 03:04:05", columnType: "datetime", dialect: "mysql", want: true},
 		{name: "different instant", stored: stored, requested: "2026-01-02 03:04:05.124", columnType: "DATETIME", dialect: "sqlite", want: false},
-		{name: "rejects unsupported fraction width", stored: stored, requested: "2026-01-02 03:04:05.1234567", columnType: "DATETIME", dialect: "sqlite", want: false},
-		{name: "rejects nonzero fraction beyond column precision", stored: stored, requested: "2026-01-02 03:04:05.1234", columnType: "DATETIME(3)", dialect: "sqlite", want: false},
+		{name: "rejects unsupported fraction width", stored: stored, requested: "2026-01-02 03:04:05.1234567", columnType: "DATETIME", dialect: "sqlite", wantCode: CodeCodecEncode},
+		{name: "rejects nonzero fraction beyond column precision", stored: stored, requested: "2026-01-02 03:04:05.1234", columnType: "DATETIME(3)", dialect: "sqlite", wantCode: CodeCodecEncode},
 		{name: "does not coerce text column", stored: stored, requested: "2026-01-02 03:04:05.123", columnType: "TEXT", dialect: "sqlite", want: false},
 		{name: "does not coerce an unknown dialect", stored: stored, requested: "2026-01-02 03:04:05.123", columnType: "DATETIME", dialect: "other", want: false},
 	}
@@ -32,6 +33,12 @@ func TestCatalogSameWrittenCellMatchesDateTimeTextToDriverTime(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			got, err := catalogSameWrittenCell(db, test.stored, test.requested, CatalogColumn{NativeType: test.columnType}, test.dialect)
+			if test.wantCode != "" {
+				if ErrorCode(err) != test.wantCode {
+					t.Fatalf("catalogSameWrittenCell() error = %v, want %s", err, test.wantCode)
+				}
+				return
+			}
 			if err != nil || got != test.want {
 				t.Fatalf("catalogSameWrittenCell() = %v, %v; want %v, nil", got, err, test.want)
 			}

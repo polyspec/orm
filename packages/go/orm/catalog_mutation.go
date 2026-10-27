@@ -465,7 +465,7 @@ func catalogSameWrittenCell(db *DB, stored, requested any, column CatalogColumn,
 				if precision, ok := catalogDateTimePrecision(column.NativeType, dialect); ok {
 					canonical, err := db.bindTimeValue(text, "datetime", precision)
 					if err != nil {
-						return false, nil
+						return false, err
 					}
 					canonicalText, ok := canonical.(string)
 					if !ok {
