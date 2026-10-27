@@ -47,8 +47,9 @@ export function observed(language: string, database: string, output: string): bo
   const id = `decimal_${database}`;
   if (language === 'go') {
     const suffix = database === 'postgres' ? 'Postgres' : database === 'mysql' ? 'MySQL' : 'SQLite';
-    const events = output.trim().split('\n').map((line: string) => parseGoTestEvent(line, 'go test -json'));
-    return events.filter(event => event.Action === 'pass' && event.Test === `TestDecimalPhysical${suffix}`).length === 1 &&
+    const events = output.trim().split('\n').map(line => parseGoTestEvent(line, 'go test -json'));
+    const testResults = events.filter(event => event.Test && ['pass', 'fail', 'skip'].includes(event.Action));
+    return testResults.length === 1 && testResults[0]?.Action === 'pass' && testResults[0].Test === `TestDecimalPhysical${suffix}` &&
       events.some(event => event.Action === 'pass' && !event.Test);
   }
   if (language === 'rust') return output.includes(`test ${id} ... ok`) && output.includes('1 passed; 0 failed');
@@ -69,12 +70,14 @@ export function observed(language: string, database: string, output: string): bo
     return output.split('\n').filter(line => line.includes(`✔ ${name} `)).length === 1
       && output.includes(': 1 passed, 0 failed, 0 timed out, 0 skipped');
   }
-  // The Python test writes a RUN and a PASS or FAIL line per case, the tests of a class in name order. Both cases pass
-  // and no other result line is written.
+  // The Python test uses unittest's TextTestRunner, which reports each named test and a complete summary.
   if (language === 'python') {
-    const results = output.split('\n').filter((line: string) => /^(?:PASS|FAIL) /.test(line)).map((line: string) => line.split(' ').slice(0, 2).join(' '));
-    const wanted = ['round_trip', 'setters'].map(name => `PASS __main__.DecimalModelDbTest.test_${name}`);
-    return JSON.stringify(results) === JSON.stringify(wanted);
+    const cases = ['round_trip', 'setters'];
+    const results = output.split(/\r?\n/).filter(line => /^test_/.test(line));
+    const names = results.map(line => /^test_(round_trip|setters) \(__main__\.DecimalModelDbTest\.test_\1\) \.\.\. (ok)$/.exec(line)?.[1] ?? '');
+    return results.length === cases.length && JSON.stringify(names) === JSON.stringify(cases)
+      && /^Ran 2 tests in \d+(?:\.\d+)?s$/m.test(output)
+      && /^OK$/m.test(output);
   }
   // The TypeScript owner uses node:test's spec reporter. Match both named pass events and the complete summary;
   // a zero exit alone would also accept a filtered or empty run.

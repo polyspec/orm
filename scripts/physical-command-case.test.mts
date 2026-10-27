@@ -65,6 +65,32 @@ caseTest('matches the exact PHP decimal PHPUnit class and data-set events', COMP
   assert.equal(observed('php', database, `${output}\n##teamcity[testFailed name='testSetters']`), false);
 });
 
+caseTest('matches the exact Go decimal test2json symbol and package pass', COMPUTE, () => {
+  const output = [
+    JSON.stringify({ Action: 'pass', Package: 'github.com/polyspec/orm/packages/go/decimalmodel', Test: 'TestDecimalPhysicalMySQL', Elapsed: 0.03 }),
+    JSON.stringify({ Action: 'pass', Package: 'github.com/polyspec/orm/packages/go/decimalmodel', Elapsed: 0.03 }),
+  ].join('\n');
+  assert.equal(observed('go', 'mysql', output), true);
+  assert.equal(observed('go', 'mysql', output.replace('TestDecimalPhysicalMySQL', 'TestOther')), false);
+  assert.equal(observed('go', 'mysql', output.split('\n')[0] ?? ''), false);
+  assert.equal(observed('go', 'mysql', `${output}\n${JSON.stringify({ Action: 'fail', Package: 'github.com/polyspec/orm/packages/go/decimalmodel', Test: 'TestDecimalPhysicalMySQL', Elapsed: 0.03 })}`), false);
+});
+
+caseTest('matches the exact PHP extension decimal native test event', COMPUTE, () => {
+  const name = 'DecimalModelDbNativeTest::testNativeRoundTrip with data set "mysql"';
+  const output = `✔ ${name} (1.23s)\n1 test passed: 1 passed, 0 failed, 0 timed out, 0 skipped`;
+  assert.equal(observed('php-extension', 'mysql', output), true);
+  assert.equal(observed('php-extension', 'mysql', output.replace('testNativeRoundTrip', 'testOther')), false);
+  assert.equal(observed('php-extension', 'mysql', output.replace('0 failed', '1 failed')), false);
+});
+
+caseTest('matches the exact Rust decimal test symbol and passing summary', COMPUTE, () => {
+  const output = 'test decimal_mysql ... ok\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.03s';
+  assert.equal(observed('rust', 'mysql', output), true);
+  assert.equal(observed('rust', 'mysql', output.replace('decimal_mysql', 'decimal_postgres')), false);
+  assert.equal(observed('rust', 'mysql', output.replace('1 passed; 0 failed', '0 passed; 1 failed')), false);
+});
+
 caseTest('matches both exact TypeScript decimal node:test pass events', COMPUTE, () => {
   const output = [
     '✔ decimal_db/mysql/setters (0.317458ms)',
@@ -81,6 +107,21 @@ caseTest('matches both exact TypeScript decimal node:test pass events', COMPUTE,
   assert.equal(observed('typescript', 'mysql', output.replace('✔ decimal_db/mysql/round_trip', '✖ decimal_db/mysql/round_trip')), false);
   assert.equal(observed('typescript', 'mysql', output.replace('ℹ tests 2', 'ℹ tests 1')), false);
   assert.equal(observed('typescript', 'mysql', `${output}\n✔ decimal_db/mysql/unexpected (0.1ms)`), false);
+});
+
+caseTest('matches both exact Python decimal unittest results', COMPUTE, () => {
+  const output = [
+    'test_round_trip (__main__.DecimalModelDbTest.test_round_trip) ... ok',
+    'test_setters (__main__.DecimalModelDbTest.test_setters) ... ok',
+    '',
+    'Ran 2 tests in 0.031s',
+    '',
+    'OK',
+  ].join('\n');
+  assert.equal(observed('python', 'mysql', output), true);
+  assert.equal(observed('python', 'mysql', output.replace('... ok', '... FAIL')), false);
+  assert.equal(observed('python', 'mysql', output.replace('Ran 2 tests', 'Ran 1 test')), false);
+  assert.equal(observed('python', 'mysql', `${output}\ntest_extra (__main__.DecimalModelDbTest.test_extra) ... ok`), false);
 });
 
 caseTest('redacts the DSN from command failures', COMPUTE, async () => {
