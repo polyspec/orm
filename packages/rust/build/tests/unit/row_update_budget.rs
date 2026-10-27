@@ -62,4 +62,8 @@ fn rust_row_update_enforces_declared_varchar_and_binary_capacity() {
 
     let fixed_character = snapshot_with_value_type("char(3)", GridCell::Text("old".into()));
     assert!(fixed_character.validate_update(&[("value".into(), GridCell::Text("界界界界".into()))]).is_ok());
+
+    let overflowing_capacity = snapshot_with_value_type("varchar(999999999999999999999999999999)", GridCell::Text("old".into()));
+    let error = overflowing_capacity.validate_update(&[("value".into(), GridCell::Text("new".into()))]).unwrap_err();
+    assert!(error.contains("number too large to fit in target type"), "{error}");
 }

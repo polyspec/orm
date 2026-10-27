@@ -3,7 +3,7 @@
 //! count, and a SQL NULL group is kept.
 use super::coverage_env::{connect, run};
 use super::model::Author;
-use polyspec_orm::{Val, codes};
+use polyspec_orm::{codes, Val};
 
 #[tokio::test]
 // Requirements: INT-31.
