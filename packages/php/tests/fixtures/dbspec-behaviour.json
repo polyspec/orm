@@ -10134,12 +10134,12 @@
             ],
             [
                 "Polyspec\\Orm\\Dbspec\\ApplyError",
-                "drift: the database has 1 objects that dbspec cannot express, first table stray stray: the table item \"id INTEGER PRIMARY KEY\" has no dbspec definition",
+                "drift: the database has 2 objects that dbspec cannot express, first column stray id: the column definition \"id INTEGER PRIMARY KEY\" has clauses that dbspec does not read",
                 [
                     "drift",
                     "",
                     0,
-                    "the database has 1 objects that dbspec cannot express, first table stray stray: the table item \"id INTEGER PRIMARY KEY\" has no dbspec definition"
+                    "the database has 2 objects that dbspec cannot express, first column stray id: the column definition \"id INTEGER PRIMARY KEY\" has clauses that dbspec does not read"
                 ]
             ],
             [
@@ -10156,6 +10156,11 @@
             [
                 "dbspec 1 x\n\ntable orders {\n  id i64 identity\n  user_id i64\n  total decimal(10,2) default 0.00\n  primary key (id)\n  index ix_orders_user (user_id)\n  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict\n}\n\ntable users {\n  id i64 identity\n  mail varchar(64)\n  age i32 null\n  primary key (id)\n  unique uq_users_mail (mail)\n  check ck_users_age (age >= 0)\n}\n",
                 [
+                    [
+                        "column",
+                        "stray",
+                        "id"
+                    ],
                     [
                         "table",
                         "stray",
@@ -25038,12 +25043,12 @@
             ],
             [
                 "Polyspec\\Orm\\Dbspec\\ApplyError",
-                "drift: the database has 1 objects that dbspec cannot express, first table stray stray: the table item \"id INTEGER PRIMARY KEY\" has no dbspec definition",
+                "drift: the database has 2 objects that dbspec cannot express, first column stray id: the column definition \"id INTEGER PRIMARY KEY\" has clauses that dbspec does not read",
                 [
                     "drift",
                     "",
                     0,
-                    "the database has 1 objects that dbspec cannot express, first table stray stray: the table item \"id INTEGER PRIMARY KEY\" has no dbspec definition"
+                    "the database has 2 objects that dbspec cannot express, first column stray id: the column definition \"id INTEGER PRIMARY KEY\" has clauses that dbspec does not read"
                 ]
             ],
             [
@@ -25060,6 +25065,11 @@
             [
                 "dbspec 1 x\n\ntable archive {\n  id i64 identity\n  user_id i64 null\n  note varchar(32)\n  primary key (id)\n  index ix_archive_user (user_id)\n  foreign key fk_archive_user (user_id) references users (id) on delete restrict on update restrict\n  check ck_archive_note (note <> '')\n  settings {\n    immutable\n  }\n}\n\ntable orders {\n  id i64 identity\n  user_id i64\n  total decimal(10,2) default 0.00\n  memo varchar(20) null\n  primary key (id)\n  index ix_orders_user (user_id)\n  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict\n}\n\ntable users {\n  id i64 identity\n  mail varchar(64)\n  legacy_code i32 default 0\n  age i32 null\n  nick varchar(20) default 'x'\n  primary key (id)\n  unique uq_users_mail (mail)\n  check ck_users_age (age >= 0)\n}\n",
                 [
+                    [
+                        "column",
+                        "stray",
+                        "id"
+                    ],
                     [
                         "table",
                         "stray",
@@ -32808,12 +32818,12 @@
             ],
             [
                 "Polyspec\\Orm\\Dbspec\\ApplyError",
-                "drift: the database has 1 objects that dbspec cannot express, first table stray stray: the table item \"id INTEGER PRIMARY KEY\" has no dbspec definition",
+                "drift: the database has 2 objects that dbspec cannot express, first column stray id: the column definition \"id INTEGER PRIMARY KEY\" has clauses that dbspec does not read",
                 [
                     "drift",
                     "",
                     0,
-                    "the database has 1 objects that dbspec cannot express, first table stray stray: the table item \"id INTEGER PRIMARY KEY\" has no dbspec definition"
+                    "the database has 2 objects that dbspec cannot express, first column stray id: the column definition \"id INTEGER PRIMARY KEY\" has clauses that dbspec does not read"
                 ]
             ],
             [
@@ -32830,6 +32840,11 @@
             [
                 "dbspec 1 x\n\ntable t {\n  id i64 identity\n  a varchar(8)\n  b i32\n  primary key (id)\n}\n",
                 [
+                    [
+                        "column",
+                        "stray",
+                        "id"
+                    ],
                     [
                         "table",
                         "stray",
@@ -40567,12 +40582,12 @@
             ],
             [
                 "Polyspec\\Orm\\Dbspec\\ApplyError",
-                "drift: the database has 1 objects that dbspec cannot express, first table stray stray: the table item \"id INTEGER PRIMARY KEY\" has no dbspec definition",
+                "drift: the database has 2 objects that dbspec cannot express, first column stray id: the column definition \"id INTEGER PRIMARY KEY\" has clauses that dbspec does not read",
                 [
                     "drift",
                     "",
                     0,
-                    "the database has 1 objects that dbspec cannot express, first table stray stray: the table item \"id INTEGER PRIMARY KEY\" has no dbspec definition"
+                    "the database has 2 objects that dbspec cannot express, first column stray id: the column definition \"id INTEGER PRIMARY KEY\" has clauses that dbspec does not read"
                 ]
             ],
             [
@@ -40589,6 +40604,11 @@
             [
                 "dbspec 1 x\n\ntable k {\n  id i64 identity\n  n i32\n  primary key (id)\n}\n",
                 [
+                    [
+                        "column",
+                        "stray",
+                        "id"
+                    ],
                     [
                         "table",
                         "stray",

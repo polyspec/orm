@@ -24,6 +24,7 @@ require "$root/tests/dbspec/vectors.php";
 require "$root/tests/dbspec/cases.php";
 require "$root/packages/php/tests/dbspec_cases.php";
 require "$root/packages/php/tests/dbspec_plan_cases.php";
+require "$root/packages/php/tests/SqliteLiteralRowsPdo.php";
 require "$root/packages/php/tests/dbspec_behaviour.php";
 
 $cases = [];
