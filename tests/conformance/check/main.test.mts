@@ -122,7 +122,7 @@ caseTest('TestNormalizeCommandUsesTheCentralOutputNormalizer', PROCESS, () => wi
   const expected = { audit_lazy: { ...output.audit_lazy, statements: output.audit_lazy.statements.map((statement, index) =>
     index === 1 ? { ...statement, binds: ['audit-none', '$SEQ', -1] }
       : index === 3 ? { ...statement, binds: ['audit-lazy', 2] } : statement) } };
-  assert.equal(equalJSON(decodeExact(normalized), decodeExact(JSON.stringify(expected))), true);
+  assert.equal(equalJSON(normalized, JSON.stringify(expected)), true);
 }));
 
 caseTest('TestRecordRequiresFourEqualOutputs', COMPUTE, () => withTemporaryDirectory('orm-conformance-check-test-', temp => {

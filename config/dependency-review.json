@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mts) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-27T04:21:09.029Z",
+  "reviewed": "2026-10-27T05:26:04.110Z",
   "locks": [
     {
       "lock": "package-lock.json",
-      "sha256": "9a3907d7eab2507a4da35ee53cf2356d8aa4f5d52329879ae09393b05d9ed8bf",
+      "sha256": "6ebde056158bb5ea124fa4f88a4fcc169c872ca78c90b401f53812ce42acf1db",
       "advisories": [
         {
           "package": "@azure/msal-node",

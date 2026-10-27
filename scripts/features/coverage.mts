@@ -790,7 +790,7 @@ async function buildCargo(plans: Plans, directory: string, builds: Builds, build
       if (!selectedPackage) throw new Error(`cargo metadata did not return package for ${manifestPath}`);
       const workspaceManifestPath = cargoWorkspaceManifestPath(project.workspace_root);
       const features = cargoFeaturesForPackage(project, selectedPackage, requestedFeatures);
-      const dependencyRoot = resolve(project.workspace_root);
+      const dependencyRoot = dirname(workspaceManifestPath);
       const pathModules = await cargoPathModuleFiles(selectedPackage.targets);
       const targetArgs = cargoTargetArgs(selectedPackage.targets, crateSpecs.map(spec => spec.testPath), pathModules);
       const copies = resolve(directory, `cargo-${builds.cargo.size}-${relative(plans.root, crate).replaceAll('/', '_') || 'root'}`);

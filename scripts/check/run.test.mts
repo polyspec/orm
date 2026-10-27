@@ -242,7 +242,7 @@ caseTest('make orm-check delegates to ci-targets and make check-run starts the r
 // to make. runner-check runs this file in the static CI group (CI_TARGETS_static), so the case runs in CI.
 if (process.env.GITHUB_ACTIONS === 'true') {
   caseTest('make check-run accepts a CI group on GitHub Actions', COMPUTE, () => {
-    const result = spawnSync('make', ['-n', '--no-print-directory', 'check-run', 'GROUP=static'], { cwd: repo, encoding: 'utf8', env: isolatedEnvironment({ GITHUB_ACTIONS: 'true' }) });
+    const result = spawnSync('make', ['-n', '--no-print-directory', 'check-run', 'GROUP=static'], { cwd: repo, encoding: 'utf8', env: isolatedEnvironment({ GITHUB_ACTIONS: process.env.GITHUB_ACTIONS ?? '' }) });
     assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
     assert.match(result.stdout, /node scripts\/check\/run\.mts /, result.stdout);
   });

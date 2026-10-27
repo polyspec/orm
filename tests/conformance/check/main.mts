@@ -533,7 +533,7 @@ function readOutput(path: string, driver: string): JsonObject {
 }
 
 /** Normalize only explicitly selected vectors using the same path used by compare and record. */
-export function normalizeSelectedOutput(value: Json, driver: string, selected: string[]): Json {
+function normalizeSelectedOutput(value: Json, driver: string, selected: string[]): Json {
   const output = fieldsOf(value);
   if (output === undefined) throw new Error('conformance output is not an object');
   const auditLazy = output.get('audit_lazy');

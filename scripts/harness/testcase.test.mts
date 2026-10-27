@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { execFailure } from '../../tests/errors.mts';
-import { caseTest, cases, COMPUTE, duration, PROCESS } from '../../tests/testcase.mts';
+import { caseTest, COMPUTE, duration, PROCESS } from '../../tests/testcase.mts';
 
 const harness = new URL('../../tests/testcase.mts', import.meta.url).href;
 
