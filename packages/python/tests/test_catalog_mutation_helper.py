@@ -1,6 +1,6 @@
 import sqlite3
 import unittest
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta, timezone
 from types import SimpleNamespace
 
 from . import testcase
@@ -13,6 +13,9 @@ from polyspec.orm.catalog import (
     _MYSQL_TIME,
     _mysql_catalog_value,
     _mysql_time_value,
+    _check_value,
+    _cell_key,
+    _postgres_time_text,
     _Session,
     _lock_original_row,
     _same_column_value,
@@ -120,6 +123,43 @@ class CatalogMutationHelperTest(unittest.TestCase):
         self.assertEqual(
             _mysql_catalog_value(native_datetime, _MYSQL_DATETIME, 3), native_datetime
         )
+
+    def test_postgres_time_cells_keep_native_value_and_declared_precision(self):
+        value = time(12, 34, 56, 123000)
+        self.assertIs(_check_value(value), value)
+        self.assertEqual(_cell_key(value), "h12:34:56.123000")
+        self.assertEqual(_postgres_time_text(value, 3), "12:34:56.123")
+        self.assertEqual(
+            _postgres_time_text(time(12, 34, 56, 123456), 6),
+            "12:34:56.123456",
+        )
+        self.assertTrue(
+            _same_column_value(
+                value,
+                "12:34:56.123",
+                CatalogColumn("at", "time(3) without time zone", False, False),
+                "postgres",
+            )
+        )
+        self.assertTrue(
+            _same_column_value(
+                time(12, 34, 56, 123456),
+                "12:34:56.123456",
+                CatalogColumn("at", "time without time zone", False, False),
+                "postgres",
+            )
+        )
+        for invalid in (
+            time(12, 34, 56, 123001),
+            time(12, 34, 56, tzinfo=timezone.utc),
+        ):
+            with self.subTest(value=invalid):
+                with self.assertRaises(OrmError) as raised:
+                    _postgres_time_text(invalid, 3)
+                self.assertEqual(raised.exception.code, codes.CATALOG_VALUE)
+        with self.assertRaises(OrmError) as snapshot:
+            _cell_key(time(12, 34, 56, tzinfo=timezone.utc))
+        self.assertEqual(snapshot.exception.code, codes.ROW_SNAPSHOT_INVALID)
 
     def test_locks_and_validates_unchanged_original_row_before_mysql_safety(self):
         descriptor = metadata()

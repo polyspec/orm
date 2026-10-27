@@ -14,7 +14,7 @@ import stat
 import struct
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time as datetime_time, timedelta, timezone
 from typing import Callable, TypeVar
 
 from polyspec.orm import codes
@@ -169,8 +169,10 @@ def _text(value) -> str:
 
 
 def _check_value(value):
-    """Checks plain driver values after dialect-specific temporal values have been decoded."""
+    """Checks the plain driver values accepted by a catalog row result."""
     if value is None or isinstance(value, (bool, int, str, bytes, datetime)):
+        return value
+    if isinstance(value, datetime_time) and value.tzinfo is None:
         return value
     if isinstance(value, float):
         if math.isnan(value) or math.isinf(value):
@@ -238,7 +240,7 @@ def _mysql_catalog_value(value, code, precision: int):
 
 
 def _same_column_value(actual, expected, column: CatalogColumn, dialect: str) -> bool:
-    """Compares a MySQL DATETIME driver value with canonical text using its descriptor precision."""
+    """Compares temporal driver values with canonical text using descriptor precision."""
     if dialect == "mysql":
         match = re.fullmatch(
             r"datetime(?:\((\d+)\))?", column.native_type, re.IGNORECASE
@@ -249,7 +251,39 @@ def _same_column_value(actual, expected, column: CatalogColumn, dialect: str) ->
                 return _mysql_datetime_text(actual, precision) == expected
             if isinstance(expected, datetime) and isinstance(actual, str):
                 return _mysql_datetime_text(expected, precision) == actual
+    if dialect == "postgres":
+        match = re.fullmatch(
+            r"time(?:\((\d+)\))?(?: without time zone)?",
+            column.native_type,
+            re.IGNORECASE,
+        )
+        if match is not None:
+            precision = int(match.group(1) or 6)
+            if isinstance(actual, datetime_time) and isinstance(expected, str):
+                return _postgres_time_text(actual, precision) == expected
+            if isinstance(expected, datetime_time) and isinstance(actual, str):
+                return _postgres_time_text(expected, precision) == actual
     return _same_row([actual], [expected])
+
+
+def _postgres_time_text(value: datetime_time, precision: int) -> str:
+    """A psycopg TIME result as dbspec text at the column's declared precision."""
+    if value.tzinfo is not None:
+        raise _error(
+            codes.CATALOG_VALUE, "PostgreSQL time unexpectedly has a time zone"
+        )
+    if not 0 <= precision <= 6:
+        raise _error(
+            codes.CATALOG_VALUE, f"invalid PostgreSQL TIME precision {precision}"
+        )
+    if value.microsecond % 10 ** (6 - precision) != 0:
+        raise _error(codes.CATALOG_VALUE, "time exceeds its declared precision")
+    clock = f"{value.hour:02d}:{value.minute:02d}:{value.second:02d}"
+    return (
+        clock
+        if precision == 0
+        else f"{clock}.{value.microsecond:06d}"[: len(clock) + precision + 1]
+    )
 
 
 def _params(values) -> list:
@@ -321,6 +355,10 @@ def _cell_key(cell) -> str:
             else cell.astimezone(timezone.utc)
         )
         return "t" + instant.isoformat(timespec="microseconds")
+    if isinstance(cell, datetime_time):
+        if cell.tzinfo is not None:
+            raise _error(codes.ROW_SNAPSHOT_INVALID, "time cell has a time zone")
+        return "h" + cell.isoformat(timespec="microseconds")
     raise _error(
         codes.ROW_SNAPSHOT_INVALID, f"unsupported cell type {type(cell).__name__}"
     )

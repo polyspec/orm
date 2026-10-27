@@ -60,7 +60,7 @@ abstract class PerformanceGateCoverageCase extends TestCase
         [$status, $stdout, $stderr] = coverageProcess($command, $root, $env);
         $details = str_replace($dsn, '[dsn]', "$stdout$stderr");
         Assert::assertSame(0, $status, "PerfGateTest.php exited $status: $details");
-        Assert::assertStringContainsString('reference not-recorded', $stderr);
+        Assert::assertStringContainsString('reference=not-recorded', $stderr);
         foreach (['pk', 'list100'] as $workload) {
             Assert::assertStringContainsString("perf_gate $workload:", $stderr);
         }

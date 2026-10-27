@@ -221,7 +221,7 @@ func TestCoverageTransactionSavepoint(t *testing.T) {
 		go func() {
 			updateDone <- db.Transaction(func() error {
 				close(updateStarted)
-				_, err := model.CompositeAccount().Connect(db).TenantId(transactionTenant).SetName("timed out").Update()
+			_, err := model.CompositeAccount().Connect(db).TenantId(transactionTenant).SetAccountId(6).SetName("timed out").Update()
 				return err
 			}, orm.TimeoutMs(250), orm.Retry(0))
 		}()
