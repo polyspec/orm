@@ -53,8 +53,15 @@ $client = p50($query);
 [, $pdoDsn, $user, $password] = Orm::parseDsn(dsn());
 $raw = new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 $stmt = $raw->prepare($lastSql);
-$native = p50(static function () use ($stmt, $lastArgs): void {
-    $stmt->execute($lastArgs);
+foreach ($lastArgs as $index => $value) {
+    if (is_int($value)) {
+        $stmt->bindValue($index + 1, $value, PDO::PARAM_INT);
+    } else {
+        $stmt->bindValue($index + 1, $value);
+    }
+}
+$native = p50(static function () use ($stmt): void {
+    $stmt->execute();
     $stmt->fetchAll(PDO::FETCH_NUM);
 });
 fwrite(STDERR, sprintf("php: client p50 %dµs, native p50 %dµs (%d iterations)\n", $client, $native, ITERATIONS));
