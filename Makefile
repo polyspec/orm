@@ -2729,6 +2729,8 @@ release-consumer release-consumer-lock release-proof: export npm_config_allow_re
 # tool; the release workflow installs the npm packages of the TypeScript build first with make install-packages. The checks
 # run offline (GOPROXY=off). The consumer projects install the archives, so their targets build the same trees.
 release-assets: orm-install-go typescript-build editor-build
+
+release-candidate-assets: orm-install-go typescript-build editor-build
 release-consumer release-consumer-lock: typescript-build editor-build
 
 # editor-build builds the editor packages that the release publishes: the language service, the language server and the
