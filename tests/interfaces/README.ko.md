@@ -1,5 +1,5 @@
 <!-- doc-id: tests-interfaces-readme -->
-<!-- source-sha256: a52f3a57819111bb8da6e0707cce488b6882d6fe0799ce2ccb9deba2673b44eb -->
+<!-- source-sha256: b200c8b93dfbac14bf2fd2d791b25c1f268dd1bb70b2d3334efcb9da9ad075a8 -->
 # 공통 인터페이스 검사
 
 [contracts/interfaces.json](../../contracts/interfaces.json)이 인터페이스 구조를 정의한다. [인터페이스 구조 문서](../../docs/spec/interfaces.ko.md)와 함께 변경한다.
@@ -18,13 +18,14 @@
 - 소스 변이 검사는 메서드 누락, 인자 추가, 반환 타입 변경, 필드 타입 변경, receiver 변경, 선언되지 않은 상태를 검사기가 거부하는지 확인한다.
 
 검사기는 각 언어의 선언을 그 언어 자신의 추출기(`packages/go/internal/symbols`, `php.php`, `rust`, `typescript.mts`, `python.py`)로 읽는 TypeScript program(`tests/interfaces/check/main.mts`)이다. entity 단위 규칙은 dbspec 문서의 entity 순서로 펼치며 그 순서를 TypeScript client build에서 읽으므로 `npm run typescript:build`(또는 `make typescript-build`)를 먼저 실행한다. `make interface-check`는 그것을 build한다.
+Python extractor는 출시 package 경계를 따르기 위해 고정된 Python test 환경의 setuptools package finder를 사용한다. `make install`이 이 환경을 만든다.
 
 데이터베이스 없이 구조 검사를 실행한다.
 
 ```sh
 go test ./tests/interfaces/contracts
 node --test tests/interfaces/check/*.test.mts
-node tests/interfaces/check/main.mts --self-test
+ORM_PYTHON=packages/python/.venv/bin/python node tests/interfaces/check/main.mts --self-test
 node tests/interfaces/check/main.mts --language php --self-test
 node tests/interfaces/check/main.mts --language php-extension
 ```
@@ -32,7 +33,7 @@ node tests/interfaces/check/main.mts --language php-extension
 적합성 결과를 공통 state contract(`contracts/interfaces.json`의 `sequences`)와 비교한다: `make conformance-check`가 적합성 실행기를 자기 실행의 directory에 실행한 뒤 다음을 실행한다.
 
 ```sh
-node tests/interfaces/check/main.mts --results "$RUN_DIR/out" --results "$RUN_DIR/out/postgres" --results "$RUN_DIR/out/sqlite"
+ORM_PYTHON=packages/python/.venv/bin/python node tests/interfaces/check/main.mts --results "$RUN_DIR/out" --results "$RUN_DIR/out/postgres" --results "$RUN_DIR/out/sqlite"
 ```
 
 sequence는 자기가 보내는 statement의 kind를 순서대로 적고, utility statement는 적지 않는다. 그 수와 위치는 dialect마다 다르다(적합성 vector가 정확히 적는다). 차이는 더해지거나 빠진 statement를 위치, kind, SQL과 함께, 다른 결과는 두 값으로, 없는 출력은 그 경로로 적는다.
@@ -43,7 +44,7 @@ sequence는 자기가 보내는 statement의 kind를 순서대로 적고, utilit
 make go-models
 make php-models
 npm run typescript:build
-node tests/interfaces/check/main.mts --generate --record --self-test
+ORM_PYTHON=packages/python/.venv/bin/python node tests/interfaces/check/main.mts --generate --record --self-test
 ```
 
 `--record`는 검토할 파일을 작성한다. 소스 diff를 검토하고 매니페스트 해시를 갱신한다. CI는 `--record`와 `--generate`를 사용하지 않으며 생성 파일, 도표, 심볼 스냅샷, 실행 계약이 다르면 실패한다.

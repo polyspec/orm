@@ -56,7 +56,11 @@ export async function extract(
     [program, args] = ['php', [join(toolRoot, 'packages/php/testing/interfaces/php.php'), ...(loadPhpAutoloader ? [] : ['--no-autoload']), root, ...roots]];
   }
   else if (lang === 'typescript') [program, args] = ['node', [join(toolRoot, 'packages/ts/testing/interfaces/typescript.mts'), root, ...roots]];
-  else if (lang === 'python') [program, args] = ['python3', [join(toolRoot, 'packages/python/testing/interfaces/python.py'), root, ...roots]];
+  else if (lang === 'python') {
+    program = process.env['ORM_PYTHON'] ?? '';
+    if (program === '') throw new Error('ORM_PYTHON is unset; run this extractor through make interface-check, which uses the pinned Python test environment');
+    args = [join(toolRoot, 'packages/python/testing/interfaces/python.py'), root, ...roots];
+  }
   else [program, args] = [tools.rust ?? '', [root, ...roots]];
   if (program === '') throw new Error(`${lang} declarations: this run built no ${lang} symbol extractor`);
   let output: Output;

@@ -11,7 +11,7 @@ const root = resolve(import.meta.dirname, '../../..');
 // GROUP_CHECK is the make check-run step of a CI group job.
 const GROUP_CHECK = 'run: make check-run GROUP=${{ matrix.group }}';
 // INTERFACE_COMMAND is the command of make interface-check, and feature-check runs it as a verify command.
-const INTERFACE_COMMAND = 'node tests/interfaces/check/main.mts --self-test';
+const INTERFACE_COMMAND = 'ORM_PYTHON=packages/python/.venv/bin/python PATH=$HOME/.cargo/bin:$PATH node tests/interfaces/check/main.mts --self-test';
 
 // makeVariable returns the value of a one-line Makefile definition `NAME = value` as a field.
 function makeVariable(makefile: string, name: string): string[] {

@@ -32,7 +32,7 @@ const clientSurfaceRequirements: Array<[string, string[]]> = [
   ['client-db', ['INT-12', 'INT-13', 'INT-14', 'INT-15']],
   ['client-db-close', ['INT-67']],
   ['client-db-connect', ['INT-12', 'INT-13', 'INT-14', 'INT-15']],
-  ['client-db-connectschema', ['INT-132', 'INT-54']],
+  ['client-db-connectschema', ['INT-15', 'INT-132', 'INT-54']],
   ['client-db-execute', ['INT-76']],
   ['client-db-stats-method', ['INT-61']],
   ['client-db-stats', ['INT-79']],
@@ -155,6 +155,16 @@ caseTest('the named client API units cite their bilingual interface requirements
       }
     }
   }
+});
+
+caseTest('the TypeScript generated connect helper shares the connectSchema API unit', COMPUTE, () => {
+  const unit = (readParity(root).units ?? []).find(entry => entry.id === 'client-db-connectschema');
+  assert.ok(unit, 'client-db-connectschema API unit is missing');
+  const binding = unit.symbols?.find(entry => entry.implementation === 'typescript');
+  assert.deepEqual(binding?.symbols, [
+    '@polyspec/orm!Db.connectSchema:member(1)',
+    '@polyspec/orm!connect:function(1)',
+  ], 'the TypeScript generated connect alias must be classified with its canonical API symbol');
 });
 
 // Requirements: ORES-70.

@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { readParityConfig } from '../../../scripts/json/formats.mts';
 
-type ApiSymbol = { implementation?: string; symbol?: string };
+type ApiSymbol = { implementation?: string; symbol?: string; symbols?: string[] };
 export type ParityBinding = { implementation?: string; test?: string; id?: string };
 type ApiUnit = { id?: string; kind?: string; requirements?: string[]; symbols?: ApiSymbol[]; bindings?: ParityBinding[] };
 type ParityImplementation = { name?: string; errors?: { file?: string; pattern?: string } };

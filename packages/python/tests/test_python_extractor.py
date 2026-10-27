@@ -64,6 +64,79 @@ class PythonExtractorTest(unittest.TestCase):
             sorted(want - got), [], "contract names that the client does not declare"
         )
 
+    def test_setuptools_excluded_packages_are_not_public_symbols(self):
+        with tempfile.TemporaryDirectory(prefix="interfaces-python-package-") as root:
+            project = Path(root) / "packages" / "client"
+            project.mkdir(parents=True)
+            (project / "pyproject.toml").write_text(
+                "[tool.setuptools]\n"
+                'package-dir = {"" = "src"}\n'
+                "[tool.setuptools.packages.find]\n"
+                'where = ["src"]\n'
+                "namespaces = true\n"
+                'exclude = ["polyspec.orm.models", "polyspec.orm.models.*"]\n',
+                encoding="utf-8",
+            )
+            source = project / "src" / "polyspec" / "orm"
+            (source / "models").mkdir(parents=True)
+            (source / "api.py").write_text(
+                "class Client:\n    pass\n", encoding="utf-8"
+            )
+            (source / "models" / "models.py").write_text(
+                "class GeneratedAuthor:\n    pass\n", encoding="utf-8"
+            )
+            result = subprocess.run(
+                [sys.executable, str(EXTRACTOR), root, "packages/client/src"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            symbols = json.loads(result.stdout)
+            self.assertIn("packages/client/src/polyspec/orm/api.py::Client", symbols)
+            self.assertNotIn(
+                "packages/client/src/polyspec/orm/models/models.py::GeneratedAuthor",
+                symbols,
+            )
+
+    def test_setuptools_include_patterns_keep_selected_descendants(self):
+        with tempfile.TemporaryDirectory(prefix="interfaces-python-include-") as root:
+            project = Path(root) / "packages" / "client"
+            project.mkdir(parents=True)
+            (project / "pyproject.toml").write_text(
+                "[tool.setuptools]\n"
+                'package-dir = {"" = "src"}\n'
+                "[tool.setuptools.packages.find]\n"
+                'where = ["src"]\n'
+                "namespaces = true\n"
+                'include = ["polyspec.orm.models.*"]\n',
+                encoding="utf-8",
+            )
+            source = project / "src" / "polyspec" / "orm" / "models" / "bench"
+            source.mkdir(parents=True)
+            (source.parent / "api.py").write_text(
+                "class UnselectedParentModule:\n    pass\n", encoding="utf-8"
+            )
+            (source / "models.py").write_text(
+                "class GeneratedAuthor:\n    pass\n", encoding="utf-8"
+            )
+            result = subprocess.run(
+                [sys.executable, str(EXTRACTOR), root, "packages/client/src"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            symbols = json.loads(result.stdout)
+            self.assertIn(
+                "packages/client/src/polyspec/orm/models/bench/models.py::GeneratedAuthor",
+                symbols,
+            )
+            self.assertNotIn(
+                "packages/client/src/polyspec/orm/models/api.py::UnselectedParentModule",
+                symbols,
+            )
+
     def test_reports_public_declarations_only(self):
         symbols = self.extract(
             "class Client:\n"

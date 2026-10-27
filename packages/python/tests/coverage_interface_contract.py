@@ -1,7 +1,9 @@
 # interface_contract coverage: `node tests/interfaces/check/main.mts -language python` from the repository root finds
 # every symbol of the common interface contract in the Python client, as the interface_contract coverage of Go, PHP,
 # TypeScript and Rust does for its client.
+import os
 import subprocess
+import sys
 
 from .coverage_case import REPOSITORY_ROOT, CoverageCase, coverage_main
 
@@ -13,6 +15,7 @@ def interface_symbols():
         capture_output=True,
         text=True,
         timeout=280,
+        env={**os.environ, "ORM_PYTHON": sys.executable},
     )
     if result.returncode != 0:
         raise AssertionError(

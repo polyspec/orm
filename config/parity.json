@@ -21117,6 +21117,7 @@
       "id": "client-db-connectschema",
       "kind": "api",
       "requirements": [
+        "INT-15",
         "INT-132",
         "INT-54"
       ],
@@ -21135,7 +21136,10 @@
         },
         {
           "implementation": "typescript",
-          "symbol": "@polyspec/orm!Db.connectSchema:member(1)"
+          "symbols": [
+            "@polyspec/orm!Db.connectSchema:member(1)",
+            "@polyspec/orm!connect:function(1)"
+          ]
         },
         {
           "implementation": "python",

@@ -47,7 +47,8 @@ exclude = ["polyspec.orm.models", "polyspec.orm.models.*"]
 # test is what the tests of this repository need beside the client (PEP 735, not part of the released wheel): jsonschema-rs
 # reads the shared dbspec vectors against their JSON Schemas (tests/dbspec/schema). make orm-install-python installs it into the
 # venv; the client never imports it.
-test = ["jsonschema-rs==0.58.6"]
+# setuptools' package finder defines the release boundary read by the interface extractor.
+test = ["jsonschema-rs==0.58.6", "setuptools==84.0.0"]
 
 # The models that orm-gen generates and the Makefile's go-model-check compares byte for byte: their methods are API for
 # the consumers of the bench models, and the generated text is never edited by hand.

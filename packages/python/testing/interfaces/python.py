@@ -10,6 +10,8 @@ import ast
 import json
 import os
 import sys
+import tomllib
+from setuptools import find_namespace_packages, find_packages
 
 
 def public(name: str) -> bool:
@@ -130,11 +132,30 @@ def class_members(key: str, node: ast.ClassDef, symbols: dict) -> None:
 def extract(root: str, roots: list) -> dict:
     files = []
     for source_root in roots:
-        for directory, dirnames, filenames in os.walk(os.path.join(root, source_root)):
-            dirnames[:] = sorted(d for d in dirnames if d != "__pycache__")
-            files.extend(
-                os.path.join(directory, f) for f in filenames if f.endswith(".py")
+        source_path = os.path.abspath(os.path.join(root, source_root))
+        packages = package_names(root, source_path)
+        for directory, dirnames, filenames in os.walk(source_path):
+            relative = os.path.relpath(directory, source_path)
+            package_parts = [] if relative == "." else relative.split(os.sep)
+            package = ".".join(package_parts)
+            included_descendant = packages is not None and any(
+                name.startswith(package + ".") for name in packages
             )
+            if (
+                packages is not None
+                and package
+                and package not in packages
+                and not included_descendant
+            ):
+                dirnames[:] = []
+                continue
+            dirnames[:] = sorted(d for d in dirnames if d != "__pycache__")
+            if packages is None or package in packages:
+                files.extend(
+                    os.path.join(directory, f)
+                    for f in filenames
+                    if f.endswith(".py")
+                )
     symbols: dict = {}
     for file in sorted(files):
         path = os.path.relpath(file, root)
@@ -175,6 +196,49 @@ def extract(root: str, roots: list) -> dict:
     return {
         key: {"signature": value, "exported": True} for key, value in symbols.items()
     }
+
+
+def package_names(root: str, source_path: str) -> set[str] | None:
+    """Use setuptools' package finder for a source root declared by its pyproject."""
+    repository = os.path.abspath(root)
+    project = source_path
+    while project == repository or project.startswith(repository + os.sep):
+        pyproject = os.path.join(project, "pyproject.toml")
+        if os.path.isfile(pyproject):
+            with open(pyproject, "rb") as handle:
+                config = tomllib.load(handle)
+            setuptools = config.get("tool", {}).get("setuptools", {})
+            package_root = setuptools.get("package-dir", {}).get("", ".")
+            find = setuptools.get("packages", {}).get("find", {})
+            where = find.get("where", ["."])
+            package_roots = [
+                os.path.abspath(os.path.join(project, path)) for path in where
+            ]
+            if (
+                os.path.abspath(os.path.join(project, package_root)) == source_path
+                and source_path in package_roots
+            ):
+                finder = (
+                    find_namespace_packages
+                    if find.get("namespaces", True)
+                    else find_packages
+                )
+                return set(
+                    finder(
+                        where=source_path,
+                        include=find.get("include", ["*"]),
+                        exclude=find.get("exclude", []),
+                    )
+                )
+        if project == repository:
+            break
+        parent = os.path.dirname(project)
+        if parent == project or not (
+            parent == repository or parent.startswith(repository + os.sep)
+        ):
+            break
+        project = parent
+    return None
 
 
 def main() -> None:

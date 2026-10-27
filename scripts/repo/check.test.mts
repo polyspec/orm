@@ -668,7 +668,7 @@ caseTest('the job ci-passed runs last under always() and needs every other job',
 // The duplicate-run case checks the repository's workflow, Makefile, feature contract and the minimal workflow.
 caseTest('the CI workflow does not run a verification command of feature-check again', COMPUTE, () => {
   const commands = featureCommands(readFeatures(repository.pathname));
-  for (const command of ['node scripts/perf-test.mts', 'node tests/run-long.mts typescript-build -- npm run typescript:build && PATH="$HOME/.cargo/bin:$PATH" node tests/interfaces/check/main.mts --self-test'])
+  for (const command of ['node scripts/perf-test.mts', 'node tests/run-long.mts typescript-build -- npm run typescript:build && ORM_PYTHON=packages/python/.venv/bin/python PATH=$HOME/.cargo/bin:$PATH node tests/interfaces/check/main.mts --self-test'])
     assert.ok(commands.includes(command), `${command} is not a verification command of contracts/features.json`);
   assert.deepEqual(ciDuplicateCommandErrors(workflow, text('Makefile'), commands), []);
 });

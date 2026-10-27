@@ -17,13 +17,14 @@ The checker verifies these requirements:
 - Source mutations verify that the checker rejects missing methods, additional parameters, changed return types, changed field types, changed receivers, and undeclared state.
 
 The checker is a TypeScript program (`tests/interfaces/check/main.mts`) that reads each language's declarations with that language's own extractor (`packages/go/internal/symbols`, `php.php`, `rust`, `typescript.mts`, `python.py`). It expands the per-entity rules in the entity order of the dbspec document, which it reads from the TypeScript client build, so `npm run typescript:build` (or `make typescript-build`) comes first; `make interface-check` builds it.
+The Python extractor uses setuptools' package finder from the pinned Python test environment to honor the release package boundary; `make install` creates that environment.
 
 Run the structure checks without a database:
 
 ```sh
 go test ./tests/interfaces/contracts
 node --test tests/interfaces/check/*.test.mts
-node tests/interfaces/check/main.mts --self-test
+ORM_PYTHON=packages/python/.venv/bin/python node tests/interfaces/check/main.mts --self-test
 node tests/interfaces/check/main.mts --language php --self-test
 node tests/interfaces/check/main.mts --language php-extension
 ```
@@ -31,7 +32,7 @@ node tests/interfaces/check/main.mts --language php-extension
 Check the conformance results against the common state contracts (`sequences` of `contracts/interfaces.json`): `make conformance-check` runs the conformance runners into a directory of its own run and then
 
 ```sh
-node tests/interfaces/check/main.mts --results "$RUN_DIR/out" --results "$RUN_DIR/out/postgres" --results "$RUN_DIR/out/sqlite"
+ORM_PYTHON=packages/python/.venv/bin/python node tests/interfaces/check/main.mts --results "$RUN_DIR/out" --results "$RUN_DIR/out/postgres" --results "$RUN_DIR/out/sqlite"
 ```
 
 A sequence lists the kinds of the statements it sends, in order, except utility statements, whose number and place differ per dialect (the conformance vectors list them exactly). A difference names the added and missing statements with their position, kind and SQL, a different result with both values, and a missing output with its path.
@@ -42,7 +43,7 @@ Regenerate the contract outputs after an interface change:
 make go-models
 make php-models
 npm run typescript:build
-node tests/interfaces/check/main.mts --generate --record --self-test
+ORM_PYTHON=packages/python/.venv/bin/python node tests/interfaces/check/main.mts --generate --record --self-test
 ```
 
 `--record` writes review candidates. Review the source diff and update the manifest hash. CI does not use `--record` or `--generate`; it fails when generated files, diagrams, symbol snapshots, or execution contracts differ.
