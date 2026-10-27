@@ -10,6 +10,7 @@ import { errorCode } from '../../tests/errors.mts';
 import { main as startServers, paths as serverPaths, SERVER_VARIABLES, TestServerError } from '../test-servers.mts';
 import { AFTER_GROUP_CHECK, CI_PASSED_STEPS, CI_RUN_EXCEPTIONS, ciPassedErrors, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
+import { parseArguments as parseKitTestArguments } from '@polyspec/kit/run-tests';
 import { fixlessMessageErrors } from './messages.mts';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mts';
 import { connectProbeErrors } from './probes.mts';
@@ -20,7 +21,7 @@ import { declaredNeeds, readCheckInputs } from '../check/inputs.mts';
 import { readFeatures } from '../features/manifest.mts';
 import { readComposer, readPackage } from '../json/formats.mts';
 import { kitCopies, kitOwnedPaths } from './kit-copies.mts';
-import { andLists, segments, shellSegments } from './shell.mts';
+import { andLists, commands as shellCommands, segments, shellSegments } from './shell.mts';
 import { readWorkflow } from './workflow.mts';
 import { stringify } from 'yaml';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
@@ -49,6 +50,43 @@ const phpGenBasicTests = [
 const phpGenTestOwnershipErrors = (paths: string[]) => paths
   .filter(path => /\bOrmGen(?:Cli|Scan|ScanParity)Test\.php$/.test(path) && path.startsWith('packages/php/tests/'))
   .map(path => `${path}: PHP orm-gen CLI tests belong under packages/php-gen/tests`);
+
+caseTest('dbspec apply gives the stress case its own 120 second runner deadline', COMPUTE, () => {
+  const root = repository.pathname;
+  const runnerOptions = (target: string) => {
+    const result = spawnSync('make', ['-n', target], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout.split(/\r?\n/)
+      .filter(line => line.includes('run-tests.mts'))
+      .flatMap(line => shellCommands(line, 'sh'))
+      .flatMap(command => {
+        const runner = command.args.findIndex(argument => argument.endsWith('/run-tests.mts'));
+        return runner < 0 ? [] : [parseKitTestArguments(command.args.slice(runner + 1), root)];
+      });
+  };
+  const stress = 'testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks';
+  const phpRestFilter = '^(?!.*testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks).*';
+  const phpArgs = runnerOptions('dbspec-apply-php-check');
+  const extensionArgs = runnerOptions('dbspec-apply-php-extension-check');
+  const pythonArgs = runnerOptions('dbspec-apply-python-check');
+  for (const [name, calls] of [['PHP', phpArgs], ['PHP extension', extensionArgs]] as const) {
+    assert.equal(calls.length, 2, `${name} emits a default and a stress run`);
+    assert.deepEqual(calls.map(call => [call.tool, call.timeoutSeconds]), [['phpunit', 30], ['phpunit', 120]], name);
+    assert.equal(calls[0]?.args[calls[0].args.indexOf('--filter') + 1], phpRestFilter, `${name} excludes only the stress method from the default run`);
+    assert.equal(calls[1]?.args[calls[1].args.indexOf('--filter') + 1], stress, `${name} selects the stress method for the extended run`);
+  }
+  assert.equal(pythonArgs.length, 2, 'Python emits a default and a stress run');
+  assert.deepEqual(pythonArgs.map(call => [call.tool, call.timeoutSeconds]), [['python', 30], ['python', 120]]);
+  assert.deepEqual(pythonArgs[0]?.args.slice(-3), [
+    'packages.python.tests.dbspec_apply.DbspecApplyTest.test_lock_wait_mysql',
+    'packages.python.tests.dbspec_apply.DbspecApplyTest.test_lock_wait_postgres',
+    'packages.python.tests.dbspec_apply.DbspecApplyTest.test_lock_wait_sqlite',
+  ]);
+  assert.deepEqual(pythonArgs[1]?.args.slice(-1), [
+    'packages.python.tests.dbspec_apply.DbspecApplyTest.test_stress_plan_commits_each_step_and_leaves_no_postgres_relation_locks',
+  ]);
+});
+
 caseTest('PHP orm-gen CLI tests stay in their owning component', COMPUTE, () => {
   assert.deepEqual(phpGenBasicTests.filter(path => !trackedAll.has(path)), []);
   assert.ok(!trackedAll.has('packages/php/tests/OrmGenScanTest.php'), 'scanner basics cannot live under the PHP client');

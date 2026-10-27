@@ -535,7 +535,7 @@ dbspec-apply-check:
 .PHONY: dbspec-apply-python-check
 dbspec-apply-python-check: python-venv-check
 	$(WITH_TEST_ENV) $(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.dbspec_apply.DbspecApplyTest.test_lock_wait_mysql packages.python.tests.dbspec_apply.DbspecApplyTest.test_lock_wait_postgres packages.python.tests.dbspec_apply.DbspecApplyTest.test_lock_wait_sqlite
-	$(WITH_TEST_ENV) $(RUN_TESTS) --timeout 120 python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.dbspec_apply.DbspecApplyTest.test_stress_plan_commits_each_step_and_leaves_no_postgres_relation_locks
+	$(WITH_TEST_ENV) $(RUN_TESTS) python --timeout 120 --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.dbspec_apply.DbspecApplyTest.test_stress_plan_commits_each_step_and_leaves_no_postgres_relation_locks
 
 # The six dbspec SQLite lock/session checks execute focused fake-driver cases; none starts or opens a database.
 dbspec-lock-go-check:
@@ -626,7 +626,7 @@ dbspec-plan-php-check: php-vendor-check
 .PHONY: dbspec-apply-php-check
 dbspec-apply-php-check: php-vendor-check
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter '^(?!.*testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks).*' packages/php/tests/DbspecApplyTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) --timeout 120 phpunit -- --configuration packages/php/phpunit.xml.dist --filter testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks packages/php/tests/DbspecApplyTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit --timeout 120 -- --configuration packages/php/phpunit.xml.dist --filter testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks packages/php/tests/DbspecApplyTest.php
 
 # dbspec-apply-php-extension-check runs the same scenario, the PHP client's DbspecApplyTest, with the PHP extension polyspec_orm loaded,
 # whose Polyspec\Orm\Dbspec\Dbspec::apply, recover, rollback, and finalize take the place of the client's. The extension is built in this
@@ -635,7 +635,7 @@ dbspec-apply-php-check: php-vendor-check
 dbspec-apply-php-extension-check: php-vendor-check
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) --filter '^(?!.*testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks).*' packages/php/tests/DbspecApplyTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) --timeout 120 phpunit --php-extension $(PHP_EXTENSION_LIBRARY) --without-library packages/php -- --configuration packages/php/phpunit.xml.dist --filter testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks packages/php/tests/DbspecApplyTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --timeout 120 --php-extension $(PHP_EXTENSION_LIBRARY) --without-library packages/php -- --configuration packages/php/phpunit.xml.dist --filter testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks packages/php/tests/DbspecApplyTest.php
 	rm -rf $(RUN_DIR)
 
 # dbspec-introspect-compare-check applies the stress document (DBSPEC_INTROSPECT_TABLES tables) to MySQL,
