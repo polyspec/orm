@@ -9,6 +9,7 @@ import copy
 import datetime
 import ipaddress
 import json
+import math
 import os
 import re
 import sqlite3
@@ -535,11 +536,17 @@ def convert(type_: str, value, zone: str, declared: Field | None = None):
             )
         return value
     if type_ == "f64":
-        return (
-            value
-            if isinstance(value, (int, float)) and not isinstance(value, bool)
-            else float(value)
-        )
+        if isinstance(value, bool):
+            raise OrmError(codes.CODEC_DECODE, "f64 cell is not a finite number")
+        try:
+            number = value if isinstance(value, (int, float)) else float(value)
+            if not math.isfinite(number):
+                raise OrmError(codes.CODEC_DECODE, "f64 cell is not a finite number")
+        except (TypeError, ValueError, OverflowError) as cause:
+            raise OrmError(
+                codes.CODEC_DECODE, "f64 cell is not a finite number"
+            ) from cause
+        return number
     if type_ == "decimal":
         from polyspec.orm.decimal import decimal_from_scaled
 

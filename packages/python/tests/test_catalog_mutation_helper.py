@@ -16,6 +16,7 @@ from polyspec.orm.catalog import (
     _check_value,
     _cell_key,
     _postgres_time_text,
+    _postgres_datetime_text,
     _Session,
     _lock_original_row,
     _same_column_value,
@@ -160,6 +161,38 @@ class CatalogMutationHelperTest(unittest.TestCase):
         with self.assertRaises(OrmError) as snapshot:
             _cell_key(time(12, 34, 56, tzinfo=timezone.utc))
         self.assertEqual(snapshot.exception.code, codes.ROW_SNAPSHOT_INVALID)
+
+    def test_postgres_timestamp_cells_keep_native_value_and_declared_precision(self):
+        value = datetime(2026, 1, 2, 3, 4, 5, 123000)
+        self.assertEqual(_postgres_datetime_text(value, 3), "2026-01-02 03:04:05.123")
+        self.assertEqual(
+            _postgres_datetime_text(datetime(2026, 1, 2, 3, 4, 5), 0),
+            "2026-01-02 03:04:05",
+        )
+        self.assertTrue(
+            _same_column_value(
+                datetime(2026, 1, 2, 3, 4, 5, 123000),
+                "2026-01-02 03:04:05.123",
+                CatalogColumn("at", "timestamp(3) without time zone", False, False),
+                "postgres",
+            )
+        )
+        self.assertTrue(
+            _same_column_value(
+                datetime(2026, 1, 2, 3, 4, 5, 123456),
+                "2026-01-02 03:04:05.123456",
+                CatalogColumn("at", "timestamp without time zone", False, False),
+                "postgres",
+            )
+        )
+        with self.assertRaises(OrmError) as precision:
+            _postgres_datetime_text(value, 2)
+        self.assertEqual(precision.exception.code, codes.CATALOG_VALUE)
+        with self.assertRaises(OrmError) as zone:
+            _postgres_datetime_text(
+                datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc), 6
+            )
+        self.assertEqual(zone.exception.code, codes.CATALOG_VALUE)
 
     def test_locks_and_validates_unchanged_original_row_before_mysql_safety(self):
         descriptor = metadata()

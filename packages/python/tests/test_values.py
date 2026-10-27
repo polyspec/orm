@@ -1,6 +1,7 @@
 # Checks that value functions and column functions build IR, and codec unit cases (unittest).
 import unittest
 import json
+import math
 
 
 from polyspec.orm.codec import (
@@ -17,6 +18,17 @@ from polyspec.orm.values import ColumnFunction, ValueFunction, orm
 from polyspec.orm.database import convert
 from .coverage_case import error_code
 from . import testcase
+
+
+class DatabaseCellConversionTest(unittest.TestCase):
+    def test_non_finite_float_cells_are_codec_decode(self):
+        for value in (float("nan"), float("inf"), float("-inf"), 10**1000):
+            with self.subTest(value=value):
+                with self.assertRaises(OrmError) as raised:
+                    convert("f64", value, "+00:00")
+                self.assertEqual(raised.exception.code, "CODEC_DECODE")
+        self.assertTrue(math.isfinite(convert("f64", 1.25, "+00:00")))
+        self.assertEqual(convert("f64", 2**63 - 1, "+00:00"), 2**63 - 1)
 
 
 class ValueFunctionTest(unittest.TestCase):
