@@ -355,7 +355,7 @@ export function run(program: string, args: string[], cwd: string | undefined, ti
     child.on('error', error => done(error.message));
     // The child is the leader of its own group. A process left in that group after it ends is treated as a failure (endGroup).
     const ended = new Promise<string[]>(resolve => child.on('exit', () => endGroup(child.pid).then(resolve, (error: unknown) => resolve([`its group could not be checked: ${error instanceof Error ? error.message : String(error)}`]))));
-    child.on('close', async code => {
+    child.on('close', async (code, signal) => {
       progress?.flush();
       const left = await ended;
       if (left.length) {
@@ -366,7 +366,9 @@ export function run(program: string, args: string[], cwd: string | undefined, ti
         return done(`${program} left ${left.length} processes: ${left.join(', ')}${diagnostics ? `\n${diagnostics}` : ''}`);
       }
       if (output.length > limit) return done(`test output exceeds ${limit} characters`);
-      if (code !== 0) return done(`exit ${code}: ${output.trim()}`);
+      if (code !== 0) return done(code === null
+        ? `signal ${signal ?? 'unknown'}: ${output.trim()}`
+        : `exit ${code}: ${output.trim()}`);
       done(null, output);
     });
     // When timeoutMs is null, it is a long-running build, so no timer is set.

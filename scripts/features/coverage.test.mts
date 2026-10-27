@@ -165,6 +165,11 @@ caseTest('coverage diagnostics preserve child output when a process remains', PR
   assert.match(result.error ?? '', /stderr:\ncaptured child stderr/);
 });
 
+caseTest('coverage diagnostics name a child process termination signal', PROCESS, async () => {
+  const result = await run(process.execPath, ['-e', "process.kill(process.pid, 'SIGTERM')"], undefined, 10_000);
+  assert.match(result.error ?? '', /signal SIGTERM/);
+});
+
 caseTest('Go performance diagnostics are retained from test2json output events', 1000, () => {
   const measurement = 'PERF hot_path_gate go sqlite pk: native p50=12.3µs client p50=45.6µs ratio=3.71 samples=1000 cpu=12.3ms wall=45.6ms machine=test reference=not-recorded';
   const output = [
