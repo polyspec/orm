@@ -96,6 +96,14 @@ jobs:
         id: group-needs
         if: ${{ !cancelled() }}
         run: make --no-print-directory ci-group-needs GROUP=${{ matrix.group }} >> "$GITHUB_OUTPUT"
+      # make install-tools checks for the PHP version declared by the checkout before installing its other tools.
+      - uses: shivammathur/setup-php@v2
+        id: php-bootstrap
+        if: ${{ !cancelled() }}
+        with:
+          php-version-file: .php-version
+          tools: composer:2.10.3
+          coverage: none
       # make orm-check builds the lease program with Go in every group. make install-tools installs the tools of mise.toml
       # (Go, Python, uv, Composer, alint, govulncheck, cargo-audit) at the releases and digests of mise.lock.
       - name: tools of mise.toml
@@ -309,6 +317,13 @@ jobs:
         id: node-modules
         if: ${{ !cancelled() }}
         run: make install-packages
+      - uses: shivammathur/setup-php@v2
+        id: php-bootstrap
+        if: ${{ !cancelled() }}
+        with:
+          php-version-file: .php-version
+          tools: composer:2.10.3
+          coverage: none
       # The TypeScript build of the extension takes the lease program, which make builds with the Go of mise.toml.
       - name: tools of mise.toml
         id: go

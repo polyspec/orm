@@ -1591,6 +1591,21 @@ caseTest('a workflow runs every setup step and make orm-check after a failed set
   assert.deepEqual(ciSetupErrors(workflows, { setup: CI_SETUP, runner: RUNNER_STEPS }), []);
 });
 
+// make install-tools checks the checkout PHP version before installing its tools; the npm-only install does not need PHP.
+caseTest('CI installs the declared PHP before make install-tools', COMPUTE, () => {
+  const workflow = (steps: string) => `jobs:\n  test:\n    steps:\n${steps}`;
+  const php = `      - uses: shivammathur/setup-php@v2\n        id: php-bootstrap\n        if: \${{ !cancelled() }}\n        with:\n          php-version-file: .php-version\n`;
+  const make = `      - name: mise tools\n        id: tools\n        if: \${{ !cancelled() }}\n        run: make install-tools\n`;
+  assert.deepEqual(ciSetupErrors({ 'ci.yml': workflow(php + make) }, { setup: {}, runner: [] }), []);
+  assert.deepEqual(ciSetupErrors({ 'ci.yml': workflow(make + php) }, { setup: {}, runner: [] }), [
+    'ci.yml step "mise tools" runs make install-tools before setup-php installs .php-version',
+  ]);
+  assert.deepEqual(ciSetupErrors({ 'ci.yml': workflow(make) }, { setup: {}, runner: [] }), [
+    'ci.yml step "mise tools" runs make install-tools before setup-php installs .php-version',
+  ]);
+  assert.deepEqual(ciSetupErrors({ 'ci.yml': workflow(`      - name: npm tools\n        if: \${{ !cancelled() }}\n        run: make install-tools TOOLS=npm\n`) }, { setup: {}, runner: [] }), []);
+});
+
 // The independent test case (G5.53) treats as an error a recipe with two or more separate test or lint runs, or a verification command that chains tests with `&&`.
 // A second run of the same test, a line that only compiles, a line that creates input, and a build of a dependency tool are not tests.
 caseTest('a recipe or a command that runs independent tests in sequence is refused', COMPUTE, () => {
