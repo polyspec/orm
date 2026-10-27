@@ -79,18 +79,20 @@ func checkGo(m *runtimemodel.Model, out, pkg string, scan []string) ([]string, e
 	return lines, err
 }
 
-// runGo writes the models into a temporary directory, runs the scan, and then
-// calls finish, which moves or compares the written files. The temporary
-// directory is in the system temporary directory, never in the source tree: a
-// check that reads the tree while a generation runs (the clean-tree check of a
-// land) sees no unfinished path, and replace renames each finished file into
-// out.
+// runGo writes the models into a temporary directory on the output filesystem,
+// runs the scan, and then calls finish, which moves or compares the written
+// files. A check that reads the output while generation runs sees its previous
+// contents until replace commits the staged files.
 func runGo(m *runtimemodel.Model, out, pkg string, scan []string, finish func(*goGen) error) (err error) {
 	g, err := newGoGen(m, out, pkg)
 	if err != nil {
 		return unchanged(out, err)
 	}
-	g.tmp, err = os.MkdirTemp("", "orm-gen-"+filepath.Base(g.outDir)+"-")
+	stageParent, err := nearestExistingOutputParent(g.outDir)
+	if err != nil {
+		return unchanged(out, err)
+	}
+	g.tmp, err = os.MkdirTemp(stageParent, ".orm-gen-"+filepath.Base(g.outDir)+"-")
 	if err != nil {
 		return unchanged(out, err)
 	}
@@ -116,6 +118,28 @@ func runGo(m *runtimemodel.Model, out, pkg string, scan []string, finish func(*g
 		return scanned
 	}
 	return nil
+}
+
+// nearestExistingOutputParent returns the closest existing ancestor of the
+// output directory. Staging there keeps later renames on the output filesystem
+// even when the output has nested parents that do not yet exist.
+func nearestExistingOutputParent(outDir string) (string, error) {
+	for current := filepath.Dir(outDir); ; current = filepath.Dir(current) {
+		info, err := os.Stat(current)
+		if err == nil {
+			if !info.IsDir() {
+				return "", fmt.Errorf("output parent %s is not a directory", current)
+			}
+			return current, nil
+		}
+		if !errors.Is(err, os.ErrNotExist) {
+			return "", err
+		}
+		next := filepath.Dir(current)
+		if next == current {
+			return "", err
+		}
+	}
 }
 
 func newGoGen(m *runtimemodel.Model, out, pkg string) (*goGen, error) {

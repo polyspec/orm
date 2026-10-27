@@ -111,52 +111,91 @@ func requireUnchanged(t *testing.T, m *runtimemodel.Model, message string, patte
 	}
 }
 
-// TestGoGenerationLeavesNoTemporaryPathBesideItsOutput checks that a generation
-// writes its temporary files outside the folder of its output: a check that
-// reads that folder while the generation runs, such as the clean-tree check of
-// a land, sees no path that the generation has not finished.
-func TestGoGenerationLeavesNoTemporaryPathBesideItsOutput(t *testing.T) {
+// TestGoGenerationStagesBesideItsOutput checks that generation stages files
+// beside its output without changing the existing output before replacement.
+func TestGoGenerationStagesBesideItsOutput(t *testing.T) {
 	testcase.Start(t, testcase.Process)
-	write := scannedModule(t)
-	write("example/example.go", `package example
-
-import "example.com/ormexample/model"
-
-func Cheap() *model.ProductModel { return model.Product().LtPrice(1) }
-`)
+	write, manifest := generatedScannedModule(t)
+	before := snapshotDir(t, "model")
+	write("example/more.go", moreCalls)
 	root, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
 	}
-	names := func() []string {
+	stagePaths := func() []string {
 		t.Helper()
 		entries, err := os.ReadDir(root)
 		if err != nil {
 			t.Fatal(err)
 		}
-		var out []string
+		var stages []string
 		for _, entry := range entries {
-			out = append(out, entry.Name())
+			if entry.IsDir() && strings.HasPrefix(entry.Name(), ".orm-gen-model-") {
+				stages = append(stages, filepath.Join(root, entry.Name()))
+			}
 		}
-		return out
+		return stages
 	}
-	before := names()
+	if stages := stagePaths(); len(stages) != 0 {
+		t.Fatalf("generation left temporary paths before it started: %v", stages)
+	}
 	var during [][]string
-	scanLoads = func(scanConfig, []string) { during = append(during, names()) }
+	scanLoads = func(scanConfig, []string) {
+		stages := stagePaths()
+		if len(stages) != 1 {
+			t.Errorf("during scan, staging paths = %v, want one sibling of the output", stages)
+			return
+		}
+		if filepath.Dir(stages[0]) != root {
+			t.Errorf("staging path %s is not beside output directory %s", stages[0], filepath.Join(root, "model"))
+		}
+		requireSameFiles(t, before, snapshotDir(t, "model"))
+		during = append(during, stages)
+	}
 	t.Cleanup(func() { scanLoads = nil })
-	if err := generateGo(namesManifest(t, namesDiagram), "model", "", []string{"./..."}); err != nil {
+	if err := generateGo(manifest, "model", "", []string{"./..."}); err != nil {
 		t.Fatal(err)
 	}
 	if len(during) == 0 {
-		t.Fatal("the generation loaded no scanned package, so nothing observed the folder while it ran")
+		t.Fatal("the generation loaded no scanned package, so nothing observed the staging directory")
 	}
-	for _, seen := range during {
-		if !slices.Equal(seen, before) {
-			t.Fatalf("while the generation ran, %s held %q instead of %q", root, seen, before)
+	if stages := stagePaths(); len(stages) != 0 {
+		t.Fatalf("generation left staging paths after it finished: %v", stages)
+	}
+	if got := snapshotDir(t, "model"); got["product.go"] == before["product.go"] {
+		t.Fatal("generation did not replace the output after scan convergence")
+	}
+}
+
+// TestGoGenerationCleansMissingOutputParentsOnFailure checks nested output
+// support and removes directories created only for a failed generation.
+func TestGoGenerationCleansMissingOutputParentsOnFailure(t *testing.T) {
+	testcase.Start(t, testcase.Process)
+	scannedModule(t)
+	out := filepath.Join("created", "nested", "model")
+	manifest := namesManifest(t, namesDiagram)
+	commitFailure := errors.New("injected commit failure")
+	err := runGo(manifest, out, "", nil, func(*goGen) error { return commitFailure })
+	if !errors.Is(err, commitFailure) {
+		t.Fatalf("generation failure = %v, want injected commit failure", err)
+	}
+	entries, err := os.ReadDir(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if entry.IsDir() && strings.HasPrefix(entry.Name(), ".orm-gen-model-") {
+			t.Fatalf("failed generation left staging directory %s", entry.Name())
 		}
 	}
-	if after, want := names(), slices.Sorted(slices.Values(append(slices.Clone(before), "model"))); !slices.Equal(after, want) {
-		t.Fatalf("after the generation %s holds %q, want %q", root, after, want)
+	if _, err := os.Stat("created"); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("failed generation left its newly created parent: %v", err)
+	}
+	if err := generateGo(manifest, out, "", nil); err != nil {
+		t.Fatalf("generation to a nested output directory: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(out, "product.go")); err != nil {
+		t.Fatalf("nested output is missing generated model: %v", err)
 	}
 }
 
