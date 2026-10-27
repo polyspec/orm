@@ -15,6 +15,11 @@ func mysqlProbes() []Probe {
 	p := func(id, fact string, run func(e *Env)) Probe {
 		return Probe{ID: "mysql." + id, DB: "mysql", Fact: fact, Run: run}
 	}
+	privilege := func(id, fact string, run func(e *Env)) Probe {
+		probe := p(id, fact, run)
+		probe.Fixture = ProbeFixtureMySQLPrivilege
+		return probe
+	}
 	utc := "SET time_zone = '+00:00'"
 	return []Probe{
 		p("env.server", "the server is MySQL 8.4 in strict mode with lower_case_table_names=1", func(e *Env) {
@@ -537,7 +542,7 @@ func mysqlProbes() []Probe {
 			e.Exec("CREATE TABLE t1 (a int)", "CREATE TABLE t2 (a int)", "CREATE TRIGGER tg BEFORE INSERT ON t1 FOR EACH ROW SET @x = 1")
 			e.Fails("CREATE TRIGGER tg BEFORE INSERT ON t2 FOR EACH ROW SET @x = 1", "1359")
 		}),
-		p("trigger.binlog_privilege_1419", "with binary logging on and log_bin_trust_function_creators=0, a login without SUPER cannot create a trigger (1419)", func(e *Env) {
+		privilege("trigger.binlog_privilege_1419", "with binary logging on and log_bin_trust_function_creators=0, a login without SUPER cannot create a trigger (1419)", func(e *Env) {
 			e.Note("endpoint=%s database=%s server=%s:%s server_id=%s log_bin=%s log_bin_trust_function_creators=%s",
 				e.Extra["addr"], e.Name, e.Value("SELECT @@hostname"), e.Value("SELECT @@port"), e.Value("SELECT @@server_id"),
 				e.Value("SELECT @@log_bin"), e.Value("SELECT @@log_bin_trust_function_creators"))

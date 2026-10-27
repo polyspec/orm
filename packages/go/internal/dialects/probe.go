@@ -22,11 +22,20 @@ import (
 
 // Probe is one asserted fact. ID is stable and is cited by docs/spec/dialects.md.
 type Probe struct {
-	ID   string
-	DB   string
-	Fact string
-	Run  func(e *Env)
+	ID      string
+	DB      string
+	Fact    string
+	Fixture ProbeFixture
+	Run     func(e *Env)
 }
+
+// ProbeFixture names an explicitly selected test server fixture for a probe.
+type ProbeFixture string
+
+const (
+	ProbeFixtureDefault        ProbeFixture = ""
+	ProbeFixtureMySQLPrivilege ProbeFixture = "mysql-privilege"
+)
 
 // probeID is <database>.<topic>.<fact>.
 var probeID = regexp.MustCompile(`^(mysql|postgres|sqlite)\.[a-z0-9_]+\.[a-z0-9_]+$`)

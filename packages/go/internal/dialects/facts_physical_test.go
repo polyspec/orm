@@ -128,7 +128,7 @@ func TestDialectFacts(t *testing.T) {
 	for index, probe := range probes {
 		t.Run(probe.ID, func(t *testing.T) {
 			probeServers := servers
-			if probe.ID == "trigger.binlog_privilege_1419" {
+			if probe.Fixture == ProbeFixtureMySQLPrivilege {
 				probeServers = privilegeServers
 			}
 			if runProbeCase(t, probeServers, probe, index, probe.Fact) {

@@ -34,6 +34,23 @@ func TestProbeIDs(t *testing.T) {
 	t.Logf("%d probe IDs valid in %s", len(probes), time.Since(begin).Round(time.Microsecond))
 }
 
+// TestMySQLPrivilegeProbeFixture keeps server routing independent of the probe ID format.
+func TestMySQLPrivilegeProbeFixture(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	const wantID = "mysql.trigger.binlog_privilege_1419"
+	var selected []Probe
+	for _, probe := range All() {
+		if probe.Fixture == ProbeFixtureMySQLPrivilege {
+			selected = append(selected, probe)
+		} else if probe.Fixture != ProbeFixtureDefault {
+			t.Errorf("probe %s names unknown fixture %q", probe.ID, probe.Fixture)
+		}
+	}
+	if len(selected) != 1 || selected[0].ID != wantID {
+		t.Fatalf("privilege fixture probes = %v; want only %s", selected, wantID)
+	}
+}
+
 // citedProbe is a probe ID written as inline code in a dialects page.
 var citedProbe = regexp.MustCompile("`((?:mysql|postgres|sqlite)\\.[a-z0-9_]+\\.[a-z0-9_]+)`")
 
