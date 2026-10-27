@@ -47,57 +47,35 @@ const assertFileEquals = (path: string, want: string): void => {
   assert.equal(readFileSync(path, 'utf8'), want, 'record changed expectations after rejecting evidence');
 };
 
+function auditLazySequenceOutput(updateSequence: number, insertedSequence: number, repeatRecord = false, selectSequence?: number) {
+  const statements = [
+    { kind: 'insert', tables: ['audit_record'], binds: ['audit-lazy'] },
+    { kind: 'update', tables: ['audited_note'], binds: ['audit-none', updateSequence, -1] },
+    { kind: 'insert', tables: ['audited_note'], binds: ['audit-lazy', insertedSequence] },
+  ];
+  if (repeatRecord) statements.splice(2, 0, { kind: 'insert', tables: ['audit_record'], binds: ['audit-lazy'] });
+  if (selectSequence !== undefined) statements.push({ kind: 'select', tables: ['audited_note'], binds: [selectSequence] });
+  return decodeExact(JSON.stringify({ statements, result: selectSequence === undefined ? {} : { before: 0 } }));
+}
+
 caseTest('TestAuditLazySequenceNormalizationKeepsTheVectorLocalRelationship', COMPUTE, () => {
-  const output = decodeExact(JSON.stringify({
-    statements: [
-      { kind: 'insert', tables: ['audit_record'], binds: ['audit-lazy'] },
-      { kind: 'update', tables: ['audited_note'], binds: ['audit-none', 41, -1] },
-      { kind: 'insert', tables: ['audit_record'], binds: ['audit-lazy'] },
-      { kind: 'insert', tables: ['audited_note'], binds: ['audit-lazy', 42] },
-      { kind: 'select', tables: ['audited_note'], binds: [41] },
-    ],
-    result: { before: 0 },
-  }));
+  const output = auditLazySequenceOutput(41, 42, true, 41);
   const normalized = normalizeAuditLazySequenceBinds(output, 'mysql');
   assert.equal(encode(normalized, { sorted: true }), '{"result":{"before":0},"statements":[{"binds":["audit-lazy"],"kind":"insert","tables":["audit_record"]},{"binds":["audit-none","$SEQ",-1],"kind":"update","tables":["audited_note"]},{"binds":["audit-lazy"],"kind":"insert","tables":["audit_record"]},{"binds":["audit-lazy",2],"kind":"insert","tables":["audited_note"]},{"binds":[41],"kind":"select","tables":["audited_note"]}]}');
 });
 
 caseTest('TestAuditLazySequenceNormalizationAcceptsCanonicalSQLiteIds', COMPUTE, () => {
-  const output = decodeExact(JSON.stringify({
-    statements: [
-      { kind: 'insert', tables: ['audit_record'], binds: ['audit-lazy'] },
-      { kind: 'update', tables: ['audited_note'], binds: ['audit-none', 1, -1] },
-      { kind: 'insert', tables: ['audit_record'], binds: ['audit-lazy'] },
-      { kind: 'insert', tables: ['audited_note'], binds: ['audit-lazy', 1] },
-    ],
-    result: {},
-  }));
+  const output = auditLazySequenceOutput(1, 1, true);
   assert.doesNotThrow(() => normalizeAuditLazySequenceBinds(output, 'sqlite'));
 });
 
 caseTest('TestAuditLazySequenceNormalizationRejectsBrokenIdentityRelationship', COMPUTE, () => {
-  const output = decodeExact(JSON.stringify({
-    statements: [
-      { kind: 'insert', tables: ['audit_record'], binds: ['audit-lazy'] },
-      { kind: 'update', tables: ['audited_note'], binds: ['audit-none', 41, -1] },
-      { kind: 'insert', tables: ['audit_record'], binds: ['audit-lazy'] },
-      { kind: 'insert', tables: ['audited_note'], binds: ['audit-lazy', 43] },
-    ],
-    result: {},
-  }));
+  const output = auditLazySequenceOutput(41, 43, true);
   assert.throws(() => normalizeAuditLazySequenceBinds(output, 'mysql'), /sequence binds differ for mysql: 41 then 43/);
 });
 
 caseTest('TestAuditLazySequenceNormalizationRejectsMismatchedSQLiteIdentity', COMPUTE, () => {
-  const output = decodeExact(JSON.stringify({
-    statements: [
-      { kind: 'insert', tables: ['audit_record'], binds: ['audit-lazy'] },
-      { kind: 'update', tables: ['audited_note'], binds: ['audit-none', 1, -1] },
-      { kind: 'insert', tables: ['audit_record'], binds: ['audit-lazy'] },
-      { kind: 'insert', tables: ['audited_note'], binds: ['audit-lazy', 2] },
-    ],
-    result: {},
-  }));
+  const output = auditLazySequenceOutput(1, 2, true);
   assert.throws(() => normalizeAuditLazySequenceBinds(output, 'sqlite'), /sequence binds differ for sqlite: 1 then 2/);
 });
 
