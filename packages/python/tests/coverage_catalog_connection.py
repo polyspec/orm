@@ -264,12 +264,14 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
             "WITH changed AS (UPDATE user SET name=name WHERE seq=1 RETURNING seq) SELECT seq FROM changed",
         ]
         if driver == "postgres":
-            read_only_refusals.extend(
-                (
-                    "SELECT " + " UNION ALL ".join(["1"] * 200),
-                    "SELECT " + "+".join(["1"] * 200),
-                )
-            )
+            many_rows = "SELECT 1" + " UNION ALL SELECT 1" * 199
+            with self.assertRaises(OrmError) as row_limit:
+                self.catalog.read_only_grid_query(many_rows, [], max_rows=199)
+            self.assertEqual(row_limit.exception.code, codes.CATALOG_LIMIT)
+            long_expression = "SELECT " + "+".join(["1"] * 200)
+            with self.assertRaises(OrmError) as byte_limit:
+                self.catalog.read_only_grid_query(long_expression, [], max_bytes=7)
+            self.assertEqual(byte_limit.exception.code, codes.CATALOG_LIMIT)
         for sql in read_only_refusals:
             with self.assertRaises(
                 OrmError, msg=f"read-only grid query accepted {sql}"

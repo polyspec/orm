@@ -58,6 +58,22 @@ class FakeSession:
 
 
 class CatalogMutationHelperTest(unittest.TestCase):
+    def test_valid_postgres_budget_queries_hit_limits(self):
+        connection = sqlite3.connect(":memory:")
+        try:
+            session = _Session("sqlite", SimpleNamespace(connection=connection))
+            many_rows = "SELECT 1" + " UNION ALL SELECT 1" * 199
+            with self.assertRaises(OrmError) as row_limit:
+                session.run(many_rows, max_rows=199, grid=True)
+            self.assertEqual(row_limit.exception.code, codes.CATALOG_LIMIT)
+
+            long_expression = "SELECT " + "+".join(["1"] * 200)
+            with self.assertRaises(OrmError) as byte_limit:
+                session.run(long_expression, max_bytes=7, grid=True)
+            self.assertEqual(byte_limit.exception.code, codes.CATALOG_LIMIT)
+        finally:
+            connection.close()
+
     def test_plain_query_byte_budget_counts_utf8_bytes(self):
         connection = sqlite3.connect(":memory:")
         try:
