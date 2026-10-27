@@ -11,15 +11,14 @@ if [ -z "$node" ]; then
   echo "build.sh: the pinned Node runtime is not on PATH; run the build through make, which sets up the toolchain" >&2
   exit 1
 fi
-# The builder is the source of the kit checkout beside the repository, which node runs as it is (kit K613).
-builder="$repository/../kit/scripts/kit/php-extension.mts"
-if [ ! -f "$builder" ]; then
-  echo "build.sh: the Kit PHP extension builder $builder is missing; clone kit beside the repository" >&2
+# Resolve the pinned public Kit CLI from this checkout's installed package.
+cd "$repository"
+if ! builder=$("$node" -p 'require.resolve("@polyspec/kit/php-extension")' 2>/dev/null); then
+  echo "build.sh: installed @polyspec/kit does not expose php-extension; run make install" >&2
   exit 1
 fi
 mkdir -p "$(dirname "$out")"
 out=$(cd "$(dirname "$out")" && pwd)/$(basename "$out")
-cd "$repository"
 set -- "$builder" build --output "$out" --configure-arg
 case "$mode" in
   release) set -- "$@" --disable-polyspec-orm-native-test ;;

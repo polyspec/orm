@@ -21,14 +21,17 @@ final class ArginfoBuildTest extends TestCase
         $bin = $root . '/bin';
         $arginfo = $root . '/var/tools/php-arginfo';
         $phpConfigBin = $root . '/var/tools/bin';
+        $kit = $root . '/node_modules/@polyspec/kit';
         $prefix = $root . '/php-prefix';
         mkdir($package . '/scripts', 0777, true);
         mkdir($package . '/src', 0777, true);
         mkdir($bin, 0777, true);
         mkdir($arginfo, 0777, true);
         mkdir($phpConfigBin, 0777, true);
+        mkdir($kit . '/scripts', 0777, true);
         mkdir($prefix . '/lib/php/build', 0777, true);
         $marker = $root . '/invoked';
+        $kitProof = $root . '/kit-cli.json';
 
         try {
             $git = proc_open(
@@ -47,6 +50,17 @@ final class ArginfoBuildTest extends TestCase
             copy(__DIR__ . '/../composer.json', $package . '/composer.json');
             copy(__DIR__ . '/../src/polyspec_orm.stub.php', $package . '/src/polyspec_orm.stub.php');
             copy(__DIR__ . '/../src/config.m4', $package . '/src/config.m4');
+            file_put_contents($kit . '/package.json', json_encode([
+                'name' => '@polyspec/kit',
+                'type' => 'module',
+                'exports' => ['./php-extension' => './scripts/php-extension.mjs'],
+            ], JSON_THROW_ON_ERROR));
+            file_put_contents($kit . '/scripts/php-extension.mjs', <<<JS
+import { writeFileSync } from 'node:fs';
+writeFileSync(process.env.KIT_CLI_PROOF, JSON.stringify({ file: import.meta.filename, args: process.argv.slice(2) }));
+console.error('var/tools/php-arginfo/PHP-Parser-5.0.0/lib/PhpParser is missing; run make install-tools');
+process.exit(1);
+JS);
             $generator = "<?php\n\$version = \"5.0.0\";\n";
             file_put_contents($arginfo . '/gen_stub.php', $generator);
             file_put_contents($prefix . '/lib/php/build/gen_stub.php', $generator);
@@ -73,6 +87,7 @@ final class ArginfoBuildTest extends TestCase
                     'PATH' => $bin . ':' . $testRoot . '/var/tools/bin:/usr/bin:/bin',
                     'HOME' => $root,
                     'TMPDIR' => $root,
+                    'KIT_CLI_PROOF' => $kitProof,
                 ]
             );
             self::assertIsResource($process);
@@ -86,6 +101,9 @@ final class ArginfoBuildTest extends TestCase
             self::assertSame(1, $exit, $output);
             self::assertStringContainsString('PHP-Parser-5.0.0/lib/PhpParser is missing', $output);
             self::assertStringContainsString('run make install-tools', $output);
+            $proof = json_decode(file_get_contents($kitProof), true, flags: JSON_THROW_ON_ERROR);
+            self::assertSame(realpath($kit . '/scripts/php-extension.mjs'), $proof['file']);
+            self::assertSame(['build', '--output', $root . '/polyspec_orm.so', '--configure-arg', '--disable-polyspec-orm-native-test'], $proof['args']);
             self::assertFileDoesNotExist(
                 $marker,
                 'The build invoked phpize, PHP, or a downloader before reporting the missing generator.',
