@@ -178,14 +178,14 @@ async fn coverage_transaction_savepoint() {
                                     eprintln!("rust-savepoint: holder FOR UPDATE acquired");
                                     let sender = holder_locked.lock().expect("lock readiness sender mutex").take();
                                     if let Some(sender) = sender {
-                                        let _ = sender.send(Ok(()));
+                                        sender.send(Ok(())).expect("the parent must receive lock readiness");
                                     }
                                 }
                                 Ok(None) => {
                                     eprintln!("rust-savepoint: holder FOR UPDATE found no row");
                                     let sender = holder_locked.lock().expect("lock readiness sender mutex").take();
                                     if let Some(sender) = sender {
-                                        let _ = sender.send(Err("lock probe row was not found".to_owned()));
+                                        sender.send(Err("lock probe row was not found".to_owned())).expect("the parent must receive lock setup failure");
                                     }
                                     return Err(failure("lock probe row was not found"));
                                 }
@@ -193,7 +193,7 @@ async fn coverage_transaction_savepoint() {
                                     eprintln!("rust-savepoint: holder FOR UPDATE error: {error}");
                                     let sender = holder_locked.lock().expect("lock readiness sender mutex").take();
                                     if let Some(sender) = sender {
-                                        let _ = sender.send(Err(format!("FOR UPDATE query failed: {error}")));
+                                        sender.send(Err(format!("FOR UPDATE query failed: {error}"))).expect("the parent must receive the FOR UPDATE failure");
                                     }
                                     return Err(error);
                                 }

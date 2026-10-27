@@ -43,7 +43,7 @@ export function commandEnvironment(language: string, environment: NodeJS.Process
   return language === 'php-extension' ? { ...environment, ORM_PHP_MODE: 'extension' } : environment;
 }
 
-function observed(language: string, database: string, output: string): boolean {
+export function observed(language: string, database: string, output: string): boolean {
   const id = `decimal_${database}`;
   if (language === 'go') {
     const suffix = database === 'postgres' ? 'Postgres' : database === 'mysql' ? 'MySQL' : 'SQLite';
@@ -56,8 +56,13 @@ function observed(language: string, database: string, output: string): boolean {
   // finish, and there must be no failed or skipped test.
   if (language === 'php') {
     const finished = [...output.matchAll(/^##teamcity\[testFinished name='([^']*)'/gm)].map(match => match[1]);
-    const wanted = ['generate', 'setters', 'round_trip'].map(name => `test_${name} with data set "${database}"`);
-    return JSON.stringify(finished) === JSON.stringify(wanted) && !/^##teamcity\[test(?:Failed|Ignored) /m.test(output);
+    const wanted = ['testGenerate', 'testSetters', 'testRoundTrip']
+      .map(name => `${name} with data set "${database}"`);
+    const suite = "##teamcity[testSuiteStarted name='Polyspec\\Orm\\Tests\\DecimalModelDbTest'";
+    return output.includes(suite)
+      && output.includes("##teamcity[testCount count='3'")
+      && JSON.stringify(finished) === JSON.stringify(wanted)
+      && !/^##teamcity\[test(?:Failed|Ignored) /m.test(output);
   }
   if (language === 'php-extension') {
     const name = `DecimalModelDbNativeTest::testNativeRoundTrip with data set "${database}"`;

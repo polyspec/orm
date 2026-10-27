@@ -11,10 +11,7 @@ use Polyspec\Orm\GroupRow;
 use Polyspec\Orm\GroupRows;
 use Polyspec\Orm\Tests\Model\Author;
 
-/**
- * The grouped counts of the bench authors on each database, shared by the PHP library and the extension: a class that
- * uses it also uses DatabaseTestAssertions.
- */
+/** Executes shared grouped-row assertions on a client connection supplied by its caller. */
 final class GroupRowsDbCase
 {
     public static function run(Db $db): void

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, relative, resolve } from 'node:path';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
@@ -428,8 +428,12 @@ caseTest('the parts of a target after a failed part still run under make -k', PR
     // runs its tests through $(RUN_TESTS) (9c891d3ca), whose definition the temporary Makefile carries from the Makefile.
     const runTests = lines.find(line => line.startsWith('RUN_TESTS = '));
     assert.ok(runTests, 'the Makefile defines RUN_TESTS');
-    // KIT is the scripts/kit of the kit checkout beside the repository, whose sources run as they are (kit K613).
-    writeFileSync(join(base, 'Makefile'), `NODE := ${join(base, 'bin/node')}\nKIT := ../kit/scripts/kit\nKIT_EXT := mts\n${runTests}\n${definition.join('\n')}\n`);
+    // The public package entry works for both the linked development checkout and the installed release package.
+    const kitRunTests = fileURLToPath(import.meta.resolve('@polyspec/kit/run-tests'));
+    const kitDirectory = dirname(kitRunTests);
+    const kitExtension = basename(kitRunTests).split('.').at(-1);
+    assert.ok(kitExtension, 'the Kit run-tests entry has a file extension');
+    writeFileSync(join(base, 'Makefile'), `NODE := ${join(base, 'bin/node')}\nKIT := ${kitDirectory}\nKIT_EXT := ${kitExtension}\n${runTests}\n${definition.join('\n')}\n`);
     mkdirSync(join(base, 'bin'));
     const log = join(base, 'ran.log');
     writeFileSync(join(base, 'bin/node'), `#!/bin/sh\necho "$*" >> ${log}\ncase "$*" in *check.test.mts*) echo 'FAIL version unit: expected 0, actual 1'; exit 1;; esac\n`, { mode: 0o755 });
@@ -446,7 +450,7 @@ caseTest('the parts of a target after a failed part still run under make -k', PR
       process.env.PATH = previous;
     }
     assert.match(errorMessage(failure), /make --no-print-directory -k version-check exited with 2/);
-    assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), ['../kit/scripts/kit/run-tests.mts node -- scripts/version/check.test.mts', 'scripts/version/check.mts']);
+    assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), [kitRunTests + ' node -- scripts/version/check.test.mts', 'scripts/version/check.mts']);
   } finally {
     rmSync(base, { recursive: true, force: true });
   }

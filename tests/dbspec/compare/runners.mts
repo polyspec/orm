@@ -37,7 +37,7 @@ export const runners: (Runner & { reads: string[] })[] = [
     get command() {
       return pythonCommand();
     },
-    args: ['-m', 'tests.dbspec.compare.python'],
+    args: ['-m', 'packages.python.testing.dbspec.compare.python'],
     reads: INPUTS,
   },
   { name: 'rust', command: join(cargoTarget(), 'debug/examples/dbspec_compare'), args: [], reads: INPUTS },

@@ -665,7 +665,8 @@ export function chainedCommandErrors(features: { features?: { id: string; verifi
 // command can read its Makefile, and summary writes the run's record after make orm-check.
 const KIT_BOOTSTRAP_COMMAND = `if [ "$(node -p 'require("./package.json").name')" != '@polyspec/kit' ]; then
   npm_config_cache="$PWD/var/bootstrap/npm-cache" npm exec --yes --package="$(node -p 'require("./package.json").packageManager.split("+")[0]')" -- npm ci --ignore-scripts --allow-remote=root
-fi`;
+fi
+`;
 export const CI_RUN_EXCEPTIONS: Record<string, Record<string, string>> = {
   '.github/workflows/ci.yml': { 'bootstrap the installed kit package': KIT_BOOTSTRAP_COMMAND, summary: 'node scripts/check/summary.mts' },
   '.github/workflows/push-gate.yml': { 'bootstrap the installed kit package': KIT_BOOTSTRAP_COMMAND },

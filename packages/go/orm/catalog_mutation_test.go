@@ -3,10 +3,13 @@ package orm
 import (
 	"testing"
 	"time"
+
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // Requirements: INT-101.
 func TestCatalogSameWrittenCellMatchesDateTimeTextToDriverTime(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	defaultStored := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
 	stored := time.Date(2026, time.January, 2, 3, 4, 5, 123000000, time.UTC)
 	tests := []struct {
@@ -48,6 +51,7 @@ func TestCatalogSameWrittenCellMatchesDateTimeTextToDriverTime(t *testing.T) {
 
 // Requirements: INT-101.
 func TestCatalogBytesValuePreservesNativeTimeAsText(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, nativeType := range []string{"TIME", "TIME(3)", "time without time zone", "time(3) without time zone"} {
 		got, err := catalogBytesValue([]byte("12:34:56.123"), nativeType)
 		if err != nil || got != "12:34:56.123" {
@@ -63,6 +67,7 @@ func TestCatalogBytesValuePreservesNativeTimeAsText(t *testing.T) {
 
 // Requirements: INT-111.
 func TestCatalogChangesRejectsValuesBeyondDeclaredCapacity(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	tests := []struct {
 		name       string
 		nativeType string

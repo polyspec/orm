@@ -103,7 +103,16 @@ JS);
             self::assertStringContainsString('run make install-tools', $output);
             $proof = json_decode(file_get_contents($kitProof), true, flags: JSON_THROW_ON_ERROR);
             self::assertSame(realpath($kit . '/scripts/php-extension.mjs'), $proof['file']);
-            self::assertSame(['build', '--output', $root . '/polyspec_orm.so', '--configure-arg', '--disable-polyspec-orm-native-test'], $proof['args']);
+            self::assertSame(
+                [
+                    'build',
+                    '--output',
+                    $root . '/polyspec_orm.so',
+                    '--configure-arg',
+                    '--disable-polyspec-orm-native-test',
+                ],
+                $proof['args']
+            );
             self::assertFileDoesNotExist(
                 $marker,
                 'The build invoked phpize, PHP, or a downloader before reporting the missing generator.',

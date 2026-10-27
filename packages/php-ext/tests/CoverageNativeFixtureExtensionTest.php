@@ -21,28 +21,25 @@ final class CoverageNativeFixtureExtensionTest extends TestCase
     /** @return iterable<string, array{string}> */
     public static function aggregateNumericVectors(): iterable
     {
-        yield from \Polyspec\Orm\Tests\NativeFixtureVectors::ids(
-            \Polyspec\Orm\Tests\AggregateNumericTest::cases(),
-            'native'
-        );
+        return self::nativeFixtureIds(\Polyspec\Orm\Tests\AggregateNumericTest::cases());
     }
 
     /** @return iterable<string, array{string}> */
     public static function decimalModelVectors(): iterable
     {
-        yield from \Polyspec\Orm\Tests\NativeFixtureVectors::ids(
-            \Polyspec\Orm\Tests\DecimalModelTest::cases(),
-            'native'
-        );
+        return self::nativeFixtureIds(\Polyspec\Orm\Tests\DecimalModelTest::cases());
     }
 
     /** @return iterable<string, array{string}> */
     public static function identityLoadVectors(): iterable
     {
-        yield from \Polyspec\Orm\Tests\NativeFixtureVectors::ids(
-            \Polyspec\Orm\Tests\IdentityLoadTest::cases(),
-            'native'
-        );
+        return self::nativeFixtureIds(\Polyspec\Orm\Tests\IdentityLoadTest::cases());
+    }
+
+    /** @param iterable<array<mixed>> $cases @return iterable<string, array{string}> */
+    private static function nativeFixtureIds(iterable $cases): iterable
+    {
+        return \Polyspec\Orm\Tests\NativeFixtureVectors::ids($cases, 'native');
     }
 
     public function testAggregateNumeric(): void

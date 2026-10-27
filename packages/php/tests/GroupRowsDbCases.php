@@ -6,10 +6,7 @@ namespace Polyspec\Orm\Tests;
 
 use Polyspec\Orm\Db;
 
-/**
- * The grouped counts of the bench authors on each database, shared by the PHP library and the extension: a class that
- * uses it also uses DatabaseTestAssertions.
- */
+/** Runs the grouped-row assertion helper once for each benchmark database. */
 trait GroupRowsDbCases
 {
     // Requirements: INT-31.

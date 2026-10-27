@@ -3,7 +3,7 @@ import { inspect } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { caseTest, COMPUTE } from '../tests/testcase.mts';
 import { reportUnchangedState, runPhysicalCommandCase } from './physical-command-case.mts';
-import { command, commandEnvironment } from './decimal-physical-check.mts';
+import { command, commandEnvironment, observed } from './decimal-physical-check.mts';
 
 const kitRunTests = fileURLToPath(import.meta.resolve('@polyspec/kit/run-tests'));
 
@@ -50,6 +50,19 @@ caseTest('rejects a failed or unexpected TeamCity event and nonmatching exact ou
     { kind: 'exact', output: 'CASE group_rows_mysql PASS' }, 'missing exact output'), /missing exact output/);
   await assert.rejects(runPhysicalCommandCase(async () => 'not accepted', 'node', [], {}, 'dsn-secret',
     { kind: 'predicate', accepts: output => output === 'accepted' }, 'missing predicate output'), /missing predicate output/);
+});
+
+caseTest('matches the exact PHP decimal PHPUnit class and data-set events', COMPUTE, () => {
+  const database = 'mysql';
+  const classSuite = "##teamcity[testSuiteStarted name='Polyspec\\Orm\\Tests\\DecimalModelDbTest']";
+  const finished = ['testGenerate', 'testSetters', 'testRoundTrip']
+    .map(name => `##teamcity[testFinished name='${name} with data set "${database}"']`)
+    .join('\n');
+  const output = ["##teamcity[testCount count='3']", classSuite, finished].join('\n');
+  assert.equal(observed('php', database, output), true);
+  assert.equal(observed('php', database, output.replace('DecimalModelDbTest', 'OtherTest')), false);
+  assert.equal(observed('php', database, output.replace('testRoundTrip', 'test_round_trip')), false);
+  assert.equal(observed('php', database, `${output}\n##teamcity[testFailed name='testSetters']`), false);
 });
 
 caseTest('redacts the DSN from command failures', COMPUTE, async () => {

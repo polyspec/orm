@@ -321,7 +321,7 @@ func catalogTemporalDefaultPrecisionCheck(t *testing.T, driver string, c *orm.Ca
 		value := inserted.Rows[0][column]
 		if i == 0 || i == 2 {
 			text, ok := value.(string)
-			want := []string{t0Value.(string), dt0Value.(string), t3Value.(string), dt3Value.(string)}[i]
+			want := []string{t0Value, dt0Value, t3Value, dt3Value}[i]
 			if !ok || text != want {
 				t.Fatalf("%s: typed temporal Catalog insert %s = %T(%v), want %q", driver, name, value, value, want)
 			}
@@ -345,7 +345,7 @@ func catalogTemporalDefaultPrecisionCheck(t *testing.T, driver string, c *orm.Ca
 	}
 }
 
-func catalogTemporalWriteValues(driver string) (any, any, any, any) {
+func catalogTemporalWriteValues(driver string) (string, string, string, string) {
 	t0, dt0 := "12:34:56", "2026-01-02 03:04:05"
 	if driver == "postgres" {
 		t0 += ".123456"

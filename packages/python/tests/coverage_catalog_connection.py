@@ -225,7 +225,9 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
             self.catalog.read_only_query(exact_bytes_sql, [], max_rows=2, max_bytes=2)
         self.assertEqual(plain_byte_limit.exception.code, codes.CATALOG_LIMIT)
         with self.assertRaises(OrmError) as utf8_byte_limit:
-            self.catalog.read_only_query("SELECT 'é' AS value", [], max_rows=1, max_bytes=1)
+            self.catalog.read_only_query(
+                "SELECT 'é' AS value", [], max_rows=1, max_bytes=1
+            )
         self.assertEqual(utf8_byte_limit.exception.code, codes.CATALOG_LIMIT)
         exact_utf8 = self.catalog.read_only_query(
             "SELECT 'é' AS value", [], max_rows=1, max_bytes=2

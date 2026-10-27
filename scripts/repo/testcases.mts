@@ -437,6 +437,8 @@ export function runtimePathErrors(makefile: string): string[] {
   const errors: string[] = [];
   for (const [index, line] of makefile.split('\n').entries()) {
     if (/^\s*#/.test(line)) continue;
+    // worktree-remove reads this dynamic checkout's server state and stops its own servers; it writes no shared run file.
+    if (/test -d "\$\(WORKTREE\)\/\.runtime\/servers"; then \$\(MAKE\) -C "\$\(WORKTREE\)" orm-test-servers-stop/.test(line)) continue;
     if (!/\.runtime\/|\$\(dir \$\(abspath \$\(TEST_ENV\)\)\)/.test(line)) continue;
     if (allowed.some(pattern => pattern.test(line.trim()))) continue;
     errors.push(`Makefile:${index + 1} names a fixed file that runs would share; put the file of one run into $(RUN_DIR): ${line.trim()}`);
