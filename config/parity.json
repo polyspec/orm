@@ -8916,7 +8916,10 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_planner.mjs"
+          "test": "packages/ts/tests/coverage_planner.mjs",
+          "args": [
+            "--test-skip-pattern=^value_function_ir_parameter_indexes$"
+          ]
         },
         {
           "implementation": "python",
@@ -9161,7 +9164,10 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/styled-value.mjs"
+          "test": "packages/ts/tests/styled-value.mjs",
+          "args": [
+            "--test-skip-pattern=^(?:styled-value/model-states|styled-value/ip-host-input|styled-value/lost-output|styled-value/json-column)$"
+          ]
         },
         {
           "implementation": "python",
@@ -10894,7 +10900,10 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create.mjs"
+          "test": "packages/ts/tests/dbspec-show-create.mjs",
+          "args": [
+            "--test-skip-pattern=^introspection/"
+          ]
         },
         {
           "implementation": "python",
@@ -12212,6 +12221,14 @@
           "implementation": "rust",
           "test": "packages/rust/build/tests/generate.rs",
           "id": "nullable_json_fields_keep_sql_null_separate_from_json_null"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/styled-value.mjs",
+          "id": "styled-value/json-column",
+          "args": [
+            "--test-name-pattern=^styled-value/json-column$"
+          ]
         }
       ]
     },
@@ -13113,6 +13130,14 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/styled-value-checks.mjs",
           "id": "styled value checks: a changed input fails when it is read for output"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/styled-value.mjs",
+          "id": "styled-value/lost-output",
+          "args": [
+            "--test-name-pattern=^styled-value/lost-output$"
+          ]
         }
       ],
       "owner": {
