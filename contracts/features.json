@@ -169,7 +169,10 @@
         "packages/php-ext/src/config.m4",
         "packages/php-ext/scripts/build.sh",
         "packages/php-ext/src/polyspec_orm.c",
-        "packages/go/orm/sqlite_version_test.go"
+        "packages/go/orm/sqlite_version_test.go",
+        "packages/php-ext/tests/DsnTestExtensionTest.php",
+        "packages/php-ext/tests/MarkdownTestExtensionTest.php",
+        "packages/php-ext/tests/ModelTestExtensionTest.php"
       ],
       "docs": [
         "docs/spec/config.md",
@@ -1302,7 +1305,12 @@
         "packages/rust/orm/src/model.rs",
         "packages/rust/orm/src/driver/tests.rs",
         "packages/rust/orm/tests/compiler_fixtures.rs",
-        "packages/rust/tests/tests/collection_get_fetched.rs"
+        "packages/rust/tests/tests/collection_get_fetched.rs",
+        "packages/php-ext/tests/CollectionIdentityTestExtensionTest.php",
+        "packages/php-ext/tests/DecimalModelTestExtensionTest.php",
+        "packages/php-ext/tests/GroupRowsTestExtensionTest.php",
+        "packages/php-ext/tests/InsertPartsTestExtensionTest.php",
+        "packages/php-ext/tests/ModelTestExtensionTest.php"
       ],
       "docs": [
         "docs/spec/dsl.md",
@@ -2351,7 +2359,11 @@
         "packages/php-ext/tests/ModelWriteSurfaceTest.php",
         "packages/rust/orm/tests/unit/time_precision.rs",
         "packages/php-ext/tests/DecimalModelDbNativeTest.php",
-        "packages/php-ext/tests/DecimalModelSqliteNativeTest.php"
+        "packages/php-ext/tests/DecimalModelSqliteNativeTest.php",
+        "packages/php-ext/tests/ClockTestExtensionTest.php",
+        "packages/php-ext/tests/DecimalModelTestExtensionTest.php",
+        "packages/php-ext/tests/ModelTestExtensionTest.php",
+        "packages/php-ext/tests/RevisionTestExtensionTest.php"
       ],
       "docs": [
         "docs/spec/dsl.md",
@@ -3214,7 +3226,12 @@
         "packages/rust/orm/src/utils.rs",
         "packages/rust/orm/src/db/executor_route_tests.rs",
         "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs",
-        "packages/rust/orm/tests/compiler_fixtures.rs"
+        "packages/rust/orm/tests/compiler_fixtures.rs",
+        "packages/php-ext/tests/ModelTestExtensionTest.php",
+        "packages/php-ext/tests/RollbackTestExtensionTest.php",
+        "packages/php-ext/tests/SessionStateTestExtensionTest.php",
+        "packages/php-ext/tests/SqliteRowLockRestoreTestExtensionTest.php",
+        "packages/php-ext/tests/StatementFaultTestExtensionTest.php"
       ],
       "docs": [
         "docs/spec/config.md",
@@ -3888,7 +3905,8 @@
         "packages/python/tests/test_event_placeholders.py",
         "packages/python/tests/test_subscriber_error.py",
         "packages/python/tests/coverage_statement_events.py",
-        "packages/php-ext/tests/StatementEventSurfaceTest.php"
+        "packages/php-ext/tests/StatementEventSurfaceTest.php",
+        "packages/php-ext/tests/StatementEventsTestExtensionTest.php"
       ],
       "docs": [
         "docs/operations/usage.md",
@@ -4388,7 +4406,11 @@
         "packages/go/model/decimal_field_test.go",
         "packages/php/tests/DecimalModelTest.php",
         "packages/python/tests/test_model_fields.py",
-        "packages/python/tests/test_runtime_model_selected_set.py"
+        "packages/python/tests/test_runtime_model_selected_set.py",
+        "packages/php-ext/tests/DecimalModelTestExtensionTest.php",
+        "packages/php-ext/tests/ModelMethodsTestExtensionTest.php",
+        "packages/php-ext/tests/OrmGenCliTestExtensionTest.php",
+        "packages/php-ext/tests/OrmGenScanTestExtensionTest.php"
       ],
       "docs": [
         "docs/spec/dsl.md",
@@ -4894,7 +4916,20 @@
         "packages/rust/schema/src/dbspec/mod.rs",
         "packages/rust/schema/src/dbspec/parser.rs",
         "packages/rust/schema/src/names.rs",
-        "packages/rust/schema/src/dbspec/introspect/mod.rs"
+        "packages/rust/schema/src/dbspec/introspect/mod.rs",
+        "packages/php-ext/tests/DbspecAnalyzeTestExtensionTest.php",
+        "packages/php-ext/tests/DbspecApplyCleanupTestExtensionTest.php",
+        "packages/php-ext/tests/DbspecApplyTestExtensionTest.php",
+        "packages/php-ext/tests/DbspecIntrospectExtensionTest.php",
+        "packages/php-ext/tests/DbspecManifestTestExtensionTest.php",
+        "packages/php-ext/tests/DbspecMermaidTestExtensionTest.php",
+        "packages/php-ext/tests/DbspecPlanApplyTestExtensionTest.php",
+        "packages/php-ext/tests/DbspecPlanTestExtensionTest.php",
+        "packages/php-ext/tests/DbspecRenderTestExtensionTest.php",
+        "packages/php-ext/tests/DbspecSetParseTestExtensionTest.php",
+        "packages/php-ext/tests/DbspecSetTestExtensionTest.php",
+        "packages/php-ext/tests/DbspecShowCreateIntrospectTestExtensionTest.php",
+        "packages/php-ext/tests/DbspecTestExtensionTest.php"
       ],
       "docs": [
         "docs/spec/dbspec.md",
@@ -5580,7 +5615,8 @@
         "packages/go/orm/schema_exists_underscore_test.go",
         "packages/php/tests/SchemaExistsSqliteTest.php",
         "packages/rust/orm/tests/schema_exists_underscore.rs",
-        "packages/python/tests/test_schema_set.py"
+        "packages/python/tests/test_schema_set.py",
+        "packages/php-ext/tests/ModelTestExtensionTest.php"
       ],
       "docs": [
         "docs/spec/schema.md",
@@ -6210,7 +6246,8 @@
         "planner",
         "ir-validate",
         "dbspec-operator-validation-limits",
-        "planner_scalar_subquery_aggregate_types"
+        "planner_scalar_subquery_aggregate_types",
+        "request-manifest-hash-mismatch"
       ],
       "fixtures": [
         "contracts/fixtures/planner.json",
@@ -6264,7 +6301,8 @@
         "packages/go/orm/values_test.go",
         "packages/php-ext/tests/ColumnFunctionMetadataTest.php",
         "packages/rust/orm/tests/unit/upsert_conflict.rs",
-        "packages/rust/schema/src/dbspec/mod.rs"
+        "packages/rust/schema/src/dbspec/mod.rs",
+        "packages/python/tests/test_ir_validate_additional.py"
       ],
       "docs": [
         "docs/spec/protocol.md",
@@ -7535,7 +7573,8 @@
         "packages/python/tests/test_key_prefix.py",
         "packages/python/tests/coverage_composite_keys.py",
         "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php",
-        "packages/php-ext/tests/CompositeKeysNativeTest.php"
+        "packages/php-ext/tests/CompositeKeysNativeTest.php",
+        "packages/php-ext/tests/ModelTestExtensionTest.php"
       ],
       "docs": [
         "docs/spec/schema.md",
@@ -7977,7 +8016,13 @@
         "packages/python/tests/test_blind_index_source.py",
         "packages/ts/tests/aes-read-row-without-version-cell.mjs",
         "packages/python/tests/aes_json.py",
-        "packages/php/tests/ModelTest.php"
+        "packages/php/tests/ModelTest.php",
+        "packages/php-ext/tests/AesJsonTestExtensionTest.php",
+        "packages/php-ext/tests/AesVersionCodesTestExtensionTest.php",
+        "packages/php-ext/tests/CodecAesVectorsTestExtensionTest.php",
+        "packages/php-ext/tests/CodecVectorsExtensionTest.php",
+        "packages/php-ext/tests/HostcodecTestExtensionTest.php",
+        "packages/php-ext/tests/ModelTestExtensionTest.php"
       ],
       "docs": [
         "docs/spec/codec.md",
@@ -8413,7 +8458,8 @@
         "packages/rust/build/tests/unit/assignment_budget.rs",
         "packages/rust/build/tests/unit/insert_values.rs",
         "packages/rust/build/tests/unit/row_update_budget.rs",
-        "packages/rust/orm/src/driver/tests.rs"
+        "packages/rust/orm/src/driver/tests.rs",
+        "packages/php-ext/tests/ModelTestExtensionTest.php"
       ],
       "docs": [
         "docs/spec/protocol.md",
@@ -8839,7 +8885,8 @@
         "packages/python/tests/coverage_constraints_and_relations.py",
         "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
         "packages/rust/orm/src/lib.rs",
-        "packages/rust/orm/tests/unit/driver_cause.rs"
+        "packages/rust/orm/tests/unit/driver_cause.rs",
+        "packages/php-ext/tests/DbspecRenderTestExtensionTest.php"
       ],
       "docs": [
         "docs/spec/schema.md",
@@ -9753,7 +9800,8 @@
         "packages/python/tests/coverage_audit_triggers.py",
         "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
         "packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php",
-        "packages/php-ext/tests/AuditLazyFakePdoTest.php"
+        "packages/php-ext/tests/AuditLazyFakePdoTest.php",
+        "packages/php-ext/tests/ModelTestExtensionTest.php"
       ],
       "docs": [
         "docs/spec/dbspec.md",
@@ -10288,7 +10336,8 @@
         "coverage-interface-contract-interface-symbols",
         "postgres-listen-notify",
         "native-public-package-entry",
-        "native-driver-error-cause"
+        "native-driver-error-cause",
+        "code-catalog-matches-errors-yaml"
       ],
       "fixtures": [
         "contracts/interfaces.json",
@@ -10330,7 +10379,8 @@
         "packages/python/tests/test_package_entry.py",
         "packages/php-ext/tests/DriverErrorTest.php",
         "packages/php-ext/tests/ListenNotifyNativeTest.php",
-        "packages/php-ext/tests/QueryCancellationNativeTest.php"
+        "packages/php-ext/tests/QueryCancellationNativeTest.php",
+        "packages/php-ext/tests/CodeCatalogTestExtensionTest.php"
       ],
       "docs": [
         "docs/spec/interfaces.md",
@@ -11085,7 +11135,8 @@
         "packages/python/tests/coverage_conformance_verification.py",
         "packages/python/tests/conformance_result.py",
         "packages/php-ext/tests/MarkdownConformanceNativeTest.php",
-        "packages/rust/orm/src/value.rs"
+        "packages/rust/orm/src/value.rs",
+        "packages/php-ext/tests/IrAnswersTestExtensionTest.php"
       ],
       "docs": [
         "tests/conformance/README.md",
@@ -11552,6 +11603,7 @@
       ],
       "parity": [
         "catalog-connection-read",
+        "catalog-temporal-native-default-precision",
         "catalog-connection-row-mutation",
         "catalog-row-baseline-compares-exact-values",
         "model-read-null-and-empty-text",
@@ -11607,7 +11659,8 @@
         "packages/go/orm/catalog_auto_identity_test.go",
         "packages/rust/build/src/catalog/temporal.rs",
         "packages/rust/build/src/catalog/row_snapshot.rs",
-        "packages/rust/build/src/tool_db.rs"
+        "packages/rust/build/src/tool_db.rs",
+        "packages/go/orm/catalog_mutation_test.go"
       ],
       "docs": [
         "docs/spec/schema.md",
@@ -13086,7 +13139,8 @@
         "packages/python/tests/fulltext_search.py",
         "packages/rust/orm/tests/fulltext_search.rs",
         "packages/ts/tests/complex-query.mjs",
-        "packages/rust/orm/src/request.rs"
+        "packages/rust/orm/src/request.rs",
+        "packages/php-ext/tests/FulltextSearchTestExtensionTest.php"
       ],
       "docs": [
         "docs/spec/complex-query.md",

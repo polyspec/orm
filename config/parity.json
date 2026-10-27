@@ -17362,6 +17362,38 @@
       "bindings": [
         {
           "implementation": "go",
+          "test": "packages/go/orm/catalog_mutation_test.go",
+          "id": "TestCatalogBytesValuePreservesNativeTimeAsText",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCatalogBytesValuePreservesNativeTimeAsText",
+            "FEATURE_PACKAGE=./orm"
+          ]
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/catalog_mutation_test.go",
+          "id": "TestCatalogSameWrittenCellMatchesDateTimeTextToDriverTime",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCatalogSameWrittenCellMatchesDateTimeTextToDriverTime",
+            "FEATURE_PACKAGE=./orm"
+          ]
+        },
+        {
+          "implementation": "go",
           "test": "packages/go/orm/coverage_catalog_connection_test.go",
           "id": "TestCoverageCatalogRead",
           "command": [
