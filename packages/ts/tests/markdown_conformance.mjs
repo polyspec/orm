@@ -16,8 +16,8 @@ import path from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual, promisify } from 'node:util';
-import { after } from 'node:test';
-import { DATABASE, PROCESS, caseTest, cases } from '../../../tests/testcase.mts';
+import { after, before, suite } from 'node:test';
+import { DATABASE, PROCESS, caseTest } from '../../../tests/testcase.mts';
 import { OrmError } from '../dist/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { conformanceCases, normalize } from './markdown_cases.mjs';
@@ -26,8 +26,6 @@ const run = promisify(execFile);
 const conformanceDir = fileURLToPath(new URL('../../../tests/markdown/', import.meta.url));
 // The module path, which must be the main module of the build that FLOWMARK points to.
 const flowmarkModule = 'github.com/polyspec/flowmark/packages/go';
-
-const runner = cases();
 
 /** A case of cases.json: an id that is non-empty and unique, and expect. */
 async function loadCases() {
@@ -68,14 +66,12 @@ async function pinnedFlowmark() {
 const listening = /^\[serve\] listening on 127\.0\.0\.1:([0-9]+) for the corpus (.+)$/;
 
 /**
- * Installs corpus/ as a new corpus, starts its server, and connects to it. The stop of the returned served closes the connection and stops the server
- * and waits for it to end, then deletes the directory.
+ * Installs corpus/ as a new corpus and starts its server. The stop of the returned served stops the server, waits for it to end, then deletes the directory.
  */
 async function serve(bin, step) {
-  const s = { bin, corpus: 'conformance', root: await mkdtemp(path.join(tmpdir(), 'orm-markdown-')), db: undefined, server: undefined, stderr: '' };
+  const s = { bin, corpus: 'conformance', root: await mkdtemp(path.join(tmpdir(), 'orm-markdown-')), server: undefined, stderr: '' };
   s.dir = path.join(s.root, s.corpus);
   s.stop = async () => {
-    if (s.db !== undefined) await s.db.close();
     if (s.server !== undefined && s.server.exitCode === null && s.server.signalCode === null) {
       const exited = new Promise(resolve => s.server.once('exit', resolve));
       s.server.kill('SIGINT');
@@ -105,7 +101,6 @@ async function serve(bin, step) {
     s.port = m[1];
     s.token = JSON.parse(await readFile(path.join(s.dir, '.flowmark', 'server.json'), 'utf8')).token;
     s.dsn = (corpus, token) => `markdown://127.0.0.1:${s.port}/${corpus}?token=${token}`;
-    try { s.db = await connect(s.dsn(s.corpus, s.token)); } catch (error) { throw new Error(`connect: ${error.message}; stderr:\n${s.stderr}`, { cause: error }); }
     return s;
   } catch (error) {
     await s.stop();
@@ -128,36 +123,42 @@ function withServerDiagnostics(error, s) {
   return new Error(`${error instanceof Error ? error.message : String(error)}\nflowmark server ${status}${stderr === '' ? '' : `; stderr:\n${stderr}`}`, { cause: error });
 }
 
-let ready = false;
-let all = [];
-await runner.run('markdown/setup', PROCESS, async ({ step }) => {
-  // The committed model must equal the output generated from the corpus catalog and from the scan of this file.
-  step('orm-gen gen --check of src/models/markdown_fixture');
-  try {
-    await run(process.execPath, ['dist/bin/orm-gen.js', 'gen', '--set', '../../tests/markdown/corpus/dbspec/dbspec-set.json', '--out', 'src/models/markdown_fixture', '--scan', 'tests/markdown_cases.mjs', '--check'], { cwd: fileURLToPath(new URL('..', import.meta.url)) });
-  } catch (error) {
-    throw new Error(`src/models/markdown_fixture differs from the generator output; regenerate it with the same orm-gen command without --check: ${error.stdout ?? ''}${error.stderr ?? error.message}`, { cause: error });
-  }
-  const bin = await pinnedFlowmark();
-  all = await loadCases();
-  const ids = all.map(c => c.id);
-  const missing = ids.filter(id => !Object.hasOwn(conformanceCases, id));
-  const extra = Object.keys(conformanceCases).filter(id => !ids.includes(id)).sort();
-  if (missing.length > 0 || extra.length > 0) throw new Error(`cases.json and the TypeScript cases differ: missing in TypeScript ${JSON.stringify(missing)}, not in cases.json ${JSON.stringify(extra)}`);
-  served = await serve(bin, step);
-  ready = true;
-});
-if (ready) {
-  // Each case is one test named by its id. A later case reads the corpus state that the cases before it made, so after
-  // a failure the later cases fail with the case that stopped them.
+const all = await loadCases();
+const ids = all.map(c => c.id);
+const missing = ids.filter(id => !Object.hasOwn(conformanceCases, id));
+const extra = Object.keys(conformanceCases).filter(id => !ids.includes(id)).sort();
+if (missing.length > 0 || extra.length > 0) throw new Error(`cases.json and the TypeScript cases differ: missing in TypeScript ${JSON.stringify(missing)}, not in cases.json ${JSON.stringify(extra)}`);
+
+suite('markdown-conformance', () => {
+  let setupFailed;
   let stopped;
+  before(async t => {
+    const bin = await pinnedFlowmark();
+    served = await serve(bin, text => t.diagnostic(text));
+  });
+  caseTest('markdown/setup', PROCESS, async ({ step }) => {
+    // The committed model must equal the output generated from the corpus catalog and from the scan of this file.
+    step('orm-gen gen --check of src/models/markdown_fixture');
+    try {
+      await run(process.execPath, ['dist/bin/orm-gen.js', 'gen', '--set', '../../tests/markdown/corpus/dbspec/dbspec-set.json', '--out', 'src/models/markdown_fixture', '--scan', 'tests/markdown_cases.mjs', '--check'], { cwd: fileURLToPath(new URL('..', import.meta.url)) });
+    } catch (error) {
+      const failure = new Error(`src/models/markdown_fixture differs from the generator output; regenerate it with the same orm-gen command without --check: ${error.stdout ?? ''}${error.stderr ?? error.message}`, { cause: error });
+      setupFailed = failure;
+      throw failure;
+    }
+  });
+  // Each case is one test named by its id. A later case reads the corpus state that the cases before it made, so after
+  // a failure the later cases fail because of the case that stopped them.
   for (const c of all) {
     caseTest(c.id, DATABASE, async () => {
+      if (setupFailed !== undefined) throw new Error(`not run: markdown/setup failed: ${setupFailed.message}`);
       if (stopped !== undefined) throw new Error(`not run: ${stopped} failed, and this case reads the corpus state it leaves`);
+      let db;
       try {
         let got;
         try {
-          got = await conformanceCases[c.id](served);
+          db = await connect(served.dsn(served.corpus, served.token));
+          got = await conformanceCases[c.id]({ ...served, db });
         } catch (error) {
           if (!(error instanceof OrmError)) throw new Error(`${c.id} failed without an orm code: ${error?.stack ?? error}`, { cause: error });
           got = { error: error.code, message: error.message };
@@ -169,10 +170,10 @@ if (ready) {
       } catch (error) {
         stopped = c.id;
         throw withServerDiagnostics(error, served);
+      } finally {
+        if (db !== undefined) await db.close();
       }
     });
   }
-  // The server stops after the last case; a failed stop fails the run.
-  after(() => served.stop());
-}
-runner.finish();
+  after(async () => { if (served !== undefined) await served.stop(); });
+});
