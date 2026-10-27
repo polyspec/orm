@@ -89,6 +89,7 @@ function rejectsLostOutput(label, read) {
   try { read(); throw new Error(`${label}: input was silently omitted`); }
   catch (error) { if (error.code !== 'CODEC_ENCODE') throw error; }
 }
+// Requirements: COD-21.
 await suite.run('styled-value/lost-output', COMPUTE, () => {
   rejectsLostOutput('styled toJSON', () => orm.StyledValue.value({ missing: undefined }).toJSON());
   rejectsLostOutput('nested styled JSON.stringify', () => JSON.stringify(orm.StyledValue.value({ nested: { missing: undefined } })));
@@ -118,7 +119,10 @@ await suite.run('styled-value/lost-output', COMPUTE, () => {
 });
 // Core.jsonColumn, which the getter of an ordered_json column calls: it takes a styled SQL NULL or ordered-json value and
 // refuses any other value with a TypeError that names the column.
+// Requirements: DBS-112, DBS-114.
 await suite.run('styled-value/json-column', COMPUTE, () => {
+  try { new orm.Author().getJsonSetting(); throw new Error('the unselected getter was accepted'); }
+  catch (error) { if (error.code !== 'COLUMN_UNSELECTED') throw error; }
   const stored = decode(['ordered_json'], '{"b":1,"a":[true,null]}');
   const got = new orm.Author().setJsonSetting(stored).getJsonSetting();
   if (!(got instanceof orm.StyledValue) || got.kind !== 'value' || JSON.stringify(got) !== JSON.stringify(stored)) {

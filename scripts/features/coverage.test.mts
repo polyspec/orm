@@ -601,7 +601,11 @@ function selectedSample(manifest: SampleManifest, parts: string[]): Manifest {
   const coverage = feature.coverage;
   const owners = coverage.owners ?? (coverage.owners = {});
   for (const language of languages) {
-    owners[language] ??= { part: testDirectoryOf(language), tests: [ownerTests[language] ?? ''], commands: {} };
+    const test = ownerTests[language] ?? '';
+    const commands = coverage.kind === 'database'
+      ? Object.fromEntries(databases.map(database => [database, [{ runner: 'node', test, cases: coverage.cases }]]))
+      : {};
+    owners[language] ??= { part: testDirectoryOf(language), tests: [test], commands };
   }
   feature.parity = parityOf(languages);
   return selectFeatures(manifest, feature.id, parts);

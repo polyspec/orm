@@ -54,7 +54,6 @@ class FakeSession:
 
 
 class CatalogMutationHelperTest(unittest.TestCase):
-    # Requirements: INT-115.
     def test_plain_query_byte_budget_counts_utf8_bytes(self):
         connection = sqlite3.connect(":memory:")
         try:
@@ -67,7 +66,7 @@ class CatalogMutationHelperTest(unittest.TestCase):
         finally:
             connection.close()
 
-    # Requirements: INT-103, INT-117.
+    # Internal conversion regression; public catalog temporal coverage is in coverage_catalog_connection.py.
     def test_mysql_catalog_time_text_keeps_precision_and_datetime_comparison_is_typed(
         self,
     ):
