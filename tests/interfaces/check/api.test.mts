@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { checkParity } from '../../../node_modules/@polyspec/kit/scripts/kit/parity.mts';
+import { checkParity } from '@polyspec/kit/parity';
 import { caseTest, COMPUTE } from '../../testcase.mts';
 import { apiProblems, readParity, type Parity } from './api.mts';
 import { allRules, readErrorCatalog, readManifest } from './manifest.mts';

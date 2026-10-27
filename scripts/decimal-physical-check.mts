@@ -1,4 +1,5 @@
 // Execute every generated decimal model owner twice against each isolated database.
+import { fileURLToPath } from 'node:url';
 import { run, state, step, TIMEOUT_MS } from './physical.mts';
 import { reportUnchangedState, runPhysicalCommandCase } from './physical-command-case.mts';
 import { parseGoTestEvent } from './json/formats.mts';
@@ -6,6 +7,7 @@ import { implementationLanguages } from './features/languages.mts';
 
 const databases = ['mysql', 'postgres', 'sqlite'];
 const languages = implementationLanguages();
+const kitRunTests = fileURLToPath(import.meta.resolve('@polyspec/kit/run-tests'));
 
 export function command(language: string, database: string, environment: NodeJS.ProcessEnv = process.env): [string, string[]] {
   const id = `decimal_${database}`;
@@ -20,7 +22,7 @@ export function command(language: string, database: string, environment: NodeJS.
   if (language === 'php-extension') {
     const extension = environment['POLYSPEC_ORM_EXTENSION'];
     if (!extension) throw new Error('POLYSPEC_ORM_EXTENSION is required; run this check through make decimal-physical-check, which builds the PHP extension');
-    return [process.execPath, ['node_modules/@polyspec/kit/scripts/kit/run-tests.mts', 'phpunit', '--php-extension', extension,
+    return [process.execPath, [kitRunTests, 'phpunit', '--php-extension', extension,
       '--without-library', 'packages/php', '--', '--configuration', 'packages/php-ext/phpunit.xml.dist', '--filter',
       `with data set "${database}"$`, 'packages/php-ext/tests/DecimalModelDbNativeTest.php']];
   }

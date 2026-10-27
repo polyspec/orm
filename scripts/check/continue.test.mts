@@ -14,6 +14,7 @@ import { readFeatures } from '../features/manifest.mts';
 import { COMMANDS as CLIENT_DB_COMMANDS, rustDatabaseCoverageSkipArguments } from '../client-db-test.mts';
 
 const repo = resolve(fileURLToPath(new URL('../..', import.meta.url)));
+const kitRunTests = fileURLToPath(import.meta.resolve('@polyspec/kit/run-tests'));
 
 caseTest('Rust workspace dispatch skips only the database cases owned by the feature matrix', COMPUTE, () => {
   const args = rustDatabaseCoverageSkipArguments(readFeatures(repo), repo);
@@ -185,7 +186,7 @@ caseTest('client-db-test runs the php-extension lane with the extension it build
     assert.ok(library, `the lane did not build the extension first: ${ran.join('\n')}`);
     const php = readFileSync(join(repo, 'scripts/client-db-test.mts'), 'utf8').match(/const PHP_TESTS = \[([^\]]*)\]/)?.[1]?.match(/'(\w+)'/g)?.map(name => name.slice(1, -1)) ?? [];
     assert.ok(php.length > 0, 'scripts/client-db-test.mts names no PHP_TESTS');
-    assert.deepEqual(ran.slice(1), php.map(test => `node ../kit/scripts/kit/run-tests.mts phpunit --php-extension ${library} -- --configuration packages/php/phpunit.xml.dist packages/php/tests/${test}.php`));
+    assert.deepEqual(ran.slice(1), php.map(test => `node ${kitRunTests} phpunit --php-extension ${library} -- --configuration packages/php/phpunit.xml.dist packages/php/tests/${test}.php`));
     assert.ok(!existsSync(library), `the lane left its build ${library}`);
     assert.match(result.stdout, /client-db-test: every lane passed: php-extension\n/);
   } finally {

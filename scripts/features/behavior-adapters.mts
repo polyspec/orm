@@ -1,5 +1,5 @@
 import { behaviorCompletionErrors, type BehaviorContract } from '../../tests/interfaces/check/manifest.mts';
-import { readChecklist } from '../../node_modules/@polyspec/kit/scripts/kit/checklist.mts';
+import { readChecklist } from '@polyspec/kit/checklist';
 
 const CHECKLIST_TRACKER = { path: '', translation: '', idPattern: '\\S+' };
 

@@ -1,7 +1,7 @@
 import { resolve } from 'node:path';
 import { readParityConfig, type ParityConfig } from '../json/formats.mts';
-import { matchesAny } from '../../node_modules/@polyspec/kit/scripts/kit/glob.mts';
-import { CONVENTIONS, readDeclaration, testNamed, within } from '../../node_modules/@polyspec/kit/scripts/kit/parity-declaration.mts';
+import { matchesAny } from '@polyspec/kit/glob';
+import { CONVENTIONS, readDeclaration, testNamed, within } from '@polyspec/kit/parity-declaration';
 
 // The language set of the feature checks is the declared implementations of config/parity.json, the one source of it; a
 // feature's languages are the implementations that its parity units bind.

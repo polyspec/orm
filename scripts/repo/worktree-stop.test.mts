@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { delimiter, join, resolve } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
-import { stopTargetOf } from '../../node_modules/@polyspec/kit/scripts/kit/land.mts';
+import { stopTargetOf } from '@polyspec/kit/land';
 
 const root = resolve(import.meta.dirname, '../..');
 

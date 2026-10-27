@@ -15,6 +15,7 @@
 import { readFileSync, rmSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { delimiter, dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { keepAll, render, run, runLanes, variable, type Command } from './check/commands.mts';
 import { COMMANDS as TYPESCRIPT_COMMANDS, sqliteTest } from './typescript/sqlite-test.mts';
 import { implementationLanguages } from './features/languages.mts';
@@ -36,9 +37,10 @@ const PHP: Command[] = PHP_TESTS.map(test => ({ program: 'php', args: ['vendor-p
 // PRINCIPLES.md): the library's own autoload is not loaded, so each test exercises the extension.
 const PHP_EXTENSION_RUN = join(root, `.runtime/run/client-db-php-extension-${process.pid}`);
 const PHP_EXTENSION_LIBRARY = join(PHP_EXTENSION_RUN, 'php-extension/polyspec_orm.so');
+const KIT_RUN_TESTS = fileURLToPath(import.meta.resolve('@polyspec/kit/run-tests'));
 const PHP_EXTENSION_BUILD: Command = { program: 'node', args: ['tests/run-long.mts', 'php-extension-build', '--', 'sh', 'packages/php-ext/scripts/build.sh', PHP_EXTENSION_LIBRARY], cwd: root };
 const PHP_EXTENSION: Command[] = PHP_TESTS.map(test => ({
-  program: 'node', args: ['../kit/scripts/kit/run-tests.mts', 'phpunit', '--php-extension', PHP_EXTENSION_LIBRARY, '--', '--configuration', 'packages/php/phpunit.xml.dist', `packages/php/tests/${test}.php`],
+  program: 'node', args: [KIT_RUN_TESTS, 'phpunit', '--php-extension', PHP_EXTENSION_LIBRARY, '--', '--configuration', 'packages/php/phpunit.xml.dist', `packages/php/tests/${test}.php`],
   cwd: root, env: { ORM_PHP_MODE: 'extension' },
 }));
 // The Python database tests run as modules of packages.python.tests with the Python of the venv (ORM_PYTHON).

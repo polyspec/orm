@@ -1,15 +1,18 @@
 import assert from 'node:assert/strict';
 import { inspect } from 'node:util';
+import { fileURLToPath } from 'node:url';
 import { caseTest, COMPUTE } from '../tests/testcase.mts';
 import { reportUnchangedState, runPhysicalCommandCase } from './physical-command-case.mts';
 import { command, commandEnvironment } from './decimal-physical-check.mts';
+
+const kitRunTests = fileURLToPath(import.meta.resolve('@polyspec/kit/run-tests'));
 
 caseTest('dispatches each decimal owner to its native command and rejects unknown runtimes', COMPUTE, () => {
   const extension = '/build/polyspec_orm.so';
   const cases = [
     ['go', 'go', ['test', '-json']],
     ['php', 'php', ['vendor-php/bin/phpunit']],
-    ['php-extension', process.execPath, ['node_modules/@polyspec/kit/scripts/kit/run-tests.mts', 'phpunit']],
+    ['php-extension', process.execPath, [kitRunTests, 'phpunit']],
     ['rust', 'cargo', ['test', '--offline']],
     ['python', '/venv/bin/python', ['-m', 'packages.python.tests.decimal_model_db']],
     ['typescript', 'node', ['packages/ts/tests/decimal_model_db.mjs']],
