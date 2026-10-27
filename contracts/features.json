@@ -883,8 +883,7 @@
           "rust": {
             "part": "packages/rust/orm",
             "tests": [
-              "packages/rust/orm/tests/coverage_dsn.rs",
-              "packages/rust/orm/tests/replica.rs"
+              "packages/rust/orm/tests/coverage_dsn.rs"
             ],
             "commands": {
               "mysql": [
@@ -931,8 +930,7 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
-              "packages/ts/tests/coverage_dsn.mjs",
-              "packages/ts/tests/replica.mjs"
+              "packages/ts/tests/coverage_dsn.mjs"
             ],
             "commands": {
               "mysql": [
@@ -970,8 +968,7 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_dsn.py",
-              "packages/python/tests/replica.py"
+              "packages/python/tests/coverage_dsn.py"
             ],
             "commands": {
               "mysql": [
@@ -5309,9 +5306,7 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoverageSchemaDefinitionTest.php",
-              "packages/php/tests/DbspecApplyCleanupTest.php",
-              "packages/php/tests/DbspecBehaviourTest.php"
+              "packages/php/tests/CoverageSchemaDefinitionTest.php"
             ],
             "inputs": [
               "contracts/fixtures/schema_definition.json",
@@ -5347,8 +5342,7 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
-              "packages/php-ext/tests/DbspecBehaviourNativeTest.php"
+              "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php"
             ],
             "inputs": [
               "contracts/fixtures/schema_definition.json",
@@ -6918,12 +6912,12 @@
           "rust": {
             "part": "packages/rust/orm",
             "tests": [
-              "packages/rust/orm/tests/unit/coverage_planner.rs",
-              "packages/rust/orm/src/engine/mod.rs"
+              "packages/rust/orm/tests/unit/coverage_planner.rs"
             ],
             "inputs": [
               "contracts/fixtures/planner.json",
-              "contracts/fixtures/restore_keys.dbs"
+              "contracts/fixtures/restore_keys.dbs",
+              "packages/rust/orm/src/engine/mod.rs"
             ],
             "commands": {
               "none": [
@@ -7010,7 +7004,11 @@
                     "param_uses_interval",
                     "param_uses_contains",
                     "param_uses_if_parent",
-                    "param_uses_optimistic"
+                    "param_uses_optimistic",
+                    "planner_tables",
+                    "planner_scalar_column_subquery",
+                    "planner_joined_child_conditions_grouped",
+                    "planner_unplaced_child_conditions_append_and"
                   ],
                   "symbols": {
                     "planner_statement": "engine::coverage_planner::planner::planner_statement",
@@ -7092,19 +7090,7 @@
                     "planner_rejects_column_function_on_varchar": "engine::coverage_planner::planner::planner_rejects_column_function_on_varchar",
                     "planner_rejects_styled_column_equality": "engine::coverage_planner::planner::planner_rejects_styled_column_equality",
                     "planner_styled_column_is_null": "engine::coverage_planner::planner::planner_styled_column_is_null",
-                    "planner_rejects_column_function_unknown_column": "engine::coverage_planner::planner::planner_rejects_column_function_unknown_column"
-                  }
-                },
-                {
-                  "runner": "cargo",
-                  "test": "packages/rust/orm/tests/unit/coverage_planner.rs",
-                  "cases": [
-                    "planner_tables",
-                    "planner_scalar_column_subquery",
-                    "planner_joined_child_conditions_grouped",
-                    "planner_unplaced_child_conditions_append_and"
-                  ],
-                  "symbols": {
+                    "planner_rejects_column_function_unknown_column": "engine::coverage_planner::planner::planner_rejects_column_function_unknown_column",
                     "planner_tables": "engine::coverage_planner::planner::planner_tables",
                     "planner_scalar_column_subquery": "engine::coverage_planner::planner::planner_scalar_column_subquery",
                     "planner_joined_child_conditions_grouped": "engine::coverage_planner::planner::planner_joined_child_conditions_grouped",
@@ -11660,7 +11646,11 @@
         "packages/rust/build/src/catalog/temporal.rs",
         "packages/rust/build/src/catalog/row_snapshot.rs",
         "packages/rust/build/src/tool_db.rs",
-        "packages/go/orm/catalog_mutation_test.go"
+        "packages/go/orm/catalog_mutation_test.go",
+        "packages/go/orm/catalog_page_validation_test.go",
+        "packages/php/tests/CatalogPageValidationTest.php",
+        "packages/ts/tests/catalog-page-validation.test.mjs",
+        "packages/python/tests/test_catalog_page_validation.py"
       ],
       "docs": [
         "docs/spec/schema.md",
@@ -11914,8 +11904,7 @@
           "go": {
             "part": "packages/go/orm",
             "tests": [
-              "packages/go/orm/coverage_catalog_connection_test.go",
-              "packages/go/orm/catalog_page_validation_test.go"
+              "packages/go/orm/coverage_catalog_connection_test.go"
             ],
             "inputs": [
               "contracts/fixtures/bench/bench.dbs"
@@ -11989,8 +11978,7 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
-              "packages/ts/tests/coverage_catalog_connection.mjs",
-              "packages/ts/tests/catalog-page-validation.test.mjs"
+              "packages/ts/tests/coverage_catalog_connection.mjs"
             ],
             "inputs": [
               "contracts/fixtures/bench/bench.dbs"
@@ -12043,8 +12031,7 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_catalog_connection.py",
-              "packages/python/tests/test_catalog_page_validation.py"
+              "packages/python/tests/coverage_catalog_connection.py"
             ],
             "inputs": [
               "contracts/fixtures/bench/bench.dbs"
@@ -12097,8 +12084,7 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoverageCatalogConnectionTest.php",
-              "packages/php/tests/CatalogPageValidationTest.php"
+              "packages/php/tests/CoverageCatalogConnectionTest.php"
             ],
             "inputs": [
               "contracts/fixtures/bench/bench.dbs"

@@ -486,6 +486,7 @@ mod tuple_padding_tests {
     // Requirements: PRT-40.
     #[test]
     fn composite_tuple_padding_repeats_the_last_row() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let rows = vec![vec![990004i64, 1], vec![990004, 2], vec![990004, 3]];
         let padded = pad_in(&rows);
         assert_eq!(padded, [rows[0].clone(), rows[1].clone(), rows[2].clone(), rows[2].clone()]);
