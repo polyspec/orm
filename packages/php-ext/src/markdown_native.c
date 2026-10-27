@@ -563,7 +563,8 @@ static bool md_layout(zval *model, zval *query, bool groups, zval *rows, zval *o
             bool default_cascade = pk_parent != NULL && Z_TYPE(parent_keys) == IS_ARRAY && md_list_same(pk_parent, &parent_keys);
             bool child_diff = pk_target != NULL && Z_TYPE(child_keys) == IS_ARRAY && !md_list_same(pk_target, &child_keys);
             zval *no_cascade = md_find(child_query, "no_cascade_delete"); add_assoc_bool(&child, "cascade", (no_cascade == NULL || !zend_is_true(no_cascade)) && default_cascade && child_diff);
-            if (Z_TYPE(parent_keys) != IS_UNDEF) zval_ptr_dtor(&parent_keys); if (Z_TYPE(child_keys) != IS_UNDEF) zval_ptr_dtor(&child_keys);
+            if (Z_TYPE(parent_keys) != IS_UNDEF) zval_ptr_dtor(&parent_keys);
+            if (Z_TYPE(child_keys) != IS_UNDEF) zval_ptr_dtor(&child_keys);
             add_next_index_zval(&children, &child); zval_ptr_dtor(&child_rows);
         } ZEND_HASH_FOREACH_END();
     }
@@ -656,7 +657,8 @@ static bool md_rows(zval *config, zval *model, zval *query, zval *assembly, zval
                 if (column_name == NULL || type == NULL || Z_TYPE_P(column_name) != IS_STRING || !zend_string_equals(Z_STR_P(column_name), name) || Z_TYPE_P(type) != IS_STRING) {
                     const char *expected = column_name != NULL && Z_TYPE_P(column_name) == IS_STRING ? Z_STRVAL_P(column_name) : "no more outputs";
                     bool err = md_answer_errorf("a row of %s answers %s where its first row answers %s", entity_name != NULL ? Z_STRVAL_P(entity_name) : "?", ZSTR_VAL(name), expected);
-                    if (key == NULL) zend_string_release(name); zval_ptr_dtor(&values); zval_ptr_dtor(&join_values); zval_ptr_dtor(&rel_values); zval_ptr_dtor(&joins); zval_ptr_dtor(&rels); zval_ptr_dtor(&child_assemblies); zval_ptr_dtor(out); return err;
+                    if (key == NULL) zend_string_release(name);
+                    zval_ptr_dtor(&values); zval_ptr_dtor(&join_values); zval_ptr_dtor(&rel_values); zval_ptr_dtor(&joins); zval_ptr_dtor(&rels); zval_ptr_dtor(&child_assemblies); zval_ptr_dtor(out); return err;
                 }
                 zval decoded; zend_string *where = strpprintf(0, "%s.%s", entity_name != NULL ? Z_STRVAL_P(entity_name) : "?", ZSTR_VAL(name));
                 bool decoded_ok = md_answer_value(value, Z_STR_P(type), where, &decoded); zend_string_release(where);

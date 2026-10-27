@@ -356,7 +356,8 @@ static bool read_column_convert(zval *model, zval *db, zval *zone, zval *column,
         sqlite = Z_TYPE(driver) == IS_STRING && zend_string_equals_literal(Z_STR(driver), "sqlite"); zval_ptr_dtor(&driver);
         zend_class_entry *decimal = read_lookup_class("Polyspec\\Orm\\Decimal");
         bool ok = decimal != NULL && read_static_call(decimal, sqlite ? "fromScaled" : "decode", &result, 3, args);
-        for (int i=0;i<3;i++) zval_ptr_dtor(&args[i]); zval_ptr_dtor(&value);
+        for (int i = 0; i < 3; i++) zval_ptr_dtor(&args[i]);
+        zval_ptr_dtor(&value);
         if (!ok) return false;
         ZVAL_COPY_VALUE(out, &result); return true;
     }
@@ -705,7 +706,9 @@ ZEND_METHOD(Polyspec_Orm_Model, assemble)
     object_init_ex(return_value,read_lookup_class("Polyspec\\Orm\\Assembly"));if(EG(exception)!=NULL)RETURN_THROWS();
     zval args[4],ctor;ZVAL_COPY(&args[0],db);zval *conn=model_state_property(model_state_of(Z_OBJ_P(ZEND_THIS)),"conn");if(conn!=NULL)ZVAL_COPY(&args[1],conn);else ZVAL_NULL(&args[1]);ZVAL_COPY(&args[2],result);ZVAL_BOOL(&args[3],track);
     bool constructed=read_call(return_value,"__construct",&ctor,4,args);
-    for(int i=0;i<4;i++)zval_ptr_dtor(&args[i]);if(!Z_ISUNDEF(ctor))zval_ptr_dtor(&ctor);if(!constructed)RETURN_THROWS();
+    for (int i = 0; i < 4; i++) zval_ptr_dtor(&args[i]);
+    if (!Z_ISUNDEF(ctor)) zval_ptr_dtor(&ctor);
+    if (!constructed) RETURN_THROWS();
     zval *steps=read_array(plan,"steps"),*first=steps!=NULL&&Z_TYPE_P(steps)==IS_ARRAY?zend_hash_index_find(Z_ARRVAL_P(steps),0):NULL,*step_asm=first!=NULL?read_array(first,"assemble"):NULL;
     if(step_asm==NULL){zval_ptr_dtor(return_value); ZVAL_UNDEF(return_value);read_throw("INTERNAL","plan has no root assemble node");RETURN_THROWS();}
     zend_class_entry *collection_ce=read_lookup_class("Polyspec\\Orm\\Collection");zval items;object_init_ex(&items,collection_ce);if(EG(exception)!=NULL){zval_ptr_dtor(return_value); ZVAL_UNDEF(return_value);RETURN_THROWS();}
@@ -973,7 +976,8 @@ ZEND_METHOD(Polyspec_Orm_Model, getCount)
     zval_ptr_dtor(&args[0]); zval_ptr_dtor(&args[1]);
     zval call_args[2]; ZVAL_COPY(&call_args[0], &frame); ZVAL_COPY(&call_args[1], &request);
     if (!read_call(&db, "scalarOf", &result, 2, call_args)) {
-        for (int i=0;i<2;i++) zval_ptr_dtor(&call_args[i]); zval_ptr_dtor(&request); zval_ptr_dtor(&executor); zval_ptr_dtor(&db); zval_ptr_dtor(&frame); zval_ptr_dtor(&kind); RETURN_THROWS();
+        for (int i = 0; i < 2; i++) zval_ptr_dtor(&call_args[i]);
+        zval_ptr_dtor(&request); zval_ptr_dtor(&executor); zval_ptr_dtor(&db); zval_ptr_dtor(&frame); zval_ptr_dtor(&kind); RETURN_THROWS();
     }
     zval_ptr_dtor(&call_args[0]); zval_ptr_dtor(&call_args[1]);
     zval_ptr_dtor(&request); zval_ptr_dtor(&executor); zval_ptr_dtor(&db); zval_ptr_dtor(&frame); zval_ptr_dtor(&kind);
@@ -1068,7 +1072,10 @@ ZEND_METHOD(Polyspec_Orm_Model, getsPage)
     if(EG(exception)!=NULL){zval_ptr_dtor(&items);zval_ptr_dtor(&request);zval_ptr_dtor(&result);zval_ptr_dtor(&db);RETURN_THROWS();}
     zval page_args[5],ctor;ZVAL_COPY(&page_args[0],&items);ZVAL_LONG(&page_args[1],total);ZVAL_LONG(&page_args[2],total / per_page + (total % per_page != 0));ZVAL_LONG(&page_args[3],page);ZVAL_LONG(&page_args[4],per_page);
     read_call(return_value,"__construct",&ctor,5,page_args);
-    for(int i=0;i<5;i++)zval_ptr_dtor(&page_args[i]);if(!Z_ISUNDEF(ctor))zval_ptr_dtor(&ctor);zval_ptr_dtor(&items);zval_ptr_dtor(&request);zval_ptr_dtor(&result);zval_ptr_dtor(&db);if(EG(exception)!=NULL)RETURN_THROWS();
+    for (int i = 0; i < 5; i++) zval_ptr_dtor(&page_args[i]);
+    if (!Z_ISUNDEF(ctor)) zval_ptr_dtor(&ctor);
+    zval_ptr_dtor(&items); zval_ptr_dtor(&request); zval_ptr_dtor(&result); zval_ptr_dtor(&db);
+    if (EG(exception) != NULL) RETURN_THROWS();
 }
 
 /* Remaining methods are declared in model_read.h and are implemented in the next read-slice batches. */

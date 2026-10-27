@@ -53,7 +53,11 @@ static zend_string *column(zval *meta,zend_string *pascal)
 }
 static bool function_column(zval *value)
 {
-    if(Z_TYPE_P(value)!=IS_OBJECT)return false;zend_string *n=zend_string_init("Polyspec\\Orm\\Func",sizeof("Polyspec\\Orm\\Func")-1,0);zend_class_entry *ce=zend_lookup_class(n);zend_string_release(n);if(!ce||!instanceof_function(Z_OBJCE_P(value),ce))return false;
+    if (Z_TYPE_P(value) != IS_OBJECT) return false;
+    zend_string *n = zend_string_init("Polyspec\\Orm\\Func", sizeof("Polyspec\\Orm\\Func") - 1, 0);
+    zend_class_entry *ce = zend_lookup_class(n);
+    zend_string_release(n);
+    if (!ce || !instanceof_function(Z_OBJCE_P(value), ce)) return false;
     zval rv;ZVAL_UNDEF(&rv);zval *v=zend_read_property(ce,Z_OBJ_P(value),"column",6,1,&rv);bool yes=Z_TYPE_P(v)==IS_TRUE;if(!Z_ISUNDEF(rv))zval_ptr_dtor(&rv);return yes;
 }
 static bool get_meta(zend_object *obj,zval *meta)
@@ -241,7 +245,8 @@ PHP_METHOD(Polyspec_Orm_Model,addColumnCall)
 {
     static const char *const scalar_types[]={"string","string",NULL};if(!model_reject_null_scalar_args(execute_data,scalar_types,3))RETURN_THROWS();
     zend_string *name,*rest;zval *args;ZEND_PARSE_PARAMETERS_START(3,3)Z_PARAM_STR(name)Z_PARAM_STR(rest)Z_PARAM_ARRAY(args)ZEND_PARSE_PARAMETERS_END();
-    if(!dsl_add_column_call(getThis(),name,rest,args)&&EG(exception)!=NULL)RETURN_THROWS();RETURN_ZVAL(getThis(),1,0);
+    if (!dsl_add_column_call(getThis(), name, rest, args) && EG(exception) != NULL) RETURN_THROWS();
+    RETURN_ZVAL(getThis(), 1, 0);
 }
 PHP_METHOD(Polyspec_Orm_Model,addJoin)
 {
@@ -260,7 +265,8 @@ PHP_METHOD(Polyspec_Orm_Model,whereChain)
 {
     static const char *const scalar_types[]={"string",NULL,NULL};if(!model_reject_null_scalar_args(execute_data,scalar_types,3))RETURN_THROWS();
     zend_string *conn;zval *keys,*args;ZEND_PARSE_PARAMETERS_START(3,3)Z_PARAM_STR(conn)Z_PARAM_ARRAY(keys)Z_PARAM_ARRAY(args)ZEND_PARSE_PARAMETERS_END();
-    if(!model_dsl_where_chain(getThis(),conn,keys,args)&&EG(exception)!=NULL)RETURN_THROWS();RETURN_NULL();
+    if (!model_dsl_where_chain(getThis(), conn, keys, args) && EG(exception) != NULL) RETURN_THROWS();
+    RETURN_NULL();
 }
 PHP_METHOD(Polyspec_Orm_Model,predicate)
 {
@@ -280,7 +286,8 @@ PHP_METHOD(Polyspec_Orm_Model,__call)
     if (!model_reject_null_scalar_args(execute_data, scalar_types, 2)) RETURN_THROWS();
     zend_string *name;zval *args;ZEND_PARSE_PARAMETERS_START(2,2)Z_PARAM_STR(name)Z_PARAM_ARRAY(args)ZEND_PARSE_PARAMETERS_END();
     zend_object *obj=Z_OBJ_P(getThis());model_state *s=model_state_of(obj);zval meta;ZVAL_UNDEF(&meta);
-    if(!get_meta(obj,&meta))RETURN_THROWS();zval *entity=at(&meta,"entity");
+    if (!get_meta(obj, &meta)) RETURN_THROWS();
+    zval *entity = at(&meta, "entity");
     static const char *terminal[]={"getsBy","getBy","getCountBy"};
     for(size_t i=0;i<3;i++)if(prefixed(name,terminal[i])){
         zend_string *suffix=zend_string_init(ZSTR_VAL(name)+strlen(terminal[i]),ZSTR_LEN(name)-strlen(terminal[i]),0);zval keys,clone;ZVAL_UNDEF(&keys);ZVAL_UNDEF(&clone);
@@ -295,7 +302,8 @@ PHP_METHOD(Polyspec_Orm_Model,__call)
     if(prefixed(name,"new")){if(!arity(s,name,args,1)){zval_ptr_dtor(&meta);RETURN_NULL();}zend_string *attr=zend_string_init(ZSTR_VAL(name)+3,ZSTR_LEN(name)-3,0),*c=column(&meta,attr);if(ZSTR_LEN(c)){zend_string *m=strpprintf(0,"%s is a column of %s; use set%s",ZSTR_VAL(attr),entity&&Z_TYPE_P(entity)==IS_STRING?Z_STRVAL_P(entity):"",ZSTR_VAL(attr));throw_orm("CONFIG",ZSTR_VAL(m));zend_string_release(m);zend_string_release(c);zend_string_release(attr);zval_ptr_dtor(&meta);RETURN_THROWS();}zend_string_release(c);zend_string *key=snake(attr);zval *v=zend_hash_index_find(Z_ARRVAL_P(args),0);zval copied;ZVAL_COPY(&copied,v);model_state_property_separate(s,"news");zend_hash_update(Z_ARRVAL_P(prop(s,"news")),key,&copied);zend_string_release(key);zend_string_release(attr);zval_ptr_dtor(&meta);RETURN_ZVAL(getThis(),1,0);}
     if(prefixed(name,"addColumn")){
         zend_string *rest=zend_string_init(ZSTR_VAL(name)+9,ZSTR_LEN(name)-9,0);bool ok=dsl_add_column_call(getThis(),name,rest,args);zend_string_release(rest);zval_ptr_dtor(&meta);
-        if(!ok&&EG(exception)!=NULL)RETURN_THROWS();RETURN_ZVAL(getThis(),1,0);
+        if (!ok && EG(exception) != NULL) RETURN_THROWS();
+        RETURN_ZVAL(getThis(), 1, 0);
     }
     static const char *simple_prefixes[]={"removeColumn","groupBy","keyName","plus","minus","sum","avg"};
     for(size_t p=0;p<sizeof(simple_prefixes)/sizeof(simple_prefixes[0]);p++)if(prefixed(name,simple_prefixes[p])){

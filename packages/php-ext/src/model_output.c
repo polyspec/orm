@@ -385,7 +385,8 @@ static bool output_json_text(zval *value, zend_string **text)
         smart_str_appendc(&out, list ? '[' : '{'); bool first = true;
         zend_string *key; zend_ulong index; zval *item;
         ZEND_HASH_FOREACH_KEY_VAL(Z_ARRVAL_P(value), index, key, item) {
-            if (!first) smart_str_appendc(&out, ','); first = false;
+            if (!first) smart_str_appendc(&out, ',');
+            first = false;
             if (!list) {
                 zend_string *name = key != NULL ? zend_string_copy(key) : zend_long_to_str(index);
                 zval name_value; ZVAL_STR(&name_value, name); zend_string *name_text = NULL;
@@ -439,7 +440,8 @@ ZEND_METHOD(Polyspec_Orm_Model, toJson)
     smart_str out = {0}; smart_str_appendc(&out, '{'); bool first = true;
     zend_string *name; zval *value;
     ZEND_HASH_FOREACH_STR_KEY_VAL(Z_ARRVAL(values), name, value) {
-        if (!first) smart_str_appendc(&out, ','); first = false;
+        if (!first) smart_str_appendc(&out, ',');
+        first = false;
         zval key; ZVAL_STR_COPY(&key, name); zend_string *key_text = NULL;
         if (!output_json_text(&key, &key_text)) { zval_ptr_dtor(&key); smart_str_free(&out); zval_ptr_dtor(&values); RETURN_THROWS(); }
         zval_ptr_dtor(&key); smart_str_append(&out, key_text); smart_str_appendc(&out, ':'); zend_string_release(key_text);

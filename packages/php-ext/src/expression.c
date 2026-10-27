@@ -8,6 +8,11 @@
 #include "dbspec_str_list.h"
 #include <setjmp.h>
 
+static const str expression_closing_parenthesis_message = {
+    "a check predicate ends with its closing parenthesis",
+    sizeof("a check predicate ends with its closing parenthesis") - 1
+};
+
 enum { OP_COLUMN, OP_LITERAL };
 
 typedef struct {
@@ -464,7 +469,7 @@ bool expression_parse(const tokens *t, zend_long line, zend_long end, const smap
     }
     tree = disjunction(p);
     if (p->at < t->n) {
-        fail(p, SL("a check predicate ends with its closing parenthesis"));
+        fail(p, expression_closing_parenthesis_message);
     }
     check_types(p);
     if (errors->n != before) {

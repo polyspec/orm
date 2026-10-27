@@ -942,7 +942,8 @@ ZEND_METHOD(Polyspec_Orm_Model, predIr)
         if (EG(exception) != NULL) goto exception_pred;
         ZVAL_COPY(&args[0], request); ZVAL_COPY(&args[1], &subject); ZVAL_COPY(&args[2], &scalar);
         bool ok = query_invoke(sub, "subqueryIr", args, 3, &sub_ir);
-        for (int i = 0; i < 3; i++) zval_ptr_dtor(&args[i]); zval_ptr_dtor(&subject);
+        for (int i = 0; i < 3; i++) zval_ptr_dtor(&args[i]);
+        zval_ptr_dtor(&subject);
         if (!ok) { if (Z_TYPE(sub_ir) != IS_UNDEF) zval_ptr_dtor(&sub_ir); goto exception_pred; }
         add_assoc_zval(return_value, "sub", &sub_ir);
     } else if (zend_string_equals_literal(Z_STR_P(kind), "fn")) {

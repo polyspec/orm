@@ -296,6 +296,15 @@ static zend_string *bytes_identity(zval *bytes_object)
     return identity;
 }
 
+static zend_string *string_key_identity(zval *key)
+{
+    zend_string *text = zval_try_get_string(key);
+    if (!text) return NULL;
+    zend_string *identity = typed_string_identity('s', ZSTR_VAL(text), ZSTR_LEN(text));
+    zend_string_release(text);
+    return identity;
+}
+
 /* Keys preserve their PHP type. Prefixes keep integer, text and boolean identities disjoint. */
 static zend_string *key_identity(zval *key)
 {
@@ -336,14 +345,9 @@ static zend_string *key_identity(zval *key)
                 zval_ptr_dtor(&formatted);
                 return id;
             }
+            return string_key_identity(key);
         }
-        default: {
-            zend_string *text = zval_try_get_string(key);
-            if (!text) return NULL;
-            zend_string *id = typed_string_identity('s', ZSTR_VAL(text), ZSTR_LEN(text));
-            zend_string_release(text);
-            return id;
-        }
+        default: return string_key_identity(key);
     }
     return NULL;
 }
@@ -562,7 +566,8 @@ PHP_METHOD(Polyspec_Orm_Collection, entries)
 PHP_METHOD(Polyspec_Orm_Collection, first)
 {
     ZEND_PARSE_PARAMETERS_NONE(); zval *storage = collection_items(Z_OBJ_P(ZEND_THIS)); if (storage == NULL) RETURN_THROWS(); HashPosition pos; HashTable *items = Z_ARRVAL_P(storage); zend_hash_internal_pointer_reset_ex(items, &pos); zval *entry = zend_hash_get_current_data_ex(items, &pos);
-    if (!entry) RETURN_NULL(); zval *model = entry_model(entry); if (!model) { if (EG(exception)) RETURN_THROWS(); RETURN_NULL(); } RETURN_COPY(model);
+    if (!entry) RETURN_NULL();
+    zval *model = entry_model(entry); if (!model) { if (EG(exception)) RETURN_THROWS(); RETURN_NULL(); } RETURN_COPY(model);
 }
 
 PHP_METHOD(Polyspec_Orm_Collection, fetchValues)
@@ -753,13 +758,15 @@ PHP_METHOD(Polyspec_Orm_CollectionIterator, next)
 PHP_METHOD(Polyspec_Orm_CollectionIterator, current)
 {
     ZEND_PARSE_PARAMETERS_NONE(); zval *entry = iterator_entry(IOBJ(Z_OBJ_P(ZEND_THIS)));
-    if (!entry) RETURN_NULL(); zval *model = entry_model(entry); if (!model) { if (EG(exception)) RETURN_THROWS(); RETURN_NULL(); } RETURN_COPY(model);
+    if (!entry) RETURN_NULL();
+    zval *model = entry_model(entry); if (!model) { if (EG(exception)) RETURN_THROWS(); RETURN_NULL(); } RETURN_COPY(model);
 }
 
 PHP_METHOD(Polyspec_Orm_CollectionIterator, key)
 {
     ZEND_PARSE_PARAMETERS_NONE(); zval *entry = iterator_entry(IOBJ(Z_OBJ_P(ZEND_THIS)));
-    if (!entry) RETURN_NULL(); zval *key = entry_key(entry); if (!key) { if (EG(exception)) RETURN_THROWS(); RETURN_NULL(); } RETURN_COPY(key);
+    if (!entry) RETURN_NULL();
+    zval *key = entry_key(entry); if (!key) { if (EG(exception)) RETURN_THROWS(); RETURN_NULL(); } RETURN_COPY(key);
 }
 
 /* Wire generated Collection metadata to native storage and register the private helper iterator. */

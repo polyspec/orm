@@ -1542,7 +1542,8 @@ static bool model_restore_step(zval *model, zval *restored_count, zval *query)
     }
     zval write_args[3], written; ZVAL_COPY(&write_args[0], &frame); ZVAL_COPY(&write_args[1], &request); ZVAL_COPY(&write_args[2], &closure);
     bool ok = dynamic_call(&db, "writeOf", &written, 3, write_args);
-    for (int i = 0; i < 3; i++) zval_ptr_dtor(&write_args[i]); zval_ptr_dtor(&closure);
+    for (int i = 0; i < 3; i++) zval_ptr_dtor(&write_args[i]);
+    zval_ptr_dtor(&closure);
     if (!ok) { zval_ptr_dtor(&hook); call_result_dtor(&written); goto failed; }
     zval *count = array_at(&written, 1);
     if (count == NULL) { zval_ptr_dtor(&hook); zval_ptr_dtor(&written); zend_throw_error(NULL, "Db::writeOf() returned no restore count"); goto failed; }

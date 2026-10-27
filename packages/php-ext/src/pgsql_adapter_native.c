@@ -875,7 +875,8 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, query)
         ZVAL_COPY(&args[0], mode);
         for (int i = 0; i < fetch_count; i++) ZVAL_COPY(&args[i + 1], &fetch_args[i]);
         if (!pg_call_method(&statement, "setFetchMode", &result, count, args)) {
-            for (uint32_t i = 0; i < count; i++) zval_ptr_dtor(&args[i]); zval_ptr_dtor(&statement); RETURN_THROWS();
+            for (uint32_t i = 0; i < count; i++) zval_ptr_dtor(&args[i]);
+            zval_ptr_dtor(&statement); RETURN_THROWS();
         }
         zval_ptr_dtor(&result); for (uint32_t i = 0; i < count; i++) zval_ptr_dtor(&args[i]);
     }
@@ -965,7 +966,8 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, executeSql)
     } else {
         ZVAL_COPY(&send_args[2], &values);
         if (!pg_call_function("pg_send_query_params", &sent, 3, send_args)) {
-            for (int i = 0; i < 3; i++) zval_ptr_dtor(&send_args[i]); zval_ptr_dtor(&values); zval_ptr_dtor(&connection); RETURN_THROWS();
+            for (int i = 0; i < 3; i++) zval_ptr_dtor(&send_args[i]);
+            zval_ptr_dtor(&values); zval_ptr_dtor(&connection); RETURN_THROWS();
         }
         for (int i = 0; i < 3; i++) zval_ptr_dtor(&send_args[i]);
     }
@@ -996,7 +998,8 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, executeSql)
         zval select_args[5]; ZVAL_COPY_VALUE(&select_args[0], &read); ZVAL_COPY_VALUE(&select_args[1], &write);
         ZVAL_COPY_VALUE(&select_args[2], &except); ZVAL_COPY_VALUE(&select_args[3], &seconds); ZVAL_COPY_VALUE(&select_args[4], &microseconds);
         if (!pg_call_function("stream_select", &selected, 5, select_args)) {
-            for (int i = 0; i < 5; i++) zval_ptr_dtor(&select_args[i]); zval_ptr_dtor(&socket); zval_ptr_dtor(&connection); RETURN_THROWS();
+            for (int i = 0; i < 5; i++) zval_ptr_dtor(&select_args[i]);
+            zval_ptr_dtor(&socket); zval_ptr_dtor(&connection); RETURN_THROWS();
         }
         bool ready = zval_get_long(&selected) > 0; zval_ptr_dtor(&selected);
         for (int i = 0; i < 5; i++) zval_ptr_dtor(&select_args[i]);
@@ -1476,22 +1479,29 @@ static bool pg_statement_row(zval *self, zend_long mode, zval *row_value)
     ZVAL_COPY_VALUE(row_value, &associative); return true;
 }
 
+static zend_long pg_effective_fetch_mode(zval *adapter, zend_long mode)
+{
+    if (mode != pg_value_long("PDO::FETCH_DEFAULT", 0)) return mode;
+
+    zval modes_rv, pdo_rv;
+    zval *modes = pg_prop(adapter, "fetchMode", &modes_rv);
+    zval *stored = modes != NULL && Z_TYPE_P(modes) == IS_ARRAY
+        ? zend_hash_index_find(Z_ARRVAL_P(modes), 0) : NULL;
+    if (stored == NULL) {
+        zval *pdo = pg_prop(adapter, "pdo", &pdo_rv), defaults_rv;
+        zval *defaults = pdo == NULL ? NULL : pg_prop(pdo, "defaultFetchMode", &defaults_rv);
+        stored = defaults != NULL && Z_TYPE_P(defaults) == IS_ARRAY
+            ? zend_hash_index_find(Z_ARRVAL_P(defaults), 0) : NULL;
+    }
+    return stored == NULL ? pg_value_long("PDO::FETCH_BOTH", 4) : zval_get_long(stored);
+}
+
 ZEND_METHOD(Polyspec_Orm_Internal_PgsqlStatementAdapter, fetch)
 {
     zend_long mode = 0, orientation = 0, offset = 0;
     ZEND_PARSE_PARAMETERS_START(0, 3) Z_PARAM_OPTIONAL Z_PARAM_LONG(mode) Z_PARAM_LONG(orientation) Z_PARAM_LONG(offset) ZEND_PARSE_PARAMETERS_END();
     (void) orientation; (void) offset;
-    if (mode == pg_value_long("PDO::FETCH_DEFAULT", 0)) {
-        zval modes_rv, pdo_rv, *modes = pg_prop(ZEND_THIS, "fetchMode", &modes_rv);
-        zval *stored = modes != NULL && Z_TYPE_P(modes) == IS_ARRAY ? zend_hash_index_find(Z_ARRVAL_P(modes), 0) : NULL;
-        if (stored == NULL) {
-            zval *pdo = pg_prop(ZEND_THIS, "pdo", &pdo_rv), defaults_rv;
-            zval *defaults = pdo == NULL ? NULL : pg_prop(pdo, "defaultFetchMode", &defaults_rv);
-            stored = defaults != NULL && Z_TYPE_P(defaults) == IS_ARRAY
-                ? zend_hash_index_find(Z_ARRVAL_P(defaults), 0) : NULL;
-        }
-        mode = stored == NULL ? pg_value_long("PDO::FETCH_BOTH", 4) : zval_get_long(stored);
-    }
+    mode = pg_effective_fetch_mode(ZEND_THIS, mode);
     if (!pg_statement_row(ZEND_THIS, mode, return_value)) RETURN_THROWS();
 }
 
@@ -1500,17 +1510,7 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlStatementAdapter, fetchAll)
     zend_long mode = 0; zval *args = NULL; int argc = 0;
     ZEND_PARSE_PARAMETERS_START(0, -1) Z_PARAM_OPTIONAL Z_PARAM_LONG(mode) Z_PARAM_VARIADIC('*', args, argc) ZEND_PARSE_PARAMETERS_END();
     (void) args; (void) argc;
-    if (mode == pg_value_long("PDO::FETCH_DEFAULT", 0)) {
-        zval rv, pdo_rv; zval *modes = pg_prop(ZEND_THIS, "fetchMode", &rv);
-        zval *stored = modes != NULL && Z_TYPE_P(modes) == IS_ARRAY ? zend_hash_index_find(Z_ARRVAL_P(modes), 0) : NULL;
-        if (stored == NULL) {
-            zval *pdo = pg_prop(ZEND_THIS, "pdo", &pdo_rv), defaults_rv;
-            zval *defaults = pdo == NULL ? NULL : pg_prop(pdo, "defaultFetchMode", &defaults_rv);
-            stored = defaults != NULL && Z_TYPE_P(defaults) == IS_ARRAY
-                ? zend_hash_index_find(Z_ARRVAL_P(defaults), 0) : NULL;
-        }
-        mode = stored == NULL ? pg_value_long("PDO::FETCH_BOTH", 4) : zval_get_long(stored);
-    }
+    mode = pg_effective_fetch_mode(ZEND_THIS, mode);
     array_init(return_value);
     while (1) { zval row; if (!pg_statement_row(ZEND_THIS, mode, &row)) { zval_ptr_dtor(return_value); RETURN_THROWS(); } if (Z_TYPE(row) == IS_FALSE) { zval_ptr_dtor(&row); break; } add_next_index_zval(return_value, &row); }
 }
@@ -1541,7 +1541,8 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlStatementAdapter, fetchObject)
             zval *packed = argc == 0 ? NULL : safe_emalloc(argc, sizeof(zval), 0);
             uint32_t i = 0; zval *arg; ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(ctor_args), arg) { ZVAL_COPY(&packed[i++], arg); } ZEND_HASH_FOREACH_END();
             if (zend_fcall_info_init(&callable, 0, &fci, &fcc, NULL, NULL) == SUCCESS) { ZVAL_UNDEF(&ignored); fci.retval = &ignored; fci.params = packed; fci.param_count = argc; zend_call_function(&fci, &fcc); if (!Z_ISUNDEF(ignored)) zval_ptr_dtor(&ignored); }
-            for (uint32_t j = 0; j < argc; j++) zval_ptr_dtor(&packed[j]); if (packed != NULL) efree(packed);
+            for (uint32_t j = 0; j < argc; j++) zval_ptr_dtor(&packed[j]);
+            if (packed != NULL) efree(packed);
             zval_ptr_dtor(&callable);
         }
         zval_ptr_dtor(&ctor);
@@ -1787,8 +1788,12 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, copyFromArray)
     zval connection; if (!pg_get_connection(ZEND_THIS, &connection)) RETURN_THROWS();
     if (fields == NULL) {
         zval args[5], result; ZVAL_COPY(&args[0], &connection); ZVAL_STR_COPY(&args[1], table); ZVAL_COPY(&args[2], rows); ZVAL_STR_COPY(&args[3], separator); ZVAL_STR_COPY(&args[4], null_as);
-        if (!pg_call_function("pg_copy_from", &result, 5, args)) { for (int i = 0; i < 5; i++) zval_ptr_dtor(&args[i]); zval_ptr_dtor(&connection); zend_string_release(separator); zend_string_release(null_as); RETURN_THROWS(); }
-        for (int i = 0; i < 5; i++) zval_ptr_dtor(&args[i]); zval_ptr_dtor(&connection); zend_string_release(separator); zend_string_release(null_as); RETURN_ZVAL(&result, 1, 1);
+        if (!pg_call_function("pg_copy_from", &result, 5, args)) {
+            for (int i = 0; i < 5; i++) zval_ptr_dtor(&args[i]);
+            zval_ptr_dtor(&connection); zend_string_release(separator); zend_string_release(null_as); RETURN_THROWS();
+        }
+        for (int i = 0; i < 5; i++) zval_ptr_dtor(&args[i]);
+        zval_ptr_dtor(&connection); zend_string_release(separator); zend_string_release(null_as); RETURN_ZVAL(&result, 1, 1);
     }
     if (ZSTR_LEN(separator) != 1) { zval_ptr_dtor(&connection); zend_value_error("PostgreSQL COPY delimiter must be one byte"); RETURN_THROWS(); }
     smart_str query = {0}; smart_str_appends(&query, "COPY ");
@@ -1868,8 +1873,12 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, copyToArray)
     zval connection; if (!pg_get_connection(ZEND_THIS, &connection)) { zend_string_release(separator); zend_string_release(null_as); RETURN_THROWS(); }
     if (fields == NULL) {
         zval args[4], result; ZVAL_COPY(&args[0], &connection); ZVAL_STR_COPY(&args[1], table); ZVAL_STR_COPY(&args[2], separator); ZVAL_STR_COPY(&args[3], null_as);
-        if (!pg_call_function("pg_copy_to", &result, 4, args)) { for (int i = 0; i < 4; i++) zval_ptr_dtor(&args[i]); zval_ptr_dtor(&connection); zend_string_release(separator); zend_string_release(null_as); RETURN_THROWS(); }
-        for (int i = 0; i < 4; i++) zval_ptr_dtor(&args[i]); zval_ptr_dtor(&connection); zend_string_release(separator); zend_string_release(null_as); RETURN_ZVAL(&result, 1, 1);
+        if (!pg_call_function("pg_copy_to", &result, 4, args)) {
+            for (int i = 0; i < 4; i++) zval_ptr_dtor(&args[i]);
+            zval_ptr_dtor(&connection); zend_string_release(separator); zend_string_release(null_as); RETURN_THROWS();
+        }
+        for (int i = 0; i < 4; i++) zval_ptr_dtor(&args[i]);
+        zval_ptr_dtor(&connection); zend_string_release(separator); zend_string_release(null_as); RETURN_ZVAL(&result, 1, 1);
     }
     if (ZSTR_LEN(separator) != 1) { zval_ptr_dtor(&connection); zend_string_release(separator); zend_string_release(null_as); zend_value_error("PostgreSQL COPY delimiter must be one byte"); RETURN_THROWS(); }
     smart_str query = {0}; smart_str_appends(&query, "SELECT ");
@@ -1963,8 +1972,10 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, lobOpen)
 ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, lobUnlink)
 {
     zend_string *oid; ZEND_PARSE_PARAMETERS_START(1, 1) Z_PARAM_STR(oid) ZEND_PARSE_PARAMETERS_END(); zval connection, args[2];
-    if (!pg_get_connection(ZEND_THIS, &connection)) RETURN_THROWS(); ZVAL_COPY(&args[0], &connection); ZVAL_STR_COPY(&args[1], oid); zval_ptr_dtor(&connection);
-    if (!pg_call_function("pg_lo_unlink", return_value, 2, args)) ZVAL_UNDEF(return_value); zval_ptr_dtor(&args[0]); zval_ptr_dtor(&args[1]);
+    if (!pg_get_connection(ZEND_THIS, &connection)) RETURN_THROWS();
+    ZVAL_COPY(&args[0], &connection); ZVAL_STR_COPY(&args[1], oid); zval_ptr_dtor(&connection);
+    if (!pg_call_function("pg_lo_unlink", return_value, 2, args)) ZVAL_UNDEF(return_value);
+    zval_ptr_dtor(&args[0]); zval_ptr_dtor(&args[1]);
 }
 
 void pgsql_adapter_native_register(zend_class_entry *adapter_ce, zend_class_entry *statement_ce)

@@ -499,7 +499,8 @@ static bool pair_of(zval *left, zval *right, zend_string *name, zval *schema, zv
             (schema ? listed_column(schema, lp) : side_column(left, right, lp));
         if (EG(exception) != NULL) {
             zend_string_release(lp); zend_string_release(rp); zend_string_release(l);
-            if (best_left) zend_string_release(best_left); if (best_right) zend_string_release(best_right);
+            if (best_left) zend_string_release(best_left);
+            if (best_right) zend_string_release(best_right);
             zval_ptr_dtor(&words); return false;
         }
         zend_string *r = Z_TYPE_P(right) == IS_ARRAY ? column_for(right, rp) :
@@ -507,7 +508,8 @@ static bool pair_of(zval *left, zval *right, zend_string *name, zval *schema, zv
         zend_string_release(lp); zend_string_release(rp);
         if (EG(exception) != NULL) {
             zend_string_release(l); zend_string_release(r);
-            if (best_left) zend_string_release(best_left); if (best_right) zend_string_release(best_right);
+            if (best_left) zend_string_release(best_left);
+            if (best_right) zend_string_release(best_right);
             zval_ptr_dtor(&words); return false;
         }
         if (ZSTR_LEN(l) && ZSTR_LEN(r)) { found++; if (best_left) zend_string_release(best_left); if (best_right) zend_string_release(best_right); best_left = l; best_right = r; }
@@ -515,7 +517,8 @@ static bool pair_of(zval *left, zval *right, zend_string *name, zval *schema, zv
     }
     zval_ptr_dtor(&words);
     if (found != 1) {
-        if (best_left) zend_string_release(best_left); if (best_right) zend_string_release(best_right);
+        if (best_left) zend_string_release(best_left);
+        if (best_right) zend_string_release(best_right);
         chain_fail(found ? strpprintf(0, "%s has more than one meaning", ZSTR_VAL(name)) : strpprintf(0, "%s is not <column>With<column>", ZSTR_VAL(name))); return false;
     }
     array_init(out); add_index_str(out, 0, best_left); add_index_str(out, 1, best_right); return true;
