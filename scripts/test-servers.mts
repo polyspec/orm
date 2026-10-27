@@ -126,6 +126,14 @@ export const MYSQLD_PRIVILEGE_BINLOG = ['--log-bin=binlog', '--binlog-expire-log
 // transaction or the replication applies.
 export const MYSQLD_STORAGE = ['--innodb-redo-log-capacity=16777216', '--innodb-max-undo-log-size=16777216'];
 
+// The shared test databases deliberately use a non-UTC server zone so connection tests can prove that clients set UTC.
+export const SERVER_TIME_ZONE = 'Asia/Seoul';
+
+/** mysqlEnvironment fixes the timezone inherited by mysqld, independent of the host running the checks. */
+export function mysqlEnvironment(base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  return { ...base, TZ: SERVER_TIME_ZONE };
+}
+
 // The primary certificate matches localhost. The replica certificate deliberately names another host, while its
 // mismatch DSN uses localhost so TLS identity verification reaches the replica over TCP before rejecting the name.
 export const MYSQL_TLS_SERVER_NAMES = { mysql: 'DNS:localhost', mysqlReplica: 'DNS:orm-mismatch.invalid' } as const;
@@ -350,16 +358,17 @@ function socketDir(p: Paths): void {
 }
 
 function startMysql(p: Paths, ports: Pick<Ports, 'mysql' | 'mysqlReplica'>): void {
+  const env = mysqlEnvironment();
   const initialize = (name: string) => run('mysqld', ['--no-defaults', '--initialize-insecure', MYSQLD_FILES, `--lower-case-table-names=${MYSQL_LOWER_CASE}`,
-    `--datadir=${join(p.dir, name)}`, `--log-error=${join(p.dir, `${name}-init.log`)}`]);
+    `--datadir=${join(p.dir, name)}`, `--log-error=${join(p.dir, `${name}-init.log`)}`], { env });
   initialize('mysql');
   // --daemonize returns after the server accepts connections or fails.
-  run('mysqld', mysqldArguments(p, false, ports.mysql));
+  run('mysqld', mysqldArguments(p, false, ports.mysql), { env });
   console.log(`test-servers: MySQL on 127.0.0.1:${ports.mysql}`);
   // The replica starts before the primary holds data and reads the binary log of the primary from its first file, so
   // it applies every later change.
   initialize('mysql-replica');
-  run('mysqld', mysqldArguments(p, true, ports.mysqlReplica));
+  run('mysqld', mysqldArguments(p, true, ports.mysqlReplica), { env });
   mysqlAt(ports.mysqlReplica, `CHANGE REPLICATION SOURCE TO SOURCE_HOST='127.0.0.1', SOURCE_PORT=${ports.mysql}, SOURCE_USER='root', GET_SOURCE_PUBLIC_KEY=1;
     START REPLICA; SET GLOBAL super_read_only = ON;`);
   console.log(`test-servers: MySQL replica on 127.0.0.1:${ports.mysqlReplica}`);
@@ -368,6 +377,21 @@ function startMysql(p: Paths, ports: Pick<Ports, 'mysql' | 'mysqlReplica'>): voi
 
 const mysqlAt = (port: number, sql: string, database: string[] = []): void =>
   run('mysql', ['--no-defaults', '--protocol=TCP', '-h', '127.0.0.1', '-P', String(port), '-u', 'root', ...database, '-e', sql]);
+
+function verifyServerTimeZones(ports: Ports): void {
+  for (const [server, port] of [['primary', ports.mysql], ['replica', ports.mysqlReplica]] as const) {
+    const mysql = spawnSync('mysql', ['--no-defaults', '--protocol=TCP', '-h', '127.0.0.1', '-P', String(port), '-u', 'root', '-N', '-B',
+      '-e', 'SELECT @@GLOBAL.time_zone, @@system_time_zone'], { encoding: 'utf8' });
+    if (mysql.status !== 0 || mysql.stdout.trim() !== 'SYSTEM\tKST')
+      throw new TestServerError(`test-servers: the existing MySQL ${server} has timezone settings ${mysql.stdout.trim() || mysql.stderr.trim() || `exit ${mysql.status}`}; expected SYSTEM/KST; run make orm-test-servers-stop && make orm-test-servers to restart it`);
+  }
+  for (const [server, port] of [['primary', ports.postgres], ['replica', ports.postgresReplica]] as const) {
+    const postgres = spawnSync('psql', ['-X', '-q', '-t', '-A', '-v', 'ON_ERROR_STOP=1', '-h', '127.0.0.1', '-p', String(port), '-U', 'orm', '-d', 'postgres', '-c', 'SHOW TimeZone'],
+      { encoding: 'utf8', env: postgresEnvironment() });
+    if (postgres.status !== 0 || postgres.stdout.trim() !== SERVER_TIME_ZONE)
+      throw new TestServerError(`test-servers: the existing PostgreSQL ${server} has timezone ${postgres.stdout.trim() || postgres.stderr.trim() || `exit ${postgres.status}`}; expected ${SERVER_TIME_ZONE}; run make orm-test-servers-stop && make orm-test-servers to restart it`);
+  }
+}
 
 function mysqlPrivilegePort(p: Paths): number | undefined {
   if (!existsSync(p.mysqlPrivilegeEnv)) return;
@@ -524,7 +548,7 @@ export const POSTGRES_LOCALE = 'en_US.UTF-8';
 // postgresEnvironment is the environment of the PostgreSQL programs the tool runs: the caller's environment with LC_ALL set
 // to POSTGRES_LOCALE.
 export function postgresEnvironment(base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
-  return { ...base, LC_ALL: POSTGRES_LOCALE };
+  return { ...base, LC_ALL: POSTGRES_LOCALE, TZ: SERVER_TIME_ZONE };
 }
 
 // POSTGRES_WAL is the WAL that both PostgreSQL servers keep in pg_wal: a checkpoint (a restartpoint on the replica)
@@ -537,6 +561,7 @@ export const POSTGRES_WAL = ['min_wal_size=32MB', 'max_wal_size=64MB', 'wal_keep
 // synchronous standby with synchronous_commit=local, so only a transaction that asks for remote_apply waits for it.
 export function postgresArguments(data: string, port: number, primary: boolean): string[] {
   return ['-D', data, '-p', String(port), '-c', 'listen_addresses=127.0.0.1', '-c', 'unix_socket_directories=',
+    '-c', `timezone=${SERVER_TIME_ZONE}`,
     ...(primary ? ['-c', 'synchronous_standby_names=orm_replica', '-c', 'synchronous_commit=local'] : []), ...POSTGRES_WAL.flatMap(setting => ['-c', setting])];
 }
 
@@ -688,6 +713,7 @@ const onPath = (tool: string): boolean => spawnSync('sh', ['-c', 'command -v "$1
 async function start(p: Paths): Promise<void> {
   if (existsSync(p.env) && allRunning(p)) {
     const ports = environmentPorts(readFileSync(p.env, 'utf8'), p.env);
+    verifyServerTimeZones(ports);
     // The running servers keep their data; a MySQL setting that differs from the declared one moves the data into newly
     // initialized directories.
     run(process.execPath, [join(ROOT, 'scripts/test-servers-mysql.mts'), join(ROOT, 'scripts/test-servers.mts'), p.dir, String(ports.mysql), String(ports.mysqlReplica), String(MYSQL_LOWER_CASE)],

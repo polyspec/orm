@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { createServer } from 'node:net';
 import { isolatedEnvironment } from '../tests/environment.mts';
 import { caseTest, COMPUTE, DATABASE, PROCESS } from '../tests/testcase.mts';
-import { environment, MYSQLD_BINLOG, MYSQLD_PRIVILEGE_BINLOG, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqlPrivilegeArguments, mysqldArguments, paths, POSTGRES_HBA, POSTGRES_LOCALE, postgresBaseBackupArguments, postgresEnvironment, startLogged, stopEarlierStart, stopPid, TestServerError } from './test-servers.mts';
+import { environment, MYSQLD_BINLOG, MYSQLD_PRIVILEGE_BINLOG, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqlEnvironment, mysqlPrivilegeArguments, mysqldArguments, paths, POSTGRES_HBA, POSTGRES_LOCALE, postgresBaseBackupArguments, postgresEnvironment, SERVER_TIME_ZONE, startLogged, stopEarlierStart, stopPid, TestServerError } from './test-servers.mts';
 import { withPidFixture } from './test-servers-fixture.mts';
 import * as servers from './test-servers.mts';
 
@@ -42,8 +42,11 @@ function cleanupStartedChild(dir: string, name: string): void {
 
 // The PostgreSQL locale cases. A PostgreSQL server with no locale in its environment fails at start with postmaster became
 // multithreaded during startup, so the tool sets LC_ALL for initdb and the server it starts, whatever the caller set.
-caseTest('the PostgreSQL server environment sets LC_ALL to the server locale', COMPUTE, () => {
+caseTest('the database server environments use Asia/Seoul independently of the host', COMPUTE, () => {
   assert.equal(POSTGRES_LOCALE, 'en_US.UTF-8');
+  assert.equal(SERVER_TIME_ZONE, 'Asia/Seoul');
+  assert.equal(mysqlEnvironment({ PATH: '/bin', TZ: 'UTC' }).TZ, SERVER_TIME_ZONE);
+  assert.equal(postgresEnvironment({ PATH: '/bin', TZ: 'UTC' }).TZ, SERVER_TIME_ZONE);
   assert.equal(postgresEnvironment({ PATH: '/bin' }).LC_ALL, POSTGRES_LOCALE);
   assert.equal(postgresEnvironment({ PATH: '/bin', LC_ALL: 'C' }).LC_ALL, POSTGRES_LOCALE);
   assert.equal(postgresEnvironment({ PATH: '/bin' }).PATH, '/bin');
@@ -453,9 +456,9 @@ caseTest('the test servers keep small redo logs, binary logs and WAL', COMPUTE, 
   assert.equal(typeof postgresArguments, 'function', 'scripts/test-servers.mts states no arguments of the PostgreSQL servers');
   assert.deepEqual(POSTGRES_WAL, ['min_wal_size=32MB', 'max_wal_size=64MB', 'wal_keep_size=0']);
   assert.deepEqual(postgresArguments('/data', 5432, true), ['-D', '/data', '-p', '5432', '-c', 'listen_addresses=127.0.0.1', '-c', 'unix_socket_directories=',
-    '-c', 'synchronous_standby_names=orm_replica', '-c', 'synchronous_commit=local', '-c', 'min_wal_size=32MB', '-c', 'max_wal_size=64MB', '-c', 'wal_keep_size=0']);
+    '-c', 'timezone=Asia/Seoul', '-c', 'synchronous_standby_names=orm_replica', '-c', 'synchronous_commit=local', '-c', 'min_wal_size=32MB', '-c', 'max_wal_size=64MB', '-c', 'wal_keep_size=0']);
   assert.deepEqual(postgresArguments('/replica', 5433, false), ['-D', '/replica', '-p', '5433', '-c', 'listen_addresses=127.0.0.1', '-c', 'unix_socket_directories=',
-    '-c', 'min_wal_size=32MB', '-c', 'max_wal_size=64MB', '-c', 'wal_keep_size=0']);
+    '-c', 'timezone=Asia/Seoul', '-c', 'min_wal_size=32MB', '-c', 'max_wal_size=64MB', '-c', 'wal_keep_size=0']);
 });
 
 caseTest('the MySQL privilege probe has a separate writable binlog server with trust creators off', COMPUTE, () => {

@@ -538,6 +538,9 @@ func mysqlProbes() []Probe {
 			e.Fails("CREATE TRIGGER tg BEFORE INSERT ON t2 FOR EACH ROW SET @x = 1", "1359")
 		}),
 		p("trigger.binlog_privilege_1419", "with binary logging on and log_bin_trust_function_creators=0, a login without SUPER cannot create a trigger (1419)", func(e *Env) {
+			e.Note("endpoint=%s database=%s server=%s:%s server_id=%s log_bin=%s log_bin_trust_function_creators=%s",
+				e.Extra["addr"], e.Name, e.Value("SELECT @@hostname"), e.Value("SELECT @@port"), e.Value("SELECT @@server_id"),
+				e.Value("SELECT @@log_bin"), e.Value("SELECT @@log_bin_trust_function_creators"))
 			e.Want("SELECT @@log_bin", "1")
 			e.Want("SELECT @@log_bin_trust_function_creators", "0")
 			e.Exec("CREATE TABLE t (a int)")
