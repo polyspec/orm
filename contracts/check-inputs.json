@@ -644,6 +644,7 @@
         "packages/php-ext/src/model_state.h",
         "packages/php-ext/src/polyspec_orm.stub.php",
         "packages/php-ext/tests/ModelNativeTest.php",
+        "packages/php/tests/NativeFixtureVectors.php",
         "packages/php-ext/tests/ModelDslNativeTest.php",
         "packages/ts/src/generate/typescript.ts",
         "packages/ts/src/model.ts",
@@ -1087,7 +1088,8 @@
       ],
       "inputs": [
         "packages/php/tests/GroupRowsDbTest.php",
-        "packages/php/tests/GroupRowsDbCases.php"
+        "packages/php/tests/GroupRowsDbCases.php",
+        "packages/php/tests/GroupRowsDbCase.php"
       ]
     },
     "group-rows-db-php-extension": {
@@ -1102,6 +1104,7 @@
       "inputs": [
         "packages/php/tests/GroupRowsDbTest.php",
         "packages/php/tests/GroupRowsDbCases.php",
+        "packages/php/tests/GroupRowsDbCase.php",
         "packages/php-ext/**"
       ]
     },
@@ -2505,6 +2508,7 @@
         "packages/php/tests/model-types-weak-caller.php",
         "packages/php/tests/OrmGenTestSupport.php",
         "packages/php-ext/tests/ModelNativeTest.php",
+        "packages/php/tests/NativeFixtureVectors.php",
         "packages/php-ext/tests/MarkdownNativeTest.php",
         "packages/php-ext/tests/AuditLazyFakePdoTest.php",
         "packages/php-ext/tests/ModelDslNativeTest.php",
@@ -2971,6 +2975,7 @@
         "packages/php/tests/GroupRowsTest.php",
         "packages/php-ext/tests/ModelAssemblyTest.php",
         "packages/php-ext/tests/ModelNativeTest.php",
+        "packages/php/tests/NativeFixtureVectors.php",
         "packages/python/src/polyspec/orm/model_exec.py",
         "packages/python/tests/test_group_rows.py",
         "packages/rust/orm/src/row.rs",
@@ -3031,6 +3036,7 @@
         "packages/php/tests/ModelJsonTextTest.php",
         "packages/php-ext/src/model_output.c",
         "packages/php-ext/tests/ModelNativeTest.php",
+        "packages/php/tests/NativeFixtureVectors.php",
         "packages/python/src/polyspec/orm/model.py",
         "packages/python/tests/test_model_json_text.py",
         "packages/rust/orm/src/model.rs",
@@ -3382,6 +3388,7 @@
         "packages/php-ext/src/model_native_methods.c",
         "packages/php-ext/src/model_read.c",
         "packages/php-ext/tests/ModelNativeTest.php",
+        "packages/php/tests/NativeFixtureVectors.php",
         "packages/ts/src/styled_value.ts",
         "packages/ts/src/codec.ts",
         "packages/ts/src/model.ts",
@@ -3535,6 +3542,7 @@
         "packages/php-ext/tests/ArginfoBuildTest.php",
         "packages/php-ext/tests/DeclarationsTest.php",
         "packages/php-ext/tests/ModelNativeTest.php",
+        "packages/php/tests/NativeFixtureVectors.php",
         "packages/php-ext/tests/CollectionTest.php",
         "packages/php-ext/tests/OrmExceptionNativeTest.php",
         "packages/php-ext/tests/AesUtilsNativeTest.php",

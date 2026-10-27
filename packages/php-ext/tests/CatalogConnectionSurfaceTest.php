@@ -208,12 +208,10 @@ final class CatalogConnectionSurfaceTest extends TestCase
         require_once __DIR__ . '/CatalogCommitFaultPdo.php';
         $pdo = new CatalogCommitFaultPdo();
         $pdo->exec('CREATE TABLE sample (id INTEGER PRIMARY KEY, payload TEXT NOT NULL)');
-        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
-        $catalog = self::catalogWith($db, 'sqlite');
-        (new ReflectionProperty(Catalog::class, 'gridLink'))->setValue($catalog, null);
+        $catalog = null;
 
         try {
-            $metadata = $catalog->describeTable(['namespace' => 'main', 'name' => 'sample']);
+            [$catalog, $metadata] = self::sqliteCatalog($pdo, 'sample');
             $pdo->failCommit = true;
             $pdo->failRollback = $failRollback;
             try {
@@ -231,7 +229,7 @@ final class CatalogConnectionSurfaceTest extends TestCase
             if ($pdo->inTransaction()) {
                 $pdo->exec('ROLLBACK');
             }
-            $catalog->close();
+            $catalog?->close();
         }
     }
 
@@ -241,6 +239,15 @@ final class CatalogConnectionSurfaceTest extends TestCase
         (new ReflectionProperty(Catalog::class, 'db'))->setValue($catalog, $db);
         (new ReflectionProperty(Catalog::class, 'dialect'))->setValue($catalog, $dialect);
         return $catalog;
+    }
+
+    /** @return array{Catalog, CatalogTableMetadata} */
+    private static function sqliteCatalog(PDO $pdo, string $table): array
+    {
+        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
+        $catalog = self::catalogWith($db, 'sqlite');
+        (new ReflectionProperty(Catalog::class, 'gridLink'))->setValue($catalog, null);
+        return [$catalog, $catalog->describeTable(['namespace' => 'main', 'name' => $table])];
     }
 
     public function testNativeCatalogReadsAndMutatesAnOwnedSqliteDatabase(): void
@@ -426,14 +433,12 @@ final class CatalogConnectionSurfaceTest extends TestCase
             'CREATE TABLE capacity_values (id INTEGER PRIMARY KEY, label VARCHAR(3) NOT NULL, '
             . 'payload VARBINARY(3) NOT NULL)'
         );
-        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
-        $catalog = self::catalogWith($db, 'sqlite');
-        (new ReflectionProperty(Catalog::class, 'gridLink'))->setValue($catalog, null);
+        $catalog = null;
 
         try {
             self::assertTrue((new ReflectionClass(Catalog::class))->isInternal());
+            [$catalog, $metadata] = self::sqliteCatalog($pdo, 'capacity_values');
             $table = ['namespace' => 'main', 'name' => 'capacity_values'];
-            $metadata = $catalog->describeTable($table);
             $catalog->insertRow($metadata, ['id' => 1, 'label' => 'old', 'payload' => 'old']);
             $snapshot = $catalog->rowSnapshotFromPage($catalog->tablePage($table, 1, 0), 0);
 
@@ -464,7 +469,7 @@ final class CatalogConnectionSurfaceTest extends TestCase
             );
             self::assertSame([1, '界界界', 'éx'], $updated->rows[0]);
         } finally {
-            $catalog->close();
+            $catalog?->close();
         }
     }
 

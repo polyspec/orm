@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /** The existing assertion methods selected by authenticated-encryption fixture IDs. */
@@ -25,8 +27,11 @@ trait AuthenticatedEncryptionFixtureCases
         $fixture = coverageJson(coverageRepositoryRoot() . '/contracts/fixtures/authenticated_encryption.json');
         $methods = self::authenticatedEncryptionMethods();
         $ids = array_column($fixture['cases'], 'id');
-        if (count($ids) !== count(array_unique($ids)) || array_diff(array_keys($methods), $ids) !== []
-            || array_diff($ids, array_keys($methods)) !== []) {
+        if (
+            count($ids) !== count(array_unique($ids))
+            || array_diff(array_keys($methods), $ids) !== []
+            || array_diff($ids, array_keys($methods)) !== []
+        ) {
             throw new RuntimeException('authenticated_encryption fixture case IDs do not match the PHP assertions');
         }
         return array_column($fixture['cases'], null, 'id');

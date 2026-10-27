@@ -17,7 +17,7 @@ use ReflectionMethod;
 #[Small]
 final class CoverageAuthenticatedEncryptionExtensionTest extends TestCase
 {
-    use \AuthenticatedEncryptionFixtureCases;
+    use \Polyspec\Orm\Tests\AuthenticatedEncryptionFixtureCases;
 
     public static function setUpBeforeClass(): void
     {

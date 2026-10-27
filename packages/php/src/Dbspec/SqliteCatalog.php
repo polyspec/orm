@@ -16,8 +16,8 @@ final class SqliteCatalog
 WHERE name NOT LIKE 'sqlite_%' AND tbl_name NOT LIKE 'dbspec\$%' ORDER BY type, name";
     private const COLUMNS = "SELECT m.name, p.name, p.type, p.\"notnull\", p.dflt_value, p.pk, p.hidden, l.type FROM "
         . "sqlite_master m JOIN pragma_table_xinfo(m.name) p JOIN pragma_table_list l "
-        . "ON l.schema = 'main' AND l.name = m.name WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND p.name NOT LIKE "
-    . "'dbspec\$%' ORDER BY m.name, p.cid";
+        . "ON l.schema = 'main' AND l.name = m.name WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' "
+        . "AND p.name NOT LIKE 'dbspec\$%' ORDER BY m.name, p.cid";
     private const INDEXES = "SELECT m.name, l.name, l.\"unique\", l.origin, l.partial,
 IFNULL((SELECT group_concat(IFNULL(x.name, ''), ',') FROM (SELECT name FROM pragma_index_xinfo(l.name) WHERE key = 1 "
     . "ORDER BY seqno) x), ''),

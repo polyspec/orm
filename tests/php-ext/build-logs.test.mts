@@ -43,15 +43,16 @@ writeFileSync(process.env.KIT_CLI_PROOF, JSON.stringify({ file: import.meta.file
       KIT_CLI_PROOF: join(temporary, 'cli-proof.json'),
     });
     const proofPath = join(temporary, 'cli-proof.json');
-    const output = join(temporary, 'extension/polyspec_orm.so');
+    const output = 'extension/polyspec_orm.so';
+    const expectedOutput = join(realpathSync(temporary), output);
     for (const mode of ['release', 'native-test'] as const) {
       const args = mode === 'release' ? [join(packageRoot, 'scripts/build.sh'), output] : [join(packageRoot, 'scripts/build.sh'), output, mode];
-      const result = spawnSync('sh', args, { cwd: checkout, env, encoding: 'utf8', signal });
+      const result = spawnSync('sh', args, { cwd: temporary, env, encoding: 'utf8', signal });
       assert.equal(result.error, undefined, `build script could not start: ${result.error?.message ?? ''}`);
       assert.equal(result.status, 0, result.stderr);
       const proof = JSON.parse(readFileSync(proofPath, 'utf8')) as { file: string; args: string[] };
       assert.equal(proof.file, realpathSync(kitScript));
-      assert.deepEqual(proof.args.slice(0, 3), ['build', '--output', output]);
+      assert.deepEqual(proof.args.slice(0, 3), ['build', '--output', expectedOutput]);
       assert.equal(proof.args[3], '--configure-arg');
       if (mode === 'release') {
         assert.deepEqual(proof.args.slice(4), ['--disable-polyspec-orm-native-test']);

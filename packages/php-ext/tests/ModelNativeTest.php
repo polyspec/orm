@@ -416,41 +416,10 @@ final class ModelNativeTest extends TestCase
     public static function styledColumnStateVectors(): iterable
     {
         require_once dirname(__DIR__, 2) . '/php/tests/StyledValueTest.php';
-        yield from self::fixtureIds(\Polyspec\Orm\Tests\StyledValueTest::cases());
-    }
-
-    /** @param iterable<array<mixed>> $cases @return iterable<string, array{string}> */
-    private static function fixtureIds(iterable $cases): iterable
-    {
-        $seen = [];
-        foreach ($cases as $arguments) {
-            $case = $arguments[0] ?? null;
-            $id = is_array($case) ? ($case['id'] ?? null) : null;
-            if (!is_string($id) || $id === '' || isset($seen[$id])) {
-                throw new \RuntimeException('styled-column fixture cases must have non-empty unique IDs');
-            }
-            $seen[$id] = true;
-            yield $id => [$id];
-        }
-        if ($seen === []) {
-            throw new \RuntimeException('styled-column fixture has no cases');
-        }
-    }
-
-    /** @param iterable<array<mixed>> $cases @return array<mixed> */
-    private static function styledColumnArgumentsForId(iterable $cases, string $id): array
-    {
-        $match = null;
-        foreach ($cases as $arguments) {
-            $case = $arguments[0] ?? null;
-            if (is_array($case) && ($case['id'] ?? null) === $id) {
-                if ($match !== null) {
-                    throw new \RuntimeException("styled-column fixture repeats case $id");
-                }
-                $match = $arguments;
-            }
-        }
-        return $match ?? throw new \RuntimeException("styled-column fixture has no case $id");
+        yield from \Polyspec\Orm\Tests\NativeFixtureVectors::ids(
+            \Polyspec\Orm\Tests\StyledValueTest::cases(),
+            'styled-column'
+        );
     }
 
     #[DataProvider('styledColumnStateVectors')]
@@ -459,7 +428,11 @@ final class ModelNativeTest extends TestCase
         require_once dirname(__DIR__, 2) . '/php/tests/StyledValueTest.php';
         self::assertTrue((new ReflectionClass(Model::class))->isInternal());
         self::assertTrue((new ReflectionClass(Codec::class))->isInternal());
-        [$case] = self::styledColumnArgumentsForId(\Polyspec\Orm\Tests\StyledValueTest::cases(), $id);
+        [$case] = \Polyspec\Orm\Tests\NativeFixtureVectors::argumentsForId(
+            \Polyspec\Orm\Tests\StyledValueTest::cases(),
+            $id,
+            'styled-column'
+        );
         (new \Polyspec\Orm\Tests\StyledValueTest('testStyledValue'))->testStyledValue($case);
     }
 

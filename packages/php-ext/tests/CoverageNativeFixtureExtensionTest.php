@@ -14,7 +14,6 @@ use Polyspec\Orm\Planner;
 use Polyspec\Orm\RuntimeModel;
 use ReflectionClass;
 use ReflectionMethod;
-use RuntimeException;
 
 #[Medium]
 final class CoverageNativeFixtureExtensionTest extends TestCase
@@ -22,53 +21,28 @@ final class CoverageNativeFixtureExtensionTest extends TestCase
     /** @return iterable<string, array{string}> */
     public static function aggregateNumericVectors(): iterable
     {
-        yield from self::vectorIds(\Polyspec\Orm\Tests\AggregateNumericTest::cases());
+        yield from \Polyspec\Orm\Tests\NativeFixtureVectors::ids(
+            \Polyspec\Orm\Tests\AggregateNumericTest::cases(),
+            'native'
+        );
     }
 
     /** @return iterable<string, array{string}> */
     public static function decimalModelVectors(): iterable
     {
-        yield from self::vectorIds(\Polyspec\Orm\Tests\DecimalModelTest::cases());
+        yield from \Polyspec\Orm\Tests\NativeFixtureVectors::ids(
+            \Polyspec\Orm\Tests\DecimalModelTest::cases(),
+            'native'
+        );
     }
 
     /** @return iterable<string, array{string}> */
     public static function identityLoadVectors(): iterable
     {
-        yield from self::vectorIds(\Polyspec\Orm\Tests\IdentityLoadTest::cases());
-    }
-
-    /** @param iterable<array<mixed>> $cases @return iterable<string, array{string}> */
-    private static function vectorIds(iterable $cases): iterable
-    {
-        $seen = [];
-        foreach ($cases as $arguments) {
-            $case = $arguments[0] ?? null;
-            $id = is_array($case) ? ($case['id'] ?? null) : null;
-            if (!is_string($id) || $id === '' || isset($seen[$id])) {
-                throw new RuntimeException('native fixture cases must have non-empty unique IDs');
-            }
-            $seen[$id] = true;
-            yield $id => [$id];
-        }
-        if ($seen === []) {
-            throw new RuntimeException('native fixture has no cases');
-        }
-    }
-
-    /** @param iterable<array<mixed>> $cases @return array<mixed> */
-    private static function argumentsForId(iterable $cases, string $id): array
-    {
-        $match = null;
-        foreach ($cases as $arguments) {
-            $case = $arguments[0] ?? null;
-            if (is_array($case) && ($case['id'] ?? null) === $id) {
-                if ($match !== null) {
-                    throw new RuntimeException("native fixture repeats case $id");
-                }
-                $match = $arguments;
-            }
-        }
-        return $match ?? throw new RuntimeException("native fixture has no case $id");
+        yield from \Polyspec\Orm\Tests\NativeFixtureVectors::ids(
+            \Polyspec\Orm\Tests\IdentityLoadTest::cases(),
+            'native'
+        );
     }
 
     public function testAggregateNumeric(): void
@@ -86,7 +60,11 @@ final class CoverageNativeFixtureExtensionTest extends TestCase
     {
         Assert::assertTrue((new ReflectionClass(Model::class))->isInternal());
         Assert::assertTrue((new ReflectionMethod(Model::class, 'aggregateNumber'))->isInternal());
-        [$case] = self::argumentsForId(\Polyspec\Orm\Tests\AggregateNumericTest::cases(), $id);
+        [$case] = \Polyspec\Orm\Tests\NativeFixtureVectors::argumentsForId(
+            \Polyspec\Orm\Tests\AggregateNumericTest::cases(),
+            $id,
+            'native'
+        );
         $this->assertAggregateNumericCase(new \Polyspec\Orm\Tests\AggregateNumericTest('testAggregateNumeric'), $case);
     }
 
@@ -114,7 +92,11 @@ final class CoverageNativeFixtureExtensionTest extends TestCase
         Assert::assertTrue((new ReflectionClass(Model::class))->isInternal());
         Assert::assertTrue((new ReflectionMethod(Model::class, 'writeColumn'))->isInternal());
         Assert::assertTrue((new ReflectionMethod(Model::class, 'readColumn'))->isInternal());
-        [$case, $column] = self::argumentsForId(\Polyspec\Orm\Tests\DecimalModelTest::cases(), $id);
+        [$case, $column] = \Polyspec\Orm\Tests\NativeFixtureVectors::argumentsForId(
+            \Polyspec\Orm\Tests\DecimalModelTest::cases(),
+            $id,
+            'native'
+        );
         $owner = new \Polyspec\Orm\Tests\DecimalModelTest('testDecimalModel');
         $this->assertDecimalModelCase($owner, $case, $column);
     }
@@ -156,7 +138,11 @@ final class CoverageNativeFixtureExtensionTest extends TestCase
     public function testIdentityLoadVector(string $id): void
     {
         $this->assertNativeIdentityLoadEntryPoints();
-        [$case] = self::argumentsForId(\Polyspec\Orm\Tests\IdentityLoadTest::cases(), $id);
+        [$case] = \Polyspec\Orm\Tests\NativeFixtureVectors::argumentsForId(
+            \Polyspec\Orm\Tests\IdentityLoadTest::cases(),
+            $id,
+            'native'
+        );
         $this->assertIdentityLoadCase(new \Polyspec\Orm\Tests\IdentityLoadTest('testIdentityLoad'), $case);
     }
 

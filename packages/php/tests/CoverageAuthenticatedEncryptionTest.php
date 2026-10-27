@@ -48,7 +48,7 @@ function decryptCase(array $fixture, string $id): void
 #[Small]
 final class CoverageAuthenticatedEncryptionTest extends TestCase
 {
-    use \AuthenticatedEncryptionFixtureCases;
+    use AuthenticatedEncryptionFixtureCases;
 
     // With the extension loaded (php-extension, S10) the codec is the extension's class, not the PHP client's.
     public static function setUpBeforeClass(): void

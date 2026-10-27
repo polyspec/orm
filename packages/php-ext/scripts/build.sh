@@ -12,13 +12,13 @@ if [ -z "$node" ]; then
   exit 1
 fi
 # Resolve the pinned public Kit CLI from this checkout's installed package.
-cd "$repository"
-if ! builder=$("$node" -p 'require.resolve("@polyspec/kit/php-extension")' 2>/dev/null); then
+if ! builder=$(cd "$repository" && "$node" -p 'require.resolve("@polyspec/kit/php-extension")' 2>/dev/null); then
   echo "build.sh: installed @polyspec/kit does not expose php-extension; run make install" >&2
   exit 1
 fi
 mkdir -p "$(dirname "$out")"
 out=$(cd "$(dirname "$out")" && pwd)/$(basename "$out")
+cd "$repository"
 set -- "$builder" build --output "$out" --configure-arg
 case "$mode" in
   release) set -- "$@" --disable-polyspec-orm-native-test ;;

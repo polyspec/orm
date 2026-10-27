@@ -20,25 +20,30 @@ final class CoverageModelQueriesExtensionTest extends TestCase
     // Requirements: INT-16, INT-29, INT-30, INT-32, INT-33, PLN-11, PLN-25.
     public function testModelQueryRows(): void
     {
+        $this->runModelQueryCase('rows');
+    }
+
+    private function runModelQueryCase(string $case): void
+    {
         Assert::assertTrue((new ReflectionClass(Model::class))->isInternal());
         Assert::assertTrue((new ReflectionMethod(Model::class, 'gets'))->isInternal());
         Assert::assertTrue((new ReflectionClass(Collection::class))->isInternal());
         require_once dirname(__DIR__, 2) . '/php/tests/CoverageModelQueriesCase.php';
-        coverageRunDatabaseItems(__FILE__, static function (\Polyspec\Orm\Db $db): void {
-            CoverageModelQueriesCase::run($db);
+        coverageRunDatabaseItems(__FILE__, static function (\Polyspec\Orm\Db $db) use ($case): void {
+            if ($case === 'rows') {
+                CoverageModelQueriesCase::run($db);
+            } elseif ($case === 'null-identity') {
+                CoverageModelQueriesCase::collectionNullIdentity($db);
+            } else {
+                throw new \InvalidArgumentException("unknown model query case $case");
+            }
         });
     }
 
     // Requirements: PRT-35.
     public function testCollectionNullIdentity(): void
     {
-        Assert::assertTrue((new ReflectionClass(Model::class))->isInternal());
-        Assert::assertTrue((new ReflectionMethod(Model::class, 'gets'))->isInternal());
-        Assert::assertTrue((new ReflectionClass(Collection::class))->isInternal());
-        require_once dirname(__DIR__, 2) . '/php/tests/CoverageModelQueriesCase.php';
-        coverageRunDatabaseItems(__FILE__, static function (\Polyspec\Orm\Db $db): void {
-            CoverageModelQueriesCase::collectionNullIdentity($db);
-        });
+        $this->runModelQueryCase('null-identity');
     }
 
     // Requirements: DSL-76.

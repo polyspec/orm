@@ -1329,7 +1329,8 @@
           "shard": "other",
           "inputs": [
             "Makefile",
-            "packages/php-ext/tests/ModelNativeTest.php"
+            "packages/php-ext/tests/ModelNativeTest.php",
+            "packages/php/tests/NativeFixtureVectors.php"
           ]
         },
         {
@@ -1502,6 +1503,7 @@
             "scripts/group-rows-physical-check.mts",
             "packages/php/tests/GroupRowsDbTest.php",
             "packages/php/tests/GroupRowsDbCases.php",
+            "packages/php/tests/GroupRowsDbCase.php",
             "packages/ts/tests/group_rows_db.mjs"
           ]
         },
@@ -1776,7 +1778,8 @@
             "contracts/fixtures/aggregate_numeric.json",
             "contracts/fixtures/decimal_model.json",
             "contracts/fixtures/identity_load.json",
-            "contracts/fixtures/identity_load.dbs"
+            "contracts/fixtures/identity_load.dbs",
+            "packages/php/tests/NativeFixtureVectors.php"
           ]
         }
       ],
@@ -1866,7 +1869,8 @@
             "inputs": [
               "contracts/fixtures/bench/bench.dbs",
               "packages/php/tests/CoverageModelQueriesCase.php",
-              "packages/php/tests/GroupRowsDbCases.php"
+              "packages/php/tests/GroupRowsDbCases.php",
+              "packages/php/tests/GroupRowsDbCase.php"
             ],
             "commands": {
               "mysql": [
@@ -2134,7 +2138,8 @@
             "inputs": [
               "contracts/fixtures/bench/bench.dbs",
               "packages/php/tests/CoverageModelQueriesCase.php",
-              "packages/php/tests/GroupRowsDbCases.php"
+              "packages/php/tests/GroupRowsDbCases.php",
+              "packages/php/tests/GroupRowsDbCase.php"
             ],
             "commands": {
               "mysql": [
