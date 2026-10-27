@@ -558,7 +558,15 @@ def convert(type_: str, value, zone: str, declared: Field | None = None):
                 codes.CODEC_DECODE, f"invalid decimal cell: {cause}"
             ) from None
     if type_ == "bool":
-        return value in (True, 1, "1", "t", "true")
+        if value is True or (type(value) is int and value == 1):
+            return True
+        if value is False or (type(value) is int and value == 0):
+            return False
+        if value in ("1", "t", "true"):
+            return True
+        if value in ("0", "f", "false"):
+            return False
+        raise OrmError(codes.CODEC_DECODE, "bool cell is not boolean")
     if type_ in ("date", "time", "datetime"):
         return read_time(
             value,

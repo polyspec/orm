@@ -14,6 +14,7 @@ from polyspec.orm.codec import (
 from polyspec.orm.errors import OrmError
 from polyspec.orm.styled_value import StyledValue
 from polyspec.orm.values import ColumnFunction, ValueFunction, orm
+from polyspec.orm.database import convert
 from .coverage_case import error_code
 from . import testcase
 
@@ -124,6 +125,29 @@ class NativeTimeReadTest(unittest.TestCase):
             with self.subTest(value=repr(value), col_type=col_type):
                 with self.assertRaises(OrmError) as caught:
                     read_time(value, col_type, "+00:00", precision)
+                self.assertEqual(caught.exception.code, "CODEC_DECODE")
+
+
+class TypedBooleanCellTest(unittest.TestCase):
+    def test_boolean_cells_accept_only_declared_boolean_forms(self):
+        for value, expected in (
+            (True, True),
+            (False, False),
+            (1, True),
+            (0, False),
+            ("1", True),
+            ("0", False),
+            ("t", True),
+            ("f", False),
+            ("true", True),
+            ("false", False),
+        ):
+            with self.subTest(value=value):
+                self.assertIs(convert("bool", value, "+00:00"), expected)
+        for value in (2, -1, 1.5, "2", "yes"):
+            with self.subTest(value=value):
+                with self.assertRaises(OrmError) as caught:
+                    convert("bool", value, "+00:00")
                 self.assertEqual(caught.exception.code, "CODEC_DECODE")
 
 
@@ -260,7 +284,7 @@ class RuntimeValueTypesDatabaseTest(unittest.TestCase):
                                 )
                     elif driver == "postgres":
                         db._connection.execute(
-                            "UPDATE value_record SET ratio = 'NaN' WHERE seq = ?",
+                            "UPDATE value_record SET ratio = 'NaN' WHERE seq = $1",
                             [seq],
                         )
                         with self.assertRaises(OrmError) as caught:

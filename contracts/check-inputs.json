@@ -3068,7 +3068,8 @@
         "composer",
         "node-modules",
         "php-extension-tools",
-        "databases"
+        "databases",
+        "python"
       ]
     },
     "feature-verify-other": {
