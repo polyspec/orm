@@ -771,7 +771,7 @@ caseTest('the job ci-passed runs last under always() and needs every other job',
 // The duplicate-run case checks the repository's workflow, Makefile, feature contract and the minimal workflow.
 caseTest('the CI workflow does not run a verification command of feature-check again', COMPUTE, () => {
   const commands = featureCommands(readFeatures(repository.pathname));
-  for (const command of ['node scripts/perf-test.mts', 'node tests/run-long.mts typescript-build -- npm run typescript:build && ORM_PYTHON=packages/python/.venv/bin/python PATH=$HOME/.cargo/bin:$PATH node tests/interfaces/check/main.mts --self-test'])
+  for (const command of ['make perf-check', 'node tests/run-long.mts typescript-build -- npm run typescript:build && ORM_PYTHON=packages/python/.venv/bin/python PATH=$HOME/.cargo/bin:$PATH node tests/interfaces/check/main.mts --self-test'])
     assert.ok(commands.includes(command), `${command} is not a verification command of contracts/features.json`);
   assert.deepEqual(ciDuplicateCommandErrors(workflow, text('Makefile'), commands), []);
 });
@@ -1998,6 +1998,10 @@ caseTest('the duplicate check reads the commands that a step runs', COMPUTE, () 
   assert.deepEqual(ciDuplicateCommandErrors(run('set -e; node scripts/perf-test.mts'), make, commands), ['ci.yml step "checks" runs node scripts/perf-test.mts, which make orm-check runs in feature-check']);
   assert.deepEqual(ciDuplicateCommandErrors(run('make lint && make perf-check'), make, commands), ['ci.yml step "checks" runs make perf-check, whose commands make orm-check runs in feature-check']);
   assert.deepEqual(ciDuplicateCommandErrors(run('# node scripts/perf-test.mts\n          echo "make perf-check"'), make, commands), []);
+  const perfCommand = 'make perf-check';
+  assert.deepEqual(ciDuplicateCommandErrors(run(perfCommand), make, [perfCommand]), [
+    'ci.yml step "checks" runs make perf-check, which make orm-check runs in feature-check',
+  ]);
 });
 
 caseTest('the toolchain checks read the commands that a step runs', COMPUTE, () => {

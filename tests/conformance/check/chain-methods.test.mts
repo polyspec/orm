@@ -33,6 +33,8 @@ interface Runner {
   start: (name: string) => RegExp;
   /** The pattern that starts the body of any vector. */
   any: RegExp;
+  /** Expands existing helper functions or macros called by a vector body. */
+  expand?: (source: string, body: string) => string;
 }
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -46,14 +48,14 @@ const php = (path: string) => () => read(path).replace(/\bvector\(\n\s*'/g, "vec
 const runners: Runner[] = [
   { name: 'typescript', source: file('packages/ts/testing/conformance/runner_typescript.mts'), naming: camel, start: n => new RegExp(`\\brun\\('${escape(n)}'`), any: /\brun\('[a-z0-9_]+'/ },
   { name: 'php', source: php('packages/php/testing/conformance/runner.php'), naming: camel, start: n => new RegExp(`\\bvector\\('${escape(n)}'`), any: /\bvector\('[a-z0-9_]+'/ },
-  { name: 'go', source: directory('packages/go/internal/conformance', '.go'), naming: pascal, start: n => new RegExp(`\\brun\\("${escape(n)}"`), any: /\brun\("[a-z0-9_]+"/ },
-  { name: 'rust', source: rust('packages/rust/tests/src/conformance.rs'), naming: snake, start: n => new RegExp(`\\brun!\\("${escape(n)}"`), any: /\brun!\("[a-z0-9_]+"/ },
+  { name: 'go', source: directory('packages/go/internal/conformance', '.go'), naming: pascal, start: n => new RegExp(`\\brun\\("${escape(n)}"`), any: /\brun\("[a-z0-9_]+"/, expand: expandGoHelpers },
+  { name: 'rust', source: rust('packages/rust/tests/src/conformance.rs'), naming: snake, start: n => new RegExp(`\\brun!\\("${escape(n)}"`), any: /\brun!\("[a-z0-9_]+"/, expand: expandRustMacros },
 ];
 
 // Python registers each vector as `run("name", function)` or as `run(` with the name and a lambda on the next lines. The
 // body is the registration to the next `run(` or `def` of its block, and the function it names, `def function(` to the
 // end of its block.
-const python = { name: 'python', naming: pythonic, source: file('packages/python/testing/conformance/runner_python.py') };
+const python = { name: 'python', naming: pythonic, source: file('packages/python/testing/conformance/runner_python.py'), expand: undefined };
 function block(lines: string[], first: number): string {
   const indent = at(lines, first).search(/\S/);
   let last = first + 1;
@@ -82,6 +84,51 @@ function body(runner: Runner, source: string, name: string): string | undefined 
   return lines.slice(first, last).join('\n');
 }
 
+const goHelpers = ['roundTripRow', 'pickClock', 'pickDay', 'deleteThen', 'dateOnlyThen', 'deleteLockVector'];
+function goFunction(source: string, name: string): string | undefined {
+  const lines = source.split('\n');
+  const first = lines.findIndex(line => new RegExp(`^func ${escape(name)}(?:\\[|\\()`).test(line));
+  if (first < 0) return undefined;
+  let last = first + 1;
+  while (last < lines.length && !/^func\s/.test(at(lines, last))) last++;
+  return lines.slice(first, last).join('\n');
+}
+
+// Go vectors may delegate an operation to a named helper (roundTripRow/deleteLockVector). Follow only those
+// existing helper declarations and helper calls, so a method still has to appear on the executed call path.
+function expandGoHelpers(source: string, vectorBody: string): string {
+  const expanded = [vectorBody];
+  const pending = goHelpers.filter(name => new RegExp(`\\b${escape(name)}\\b`).test(vectorBody));
+  const seen = new Set<string>();
+  while (pending.length > 0) {
+    const name = pending.pop();
+    if (name === undefined || seen.has(name)) continue;
+    seen.add(name);
+    const helper = goFunction(source, name);
+    if (helper === undefined) continue;
+    expanded.push(helper);
+    for (const nested of goHelpers) {
+      if (!seen.has(nested) && new RegExp(`\\b${escape(nested)}\\b`).test(helper)) pending.push(nested);
+    }
+  }
+  return expanded.join('\n');
+}
+
+function rustMacro(source: string, name: string): string | undefined {
+  const lines = source.split('\n');
+  const first = lines.findIndex(line => new RegExp(`^ {4}macro_rules! ${escape(name)} \\{`).test(line));
+  if (first < 0) return undefined;
+  let last = first + 1;
+  while (last < lines.length && !/^ {4}\}/.test(at(lines, last))) last++;
+  return lines.slice(first, last + 1).join('\n');
+}
+
+// Rust's temporal round-trip vectors invoke insert_read_delete!, whose expansion performs the public delete method.
+function expandRustMacros(source: string, vectorBody: string): string {
+  if (!vectorBody.includes('insert_read_delete!')) return vectorBody;
+  return `${vectorBody}\n${rustMacro(source, 'insert_read_delete') ?? ''}`;
+}
+
 interface Vector { name: string; calls: string[] }
 // vectorsOf reads the vectors of the file text; a vector without a name or a list of calls is refused.
 const vectorsOf = (text: string): Vector[] => {
@@ -101,11 +148,12 @@ caseTest('TestEachRunnerCallsTheMethodsItsVectorNames', COMPUTE, () => {
   for (const { runner, find } of all) {
     const source = runner.source();
     for (const vector of vectors) {
-      const text = find(source, vector.name);
-      if (text === undefined) {
+      const vectorBody = find(source, vector.name);
+      if (vectorBody === undefined) {
         missing.push(`${runner.name} ${vector.name}: no body`);
         continue;
       }
+      const text = runner.expand?.(source, vectorBody) ?? vectorBody;
       for (const method of vector.calls) {
         const called = new RegExp(`\\b${escape(runner.naming(method))}\\(`);
         if (!called.test(text)) missing.push(`${runner.name} ${vector.name}: ${runner.naming(method)}`);
@@ -113,4 +161,32 @@ caseTest('TestEachRunnerCallsTheMethodsItsVectorNames', COMPUTE, () => {
     }
   }
   assert.deepEqual(missing, [], `methods a vector names that its runner body does not call:\n${missing.join('\n')}`);
+});
+
+caseTest('the conformance method check follows existing Go helpers and Rust macros', COMPUTE, () => {
+  const go = runners.find(runner => runner.name === 'go');
+  const rustRunner = runners.find(runner => runner.name === 'rust');
+  assert.ok(go);
+  assert.ok(rustRunner);
+  const goSource = go.source();
+  const dateVector = body(go, goSource, 'date_roundtrip');
+  const deleteLockVector = body(go, goSource, 'delete_lock');
+  assert.ok(dateVector);
+  assert.ok(deleteLockVector);
+  const dateMethods = expandGoHelpers(goSource, dateVector);
+  assert.match(dateMethods, /\.Create\(/);
+  assert.match(dateMethods, /\.Delete\(/);
+  assert.match(expandGoHelpers(goSource, deleteLockVector), /\.DeleteLock\(/);
+  assert.match(expandGoHelpers(goSource, deleteLockVector), /\.Relations\(/);
+  const withoutGoDelete = goSource.replaceAll('created.Delete()', 'created.Remove()');
+  assert.notEqual(withoutGoDelete, goSource, 'the fixture edits the delegated Go delete call');
+  assert.doesNotMatch(expandGoHelpers(withoutGoDelete, dateVector), /\.Delete\(/);
+
+  const rustSource = rustRunner.source();
+  const rustDateVector = body(rustRunner, rustSource, 'date_roundtrip');
+  assert.ok(rustDateVector);
+  assert.match(expandRustMacros(rustSource, rustDateVector), /created\.delete\(false\)/);
+  const withoutRustDelete = rustSource.replace('created.delete(false).await?;', 'created.update(false).await?;');
+  assert.notEqual(withoutRustDelete, rustSource, 'the fixture edits the delegated Rust delete call');
+  assert.doesNotMatch(expandRustMacros(withoutRustDelete, rustDateVector), /created\.delete\(/);
 });

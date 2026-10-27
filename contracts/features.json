@@ -10686,9 +10686,10 @@
       "verification": [
         {
           "id": "perf-gates",
-          "command": "node scripts/perf-test.mts",
+          "command": "make perf-check",
           "shard": "other",
           "inputs": [
+            "Makefile",
             "scripts/perf-test.mts",
             "packages/go/bench/statements_test.go",
             "packages/go/bench/gate_helpers_test.go",
