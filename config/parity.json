@@ -9053,32 +9053,32 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/unit/coverage_planner.rs",
-          "id": "planner_rejects_upsert_primary_and_unique_key"
+          "id": "engine::coverage_planner::planner::planner_rejects_upsert_primary_and_unique_key"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/unit/coverage_planner.rs",
-          "id": "planner_rejects_upsert_unique_key_not_assigned"
+          "id": "engine::coverage_planner::planner::planner_rejects_upsert_unique_key_not_assigned"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/unit/coverage_planner.rs",
-          "id": "planner_rejects_upsert_without_a_key"
+          "id": "engine::coverage_planner::planner::planner_rejects_upsert_without_a_key"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/unit/upsert_conflict.rs",
-          "id": "missing_conflict_key_error_is_preserved"
+          "id": "engine::planner::upsert_conflict_tests::missing_conflict_key_error_is_preserved"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/unit/upsert_conflict.rs",
-          "id": "ambiguous_primary_and_unique_conflict_keys_are_rejected"
+          "id": "engine::planner::upsert_conflict_tests::ambiguous_primary_and_unique_conflict_keys_are_rejected"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/unit/upsert_conflict.rs",
-          "id": "fully_assigned_composite_primary_key_is_a_valid_conflict_target"
+          "id": "engine::planner::upsert_conflict_tests::fully_assigned_composite_primary_key_is_a_valid_conflict_target"
         }
       ]
     },
@@ -17987,12 +17987,12 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/src/db/sqlite_version_tests.rs",
-          "id": "sqlite_version_tests::accepts_three_or_four_decimal_u32_components"
+          "id": "db::sqlite_version_tests::accepts_three_or_four_decimal_u32_components"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/src/db/sqlite_version_tests.rs",
-          "id": "sqlite_version_tests::compares_minimum_version_numerically"
+          "id": "db::sqlite_version_tests::compares_minimum_version_numerically"
         }
       ]
     },
@@ -18050,7 +18050,7 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/src/request.rs",
-          "id": "value_function_protocol_tests::value_function_ir_serializes_name_and_parameter_indexes",
+          "id": "request::value_function_protocol_tests::value_function_ir_serializes_name_and_parameter_indexes",
           "command": [
             "make",
             "-s",
@@ -18059,7 +18059,7 @@
             "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/orm",
             "FEATURE_CARGO_TARGET=--lib",
-            "FEATURE_TEST=value_function_protocol_tests::value_function_ir_serializes_name_and_parameter_indexes"
+            "FEATURE_TEST=request::value_function_protocol_tests::value_function_ir_serializes_name_and_parameter_indexes"
           ]
         }
       ]
@@ -26408,37 +26408,37 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/unit/blind_index_source.rs",
-          "id": "multi_row_index_uses_the_assigned_source_column_position"
+          "id": "engine::blind_index_source::multi_row_index_uses_the_assigned_source_column_position"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/unit/blind_index_source.rs",
-          "id": "ordinary_insert_has_no_blind_index_assignment"
+          "id": "engine::blind_index_source::ordinary_insert_has_no_blind_index_assignment"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/unit/blind_index_source.rs",
-          "id": "two_assigned_sources_of_one_derived_target_are_invalid"
+          "id": "engine::blind_index_source::two_assigned_sources_of_one_derived_target_are_invalid"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/unit/blind_index_source.rs",
-          "id": "two_sources_with_equal_parameter_are_invalid"
+          "id": "engine::blind_index_source::two_sources_with_equal_parameter_are_invalid"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/unit/blind_index_source.rs",
-          "id": "explicit_index_assignment_wins_over_multiple_sources"
+          "id": "engine::blind_index_source::explicit_index_assignment_wins_over_multiple_sources"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/unit/blind_index_source.rs",
-          "id": "on_duplicate_rejects_two_sources_deriving_one_target"
+          "id": "engine::blind_index_source::on_duplicate_rejects_two_sources_deriving_one_target"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/unit/blind_index_source.rs",
-          "id": "explicit_index_assignment_wins_in_on_duplicate"
+          "id": "engine::blind_index_source::explicit_index_assignment_wins_in_on_duplicate"
         }
       ]
     },
@@ -27423,7 +27423,7 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/src/generate.rs",
-          "id": "field_type_tests::generated_field_types_follow_the_runtime_model"
+          "id": "generate::field_type_tests::generated_field_types_follow_the_runtime_model"
         }
       ]
     },
@@ -27562,7 +27562,7 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/unit/markdown_scalar_subquery.rs",
-          "id": "engine::scalar_subquery_type::markdown_subquery_aggregate_types_remain_i64_and_f64"
+          "id": "markdown::markdown_scalar_subquery_tests::markdown_subquery_aggregate_types_remain_i64_and_f64"
         }
       ],
       "requirements": [
@@ -28398,7 +28398,7 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/src/dbspec/apply.rs",
-          "id": "begin_exclusive_maps_only_lock_errors_and_keeps_the_driver_source"
+          "id": "dbspec::apply::sqlite_lock_result_tests::begin_exclusive_maps_only_lock_errors_and_keeps_the_driver_source"
         }
       ]
     },
