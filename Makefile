@@ -2096,7 +2096,7 @@ ts-model-check: lease-tool
 	$(NODE) --test packages/ts/tests/model-new-output-name.mjs
 
 perf-check:
-	$(WITH_TEST_ENV) export ORM_FEATURE_DSN="$$ORM_BENCH_MYSQL_DSN" ORM_FEATURE_DATABASE=mysql && node scripts/perf-test.mts
+	$(WITH_TEST_ENV) export ORM_FEATURE_DSN="$$ORM_BENCH_MYSQL_DSN" ORM_FEATURE_DATABASE=mysql && $(NODE) scripts/perf-test.mts
 
 # scripts-typecheck checks the repository's TypeScript-based scripts (the .mts files of scripts/ and tests/, tsconfig.json) with tsc.
 # Some scripts import the build output of packages/ts and packages/dbspec-language (through docs/.vitepress/dbs.ts), so
