@@ -126,8 +126,8 @@ export CARGO_TARGET_DIR := $(abspath packages/rust/target)
 # The tools of mise.toml that a recipe starts by its absolute path (kit K171): make 3.81, the make of macOS, looks a
 # recipe line without shell syntax up on the PATH that make started with, not on the PATH that kit.mk exports.
 GO := $(KIT_TOOLS)/mise/shims/go
-# The lint configurations that kit reads from its package (kit K514), two directories above its scripts/kit source.
-KIT_PACKAGE := $(abspath $(KIT)/../..)
+# Resolve the package manifest export in both installed archives and linked source checkouts.
+KIT_PACKAGE := $(shell $(NODE) --input-type=module -e 'import { dirname } from "node:path"; import { fileURLToPath } from "node:url"; console.log(dirname(fileURLToPath(import.meta.resolve("@polyspec/kit/package.json"))))')
 COMPOSER := $(KIT_TOOLS)/mise/shims/composer
 PYTHON3 := $(KIT_TOOLS)/mise/shims/python3
 RUFF := $(KIT_TOOLS)/mise/shims/ruff
@@ -1261,7 +1261,7 @@ connection-utc-php-extension-check: php-vendor-check php-models orm-install-php-
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/php-extension/polyspec_orm.so"; \
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testNativeConnectionsUseUtc|testNativeStyledSqlNullIsPreservedOnDatabaseRead|testNativeI16ValuesAndDefaults|testNativeOutOfRangeDatabaseCellFailsTypedRead' packages/php-ext/tests/ConnectionUtcNativeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testNativeConnectionsUseUtc|testNativeStyledSqlNullIsPreservedOnDatabaseRead|testNativeI16ValuesAndDefaults|testNativeOutOfRangeDatabaseCellFailsTypedRead' packages/php-ext/tests/ConnectionUtcNativeTest.php
 
 # Runs the existing PHP library CFG-2 date cases by exact method and data provider.
 connection-utc-php-check: php-vendor-check php-models
@@ -1458,8 +1458,11 @@ FEATURE_STRESS_MYSQL_HELPERS = dbspec-apply-stress-mysql
 FEATURE_STRESS_PG_SQLITE_HELPERS = dbspec-stress dbspec-apply-stress-pg-sqlite
 FEATURE_STRESS_HELPERS = $(FEATURE_STRESS_MYSQL_HELPERS) $(FEATURE_STRESS_PG_SQLITE_HELPERS)
 FEATURE_SUITE_HELPERS = bench-database case-database conformance-result conformance-runners native-query-probe python-test-harness phpstan-test-runner php-orm-gen-scan-failure-case audit-native-method-assertions dbspec-sqlite-literal-rows dbspec-introspect-case-rendering-python typescript-catalog-mutation-lock python-catalog-mutation-lock php-group-rows-test-cases php-model-types-test-cases php-dbspec-interface-program php-database-test-assertions php-extension-model-assembly-test-support typescript-internal-column-error typescript-dbspec-plan-fixture physical-command-output typescript-audit-history-rows typescript-captured-error typescript-check-state typescript-mysql-test-options typescript-database-case-tests typescript-dbspec-physical-database typescript-conditional-entry typescript-database-case-fixture rust-temp-sqlite-fixture php-cpx5-duplicate-relation-cases
+feature-helper-check: RUN_DIR = $(abspath .runtime/run)/feature-helper-check-$$PPID
 feature-helper-check: feature-check/build
-	$(WITH_TEST_ENV) node scripts/features/check.mts --run --helpers $(addprefix --without-helper ,$(FEATURE_STRESS_HELPERS) $(FEATURE_SUITE_HELPERS))
+	@set -eu; run_dir="$(RUN_DIR)"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; \
+	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$(PHP_EXTENSION_LIBRARY)"; \
+	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python POLYSPEC_ORM_EXTENSION="$(PHP_EXTENSION_LIBRARY)" node scripts/features/check.mts --run --helpers $(addprefix --without-helper ,$(FEATURE_STRESS_HELPERS) $(FEATURE_SUITE_HELPERS))
 feature-stress-mysql-check:
 	$(WITH_TEST_ENV) node scripts/features/check.mts --run $(addprefix --helper ,$(FEATURE_STRESS_MYSQL_HELPERS))
 feature-stress-pg-sqlite-check: feature-check/build
@@ -1558,7 +1561,7 @@ generator-consumer-check/php-extension: php-vendor-check php-models
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/php-extension/polyspec_orm.so"; \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelNativeTest.php packages/php-ext/tests/ModelDslNativeTest.php --filter 'testPhpGeneratedTypedGetterUsesInternalModelStorage|testDynamicConditionsAndBuilderCallsReturnTheNativeModel'
+	env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelNativeTest.php packages/php-ext/tests/ModelDslNativeTest.php --filter 'testPhpGeneratedTypedGetterUsesInternalModelStorage|testDynamicConditionsAndBuilderCallsReturnTheNativeModel'
 generator-consumer-check/typescript:
 	$(NODE) --test packages/ts/tests/generate.mjs
 	$(NODE) --test --test-name-pattern='generate-scan/model_calls' packages/ts/tests/generate-scan.mjs
@@ -1633,7 +1636,7 @@ php-orm-gen-scan-failure-case-check: php-vendor-check php-model-check orm-instal
 	mkdir -p "$$run_dir/php-extension"; \
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/php-extension/polyspec_orm.so"; \
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php-gen/tests/OrmGenScanTest.php --filter testAFileThatDoesNotParseStopsTheGenerationAndNamesItsPosition; \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/OrmGenScanNativeTest.php --filter testAFileThatDoesNotParseStopsTheGenerationAndNamesItsPosition
+	env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/OrmGenScanNativeTest.php --filter testAFileThatDoesNotParseStopsTheGenerationAndNamesItsPosition
 .PHONY: phpstan-test-runner-helper-check
 phpstan-test-runner-helper-check: php-vendor-check
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ClientGenericsTest.php --filter testPhpstanTypesTheTransactionResultAndTheRowsOfAModel
@@ -1828,7 +1831,7 @@ styled-column-states-unit-check: lease-tool php-vendor-check php-model-check pyt
 	run_dir="$(abspath .runtime/run)/styled-column-states-unit-check-$$PPID"; extension="$$run_dir/php-extension/polyspec_orm.so"; \
 	trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; \
 	run_case php-extension-build $(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$extension"; \
-	if [ "$$last_result" -eq 0 ]; then run_case php-extension env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$extension" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelNativeTest.php --filter testStyledColumnDistinguishesUnselectedSqlNullAndEncodedNull; fi; \
+	if [ "$$last_result" -eq 0 ]; then run_case php-extension env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$extension" $(RUN_TESTS) phpunit --php-extension "$$extension" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelNativeTest.php --filter testStyledColumnDistinguishesUnselectedSqlNullAndEncodedNull; fi; \
 	run_case typescript-build $(TSC_BUILD); \
 	if [ "$$last_result" -eq 0 ]; then run_case typescript $(NODE) --test --test-name-pattern='^(sql_null|json_null|json_object_with_kind|empty_text|serialize_sql_null|serialize_value_null|yaml_sql_null|yaml_value_null|unselected|nonnull_sql_null|jsons_sql_null|jsons_value_null|nonnull_value_null)$$' packages/ts/tests/styled-value.mjs; fi; \
 	run_case python $(PYTHON_VENV)/bin/python -m packages.python.tests.test_styled_column_states; \
@@ -2083,7 +2086,7 @@ ts-model-check: lease-tool
 	$(NODE) --test packages/ts/tests/model-new-output-name.mjs
 
 perf-check:
-	$(WITH_TEST_ENV) node scripts/perf-test.mts
+	$(WITH_TEST_ENV) export ORM_FEATURE_DSN="$$ORM_BENCH_MYSQL_DSN" ORM_FEATURE_DATABASE=mysql && node scripts/perf-test.mts
 
 # scripts-typecheck checks the repository's TypeScript-based scripts (the .mts files of scripts/ and tests/, tsconfig.json) with tsc.
 # Some scripts import the build output of packages/ts and packages/dbspec-language (through docs/.vitepress/dbs.ts), so

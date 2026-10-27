@@ -21,6 +21,15 @@ function installFakeKit(checkout: string, source: string): string {
   return script;
 }
 
+function readCliProof(file: string): { file: string; args: string[] } {
+  const proof: unknown = JSON.parse(readFileSync(file, 'utf8'));
+  assert.ok(typeof proof === 'object' && proof !== null);
+  assert.ok('file' in proof && typeof proof.file === 'string');
+  assert.ok('args' in proof && Array.isArray(proof.args));
+  assert.ok(proof.args.every((arg: unknown): arg is string => typeof arg === 'string'));
+  return { file: proof.file, args: proof.args };
+}
+
 function initCheckout(checkout: string): string {
   const packageRoot = join(checkout, 'packages/php-ext');
   mkdirSync(join(packageRoot, 'scripts'), { recursive: true });
@@ -50,7 +59,7 @@ writeFileSync(process.env.KIT_CLI_PROOF, JSON.stringify({ file: import.meta.file
       const result = spawnSync('sh', args, { cwd: temporary, env, encoding: 'utf8', signal });
       assert.equal(result.error, undefined, `build script could not start: ${result.error?.message ?? ''}`);
       assert.equal(result.status, 0, result.stderr);
-      const proof = JSON.parse(readFileSync(proofPath, 'utf8')) as { file: string; args: string[] };
+      const proof = readCliProof(proofPath);
       assert.equal(proof.file, realpathSync(kitScript));
       assert.deepEqual(proof.args.slice(0, 3), ['build', '--output', expectedOutput]);
       assert.equal(proof.args[3], '--configure-arg');
@@ -94,7 +103,7 @@ process.exit(1);
     if (result.status !== 1) failures.push(`build script exit = ${result.status}, want 1`);
     if (!result.stderr.includes('fixture.c:12:3: warning: retained warning')) failures.push(`warning is missing from stderr: ${result.stderr}`);
     if (!result.stderr.includes("No rule to make target 'missing-target'")) failures.push(`make cause is missing from stderr: ${result.stderr}`);
-    const proof = JSON.parse(readFileSync(proofPath, 'utf8')) as { file: string; args: string[] };
+    const proof = readCliProof(proofPath);
     if (proof.file !== realpathSync(kitScript)) failures.push(`resolved Kit CLI = ${proof.file}, want installed package file ${realpathSync(kitScript)}`);
     if (!proof.args.includes('--disable-polyspec-orm-native-test')) failures.push(`release build option was not passed to Kit: ${proof.args.join(' ')}`);
     if (readFileSync(output, 'utf8') !== previousArtifact) failures.push('the previous published artifact changed');

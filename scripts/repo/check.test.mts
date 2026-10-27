@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { errorCode } from '../../tests/errors.mts';
@@ -106,7 +107,7 @@ caseTest('the Kit package path holds its lint configurations', COMPUTE, () => {
       { cwd: root, encoding: 'utf8', env: isolatedEnvironment() },
     );
     assert.equal(result.status, 0, result.stdout + result.stderr);
-    assert.equal(result.stdout.trim(), join(root, '..', 'kit'));
+    assert.equal(result.stdout.trim(), dirname(fileURLToPath(import.meta.resolve('@polyspec/kit/package.json'))));
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -441,7 +442,7 @@ caseTest('the SQLite Rust test recipe gives Kit one libtest thread option', PROC
 
     const output = await new Promise<{ code: number; text: string }>((resolve, reject) => {
       const child = spawn(process.execPath, [
-        join(root, '../kit/scripts/kit/run-tests.mts'),
+        fileURLToPath(import.meta.resolve('@polyspec/kit/run-tests')),
         'cargo',
         '--timeout',
         '10',
@@ -610,6 +611,15 @@ caseTest('every CI group runs the setup steps of its needs and of the setup step
   assert.deepEqual(groupSetupErrors({ 'stress-db': ['stress-only'] }, { 'stress-only': ['go', 'databases'] }), []);
 });
 
+caseTest('feature helper checks provision the databases and PHP extension their owners execute', COMPUTE, () => {
+  const needs = declaredNeeds(repository.pathname)['feature-helper-check'] ?? [];
+  assert.ok(needs.includes('complex-query'), 'Go complex-query helper requires its run-owned owner databases');
+  assert.ok(needs.includes('php-extension-tools'), 'the helper target builds the PHP extension');
+  const recipe = makeRecipes(text('Makefile')).find(unit => unit.name === 'Makefile feature-helper-check')?.commands.join('\n') ?? '';
+  assert.match(recipe, /php-extension-build .*packages\/php-ext\/scripts\/build\.sh/);
+  assert.match(recipe, /POLYSPEC_ORM_EXTENSION=/);
+});
+
 // The CI group setup case (G5.111) checks whether the group job's setup step runs only under the condition ci-setup.mts declares, and the group-needs
 // step writes the output of make ci-group-needs, and whether the summary and report after it write each group's run id and report.
 caseTest('a CI group job runs each setup step under its declared condition and reports per group', COMPUTE, () => {
@@ -679,7 +689,7 @@ caseTest('a workflow that runs a verification command of feature-check again fai
     'interface-check:',
     '\tPATH="$(HOME)/.cargo/bin:$(PATH)" go run ./tests/interfaces/check --self-test',
     'perf-check:',
-    '\t$(WITH_TEST_ENV) node scripts/perf-test.mts',
+    '\t$(WITH_TEST_ENV) export ORM_FEATURE_DSN="$$ORM_BENCH_MYSQL_DSN" ORM_FEATURE_DATABASE=mysql && node scripts/perf-test.mts',
     'fuzz-check:',
     "\tgo test ./packages/go/engine/ir -run '^$$' -fuzz FuzzDecodeRequest",
     '',

@@ -511,7 +511,7 @@
         },
         {
           "id": "idle-connection-end-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts idle-connection-end-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --offline -p polyspec-orm --features \"$ORM_RUST_TEST_FEATURES\" --test zone pool_discards_ended_idle_connection -- --exact --test-threads=1",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts idle-connection-end-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --offline --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test zone pool_discards_ended_idle_connection -- --exact --test-threads=1",
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/tests/zone.rs",
@@ -560,7 +560,7 @@
         },
         {
           "id": "replica-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts replica-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --offline -p polyspec-orm --features \"$ORM_RUST_TEST_FEATURES\" --test replica",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts replica-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --offline --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test replica",
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/tests/replica.rs",
@@ -1414,7 +1414,7 @@
         },
         {
           "id": "parent-slot-expansion-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts parent-slot-expansion-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked -p polyspec-orm --features \"$ORM_RUST_TEST_FEATURES\" --lib driver::parent_slot_tests::preserves_bare_dollar -- --exact --test-threads=1",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts parent-slot-expansion-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib driver::parent_slot_tests::preserves_bare_dollar -- --exact --test-threads=1",
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/src/driver.rs",
@@ -1575,7 +1575,7 @@
         },
         {
           "id": "decimal-rust-physical",
-          "command": ". \"$DECIMAL_ENV\" && node tests/cargo-test.mts decimal-rust-physical -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --bin decimal_physical",
+          "command": ". \"$DECIMAL_ENV\" && node tests/cargo-test.mts decimal-rust-physical -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test decimal_physical",
           "shard": "rust",
           "inputs": [
             "packages/rust/tests/tests/decimal_physical.rs",
@@ -2459,7 +2459,7 @@
         },
         {
           "id": "decimal-rust-physical",
-          "command": ". \"$DECIMAL_ENV\" && node tests/cargo-test.mts decimal-rust-physical -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --bin decimal_physical",
+          "command": ". \"$DECIMAL_ENV\" && node tests/cargo-test.mts decimal-rust-physical -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test decimal_physical",
           "shard": "rust",
           "inputs": [
             "packages/rust/tests/tests/decimal_physical.rs",
@@ -11798,7 +11798,7 @@
         },
         {
           "id": "catalog-row-baseline-php",
-          "command": "make --no-print-directory php-models && env ORM_PHP_MODE=library node ../kit/scripts/kit/run-tests.mts phpunit -- --configuration packages/php/phpunit.xml.dist --filter testRowBaselineComparesExactValuesIncludingGeneratedOriginals packages/php/tests/CatalogQueryBoundsTest.php",
+          "command": "make --no-print-directory php-models && env ORM_PHP_MODE=library node \"$(node --input-type=module -e 'import { fileURLToPath } from \"node:url\"; process.stdout.write(fileURLToPath(import.meta.resolve(\"@polyspec/kit/run-tests\")))')\" phpunit -- --configuration packages/php/phpunit.xml.dist --filter testRowBaselineComparesExactValuesIncludingGeneratedOriginals packages/php/tests/CatalogQueryBoundsTest.php",
           "shard": "other",
           "inputs": [
             "Makefile",
@@ -11807,7 +11807,7 @@
         },
         {
           "id": "catalog-row-baseline-typescript",
-          "command": "node ../kit/scripts/kit/run-tests.mts node -- --test-name-pattern='^row baseline compares exact typed values including generated-column originals$' packages/ts/tests/catalog-mutation-helper.test.mjs",
+          "command": "node \"$(node --input-type=module -e 'import { fileURLToPath } from \"node:url\"; process.stdout.write(fileURLToPath(import.meta.resolve(\"@polyspec/kit/run-tests\")))')\" node -- --test-name-pattern='^row baseline compares exact typed values including generated-column originals$' packages/ts/tests/catalog-mutation-helper.test.mjs",
           "shard": "other",
           "inputs": [
             "packages/ts/tests/catalog-mutation-helper.test.mjs"
@@ -13672,7 +13672,7 @@
         "packages/php/tests/DbspecRenderTest.php",
         "packages/php-ext/tests/DbspecRulesNativeTest.php"
       ],
-      "command": "env ORM_PHP_MODE=library node ../kit/scripts/kit/run-tests.mts phpunit -- --configuration packages/php/phpunit.xml.dist --filter DbspecRenderTest::testUnknownDialect packages/php/tests/DbspecRenderTest.php"
+      "command": "env ORM_PHP_MODE=library node \"$(node --input-type=module -e 'import { fileURLToPath } from \"node:url\"; process.stdout.write(fileURLToPath(import.meta.resolve(\"@polyspec/kit/run-tests\")))')\" phpunit -- --configuration packages/php/phpunit.xml.dist --filter DbspecRenderTest::testUnknownDialect packages/php/tests/DbspecRenderTest.php"
     },
     {
       "id": "dbspec-sqlite-literal-rows",

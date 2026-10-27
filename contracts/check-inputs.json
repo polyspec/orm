@@ -597,6 +597,7 @@
       ],
       "inputs": [
         "Makefile",
+        "packages/php-gen/phpunit.xml.dist",
         "packages/php-gen/composer.json",
         "packages/php-gen/bin/orm-gen",
         "packages/php-gen/src/OrmGen.php",
@@ -2102,6 +2103,7 @@
       ],
       "inputs": [
         "Makefile",
+        "contracts/performance-references.json",
         "packages/ts/tests/coverage_performance_gate.mjs",
         "packages/ts/tests/coverage_performance_report.mjs",
         "packages/ts/tests/coverage_performance_gate.test.mjs"
@@ -3094,7 +3096,9 @@
         "composer",
         "node-modules",
         "databases",
-        "python"
+        "python",
+        "complex-query",
+        "php-extension-tools"
       ]
     },
     "feature-stress-mysql-check": {

@@ -27,7 +27,7 @@ func coverageHotPathGate(t *testing.T, expected string) {
 	dsn := os.Getenv("ORM_FEATURE_DSN")
 	driver := os.Getenv("ORM_FEATURE_DATABASE")
 	if dsn == "" || driver == "" {
-		t.Fatal("ORM_FEATURE_DSN and ORM_FEATURE_DATABASE are required; run this case through make feature-check")
+		t.Fatal("ORM_FEATURE_DSN and ORM_FEATURE_DATABASE are required; run through make feature-check or make perf-check, which supplies the seeded MySQL bench database")
 	}
 	if driver != expected {
 		t.Fatalf("coverage entrypoint expects %s, received %s", expected, driver)
