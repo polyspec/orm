@@ -39,10 +39,23 @@ const PHP_EXTENSION_RUN = join(root, `.runtime/run/client-db-php-extension-${pro
 const PHP_EXTENSION_LIBRARY = join(PHP_EXTENSION_RUN, 'php-extension/polyspec_orm.so');
 const KIT_RUN_TESTS = fileURLToPath(import.meta.resolve('@polyspec/kit/run-tests'));
 const PHP_EXTENSION_BUILD: Command = { program: 'node', args: ['tests/run-long.mts', 'php-extension-build', '--', 'sh', 'packages/php-ext/scripts/build.sh', PHP_EXTENSION_LIBRARY], cwd: root };
-const PHP_EXTENSION: Command[] = PHP_TESTS.map(test => ({
-  program: 'node', args: [KIT_RUN_TESTS, 'phpunit', '--php-extension', PHP_EXTENSION_LIBRARY, '--', '--configuration', 'packages/php/phpunit.xml.dist', `packages/php/tests/${test}.php`],
-  cwd: root, env: { ORM_PHP_MODE: 'extension' },
-}));
+const PHP_EXTENSION: Command[] = PHP_TESTS.flatMap(test => {
+  const file = `packages/php/tests/${test}.php`;
+  const command = (options: { timeout?: number; filter?: string; excludeFilter?: string } = {}): Command => {
+    const args = [KIT_RUN_TESTS, 'phpunit'];
+    if (options.timeout !== undefined) args.push('--timeout', String(options.timeout));
+    args.push('--php-extension', PHP_EXTENSION_LIBRARY, '--', '--configuration', 'packages/php/phpunit.xml.dist');
+    if (options.filter !== undefined) args.push('--filter', options.filter);
+    if (options.excludeFilter !== undefined) args.push('--exclude-filter', options.excludeFilter);
+    args.push(file);
+    return { program: 'node', args, cwd: root, env: { ORM_PHP_MODE: 'extension' } };
+  };
+  // Replica apply may need the full 60-second SOURCE_POS_WAIT budget on a busy CI runner. Give only that test the
+  // existing PHPUnit Medium deadline; the remaining ModelTest cases keep the normal 30-second case deadline.
+  return test === 'ModelTest'
+    ? [command({ timeout: 120, filter: 'testPrimaryAndReplica' }), command({ excludeFilter: 'testPrimaryAndReplica' })]
+    : [command()];
+});
 // The Python database tests run as modules of packages.python.tests with the Python of the venv (ORM_PYTHON).
 const PYTHON_TESTS = ['mysql_session', 'statement_fault', 'identity_load', 'schema_inspection', 'statement_events', 'install_changed_database', 'mysql_tls', 'connection_config', 'replica', 'connection_utc', 'connection_pool', 'aes_rotation'];
 const PYTHON: Command[] = PYTHON_TESTS.map(test => ({ program: variable('ORM_PYTHON'), args: ['-m', `packages.python.tests.${test}`], cwd: root }));

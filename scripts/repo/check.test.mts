@@ -415,6 +415,27 @@ caseTest('every PHPUnit run of the Makefile goes through run-tests', COMPUTE, ()
   assert.deepEqual(text('Makefile').split('\n').filter(line => direct.test(line)), []);
 });
 
+caseTest('the PHP extension suite and codec output comparison use their owning inputs', COMPUTE, () => {
+  const makefile = text('Makefile');
+  const filterText = /^PHP_EXTENSION_NATIVE_CASES = (.+)$/m.exec(makefile)?.[1];
+  assert.ok(filterText, 'the extension suite declares its native test selection');
+  const nativeCases = new RegExp(filterText);
+  assert.ok(nativeCases.test('Polyspec\\Orm\\Extension\\Tests\\CodecVectorsExtensionTest::testPhpVector'));
+  assert.ok(!nativeCases.test('Polyspec\\Orm\\Tests\\CodecVectorsTest::testPhpVector'));
+  for (const runtime of ['Go', 'Rust', 'Typescript', 'Python']) {
+    assert.ok(
+      !nativeCases.test(`Polyspec\\Orm\\Extension\\Tests\\CodecVectorsExtensionTest::test${runtime}Output "json.null"`),
+      `${runtime} output vectors need the writers of codec-check`,
+    );
+  }
+  assert.match(makefile, /test-php-ext: export CASES \?= \$\(PHP_EXTENSION_NATIVE_CASES\)/);
+  assert.match(makefile, /^codec-check\/compare: .*build-php-ext$/m);
+  assert.match(
+    makefile,
+    /ORM_CODEC_OUT=\$\(CODEC_OUT\) env ORM_PHP_MODE=extension .*--configuration packages\/php-ext\/phpunit\.xml\.dist --filter 'test\(Go\|Rust\|Typescript\|Python\)Output' packages\/php-ext\/tests\/CodecVectorsExtensionTest\.php/,
+  );
+});
+
 caseTest('the SQLite Rust test recipe gives Kit one libtest thread option', PROCESS, async () => {
   const root = repository.pathname;
   const recipe = /^schema-exists-sqlite-rust-check:[^\n]*\n((?:\t[^\n]*\n)+)/m.exec(text('Makefile'))?.[1];

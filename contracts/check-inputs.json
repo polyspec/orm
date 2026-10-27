@@ -1522,14 +1522,15 @@
       ]
     },
     "codec-check": {
-      "scope": "owner",
+      "scope": "suite",
       "needs": [
         "go",
         "rust",
         "php",
         "composer",
         "python",
-        "node-modules"
+        "node-modules",
+        "php-extension-tools"
       ],
       "inputs": [
         "tests/codec/**",

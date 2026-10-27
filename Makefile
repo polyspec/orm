@@ -928,6 +928,10 @@ PHP_EXTENSION_LIBRARY = $(RUN_DIR)/php-extension/polyspec_orm.so
 # Kit's test-php-ext runner starts PHP children outside the invoking make recipe; expose the same built module to those children.
 test-php-ext: export ORM_PHP_MODE = extension
 test-php-ext: export POLYSPEC_ORM_EXTENSION ?= $(CURDIR)/var/php-ext/polyspec_orm.so
+# The extension target owns the native package tests. Other-language codec output vectors are compared in codec-check below,
+# where this run's writers have populated ORM_CODEC_OUT.
+PHP_EXTENSION_NATIVE_CASES = ^Polyspec\\Orm\\Extension\\Tests\\(?!(?:CodecVectorsExtensionTest::test(?:Go|Rust|Typescript|Python)Output))
+test-php-ext: export CASES ?= $(PHP_EXTENSION_NATIVE_CASES)
 # PHP_EXTENSION_TESTS runs PHPUnit files of packages/php with the extension loaded, through kit's run-tests, which gives each test
 # its own timeout (K436); both extension PHPUnit commands exclude userland fallbacks (T182-6-19).
 PHP_EXTENSION_TESTS = env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) --without-library packages/php -- --configuration packages/php/phpunit.xml.dist
@@ -1732,9 +1736,15 @@ replica-check: php-vendor-check php-models python-venv-check lease-tool
 	$(WITH_TEST_ENV) $(NODE) tests/go-test.mts -v -timeout 0 ./packages/go/model -run '^Test(PrimaryAndReplica|ReadOnlySQLite)$$' -count=1
 	$(WITH_TEST_ENV) $(NODE) packages/ts/tests/replica.mjs
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.replica
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter 'testPrimaryAndReplica|testReadOnly' packages/php/tests/ModelTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit --timeout 120 -- --configuration packages/php/phpunit.xml.dist --filter 'testPrimaryAndReplica' packages/php/tests/ModelTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter 'testReadOnly' packages/php/tests/ModelTest.php
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
-	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) --filter 'testPrimaryAndReplica|testReadOnly' packages/php/tests/ModelTest.php; status=$$?; rm -rf $(RUN_DIR); exit $$status
+	@set -eu; \
+	status=0; \
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --timeout 120 --php-extension "$(PHP_EXTENSION_LIBRARY)" --without-library packages/php -- --configuration packages/php/phpunit.xml.dist --filter 'testPrimaryAndReplica' packages/php/tests/ModelTest.php || status=$$?; \
+	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) --filter 'testReadOnly' packages/php/tests/ModelTest.php || status=$$?; \
+	rm -rf $(RUN_DIR); \
+	exit $$status
 	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) replica-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --test replica -- --test-threads=1
 
 # session-state-check runs the case of every client that the session state of a transaction ends with the transaction
@@ -2522,8 +2532,9 @@ codec-check/typescript: lease-tool
 	mkdir -p $(CODEC_OUT)
 	$(TSC_BUILD)
 	ORM_CODEC_OUT=$(CODEC_OUT) $(NODE) packages/ts/tests/codec-vector.mjs
-codec-check/compare: php-vendor-check codec-check/go codec-check/rust codec-check/typescript codec-check/python
+codec-check/compare: php-vendor-check codec-check/go codec-check/rust codec-check/typescript codec-check/python build-php-ext
 	ORM_CODEC_OUT=$(CODEC_OUT) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecVectorsTest.php
+	ORM_CODEC_OUT=$(CODEC_OUT) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist --filter 'test(Go|Rust|Typescript|Python)Output' packages/php-ext/tests/CodecVectorsExtensionTest.php
 	rm -rf $(CODEC_OUT)
 
 # bind-check runs the shared cases of tests/bind/vectors.json in the five clients (tests/bind/README.md): the bind
