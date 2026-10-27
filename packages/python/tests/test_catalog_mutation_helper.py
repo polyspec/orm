@@ -1,5 +1,7 @@
+import sqlite3
 import unittest
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 
 from . import testcase
 from polyspec.orm import codes
@@ -11,6 +13,7 @@ from polyspec.orm.catalog import (
     _MYSQL_TIME,
     _mysql_catalog_value,
     _mysql_time_value,
+    _Session,
     _lock_original_row,
     _same_column_value,
 )
@@ -51,6 +54,19 @@ class FakeSession:
 
 
 class CatalogMutationHelperTest(unittest.TestCase):
+    # Requirements: INT-115.
+    def test_plain_query_byte_budget_counts_utf8_bytes(self):
+        connection = sqlite3.connect(":memory:")
+        try:
+            session = _Session("sqlite", SimpleNamespace(connection=connection))
+            with self.assertRaises(OrmError) as overflow:
+                session.run("SELECT 'é' AS value", max_rows=1, max_bytes=1)
+            self.assertEqual(overflow.exception.code, codes.CATALOG_LIMIT)
+            exact = session.run("SELECT 'é' AS value", max_rows=1, max_bytes=2)
+            self.assertEqual(exact.rows, [["é"]])
+        finally:
+            connection.close()
+
     # Requirements: INT-103, INT-117.
     def test_mysql_catalog_time_text_keeps_precision_and_datetime_comparison_is_typed(
         self,

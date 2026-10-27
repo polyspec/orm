@@ -922,7 +922,13 @@ class _Session:
                         ]
                     )
                     for value in converted:
-                        budget += len(value) if isinstance(value, (str, bytes)) else 8
+                        budget += (
+                            len(value.encode("utf-8"))
+                            if isinstance(value, str)
+                            else len(value)
+                            if isinstance(value, bytes)
+                            else 8
+                        )
                     if max_bytes is not None and budget > max_bytes:
                         raise _error(
                             codes.CATALOG_LIMIT,
