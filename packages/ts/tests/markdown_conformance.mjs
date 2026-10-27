@@ -116,6 +116,18 @@ async function serve(bin, step) {
 
 let served;
 
+function withServerDiagnostics(error, s) {
+  const server = s?.server;
+  if (server === undefined) return error;
+  const status = server.exitCode !== null
+    ? `exited with code ${server.exitCode}`
+    : server.signalCode !== null
+      ? `ended with signal ${server.signalCode}`
+      : 'is still running';
+  const stderr = s.stderr.trim();
+  return new Error(`${error instanceof Error ? error.message : String(error)}\nflowmark server ${status}${stderr === '' ? '' : `; stderr:\n${stderr}`}`, { cause: error });
+}
+
 let ready = false;
 let all = [];
 await runner.run('markdown/setup', PROCESS, async ({ step }) => {
@@ -156,7 +168,7 @@ if (ready) {
         if (!isDeepStrictEqual(actual, c.expect)) throw new Error(`${c.id}: got ${JSON.stringify(actual)}, want ${JSON.stringify(c.expect)}`);
       } catch (error) {
         stopped = c.id;
-        throw error;
+        throw withServerDiagnostics(error, served);
       }
     });
   }
