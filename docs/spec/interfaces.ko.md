@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: cf0b6e70fb6a939aeab1a5d653732c8a6f0b18f1dc18e446d2ffd116b1269292 -->
+<!-- source-sha256: de30411480e396875710f3075f556e167d7bcf97cc74a80be4696d62be3fb7bf -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -550,6 +550,6 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 - **INT-143** Go의 `github.com/polyspec/orm/packages/go/orm` API는 plan-cache key formatter인 `PlanID(key uint64) string`을 공개한다. 반환값은 왼쪽을 0으로 채운 정확히 16자리의 소문자 16진수다. 이는 Go 전용 package API다.
 - **INT-144** PHP 패키지 `polyspec/orm`은 `Polyspec\Orm\Go::quote`, `Go::json` 및 `GoMap`을 공개한다. `quote`는 Go 호환 인용 텍스트를 쓰며 출력 가능한 유니코드는 보존하고 제어 문자와 잘못된 UTF-8 바이트는 이스케이프한다. `json`은 Go 호환 문자열 이스케이프(`<`, `>`, `&` 포함)를 사용해 compact 또는 들여쓰기 JSON 텍스트를 쓰며, 잘못된 UTF-8은 U+FFFD로 바꾸고 float 같은 지원하지 않는 값은 거부한다. PHP list는 요소 순서를 유지하고 일반 associative array는 삽입 순서를 유지하며 `GoMap`은 객체 키를 정렬해 쓴다.
 - **INT-145** Python 배포물은 host integration의 native 진입점을 선언한다: `orm-gen` console command(`polyspec.orm.bin_orm_gen:main`), model 생성 함수 `polyspec.orm.generate.python.generate_models`와 `render_models`, scanner `polyspec.orm.generate.scan.scan_model_calls`, driver adapter `polyspec.orm.driver_cells.mysql_conversions`와 `postgres_loaders`, placeholder 선언 `polyspec.orm.placeholders.MYSQL_QUOTES`, `POSTGRES_QUOTES`, `for_mysql`, `for_postgres`, wall-clock source `polyspec.orm.clock.wall_micros`다. 기존 의미는 DSL-128/151/152, COD-2, DIA-197, PRT-33이 소유한다. 이 Python native inventory는 공통 callable signature를 주장하거나 다른 client에 동등 API를 추가하지 않는다.
-- **INT-146** PHP-extension 패키지 `polyspec/orm-php-ext`는 native extension 선언을 통해 INT-144와 같은 `Polyspec\Orm\Go::quote`, `Go::json`, `GoMap` 텍스트 계약을 공개한다. 인용 문자열과 JSON 문서는 Go 호환 이스케이프, 순서, 잘못된 UTF-8 처리 및 지원하지 않는 값 오류를 동일하게 따른다.
+- **INT-146** PHP-extension 패키지 `polyspec/orm-php-ext`는 native extension 선언을 통해 INT-144와 같은 `Polyspec\Orm\Go::quote`, `Go::json`, `GoMap` 텍스트 동작을 공개한다. 인용 문자열과 JSON 문서는 Go 호환 이스케이프, 순서, 잘못된 UTF-8 처리 및 지원하지 않는 값 오류를 동일하게 따른다.
 - **INT-147** Python `polyspec-orm` 패키지는 engine dialect hook을 Python 형식으로 공개한다: `MysqlDialect.restart_identity`, `PostgresDialect.restart_identity`, `SqliteDialect.restart_identity`, `PostgresDialect.read_uuid`, `PostgresDialect.write_uuid`, `SqliteDialect.row_lock`. 이는 기존 identity 재시작, UUID, row-lock 의미(PRT-2/27, DIA-48/PRT-67, PRT-8)의 native 선언이며 다른 client가 같은 callable dialect method를 제공한다는 뜻은 아니다.
 - **INT-148** Python wheel은 test-only fault facade인 `polyspec.orm.testing.fail_next_rollback`, `fail_next_statement`, `fix_clock`, `last_affected`를 공개한다. 이들은 명시적으로 import하며 `polyspec.orm`에서 재노출하지 않는다. 동작은 PRT-47, PRT-52, PRT-57, PRT-62에 정의한다.
