@@ -19,8 +19,10 @@ namespace Polyspec\Orm\Tests;
 use PDO;
 use PDOException;
 use RuntimeException;
+use Polyspec\Orm\Dbspec\ApplyError;
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Dbspec\Diagnostic;
+use Polyspec\Orm\Dbspec\PlanSchemaMismatch;
 use Polyspec\Orm\Dbspec\Unsupported;
 use Polyspec\Orm\Orm;
 use PHPUnit\Framework\Assert;
@@ -108,6 +110,58 @@ function plan_steps(PDO $pdo, string $dialect, array $steps): void
 #[Medium]
 class DbspecPlanApplyTest extends TestCase
 {
+    public function testDriftApplyErrorKeepsTheSchemaMismatchAsItsCause(): void
+    {
+        $pdo = new PDO('sqlite::memory:', options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $pdo->exec('CREATE TABLE stray (id INTEGER)');
+
+        try {
+            Dbspec::apply($pdo, 'sqlite', [], static fn(): \DateTimeImmutable => new \DateTimeImmutable(), null);
+            self::fail('apply accepted a database that differs from the empty chain');
+        } catch (ApplyError $error) {
+            self::assertSame('drift', $error->code_);
+            self::assertSame('', $error->plan);
+            self::assertSame(0, $error->step);
+            self::assertInstanceOf(PlanSchemaMismatch::class, $error->getPrevious());
+            self::assertSame(
+                $error->getPrevious()->getMessage(),
+                substr($error->getMessage(), strlen('drift: ')),
+            );
+        }
+    }
+
+    public function testRollbackDriftApplyErrorKeepsTheSchemaMismatchAsItsCause(): void
+    {
+        $case = null;
+        foreach (plan_vectors()['cases'] as $candidate) {
+            if ($candidate['id'] === 'create-from-empty') {
+                $case = $candidate;
+                break;
+            }
+        }
+        self::assertNotNull($case, 'plans.json includes create-from-empty');
+        $parsed = Dbspec::parsePlan(dbspec_plan_text($case['plan']));
+        $plan = $parsed->plan ?? plan_failure('create-from-empty', $parsed->diagnostics);
+        $pdo = new PDO('sqlite::memory:', options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $now = static fn(): \DateTimeImmutable => new \DateTimeImmutable();
+        Dbspec::apply($pdo, 'sqlite', [$plan], $now, null);
+        $pdo->exec('CREATE TABLE stray (id INTEGER)');
+
+        try {
+            Dbspec::rollback($pdo, 'sqlite', [$plan], $now, null);
+            self::fail('rollback accepted a database that differs from the applied plan');
+        } catch (ApplyError $error) {
+            self::assertSame('drift', $error->code_);
+            self::assertSame($plan->name, $error->plan);
+            self::assertSame(0, $error->step);
+            self::assertInstanceOf(PlanSchemaMismatch::class, $error->getPrevious());
+            self::assertSame(
+                'drift ' . $plan->name . ': ' . $error->getPrevious()->getMessage(),
+                $error->getMessage(),
+            );
+        }
+    }
+
     public static function planCases(): iterable
     {
         foreach (plan_vectors()['cases'] as $case) {

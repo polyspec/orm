@@ -524,8 +524,8 @@ abstract class Model implements \JsonSerializable, ModelMetadata
         if (preg_match('/[+-]\d\d(:?\d\d)?$/', $s) === 1) {
             try {
                 return (new \DateTimeImmutable($s))->setTimezone($zone);
-            } catch (\Exception) {
-                throw new OrmException(Code::CODEC_DECODE, "invalid date value $s");
+            } catch (\Exception $e) {
+                throw new OrmException(Code::CODEC_DECODE, "invalid date value $s", $e);
             }
         }
         foreach (['Y-m-d H:i:s.u', 'Y-m-d H:i:s', 'Y-m-d'] as $format) {
@@ -2383,7 +2383,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
         try {
             return json_encode($v, self::JSON_FLAGS);
         } catch (\JsonException $e) {
-            throw new OrmException(Code::CODEC_ENCODE, 'json: ' . $e->getMessage());
+            throw new OrmException(Code::CODEC_ENCODE, 'json: ' . $e->getMessage(), $e);
         }
     }
 

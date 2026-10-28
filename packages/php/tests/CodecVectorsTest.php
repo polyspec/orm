@@ -15,6 +15,7 @@ use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Codec;
+use Polyspec\Orm\Model;
 use Polyspec\Orm\OrmException;
 use Polyspec\Orm\StyledValue;
 
@@ -97,6 +98,34 @@ class CodecVectorsTest extends TestCase
             } catch (\Throwable $exception) {
                 self::assertSame($cause, $exception);
             }
+        }
+    }
+
+    public function testModelDateErrorKeepsItsNativeCause(): void
+    {
+        $timeValue = new \ReflectionMethod(Model::class, 'timeValue');
+        try {
+            $timeValue->invoke(null, '2026-13-40 12:00:00+99:99', new \DateTimeZone('UTC'));
+            self::fail('an invalid offset date was accepted');
+        } catch (\ReflectionException $error) {
+            throw $error;
+        } catch (OrmException $error) {
+            self::assertSame(Code::CODEC_DECODE, $error->code_);
+            self::assertSame('CODEC_DECODE: invalid date value 2026-13-40 12:00:00+99:99', $error->getMessage());
+            self::assertInstanceOf(\Exception::class, $error->getPrevious());
+        }
+    }
+
+    public function testModelJsonErrorKeepsItsNativeCause(): void
+    {
+        try {
+            Model::jsonText("\xFF");
+            self::fail('invalid UTF-8 JSON text was encoded');
+        } catch (OrmException $error) {
+            self::assertSame(Code::CODEC_ENCODE, $error->code_);
+            self::assertStringStartsWith('CODEC_ENCODE: json: ', $error->getMessage());
+            self::assertInstanceOf(\JsonException::class, $error->getPrevious());
+            self::assertSame(JSON_ERROR_UTF8, $error->getPrevious()->getCode());
         }
     }
 

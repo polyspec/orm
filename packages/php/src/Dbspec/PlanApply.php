@@ -210,7 +210,7 @@ final class PlanApply
                 try {
                     $a->verify($plan->to);
                 } catch (PlanSchemaMismatch $e) {
-                    throw new ApplyError('drift', $plan->name, 0, $e->getMessage());
+                    throw new ApplyError('drift', $plan->name, 0, '', $e);
                 } catch (\RuntimeException $e) {
                     throw new ApplyError('verify', $plan->name, 0, '', $e);
                 }
@@ -630,7 +630,7 @@ final class PlanApply
         try {
             $this->verify($want);
         } catch (PlanSchemaMismatch $e) {
-            throw new ApplyError('drift', '', 0, $e->getMessage());
+            throw new ApplyError('drift', '', 0, '', $e);
         } catch (\RuntimeException $e) {
             throw new ApplyError('verify', '', 0, '', $e);
         }

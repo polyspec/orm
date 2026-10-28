@@ -55,4 +55,31 @@ final class CatalogConnectionCoverageSurfaceTest extends TestCase
             self::assertSame(Code::ROW_UPDATE_INVALID, $error->code_);
         }
     }
+
+    public function testInvalidDescriptorKeepsTheColumnNameFailureAsItsCause(): void
+    {
+        $metadata = new CatalogTableMetadata(
+            ['namespace' => 'main', 'name' => 'sample'],
+            'table',
+            [new CatalogColumn("\xFF", 'text', false, false, false, null, false)],
+            ["\xFF"],
+            true,
+        );
+        $descriptorKeys = new \ReflectionMethod(Catalog::class, 'descriptorKeys');
+
+        try {
+            $descriptorKeys->invoke(null, $metadata);
+            self::fail('a descriptor with a non-UTF-8 column name was accepted');
+        } catch (\ReflectionException $error) {
+            throw $error;
+        } catch (\Polyspec\Orm\OrmException $error) {
+            self::assertSame(Code::ROW_SNAPSHOT_INVALID, $error->code_);
+            self::assertInstanceOf(\Polyspec\Orm\OrmException::class, $error->getPrevious());
+            self::assertSame(Code::TABLE_REFERENCE_INVALID, $error->getPrevious()->code_);
+            self::assertSame(
+                'TABLE_REFERENCE_INVALID: expected 1..1024 UTF-8 bytes without NUL',
+                $error->getPrevious()->getMessage(),
+            );
+        }
+    }
 }

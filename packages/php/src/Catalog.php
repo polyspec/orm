@@ -1796,8 +1796,8 @@ final class Catalog
      */
     private static function descriptorKeys(CatalogTableMetadata $metadata): array
     {
-        $invalid = static fn (string $reason): OrmException
-            => new OrmException(Code::ROW_SNAPSHOT_INVALID, "invalid original row or descriptor: $reason");
+        $invalid = static fn (string $reason, ?\Throwable $previous = null): OrmException
+            => new OrmException(Code::ROW_SNAPSHOT_INVALID, "invalid original row or descriptor: $reason", $previous);
         if (!in_array($metadata->kind, ['table', 'partitioned'], true)) {
             throw $invalid('the relation is not a table');
         }
@@ -1812,7 +1812,7 @@ final class Catalog
             try {
                 self::checkName($column->name);
             } catch (OrmException $e) {
-                throw $invalid($e->getMessage());
+                throw $invalid($e->getMessage(), $e);
             }
             if (isset($names[$column->name]) || str_contains($column->nativeType, "\0")) {
                 throw $invalid('duplicate column or invalid native type');
