@@ -180,6 +180,14 @@ fn int<T: Into<i64>>(v: T) -> Param {
     Param::I64(v.into())
 }
 
+fn datetime_text(value: NaiveDateTime) -> Param {
+    Param::Str(value.format("%Y-%m-%d %H:%M:%S%.6f").to_string())
+}
+
+fn date_text(value: NaiveDate) -> Param {
+    Param::Str(value.format("%Y-%m-%d").to_string())
+}
+
 scalar!(i64, int, Int, IntNull, Float, FloatNull, Decimal, DecimalNull);
 scalar!(i32, int, Int, IntNull, Float, FloatNull, Decimal, DecimalNull);
 scalar!(i16, int, Int, IntNull, Float, FloatNull, Decimal, DecimalNull);
@@ -192,8 +200,8 @@ scalar!(f32, |v: f32| Param::F64(v as f64), Float, FloatNull, Decimal, DecimalNu
 scalar!(bool, Param::Bool, Bool, BoolNull);
 scalar!(String, Param::Str, Text, TextNull, Decimal, DecimalNull, Time, TimeNull);
 scalar!(&str, |v: &str| Param::Str(v.to_owned()), Text, TextNull, Decimal, DecimalNull, Time, TimeNull);
-scalar!(NaiveDateTime, Param::DateTime, Time, TimeNull);
-scalar!(NaiveDate, Param::Date, Time, TimeNull);
+scalar!(NaiveDateTime, datetime_text, Time, TimeNull);
+scalar!(NaiveDate, date_text, Time, TimeNull);
 scalar!(Vec<u8>, Param::Bytes, Bytes, BytesNull);
 
 macro_rules! nullable {
@@ -239,7 +247,7 @@ macro_rules! compared {
 }
 compared!(i64 => Param::I64, i32 => |v: i32| Param::I64(v as i64), i16 => |v: i16| Param::I64(v as i64), u32 => |v: u32| Param::I64(v as i64),
     f64 => Param::F64, f32 => |v: f32| Param::F64(v as f64), bool => Param::Bool, String => Param::Str,
-    &str => |v: &str| Param::Str(v.to_owned()), NaiveDateTime => Param::DateTime, NaiveDate => Param::Date);
+    &str => |v: &str| Param::Str(v.to_owned()), NaiveDateTime => datetime_text, NaiveDate => date_text);
 
 /// A value stored with `set_<col>`.
 pub trait SetArg {
@@ -252,7 +260,7 @@ macro_rules! set_arg {
     };
 }
 set_arg!(i64 => Param::I64, i32 => |v: i32| Param::I64(v as i64), i16 => |v: i16| Param::I64(v as i64), f64 => Param::F64, bool => Param::Bool,
-    String => Param::Str, NaiveDateTime => Param::DateTime, NaiveDate => Param::Date, Vec<u8> => Param::Bytes);
+    String => Param::Str, NaiveDateTime => datetime_text, NaiveDate => date_text, Vec<u8> => Param::Bytes);
 
 /// The argument of `and`/`or`: a group callback, a joined model placed as a
 /// group (generated per model), or `()` for a connector written as its own call.
@@ -297,3 +305,7 @@ macro_rules! nullable_values {
 }
 nullable_values!(i16 => i16, i16 => i32, i16 => i64, i32 => i32, i32 => i64, i64 => i64, f64 => f64, f32 => f64, i32 => f64, bool => bool, String => String,
     &str => String, NaiveDateTime => NaiveDateTime, NaiveDate => NaiveDate, Vec<u8> => Vec<u8>, &[u8] => Vec<u8>);
+
+#[cfg(test)]
+#[path = "../tests/unit/temporal_args.rs"]
+mod temporal_args;
