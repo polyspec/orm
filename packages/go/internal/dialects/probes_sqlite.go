@@ -353,14 +353,14 @@ func sqliteProbes() []Probe {
 			e.Fails("INSERT INTO t VALUES ('2021-02-29')", "CHECK constraint failed")
 			e.Fails("INSERT INTO t VALUES ('x')", "CHECK constraint failed")
 		}),
-		p("render.time_check", "time() returns 24:00:00 and 24:00:01 unchanged, so CHECK (v IS time(v) AND v < '24:00:00') is needed for a time of day", func(e *Env) {
-			e.Want("SELECT time('24:00:00') || ' ' || time('24:00:01') || ' ' || coalesce(time('25:00:00'), 'NULL')", "24:00:00 24:00:01 NULL")
+		p("render.time_check", "the pinned SQLite 3.54.1 time() returns NULL for 24:00:00; the renderer CHECK rejects values outside a time of day", func(e *Env) {
+			e.Want("SELECT coalesce(time('24:00:00'), 'NULL') || ' ' || coalesce(time('25:00:00'), 'NULL')", "NULL NULL")
 			e.Exec("CREATE TABLE t (v TIME, CONSTRAINT t_v_time CHECK (v IS time(v) AND v < '24:00:00'))", "INSERT INTO t VALUES ('23:59:59'), (NULL)")
 			e.Fails("INSERT INTO t VALUES ('24:00:00')", "CHECK constraint failed")
 			e.Fails("INSERT INTO t VALUES ('7:00')", "CHECK constraint failed")
 		}),
-		p("render.datetime_check", "datetime() returns hour 24 unchanged, so a CHECK on length, datetime(), hour < 24 and a GLOB fraction accepts only YYYY-MM-DD HH:MM:SS.ffffff text of a valid date-time", func(e *Env) {
-			e.Want("SELECT datetime('2020-01-01 24:00:00')", "2020-01-01 24:00:00")
+		p("render.datetime_check", "the pinned SQLite 3.54.1 datetime() normalizes hour 24 to the next day; the renderer CHECK rejects hour 24 and malformed date-time text", func(e *Env) {
+			e.Want("SELECT datetime('2020-01-01 24:00:00')", "2020-01-02 00:00:00")
 			check := "CHECK (length(v) = 26 AND substr(v, 1, 19) IS datetime(substr(v, 1, 19)) AND substr(v, 12, 2) < '24' AND substr(v, 20, 1) = '.' AND substr(v, 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]')"
 			e.Exec("CREATE TABLE t (v DATETIME, CONSTRAINT t_v_dt "+check+")", "INSERT INTO t VALUES ('2020-02-29 23:59:59.123456'), (NULL)")
 			e.Fails("INSERT INTO t VALUES ('2021-02-29 00:00:00.000000')", "CHECK constraint failed")
