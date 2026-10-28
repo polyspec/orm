@@ -51,6 +51,7 @@ func restoreSQLiteSequence(ctx context.Context, db *sql.DB, table string, snapsh
 	return err
 }
 
+// Requirements: DIA-63.
 func TestCatalogSQLiteSequenceRestoration(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	ctx := context.Background()
