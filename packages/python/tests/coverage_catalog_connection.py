@@ -485,6 +485,19 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
             }
             metadata = self.catalog.describe_table(table)
             targets = {seq, seq - 1}
+            sqlite_native = None
+            sqlite_sequence_before = None
+            sqlite_sequence_existed = False
+            if self.driver == "sqlite":
+                url = urlsplit(self.dsn)
+                query = parse_qs(url.query)
+                sqlite_native = self._native_connection(url, query, sqlite_autocommit=True)
+                sqlite_sequence_row = sqlite_native.execute(
+                    "SELECT seq FROM sqlite_sequence WHERE name = 'bind_cell'"
+                ).fetchone()
+                sqlite_sequence_existed = sqlite_sequence_row is not None
+                if sqlite_sequence_row is not None:
+                    sqlite_sequence_before = sqlite_sequence_row[0]
             try:
                 self.catalog.insert_row(
                     metadata, [("seq", seq), ("label", "null-v"), ("body", None)]
@@ -520,9 +533,38 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
                     if not page.has_more:
                         break
                     offset += len(page.result.rows)
-                for snapshot in snapshots:
-                    self.catalog.delete_row(snapshot)
-                db.close()
+                try:
+                    for snapshot in snapshots:
+                        self.catalog.delete_row(snapshot)
+                finally:
+                    try:
+                        if sqlite_native is not None:
+                            if sqlite_sequence_existed:
+                                sqlite_native.execute(
+                                    "UPDATE sqlite_sequence SET seq = ? WHERE name = 'bind_cell'",
+                                    (sqlite_sequence_before,),
+                                )
+                            else:
+                                sqlite_native.execute(
+                                    "DELETE FROM sqlite_sequence WHERE name = 'bind_cell'"
+                                )
+                            restored = sqlite_native.execute(
+                                "SELECT seq FROM sqlite_sequence WHERE name = 'bind_cell'"
+                            ).fetchone()
+                            self.assertEqual(restored is not None, sqlite_sequence_existed)
+                            self.assertEqual(
+                                restored[0] if restored is not None else None,
+                                sqlite_sequence_before,
+                                "SQLite identity metadata is restored after test rows are removed",
+                            )
+                    finally:
+                        if sqlite_native is not None:
+                            try:
+                                sqlite_native.close()
+                            finally:
+                                db.close()
+                        else:
+                            db.close()
 
     # Requirements: DBS-113, INT-106, INT-108, INT-109, INT-110, INT-111.
     def test_row_mutation(self):

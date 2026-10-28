@@ -396,7 +396,18 @@ trait CatalogConnectionCoverageCases
             (string) getenv('ORM_FEATURE_DSN'),
             new Config(aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index')
         );
+        $sequenceConnection = null;
+        $sqliteSequenceExisted = false;
+        $sqliteSequenceBefore = null;
         try {
+            if ($this->driver === 'sqlite') {
+                $sequenceConnection = Orm::connect((string) getenv('ORM_FEATURE_DSN'), new Config());
+                $sequenceValue = $sequenceConnection->pdo()
+                    ->query("SELECT seq FROM sqlite_sequence WHERE name = 'bind_cell'")
+                    ->fetchColumn();
+                $sqliteSequenceExisted = $sequenceValue !== false;
+                $sqliteSequenceBefore = $sqliteSequenceExisted ? (int) $sequenceValue : null;
+            }
             $catalog->insertRow($metadata, ['seq' => $seq, 'label' => 'null-v', 'body' => null]);
             $catalog->insertRow($metadata, ['seq' => $seq - 1, 'label' => 'empty', 'body' => '']);
 
@@ -429,10 +440,38 @@ trait CatalogConnectionCoverageCases
                 }
                 $offset += count($page->result->rows);
             }
-            foreach ($snapshots as $snapshot) {
-                $catalog->deleteRow($snapshot);
+            try {
+                foreach ($snapshots as $snapshot) {
+                    $catalog->deleteRow($snapshot);
+                }
+            } finally {
+                try {
+                    if ($sequenceConnection !== null) {
+                        $pdo = $sequenceConnection->pdo();
+                        if ($sqliteSequenceExisted) {
+                            $statement = $pdo->prepare("UPDATE sqlite_sequence SET seq = ? WHERE name = 'bind_cell'");
+                            $statement->execute([$sqliteSequenceBefore]);
+                        } else {
+                            $pdo->exec("DELETE FROM sqlite_sequence WHERE name = 'bind_cell'");
+                        }
+                        $restored = $pdo
+                            ->query("SELECT seq FROM sqlite_sequence WHERE name = 'bind_cell'")
+                            ->fetchColumn();
+                        self::assertSame($sqliteSequenceExisted, $restored !== false);
+                        self::assertSame(
+                            $sqliteSequenceBefore,
+                            $restored === false ? null : (int) $restored,
+                            'SQLite identity metadata is restored after test rows are removed',
+                        );
+                    }
+                } finally {
+                    try {
+                        $db->close();
+                    } finally {
+                        $sequenceConnection?->close();
+                    }
+                }
             }
-            $db->close();
         }
     }
 
