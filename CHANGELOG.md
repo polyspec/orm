@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Split native CI checks by client and SQL backend, run Markdown in six native jobs, and isolate performance and public-API/native-binding parity phases without dropping shared comparisons. (KSTD-5-95)
 - Complete the native PHP client protocol with IR validation, codecs, planning, binding, execution and runtime classes. Shared native planner and bind cases, three-database six-client conformance and parity declarations provide execution evidence; native class names and ecosystem-library choices remain unchanged (T182).
 
 - The complete PHP ORM surface is implemented in native C with the same class names, no PHP product fallback and matching six-client conformance on all three databases; independent acceptance review reconciles the former schema-only hold with the completed implementation (T199).

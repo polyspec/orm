@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1cdb47d403b2977472a5c6c5f1b602ea4cd2f77d6d090e3b2e003a6883a9c993 -->
+<!-- source-sha256: 9a586f35cd332a43478f6b7059fd9147ec54449600800d0d1ec4cc50d3970ca9 -->
 # 변경 이력
 
 ## Unreleased
 
+- native CI 검사를 클라이언트·SQL 백엔드별로 나누고 Markdown을 6개 native 작업으로 실행하며, 공통 비교를 유지한 채 성능과 공개 API·native 실행 parity 단계를 분리합니다. (KSTD-5-95)
 - IR validation, codec, planning, binding, execution 및 runtime class를 포함한 native PHP client protocol을 완료했습니다. 공유 native planner와 bind 사례, 세 database의 여섯 클라이언트 conformance 및 parity 선언 검사로 실행 근거를 확인했으며 native class 이름과 생태계 라이브러리 선택은 유지합니다 (T182).
 
 - 전체 PHP ORM 표면을 같은 class 이름의 native C로 구현했으며 PHP 제품 코드 fallback 없이 세 database의 여섯 클라이언트 conformance가 일치합니다. 독립적인 수용 기준 검토에 따라 과거 schema 전용 구현을 이유로 한 보류를 완료된 구현과 일치시켰습니다 (T199).
