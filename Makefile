@@ -360,8 +360,9 @@ GO_PACKAGES = ./packages/go/... ./tests/... ./examples/...
 # go-test-check runs the Go package tests that no other target runs. The client package of packages/go
 # is run by client-db-check (scripts/client-db-test.mts), and the engine and generator are run by the verification commands of feature-check
 # (planner-go-* for each engine package, packages/go/engine/dbspec by dbspec-go-check of schema-go,
-# generator by generation-go), and packages/go/testcase is run by testcase-check with the same commands.
-GO_TEST_CHECK_PACKAGES = $$(go list ./packages/go/cmd/... ./packages/go/procevent/... ./packages/go/internal/... ./tests/... ./examples/...)
+# generator by generation-go), and packages/go/testcase is run by testcase-check with the same commands. The examples
+# package tests, including the DSN refusal and output comparisons, run once in example-check with their PHP, Python and database setup.
+GO_TEST_CHECK_PACKAGES = $$(go list ./packages/go/cmd/... ./packages/go/procevent/... ./packages/go/internal/... ./tests/...)
 .PHONY: go-test-check
 go-test-check:
 	$(WITH_TEST_ENV) $(GO_TEST) $(GO_TEST_CHECK_PACKAGES)
@@ -2876,12 +2877,12 @@ downloads-check:
 rust-driver-check: cargo-downloads-check
 	$(WITH_TEST_ENV) cd benchmarks/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) rust-driver-check -- cargo test --locked --offline -- --test-threads=1
 
-# example-check runs the Go, PHP and Rust programs of examples/complex and the Go, PHP, Rust, TypeScript and Python programs of
-# examples/thin-slice on the seeded bench database, and compares their stdout byte for byte as the README diff does. The Python
-# program runs on the venv of orm-install-python, so the target requires that venv.
-example-check: cargo-downloads-check python-venv-check
+# example-check runs the examples package's DSN refusal and output tests once. The output test runs the Go, PHP and Rust programs
+# of examples/complex and the Go, PHP, Rust, TypeScript and Python programs of examples/thin-slice on the seeded bench database.
+# The PHP examples load the Composer autoloader; Python runs on the orm-install-python venv.
+example-check: cargo-downloads-check php-vendor-check python-venv-check
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/examples --cwd packages/rust -- $(CARGO_COPY) debug/complex debug/demo -- $(CARGO_SIBLINGS) build --locked --offline -p polyspec-orm-tests --bin complex --bin demo
-	$(WITH_TEST_ENV) EXAMPLE_RUST_COMPLEX=$(RUN_TARGET)/debug/complex EXAMPLE_RUST_DEMO=$(RUN_TARGET)/debug/demo $(GO_TEST) -tags examples ./examples -run '^TestExampleOutputsAreIdentical$$' -count=1
+	$(WITH_TEST_ENV) EXAMPLE_RUST_COMPLEX=$(RUN_TARGET)/debug/complex EXAMPLE_RUST_DEMO=$(RUN_TARGET)/debug/demo $(GO_TEST) -tags examples ./examples -run '^(TestExampleOutputsAreIdentical|TestExamplesRequireBenchDSN)$$' -count=1
 	rm -rf $(RUN_DIR)
 
 # timing-check runs the Go, Rust, PHP, and TypeScript tests that time their own computation, with the process group throttled to a part of the CPU,

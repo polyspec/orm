@@ -24,6 +24,7 @@ import { kitCopies, kitOwnedPaths } from './kit-copies.mts';
 import { andLists, commands as shellCommands, segments, shellSegments } from './shell.mts';
 import { readWorkflow } from './workflow.mts';
 import { parse as parseYaml, stringify } from 'yaml';
+import { parse as parseToml } from 'smol-toml';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
 import { detachedGroupErrors, timeFailureErrors } from './sources.mts';
 import { callerEnvironmentErrors, generateRuns, scriptCommands, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, makeTargets, rustTestCaseErrors, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
@@ -659,8 +660,25 @@ caseTest('the CI groups run every target of CHECK_TARGETS in exactly one job', C
   assert.match(ciToolStep, /matrix\.group.*= static/);
   assert.match(ciToolStep, /then\n\s+make install-tools\n\s+else\n\s+make install-tools TOOLS="go/,
     'static checks every declared tool; other groups select only Go and the PHP/Python tools their needs require');
-  assert.match(ciToolStep, /outputs\.php == 'true'.*php composer phpunit/);
-  assert.match(ciToolStep, /outputs\.python == 'true'.*python uv/);
+  const selector = /make install-tools TOOLS="([^"]+)"/.exec(ciToolStep)?.[1] ?? '';
+  const selectedTools = [
+    ...(selector.split('${{')[0]?.trim().split(/\s+/) ?? []),
+    ...[...selector.matchAll(/outputs\.(?:php|python) == 'true' && ' ([^']+)'/g)]
+      .flatMap((match) => match[1].trim().split(/\s+/)),
+  ].filter(Boolean);
+  const mise = parseToml(text('mise.toml')) as { tools?: Record<string, unknown> };
+  const toolchain = JSON.parse(text('config/toolchain.json')) as { php?: unknown };
+  const declaredTools = new Set([
+    ...(mise.tools && Object.hasOwn(mise.tools, 'go') ? ['go'] : []),
+    ...(mise.tools && Object.hasOwn(mise.tools, 'python') ? ['python'] : []),
+    ...(mise.tools && Object.hasOwn(mise.tools, 'uv') ? ['uv'] : []),
+    ...(Array.isArray(toolchain.php) && toolchain.php.length > 0 ? ['php'] : []),
+    ...(mise.tools && Object.hasOwn(mise.tools, 'http:composer') ? ['composer'] : []),
+  ]);
+  assert.deepEqual(selectedTools, ['go', 'php', 'composer', 'python', 'uv']);
+  for (const selected of selectedTools) {
+    assert.ok(declaredTools.has(selected), `CI selects ${selected} for Kit install-tools, but it is not declared by this checkout`);
+  }
   assert.doesNotMatch(ciToolStep, /parity_api/,
     'API parity uses the selected runtime tools and its separate extractor installation step');
   assert.match(makefile, /^orm-install-python:\n\t\$\(MAKE\) --no-print-directory install-tools TOOLS="python uv"$/m,
@@ -1808,7 +1826,7 @@ caseTest('CI installs the declared PHP before make install-tools', COMPUTE, () =
   ]);
   const goOnly = make.replace('run: make install-tools', 'run: make install-tools TOOLS=go');
   assert.deepEqual(ciSetupErrors({ 'ci.yml': workflow(goOnly) }, { setup: {}, runner: [] }), []);
-  const phpSelected = make.replace('run: make install-tools', 'run: make install-tools TOOLS="go php phpunit"');
+  const phpSelected = make.replace('run: make install-tools', 'run: make install-tools TOOLS="go php"');
   assert.deepEqual(ciSetupErrors({ 'ci.yml': workflow(phpSelected) }, { setup: {}, runner: [] }), [
     'ci.yml step "mise tools" runs make install-tools before setup-php installs .php-version',
   ]);

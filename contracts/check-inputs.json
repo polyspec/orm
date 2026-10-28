@@ -1500,9 +1500,11 @@
         "rust",
         "php",
         "composer",
+        "python",
         "databases"
       ],
       "inputs": [
+        "Makefile",
         "examples/**"
       ]
     },

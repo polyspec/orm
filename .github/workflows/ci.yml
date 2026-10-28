@@ -111,7 +111,7 @@ jobs:
           if [ "${{ matrix.group }}" = static ]; then
             make install-tools
           else
-            make install-tools TOOLS="go${{ steps.group-needs.outputs.php == 'true' && ' php composer phpunit' || '' }}${{ steps.group-needs.outputs.python == 'true' && ' python uv' || '' }}"
+            make install-tools TOOLS="go${{ steps.group-needs.outputs.php == 'true' && ' php composer' || '' }}${{ steps.group-needs.outputs.python == 'true' && ' python uv' || '' }}"
           fi
       # check-run builds the Go lease runner in every group; it needs only x/sys
       # from the Go workspace. Runtime groups that declare Go work also install
