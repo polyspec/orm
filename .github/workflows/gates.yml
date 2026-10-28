@@ -283,7 +283,7 @@ jobs:
         if: ${{ matrix.runtime == 'php' && contains(needs.discover.outputs.extractors, 'php') }}
         run: make kit-install-symbols EXTRACTORS=php
       - name: link local packages
-        run: make link
+        run: make link RUNTIME=${{ matrix.runtime }}
       - id: context_prepare
         name: prepare runtime CI context
         run: make kit-ci-context-prepare GROUP=runtime RUNTIME=${{ matrix.runtime }}
