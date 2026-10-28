@@ -1,9 +1,8 @@
 <?php
 
 // The sqlite path loads no MySQL dialect class (N17): a child process uses php -n and the launcher's explicit module
-// list to run the sqlite path and an
-// autoloader that refuses orm's MySQL dialect classes. The child also asserts that a sqlite:// DSN selects the sqlite
-// dialect and SQLite PDO driver, and rejects MySQL driver modules. The launcher refuses a PHP whose MySQL drivers are
+// list to run the sqlite path and an autoloader that refuses orm's MySQL dialect classes. The parent asserts that the
+// child has only the SQLite PDO driver and no MySQL driver modules. The launcher refuses a PHP whose MySQL drivers are
 // compiled in because php -n cannot unload them.
 declare(strict_types=1);
 
@@ -23,18 +22,8 @@ final class SqliteWithoutMysqlTest extends TestCase
         $work = $argv[2];
         require $autoload;
         require $argv[3];
-        $mysqlModules = array_values(array_filter(
-            ['mysqlnd', 'pdo_mysql', 'mysqli'],
-            static fn(string $module): bool => extension_loaded($module)
-        ));
-        if ($mysqlModules !== []) {
-            fwrite(STDERR, 'php -n loaded MySQL modules: ' . implode(', ', $mysqlModules));
-            exit(7);
-        }
-        if (!extension_loaded('pdo_sqlite') || !in_array('sqlite', PDO::getAvailableDrivers(), true)) {
-            fwrite(STDERR, 'php -n must load pdo_sqlite for the SQLite-only case');
-            exit(8);
-        }
+        $modules = get_loaded_extensions();
+        $drivers = PDO::getAvailableDrivers();
         // orm's MySQL dialect classes: a load of one of them fails the child, before its code runs. It is registered
         // after the Composer loader, which prepends itself, so this guard sees every class load first.
         $mysqlDialect = ['Polyspec\\Orm\\Dbspec\\MysqlCatalog'];
@@ -49,10 +38,7 @@ final class SqliteWithoutMysqlTest extends TestCase
             new Polyspec\Orm\Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key')
         );
         $driver = $db->pdo()->getAttribute(PDO::ATTR_DRIVER_NAME);
-        if ($db->driver() !== 'sqlite' || $driver !== 'sqlite') {
-            fwrite(STDERR, "the sqlite DSN selected the dialect {$db->driver()} and the PDO driver $driver");
-            exit(4);
-        }
+        $dialect = $db->driver();
         \Polyspec\Orm\Tests\installBench($db);
         $created = (new Polyspec\Orm\Tests\Model\Service)($db)->setName('without-mysql')->create();
         $read = (new Polyspec\Orm\Tests\Model\Service)($db)->getBySeq($created->getSeq());
@@ -63,7 +49,13 @@ final class SqliteWithoutMysqlTest extends TestCase
                 exit(6);
             }
         }
-        echo $read->getName();
+        echo json_encode([
+            'name' => $read->getName(),
+            'dialect' => $dialect,
+            'pdo_driver' => $driver,
+            'modules' => $modules,
+            'drivers' => $drivers,
+        ], JSON_THROW_ON_ERROR);
         PHP;
 
     public function testSqlitePathLoadsNoMysqlDialectClass(): void
@@ -92,8 +84,17 @@ final class SqliteWithoutMysqlTest extends TestCase
         try {
             $extensions = getenv('ORM_PHP_WITHOUT_MYSQL_EXTENSIONS');
             self::assertIsString($extensions, 'the php-without-mysql launcher must declare its -n extensions');
+            $declaredExtensions = array_values(array_filter(
+                explode(',', $extensions),
+                static fn(string $name): bool => $name !== ''
+            ));
+            self::assertSame(
+                [],
+                array_values(array_intersect(['mysqlnd', 'pdo_mysql', 'mysqli'], $declaredExtensions)),
+                'the child module declaration must not load MySQL drivers'
+            );
             $extensionOptions = [];
-            foreach (array_filter(explode(',', $extensions), static fn(string $name): bool => $name !== '') as $name) {
+            foreach ($declaredExtensions as $name) {
                 self::assertMatchesRegularExpression('/^[a-z0-9_]+$/', $name, 'invalid -n extension name');
                 $extensionOptions[] = '-d';
                 $extensionOptions[] = "extension=$name";
@@ -120,7 +121,17 @@ final class SqliteWithoutMysqlTest extends TestCase
             fclose($pipes[2]);
             $status = proc_close($process);
             self::assertSame(0, $status, "the child exited with $status: stderr: $errors; stdout: $output");
-            self::assertSame('without-mysql', $output, "the child read the name $output");
+            $result = json_decode($output, true, 512, JSON_THROW_ON_ERROR);
+            self::assertSame('without-mysql', $result['name'] ?? null, 'the child read the SQLite row');
+            self::assertSame('sqlite', $result['dialect'] ?? null, 'the SQLite DSN selects the SQLite dialect');
+            self::assertSame('sqlite', $result['pdo_driver'] ?? null, 'the SQLite connection uses PDO SQLite');
+            self::assertContains('pdo_sqlite', $result['modules'] ?? [], 'the child loaded pdo_sqlite');
+            self::assertContains('sqlite', $result['drivers'] ?? [], 'the child exposes the SQLite PDO driver');
+            self::assertSame(
+                [],
+                array_values(array_intersect(['mysqlnd', 'pdo_mysql', 'mysqli'], $result['modules'] ?? [])),
+                'the child loaded no MySQL PDO modules'
+            );
         } finally {
             foreach (glob("$work/*") ?: [] as $file) {
                 unlink($file);

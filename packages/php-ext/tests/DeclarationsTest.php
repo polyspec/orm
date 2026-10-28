@@ -43,13 +43,9 @@ function dynamicModules(): array
         );
     }
     $modules = array_values(array_filter(explode(',', $declared), static fn(string $module): bool => $module !== ''));
-    // The stub extends Pdo\Pgsql when the running PHP has pdo_pgsql. The declarations child uses -n, so load that
-    // optional module there when it came from php.ini; do not load it again when this PHP has it without an ini.
-    if (
-        extension_loaded('pdo_pgsql')
-        && !in_array('pdo_pgsql', modulesWithoutIni(), true)
-        && !in_array('pdo_pgsql', $modules, true)
-    ) {
+    // The stub extends Pdo\Pgsql. The declarations child uses -n, so explicitly load the shared module when it is
+    // not built into this PHP executable.
+    if (!in_array('pdo_pgsql', modulesWithoutIni(), true) && !in_array('pdo_pgsql', $modules, true)) {
         $modules[] = 'pdo_pgsql';
     }
     return $modules;
@@ -202,9 +198,9 @@ final class DeclarationsTest extends TestCase
         );
         $loaded = dynamicModules();
         Assert::assertSame(
-            extension_loaded('pdo_pgsql') && !in_array('pdo_pgsql', modulesWithoutIni(), true),
+            !in_array('pdo_pgsql', modulesWithoutIni(), true),
             in_array('pdo_pgsql', $loaded, true),
-            'the -n declarations child loads optional pdo_pgsql only when the parent has it and the child lacks it'
+            'the -n declarations child explicitly loads pdo_pgsql when its PHP executable does not provide it'
         );
         $shared = moduleArguments(['pdo'], '/usr/lib/php/20250925');
         Assert::assertSame(
