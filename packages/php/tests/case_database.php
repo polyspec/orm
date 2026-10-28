@@ -17,6 +17,7 @@ use PDO;
 use RuntimeException;
 use Throwable;
 use Polyspec\Orm\Orm;
+use Polyspec\Orm\OrmException;
 
 /** A non-overlapping name orm_case_<pid>_<counter> per process. The counter counts from 1. */
 function case_name(): string
@@ -144,7 +145,8 @@ function with_case_database(string $driver, callable $step, callable $body): mix
         try {
             $database->drop();
         } catch (Throwable $dropped) {
-            throw new RuntimeException("{$e->getMessage()}; {$dropped->getMessage()}", 0, $e);
+            $primary = new RuntimeException("{$e->getMessage()}; {$dropped->getMessage()}", 0, $e);
+            throw OrmException::withCleanup($primary, $dropped);
         }
         throw $e;
     }

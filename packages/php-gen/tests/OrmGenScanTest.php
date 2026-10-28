@@ -12,6 +12,8 @@ namespace Polyspec\Orm\Tests;
 use PHPUnit\Framework\Attributes\DataProviderExternal;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
+use PhpParser\Error;
+use Polyspec\Orm\Scan;
 
 #[Small]
 class OrmGenScanTest extends TestCase
@@ -30,6 +32,20 @@ class OrmGenScanTest extends TestCase
     public static function tearDownAfterClass(): void
     {
         OrmGenTestSupport::removeWorkDirectory(self::$work);
+    }
+
+    public function testScanPreservesTheParserFailureAsItsCause(): void
+    {
+        $file = self::$work . '/parser-cause.php';
+        self::assertNotFalse(file_put_contents($file, "<?php\n\$value = new (;\n"));
+        try {
+            Scan::calls([$file], self::NS, ['Author']);
+            self::fail('a PHP source parse failure must stop the scan');
+        } catch (\RuntimeException $caught) {
+            self::assertStringContainsString('does not parse:', $caught->getMessage());
+            self::assertInstanceOf(Error::class, $caught->getPrevious());
+            self::assertSame("Syntax error, unexpected ';' on line 2", $caught->getPrevious()->getMessage());
+        }
     }
 
     /**

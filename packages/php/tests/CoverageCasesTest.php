@@ -167,16 +167,79 @@ final class CoverageCasesTest extends TestCase
             $restored = true;
         });
         $this->assertTrue($restored, 'restore after success');
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('case failed: body; restore failed: cleanup');
-        coverageRestoring(
-            static function (): void {
-                throw new RuntimeException('body');
-            },
-            static function (): void {
-                throw new RuntimeException('cleanup');
-            },
-        );
+        $failure = new RuntimeException('body');
+        $cleanup = new RuntimeException('cleanup');
+        try {
+            coverageRestoring(
+                static function () use ($failure): void {
+                    throw $failure;
+                },
+                static function () use ($cleanup): void {
+                    throw $cleanup;
+                },
+            );
+            self::fail('the body and restore failures must be reported');
+        } catch (OrmException $caught) {
+            self::assertStringContainsString('case failed: body; restore failed: cleanup', $caught->getMessage());
+            self::assertSame(
+                $failure,
+                $caught->getPrevious()?->getPrevious(),
+                'the original body throwable remains in the cause chain'
+            );
+            self::assertSame([$cleanup], $caught->cleanup, 'the cleanup throwable remains available as cleanup');
+        }
+    }
+
+    public function testCaseDatabasePreservesTheBodyAndDropFailures(): void
+    {
+        $path = null;
+        $warnings = [];
+        $failure = new RuntimeException('case body failed');
+        set_error_handler(static function (int $severity, string $message) use (&$warnings, &$path): bool {
+            if ($severity === E_WARNING && is_string($path) && str_starts_with($message, "unlink($path):")) {
+                $warnings[] = $message;
+                return true;
+            }
+            return false;
+        });
+        try {
+            try {
+                with_case_database(
+                    'sqlite',
+                    static function (string $_step): void {
+                    },
+                    static function (string $_dsn, CaseDatabase $database) use (&$path, $failure): void {
+                        $path = $database->name;
+                        self::assertTrue(
+                            unlink($database->name),
+                            'remove the SQLite case file before replacing it with a directory'
+                        );
+                        self::assertTrue(
+                            mkdir($database->name, 0700),
+                            'create a directory that makes database cleanup fail'
+                        );
+                        throw $failure;
+                    },
+                );
+                self::fail('the case body and database drop failures must be reported');
+            } catch (OrmException $caught) {
+                self::assertStringContainsString('case body failed', $caught->getMessage());
+                self::assertStringContainsString('drop sqlite file', $caught->getMessage());
+                self::assertSame(
+                    $failure,
+                    $caught->getPrevious()?->getPrevious(),
+                    'the body throwable remains in the cause chain'
+                );
+                self::assertCount(1, $caught->cleanup);
+                self::assertStringContainsString('unlink failed', $caught->cleanup[0]->getMessage());
+            }
+        } finally {
+            restore_error_handler();
+            if (is_string($path) && is_dir($path)) {
+                self::assertTrue(rmdir($path), 'remove the directory used to make the drop fail');
+            }
+        }
+        self::assertCount(1, $warnings, 'only the expected directory-unlink warning is handled');
     }
 
     public function testRestoresWholeConformanceCounterSnapshotAfterSuccessAndFailure(): void

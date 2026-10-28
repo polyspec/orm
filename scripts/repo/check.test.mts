@@ -653,9 +653,14 @@ caseTest('the CI groups run every target of CHECK_TARGETS in exactly one job', C
   assert.ok((targets.static ?? []).includes('toolchain-check'), 'the static group checks every declared toolchain pin');
   assert.equal(groupOutputs(targets.static ?? [], declaredNeeds(repository.pathname)).php, true,
     'the static group bootstraps the pinned PHP before the full tool inventory is installed');
-  const jobs = (parseYaml(workflow) as { jobs?: Record<string, { needs?: unknown }> }).jobs;
-  assert.ok(jobs?.test, 'the CI test matrix exists');
-  assert.equal(jobs.test.needs, undefined, 'runtime and comparison matrix jobs install their own dependencies without waiting for another job');
+  const workflowValue: unknown = parseYaml(workflow);
+  assert.ok(typeof workflowValue === 'object' && workflowValue !== null && 'jobs' in workflowValue, 'the workflow has a jobs mapping');
+  const jobs = workflowValue.jobs;
+  assert.ok(typeof jobs === 'object' && jobs !== null && !Array.isArray(jobs) && 'test' in jobs, 'the CI test matrix exists');
+  const testJob = jobs.test;
+  assert.ok(typeof testJob === 'object' && testJob !== null && !Array.isArray(testJob), 'the test job has a mapping');
+  assert.equal('needs' in testJob ? testJob.needs : undefined, undefined,
+    'runtime and comparison matrix jobs install their own dependencies without waiting for another job');
   const ciToolStep = /- name: tools of mise\.toml\n        id: go\n        if: \$\{\{ !cancelled\(\) \}\}\n        run: \|\n([\s\S]*?)\n      # check-run/.exec(workflow)?.[1] ?? '';
   assert.match(ciToolStep, /matrix\.group.*= static/);
   assert.match(ciToolStep, /then\n\s+make install-tools\n\s+else\n\s+make install-tools TOOLS="go/,
@@ -664,15 +669,17 @@ caseTest('the CI groups run every target of CHECK_TARGETS in exactly one job', C
   const selectedTools = [
     ...(selector.split('${{')[0]?.trim().split(/\s+/) ?? []),
     ...[...selector.matchAll(/outputs\.(?:php|python) == 'true' && ' ([^']+)'/g)]
-      .flatMap((match) => match[1].trim().split(/\s+/)),
+      .flatMap(match => match[1]?.trim().split(/\s+/) ?? []),
   ].filter(Boolean);
   const mise = parseToml(text('mise.toml')) as { tools?: Record<string, unknown> };
-  const toolchain = JSON.parse(text('config/toolchain.json')) as { php?: unknown };
+  const toolchainValue: unknown = JSON.parse(text('config/toolchain.json'));
+  assert.ok(typeof toolchainValue === 'object' && toolchainValue !== null, 'toolchain.json contains a mapping');
+  const phpToolchain = 'php' in toolchainValue ? toolchainValue.php : undefined;
   const declaredTools = new Set([
     ...(mise.tools && Object.hasOwn(mise.tools, 'go') ? ['go'] : []),
     ...(mise.tools && Object.hasOwn(mise.tools, 'python') ? ['python'] : []),
     ...(mise.tools && Object.hasOwn(mise.tools, 'uv') ? ['uv'] : []),
-    ...(Array.isArray(toolchain.php) && toolchain.php.length > 0 ? ['php'] : []),
+    ...(Array.isArray(phpToolchain) && phpToolchain.length > 0 ? ['php'] : []),
     ...(mise.tools && Object.hasOwn(mise.tools, 'http:composer') ? ['composer'] : []),
   ]);
   assert.deepEqual(selectedTools, ['go', 'php', 'composer', 'python', 'uv']);

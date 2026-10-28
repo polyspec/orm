@@ -7,7 +7,14 @@ import { readParityConfig } from '../../../scripts/json/formats.mts';
 
 type ApiSymbol = { implementation?: string; symbol?: string; symbols?: string[] };
 export type ParityBinding = { implementation?: string; test?: string; id?: string };
-type ApiUnit = { id?: string; kind?: string; requirements?: string[]; symbols?: ApiSymbol[]; bindings?: ParityBinding[] };
+type ApiUnit = {
+  id?: string;
+  kind?: string;
+  requirements?: string[];
+  owner?: { kind?: string; artifact?: string; package?: string };
+  symbols?: ApiSymbol[];
+  bindings?: ParityBinding[];
+};
 type ParityImplementation = { name?: string; errors?: { file?: string; pattern?: string } };
 export type Parity = {
   implementations?: ParityImplementation[];
@@ -60,23 +67,30 @@ export function apiProblems(root: string, parity: Parity, codes: Set<string>, so
     }
     for (const entry of named) {
       const implementation = entry.implementation ?? '';
-      const symbol = entry.symbol ?? '';
+      const symbols = entry.symbols ?? (entry.symbol === undefined ? [] : [entry.symbol]);
       if (!members.includes(implementation)) {
         problems.push(`API unit ${id} names ${implementation}, which parity.json does not declare`);
         continue;
       }
       const errors = implementations.get(implementation)?.errors;
       if (errors?.file === undefined || errors.pattern === undefined) {
-        problems.push(`${implementation} declares no error catalog file, so the symbol ${symbol} of ${id} has no constant to name`);
+        problems.push(`${implementation} declares no error catalog file, so ${symbols.join(', ') || '(no symbols)'} of ${id} has no constant to name`);
         continue;
       }
       const text = sources?.get(errors.file) ?? readFileSync(join(root, errors.file), 'utf8');
       const pattern = new RegExp(errors.pattern);
       const line = text.split('\n').find(candidate => pattern.exec(candidate)?.[1] === code);
-      const identifier = /([A-Za-z_]\w*)(?::\w+)?$/.exec(symbol)?.[1] ?? '';
       if (line === undefined) problems.push(`${errors.file} has no constant for ${code}, which API unit ${id} names for ${implementation}`);
-      else if (identifier === '' || !new RegExp(`\\b${identifier}\\b`).test(line)) {
-        problems.push(`${implementation}: the symbol ${symbol} of ${id} is not the constant of ${code} in ${errors.file}`);
+      else {
+        const constants = symbols.filter(symbol => {
+          const identifier = /([A-Za-z_]\w*)(?::\w+)?$/.exec(symbol)?.[1] ?? '';
+          return identifier !== '' && new RegExp(`\\b${identifier}\\b`).test(line);
+        });
+        if (constants.length === 0) {
+          for (const symbol of symbols) problems.push(`${implementation}: the symbol ${symbol} of ${id} is not the constant of ${code} in ${errors.file}`);
+        } else if (constants.length > 1) {
+          problems.push(`${implementation}: API unit ${id} names ${constants.length} symbols of ${code} in ${errors.file}, want one`);
+        }
       }
     }
   }

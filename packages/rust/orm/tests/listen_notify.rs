@@ -22,9 +22,13 @@ const WAIT: Duration = Duration::from_millis(50);
 #[tokio::test]
 async fn listen_notify() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    let server_dsn = std::env::var("ORM_TEST_POSTGRES_SERVER_DSN").ok().filter(|dsn| !dsn.is_empty()).unwrap_or_else(|| {
-        panic!("ORM_TEST_POSTGRES_SERVER_DSN is required; run through make client-db-check, which supplies the direct PostgreSQL server DSN")
-    });
+    let server_dsn = match std::env::var("ORM_TEST_POSTGRES_SERVER_DSN") {
+        Ok(dsn) if !dsn.is_empty() => dsn,
+        Ok(_) => panic!("ORM_TEST_POSTGRES_SERVER_DSN is empty; run through make client-db-check, which supplies the direct PostgreSQL server DSN"),
+        Err(error) => {
+            panic!("ORM_TEST_POSTGRES_SERVER_DSN is unavailable ({error}); run through make client-db-check, which supplies the direct PostgreSQL server DSN")
+        }
+    };
     let database = CaseDatabase::create_with_admin_dsn("postgres", &server_dsn).await;
     let db = Db::connect(database.dsn(), 2, polyspec_orm::Config::default()).await.or_panic(|e| format!("postgres: {e}"));
 

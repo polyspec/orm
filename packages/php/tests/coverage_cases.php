@@ -255,11 +255,12 @@ function coverageRestoring(Closure $body, Closure $restore): void
         try {
             $restore();
         } catch (Throwable $cleanup) {
-            throw new RuntimeException(
+            $primary = new RuntimeException(
                 'case failed: ' . $failure->getMessage() . '; restore failed: ' . $cleanup->getMessage(),
                 0,
                 $failure
             );
+            throw OrmException::withCleanup($primary, $cleanup);
         }
         throw $failure;
     }

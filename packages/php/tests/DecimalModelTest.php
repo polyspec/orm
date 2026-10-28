@@ -10,6 +10,7 @@ use RuntimeException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
+use Polyspec\Orm\Code;
 use Polyspec\Orm\Decimal;
 use Polyspec\Orm\OrmException;
 use Polyspec\Orm\Tests\Model\Author;
@@ -63,6 +64,26 @@ class DecimalModelTest extends TestCase
                 $case['expected']['error'] ?? null,
                 $error->code_,
                 "{$case['id']}: unexpected {$error->code_}"
+            );
+        }
+    }
+
+    public function testDecimalDecodePreservesTheNormalizationFailureAsItsCause(): void
+    {
+        try {
+            Decimal::decode('1.234', 3, 2);
+            self::fail('an over-scale decimal cell must fail');
+        } catch (OrmException $error) {
+            self::assertSame(Code::CODEC_DECODE, $error->code_);
+            self::assertSame(
+                'CODEC_DECODE: invalid decimal cell: CODEC_ENCODE: decimal 1.234: fraction exceeds scale',
+                $error->getMessage()
+            );
+            self::assertInstanceOf(OrmException::class, $error->getPrevious());
+            self::assertSame(Code::CODEC_ENCODE, $error->getPrevious()->code_);
+            self::assertSame(
+                'CODEC_ENCODE: decimal 1.234: fraction exceeds scale',
+                $error->getPrevious()->getMessage()
             );
         }
     }

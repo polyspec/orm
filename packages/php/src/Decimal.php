@@ -40,7 +40,7 @@ final class Decimal
         try {
             return self::normalize($value, $precision, $scale);
         } catch (OrmException $error) {
-            throw new OrmException(Code::CODEC_DECODE, "invalid decimal cell: {$error->getMessage()}");
+            throw new OrmException(Code::CODEC_DECODE, "invalid decimal cell: {$error->getMessage()}", $error);
         }
     }
 

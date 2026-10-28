@@ -10,13 +10,17 @@ import { allRules, readErrorCatalog, readManifest } from './manifest.mts';
 
 const root = resolve(import.meta.dirname, '../../..');
 
+function bindsSymbol(unit: { symbols?: Array<{ implementation?: string; symbol?: string; symbols?: string[] }> }, implementation: string, symbol: string): boolean {
+  return unit.symbols?.some(entry => entry.implementation === implementation && (entry.symbol === symbol || entry.symbols?.includes(symbol) === true)) === true;
+}
+
 function assertPhpExtensionBindings(parity: Parity, bindings: Array<[string, string]>): void {
   const units = new Map((parity.units ?? []).map(unit => [unit.id, unit]));
   for (const [id, symbol] of bindings) {
     const unit = units.get(id);
     assert.ok(unit, `${id} API unit is missing`);
     assert.ok(
-      unit.symbols?.some(entry => entry.implementation === 'php-extension' && entry.symbol === symbol),
+      bindsSymbol(unit, 'php-extension', symbol),
       `${id} does not bind the native ${symbol} symbol`,
     );
   }
@@ -331,7 +335,7 @@ caseTest('the native Stats API is bound by the PHP extension', COMPUTE, () => {
   const unit = (readParity(root).units ?? []).find(entry => entry.id === 'client-db-stats');
   assert.ok(unit, 'client-db-stats API unit is missing');
   assert.ok(
-    unit.symbols?.some(entry => entry.implementation === 'php-extension' && entry.symbol === 'Polyspec\\Orm\\Stats'),
+    bindsSymbol(unit, 'php-extension', 'Polyspec\\Orm\\Stats'),
     'client-db-stats does not bind the native Polyspec\\Orm\\Stats class',
   );
 });
@@ -340,7 +344,7 @@ caseTest('the native OrmException API is bound by the PHP extension', COMPUTE, (
   const unit = (readParity(root).units ?? []).find(entry => entry.id === 'client-orm-error');
   assert.ok(unit, 'client-orm-error API unit is missing');
   assert.ok(
-    unit.symbols?.some(entry => entry.implementation === 'php-extension' && entry.symbol === 'Polyspec\\Orm\\OrmException'),
+    bindsSymbol(unit, 'php-extension', 'Polyspec\\Orm\\OrmException'),
     'client-orm-error does not bind the native Polyspec\\Orm\\OrmException class',
   );
 });
@@ -365,7 +369,7 @@ caseTest('the native connection factory API is bound by the PHP extension', COMP
   const unit = (readParity(root).units ?? []).find(entry => entry.id === 'client-db-connect');
   assert.ok(unit, 'client-db-connect API unit is missing');
   assert.ok(
-    unit.symbols?.some(entry => entry.implementation === 'php-extension' && entry.symbol === 'Polyspec\\Orm\\Orm::connect'),
+    bindsSymbol(unit, 'php-extension', 'Polyspec\\Orm\\Orm::connect'),
     'client-db-connect does not bind the native Polyspec\\Orm\\Orm::connect method',
   );
 });
