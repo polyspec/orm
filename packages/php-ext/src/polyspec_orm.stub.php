@@ -1601,7 +1601,6 @@ final class Db
     public function paginate(?TxFrame $frame, Request $r): array {}
     /** @internal @return array{0: int|float|string|null, 1: int} */
     public function writeOf(?TxFrame $frame, Request $r, ?\Closure $afterHook = null): array {}
-    /** @internal */
     public function execute(array $step, array $params): void {}
     /** @internal @return array{sql: string, binds: list<mixed>} */
     public function statement(Request $r): array {}
