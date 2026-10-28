@@ -115,7 +115,7 @@ caseTest('the TypeScript runtime build generates models before compiling their c
   const result = spawnSync('make', ['-n', 'build-ts'], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
   assert.equal(result.status, 0, result.stderr);
   const generation = result.stdout.indexOf('npm run typescript:build');
-  const build = result.stdout.indexOf('runtime-targets.mts build ts');
+  const build = /runtime-targets\.(?:mjs|mts) build ts/.exec(result.stdout)?.index ?? -1;
   assert.ok(generation >= 0, 'build-ts does not run the TypeScript model generator');
   assert.ok(build >= 0, 'build-ts does not invoke the TypeScript runtime build');
   assert.ok(generation < build, 'build-ts compiles consumers before refreshing generated models');
@@ -471,6 +471,7 @@ caseTest('the PHP extension suite and its profiled native cases use their owning
     'Polyspec\\Orm\\Extension\\Tests\\MermaidErrorBoundaryTest::testUnexpectedNativeCatalogErrorKeepsIdentity',
     'Polyspec\\Orm\\Extension\\Tests\\ParentSlotExpansionNativeTest::testBareDollarInLiteralIsPreserved',
     'Polyspec\\Orm\\Extension\\Tests\\MarkdownConformanceNativeTest::testMarkdownConformance "insert_one"',
+    'Polyspec\\Orm\\Extension\\Tests\\MarkdownConformanceNativeTest::testGeneratedModelOperationsAreNativeExtensionMethods',
   ]) {
     assert.ok(!nativeCases.test(test), `${test} requires its dedicated native-test profile`);
   }
@@ -483,7 +484,7 @@ caseTest('the PHP extension suite and its profiled native cases use their owning
   for (const [target, source] of [
     ['mermaid-error-php-extension-check', 'packages/php-ext/tests/MermaidErrorBoundaryTest.php'],
     ['parent-slot-expansion-php-extension-check', 'packages/php-ext/tests/ParentSlotExpansionNativeTest.php'],
-  ]) {
+  ] as const) {
     const checkTargets = /^CHECK_TARGETS = (.+)$/m.exec(makefile)?.[1]?.split(/\s+/) ?? [];
     assert.ok(checkTargets.includes(target), `${target} must remain in CHECK_TARGETS`);
     const start = makefile.indexOf(`${target}:`);
@@ -506,6 +507,7 @@ caseTest('the PHP extension suite and its profiled native cases use their owning
   const markdownRecipe = makefile.slice(markdownTarget, markdownRecipeEnd === -1 ? undefined : markdownRecipeEnd);
   assert.ok(markdownRecipe.includes('FLOWMARK=$(FLOWMARK)'));
   assert.ok(markdownRecipe.includes('packages/php-ext/tests/MarkdownConformanceNativeTest.php'));
+  assert.doesNotMatch(markdownRecipe, /--filter/, 'the dedicated target runs the complete native markdown test file');
 });
 
 caseTest('the SQLite Rust test recipe gives Kit one libtest thread option', PROCESS, async () => {

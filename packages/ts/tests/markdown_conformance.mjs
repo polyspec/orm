@@ -16,7 +16,7 @@ import path from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual, promisify } from 'node:util';
-import { after, before, suite } from 'node:test';
+import { after, before } from 'node:test';
 import { DATABASE, PROCESS, caseTest } from '../../../tests/testcase.mts';
 import { OrmError } from '../dist/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
@@ -129,51 +129,49 @@ const missing = ids.filter(id => !Object.hasOwn(conformanceCases, id));
 const extra = Object.keys(conformanceCases).filter(id => !ids.includes(id)).sort();
 if (missing.length > 0 || extra.length > 0) throw new Error(`cases.json and the TypeScript cases differ: missing in TypeScript ${JSON.stringify(missing)}, not in cases.json ${JSON.stringify(extra)}`);
 
-suite('markdown-conformance', () => {
-  let setupFailed;
-  let stopped;
-  before(async t => {
-    const bin = await pinnedFlowmark();
-    served = await serve(bin, text => t.diagnostic(text));
-  });
-  caseTest('markdown/setup', PROCESS, async ({ step }) => {
-    // The committed model must equal the output generated from the corpus catalog and from the scan of this file.
-    step('orm-gen gen --check of src/models/markdown_fixture');
+let setupFailed;
+let stopped;
+before(async t => {
+  const bin = await pinnedFlowmark();
+  served = await serve(bin, text => t.diagnostic(text));
+});
+caseTest('markdown/setup', PROCESS, async ({ step }) => {
+  // The committed model must equal the output generated from the corpus catalog and from the scan of this file.
+  step('orm-gen gen --check of src/models/markdown_fixture');
+  try {
+    await run(process.execPath, ['dist/bin/orm-gen.js', 'gen', '--set', '../../tests/markdown/corpus/dbspec/dbspec-set.json', '--out', 'src/models/markdown_fixture', '--scan', 'tests/markdown_cases.mjs', '--check'], { cwd: fileURLToPath(new URL('..', import.meta.url)) });
+  } catch (error) {
+    const failure = new Error(`src/models/markdown_fixture differs from the generator output; regenerate it with the same orm-gen command without --check: ${error.stdout ?? ''}${error.stderr ?? error.message}`, { cause: error });
+    setupFailed = failure;
+    throw failure;
+  }
+});
+// Each case is one test named by its id. A later case reads the corpus state that the cases before it made, so after
+// a failure the later cases fail because of the case that stopped them.
+for (const c of all) {
+  caseTest(c.id, DATABASE, async () => {
+    if (setupFailed !== undefined) throw new Error(`not run: markdown/setup failed: ${setupFailed.message}`);
+    if (stopped !== undefined) throw new Error(`not run: ${stopped} failed, and this case reads the corpus state it leaves`);
+    let db;
     try {
-      await run(process.execPath, ['dist/bin/orm-gen.js', 'gen', '--set', '../../tests/markdown/corpus/dbspec/dbspec-set.json', '--out', 'src/models/markdown_fixture', '--scan', 'tests/markdown_cases.mjs', '--check'], { cwd: fileURLToPath(new URL('..', import.meta.url)) });
+      let got;
+      try {
+        db = await connect(served.dsn(served.corpus, served.token));
+        got = await conformanceCases[c.id]({ ...served, db });
+      } catch (error) {
+        if (!(error instanceof OrmError)) throw new Error(`${c.id} failed without an orm code: ${error?.stack ?? error}`, { cause: error });
+        got = { error: error.code, message: error.message };
+        if (isDeepStrictEqual({ error: got.error }, c.expect)) return;
+        throw new Error(`${c.id}: got ${JSON.stringify(got)}, want ${JSON.stringify(c.expect)}`, { cause: error });
+      }
+      const actual = normalize(got);
+      if (!isDeepStrictEqual(actual, c.expect)) throw new Error(`${c.id}: got ${JSON.stringify(actual)}, want ${JSON.stringify(c.expect)}`);
     } catch (error) {
-      const failure = new Error(`src/models/markdown_fixture differs from the generator output; regenerate it with the same orm-gen command without --check: ${error.stdout ?? ''}${error.stderr ?? error.message}`, { cause: error });
-      setupFailed = failure;
-      throw failure;
+      stopped = c.id;
+      throw withServerDiagnostics(error, served);
+    } finally {
+      if (db !== undefined) await db.close();
     }
   });
-  // Each case is one test named by its id. A later case reads the corpus state that the cases before it made, so after
-  // a failure the later cases fail because of the case that stopped them.
-  for (const c of all) {
-    caseTest(c.id, DATABASE, async () => {
-      if (setupFailed !== undefined) throw new Error(`not run: markdown/setup failed: ${setupFailed.message}`);
-      if (stopped !== undefined) throw new Error(`not run: ${stopped} failed, and this case reads the corpus state it leaves`);
-      let db;
-      try {
-        let got;
-        try {
-          db = await connect(served.dsn(served.corpus, served.token));
-          got = await conformanceCases[c.id]({ ...served, db });
-        } catch (error) {
-          if (!(error instanceof OrmError)) throw new Error(`${c.id} failed without an orm code: ${error?.stack ?? error}`, { cause: error });
-          got = { error: error.code, message: error.message };
-          if (isDeepStrictEqual({ error: got.error }, c.expect)) return;
-          throw new Error(`${c.id}: got ${JSON.stringify(got)}, want ${JSON.stringify(c.expect)}`, { cause: error });
-        }
-        const actual = normalize(got);
-        if (!isDeepStrictEqual(actual, c.expect)) throw new Error(`${c.id}: got ${JSON.stringify(actual)}, want ${JSON.stringify(c.expect)}`);
-      } catch (error) {
-        stopped = c.id;
-        throw withServerDiagnostics(error, served);
-      } finally {
-        if (db !== undefined) await db.close();
-      }
-    });
-  }
-  after(async () => { if (served !== undefined) await served.stop(); });
-});
+}
+after(async () => { if (served !== undefined) await served.stop(); });

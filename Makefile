@@ -933,7 +933,7 @@ test-php-ext: export ORM_PHP_MODE = extension
 test-php-ext: export POLYSPEC_ORM_EXTENSION ?= $(CURDIR)/var/php-ext/polyspec_orm.so
 # The extension target owns the native package tests. Other-language codec output vectors are compared in codec-check below,
 # where this run's writers have populated ORM_CODEC_OUT.
-PHP_EXTENSION_NATIVE_CASES = ^Polyspec\\Orm\\Extension\\Tests\\(?!(?:CodecVectorsExtensionTest::test(?:Go|Rust|Typescript|Python)Output|MermaidErrorBoundaryTest::|ParentSlotExpansionNativeTest::|MarkdownConformanceNativeTest::testMarkdownConformance))
+PHP_EXTENSION_NATIVE_CASES = ^Polyspec\\Orm\\Extension\\Tests\\(?!(?:CodecVectorsExtensionTest::test(?:Go|Rust|Typescript|Python)Output|MermaidErrorBoundaryTest::|ParentSlotExpansionNativeTest::|MarkdownConformanceNativeTest::))
 test-php-ext: export CASES ?= $(PHP_EXTENSION_NATIVE_CASES)
 # PHP_EXTENSION_TESTS runs PHPUnit files of packages/php with the extension loaded, through kit's run-tests, which gives each test
 # its own timeout (K436); both extension PHPUnit commands exclude userland fallbacks (T182-6-19).
@@ -1814,9 +1814,10 @@ conformance-result-check/python: python-venv-check
 
 conformance-result-physical-check: RUN_DIR = $(abspath .runtime/run)/conformance-result-physical-check-$$PPID
 conformance-result-physical-check: lease-tool conformance-python-models
-	$(HOLD_TYPESCRIPT)
-	rm -rf $(RUN_DIR)
-	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
+	@set -eu; run_dir="$(RUN_DIR)"; trap 'rm -rf "$$run_dir"' EXIT; \
+	$(HOLD_TYPESCRIPT); \
+	rm -rf "$$run_dir"; \
+	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY); \
 	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$(CONFORMANCE_PY_MODELS) POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) node --test tests/conformance/check/result.physical.test.mts
 
 conformance-rust-group-check: lease-tool
@@ -2773,7 +2774,12 @@ generated-lint-check: python-models php-models go-models typescript-build
 	$(RUFF) check --config $(KIT_PACKAGE)/ruff.toml --no-respect-gitignore $(GENERATED_PY_MODELS)
 	$(RUFF) format --check --config $(KIT_PACKAGE)/ruff.toml --no-respect-gitignore $(GENERATED_PY_MODELS)
 	$(PHPCS) -q -s --report=emacs --standard=$(KIT_PACKAGE)/phpcs.xml.dist $(GENERATED_PHP)/*.php
-	cd packages/php && $(PHPSTAN) analyse --no-progress --error-format=raw --memory-limit=-1 --configuration=$(KIT_PACKAGE)/phpstan.dist.neon --autoload-file=../../vendor-php/autoload.php gen
+	@set -eu; \
+	phpstan_tmp=$$(mktemp -d "$${TMPDIR:?}/generated-lint-phpstan.XXXXXX"); \
+	trap 'rm -rf "$$phpstan_tmp"' EXIT; \
+	$(PUBLISH) "$$phpstan_tmp/phpstan.neon" printf 'includes:\n    - %s\nparameters:\n    tmpDir: %s/cache\n' "$(KIT_PACKAGE)/phpstan.dist.neon" "$$phpstan_tmp"; \
+	cd packages/php; \
+	$(PHPSTAN) analyse --no-progress --error-format=raw --memory-limit=-1 --configuration="$$phpstan_tmp/phpstan.neon" --autoload-file=../../vendor-php/autoload.php gen
 	test -z "$$(cd packages/go && find $(GENERATED_GO) -type f -name '*.go' ! -name '*_test.go' -exec gofmt -l {} +)" || { cd packages/go && find $(GENERATED_GO) -type f -name '*.go' ! -name '*_test.go' -exec gofmt -l {} +; exit 1; }
 	cd packages/go && $(GO) vet $(GENERATED_GO)
 	$(NPM) exec --prefix "$(KIT_PACKAGE)" --offline -- oxlint -c $(KIT_PACKAGE)/.oxlintrc.json --type-aware --deny-warnings $(GENERATED_TS)
