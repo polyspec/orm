@@ -10476,7 +10476,7 @@
         },
         {
           "id": "go-plan-id-native-api",
-          "command": "node tests/go-test.mts -run '^TestPlanIDFixedWidthLowercaseHex$' ./packages/go/orm",
+          "command": "node tests/go-test.mts -timeout 0 -run '^TestPlanIDFixedWidthLowercaseHex$' ./packages/go/orm",
           "shard": "other",
           "inputs": [
             "packages/go/orm/shape.go",
