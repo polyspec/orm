@@ -508,12 +508,22 @@ caseTest('the summary step keeps the record and the server logs in the report of
       name: 'feature-coverage', status: 'passed', started: '2026-10-27T00:00:00.000Z', ended: '2026-10-27T00:00:02.000Z',
       elapsed: 2000, log: relative(c.root, targetLog),
     });
+    const performanceObservationName = 'observations-2026-10-27T000001500Z-2.json';
+    const performanceObservation = join(evidence, performanceObservationName);
+    writeFileSync(performanceObservation, '{"run":"555-1","performance":true}\n');
+    const performanceTargetLog = join(c.root, '.runtime/check/ci_555_1/report/targets/feature-performance-check.log');
+    writeFileSync(performanceTargetLog, `performance_gate raw observations: ${performanceObservation}\n`);
+    record.targets.push({
+      name: 'feature-performance-check', status: 'passed', started: '2026-10-27T00:00:01.000Z', ended: '2026-10-27T00:00:02.000Z',
+      elapsed: 1000, log: relative(c.root, performanceTargetLog),
+    });
     writeFileSync(join(c.root, '.runtime/check/ci_555_1/record.json'), `${JSON.stringify(record, null, 2)}\n`);
     const { runSummary } = await import('./summary.mts');
     runSummary(c.root, '555-1', servers);
     const report = join(c.root, '.runtime/check/ci_555_1/report');
     assert.deepEqual(JSON.parse(readFileSync(join(report, 'record.json'), 'utf8')), record);
     assert.equal(readFileSync(join(report, 'performance_gate', observationName), 'utf8'), rawObservation);
+    assert.equal(readFileSync(join(report, 'performance_gate', performanceObservationName), 'utf8'), '{"run":"555-1","performance":true}\n');
     assert.equal(existsSync(join(report, 'performance_gate', 'observations-2020-01-01T000000000Z-1.json')), false);
     assert.equal(readFileSync(join(report, 'servers/postgres.log'), 'utf8'), 'FATAL:  role "orm" does not exist\n');
     assert.match(readFileSync(join(report, 'servers/mysql.log'), 'utf8'), /^\[the last 262144 of 2097169 bytes of .*mysql\.log\]\ny+\[ERROR\] Aborting\n$/);
@@ -524,6 +534,29 @@ caseTest('the summary step keeps the record and the server logs in the report of
     writeFileSync(targetLog, `performance_gate raw observations: ${outside}\n`);
     assert.throws(() => runSummary(c.root, '555-1', servers), /reports a performance observation outside/);
     assert.equal(existsSync(join(report, 'performance_gate', 'outside-observations.json')), false);
+    writeFileSync(targetLog, `performance_gate raw observations: ${observation}\n`);
+
+    const failedName = 'observations-2026-10-27T000001600Z-3.json';
+    const failedObservation = join(evidence, failedName);
+    writeFileSync(failedObservation, '{"failed":true}\n');
+    writeFileSync(performanceTargetLog, `performance_gate raw observations: ${failedObservation}\n`);
+    const performanceTarget = record.targets.find(target => target.name === 'feature-performance-check');
+    assert.ok(performanceTarget);
+    if (!performanceTarget) throw new Error('the record includes the feature-performance-check target');
+    performanceTarget.status = 'failed';
+    writeFileSync(join(c.root, '.runtime/check/ci_555_1/record.json'), `${JSON.stringify(record, null, 2)}\n`);
+    runSummary(c.root, '555-1', servers);
+    assert.equal(existsSync(join(report, 'performance_gate', failedName)), false);
+
+    const notRunName = 'observations-2026-10-27T000001700Z-4.json';
+    const notRunObservation = join(evidence, notRunName);
+    writeFileSync(notRunObservation, '{"notRun":true}\n');
+    writeFileSync(performanceTargetLog, `performance_gate raw observations: ${notRunObservation}\n`);
+    performanceTarget.status = 'not-run';
+    performanceTarget.started = null;
+    writeFileSync(join(c.root, '.runtime/check/ci_555_1/record.json'), `${JSON.stringify(record, null, 2)}\n`);
+    runSummary(c.root, '555-1', servers);
+    assert.equal(existsSync(join(report, 'performance_gate', notRunName)), false);
   } finally {
     cleanup();
   }

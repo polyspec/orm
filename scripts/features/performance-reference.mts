@@ -1,5 +1,6 @@
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { createHash } from 'node:crypto';
+import { lstat, mkdir, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises';
+import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
 /** Measurement records captured from the successful native children of performance_gate coverage. */
 export const PERFORMANCE_RUNTIMES = ['go', 'php', 'php-extension', 'typescript', 'python', 'rust'] as const;
@@ -64,12 +65,224 @@ export type PerformanceReferenceReport =
   | { status: 'pending'; missing: string[] }
   | { status: 'recorded'; measurements: string[]; warnings: string[] };
 
+type PerformanceCheckRecord = {
+  id: string;
+  commit: string;
+  result: string;
+  targets: { name: string; status: string; started: string | null; ended: string | null; log?: string }[];
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function exactKeys(value: Record<string, unknown>, keys: string[]): boolean {
   return Object.keys(value).sort().join(',') === [...keys].sort().join(',');
+}
+
+function parsePerformanceMeasurementRecord(value: unknown): PerformanceMeasurement[] {
+  if (!isRecord(value) || !exactKeys(value, ['schema', 'kind', 'referencePolicy', 'measurements']) ||
+      value.schema !== 1 || value.kind !== 'raw-runner-observations' || value.referencePolicy !== 'not-promoted' ||
+      !Array.isArray(value.measurements))
+    throw new Error('performance artifact is not a raw-runner-observations record');
+  const measurements = value.measurements.map((entry): PerformanceMeasurement => {
+    if (!isRecord(entry) || !exactKeys(entry, ['runtime', 'database', 'workload', 'attempt', 'nativeP50Us', 'clientP50Us', 'ratio', 'samples', 'cpuMs', 'wallMs', 'machine']))
+      throw new Error('performance artifact has a malformed measurement');
+    const runtime = performanceRuntimeOf(typeof entry.runtime === 'string' ? entry.runtime : undefined);
+    const database = performanceDatabaseOf(typeof entry.database === 'string' ? entry.database : undefined);
+    const workload = memberOf(PERFORMANCE_WORKLOADS, typeof entry.workload === 'string' ? entry.workload : undefined, 'performance workload');
+    const attempt = performanceAttemptOf(typeof entry.attempt === 'number' ? entry.attempt : Number.NaN);
+    const positiveNumber = (name: 'nativeP50Us' | 'clientP50Us' | 'ratio' | 'cpuMs' | 'wallMs'): number => {
+      const number = entry[name];
+      if (typeof number !== 'number' || !Number.isFinite(number) || number <= 0)
+        throw new Error(`performance artifact ${runtime}/${database}/${workload}/${attempt} has invalid ${name}`);
+      return number;
+    };
+    const samples = entry.samples;
+    const machine = entry.machine;
+    if (typeof samples !== 'number' || !Number.isInteger(samples) || typeof machine !== 'string')
+      throw new Error(`performance artifact ${runtime}/${database}/${workload}/${attempt} has invalid samples or machine`);
+    return {
+      runtime, database, workload, attempt,
+      nativeP50Us: positiveNumber('nativeP50Us'), clientP50Us: positiveNumber('clientP50Us'), ratio: positiveNumber('ratio'),
+      samples, cpuMs: positiveNumber('cpuMs'), wallMs: positiveNumber('wallMs'), machine,
+    };
+  });
+  validatePerformanceMeasurements(measurements);
+  return measurements;
+}
+
+function performanceCheckRecord(value: unknown): PerformanceCheckRecord {
+  if (!isRecord(value) || typeof value.id !== 'string' || typeof value.commit !== 'string' ||
+      typeof value.result !== 'string' || !Array.isArray(value.targets))
+    throw new Error('performance artifact has no valid check record');
+  const targets: PerformanceCheckRecord['targets'] = value.targets.map((target) => {
+    if (!isRecord(target) || typeof target.name !== 'string' || typeof target.status !== 'string' ||
+        (target.started !== null && typeof target.started !== 'string') ||
+        (target.ended !== null && typeof target.ended !== 'string') ||
+        (target.log !== undefined && typeof target.log !== 'string'))
+      throw new Error('performance artifact has a malformed target record');
+    return {
+      name: target.name, status: target.status,
+      started: typeof target.started === 'string' ? target.started : null,
+      ended: typeof target.ended === 'string' ? target.ended : null,
+      ...(typeof target.log === 'string' ? { log: target.log } : {}),
+    };
+  });
+  return { id: value.id, commit: value.commit, result: value.result, targets };
+}
+
+/** Derive fixed references only from the first attempt of a successful, matching CI feature-performance report. */
+export function performanceReferenceDeclarationFromCiReport(
+  observationsValue: unknown,
+  checkRecordValue: unknown,
+  runValue: unknown,
+  observationsFile: string,
+  observationsSha256: string,
+  recordedAt: string,
+  previous: PerformanceReferenceDeclaration,
+): PerformanceReferenceDeclaration {
+  if (!isRecord(runValue) || typeof runValue.databaseId !== 'number' || !Number.isInteger(runValue.databaseId) ||
+      typeof runValue.attempt !== 'number' || !Number.isInteger(runValue.attempt) || runValue.attempt < 1 ||
+      typeof runValue.headSha !== 'string' || !/^[a-f0-9]{40}$/.test(runValue.headSha) || !Array.isArray(runValue.jobs))
+    throw new Error('GitHub CI proof must identify a run, attempt, source commit, and job results');
+  const jobs = runValue.jobs as unknown[];
+  const performanceJobs = jobs.filter(job => isRecord(job) && job.name === 'test (feature_performance)');
+  if (performanceJobs.length !== 1 || !isRecord(performanceJobs[0]) || performanceJobs[0].conclusion !== 'success')
+    throw new Error('the feature_performance CI job did not pass');
+  if (!/^var\/evidence\/performance_gate\/observations-\d{4}-\d{2}-\d{2}T\d{9}Z-\d+\.json$/.test(observationsFile) ||
+      !/^[a-f0-9]{64}$/.test(observationsSha256) || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(recordedAt))
+    throw new Error('performance observation evidence needs its canonical path, SHA-256, and UTC recording time');
+
+  const checkRecord = performanceCheckRecord(checkRecordValue);
+  const expectedId = `ci_${runValue.databaseId}_${runValue.attempt}_feature_performance`;
+  if (checkRecord.id !== expectedId || checkRecord.result !== 'passed' || checkRecord.commit !== runValue.headSha)
+    throw new Error('performance check record does not belong to the successful CI run and source commit');
+  const featureTarget = checkRecord.targets.find(target => target.name === 'feature-performance-check');
+  if (featureTarget?.status !== 'passed' || !featureTarget.log || !featureTarget.started || !featureTarget.ended)
+    throw new Error('the feature-performance-check target of the performance CI run did not pass');
+  const observationLines = featureTarget.log.match(/^performance_gate raw observations: (.+)$/gm) ?? [];
+  if (observationLines.length !== 1 || basename(observationLines[0]?.slice('performance_gate raw observations: '.length) ?? '') !== basename(observationsFile))
+    throw new Error('the feature-performance-check target did not report this exact performance observation file');
+  const stamp = /^observations-(\d{4}-\d{2}-\d{2}T)(\d{2})(\d{2})(\d{2})(\d{3})Z-/.exec(basename(observationsFile));
+  const observationCreated = stamp ? Date.parse(`${stamp[1]}${stamp[2]}:${stamp[3]}:${stamp[4]}.${stamp[5]}Z`) : Number.NaN;
+  const targetStarted = Date.parse(featureTarget.started);
+  const targetEnded = Date.parse(featureTarget.ended);
+  if (!Number.isFinite(observationCreated) || !Number.isFinite(targetStarted) || !Number.isFinite(targetEnded) ||
+      observationCreated < targetStarted || observationCreated > targetEnded)
+    throw new Error('performance observations were not created during the passed feature-performance-check target');
+
+  const measurements = parsePerformanceMeasurementRecord(observationsValue);
+  const references: PerformanceReference[] = measurements.filter(entry => entry.attempt === 1).map(entry => ({
+    runtime: entry.runtime, database: entry.database, workload: entry.workload, ratio: entry.ratio, machine: entry.machine,
+  }));
+  if (references.length !== 6 * 3 * 2)
+    throw new Error(`attempt 1 produced ${references.length} references; expected 36`);
+  if (previous.status === 'recorded') {
+    const previousByKey = new Map(previous.references.map(reference =>
+      [`${reference.runtime}/${reference.database}/${reference.workload}`, reference]));
+    for (const reference of references) {
+      const key = `${reference.runtime}/${reference.database}/${reference.workload}`;
+      const old = previousByKey.get(key);
+      if (!old || reference.ratio > old.ratio)
+        throw new Error(`${key} cannot raise its existing performance reference`);
+    }
+  }
+  const declaration: PerformanceReferenceDeclaration = {
+    schema: 1, kind: 'fixed-performance-references', status: 'recorded',
+    evidence: {
+      file: observationsFile, sha256: observationsSha256, recordedAt,
+      ciRunId: String(runValue.databaseId), ciRunAttempt: runValue.attempt, sourceCommit: runValue.headSha,
+    },
+    references,
+  };
+  return validatePerformanceReferenceDeclaration(declaration);
+}
+
+/** Consume one downloaded CI report and atomically update references, retaining its raw bytes as ignored evidence. */
+export async function recordPerformanceReferencesFromCiReport(
+  root: string, reportDirectory: string, runValue: unknown, recordedAt = new Date().toISOString(),
+): Promise<PerformanceReferenceDeclaration> {
+  const canonicalRoot = await realpath(root);
+  const evidenceRoot = resolve(canonicalRoot, 'var/evidence/performance_gate');
+  const report = resolve(canonicalRoot, reportDirectory);
+  const reportRelative = relative(evidenceRoot, report);
+  if (!reportRelative || reportRelative === '..' || reportRelative.startsWith(`..${sep}`) || isAbsolute(reportRelative))
+    throw new Error(`CI performance report must be downloaded under ${relative(canonicalRoot, evidenceRoot)}`);
+  const [recordText, targetLog, runDirectory] = await Promise.all([
+    readFile(join(report, 'record.json'), 'utf8'),
+    readFile(join(report, 'targets/feature-performance-check.log'), 'utf8'),
+    realpath(report),
+  ]);
+  if (runDirectory !== report) throw new Error('CI performance report path must not contain a symlink');
+  let recordValue: unknown;
+  try { recordValue = JSON.parse(recordText) as unknown; }
+  catch (error) { throw new Error(`CI performance record is invalid JSON: ${error instanceof Error ? error.message : String(error)}`, { cause: error }); }
+  const checkRecord = performanceCheckRecord(recordValue);
+  const featureTarget = checkRecord.targets.find(target => target.name === 'feature-performance-check');
+  if (!featureTarget || featureTarget.log !== '.runtime/check/' + checkRecord.id + '/report/targets/feature-performance-check.log')
+    throw new Error('CI performance record does not name its report feature-performance-check log');
+  const observationLines = targetLog.match(/^performance_gate raw observations: (.+)$/gm) ?? [];
+  if (observationLines.length !== 1) throw new Error(`CI performance-check log reported ${observationLines.length} raw observation files; expected one`);
+  const sourceName = basename(observationLines[0]?.slice('performance_gate raw observations: '.length) ?? '');
+  if (!/^observations-\d{4}-\d{2}-\d{2}T\d{9}Z-\d+\.json$/.test(sourceName))
+    throw new Error('CI performance log reported an invalid observation filename');
+  const source = resolve(report, 'performance_gate', sourceName);
+  const sourceRelative = relative(report, source);
+  if (sourceRelative.split(sep).length !== 2 || sourceRelative.split(sep)[0] !== 'performance_gate')
+    throw new Error('CI performance observation must be a direct file in the report performance_gate directory');
+  const sourceStat = await lstat(source);
+  if (!sourceStat.isFile() || sourceStat.isSymbolicLink() || await realpath(source) !== source)
+    throw new Error('CI performance observation is not a regular file');
+  const observationText = await readFile(source, 'utf8');
+  let observationsValue: unknown;
+  try { observationsValue = JSON.parse(observationText) as unknown; }
+  catch (error) { throw new Error(`CI performance observations are invalid JSON: ${error instanceof Error ? error.message : String(error)}`, { cause: error }); }
+  const sha256 = createHash('sha256').update(observationText).digest('hex');
+  const previous = await readPerformanceReferenceDeclaration(canonicalRoot);
+  const declaration = performanceReferenceDeclarationFromCiReport(
+    observationsValue, { ...checkRecord, targets: checkRecord.targets.map(target => target.name === 'feature-performance-check'
+      ? { ...target, log: targetLog } : target) }, runValue,
+    `var/evidence/performance_gate/${sourceName}`, sha256, recordedAt, previous,
+  );
+  await mkdir(evidenceRoot, { recursive: true });
+  const retained = join(evidenceRoot, sourceName);
+  try { await writeFile(retained, observationText, { flag: 'wx' }); }
+  catch (error) {
+    if (!(error instanceof Error) || !('code' in error) || error.code !== 'EEXIST') throw error;
+    if (await readFile(retained, 'utf8') !== observationText)
+      throw new Error(`existing evidence differs from CI observation ${sourceName}`, { cause: error });
+  }
+  const declarationPath = join(canonicalRoot, 'contracts/performance-references.json');
+  const temporary = `${declarationPath}.${process.pid}.next`;
+  try {
+    await writeFile(temporary, `${JSON.stringify(declaration, null, 2)}\n`, { flag: 'wx' });
+    await rename(temporary, declarationPath);
+  } catch (error) {
+    await rm(temporary, { force: true });
+    throw error;
+  }
+  return declaration;
+}
+
+async function recordPerformanceReferencesCli(arguments_: string[]): Promise<void> {
+  if (arguments_.length !== 3 || arguments_[0] !== 'record')
+    throw new Error('usage: from the ORM checkout root, run node scripts/features/performance-reference.mts record <downloaded-report-directory> <gh-run-proof.json>');
+  const root = process.cwd();
+  const proofText = await readFile(resolve(root, arguments_[2] ?? ''), 'utf8');
+  let proof: unknown;
+  try { proof = JSON.parse(proofText) as unknown; }
+  catch (error) { throw new Error(`GitHub CI run proof is invalid JSON: ${error instanceof Error ? error.message : String(error)}`, { cause: error }); }
+  const declaration = await recordPerformanceReferencesFromCiReport(root, arguments_[1] ?? '', proof);
+  if (declaration.status !== 'recorded') throw new Error('performance reference recording did not produce a recorded declaration');
+  process.stdout.write(`recorded 36 performance references from CI run ${declaration.evidence.ciRunId}, attempt ${declaration.evidence.ciRunAttempt}, commit ${declaration.evidence.sourceCommit}\n`);
+}
+
+if (import.meta.main) {
+  recordPerformanceReferencesCli(process.argv.slice(2)).catch(error => {
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    process.exitCode = 1;
+  });
 }
 
 /** Validate the tracked reference declaration without converting raw observations into references. */

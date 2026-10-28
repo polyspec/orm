@@ -12,38 +12,40 @@ import { readRecord, recordPath, type CheckRecord } from './record.mts';
 import { LIMIT_BYTES, keepFile, keepLogs, publish, reportDirectory, runName, summary } from './report.mts';
 
 function keepPerformanceObservations(root: string, report: string, record: CheckRecord): void {
-  const target = record.targets.find(step => step.name === 'feature-coverage');
-  if (!target?.log || !target.started) return;
-  const log = resolve(root, target.log);
-  const expectedLog = resolve(report, 'targets', 'feature-coverage.log');
-  if (log !== expectedLog || !existsSync(log)) return;
+  for (const name of ['feature-coverage', 'feature-performance-check']) {
+    const target = record.targets.find(step => step.name === name);
+    if (target?.status !== 'passed' || !target.log || !target.started || !target.ended) continue;
+    const log = resolve(root, target.log);
+    const expectedLog = resolve(report, 'targets', `${name}.log`);
+    if (log !== expectedLog || !existsSync(log)) continue;
 
-  const lines = readFileSync(log, 'utf8').match(/^performance_gate raw observations: (.+)$/gm) ?? [];
-  if (lines.length === 0) return;
-  if (lines.length !== 1) throw new Error(`${relative(root, log)} has ${lines.length} performance observation paths, expected one`);
-  const reported = lines[0]?.slice('performance_gate raw observations: '.length) ?? '';
-  const evidenceDirectory = resolve(root, 'var/evidence/performance_gate');
-  const source = resolve(reported);
-  const sourceRelative = relative(evidenceDirectory, source);
-  if (!isAbsolute(reported) || reported !== source || !sourceRelative || sourceRelative.startsWith(`..${sep}`) || sourceRelative.includes(sep) ||
-      !/^observations-\d{4}-\d{2}-\d{2}T\d{9}Z-\d+\.json$/.test(basename(source)))
-    throw new Error(`${relative(root, log)} reports a performance observation outside ${relative(root, evidenceDirectory)}`);
+    const lines = readFileSync(log, 'utf8').match(/^performance_gate raw observations: (.+)$/gm) ?? [];
+    if (lines.length === 0) continue;
+    if (lines.length !== 1) throw new Error(`${relative(root, log)} has ${lines.length} performance observation paths, expected one`);
+    const reported = lines[0]?.slice('performance_gate raw observations: '.length) ?? '';
+    const evidenceDirectory = resolve(root, 'var/evidence/performance_gate');
+    const source = resolve(reported);
+    const sourceRelative = relative(evidenceDirectory, source);
+    if (!isAbsolute(reported) || reported !== source || !sourceRelative || sourceRelative.startsWith(`..${sep}`) || sourceRelative.includes(sep) ||
+        !/^observations-\d{4}-\d{2}-\d{2}T\d{9}Z-\d+\.json$/.test(basename(source)))
+      throw new Error(`${relative(root, log)} reports a performance observation outside ${relative(root, evidenceDirectory)}`);
 
-  if (!existsSync(evidenceDirectory) || realpathSync(evidenceDirectory) !== evidenceDirectory || !existsSync(source) ||
-      !lstatSync(source).isFile() || lstatSync(source).isSymbolicLink() || realpathSync(source) !== source)
-    throw new Error(`${relative(root, log)} reports a missing or linked performance observation ${reported}`);
+    if (!existsSync(evidenceDirectory) || realpathSync(evidenceDirectory) !== evidenceDirectory || !existsSync(source) ||
+        !lstatSync(source).isFile() || lstatSync(source).isSymbolicLink() || realpathSync(source) !== source)
+      throw new Error(`${relative(root, log)} reports a missing or linked performance observation ${reported}`);
 
-  const stamp = /^observations-(\d{4}-\d{2}-\d{2}T)(\d{2})(\d{2})(\d{2})(\d{3})Z-/.exec(basename(source));
-  const created = stamp ? Date.parse(`${stamp[1]}${stamp[2]}:${stamp[3]}:${stamp[4]}.${stamp[5]}Z`) : Number.NaN;
-  const started = Date.parse(target.started);
-  const ended = target.ended ? Date.parse(target.ended) : Date.now();
-  if (!Number.isFinite(created) || !Number.isFinite(started) || !Number.isFinite(ended) || created < started || created > ended)
-    throw new Error(`${relative(root, log)} reports an observation not created during this feature-coverage target`);
+    const stamp = /^observations-(\d{4}-\d{2}-\d{2}T)(\d{2})(\d{2})(\d{2})(\d{3})Z-/.exec(basename(source));
+    const created = stamp ? Date.parse(`${stamp[1]}${stamp[2]}:${stamp[3]}:${stamp[4]}.${stamp[5]}Z`) : Number.NaN;
+    const started = Date.parse(target.started);
+    const ended = Date.parse(target.ended);
+    if (!Number.isFinite(created) || !Number.isFinite(started) || !Number.isFinite(ended) || created < started || created > ended)
+      throw new Error(`${relative(root, log)} reports an observation not created during the passed ${name} target`);
 
-  const destination = resolve(report, 'performance_gate', basename(source));
-  if (statSync(source).size > LIMIT_BYTES)
-    throw new Error(`${relative(root, source)} is too large to retain byte-for-byte in the report`);
-  keepFile(source, destination);
+    const destination = resolve(report, 'performance_gate', basename(source));
+    if (statSync(source).size > LIMIT_BYTES)
+      throw new Error(`${relative(root, source)} is too large to retain byte-for-byte in the report`);
+    keepFile(source, destination);
+  }
 }
 
 // runSummary writes the summary of the run id. The report also includes the record (record.json) and the test server logs (servers/): the upload
