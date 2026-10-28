@@ -48,6 +48,7 @@
       "needs": [],
       "inputs": [
         "scripts/check/**",
+        "contracts/check-inputs.json",
         "scripts/features/owners.mts",
         "scripts/json/**",
         "scripts/client-db-test.mts",
@@ -3273,7 +3274,8 @@
         "php-extension-tools",
         "python",
         "node-modules",
-        "databases"
+        "databases",
+        "complex-query"
       ]
     },
     "mermaid-error-ts-check": {

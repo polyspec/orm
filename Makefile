@@ -1996,11 +1996,15 @@ parity-prepare: lease-tool
 	$(RUN_LONG) rust-build/parity-conformance --cwd packages/rust -- $(CARGO_LEASED) node $(abspath scripts/cargo-build-copy.mts) $(PARITY_RUN_DIR)/target debug/conformance -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm-tests --bin conformance
 parity-check: parity-prepare
 # interface-check runs first: it reads the API units of config/parity.json and the symbol snapshots that parity-check reads.
-# The bench DSNs of a run are in its TEST_ENV file (run-databases writes them). Export them into make itself, so the parity
-# units, which kit starts from make, inherit them. A TEST_ENV without them exports nothing and the guard names what is missing.
+# The bench and complex-query DSNs of a run are in its TEST_ENV file (run-databases writes them). Export them into make itself,
+# so the parity units, which kit starts from make, inherit them. A TEST_ENV without them exports nothing and the guard names what is missing.
 BENCH_DSN_NAMES := BENCH_MYSQL_DSN BENCH_POSTGRES_DSN BENCH_SQLITE_DSN ORM_BENCH_MYSQL_DSN
+COMPLEX_QUERY_RUNTIMES := GO PHP PHP_EXTENSION TYPESCRIPT PYTHON RUST
+COMPLEX_QUERY_DIALECTS := MYSQL POSTGRES SQLITE
+COMPLEX_QUERY_DSN_NAMES := $(foreach runtime,$(COMPLEX_QUERY_RUNTIMES),$(foreach dialect,$(COMPLEX_QUERY_DIALECTS),COMPLEX_QUERY_$(runtime)_$(dialect)_DSN))
 ifneq ($(wildcard $(abspath $(TEST_ENV))),)
 $(foreach v,$(BENCH_DSN_NAMES),$(eval export $(v) := $(shell . $(abspath $(TEST_ENV)) >/dev/null 2>&1 && printf "%s" "$$$(v)")))
+$(foreach v,$(COMPLEX_QUERY_DSN_NAMES),$(eval export $(v) := $(shell . $(abspath $(TEST_ENV)) >/dev/null 2>&1 && printf "%s" "$$$(v)")))
 endif
 # The decimal DSNs of a run are in its DECIMAL_ENV file (run-databases writes them), read by the python decimal unit.
 DECIMAL_DSN_NAMES := DECIMAL_MYSQL_DSN DECIMAL_POSTGRES_DSN DECIMAL_SQLITE_DSN
@@ -2010,10 +2014,10 @@ $(foreach v,$(DECIMAL_DSN_NAMES),$(eval export $(v) := $(shell . $(abspath $(DEC
 endif
 endif
 
-# parity-bench-env-check names each bench DSN a parity-check run needs that the environment does not set, so a run without the
-# bench databases stops at the missing variable instead of failing every unit with the same message. run-databases sets them.
+# parity-bench-env-check names each bench or complex-query DSN parity-check needs that the environment does not set, so a run
+# without its databases stops at the missing variable instead of failing every unit with the same message. run-databases sets them.
 parity-bench-env-check:
-	@set -a; test -f $(abspath $(TEST_ENV)) && . $(abspath $(TEST_ENV)); set +a; for v in BENCH_MYSQL_DSN BENCH_POSTGRES_DSN BENCH_SQLITE_DSN; do test -n "$$(printenv $$v)" || { echo "parity-bench-env-check: $$v is not set; run make run-databases TARGETS=parity-check, which creates the bench databases and their DSNs"; exit 1; }; done
+	@set -a; test -f $(abspath $(TEST_ENV)) && . $(abspath $(TEST_ENV)); set +a; for v in BENCH_MYSQL_DSN BENCH_POSTGRES_DSN BENCH_SQLITE_DSN $(COMPLEX_QUERY_DSN_NAMES); do test -n "$$(printenv $$v)" || { echo "parity-bench-env-check: $$v is not set; run make run-databases TARGETS=parity-check, which creates the bench and complex-query databases and their DSNs"; exit 1; }; done
 
 # flowmark-check names the flowmark binary that the markdown conformance units read (FLOWMARK) before parity-check runs them;
 # orm-install-flowmark builds it from the version pinned in tests/markdown/flowmark.version.

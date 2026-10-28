@@ -67,6 +67,22 @@ caseTest('dialect facts declares the isolated MySQL privilege fixture as a setup
   assert.ok(expanded.includes('server-programs'));
 });
 
+caseTest('parity declares the complex-query fixture setup need', COMPUTE, () => {
+  const inputs: unknown = JSON.parse(readFileSync(join(repo, 'contracts/check-inputs.json'), 'utf8'));
+  if (!isRecord(inputs) || !isRecord(inputs.targets)) throw new Error('contracts/check-inputs.json has no targets object');
+  const target = inputs.targets['parity-check'];
+  if (!isRecord(target) || !isStringArray(target.needs)) throw new Error('parity-check has no needs list');
+  assert.ok(target.needs.includes('complex-query'));
+  assert.ok(NEEDS.includes('complex-query'));
+  assert.deepEqual(SETUP_NEEDS['complex-query'], ['databases']);
+  const expanded = expandNeeds(target.needs);
+  assert.ok(expanded.includes('databases'));
+  const makefile = readFileSync(join(repo, 'Makefile'), 'utf8');
+  assert.match(makefile, /COMPLEX_QUERY_DSN_NAMES := \$\(foreach runtime,\$\(COMPLEX_QUERY_RUNTIMES\),\$\(foreach dialect,\$\(COMPLEX_QUERY_DIALECTS\),COMPLEX_QUERY_\$\(runtime\)_\$\(dialect\)_DSN\)\)/);
+  assert.match(makefile, /\$\(foreach v,\$\(COMPLEX_QUERY_DSN_NAMES\),\$\(eval export \$\(v\) :=/);
+  assert.match(makefile, /for v in BENCH_MYSQL_DSN BENCH_POSTGRES_DSN BENCH_SQLITE_DSN \$\(COMPLEX_QUERY_DSN_NAMES\);/);
+});
+
 // stub runs runChecks with stub commands. The database command (node scripts/check/databases.mts) logs `databases <action>`, and a make target logs its own
 // name. `b` passes only when an untracked file `pass-b` is present, so the case changes results
 // without changing the tree. Giving kill a target name makes that target end the runner process with SIGKILL.
