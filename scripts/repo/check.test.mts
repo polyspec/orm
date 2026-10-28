@@ -815,9 +815,9 @@ caseTest('a CI group job runs each setup step under its declared condition and r
   assert.deepEqual(groupOutputs(['php-library'], { 'php-library': ['php'] }),
     { 'node-modules': false, 'interfaces-typescript': false, 'parity-symbols': false, go: false, rust: false, php: true, 'php-extension-tools': false, 'server-programs': false, databases: false, python: false, flowmark: false });
   assert.deepEqual(groupOutputs(['php-extension'], { 'php-extension': ['php', 'php-extension-tools'] }),
-    { 'node-modules': false, 'interfaces-typescript': false, 'parity-symbols': false, go: false, rust: false, php: true, 'php-extension-tools': true, 'server-programs': false, databases: false, python: false, flowmark: false });
+    { 'node-modules': true, 'interfaces-typescript': false, 'parity-symbols': false, go: false, rust: false, php: true, 'php-extension-tools': true, 'server-programs': false, databases: false, python: false, flowmark: false });
   assert.deepEqual(groupOutputs(['api'], { api: ['parity-symbols', 'interfaces-typescript'] }),
-    { 'node-modules': false, 'interfaces-typescript': true, 'parity-symbols': true, go: false, rust: false, php: false, 'php-extension-tools': false, 'server-programs': false, databases: false, python: false, flowmark: false });
+    { 'node-modules': true, 'interfaces-typescript': true, 'parity-symbols': true, go: true, rust: false, php: true, 'php-extension-tools': false, 'server-programs': false, databases: false, python: false, flowmark: false });
   assert.equal(groupOutputs(['php-ext-tools'], { 'php-ext-tools': ['php-extension-tools'] }).php, true,
     'the native extension build tools require the pinned PHP setup');
   assert.throws(() => groupOutputs(['x'], {}), /target x declares no needs in contracts\/check-inputs\.json; declare its scope and needs there/);
