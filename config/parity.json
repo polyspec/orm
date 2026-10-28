@@ -20799,7 +20799,19 @@
         },
         {
           "implementation": "typescript",
-          "symbol": "@polyspec/orm!AesKeyring:class"
+          "symbols": [
+            "@polyspec/orm!AesKeyring:class",
+            "@polyspec/orm!AesKeyring:constructor(1)",
+            "@polyspec/orm!AesKeyring#currentVersion:member",
+            "@polyspec/orm!AesKeyring#key:member(1)",
+            "@polyspec/orm!AesKeyring#rotateRow:member(1)",
+            "@polyspec/orm!AesRotationColumn:interface",
+            "@polyspec/orm!AesRotationColumn#name:member",
+            "@polyspec/orm!AesRotationColumn#styles:member",
+            "@polyspec/orm!AesRowCodec:interface",
+            "@polyspec/orm!AesRowCodec#decode:member(1)",
+            "@polyspec/orm!AesRowCodec#encode:member(1)"
+          ]
         },
         {
           "implementation": "python",
@@ -20878,7 +20890,13 @@
         },
         {
           "implementation": "typescript",
-          "symbol": "@polyspec/orm!AesRotationStatus:interface"
+          "symbols": [
+            "@polyspec/orm!AesRotationStatus:interface",
+            "@polyspec/orm!AesRotationStatus#current:member",
+            "@polyspec/orm!AesRotationStatus#pending:member",
+            "@polyspec/orm!AesRotationStatus#total:member",
+            "@polyspec/orm!AesRotationStatus#versions:member"
+          ]
         },
         {
           "implementation": "python",
@@ -20919,7 +20937,10 @@
         },
         {
           "implementation": "typescript",
-          "symbol": "@polyspec/orm!AesUtils:class"
+          "symbols": [
+            "@polyspec/orm!AesUtils:class",
+            "@polyspec/orm!AesUtils:constructor(1)"
+          ]
         },
         {
           "implementation": "python",
@@ -21054,7 +21075,15 @@
         },
         {
           "implementation": "typescript",
-          "symbol": "@polyspec/orm!hostEncode:function(1)"
+          "symbols": [
+            "@polyspec/orm!hostEncode:function(1)",
+            "@polyspec/orm!CodecError:class",
+            "@polyspec/orm!CodecError:constructor(1)",
+            "@polyspec/orm!CodecError#code:member",
+            "@polyspec/orm!CodecValue:type",
+            "@polyspec/orm!encode:function(1)",
+            "@polyspec/orm!EncodedValue:type"
+          ]
         },
         {
           "implementation": "python",
@@ -21090,7 +21119,10 @@
         },
         {
           "implementation": "typescript",
-          "symbol": "@polyspec/orm!hostDecode:function(1)"
+          "symbols": [
+            "@polyspec/orm!hostDecode:function(1)",
+            "@polyspec/orm!decode:function(1)"
+          ]
         },
         {
           "implementation": "python",
@@ -21126,7 +21158,14 @@
         },
         {
           "implementation": "typescript",
-          "symbol": "@polyspec/orm!Collection:class"
+          "symbols": [
+            "@polyspec/orm!Collection:class",
+            "@polyspec/orm!Collection#[Symbol.iterator]:member(1)",
+            "@polyspec/orm!Collection#fetchedValues:member(1)",
+            "@polyspec/orm!Collection#has:member(1)",
+            "@polyspec/orm!Collection#put:member(1)",
+            "@polyspec/orm!Collection#toJSON:member(1)"
+          ]
         },
         {
           "implementation": "python",
@@ -21169,7 +21208,10 @@
         },
         {
           "implementation": "typescript",
-          "symbol": "@polyspec/orm!Collection#get:member(1)"
+          "symbols": [
+            "@polyspec/orm!Collection#get:member(1)",
+            "@polyspec/orm!Key:type"
+          ]
         },
         {
           "implementation": "python",
@@ -22448,7 +22490,101 @@
         },
         {
           "implementation": "typescript",
-          "symbol": "@polyspec/orm!Core:class"
+          "symbols": [
+            "@polyspec/orm!Core:class",
+            "@polyspec/orm!Core#addColumn:member(1)",
+            "@polyspec/orm!Core#addColumnFunc:member(1)",
+            "@polyspec/orm!Core#addColumnSub:member(1)",
+            "@polyspec/orm!Core#agg:member",
+            "@polyspec/orm!Core#aggFn:member",
+            "@polyspec/orm!Core#aggregate:member(1)",
+            "@polyspec/orm!Core#alias:member",
+            "@polyspec/orm!Core#build:member(1)",
+            "@polyspec/orm!Core#by:member(1)",
+            "@polyspec/orm!Core#clone:member(1)",
+            "@polyspec/orm!Core#column:member(1)",
+            "@polyspec/orm!Core#columns:member",
+            "@polyspec/orm!Core#conn:member",
+            "@polyspec/orm!Core#connector:member(1)",
+            "@polyspec/orm!Core#deleteLock:member",
+            "@polyspec/orm!Core#duplication:member",
+            "@polyspec/orm!Core#ent:member",
+            "@polyspec/orm!Core#error:member",
+            "@polyspec/orm!Core#expectedRevision:member",
+            "@polyspec/orm!Core#fail:member(1)",
+            "@polyspec/orm!Core#failError:member(1)",
+            "@polyspec/orm!Core#fetchKey:member",
+            "@polyspec/orm!Core#fetchValue:member",
+            "@polyspec/orm!Core#group:member",
+            "@polyspec/orm!Core#groupBy:member",
+            "@polyspec/orm!Core#groupLimit:member",
+            "@polyspec/orm!Core#index:member",
+            "@polyspec/orm!Core#join:member(1)",
+            "@polyspec/orm!Core#joins:member",
+            "@polyspec/orm!Core#jsonColumn:member(1)",
+            "@polyspec/orm!Core#keyName:member",
+            "@polyspec/orm!Core#limit:member",
+            "@polyspec/orm!Core#lock:member",
+            "@polyspec/orm!Core#matches:member",
+            "@polyspec/orm!Core#negated:member(1)",
+            "@polyspec/orm!Core#newGroup:member(1)",
+            "@polyspec/orm!Core#newValue:member(1)",
+            "@polyspec/orm!Core#newValues:member",
+            "@polyspec/orm!Core#news:member",
+            "@polyspec/orm!Core#on:member",
+            "@polyspec/orm!Core#order:member",
+            "@polyspec/orm!Core#orderBy:member(1)",
+            "@polyspec/orm!Core#parentNode:member",
+            "@polyspec/orm!Core#possible:member",
+            "@polyspec/orm!Core#putSet:member(1)",
+            "@polyspec/orm!Core#relations:member",
+            "@polyspec/orm!Core#removeColumn:member(1)",
+            "@polyspec/orm!Core#resultName:member(1)",
+            "@polyspec/orm!Core#row:member",
+            "@polyspec/orm!Core#self:member",
+            "@polyspec/orm!Core#setDuplication:member(1)",
+            "@polyspec/orm!Core#setGroupLimit:member(1)",
+            "@polyspec/orm!Core#setLimit:member(1)",
+            "@polyspec/orm!Core#setNew:member(1)",
+            "@polyspec/orm!Core#setOn:member(1)",
+            "@polyspec/orm!Core#setValue:member(1)",
+            "@polyspec/orm!Core#sets:member",
+            "@polyspec/orm!Core#subject:member(1)",
+            "@polyspec/orm!Core#target:member",
+            "@polyspec/orm!Core#values:member",
+            "@polyspec/orm!Core#where:member",
+            "@polyspec/orm!Core#whereChain:member(1)",
+            "@polyspec/orm!Core:constructor(1)",
+            "@polyspec/orm!Model#[CORE]:member",
+            "@polyspec/orm!Model#addAllColumns:member(1)",
+            "@polyspec/orm!Model#and:member(1)",
+            "@polyspec/orm!Model#andNot:member(1)",
+            "@polyspec/orm!Model#connect:member(1)",
+            "@polyspec/orm!Model#deleteLock:member(1)",
+            "@polyspec/orm!Model#duplication:member(1)",
+            "@polyspec/orm!Model#expectRevision:member(1)",
+            "@polyspec/orm!Model#fetchKey:member(1)",
+            "@polyspec/orm!Model#fetchValue:member(1)",
+            "@polyspec/orm!Model#forShare:member(1)",
+            "@polyspec/orm!Model#forShareNoWait:member(1)",
+            "@polyspec/orm!Model#forUpdate:member(1)",
+            "@polyspec/orm!Model#forUpdateNoWait:member(1)",
+            "@polyspec/orm!Model#getQuery:member(1)",
+            "@polyspec/orm!Model#groupLimit:member(1)",
+            "@polyspec/orm!Model#limit:member(1)",
+            "@polyspec/orm!Model#not:member(1)",
+            "@polyspec/orm!Model#on:member(1)",
+            "@polyspec/orm!Model#or:member(1)",
+            "@polyspec/orm!Model#orNot:member(1)",
+            "@polyspec/orm!Model#orderByRandom:member(1)",
+            "@polyspec/orm!Model#parentNode:member(1)",
+            "@polyspec/orm!Model#relation:member(1)",
+            "@polyspec/orm!Model#relations:member(1)",
+            "@polyspec/orm!Model#removeAllColumns:member(1)",
+            "@polyspec/orm!Model#save:member(1)",
+            "@polyspec/orm!Model:class",
+            "@polyspec/orm!Model:constructor(1)"
+          ]
         },
         {
           "implementation": "python",
@@ -22518,7 +22654,41 @@
         },
         {
           "implementation": "typescript",
-          "symbol": "@polyspec/orm!Db:class"
+          "symbols": [
+            "@polyspec/orm!Db:class",
+            "@polyspec/orm!ConnectOptions:interface",
+            "@polyspec/orm!ConnectOptions#aesKey:member",
+            "@polyspec/orm!ConnectOptions#aesKeys:member",
+            "@polyspec/orm!ConnectOptions#aesVersion:member",
+            "@polyspec/orm!ConnectOptions#auditSource:member",
+            "@polyspec/orm!ConnectOptions#blindIndexKey:member",
+            "@polyspec/orm!ConnectOptions#planCacheSize:member",
+            "@polyspec/orm!ConnectOptions#poolIdleSize:member",
+            "@polyspec/orm!ConnectOptions#poolLifetimeMs:member",
+            "@polyspec/orm!ConnectOptions#poolSize:member",
+            "@polyspec/orm!ConnectOptions#statementCacheSize:member",
+            "@polyspec/orm!ConnectOptions#statementTimeoutMs:member",
+            "@polyspec/orm!Db#[REGISTER]:member(1)",
+            "@polyspec/orm!Db#aesKey:member",
+            "@polyspec/orm!Db#aesKeyring:member",
+            "@polyspec/orm!Db#aesVersion:member",
+            "@polyspec/orm!Db#args:member(1)",
+            "@polyspec/orm!Db#blindIndexKey:member",
+            "@polyspec/orm!Db#clockMicros:member(1)",
+            "@polyspec/orm!Db#closed:member",
+            "@polyspec/orm!Db#driver:member",
+            "@polyspec/orm!Db#listen:member(1)",
+            "@polyspec/orm!Db#notify:member(1)",
+            "@polyspec/orm!Db#now:member(1)",
+            "@polyspec/orm!Db#plan:member(1)",
+            "@polyspec/orm!Db#requestHook:member",
+            "@polyspec/orm!Db#root:member(1)",
+            "@polyspec/orm!Db#signal:member",
+            "@polyspec/orm!Db#withSignal:member(1)",
+            "@polyspec/orm!Db#zone:member",
+            "@polyspec/orm!Isolation:type",
+            "@polyspec/orm!RequestHook:type"
+          ]
         },
         {
           "implementation": "python",
@@ -22649,7 +22819,10 @@
         },
         {
           "implementation": "typescript",
-          "symbol": "@polyspec/orm!PrivilegeUtils:class"
+          "symbols": [
+            "@polyspec/orm!PrivilegeUtils:class",
+            "@polyspec/orm!PrivilegeUtils:constructor(1)"
+          ]
         },
         {
           "implementation": "python",
@@ -22684,7 +22857,46 @@
         },
         {
           "implementation": "typescript",
-          "symbol": "@polyspec/orm!Schema:interface"
+          "symbols": [
+            "@polyspec/orm!Schema:interface",
+            "@polyspec/orm!CORE:var",
+            "@polyspec/orm!Entity#aesVersion:member",
+            "@polyspec/orm!Entity#auditColumn:member",
+            "@polyspec/orm!Entity#auditRecord:member",
+            "@polyspec/orm!Entity#external:member",
+            "@polyspec/orm!Entity#fields:member",
+            "@polyspec/orm!Entity#identity:member",
+            "@polyspec/orm!Entity#indexColumns:member",
+            "@polyspec/orm!Entity#indexes:member",
+            "@polyspec/orm!Entity#name:member",
+            "@polyspec/orm!Entity#primaryKey:member",
+            "@polyspec/orm!Entity#softDelete:member",
+            "@polyspec/orm!Entity#table:member",
+            "@polyspec/orm!Entity#uniques:member",
+            "@polyspec/orm!Entity#updated:member",
+            "@polyspec/orm!EXTERNAL_TEXT:var",
+            "@polyspec/orm!Field#blindIndex:member",
+            "@polyspec/orm!Field#defaultNow:member",
+            "@polyspec/orm!Field#foreign:member",
+            "@polyspec/orm!Field#hasDefault:member",
+            "@polyspec/orm!Field#identity:member",
+            "@polyspec/orm!Field#length:member",
+            "@polyspec/orm!Field#name:member",
+            "@polyspec/orm!Field#nullable:member",
+            "@polyspec/orm!Field#precision:member",
+            "@polyspec/orm!Field#primary:member",
+            "@polyspec/orm!Field#scale:member",
+            "@polyspec/orm!Field#selected:member",
+            "@polyspec/orm!Field#stages:member",
+            "@polyspec/orm!Field#type:member",
+            "@polyspec/orm!MANIFEST_HASH:var",
+            "@polyspec/orm!MANIFEST_TEXT:var",
+            "@polyspec/orm!registerModel:function(1)",
+            "@polyspec/orm!Schema#externalText:member",
+            "@polyspec/orm!Schema#manifestHash:member",
+            "@polyspec/orm!Schema#manifestText:member",
+            "@polyspec/orm!SCHEMA:var"
+          ]
         },
         {
           "implementation": "python",
@@ -22724,7 +22936,10 @@
         },
         {
           "implementation": "typescript",
-          "symbol": "@polyspec/orm!SchemaUtils:class"
+          "symbols": [
+            "@polyspec/orm!SchemaUtils:class",
+            "@polyspec/orm!SchemaUtils:constructor(1)"
+          ]
         },
         {
           "implementation": "python",
@@ -22760,7 +22975,13 @@
         },
         {
           "implementation": "typescript",
-          "symbol": "@polyspec/orm!PoolStats:interface"
+          "symbols": [
+            "@polyspec/orm!PoolStats:interface",
+            "@polyspec/orm!PoolStats#idle:member",
+            "@polyspec/orm!PoolStats#inUse:member",
+            "@polyspec/orm!PoolStats#maxOpenConnections:member",
+            "@polyspec/orm!PoolStats#openConnections:member"
+          ]
         },
         {
           "implementation": "python",
@@ -23050,7 +23271,14 @@
         },
         {
           "implementation": "typescript",
-          "symbol": "@polyspec/orm!Page:interface"
+          "symbols": [
+            "@polyspec/orm!Page:interface",
+            "@polyspec/orm!Page#items:member",
+            "@polyspec/orm!Page#page:member",
+            "@polyspec/orm!Page#perPage:member",
+            "@polyspec/orm!Page#totalCount:member",
+            "@polyspec/orm!Page#totalPages:member"
+          ]
         },
         {
           "implementation": "python",
@@ -23094,7 +23322,12 @@
         },
         {
           "implementation": "typescript",
-          "symbol": "@polyspec/orm!GroupRow:class"
+          "symbols": [
+            "@polyspec/orm!GroupRow:class",
+            "@polyspec/orm!GroupRow:constructor(1)",
+            "@polyspec/orm!GroupRow#count:member",
+            "@polyspec/orm!GroupRow#toJSON:member(1)"
+          ]
         },
         {
           "implementation": "python",
@@ -23132,7 +23365,13 @@
         },
         {
           "implementation": "typescript",
-          "symbol": "@polyspec/orm!GroupRows:class"
+          "symbols": [
+            "@polyspec/orm!GroupRows:class",
+            "@polyspec/orm!GroupRows#[Symbol.iterator]:member(1)",
+            "@polyspec/orm!GroupRows:constructor(1)",
+            "@polyspec/orm!GroupRows#toJSON:member(1)",
+            "@polyspec/orm!GroupRows#values:member(1)"
+          ]
         },
         {
           "implementation": "python",
