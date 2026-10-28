@@ -107,12 +107,10 @@ jobs:
       - name: tools of mise.toml
         id: go
         if: ${{ !cancelled() }}
-        run: |
-          if [ "${{ matrix.group }}" = static ]; then
-            make install-tools
-          else
-            make install-tools TOOLS="go${{ steps.group-needs.outputs.php == 'true' && ' php composer' || '' }}${{ steps.group-needs.outputs.python == 'true' && ' python uv' || '' }}"
-          fi
+        env:
+          CI_GROUP_PHP: ${{ steps.group-needs.outputs.php }}
+          CI_GROUP_PYTHON: ${{ steps.group-needs.outputs.python }}
+        run: make ci-install-tools GROUP=${{ matrix.group }}
       # check-run builds the Go lease runner in every group; it needs only x/sys
       # from the Go workspace. Runtime groups that declare Go work also install
       # the full module set and generated models below.

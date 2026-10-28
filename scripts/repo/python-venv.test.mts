@@ -57,9 +57,9 @@ caseTest('orm-install-python builds its venv with the pinned interpreter, never 
     const result = make(['-n', 'orm-install-python', `PYTHON_VENV=${join(dir, '.venv')}`], { path: `${bin}:${process.env.PATH}` });
     assert.equal(result.status, 0, result.stdout + result.stderr);
     assert.doesNotMatch(result.stdout, /(^|[\s/])python3 -m venv/m);
-    // install-tools installs every tool of mise.lock, the Python among them; it takes no tool names.
-    assert.match(result.stdout, /make --no-print-directory install-tools\n/);
-    assert.doesNotMatch(result.stdout, /make --no-print-directory install-tools \S/);
+    // The Python venv setup selects only the pinned interpreter and uv from the declared tool inventory.
+    assert.match(result.stdout, /make --no-print-directory install-tools TOOLS="python uv"\n/);
+    assert.doesNotMatch(result.stdout, /make --no-print-directory install-tools\n/);
     assert.match(result.stdout, /python-venv DIR=/);
     // make puts the shims of mise before PATH, so python3 is the Python of mise.toml and the stub of PATH is never run.
     assert.match(result.stdout, /(^|\s)\S*\/var\/tools\/mise\/shims\/python3 -m pip --python /m);

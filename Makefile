@@ -2173,31 +2173,16 @@ parity-check: export ORM_SEND_SQLITE_DSN = sqlite://$(PARITY_RUN_DIR)/send-savep
 parity-check: export ORM_CHECKOUT = $(CURDIR)
 parity-check: export ORM_PROGRAM_CONFORMANCE = $(PARITY_RUN_DIR)/target/debug/conformance
 
-# CI splits parity's public API extraction from the six native binding runs. The full parity-check target above remains the
-# default Kit phase (all), for local/manual complete checks. Each binding target selects exactly one declared implementation.
-PARITY_BINDING_TARGETS = parity-bindings-go-check parity-bindings-php-check parity-bindings-php-extension-check parity-bindings-typescript-check parity-bindings-python-check parity-bindings-rust-check
-.PHONY: parity-api-check $(PARITY_BINDING_TARGETS)
-parity-api-check: interface-check
-	$(NODE) $(KIT)/parity.$(KIT_EXT) --phase api
-parity-bindings-go-check: parity-bench-env-check flowmark-check
-	$(NODE) $(KIT)/parity.$(KIT_EXT) --phase bindings --implementation go
-parity-bindings-php-check: parity-bench-env-check flowmark-check
-	$(NODE) $(KIT)/parity.$(KIT_EXT) --phase bindings --implementation php
-parity-bindings-php-extension-check: parity-prepare-php-extension parity-bench-env-check flowmark-check
-	$(NODE) $(KIT)/parity.$(KIT_EXT) --phase bindings --implementation php-extension
-parity-bindings-typescript-check: parity-bench-env-check flowmark-check
-	$(NODE) $(KIT)/parity.$(KIT_EXT) --phase bindings --implementation typescript
-parity-bindings-python-check: parity-bench-env-check flowmark-check
-	$(NODE) $(KIT)/parity.$(KIT_EXT) --phase bindings --implementation python
-parity-bindings-rust-check: parity-prepare-rust parity-bench-env-check flowmark-check
-	$(NODE) $(KIT)/parity.$(KIT_EXT) --phase bindings --implementation rust
-$(PARITY_BINDING_TARGETS): export FLOWMARK := $(FLOWMARK)
-$(PARITY_BINDING_TARGETS): export ORM_PARITY_PHP_EXTENSION = $(PARITY_RUN_DIR)/polyspec_orm.so
-$(PARITY_BINDING_TARGETS): export ORM_PARITY_PHP_EXTENSION_NATIVE_TEST = $(PARITY_NATIVE_TEST_EXTENSION)
-$(PARITY_BINDING_TARGETS): export POLYSPEC_ORM_EXTENSION = $(PARITY_RUN_DIR)/polyspec_orm.so
-$(PARITY_BINDING_TARGETS): export ORM_SEND_SQLITE_DSN = sqlite://$(PARITY_RUN_DIR)/send-savepoint.sqlite
-$(PARITY_BINDING_TARGETS): export ORM_CHECKOUT = $(CURDIR)
-$(PARITY_BINDING_TARGETS): export ORM_PROGRAM_CONFORMANCE = $(PARITY_RUN_DIR)/target/debug/conformance
+# CI provides the declared group needs as booleans; static checks need every tool for toolchain-check,
+# while the other groups install only the shared Go runner and the runtimes their targets use.
+.PHONY: ci-install-tools
+ifeq ($(GROUP),static)
+ci-install-tools:
+	$(MAKE) --no-print-directory install-tools
+else
+ci-install-tools:
+	$(MAKE) --no-print-directory install-tools TOOLS="go$(if $(filter true,$(CI_GROUP_PHP)), php composer)$(if $(filter true,$(CI_GROUP_PYTHON)), python uv)"
+endif
 markdown-conformance-check: markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/php-extension markdown-conformance-check/python markdown-conformance-check/rust markdown-conformance-check/typescript
 markdown-conformance-check/go:
 	FLOWMARK=$(FLOWMARK) $(GO_TEST) -tags markdown ./packages/go/markdownmodel -run '^TestMarkdownConformance$$' -count=1

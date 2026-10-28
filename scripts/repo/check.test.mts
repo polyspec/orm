@@ -58,10 +58,10 @@ caseTest('dbspec apply gives the stress case its own 120 second runner deadline'
     const result = spawnSync('make', ['-n', target], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
     assert.equal(result.status, 0, result.stderr);
     return result.stdout.split(/\r?\n/)
-      .filter(line => line.includes('run-tests.mts'))
+      .filter(line => /run-tests\.m(?:js|ts)/.test(line))
       .flatMap(line => shellCommands(line, 'sh'))
       .flatMap(command => {
-        const runner = command.args.findIndex(argument => argument.endsWith('/run-tests.mts'));
+        const runner = command.args.findIndex(argument => /\/run-tests\.m(?:js|ts)$/.test(argument));
         return runner < 0 ? [] : [parseKitTestArguments(command.args.slice(runner + 1), root)];
       });
   };
@@ -661,16 +661,23 @@ caseTest('the CI groups run every target of CHECK_TARGETS in exactly one job', C
   assert.ok(typeof testJob === 'object' && testJob !== null && !Array.isArray(testJob), 'the test job has a mapping');
   assert.equal('needs' in testJob ? testJob.needs : undefined, undefined,
     'runtime and comparison matrix jobs install their own dependencies without waiting for another job');
-  const ciToolStep = /- name: tools of mise\.toml\n        id: go\n        if: \$\{\{ !cancelled\(\) \}\}\n        run: \|\n([\s\S]*?)\n      # check-run/.exec(workflow)?.[1] ?? '';
-  assert.match(ciToolStep, /matrix\.group.*= static/);
-  assert.match(ciToolStep, /then\n\s+make install-tools\n\s+else\n\s+make install-tools TOOLS="go/,
-    'static checks every declared tool; other groups select only Go and the PHP/Python tools their needs require');
-  const selector = /make install-tools TOOLS="([^"]+)"/.exec(ciToolStep)?.[1] ?? '';
-  const selectedTools = [
-    ...(selector.split('${{')[0]?.trim().split(/\s+/) ?? []),
-    ...[...selector.matchAll(/outputs\.(?:php|python) == 'true' && ' ([^']+)'/g)]
-      .flatMap(match => match[1]?.trim().split(/\s+/) ?? []),
-  ].filter(Boolean);
+  assert.match(workflow, /- name: tools of mise\.toml\n        id: go\n        if: \$\{\{ !cancelled\(\) \}\}\n        env:\n          CI_GROUP_PHP: \$\{\{ steps\.group-needs\.outputs\.php \}\}\n          CI_GROUP_PYTHON: \$\{\{ steps\.group-needs\.outputs\.python \}\}\n        run: make ci-install-tools GROUP=\$\{\{ matrix\.group \}\}/,
+    'CI passes the group setup needs to one Make target, not inline shell logic');
+  const installTools = (group: string, php: string, python: string) => {
+    const result = spawnSync('make', ['-n', 'ci-install-tools', `GROUP=${group}`], {
+      cwd: repository.pathname,
+      encoding: 'utf8',
+      env: isolatedEnvironment({ CI_GROUP_PHP: php, CI_GROUP_PYTHON: python }),
+    });
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout;
+  };
+  assert.match(installTools('static', 'false', 'false'), /make --no-print-directory install-tools\n/);
+  assert.doesNotMatch(installTools('static', 'false', 'false'), /install-tools TOOLS=/);
+  const selectedTools = /install-tools TOOLS="([^"]+)"/.exec(installTools('feature_php_mysql', 'true', 'false'))?.[1]?.split(/\s+/) ?? [];
+  assert.deepEqual(selectedTools, ['go', 'php', 'composer']);
+  const pythonTools = /install-tools TOOLS="([^"]+)"/.exec(installTools('feature_python_mysql', 'false', 'true'))?.[1]?.split(/\s+/) ?? [];
+  assert.deepEqual(pythonTools, ['go', 'python', 'uv']);
   const mise = parseToml(text('mise.toml')) as { tools?: Record<string, unknown> };
   const toolchainValue: unknown = JSON.parse(text('config/toolchain.json'));
   assert.ok(typeof toolchainValue === 'object' && toolchainValue !== null, 'toolchain.json contains a mapping');
@@ -682,12 +689,11 @@ caseTest('the CI groups run every target of CHECK_TARGETS in exactly one job', C
     ...(Array.isArray(phpToolchain) && phpToolchain.length > 0 ? ['php'] : []),
     ...(mise.tools && Object.hasOwn(mise.tools, 'http:composer') ? ['composer'] : []),
   ]);
-  assert.deepEqual(selectedTools, ['go', 'php', 'composer', 'python', 'uv']);
-  for (const selected of selectedTools) {
+  for (const selected of [...selectedTools, ...pythonTools]) {
     assert.ok(declaredTools.has(selected), `CI selects ${selected} for Kit install-tools, but it is not declared by this checkout`);
   }
-  assert.doesNotMatch(ciToolStep, /parity_api/,
-    'API parity uses the selected runtime tools and its separate extractor installation step');
+  assert.doesNotMatch(makefile, /parity\.(?:mjs|mts).*--phase/,
+    'the canonical Kit parity target owns phase execution');
   assert.match(makefile, /^orm-install-python:\n\t\$\(MAKE\) --no-print-directory install-tools TOOLS="python uv"$/m,
     'the Python installer does not widen a runtime-specific setup back to the full tool inventory');
   assert.doesNotMatch(makefile, /^install-packages:\s+orm-install-interfaces-typescript$/m,
@@ -702,10 +708,8 @@ caseTest('the CI groups run every target of CHECK_TARGETS in exactly one job', C
   assert.equal((matrixWorkflow.match(/id: go-lease-modules/g) ?? []).length, 1, 'every group installs the shared runner dependency in its own job');
   assert.match(workflow, /id: go-lease-modules\n        if: \$\{\{ !cancelled\(\) \}\}\n        run: make orm-install-go-lease/);
   assert.match(workflow, /id: go-modules\n        if: \$\{\{ !cancelled\(\) && steps\.group-needs\.outputs\.go == 'true' \}\}\n        run: make orm-install-go/);
-  assert.match(makefile, /^parity-api-check:[^\n]*\n\t\$\(NODE\) \$\(KIT\)\/parity\.\$\(KIT_EXT\) --phase api$/m);
-  for (const runtime of ['go', 'php', 'php-extension', 'typescript', 'python', 'rust']) {
-    assert.match(makefile, new RegExp(`^parity-bindings-${runtime}-check:[^\\n]*\\n\\t\\$\\(NODE\\) \\$\\(KIT\\)\\/parity\\.\\$\\(KIT_EXT\\) --phase bindings --implementation ${runtime}$`, 'm'));
-  }
+  assert.doesNotMatch(makefile, /^parity-(?:api|bindings-[a-z-]+)-check:/m,
+    'the canonical Kit parity target owns phase execution; the ORM Makefile only supplies its prerequisites');
   assert.match(makefile, /^parity-check: parity-prepare$/m, 'the default full Kit parity target remains available');
   assert.ok(workflow.includes('        run: make check-run GROUP=${{ matrix.group }}\n'), 'ci.yml runs make check-run for the group of its matrix');
   assert.deepEqual(ciCheckTargetErrors(workflow, makefile), []);
