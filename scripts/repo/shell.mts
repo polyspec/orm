@@ -84,7 +84,7 @@ function walk(tree: Script, text: string, visit: (node: PipelineNode | Statement
     switch (command.type) {
       case 'Command': case 'TestCommand': case 'ArithmeticCommand': return;
       case 'AndOr': case 'Pipeline': command.commands.forEach(node); return;
-      case 'Time': case 'Negation': case 'Redirected': node(command.command); return;
+      case 'Redirected': node(command.command); return;
       case 'CompoundList': body(command); return;
       case 'Subshell': case 'BraceGroup': case 'For': case 'Select': case 'ArithmeticFor': body(command.body); return;
       case 'While': body(command.clause); body(command.body); return;

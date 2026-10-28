@@ -1,8 +1,6 @@
 # The gates of kit in a repository that adopts it (K270). kit-sync copies this file from the installed package @polyspec/kit to
 # .github/workflows/gates.yml, and kit-check fails when the checkout differs from it; a repository never edits it.
-#
-# It installs the repository from its locked packages, then runs make -k kit-gates: every check that a rule of PRINCIPLES.md is
-# enforced by, each a target of kit.mk, so one run shows every failure. A repository runs its own tests in a workflow of its own.
+# Each job installs its own locked prerequisites, declared in config/ci.json or selected from Kit's native lock targets.
 name: gates
 
 on:
@@ -15,22 +13,48 @@ permissions:
   contents: read
 
 jobs:
-  gates:
+  discover:
     runs-on: ubuntu-24.04
+    outputs:
+      runtimes: ${{ steps.plan.outputs.runtimes }}
+      parity_mode: ${{ steps.plan.outputs.parity_mode }}
+      parity_matrix: ${{ steps.plan.outputs.parity_matrix }}
+      has_runtimes: ${{ steps.plan.outputs.has_runtimes }}
+      common_tools: ${{ steps.plan.outputs.common_tools }}
+      parity_tools: ${{ steps.plan.outputs.parity_tools }}
+      extractors: ${{ steps.plan.outputs.extractors }}
+      link_tools: ${{ steps.plan.outputs.link_tools }}
     steps:
-      # actions/checkout v7.0.1; commits-check reads the commits of the run, so the checkout carries the full commit graph. The project
-      # is at the workspace root; installed packages provide the shared tools.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          fetch-depth: 0
-      # actions/setup-node v7.1.0: the Node.js of mise.toml starts the bootstrap, which installs that release into var/tools.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version-file: mise.toml
           package-manager-cache: false
-      # shivammathur/setup-php 2.40.0: the PHP of .php-version, for a repository that declares one (K193).
+      - name: bootstrap the installed kit package
+        run: |
+          if [ "$(node -p 'require("./package.json").name')" != '@polyspec/kit' ]; then
+            npm_config_cache="$PWD/var/bootstrap/npm-cache" npm exec --yes --package="$(node -p 'require("./package.json").packageManager.split("+")[0]')" -- npm ci --ignore-scripts --allow-remote=root
+          fi
+      - name: install npm
+        run: make install-tools TOOLS=npm
+      - name: install packages
+        run: make install-packages
+      - id: plan
+        run: make kit-ci-plan
+
+  shared:
+    needs: discover
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version-file: mise.toml
+          package-manager-cache: false
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
-        if: ${{ hashFiles('.php-version') != '' }}
+        if: ${{ contains(needs.discover.outputs.common_tools, 'php') }}
         with:
           php-version-file: .php-version
           tools: none
@@ -44,12 +68,11 @@ jobs:
         run: make install-tools TOOLS=npm
       - name: install packages
         run: make install-packages
-      - name: install
-        run: make install
-      # cargo of the Rust pin, for a repository that declares rust-toolchain.toml.
-      - name: install rust
-        if: ${{ hashFiles('rust-toolchain.toml') != '' }}
-        run: rustup toolchain install
+      - name: install common gate tools
+        if: ${{ needs.discover.outputs.common_tools != '[]' }}
+        run: make install-tools TOOLS="${{ join(fromJSON(needs.discover.outputs.common_tools), ' ') }}"
+      - name: install shared prerequisites
+        run: make kit-ci-setup GROUP=shared
       - name: commit range
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
@@ -60,8 +83,250 @@ jobs:
           elif [ -n "$BEFORE" ] && [ "$BEFORE" != 0000000000000000000000000000000000000000 ]; then echo "range=$BEFORE..$GITHUB_SHA"
           else echo "range=HEAD"
           fi >> "$GITHUB_ENV"
-      # Native development declarations may link local packages; release installs need no sibling checkout.
-      - name: link
+      - id: context_prepare
+        name: prepare shared CI context
+        run: make kit-ci-context-prepare GROUP=shared
+      - name: shared gates
+        env:
+          COMMON_TOOLS: ${{ join(fromJSON(needs.discover.outputs.common_tools), ' ') }}
+        run: make -k toolchain-check TOOLS="node npm mise $COMMON_TOOLS" kit-gates-static RANGE="$range"
+      - name: cleanup shared CI context
+        if: ${{ always() && steps.context_prepare.outcome != 'skipped' }}
+        run: make kit-ci-context-cleanup GROUP=shared
+
+  parity:
+    needs: discover
+    if: ${{ needs.discover.outputs.parity_mode == 'full' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version-file: mise.toml
+          package-manager-cache: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
+        if: ${{ contains(needs.discover.outputs.parity_tools, 'php') }}
+        with:
+          php-version-file: .php-version
+          tools: none
+          coverage: none
+      - name: bootstrap the installed kit package
+        run: |
+          if [ "$(node -p 'require("./package.json").name')" != '@polyspec/kit' ]; then
+            npm_config_cache="$PWD/var/bootstrap/npm-cache" npm exec --yes --package="$(node -p 'require("./package.json").packageManager.split("+")[0]')" -- npm ci --ignore-scripts --allow-remote=root
+          fi
+      - name: install npm
+        run: make install-tools TOOLS=npm
+      - name: install packages
+        run: make install-packages
+      - name: install parity toolchains
+        if: ${{ needs.discover.outputs.parity_tools != '[]' }}
+        run: make install-tools TOOLS="${{ join(fromJSON(needs.discover.outputs.parity_tools), ' ') }}"
+      - name: install package-link toolchain
+        if: ${{ needs.discover.outputs.link_tools != '[]' && !contains(needs.discover.outputs.parity_tools, 'go') }}
+        run: make install-tools TOOLS="${{ join(fromJSON(needs.discover.outputs.link_tools), ' ') }}"
+      - name: install symbol extractors
+        if: ${{ needs.discover.outputs.extractors != '[]' }}
+        run: make kit-install-symbols EXTRACTORS="${{ join(fromJSON(needs.discover.outputs.extractors), ' ') }}"
+      - name: install parity prerequisites
+        run: make kit-ci-setup GROUP=parity
+      - name: link local packages
         run: make link
-      - name: gates
-        run: make -k kit-gates RANGE="$range"
+      - id: context_prepare
+        name: prepare parity CI context
+        run: make kit-ci-context-prepare GROUP=parity
+      - name: parity gate
+        run: make -k kit-gates-parity
+      - name: cleanup parity CI context
+        if: ${{ always() && steps.context_prepare.outcome != 'skipped' }}
+        run: make kit-ci-context-cleanup GROUP=parity
+
+  parity-api:
+    needs: discover
+    if: ${{ needs.discover.outputs.parity_mode == 'phases' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version-file: mise.toml
+          package-manager-cache: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
+        if: ${{ contains(needs.discover.outputs.parity_tools, 'php') }}
+        with:
+          php-version-file: .php-version
+          tools: none
+          coverage: none
+      - name: bootstrap the installed kit package
+        run: |
+          if [ "$(node -p 'require("./package.json").name')" != '@polyspec/kit' ]; then
+            npm_config_cache="$PWD/var/bootstrap/npm-cache" npm exec --yes --package="$(node -p 'require("./package.json").packageManager.split("+")[0]')" -- npm ci --ignore-scripts --allow-remote=root
+          fi
+      - name: install npm
+        run: make install-tools TOOLS=npm
+      - name: install packages
+        run: make install-packages
+      - name: install parity toolchains
+        if: ${{ needs.discover.outputs.parity_tools != '[]' }}
+        run: make install-tools TOOLS="${{ join(fromJSON(needs.discover.outputs.parity_tools), ' ') }}"
+      - name: install package-link toolchain
+        if: ${{ needs.discover.outputs.link_tools != '[]' && !contains(needs.discover.outputs.parity_tools, 'go') }}
+        run: make install-tools TOOLS="${{ join(fromJSON(needs.discover.outputs.link_tools), ' ') }}"
+      - name: install symbol extractors
+        if: ${{ needs.discover.outputs.extractors != '[]' }}
+        run: make kit-install-symbols EXTRACTORS="${{ join(fromJSON(needs.discover.outputs.extractors), ' ') }}"
+      - name: install parity prerequisites
+        run: make kit-ci-setup GROUP=parity
+      - name: link local packages
+        run: make link
+      - id: context_prepare
+        name: prepare parity CI context
+        run: make kit-ci-context-prepare GROUP=parity
+      - name: API phase
+        run: make -k link-state-check parity-api-check
+      - name: cleanup parity CI context
+        if: ${{ always() && steps.context_prepare.outcome != 'skipped' }}
+        run: make kit-ci-context-cleanup GROUP=parity
+
+  parity-bindings:
+    needs: discover
+    if: ${{ needs.discover.outputs.parity_mode == 'phases' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.discover.outputs.parity_matrix) }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version-file: mise.toml
+          package-manager-cache: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
+        if: ${{ contains(needs.discover.outputs.parity_tools, 'php') }}
+        with:
+          php-version-file: .php-version
+          tools: none
+          coverage: none
+      - name: bootstrap the installed kit package
+        run: |
+          if [ "$(node -p 'require("./package.json").name')" != '@polyspec/kit' ]; then
+            npm_config_cache="$PWD/var/bootstrap/npm-cache" npm exec --yes --package="$(node -p 'require("./package.json").packageManager.split("+")[0]')" -- npm ci --ignore-scripts --allow-remote=root
+          fi
+      - name: install npm
+        run: make install-tools TOOLS=npm
+      - name: install packages
+        run: make install-packages
+      - name: install parity toolchains
+        if: ${{ needs.discover.outputs.parity_tools != '[]' }}
+        run: make install-tools TOOLS="${{ join(fromJSON(needs.discover.outputs.parity_tools), ' ') }}"
+      - name: install package-link toolchain
+        if: ${{ needs.discover.outputs.link_tools != '[]' && !contains(needs.discover.outputs.parity_tools, 'go') }}
+        run: make install-tools TOOLS="${{ join(fromJSON(needs.discover.outputs.link_tools), ' ') }}"
+      - name: install symbol extractors
+        if: ${{ needs.discover.outputs.extractors != '[]' }}
+        run: make kit-install-symbols EXTRACTORS="${{ join(fromJSON(needs.discover.outputs.extractors), ' ') }}"
+      - name: install parity prerequisites
+        run: make kit-ci-setup GROUP=parity
+      - name: link local packages
+        run: make link
+      - id: context_prepare
+        name: prepare parity CI context
+        run: make kit-ci-context-prepare GROUP=parity
+      - name: binding phase
+        run: make parity-bindings-${{ matrix.implementation }}-check
+      - name: cleanup parity CI context
+        if: ${{ always() && steps.context_prepare.outcome != 'skipped' }}
+        run: make kit-ci-context-cleanup GROUP=parity
+
+  runtime:
+    needs: discover
+    if: ${{ fromJSON(needs.discover.outputs.runtimes)[0].runtime != 'none' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.discover.outputs.runtimes) }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version-file: mise.toml
+          package-manager-cache: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
+        if: ${{ matrix.runtime == 'php' || matrix.runtime == 'php-ext' }}
+        with:
+          php-version-file: .php-version
+          tools: none
+          coverage: none
+      - name: bootstrap the installed kit package
+        run: |
+          if [ "$(node -p 'require("./package.json").name')" != '@polyspec/kit' ]; then
+            npm_config_cache="$PWD/var/bootstrap/npm-cache" npm exec --yes --package="$(node -p 'require("./package.json").packageManager.split("+")[0]')" -- npm ci --ignore-scripts --allow-remote=root
+          fi
+      - name: install npm
+        run: make install-tools TOOLS=npm
+      - name: install packages
+        run: make install-packages
+      - name: install runtime tools
+        if: ${{ join(matrix.installTools, ' ') != '' }}
+        run: make install-tools TOOLS="${{ join(matrix.installTools, ' ') }}"
+      - name: install runtime prerequisites
+        run: make kit-ci-setup GROUP=runtime RUNTIME=${{ matrix.runtime }}
+      - name: install PHP symbol extractor
+        if: ${{ matrix.runtime == 'php' && contains(needs.discover.outputs.extractors, 'php') }}
+        run: make kit-install-symbols EXTRACTORS=php
+      - name: link local packages
+        run: make link
+      - id: context_prepare
+        name: prepare runtime CI context
+        run: make kit-ci-context-prepare GROUP=runtime RUNTIME=${{ matrix.runtime }}
+      - name: runtime gate
+        env:
+          CHECK_TOOLS: ${{ join(matrix.checkTools, ' ') }}
+        run: |
+          if [ -n "$CHECK_TOOLS" ]; then
+            make -k toolchain-check TOOLS="$CHECK_TOOLS" kit-gates-runtime-${{ matrix.runtime }}
+          else
+            make -k kit-gates-runtime-${{ matrix.runtime }}
+          fi
+      - name: cleanup runtime CI context
+        if: ${{ always() && steps.context_prepare.outcome != 'skipped' }}
+        run: make kit-ci-context-cleanup GROUP=runtime RUNTIME=${{ matrix.runtime }}
+
+  required:
+    if: ${{ always() }}
+    needs: [discover, shared, parity, parity-api, parity-bindings, runtime]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version-file: mise.toml
+          package-manager-cache: false
+      - name: bootstrap the installed kit package
+        run: |
+          if [ "$(node -p 'require("./package.json").name')" != '@polyspec/kit' ]; then
+            npm_config_cache="$PWD/var/bootstrap/npm-cache" npm exec --yes --package="$(node -p 'require("./package.json").packageManager.split("+")[0]')" -- npm ci --ignore-scripts --allow-remote=root
+          fi
+      - name: install npm
+        run: make install-tools TOOLS=npm
+      - name: install packages
+        run: make install-packages
+      - name: require the selected gate path
+        env:
+          KIT_CI_DISCOVER_RESULT: ${{ needs.discover.result }}
+          KIT_CI_PARITY_MODE: ${{ needs.discover.outputs.parity_mode }}
+          KIT_CI_HAS_RUNTIMES: ${{ needs.discover.outputs.has_runtimes }}
+          KIT_CI_SHARED_RESULT: ${{ needs.shared.result }}
+          KIT_CI_PARITY_RESULT: ${{ needs.parity.result }}
+          KIT_CI_PARITY_API_RESULT: ${{ needs.parity-api.result }}
+          KIT_CI_PARITY_BINDINGS_RESULT: ${{ needs.parity-bindings.result }}
+          KIT_CI_RUNTIME_RESULT: ${{ needs.runtime.result }}
+        run: make kit-ci-verify-gates

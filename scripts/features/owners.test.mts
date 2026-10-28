@@ -189,6 +189,13 @@ caseTest('a declared pattern matches by path segment', 5000, async () => {
   assert.deepEqual(targets(selectTargets(declared, ['packages/rust/Cargo.toml'])), ['any']);
 });
 
+caseTest('empty and comment input patterns are rejected', 5000, () => {
+  for (const pattern of ['', '# comment']) {
+    assert.throws(() => checkInputErrors({ invalid: { scope: 'owner', needs: [], inputs: [pattern] } }, ['invalid'], []),
+      /the input pattern .* is not a glob/);
+  }
+});
+
 caseTest('every target of CHECK_TARGETS declares inputs that match tracked files', 5000, async () => {
   const makefile = await readFile(new URL('Makefile', `file://${root}`), 'utf8');
   const checkTargets = [...makefile.matchAll(/^CHECK_TARGETS (?:\+)?= (.*)$/gm)].flatMap(match => match[1]?.trim().split(/\s+/) ?? []);

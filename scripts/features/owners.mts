@@ -29,7 +29,7 @@ import { runStep } from '../check/step.mts';
 import { missingDownloads } from '../check/downloads.mts';
 import { COMPLEX_QUERY_DSN_ENVS, environmentFile } from '../check/databases.mts';
 export { environmentFile };
-import { minimatch } from 'minimatch';
+import { Minimatch } from 'minimatch';
 import { CHECK_INPUTS_SCHEMA, readCheckInputs, type PathDeclaration, type TargetDeclaration } from '../check/inputs.mts';
 import { parseFeatures, readFeatures, type FeatureManifest } from './manifest.mts';
 export { CHECK_INPUTS_SCHEMA, readCheckInputs };
@@ -119,7 +119,7 @@ async function inputMatcher(root: string, patterns: string[]): Promise<(path: st
     for (const path of await namedPaths(root, input))
       if (!named.has(path) && !patterns.includes(path)) named.set(path, input);
   return (path: string) => {
-    if (globs.some(pattern => pattern.test(path))) return path;
+    if (globs.some(matches => matches(path))) return path;
     if (named.has(path)) return `${path} (named by ${named.get(path)})`;
     return undefined;
   };
@@ -178,8 +178,8 @@ export async function selectHelpers(manifest: OwnersManifest, root: string, chan
 export function manifestInputErrors(manifest: OwnersManifest, tracked: string[]): string[] {
   const errors: string[] = [];
   const matches = (pattern: string) => {
-    const regex = globPattern(pattern);
-    return tracked.some((path: string) => regex.test(path));
+    const match = globPattern(pattern);
+    return tracked.some((path: string) => match(path));
   };
   const checkPatterns = (where: string, patterns: unknown[]) => {
     for (const pattern of patterns)
@@ -208,20 +208,20 @@ export function manifestInputErrors(manifest: OwnersManifest, tracked: string[])
     if (!Array.isArray(helper?.paths) || helper.paths.length === 0) errors.push(`${where}: declares no paths`);
     if (!Array.isArray(helper?.tests)) errors.push(`${where}: declares no tests list`);
     checkPatterns(where, [...(helper?.paths ?? []), ...(helper?.tests ?? [])]);
-    for (const path of tracked.filter((file: string) => (helper?.paths ?? []).some((pattern: string) => globPattern(pattern).test(file))))
+    for (const path of tracked.filter((file: string) => (helper?.paths ?? []).some((pattern: string) => globPattern(pattern)(file))))
       for (const [owner, patterns] of owners)
-        if (patterns.some((pattern: string) => globPattern(pattern).test(path)))
+        if (patterns.some((pattern: string) => globPattern(pattern)(path)))
           errors.push(`${owner} declares ${path} of ${where} as an input; a helper runs only its own check`);
   }
   return errors;
 }
 
-// globPattern is the regex that matches the patterns in contracts/check-inputs.json and contracts/features.json: minimatch's `*` matches within one path
-// segment, `**` reads as multiple segments, and dot also matches paths beginning with a dot such as `.github/`.
-function globPattern(glob: string): RegExp {
-  const pattern = minimatch.makeRe(glob, { dot: true });
-  if (pattern === false) throw new Error(`the input pattern ${glob} is not a glob`);
-  return pattern;
+// globPattern matches patterns in contracts/check-inputs.json and contracts/features.json: minimatch's `*` matches within one path segment,
+// `**` reads as multiple segments, and dot also matches paths beginning with a dot such as `.github/`.
+function globPattern(glob: string): (path: string) => boolean {
+  const pattern = new Minimatch(glob, { dot: true });
+  if (pattern.comment || pattern.empty || pattern.set.length === 0) throw new Error(`the input pattern ${glob} is not a glob`);
+  return path => pattern.match(path);
 }
 
 // selectTargets returns, in declaration order, the make targets from declared (targets in contracts/check-inputs.json) that are scope owner and whose input patterns (inputs) or
@@ -234,8 +234,8 @@ export function selectTargets(declared: Record<string, TargetDeclaration>, chang
     if (scope !== 'owner') continue;
     const behaviour = (inputs ?? []).map(globPattern);
     const format = (lints ?? []).map(globPattern);
-    const tested = changed.filter((path: string) => behaviour.some(pattern => pattern.test(path)));
-    const reasons = changed.filter((path: string) => tested.includes(path) || format.some(pattern => pattern.test(path)));
+    const tested = changed.filter((path: string) => behaviour.some(matches => matches(path)));
+    const reasons = changed.filter((path: string) => tested.includes(path) || format.some(matches => matches(path)));
     if (reasons.length) out.push({ target, reasons, tested });
   }
   return out;
@@ -276,8 +276,8 @@ export function checkInputErrors(declared: Record<string, TargetDeclaration>, ta
     // needs is the setup step a target requires. The runner (scripts/check/run.mts) records the target as not-run if that step fails.
     for (const need of declaration.needs) if (!NEEDS.includes(need)) errors.push(`contracts/check-inputs.json: ${target} needs ${need}, which no setup step provides; the needs are ${NEEDS.join(', ')}`);
     for (const glob of [...(declaration.inputs ?? []), ...(declaration.lints ?? [])]) {
-      const pattern = globPattern(glob);
-      if (!tracked.some((path: string) => pattern.test(path))) errors.push(`contracts/check-inputs.json: ${target} input ${glob} matches no tracked file`);
+      const matches = globPattern(glob);
+      if (!tracked.some((path: string) => matches(path))) errors.push(`contracts/check-inputs.json: ${target} input ${glob} matches no tracked file`);
     }
   }
   return errors;

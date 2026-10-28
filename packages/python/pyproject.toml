@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools==84.0.0"]
+requires = ["setuptools==84.2.1"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -48,7 +48,7 @@ exclude = ["polyspec.orm.models", "polyspec.orm.models.*"]
 # reads the shared dbspec vectors against their JSON Schemas (tests/dbspec/schema). make orm-install-python installs it into the
 # venv; the client never imports it.
 # setuptools' package finder defines the release boundary read by the interface extractor.
-test = ["jsonschema-rs==0.58.6", "setuptools==84.0.0"]
+test = ["jsonschema-rs==0.60.3", "setuptools==84.2.1"]
 
 # The models that orm-gen generates and the Makefile's go-model-check compares byte for byte: their methods are API for
 # the consumers of the bench models, and the generated text is never edited by hand.

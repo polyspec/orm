@@ -2080,6 +2080,10 @@ caseTest('the checks read commands with the shell parser', COMPUTE, () => {
   assert.deepEqual(segments('make check-run GROUP=${{ matrix.group }} && echo "${{ github.ref }}"', 'workflow'),
     ['make check-run GROUP=${{ matrix.group }}', 'echo "${{ github.ref }}"']);
   assert.deepEqual(andLists('a && b || c && d; e', 'sh'), [['a', 'b'], ['c', 'd']]);
+  for (const command of ['time -p ! go test ./packages/go/orm', '! time go test ./packages/go/orm', '! go test ./packages/go/orm']) {
+    assert.deepEqual(segments(command, 'sh'), ['go test ./packages/go/orm'], command);
+    assert.deepEqual(shellSegments(command, 'sh'), ['go test ./packages/go/orm'], command);
+  }
   // A command the parser rejects is an error, never a guess.
   assert.throws(() => segments("sh -c 'cd packages/ts", 'sh'), /the shell parser rejects this sh command at \d+: .*: sh -c 'cd packages\/ts/);
   assert.throws(() => segments('echo $(RUN_LONG', 'make'), /the make reference at 5 never closes/);
