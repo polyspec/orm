@@ -3,7 +3,7 @@
 .PHONY: dbspec-lock-go-check dbspec-lock-php-check dbspec-lock-php-extension-check dbspec-lock-python-check dbspec-lock-rust-check dbspec-lock-ts-check
 .PHONY: paged-read-rust-check
 .PHONY: complex-query-rust-check
-.PHONY: orm-check check-run databases-create ci-group-needs feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check runner-check version-check comment-language-check repo-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check ts-save-key-check ts-aes-auth-check ts-codec-errors-check scripts-typecheck typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-parse-check docs-site-check docs-site-parse-check docs-verify-idempotent docs-rules-check docs-implementation-count-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check orm-install-cli-check feature-unit-check feature-check feature-coverage feature-verify-rust feature-verify-other feature-docs package-check orm-test-servers orm-test-servers-tls orm-test-servers-stop orm-test-servers-leases orm-test-servers-leases-clear orm-test-mysql-privilege-start sqlite-version-ts-check sqlite-version-rust-check relation-parent-bind-rust-check split-null-check
+.PHONY: orm-check check-run databases-create ci-group-needs feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check runner-check version-check comment-language-check repo-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check ts-save-key-check ts-aes-auth-check ts-codec-errors-check scripts-typecheck typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-parse-check docs-site-check docs-site-parse-check docs-verify-idempotent docs-rules-check docs-implementation-count-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check orm-install-cli-check feature-unit-check feature-check feature-coverage feature-verify-rust feature-verify-other feature-docs package-check orm-test-servers orm-test-servers-tls orm-test-servers-stop orm-test-servers-leases orm-test-servers-leases-clear orm-test-mysql-privilege-start sqlite-version-ts-check sqlite-version-rust-check relation-parent-bind-rust-check split-null-check parity-context-prepare parity-context-cleanup php-extension-context-prepare php-extension-context-cleanup orm-install-php-extension-runtime orm-install-typescript-runtime
 .PHONY: client-db-go-check client-db-php-check client-db-php-extension-check client-db-typescript-check client-db-python-check client-db-rust-check
 .PHONY: feature-coverage/go/mysql feature-coverage/go/postgres feature-coverage/go/sqlite feature-coverage/php/mysql feature-coverage/php/postgres feature-coverage/php/sqlite feature-coverage/php-extension/mysql feature-coverage/php-extension/postgres feature-coverage/php-extension/sqlite feature-coverage/typescript/mysql feature-coverage/typescript/postgres feature-coverage/typescript/sqlite feature-coverage/python/mysql feature-coverage/python/postgres feature-coverage/python/sqlite feature-coverage/rust/mysql feature-coverage/rust/postgres feature-coverage/rust/sqlite feature-performance-check
 # It is an independent part of the target that does not stop at a failure (scripts/check/run.mts runs it with make -k).
@@ -69,7 +69,7 @@ WORKTREE_STOP = orm-test-servers-stop
 # and the ProxySQL and PgBouncer poolers of the database checks on free ports that it chooses
 # and writes TEST_ENV; the database checks read TEST_ENV and fail when it is
 # missing.
-TEST_ENV = .runtime/servers/env
+TEST_ENV ?= .runtime/servers/env
 # ORM_TEST_ENV is the absolute path of the TEST_ENV that this make reads, and like DECIMAL_ENV it is
 # passed to the process that the recipe starts. A make variable changes a Makefile value only on the command line, so the commands that start a sub-make (the helper check of contracts/
 # features.json) pass it as TEST_ENV="$$ORM_TEST_ENV". make owner-check
@@ -407,7 +407,7 @@ client-pooler-check: lease-tool python-venv-check
 # runner-check checks the check runner (scripts/check/run.mts) and its run record (scripts/check/record.mts) with a temporary git checkout and stub steps.
 # It does not run the actual targets or databases.
 runner-check:
-	$(NODE) --test scripts/check/run.test.mts scripts/check/continue.test.mts scripts/check/step.test.mts scripts/check/downloads.test.mts scripts/json/schema.test.mts
+	$(NODE) --test scripts/check/run.test.mts scripts/check/continue.test.mts scripts/check/step.test.mts scripts/check/downloads.test.mts scripts/check/parity-context.test.mts scripts/json/schema.test.mts
 
 # dbspec-rust-check runs twice each the shared dbspec vectors, the Rust rule cases, the plan and Mermaid cases, and the apply cleanup errors injected through a wrapped SQLite
 # connection.
@@ -2109,7 +2109,7 @@ FLOWMARK_REVISION = $(shell sed 's/.*-//' tests/markdown/flowmark.version)
 # it with the other tools into var/tools, since a check reads it and never writes it.
 FLOWMARK_SOURCE ?= $(abspath var/tools/flowmark-source/$(FLOWMARK_REVISION))
 .PHONY: markdown-conformance-check markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/php-extension markdown-conformance-check/python markdown-conformance-check/rust markdown-conformance-check/typescript orm-install-flowmark
-# parity-prepare builds what the bindings of config/parity.json load before kit's parity-check runs them, into the
+# parity-prepare builds what the bindings of config/parity.json load before a Kit parity gate runs them, into the
 # directory of this make run: the PHP extension that the php-extension implementation loads
 # (ORM_PARITY_PHP_EXTENSION) and the conformance runner that the Rust conformance bindings start
 # (ORM_PROGRAM_CONFORMANCE, polyspec_orm_testcase::program). parity-check also passes FLOWMARK to the
@@ -2131,6 +2131,18 @@ parity-prepare-rust: lease-tool
 	mkdir -p $(PARITY_RUN_DIR)
 	$(RUN_LONG) rust-build/parity-conformance --cwd packages/rust -- $(CARGO_LEASED) node $(abspath scripts/cargo-build-copy.mts) $(PARITY_RUN_DIR)/target debug/conformance -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm-tests --bin conformance
 parity-check: parity-prepare
+
+# Kit's gates workflow runs parity context preparation and cleanup in separate job steps. This context gives that job the same
+# run-owned servers, benchmark fixtures and build-output directory as run-databases, while GITHUB_ENV carries the two paths to the gate.
+.PHONY: parity-context-prepare parity-context-cleanup
+parity-context-prepare:
+	$(NODE) scripts/check/parity-context.mts prepare parity
+parity-context-cleanup:
+	$(NODE) scripts/check/parity-context.mts cleanup parity
+php-extension-context-prepare:
+	$(NODE) scripts/check/parity-context.mts prepare php-ext
+php-extension-context-cleanup:
+	$(NODE) scripts/check/parity-context.mts cleanup php-ext
 # interface-check runs first: it reads the API units of config/parity.json and the symbol snapshots that parity-check reads.
 # The bench and complex-query DSNs of a run are in its TEST_ENV file (run-databases writes them). Export them into make itself,
 # so the parity units, which kit starts from make, inherit them. A TEST_ENV without them exports nothing and the guard names what is missing.
@@ -2160,18 +2172,19 @@ parity-bench-env-check:
 flowmark-check:
 	test -x $(FLOWMARK) || { echo "flowmark-check: $(FLOWMARK) is missing; run make orm-install-flowmark, which builds the version pinned in tests/markdown/flowmark.version"; exit 1; }
 
-parity-check: parity-bench-env-check flowmark-check interface-check
-parity-check: export FLOWMARK := $(FLOWMARK)
-parity-check: export ORM_PARITY_PHP_EXTENSION = $(PARITY_RUN_DIR)/polyspec_orm.so
-parity-check: export ORM_PARITY_PHP_EXTENSION_NATIVE_TEST = $(PARITY_NATIVE_TEST_EXTENSION)
-parity-check: export POLYSPEC_ORM_EXTENSION = $(PARITY_RUN_DIR)/polyspec_orm.so
-parity-check: export ORM_SEND_SQLITE_DSN = $(SEND_SQLITE_DSN)
-# ORM_SEND_SQLITE_DSN names a file in the run directory of this step: parity-prepare creates it, while the RUN_DIR of
-# parity-check (which SEND_SQLITE_DSN names) is never created, so sqlite could not open the file.
-parity-check: export ORM_SEND_SQLITE_DSN = sqlite://$(PARITY_RUN_DIR)/send-savepoint.sqlite
+# Every provider parity phase has the same fixtures, preparation and runtime paths as the original full parity target. The API
+# phase keeps this setup contract too, so switching parityMode cannot make setup failures disappear from the CI result.
+PARITY_GATE_TARGETS = parity-check parity-api-check $(KIT_PARITY_BINDING_TARGETS)
+$(PARITY_GATE_TARGETS): parity-prepare parity-bench-env-check flowmark-check interface-check
+$(PARITY_GATE_TARGETS): export FLOWMARK := $(FLOWMARK)
+$(PARITY_GATE_TARGETS): export ORM_PARITY_PHP_EXTENSION = $(PARITY_RUN_DIR)/polyspec_orm.so
+$(PARITY_GATE_TARGETS): export ORM_PARITY_PHP_EXTENSION_NATIVE_TEST = $(PARITY_NATIVE_TEST_EXTENSION)
+$(PARITY_GATE_TARGETS): export POLYSPEC_ORM_EXTENSION = $(PARITY_RUN_DIR)/polyspec_orm.so
+# ORM_SEND_SQLITE_DSN names a file in the run-owned directory; the send-savepoint cases create it themselves.
+$(PARITY_GATE_TARGETS): export ORM_SEND_SQLITE_DSN = sqlite://$(PARITY_RUN_DIR)/send-savepoint.sqlite
 # ORM_CHECKOUT is the checkout root: a binding command names it with ${ORM_CHECKOUT}, since kit forbids .. in a command word.
-parity-check: export ORM_CHECKOUT = $(CURDIR)
-parity-check: export ORM_PROGRAM_CONFORMANCE = $(PARITY_RUN_DIR)/target/debug/conformance
+$(PARITY_GATE_TARGETS): export ORM_CHECKOUT = $(CURDIR)
+$(PARITY_GATE_TARGETS): export ORM_PROGRAM_CONFORMANCE = $(PARITY_RUN_DIR)/target/debug/conformance
 
 # CI provides the declared group needs as booleans; static checks need every tool for toolchain-check,
 # while the other groups install only the shared Go runner and the runtimes their targets use.
@@ -2764,7 +2777,7 @@ blind-index-source-rust-check: lease-tool
 # TypeScript 6 checker used only by the interface extractor. Independent install parts run with make -k.
 
 .PHONY: docs-ci
-.PHONY: install orm-install-interfaces-typescript orm-install-php orm-install-rust orm-install-rust-toolchain orm-install-rust-crates orm-install-go orm-install-go-lease orm-install-server-programs orm-install-php-extension-tools ci-php-min-version downloads-check
+.PHONY: install orm-install-interfaces-typescript orm-install-php orm-install-rust orm-install-rust-toolchain orm-install-rust-crates orm-install-go orm-install-go-lease orm-install-server-programs orm-install-php-extension-tools orm-install-php-extension-runtime orm-install-typescript-runtime ci-php-min-version downloads-check
 install: orm-install-php orm-install-rust orm-install-go orm-install-php-extension-tools orm-install-python orm-install-flowmark orm-install-interfaces-typescript
 # orm-install-interfaces-typescript installs the TypeScript 6.0.3 that packages/ts/testing/interfaces/typescript.mts reads declarations with
 # (config/toolchain.json exceptions): TypeScript 7.0 ships no JavaScript API of its compiler.
@@ -2844,6 +2857,11 @@ orm-install-server-programs:
 orm-install-php-extension-tools:
 	$(NODE) scripts/ci/php-extension-tools.mts
 	$(MAKE) --no-print-directory kit-install-php-arginfo
+orm-install-php-extension-runtime:
+	$(MAKE) --no-print-directory orm-install-php
+	$(MAKE) --no-print-directory composer-install DIR=packages/php-ext
+	$(MAKE) --no-print-directory orm-install-php-extension-tools
+orm-install-typescript-runtime: orm-install-go-lease build-ts
 
 # All setup steps of CI run make targets (make repo-check). ci-php-min-version records the lowest
 # PHP release of make php-min-check as the input of setup-php (version=x.y). Each client refuses SQLite below 3.46 when it connects.

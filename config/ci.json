@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "comment": "Kit gates install each runtime from its pinned lock, then prepare parity's database servers and run-owned fixtures in an isolated job context. The provider runs API and binding phases separately.",
+  "parityMode": "phases",
+  "setup": {
+    "shared": [],
+    "parity": [
+      "orm-install-flowmark",
+      "orm-install-interfaces-typescript"
+    ],
+    "runtimes": {
+      "go": ["orm-install-go"],
+      "php": ["orm-install-php"],
+      "php-ext": ["orm-install-php-extension-runtime", "orm-install-server-programs", "orm-install-go-lease"],
+      "python": [],
+      "rust": [],
+      "ts": ["orm-install-typescript-runtime"]
+    }
+  },
+  "tools": {
+    "php-ext": ["go"],
+    "ts": ["go"]
+  },
+  "contexts": {
+    "parity": {
+      "prepare": "parity-context-prepare",
+      "cleanup": "parity-context-cleanup"
+    },
+    "php-ext": {
+      "prepare": "php-extension-context-prepare",
+      "cleanup": "php-extension-context-cleanup"
+    }
+  }
+}

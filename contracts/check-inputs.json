@@ -53,6 +53,7 @@
         "scripts/json/**",
         "scripts/client-db-test.mts",
         "scripts/typescript/sqlite-test.mts",
+        "config/ci.json",
         "Makefile",
         "tests/testcase.mts",
         "tests/environment.mts",
