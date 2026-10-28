@@ -10498,8 +10498,7 @@
           "shard": "other",
           "inputs": [
             "Makefile",
-            "packages/php-ext/tests/ModelNativeTest.php",
-            "packages/php-ext/src/polyspec_orm.stub.php"
+            "packages/php-ext/tests/ModelNativeTest.php"
           ]
         },
         {
