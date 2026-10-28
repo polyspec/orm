@@ -17,7 +17,7 @@ from urllib.parse import parse_qs, unquote, urlsplit
 
 from polyspec.orm import OrmError, codes, connect_catalog
 from polyspec.orm.catalog import GridCell
-from polyspec.orm.codec import decode as decode_styled
+from polyspec.orm.codec import CodecError, decode as decode_styled
 from . import testcase
 from .coverage_case import run_cases
 from .test_sqlite import generate
@@ -503,7 +503,7 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
                     "",
                     "empty text remains an empty string when read through the model",
                 )
-                with self.assertRaises(OrmError) as empty_json:
+                with self.assertRaises(CodecError) as empty_json:
                     decode_styled(["ordered_json"], "")
                 self.assertEqual(empty_json.exception.code, codes.CODEC_DECODE)
             finally:
@@ -584,11 +584,13 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
         with self.assertRaises(OrmError) as raised:
             self.catalog.update_row(original, [("name", "stale")])
         self.assertEqual(raised.exception.code, codes.ROW_CONFLICT)
+        select_updated = (
+            f"SELECT name FROM {account} WHERE tenant_id = $1 AND account_id = $2"
+            if driver == "postgres"
+            else f"SELECT name FROM {account} WHERE tenant_id = ? AND account_id = ?"
+        )
         self.assertEqual(
-            self.catalog.read_only_query(
-                f"SELECT name FROM {account} WHERE tenant_id = ? AND account_id = ?",
-                [TENANT, 1],
-            ).rows,
+            self.catalog.read_only_query(select_updated, [TENANT, 1]).rows,
             [["catalog-updated"]],
         )
         self.assertEqual(self.catalog.delete_row(find("catalog-updated")), 1)
