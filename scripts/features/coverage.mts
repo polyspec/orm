@@ -1198,6 +1198,46 @@ export function selectFeatures(
   return { ...manifest, features: [copy] };
 }
 
+/** Selects one runtime's coverage for one SQL database; database-independent cases run in its MySQL cell once. */
+export function selectRuntimeDatabase(
+  manifest: Manifest,
+  runtime: string,
+  database: string,
+): Manifest & { features: Feature[] } {
+  if (!languages.includes(runtime))
+    throw new Error(`unknown coverage runtime ${runtime}; valid runtimes: ${languages.join(', ')}`);
+  if (!databases.includes(database))
+    throw new Error(`unknown coverage database ${database}; valid databases: ${databases.join(', ')}`);
+
+  const selected: Feature[] = [];
+  for (const feature of manifest.features ?? []) {
+    const coverage = feature.coverage;
+    if (!coverage || !['database', 'independent'].includes(coverage.kind)) continue;
+    if (coverage.execution === 'exclusive') {
+      if (feature.id !== 'performance_gate')
+        throw new Error(`${feature.id}: exclusive coverage must have its own CI target`);
+      continue;
+    }
+    // Independent coverage is attached to the runtime's MySQL cell, so it executes once rather than once per SQL backend.
+    if (coverage.kind === 'independent' && database !== 'mysql') continue;
+
+    const parts = new Set<string>();
+    if (coverage.owners?.[runtime]) parts.add(`owner/${runtime}`);
+    for (const dependent of coverage.dependents ?? []) {
+      if (dependent.language === runtime) parts.add(`dependent/${dependent.id}`);
+    }
+    if (parts.size === 0) continue;
+
+    const copy = { ...feature };
+    selectedParts.set(copy, parts);
+    if (coverage.kind === 'database') selectedDatabases.set(copy, database);
+    selected.push(copy);
+  }
+  if (selected.length === 0)
+    throw new Error(`no feature coverage items for runtime ${runtime} and database ${database}`);
+  return { ...manifest, features: selected };
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const args = process.argv.slice(2);
   // `--items <test file>` prints every coverage item of the file; a native owner may select the one database
@@ -1211,22 +1251,32 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   }
   const pairs: [string | undefined, string | undefined][] = [];
   for (let index = 0; index < args.length; index += 2) pairs.push([args[index], args[index + 1]]);
-  if (pairs.some(([flag, value]) => !['--feature', '--part', '--database', '--case'].includes(flag ?? '') || !value) ||
-      pairs.filter(([flag]) => flag === '--feature').length > 1 || pairs.filter(([flag]) => flag === '--database').length > 1)
-    throw new Error('usage: coverage.mts [--feature <id> [--part owner/<language>|dependent/<id>] [--database <db>] [--case <id>]...]');
+  if (pairs.some(([flag, value]) => !['--feature', '--part', '--database', '--case', '--runtime'].includes(flag ?? '') || !value) ||
+      pairs.filter(([flag]) => flag === '--feature').length > 1 || pairs.filter(([flag]) => flag === '--database').length > 1 ||
+      pairs.filter(([flag]) => flag === '--runtime').length > 1)
+    throw new Error('usage: coverage.mts [--feature <id> [--part owner/<language>|dependent/<id>] [--database <db>] [--case <id>]...] | --runtime <language> --database <mysql|postgres|sqlite>');
   const featureId = pairs.find(([flag]) => flag === '--feature')?.[1];
   const parts = pairs.filter(([flag]) => flag === '--part').map(([, value]) => value ?? '');
   const database = pairs.find(([flag]) => flag === '--database')?.[1];
+  const runtime = pairs.find(([flag]) => flag === '--runtime')?.[1];
   const cases = pairs.filter(([flag]) => flag === '--case').map(([, value]) => value ?? '');
   const root = resolve(new URL('../..', import.meta.url).pathname);
   const manifest: Manifest = readFeatures(root);
   let selected: Manifest & { features: Feature[] };
-  try { selected = selectFeatures(manifest, featureId, parts, database, cases); }
+  try {
+    if (runtime !== undefined) {
+      if (featureId !== undefined || parts.length > 0 || cases.length > 0 || database === undefined)
+        throw new Error('--runtime needs --database and cannot be combined with --feature, --part, or --case');
+      selected = selectRuntimeDatabase(manifest, runtime, database);
+    } else {
+      selected = selectFeatures(manifest, featureId, parts, database, cases);
+    }
+  }
   catch (error) {
     console.error(`feature coverage: ${error instanceof Error ? error.message : String(error)}`);
     process.exit(2);
   }
-  const selection = [featureId, ...parts, database, ...cases].filter(Boolean).join(' ');
+  const selection = [runtime, featureId, ...parts, database, ...cases].filter(Boolean).join(' ');
   if (selection) console.log(`feature coverage: selected ${selection}`);
   const errors = await executeCoverage(selected, root);
   for (const error of errors) console.error(`feature coverage: ${error}`);

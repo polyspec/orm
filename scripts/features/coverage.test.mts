@@ -8,7 +8,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { testDirectoryOf } from './packages.mts';
-import { cargoBuildArgs, cargoFeaturesForPackage, cargoPathModuleFiles, cargoTargetArgs, cargoWorkspaceManifestPath, checkCoverage, coverageItems, databaseDsn, databases, executeCoverage, observedCases, languages, NATIVE_DEADLINE, run, goPerformanceMeasurements, runCoverageSchedule, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
+import { cargoBuildArgs, cargoFeaturesForPackage, cargoPathModuleFiles, cargoTargetArgs, cargoWorkspaceManifestPath, checkCoverage, coverageItems, databaseDsn, databases, executeCoverage, observedCases, languages, NATIVE_DEADLINE, run, goPerformanceMeasurements, runCoverageSchedule, selectFeatures, selectRuntimeDatabase, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
 import { readFeatures } from './manifest.mts';
 import { readParityConfig, type ParityConfig } from '../json/formats.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
@@ -493,6 +493,45 @@ caseTest('selecting coverage parts requires only those parts', 1000, async () =>
   assert.throws(() => selectFeatures(manifest, 'statement_events', ['owner/cobol']),
     { message: 'unknown coverage part owner/cobol of statement_events; valid parts: owner/go, owner/php, owner/php-extension, owner/rust, owner/typescript, owner/python' });
   assert.throws(() => selectFeatures(manifest, undefined, ['owner/php']), { message: '--part needs --feature' });
+});
+
+caseTest('runtime database coverage selects one owner cell and runs independent cases only in its MySQL cell', COMPUTE, () => {
+  const manifest = readFeatures(new URL('../..', import.meta.url).pathname);
+  const selectedByCell = new Map<string, Set<string>>();
+  for (const runtime of languages) for (const database of databases) {
+    const selected = selectRuntimeDatabase(manifest, runtime, database);
+    const errors = checkCoverage(selected, {});
+    const missing = errors.filter(error => error.endsWith(': no executed report'));
+    assert.deepEqual(errors, missing, `${runtime}/${database} has no other selection errors`);
+    assert.ok(missing.length > 0, `${runtime}/${database} selects declared coverage`);
+    const keys = new Set(missing.map(error => error.slice(0, error.indexOf(':'))));
+    assert.equal(keys.size, missing.length, `${runtime}/${database} has no duplicate coverage item`);
+    for (const key of keys) {
+      assert.ok(key.includes(`/owner/${runtime}/`) || key.includes(`/dependent/`), `${key} is selected for ${runtime}`);
+      assert.ok(key.endsWith(`/${database}`) || (database === 'mysql' && key.endsWith('/none')), `${key} is selected for ${database}`);
+      assert.ok(!key.startsWith('performance_gate/'), 'exclusive performance coverage is reserved for its single job');
+    }
+    selectedByCell.set(`${runtime}/${database}`, keys);
+  }
+  for (const runtime of languages) {
+    const mysql = selectedByCell.get(`${runtime}/mysql`);
+    const postgres = selectedByCell.get(`${runtime}/postgres`);
+    const sqlite = selectedByCell.get(`${runtime}/sqlite`);
+    assert.ok(mysql && postgres && sqlite);
+    assert.ok([...mysql].some(key => key.endsWith('/none')), `${runtime} runs independent coverage in MySQL cell`);
+    assert.ok([...postgres].every(key => !key.endsWith('/none')), `${runtime} does not repeat independent coverage for PostgreSQL`);
+    assert.ok([...sqlite].every(key => !key.endsWith('/none')), `${runtime} does not repeat independent coverage for SQLite`);
+  }
+});
+
+caseTest('runtime database coverage refuses unknown or empty selectors', COMPUTE, () => {
+  const manifest = readFeatures(new URL('../..', import.meta.url).pathname);
+  assert.throws(() => selectRuntimeDatabase(manifest, 'cobol', 'mysql'), /unknown coverage runtime cobol/);
+  assert.throws(() => selectRuntimeDatabase(manifest, 'go', 'oracle'), /unknown coverage database oracle/);
+  assert.throws(() => selectRuntimeDatabase({ features: [] }, 'go', 'mysql'), /no feature coverage items/);
+  assert.throws(() => selectRuntimeDatabase({ features: [{ id: 'unassigned-exclusive', coverage: { kind: 'database', execution: 'exclusive', cases: [] } }] }, 'go', 'mysql'),
+    /exclusive coverage must have its own CI target/);
+  assert.deepEqual(manifest.features.filter(feature => feature.coverage?.execution === 'exclusive').map(feature => feature.id), ['performance_gate']);
 });
 
 caseTest('selecting a coverage owner, database and cases reports only that subset', COMPUTE, () => {

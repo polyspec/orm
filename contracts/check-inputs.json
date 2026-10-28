@@ -1493,15 +1493,48 @@
         "examples/**"
       ]
     },
-    "client-db-check": {
+    "client-db-go-check": {
       "scope": "suite",
       "needs": [
         "go",
-        "rust",
+        "databases"
+      ]
+    },
+    "client-db-php-check": {
+      "scope": "suite",
+      "needs": [
         "php",
         "composer",
-        "python",
+        "databases"
+      ]
+    },
+    "client-db-php-extension-check": {
+      "scope": "suite",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases"
+      ]
+    },
+    "client-db-typescript-check": {
+      "scope": "suite",
+      "needs": [
         "node-modules",
+        "databases"
+      ]
+    },
+    "client-db-python-check": {
+      "scope": "suite",
+      "needs": [
+        "python",
+        "databases"
+      ]
+    },
+    "client-db-rust-check": {
+      "scope": "suite",
+      "needs": [
+        "rust",
         "databases"
       ]
     },
@@ -1703,35 +1736,6 @@
         "node-modules",
         "databases",
         "python"
-      ]
-    },
-    "markdown-conformance-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "php",
-        "composer",
-        "flowmark",
-        "python",
-        "rust",
-        "node-modules",
-        "php-extension-tools"
-      ],
-      "inputs": [
-        "tests/markdown/cases.json",
-        "tests/markdown/corpus/**",
-        "tests/markdown/refused/**",
-        "tests/markdown/flowmark.version",
-        "packages/go/markdownmodel/conformance_test.go",
-        "packages/php/tests/MarkdownConformanceTest.php",
-        "packages/php/tests/OrmGenTestSupport.php",
-        "packages/php-ext/tests/MarkdownConformanceNativeTest.php",
-        "packages/python/tests/markdown_conformance.py",
-        "packages/python/tests/testcase.py",
-        "packages/python/tests/vector_case.py",
-        "packages/rust/tests/tests/markdown_conformance.rs",
-        "packages/ts/tests/markdown_conformance.mjs",
-        "packages/ts/tests/markdown_cases.mjs"
       ]
     },
     "go-package-entry-check": {
@@ -3049,20 +3053,6 @@
         "packages/ts/tests/model_json_output.test.mts"
       ]
     },
-    "feature-coverage": {
-      "scope": "suite",
-      "needs": [
-        "go",
-        "rust",
-        "php",
-        "composer",
-        "node-modules",
-        "php-extension-tools",
-        "databases",
-        "complex-query",
-        "python"
-      ]
-    },
     "feature-verify-rust": {
       "scope": "suite",
       "needs": [
@@ -3262,20 +3252,6 @@
       "scope": "suite",
       "needs": [
         "node-modules"
-      ]
-    },
-    "parity-check": {
-      "scope": "suite",
-      "needs": [
-        "go",
-        "rust",
-        "php",
-        "composer",
-        "php-extension-tools",
-        "python",
-        "node-modules",
-        "databases",
-        "complex-query"
       ]
     },
     "mermaid-error-ts-check": {
@@ -3905,6 +3881,379 @@
         "composer",
         "php-extension-tools",
         "databases"
+      ]
+    },
+    "feature-coverage/go/mysql": {
+      "scope": "suite",
+      "needs": [
+        "node-modules",
+        "databases",
+        "complex-query",
+        "go"
+      ]
+    },
+    "feature-coverage/go/postgres": {
+      "scope": "suite",
+      "needs": [
+        "node-modules",
+        "databases",
+        "complex-query",
+        "go"
+      ]
+    },
+    "feature-coverage/go/sqlite": {
+      "scope": "suite",
+      "needs": [
+        "node-modules",
+        "databases",
+        "complex-query",
+        "go"
+      ]
+    },
+    "feature-coverage/php/mysql": {
+      "scope": "suite",
+      "needs": [
+        "node-modules",
+        "databases",
+        "complex-query",
+        "php",
+        "composer"
+      ]
+    },
+    "feature-coverage/php/postgres": {
+      "scope": "suite",
+      "needs": [
+        "node-modules",
+        "databases",
+        "complex-query",
+        "php",
+        "composer"
+      ]
+    },
+    "feature-coverage/php/sqlite": {
+      "scope": "suite",
+      "needs": [
+        "node-modules",
+        "databases",
+        "complex-query",
+        "php",
+        "composer"
+      ]
+    },
+    "feature-coverage/php-extension/mysql": {
+      "scope": "suite",
+      "needs": [
+        "node-modules",
+        "databases",
+        "complex-query",
+        "php",
+        "composer",
+        "php-extension-tools"
+      ]
+    },
+    "feature-coverage/php-extension/postgres": {
+      "scope": "suite",
+      "needs": [
+        "node-modules",
+        "databases",
+        "complex-query",
+        "php",
+        "composer",
+        "php-extension-tools"
+      ]
+    },
+    "feature-coverage/php-extension/sqlite": {
+      "scope": "suite",
+      "needs": [
+        "node-modules",
+        "databases",
+        "complex-query",
+        "php",
+        "composer",
+        "php-extension-tools"
+      ]
+    },
+    "feature-coverage/typescript/mysql": {
+      "scope": "suite",
+      "needs": [
+        "node-modules",
+        "databases",
+        "complex-query"
+      ]
+    },
+    "feature-coverage/typescript/postgres": {
+      "scope": "suite",
+      "needs": [
+        "node-modules",
+        "databases",
+        "complex-query"
+      ]
+    },
+    "feature-coverage/typescript/sqlite": {
+      "scope": "suite",
+      "needs": [
+        "node-modules",
+        "databases",
+        "complex-query"
+      ]
+    },
+    "feature-coverage/python/mysql": {
+      "scope": "suite",
+      "needs": [
+        "node-modules",
+        "databases",
+        "complex-query",
+        "python"
+      ]
+    },
+    "feature-coverage/python/postgres": {
+      "scope": "suite",
+      "needs": [
+        "node-modules",
+        "databases",
+        "complex-query",
+        "python"
+      ]
+    },
+    "feature-coverage/python/sqlite": {
+      "scope": "suite",
+      "needs": [
+        "node-modules",
+        "databases",
+        "complex-query",
+        "python"
+      ]
+    },
+    "feature-coverage/rust/mysql": {
+      "scope": "suite",
+      "needs": [
+        "node-modules",
+        "databases",
+        "complex-query",
+        "rust"
+      ]
+    },
+    "feature-coverage/rust/postgres": {
+      "scope": "suite",
+      "needs": [
+        "node-modules",
+        "databases",
+        "complex-query",
+        "rust"
+      ]
+    },
+    "feature-coverage/rust/sqlite": {
+      "scope": "suite",
+      "needs": [
+        "node-modules",
+        "databases",
+        "complex-query",
+        "rust"
+      ]
+    },
+    "feature-performance-check": {
+      "scope": "suite",
+      "needs": [
+        "node-modules",
+        "databases",
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "php-extension-tools",
+        "python"
+      ]
+    },
+    "markdown-conformance-check/go": {
+      "scope": "owner",
+      "needs": [
+        "flowmark",
+        "node-modules",
+        "go"
+      ],
+      "inputs": [
+        "tests/markdown/cases.json",
+        "tests/markdown/corpus/**",
+        "tests/markdown/refused/**",
+        "tests/markdown/flowmark.version",
+        "packages/go/markdownmodel/conformance_test.go"
+      ]
+    },
+    "markdown-conformance-check/php": {
+      "scope": "owner",
+      "needs": [
+        "flowmark",
+        "node-modules",
+        "php",
+        "composer"
+      ],
+      "inputs": [
+        "tests/markdown/cases.json",
+        "tests/markdown/corpus/**",
+        "tests/markdown/refused/**",
+        "tests/markdown/flowmark.version",
+        "packages/php/tests/MarkdownConformanceTest.php",
+        "packages/php/tests/OrmGenTestSupport.php"
+      ]
+    },
+    "markdown-conformance-check/php-extension": {
+      "scope": "owner",
+      "needs": [
+        "flowmark",
+        "node-modules",
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "tests/markdown/cases.json",
+        "tests/markdown/corpus/**",
+        "tests/markdown/refused/**",
+        "tests/markdown/flowmark.version",
+        "packages/php-ext/tests/MarkdownConformanceNativeTest.php"
+      ]
+    },
+    "markdown-conformance-check/python": {
+      "scope": "owner",
+      "needs": [
+        "flowmark",
+        "node-modules",
+        "python"
+      ],
+      "inputs": [
+        "tests/markdown/cases.json",
+        "tests/markdown/corpus/**",
+        "tests/markdown/refused/**",
+        "tests/markdown/flowmark.version",
+        "packages/python/tests/markdown_conformance.py",
+        "packages/python/tests/testcase.py",
+        "packages/python/tests/vector_case.py"
+      ]
+    },
+    "markdown-conformance-check/rust": {
+      "scope": "owner",
+      "needs": [
+        "flowmark",
+        "node-modules",
+        "rust"
+      ],
+      "inputs": [
+        "tests/markdown/cases.json",
+        "tests/markdown/corpus/**",
+        "tests/markdown/refused/**",
+        "tests/markdown/flowmark.version",
+        "packages/rust/tests/tests/markdown_conformance.rs"
+      ]
+    },
+    "markdown-conformance-check/typescript": {
+      "scope": "owner",
+      "needs": [
+        "flowmark",
+        "node-modules"
+      ],
+      "inputs": [
+        "tests/markdown/cases.json",
+        "tests/markdown/corpus/**",
+        "tests/markdown/refused/**",
+        "tests/markdown/flowmark.version",
+        "packages/ts/tests/markdown_conformance.mjs",
+        "packages/ts/tests/markdown_cases.mjs"
+      ]
+    },
+    "parity-api-check": {
+      "scope": "suite",
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "php-extension-tools",
+        "python",
+        "node-modules"
+      ]
+    },
+    "parity-bindings-go-check": {
+      "scope": "suite",
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "php-extension-tools",
+        "python",
+        "node-modules",
+        "databases",
+        "complex-query"
+      ]
+    },
+    "parity-bindings-php-check": {
+      "scope": "suite",
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "php-extension-tools",
+        "python",
+        "node-modules",
+        "databases",
+        "complex-query"
+      ]
+    },
+    "parity-bindings-php-extension-check": {
+      "scope": "suite",
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "php-extension-tools",
+        "python",
+        "node-modules",
+        "databases",
+        "complex-query"
+      ]
+    },
+    "parity-bindings-typescript-check": {
+      "scope": "suite",
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "php-extension-tools",
+        "python",
+        "node-modules",
+        "databases",
+        "complex-query"
+      ]
+    },
+    "parity-bindings-python-check": {
+      "scope": "suite",
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "php-extension-tools",
+        "python",
+        "node-modules",
+        "databases",
+        "complex-query"
+      ]
+    },
+    "parity-bindings-rust-check": {
+      "scope": "suite",
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "php-extension-tools",
+        "python",
+        "node-modules",
+        "databases",
+        "complex-query"
       ]
     }
   },

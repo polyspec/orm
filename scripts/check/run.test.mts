@@ -67,15 +67,22 @@ caseTest('dialect facts declares the isolated MySQL privilege fixture as a setup
   assert.ok(expanded.includes('server-programs'));
 });
 
-caseTest('parity declares the complex-query fixture setup need', COMPUTE, () => {
+caseTest('parity API and runtime binding phases declare their setup needs', COMPUTE, () => {
   const inputs: unknown = JSON.parse(readFileSync(join(repo, 'contracts/check-inputs.json'), 'utf8'));
   if (!isRecord(inputs) || !isRecord(inputs.targets)) throw new Error('contracts/check-inputs.json has no targets object');
-  const target = inputs.targets['parity-check'];
-  if (!isRecord(target) || !isStringArray(target.needs)) throw new Error('parity-check has no needs list');
-  assert.ok(target.needs.includes('complex-query'));
+  const api = inputs.targets['parity-api-check'];
+  if (!isRecord(api) || !isStringArray(api.needs)) throw new Error('parity-api-check has no needs list');
+  assert.ok(api.needs.includes('node-modules'));
+  assert.ok(!api.needs.includes('databases'), 'API extraction has no direct database fixture need');
+  for (const runtime of ['go', 'php', 'php-extension', 'typescript', 'python', 'rust']) {
+    const target = inputs.targets[`parity-bindings-${runtime}-check`];
+    if (!isRecord(target) || !isStringArray(target.needs)) throw new Error(`${runtime} parity bindings have no needs list`);
+    assert.ok(target.needs.includes('complex-query'));
+    assert.ok(target.needs.includes('databases'));
+  }
   assert.ok(NEEDS.includes('complex-query'));
   assert.deepEqual(SETUP_NEEDS['complex-query'], ['databases']);
-  const expanded = expandNeeds(target.needs);
+  const expanded = expandNeeds((inputs.targets['parity-bindings-rust-check'] as { needs: string[] }).needs);
   assert.ok(expanded.includes('databases'));
   const makefile = readFileSync(join(repo, 'Makefile'), 'utf8');
   assert.match(makefile, /COMPLEX_QUERY_DSN_NAMES := \$\(foreach runtime,\$\(COMPLEX_QUERY_RUNTIMES\),\$\(foreach dialect,\$\(COMPLEX_QUERY_DIALECTS\),COMPLEX_QUERY_\$\(runtime\)_\$\(dialect\)_DSN\)\)/);

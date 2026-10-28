@@ -494,15 +494,17 @@ caseTest('the PHP extension suite and its profiled native cases use their owning
     assert.ok(recipe.includes('native-test'), `${target} must build the test-only module`);
     assert.ok(recipe.includes(source), `${target} must run ${source}`);
   }
-  const dbspecTargets = /^CI_TARGETS_dbspec = (.+)$/m.exec(makefile)?.[1]?.split(/\s+/) ?? [];
-  assert.ok(dbspecTargets.includes('mermaid-error-php-extension-check'));
-  assert.ok(dbspecTargets.includes('parent-slot-expansion-php-extension-check'));
+  const dbspecPhpExtensionTargets = /^CI_TARGETS_dbspec_php_extension = (.+)$/m.exec(makefile)?.[1]?.split(/\s+/) ?? [];
+  assert.ok(dbspecPhpExtensionTargets.includes('mermaid-error-php-extension-check'));
+  assert.ok(dbspecPhpExtensionTargets.includes('parent-slot-expansion-php-extension-check'));
   const markdownTarget = makefile.indexOf('markdown-conformance-check/php-extension:');
   assert.notEqual(markdownTarget, -1, 'the markdown extension conformance target must remain registered');
   const checkTargets = /^CHECK_TARGETS = (.+)$/m.exec(makefile)?.[1]?.split(/\s+/) ?? [];
+  const markdownTargets = ['go', 'php', 'php-extension', 'typescript', 'python', 'rust']
+    .map(runtime => `markdown-conformance-check/${runtime}`);
+  for (const target of markdownTargets) assert.ok(checkTargets.includes(target), `${target} remains in CHECK_TARGETS`);
   const conformanceTargets = /^CI_TARGETS_conformance = (.+)$/m.exec(makefile)?.[1]?.split(/\s+/) ?? [];
-  assert.ok(checkTargets.includes('markdown-conformance-check'));
-  assert.ok(conformanceTargets.includes('markdown-conformance-check'));
+  assert.ok(!conformanceTargets.some(target => markdownTargets.includes(target)), 'native markdown checks run in their runtime groups');
   const markdownRecipeEnd = makefile.indexOf('\n\n', markdownTarget);
   const markdownRecipe = makefile.slice(markdownTarget, markdownRecipeEnd === -1 ? undefined : markdownRecipeEnd);
   assert.ok(markdownRecipe.includes('FLOWMARK=$(FLOWMARK)'));
@@ -579,7 +581,7 @@ function isStringArray(value: unknown): value is string[] {
 // The CHECK_TARGETS case checks the repository's workflow and Makefile, and the minimal workflow.
 caseTest('the CI workflow runs every target of CHECK_TARGETS once', COMPUTE, () => {
   const targets = checkTargets(text('Makefile'));
-  for (const target of ['ts-min-check', 'php-min-check', 'feature-coverage', 'feature-verify-rust', 'feature-verify-other', 'go-test-check', 'catalog-row-baseline-go-check'])
+  for (const target of ['ts-min-check', 'php-min-check', 'feature-coverage/go/mysql', 'feature-performance-check', 'feature-verify-rust', 'feature-verify-other', 'go-test-check', 'catalog-row-baseline-go-check'])
     assert.ok(targets.includes(target), `${target} is not in CHECK_TARGETS`);
   assert.deepEqual(ciCheckTargetErrors(workflow, text('Makefile')), []);
   assert.deepEqual(checkTargets('CHECK_TARGETS = first\nCHECK_TARGETS += second third\n'), ['first', 'second', 'third']);
@@ -614,6 +616,44 @@ caseTest('the CI groups run every target of CHECK_TARGETS in exactly one job', C
   for (const target of ['group-rows-db-go', 'group-rows-db-typescript', 'group-rows-db-python', 'group-rows-db-php', 'group-rows-db-php-extension', 'group-rows-db-rust']) {
     assert.equal(groups.flatMap(group => targets[group] ?? []).filter(name => name === target).length, 1, `${target} runs in one CI group`);
   }
+  for (const [group, expected] of Object.entries({
+    client_db_go: ['client-db-go-check', 'group-rows-db-go', 'dialect-facts-check'],
+    client_db_php: ['client-db-php-check', 'group-rows-db-php', 'complex-query-php-db-check'],
+    client_db_php_extension: ['client-db-php-extension-check', 'group-rows-db-php-extension', 'complex-query-php-extension-db-check'],
+    client_db_typescript: ['client-db-typescript-check', 'group-rows-db-typescript', 'complex-query-typescript-check'],
+    client_db_python: ['client-db-python-check', 'group-rows-db-python', 'complex-query-python-sqlite-check'],
+    client_db_rust: ['client-db-rust-check', 'group-rows-db-rust', 'complex-query-rust-check'],
+    dbspec_go: ['dbspec-introspect-check', 'dbspec-apply-check'],
+    dbspec_php: ['dbspec-introspect-php-check', 'dbspec-apply-php-check'],
+    dbspec_php_extension: ['dbspec-introspect-php-extension-check', 'dbspec-apply-php-extension-check'],
+    dbspec_typescript: ['dbspec-introspect-ts-check', 'dbspec-apply-ts-check'],
+    dbspec_python: ['dbspec-introspect-python-check', 'dbspec-apply-python-check'],
+    dbspec_rust: ['dbspec-introspect-rust-check', 'dbspec-apply-rust-check'],
+    performance: ['perf-check'],
+  })) {
+    for (const target of expected) assert.ok((targets[group] ?? []).includes(target), `${target} runs in ${group}`);
+  }
+  for (const runtime of ['go', 'php', 'php-extension', 'typescript', 'python', 'rust']) {
+    const groupRuntime = runtime.replaceAll('-', '_');
+    for (const database of ['mysql', 'postgres', 'sqlite']) {
+      const target = `feature-coverage/${runtime}/${database}`;
+      assert.ok(checkTargets(makefile).includes(target), `${target} remains in CHECK_TARGETS`);
+      assert.deepEqual(targets[`feature_${groupRuntime}_${database}`], [target], `${target} is the only target in its runtime/database cell`);
+    }
+    const markdown = `markdown-conformance-check/${runtime}`;
+    assert.deepEqual(targets[`markdown_${groupRuntime}`], [markdown], `${markdown} is the only target in its native runtime cell`);
+  }
+  assert.deepEqual(targets.feature_performance, ['feature-performance-check'], 'the performance gate has its own CI job');
+  assert.deepEqual(targets.parity_api, ['parity-api-check'], 'public API parity runs once in its own CI job');
+  for (const runtime of ['go', 'php', 'php-extension', 'typescript', 'python', 'rust']) {
+    assert.deepEqual(targets[`parity_bindings_${runtime.replaceAll('-', '_')}`], [`parity-bindings-${runtime}-check`], `${runtime} parity bindings run once in their own CI job`);
+  }
+  assert.ok(!targets.conformance?.includes('parity-check'), 'the all-phase parity command is not duplicated in the conformance group');
+  assert.match(makefile, /^parity-api-check:[^\n]*\n\t\$\(NODE\) \$\(KIT\)\/parity\.\$\(KIT_EXT\) --phase api$/m);
+  for (const runtime of ['go', 'php', 'php-extension', 'typescript', 'python', 'rust']) {
+    assert.match(makefile, new RegExp(`^parity-bindings-${runtime}-check:[^\\n]*\\n\\t\\$\\(NODE\\) \\$\\(KIT\\)\\/parity\\.\\$\\(KIT_EXT\\) --phase bindings --implementation ${runtime}$`, 'm'));
+  }
+  assert.match(makefile, /^parity-check: parity-prepare$/m, 'the default full Kit parity target remains available');
   assert.ok(workflow.includes('        run: make check-run GROUP=${{ matrix.group }}\n'), 'ci.yml runs make check-run for the group of its matrix');
   assert.deepEqual(ciCheckTargetErrors(workflow, makefile), []);
 });

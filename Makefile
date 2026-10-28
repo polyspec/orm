@@ -4,6 +4,8 @@
 .PHONY: paged-read-rust-check
 .PHONY: complex-query-rust-check
 .PHONY: orm-check check-run databases-create ci-group-needs feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check runner-check version-check comment-language-check repo-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check ts-save-key-check ts-aes-auth-check ts-codec-errors-check scripts-typecheck typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-parse-check docs-site-check docs-site-parse-check docs-verify-idempotent docs-rules-check docs-implementation-count-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check orm-install-cli-check feature-unit-check feature-check feature-coverage feature-verify-rust feature-verify-other feature-docs package-check orm-test-servers orm-test-servers-tls orm-test-servers-stop orm-test-servers-leases orm-test-servers-leases-clear orm-test-mysql-privilege-start sqlite-version-ts-check sqlite-version-rust-check relation-parent-bind-rust-check split-null-check
+.PHONY: client-db-go-check client-db-php-check client-db-php-extension-check client-db-typescript-check client-db-python-check client-db-rust-check
+.PHONY: feature-coverage/go/mysql feature-coverage/go/postgres feature-coverage/go/sqlite feature-coverage/php/mysql feature-coverage/php/postgres feature-coverage/php/sqlite feature-coverage/php-extension/mysql feature-coverage/php-extension/postgres feature-coverage/php-extension/sqlite feature-coverage/typescript/mysql feature-coverage/typescript/postgres feature-coverage/typescript/sqlite feature-coverage/python/mysql feature-coverage/python/postgres feature-coverage/python/sqlite feature-coverage/rust/mysql feature-coverage/rust/postgres feature-coverage/rust/sqlite feature-performance-check
 # It is an independent part of the target that does not stop at a failure (scripts/check/run.mts runs it with make -k).
 .PHONY: version-check/unit version-check/run comment-language-check/unit comment-language-check/run repo-check/unit repo-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces fuzz-check/engine-ir fuzz-check/clients-go-orm dialect-facts-check/probes dialect-facts-check/facts feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select testcase-check/go testcase-check/node testcase-check/runners testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/code-catalog client-unit-check/hostcodec client-unit-check/codec-aes client-unit-check/insert-parts client-unit-check/engine client-unit-check/runtime-model php-gen-unit-check client-unit-check/orm-gen client-unit-check/model-methods client-unit-check/client-generics client-unit-check/perf-extensions client-unit-check/dbspec-runners
 .PHONY: aes-json-php-extension-check aes-rotation-php-extension-check
@@ -227,33 +229,83 @@ TSC_BUILD = $(RUN_LONG) typescript-build -- node scripts/typescript/build.mts >&
 # dbspec-rust-check, dbspec-ts-check, and dbspec-compare-check run once inside feature-verify-rust or feature-verify-other, so they are not listed again.
 # contracts/check-inputs.json declares a scope for each target: owner targets
 # are also selected by make owner-check, and suite targets run only in the whole suite.
-CHECK_TARGETS = styled-column-states-unit-check group-count-boolean-unit-check model-json-ordered-number-text-unit-check runner-check scripts-typecheck docs-check docs-parse-check docs-site-check docs-site-parse-check commits-check release-coverage kit-check owner-validate dependency-policy-check dependency-policy-mutation-check version-check comment-language-check testcase-check repo-check orm-test-servers-check docs-rules-check docs-implementation-count-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check orm-install-cli-check markdown-table-check docs-verify-idempotent go-model-check go-sqlite-version-check schema-exists-sqlite-go-check schema-exists-sqlite-php-check schema-exists-sqlite-typescript-check schema-exists-sqlite-rust-check php-model-check client-unit-check php-gen-unit-check phpstan-test-runner-helper-check php-orm-gen-scan-failure-case-check dbspec-sqlite-literal-rows-helper-check php-test-assertions-helper-check dbspec-php-interface-program-helper-check generator-consumer-check php-min-check ts-check ts-save-key-check ts-aes-auth-check ts-codec-errors-check sqlite-version-ts-check sqlite-version-rust-check relation-parent-bind-rust-check split-null-check collection-composite-key-check interface-typescript-extractor-check ts-min-check rust-check rust-build-environment-check rust-build-outdir-check rust-duplicate-catalog-check rust-time-precision-check rust-upsert-conflict-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check bind-check ir-answers-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check conformance-ts-suite-check markdown-conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-stress-rust-check dbspec-introspect-python-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-language-check dbspec-plan-php-check dbspec-go-check/engine dbspec-php-check/set perf-check dbspec-php-extension-check dbspec-php-extension-check/ir dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-python-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check dbspec-verify-errors-check collection-php-extension-check model-types-php-extension-check model-native-php-extension-check feature-unit-check feature-coverage feature-verify-rust feature-verify-other feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check go-test-check python-check parity-declarations-check parity-check generated-lint-check group-rows-db-go group-rows-db-python group-rows-db-typescript group-rows-db-php group-rows-db-php-extension group-rows-db-rust toolchain-check layout-check rules-check rebuild-check language-check test-markers-check duplication-check link-state-check bypass-check suppression-check divergence-check lint-ts lint-php lint-python lint-go lint-rust lint-php-ext test-php-ext collection-get-phpstan-check blind-index-source-go-check blind-index-source-php-check blind-index-source-php-extension-check blind-index-source-ts-check blind-index-source-python-check blind-index-source-rust-check dbspec-lock-go-check dbspec-lock-php-check dbspec-lock-php-extension-check dbspec-lock-python-check dbspec-lock-rust-check dbspec-lock-ts-check php-codec-causes-check scalar-subquery-column-check nowait-restore-check mermaid-error-ts-check mermaid-error-python-check mermaid-error-php-check mermaid-error-php-extension-check php-extension-build-logs-check php-catalog-bounds-check column-function-metadata-check paged-read-rust-check page-cache-unit-check rust-compiler-fixtures-check native-error-cause-check request-hook-php-extension-check request-hook-rust-check rust-causes-check go-catalog-session-error-check catalog-php-extension-surface-check transaction-failure-php-extension-check transaction-failure-go-check transaction-failure-php-check php-query-cancellation-check php-query-cancellation-extension-check transaction-failure-typescript-check transaction-failure-python-check transaction-failure-rust-check connection-timeout-php-extension-check mysql-tls-php-extension-check mysql-session-php-extension-check go-package-entry-check native-arginfo-php-extension-check request-hook-audit-native-binding-check native-api-equivalence-check php-package-entry-check php-extension-package-entry-check rust-package-entry-check typescript-package-entry-check python-package-entry-check interface-api-binding-unit-check dbspec-introspect-python-helper-check catalog-mutation-helper-ts-check catalog-mutation-helper-python-check model-chunk-composite-native-php-extension-check model-query-write-php-extension-unit-check php-lifecycle-extension-native-check dbspec-introspect-query-count-unit-check connection-statement-timeout-typescript-check connection-statement-timeout-php-extension-check connection-pool-resource-bounds-typescript-check connection-utc-typescript-check connection-utc-php-extension-check connection-utc-php-check connection-utc-rust-check complex-query-typescript-unit-check python-complex-query-check complex-query-typescript-check complex-query-typescript-request-check complex-query-rust-check complex-query-python-mysql-check complex-query-python-postgres-check complex-query-python-sqlite-check complex-query-php-db-check complex-query-php-extension-db-check makefile-pinned-node-recipes-check complex-query-go-plan-check complex-query-rust-plan-check connection-busy-timeout-php-extension-check connection-sqlite-concurrent-writers-python-check connection-sqlite-read-during-write-python-check connection-sqlite-read-during-write-php-extension-check audit-native-method-assertions-helper-check rust-closed-executor-check typescript-internal-column-error-helper-check typescript-dbspec-plan-fixture-check physical-command-case-helper-check typescript-audit-history-rows-helper-check typescript-capture-error-helper-check typescript-check-state-helper-check typescript-performance-gate-unit-check mysql-test-options-helper-check database-case-tests-helper-check dbspec-physical-database-helper-check typescript-conditional-entry-helper-check typescript-database-case-fixture-helper-check php-plan-cache-memory-check split-read-plan-check cpx5-duplicate-relation-helper-check temp-sqlite-fixture-rust-helper-check aes-json-php-extension-check aes-rotation-php-extension-check listen-notify-php-extension-check typescript-test-exact-keys-check pgsql-pdo-adapter-php-check pgsql-pdo-adapter-php-extension-check parent-slot-expansion-php-extension-check
+CHECK_TARGETS = styled-column-states-unit-check group-count-boolean-unit-check model-json-ordered-number-text-unit-check runner-check scripts-typecheck docs-check docs-parse-check docs-site-check docs-site-parse-check commits-check release-coverage kit-check owner-validate dependency-policy-check dependency-policy-mutation-check version-check comment-language-check testcase-check repo-check orm-test-servers-check docs-rules-check docs-implementation-count-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check orm-install-cli-check markdown-table-check docs-verify-idempotent go-model-check go-sqlite-version-check schema-exists-sqlite-go-check schema-exists-sqlite-php-check schema-exists-sqlite-typescript-check schema-exists-sqlite-rust-check php-model-check client-unit-check php-gen-unit-check phpstan-test-runner-helper-check php-orm-gen-scan-failure-case-check dbspec-sqlite-literal-rows-helper-check php-test-assertions-helper-check dbspec-php-interface-program-helper-check generator-consumer-check php-min-check ts-check ts-save-key-check ts-aes-auth-check ts-codec-errors-check sqlite-version-ts-check sqlite-version-rust-check relation-parent-bind-rust-check split-null-check collection-composite-key-check interface-typescript-extractor-check ts-min-check rust-check rust-build-environment-check rust-build-outdir-check rust-duplicate-catalog-check rust-time-precision-check rust-upsert-conflict-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-go-check client-db-php-check client-db-php-extension-check client-db-typescript-check client-db-python-check client-db-rust-check codec-check bind-check ir-answers-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check conformance-ts-suite-check markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/php-extension markdown-conformance-check/typescript markdown-conformance-check/python markdown-conformance-check/rust package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-stress-rust-check dbspec-introspect-python-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-language-check dbspec-plan-php-check dbspec-go-check/engine dbspec-php-check/set perf-check dbspec-php-extension-check dbspec-php-extension-check/ir dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-python-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check dbspec-verify-errors-check collection-php-extension-check model-types-php-extension-check model-native-php-extension-check feature-unit-check feature-coverage/go/mysql feature-coverage/go/postgres feature-coverage/go/sqlite feature-coverage/php/mysql feature-coverage/php/postgres feature-coverage/php/sqlite feature-coverage/php-extension/mysql feature-coverage/php-extension/postgres feature-coverage/php-extension/sqlite feature-coverage/typescript/mysql feature-coverage/typescript/postgres feature-coverage/typescript/sqlite feature-coverage/python/mysql feature-coverage/python/postgres feature-coverage/python/sqlite feature-coverage/rust/mysql feature-coverage/rust/postgres feature-coverage/rust/sqlite feature-verify-rust feature-verify-other feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check go-test-check python-check parity-declarations-check parity-api-check parity-bindings-go-check parity-bindings-php-check parity-bindings-php-extension-check parity-bindings-typescript-check parity-bindings-python-check parity-bindings-rust-check generated-lint-check group-rows-db-go group-rows-db-python group-rows-db-typescript group-rows-db-php group-rows-db-php-extension group-rows-db-rust toolchain-check layout-check rules-check rebuild-check language-check test-markers-check duplication-check link-state-check bypass-check suppression-check divergence-check lint-ts lint-php lint-python lint-go lint-rust lint-php-ext test-php-ext collection-get-phpstan-check blind-index-source-go-check blind-index-source-php-check blind-index-source-php-extension-check blind-index-source-ts-check blind-index-source-python-check blind-index-source-rust-check dbspec-lock-go-check dbspec-lock-php-check dbspec-lock-php-extension-check dbspec-lock-python-check dbspec-lock-rust-check dbspec-lock-ts-check php-codec-causes-check scalar-subquery-column-check nowait-restore-check mermaid-error-ts-check mermaid-error-python-check mermaid-error-php-check mermaid-error-php-extension-check php-extension-build-logs-check php-catalog-bounds-check column-function-metadata-check paged-read-rust-check page-cache-unit-check rust-compiler-fixtures-check native-error-cause-check request-hook-php-extension-check request-hook-rust-check rust-causes-check go-catalog-session-error-check catalog-php-extension-surface-check transaction-failure-php-extension-check transaction-failure-go-check transaction-failure-php-check php-query-cancellation-check php-query-cancellation-extension-check transaction-failure-typescript-check transaction-failure-python-check transaction-failure-rust-check connection-timeout-php-extension-check mysql-tls-php-extension-check mysql-session-php-extension-check go-package-entry-check native-arginfo-php-extension-check request-hook-audit-native-binding-check native-api-equivalence-check php-package-entry-check php-extension-package-entry-check rust-package-entry-check typescript-package-entry-check python-package-entry-check interface-api-binding-unit-check dbspec-introspect-python-helper-check catalog-mutation-helper-ts-check catalog-mutation-helper-python-check model-chunk-composite-native-php-extension-check model-query-write-php-extension-unit-check php-lifecycle-extension-native-check dbspec-introspect-query-count-unit-check connection-statement-timeout-typescript-check connection-statement-timeout-php-extension-check connection-pool-resource-bounds-typescript-check connection-utc-typescript-check connection-utc-php-extension-check connection-utc-php-check connection-utc-rust-check complex-query-typescript-unit-check python-complex-query-check complex-query-typescript-check complex-query-typescript-request-check complex-query-rust-check complex-query-python-mysql-check complex-query-python-postgres-check complex-query-python-sqlite-check complex-query-php-db-check complex-query-php-extension-db-check makefile-pinned-node-recipes-check complex-query-go-plan-check complex-query-rust-plan-check connection-busy-timeout-php-extension-check connection-sqlite-concurrent-writers-python-check connection-sqlite-read-during-write-python-check connection-sqlite-read-during-write-php-extension-check audit-native-method-assertions-helper-check rust-closed-executor-check typescript-internal-column-error-helper-check typescript-dbspec-plan-fixture-check physical-command-case-helper-check typescript-audit-history-rows-helper-check typescript-capture-error-helper-check typescript-check-state-helper-check typescript-performance-gate-unit-check mysql-test-options-helper-check database-case-tests-helper-check dbspec-physical-database-helper-check typescript-conditional-entry-helper-check typescript-database-case-fixture-helper-check php-plan-cache-memory-check split-read-plan-check cpx5-duplicate-relation-helper-check temp-sqlite-fixture-rust-helper-check aes-json-php-extension-check aes-rotation-php-extension-check listen-notify-php-extension-check typescript-test-exact-keys-check pgsql-pdo-adapter-php-check pgsql-pdo-adapter-php-extension-check parent-slot-expansion-php-extension-check feature-performance-check
 # CI splits make orm-check into one job per CI group and runs them at the same time (the job test, matrix group in .github/workflows/ci.yml).
 # Each job runs `make check-run GROUP=<group>`, which runs CI_TARGETS_<group>; together the groups run every target of CHECK_TARGETS
-# once each (make repo-check verifies it). The groups are split so that each job, with its setup, finishes within 10 minutes, using the target times measured in CI runs.
+# once each (make repo-check verifies it). The groups keep independently runnable runtime and parity phases in separate jobs.
 # One MySQL application of the 2000-table plan takes longer than that, so only stress-mysql is excluded. A local make orm-check runs
 # every target without GROUP.
 #   static: targets that need no database
-#   clients_db: database tests of clients, the CPX-2 Rust fixture, Rust driver, examples, dialect facts, and Go tests
+#   clients_db: cross-client database checks whose runners are shared
+#   performance: the standalone performance check
+#   client_db_<language>: one runtime's native client database tests, selected by ORM_CLIENT_DB_LANGS
 #   clients_pooler: database tests of clients through the pooler. Its test build is redone in its own job
-#   conformance: database targets of the TypeScript client and the conformance runner
-#   dbspec: database targets of case databases, dbspec DDL, introspection, and plans
-#   dbspec_apply: database targets of dbspec plan application
-#   feature_coverage, feature_verify_rust, feature_verify_other: the three parts of feature-check (feature coverage, the verification commands of shard rust and
-#     the verification commands of shard other)
+#   conformance: cross-runtime conformance and TypeScript-only checks
+#   parity_api: public API extraction and interface checks
+#   parity_bindings_<language>: one implementation's native parity bindings
+#   dbspec: the case-database and cross-runtime dbspec comparison targets
+#   dbspec_<language>: one runtime's native dbspec targets; dbspec_apply holds the cross-client apply pairs
+#   feature_<runtime>_<database>: one runtime's SQL coverage cell; MySQL also runs that runtime's independent coverage once
+#   markdown_<runtime>: one runtime's native markdown cases against flowmark
+#   feature_performance: the exclusive six-runtime, three-database performance gate
+#   feature_verify_rust, feature_verify_other: verification commands of shard rust and shard other
 #   feature_helpers: the helper checks without the stress helpers and FEATURE_SUITE_HELPERS (feature-helper-check)
 #   stress_mysql: MySQL application of the 2000-table plan (feature-stress-mysql-check)
 #   stress_pg_sqlite: bench of the stress document and PostgreSQL and SQLite application (feature-stress-pg-sqlite-check)
-CI_GROUPS = static clients_db clients_pooler conformance dbspec dbspec_apply feature_coverage feature_verify_rust feature_verify_other feature_helpers stress_mysql stress_pg_sqlite python
-CI_TARGETS_static = styled-column-states-unit-check group-count-boolean-unit-check model-json-ordered-number-text-unit-check runner-check docs-check docs-parse-check commits-check release-coverage kit-check owner-validate dependency-policy-check dependency-policy-mutation-check version-check comment-language-check testcase-check repo-check orm-test-servers-check docs-rules-check docs-implementation-count-check docs-dbs-check dbspec-codemirror-check dbspec-lsp-check orm-install-cli-check markdown-table-check docs-verify-idempotent go-model-check go-sqlite-version-check schema-exists-sqlite-go-check schema-exists-sqlite-php-check schema-exists-sqlite-typescript-check schema-exists-sqlite-rust-check php-model-check client-unit-check php-gen-unit-check phpstan-test-runner-helper-check php-orm-gen-scan-failure-case-check php-test-assertions-helper-check dbspec-sqlite-literal-rows-helper-check php-min-check rust-check go-fmt-check go-vet-check rust-fmt-check codec-check bind-check ir-answers-check fuzz-check package-check ts-model-check ts-save-key-check ts-aes-auth-check ts-codec-errors-check sqlite-version-ts-check sqlite-version-rust-check relation-parent-bind-rust-check split-null-check collection-composite-key-check interface-typescript-extractor-check collection-php-extension-check model-types-php-extension-check model-native-php-extension-check model-chunk-composite-native-php-extension-check feature-unit-check parity-declarations-check generated-lint-check toolchain-check layout-check rules-check rebuild-check language-check test-markers-check duplication-check link-state-check bypass-check suppression-check divergence-check lint-ts lint-php lint-python lint-go lint-rust lint-php-ext test-php-ext collection-get-phpstan-check blind-index-source-go-check blind-index-source-php-check blind-index-source-php-extension-check blind-index-source-ts-check blind-index-source-python-check blind-index-source-rust-check rust-build-environment-check rust-build-outdir-check rust-duplicate-catalog-check php-catalog-bounds-check rust-time-precision-check rust-upsert-conflict-check php-codec-causes-check scalar-subquery-column-check nowait-restore-check dbspec-language-check docs-site-check docs-site-parse-check rust-150-check dbspec-verify-errors-check php-extension-build-logs-check column-function-metadata-check paged-read-rust-check page-cache-unit-check rust-compiler-fixtures-check native-error-cause-check request-hook-php-extension-check request-hook-rust-check rust-causes-check go-catalog-session-error-check catalog-php-extension-surface-check connection-timeout-php-extension-check go-package-entry-check native-arginfo-php-extension-check request-hook-audit-native-binding-check transaction-failure-php-extension-check transaction-failure-go-check transaction-failure-php-check transaction-failure-typescript-check transaction-failure-python-check transaction-failure-rust-check php-package-entry-check php-extension-package-entry-check rust-package-entry-check typescript-package-entry-check python-package-entry-check interface-api-binding-unit-check native-api-equivalence-check model-query-write-php-extension-unit-check php-lifecycle-extension-native-check dbspec-introspect-query-count-unit-check complex-query-typescript-unit-check python-complex-query-check complex-query-typescript-request-check dbspec-vscode-check makefile-pinned-node-recipes-check complex-query-go-plan-check complex-query-rust-plan-check connection-busy-timeout-php-extension-check connection-sqlite-concurrent-writers-python-check connection-sqlite-read-during-write-python-check connection-sqlite-read-during-write-php-extension-check audit-native-method-assertions-helper-check rust-closed-executor-check physical-command-case-helper-check dbspec-physical-database-helper-check typescript-conditional-entry-helper-check typescript-database-case-fixture-helper-check php-plan-cache-memory-check split-read-plan-check cpx5-duplicate-relation-helper-check temp-sqlite-fixture-rust-helper-check typescript-performance-gate-unit-check typescript-test-exact-keys-check
-CI_TARGETS_clients_db = perf-check rust-driver-check example-check client-db-check dialect-facts-check go-test-check mysql-tls-php-extension-check mysql-session-php-extension-check php-query-cancellation-check php-query-cancellation-extension-check group-rows-db-go group-rows-db-typescript group-rows-db-php group-rows-db-php-extension group-rows-db-rust connection-statement-timeout-typescript-check connection-pool-resource-bounds-typescript-check connection-utc-typescript-check connection-utc-php-extension-check connection-utc-php-check connection-utc-rust-check complex-query-typescript-check complex-query-rust-check complex-query-python-mysql-check complex-query-python-postgres-check complex-query-python-sqlite-check complex-query-php-db-check complex-query-php-extension-db-check connection-statement-timeout-php-extension-check aes-json-php-extension-check aes-rotation-php-extension-check listen-notify-php-extension-check pgsql-pdo-adapter-php-check pgsql-pdo-adapter-php-extension-check
+CI_GROUPS = static clients_db performance client_db_go client_db_php client_db_php_extension client_db_typescript client_db_python client_db_rust clients_pooler conformance dbspec dbspec_apply dbspec_go dbspec_php dbspec_php_extension dbspec_typescript dbspec_python dbspec_rust feature_go_mysql feature_go_postgres feature_go_sqlite feature_php_mysql feature_php_postgres feature_php_sqlite feature_php_extension_mysql feature_php_extension_postgres feature_php_extension_sqlite feature_typescript_mysql feature_typescript_postgres feature_typescript_sqlite feature_python_mysql feature_python_postgres feature_python_sqlite feature_rust_mysql feature_rust_postgres feature_rust_sqlite markdown_go markdown_php markdown_php_extension markdown_typescript markdown_python markdown_rust feature_performance feature_verify_rust feature_verify_other feature_helpers stress_mysql stress_pg_sqlite python parity_api parity_bindings_go parity_bindings_php parity_bindings_php_extension parity_bindings_typescript parity_bindings_python parity_bindings_rust
+CI_TARGETS_static = styled-column-states-unit-check group-count-boolean-unit-check model-json-ordered-number-text-unit-check runner-check docs-check docs-parse-check commits-check release-coverage kit-check owner-validate dependency-policy-check dependency-policy-mutation-check version-check comment-language-check testcase-check repo-check orm-test-servers-check docs-rules-check docs-implementation-count-check docs-dbs-check dbspec-codemirror-check dbspec-lsp-check orm-install-cli-check markdown-table-check docs-verify-idempotent go-model-check go-sqlite-version-check schema-exists-sqlite-go-check schema-exists-sqlite-php-check schema-exists-sqlite-typescript-check schema-exists-sqlite-rust-check php-model-check client-unit-check php-gen-unit-check phpstan-test-runner-helper-check php-orm-gen-scan-failure-case-check php-test-assertions-helper-check dbspec-sqlite-literal-rows-helper-check php-min-check rust-check go-fmt-check go-vet-check rust-fmt-check codec-check bind-check ir-answers-check fuzz-check package-check ts-model-check ts-save-key-check ts-aes-auth-check ts-codec-errors-check sqlite-version-ts-check sqlite-version-rust-check relation-parent-bind-rust-check split-null-check collection-composite-key-check interface-typescript-extractor-check collection-php-extension-check model-types-php-extension-check model-native-php-extension-check model-chunk-composite-native-php-extension-check feature-unit-check parity-declarations-check generated-lint-check toolchain-check layout-check rules-check rebuild-check language-check test-markers-check duplication-check link-state-check bypass-check suppression-check divergence-check lint-ts lint-php lint-python lint-go lint-rust lint-php-ext test-php-ext collection-get-phpstan-check blind-index-source-go-check blind-index-source-php-check blind-index-source-php-extension-check blind-index-source-ts-check blind-index-source-python-check blind-index-source-rust-check rust-build-environment-check rust-build-outdir-check rust-duplicate-catalog-check php-catalog-bounds-check rust-time-precision-check rust-upsert-conflict-check php-codec-causes-check scalar-subquery-column-check nowait-restore-check dbspec-language-check docs-site-check docs-site-parse-check rust-150-check dbspec-verify-errors-check php-extension-build-logs-check column-function-metadata-check paged-read-rust-check page-cache-unit-check rust-compiler-fixtures-check native-error-cause-check request-hook-php-extension-check request-hook-rust-check rust-causes-check go-catalog-session-error-check catalog-php-extension-surface-check go-package-entry-check native-arginfo-php-extension-check request-hook-audit-native-binding-check transaction-failure-php-extension-check transaction-failure-go-check transaction-failure-php-check transaction-failure-typescript-check transaction-failure-python-check transaction-failure-rust-check php-package-entry-check php-extension-package-entry-check rust-package-entry-check typescript-package-entry-check python-package-entry-check interface-api-binding-unit-check native-api-equivalence-check model-query-write-php-extension-unit-check php-lifecycle-extension-native-check dbspec-introspect-query-count-unit-check complex-query-typescript-unit-check python-complex-query-check complex-query-typescript-request-check dbspec-vscode-check makefile-pinned-node-recipes-check complex-query-go-plan-check complex-query-rust-plan-check connection-busy-timeout-php-extension-check connection-sqlite-concurrent-writers-python-check connection-sqlite-read-during-write-python-check connection-sqlite-read-during-write-php-extension-check audit-native-method-assertions-helper-check rust-closed-executor-check physical-command-case-helper-check dbspec-physical-database-helper-check typescript-conditional-entry-helper-check typescript-database-case-fixture-helper-check php-plan-cache-memory-check split-read-plan-check cpx5-duplicate-relation-helper-check temp-sqlite-fixture-rust-helper-check typescript-performance-gate-unit-check typescript-test-exact-keys-check
+CI_TARGETS_clients_db = example-check
+CI_TARGETS_performance = perf-check
+CI_TARGETS_client_db_go = client-db-go-check dialect-facts-check go-test-check group-rows-db-go
+CI_TARGETS_client_db_php = client-db-php-check php-query-cancellation-check group-rows-db-php connection-utc-php-check complex-query-php-db-check pgsql-pdo-adapter-php-check
+CI_TARGETS_client_db_php_extension = client-db-php-extension-check mysql-tls-php-extension-check mysql-session-php-extension-check php-query-cancellation-extension-check group-rows-db-php-extension connection-utc-php-extension-check connection-timeout-php-extension-check connection-statement-timeout-php-extension-check aes-json-php-extension-check aes-rotation-php-extension-check listen-notify-php-extension-check pgsql-pdo-adapter-php-extension-check complex-query-php-extension-db-check
+CI_TARGETS_client_db_typescript = client-db-typescript-check group-rows-db-typescript connection-statement-timeout-typescript-check connection-pool-resource-bounds-typescript-check connection-utc-typescript-check complex-query-typescript-check
+CI_TARGETS_client_db_python = client-db-python-check group-rows-db-python complex-query-python-mysql-check complex-query-python-postgres-check complex-query-python-sqlite-check
+CI_TARGETS_client_db_rust = client-db-rust-check rust-driver-check group-rows-db-rust connection-utc-rust-check complex-query-rust-check
 CI_TARGETS_clients_pooler = client-pooler-check
-CI_TARGETS_conformance = ts-check scripts-typecheck ts-min-check conformance-check conformance-ts-suite-check markdown-conformance-check parity-check mermaid-error-ts-check catalog-mutation-helper-ts-check typescript-internal-column-error-helper-check typescript-audit-history-rows-helper-check typescript-capture-error-helper-check typescript-check-state-helper-check mysql-test-options-helper-check database-case-tests-helper-check
+CI_TARGETS_conformance = ts-check scripts-typecheck ts-min-check conformance-check conformance-ts-suite-check mermaid-error-ts-check catalog-mutation-helper-ts-check typescript-internal-column-error-helper-check typescript-audit-history-rows-helper-check typescript-capture-error-helper-check typescript-check-state-helper-check mysql-test-options-helper-check database-case-tests-helper-check
+CI_TARGETS_parity_api = parity-api-check
+CI_TARGETS_parity_bindings_go = parity-bindings-go-check
+CI_TARGETS_parity_bindings_php = parity-bindings-php-check
+CI_TARGETS_parity_bindings_php_extension = parity-bindings-php-extension-check
+CI_TARGETS_parity_bindings_typescript = parity-bindings-typescript-check
+CI_TARGETS_parity_bindings_python = parity-bindings-python-check
+CI_TARGETS_parity_bindings_rust = parity-bindings-rust-check
 CI_TARGETS_feature_helpers = feature-helper-check
-CI_TARGETS_python = python-check group-rows-db-python mermaid-error-python-check generator-consumer-check dbspec-introspect-python-helper-check catalog-mutation-helper-python-check
-CI_TARGETS_dbspec = dbspec-go-check/engine dbspec-php-check/set case-database-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-stress-rust-check dbspec-introspect-python-check dbspec-introspect-compare-check dbspec-plan-check dbspec-plan-ts-check dbspec-plan-rust-check dbspec-plan-php-check dbspec-php-extension-check dbspec-php-extension-check/ir dbspec-php-interface-program-helper-check mermaid-error-php-check mermaid-error-php-extension-check parent-slot-expansion-php-extension-check
-CI_TARGETS_dbspec_apply = dbspec-apply-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-python-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check dbspec-lock-go-check dbspec-lock-php-check dbspec-lock-php-extension-check dbspec-lock-python-check dbspec-lock-rust-check dbspec-lock-ts-check typescript-dbspec-plan-fixture-check
-CI_TARGETS_feature_coverage = feature-coverage
+CI_TARGETS_python = python-check mermaid-error-python-check generator-consumer-check dbspec-introspect-python-helper-check catalog-mutation-helper-python-check
+CI_TARGETS_dbspec = case-database-check dbspec-introspect-compare-check
+CI_TARGETS_dbspec_apply = dbspec-apply-pairs-check
+CI_TARGETS_dbspec_go = dbspec-go-check/engine dbspec-ddl-check dbspec-introspect-check dbspec-plan-check dbspec-apply-check dbspec-lock-go-check
+CI_TARGETS_dbspec_php = dbspec-php-check/set dbspec-introspect-php-check dbspec-plan-php-check dbspec-apply-php-check dbspec-lock-php-check dbspec-php-interface-program-helper-check mermaid-error-php-check
+CI_TARGETS_dbspec_php_extension = dbspec-introspect-php-extension-check dbspec-php-extension-check dbspec-php-extension-check/ir dbspec-apply-php-extension-check dbspec-lock-php-extension-check mermaid-error-php-extension-check parent-slot-expansion-php-extension-check
+CI_TARGETS_dbspec_typescript = dbspec-introspect-ts-check dbspec-plan-ts-check dbspec-apply-ts-check dbspec-lock-ts-check typescript-dbspec-plan-fixture-check
+CI_TARGETS_dbspec_python = dbspec-introspect-python-check dbspec-apply-python-check dbspec-lock-python-check
+CI_TARGETS_dbspec_rust = dbspec-introspect-rust-check dbspec-stress-rust-check dbspec-plan-rust-check dbspec-apply-rust-check dbspec-lock-rust-check
+CI_TARGETS_feature_go_mysql = feature-coverage/go/mysql
+CI_TARGETS_feature_go_postgres = feature-coverage/go/postgres
+CI_TARGETS_feature_go_sqlite = feature-coverage/go/sqlite
+CI_TARGETS_feature_php_mysql = feature-coverage/php/mysql
+CI_TARGETS_feature_php_postgres = feature-coverage/php/postgres
+CI_TARGETS_feature_php_sqlite = feature-coverage/php/sqlite
+CI_TARGETS_feature_php_extension_mysql = feature-coverage/php-extension/mysql
+CI_TARGETS_feature_php_extension_postgres = feature-coverage/php-extension/postgres
+CI_TARGETS_feature_php_extension_sqlite = feature-coverage/php-extension/sqlite
+CI_TARGETS_feature_typescript_mysql = feature-coverage/typescript/mysql
+CI_TARGETS_feature_typescript_postgres = feature-coverage/typescript/postgres
+CI_TARGETS_feature_typescript_sqlite = feature-coverage/typescript/sqlite
+CI_TARGETS_feature_python_mysql = feature-coverage/python/mysql
+CI_TARGETS_feature_python_postgres = feature-coverage/python/postgres
+CI_TARGETS_feature_python_sqlite = feature-coverage/python/sqlite
+CI_TARGETS_feature_rust_mysql = feature-coverage/rust/mysql
+CI_TARGETS_feature_rust_postgres = feature-coverage/rust/postgres
+CI_TARGETS_feature_rust_sqlite = feature-coverage/rust/sqlite
+CI_TARGETS_markdown_go = markdown-conformance-check/go
+CI_TARGETS_markdown_php = markdown-conformance-check/php
+CI_TARGETS_markdown_php_extension = markdown-conformance-check/php-extension
+CI_TARGETS_markdown_typescript = markdown-conformance-check/typescript
+CI_TARGETS_markdown_python = markdown-conformance-check/python
+CI_TARGETS_markdown_rust = markdown-conformance-check/rust
+CI_TARGETS_feature_performance = feature-performance-check
 CI_TARGETS_feature_verify_rust = feature-verify-rust
 CI_TARGETS_feature_verify_other = feature-verify-other
 CI_TARGETS_stress_mysql = feature-stress-mysql-check
@@ -1427,14 +1479,10 @@ feature-rust-unit:
 feature-rust-database:
 	$(WITH_TEST_ENV) cd $(FEATURE_CRATE) && ORM_FEATURE_DATABASE=$(FEATURE_DATABASE) ORM_FEATURE_DSN="$$$(FEATURE_DSN_ENV)" $(CARGO_TEST) feature-rust-database -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline $(FEATURE_CARGO_TARGET) -- --test-threads=1 --exact $(FEATURE_TEST)
 
-# feature-check is the feature coverage and all verification commands, and make orm-check runs them as three targets: feature-coverage is
-# coverage, feature-verify-rust runs the verification commands of shard rust (the commands that build and run Rust with cargo), and feature-verify-other
-# runs the verification commands of shard other (`shard` in contracts/features.json). CI runs the three in different groups at the same time. Features that declare the same
-# command are in the same shard, and that command runs once (scripts/features/check.mts).
-# feature-check is the feature coverage and all verification commands, and make orm-check runs them as three targets: feature-coverage is
-# coverage, feature-verify-rust runs the verification commands of shard rust (the commands that build and run Rust with cargo), and feature-verify-other
-# runs the verification commands of shard other (`shard` in contracts/features.json). CI runs the three in different groups at the same time. Features that declare the same
-# command are in the same shard, and that command runs once (scripts/features/check.mts).
+# feature-check is the feature coverage and all verification commands. Its aggregate feature-coverage target depends on the runtime/database
+# cells and the exclusive performance target; CI runs each SQL cell, each runtime's Markdown target, and performance in separate groups.
+# feature-verify-rust runs the verification commands of shard rust, and feature-verify-other runs shard other. Commands shared by features
+# execute once in their shard (scripts/features/check.mts).
 feature-check: feature-coverage feature-verify-rust feature-verify-other
 feature-check/build: lease-tool
 	$(HOLD_TYPESCRIPT)
@@ -1442,10 +1490,72 @@ feature-check/build: lease-tool
 # The Python owners of the coverage run on the client's venv (ORM_PYTHON), which imports the installed client (scripts/features/coverage.mts).
 # The php-extension owners run on a PHP that loads the extension polyspec_orm built into the run directory of this target
 # (POLYSPEC_ORM_EXTENSION).
-feature-coverage: RUN_DIR = $(abspath .runtime/run)/feature-coverage-$$PPID
-feature-coverage: feature-check/build python-venv-check
+feature-coverage: feature-coverage/go/mysql feature-coverage/go/postgres feature-coverage/go/sqlite feature-coverage/php/mysql feature-coverage/php/postgres feature-coverage/php/sqlite feature-coverage/php-extension/mysql feature-coverage/php-extension/postgres feature-coverage/php-extension/sqlite feature-coverage/typescript/mysql feature-coverage/typescript/postgres feature-coverage/typescript/sqlite feature-coverage/python/mysql feature-coverage/python/postgres feature-coverage/python/sqlite feature-coverage/rust/mysql feature-coverage/rust/postgres feature-coverage/rust/sqlite feature-performance-check
+
+feature-coverage/go/mysql: lease-tool
+	$(WITH_TEST_ENV) node scripts/features/coverage.mts --runtime go --database mysql
+
+feature-coverage/go/postgres: lease-tool
+	$(WITH_TEST_ENV) node scripts/features/coverage.mts --runtime go --database postgres
+
+feature-coverage/go/sqlite: lease-tool
+	$(WITH_TEST_ENV) node scripts/features/coverage.mts --runtime go --database sqlite
+
+feature-coverage/php/mysql: php-vendor-check php-models
+	$(WITH_TEST_ENV) node scripts/features/coverage.mts --runtime php --database mysql
+
+feature-coverage/php/postgres: php-vendor-check php-models
+	$(WITH_TEST_ENV) node scripts/features/coverage.mts --runtime php --database postgres
+
+feature-coverage/php/sqlite: php-vendor-check php-models
+	$(WITH_TEST_ENV) node scripts/features/coverage.mts --runtime php --database sqlite
+
+feature-coverage/php-extension/mysql: php-vendor-check php-models orm-install-php-extension-tools
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
-	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) node scripts/features/coverage.mts
+	$(WITH_TEST_ENV) POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) node scripts/features/coverage.mts --runtime php-extension --database mysql
+	rm -rf $(RUN_DIR)
+
+feature-coverage/php-extension/postgres: php-vendor-check php-models orm-install-php-extension-tools
+	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
+	$(WITH_TEST_ENV) POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) node scripts/features/coverage.mts --runtime php-extension --database postgres
+	rm -rf $(RUN_DIR)
+
+feature-coverage/php-extension/sqlite: php-vendor-check php-models orm-install-php-extension-tools
+	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
+	$(WITH_TEST_ENV) POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) node scripts/features/coverage.mts --runtime php-extension --database sqlite
+	rm -rf $(RUN_DIR)
+
+feature-coverage/typescript/mysql: feature-check/build
+	$(WITH_TEST_ENV) node scripts/features/coverage.mts --runtime typescript --database mysql
+
+feature-coverage/typescript/postgres: feature-check/build
+	$(WITH_TEST_ENV) node scripts/features/coverage.mts --runtime typescript --database postgres
+
+feature-coverage/typescript/sqlite: feature-check/build
+	$(WITH_TEST_ENV) node scripts/features/coverage.mts --runtime typescript --database sqlite
+
+feature-coverage/python/mysql: python-venv-check
+	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python node scripts/features/coverage.mts --runtime python --database mysql
+
+feature-coverage/python/postgres: python-venv-check
+	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python node scripts/features/coverage.mts --runtime python --database postgres
+
+feature-coverage/python/sqlite: python-venv-check
+	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python node scripts/features/coverage.mts --runtime python --database sqlite
+
+feature-coverage/rust/mysql: lease-tool cargo-downloads-check
+	$(WITH_TEST_ENV) node scripts/features/coverage.mts --runtime rust --database mysql
+
+feature-coverage/rust/postgres: lease-tool cargo-downloads-check
+	$(WITH_TEST_ENV) node scripts/features/coverage.mts --runtime rust --database postgres
+
+feature-coverage/rust/sqlite: lease-tool cargo-downloads-check
+	$(WITH_TEST_ENV) node scripts/features/coverage.mts --runtime rust --database sqlite
+
+feature-performance-check: RUN_DIR = $(abspath .runtime/run)/feature-performance-$$PPID
+feature-performance-check: feature-check/build php-vendor-check php-models orm-install-php-extension-tools python-venv-check cargo-downloads-check
+	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
+	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) node scripts/features/coverage.mts --feature performance_gate
 	rm -rf $(RUN_DIR)
 feature-verify-rust: feature-check/build
 	$(WITH_TEST_ENV) node scripts/features/check.mts --run --features --shard rust
@@ -1673,10 +1783,28 @@ php-min-check:
 php-without-mysql-check:
 	$(RUN_LONG) php-without-mysql -- node scripts/php-without-mysql.mts
 
-client-db-check: lease-tool python-venv-check php-vendor-check php-models
+client-db-check: client-db-go-check client-db-php-check client-db-php-extension-check client-db-typescript-check client-db-python-check client-db-rust-check
+
+client-db-go-check: lease-tool
+	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANGS=go node scripts/client-db-test.mts
+
+client-db-php-check: php-vendor-check php-models
+	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANGS=php node scripts/client-db-test.mts
+
+client-db-php-extension-check: lease-tool php-vendor-check php-models orm-install-php-extension-tools
+	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANGS=php-extension node scripts/client-db-test.mts
+
+client-db-typescript-check: lease-tool
 	$(HOLD_TYPESCRIPT)
+	$(TSC_BUILD)
+	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANGS=typescript node scripts/client-db-test.mts
+
+client-db-python-check: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_statement_fault_entry
-	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_CLIENT_DB_LANES=parallel node scripts/client-db-test.mts
+	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_CLIENT_DB_LANGS=python node scripts/client-db-test.mts
+
+client-db-rust-check: lease-tool cargo-downloads-check
+	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANGS=rust node scripts/client-db-test.mts
 
 # Runs only the three-dialect encrypted ordered-json case with the PHP extension loaded and library excluded.
 aes-json-php-extension-check: php-vendor-check php-models orm-install-php-extension-tools
@@ -1987,12 +2115,16 @@ FLOWMARK_SOURCE ?= $(abspath var/tools/flowmark-source/$(FLOWMARK_REVISION))
 # removes when the step ends, pass or fail. parity-prepare refuses to run outside that step.
 PARITY_RUN_DIR = $(STEP_RUN_DIR)
 PARITY_NATIVE_TEST_EXTENSION = $(PARITY_RUN_DIR)/native-test/polyspec_orm.so
-.PHONY: parity-prepare
-parity-prepare: lease-tool
-	test -n "$(STEP_RUN_DIR)" || { echo "parity-prepare: STEP_RUN_DIR is unset; run the parity-check through make run-databases TARGETS=parity-check, whose step owns the directory"; exit 1; }
+.PHONY: parity-prepare parity-prepare-php-extension parity-prepare-rust
+parity-prepare: parity-prepare-php-extension parity-prepare-rust
+parity-prepare-php-extension: lease-tool
+	test -n "$(STEP_RUN_DIR)" || { echo "parity-prepare-php-extension: STEP_RUN_DIR is unset; run the parity bindings check through make check-run, whose step owns the directory"; exit 1; }
 	mkdir -p $(PARITY_RUN_DIR)
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PARITY_RUN_DIR)/polyspec_orm.so
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PARITY_NATIVE_TEST_EXTENSION) native-test
+parity-prepare-rust: lease-tool
+	test -n "$(STEP_RUN_DIR)" || { echo "parity-prepare-rust: STEP_RUN_DIR is unset; run the Rust parity bindings check through make check-run, whose step owns the directory"; exit 1; }
+	mkdir -p $(PARITY_RUN_DIR)
 	$(RUN_LONG) rust-build/parity-conformance --cwd packages/rust -- $(CARGO_LEASED) node $(abspath scripts/cargo-build-copy.mts) $(PARITY_RUN_DIR)/target debug/conformance -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm-tests --bin conformance
 parity-check: parity-prepare
 # interface-check runs first: it reads the API units of config/parity.json and the symbol snapshots that parity-check reads.
@@ -2036,6 +2168,32 @@ parity-check: export ORM_SEND_SQLITE_DSN = sqlite://$(PARITY_RUN_DIR)/send-savep
 # ORM_CHECKOUT is the checkout root: a binding command names it with ${ORM_CHECKOUT}, since kit forbids .. in a command word.
 parity-check: export ORM_CHECKOUT = $(CURDIR)
 parity-check: export ORM_PROGRAM_CONFORMANCE = $(PARITY_RUN_DIR)/target/debug/conformance
+
+# CI splits parity's public API extraction from the six native binding runs. The full parity-check target above remains the
+# default Kit phase (all), for local/manual complete checks. Each binding target selects exactly one declared implementation.
+PARITY_BINDING_TARGETS = parity-bindings-go-check parity-bindings-php-check parity-bindings-php-extension-check parity-bindings-typescript-check parity-bindings-python-check parity-bindings-rust-check
+.PHONY: parity-api-check $(PARITY_BINDING_TARGETS)
+parity-api-check: interface-check
+	$(NODE) $(KIT)/parity.$(KIT_EXT) --phase api
+parity-bindings-go-check: parity-bench-env-check flowmark-check
+	$(NODE) $(KIT)/parity.$(KIT_EXT) --phase bindings --implementation go
+parity-bindings-php-check: parity-bench-env-check flowmark-check
+	$(NODE) $(KIT)/parity.$(KIT_EXT) --phase bindings --implementation php
+parity-bindings-php-extension-check: parity-prepare-php-extension parity-bench-env-check flowmark-check
+	$(NODE) $(KIT)/parity.$(KIT_EXT) --phase bindings --implementation php-extension
+parity-bindings-typescript-check: parity-bench-env-check flowmark-check
+	$(NODE) $(KIT)/parity.$(KIT_EXT) --phase bindings --implementation typescript
+parity-bindings-python-check: parity-bench-env-check flowmark-check
+	$(NODE) $(KIT)/parity.$(KIT_EXT) --phase bindings --implementation python
+parity-bindings-rust-check: parity-prepare-rust parity-bench-env-check flowmark-check
+	$(NODE) $(KIT)/parity.$(KIT_EXT) --phase bindings --implementation rust
+$(PARITY_BINDING_TARGETS): export FLOWMARK := $(FLOWMARK)
+$(PARITY_BINDING_TARGETS): export ORM_PARITY_PHP_EXTENSION = $(PARITY_RUN_DIR)/polyspec_orm.so
+$(PARITY_BINDING_TARGETS): export ORM_PARITY_PHP_EXTENSION_NATIVE_TEST = $(PARITY_NATIVE_TEST_EXTENSION)
+$(PARITY_BINDING_TARGETS): export POLYSPEC_ORM_EXTENSION = $(PARITY_RUN_DIR)/polyspec_orm.so
+$(PARITY_BINDING_TARGETS): export ORM_SEND_SQLITE_DSN = sqlite://$(PARITY_RUN_DIR)/send-savepoint.sqlite
+$(PARITY_BINDING_TARGETS): export ORM_CHECKOUT = $(CURDIR)
+$(PARITY_BINDING_TARGETS): export ORM_PROGRAM_CONFORMANCE = $(PARITY_RUN_DIR)/target/debug/conformance
 markdown-conformance-check: markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/php-extension markdown-conformance-check/python markdown-conformance-check/rust markdown-conformance-check/typescript
 markdown-conformance-check/go:
 	FLOWMARK=$(FLOWMARK) $(GO_TEST) -tags markdown ./packages/go/markdownmodel -run '^TestMarkdownConformance$$' -count=1
