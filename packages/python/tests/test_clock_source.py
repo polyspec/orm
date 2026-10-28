@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 from polyspec.orm import clock
 from polyspec.orm.engine.dialect import MysqlDialect, PostgresDialect, SqliteDialect
+from . import testcase
 
 
 class WallMicrosTest(unittest.TestCase):
@@ -82,4 +83,4 @@ class NativeDialectHookTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    testcase.main()
