@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces-model -->
-<!-- source-sha256: c8575636b384514a490b37c4b2e695af8cfb8e99528e2a9930d68e46b72b24a1 -->
+<!-- source-sha256: e9bafeb33680b978a944cd6bbb0eaac358ebf25907e358532611620fc421f0c1 -->
 # 공통 구성요소
 
 <!-- contracts/interfaces.json에서 생성됨. 직접 수정하지 않는다. -->
@@ -283,14 +283,8 @@ classDiagram
 | Db.withCancellation | php | CFG-9 | `packages/php/src/Db.php::Polyspec\Orm\Db::withCancellation` |
 | Db.withSignal | typescript | CFG-9 | `packages/ts/src/database.ts::Db.withSignal` |
 | Db.withFuture | python | CFG-9 | `packages/python/src/polyspec/orm/database.py::Db.with_future` |
-| Python generator 진입점 | python | DSL-128, DSL-151, DSL-152 | `packages/python/pyproject.toml::orm-gen`; `bin_orm_gen.py::main`; `generate/python.py::{generate_models,render_models}`; `generate/scan.py::scan_model_calls` |
-| Python driver cell adapter | python | COD-2 | `driver_cells.py::{mysql_conversions,postgres_loaders}` |
-| Python driver placeholder adapter | python | DIA-197 | `placeholders.py::{MYSQL_QUOTES,POSTGRES_QUOTES,for_mysql,for_postgres}` |
-| Python wall-clock source | python | PRT-33 | `clock.py::wall_micros` |
-| Python engine dialect hooks | python | INT-147 | `engine/dialect.py::{MysqlDialect.restart_identity,PostgresDialect.restart_identity,SqliteDialect.restart_identity,PostgresDialect.read_uuid,PostgresDialect.write_uuid,SqliteDialect.row_lock}` |
-| Python test-fault facade | python | INT-148; PRT-47, PRT-52, PRT-57, PRT-62 | `testing/__init__.py::{fail_next_rollback,fail_next_statement,fix_clock,last_affected}` |
 
-Host-native API는 해당 host의 선언된 진입 형식으로 기록하며 공통 callable signature를 요구하지 않는다. 기존 의미 요구사항은 각 실행 case가 따로 소유한다. native 선언만으로 다른 runtime의 동등 API를 주장하지 않는다. `unresolved` 항목은 구현 완료 증거가 아니다.
+Host-native API는 해당 host의 공개 primitive 형식으로만 선언하며 공통 signature를 요구하지 않는다. 공통 동작은 `behavior_adapters`의 모든 runtime 항목과 정확한 parity case로 검증한다. `unresolved` 항목은 구현 완료 증거가 아니다.
 
 ## 공통 동작 adapter
 

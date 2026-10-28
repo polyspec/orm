@@ -10593,8 +10593,7 @@
           "go": {
             "part": "packages/go/orm",
             "tests": [
-              "packages/go/orm/coverage_interface_contract_test.go",
-              "packages/go/orm/shape_test.go"
+              "packages/go/orm/coverage_interface_contract_test.go"
             ],
             "inputs": [
               "tests/interfaces/check/*.mts",
@@ -10620,8 +10619,7 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoverageInterfaceContractTest.php",
-              "packages/php/tests/GoSerializationTest.php"
+              "packages/php/tests/CoverageInterfaceContractTest.php"
             ],
             "inputs": [
               "tests/interfaces/check/*.mts",
@@ -10649,9 +10647,7 @@
           "rust": {
             "part": "packages/rust/orm",
             "tests": [
-              "packages/rust/orm/tests/coverage_interface_contract.rs",
-              "packages/rust/orm/src/value.rs",
-              "packages/rust/orm/src/row.rs"
+              "packages/rust/orm/tests/coverage_interface_contract.rs"
             ],
             "inputs": [
               "tests/interfaces/check/*.mts",
@@ -10702,15 +10698,7 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_interface_contract.py",
-              "packages/python/tests/test_orm_gen.py",
-              "packages/python/tests/test_driver_cells.py",
-              "packages/python/tests/test_placeholders.py",
-              "packages/python/tests/test_clock_source.py",
-              "packages/python/tests/test_values.py",
-              "packages/python/tests/identity_load.py",
-              "packages/python/tests/test_sqlite_row_lock_restore.py",
-              "packages/python/tests/test_rollback_fault.py"
+              "packages/python/tests/coverage_interface_contract.py"
             ],
             "inputs": [
               "tests/interfaces/check/*.mts",
@@ -10741,8 +10729,7 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/CoverageInterfaceContractNativeTest.php",
-              "packages/php-ext/tests/ModelNativeTest.php"
+              "packages/php-ext/tests/CoverageInterfaceContractNativeTest.php"
             ],
             "inputs": [
               "contracts/symbols/php-extension.json",
