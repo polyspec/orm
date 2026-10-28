@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mts) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-27T07:43:17.745Z",
+  "reviewed": "2026-10-28T12:11:31.016Z",
   "locks": [
     {
       "lock": "package-lock.json",
-      "sha256": "c0d1294a1193548ad1944f7b277f1c8775186ebb172a155f0a0524aaec038c16",
+      "sha256": "3df20e5daa88227dc330c621e07ae5d1b48cfb1366daf57184c559a2eab29692",
       "advisories": [
         {
           "package": "@azure/msal-node",
@@ -138,7 +138,7 @@
       "manifest": "package.json",
       "package": "minimatch",
       "version": "10.2.6",
-      "latest": "10.2.6"
+      "latest": "11.0.2"
     },
     {
       "ecosystem": "npm",
@@ -404,7 +404,7 @@
       "manifest": "composer.json",
       "package": "phpstan/phpstan",
       "version": "2.3.1",
-      "latest": "2.3.2"
+      "latest": "2.3.3"
     },
     {
       "ecosystem": "composer",
@@ -523,7 +523,7 @@
       "manifest": "packages/python/pylock.toml",
       "package": "tzdata",
       "version": "2026.5",
-      "latest": "2026.5"
+      "latest": "2026.6"
     },
     {
       "ecosystem": "pypi",
@@ -537,7 +537,7 @@
       "manifest": "packages/python/pyproject.toml",
       "package": "jsonschema-rs",
       "version": "0.58.6",
-      "latest": "0.60.1"
+      "latest": "0.60.3"
     },
     {
       "ecosystem": "pypi",
