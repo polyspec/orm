@@ -567,8 +567,12 @@ export function ciSetupErrors(workflows: Record<string, string>, { setup, runner
       errors.push(`${path} uses continue-on-error, which hides a failed step from the job; run later steps with if: \${{ !cancelled() }} instead`);
     for (const { steps } of jobs) {
       for (const [index, step] of steps.entries()) {
-        const installsTools = runCommands(step).some(command => command.name === 'make' && command.args.includes('install-tools') && !command.args.includes('TOOLS=npm'));
-        if (!installsTools) continue;
+        const installTools = runCommands(step).find(command => command.name === 'make' && command.args.includes('install-tools') && !command.args.includes('TOOLS=npm'));
+        if (!installTools) continue;
+        const selected = /(?:^|\s)TOOLS=(?:"([^"]*)"|'([^']*)'|(\S+))/.exec(step.run ?? '');
+        const selectedTools = selected?.[1] ?? selected?.[2] ?? selected?.[3];
+        const needsPhp = selectedTools === undefined || /(?:^|\s)(?:php|phpunit|phpcs|phpstan|composer)(?:\s|$)/.test(selectedTools);
+        if (!needsPhp) continue;
         const prepared = steps.slice(0, index).some(prior => prior.id === 'php-bootstrap' &&
           prior.uses === 'shivammathur/setup-php@v2' && prior.with['php-version-file'] === '.php-version');
         if (!prepared) errors.push(`${path} step "${step.name}" runs make install-tools before setup-php installs .php-version`);
@@ -744,7 +748,6 @@ export const CI_PASSED_STEPS: Record<string, unknown>[] = [
   { name: 'bootstrap the installed kit package', id: 'kit-bootstrap', if: NOT_CANCELLED, run: KIT_BOOTSTRAP_COMMAND },
   // These steps install the pinned npm and the packages before make ci-passed runs.
   { name: 'npm of packageManager', id: 'npm', if: NOT_CANCELLED, run: 'make install-tools TOOLS=npm' },
-  { name: 'install Node dependencies', id: 'node-modules', if: NOT_CANCELLED, run: 'make install-packages' },
   CI_PASSED_STEP,
 ];
 

@@ -20,10 +20,14 @@ export const CI_SETUP: Record<string, string | null> = {
   // The bootstrap installs @polyspec/kit so the first make command can read its Makefile.
   'kit-bootstrap': 'node-modules',
   go: 'go',
+  // check-run builds tests/lease for every group; only its procevent dependency is fetched in the shared runner setup.
+  'go-lease-modules': 'go-lease',
+  // The full Go workspace modules and generated models are installed only for groups that declare Go work.
   'go-modules': 'go',
-  // npm and node-modules install the pinned npm and packages after Kit's bootstrap makes the first Makefile available.
+  // npm installs the pinned npm after Kit's bootstrap installs the repository dependencies and exposes its Makefile.
   npm: 'node-modules',
-  'node-modules': 'node-modules',
+  'interfaces-typescript': 'interfaces-typescript',
+  'parity-symbols': 'parity-symbols',
   rust: 'rust',
   'rust-cache': null,
   'rust-crates': 'rust',
@@ -49,12 +53,15 @@ export const RUNNER_STEPS = ['checkout', 'node'];
 export const NEEDS = ['databases', 'complex-query', 'mysql-privilege-server', ...new Set(Object.values(CI_SETUP).filter(Boolean).filter(need => need !== 'databases'))];
 
 // GROUP_OUTPUTS maps each output that step group-needs writes to the need that makes that output true. php installs two PHP releases (the lowest
-// release and .php-version) together with Composer: Composer and the PHP extension tools run with the PHP on PATH. server-programs is the program make orm-test-servers uses to start the servers, and node-modules is
+// release and .php-version) together with Composer; PHP extension build tools have their own need so library-only checks skip them. server-programs is the program make orm-test-servers uses to start the servers, and node-modules is
 // a dependency of the TypeScript client that make databases-create builds, so databases needs both of them as well.
 export const GROUP_OUTPUTS: Record<string, string[]> = {
   'node-modules': ['node-modules', 'databases'],
+  'interfaces-typescript': ['interfaces-typescript'],
+  'parity-symbols': ['parity-symbols'],
+  go: ['go'],
   rust: ['rust'],
-  php: ['php', 'php-min', 'composer', 'php-extension-tools'],
+  php: ['php', 'php-min', 'composer'],
   'php-extension-tools': ['php-extension-tools'],
   'server-programs': ['server-programs', 'databases'],
   databases: ['databases'],
@@ -63,27 +70,30 @@ export const GROUP_OUTPUTS: Record<string, string[]> = {
 };
 
 // STEP_OUTPUT is, for each setup step, the group-needs output that makes that step run. A step whose value is null runs in every group:
-// make orm-check builds the lease program in Go (BUILD_LEASE), and group-needs is itself the step that decides which steps run.
+// make orm-check builds tests/lease in Go; go-modules installs the rest of the workspace only when a target owns Go work.
 export const STEP_OUTPUT: Record<string, string | null> = {
   'group-needs': null,
   'kit-bootstrap': null,
+  // The test runner itself builds the Go lease executable.
   go: null,
-  'go-modules': null,
-  // Kit bootstrap, npm and node-modules run in every group before group-needs: the first Make target reads Kit's Makefile.
+  // Kit bootstrap and npm run in every group before group-needs: the first Make target reads Kit's Makefile.
   npm: null,
-  'node-modules': null,
+  'interfaces-typescript': 'interfaces-typescript',
+  'parity-symbols': 'parity-symbols',
   rust: 'rust',
   'rust-cache': 'rust',
   'rust-crates': 'rust',
+  'go-lease-modules': null,
+  'go-modules': 'go',
   'php-min': 'php',
   'php-min-release': 'php',
   php: 'php',
-  'php-bootstrap': null,
+  'php-bootstrap': 'php',
   composer: 'php',
   'php-extension-tools': 'php-extension-tools',
   'server-programs': 'server-programs',
   servers: 'databases',
-  // orm-install-python installs the tools of mise.toml and makes the venv from their Python (make python-venv).
+  // orm-install-python installs the Python and venv backend of mise.toml and makes the venv from that Python (make python-venv).
   'orm-install-python': 'python',
   // flowmark installs the flowmark build that markdown-conformance-check runs (make orm-install-flowmark).
   flowmark: 'flowmark',
@@ -96,12 +106,20 @@ export const stepCondition = (id: string): string => STEP_OUTPUT[id]
 
 // SETUP_NEEDS maps each need the runner's setup phase prepares to the needs that phase itself requires. databases (the setup phase
 // servers and databases/create (scripts/check/databases.mts) prepare: a server is started by make orm-test-servers from server-programs,
-// and is managed by the lease and stop-process tools built in Go, and databases.mts sets up the bench database (scripts/bench-db.mts) and
+// and is managed by the Go lease runner, whose sole external dependency is installed by go-lease, and databases.mts sets up the bench database (scripts/bench-db.mts) and
 // the decimal database through the TypeScript client, which make databases-create builds. So a target that needs databases
 // also needs this need (expandNeeds).
 // php-min reads that release through scripts/php/php-min.mts, and that script reads composer.json as its schema, so it needs node_modules.
 // complex-query is made by the same databases/create, so it needs databases.
-export const SETUP_NEEDS: Record<string, string[]> = { databases: ['go', 'node-modules', 'server-programs'], 'complex-query': ['databases'], 'mysql-privilege-server': ['databases'], 'php-min': ['node-modules'] };
+export const SETUP_NEEDS: Record<string, string[]> = {
+  databases: ['go-lease', 'node-modules', 'server-programs'],
+  'complex-query': ['databases'],
+  'mysql-privilege-server': ['databases'],
+  'php-min': ['node-modules'],
+  'php-extension-tools': ['php', 'composer', 'node-modules'],
+  'interfaces-typescript': ['node-modules'],
+  'parity-symbols': ['node-modules', 'go', 'php', 'composer'],
+};
 
 // expandNeeds is the need list with the needs that SETUP_NEEDS names appended transitively (declared order first, then the order added).
 export function expandNeeds(needs: readonly string[]): string[] {

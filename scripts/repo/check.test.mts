@@ -23,7 +23,7 @@ import { readComposer, readPackage } from '../json/formats.mts';
 import { kitCopies, kitOwnedPaths } from './kit-copies.mts';
 import { andLists, commands as shellCommands, segments, shellSegments } from './shell.mts';
 import { readWorkflow } from './workflow.mts';
-import { stringify } from 'yaml';
+import { parse as parseYaml, stringify } from 'yaml';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
 import { detachedGroupErrors, timeFailureErrors } from './sources.mts';
 import { callerEnvironmentErrors, generateRuns, scriptCommands, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, makeTargets, rustTestCaseErrors, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
@@ -644,11 +644,39 @@ caseTest('the CI groups run every target of CHECK_TARGETS in exactly one job', C
     assert.deepEqual(targets[`markdown_${groupRuntime}`], [markdown], `${markdown} is the only target in its native runtime cell`);
   }
   assert.deepEqual(targets.feature_performance, ['feature-performance-check'], 'the performance gate has its own CI job');
-  assert.deepEqual(targets.parity_api, ['parity-api-check'], 'public API parity runs once in its own CI job');
-  for (const runtime of ['go', 'php', 'php-extension', 'typescript', 'python', 'rust']) {
-    assert.deepEqual(targets[`parity_bindings_${runtime.replaceAll('-', '_')}`], [`parity-bindings-${runtime}-check`], `${runtime} parity bindings run once in their own CI job`);
-  }
-  assert.ok(!targets.conformance?.includes('parity-check'), 'the all-phase parity command is not duplicated in the conformance group');
+  assert.deepEqual(targets.parity, ['parity-check'], 'the canonical all-phase parity gate runs once in its own CI job');
+  assert.ok(checkTargets(makefile).includes('parity-check'));
+  for (const phase of ['parity-api-check', 'parity-bindings-go-check', 'parity-bindings-php-check', 'parity-bindings-php-extension-check', 'parity-bindings-typescript-check', 'parity-bindings-python-check', 'parity-bindings-rust-check'])
+    assert.equal(checkTargets(makefile).includes(phase), false, `${phase} is not duplicated as a separate suite target`);
+  assert.ok(!targets.conformance?.includes('parity-check'), 'the canonical parity command runs only in the parity group');
+  assert.ok((targets.static ?? []).includes('toolchain-check'), 'the static group checks every declared toolchain pin');
+  assert.equal(groupOutputs(targets.static ?? [], declaredNeeds(repository.pathname)).php, true,
+    'the static group bootstraps the pinned PHP before the full tool inventory is installed');
+  const jobs = (parseYaml(workflow) as { jobs?: Record<string, { needs?: unknown }> }).jobs;
+  assert.ok(jobs?.test, 'the CI test matrix exists');
+  assert.equal(jobs.test.needs, undefined, 'runtime and comparison matrix jobs install their own dependencies without waiting for another job');
+  const ciToolStep = /- name: tools of mise\.toml\n        id: go\n        if: \$\{\{ !cancelled\(\) \}\}\n        run: \|\n([\s\S]*?)\n      # check-run/.exec(workflow)?.[1] ?? '';
+  assert.match(ciToolStep, /matrix\.group.*= static/);
+  assert.match(ciToolStep, /then\n\s+make install-tools\n\s+else\n\s+make install-tools TOOLS="go/,
+    'static checks every declared tool; other groups select only Go and the PHP/Python tools their needs require');
+  assert.match(ciToolStep, /outputs\.php == 'true'.*php composer phpunit/);
+  assert.match(ciToolStep, /outputs\.python == 'true'.*python uv/);
+  assert.doesNotMatch(ciToolStep, /parity_api/,
+    'API parity uses the selected runtime tools and its separate extractor installation step');
+  assert.match(makefile, /^orm-install-python:\n\t\$\(MAKE\) --no-print-directory install-tools TOOLS="python uv"$/m,
+    'the Python installer does not widen a runtime-specific setup back to the full tool inventory');
+  assert.doesNotMatch(makefile, /^install-packages:\s+orm-install-interfaces-typescript$/m,
+    'Kit owns npm package installation; the package target does not widen it with TypeScript 6');
+  assert.match(makefile, /^install:.*orm-install-interfaces-typescript$/m,
+    'the full install still prepares the TypeScript checker used by the interface extractor');
+  assert.match(workflow, /id: interfaces-typescript\n        if: \$\{\{ !cancelled\(\) && steps\.group-needs\.outputs\.interfaces-typescript == 'true' \}\}\n        run: make orm-install-interfaces-typescript/);
+  assert.match(workflow, /id: parity-symbols\n        if: \$\{\{ !cancelled\(\) && steps\.group-needs\.outputs\.parity-symbols == 'true' \}\}\n        run: make kit-install-symbols EXTRACTORS="go php"/);
+  assert.match(makefile, /^orm-install-php-extension-tools:\n\t\$\(NODE\) scripts\/ci\/php-extension-tools\.mts\n\t\$\(MAKE\) --no-print-directory kit-install-php-arginfo$/m,
+    'PHP extension setup installs the pinned arginfo generator and parser');
+  const matrixWorkflow = workflow.split('\n  docs:')[0] ?? '';
+  assert.equal((matrixWorkflow.match(/id: go-lease-modules/g) ?? []).length, 1, 'every group installs the shared runner dependency in its own job');
+  assert.match(workflow, /id: go-lease-modules\n        if: \$\{\{ !cancelled\(\) \}\}\n        run: make orm-install-go-lease/);
+  assert.match(workflow, /id: go-modules\n        if: \$\{\{ !cancelled\(\) && steps\.group-needs\.outputs\.go == 'true' \}\}\n        run: make orm-install-go/);
   assert.match(makefile, /^parity-api-check:[^\n]*\n\t\$\(NODE\) \$\(KIT\)\/parity\.\$\(KIT_EXT\) --phase api$/m);
   for (const runtime of ['go', 'php', 'php-extension', 'typescript', 'python', 'rust']) {
     assert.match(makefile, new RegExp(`^parity-bindings-${runtime}-check:[^\\n]*\\n\\t\\$\\(NODE\\) \\$\\(KIT\\)\\/parity\\.\\$\\(KIT_EXT\\) --phase bindings --implementation ${runtime}$`, 'm'));
@@ -730,13 +758,26 @@ caseTest('every CI group uploads the report directory that the runner writes', C
 // program, so a group of a target that declares only databases also needs the server-programs output. The output is checked in the control case,
 // where the target does not look at databases: stress-db skips the server-programs setup step.
 caseTest('every CI group runs the setup steps of its needs and of the setup step databases/create', COMPUTE, () => {
-  assert.deepEqual(expandNeeds(['databases']), ['databases', 'go', 'node-modules', 'server-programs']);
+  assert.deepEqual(expandNeeds(['databases']), ['databases', 'go-lease', 'node-modules', 'server-programs']);
+  assert.deepEqual(expandNeeds(['php-extension-tools']), ['php-extension-tools', 'php', 'composer', 'node-modules']);
+  assert.deepEqual(expandNeeds(['interfaces-typescript']), ['interfaces-typescript', 'node-modules']);
+  assert.deepEqual(expandNeeds(['parity-symbols']), ['parity-symbols', 'node-modules', 'go', 'php', 'composer']);
   assert.deepEqual(expandNeeds(['rust', 'go']), ['rust', 'go']);
+  assert.deepEqual(expandNeeds(['php']), ['php']);
   const { groups, targets } = ciGroups(text('Makefile'));
   assert.ok(groups.length > 0 && groups.every(group => (targets[group]?.length ?? 0) > 0), groups.join(' '));
   const needs = declaredNeeds(repository.pathname);
   const layout = Object.fromEntries(groups.map(group => [group, targets[group] ?? []]));
   assert.deepEqual(groupSetupErrors(layout, needs), []);
+  const outputs = (group: string) => groupOutputs(targets[group] ?? [], needs);
+  assert.equal(outputs('client_db_php')['php-extension-tools'], false, 'PHP library groups skip the native build tool install');
+  assert.equal(outputs('client_db_php_extension')['php-extension-tools'], true, 'PHP-extension groups install their native build tools');
+  assert.equal(outputs('static')['interfaces-typescript'], true, 'the static TypeScript extractor installs its pinned checker');
+  assert.equal(outputs('static')['parity-symbols'], false, 'the static group does not install API parity extractors');
+  for (const need of ['interfaces-typescript', 'parity-symbols', 'go', 'rust', 'php', 'php-extension-tools', 'python', 'databases', 'flowmark'])
+    assert.equal(outputs('parity')[need], true, `the canonical parity group installs ${need}`);
+  for (const need of ['go', 'rust', 'php', 'php-extension-tools', 'python', 'databases', 'node-modules'])
+    assert.equal(outputs('conformance')[need], true, `the cross-runtime comparison group installs ${need}`);
   const declaredOnly = (names: readonly string[], declared: Record<string, string[]>) => {
     const wanted = new Set(names.flatMap(name => declared[name] ?? []));
     return Object.fromEntries(Object.entries(GROUP_OUTPUTS).map(([output, from]) => [output, from.filter(need => output !== 'server-programs' || need !== 'databases').some(need => wanted.has(need))]));
@@ -759,14 +800,26 @@ caseTest('feature helper checks provision the databases and PHP extension their 
 // step writes the output of make ci-group-needs, and whether the summary and report after it write each group's run id and report.
 caseTest('a CI group job runs each setup step under its declared condition and reports per group', COMPUTE, () => {
   assert.equal(stepCondition('go'), '${{ !cancelled() }}');
+  assert.equal(stepCondition('go-lease-modules'), '${{ !cancelled() }}');
+  assert.equal(stepCondition('go-modules'), "${{ !cancelled() && steps.group-needs.outputs.go == 'true' }}");
+  assert.equal(stepCondition('interfaces-typescript'), "${{ !cancelled() && steps.group-needs.outputs.interfaces-typescript == 'true' }}");
+  assert.equal(stepCondition('parity-symbols'), "${{ !cancelled() && steps.group-needs.outputs.parity-symbols == 'true' }}");
   assert.equal(stepCondition('composer'), "${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}");
   assert.equal(stepCondition('servers'), "${{ !cancelled() && steps.group-needs.outputs.databases == 'true' }}");
   assert.deepEqual(groupOutputs(['a', 'b'], { a: ['go', 'composer'], b: ['databases'] }),
-    { 'node-modules': true, rust: false, php: true, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false, flowmark: false });
+    { 'node-modules': true, 'interfaces-typescript': false, 'parity-symbols': false, go: true, rust: false, php: true, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false, flowmark: false });
   assert.deepEqual(groupOutputs(['b'], { b: ['databases'] }),
-    { 'node-modules': true, rust: false, php: false, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false, flowmark: false });
+    { 'node-modules': true, 'interfaces-typescript': false, 'parity-symbols': false, go: false, rust: false, php: false, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false, flowmark: false });
   assert.deepEqual(groupOutputs(['c'], { c: ['go', 'flowmark'] }),
-    { 'node-modules': false, rust: false, php: false, 'php-extension-tools': false, 'server-programs': false, databases: false, python: false, flowmark: true });
+    { 'node-modules': false, 'interfaces-typescript': false, 'parity-symbols': false, go: true, rust: false, php: false, 'php-extension-tools': false, 'server-programs': false, databases: false, python: false, flowmark: true });
+  assert.deepEqual(groupOutputs(['php-library'], { 'php-library': ['php'] }),
+    { 'node-modules': false, 'interfaces-typescript': false, 'parity-symbols': false, go: false, rust: false, php: true, 'php-extension-tools': false, 'server-programs': false, databases: false, python: false, flowmark: false });
+  assert.deepEqual(groupOutputs(['php-extension'], { 'php-extension': ['php', 'php-extension-tools'] }),
+    { 'node-modules': false, 'interfaces-typescript': false, 'parity-symbols': false, go: false, rust: false, php: true, 'php-extension-tools': true, 'server-programs': false, databases: false, python: false, flowmark: false });
+  assert.deepEqual(groupOutputs(['api'], { api: ['parity-symbols', 'interfaces-typescript'] }),
+    { 'node-modules': false, 'interfaces-typescript': true, 'parity-symbols': true, go: false, rust: false, php: false, 'php-extension-tools': false, 'server-programs': false, databases: false, python: false, flowmark: false });
+  assert.equal(groupOutputs(['php-ext-tools'], { 'php-ext-tools': ['php-extension-tools'] }).php, true,
+    'the native extension build tools require the pinned PHP setup');
   assert.throws(() => groupOutputs(['x'], {}), /target x declares no needs in contracts\/check-inputs\.json; declare its scope and needs there/);
   const setup = { 'group-needs': null, go: 'go', composer: 'composer', servers: 'databases' };
   const runner = ['checkout'];
@@ -1704,6 +1757,10 @@ caseTest('AGENTS states that the full suite runs on CI after a push', COMPUTE, (
 caseTest('a workflow runs every setup step and make orm-check after a failed setup step and passes the results on', COMPUTE, () => {
   assert.equal(CI_SETUP['kit-bootstrap'], 'node-modules');
   assert.equal(stepCondition('kit-bootstrap'), '${{ !cancelled() }}');
+  assert.deepEqual(failedCiSetup(JSON.stringify({ 'go-lease-modules': { outcome: 'failure' } })), [
+    { id: 'go-lease-modules', need: 'go-lease', outcome: 'failure' },
+  ]);
+  assert.ok(expandNeeds(['databases']).includes('go-lease'), 'database targets inherit the dependency of the shared Go lease runner');
   assert.deepEqual(failedCiSetup(JSON.stringify({ 'kit-bootstrap': { outcome: 'failure' } })), [
     { id: 'kit-bootstrap', need: 'node-modules', outcome: 'failure' },
   ]);
@@ -1747,6 +1804,12 @@ caseTest('CI installs the declared PHP before make install-tools', COMPUTE, () =
     'ci.yml step "mise tools" runs make install-tools before setup-php installs .php-version',
   ]);
   assert.deepEqual(ciSetupErrors({ 'ci.yml': workflow(make) }, { setup: {}, runner: [] }), [
+    'ci.yml step "mise tools" runs make install-tools before setup-php installs .php-version',
+  ]);
+  const goOnly = make.replace('run: make install-tools', 'run: make install-tools TOOLS=go');
+  assert.deepEqual(ciSetupErrors({ 'ci.yml': workflow(goOnly) }, { setup: {}, runner: [] }), []);
+  const phpSelected = make.replace('run: make install-tools', 'run: make install-tools TOOLS="go php phpunit"');
+  assert.deepEqual(ciSetupErrors({ 'ci.yml': workflow(phpSelected) }, { setup: {}, runner: [] }), [
     'ci.yml step "mise tools" runs make install-tools before setup-php installs .php-version',
   ]);
   assert.deepEqual(ciSetupErrors({ 'ci.yml': workflow(`      - name: npm tools\n        if: \${{ !cancelled() }}\n        run: make install-tools TOOLS=npm\n`) }, { setup: {}, runner: [] }), []);

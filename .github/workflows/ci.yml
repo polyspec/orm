@@ -45,7 +45,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [static, clients_db, performance, client_db_go, client_db_php, client_db_php_extension, client_db_typescript, client_db_python, client_db_rust, clients_pooler, conformance, dbspec, dbspec_apply, dbspec_go, dbspec_php, dbspec_php_extension, dbspec_typescript, dbspec_python, dbspec_rust, feature_go_mysql, feature_go_postgres, feature_go_sqlite, feature_php_mysql, feature_php_postgres, feature_php_sqlite, feature_php_extension_mysql, feature_php_extension_postgres, feature_php_extension_sqlite, feature_typescript_mysql, feature_typescript_postgres, feature_typescript_sqlite, feature_python_mysql, feature_python_postgres, feature_python_sqlite, feature_rust_mysql, feature_rust_postgres, feature_rust_sqlite, markdown_go, markdown_php, markdown_php_extension, markdown_typescript, markdown_python, markdown_rust, feature_performance, feature_verify_rust, feature_verify_other, feature_helpers, stress_mysql, stress_pg_sqlite, python, parity_api, parity_bindings_go, parity_bindings_php, parity_bindings_php_extension, parity_bindings_typescript, parity_bindings_python, parity_bindings_rust]
+        group: [static, clients_db, performance, client_db_go, client_db_php, client_db_php_extension, client_db_typescript, client_db_python, client_db_rust, clients_pooler, conformance, dbspec, dbspec_apply, dbspec_go, dbspec_php, dbspec_php_extension, dbspec_typescript, dbspec_python, dbspec_rust, feature_go_mysql, feature_go_postgres, feature_go_sqlite, feature_php_mysql, feature_php_postgres, feature_php_sqlite, feature_php_extension_mysql, feature_php_extension_postgres, feature_php_extension_sqlite, feature_typescript_mysql, feature_typescript_postgres, feature_typescript_sqlite, feature_python_mysql, feature_python_postgres, feature_python_sqlite, feature_rust_mysql, feature_rust_postgres, feature_rust_sqlite, markdown_go, markdown_php, markdown_php_extension, markdown_typescript, markdown_python, markdown_rust, feature_performance, feature_verify_rust, feature_verify_other, feature_helpers, stress_mysql, stress_pg_sqlite, python, parity]
     # Every setup step has an id that scripts/check/ci-setup.mts maps to what it
     # installs, and runs whatever the earlier steps did (if: !cancelled()), so
     # one failed install never hides another. The step group-needs writes the
@@ -86,36 +86,48 @@ jobs:
         id: npm
         if: ${{ !cancelled() }}
         run: make install-tools TOOLS=npm
-      - name: install Node dependencies
-        id: node-modules
-        if: ${{ !cancelled() }}
-        # The interface checks read the TypeScript declarations with the TypeScript 6 of packages/ts/testing/interfaces/typescript; it is
-        # a second make, since a make that names other targets reads kit.mk, which install-packages installs.
-        run: make install-packages && make orm-install-interfaces-typescript
       - name: setup of the CI group
         id: group-needs
         if: ${{ !cancelled() }}
         run: make --no-print-directory ci-group-needs GROUP=${{ matrix.group }} >> "$GITHUB_OUTPUT"
+      - name: TypeScript of the interface extractor
+        id: interfaces-typescript
+        if: ${{ !cancelled() && steps.group-needs.outputs.interfaces-typescript == 'true' }}
+        run: make orm-install-interfaces-typescript
       # make install-tools checks for the PHP version declared by the checkout before installing its other tools.
       - uses: shivammathur/setup-php@v2
         id: php-bootstrap
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}
         with:
           php-version-file: .php-version
           tools: composer:2.10.3
           coverage: none
-      # make orm-check builds the lease program with Go in every group. make install-tools installs the tools of mise.toml
-      # (Go, Python, uv, Composer, alint, govulncheck, cargo-audit) at the releases and digests of mise.lock.
+      # Toolchain-check (static) uses the full declared tool inventory. Other groups install only the selected Go runner
+      # and the runtimes their declared needs use; parity extractors are installed separately below.
       - name: tools of mise.toml
         id: go
         if: ${{ !cancelled() }}
-        run: make install-tools
-      # make orm-check runs go with GOPROXY=off; make orm-install-go downloads the
-      # modules of go.work.
+        run: |
+          if [ "${{ matrix.group }}" = static ]; then
+            make install-tools
+          else
+            make install-tools TOOLS="go${{ steps.group-needs.outputs.php == 'true' && ' php composer phpunit' || '' }}${{ steps.group-needs.outputs.python == 'true' && ' python uv' || '' }}"
+          fi
+      # check-run builds the Go lease runner in every group; it needs only x/sys
+      # from the Go workspace. Runtime groups that declare Go work also install
+      # the full module set and generated models below.
+      - name: Go module of the check runner
+        id: go-lease-modules
+        if: ${{ !cancelled() }}
+        run: make orm-install-go-lease
       - name: Go modules
         id: go-modules
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.group-needs.outputs.go == 'true' }}
         run: make orm-install-go
+      - name: API parity symbol extractors
+        id: parity-symbols
+        if: ${{ !cancelled() && steps.group-needs.outputs.parity-symbols == 'true' }}
+        run: make kit-install-symbols EXTRACTORS="go php"
       # The markdown-conformance-check/<runtime> groups run each native client
       # on the flowmark build that tests/markdown/flowmark.version pins;
       # make orm-install-flowmark installs it.
@@ -182,9 +194,8 @@ jobs:
       - name: tools of the PHP extension build
         id: php-extension-tools
         if: ${{ !cancelled() && steps.group-needs.outputs.php-extension-tools == 'true' }}
-        # make dbspec-php-extension-check and make dbspec-compare-check build
-        # the PHP extension polyspec_orm with phpize;
-        # scripts/ci/php-extension-tools.mts checks phpize and php-config.
+        # PHP-extension targets build polyspec_orm with phpize; this also installs
+        # the pinned arginfo generator and parser through Kit's shared installer.
         run: make orm-install-php-extension-tools
       - name: programs of the database servers
         id: server-programs
@@ -263,10 +274,6 @@ jobs:
         id: npm
         if: ${{ !cancelled() }}
         run: make install-tools TOOLS=npm
-      - name: install Node dependencies
-        id: node-modules
-        if: ${{ !cancelled() }}
-        run: make install-packages
       # docs-verify-idempotent builds docs/.vitepress/dist twice and compares
       # every byte, and docs-check builds it and reads its pages and links
       # with Node. make docs-ci runs the two through the runner of make orm-check,
@@ -313,27 +320,15 @@ jobs:
         id: npm
         if: ${{ !cancelled() }}
         run: make install-tools TOOLS=npm
-      - name: install Node dependencies
-        id: node-modules
-        if: ${{ !cancelled() }}
-        run: make install-packages
-      - uses: shivammathur/setup-php@v2
-        id: php-bootstrap
-        if: ${{ !cancelled() }}
-        with:
-          php-version-file: .php-version
-          tools: composer:2.10.3
-          coverage: none
-      # The TypeScript build of the extension takes the lease program, which make builds with the Go of mise.toml.
       - name: tools of mise.toml
         id: go
         if: ${{ !cancelled() }}
-        run: make install-tools
-      # make orm-check runs go with GOPROXY=off; make orm-install-go downloads the modules of go.work for the lease program.
-      - name: Go modules
-        id: go-modules
+        run: make install-tools TOOLS=go
+      # dbspec-vscode-check builds the shared lease runner; it uses only x/sys from the Go client module.
+      - name: Go lease module of the check runner
+        id: go-lease-modules
         if: ${{ !cancelled() }}
-        run: make orm-install-go
+        run: make orm-install-go-lease
       - name: VS Code of the integration test
         id: vscode
         if: ${{ !cancelled() }}
@@ -368,10 +363,6 @@ jobs:
         id: npm
         if: ${{ !cancelled() }}
         run: make install-tools TOOLS=npm
-      - name: install Node dependencies
-        id: node-modules
-        if: ${{ !cancelled() }}
-        run: make install-packages
       - name: every job passed
         if: ${{ !cancelled() }}
         env:

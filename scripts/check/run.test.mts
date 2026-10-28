@@ -67,23 +67,24 @@ caseTest('dialect facts declares the isolated MySQL privilege fixture as a setup
   assert.ok(expanded.includes('server-programs'));
 });
 
-caseTest('parity API and runtime binding phases declare their setup needs', COMPUTE, () => {
+caseTest('the canonical parity target declares every client and fixture setup need', COMPUTE, () => {
   const inputs: unknown = JSON.parse(readFileSync(join(repo, 'contracts/check-inputs.json'), 'utf8'));
   if (!isRecord(inputs) || !isRecord(inputs.targets)) throw new Error('contracts/check-inputs.json has no targets object');
-  const api = inputs.targets['parity-api-check'];
-  if (!isRecord(api) || !isStringArray(api.needs)) throw new Error('parity-api-check has no needs list');
-  assert.ok(api.needs.includes('node-modules'));
-  assert.ok(!api.needs.includes('databases'), 'API extraction has no direct database fixture need');
-  for (const runtime of ['go', 'php', 'php-extension', 'typescript', 'python', 'rust']) {
-    const target = inputs.targets[`parity-bindings-${runtime}-check`];
-    if (!isRecord(target) || !isStringArray(target.needs)) throw new Error(`${runtime} parity bindings have no needs list`);
-    assert.ok(target.needs.includes('complex-query'));
-    assert.ok(target.needs.includes('databases'));
-  }
+  const parity = inputs.targets['parity-check'];
+  if (!isRecord(parity) || !isStringArray(parity.needs)) throw new Error('parity-check has no needs list');
+  assert.deepEqual(parity.needs, ['go', 'rust', 'php', 'composer', 'python', 'node-modules', 'interfaces-typescript', 'parity-symbols', 'php-extension-tools', 'databases', 'complex-query', 'flowmark', 'go-lease']);
+  for (const phase of ['parity-api-check', 'parity-bindings-go-check', 'parity-bindings-php-check', 'parity-bindings-php-extension-check', 'parity-bindings-typescript-check', 'parity-bindings-python-check', 'parity-bindings-rust-check'])
+    assert.equal(Object.hasOwn(inputs.targets, phase), false, `${phase} is not a second suite target`);
+  const comparison = inputs.targets['conformance-check'];
+  if (!isRecord(comparison) || !isStringArray(comparison.needs)) throw new Error('conformance-check has no needs list');
+  for (const need of ['go', 'rust', 'php', 'php-extension-tools', 'python', 'databases', 'node-modules'])
+    assert.ok(comparison.needs.includes(need), `the cross-runtime comparison independently declares ${need}`);
   assert.ok(NEEDS.includes('complex-query'));
   assert.deepEqual(SETUP_NEEDS['complex-query'], ['databases']);
-  const expanded = expandNeeds((inputs.targets['parity-bindings-rust-check'] as { needs: string[] }).needs);
+  const expanded = expandNeeds(parity.needs);
   assert.ok(expanded.includes('databases'));
+  assert.deepEqual(SETUP_NEEDS['databases'], ['go-lease', 'node-modules', 'server-programs']);
+  assert.ok(expandNeeds(['databases']).includes('go-lease'));
   const makefile = readFileSync(join(repo, 'Makefile'), 'utf8');
   assert.match(makefile, /COMPLEX_QUERY_DSN_NAMES := \$\(foreach runtime,\$\(COMPLEX_QUERY_RUNTIMES\),\$\(foreach dialect,\$\(COMPLEX_QUERY_DIALECTS\),COMPLEX_QUERY_\$\(runtime\)_\$\(dialect\)_DSN\)\)/);
   assert.match(makefile, /\$\(foreach v,\$\(COMPLEX_QUERY_DSN_NAMES\),\$\(eval export \$\(v\) :=/);
@@ -120,6 +121,8 @@ const cisetup = process.env.STUB_SUITE === 'cisetup';
 // STUB_SUITE=server-programs는 CI group이 setup step server-programs를 건너뛴 실행이다(G5.127): a와 c는 databases만 선언하고,
 // servers와 databases/create가 server-programs의 program을 쓰므로 그것도 server-programs가 필요하다.
 const serverPrograms = process.env.STUB_SUITE === 'server-programs';
+// STUB_SUITE=go-lease is a CI setup run where the shared runner's pinned Go module download failed.
+const goLease = process.env.STUB_SUITE === 'go-lease';
 // STUB_SUITE=group과 group-rust는 CI group의 job이다(G5.111): group-needs가 rust, php와 server의 setup step을 건너뛰게
 // 했고, 어느 target도 database가 필요하지 않다. group에서는 c만 go가 필요하고, group-rust에서는 a가 건너뛴 rust도 필요하다.
 const group = process.env.STUB_SUITE === 'group';
@@ -175,20 +178,20 @@ const run = async (program, args, step, spawned = () => {}) => {
   if (throws && name === 'b') {
     await new Promise(() => setImmediate(() => { throw new Error('boom outside the runner'); }));
   }
-  if (!failing && !lost && !throws && !verbose && !space && !diskio && !npm && !cisetup && !serverPrograms && !group && !groupRust && name === 'b' && !existsSync(root + '/pass-b')) throw new Error('make b exited with 2');
+  if (!failing && !lost && !throws && !verbose && !space && !diskio && !npm && !cisetup && !serverPrograms && !goLease && !group && !groupRust && name === 'b' && !existsSync(root + '/pass-b')) throw new Error('make b exited with 2');
 };
 // STUB_SUITE=complex-query is a run whose target c reads the complex-query fixture databases (need complex-query) and a only the
 // bench and decimal databases.
 const complexQuery = process.env.STUB_SUITE === 'complex-query';
 const targets = failing ? ['a', 'b', 'c', 'd'] : ['a', 'b', 'c'];
-const needs = cisetup || groupRust ? { a: ['rust'], b: [], c: ['go'] } : group ? { a: [], b: [], c: ['go'] }
+const needs = goLease ? { a: ['databases'], b: [], c: ['databases'] } : cisetup || groupRust ? { a: ['rust'], b: [], c: ['go'] } : group ? { a: [], b: [], c: ['go'] }
   : complexQuery ? { a: ['databases'], b: [], c: ['complex-query'] } : { a: ['databases'], b: [], c: ['databases'], d: [] };
 // 공간 기록은 공간 case에서만 실제 diskSnapshot이다. 다른 case는 /tmp를 읽지 않는 고정 기록을 쓴다.
 const removed = '## files under /tmp that were removed but are still open (lsof +L1)\\nCOMMAND PID USER FD TYPE DEVICE SIZE/OFF NLINK NODE NAME\\nmysqld 10079 runner 2w REG 0,38 6493765632 0 3807 /tmp/orm-binlog-AHN00Q/mysqld.log (deleted)\\n';
 const snapshot = space ? undefined
   : process.env.STUB_SUITE === 'diskio-full' ? () => ({ text: '## df -k / /tmp\\nstub\\n' + removed, places: { '/': 1, '/tmp': 0 } })
   : () => ({ text: '## df -k / /tmp\\nstub\\n', places: { '/': 1, '/tmp': 1 } });
-process.exitCode = await runChecks({ root, servers, targets, run, needs, snapshot, downloads: () => [], ciSetup: serverPrograms ? JSON.stringify({ checkout: { outcome: 'success' }, go: { outcome: 'success' }, 'server-programs': { outcome: 'skipped' } }) : cisetup ? JSON.stringify({ checkout: { outcome: 'success' }, go: { outcome: 'success' }, rust: { outcome: 'failure' }, 'rust-cache': { outcome: 'failure' } }) : group || groupRust ? JSON.stringify(skipped) : '' });
+process.exitCode = await runChecks({ root, servers, targets, run, needs, snapshot, downloads: () => [], ciSetup: goLease ? JSON.stringify({ checkout: { outcome: 'success' }, go: { outcome: 'success' }, 'go-lease-modules': { outcome: 'failure' } }) : serverPrograms ? JSON.stringify({ checkout: { outcome: 'success' }, go: { outcome: 'success' }, 'server-programs': { outcome: 'skipped' } }) : cisetup ? JSON.stringify({ checkout: { outcome: 'success' }, go: { outcome: 'success' }, rust: { outcome: 'failure' }, 'rust-cache': { outcome: 'failure' } }) : group || groupRust ? JSON.stringify(skipped) : '' });
 `;
 
 function checkout(t: { after: (f: () => void) => void }) {
@@ -796,6 +799,26 @@ caseTest('a run without the setup step that databases/create needs records the d
       const target = named(record, name);
       assert.equal(target.status, 'not-run', name);
       assert.match(target.reason ?? '', /^the setup steps servers and databases\/create need server-programs: the CI setup step server-programs was skipped, and a target of this run needs server-programs/);
+    }
+    assert.equal(named(record, 'b').status, 'passed');
+    assert.deepEqual(c.ran(), ['b']);
+  } finally {
+    cleanup();
+  }
+});
+
+caseTest('a failed Go lease module install marks database targets not-run', PROCESS, () => {
+  const c = checkout(scope);
+  try {
+    assert.equal(c.run('', { STUB_SUITE: 'go-lease', ORM_CHECK_RUN_ID: '17-2-go-lease' }).status, 1);
+    const record = c.record();
+    assert.deepEqual(record.setup.map(({ name, status }) => [name, status]).filter(([name = '']) => name.startsWith('ci/') || name === 'servers'), [
+      ['ci/go-lease-modules', 'failed'],
+    ]);
+    for (const name of ['a', 'c']) {
+      const target = named(record, name);
+      assert.equal(target.status, 'not-run', name);
+      assert.match(target.reason ?? '', /go-lease: the CI setup step go-lease-modules failed/);
     }
     assert.equal(named(record, 'b').status, 'passed');
     assert.deepEqual(c.ran(), ['b']);

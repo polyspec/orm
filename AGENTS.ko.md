@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: e661644718174098e6e1138fe2408088ba63bebfd9a5ca75a6a66d3a12d35129 -->
+<!-- source-sha256: f6f391c0e22e390fda0bdbf988a7720fadb19e61644078b8aaa4978d678e346c -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -75,7 +75,7 @@ orm 자신의 규칙만 적는다.
   step(설치, toolchain, server)도 setup 단계다: 각 step은 앞의 step이 실패해도 실행되고, 실패한 step이 설치하는
   것이 필요한 target은 그 step과 함께 `not-run`으로 기록하므로 설치 하나가 실패해도 묶음은 멈추지 않는다. target이
   필요로 하는 것에는 그 need의 setup 단계가 필요로 하는 것이 들어간다(scripts/check/ci-setup.mts의 `SETUP_NEEDS`:
-  `databases/create`는 decimal database를 PHP와 Composer autoload로 설치한다). `make repo-check`는 모든 CI group이 그
+  `databases/create`는 TypeScript client를 통해 decimal database를 설치한다). `make repo-check`는 모든 CI group이 그
   모두의 setup step을 실행하기를 요구한다. 실패마다
   입력, 정확한 명령, 출력, 기대값과 실제값, 그것과 관련된 환경 사실을 기록해 로컬에서 다시 실행하지 않고 진단할
   수 있게 하며, 실패한 case는 무엇이, 어디서, 왜 실패했는지 적는다. 실행은 모든 target의 상태, 시간, 첫 실패

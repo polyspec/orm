@@ -90,7 +90,7 @@ vendors; this file states only the rules of orm.
   target that needs what a failed step installs is recorded as `not-run` with that step, so a
   failed install never stops the suite. What a target needs includes what the setup steps of its
   needs need (`SETUP_NEEDS` of scripts/check/ci-setup.mts: `databases/create` installs the decimal
-  database with PHP and the Composer autoload), and `make repo-check` requires that every CI group
+  database through the TypeScript client), and `make repo-check` requires that every CI group
   runs the setup steps of all of it. Each failure records its
   inputs, the exact command, its output, the expected against the actual value and the environment
   facts relevant to it, so that it can be diagnosed without running it again locally; a failing
