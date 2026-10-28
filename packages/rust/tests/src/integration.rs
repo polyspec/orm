@@ -133,7 +133,7 @@ async fn complete_pool_returns(db: &Db, driver: &str) {
 async fn complete_sqlx_pool_returns<DB: sqlx::Database>(pool: &sqlx::Pool<DB>, max: u32, driver: &str) {
     let mut connections = Vec::with_capacity(max as usize);
     for _ in 0..max {
-        connections.push(pool.acquire().await.unwrap_or_else(|error| panic!("{driver}: acquire pool return barrier: {error}")));
+        connections.push(pool.acquire().await.or_panic(|error| format!("{driver}: acquire pool return barrier: {error}")));
     }
     for connection in &mut connections {
         connection.return_to_pool().await;
