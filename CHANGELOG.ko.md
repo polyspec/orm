@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9a586f35cd332a43478f6b7059fd9147ec54449600800d0d1ec4cc50d3970ca9 -->
+<!-- source-sha256: 1a308688cc4471bbfe380652699f97f427a4438e0296ee90b6f782d200f68753 -->
 # 변경 이력
 
 ## Unreleased
+
+- 독립 CI 그룹마다 필요한 고정 의존성만 설치하고 native parity 추출기·PHP arginfo·최소 Go lease 의존성을 연결하며 클라이언트·DBspec·기능 검사 병렬 구성을 유지합니다. (KSTD-5-96)
 
 - native CI 검사를 클라이언트·SQL 백엔드별로 나누고 Markdown을 6개 native 작업으로 실행하며, 공통 비교를 유지한 채 성능과 공개 API·native 실행 parity 단계를 분리합니다. (KSTD-5-95)
 - IR validation, codec, planning, binding, execution 및 runtime class를 포함한 native PHP client protocol을 완료했습니다. 공유 native planner와 bind 사례, 세 database의 여섯 클라이언트 conformance 및 parity 선언 검사로 실행 근거를 확인했으며 native class 이름과 생태계 라이브러리 선택은 유지합니다 (T182).
