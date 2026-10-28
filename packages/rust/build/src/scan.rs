@@ -207,7 +207,7 @@ fn included_file(file: &Path, tokens: &proc_macro2::TokenStream) -> Option<(Path
 }
 
 /// Collects the model modules of `items`: an inline module or a file whose items `include!` a model file, and `models!()`,
-/// which includes `OUT_DIR/orm_model.rs` as the module `model`. A module that includes `model_file` is this set's (`own`);
+/// which includes this set's generated model as the module `model`. A module that includes `model_file` is this set's (`own`);
 /// one that includes another model file is another set's (`foreign`).
 fn model_modules(file: &Path, name: &str, items: &[syn::Item], model_file: &Path, own: &mut HashSet<String>, foreign: &mut HashSet<String>) {
     for item in items {
@@ -221,8 +221,7 @@ fn model_modules(file: &Path, name: &str, items: &[syn::Item], model_file: &Path
                 let included = if m.mac.path.is_ident("include") {
                     included_file(file, &m.mac.tokens).map(|found| (name.to_owned(), found))
                 } else if m.mac.path.segments.last().is_some_and(|s| s.ident == "models") && m.mac.tokens.is_empty() {
-                    let out = std::env::var_os("OUT_DIR").map(|dir| normalize(&PathBuf::from(dir).join(crate::MODEL_FILE)));
-                    Some(("model".to_owned(), out.map_or_else(|| (PathBuf::from(crate::MODEL_FILE), false), |p| (p, true))))
+                    Some(("model".to_owned(), (model_file.to_path_buf(), true)))
                 } else {
                     None
                 };
