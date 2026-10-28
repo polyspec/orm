@@ -21,6 +21,7 @@ from . import testcase
 
 class MysqlCells(unittest.TestCase):
     # Requirements: COD-2.
+    # Requirements: INT-145, COD-2.
     def test_decimal_and_newdecimal_cells_are_their_exact_text(self):
         conversions = mysql_conversions()
         self.assertEqual(conversions[FIELD_TYPE.DECIMAL](b"1.50"), "1.50")
@@ -77,6 +78,7 @@ class MysqlCells(unittest.TestCase):
 
 
 class PostgresCells(unittest.TestCase):
+    # Requirements: INT-145, COD-2.
     def test_numeric_cells_load_as_text(self):
         adapters = psycopg.adapt.AdaptersMap(psycopg.adapters)
         postgres_loaders(adapters)

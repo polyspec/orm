@@ -6,6 +6,7 @@ use chrono::{NaiveDate, NaiveDateTime};
 mod checked_value_tests {
     use super::*;
 
+    // Requirements: INT-141.
     #[test]
     fn invalid_or_lossy_values_report_decode_errors() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

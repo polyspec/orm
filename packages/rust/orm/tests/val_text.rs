@@ -38,6 +38,7 @@ fn cell(db: &Db) -> BindCell {
     BindCell::from_core(core)
 }
 
+// Requirements: COD-31, INT-4, INT-8, INT-141.
 #[tokio::test]
 async fn sql_null_and_empty_text_are_two_values() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

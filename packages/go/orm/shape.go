@@ -22,7 +22,7 @@ func shapeKey(r *ir.Request) uint64 {
 	return s.h
 }
 
-// PlanID renders a plan cache key the way Event.PlanID carries it: 16 hex digits.
+// PlanID renders a plan cache key as 16 lowercase hexadecimal digits, left-padded with zeroes.
 func PlanID(key uint64) string {
 	const digits = "0123456789abcdef"
 	var b [16]byte

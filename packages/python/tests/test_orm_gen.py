@@ -58,6 +58,7 @@ class OrmGenTest(unittest.TestCase):
 
     # Requirements: DBS-104, DBS-111, DBS-120, DSL-38, DSL-43.
     # Requirements: SCH-1.
+    # Requirements: INT-145, DSL-128, DSL-151, DSL-152.
     def test_generated_module_imports_and_builds_the_model(self):
         import models
 

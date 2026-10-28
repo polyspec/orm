@@ -1105,28 +1105,6 @@ final class ModelNativeTest extends TestCase
             self::assertSame("\x00\x7f\x80\xff", $bytes->bytes);
         }
 
-        $map = new \Polyspec\Orm\GoMap(['z' => 1, 'a' => ['x' => true]]);
-        self::assertSame(['z' => 1, 'a' => ['x' => true]], $map->items);
-        $map->items['b'] = null;
-        self::assertSame('{"a":{"x":true},"b":null,"z":1}', \Polyspec\Orm\Go::json($map));
-        self::assertSame('{"-1":"negative","z":1}', \Polyspec\Orm\Go::json([-1 => 'negative', 'z' => 1]));
-
-        self::assertSame(
-            '"\\a\\b\\f\\n\\r\\t\\v\\x00\\x7f\\\\\\"é\\u200b"',
-            \Polyspec\Orm\Go::quote("\x07\x08\x0c\n\r\t\x0b\x00\x7f\\\"é\u{200b}"),
-        );
-        self::assertSame(
-            "{\n  \"z\": [\n    1,\n    \"\\u003c\\u003e\\u0026\"\n  ],\n  \"a\": true\n}",
-            \Polyspec\Orm\Go::json(['z' => [1, '<>&'], 'a' => true], '  '),
-        );
-        self::assertSame('{"x":"\\ufffd"}', \Polyspec\Orm\Go::json(['x' => "\xff"]));
-        try {
-            \Polyspec\Orm\Go::json(1.5);
-            self::fail('floating-point values are unsupported by Go::json');
-        } catch (\InvalidArgumentException $error) {
-            self::assertSame('unsupported JSON value float', $error->getMessage());
-        }
-
         self::assertSame('12.30', \Polyspec\Orm\Decimal::normalize('+0012.3', 4, 2));
         self::assertSame(1230, \Polyspec\Orm\Decimal::scaled('12.30', 4, 2));
         self::assertSame('-12.30', \Polyspec\Orm\Decimal::fromScaled(-1230, 4, 2));
@@ -1246,6 +1224,32 @@ final class ModelNativeTest extends TestCase
             self::fail('Expected an oversized channel to fail');
         } catch (\Polyspec\Orm\OrmException $error) {
             self::assertSame(\Polyspec\Orm\Code::CONFIG, $error->code_);
+        }
+    }
+
+    // Requirements: INT-146.
+    public function testGoTextMatchesGoFormatVectors(): void
+    {
+        $map = new \Polyspec\Orm\GoMap(['z' => 1, 'a' => ['x' => true]]);
+        self::assertSame(['z' => 1, 'a' => ['x' => true]], $map->items);
+        $map->items['b'] = null;
+        self::assertSame('{"a":{"x":true},"b":null,"z":1}', \Polyspec\Orm\Go::json($map));
+        self::assertSame('{"-1":"negative","z":1}', \Polyspec\Orm\Go::json([-1 => 'negative', 'z' => 1]));
+
+        self::assertSame(
+            '"\\a\\b\\f\\n\\r\\t\\v\\x00\\x7f\\\\\\"é\\u200b"',
+            \Polyspec\Orm\Go::quote("\x07\x08\x0c\n\r\t\x0b\x00\x7f\\\"é\u{200b}"),
+        );
+        self::assertSame(
+            "{\n  \"z\": [\n    1,\n    \"\\u003c\\u003e\\u0026\"\n  ],\n  \"a\": true\n}",
+            \Polyspec\Orm\Go::json(['z' => [1, '<>&'], 'a' => true], '  '),
+        );
+        self::assertSame('{"x":"\\ufffd"}', \Polyspec\Orm\Go::json(['x' => "\xff"]));
+        try {
+            \Polyspec\Orm\Go::json(1.5);
+            self::fail('floating-point values are unsupported by Go::json');
+        } catch (\InvalidArgumentException $error) {
+            self::assertSame('unsupported JSON value float', $error->getMessage());
         }
     }
 

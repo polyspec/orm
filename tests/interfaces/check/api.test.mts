@@ -31,17 +31,19 @@ const clientSurfaceRequirements: Array<[string, string[]]> = [
   ['aes-utils-rotate', ['INT-60']],
   ['client-db', ['INT-12', 'INT-13', 'INT-14', 'INT-15']],
   ['client-db-close', ['INT-67']],
-  ['client-db-connect', ['INT-12', 'INT-13', 'INT-14', 'INT-15']],
+  ['client-db-connect', ['INT-12', 'INT-13', 'INT-14', 'INT-15', 'DIA-41', 'DSL-150']],
   ['client-db-connectschema', ['INT-15', 'INT-132', 'INT-54']],
   ['client-db-execute', ['INT-76']],
   ['client-db-stats-method', ['INT-61']],
   ['client-db-stats', ['INT-79']],
   ['client-db-subscribe', ['INT-77']],
-  ['client-db-transaction', ['INT-72']],
+  ['client-db-transaction', ['INT-72', 'INT-40', 'INT-41', 'INT-42', 'INT-43', 'INT-44', 'INT-45', 'INT-46', 'INT-47', 'INT-48']],
   ['client-db-utils', ['INT-73']],
   ['client-db-with-request-hook', ['INT-78']],
   ['client-query-connect', ['INT-17']],
-  ['client-query-base', ['INT-88']],
+  ['client-query-base', ['INT-20', 'INT-21', 'INT-22', 'INT-23', 'INT-24', 'INT-25', 'INT-26', 'INT-87', 'INT-88']],
+  ['catalog-public-api', ['INT-102', 'INT-103', 'INT-104', 'INT-106', 'INT-107', 'INT-108', 'INT-109', 'INT-110', 'INT-111', 'INT-112', 'INT-113', 'INT-114', 'INT-115', 'INT-117', 'INT-118', 'INT-119', 'INT-121', 'INT-123', 'INT-136']],
+  ['collection-group-row-value', ['INT-68', 'INT-98', 'INT-99']],
   ['client-query-relation', ['INT-87']],
   ['client-orm-error', ['INT-89']],
   ['client-statement-event', ['INT-91']],
@@ -54,6 +56,9 @@ const clientSurfaceRequirements: Array<[string, string[]]> = [
   ['client-utils-schema', ['INT-54', 'INT-55', 'INT-56', 'INT-57', 'INT-58']],
   ['client-utils-set-local', ['INT-51']],
   ['client-utils-stats', ['INT-61']],
+  ['codec-host-encode', ['COD-1', 'COD-39']],
+  ['codec-host-decode', ['COD-39', 'COD-1']],
+  ['codec-styled-value', ['INT-7', 'COD-17', 'COD-18', 'COD-19', 'COD-20', 'COD-24', 'COD-25', 'COD-41']],
   ['client-privilege-utils', ['INT-59']],
   ['client-privilege-utils-grant-table', ['INT-59']],
   ['client-privilege-utils-inspect-table', ['INT-59']],
@@ -83,9 +88,77 @@ const clientSurfaceRequirements: Array<[string, string[]]> = [
   ['collection-group-row', ['INT-68', 'INT-69', 'INT-70', 'INT-71', 'INT-90']],
   ['collection-group-rows', ['INT-31']],
   ['collection-group-row-to-array', ['INT-69']],
-  ['collection-group-row-value', ['INT-68']],
   ['collection-group-rows-length', ['INT-70']],
   ['collection-group-rows-to-array', ['INT-71']],
+  ['client-value-function', ['PRT-19', 'PRT-77']],
+  ['generated-model-identity', ['INT-16', 'INT-17', 'DBS-120']],
+  ['generated-model-query-chain', ['INT-20', 'INT-21', 'INT-22', 'INT-23', 'INT-24', 'INT-26', 'INT-27', 'INT-87']],
+  ['client-model-row-serialization', ['DSL-115']],
+  ['client-model-terminal-write', ['INT-34', 'INT-35', 'INT-36', 'INT-37', 'INT-38', 'INT-39', 'DSL-109']],
+  ['client-runtime-model', ['DBS-110', 'DBS-111', 'DBS-112', 'DBS-113', 'DBS-114', 'DBS-115', 'DBS-116', 'DBS-117', 'DBS-118', 'DBS-119', 'DBS-120']],
+  ['generated-model-field-access', ['INT-1', 'INT-2', 'INT-3', 'INT-4', 'INT-5', 'INT-6', 'INT-7', 'INT-8', 'INT-25', 'DSL-48', 'DSL-49', 'DSL-51', 'INT-10', 'INT-98', 'INT-99']],
+  ['client-model-terminal-read', ['INT-29', 'INT-30', 'INT-31', 'INT-32', 'INT-33', 'DSL-62', 'DSL-63', 'DSL-65', 'DSL-66', 'DSL-68']],
+  ['client-query-ir', ['PRT-1', 'PRT-2', 'PRT-9', 'PRT-10', 'PRT-12', 'PRT-16', 'PRT-19', 'PRT-70']],
+  ['client-engine', ['INT-76', 'INT-88', 'INT-133', 'PRT-18', 'PRT-24', ...Array.from({ length: 16 }, (_, index) => `DIA-${index + 1}`), ...Array.from({ length: 16 }, (_, index) => `DIA-${index + 18}`), 'DIA-35', 'DIA-36', 'PRT-32']],
+  ['runtime-model-load-set', ['SCH-12']],
+  ['client-dbspec-document', ['DBS-1', 'DBS-2']],
+  ['client-dbspec-manifest-set', ['DBS-98', 'DBS-99', 'DBS-100', 'DBS-101', 'DBS-102', 'DBS-103', 'DBS-104', 'DBS-105', 'DBS-106', 'DBS-107']],
+  ['client-dbspec-introspection-render', ['DBS-102', 'DBS-107', 'DBS-108', 'DIA-133', 'DIA-134', 'DIA-135', 'DIA-136']],
+  ['client-dbspec-plan', Array.from({ length: 44 }, (_, index) => `PLN-${45 + index}`)],
+  ['client-dbspec-apply', Array.from({ length: 12 }, (_, index) => `PLN-${89 + index}`)],
+  ['client-dbspec-mermaid', ['DBS-169']],
+  ['client-db-listen', ['DIA-192', 'DIA-193', 'DIA-194', 'DIA-195', 'DIA-196', 'PRT-74']],
+  ['client-model-generation', ['INT-100']],
+  ['client-value-types', ['INT-141']],
+  ['client-row-value-decoding', ['INT-142']],
+  ['go-plan-id-public-api', ['INT-143']],
+  ['php-go-text-serialization', ['INT-144']],
+  ['php-extension-go-text-serialization', ['INT-146']],
+  ['python-native-host-integration', ['INT-145']],
+  ['python-native-dialect-hooks', ['INT-147']],
+  ['python-test-fault-api', ['INT-148']],
+];
+
+const expectedNewApiUnits = [
+  'client-value-function',
+  'generated-model-identity',
+  'generated-model-query-chain',
+  'client-model-row-serialization',
+  'client-model-terminal-write',
+  'client-runtime-model',
+  'generated-model-field-access',
+  'client-model-terminal-read',
+  'client-query-ir',
+  'client-engine',
+  'runtime-model-load-set',
+  'client-dbspec-document',
+  'client-dbspec-manifest-set',
+  'client-dbspec-introspection-render',
+  'client-dbspec-plan',
+  'client-dbspec-apply',
+  'client-dbspec-mermaid',
+  'client-db-listen',
+  'client-model-generation',
+  'client-value-types',
+  'client-row-value-decoding',
+  'go-plan-id-public-api',
+  'php-go-text-serialization',
+  'php-extension-go-text-serialization',
+  'python-native-host-integration',
+  'python-native-dialect-hooks',
+  'python-test-fault-api',
+];
+
+const expectedNativeApiOwners: Array<[string, string, string, string]> = [
+  ['client-model-generation', 'git-tag', 'polyspec-orm-build', 'rust'],
+  ['client-value-types', 'git-tag', 'polyspec-orm', 'rust'],
+  ['client-row-value-decoding', 'git-tag', 'polyspec-orm', 'rust'],
+  ['go-plan-id-public-api', 'go-module', 'github.com/polyspec/orm/packages/go', 'go'],
+  ['php-go-text-serialization', 'archive', 'polyspec/orm', 'php'],
+  ['php-extension-go-text-serialization', 'archive', 'polyspec/orm-php-ext', 'php-extension'],
+  ['python-native-host-integration', 'archive', 'polyspec-orm', 'python'],
+  ['python-native-dialect-hooks', 'archive', 'polyspec-orm', 'python'],
+  ['python-test-fault-api', 'archive', 'polyspec-orm', 'python'],
 ];
 
 // tinyParity is a config/parity.json that has only the parts apiProblems reads: two implementations, each one's catalog file, and one code's unit.
@@ -118,7 +191,10 @@ caseTest('all API units have native declarations for their symbols', COMPUTE, ()
     'error-code-row-insert-identity-required',
     'error-code-row-insert-unsupported',
   ];
-  assert.equal(ids.length, 149, 'API unit count changed; review the extension API binding set');
+  assert.equal(ids.length, 177, 'API unit count changed; review the semantic API unit set');
+  for (const id of expectedNewApiUnits) {
+    assert.ok(ids.includes(id), `API unit count includes the expected semantic contract ${id}`);
+  }
   for (const id of expectedAddedErrorUnits) {
     assert.ok(ids.includes(id), `API unit count includes the expected error contract ${id}`);
   }
@@ -132,6 +208,12 @@ caseTest('the named client API units cite their bilingual interface requirements
   const specifications = new Map([
     ['INT', ['docs/spec/interfaces.md', 'docs/spec/interfaces.ko.md']],
     ['COD', ['docs/spec/codec.md', 'docs/spec/codec.ko.md']],
+    ['DBS', ['docs/spec/dbspec.md', 'docs/spec/dbspec.ko.md']],
+    ['DIA', ['docs/spec/dialects.md', 'docs/spec/dialects.ko.md']],
+    ['DSL', ['docs/spec/dsl.md', 'docs/spec/dsl.ko.md']],
+    ['PLN', ['docs/spec/plans.md', 'docs/spec/plans.ko.md']],
+    ['PRT', ['docs/spec/protocol.md', 'docs/spec/protocol.ko.md']],
+    ['SCH', ['docs/spec/schema.md', 'docs/spec/schema.ko.md']],
   ]);
   const documents = new Map([...specifications].flatMap(([, paths]) =>
     paths.map(path => [path, readFileSync(resolve(root, path), 'utf8')] as const),
@@ -149,11 +231,18 @@ caseTest('the named client API units cite their bilingual interface requirements
       for (const path of paths) {
         const document = documents.get(path) ?? '';
         assert.ok(
-          document.split('\n').some(line => line.startsWith(`- **${requirement}** `)),
+          document.split('\n').some(line => new RegExp(`^(?:- |\\d+\\. )\\*\\*${requirement}\\*\\* `).test(line)),
           `${id} cites ${requirement}, but ${path} has no requirement bullet`,
         );
       }
     }
+  }
+  for (const [id, artifact, packageName, runtime] of expectedNativeApiOwners) {
+    const unit = units.get(id);
+    assert.ok(unit, `${id} API unit is missing`);
+    assert.equal(unit.kind, 'api', `${id} is not an API unit`);
+    assert.deepEqual(unit.owner, { kind: 'release-package', artifact, package: packageName }, `${id} must be owned by its actual release package`);
+    assert.deepEqual(unit.symbols?.map(binding => binding.implementation), [runtime], `${id} must remain scoped to its native runtime`);
   }
 });
 

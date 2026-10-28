@@ -1,7 +1,5 @@
-# The test entry point of the Python client (docs/spec/protocol.md "Test faults"). Because
-# [tool.setuptools.packages.find] in pyproject.toml leaves this package out of the distribution, the process imports it
-# only when the client's source tree (packages/python/src) is on the path. The package entry point
-# does not export it, so polyspec.orm does not export it.
+# The test-only entry point of the Python client (docs/spec/protocol.md "Test faults"). The wheel includes this package;
+# callers must import polyspec.orm.testing explicitly, and the package entry point polyspec.orm does not export it.
 import datetime
 import re
 

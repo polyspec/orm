@@ -33,6 +33,7 @@ class Frame:
 
 class SqliteRowLockRestoreTest(unittest.TestCase):
     # Requirements: INT-49.
+    # Requirements: INT-147, PRT-8.
     def test_production_row_lock_preserves_primary_and_restore_outcomes(self):
         db = Db.__new__(Db)
         db.driver = "sqlite"

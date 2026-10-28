@@ -108,8 +108,22 @@ func TestShapeIgnoresParamValues(t *testing.T) {
 	if shapeKey(&a.ir) != shapeKey(&b.ir) {
 		t.Error("different param values must share a shape")
 	}
-	if PlanID(0x1f) != "000000000000001f" {
-		t.Errorf("PlanID: %s", PlanID(0x1f))
+}
+
+// Requirements: INT-143.
+func TestPlanIDFixedWidthLowercaseHex(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	for _, tc := range []struct {
+		key  uint64
+		want string
+	}{
+		{key: 0, want: "0000000000000000"},
+		{key: 0x1f, want: "000000000000001f"},
+		{key: ^uint64(0), want: "ffffffffffffffff"},
+	} {
+		if got := PlanID(tc.key); got != tc.want {
+			t.Errorf("PlanID(%#x) = %q, want %q", tc.key, got, tc.want)
+		}
 	}
 }
 

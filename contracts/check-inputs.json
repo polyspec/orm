@@ -616,6 +616,17 @@
         "contracts/fixtures/bench/bench_shared.dbs"
       ]
     },
+    "php-go-text-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "node-modules"
+      ],
+      "inputs": [
+        "packages/php/tests/GoSerializationTest.php"
+      ]
+    },
     "generator-consumer-check": {
       "scope": "owner",
       "needs": [
@@ -1522,6 +1533,18 @@
       "needs": [
         "node-modules",
         "databases"
+      ]
+    },
+    "python-native-host-api-check": {
+      "scope": "owner",
+      "needs": [
+        "python"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/python/src/polyspec/orm/clock.py",
+        "packages/python/tests/test_clock_source.py",
+        "packages/python/tests/test_rollback_fault.py"
       ]
     },
     "client-db-python-check": {

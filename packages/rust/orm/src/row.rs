@@ -443,7 +443,7 @@ mod native_cell_bytes_tests {
     use crate::{db::Zone, Val};
     use sqlx::Connection as _;
 
-    // Requirements: INT-5, PRT-69.
+    // Requirements: INT-5, INT-142, PRT-69.
     #[tokio::test]
     async fn sqlite_driver_row_bytes_remain_exact() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

@@ -71,7 +71,7 @@ fn connected(db: &Db) -> Record {
 }
 
 #[tokio::test]
-// Requirements: INT-99, DBS-68, COD-20.
+// Requirements: INT-99, INT-142, DBS-68, COD-20.
 async fn runtime_value_types() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let uuid = "0f0e0d0c-0b0a-4908-8706-050403020100";

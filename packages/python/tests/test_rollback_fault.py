@@ -4,6 +4,7 @@
 # packages/php/tests/RollbackTest.php).
 import os
 import sqlite3
+from types import SimpleNamespace
 import tempfile
 import tomllib
 import unittest
@@ -323,6 +324,7 @@ class RollbackFaultEntryTest(unittest.TestCase):
         self.assertNotIn("fail_next_rollback", polyspec.orm.__all__)
         self.assertTrue(callable(testing.fail_next_rollback))
 
+    # Requirements: INT-148, PRT-57, PRT-62.
     def test_the_package_entry_point_does_not_export_the_other_entry_points(self):
         # Requirements: PRT-57, PRT-62.
         import polyspec.orm
@@ -332,6 +334,7 @@ class RollbackFaultEntryTest(unittest.TestCase):
             self.assertNotIn(name, polyspec.orm.__all__)
             self.assertTrue(callable(getattr(testing, name)), name)
 
+    # Requirements: INT-148, PRT-47, PRT-57, PRT-62.
     def test_the_distribution_holds_the_test_entry_point_that_no_import_loads(self):
         # Requirements: PRT-47, PRT-57, PRT-62.
         # As with testing/Faults.php in PHP, the distribution contains the test entry point, and the package entry point does not
@@ -344,6 +347,38 @@ class RollbackFaultEntryTest(unittest.TestCase):
             (PACKAGE / "src" / "polyspec" / "orm" / "testing" / "__init__.py").is_file()
         )
         assert_import_does_not_load_testing(self)
+
+
+class NativeFaultEntryUnitTest(unittest.TestCase):
+    # Requirements: INT-148, PRT-47, PRT-52, PRT-57, PRT-62.
+    deadline = testcase.COMPUTE
+
+    def test_test_fault_facade_sets_only_the_requested_connection_state(self):
+        db = SimpleNamespace(
+            _shared=SimpleNamespace(
+                rollback_fault=False,
+                statement_fault=None,
+                fixed_clock=None,
+                last_affected=7,
+            )
+        )
+
+        testing.fail_next_rollback(db)
+        self.assertTrue(db._shared.rollback_fault)
+        testing.fail_next_statement(db, "FAULT", "refused")
+        self.assertEqual(db._shared.statement_fault, ("FAULT", "refused"))
+        with self.assertRaises(ValueError):
+            testing.fail_next_statement(db, "", "refused")
+        self.assertEqual(db._shared.statement_fault, ("FAULT", "refused"))
+
+        testing.fix_clock(db, "2026-01-02 03:04:05.006007")
+        self.assertEqual(db._shared.fixed_clock, 1_767_323_045_006_007)
+        with self.assertRaises(ValueError):
+            testing.fix_clock(db, "2026-01-02 03:04:05")
+        self.assertEqual(db._shared.fixed_clock, 1_767_323_045_006_007)
+        self.assertEqual(testing.last_affected(db), 7)
+        db._shared.last_affected = None
+        self.assertIsNone(testing.last_affected(db))
 
 
 class HandleDisposalTest(unittest.TestCase):

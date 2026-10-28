@@ -11,6 +11,7 @@ from . import testcase
 
 class MysqlPlaceholders(unittest.TestCase):
     # Requirements: DIA-197.
+    # Requirements: INT-145, DIA-197.
     def test_question_marks_become_format_markers_in_order(self):
         self.assertEqual(for_mysql("SELECT ?, ?", [1, 2]), ("SELECT %s, %s", (1, 2)))
 
@@ -43,6 +44,7 @@ class MysqlPlaceholders(unittest.TestCase):
 
 
 class PostgresPlaceholders(unittest.TestCase):
+    # Requirements: INT-145, DIA-197.
     def test_numbered_markers_become_named_markers_and_may_repeat(self):
         self.assertEqual(
             for_postgres("SELECT $1, $2, $1", ["a", "b"]),

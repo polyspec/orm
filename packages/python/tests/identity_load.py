@@ -3,6 +3,7 @@
 # installs the fixture and then compiles each step's request with that database's Engine and runs it with Db.execute, and finally
 # reads the load_probe rows with the native driver using the file's read SQL and compares them. MySQL and PostgreSQL
 # require ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN, and the case fails if a variable is missing.
+# Requirements: INT-147, PRT-2, PRT-27.
 import contextlib
 import copy
 import json

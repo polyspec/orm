@@ -1307,7 +1307,8 @@
         "packages/php-ext/tests/DecimalModelTestExtensionTest.php",
         "packages/php-ext/tests/GroupRowsTestExtensionTest.php",
         "packages/php-ext/tests/InsertPartsTestExtensionTest.php",
-        "packages/php-ext/tests/ModelTestExtensionTest.php"
+        "packages/php-ext/tests/ModelTestExtensionTest.php",
+        "packages/rust/orm/src/value.rs"
       ],
       "docs": [
         "docs/spec/dsl.md",
@@ -10323,7 +10324,21 @@
         "postgres-listen-notify",
         "native-public-package-entry",
         "native-driver-error-cause",
-        "code-catalog-matches-errors-yaml"
+        "code-catalog-matches-errors-yaml",
+        "rust-value-types-native-contract",
+        "rust-row-value-decoding-native-contract",
+        "go-plan-id-native-contract",
+        "python-native-codegen-entry",
+        "python-native-mysql-driver-conversion",
+        "python-native-postgres-loader",
+        "python-native-mysql-placeholder",
+        "python-native-postgres-placeholder",
+        "python-native-clock-source",
+        "python-native-dialect-hooks-contract",
+        "python-native-test-fault-entry",
+        "python-native-test-fault-state",
+        "php-go-text-serialization-native-contract",
+        "php-extension-go-text-serialization-native-contract"
       ],
       "fixtures": [
         "contracts/interfaces.json",
@@ -10363,10 +10378,22 @@
         "packages/rust/orm/tests/package_entry.rs",
         "packages/python/tests/listen_notify.py",
         "packages/python/tests/test_package_entry.py",
+        "packages/python/tests/test_orm_gen.py",
+        "packages/python/tests/test_driver_cells.py",
+        "packages/python/tests/test_placeholders.py",
+        "packages/python/tests/test_clock_source.py",
+        "packages/python/tests/test_values.py",
+        "packages/python/tests/identity_load.py",
+        "packages/python/tests/test_sqlite_row_lock_restore.py",
+        "packages/python/tests/test_rollback_fault.py",
         "packages/php-ext/tests/DriverErrorTest.php",
         "packages/php-ext/tests/ListenNotifyNativeTest.php",
         "packages/php-ext/tests/QueryCancellationNativeTest.php",
-        "packages/php-ext/tests/CodeCatalogTestExtensionTest.php"
+        "packages/php-ext/tests/CodeCatalogTestExtensionTest.php",
+        "packages/rust/orm/src/value.rs",
+        "packages/rust/orm/src/row.rs",
+        "packages/php/tests/GoSerializationTest.php",
+        "packages/php-ext/tests/ModelNativeTest.php"
       ],
       "docs": [
         "docs/spec/interfaces.md",
@@ -10430,6 +10457,132 @@
             "packages/python/pyproject.toml",
             "packages/python/uv.lock"
           ]
+        },
+        {
+          "id": "rust-value-types-native-api",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts rust-value-types-native-api -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib value::checked_value_tests::invalid_or_lossy_values_report_decode_errors -- --exact --test-threads=1",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/orm/src/value.rs"
+          ]
+        },
+        {
+          "id": "rust-row-value-decoding-native-api",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts rust-row-value-decoding-native-api -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib row::native_cell_bytes_tests::sqlite_driver_row_bytes_remain_exact -- --exact --test-threads=1",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/orm/src/row.rs"
+          ]
+        },
+        {
+          "id": "go-plan-id-native-api",
+          "command": "node tests/go-test.mts -run '^TestPlanIDFixedWidthLowercaseHex$' ./packages/go/orm",
+          "shard": "other",
+          "inputs": [
+            "packages/go/orm/shape.go",
+            "packages/go/orm/shape_test.go"
+          ]
+        },
+        {
+          "id": "php-go-text-native-api",
+          "command": "make php-go-text-check",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "packages/php/tests/GoSerializationTest.php"
+          ]
+        },
+        {
+          "id": "php-extension-go-text-native-api",
+          "command": "make model-native-php-extension-check MODEL_NATIVE_TEST_FILTER=testGoTextMatchesGoFormatVectors",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "packages/php-ext/tests/ModelNativeTest.php",
+            "packages/php-ext/src/polyspec_orm.stub.php"
+          ]
+        },
+        {
+          "id": "python-native-codegen-entry",
+          "command": "packages/python/.venv/bin/python -m unittest packages.python.tests.test_orm_gen.OrmGenTest.test_generated_module_imports_and_builds_the_model",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_orm_gen.py",
+            "packages/python/src/polyspec/orm/generate/python.py",
+            "packages/python/src/polyspec/orm/generate/scan.py"
+          ]
+        },
+        {
+          "id": "python-native-mysql-driver-conversion",
+          "command": "packages/python/.venv/bin/python -m unittest packages.python.tests.test_driver_cells.MysqlCells.test_decimal_and_newdecimal_cells_are_their_exact_text",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_driver_cells.py",
+            "packages/python/src/polyspec/orm/driver_cells.py"
+          ]
+        },
+        {
+          "id": "python-native-postgres-loader",
+          "command": "packages/python/.venv/bin/python -m unittest packages.python.tests.test_driver_cells.PostgresCells.test_numeric_cells_load_as_text",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_driver_cells.py",
+            "packages/python/src/polyspec/orm/driver_cells.py"
+          ]
+        },
+        {
+          "id": "python-native-mysql-placeholder",
+          "command": "packages/python/.venv/bin/python -m unittest packages.python.tests.test_placeholders.MysqlPlaceholders.test_question_marks_become_format_markers_in_order",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_placeholders.py",
+            "packages/python/src/polyspec/orm/placeholders.py"
+          ]
+        },
+        {
+          "id": "python-native-postgres-placeholder",
+          "command": "packages/python/.venv/bin/python -m unittest packages.python.tests.test_placeholders.PostgresPlaceholders.test_numbered_markers_become_named_markers_and_may_repeat",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_placeholders.py",
+            "packages/python/src/polyspec/orm/placeholders.py"
+          ]
+        },
+        {
+          "id": "python-native-clock-source",
+          "command": "packages/python/.venv/bin/python -m unittest packages.python.tests.test_clock_source.WallMicrosTest.test_estimate_below_wall_clamps_and_reanchors",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_clock_source.py",
+            "packages/python/src/polyspec/orm/clock.py"
+          ]
+        },
+        {
+          "id": "python-native-dialect-hooks",
+          "command": "packages/python/.venv/bin/python -m unittest packages.python.tests.test_clock_source.NativeDialectHookTest.test_python_dialect_hooks_keep_their_native_forms",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_clock_source.py",
+            "packages/python/src/polyspec/orm/engine/dialect.py"
+          ]
+        },
+        {
+          "id": "python-native-test-fault-entry",
+          "command": "packages/python/.venv/bin/python -m unittest packages.python.tests.test_rollback_fault.RollbackFaultEntryTest.test_the_distribution_holds_the_test_entry_point_that_no_import_loads",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_rollback_fault.py",
+            "packages/python/src/polyspec/orm/testing/__init__.py"
+          ]
+        },
+        {
+          "id": "python-native-test-fault-state",
+          "command": "packages/python/.venv/bin/python -m unittest packages.python.tests.test_rollback_fault.NativeFaultEntryUnitTest.test_test_fault_facade_sets_only_the_requested_connection_state",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_rollback_fault.py",
+            "packages/python/src/polyspec/orm/testing/__init__.py"
+          ]
         }
       ],
       "coverage": {
@@ -10441,7 +10594,8 @@
           "go": {
             "part": "packages/go/orm",
             "tests": [
-              "packages/go/orm/coverage_interface_contract_test.go"
+              "packages/go/orm/coverage_interface_contract_test.go",
+              "packages/go/orm/shape_test.go"
             ],
             "inputs": [
               "tests/interfaces/check/*.mts",
@@ -10467,14 +10621,16 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoverageInterfaceContractTest.php"
+              "packages/php/tests/CoverageInterfaceContractTest.php",
+              "packages/php/tests/GoSerializationTest.php"
             ],
             "inputs": [
               "tests/interfaces/check/*.mts",
               "packages/go/internal/symbols/*.go",
               "contracts/interfaces.json",
               "contracts/symbols/php.json",
-              "packages/php/testing/interfaces/php.php"
+              "packages/php/testing/interfaces/php.php",
+              "packages/php/tests/GoSerializationTest.php"
             ],
             "commands": {
               "none": [
@@ -10494,7 +10650,9 @@
           "rust": {
             "part": "packages/rust/orm",
             "tests": [
-              "packages/rust/orm/tests/coverage_interface_contract.rs"
+              "packages/rust/orm/tests/coverage_interface_contract.rs",
+              "packages/rust/orm/src/value.rs",
+              "packages/rust/orm/src/row.rs"
             ],
             "inputs": [
               "tests/interfaces/check/*.mts",
@@ -10545,13 +10703,29 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_interface_contract.py"
+              "packages/python/tests/coverage_interface_contract.py",
+              "packages/python/tests/test_orm_gen.py",
+              "packages/python/tests/test_driver_cells.py",
+              "packages/python/tests/test_placeholders.py",
+              "packages/python/tests/test_clock_source.py",
+              "packages/python/tests/test_values.py",
+              "packages/python/tests/identity_load.py",
+              "packages/python/tests/test_sqlite_row_lock_restore.py",
+              "packages/python/tests/test_rollback_fault.py"
             ],
             "inputs": [
               "tests/interfaces/check/*.mts",
               "contracts/interfaces.json",
               "contracts/symbols/python.json",
-              "packages/python/testing/interfaces/python.py"
+              "packages/python/testing/interfaces/python.py",
+              "packages/python/tests/test_orm_gen.py",
+              "packages/python/tests/test_driver_cells.py",
+              "packages/python/tests/test_placeholders.py",
+              "packages/python/tests/test_clock_source.py",
+              "packages/python/tests/test_values.py",
+              "packages/python/tests/identity_load.py",
+              "packages/python/tests/test_sqlite_row_lock_restore.py",
+              "packages/python/tests/test_rollback_fault.py"
             ],
             "commands": {
               "none": [
@@ -10568,10 +10742,12 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/CoverageInterfaceContractNativeTest.php"
+              "packages/php-ext/tests/CoverageInterfaceContractNativeTest.php",
+              "packages/php-ext/tests/ModelNativeTest.php"
             ],
             "inputs": [
-              "contracts/symbols/php-extension.json"
+              "contracts/symbols/php-extension.json",
+              "packages/php-ext/tests/ModelNativeTest.php"
             ],
             "commands": {
               "none": [
