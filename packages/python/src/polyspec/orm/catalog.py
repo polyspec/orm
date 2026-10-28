@@ -211,23 +211,7 @@ def _mysql_datetime_text(value, precision: int) -> str:
             codes.CATALOG_VALUE,
             f"unsupported native type {type(value).__name__}",
         )
-    if value.tzinfo is not None:
-        raise _error(codes.CATALOG_VALUE, "MySQL DATETIME unexpectedly has a time zone")
-    if not 0 <= precision <= 6:
-        raise _error(
-            codes.CATALOG_VALUE, f"invalid MySQL DATETIME precision {precision}"
-        )
-    if value.microsecond % 10 ** (6 - precision) != 0:
-        raise _error(codes.CATALOG_VALUE, "datetime exceeds its declared precision")
-    base = (
-        f"{value.year:04d}-{value.month:02d}-{value.day:02d} "
-        f"{value.hour:02d}:{value.minute:02d}:{value.second:02d}"
-    )
-    return (
-        base
-        if precision == 0
-        else f"{base}.{value.microsecond:06d}"[: len(base) + precision + 1]
-    )
+    return _datetime_text(value, precision, "MySQL DATETIME")
 
 
 def _mysql_catalog_value(value, code, precision: int):
@@ -299,13 +283,16 @@ def _postgres_time_text(value: datetime_time, precision: int) -> str:
 
 def _postgres_datetime_text(value: datetime, precision: int) -> str:
     """A psycopg TIMESTAMP result as dbspec text at its declared precision."""
+    return _datetime_text(value, precision, "PostgreSQL TIMESTAMP")
+
+
+def _datetime_text(value: datetime, precision: int, native_type: str) -> str:
+    """Formats a naive datetime at exact declared precision for a driver comparison."""
     if value.tzinfo is not None:
-        raise _error(
-            codes.CATALOG_VALUE, "PostgreSQL TIMESTAMP unexpectedly has a time zone"
-        )
+        raise _error(codes.CATALOG_VALUE, f"{native_type} unexpectedly has a time zone")
     if not 0 <= precision <= 6:
         raise _error(
-            codes.CATALOG_VALUE, f"invalid PostgreSQL TIMESTAMP precision {precision}"
+            codes.CATALOG_VALUE, f"invalid {native_type} precision {precision}"
         )
     if value.microsecond % 10 ** (6 - precision) != 0:
         raise _error(codes.CATALOG_VALUE, "datetime exceeds its declared precision")
