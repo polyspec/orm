@@ -1585,6 +1585,7 @@ final class Db
     /** @internal */
     public function fetch(string $kind, array $tables, ?int $transaction, string $sql, array $args = [], bool $control = false): array {}
     public static function bindLimit(string $driver): int {}
+    /** @internal */
     public static function insertParts(int $rows, int $batch): array {}
     /** @internal */
     public static function activeFor(Db $db): ?TxFrame {}
