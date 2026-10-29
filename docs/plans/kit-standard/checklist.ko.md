@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 53a10e2477bfeddc6d08cbdbc2ee6124ecb09a1986c69b269fb1feaf39a6a7b9 -->
+<!-- source-sha256: 0fa7cd3cb8f340ed07343cbe44d5bcad3ff4d9a112a205f963dcc5fef388d0af -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -360,3 +360,4 @@
 | KSTD-5-101 | orm은 release된 kit 0.0.66을 채택한다: pin, 그 lock, 동기화된 kit 파일. 원인: gates workflow가 ci.json schema에 runner가 없는 lock된 kit 0.0.63에서 실패한다(run 40827783727, ca6805dcb). review 기록은 갱신하지 않는다: 그 advisory query는 GOWORK off로 examples module을 읽지 못하고, KSTD-5-100이 review와 policy를 삭제한다 | package.json, package-lock.json, the files of make kit-sync | `make kit-check kit-ci-plan` | [o] |
 | KSTD-5-102 | orm은 Python을 uv만으로 lock한다(kit K789): config/release.json에는 consumers.wheel.polyspec이 없고, config/dependency-policy.json과 packages/python/constraints.txt는 삭제되며, make orm-python-lock이 uv lock과 uv export로 packages/python/pylock.toml을 쓴다. 원인: kit이 python-lock과 dependency policy를 삭제한다 | config/release.json, config/dependency-policy.json, packages/python/constraints.txt, packages/python/pylock.toml, Makefile, docs/operations/packaging.md | `make orm-python-lock release-coverage` | [o] |
 | KSTD-5-103 | orm에는 main writer hook이 없다: 추적되는 .githooks/reference-transaction을 삭제하고, make hooks가 commit하는 git의 기록 없이 .githooks/pre-commit을 쓴다. 원인: kit K801이 그 hook과 writer 변수를 삭제한다 | .githooks/reference-transaction, .githooks/pre-commit | `make hooks-check` | [o] |
+| KSTD-5-104 | orm은 build-system.requires로 uv build해 wheel을 만들고 Python client를 uv sync로 non-editable 설치한다(kit K788, K803): config/toolchain.json에는 pythonBackend가 없고, AGENTS.md와 packaging.md는 uv build를 말하며, make orm-install-python은 uv sync --locked --no-editable --group test로 packages/python/.venv에 설치하고 make link가 그것을 checkout의 link로 바꾼다. 원인: kit이 build backend pin을 삭제하고, 그 python symbols가 non-editable 환경의 설치 file 목록을 읽는다 | config/toolchain.json, Makefile, scripts/repo/python-venv.test.mts, AGENTS.md, docs/operations/packaging.md | `make repo-check/unit kit-check` | [ ] |
