@@ -3,16 +3,12 @@
 
 ## Unreleased
 
+- orm has no release consumer projects, release proof, push gate workflow or commits check, which kit K798, K804 and K805 delete: config/release.json has no consumers and no proof, tests/release-consumer and .github/workflows/push-gate.yml are deleted, and the commit identity test and the subject rule go with config/commit-identity.json. (KSTD-5-106)
 - packages/python/tests/coverage_catalog_connection.py is in the format of the pinned ruff format. (T250)
-
 - make duplication-check finds no clone: the PHP without-MySQL test, the parity context test and the performance reference recorder share their child runner, command helpers and git reader, and the parity context test expects the interfaces TypeScript in the ts setup. (T249)
-
 - orm runs the hooks of kit K805: .githooks/pre-commit no longer calls the deleted commit gates, and .githooks/pre-merge-commit and config/commit-identity.json are deleted. (KSTD-5-107)
-
 - orm has no pre-push hook: .githooks/pre-push is deleted with the kit K804 push gate, and config/checklist.json hooks names commit-msg and pre-commit. (KSTD-5-105)
-
 - The TypeScript binding commands of config/parity.json run the node:test reporter of the kit that make includes (${ORM_NODE_REPORTER}), not a local build of kit dist. (T248)
-
 - Every tracked lock file has an owner again: the lock of the interface TypeScript is an input of interface-typescript-extractor-check, and the release consumer locks declare their scope. (T247)
 - The repository tests of the CI tool selection and of orm-install-python match the invoked install-tools target, since kit K762 passes KIT and KIT_EXT on every recursive make. (T245)
 - The runtime path check of make repo-check accepts TEST_ENV ?= .runtime/servers/env, the server environment that a run may override since KSTD-5-94. (T246)

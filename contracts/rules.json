@@ -125,12 +125,6 @@
       "source": "docs/plans/execution/checklist.md",
       "checker": "docs-check",
       "failure": "a checklist item is marked complete without implementation, test, documentation, and publication evidence"
-    },
-    {
-      "id": "git.subject-format",
-      "source": "config/commits.json",
-      "checker": "commits-check",
-      "failure": "a commit of the checked range (RANGE, otherwise HEAD) does not use type(scope): Subject (#id) with a body, or breaks the limits of config/commits.json"
     }
   ]
 }

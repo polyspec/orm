@@ -1,5 +1,5 @@
 <!-- doc-id: packaging -->
-<!-- source-sha256: 30373159f9aa78d6a95082d081c3b4a47024fb4317b41cfce179601ccec59731 -->
+<!-- source-sha256: 1af623b6b9db69e34a3eb79eb6fa85d119cb728c38bbc7fd699ecbd3ba7469ae -->
 # 패키징 결정
 
 | 결정 | 선택 | 이유 | 변경 조건 |
@@ -40,7 +40,7 @@
   }
   ```
 
-  client는 `purrphp/yaml` `1.0.0-p1`을 요구한다. 이는 fork https://github.com/min-0-max/yaml 의 release로, plain scalar를 YAML 1.2.2의 core schema(10.3.2절)로 읽는다. upstream 1.0.0 release는 그렇게 읽지 않는다. Composer는 `repositories`를 project의 root manifest에서만 읽고 의존성의 manifest에서는 읽지 않으므로, orm package는 이 source를 consumer에게 전달할 수 없다: consumer가 위처럼 `vcs` repository를 직접 선언하며, tests/release-consumer/composer도 같이 한다. `no-api`는 Composer가 GitHub API에 묻지 않고 공개 repository를 HTTPS로 clone하게 한다. 그렇지 않으면 API의 익명 rate limit(HTTP 403)이 Composer가 key가 필요한 SSH clone으로 넘어간다.
+  client는 `purrphp/yaml` `1.0.0-p1`을 요구한다. 이는 fork https://github.com/min-0-max/yaml 의 release로, plain scalar를 YAML 1.2.2의 core schema(10.3.2절)로 읽는다. upstream 1.0.0 release는 그렇게 읽지 않는다. Composer는 `repositories`를 project의 root manifest에서만 읽고 의존성의 manifest에서는 읽지 않으므로, orm package는 이 source를 consumer에게 전달할 수 없다: consumer가 위처럼 `vcs` repository를 직접 선언한다. `no-api`는 Composer가 GitHub API에 묻지 않고 공개 repository를 HTTPS로 clone하게 한다. 그렇지 않으면 API의 익명 rate limit(HTTP 403)이 Composer가 key가 필요한 SSH clone으로 넘어간다.
 
   `polyspec/orm-php-ext`는 type `php-ext`다: PIE가 build하고 설치하며, Composer는 설치하지 않는다.
 
@@ -48,7 +48,7 @@
 
 Python client인 `packages/python/pyproject.toml`(배포 이름 `polyspec-orm`)은 PEP 427 wheel `polyspec_orm-<version>-py3-none-any.whl`로 release되며, GitHub Release의 asset으로 npm과 Composer archive 곁에 놓인다. `make release-assets TAG=vX.Y.Z`가 tag된 commit에서 wheel을 만들고, 그때 `config/release.json`의 `buildBackend`가 고정한 build backend(`setuptools==84.0.0`, sha256을 build마다 확인)를 쓴다. wheel은 `<package>-<language>-<version>.<ext>` 형식의 archive가 아니므로 PEP 427 이름을 유지한다.
 
-wheel의 `Requires-Dist`는 registry package이면 정확한 `name==version`이고, polyspec package이면 asset의 sha256을 붙인 direct reference다(kit K49): `polyspec-ordered-json @ https://github.com/polyspec/ordered-json/releases/download/v0.0.9/polyspec_ordered_json-0.0.9-py3-none-any.whl#sha256=bc4d…f01d`. ordered-json은 어떤 package index에도 없고 참조가 그 release asset을 가리키므로, lock 없는 pip install도 GitHub에서 받으며 package index에 그 이름을 묻지 않는다. `config/release.json`은 wheel의 lock을 `consumers.wheel.lock`에 선언한다. `packages/python/pylock.toml`(PEP 751)은 transitive를 포함한 모든 의존성을 file마다 sha256과 함께 담고, ordered-json은 같은 URL과 sha256의 archive 항목으로 담는다. uv가 그것을 쓴다: `make orm-python-lock`은 `packages/python/pyproject.toml`에서 `packages/python/uv.lock`을 기록하는 `uv lock`과, 그 lock의 runtime 의존성을 쓰는 `uv export --frozen --no-default-groups --no-emit-project --format pylock.toml -o pylock.toml`을 실행한다. `make orm-install-python`은 lock을 `--require-hashes`로 설치하므로 각 파일이 sha256으로 검사된다. venv의 group test는 lock에 없으며 그 뒤에 설치한다. wheel은 Python 3.14와 CPython만 지원한다: `requires-python`은 `>=3.14`이며, CI가 test하는 `mise.toml` Python의 minor release이고 그보다 오래된 release는 아니다. 의존성 `polyspec-ordered-json==0.0.9`이 3.14를 요구하기 때문이다. `packages/python/tests/test_requires_python.py`가 둘을 비교한다. orm의 toolchain은 python-build-standalone의 CPython이며, package는 classifier `Programming Language :: Python :: Implementation :: CPython`을 선언한다. 그래서 `psycopg-binary==3.3.6` 의존성은 다른 구현을 위한 marker 없이 psycopg의 binary build를 직접 이름 붙인다.
+wheel의 `Requires-Dist`는 registry package이면 정확한 `name==version`이고, polyspec package이면 asset의 sha256을 붙인 direct reference다(kit K49): `polyspec-ordered-json @ https://github.com/polyspec/ordered-json/releases/download/v0.0.9/polyspec_ordered_json-0.0.9-py3-none-any.whl#sha256=bc4d…f01d`. ordered-json은 어떤 package index에도 없고 참조가 그 release asset을 가리키므로, lock 없는 pip install도 GitHub에서 받으며 package index에 그 이름을 묻지 않는다. wheel의 lock인 `packages/python/pylock.toml`(PEP 751)은 transitive를 포함한 모든 의존성을 file마다 sha256과 함께 담고, ordered-json은 같은 URL과 sha256의 archive 항목으로 담는다. uv가 그것을 쓴다: `make orm-python-lock`은 `packages/python/pyproject.toml`에서 `packages/python/uv.lock`을 기록하는 `uv lock`과, 그 lock의 runtime 의존성을 쓰는 `uv export --frozen --no-default-groups --no-emit-project --format pylock.toml -o pylock.toml`을 실행한다. `make orm-install-python`은 lock을 `--require-hashes`로 설치하므로 각 파일이 sha256으로 검사된다. venv의 group test는 lock에 없으며 그 뒤에 설치한다. wheel은 Python 3.14와 CPython만 지원한다: `requires-python`은 `>=3.14`이며, CI가 test하는 `mise.toml` Python의 minor release이고 그보다 오래된 release는 아니다. 의존성 `polyspec-ordered-json==0.0.9`이 3.14를 요구하기 때문이다. `packages/python/tests/test_requires_python.py`가 둘을 비교한다. orm의 toolchain은 python-build-standalone의 CPython이며, package는 classifier `Programming Language :: Python :: Implementation :: CPython`을 선언한다. 그래서 `psycopg-binary==3.3.6` 의존성은 다른 구현을 위한 marker 없이 psycopg의 binary build를 직접 이름 붙인다.
 
 psycopg의 binary extra는 그것이 펼쳐지는 두 plain requirement `psycopg==3.3.6`과 `psycopg-binary==3.3.6`으로 적는다. 그 extra는 PyPy를 제외하는데 plain requirement로는 그것을 나타낼 수 없으므로, PyPy에서도 `psycopg-binary`를 요구한다.
 

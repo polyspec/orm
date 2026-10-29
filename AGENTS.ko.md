@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: e25cafa9725d2adb19e48e05250ab0025b88cdc8372adf737fc7964148b23608 -->
+<!-- source-sha256: 8a50a842164d61531a4bbe7ff9c2944f0db18f21cc3d7fe6f05bb6d7b0863304 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -8,14 +8,14 @@
 orm 자신의 규칙만 적는다.
 
 - Own: 사용자 지시가 우선이다. 로컬에서 개발하고, GitHub 원격 저장소에는 아래 push 규칙이 허용할 때만 push한다.
-  Enforced by: `.githooks/pre-push`
+  Enforced by: none, review에서의 판단이다
 - Own: 0.x workflow에는 pull request, merge queue, ruleset이 없다. 항목마다 로컬에서 작업한다: 항목은 commit한 tree에서 그
   unit test가 통과하면 `[o]`가 된다. `main`에는 `[~]`인 항목이 없고 그 push의 작업이 끝났을 때 한 번 push한다. 그
-  push의 CI(`push-gate`와 `.github/workflows/ci.yml`의 job `ci-passed`)가 성공해야 version을 올리는 commit과 tag를
+  push의 CI(`.github/workflows/ci.yml`의 job `ci-passed`)가 성공해야 version을 올리는 commit과 tag를
   만든다. tag를 만들고 옮기고 push하는 것은 maintainer뿐이며, tag의 push가 release workflow를 실행한다. release
   asset의 이름은 `<package>-<language>-<version>.<ext>`이다(예: `polyspec-orm-npm-X.Y.Z.tgz`). Python wheel은 PEP 427 이름
   `polyspec_orm-X.Y.Z-py3-none-any.whl`을 유지한다.
-  Enforced by: `.githooks/pre-push`
+  Enforced by: `make release-verify`
 - Own: 공유 도구는 npm package `@polyspec/kit`이며, `package.json`의 devDependency로 그 release의 asset과 integrity에
   고정한다. bootstrap source는 형제 Kit checkout에 있다. Makefile은 `../kit/scripts/kit/kit-bootstrap.mk`를 include하며,
   이 파일은 package가 생기기 전에 고정한 npm을 설치한 뒤 `package-lock.json`을 설치한다. 새 checkout에는 형제 Kit
@@ -130,16 +130,12 @@ orm 자신의 규칙만 적는다.
   Enforced by: none, code가 파일을 찾는 방식을 읽는 검사가 없다
 - Refines P20: 개발하는 동안에는 unit test만 실행한다: 바뀐 것의 unit case다. end-to-end 실행(실제 database
   server, 언어 사이의 conformance, container, 전체 build), `make owner-check`, 전체 묶음은 push 뒤
-  CI에서 실행하며, push 전에 필요한 로컬 검사는 없다. CI 보고서를 하나씩 읽고 찾은 것을 고친다. push는 `[~]`인 체크리스트 항목이 없을
-  때만 한다. pre-push hook `.githooks/pre-push`는 `make push-gate-hook`으로 kit의 push gate를 실행하고, gate는 push하는
-  commit이나 working tree에 `[~]` 항목이 있으면 push를 거부하며, CI workflow `push-gate`가 모든 push에서 그 commit을
-  다시 검사한다(`make push-gate-commit`). `make hooks`는 `core.hooksPath`를 두고, `make hooks-check`와 전체 묶음의 guard는
-  hook이 없는 checkout을 거부한다. CI 실패는 체크리스트 항목으로 고친다. CI 실행이 진행 중일 때 그것에 대응하려고 다시 push하지 않는다.
-  Enforced by: `.githooks/pre-push`
+  CI에서 실행하며, push 전에 필요한 로컬 검사는 없다. CI 보고서를 하나씩 읽고 찾은 것을 고친다. CI 실패는 체크리스트
+  항목으로 고친다. CI 실행이 진행 중일 때 그것에 대응하려고 다시 push하지 않는다.
+  Enforced by: none, review에서의 판단이다
 - Own: `.github/workflows/ci.yml`이 저장소의 모든 검사를 가지고 `main`으로의 push와 수동 실행에서 실행된다. 마지막 job
   `ci-passed`는 job `test`(CI group마다 job 하나)와 `docs`가 실패해도 그 뒤에 실행되고 그 모두가 성공했을 때만
-  통과한다(`make ci-passed`). `.github/workflows/push-gate.yml`은 모든 push에서 push gate를 실행하고,
-  `.github/workflows/docs-pages.yml`은 `main`의 site를 build하고 deploy만 한다.
+  통과한다(`make ci-passed`). `.github/workflows/docs-pages.yml`은 `main`의 site를 build하고 deploy만 한다.
   Enforced by: `make repo-check`
 - Own: `make orm-check`는 어떤 단계보다 먼저 kit의 guard(`full-run`)를 실행한다: 체크리스트 항목(하위 항목 포함)이
   `[~]`인 동안, 추적하는 file에 commit하지 않은 변경이 있는 동안, Git hook이 설치되지 않은 동안, 그리고
@@ -249,11 +245,11 @@ orm 자신의 규칙만 적는다.
   `composer update --lock`으로 다시 lock하며(lock의 content-hash가 `version`을 덮는다), CHANGELOG.md와 CHANGELOG.ko.md에서 `## Unreleased`를 새 빈 `## Unreleased`
   아래의 `## X.Y.Z`로 바꾼다.
   Enforced by: `make release-versions`
-- Own: 그 commit의 CI(`push-gate`와 `ci-passed`)가 성공한 뒤 maintainer가 그 commit에 `vX.Y.Z`를 tag하고 같은 commit의 Go module
+- Own: 그 commit의 CI(`ci-passed`)가 성공한 뒤 maintainer가 그 commit에 `vX.Y.Z`를 tag하고 같은 commit의 Go module
   tag `packages/go/vX.Y.Z`와 함께 push한다. 그 tag가 Go module `github.com/polyspec/orm/packages/go`를 release한다. tag를 만들고 옮기고 push하는 것은 maintainer뿐이다.
   Enforced by: none, 누가 tag를 만드는지 보는 검사가 없다. tag push는 release workflow를 실행한다
 - Own: tag의 push는 `.github/workflows/release.yml`을 실행하고, 그것이 GitHub Release를 게시한다: `make release-verify`
-  (commit이 `main`에 있고 그 check `push-gate`와 `ci-passed`가 성공했다), `make release-versions`(release하는 모든
+  (commit이 `main`에 있고 그 check `ci-passed`가 성공했다), `make release-versions`(release하는 모든
   manifest가 X.Y.Z를 가지고, `packages/go/go.mod`의 module path가 `github.com/polyspec/orm/packages/go`이며, 변경 이력에 그 section이 있다),
   `make release-assets`(`@polyspec/orm`의 `polyspec-orm-npm-X.Y.Z.tgz`, `polyspec/orm`의 `polyspec-orm-php-X.Y.Z.zip`,
   `polyspec/orm-php-ext`의 `polyspec-orm-php-ext-php-X.Y.Z.zip`, `polyspec-orm`의 `polyspec_orm-X.Y.Z-py3-none-any.whl`), `make release-publish`(그 section의 notes로 만든

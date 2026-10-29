@@ -74,7 +74,7 @@ const workflows = ownWorkflows(allWorkflows, kitOwned);
 failures.push(...ciMakeErrors(workflows));
 // Workflows that run on push declare concurrency so that a new push ends the earlier run.
 failures.push(...concurrencyErrors(workflows));
-// ci.yml, push-gate.yml and docs-pages.yml run only on the events they declare, and the other workflows
+// ci.yml and docs-pages.yml run only on the events they declare, and the other workflows
 // do not run on push, pull_request, merge_group.
 failures.push(...workflowTriggerErrors(workflows));
 // Every target of CHECK_TARGETS declares its scope in contracts/check-inputs.json, and owner targets make

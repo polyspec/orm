@@ -58,8 +58,8 @@ jobs:
     # and every other target runs. A failed step fails the job. The checkout
     # and Node are what the runner itself needs.
     steps:
-      # commits-check reads the message of HEAD and the kit tools read the
-      # commit graph, so the checkout carries the full commit graph.
+      # The kit tools read the commit graph, so the checkout carries the full
+      # commit graph.
       - uses: actions/checkout@v5
         id: checkout
         with:

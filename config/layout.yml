@@ -62,8 +62,6 @@ rules:
       - "!tests/timing"
       # The time zone that WITH_TEST_ENV gives the PHP of every database client.
       - "!tests/timezone"
-      # The consumer projects in which the release installs its archives (config/release.json consumers).
-      - "!tests/release-consumer"
       # The tests of the repository's tools: the CLI install, the dbs fence of the documentation site, and the lease,
       # session and process programs of the check runner.
       - "!tests/cli"

@@ -260,7 +260,7 @@ const workflows = ownWorkflows(Object.fromEntries(readdirSync(new URL('.github/w
 const mise = (version: string) => version ? `[tools]\nnode = "${version}"\n` : '[tools]\n';
 
 caseTest('the checks and every workflow run the Node of mise.toml', COMPUTE, () => {
-  assert.deepEqual(Object.keys(workflows), ['.github/workflows/ci.yml', '.github/workflows/docs-pages.yml', '.github/workflows/push-gate.yml']);
+  assert.deepEqual(Object.keys(workflows), ['.github/workflows/ci.yml', '.github/workflows/docs-pages.yml']);
   assert.deepEqual(nodeVersionErrors(declared, minimum, workflows, process.versions.node), []);
 });
 
@@ -936,14 +936,6 @@ caseTest('the workflow rules skip workflows owned by @polyspec/kit', COMPUTE, ()
   assert.deepEqual(ownWorkflows(all, kitWorkflowPaths), { '.github/workflows/ci.yml': 'a' });
   assert.deepEqual(ownWorkflows({ 'ci.yml': 'a', 'release.yml': 'b' }, kitWorkflowPaths), { 'ci.yml': 'a' });
   assert.throws(() => ownWorkflows(all, null), /no Kit-owned paths/);
-});
-
-// The commit identity is declared, so commits-check enforces it: config/commit-identity.json is the kit copy of this
-// repository's identity, which AGENTS.md rules (KSTD-5-17).
-caseTest('the repository declares its commit identity, which commits-check enforces', COMPUTE, () => {
-  const identity = new URL('../../config/commit-identity.json', import.meta.url).pathname;
-  assert.ok(existsSync(identity), 'config/commit-identity.json is missing; run make kit-sync to write the kit copy');
-  assert.deepEqual(JSON.parse(readFileSync(identity, 'utf8')), { schema: 1, name: 'min-0-max', email: 'max@blue.tools' });
 });
 
 caseTest('the copies and owners of @polyspec/kit are read from the installed package', COMPUTE, () => {
@@ -1900,7 +1892,7 @@ caseTest('a test does not fail on a measured time above a bound', COMPUTE, () =>
   assert.throws(() => timeFailureErrors({ 'a_test.go': 'package a\n' }), /timeFailureErrors reads no Go source \(a_test\.go\); go vet runs the analyzer timefailure of tests\/analyzers over it/);
 });
 
-// The trigger case (G5.98) checks that the `on:` blocks of ci.yml, push-gate.yml and docs-pages.yml match their declarations, and that other workflows do not run on push,
+// The trigger case (G5.98) checks that the `on:` blocks of ci.yml and docs-pages.yml match their declarations, and that other workflows do not run on push,
 // pull_request or merge_group.
 caseTest('every workflow runs on its declared events only', COMPUTE, () => {
   const root = new URL('../..', import.meta.url).pathname;
@@ -1916,16 +1908,16 @@ caseTest('every workflow runs on its declared events only', COMPUTE, () => {
   assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/docs-pages.yml': text(['on:', '  push:', '    branches: [main]', '  pull_request:', '  workflow_dispatch:']) }), [
     '.github/workflows/docs-pages.yml has the triggers {"push":{"branches":["main"]},"pull_request":null,"workflow_dispatch":null} instead of {"push":{"branches":["main"]},"workflow_dispatch":null}',
   ]);
-  const { ['.github/workflows/push-gate.yml']: _, ...withoutGate } = declared;
-  assert.deepEqual(workflowTriggerErrors({ ...withoutGate, '.github/workflows/review.yml': text(['on:', '  schedule:', "    - cron: '0 3 * * 1'", '  pull_request:']) }), [
-    '.github/workflows/push-gate.yml is missing; it runs on {"push":{"branches":["**"]}}',
-    '.github/workflows/review.yml runs on pull_request; only ci.yml, push-gate.yml and docs-pages.yml run on these events',
+  const { ['.github/workflows/docs-pages.yml']: _, ...withoutPages } = declared;
+  assert.deepEqual(workflowTriggerErrors({ ...withoutPages, '.github/workflows/review.yml': text(['on:', '  schedule:', "    - cron: '0 3 * * 1'", '  pull_request:']) }), [
+    '.github/workflows/docs-pages.yml is missing; it runs on {"push":{"branches":["main"]},"workflow_dispatch":null}',
+    '.github/workflows/review.yml runs on pull_request; only ci.yml and docs-pages.yml run on these events',
   ]);
   assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/review.yml': text(['on:', '  schedule:', "    - cron: '0 3 * * 1'", '  workflow_dispatch:']) }), []);
   // release.yml is owned by Kit, so the table holds no entry for it (KSTD-5-25).
   assert.equal(Object.hasOwn(WORKFLOW_TRIGGERS, '.github/workflows/release.yml'), false);
   assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/release.yml': text(['on:', '  push:', '    branches: [main]']) }), [
-    '.github/workflows/release.yml runs on push; only ci.yml, push-gate.yml and docs-pages.yml run on these events',
+    '.github/workflows/release.yml runs on push; only ci.yml and docs-pages.yml run on these events',
   ]);
 });
 

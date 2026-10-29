@@ -673,7 +673,6 @@ fi
 `;
 export const CI_RUN_EXCEPTIONS: Record<string, Record<string, string>> = {
   '.github/workflows/ci.yml': { 'bootstrap the installed kit package': KIT_BOOTSTRAP_COMMAND, summary: 'node scripts/check/summary.mts' },
-  '.github/workflows/push-gate.yml': { 'bootstrap the installed kit package': KIT_BOOTSTRAP_COMMAND },
   '.github/workflows/docs-pages.yml': { 'bootstrap the installed kit package': KIT_BOOTSTRAP_COMMAND },
 };
 
@@ -693,12 +692,10 @@ export function ciMakeErrors(workflows: Record<string, string>): string[] {
 }
 
 // WORKFLOW_TRIGGERS is the `on:` value of each workflow. ci.yml runs all check jobs on pushes to main and on manual runs,
-// push-gate.yml runs the push gate on every push,
 // docs-pages.yml builds and deploys the public site on pushes to main and on manual runs. The workflows Kit owns (release.yml
 // among them) are not in this table. No other workflow of this repository runs on push, pull_request, or merge_group.
 export const WORKFLOW_TRIGGERS: Record<string, unknown> = {
   '.github/workflows/ci.yml': { push: { branches: ['main'] }, workflow_dispatch: null },
-  '.github/workflows/push-gate.yml': { push: { branches: ['**'] } },
   '.github/workflows/docs-pages.yml': { push: { branches: ['main'] }, workflow_dispatch: null },
 };
 
@@ -715,7 +712,7 @@ export function workflowTriggerErrors(workflows: Record<string, string>): string
   for (const [path, workflow] of Object.entries(workflows)) {
     if (Object.hasOwn(WORKFLOW_TRIGGERS, path)) continue;
     const ran = events(readWorkflow(workflow, path)).filter(event => ['push', 'pull_request', 'merge_group'].includes(event));
-    if (ran.length) errors.push(`${path} runs on ${ran.join(', ')}; only ci.yml, push-gate.yml and docs-pages.yml run on these events`);
+    if (ran.length) errors.push(`${path} runs on ${ran.join(', ')}; only ci.yml and docs-pages.yml run on these events`);
   }
   return errors;
 }

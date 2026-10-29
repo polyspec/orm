@@ -8,16 +8,16 @@ vendors; this file states only the rules of orm.
 
 - Own: The user's instructions take precedence. Develop locally; the GitHub remote receives a push only
   as the push rule below allows.
-  Enforced by: `.githooks/pre-push`
+  Enforced by: none, a judgement at review
 - Own: The 0.x workflow has no pull request, merge queue or ruleset. Work locally item by item: an item
   becomes `[o]` when its unit tests pass on the committed tree. `main` receives one push, when no
-  item is `[~]` and the work of the push is complete; the CI of that push must succeed (`push-gate`
-  and the job `ci-passed` of `.github/workflows/ci.yml`) before the version-bump commit and the tag.
+  item is `[~]` and the work of the push is complete; the CI of that push must succeed (the job
+  `ci-passed` of `.github/workflows/ci.yml`) before the version-bump commit and the tag.
   Only the maintainer creates, moves or pushes a tag, and the push of a tag runs the release
   workflow. A release asset is named `<package>-<language>-<version>.<ext>`, for example
   `polyspec-orm-npm-X.Y.Z.tgz`; the Python wheel keeps its PEP 427 name,
   `polyspec_orm-X.Y.Z-py3-none-any.whl`.
-  Enforced by: `.githooks/pre-push`
+  Enforced by: `make release-verify`
 - Own: The shared tools are the npm package `@polyspec/kit`, a devDependency of `package.json` pinned to
   the asset of its release with its integrity. The bootstrap source is in the sibling Kit checkout:
   the Makefile includes `../kit/scripts/kit/kit-bootstrap.mk`, which installs the pinned npm before
@@ -157,18 +157,12 @@ vendors; this file states only the rules of orm.
 - Refines P20: During development run unit tests only: the unit cases of what changed. End-to-end runs
   (real database servers, conformance across languages, containers, full builds),
   `make owner-check` and the full suite run in CI after the push, and no local check is required
-  before a push; read each CI report and fix what it finds. A push happens only when no checklist
-  item is `[~]`: the pre-push hook
-  `.githooks/pre-push` runs the push gate of kit through `make push-gate-hook`, which refuses a push while
-  an item is `[~]` in a pushed commit or the working tree, and the CI workflow `push-gate` checks
-  the commit again on every push (`make push-gate-commit`). `make hooks` sets `core.hooksPath`, and
-  `make hooks-check` and the full suite's guard refuse a checkout without the hook. A CI failure is
-  fixed as a checklist item; while a CI run is in progress, do not push again to react to it.
-  Enforced by: `.githooks/pre-push`
+  before a push; read each CI report and fix what it finds. A CI failure is fixed as a checklist
+  item; while a CI run is in progress, do not push again to react to it.
+  Enforced by: none, a judgement at review
 - Own: `.github/workflows/ci.yml` holds every check of the repository and runs on a push to `main` and on
   a manual run; its last job `ci-passed` runs after the jobs `test` (one job per CI group) and `docs`,
   also after a failed one, and passes only when every one of them succeeded (`make ci-passed`).
-  `.github/workflows/push-gate.yml` runs the push gate on every push, and
   `.github/workflows/docs-pages.yml` only builds and deploys the site of `main`.
   Enforced by: `make repo-check`
 - Own: `make orm-check` runs the guard of kit (`full-run`) before any step: it refuses while a
@@ -288,12 +282,12 @@ vendors; this file states only the rules of orm.
   and renames `## Unreleased` to `## X.Y.Z` in CHANGELOG.md and CHANGELOG.ko.md, below a new empty
   `## Unreleased`.
   Enforced by: `make release-versions`
-- Own: After the CI of that commit succeeded (`push-gate` and `ci-passed`), the maintainer tags it
+- Own: After the CI of that commit succeeded (`ci-passed`), the maintainer tags it
   `vX.Y.Z` and pushes it with the Go module tag `packages/go/vX.Y.Z` at the same commit, which
   releases the Go module `github.com/polyspec/orm/packages/go`. Only the maintainer creates, moves or pushes a tag.
   Enforced by: none, no check sees who creates a tag; the tag push runs the release workflow
 - Own: The push of the tag runs `.github/workflows/release.yml`, which publishes the GitHub Release:
-  `make release-verify` (the commit is on `main` and its checks `push-gate` and `ci-passed`
+  `make release-verify` (the commit is on `main` and its check `ci-passed`
   succeeded), `make release-versions` (every released manifest carries X.Y.Z, the module path of
   `packages/go/go.mod` is `github.com/polyspec/orm/packages/go` and the changelogs have its section), `make release-assets`
   (`polyspec-orm-npm-X.Y.Z.tgz` of `@polyspec/orm`, `polyspec-orm-php-X.Y.Z.zip` of `polyspec/orm`,

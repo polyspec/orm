@@ -1,19 +1,15 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c5df81e2ecc478b603ff9f3bc0d4c43dea724a0f6275f74aaae23d76765f8c4f -->
+<!-- source-sha256: 732019554c7e63654706d279190732985bee40a68577cbb210ff94cc72b91f10 -->
 # 변경 이력
 
 ## Unreleased
 
+- orm에는 kit K798, K804, K805가 삭제하는 release consumer project, release proof, push gate workflow, commits check가 없습니다: config/release.json에는 consumers와 proof가 없고, tests/release-consumer와 .github/workflows/push-gate.yml을 삭제했으며, commit identity test와 subject 규칙은 config/commit-identity.json과 함께 삭제했습니다. (KSTD-5-106)
 - packages/python/tests/coverage_catalog_connection.py는 고정된 ruff format의 형식입니다. (T250)
-
 - make duplication-check가 clone을 찾지 않습니다: PHP without-MySQL test, parity context test, performance reference recorder는 child runner, command helper, git reader를 공유하고, parity context test는 ts setup에 interfaces TypeScript를 기대합니다. (T249)
-
 - orm은 kit K805의 hook을 실행합니다: .githooks/pre-commit은 삭제된 commit gate를 더 이상 호출하지 않고, .githooks/pre-merge-commit과 config/commit-identity.json을 삭제했습니다. (KSTD-5-107)
-
 - orm에는 pre-push hook이 없습니다: kit K804의 push gate와 함께 .githooks/pre-push를 삭제했고, config/checklist.json의 hooks는 commit-msg와 pre-commit을 이름합니다. (KSTD-5-105)
-
 - config/parity.json의 TypeScript binding command는 kit dist의 로컬 build가 아니라 make가 include한 kit의 node:test reporter(${ORM_NODE_REPORTER})를 실행합니다. (T248)
-
 - 추적되는 모든 lock file이 다시 소유자를 가집니다: interface TypeScript의 lock은 interface-typescript-extractor-check의 input이고, release consumer lock은 scope를 선언합니다. (T247)
 - CI tool 선택과 orm-install-python의 repository test는 호출된 install-tools target을 맞춥니다. kit K762가 모든 재귀 make에 KIT와 KIT_EXT를 넘기기 때문입니다. (T245)
 - make repo-check의 runtime path 검사는 KSTD-5-94 이후 run이 덮어쓸 수 있는 server 환경 TEST_ENV ?= .runtime/servers/env를 받아들입니다. (T246)
