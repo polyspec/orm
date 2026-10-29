@@ -9,17 +9,32 @@
       "orm-install-interfaces-typescript"
     ],
     "runtimes": {
-      "go": ["orm-install-go"],
-      "php": ["orm-install-php"],
-      "php-ext": ["orm-install-php-extension-runtime", "orm-install-server-programs", "orm-install-go-lease"],
+      "go": [
+        "orm-install-go"
+      ],
+      "php": [
+        "orm-install-php"
+      ],
+      "php-ext": [
+        "orm-install-php-extension-runtime",
+        "orm-install-server-programs",
+        "orm-install-go-lease"
+      ],
       "python": [],
       "rust": [],
-      "ts": ["orm-install-typescript-runtime"]
+      "ts": [
+        "orm-install-interfaces-typescript",
+        "orm-install-typescript-runtime"
+      ]
     }
   },
   "tools": {
-    "php-ext": ["go"],
-    "ts": ["go"]
+    "php-ext": [
+      "go"
+    ],
+    "ts": [
+      "go"
+    ]
   },
   "contexts": {
     "parity": {
@@ -30,5 +45,6 @@
       "prepare": "php-extension-context-prepare",
       "cleanup": "php-extension-context-cleanup"
     }
-  }
+  },
+  "runner": "ubuntu-26.04-arm"
 }

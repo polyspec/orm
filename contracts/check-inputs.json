@@ -63,7 +63,8 @@
     "scripts-typecheck": {
       "scope": "owner",
       "needs": [
-        "node-modules"
+        "node-modules",
+        "interfaces-typescript"
       ],
       "inputs": [
         "tsconfig.json",
@@ -1323,6 +1324,19 @@
         "packages/rust/orm/src/db.rs",
         "packages/rust/orm/src/bind_check.rs",
         "packages/rust/orm/tests/unit/time_precision.rs"
+      ]
+    },
+    "rust-temporal-args-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "rust",
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/rust/orm/src/args.rs",
+        "packages/rust/orm/tests/unit/temporal_args.rs"
       ]
     },
     "rust-upsert-conflict-check": {

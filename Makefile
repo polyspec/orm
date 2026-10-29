@@ -2324,6 +2324,11 @@ rust-build-outdir-check: cargo-downloads-check lease-tool
 rust-time-precision-check: cargo-downloads-check lease-tool
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib db::time_precision_tests
 
+# rust-temporal-args-check runs the pure Rust temporal argument conversion cases without a database.
+.PHONY: rust-temporal-args-check
+rust-temporal-args-check: cargo-downloads-check lease-tool
+	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib args::temporal_args::temporal_arguments_become_canonical_text_before_binding
+
 # Compile the public Product request for MySQL/PostgreSQL and reject SQLite without a live database.
 complex-query-rust-plan-check: cargo-downloads-check lease-tool
 	cd packages/rust && $(CARGO_TEST) complex-query-rust-plan -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test integration -- --test-threads=1 --exact coverage_complex_query::full_product_search_request_compiles_for_mysql_and_postgres_and_rejects_sqlite
@@ -3079,6 +3084,8 @@ catalog-row-baseline-go-check:
 
 CHECK_TARGETS += catalog-row-baseline-go-check
 CI_TARGETS_static += catalog-row-baseline-go-check
+CHECK_TARGETS += rust-temporal-args-check
+CI_TARGETS_static += rust-temporal-args-check
 
 go-sqlite-version-check:
 	$(GO_TEST) ./packages/go/orm -run '^TestSQLiteMinimumVersionThroughConnect$$' -count=1

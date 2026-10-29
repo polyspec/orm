@@ -15,13 +15,21 @@ use PHPUnit\Framework\TestCase;
 #[Medium]
 final class SqliteWithoutMysqlTest extends TestCase
 {
-    // The child program refuses MySQL driver modules, then runs the SQLite case with the autoloader, the bench install
-    // helper and the work directory it is given.
+    // The child program uses the canonical test autoloader, then runs the SQLite case with the work directory it is
+    // given.
     private const CHILD = <<<'PHP'
         $autoload = $argv[1];
         $work = $argv[2];
         require $autoload;
-        require $argv[3];
+        if (($argv[3] ?? '') === 'schema-bootstrap-only') {
+            $schema = Polyspec\Orm\Tests\Model\schema();
+            echo json_encode([
+                'schema_function' => function_exists('Polyspec\\Orm\\Tests\\Model\\schema'),
+                'schema_type' => $schema instanceof Polyspec\Orm\Schema,
+                'schema_hash' => $schema->manifestHash,
+            ], JSON_THROW_ON_ERROR);
+            exit(0);
+        }
         $modules = get_loaded_extensions();
         $drivers = PDO::getAvailableDrivers();
         // orm's MySQL dialect classes: a load of one of them fails the child, before its code runs. It is registered
@@ -57,6 +65,37 @@ final class SqliteWithoutMysqlTest extends TestCase
             'drivers' => $drivers,
         ], JSON_THROW_ON_ERROR);
         PHP;
+
+    public function testChildLoadsGeneratedModelSchemaBeforeConnecting(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $process = proc_open(
+            [
+                PHP_BINARY,
+                '-n',
+                '-r',
+                self::CHILD,
+                '--',
+                "$root/packages/php/tests/autoload.php",
+                sys_get_temp_dir() . '/unused-php-without-mysql-probe',
+                'schema-bootstrap-only',
+            ],
+            [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $pipes,
+        );
+        self::assertIsResource($process, 'the schema bootstrap child did not start');
+        $output = stream_get_contents($pipes[1]);
+        $errors = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        $status = proc_close($process);
+
+        self::assertSame(0, $status, "schema bootstrap child exited $status: $errors; stdout: $output");
+        $result = json_decode($output, true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame(true, $result['schema_function'] ?? null);
+        self::assertSame(true, $result['schema_type'] ?? null);
+        self::assertMatchesRegularExpression('/^sha256:[0-9a-f]{64}$/', $result['schema_hash'] ?? '');
+    }
 
     public function testSqlitePathLoadsNoMysqlDialectClass(): void
     {
@@ -107,9 +146,8 @@ final class SqliteWithoutMysqlTest extends TestCase
                     '-r',
                     self::CHILD,
                     '--',
-                    "$root/vendor-php/autoload.php",
+                    "$root/packages/php/tests/autoload.php",
                     $work,
-                    __DIR__ . '/bench.php'
                 ],
                 [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
                 $pipes,
