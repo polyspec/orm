@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- AGENTS.md has no refinement of P27, which restated the guided rule of kit K805 and named make item-state as its check. (KSTD-5-106-1)
 - orm builds its wheel with uv build from build-system.requires, which is the one declaration of the build backend, and installs the Python client non-editable with uv sync --locked, which make link turns into the link of the checkout (kit K788, K803): config/toolchain.json has no pythonBackend, and packages/python/pylock.toml with its test is deleted. (KSTD-5-104)
 - packages/python/pyproject.toml build-system.requires is the single declaration of the wheel build backend, setuptools==84.0.0, since config/toolchain.json declares none. (KSTD-5-99)
 - orm has no release consumer projects, release proof, push gate workflow or commits check, which kit K798, K804 and K805 delete: config/release.json has no consumers and no proof, tests/release-consumer and .github/workflows/push-gate.yml are deleted, and the commit identity test and the subject rule go with config/commit-identity.json. (KSTD-5-106)

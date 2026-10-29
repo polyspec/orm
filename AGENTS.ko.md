@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: d780dc99d9afc8337debbf988d2d944b54b4d64059149e63ec4bee258dafc36a -->
+<!-- source-sha256: 22c6a0ff0e86f467215f67f95579ab73573d0879b0ca0ce036128a267eed8500 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -59,8 +59,6 @@ orm 자신의 규칙만 적는다.
   Enforced by: `make rust-check`
 - Refines P24: `docs/plans/execution/checklist.md`가 유일한 작업 목록이다. 한국어 문서의 항목 ID와 상태는 같다. 항목 상태를 변경하기 전에 `make docs-check`를 실행한다. 체크리스트에는 항목만 둔다: 상태 표시는 항목이나 하위 항목 맨 앞의 상태로만 쓰고 범례, 제목, 항목의 글에는 쓰지 않으며, `make docs-check`는 그 밖의 표시를 file, 줄, 열과 함께 실패로 본다.
   Enforced by: `make docs-check`
-- Refines P27: `[o]` 표시는 변경 기록 항목도 같은 커밋에서 CHANGELOG.md와 CHANGELOG.ko.md 맨 위의 `## Unreleased` 아래에 남긴다.
-  Enforced by: `make item-state`
 - Own: 받은 지시는 먼저 분류한다: 지시가 명시적이고 긴급하지 않으면 진행 중 항목을 완료하고, 새 작업은 우선순위에 따라 배치한 뒤 시작한다.
   Enforced by: none, 작업 순서는 에이전트의 판단이다
 - Own: 저장소의 전체 테스트 묶음은 `main`으로의 push 뒤 GitHub CI에서 실행한다: 수동 실행에서도 실행한다.

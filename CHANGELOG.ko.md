@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c51a15c01aef28eb808023ac8b1e7e581a479689faa1fe2844b633806fc46e45 -->
+<!-- source-sha256: b5b43c72716964dd055f9ed37dd23ec6809c736bcb6fb0f908fac31eb42119ee -->
 # 변경 이력
 
 ## Unreleased
 
+- AGENTS.md에는 kit K805의 guided rule을 되풀이하고 make item-state를 검사로 지목하던 P27 refinement가 없습니다. (KSTD-5-106-1)
 - orm은 build backend의 유일한 선언인 build-system.requires로 uv build를 실행해 wheel을 만들고, Python client를 uv sync --locked로 editable이 아니게 설치하며, make link가 그것을 checkout의 link로 바꿉니다 (kit K788, K803): config/toolchain.json에는 pythonBackend가 없고, packages/python/pylock.toml과 그 test를 삭제했습니다. (KSTD-5-104)
 - packages/python/pyproject.toml의 build-system.requires가 wheel build backend setuptools==84.0.0의 유일한 선언이며, config/toolchain.json은 아무것도 선언하지 않습니다. (KSTD-5-99)
 - orm에는 kit K798, K804, K805가 삭제하는 release consumer project, release proof, push gate workflow, commits check가 없습니다: config/release.json에는 consumers와 proof가 없고, tests/release-consumer와 .github/workflows/push-gate.yml을 삭제했으며, commit identity test와 subject 규칙은 config/commit-identity.json과 함께 삭제했습니다. (KSTD-5-106)

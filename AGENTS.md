@@ -71,9 +71,6 @@ vendors; this file states only the rules of orm.
   Enforced by: `make rust-check`
 - Refines P24: `docs/plans/execution/checklist.md` is the only task list. Its Korean pair has the same item IDs and states. Run `make docs-check` before changing an item state. The checklist holds only items: a state marker appears only as the state at the start of an item or sub-item, never in a legend, a heading or item text, and `make docs-check` fails on any other with its file, line and column.
   Enforced by: `make docs-check`
-- Refines P27: Marking an item `[o]` also writes its changelog entry under `## Unreleased` at the top of
-  CHANGELOG.md and CHANGELOG.ko.md in the same commit.
-  Enforced by: `make item-state`
 - Own: A received instruction is triaged first: finish the item in progress unless the instruction is explicit and urgent, then place the new work by priority before starting it.
   Enforced by: none, the order of the work is a judgement of the agent
 - Own: The repository's full test suite runs on GitHub CI after a push to `main` and on a manual run.
