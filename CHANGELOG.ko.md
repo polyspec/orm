@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- 공개 PHP signature가 internal type을 부르지 않는다: generated model의 meta() 계약인 ModelMetadata와 catalog API의 row snapshot인 CatalogRowSnapshot은 공개이며 선언되고, extension의 Model::registerJoins는 library처럼 internal이다 (T258).
 - packages/php의 orm-gen class(OrmGen, Generator, Scan, ScanVisitor, ChainDeclare, UsageError)를 internal로 표시한다: 이들은 generator 명령을 구현하며 PHP client의 API가 아니다 (T244-1).
 - performance_gate가 구현되었다: contracts/performance-references.json이 97b4566f4의 통과한 check run orm_check_33189_3c995a77에서 여섯 client, 세 database, 두 workload의 고정 기준값 36개를 기록하고, 모든 coverage case가 그 비율을 기준값과 비교한다 (KSTD-7-6).
 - parity 선언이 PHP extension run guard를 test helper로 등재하고 그 세 test를 PRT-18에 연결한다. 그래서 make parity-declarations-check가 통과하고 검사가 그 test를 실행한다 (KSTD-5-109-1).

@@ -1785,7 +1785,7 @@ final class CatalogTablePage
     public function columnIndex(string $name): int {}
 }
 
-/** One checked original row, with its SHA-256 revision. Catalog::rowSnapshotFromPage creates it. @internal */
+/** One checked original row, with its SHA-256 revision. Catalog::rowSnapshotFromPage creates it. */
 final class CatalogRowSnapshot
 {
     public readonly CatalogTableMetadata $metadata;
@@ -2029,7 +2029,7 @@ final class RuntimeModel
 namespace Polyspec\Orm;
 
 /** Integration reference for the complete extension-owned Model surface. */
-/** @internal The native abstract static metadata contract implemented by generated models. */
+/** The native abstract static metadata contract implemented by generated models: the meta() array of DBS-120. */
 interface ModelMetadata
 {
     public static function meta(): array;
@@ -2136,6 +2136,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
     private function subqueryIr(Request $r, Model $outer, bool $scalar): array {}
     private function groupIr(array $items, Request $r, Frame $f): array {}
     private function predIr(array $p, Request $r, Frame $f): array {}
+    /** @internal registers the join paths of a statement */
     public function registerJoins(Frame $f, string $prefix): void {}
     private function newRow(?Db $conn): static {}
     private function rowShape(array $asm): array {}

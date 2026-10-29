@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- No public PHP signature names an internal type: ModelMetadata, the meta() contract of generated models, and CatalogRowSnapshot, the row snapshot of the catalog API, are public and declared; Model::registerJoins of the extension is internal, as in the library (T258).
 - The orm-gen classes of packages/php (OrmGen, Generator, Scan, ScanVisitor, ChainDeclare, UsageError) are marked internal: they implement the generator command and are no API of the PHP client (T244-1).
 - performance_gate is implemented: contracts/performance-references.json records the 36 fixed references of the six clients, three databases and two workloads from the passed check run orm_check_33189_3c995a77 of 97b4566f4, and every coverage case compares its ratio with its reference (KSTD-7-6).
 - The parity declarations name the PHP extension run guard as a test helper and bind its three tests to PRT-18, so make parity-declarations-check passes and a check runs them (KSTD-5-109-1).

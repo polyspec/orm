@@ -21944,7 +21944,6 @@
           "implementation": "php-extension",
           "symbols": [
             "Polyspec\\Orm\\Model::parentNode",
-            "Polyspec\\Orm\\Model::registerJoins",
             "Polyspec\\Orm\\Model::relation",
             "Polyspec\\Orm\\Model::relations"
           ]
@@ -33169,6 +33168,13 @@
             "Polyspec\\Orm\\CatalogResult::$columns",
             "Polyspec\\Orm\\CatalogResult::$rows",
             "Polyspec\\Orm\\CatalogResult::__construct",
+            "Polyspec\\Orm\\CatalogRowSnapshot",
+            "Polyspec\\Orm\\CatalogRowSnapshot::$cells",
+            "Polyspec\\Orm\\CatalogRowSnapshot::$keyIndexes",
+            "Polyspec\\Orm\\CatalogRowSnapshot::$metadata",
+            "Polyspec\\Orm\\CatalogRowSnapshot::$revision",
+            "Polyspec\\Orm\\CatalogRowSnapshot::__construct",
+            "Polyspec\\Orm\\CatalogRowSnapshot::revision",
             "Polyspec\\Orm\\CatalogTableMetadata",
             "Polyspec\\Orm\\CatalogTableMetadata::$columns",
             "Polyspec\\Orm\\CatalogTableMetadata::$kind",
@@ -33788,13 +33794,17 @@
           "implementation": "php",
           "symbols": [
             "Polyspec\\Orm\\Model",
-            "Polyspec\\Orm\\Model::meta"
+            "Polyspec\\Orm\\Model::meta",
+            "Polyspec\\Orm\\ModelMetadata",
+            "Polyspec\\Orm\\ModelMetadata::meta"
           ]
         },
         {
           "implementation": "php-extension",
           "symbols": [
-            "Polyspec\\Orm\\Model"
+            "Polyspec\\Orm\\Model",
+            "Polyspec\\Orm\\ModelMetadata",
+            "Polyspec\\Orm\\ModelMetadata::meta"
           ]
         },
         {
