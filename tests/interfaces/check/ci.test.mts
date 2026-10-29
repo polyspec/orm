@@ -1,5 +1,5 @@
 // Checks that CI runs the generated model checks (go-model-check, ts-model-check) and the common interface check. CI runs one job per CI group
-// that runs make check-run GROUP=<group>, and every CHECK_TARGETS target is a target of some CI group (CI_TARGETS_<group>).
+// that runs make check-run GROUP=<group>, and every CHECK_TARGETS target but a gate of kit is a target of some CI group (CI_TARGETS_<group>).
 // The interface check is run by feature-check in make orm-check as a verify command in contracts/features.json.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -35,10 +35,12 @@ function validateGeneratedCI(workflow: string, makefile: string, features: strin
   for (const target of ['go-model-check', 'ts-model-check']) {
     if (!targets.has(target)) throw new Error(`CHECK_TARGETS must include ${target}`);
   }
-  // Every CHECK_TARGETS target is a target of some CI group: that group's job runs it with make check-run GROUP=<group>.
+  // Every CHECK_TARGETS target but a gate of kit (CI_KIT_GATES, which the gates workflow runs) is a target of some CI group: that
+  // group's job runs it with make check-run GROUP=<group>.
   const grouped = new Set(makeVariable(makefile, 'CI_GROUPS').flatMap(group => makeVariable(makefile, `CI_TARGETS_${group}`)));
+  const gates = new Set(makeVariable(makefile, 'CI_KIT_GATES'));
   for (const target of targets) {
-    if (!grouped.has(target)) throw new Error(`no CI group of CI_GROUPS runs ${target} of CHECK_TARGETS`);
+    if (!grouped.has(target) && !gates.has(target)) throw new Error(`no CI group of CI_GROUPS runs ${target} of CHECK_TARGETS`);
   }
   if (!features.includes(INTERFACE_COMMAND)) throw new Error(`contracts/features.json must verify ${INTERFACE_COMMAND}`);
 }

@@ -77,8 +77,9 @@ vendors; this file states only the rules of orm.
   CI splits it into the CI groups of the
   Makefile (`CI_GROUPS`, `CI_TARGETS_<group>`): one job per group, all at once, each running
   `make check-run GROUP=<group>` after only the setup steps that its targets need; the groups together
-  run every target of `CHECK_TARGETS` exactly once (`make repo-check`), and a local `make orm-check`
-  runs every target after its guard. One CI run must
+  run every target of `CHECK_TARGETS` but the gates of kit (`CI_KIT_GATES`, the prerequisites of
+  `kit-gates`, which the gates workflow runs in its own parallel jobs) exactly once (`make repo-check`),
+  and a local `make orm-check` runs every target after its guard. One CI run must
   collect enough information to fix every failure it found before the next CI run. The run never
   stops at a failure: every target runs unless a setup step it needs failed, which records the
   target as `not-run` with that step and its first failure lines; the independent parts of a

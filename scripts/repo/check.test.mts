@@ -8,7 +8,7 @@ import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { errorCode } from '../../tests/errors.mts';
 import { main as startServers, paths as serverPaths, SERVER_VARIABLES, TestServerError } from '../test-servers.mts';
-import { AFTER_GROUP_CHECK, CI_PASSED_STEPS, CI_RUN_EXCEPTIONS, ciPassedErrors, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
+import { AFTER_GROUP_CHECK, CI_PASSED_STEPS, CI_RUN_EXCEPTIONS, ciPassedErrors, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { parseArguments as parseKitTestArguments } from '@polyspec/kit/run-tests';
 import { fixlessMessageErrors } from './messages.mts';
@@ -585,12 +585,12 @@ caseTest('a workflow that omits or repeats a target of CHECK_TARGETS fails', COM
 
 // The CI group case (G5.111) checks whether the repository's Makefile and workflow split CHECK_TARGETS exactly into groups, and the minimal
 // one rejects a target missing from the Makefile and workflow, a target in two groups, a target outside CHECK_TARGETS, and a matrix other than CI_GROUPS.
-caseTest('the CI groups run every target of CHECK_TARGETS in exactly one job', COMPUTE, () => {
+caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit in exactly one job', COMPUTE, () => {
   const makefile = text('Makefile');
   const { groups, targets } = ciGroups(makefile);
   assert.ok(groups.length > 1, 'the Makefile declares more than one CI group');
   const byCodeUnit = (a: string, b: string) => (a < b ? -1 : Number(a > b));
-  assert.deepEqual(groups.flatMap(group => targets[group] ?? []).sort(byCodeUnit), [...checkTargets(makefile)].sort(byCodeUnit));
+  assert.deepEqual(groups.flatMap(group => targets[group] ?? []).sort(byCodeUnit), checkTargets(makefile).filter(target => !kitGates(makefile).includes(target)).sort(byCodeUnit));
   assert.ok((targets.static ?? []).includes('dbspec-vscode-check'), 'the database-free VS Code extension check runs in the static CI group');
   assert.ok((targets.static ?? []).includes('catalog-row-baseline-go-check'), 'the appended owner check runs in the static CI group');
   // The group-rows-db targets each run in exactly one CI group (KSTD-10-1).
@@ -625,12 +625,11 @@ caseTest('the CI groups run every target of CHECK_TARGETS in exactly one job', C
     assert.deepEqual(targets[`markdown_${groupRuntime}`], [markdown], `${markdown} is the only target in its native runtime cell`);
   }
   assert.deepEqual(targets.feature_performance, ['feature-performance-check'], 'the performance gate has its own CI job');
-  assert.deepEqual(targets.parity, ['parity-check'], 'the canonical all-phase parity gate runs once in its own CI job');
-  assert.ok(checkTargets(makefile).includes('parity-check'));
+  assert.equal(targets.parity, undefined, 'the parity gate runs in the gates workflow of kit, not in a CI group (KSTD-5-115)');
+  assert.ok(checkTargets(makefile).includes('parity-check') && kitGates(makefile).includes('parity-check'));
   for (const phase of ['parity-api-check', 'parity-bindings-go-check', 'parity-bindings-php-check', 'parity-bindings-php-extension-check', 'parity-bindings-typescript-check', 'parity-bindings-python-check', 'parity-bindings-rust-check'])
     assert.equal(checkTargets(makefile).includes(phase), false, `${phase} is not duplicated as a separate suite target`);
-  assert.ok(!targets.conformance?.includes('parity-check'), 'the canonical parity command runs only in the parity group');
-  assert.ok((targets.static ?? []).includes('toolchain-check'), 'the static group checks every declared toolchain pin');
+  for (const gate of ['parity-check', 'toolchain-check']) assert.ok(!groups.some(group => targets[group]?.includes(gate)), `${gate} runs in the gates workflow of kit`);
   assert.equal(groupOutputs(targets.static ?? [], declaredNeeds(repository.pathname)).php, true,
     'the static group bootstraps the pinned PHP before the full tool inventory is installed');
   const workflowValue: unknown = parseYaml(workflow);
@@ -710,6 +709,22 @@ caseTest('database-free dbspec verification stays in the static CI group', COMPU
   assert.ok(!inputs.targets['dbspec-verify-errors-check']?.needs.includes('databases'));
 });
 
+caseTest('the CI groups leave out the gates of kit, which the gates workflow runs (KSTD-5-115)', COMPUTE, () => {
+  const grouped = `jobs:\n  test:\n    strategy:\n      matrix:\n        group: [one]\n    steps:\n      - name: make orm-check\n        run: make check-run GROUP=\${{ matrix.group }}\n`;
+  const make = (...lines: string[]) => ['CHECK_TARGETS = a-check lint-go parity-check', ...lines, ''].join('\n');
+  assert.deepEqual(ciCheckTargetErrors(grouped, make('CI_KIT_GATES = lint-go parity-check', 'CI_GROUPS = one', 'CI_TARGETS_one = a-check')), []);
+  assert.deepEqual(ciCheckTargetErrors(grouped, make('CI_KIT_GATES = lint-go parity-check', 'CI_GROUPS = one', 'CI_TARGETS_one = a-check lint-go')), [
+    'CI group one runs lint-go, a gate of kit (CI_KIT_GATES) that the gates workflow runs',
+  ]);
+  assert.deepEqual(ciCheckTargetErrors(grouped, make('CI_KIT_GATES = lint-go parity-check b-check', 'CI_GROUPS = one', 'CI_TARGETS_one = a-check')), [
+    'CI_KIT_GATES names b-check, which is not a target of CHECK_TARGETS',
+  ]);
+  const makefile = text('Makefile');
+  const gates = /^CI_KIT_GATES = (.*)$/m.exec(makefile)?.[1]?.split(/\s+/) ?? [];
+  assert.ok(gates.includes('parity-check') && gates.includes('lint-ts'), 'the Makefile declares the gates of kit');
+  assert.deepEqual(ciGroups(makefile).groups.filter(group => group === 'parity'), []);
+});
+
 caseTest('a CI group set that omits, repeats or adds a target of CHECK_TARGETS fails', COMPUTE, () => {
   const grouped = (matrix = '[one, two]') => `jobs:\n  test:\n    strategy:\n      matrix:\n        group: ${matrix}\n    steps:\n      - name: make orm-check\n        run: make check-run GROUP=\${{ matrix.group }}\n`;
   const make = (groups: string[]) => ['CHECK_TARGETS = a-check b-check c-check', ...groups, ''].join('\n');
@@ -785,8 +800,6 @@ caseTest('every CI group runs the setup steps of its needs and of the setup step
   assert.equal(outputs('client_db_php_extension')['php-extension-tools'], true, 'PHP-extension groups install their native build tools');
   assert.equal(outputs('static')['interfaces-typescript'], true, 'the static TypeScript extractor installs its pinned checker');
   assert.equal(outputs('static')['parity-symbols'], false, 'the static group does not install API parity extractors');
-  for (const need of ['interfaces-typescript', 'parity-symbols', 'go', 'rust', 'php', 'php-extension-tools', 'python', 'databases', 'flowmark'])
-    assert.equal(outputs('parity')[need], true, `the canonical parity group installs ${need}`);
   for (const need of ['go', 'rust', 'php', 'php-extension-tools', 'python', 'databases', 'node-modules'])
     assert.equal(outputs('conformance')[need], true, `the cross-runtime comparison group installs ${need}`);
   const declaredOnly = (names: readonly string[], declared: Record<string, string[]>) => {

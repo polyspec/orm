@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The ci workflow runs no gate of kit: its CI groups run CHECK_TARGETS without CI_KIT_GATES, the prerequisites of kit-gates, which the gates workflow runs in parallel jobs, and the group parity goes; it ran every parity binding in series, past 76 minutes in run 40926936508 (KSTD-5-115).
 - make repo-check reads the env of a make spawn from its whole call, which may span lines, and accepts make ci-install-tools as the install of the Go of mise.toml; it reported both falsely on main (KSTD-5-116).
 - parity-declarations-check builds the TypeScript dist first, as lint-ts does, so the shared gates job on a fresh checkout finds packages/ts/dist/index.d.ts (KSTD-5-114).
 - The python runtime of config/ci.json names orm-install-python, so CI installs the Python client non-editable and the parity API phase reads its symbols; the default uv-install made an editable install, whose file list holds no module (KSTD-5-113).

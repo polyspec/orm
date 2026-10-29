@@ -99,13 +99,22 @@ export function matrixGroups(job: WorkflowJob): string[] | null {
   return Array.isArray(list) ? list.map(String) : null;
 }
 
+// kitGates is CI_KIT_GATES of the Makefile: the targets of CHECK_TARGETS that are gates of kit (the prerequisites of kit-gates),
+// which the gates workflow of kit runs in its own parallel jobs (KSTD-5-115).
+export function kitGates(makefile: string): string[] {
+  return /^CI_KIT_GATES = (.*)$/m.exec(makefile)?.[1]?.trim().split(/\s+/).filter(Boolean) ?? [];
+}
+
 // ciGroupErrors returns one error at each place where the CI groups do not split CHECK_TARGETS. For a job that runs GROUP_CHECK,
-// the matrix groups equal CI_GROUPS, each CI group has a CI_TARGETS_<group>, the targets of all groups together equal CHECK_TARGETS,
-// and no target is in two groups. So the jobs together run every target of make orm-check once.
+// the matrix groups equal CI_GROUPS, each CI group has a CI_TARGETS_<group>, the targets of all groups together equal CHECK_TARGETS
+// without the gates of kit (CI_KIT_GATES), which the gates workflow runs, and no target is in two groups. So the two workflows
+// together run every target of make orm-check once.
 export function ciGroupErrors(workflow: string, makefile: string): string[] {
   const errors: string[] = [];
   const { groups, targets } = ciGroups(makefile);
-  const checks = checkTargets(makefile);
+  const all = checkTargets(makefile);
+  const gates = kitGates(makefile);
+  const checks = all.filter(target => !gates.includes(target));
   if (groups.length === 0) return [`ci.yml runs ${GROUP_CHECK}, but the Makefile declares no CI_GROUPS`];
   for (const job of readWorkflow(workflow).jobs) {
     const { id } = job;
@@ -119,14 +128,16 @@ export function ciGroupErrors(workflow: string, makefile: string): string[] {
   for (const group of new Set(groups.filter((group, index) => groups.indexOf(group) !== index))) errors.push(`Makefile CI_GROUPS lists ${group} twice`);
   for (const group of groups) if (!((targets[group]?.length ?? 0) > 0)) errors.push(`Makefile CI group ${group} declares no CI_TARGETS_${group}`);
   for (const group of Object.keys(targets)) if (!groups.includes(group)) errors.push(`Makefile declares CI_TARGETS_${group}, but ${group} is not in CI_GROUPS`);
+  for (const gate of gates) if (!all.includes(gate)) errors.push(`CI_KIT_GATES names ${gate}, which is not a target of CHECK_TARGETS`);
   const owners = new Map<string, string[]>();
   for (const group of groups) for (const target of targets[group] ?? []) owners.set(target, [...(owners.get(target) ?? []), group]);
+  for (const [target, runs] of owners) if (gates.includes(target)) errors.push(`CI group ${runs.join(', ')} runs ${target}, a gate of kit (CI_KIT_GATES) that the gates workflow runs`);
   for (const target of checks) {
     const runs = owners.get(target) ?? [];
     if (runs.length === 0) errors.push(`no CI group runs ${target} of CHECK_TARGETS; add it to one CI_TARGETS_<group>`);
     else if (runs.length > 1) errors.push(`CI groups ${runs.join(', ')} each run ${target}; every target of CHECK_TARGETS runs in exactly one group`);
   }
-  for (const [target, runs] of owners) if (!checks.includes(target)) errors.push(`CI group ${runs.join(', ')} runs ${target}, which is not a target of CHECK_TARGETS`);
+  for (const [target, runs] of owners) if (!all.includes(target)) errors.push(`CI group ${runs.join(', ')} runs ${target}, which is not a target of CHECK_TARGETS`);
   return errors;
 }
 

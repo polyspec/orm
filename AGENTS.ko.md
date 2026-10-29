@@ -64,6 +64,7 @@ orm 자신의 규칙만 적는다.
 - Own: 저장소의 전체 테스트 묶음은 `main`으로의 push 뒤 GitHub CI에서 실행한다: 수동 실행에서도 실행한다.
   CI는 그것을 Makefile의 CI group(`CI_GROUPS`, `CI_TARGETS_<group>`)으로 나눈다: group마다 job
   하나가 모두 동시에, 그 target이 필요로 하는 setup step만 실행한 뒤 `make check-run GROUP=<group>`을 실행한다. group들은 함께
+  kit의 gate(`CI_KIT_GATES`, gates workflow가 자기 병렬 job에서 실행하는 `kit-gates`의 선행 target)를 뺀
   `CHECK_TARGETS`의 모든 target을 정확히 한 번 실행하고(`make repo-check`), 로컬 `make orm-check`는 guard를 거쳐 모든 target을 실행한다.
   CI 실행 한 번은 다음 CI 실행 전에
   그 실행이 찾은 모든 실패를 고칠 수 있을 만큼의 정보를 모아야 한다. 실행은 실패에서 멈추지 않는다: 필요한
