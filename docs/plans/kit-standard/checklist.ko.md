@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 1c9a1f3b9690f4c9acb128f6bddc8ec964f13f954742ed42227b9d2ea45b37ce -->
+<!-- source-sha256: 3aa3ad9b7e2b00e92545fa40c08fdf4b0f0a35af337bcc4a29286079b8a4383a -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -370,3 +370,4 @@
 | KSTD-5-109-1 | PHP extension run guard와 그 test를 parity 선언에 등재해 검사가 그 test를 실행하게 한다 | config/parity.json packages/php/tests/ExtensionRunGuardTest.php | `make parity-declarations-check` | [v] |
 | KSTD-5-110 | conformance vector가 codec ip hex table에 row를 insert하고 address의 eq로 다시 select한다. MySQL, PostgreSQL, SQLite에서 모든 runner가 실행하므로 T251의 stage 분할과 T253의 equality가 planner vector만이 아니라 실제 database에서 성립한다. 원인: limepie가 planner vector가 잡지 못한 ip hex insert에서 MySQL 1411을 만났고, ip hex column을 쓰는 conformance vector가 없다 | contracts/fixtures/bench/bench.dbs, tests/conformance/vectors.json, tests/conformance/vectors.postgres.json, tests/conformance/vectors.sqlite.json, contracts/symbols/go.json, contracts/symbols/typescript.json, config/parity.json, packages/rust/tests/src/conformance.rs | `make run-databases TARGETS=conformance-check VECTOR=ip_hex_roundtrip` | [v] |
 | KSTD-5-111 | orm은 0.0.66 대신 release된 kit 0.0.70을 받는다: package.json의 pin과 그 lock, make kit-sync의 사본, make hooks의 hook. 원인: kit 0.0.70이 K797부터 K817까지의 족쇄를 지우는데 orm은 아직 0.0.66에서 설치한다 | package.json, package-lock.json | `make kit-check` | [v] |
+| KSTD-5-112 | orm은 0.0.70 대신 release된 kit 0.0.73을 받는다: package.json의 pin과 그 lock, make kit-sync의 사본과 make hooks의 hook. 원인: kit 0.0.72가 CI의 link 단계를 없애고(K824) Windows에서 mise를 PATH에 둔다(K820). kit 0.0.73은 K826, K827(php-extension parity binding이 필요로 하는, 나열된 run의 PHPUnit autoloader), K830을 담는다 | package.json, package-lock.json | `make kit-check` | [ ] |
