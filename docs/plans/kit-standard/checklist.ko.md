@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 97abb622217c33abfc953bdc51c69ee5c14878b08cca780e3141ea93b42dd5d8 -->
+<!-- source-sha256: 9dc9c12c7c1a033b9fbcf71a3df9416806433f60f6411bcd506d02fc1f16c2f5 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -367,5 +367,6 @@
 | KSTD-5-107 | orm은 kit K805의 hook을 실행한다: make hooks가 commit-gates-hook 없는 .githooks/pre-commit을 쓰고, .githooks/pre-merge-commit과 config/commit-identity.json을 삭제한다. 원인: kit K805가 commits-check, commit gate, pre-merge-commit hook을 삭제해서, pre-commit hook이 삭제된 target을 호출하고 모든 commit을 거부했다 | .githooks/pre-commit, .githooks/pre-merge-commit, config/commit-identity.json | `make hooks-check` | [o] |
 | KSTD-5-108 | orm은 kit K812가 삭제하는 release version check를 실행하지 않는다: kit-sync는 release-versions 단계가 없는 release.yml을 쓰고, AGENTS.md는 make release-versions를 지목하지 않으므로 version 규칙은 review의 판단이며 release workflow 규칙은 version check를 나열하지 않는다. 원인: kit K812가 release-versions를 삭제하고, make rules-check가 그것을 지목하는 규칙을 보고한다 | .github/workflows/release.yml, AGENTS.md | `make rules-check kit-check` | [o] |
 | KSTD-5-109 | orm은 kit K790이 삭제하는 run-tests --without-library 없이 PHP extension test를 실행하고, 그 보장을 자기 test bootstrap에 둔다: extension 실행(ORM_PHP_MODE=extension)은 packages/php/src의 어떤 file이라도 load되면 끝에서 그 file들을 밝히며 실패하므로, PHP fallback이 아니라 extension을 시험한다(T182-6-19). 원인: K790이 그 option과 실행 끝의 검사를 삭제해 Makefile과 scripts/decimal-physical-check.mts의 모든 php-extension check가 모르는 option으로 2를 내며 끝난다 | Makefile, scripts/decimal-physical-check.mts, scripts/physical-command-case.test.mts, packages/php/tests/bootstrap.php, packages/php/tests/extension_run_guard.php | `make dbspec-php-extension-check/planner` | [o] |
+| KSTD-5-109-1 | PHP extension run guard와 그 test를 parity 선언에 등재해 검사가 그 test를 실행하게 한다 | config/parity.json | `make parity-declarations-check` | [ ] |
 | KSTD-5-110 | conformance vector가 codec ip hex table에 row를 insert하고 address의 eq로 다시 select한다. MySQL, PostgreSQL, SQLite에서 모든 runner가 실행하므로 T251의 stage 분할과 T253의 equality가 planner vector만이 아니라 실제 database에서 성립한다. 원인: limepie가 planner vector가 잡지 못한 ip hex insert에서 MySQL 1411을 만났고, ip hex column을 쓰는 conformance vector가 없다 | contracts/fixtures/bench/bench.dbs, tests/conformance/vectors.json | `make conformance-check` | [ ] |
 | KSTD-5-111 | orm은 0.0.66 대신 release된 kit 0.0.70을 받는다: package.json의 pin과 그 lock, make kit-sync의 사본, make hooks의 hook. 원인: kit 0.0.70이 K797부터 K817까지의 족쇄를 지우는데 orm은 아직 0.0.66에서 설치한다 | package.json, package-lock.json | `make kit-check` | [v] |
