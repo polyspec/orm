@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- make rust-fmt-check가 main에서 통과한다: Rust conformance runner의 import 목록과 Rust integration test의 panic! message를 rustfmt가 쓰는 대로 정리한다 (T260).
 - row lock(forShare, forUpdate와 그 NoWait 형태)은 모든 구현에서 groupLimit이 없는 관계 단계에 유효하며 그 단계의 statement가 lock을 건다. 클라이언트는 그 lock에도 트랜잭션을 요구하고 루트 lock처럼 SQLite row-lock table을 잡으며, limit_per_parent나 group_by가 있는 lock은 계속 IR_INVALID다 (T257).
 - ci workflow는 kit의 gate를 돌리지 않는다: 그 CI group은 gates workflow가 병렬 job으로 돌리는 kit-gates의 선행 target인 CI_KIT_GATES를 뺀 CHECK_TARGETS를 돌리고, group parity는 없어진다. 그 group은 모든 parity binding을 직렬로 돌려 run 40926936508에서 76분을 넘겼다 (KSTD-5-115).
 - make repo-check는 make spawn의 env를 여러 줄에 걸칠 수 있는 그 호출 전체에서 읽고, make ci-install-tools를 mise.toml의 Go 설치로 받아들인다. main에서 그것은 둘 다 잘못 보고했다 (KSTD-5-116).

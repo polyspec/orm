@@ -12,8 +12,8 @@ use std::sync::{Arc, Mutex};
 polyspec_orm::models!();
 
 use model::{
-    AuditRecord, AuditedNote, Author, BindCell, ClockCell, CompositeAccount, DayCell, HexCell, NoteReader, Service, ServiceMember, ServiceRegion, SharedNote,
-    SoftLink, SoftRecord, Task, TimeCell, UpsertCell, User, UuidCell, IpHexCell,
+    AuditRecord, AuditedNote, Author, BindCell, ClockCell, CompositeAccount, DayCell, HexCell, IpHexCell, NoteReader, Service, ServiceMember, ServiceRegion,
+    SharedNote, SoftLink, SoftRecord, Task, TimeCell, UpsertCell, User, UuidCell,
 };
 use polyspec_orm::{AesKeyring, Collection, Db, Model, Null, Param};
 use serde_json::{json, Map, Value};

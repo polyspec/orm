@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- make rust-fmt-check passes on main: the import list of the Rust conformance runner and a panic! message of the Rust integration tests are formatted as rustfmt writes them (T260).
 - A row lock (forShare, forUpdate and their NoWait forms) is valid on a relation step without groupLimit, in every implementation, and that step's statement takes it; the client requires a transaction for it and takes the SQLite row-lock table as for a root lock, and a lock with limit_per_parent or group_by stays IR_INVALID (T257).
 - The ci workflow runs no gate of kit: its CI groups run CHECK_TARGETS without CI_KIT_GATES, the prerequisites of kit-gates, which the gates workflow runs in parallel jobs, and the group parity goes; it ran every parity binding in series, past 76 minutes in run 40926936508 (KSTD-5-115).
 - make repo-check reads the env of a make spawn from its whole call, which may span lines, and accepts make ci-install-tools as the install of the Go of mise.toml; it reported both falsely on main (KSTD-5-116).
