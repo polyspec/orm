@@ -3,34 +3,24 @@
 
 ## Unreleased
 
+- orm adopts kit 0.0.66: the pin by its release asset URL, its lock and the synced kit files, so the gates workflow validates ci.json against a schema that declares runner. (KSTD-5-101)
 - orm no longer runs or names dependency-policy-check, dependency-policy-mutation-check or dependency-review: CHECK_TARGETS, the CI groups, contracts/check-inputs.json and AGENTS drop them, and config/dependency-review.json is deleted, because the package managers verify their locks and report outdated and vulnerable dependencies. (KSTD-5-100)
-
 - The wheel build backend has one declaration: packages/python/pyproject.toml build-system.requires names setuptools 84.0.0, the config/toolchain.json pythonBackend that the release builds with. Red: `make release-candidate-assets` reported that the two disagree. (KSTD-5-99)
-
 - `make release-assets` and `make release-candidate-assets` build on the Go modules of the lease tool alone, as before the kit standard, so their Go prerequisites build in the environment of the kit release targets. Red: `make release-assets TAG=v0.0.18` stopped at `go mod download` (no modules specified). (KSTD-5-98)
-
 - `make orm-install-php` installs the root Composer lock through Kit's composer-install, so a new worktree finds its locked PHP packages offline. Red: a new orm worktree-setup failed at Composer (KSTD-5-97).
-
 - Install only the pinned prerequisites of each independent CI group, including native parity extractors, PHP arginfo and the minimal Go lease dependency; retain parallel client, DBspec and feature groups. (KSTD-5-96)
-
 - Split native CI checks by client and SQL backend, run Markdown in six native jobs, and isolate performance and public-API/native-binding parity phases without dropping shared comparisons. (KSTD-5-95)
 - Complete the native PHP client protocol with IR validation, codecs, planning, binding, execution and runtime classes. Shared native planner and bind cases, three-database six-client conformance and parity declarations provide execution evidence; native class names and ecosystem-library choices remain unchanged (T182).
-
 - The complete PHP ORM surface is implemented in native C with the same class names, no PHP product fallback and matching six-client conformance on all three databases; independent acceptance review reconciles the former schema-only hold with the completed implementation (T199).
-
 - Complete the native PHP query, model and collection client: required model/fixture cases run without PHP product fallback, all 59 conformance vectors agree across six clients on MySQL, PostgreSQL and SQLite after the focused audit-identity correction, and retained result contracts pass (T182-6).
-
 - The native PHP extension executes the specified NULL-key refusal conformance vector with identical results in all six clients on MySQL, PostgreSQL and SQLite; the case preserves the documented IR_INVALID rejection before SQL (T77-6-1-1).
-
 - `make kit-sync` refreshed six shared files from the installed local Kit package: four tracked links became regular copies, and release/gates workflows now match Kit source. `kit-check`'s ten initial findings are cleared (T240).
 - Protocol/tooling parity declarations now trace their native case requirements across all supported clients; committed-tree declaration checks pass, with user-held cancellation shown separately rather than counted as execution evidence (KSTD-2-7).
 - Incorrect standalone parity declarations and helper-test ownership are reconciled while preserving native assertions and exact owner execution commands; the declaration gate passes (KSTD-2-11).
-
 - The KSTD-5-89 static-gate scope passes on main: the six original verification commands, nine additional static checks (9/9, including 18 pinned tools and 2,421 owned paths), and the source-specific lint gates are recorded with their commits and logs in the checklist. Duplication and parity/divergence checks remain in their existing rows (KSTD-5-89).
 - The Rust schema stress test reports repository discovery, Node startup and parse failures with explicit matches; the interface-symbols parser consumes a trailing comma only when present and propagates parse errors (KSTD-5-93-1-1).
 - The interface-symbols invocation-extraction unit uses a minimal unique macro fixture instead of copying the production macro body; it still checks the four extracted public signatures (KSTD-5-93-1-1-1).
 - Rust apply tests retain rollback and close errors alongside the lock-wait result, SQLite pragma protocol errors retain their parse causes, and catalog coverage keeps its driver-specific failure messages while using the existing OrPanic helper (KSTD-5-93-1-2).
-
 - The SQLite case of the lock_wait apply scenario of the TypeScript dbspec apply test sees the locked error again: its proxy of the node:sqlite apply connection wraps exec synchronously, as node:sqlite's exec is and as the applier calls it, so the failing `BEGIN EXCLUSIVE` reaches apply instead of a rejected promise nobody awaited; `make dbspec-apply-ts-check` counts 122 apply runs again (KSTD-5-89-44).
 - `make lint-go` passes on main again: the Go driver of the dbspec apply comparison returns the errors of closing its blocker, its rollbacks and its row sets joined with the failure they follow and wraps the lock failures it reports, and the Go tests that dropped an error or formatted it without wrapping now fail on it or wrap it (KSTD-5-89-42).
 - The MySQL test servers allow a non-SUPER login to create audit triggers, PostgreSQL requires SCRAM for loopback roles except `orm`, and the replica supports localhost identity checks while the mismatch DSN reaches it as `127.0.0.1`. PostgreSQL authentication and MySQL daemon changes apply after stopping and restarting the test servers (T239).

@@ -1,37 +1,27 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1b1add57f5d580a29c875796a102c114d83b156456ce18caa7c572b8ae18df7e -->
+<!-- source-sha256: 2203b7ad9b232b01612366ae4b570e99a7dd9e782c26272d21b4488e7dd7dbfb -->
 # 변경 이력
 
 ## Unreleased
 
+- orm은 kit 0.0.66을 채택합니다: release asset URL로 지정한 pin, 그 lock, 동기화된 kit 파일을 받아, gates workflow가 runner를 선언하는 schema로 ci.json을 검증합니다. (KSTD-5-101)
 - orm은 dependency-policy-check, dependency-policy-mutation-check, dependency-review를 더 이상 실행하거나 언급하지 않습니다: CHECK_TARGETS, CI group, contracts/check-inputs.json, AGENTS에서 빠지고 config/dependency-review.json은 삭제됩니다. package manager가 lock을 검증하고 오래되거나 취약한 dependency를 보고하기 때문입니다. (KSTD-5-100)
-
 - wheel build backend의 선언은 하나입니다: packages/python/pyproject.toml의 build-system.requires는 release가 build에 쓰는 config/toolchain.json pythonBackend인 setuptools 84.0.0을 지정합니다. Red: `make release-candidate-assets`가 둘이 다르다고 보고했습니다. (KSTD-5-99)
-
 - `make release-assets`와 `make release-candidate-assets`는 kit standard 이전처럼 lease tool의 Go module만 딛고 build하므로, 그 Go 선행 조건이 kit release 대상의 환경에서 build됩니다. Red: `make release-assets TAG=v0.0.18`이 `go mod download`에서 멈췄습니다(no modules specified). (KSTD-5-98)
-
 - `make orm-install-php`는 root Composer lock을 Kit의 composer-install로 설치하므로, 새 worktree가 lock의 PHP package를 offline으로 찾습니다. Red: 새 orm worktree-setup이 Composer에서 실패했습니다. (KSTD-5-97)
-
 - 독립 CI 그룹마다 필요한 고정 의존성만 설치하고 native parity 추출기·PHP arginfo·최소 Go lease 의존성을 연결하며 클라이언트·DBspec·기능 검사 병렬 구성을 유지합니다. (KSTD-5-96)
-
 - native CI 검사를 클라이언트·SQL 백엔드별로 나누고 Markdown을 6개 native 작업으로 실행하며, 공통 비교를 유지한 채 성능과 공개 API·native 실행 parity 단계를 분리합니다. (KSTD-5-95)
 - IR validation, codec, planning, binding, execution 및 runtime class를 포함한 native PHP client protocol을 완료했습니다. 공유 native planner와 bind 사례, 세 database의 여섯 클라이언트 conformance 및 parity 선언 검사로 실행 근거를 확인했으며 native class 이름과 생태계 라이브러리 선택은 유지합니다 (T182).
-
 - 전체 PHP ORM 표면을 같은 class 이름의 native C로 구현했으며 PHP 제품 코드 fallback 없이 세 database의 여섯 클라이언트 conformance가 일치합니다. 독립적인 수용 기준 검토에 따라 과거 schema 전용 구현을 이유로 한 보류를 완료된 구현과 일치시켰습니다 (T199).
-
 - PHP C 확장의 query, model, collection 클라이언트를 완료했습니다. 필수 model 및 fixture 사례가 PHP 제품 코드 fallback 없이 실행되고, 감사 순번 비교를 집중 수정한 뒤 MySQL, PostgreSQL, SQLite의 59개 conformance 벡터가 여섯 클라이언트에서 일치하며 보존된 결과 계약 검사도 통과합니다 (T182-6).
-
 - PHP C 확장이 명세된 NULL key 거부 conformance 벡터를 실행하며 MySQL, PostgreSQL, SQLite에서 여섯 클라이언트의 결과가 일치합니다. 이 사례는 문서에 정의한 SQL 실행 전 IR_INVALID 거부를 유지합니다 (T77-6-1-1).
-
 - `make kit-sync`가 설치한 로컬 Kit package에서 공유 파일 여섯 개를 갱신했습니다. 추적하던 link 네 개는 일반 사본이 되었고 release/gates workflow는 Kit source와 일치합니다. `kit-check`의 초기 finding 열 개를 해결했습니다(T240).
 - protocol/tooling parity 선언이 모든 지원 client의 native case 요구를 추적한다. 커밋된 tree의 선언 검사가 통과하며 사용자 보류 취소 기능은 실행 증거로 계산하지 않고 별도로 표시한다 (KSTD-2-7).
 - 잘못된 단독 parity 선언과 helper test 소유 관계를 정리하면서 native assertion과 정확한 owner 실행 명령을 보존했다. 선언 gate가 통과한다 (KSTD-2-11).
-
 - KSTD-5-89의 static gate 범위가 main에서 통과한다: 기존 검증 명령 여섯 개, 추가 정적 검사 아홉 개(9/9, pinned tool 18개와 소유 경로 2,421개 포함), 소유 범위별 lint 결과를 checklist에 commit과 log로 기록한다. duplication 및 parity/divergence 검사는 기존 별도 항목에 남는다 (KSTD-5-89).
 - Rust schema stress test가 repository discovery, Node 시작, parse 실패를 명시적인 match로 보고한다. interface-symbols parser는 trailing comma가 있을 때만 소비하고 parse 오류를 전달한다 (KSTD-5-93-1-1).
 - interface-symbols invocation-extraction unit은 production macro body를 복사하는 대신 고유한 최소 macro fixture를 사용한다. 추출된 public signature 네 개를 계속 검사한다 (KSTD-5-93-1-1-1).
 - Rust apply test는 lock-wait 결과에 rollback과 close 오류를 함께 보존하고, SQLite pragma protocol error는 parse 원인을 보존하며, catalog coverage는 기존 OrPanic helper를 사용하면서 driver별 실패 메시지를 유지한다 (KSTD-5-93-1-2).
-
 - TypeScript dbspec apply 테스트의 lock_wait apply 시나리오 SQLite case가 다시 locked 오류를 본다: node:sqlite apply connection의 proxy가 node:sqlite의 exec처럼, 그리고 applier가 부르는 대로 exec를 동기로 감싸므로, 실패한 `BEGIN EXCLUSIVE`가 아무도 기다리지 않는 rejected promise가 아니라 apply에 닿는다. `make dbspec-apply-ts-check`가 다시 122 apply run을 센다 (KSTD-5-89-44).
 - `make lint-go`가 main에서 다시 통과한다: dbspec apply 비교의 Go driver가 blocker를 닫을 때, rollback할 때, row set을 닫을 때의 error를 뒤따르는 실패와 함께 join하여 반환하고 보고하는 lock 실패를 감싸며, error를 버리거나 감싸지 않고 formatting하던 Go test는 이제 그 error로 실패하거나 그것을 감싼다 (KSTD-5-89-42).
 - MySQL 테스트 서버는 SUPER가 아닌 로그인 사용자의 audit trigger 생성을 허용하고, PostgreSQL은 `orm` 외 loopback 역할에 SCRAM을 요구하며, replica는 localhost identity 검사를 지원하고 mismatch DSN은 `127.0.0.1`로 접속한다. PostgreSQL 인증과 MySQL daemon 변경은 테스트 서버를 stop하고 다시 start한 뒤 적용된다 (T239).
