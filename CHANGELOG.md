@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- make repo-check reads the env of a make spawn from its whole call, which may span lines, and accepts make ci-install-tools as the install of the Go of mise.toml; it reported both falsely on main (KSTD-5-116).
 - parity-declarations-check builds the TypeScript dist first, as lint-ts does, so the shared gates job on a fresh checkout finds packages/ts/dist/index.d.ts (KSTD-5-114).
 - The python runtime of config/ci.json names orm-install-python, so CI installs the Python client non-editable and the parity API phase reads its symbols; the default uv-install made an editable install, whose file list holds no module (KSTD-5-113).
 - Take the released kit 0.0.73 in place of 0.0.70: kit-sync writes gates.yml without the link steps of CI (K824), the PHPUnit autoloader reaches a listed run of the PHP extension (K827), and the principles of kit (KSTD-5-112).

@@ -37,6 +37,20 @@ export function nodeTestErrors(files: Record<string, string>) {
 // The result of such a case depends on GROUP, GITHUB_ACTIONS and ORM_CHECK_RUN_ID that CI's `make orm-check GROUP=<group>` sets in the environment, and on the upper
 // make's MAKEFLAGS and the variables the Makefile exports. A child process receives, under isolatedEnvironment in tests/environment.mts,
 // only the variables that the case gives. files is {path: text}.
+// callText is the text of the call that starts on line `index` of `text`: from the line's first `(` after a spawn name to its
+// matching `)`. Parentheses inside strings are counted too, which a make spawn's arguments do not hold unbalanced.
+function callText(text: string, index: number): string {
+  const lines = text.split('\n');
+  const rest = lines.slice(index).join('\n');
+  const start = rest.search(/\b(?:spawnSync|spawn|execFileSync|execFile)\(/);
+  let depth = 0;
+  for (let at = rest.indexOf('(', start); at < rest.length; at++) {
+    if (rest[at] === '(') depth++;
+    else if (rest[at] === ')' && --depth === 0) return rest.slice(start, at + 1);
+  }
+  return rest.slice(start);
+}
+
 export function callerEnvironmentErrors(files: Record<string, string>) {
   const errors: string[] = [];
   for (const [path, text] of Object.entries(files)) {
@@ -45,7 +59,8 @@ export function callerEnvironmentErrors(files: Record<string, string>) {
       const at = `${path}:${index + 1}`;
       if (/\.\.\.process\.env\b|\benv:\s*process\.env\b(?!\.)/.test(line))
         errors.push(`${at} gives a child process the environment of its caller; give it isolatedEnvironment of tests/environment.mts with the variables of the case`);
-      else if (/\b(?:spawnSync|spawn|execFileSync|execFile)\(\s*['"]make['"]/.test(line) && !/\benv:\s*isolatedEnvironment\(/.test(line))
+      // The env of a make spawn is read from its whole call, which may span lines (KSTD-5-116).
+      else if (/\b(?:spawnSync|spawn|execFileSync|execFile)\(\s*['"]make['"]/.test(line) && !/\benv:\s*isolatedEnvironment\(/.test(callText(text, index)))
         errors.push(`${at} runs make with the environment of its caller, whose GROUP, GITHUB_ACTIONS and MAKEFLAGS reach the recipe; pass env: isolatedEnvironment(...) of tests/environment.mts with the variables of the case`);
     });
   }

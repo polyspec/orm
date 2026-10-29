@@ -1481,6 +1481,11 @@ caseTest('a JavaScript test gives its child processes only the variables of the 
     'c.test.mjs': `${spawn}('make', ['-n', 'orm-check'], { env: isolatedEnvironment({ GROUP: 'static' }) });\nrun('sh', [], { env: isolatedEnvironment({ PATH: ${caller}.PATH }) });\n`,
     'd.mjs': `${spawn}('make', ['orm-check'], { env: { ...${caller} } });\n`,
   }), [spread('a.test.mjs:1'), make('b.test.mjs:1'), spread('b.test.mjs:2')]);
+  // The env of a make spawn is read from the whole call, which may span lines (KSTD-5-116).
+  assert.deepEqual(callerEnvironmentErrors({
+    'e.test.mts': `const r = ${spawn}('make', ['-n', 'ci-install-tools'], {\n  cwd: repo,\n  env: isolatedEnvironment({ GROUP: 'static' }),\n});\n`,
+    'f.test.mts': `const r = ${spawn}('make', ['-n', 'ci-install-tools'], {\n  cwd: repo,\n});\nrun('sh', [], { env: isolatedEnvironment() });\n`,
+  }), [make('f.test.mts:1')]);
 });
 
 caseTest('every Rust test starts its case with the shared testcase package', COMPUTE, () => {
@@ -1945,6 +1950,8 @@ caseTest('every workflow runs the Go of mise.toml', COMPUTE, () => {
   assert.deepEqual(goVersionErrors({ 'ci.yml': 'jobs:\n  test:\n    steps:\n      - run: make install-tools TOOLS=npm\n      - run: make orm-check\n' }), [
     'ci.yml runs Go without the Go of mise.toml; add a step that runs make install-tools',
   ]);
+  // make ci-install-tools installs the Go of mise.toml in every CI group (KSTD-5-116).
+  assert.deepEqual(goVersionErrors({ 'ci.yml': 'jobs:\n  test:\n    steps:\n      - run: make install-tools TOOLS=npm\n      - run: make ci-install-tools GROUP=static\n      - run: make orm-install-go\n' }), []);
 });
 
 // The Go module path case (G5.113-5) checks that every go.mod in the repository declares the module path of its own directory, and rejects, in a minimal file, a root or subdirectory go.mod that declares another

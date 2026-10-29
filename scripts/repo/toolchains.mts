@@ -133,7 +133,8 @@ export function rustToolchainErrors(toolchain: string, makefile: string, workflo
 // goVersionErrors returns one error for each workflow that does not install the Go of mise.toml. mise.toml declares the one
 // Go release (kit K127): kit's toolchain-check requires it to be the kit pin and the running go to be that release, and
 // make install-tools installs it from mise.lock. workflows is {path: text}.
-//   - A workflow that runs go runs make install-tools (the tools of mise.toml), and none sets up a second Go with
+//   - A workflow that runs go runs make install-tools (the tools of mise.toml) or make ci-install-tools, which installs the Go of
+//     mise.toml in every CI group (KSTD-5-116), and none sets up a second Go with
 //     actions/setup-go.
 export function goVersionErrors(workflows: Record<string, string>) {
   const errors = [];
@@ -141,7 +142,7 @@ export function goVersionErrors(workflows: Record<string, string>) {
     if (actionSteps(workflow, 'actions/setup-go').length > 0)
       errors.push(`${path} sets up Go with actions/setup-go; the Go of mise.toml is installed by make install-tools`);
     if (runs(workflow, command => command.name === 'go' || makes(command, 'orm-check') || makes(command, 'orm-install-go')) &&
-        !runs(workflow, command => makes(command, 'install-tools') && !command.args.some(arg => arg.startsWith('TOOLS='))))
+        !runs(workflow, command => (makes(command, 'install-tools') && !command.args.some(arg => arg.startsWith('TOOLS='))) || makes(command, 'ci-install-tools')))
       errors.push(`${path} runs Go without the Go of mise.toml; add a step that runs make install-tools`);
   }
   return errors;

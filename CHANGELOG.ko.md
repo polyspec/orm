@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- make repo-check는 make spawn의 env를 여러 줄에 걸칠 수 있는 그 호출 전체에서 읽고, make ci-install-tools를 mise.toml의 Go 설치로 받아들인다. main에서 그것은 둘 다 잘못 보고했다 (KSTD-5-116).
 - parity-declarations-check는 lint-ts처럼 먼저 TypeScript dist를 build해, 새 checkout의 shared gates job이 packages/ts/dist/index.d.ts를 찾는다 (KSTD-5-114).
 - config/ci.json의 python runtime이 orm-install-python을 지명해 CI가 Python client를 non-editable로 설치하고 parity API phase가 그 symbol을 읽는다. 기본 uv-install은 파일 목록에 module이 없는 editable 설치를 했다 (KSTD-5-113).
 - 0.0.70 대신 release된 kit 0.0.73을 받는다: kit-sync가 CI의 link 단계 없는 gates.yml(K824)과 kit의 원칙을 쓰고, PHPUnit autoloader가 PHP extension의 나열된 run에 닿는다(K827) (KSTD-5-112).
