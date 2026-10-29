@@ -58,8 +58,9 @@ caseTest('orm-install-python builds its venv with the pinned interpreter, never 
     assert.equal(result.status, 0, result.stdout + result.stderr);
     assert.doesNotMatch(result.stdout, /(^|[\s/])python3 -m venv/m);
     // The Python venv setup selects only the pinned interpreter and uv from the declared tool inventory.
-    assert.match(result.stdout, /make --no-print-directory install-tools TOOLS="python uv"\n/);
-    assert.doesNotMatch(result.stdout, /make --no-print-directory install-tools\n/);
+    // The target is matched without the command text before it, which carries the variables of kit K762 (T245).
+    assert.match(result.stdout, /\s--no-print-directory install-tools TOOLS="python uv"$/m);
+    assert.doesNotMatch(result.stdout, /\s--no-print-directory install-tools$/m);
     assert.match(result.stdout, /python-venv DIR=/);
     // make puts the shims of mise before PATH, so python3 is the Python of mise.toml and the stub of PATH is never run.
     assert.match(result.stdout, /(^|\s)\S*\/var\/tools\/mise\/shims\/python3 -m pip --python /m);

@@ -652,7 +652,9 @@ caseTest('the CI groups run every target of CHECK_TARGETS in exactly one job', C
     assert.equal(result.status, 0, result.stderr);
     return result.stdout;
   };
-  assert.match(installTools('static', 'false', 'false'), /make --no-print-directory install-tools\n/);
+  // A recursive make carries the variables of kit K762 (KIT=... KIT_EXT=...) before its flags, so the dry run is matched by
+  // the invoked target, never by the command text before it (T245).
+  assert.match(installTools('static', 'false', 'false'), /\s--no-print-directory install-tools$/m);
   assert.doesNotMatch(installTools('static', 'false', 'false'), /install-tools TOOLS=/);
   const selectedTools = /install-tools TOOLS="([^"]+)"/.exec(installTools('feature_php_mysql', 'true', 'false'))?.[1]?.split(/\s+/) ?? [];
   assert.deepEqual(selectedTools, ['go', 'php', 'composer']);

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: de0259515b9a97722bc0a8e76c1628379485d19f61ebbf0e949c9a05ad639357 -->
+<!-- source-sha256: 4048ef0b539c3cb3b5ff3f32c6946e7b216ac31b4cc1f9cedda62406c8447550 -->
 # 변경 이력
 
 ## Unreleased
 
+- CI tool 선택과 orm-install-python의 repository test는 호출된 install-tools target을 맞춥니다. kit K762가 모든 재귀 make에 KIT와 KIT_EXT를 넘기기 때문입니다. (T245)
 - make repo-check의 runtime path 검사는 KSTD-5-94 이후 run이 덮어쓸 수 있는 server 환경 TEST_ENV ?= .runtime/servers/env를 받아들입니다. (T246)
 - orm에는 main writer hook이 없습니다: kit K801과 함께 .githooks/reference-transaction을 삭제했고, .githooks/pre-commit은 더 이상 commit하는 git을 기록하지 않습니다. (KSTD-5-103)
 - orm은 Python을 uv만으로 lock합니다: make orm-python-lock이 uv lock과 uv export로 packages/python/pylock.toml을 쓰고, kit의 Python lock 장치와 함께 config/dependency-policy.json, packages/python/constraints.txt, config/release.json의 consumers.wheel.polyspec을 삭제했습니다. (KSTD-5-102)
