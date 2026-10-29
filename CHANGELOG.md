@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- orm runs its PHP extension tests without run-tests --without-library, which kit K790 deletes, and its test bootstrap fails an extension run, naming the files, that loaded any file of packages/php/src, so the run tests the extension and never a PHP fallback. (KSTD-5-109)
+
 - On MySQL a column of codec ip hex packs and unpacks its address on the client in every implementation, since SQL wraps only the last stages of the write order: an insert binds the stored hex text instead of INET6_ATON of the hex text of the address, which MySQL refused with 1411. (T251)
 - The privilege test of the Rust integration suite reads its PostgreSQL server DSN with a match that names the variable error, without Result::ok. (T252)
 - orm runs no release version check, which kit K812 deletes: release.yml has no release-versions step, and AGENTS.md names no make release-versions. (KSTD-5-108)

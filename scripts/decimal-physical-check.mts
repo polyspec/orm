@@ -23,7 +23,7 @@ export function command(language: string, database: string, environment: NodeJS.
     const extension = environment['POLYSPEC_ORM_EXTENSION'];
     if (!extension) throw new Error('POLYSPEC_ORM_EXTENSION is required; run this check through make decimal-physical-check, which builds the PHP extension');
     return [process.execPath, [kitRunTests, 'phpunit', '--php-extension', extension,
-      '--without-library', 'packages/php', '--', '--configuration', 'packages/php-ext/phpunit.xml.dist', '--filter',
+      '--', '--configuration', 'packages/php-ext/phpunit.xml.dist', '--filter',
       `with data set "${database}"$`, 'packages/php-ext/tests/DecimalModelDbNativeTest.php']];
   }
   if (language === 'rust') {

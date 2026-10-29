@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 930000875613962c520f49610fcd2fb96d6093847745c9154208e5c1afecde7e -->
+<!-- source-sha256: 36be6fd9c14b422223c7f6dc5d0809d1ae80d786d92b2a456ef4fc9dee0a800e -->
 # 변경 이력
 
 ## Unreleased
+
+- orm은 kit K790이 삭제하는 run-tests --without-library 없이 PHP extension test를 실행하며, test bootstrap은 packages/php/src의 file을 하나라도 load한 extension 실행을 그 file들을 밝히며 실패시키므로, 그 실행은 PHP fallback이 아니라 extension을 시험합니다. (KSTD-5-109)
 
 - MySQL에서 codec ip hex column은 모든 구현에서 주소를 client에서 pack하고 unpack합니다. SQL은 write 순서의 마지막 단계만 감싸기 때문입니다: insert는 MySQL이 1411로 거부하던 주소 hex text의 INET6_ATON 대신 저장되는 hex text를 bind합니다. (T251)
 - Rust integration suite의 privilege test는 PostgreSQL server DSN을 Result::ok 없이 변수 오류를 밝히는 match로 읽습니다. (T252)

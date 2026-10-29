@@ -26,7 +26,7 @@ caseTest('dispatches each decimal owner to its native command and rejects unknow
   const [extensionProgram, extensionArgs] = command('php-extension', 'postgres', { POLYSPEC_ORM_EXTENSION: extension });
   assert.equal(extensionProgram, process.execPath);
   assert.ok(extensionArgs.includes(extension));
-  assert.ok(extensionArgs.includes('--without-library'));
+  assert.ok(!extensionArgs.includes('--without-library'), 'kit K790 deleted run-tests --without-library');
   assert.ok(extensionArgs.includes('packages/php-ext/phpunit.xml.dist'));
   assert.ok(extensionArgs.includes('packages/php-ext/tests/DecimalModelDbNativeTest.php'));
   assert.ok(extensionArgs.includes('--filter'));
