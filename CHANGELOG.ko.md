@@ -1,11 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f5eeb4627307a54200aafe32fc3a95ea5724d63565823c3458782c16d3e6a1e4 -->
+<!-- source-sha256: 930000875613962c520f49610fcd2fb96d6093847745c9154208e5c1afecde7e -->
 # 변경 이력
 
 ## Unreleased
 
+- MySQL에서 codec ip hex column은 모든 구현에서 주소를 client에서 pack하고 unpack합니다. SQL은 write 순서의 마지막 단계만 감싸기 때문입니다: insert는 MySQL이 1411로 거부하던 주소 hex text의 INET6_ATON 대신 저장되는 hex text를 bind합니다. (T251)
 - Rust integration suite의 privilege test는 PostgreSQL server DSN을 Result::ok 없이 변수 오류를 밝히는 match로 읽습니다. (T252)
-
 - orm은 kit K812가 삭제하는 release version check를 실행하지 않습니다: release.yml에는 release-versions 단계가 없고, AGENTS.md는 make release-versions를 지목하지 않습니다. (KSTD-5-108)
 - AGENTS.md에는 kit K805의 guided rule을 되풀이하고 make item-state를 검사로 지목하던 P27 refinement가 없습니다. (KSTD-5-106-1)
 - orm은 build backend의 유일한 선언인 build-system.requires로 uv build를 실행해 wheel을 만들고, Python client를 uv sync --locked로 editable이 아니게 설치하며, make link가 그것을 checkout의 link로 바꿉니다 (kit K788, K803): config/toolchain.json에는 pythonBackend가 없고, packages/python/pylock.toml과 그 test를 삭제했습니다. (KSTD-5-104)

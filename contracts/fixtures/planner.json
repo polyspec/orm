@@ -43,7 +43,8 @@
     "PRT-7",
     "PRT-19",
     "PRT-67",
-    "DSL-95"
+    "DSL-95",
+    "DIA-16"
   ],
   "cases": [
     {
@@ -6012,6 +6013,122 @@
       },
       "operation": "compile",
       "schema": "contracts/fixtures/bench/bench.dbs"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "length": 32,
+                "not_null": true,
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "INSERT INTO `ip` (`address`) VALUES (?)",
+            "tables": [
+              "ip"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "length": 32,
+                "not_null": true,
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "INSERT INTO \"ip\" (\"address\") VALUES ($1) RETURNING \"seq\"",
+            "tables": [
+              "ip"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "length": 32,
+                "not_null": true,
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "INSERT INTO \"ip\" (\"address\") VALUES (?) RETURNING \"seq\"",
+            "tables": [
+              "ip"
+            ]
+          }
+        ]
+      },
+      "id": "planner_ip_hex_insert",
+      "input": {
+        "entity": "ip",
+        "ir_version": 1,
+        "kind": "insert",
+        "n_params": 1,
+        "set": [
+          {
+            "column": "address",
+            "p": 0
+          }
+        ]
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/ip_hex.dbs"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`address` AS `a__address` FROM `ip` AS `a`",
+            "tables": [
+              "ip"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"address\" AS \"a__address\" FROM \"ip\" AS \"a\"",
+            "tables": [
+              "ip"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"address\" AS \"a__address\" FROM \"ip\" AS \"a\"",
+            "tables": [
+              "ip"
+            ]
+          }
+        ]
+      },
+      "id": "planner_ip_hex_select",
+      "input": {
+        "entity": "ip",
+        "ir_version": 1,
+        "kind": "all",
+        "n_params": 0
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/ip_hex.dbs"
     }
   ],
   "feature": "planner"

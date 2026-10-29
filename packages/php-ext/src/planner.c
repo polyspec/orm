@@ -907,38 +907,68 @@ static zval *out_col(pctx *c, zend_long index, zend_string *name, zend_string *c
 }
 
 /* The styles of a column that the dialect handles (want is true) or does not handle (want is false), in codec order. */
-static zval *codec_filter(pctx *c, HashTable *col, const char *method, bool want)
+/*
+ * The index where the end of the codec that the dialect method accepts at every stage begins: the stages from it on
+ * run in SQL, since SQL wraps only what the client has encoded (a column of ip hex packs its address on the client on
+ * MySQL). -1 when the dialect method failed.
+ */
+static zend_long sql_start(pctx *c, HashTable *col, const char *method)
 {
-    zval *out = newlist(c);
-    zval *st;
-    ZEND_HASH_FOREACH_VAL(lst(col, "codec"), st) {
+    HashTable *codec = lst(col, "codec");
+    zend_long start = count_of(codec);
+    while (start > 0) {
+        zval *st = zend_hash_index_find(codec, (zend_ulong)(start - 1));
+        if (st == NULL) {
+            return -1;
+        }
         ZVAL_DEREF(st);
         zval a[1] = {*st};
         zval *r = D(c, method, 1, a);
-        OKP(r);
-        if (zend_is_true(r) == want) {
+        if (r == NULL) {
+            return -1;
+        }
+        if (!zend_is_true(r)) {
+            break;
+        }
+        start--;
+    }
+    return start;
+}
+
+/* The stages of the codec from index `from` (tail) or before it (head), in write order. */
+static zval *codec_part(pctx *c, HashTable *col, zend_long from, bool tail)
+{
+    if (from < 0) {
+        return NULL;
+    }
+    zval *out = newlist(c);
+    zend_ulong i;
+    zval *st;
+    ZEND_HASH_FOREACH_NUM_KEY_VAL(lst(col, "codec"), i, st) {
+        if (((zend_long)i >= from) == tail) {
+            ZVAL_DEREF(st);
             lpush(out, st);
         }
     } ZEND_HASH_FOREACH_END();
     return out;
 }
 
-/* The styles that the dialect writes in SQL. */
+/* The styles that the dialect writes in SQL: the end of the write order whose every stage it handles. */
 static zval *sql_styles(pctx *c, HashTable *col)
 {
-    return codec_filter(c, col, "handlesStyle", true);
+    return codec_part(c, col, sql_start(c, col, "handlesStyle"), true);
 }
 
-/* The styles that the dialect decodes in SQL on read. */
+/* The styles that the dialect decodes in SQL on read, the end of the write order. */
 static zval *read_sql_styles(pctx *c, HashTable *col)
 {
-    return codec_filter(c, col, "decodesStyle", true);
+    return codec_part(c, col, sql_start(c, col, "decodesStyle"), true);
 }
 
 /* The styles that the executor (the client) runs for a column. */
 static zval *client_styles(pctx *c, HashTable *col)
 {
-    return codec_filter(c, col, "decodesStyle", false);
+    return codec_part(c, col, sql_start(c, col, "decodesStyle"), false);
 }
 
 /* A column read with its SQL-side read stages; a time(p) column reads as its p-digit text. */
@@ -1728,17 +1758,13 @@ static zend_string *render_value(pctx *c, pbinds *b, HashTable *col, zend_long i
     if (stages == NULL) {
         stages = (HashTable *)&zend_empty_array;
     }
+    zval *client = codec_part(c, col, sql_start(c, col, "handlesStyle"), false);
+    OKP(client);
     zval *host = newlist(c);
     zval *st;
-    ZEND_HASH_FOREACH_VAL(lst(col, "codec"), st) {
-        ZVAL_DEREF(st);
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(client), st) {
         if (Z_TYPE_P(st) == IS_STRING && in_list(stages, Z_STR_P(st))) {
-            zval a[1] = {*st};
-            zval *h = D(c, "handlesStyle", 1, a);
-            OKP(h);
-            if (!zend_is_true(h)) {
-                lpush(host, st);
-            }
+            lpush(host, st);
         }
     } ZEND_HASH_FOREACH_END();
     if (count_of(Z_ARRVAL_P(styles)) == 0) {

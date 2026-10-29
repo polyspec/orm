@@ -1073,8 +1073,8 @@ func (p *Planner) renderValue(b *builder, col *runtimemodel.Field, i int) (strin
 	// SQL-side stages the dialect lacks (aes/hex/ip on PostgreSQL/SQLite) are
 	// applied by the executor to the bound value: recorded on the slot.
 	var host []string
-	for _, st := range col.Codec {
-		if (st == "aes" || st == "hex" || st == "ip") && !p.D.HandlesStyle(st) {
+	for _, st := range col.Codec[:sqlStart(col.Codec, p.D.HandlesStyle)] {
+		if st == "aes" || st == "hex" || st == "ip" {
 			host = append(host, st)
 		}
 	}
@@ -1593,38 +1593,41 @@ func cmp(op string) string {
 	panic("cmp: " + op)
 }
 
-// sqlStyles keeps only the stages the dialect applies in SQL on write
-// (docs/spec/codec.md).
+// sqlStyles keeps the stages the dialect applies in SQL on write
+// (docs/spec/codec.md): the end of the write order whose every stage the
+// dialect handles, since SQL wraps only what the client has encoded (a column
+// of ip hex packs its address on the client on MySQL).
 func (p *Planner) sqlStyles(styles []string) []string {
-	var out []string
-	for _, s := range styles {
-		if p.D.HandlesStyle(s) {
-			out = append(out, s)
-		}
-	}
-	return out
+	return stageList(styles[sqlStart(styles, p.D.HandlesStyle):])
 }
 
-// readSQLStyles keeps the stages the dialect decodes in SQL on read;
-// clientStyles the rest, in write order, for the executor.
+// readSQLStyles keeps the stages the dialect decodes in SQL on read, the end
+// of the write order; clientStyles the rest, in write order, for the executor.
 func (p *Planner) readSQLStyles(styles []string) []string {
-	var out []string
-	for _, s := range styles {
-		if p.D.DecodesStyle(s) {
-			out = append(out, s)
-		}
-	}
-	return out
+	return stageList(styles[sqlStart(styles, p.D.DecodesStyle):])
 }
 
 func (p *Planner) clientStyles(styles []string) []string {
-	var out []string
-	for _, s := range styles {
-		if !p.D.DecodesStyle(s) {
-			out = append(out, s)
-		}
+	return stageList(styles[:sqlStart(styles, p.D.DecodesStyle)])
+}
+
+// sqlStart is the index where the end of styles that sql accepts at every
+// stage begins: the stages from it on run in SQL.
+func sqlStart(styles []string, sql func(string) bool) int {
+	start := len(styles)
+	for start > 0 && sql(styles[start-1]) {
+		start--
 	}
-	return out
+	return start
+}
+
+// stageList copies stages, nil when there are none, so that a plan never
+// shares the codec of the runtime model.
+func stageList(stages []string) []string {
+	if len(stages) == 0 {
+		return nil
+	}
+	return append([]string(nil), stages...)
 }
 
 func contains(xs []string, x string) bool {

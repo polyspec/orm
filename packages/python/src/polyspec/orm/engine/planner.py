@@ -278,6 +278,14 @@ def _conflict_target(ent: Entity, assignments) -> list:
     return conflict_key(ent, assignments)
 
 
+def _sql_start(stages, sql) -> int:
+    """The index where the end of stages that sql accepts at every stage begins: the stages from it on run in SQL."""
+    start = len(stages)
+    while start > 0 and sql(stages[start - 1]):
+        start -= 1
+    return start
+
+
 def _style_input_type(style: str) -> str:
     return "text" if style == "ip" else "bytes"
 
@@ -380,14 +388,18 @@ class Planner:
         return [self._qcol(s, c) for c in columns]
 
     def _sql_styles(self, stages) -> list:
-        return [s for s in stages if self.d.handles_stage(s)]
+        """The stages that SQL applies around the bound value: the end of the write order whose every stage the
+        dialect handles, since SQL wraps only what the client has encoded (a column of ip hex packs its address on
+        the client on MySQL)."""
+        return list(stages[_sql_start(stages, self.d.handles_stage) :])
 
     def _read_sql_styles(self, stages) -> list:
-        """The stages that the dialect decodes in SQL when reading. _client_styles leaves the rest to the executor."""
-        return [s for s in stages if self.d.decodes_stage(s)]
+        """The stages that the dialect decodes in SQL when reading, the end of the write order. _client_styles leaves
+        the rest to the executor."""
+        return list(stages[_sql_start(stages, self.d.decodes_stage) :])
 
     def _client_styles(self, stages) -> list:
-        return [s for s in stages if not self.d.decodes_stage(s)]
+        return list(stages[: _sql_start(stages, self.d.decodes_stage)])
 
     def _select_step(
         self, add, steps, q: dict, kind: str, agg: str, rc, deferred=None
@@ -982,10 +994,11 @@ class Planner:
 
     def _render_value(self, b: _Builder, col: Field, i: int) -> str:
         """Binds one value; the SQL-side stage wraps it, and the host-side stage records it in the slot."""
+        stages = _styles(col)
         host = [
             s
-            for s in _styles(col)
-            if s in ("aes", "hex", "ip") and not self.d.handles_stage(s)
+            for s in stages[: _sql_start(stages, self.d.handles_stage)]
+            if s in ("aes", "hex", "ip")
         ]
         sql = self._sql_styles(_styles(col))
         # The type of the value wrapped by an SQL-side style function is the type of that function's input.

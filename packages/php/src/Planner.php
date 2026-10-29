@@ -710,8 +710,11 @@ final class Planner
     private function renderValue(PlanBinds $b, array $col, int $i): string
     {
         $styles = $this->sqlStyles($col);
-        $host = array_values(array_filter($col['codec'], fn(string $st): bool =>
-            in_array($st, RuntimeModel::HOST_STAGES, true) && !$this->d->handlesStyle($st)));
+        $client = array_slice($col['codec'], 0, $this->sqlStart($col['codec'], $this->d->handlesStyle(...)));
+        $host = array_values(array_filter(
+            $client,
+            fn(string $st): bool => in_array($st, RuntimeModel::HOST_STAGES, true),
+        ));
         if ($styles === []) {
             $ph = $b->colParam($i, $col, '', $host);
             return match ($col['type']) {
@@ -751,20 +754,43 @@ final class Planner
         return $cur;
     }
 
+    /**
+     * The stages that SQL applies around the bound value: the end of the write order whose every stage the dialect
+     * handles, since SQL wraps only what the client has encoded (a column of `ip hex` packs its address on the client
+     * on MySQL).
+     */
     private function sqlStyles(array $col): array
     {
-        return array_values(array_filter($col['codec'], fn(string $s): bool => $this->d->handlesStyle($s)));
+        return array_slice($col['codec'], $this->sqlStart($col['codec'], $this->d->handlesStyle(...)));
     }
 
-    /** The stage the dialect decodes in SQL on read. clientStyles leaves the rest to the executor. */
+    /**
+     * The stages the dialect decodes in SQL on read, the end of the write order. clientStyles leaves the rest to the
+     * executor.
+     */
     private function readSqlStyles(array $col): array
     {
-        return array_values(array_filter($col['codec'], fn(string $s): bool => $this->d->decodesStyle($s)));
+        return array_slice($col['codec'], $this->sqlStart($col['codec'], $this->d->decodesStyle(...)));
     }
 
     private function clientStyles(array $col): array
     {
-        return array_values(array_filter($col['codec'], fn(string $s): bool => !$this->d->decodesStyle($s)));
+        return array_slice($col['codec'], 0, $this->sqlStart($col['codec'], $this->d->decodesStyle(...)));
+    }
+
+    /**
+     * The index where the end of the stages that $sql accepts at every stage begins: the stages from it on run in SQL.
+     *
+     * @param list<string> $stages
+     * @param callable(string): bool $sql
+     */
+    private function sqlStart(array $stages, callable $sql): int
+    {
+        $start = count($stages);
+        while ($start > 0 && $sql($stages[$start - 1])) {
+            $start--;
+        }
+        return $start;
     }
 
     private static function hasAes(array $ent): bool

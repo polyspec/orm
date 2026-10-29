@@ -183,6 +183,18 @@ func TestCoveragePlannerRestorePrimaryKeyFirst(t *testing.T) {
 	compilePlannerCase(t, "planner_restore_primary_key_first")
 }
 
+// TestCoveragePlannerIpHexInsert compiles an insert of a column of codec ip hex, whose address the client packs on every dialect.
+func TestCoveragePlannerIpHexInsert(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_ip_hex_insert")
+}
+
+// TestCoveragePlannerIpHexSelect compiles a select that reads a column of codec ip hex without a SQL-side ip stage.
+func TestCoveragePlannerIpHexSelect(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_ip_hex_select")
+}
+
 // TestCoveragePlannerRestoreFirstUniqueByName compiles a restore whose set covers two unique keys.
 func TestCoveragePlannerRestoreFirstUniqueByName(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
@@ -712,6 +724,8 @@ func TestCoveragePlanner(t *testing.T) {
 		"planner_restore_key_from_set":                             TestCoveragePlannerRestoreKeyFromSet,
 		"planner_restore_extra_condition":                          TestCoveragePlannerRestoreExtraCondition,
 		"planner_restore_primary_key_first":                        TestCoveragePlannerRestorePrimaryKeyFirst,
+		"planner_ip_hex_insert":                                    TestCoveragePlannerIpHexInsert,
+		"planner_ip_hex_select":                                    TestCoveragePlannerIpHexSelect,
 		"planner_restore_first_unique_by_name":                     TestCoveragePlannerRestoreFirstUniqueByName,
 		"planner_tables":                                           TestCoveragePlannerTables,
 		"planner_bind_types_select":                                TestCoveragePlannerBindTypesSelect,

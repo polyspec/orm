@@ -109,6 +109,18 @@ final class CoveragePlannerExtensionTest extends TestCase
     }
 
     // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
+    public function test_planner_ip_hex_insert(): void
+    {
+        $this->runPlannerCoverageCase('planner_ip_hex_insert');
+    }
+
+    // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
+    public function test_planner_ip_hex_select(): void
+    {
+        $this->runPlannerCoverageCase('planner_ip_hex_select');
+    }
+
+    // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
     public function test_planner_restore_first_unique_by_name(): void
     {
         $this->runPlannerCoverageCase('planner_restore_first_unique_by_name');

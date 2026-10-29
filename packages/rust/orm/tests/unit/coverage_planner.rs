@@ -266,6 +266,18 @@ mod planner {
     }
 
     #[test]
+    fn planner_ip_hex_insert() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_ip_hex_insert");
+    }
+
+    #[test]
+    fn planner_ip_hex_select() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_ip_hex_select");
+    }
+
+    #[test]
     fn planner_restore_first_unique_by_name() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         run("planner_restore_first_unique_by_name");

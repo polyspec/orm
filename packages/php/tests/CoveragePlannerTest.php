@@ -335,6 +335,20 @@ final class CoveragePlannerTest extends TestCase
         plannerCase($root, $fixture, 'planner_restore_primary_key_first');
     }
 
+    public function testPlannerIpHexInsert(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        plannerCase($root, $fixture, 'planner_ip_hex_insert');
+    }
+
+    public function testPlannerIpHexSelect(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        plannerCase($root, $fixture, 'planner_ip_hex_select');
+    }
+
     public function testPlannerRestoreFirstUniqueByName(): void
     {
         $root = dirname(__DIR__, 3);

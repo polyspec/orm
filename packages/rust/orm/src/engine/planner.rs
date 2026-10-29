@@ -350,6 +350,15 @@ fn col_digits(col: &Field) -> (i64, i64) {
     }
 }
 
+/// The index where the end of `styles` that `sql` accepts at every stage begins: the stages from it on run in SQL.
+fn sql_start(styles: &[String], sql: impl Fn(&str) -> bool) -> usize {
+    let mut start = styles.len();
+    while start > 0 && sql(&styles[start - 1]) {
+        start -= 1;
+    }
+    start
+}
+
 /// The type of the value that a SQL-side style function takes from the placeholder. hex takes bytes, and ip takes IP address text.
 fn style_input_type(style: &str) -> &'static str {
     if style == "ip" {
@@ -450,17 +459,21 @@ impl<'m> Planner<'m> {
         cols.iter().map(|c| self.qcol(s, c)).collect()
     }
 
+    /// The stages that SQL applies around the bound value: the end of the write order whose every stage the
+    /// dialect handles, since SQL wraps only what the client has encoded (a column of `ip hex` packs its address on
+    /// the client on MySQL).
     fn sql_styles<'c>(&self, styles: &'c [String]) -> Vec<&'c str> {
-        styles.iter().map(String::as_str).filter(|s| self.d.handles_style(s)).collect()
+        styles[sql_start(styles, |s| self.d.handles_style(s))..].iter().map(String::as_str).collect()
     }
 
-    /// The stage the dialect decodes in SQL on reads. `client_styles` leaves the rest to the executor.
+    /// The stages the dialect decodes in SQL on reads, the end of the write order. `client_styles` leaves the rest
+    /// to the executor.
     fn read_sql_styles<'c>(&self, styles: &'c [String]) -> Vec<&'c str> {
-        styles.iter().map(String::as_str).filter(|s| self.d.decodes_style(s)).collect()
+        styles[sql_start(styles, |s| self.d.decodes_style(s))..].iter().map(String::as_str).collect()
     }
 
     fn client_styles(&self, styles: &[String]) -> Vec<String> {
-        styles.iter().filter(|s| !self.d.decodes_style(s)).cloned().collect()
+        styles[..sql_start(styles, |s| self.d.decodes_style(s))].to_vec()
     }
 
     fn select_step(&self, steps: &mut Vec<Step>, q: &ir::Query, kind: &str, agg: &str, rc: Option<&RelCtx>, count_before_relations: bool) -> Result<usize> {
@@ -1046,7 +1059,8 @@ impl<'m> Planner<'m> {
     /// stages the dialect leaves to the executor are recorded on the slot.
     fn render_value(&self, b: &mut Builder, col: &Field, i: usize) -> String {
         let styles = self.sql_styles(&col.codec);
-        let host: Vec<String> = col.codec.iter().filter(|s| matches!(s.as_str(), "aes" | "hex" | "ip") && !self.d.handles_style(s)).cloned().collect();
+        let client = &col.codec[..sql_start(&col.codec, |s| self.d.handles_style(s))];
+        let host: Vec<String> = client.iter().filter(|s| matches!(s.as_str(), "aes" | "hex" | "ip")).cloned().collect();
         // The type of the value a SQL-side style function wraps is the type of that function's input.
         let ph = match styles.first() {
             None => b.col_param(i, col, ""),

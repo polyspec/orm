@@ -208,6 +208,13 @@ function conflictTarget(ent: Entity, set: readonly Assignment[]): readonly strin
   return conflictKey(ent, set);
 }
 
+/** The index where the end of `list` that `sql` accepts at every stage begins: the stages from it on run in SQL. */
+function sqlStart(list: readonly string[], sql: (stage: string) => boolean): number {
+  let start = list.length;
+  while (start > 0 && sql(list[start - 1] ?? '')) start--;
+  return start;
+}
+
 /** The type of the value a SQL-side style function takes from its placeholder: hex takes bytes, ip takes text. */
 function styleInputType(style: string): string {
   return style === 'ip' ? 'text' : 'bytes';
@@ -285,12 +292,16 @@ export class Planner {
 
   private qualified(s: Scope, columns: readonly string[]): string[] { return columns.map(c => this.qcol(s, c)); }
 
-  private sqlStyles(list: readonly string[]): string[] { return list.filter(s => this.d.handlesStage(s)); }
+  /**
+   * The stages that SQL applies around the bound value: the end of the write order whose every stage the dialect handles,
+   * since SQL wraps only what the client has encoded (a column of `ip hex` packs its address on the client on MySQL).
+   */
+  private sqlStyles(list: readonly string[]): string[] { return list.slice(sqlStart(list, s => this.d.handlesStage(s))); }
 
-  /** The stages the dialect decodes in SQL on read; clientStyles holds the rest for the executor. */
-  private readSqlStyles(list: readonly string[]): string[] { return list.filter(s => this.d.decodesStage(s)); }
+  /** The stages the dialect decodes in SQL on read, the end of the write order; clientStyles holds the rest for the executor. */
+  private readSqlStyles(list: readonly string[]): string[] { return list.slice(sqlStart(list, s => this.d.decodesStage(s))); }
 
-  private clientStyles(list: readonly string[]): string[] { return list.filter(s => !this.d.decodesStage(s)); }
+  private clientStyles(list: readonly string[]): string[] { return list.slice(0, sqlStart(list, s => this.d.decodesStage(s))); }
 
   private selectStep(add: (st: Omit<PlanStep, 'id'>) => PlanStep, steps: readonly PlanStep[], q: RequestQuery, kind: string, agg: string, rc: RelationContext | undefined, deferRelations?: (append: () => void) => void): PlanStep {
     const b = new Builder(this.d);
@@ -712,7 +723,8 @@ export class Planner {
 
   /** Binds one value; SQL-side stages wrap it, host-side stages are recorded on the slot. */
   private renderValue(b: Builder, col: Column, i: number): string {
-    const host = styles(col).filter(st => (st === 'aes' || st === 'hex' || st === 'ip') && !this.d.handlesStage(st));
+    const list = styles(col);
+    const host = list.slice(0, sqlStart(list, st => this.d.handlesStage(st))).filter(st => st === 'aes' || st === 'hex' || st === 'ip');
     const sql = this.sqlStyles(styles(col));
     // The type of the value that a SQL-side style function wraps is the type of that function's input.
     const [first] = sql;
