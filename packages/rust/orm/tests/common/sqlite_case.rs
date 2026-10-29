@@ -16,7 +16,7 @@ pub static MANIFEST_TEXT: LazyLock<String> = LazyLock::new(|| {
 });
 
 #[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
-pub static SCHEMA: LazyLock<Schema> = LazyLock::new(|| Schema::new(&MANIFEST_TEXT, "sha256:349a7152d1ad701b2baf8e7e67e14660ec6a75cdd78d5ec61c430f9f6498a1ed"));
+pub static SCHEMA: LazyLock<Schema> = LazyLock::new(|| Schema::new(&MANIFEST_TEXT, "sha256:43337b132ed06ed4fe341883b765adec1a559d9ef174f9bc4a82193fb88e0795"));
 
 /// A new SQLite file with the schema installed, in a directory of its own for one test. The directory is removed
 /// when the value is dropped, also when the test fails an assertion and unwinds.

@@ -158,7 +158,7 @@ func TestGenerateBenchDocumentSet(t *testing.T) {
 	if sharedNote == nil || !sharedNote.External {
 		t.Fatal("bench_shared.dbs shared_note is not loaded as an external entity")
 	}
-	want := []string{"account", "account_project", "audit_record", "audited_note", "audited_note_history", "author", "bind_cell", "clock_cell", "composite_account", "composite_membership", "day_cell", "hex_cell", "note_reader", "project", "service", "service_member", "service_region", "shared_note", "soft_link", "soft_record", "task", "time_cell", "upsert_cell", "user", "uuid_cell"}
+	want := []string{"account", "account_project", "audit_record", "audited_note", "audited_note_history", "author", "bind_cell", "clock_cell", "composite_account", "composite_membership", "day_cell", "hex_cell", "ip_hex_cell", "note_reader", "project", "service", "service_member", "service_region", "shared_note", "soft_link", "soft_record", "task", "time_cell", "upsert_cell", "user", "uuid_cell"}
 	got := make([]string, 0, len(manifest.Entities))
 	for name := range manifest.Entities {
 		got = append(got, name)

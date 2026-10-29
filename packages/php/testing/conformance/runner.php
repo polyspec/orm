@@ -17,6 +17,7 @@ use Polyspec\Orm\Tests\Model\BindCell;
 use Polyspec\Orm\Tests\Model\ClockCell;
 use Polyspec\Orm\Tests\Model\CompositeAccount;
 use Polyspec\Orm\Tests\Model\HexCell;
+use Polyspec\Orm\Tests\Model\IpHexCell;
 use Polyspec\Orm\Tests\Model\NoteReader;
 use Polyspec\Orm\Tests\Model\SharedNote;
 use Polyspec\Orm\Tests\Model\DayCell;
@@ -111,6 +112,7 @@ $writeVectors = array_fill_keys(
         'upsert_one_key',
         'affected_counts',
         'uuid_roundtrip',
+        'ip_hex_roundtrip',
         'clock_truncate_write',
         'clock_compare_six_digits'
     ],
@@ -873,6 +875,17 @@ vector('uuid_roundtrip', function () use ($db): array {
     $rows = (new UuidCell())($db)->id('0f8e2d4c-1a3b-4c5d-8e9f-a0b1c2d3e4f5')->gets();
     $created->delete();
     return picks($rows, 'id');
+});
+
+// A column of codec ip hex packs its address and writes the hex text of the packed bytes on the client on every
+// database (docs/spec/dialects.md DIA-16), and compares by equality on that text (docs/spec/codec.md COD-43); the
+// vector inserts, reads the row back by the same address and deletes it.
+vector('ip_hex_roundtrip', function () use ($db): array {
+    $created = (new IpHexCell())($db)->setAddress('2001:db8::1')->create();
+    mask([$created->getSeq()]);
+    $rows = (new IpHexCell())($db)->address('2001:db8::1')->gets();
+    $created->delete();
+    return picks($rows, 'address');
 });
 
 vector('affected_counts', function () use ($db): array {

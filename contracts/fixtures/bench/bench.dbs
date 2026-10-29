@@ -218,6 +218,15 @@ table uuid_cell {
   primary key (seq)
 }
 
+table ip_hex_cell {
+  seq i64 identity
+  address varchar(32)
+  primary key (seq)
+  settings {
+    codec address ip hex
+  }
+}
+
 table bind_cell {
   seq i64 identity
   label varchar(8)

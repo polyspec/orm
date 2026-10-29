@@ -13,7 +13,7 @@ polyspec_orm::models!();
 
 use model::{
     AuditRecord, AuditedNote, Author, BindCell, ClockCell, CompositeAccount, DayCell, HexCell, NoteReader, Service, ServiceMember, ServiceRegion, SharedNote,
-    SoftLink, SoftRecord, Task, TimeCell, UpsertCell, User, UuidCell,
+    SoftLink, SoftRecord, Task, TimeCell, UpsertCell, User, UuidCell, IpHexCell,
 };
 use polyspec_orm::{AesKeyring, Collection, Db, Model, Null, Param};
 use serde_json::{json, Map, Value};
@@ -1159,6 +1159,20 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
             let rows = UuidCell::new().connect(db).id("0f8e2d4c-1a3b-4c5d-8e9f-a0b1c2d3e4f5").gets().await?;
             created.delete(false).await?;
             Ok::<Value, polyspec_orm::Error>(picks(&rows, &["id"]))
+        })
+        .retry(0)
+    );
+    // A column of codec ip hex packs its address and writes the hex text of the packed bytes on the client on every database
+    // (docs/spec/dialects.md DIA-16), and compares by equality on that text (docs/spec/codec.md COD-43); the vector inserts,
+    // reads the row back by the same address and deletes it.
+    run!(
+        "ip_hex_roundtrip",
+        db.transaction(async || {
+            let created = IpHexCell::new().connect(db).set_address("2001:db8::1").create().await?;
+            mask(shared, &[created.get_seq().unwrap()], &[]);
+            let rows = IpHexCell::new().connect(db).address("2001:db8::1").gets().await?;
+            created.delete(false).await?;
+            Ok::<Value, polyspec_orm::Error>(picks(&rows, &["address"]))
         })
         .retry(0)
     );

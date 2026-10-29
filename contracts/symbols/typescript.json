@@ -8051,6 +8051,10 @@
     "exported": false,
     "signature": "function sortedEntries\u003cV\u003e(record: Readonly\u003cRecord\u003cstring, V\u003e\u003e | undefined): [ string, V ][]"
   },
+  "packages/ts/src/engine/planner.ts::sqlStart": {
+    "exported": false,
+    "signature": "function sqlStart(list: readonly string[], sql: (stage: string) =\u003e boolean): number"
+  },
   "packages/ts/src/engine/planner.ts::styleInputType": {
     "exported": false,
     "signature": "function styleInputType(style: string): string"
@@ -14685,7 +14689,7 @@
   },
   "packages/ts/src/models/models.ts::Author#field.andSuccessCountLtSeq": {
     "exported": true,
-    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
+    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | IpHexCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.andUuid": {
     "exported": true,
@@ -14821,31 +14825,31 @@
   },
   "packages/ts/src/models/models.ts::Author#field.joinNameWithSeq": {
     "exported": true,
-    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
+    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | IpHexCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.joinReadCountWithSeq": {
     "exported": true,
-    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
+    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | IpHexCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.joinServiceMemberSeqWithSeq": {
     "exported": true,
-    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
+    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | IpHexCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.joinServiceSeqWithSeq": {
     "exported": true,
-    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
+    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | IpHexCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.joinUserSeqWithSeq": {
     "exported": true,
-    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
+    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | IpHexCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.leftJoinServiceRegionSeqWithSeq": {
     "exported": true,
-    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
+    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | IpHexCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.leftJoinUserSeqWithSeq": {
     "exported": true,
-    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
+    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | IpHexCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.likeCount": {
     "exported": true,
@@ -14865,7 +14869,7 @@
   },
   "packages/ts/src/models/models.ts::Author#field.nameEqSeq": {
     "exported": true,
-    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
+    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | IpHexCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.nePhotoUrl": {
     "exported": true,
@@ -14901,7 +14905,7 @@
   },
   "packages/ts/src/models/models.ts::Author#field.priceEqSeq": {
     "exported": true,
-    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
+    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | IpHexCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.readCount": {
     "exported": true,
@@ -14909,11 +14913,11 @@
   },
   "packages/ts/src/models/models.ts::Author#field.readCountGtSeq": {
     "exported": true,
-    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
+    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | IpHexCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.readCountLtSeq": {
     "exported": true,
-    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
+    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | IpHexCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.seq": {
     "exported": true,
@@ -14941,7 +14945,7 @@
   },
   "packages/ts/src/models/models.ts::Author#field.userSeqEqSeq": {
     "exported": true,
-    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
+    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | IpHexCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.uuid": {
     "exported": true,
@@ -17692,6 +17696,170 @@
     "signature": "public setValue(value: string | null): this"
   },
   "packages/ts/src/models/models.ts::HexCell.sumSeq": {
+    "exported": true,
+    "signature": "public sumSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell": {
+    "exported": true,
+    "signature": "class IpHexCell"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell#field.address": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell#field.entity": {
+    "exported": true,
+    "signature": "EntityDef"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell#field.getAesHexEmail": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell#field.getAesHexPhone": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell#field.getAuthorModels": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell#field.getMembers": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell#field.getMemberships": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell#field.getModule": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell#field.getName": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell#field.getReadCount": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell#field.getReadTotal": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell#field.getRecord": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell#field.getServiceMemberModels": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell#field.getServiceRegionModel": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell#field.getSharedNoteModel": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell#field.getStartMonth": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell#field.getUserModel": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell#field.getWriter": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell#field.seq": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell.addColumnAddress": {
+    "exported": true,
+    "signature": "public addColumnAddress(): this"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell.addColumnSeq": {
+    "exported": true,
+    "signature": "public addColumnSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell.avgSeq": {
+    "exported": true,
+    "signature": "public avgSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell.getAddress": {
+    "exported": true,
+    "signature": "public getAddress(): string"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell.getSeq": {
+    "exported": true,
+    "signature": "public getSeq(): number"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell.groupByAddress": {
+    "exported": true,
+    "signature": "public groupByAddress(): this"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell.groupBySeq": {
+    "exported": true,
+    "signature": "public groupBySeq(): this"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell.keyNameAddress": {
+    "exported": true,
+    "signature": "public keyNameAddress(): this"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell.keyNameSeq": {
+    "exported": true,
+    "signature": "public keyNameSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell.minusSeq": {
+    "exported": true,
+    "signature": "public minusSeq(n: number): this"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell.orderByAddressAsc": {
+    "exported": true,
+    "signature": "public orderByAddressAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell.orderByAddressDesc": {
+    "exported": true,
+    "signature": "public orderByAddressDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell.orderBySeqAsc": {
+    "exported": true,
+    "signature": "public orderBySeqAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell.orderBySeqDesc": {
+    "exported": true,
+    "signature": "public orderBySeqDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell.plusSeq": {
+    "exported": true,
+    "signature": "public plusSeq(n: number): this"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell.removeColumnAddress": {
+    "exported": true,
+    "signature": "public removeColumnAddress(): this"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell.removeColumnSeq": {
+    "exported": true,
+    "signature": "public removeColumnSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell.setAddress": {
+    "exported": true,
+    "signature": "public setAddress(value: string): this"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell.setSeq": {
+    "exported": true,
+    "signature": "public setSeq(value: number): this"
+  },
+  "packages/ts/src/models/models.ts::IpHexCell.sumSeq": {
     "exported": true,
     "signature": "public sumSeq(): this"
   },

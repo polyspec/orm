@@ -18,7 +18,7 @@
     },
     {
       "expected": {
-        "manifest_hash": "sha256:349a7152d1ad701b2baf8e7e67e14660ec6a75cdd78d5ec61c430f9f6498a1ed"
+        "manifest_hash": "sha256:43337b132ed06ed4fe341883b765adec1a559d9ef174f9bc4a82193fb88e0795"
       },
       "id": "dbspec_manifest_hash",
       "input": {

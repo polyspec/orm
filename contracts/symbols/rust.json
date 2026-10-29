@@ -2071,6 +2071,14 @@
     "exported": true,
     "signature": "pub fn date () -\u003e Func"
   },
+  "packages/rust/orm/src/args.rs::date_text": {
+    "exported": false,
+    "signature": " fn date_text (value : NaiveDate) -\u003e Param"
+  },
+  "packages/rust/orm/src/args.rs::datetime_text": {
+    "exported": false,
+    "signature": " fn datetime_text (value : NaiveDateTime) -\u003e Param"
+  },
   "packages/rust/orm/src/args.rs::day_of_week": {
     "exported": true,
     "signature": "pub fn day_of_week () -\u003e Func"
@@ -5330,6 +5338,10 @@
   "packages/rust/orm/src/engine/planner.rs::placed_joins": {
     "exported": false,
     "signature": " fn placed_joins (g : \u0026 ir :: Group , out : \u0026 mut Vec \u003c String \u003e)"
+  },
+  "packages/rust/orm/src/engine/planner.rs::sql_start": {
+    "exported": false,
+    "signature": " fn sql_start (styles : \u0026 [String] , sql : impl Fn (\u0026 str) -\u003e bool) -\u003e usize"
   },
   "packages/rust/orm/src/engine/planner.rs::style_input_type": {
     "exported": false,

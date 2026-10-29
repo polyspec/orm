@@ -123,6 +123,7 @@ DBSPEC;
             'day_cell',
             'upsert_cell',
             'uuid_cell',
+            'ip_hex_cell',
             'bind_cell',
             'audit_record',
             'audited_note',

@@ -4586,6 +4586,78 @@
       }
     },
     {
+      "name": "ip_hex_roundtrip",
+      "chain": "IpHexCell setAddress('2001:db8::1')-\u003ecreate(), address(same value)-\u003egets() picking address, delete(): a column of codec ip hex binds the hex text of the packed address on every database, which MySQL refused as INET6_ATON of that text",
+      "calls": [
+        "setAddress",
+        "create",
+        "address",
+        "gets",
+        "delete"
+      ],
+      "expect": {
+        "result": [
+          {
+            "address": "2001:db8::1"
+          }
+        ],
+        "statements": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "BEGIN",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "20010DB8000000000000000000000001"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO \"ip_hex_cell\" (\"address\") VALUES ($1) RETURNING \"seq\"",
+            "tables": [
+              "ip_hex_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "20010DB8000000000000000000000001"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"address\" AS \"a__address\" FROM \"ip_hex_cell\" AS \"a\" WHERE \"a\".\"address\" = $1",
+            "tables": [
+              "ip_hex_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "$SEQ"
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM \"ip_hex_cell\" WHERE \"ip_hex_cell\".\"seq\" = $1",
+            "tables": [
+              "ip_hex_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "commit",
+            "sql": "COMMIT",
+            "tables": [],
+            "transaction": 1
+          }
+        ]
+      }
+    },
+    {
       "name": "affected_counts",
       "chain": "UpsertCell setCode('c1')-\u003esetLabel('x')-\u003eduplication(setLabel('y'))-\u003ecreate() twice (inserts, then updates), getBySeq(seq)-\u003esetLabel('y')-\u003eupdate() (the row already holds the value), setLabel('z')-\u003eupdate(), each followed by the affected count of the test entry point; delete()",
       "calls": [

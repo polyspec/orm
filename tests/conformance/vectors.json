@@ -133,6 +133,7 @@
     "DIA-14",
     "DIA-15",
     "DIA-16",
+    "COD-43",
     "DIA-18",
     "DIA-19",
     "DIA-22",
@@ -4567,6 +4568,78 @@
             "sql": "DELETE FROM `uuid_cell` WHERE `uuid_cell`.`seq` = ?",
             "tables": [
               "uuid_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "commit",
+            "sql": "COMMIT",
+            "tables": [],
+            "transaction": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "ip_hex_roundtrip",
+      "chain": "IpHexCell setAddress('2001:db8::1')-\u003ecreate(), address(same value)-\u003egets() picking address, delete(): a column of codec ip hex binds the hex text of the packed address on every database, which MySQL refused as INET6_ATON of that text",
+      "calls": [
+        "setAddress",
+        "create",
+        "address",
+        "gets",
+        "delete"
+      ],
+      "expect": {
+        "result": [
+          {
+            "address": "2001:db8::1"
+          }
+        ],
+        "statements": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "START TRANSACTION",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "20010DB8000000000000000000000001"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `ip_hex_cell` (`address`) VALUES (?)",
+            "tables": [
+              "ip_hex_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "20010DB8000000000000000000000001"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`address` AS `a__address` FROM `ip_hex_cell` AS `a` WHERE `a`.`address` = ?",
+            "tables": [
+              "ip_hex_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "$SEQ"
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM `ip_hex_cell` WHERE `ip_hex_cell`.`seq` = ?",
+            "tables": [
+              "ip_hex_cell"
             ],
             "transaction": 1
           },

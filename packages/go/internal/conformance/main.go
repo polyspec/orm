@@ -377,7 +377,7 @@ func run() (status int) {
 	writeVectors := map[string]bool{
 		"write_cycle": true, "now_defaults": true, "required_columns": true,
 		"creates_and_save": true, "delete_recursive": true, "contains_ascii_fold": true, "contains_binary_code_point": true,
-		"datetime_p0_roundtrip": true, "time_p3_roundtrip": true, "date_roundtrip": true, "date_null": true, "upsert_one_key": true, "uuid_roundtrip": true, "affected_counts": true,
+		"datetime_p0_roundtrip": true, "time_p3_roundtrip": true, "date_roundtrip": true, "date_null": true, "upsert_one_key": true, "uuid_roundtrip": true, "ip_hex_roundtrip": true, "affected_counts": true,
 		"clock_truncate_write": true, "clock_compare_six_digits": true,
 	}
 	// vectors are collected in declaration order, then the selection is checked and they run in that order.
@@ -1566,6 +1566,27 @@ func run() (status int) {
 			return nil, err
 		}
 		return picks(rows, "id"), nil
+	})
+
+	// A column of codec ip hex packs its address and writes the hex text of the packed bytes on the client on every database
+	// (docs/spec/dialects.md DIA-16), and compares by equality on that text (docs/spec/codec.md COD-43); the vector inserts,
+	// reads the row back by the same address and deletes it.
+	run("ip_hex_roundtrip", func() (any, error) {
+		created, err := model.IpHexCell().Connect(db).SetAddress("2001:db8::1").Create()
+		if err != nil {
+			return nil, err
+		}
+		if err := maskCreatedRow(created); err != nil {
+			return nil, err
+		}
+		rows, err := model.IpHexCell().Connect(db).Address("2001:db8::1").Gets()
+		if err != nil {
+			return nil, err
+		}
+		if err := created.Delete(); err != nil {
+			return nil, err
+		}
+		return picks(rows, "address"), nil
 	})
 
 	// A value outside the logical type of its slot is CODEC_ENCODE before any statement

@@ -9,7 +9,7 @@
 // Each --vector selects one vector by name; without one every vector runs.
 // The models embed the manifest of contracts/fixtures/bench/bench.dbs.
 import {
-  AesKeyring, AuditRecord, AuditedNote, Author, BindCell, CORE, ClockCell, type Collection, type Model, CompositeAccount, HexCell, NoteReader, Service, SharedNote, TimeCell, DayCell, ServiceMember, ServiceRegion, SoftLink, SoftRecord, StyledValue, Task, UpsertCell, User, UuidCell, connect, orm,
+  AesKeyring, AuditRecord, AuditedNote, Author, BindCell, CORE, ClockCell, type Collection, type Model, CompositeAccount, HexCell, IpHexCell, NoteReader, Service, SharedNote, TimeCell, DayCell, ServiceMember, ServiceRegion, SoftLink, SoftRecord, StyledValue, Task, UpsertCell, User, UuidCell, connect, orm,
 } from '../../dist/index.js';
 import { fixClock, lastAffected } from '../../dist/testing.js';
 import { parseArgs } from 'node:util';
@@ -135,7 +135,7 @@ async function main() {
     log.push({ sql: e.sql, binds: e.binds.map(norm), kind: e.kind, tables: [...e.tables], transaction, error: e.error === null ? null : code(e.error) });
   });
   const out: Record<string, { statements: Logged[]; result: unknown }> = {};
-  const writeVectors = new Set(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point', 'datetime_p0_roundtrip', 'time_p3_roundtrip', 'date_roundtrip', 'date_null', 'upsert_one_key', 'affected_counts', 'uuid_roundtrip', 'clock_truncate_write', 'clock_compare_six_digits']);
+  const writeVectors = new Set(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point', 'datetime_p0_roundtrip', 'time_p3_roundtrip', 'date_roundtrip', 'date_null', 'upsert_one_key', 'affected_counts', 'uuid_roundtrip', 'ip_hex_roundtrip', 'clock_truncate_write', 'clock_compare_six_digits']);
   const declared = new Set<string>();
   const run = async (name: string, fn: () => Promise<unknown>) => {
     declared.add(name);
@@ -744,6 +744,16 @@ async function main() {
     const rows = await new UuidCell().connect(db).id('0f8e2d4c-1a3b-4c5d-8e9f-a0b1c2d3e4f5').gets();
     await created.delete();
     return picks(rows, 'id');
+  });
+  // A column of codec ip hex packs its address and writes the hex text of the packed bytes on the client on every database
+  // (docs/spec/dialects.md DIA-16), and compares by equality on that text (docs/spec/codec.md COD-43); the vector inserts,
+  // reads the row back by the same address and deletes it.
+  await run('ip_hex_roundtrip', async () => {
+    const created = await new IpHexCell().connect(db).setAddress('2001:db8::1').create();
+    mask([created.getSeq()]);
+    const rows = await new IpHexCell().connect(db).address('2001:db8::1').gets();
+    await created.delete();
+    return picks(rows, 'address');
   });
   // A write counts each written row once (docs/spec/protocol.md "Write"): an upsert is 1 whether it inserts or updates, and an
   // update counts the row it matched even when the row already holds the value. The count is read through the test

@@ -3,18 +3,13 @@
 
 ## Unreleased
 
+- The conformance vector ip_hex_roundtrip writes an address into the new bench table ip_hex_cell of codec ip hex and reads it back by eq on the address, on MySQL, PostgreSQL and SQLite in all six implementations: every client binds the hex text of the packed address, which MySQL refused as INET6_ATON of that text before T251. The symbol snapshots record ip_hex_cell and the stage split helpers of T251 and the date helpers of KSTD-5-94, which their rows left out. (KSTD-5-110)
 - orm takes the released kit 0.0.70 in place of 0.0.66: the pin of package.json and its lock, which no longer holds the toml-patch dependency that kit deleted, and gates.yml from kit-sync, whose shared job computes no commit range (kit K815). (KSTD-5-111)
-
 - The Python client builds the model of a manifest once per process, by dbspec.md DBS-104 as TypeScript does: a registry keyed by the manifest hash and checked against the texts returns the model already built, so register_model, Db.register, SchemaUtils.register and connect_schema parse a schema once, and RuntimeModel.load_set returns the documents already parsed for the same texts. (T256)
-
 - A Python transaction whose start fails gives its pooled connection back, by interfaces.md INT-72: a failed BEGIN closes the connection, and a failed start step after BEGIN rolls the transaction back and returns the connection, so Db.close() closes it and a SQLite lock is not held until the garbage collector runs. (T255)
-
 - A codec column compares by equality in every implementation exactly when every stage is a host stage, by codec.md COD-43: hex and ip compare the stored cell, and an aes stage compares the blind index, the HMAC of the value whatever its position, so eq on hex aes compiles in Go, PHP and the PHP extension too, and eq on ordered_json aes, whose stored form comes from text a predicate value is not, is OPERATOR_NOT_ALLOWED in Rust too. (T254)
-
 - An eq, not_eq, in or not_in predicate on a column whose every codec stage is hex or ip compiles in Go as in the other implementations, by codec.md COD-43: equality applies when what is compared is a deterministic function of the value, the cell of such a column or the blind index of an AES column; COD-43 no longer limits styled predicates to null checks. (T253)
-
 - orm runs its PHP extension tests without run-tests --without-library, which kit K790 deletes, and its test bootstrap fails an extension run, naming the files, that loaded any file of packages/php/src, so the run tests the extension and never a PHP fallback. (KSTD-5-109)
-
 - On MySQL a column of codec ip hex packs and unpacks its address on the client in every implementation, since SQL wraps only the last stages of the write order: an insert binds the stored hex text instead of INET6_ATON of the hex text of the address, which MySQL refused with 1411. (T251)
 - The privilege test of the Rust integration suite reads its PostgreSQL server DSN with a match that names the variable error, without Result::ok. (T252)
 - orm runs no release version check, which kit K812 deletes: release.yml has no release-versions step, and AGENTS.md names no make release-versions. (KSTD-5-108)

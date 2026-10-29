@@ -6071,6 +6071,14 @@
     "exported": false,
     "signature": "func(assemble *plan.Assemble)"
   },
+  "packages/go/engine/planner/planner.go::sqlStart": {
+    "exported": false,
+    "signature": "func(styles []string, sql func(string) bool) int"
+  },
+  "packages/go/engine/planner/planner.go::stageList": {
+    "exported": false,
+    "signature": "func(stages []string) []string"
+  },
   "packages/go/engine/planner/planner.go::stepSet": {
     "exported": false,
     "signature": "type stepSet struct{ steps []*plan.Step }"
@@ -12363,6 +12371,302 @@
     "exported": false,
     "signature": "func(c *orm.Core) (*HexCellModel, error)"
   },
+  "packages/go/model/ip_hex_cell.go::IpHexCell": {
+    "exported": true,
+    "signature": "func() *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel": {
+    "exported": true,
+    "signature": "type IpHexCellModel struct { m *orm.Core fSeq int64 fAddress string }"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel#field.fAddress": {
+    "exported": false,
+    "signature": "string"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel#field.fSeq": {
+    "exported": false,
+    "signature": "int64"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel#field.m": {
+    "exported": false,
+    "signature": "*orm.Core"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.AddAllColumns": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.AddColumnAddress": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.AddColumnSeq": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.Address": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func[T0 argStringEq](v0 T0) *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.And": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(args ...any) *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.AndNot": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(fn func(*IpHexCellModel)) *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.AvgSeq": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.Connect": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(db *orm.DB) *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.Create": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() (*IpHexCellModel, error)"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.Creates": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(rows []*IpHexCellModel, batch int) (int64, error)"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.Delete": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(recursive ...bool) error"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.DeleteLock": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.Duplication": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(m *IpHexCellModel) *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.ExpectRevision": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(column string, revision int64) *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.FetchKey": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(fn func(*IpHexCellModel) any) *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.FetchValue": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(fn func(*IpHexCellModel) any) *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.ForShare": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.ForShareNoWait": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.ForUpdate": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.ForUpdateNoWait": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.Get": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() (*IpHexCellModel, error)"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.GetAddress": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() (string, error)"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.GetAvg": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() (*float64, error)"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.GetCount": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() (int64, error)"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.GetQuery": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() (*orm.Statement, error)"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.GetSeq": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() (int64, error)"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.GetSum": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() (float64, error)"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.Gets": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() (*orm.Collection[*IpHexCellModel], error)"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.GetsCount": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() (*orm.GroupRows, error)"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.GetsPage": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(page, perPage int) (*orm.Page[*IpHexCellModel], error)"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.GroupByAddress": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.GroupBySeq": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.GroupLimit": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(n int) *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.KeyNameAddress": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.KeyNameSeq": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.Limit": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(offset, count int) *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.MarshalJSON": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() ([]byte, error)"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.MinusSeq": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(n int64) *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.Not": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(fn func(*IpHexCellModel)) *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.On": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(fn func(*IpHexCellModel)) *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.Or": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(args ...any) *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.OrNot": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(fn func(*IpHexCellModel)) *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.OrderByAddressAsc": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(fn ...orm.Func) *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.OrderByAddressDesc": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(fn ...orm.Func) *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.OrderByRandom": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.OrderBySeqAsc": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(fn ...orm.Func) *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.OrderBySeqDesc": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(fn ...orm.Func) *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.Orm_": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() *orm.Core"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.ParentNode": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.PlusSeq": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(n int64) *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.Relation": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(child orm.Model) *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.Relations": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(child orm.Model) *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.RemoveAllColumns": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.RemoveColumnAddress": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.RemoveColumnSeq": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.Restore": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() (*IpHexCellModel, error)"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.RestoreOrCreate": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() (*IpHexCellModel, error)"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.Save": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() (*IpHexCellModel, error)"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.Seq": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func[T0 argIntEq](v0 T0) *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.SetAddress": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(v string) *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.SetSeq": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(v int64) *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.SumSeq": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.ToArray": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func() map[string]any"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.Update": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(optimistic ...bool) (*IpHexCellModel, error)"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.assign": {
+    "exported": false,
+    "signature": "receiver=*IpHexCellModel func(name string, v any) (bool, error)"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.connector": {
+    "exported": false,
+    "signature": "receiver=*IpHexCellModel func(conn string, args []any) *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.negated": {
+    "exported": false,
+    "signature": "receiver=*IpHexCellModel func(conn string, fn func(*IpHexCellModel)) *IpHexCellModel"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.value": {
+    "exported": false,
+    "signature": "receiver=*IpHexCellModel func(name string) (any, bool)"
+  },
+  "packages/go/model/ip_hex_cell.go::oneIpHexCell": {
+    "exported": false,
+    "signature": "func(c *orm.Core) (*IpHexCellModel, error)"
+  },
   "packages/go/model/note_reader.go::NoteReader": {
     "exported": true,
     "signature": "func() *NoteReaderModel"
@@ -12769,11 +13073,11 @@
   },
   "packages/go/model/orm.go::hasSeq": {
     "exported": false,
-    "signature": "type hasSeq interface { *AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *SoftRecordModel | *SoftLinkModel | *AccountModel | *ProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel | *AuditRecordModel | *AuditedNoteModel | *AuditedNoteHistoryModel | *NoteReaderModel | *SharedNoteModel Orm_() *orm.Core }"
+    "signature": "type hasSeq interface { *AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *SoftRecordModel | *SoftLinkModel | *AccountModel | *ProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *IpHexCellModel | *BindCellModel | *AuditRecordModel | *AuditedNoteModel | *AuditedNoteHistoryModel | *NoteReaderModel | *SharedNoteModel Orm_() *orm.Core }"
   },
   "packages/go/model/orm.go::ormModel": {
     "exported": false,
-    "signature": "type ormModel interface { *AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *CompositeAccountModel | *CompositeMembershipModel | *SoftRecordModel | *SoftLinkModel | *AccountModel | *ProjectModel | *AccountProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel | *AuditRecordModel | *AuditedNoteModel | *AuditedNoteHistoryModel | *NoteReaderModel | *SharedNoteModel }"
+    "signature": "type ormModel interface { *AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *CompositeAccountModel | *CompositeMembershipModel | *SoftRecordModel | *SoftLinkModel | *AccountModel | *ProjectModel | *AccountProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *IpHexCellModel | *BindCellModel | *AuditRecordModel | *AuditedNoteModel | *AuditedNoteHistoryModel | *NoteReaderModel | *SharedNoteModel }"
   },
   "packages/go/model/project.go::Project": {
     "exported": true,

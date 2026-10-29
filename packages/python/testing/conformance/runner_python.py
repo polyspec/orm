@@ -65,7 +65,9 @@ DSN, MODELS_DIR, SELECTED = None, None, []
 bench = Author = CompositeAccount = Service = ServiceMember = ServiceRegion = None
 User = SoftRecord = Task = HexCell = TimeCell = DayCell = ClockCell = UpsertCell = (
     UuidCell
-) = BindCell = SoftLink = NoteReader = SharedNote = AuditRecord = AuditedNote = None
+) = IpHexCell = BindCell = SoftLink = NoteReader = SharedNote = AuditRecord = (
+    AuditedNote
+) = None
 
 log = []
 transactions = {}
@@ -292,6 +294,7 @@ def load_models():
         ClockCell, \
         UpsertCell, \
         UuidCell, \
+        IpHexCell, \
         BindCell, \
         SoftLink, \
         NoteReader, \
@@ -326,6 +329,7 @@ def load_models():
     ClockCell = bench.ClockCell
     UpsertCell = bench.UpsertCell
     UuidCell = bench.UuidCell
+    IpHexCell = bench.IpHexCell
     BindCell = bench.BindCell
     NoteReader = bench.NoteReader
     SharedNote = bench.SharedNote
@@ -367,6 +371,7 @@ def main():
         "upsert_one_key",
         "affected_counts",
         "uuid_roundtrip",
+        "ip_hex_roundtrip",
         "clock_truncate_write",
         "clock_compare_six_digits",
     }
@@ -1553,6 +1558,18 @@ def main():
         return picks(rows, "id")
 
     run("uuid_roundtrip", uuid_roundtrip)
+
+    # A column of codec ip hex packs its address and writes the hex text of the packed bytes on the client on every database
+    # (docs/spec/dialects.md DIA-16), and compares by equality on that text (docs/spec/codec.md COD-43); the vector inserts,
+    # reads the row back by the same address and deletes it.
+    def ip_hex_roundtrip():
+        created = IpHexCell().connect(db).set_address("2001:db8::1").create()
+        mask([created.get_seq()])
+        rows = IpHexCell().connect(db).address("2001:db8::1").gets()
+        created.delete()
+        return picks(rows, "address")
+
+    run("ip_hex_roundtrip", ip_hex_roundtrip)
 
     # A write counts each written row once (docs/spec/protocol.md "Write"): an upsert is 1 whether it inserts or updates,
     # and an update counts the row it matched even when the row already holds the value. The count is read through

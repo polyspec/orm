@@ -3267,6 +3267,102 @@
     "exported": true,
     "signature": "public function value(mixed $value, mixed ...$compared): static"
   },
+  "packages/php/gen/IpHexCell.php::Polyspec\\Orm\\Tests\\Model\\IpHexCell": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Tests\\Model\\IpHexCell extends Polyspec\\Orm\\Model implements JsonSerializable,Polyspec\\Orm\\ModelMetadata uses "
+  },
+  "packages/php/gen/IpHexCell.php::Polyspec\\Orm\\Tests\\Model\\IpHexCell::addColumnAddress": {
+    "exported": true,
+    "signature": "public function addColumnAddress(): static"
+  },
+  "packages/php/gen/IpHexCell.php::Polyspec\\Orm\\Tests\\Model\\IpHexCell::addColumnSeq": {
+    "exported": true,
+    "signature": "public function addColumnSeq(): static"
+  },
+  "packages/php/gen/IpHexCell.php::Polyspec\\Orm\\Tests\\Model\\IpHexCell::address": {
+    "exported": true,
+    "signature": "public function address(mixed $value, mixed ...$compared): static"
+  },
+  "packages/php/gen/IpHexCell.php::Polyspec\\Orm\\Tests\\Model\\IpHexCell::avgSeq": {
+    "exported": true,
+    "signature": "public function avgSeq(): static"
+  },
+  "packages/php/gen/IpHexCell.php::Polyspec\\Orm\\Tests\\Model\\IpHexCell::getAddress": {
+    "exported": true,
+    "signature": "public function getAddress(): string"
+  },
+  "packages/php/gen/IpHexCell.php::Polyspec\\Orm\\Tests\\Model\\IpHexCell::getSeq": {
+    "exported": true,
+    "signature": "public function getSeq(): int"
+  },
+  "packages/php/gen/IpHexCell.php::Polyspec\\Orm\\Tests\\Model\\IpHexCell::groupByAddress": {
+    "exported": true,
+    "signature": "public function groupByAddress(): static"
+  },
+  "packages/php/gen/IpHexCell.php::Polyspec\\Orm\\Tests\\Model\\IpHexCell::groupBySeq": {
+    "exported": true,
+    "signature": "public function groupBySeq(): static"
+  },
+  "packages/php/gen/IpHexCell.php::Polyspec\\Orm\\Tests\\Model\\IpHexCell::keyNameAddress": {
+    "exported": true,
+    "signature": "public function keyNameAddress(): static"
+  },
+  "packages/php/gen/IpHexCell.php::Polyspec\\Orm\\Tests\\Model\\IpHexCell::keyNameSeq": {
+    "exported": true,
+    "signature": "public function keyNameSeq(): static"
+  },
+  "packages/php/gen/IpHexCell.php::Polyspec\\Orm\\Tests\\Model\\IpHexCell::meta": {
+    "exported": true,
+    "signature": "public static function meta(): array"
+  },
+  "packages/php/gen/IpHexCell.php::Polyspec\\Orm\\Tests\\Model\\IpHexCell::minusSeq": {
+    "exported": true,
+    "signature": "public function minusSeq(int|float $n): static"
+  },
+  "packages/php/gen/IpHexCell.php::Polyspec\\Orm\\Tests\\Model\\IpHexCell::orderByAddressAsc": {
+    "exported": true,
+    "signature": "public function orderByAddressAsc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/IpHexCell.php::Polyspec\\Orm\\Tests\\Model\\IpHexCell::orderByAddressDesc": {
+    "exported": true,
+    "signature": "public function orderByAddressDesc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/IpHexCell.php::Polyspec\\Orm\\Tests\\Model\\IpHexCell::orderBySeqAsc": {
+    "exported": true,
+    "signature": "public function orderBySeqAsc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/IpHexCell.php::Polyspec\\Orm\\Tests\\Model\\IpHexCell::orderBySeqDesc": {
+    "exported": true,
+    "signature": "public function orderBySeqDesc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/IpHexCell.php::Polyspec\\Orm\\Tests\\Model\\IpHexCell::plusSeq": {
+    "exported": true,
+    "signature": "public function plusSeq(int|float $n): static"
+  },
+  "packages/php/gen/IpHexCell.php::Polyspec\\Orm\\Tests\\Model\\IpHexCell::removeColumnAddress": {
+    "exported": true,
+    "signature": "public function removeColumnAddress(): static"
+  },
+  "packages/php/gen/IpHexCell.php::Polyspec\\Orm\\Tests\\Model\\IpHexCell::removeColumnSeq": {
+    "exported": true,
+    "signature": "public function removeColumnSeq(): static"
+  },
+  "packages/php/gen/IpHexCell.php::Polyspec\\Orm\\Tests\\Model\\IpHexCell::seq": {
+    "exported": true,
+    "signature": "public function seq(mixed $value, mixed ...$compared): static"
+  },
+  "packages/php/gen/IpHexCell.php::Polyspec\\Orm\\Tests\\Model\\IpHexCell::setAddress": {
+    "exported": true,
+    "signature": "public function setAddress(string $v): static"
+  },
+  "packages/php/gen/IpHexCell.php::Polyspec\\Orm\\Tests\\Model\\IpHexCell::setSeq": {
+    "exported": true,
+    "signature": "public function setSeq(int $v): static"
+  },
+  "packages/php/gen/IpHexCell.php::Polyspec\\Orm\\Tests\\Model\\IpHexCell::sumSeq": {
+    "exported": true,
+    "signature": "public function sumSeq(): static"
+  },
   "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Tests\\Model\\NoteReader extends Polyspec\\Orm\\Model implements JsonSerializable,Polyspec\\Orm\\ModelMetadata uses "
@@ -12790,6 +12886,10 @@
   "packages/php/src/Planner.php::Polyspec\\Orm\\Planner::selectStep": {
     "exported": false,
     "signature": "private function selectStep(Polyspec\\Orm\\PlanSteps $steps, array $q, string $kind, string $agg, ?Polyspec\\Orm\\PlanRelation $rc, bool $deferRelations=false): Polyspec\\Orm\\PlanStep"
+  },
+  "packages/php/src/Planner.php::Polyspec\\Orm\\Planner::sqlStart": {
+    "exported": false,
+    "signature": "private function sqlStart(array $stages, callable $sql): int"
   },
   "packages/php/src/Planner.php::Polyspec\\Orm\\Planner::sqlStyles": {
     "exported": false,
