@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f9106607a9bacb4b818dc38810863b6b64afdc97363892c8ec1878426e924ea8 -->
+<!-- source-sha256: f5eeb4627307a54200aafe32fc3a95ea5724d63565823c3458782c16d3e6a1e4 -->
 # 변경 이력
 
 ## Unreleased
+
+- Rust integration suite의 privilege test는 PostgreSQL server DSN을 Result::ok 없이 변수 오류를 밝히는 match로 읽습니다. (T252)
 
 - orm은 kit K812가 삭제하는 release version check를 실행하지 않습니다: release.yml에는 release-versions 단계가 없고, AGENTS.md는 make release-versions를 지목하지 않습니다. (KSTD-5-108)
 - AGENTS.md에는 kit K805의 guided rule을 되풀이하고 make item-state를 검사로 지목하던 P27 refinement가 없습니다. (KSTD-5-106-1)

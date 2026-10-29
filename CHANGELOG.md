@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The privilege test of the Rust integration suite reads its PostgreSQL server DSN with a match that names the variable error, without Result::ok. (T252)
+
 - orm runs no release version check, which kit K812 deletes: release.yml has no release-versions step, and AGENTS.md names no make release-versions. (KSTD-5-108)
 - AGENTS.md has no refinement of P27, which restated the guided rule of kit K805 and named make item-state as its check. (KSTD-5-106-1)
 - orm builds its wheel with uv build from build-system.requires, which is the one declaration of the build backend, and installs the Python client non-editable with uv sync --locked, which make link turns into the link of the checkout (kit K788, K803): config/toolchain.json has no pythonBackend, and packages/python/pylock.toml with its test is deleted. (KSTD-5-104)
