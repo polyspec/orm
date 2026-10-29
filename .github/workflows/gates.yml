@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       runtimes: ${{ steps.plan.outputs.runtimes }}
+      runner: ${{ steps.plan.outputs.runner }}
       parity_mode: ${{ steps.plan.outputs.parity_mode }}
       parity_matrix: ${{ steps.plan.outputs.parity_matrix }}
       has_runtimes: ${{ steps.plan.outputs.has_runtimes }}
@@ -44,7 +45,7 @@ jobs:
 
   shared:
     needs: discover
-    runs-on: ubuntu-24.04
+    runs-on: ${{ needs.discover.outputs.runner }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -97,7 +98,7 @@ jobs:
   parity:
     needs: discover
     if: ${{ needs.discover.outputs.parity_mode == 'full' }}
-    runs-on: ubuntu-24.04
+    runs-on: ${{ needs.discover.outputs.runner }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -146,7 +147,7 @@ jobs:
   parity-api:
     needs: discover
     if: ${{ needs.discover.outputs.parity_mode == 'phases' }}
-    runs-on: ubuntu-24.04
+    runs-on: ${{ needs.discover.outputs.runner }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -199,7 +200,7 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.discover.outputs.parity_matrix) }}
-    runs-on: ubuntu-24.04
+    runs-on: ${{ needs.discover.outputs.runner }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -252,7 +253,7 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.discover.outputs.runtimes) }}
-    runs-on: ubuntu-24.04
+    runs-on: ${{ needs.discover.outputs.runner }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
@@ -303,7 +304,7 @@ jobs:
   required:
     if: ${{ always() }}
     needs: [discover, shared, parity, parity-api, parity-bindings, runtime]
-    runs-on: ubuntu-24.04
+    runs-on: ${{ needs.discover.outputs.runner }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
