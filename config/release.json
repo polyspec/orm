@@ -137,9 +137,6 @@
       },
       "lock": {
         "polyspec-orm": "packages/python/pylock.toml"
-      },
-      "polyspec": {
-        "polyspec-ordered-json": "https://github.com/polyspec/ordered-json"
       }
     }
   },

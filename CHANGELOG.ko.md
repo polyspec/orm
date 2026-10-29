@@ -1,15 +1,13 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7de6116ef869b917bf3543cdb77cd6226d6432bbf6a47b2b0440ee74de18ea98 -->
+<!-- source-sha256: a4538b4d1b25b1e6f7957f724d612a5e49ebeb75fc231f7fe4c0f37b5b4614bf -->
 # 변경 이력
 
 ## Unreleased
 
+- orm은 Python을 uv만으로 lock합니다: make orm-python-lock이 uv lock과 uv export로 packages/python/pylock.toml을 쓰고, kit의 Python lock 장치와 함께 config/dependency-policy.json, packages/python/constraints.txt, config/release.json의 consumers.wheel.polyspec을 삭제했습니다. (KSTD-5-102)
 - polyspec/orm이 다시 orm-gen을 담습니다: bin/orm-gen, 생성기, scanner가 0.0.18처럼 packages/php에 있고 별도 package polyspec/orm-gen은 삭제되므로, polyspec/orm의 소비자는 다른 package 없이 vendor/bin/orm-gen을 실행합니다. (T244)
-
 - orm에는 version 검사가 없습니다: scripts/version/check.mts, 그 test, version-check target, PLN-5를 삭제했고, release 때는 kit make release-versions가 모든 manifest에 tag version을 요구합니다. (T242)
-
 - config/parity.json이 Rust temporal argument test packages/rust/orm/tests/unit/temporal_args.rs를 선언하므로 make parity-declarations-check가 통과합니다. (T243)
-
 - orm은 kit 0.0.66을 채택합니다: release asset URL로 지정한 pin, 그 lock, 동기화된 kit 파일을 받아, gates workflow가 runner를 선언하는 schema로 ci.json을 검증합니다. (KSTD-5-101)
 - orm은 dependency-policy-check, dependency-policy-mutation-check, dependency-review를 더 이상 실행하거나 언급하지 않습니다: CHECK_TARGETS, CI group, contracts/check-inputs.json, AGENTS에서 빠지고 config/dependency-review.json은 삭제됩니다. package manager가 lock을 검증하고 오래되거나 취약한 dependency를 보고하기 때문입니다. (KSTD-5-100)
 - wheel build backend의 선언은 하나입니다: packages/python/pyproject.toml의 build-system.requires는 release가 build에 쓰는 config/toolchain.json pythonBackend인 setuptools 84.0.0을 지정합니다. Red: `make release-candidate-assets`가 둘이 다르다고 보고했습니다. (KSTD-5-99)

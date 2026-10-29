@@ -133,6 +133,7 @@ GO := $(KIT_TOOLS)/mise/shims/go
 KIT_PACKAGE := $(shell $(NODE) --input-type=module -e 'import { dirname } from "node:path"; import { fileURLToPath } from "node:url"; console.log(dirname(fileURLToPath(import.meta.resolve("@polyspec/kit/package.json"))))')
 COMPOSER := $(KIT_TOOLS)/mise/shims/composer
 PYTHON3 := $(KIT_TOOLS)/mise/shims/python3
+UV := $(KIT_TOOLS)/mise/shims/uv
 RUFF := $(KIT_TOOLS)/mise/shims/ruff
 # The PHP lint tools of kit are not tools of mise.toml, so their recipes start them by these paths too.
 PHPCS := $(KIT_TOOLS)/bin/phpcs
@@ -739,6 +740,12 @@ PYTHON_VENV = $(abspath packages/python/.venv)
 # change needs no reinstall. The dependencies come from the wheel lock packages/python/pylock.toml with --require-hashes (kit
 # K54): every file is checked by its sha256, and the editable install adds the package itself with --no-deps, since pip
 # refuses an editable requirement in hash-checking mode. The extra test is installed after it, as before.
+# orm-python-lock writes the lock of the Python client with uv alone (KSTD-5-102): uv lock records packages/python/uv.lock from
+# pyproject.toml, and uv export writes the runtime dependencies of that lock with their hashes to packages/python/pylock.toml.
+.PHONY: orm-python-lock
+orm-python-lock:
+	cd packages/python && $(ONLINE) $(UV) lock && $(UV) export --frozen --no-default-groups --no-emit-project --format pylock.toml -o pylock.toml
+
 .PHONY: orm-install-python
 orm-install-python:
 	$(MAKE) --no-print-directory install-tools TOOLS="python uv"
