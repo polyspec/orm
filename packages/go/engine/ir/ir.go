@@ -883,8 +883,8 @@ func (v *validator) query(q *Query, s *scope, isJoin, isRelation, root bool) err
 	if q.Lock != "" && q.Lock != "update" && q.Lock != "share" && q.Lock != "update_nowait" && q.Lock != "share_nowait" {
 		return errf("IR_INVALID", "lock %q: want update, share, update_nowait or share_nowait", q.Lock)
 	}
-	if q.Lock != "" && (isJoin || isRelation || q.GroupBy != nil || q.LimitPerParent > 0) {
-		return errf("IR_INVALID", "row lock is only valid on a root row select")
+	if q.Lock != "" && (isJoin || q.GroupBy != nil || q.LimitPerParent > 0) {
+		return errf("IR_INVALID", "row lock is only valid on a root row select or a relation step without limit_per_parent or group_by")
 	}
 	if q.ForceIdx != "" {
 		if _, ok := ent.Indexes[q.ForceIdx]; !ok {

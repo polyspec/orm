@@ -416,13 +416,23 @@ fn hook_request(conn: &Option<Db>, ex: &Executor, req: &mut Req) -> Result<()> {
     apply_request_hook(conn.as_ref().unwrap_or_else(|| ex.db()), req)
 }
 
+/// The row lock of a read: the lock of its root, or else of its first relation step, depth first, that has one (PRT-8).
+fn request_lock(q: &ir::Query) -> &str {
+    if !q.lock.is_empty() {
+        return &q.lock;
+    }
+    q.relations.iter().map(|r| request_lock(&r.query)).find(|lock| !lock.is_empty()).unwrap_or("")
+}
+
 async fn select(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<QueryResult> {
     hook_request(conn, ex, req)?;
     let db = ex.db().clone();
+    // The lock of the request, at the root or on a relation step, is checked and taken once, before any statement (PRT-8).
+    let lock = request_lock(&req.ir.query).to_owned();
+    if !lock.is_empty() && matches!(ex, Executor::Db(_)) {
+        return Err(Error::Config("row locks are allowed only inside a transaction".into()));
+    }
     if db.is_markdown() {
-        if !req.ir.query.lock.is_empty() && matches!(ex, Executor::Db(_)) {
-            return Err(Error::Config("row locks are allowed only inside a transaction".into()));
-        }
         let read = markdown_read(ex, req).await?;
         return Ok(QueryResult {
             plan: read.plan,
@@ -439,6 +449,7 @@ async fn select(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<Query
     let asm = st.assemble.clone().ok_or_else(|| Error::internal("no assemble"))?;
     let aes_keys = &db.inner.cfg.aes_keys;
     let parts = root_in_parts(req, slots, db.driver())?;
+    ex.sqlite_row_lock(&lock).await?;
     let mut main = Vec::new();
     if parts.is_empty() {
         let raw = ex.query(st, &req.params, Vec::new()).await?;

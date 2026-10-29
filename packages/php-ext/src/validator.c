@@ -1767,8 +1767,8 @@ static bool query(vctx *c, HashTable *q, const vat *at, bool is_join, bool is_re
     if (*lock != '\0' && !IN(lock, locks)) {
         return fail(IR_INVALID, "lock \"%s\": want update, share, update_nowait or share_nowait", lock);
     }
-    if (*lock != '\0' && (is_join || is_relation || has(q, "group_by") || num(q, "limit_per_parent", 0) > 0)) {
-        return fail(IR_INVALID, "row lock is only valid on a root row select");
+    if (*lock != '\0' && (is_join || has(q, "group_by") || num(q, "limit_per_parent", 0) > 0)) {
+        return fail(IR_INVALID, "row lock is only valid on a root row select or a relation step without limit_per_parent or group_by");
     }
     const char *index = str(c, q, "force_index", "");
     if (*index != '\0') {

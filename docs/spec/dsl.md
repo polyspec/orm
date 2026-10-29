@@ -321,7 +321,7 @@ await master.transaction(async () => {
 - **DSL-119** A transaction on the same connection inside an active transaction creates a savepoint.
 - **DSL-121** Concurrent use of one transaction connection returns an error.
 - **DSL-122** The execution flow is the goroutine in Go, the request in PHP, the tokio task in Rust, the `AsyncLocalStorage` context in TypeScript, and the thread of the request in Python: a transaction is active on the connection that opened it, and every execution flow holds its own connection. A goroutine or spawned Rust task started inside the callback has no active transaction; a Go subtest is such a goroutine, so a transaction opened in one is a separate transaction that waits for the connection held outside it. In TypeScript, asynchronous work started inside the callback shares the callback's context and therefore the transaction; a statement that overlaps another statement on it returns `CONFIG`.
-- **DSL-123** `forUpdate()`, `forShare()`, `forUpdateNoWait()`, and `forShareNoWait()` are allowed only inside a transaction.
+- **DSL-123** `forUpdate()`, `forShare()`, `forUpdateNoWait()`, and `forShareNoWait()` are allowed only inside a transaction. They apply to the root model or to a model passed to `relation()` or `relations()` that has no `groupLimit()`, whose own statement then takes the lock ([protocol](protocol.md) PRT-8).
 - **DSL-124** Begin, commit, and rollback are not public.
 
 - **DSL-125** The options are `isolation`, `readOnly`, `timeoutMs`, and `retry` (default `3`, `0` disables retry). An omitted option keeps its default.

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: fcc0c5e370069d981b7584bc735ae30ac2c9505f2fa3a9bee256cd0750f3ee62 -->
+<!-- source-sha256: 2ed1687236a488ab8472208142c28ee1fadc75f973bf161c044d4de6b0df8f90 -->
 # 변경 이력
 
 ## Unreleased
 
+- row lock(forShare, forUpdate와 그 NoWait 형태)은 모든 구현에서 groupLimit이 없는 관계 단계에 유효하며 그 단계의 statement가 lock을 건다. 클라이언트는 그 lock에도 트랜잭션을 요구하고 루트 lock처럼 SQLite row-lock table을 잡으며, limit_per_parent나 group_by가 있는 lock은 계속 IR_INVALID다 (T257).
 - ci workflow는 kit의 gate를 돌리지 않는다: 그 CI group은 gates workflow가 병렬 job으로 돌리는 kit-gates의 선행 target인 CI_KIT_GATES를 뺀 CHECK_TARGETS를 돌리고, group parity는 없어진다. 그 group은 모든 parity binding을 직렬로 돌려 run 40926936508에서 76분을 넘겼다 (KSTD-5-115).
 - make repo-check는 make spawn의 env를 여러 줄에 걸칠 수 있는 그 호출 전체에서 읽고, make ci-install-tools를 mise.toml의 Go 설치로 받아들인다. main에서 그것은 둘 다 잘못 보고했다 (KSTD-5-116).
 - parity-declarations-check는 lint-ts처럼 먼저 TypeScript dist를 build해, 새 checkout의 shared gates job이 packages/ts/dist/index.d.ts를 찾는다 (KSTD-5-114).

@@ -489,8 +489,22 @@ func applyRequestHook(ex executor, r *request) error {
 	return nil
 }
 
+// requestLock is the row lock of a read: the lock of its root, or else of its
+// first relation step, depth first, that has one (PRT-8).
+func requestLock(q *ir.Query) string {
+	if q.Lock != "" {
+		return q.Lock
+	}
+	for _, r := range q.Relations {
+		if lock := requestLock(r.Query); lock != "" {
+			return lock
+		}
+	}
+	return ""
+}
+
 func checkLock(ex executor, r *request) error {
-	if r.ir.Lock != "" && ex.transaction() == nil {
+	if requestLock(&r.ir.Query) != "" && ex.transaction() == nil {
 		return configErr("row locks are allowed only inside a transaction")
 	}
 	return nil
@@ -531,7 +545,7 @@ func query(ex executor, r *request) (*result, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := acquireSQLiteRowLock(ctx, ex, r.ir.Lock); err != nil {
+	if err := acquireSQLiteRowLock(ctx, ex, requestLock(&r.ir.Query)); err != nil {
 		return nil, err
 	}
 	parts, err := rootINParts(r, slots, d.driver)

@@ -557,6 +557,16 @@ async function main() {
     events.push(await new Service().connect(db).name(['tx-outer', 'tx-inner']).getCount());
     return events;
   });
+  // PRT-8: a relation step's own row lock. Outside a transaction it is refused as a root lock is; inside one, the
+  // relation's statement carries the lock.
+  await run('relation_row_lock', async () => {
+    const read = () => author().removeAllColumns().addColumnName()
+      .relation(new User().matchUserSeqWithSeq().removeAllColumns().addColumnName().forShare()).getsBySeq(42);
+    const outside = await caught(read());
+    let inside: unknown = null;
+    await db.transaction(async () => { inside = (await read()).toArray(); }, { retry: 0 });
+    return { outside, inside };
+  });
   await run('restore', async () => {
     // Restores a soft-deleted row by its primary key. The deletion time is written as a fixed value, so the binds of every database and runner
     // are the same. The transaction rolls back at the end, so the database stays as it was at the start.

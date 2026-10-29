@@ -945,7 +945,7 @@ impl Db {
 
     pub(crate) async fn run_query(
         &self,
-        mut target: Target<'_>,
+        target: Target<'_>,
         origin: Origin<'_>,
         st: &Step,
         params: &[Param],
@@ -954,12 +954,11 @@ impl Db {
     ) -> Result<Vec<DriverRow>> {
         let (sql, parent_vals) = statement(st, parent_vals, matches!(self.inner.pool, Pool::Postgres(_)))?;
         let args = self.args(st, params, &parent_vals, audit)?;
-        // A configured statement fault ends this statement without sending it. The row lock statement is not sent either.
+        // A configured statement fault ends this statement without sending it.
         #[cfg(feature = "test-faults")]
         if let Some(error) = crate::testing::take_statement_fault(self) {
             return self.step_done(st, origin, &sql, || self.shown(st, &args, parent_vals.len()), std::time::Instant::now(), Err(error));
         }
-        self.sqlite_row_lock(&mut target, origin.transaction, &st.lock).await?;
         let start = std::time::Instant::now();
         let r: Result<Vec<DriverRow>> = match target {
             Target::Pool(Pool::MySql(p)) => fetch_mysql_pool(&sql, &args, p).await.map(|v| v.into_iter().map(DriverRow::MySql).collect()).map_err(Error::from),
@@ -1153,9 +1152,6 @@ impl Executor {
             audit,
             {
                 db.ensure_open()?;
-                if !st.lock.is_empty() {
-                    return Err(Error::Config("row locks are allowed only inside a transaction".into()));
-                }
             },
             { db.run_query(target, origin, st, params, parent_vals, audit.as_ref()).await }
         )

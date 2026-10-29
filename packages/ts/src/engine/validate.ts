@@ -249,8 +249,8 @@ class Validator {
     if (lock !== '' && !['update', 'share', 'update_nowait', 'share_nowait'].includes(lock)) {
       fail(codes.IR_INVALID, `lock "${lock}": want update, share, update_nowait or share_nowait`);
     }
-    if (lock !== '' && (isJoin || isRelation || q.group_by !== undefined || (q.limit_per_parent ?? 0) > 0)) {
-      fail(codes.IR_INVALID, 'row lock is only valid on a root row select');
+    if (lock !== '' && (isJoin || q.group_by !== undefined || (q.limit_per_parent ?? 0) > 0)) {
+      fail(codes.IR_INVALID, 'row lock is only valid on a root row select or a relation step without limit_per_parent or group_by');
     }
     if (q.force_index !== undefined && q.force_index !== '' && !ent.indexes.includes(q.force_index)) fail(codes.INDEX_UNKNOWN, `${q.entity}.${q.force_index}`);
   }

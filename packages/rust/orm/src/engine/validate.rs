@@ -557,8 +557,8 @@ impl<'m> Validator<'m> {
             if !matches!(q.lock.as_str(), "update" | "share" | "update_nowait" | "share_nowait") {
                 return Err(err(codes::IR_INVALID, format!("lock {:?}: want update, share, update_nowait or share_nowait", q.lock)));
             }
-            if is_join || is_relation || !q.group_by.is_empty() || q.limit_per_parent > 0 {
-                return Err(err(codes::IR_INVALID, "row lock is only valid on a root row select"));
+            if is_join || !q.group_by.is_empty() || q.limit_per_parent > 0 {
+                return Err(err(codes::IR_INVALID, "row lock is only valid on a root row select or a relation step without limit_per_parent or group_by"));
             }
         }
         if !q.force_index.is_empty() && !ent.indexes.iter().chain(&ent.uniques).any(|k| k.name == q.force_index) {

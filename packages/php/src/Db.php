@@ -1244,9 +1244,30 @@ final class Db
         if ($frame !== null && $frame->finished) {
             throw new OrmException(Code::CONFIG, 'transaction already finished');
         }
-        if (($ir['lock'] ?? '') !== '' && $frame === null) {
+        if (self::requestLock($ir) !== '' && $frame === null) {
             throw new OrmException(Code::CONFIG, 'row locks are allowed only inside a transaction');
         }
+    }
+
+    /**
+     * The row lock of a read: the lock of its root, or else of its first relation step, depth first, that has one
+     * (PRT-8).
+     *
+     * @param array<string, mixed> $q
+     */
+    private static function requestLock(array $q): string
+    {
+        $lock = (string) ($q['lock'] ?? '');
+        if ($lock !== '') {
+            return $lock;
+        }
+        foreach ($q['relations'] ?? [] as $r) {
+            $lock = self::requestLock($r['query']);
+            if ($lock !== '') {
+                return $lock;
+            }
+        }
+        return '';
     }
 
     private function plan(Request $r): array
@@ -1278,7 +1299,7 @@ final class Db
             return [$plan, $result];
         }
         [$plan, $slots] = $this->splitReadPlan($r);
-        $this->acquireSQLiteRowLock((string) ($r->ir['lock'] ?? ''));
+        $this->acquireSQLiteRowLock(self::requestLock($r->ir));
         $parts = $this->rootInParts($r, $slots);
         if ($parts !== []) {
             $main = [];

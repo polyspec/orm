@@ -2283,6 +2283,10 @@
     "exported": false,
     "signature": "async function relations(ex: Executor, cached: Cached, params: readonly unknown[], main: unknown[][]): Promise\u003cResult\u003e"
   },
+  "packages/ts/src/database.ts::requestLock": {
+    "exported": false,
+    "signature": "function requestLock(q: RequestQuery): string"
+  },
   "packages/ts/src/database.ts::resolve": {
     "exported": true,
     "signature": "export function resolve(conn: Db | undefined): Executor"

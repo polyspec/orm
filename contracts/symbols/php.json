@@ -6463,6 +6463,10 @@
     "exported": false,
     "signature": "private function relations(array $plan, array $params, array $main): array"
   },
+  "packages/php/src/Db.php::Polyspec\\Orm\\Db::requestLock": {
+    "exported": false,
+    "signature": "private static function requestLock(array $q): string"
+  },
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::resolve": {
     "exported": true,
     "signature": "public static function resolve(?Polyspec\\Orm\\Db $conn): array"

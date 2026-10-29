@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { bindSlotType, checkAssign, checkParam, transformParam } from './bind_check.js';
 import { blindIndex, decode, hostDecode, hostEncode } from './codec.js';
-import type { Assemble, BindSlot, Group, KeyReference, Plan, PlanStep, Request } from './ir.js';
+import type { Assemble, BindSlot, Group, KeyReference, Plan, PlanStep, Request, RequestQuery } from './ir.js';
 import { driverValue, isolationSql, openDriver, parseDsn, sqliteBusy, zoneOffset, type DriverName, type DriverPool, type DriverResult, type DriverSession, type DriverValue, type Isolation, type PoolStats, type StatementDone } from './driver.js';
 import { Subscription, checkChannel } from './listen.js';
 import { Subscribers, statementKind, type StatementEvent, type StatementKind } from './events.js';
@@ -1350,8 +1350,18 @@ function auditValue(slot: BindSlot, audit: AuditRecord | undefined): unknown {
   return audit.key;
 }
 
+/** The row lock of a read: the lock of its root, or else of its first relation step, depth first, that has one (PRT-8). */
+function requestLock(q: RequestQuery): string {
+  if ((q.lock ?? '') !== '') return q.lock ?? '';
+  for (const r of q.relations ?? []) {
+    const lock = requestLock(r.query);
+    if (lock !== '') return lock;
+  }
+  return '';
+}
+
 function checkLock(ex: Executor, request: Request): void {
-  if ((request.lock ?? '') !== '' && ex.frame === undefined) throw new OrmError(codes.CONFIG, 'row locks are allowed only inside a transaction');
+  if (requestLock(request) !== '' && ex.frame === undefined) throw new OrmError(codes.CONFIG, 'row locks are allowed only inside a transaction');
 }
 
 function driverLimit(driver: string): number { return driver === 'sqlite' ? 999 : 65535; }
@@ -1389,7 +1399,8 @@ export async function query(ex: Executor, given: Request, givenParams: readonly 
     const db = ex.db;
     if (db.md !== undefined) return (await markdownRead(ex, request, params)).result;
     const { cached, slots } = await splitReadPlan(db, request, params);
-    if (request.lock !== undefined && request.lock !== '') await db.rowLock(present(ex.frame, 'the transaction of a locking read'), request.lock);
+    const lock = requestLock(request);
+    if (lock !== '') await db.rowLock(present(ex.frame, 'the transaction of a locking read'), lock);
     const parts = rootInParts(request, slots, db.driver, params);
     let main: unknown[][];
     // A split request runs only its parts: cached is then the plan of its first value (splitReadPlan).

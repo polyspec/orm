@@ -3481,7 +3481,7 @@
   },
   "packages/rust/orm/src/db.rs::Db::run_query": {
     "exported": false,
-    "signature": "pub (crate) async fn run_query (\u0026 self , mut target : Target \u003c '_ \u003e , origin : Origin \u003c '_ \u003e , st : \u0026 Step , params : \u0026 [Param] , parent_vals : Vec \u003c Param \u003e , audit : Option \u003c \u0026 AuditKey \u003e) -\u003e Result \u003c Vec \u003c DriverRow \u003e \u003e"
+    "signature": "pub (crate) async fn run_query (\u0026 self , target : Target \u003c '_ \u003e , origin : Origin \u003c '_ \u003e , st : \u0026 Step , params : \u0026 [Param] , parent_vals : Vec \u003c Param \u003e , audit : Option \u003c \u0026 AuditKey \u003e) -\u003e Result \u003c Vec \u003c DriverRow \u003e \u003e"
   },
   "packages/rust/orm/src/db.rs::Db::shown": {
     "exported": false,
@@ -7214,6 +7214,10 @@
   "packages/rust/orm/src/model.rs::related_mismatch": {
     "exported": false,
     "signature": " fn related_mismatch \u003c T \u003e (name : \u0026 str , stored : \u0026 str) -\u003e Error"
+  },
+  "packages/rust/orm/src/model.rs::request_lock": {
+    "exported": false,
+    "signature": " fn request_lock (q : \u0026 ir :: Query) -\u003e \u0026 str"
   },
   "packages/rust/orm/src/model.rs::restore": {
     "exported": true,

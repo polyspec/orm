@@ -222,7 +222,22 @@ fn query(value: &Value, at: &str) -> ir::Query {
     let object = members(
         value,
         at,
-        &["entity", "columns", "on", "where", "joins", "relations", "order", "group_by", "limit", "force_index", "key_by", "limit_per_parent", "if_parent"],
+        &[
+            "entity",
+            "columns",
+            "on",
+            "where",
+            "joins",
+            "relations",
+            "order",
+            "group_by",
+            "limit",
+            "force_index",
+            "lock",
+            "key_by",
+            "limit_per_parent",
+            "if_parent",
+        ],
     );
     let columns = object.get("columns").map(|c| {
         let at = format!("{at}.columns");
@@ -346,6 +361,7 @@ fn query(value: &Value, at: &str) -> ir::Query {
         order,
         limit,
         force_index: object.get("force_index").map(|_| string(object, at, "force_index")).unwrap_or_default(),
+        lock: object.get("lock").map(|_| string(object, at, "lock")).unwrap_or_default(),
         key_by: object.get("key_by").map(|_| string(object, at, "key_by")).unwrap_or_default(),
         limit_per_parent: object.get("limit_per_parent").map(|n| count(Some(n), &format!("{at}.limit_per_parent"))).unwrap_or_default(),
         if_parent: object.get("if_parent").map(|v| {

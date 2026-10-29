@@ -1141,6 +1141,26 @@ func run() (status int) {
 		events = append(events, left)
 		return events, err
 	})
+	// PRT-8: a relation step's own row lock. Outside a transaction it is refused as a root lock is; inside one, the
+	// relation's statement carries the lock.
+	run("relation_row_lock", func() (any, error) {
+		read := func() (any, error) {
+			rows, err := author().RemoveAllColumns().AddColumnName().
+				Relation(model.User().MatchUserSeqWithSeq().RemoveAllColumns().AddColumnName().ForShare()).GetsBySeq(42)
+			if err != nil {
+				return nil, err
+			}
+			return rows.ToArray(), nil
+		}
+		_, outside := read()
+		var inside any
+		err := db.Transaction(func() error {
+			var err error
+			inside, err = read()
+			return err
+		}, orm.Retry(0))
+		return map[string]any{"outside": code(outside), "inside": inside}, err
+	})
 	run("restore", func() (any, error) {
 		// Restores a soft-deleted row to its primary key. The deleted time is written as a fixed value so that all
 		// the database and the runner's bind are the same. The transaction is rolled back at the end, so the database

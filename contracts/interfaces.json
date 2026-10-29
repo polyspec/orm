@@ -39,10 +39,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:9906264ba05e2131c39ff85f3f009cfb670f99b5837cd8aa0ce1a49dfce54ba7",
-    "php": "sha256:e7c635e95ba00d88db77218bbd9cb1fdd46565012ae668311deb62bd04b5fb53",
-    "rust": "sha256:eaf168b2a9d75166b2dcbdbbd658b68d449f671680a207d374f928864dc6ae26",
-    "typescript": "sha256:c850f7a58c49517884132e27ac98528e47442539ddbaaf4db4d27c4ca3e379ac",
+    "go": "sha256:7fc56e9dbbc918648cf7d87e40761212ebb27125541c0c4974887a43f3d6519f",
+    "php": "sha256:8d73fe9fefc98f6a92a86e9e7705e1a146b71c61fb4bf9abdc1f67d2ab2cb250",
+    "rust": "sha256:8f00feeec13c0c56dfd6cb48e738223e4b8784cbed5f5b1efba1eb131cf0f82e",
+    "typescript": "sha256:150e2b7b162cd1a9a72fa67f77de87801d88259b731e1f911369cf2ae379bf18",
     "python": "sha256:62a11ab13689733f6435342b997d5f1537fa2e69dbe232c87b410edf336d0832"
   },
   "native_surfaces": [

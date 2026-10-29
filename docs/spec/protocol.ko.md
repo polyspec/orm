@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 11f65a86ec8aaba96a04d7147f7102ee6ede17c445d5a1983edcc9bd3c189c3a -->
+<!-- source-sha256: 04c0dd605a222fb38ec964ef9a56dfc4ab687bf3519939306bae8a8321961edd -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -42,7 +42,7 @@
 - **PRT-5** `rows`: 추가로 삽입할 각 행의 매개변수를 `set` 컬럼 순서로 나열한다. 이때 `set`의 모든 항목은 값 할당이어야 하며 `on_duplicate`는 사용할 수 없다
 - **PRT-6** `on_duplicate`: 삽입한 행이 기존 key와 겹칠 때 적용하는 할당. `on_duplicate`가 있는 insert에는 삽입 행을 만날 수 있는 key(primary key는 insert가 빼먹지 않았을 때만, 그리고 모든 unique key)가 정확히 하나여야 하고 insert가 그 모든 컬럼을 할당해야 하며, 아니면 `IR_INVALID` "on_duplicate needs exactly one conflict key; %s can meet the row"이다. MySQL은 만난 아무 unique key의 행을 갱신하지만 PostgreSQL과 SQLite는 대상 하나를 지정하기 때문이다
 - **PRT-7** `optimistic`: `update`는 컬럼 값이 매개변수와 같을 때만 일치한다. 일치하는 행이 없으면 `OPTIMISTIC_LOCK`을 반환한다
-- **PRT-8** `lock`: 루트 행 조회에만 사용하며 클라이언트는 트랜잭션 안에서만 허용한다
+- **PRT-8** `lock`: 루트 행 조회, 또는 `limit_per_parent`와 `group_by`가 없는 관계 단계에 쓰며, 그 단계의 statement가 lock을 건다. 조인 자식과 서브쿼리에는 쓸 수 없고, 그 밖의 자리는 `IR_INVALID` "row lock is only valid on a root row select or a relation step without limit_per_parent or group_by"이다. 클라이언트는 루트든 관계 단계든 요청의 lock을 트랜잭션 안에서만 허용하고, SQLite에서는 루트 lock과 같이 row-lock table을 잡는다(conformance vector `relation_row_lock`)
 
 `Query`는 루트, 조인 자식, 관계 자식, 서브쿼리가 함께 쓰는 형태로 `entity`, `columns`, `on`(조인 자식 전용), `where`, `joins`, `relations`, `order`, `group_by`, `limit`, `force_index`, `lock`, 관계 옵션으로 이루어진다.
 

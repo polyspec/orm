@@ -41,7 +41,7 @@ A request is decoded strictly in every client. A member that its object does not
 - **PRT-5** `rows`: parameters of each additional inserted row in the column order of `set`; every `set` item is then a value assignment and `on_duplicate` is not allowed
 - **PRT-6** `on_duplicate`: assignments applied when an inserted row meets an existing key; an insert with `on_duplicate` has exactly one key that can meet the inserted row (the primary key, unless the insert leaves it out, and each unique key) and assigns every column of it, else `IR_INVALID` "on_duplicate needs exactly one conflict key; %s can meet the row", because MySQL updates the row met on any unique key while PostgreSQL and SQLite name one target
 - **PRT-7** `optimistic`: `update` matches only when the column still equals the parameter; no match returns `OPTIMISTIC_LOCK`
-- **PRT-8** `lock`: root row selection only; the client allows it only inside a transaction
+- **PRT-8** `lock`: a root row selection, or a relation step without `limit_per_parent` or `group_by`, whose own statement then takes the lock; a join child or a subquery takes none, and any other place is `IR_INVALID` "row lock is only valid on a root row select or a relation step without limit_per_parent or group_by". The client allows a lock of the request, at the root or on any relation step, only inside a transaction, and on SQLite takes the row-lock table for it as for a root lock (the conformance vector `relation_row_lock`)
 
 `Query` is the shape shared by the root, a join child, a relation child, and a subquery: `entity`, `columns`, `on` (join child only), `where`, `joins`, `relations`, `order`, `group_by`, `limit`, `force_index`, `lock`, and the relation options.
 

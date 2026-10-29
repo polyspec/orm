@@ -1178,6 +1178,35 @@ def main():
 
     run("transactions", transactions_vector)
 
+    # PRT-8: a relation step's own row lock. Outside a transaction it is refused as a root lock is; inside one, the
+    # relation's statement carries the lock.
+    def relation_row_lock():
+        def read():
+            return (
+                author()
+                .remove_all_columns()
+                .add_column_name()
+                .relation(
+                    User()
+                    .match_user_seq_with_seq()
+                    .remove_all_columns()
+                    .add_column_name()
+                    .for_share()
+                )
+                .gets_by_seq(42)
+            )
+
+        outside = caught(read)
+        inside = []
+
+        def body():
+            inside.append(read().to_array())
+
+        db.transaction(body, {"retry": 0})
+        return {"outside": outside, "inside": inside[0]}
+
+    run("relation_row_lock", relation_row_lock)
+
     def restore():
         class Boom(Exception):
             pass

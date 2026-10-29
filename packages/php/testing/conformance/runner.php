@@ -596,6 +596,19 @@ vector('transactions', function () use ($db): array {
     return $events;
 });
 
+// PRT-8: a relation step's own row lock. Outside a transaction it is refused as a root lock is; inside one, the
+// relation's statement carries the lock.
+vector('relation_row_lock', function () use ($db, $author): array {
+    $read = fn() => $author()->removeAllColumns()->addColumnName()
+        ->relation((new User())->matchUserSeqWithSeq()->removeAllColumns()->addColumnName()->forShare())->getsBySeq(42);
+    $outside = caught($read);
+    $inside = null;
+    $db->transaction(function () use ($read, &$inside): void {
+        $inside = $read()->toArray();
+    }, retry: 0);
+    return ['outside' => $outside, 'inside' => $inside];
+});
+
 vector('restore', function () use ($db): array {
     // Restores a soft-deleted row by its primary key. The deletion time is written as a pinned value so every database
     // and runner binds the same. The transaction ends with a rollback, so the database is unchanged from the start.

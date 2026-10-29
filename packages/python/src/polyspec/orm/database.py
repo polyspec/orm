@@ -2592,8 +2592,19 @@ def _guarded(ex: Executor, work):
         frame.busy = False
 
 
+def _request_lock(q: dict) -> str:
+    """The row lock of a read: the lock of its root, or else of its first relation step, depth first, that has one (PRT-8)."""
+    if q.get("lock"):
+        return q["lock"]
+    for r in q.get("relations") or []:
+        lock = _request_lock(r["query"])
+        if lock:
+            return lock
+    return ""
+
+
 def _check_lock(ex: Executor, request: dict) -> None:
-    if request.get("lock") and ex.frame is None:
+    if _request_lock(request) and ex.frame is None:
         raise OrmError(codes.CONFIG, "row locks are allowed only inside a transaction")
 
 
@@ -2666,8 +2677,9 @@ def query(ex: Executor, request: dict, params):
         if db.driver == "markdown":
             return markdown_read(ex, request, params)[0]
         cached, slots = _split_read_plan(db, request, params)
-        if request.get("lock"):
-            db.row_lock(ex.frame, request["lock"])
+        lock = _request_lock(request)
+        if lock:
+            db.row_lock(ex.frame, lock)
         parts = _root_in_parts(request, slots, db.driver, params)
         # A split request runs only its parts: cached is then the plan of its
         # first value (_split_read_plan).

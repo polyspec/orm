@@ -932,8 +932,11 @@ final class Validator
         if ($lock !== '' && !in_array($lock, ['update', 'share', 'update_nowait', 'share_nowait'], true)) {
             throw self::err(Code::IR_INVALID, "lock \"$lock\": want update, share, update_nowait or share_nowait");
         }
-        if ($lock !== '' && ($isJoin || $isRelation || isset($q['group_by']) || ($q['limit_per_parent'] ?? 0) > 0)) {
-            throw self::err(Code::IR_INVALID, 'row lock is only valid on a root row select');
+        if ($lock !== '' && ($isJoin || isset($q['group_by']) || ($q['limit_per_parent'] ?? 0) > 0)) {
+            throw self::err(
+                Code::IR_INVALID,
+                'row lock is only valid on a root row select or a relation step without limit_per_parent or group_by'
+            );
         }
         $index = $q['force_index'] ?? '';
         if ($index !== '' && !array_key_exists($index, $ent['indexes'])) {

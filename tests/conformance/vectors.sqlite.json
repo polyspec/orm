@@ -3001,6 +3001,86 @@
       }
     },
     {
+      "name": "relation_row_lock",
+      "chain": "author 42 with its user loaded through User.matchUserSeqWithSeq().forShare(); outside a transaction, then inside one (PRT-8)",
+      "calls": [
+        "relation",
+        "forShare",
+        "transaction"
+      ],
+      "expect": {
+        "result": {
+          "inside": [
+            {
+              "name": "author-42",
+              "seq": 42,
+              "service_member_seq": 43,
+              "service_region_seq": 3,
+              "service_seq": 43,
+              "user_model": {
+                "name": "user-43",
+                "seq": 43
+              },
+              "user_seq": 43
+            }
+          ],
+          "outside": "CONFIG"
+        },
+        "statements": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "BEGIN IMMEDIATE",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "utility",
+            "sql": "INSERT INTO \"orm__row_lock\" (\"id\") VALUES (1) ON CONFLICT (\"id\") DO UPDATE SET \"id\"=excluded.\"id\"",
+            "tables": [
+              "orm__row_lock"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              42
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"name\" AS \"a__name\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = ?",
+            "tables": [
+              "author"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              43
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"user\" AS \"a\" WHERE \"a\".\"seq\" IN (?)",
+            "tables": [
+              "user"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "commit",
+            "sql": "COMMIT",
+            "tables": [],
+            "transaction": 1
+          }
+        ]
+      }
+    },
+    {
       "name": "transactions",
       "chain": "transaction with savepoint rollback, row lock, lock, setLocal/local, rollback",
       "calls": [

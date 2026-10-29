@@ -1827,6 +1827,29 @@ static bool apply_hook(zval *self, zval *r)
     return ok;
 }
 
+/* The row lock of a read: the lock of its root, or else of its first relation step, depth first, that has one (PRT-8);
+ * NULL when no step locks. */
+static zval *request_lock(zval *q)
+{
+    zval *lock = aget(q, "lock");
+    if (lock != NULL && Z_TYPE_P(lock) == IS_STRING && Z_STRLEN_P(lock) > 0) {
+        return lock;
+    }
+    zval *relations = aget(q, "relations");
+    if (relations == NULL || Z_TYPE_P(relations) != IS_ARRAY) {
+        return NULL;
+    }
+    zval *r;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(relations), r) {
+        zval *query = Z_TYPE_P(r) == IS_ARRAY ? aget(r, "query") : NULL;
+        zval *found = query != NULL && Z_TYPE_P(query) == IS_ARRAY ? request_lock(query) : NULL;
+        if (found != NULL) {
+            return found;
+        }
+    } ZEND_HASH_FOREACH_END();
+    return NULL;
+}
+
 /* Db::enter: the connection is open, and a row lock is only inside a transaction: frame is the active transaction, or null. */
 static bool enter(zval *self, zval *frame, zval *ir)
 {
@@ -1840,9 +1863,9 @@ static bool enter(zval *self, zval *frame, zval *ir)
             return false;
         }
     }
-    zval *lock = aget(ir, "lock");
+    zval *lock = request_lock(ir);
     bool in_transaction = frame != NULL && Z_TYPE_P(frame) == IS_OBJECT;
-    if (lock != NULL && Z_TYPE_P(lock) == IS_STRING && Z_STRLEN_P(lock) > 0 && !in_transaction) {
+    if (lock != NULL && !in_transaction) {
         db_throw_orm("CONFIG", "row locks are allowed only inside a transaction");
         return false;
     }
@@ -3277,7 +3300,7 @@ static bool select_plan(zval *self, zval *frame, zval *r, zval *out, zval *plan,
     zval *ir = rd(r, "ir");
     zval *step0 = aidx(aget(plan, "steps"), 0);
     zval lock;
-    zval *lk = aget(ir, "lock");
+    zval *lk = request_lock(ir);
     if (lk != NULL) {
         ZVAL_COPY(&lock, lk);
     } else {

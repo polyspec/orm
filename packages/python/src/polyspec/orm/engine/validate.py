@@ -406,11 +406,13 @@ class _Validator:
             )
         if lock != "" and (
             is_join
-            or is_relation
             or q.get("group_by") is not None
             or (q.get("limit_per_parent") or 0) > 0
         ):
-            _fail(codes.IR_INVALID, "row lock is only valid on a root row select")
+            _fail(
+                codes.IR_INVALID,
+                "row lock is only valid on a root row select or a relation step without limit_per_parent or group_by",
+            )
         if q.get("force_index") and q["force_index"] not in ent.indexes:
             _fail(codes.INDEX_UNKNOWN, f"{q['entity']}.{q['force_index']}")
 

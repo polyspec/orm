@@ -897,6 +897,28 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         events.push(json!(left));
         Ok::<Value, polyspec_orm::Error>(Value::Array(events))
     });
+    // PRT-8: a relation step's own row lock. Outside a transaction it is refused as a root lock is; inside one, the
+    // relation's statement carries the lock.
+    run!("relation_row_lock", async {
+        let read = async || {
+            author()
+                .remove_all_columns()
+                .add_column_name()
+                .relation(User::new().match_user_seq_with_seq().remove_all_columns().add_column_name().for_share())
+                .gets_by_seq(42)
+                .await
+        };
+        let outside = code_of(read().await);
+        let inside = Mutex::new(Value::Null);
+        db.transaction(async || {
+            *inside.lock().unwrap() = read().await?.to_array()?;
+            Ok(())
+        })
+        .retry(0)
+        .await?;
+        let inside = inside.into_inner().unwrap();
+        Ok::<Value, polyspec_orm::Error>(json!({"outside": outside, "inside": inside}))
+    });
     run!("restore", async {
         // Restores the soft-deleted row to its primary key. The deletion time is written as a fixed value so that all databases and
         // the runner's binds match. The transaction rolls back at the end, so the database is as it was at the start.

@@ -19687,6 +19687,10 @@
     "exported": false,
     "signature": "func(st *plan.Step, vals []any, driver string) ([][]any, error)"
   },
+  "packages/go/orm/exec.go::requestLock": {
+    "exported": false,
+    "signature": "func(q *ir.Query) string"
+  },
   "packages/go/orm/exec.go::restoreByteColumns": {
     "exported": false,
     "signature": "func(vals []any, asm *plan.Assemble) error"
