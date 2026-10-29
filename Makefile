@@ -2791,6 +2791,9 @@ orm-install-interfaces-typescript:
 # lint-ts reads packages/ts/testing/interfaces/typescript.mts, which imports the TypeScript that this target installs: the recipe of
 # lint-ts is the kit.mk of @polyspec/kit, so the prerequisite is added here.
 lint-ts: typescript-build
+# parity-declarations-check reads the symbols of the TypeScript client from packages/ts/dist/index.d.ts, which typescript-build
+# writes; a fresh checkout of the shared gates job has no dist (KSTD-5-114).
+parity-declarations-check: typescript-build
 # The staged commit gate has no ignored generated models; recreate them before linting Go modules.
 lint-go: go-models
 # orm-install-php installs the one Composer project of the repository, the development root (vendor-php): it installs packages/php
