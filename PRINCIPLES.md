@@ -144,7 +144,7 @@ repository.
   is not disguised as an installed released version. Applications own compatible native development declarations and
   locks. Release declarations and locks remain records of released dependencies; kit does not synthesize link manifests,
   version aliases or lock metadata, and no tracked lock waits for a coordinated batch.
-  Enforced by: `make link-state-check`
+  Enforced by: none, the links exist only in development, where make link-state-check checks them; CI links nothing (K824)
 - P31 No gate is bypassed: a test, script or Makefile never sets the CI identity (`GITHUB_ACTIONS`, `CI`) outside a workflow, never
   names a gate of kit-gates in `make -o`, `--old-file` or `--assume-old`, and never uses `--no-verify` (K308).
   Enforced by: `make bypass-check`
@@ -242,5 +242,5 @@ tool lands, a standard binds the work as written here.
 - S11 Local links: during development each polyspec package's install folder (node_modules, vendor, site-packages) is one
   plain directory symlink to its checkout. No package-manager link step (npm link, Composer path repository, pip/uv editable)
   (K591, K761, K765).
-  Enforced by: `make link-state-check`; the K761 link test of kit also finds no npm link, composer update or editable install
-  in the tool log
+  Enforced by: none, the links exist only in development, where make link-state-check checks them, and CI links nothing (K824);
+  the K761 link test of kit finds no npm link, composer update or editable install in the tool log

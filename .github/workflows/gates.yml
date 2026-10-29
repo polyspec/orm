@@ -24,7 +24,6 @@ jobs:
       common_tools: ${{ steps.plan.outputs.common_tools }}
       parity_tools: ${{ steps.plan.outputs.parity_tools }}
       extractors: ${{ steps.plan.outputs.extractors }}
-      link_tools: ${{ steps.plan.outputs.link_tools }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
@@ -115,16 +114,11 @@ jobs:
       - name: install parity toolchains
         if: ${{ needs.discover.outputs.parity_tools != '[]' }}
         run: make install-tools TOOLS="${{ join(fromJSON(needs.discover.outputs.parity_tools), ' ') }}"
-      - name: install package-link toolchain
-        if: ${{ needs.discover.outputs.link_tools != '[]' && !contains(needs.discover.outputs.parity_tools, 'go') }}
-        run: make install-tools TOOLS="${{ join(fromJSON(needs.discover.outputs.link_tools), ' ') }}"
       - name: install symbol extractors
         if: ${{ needs.discover.outputs.extractors != '[]' }}
         run: make kit-install-symbols EXTRACTORS="${{ join(fromJSON(needs.discover.outputs.extractors), ' ') }}"
       - name: install parity prerequisites
         run: make kit-ci-setup GROUP=parity
-      - name: link local packages
-        run: make link
       - id: context_prepare
         name: prepare parity CI context
         run: make kit-ci-context-prepare GROUP=parity
@@ -164,21 +158,16 @@ jobs:
       - name: install parity toolchains
         if: ${{ needs.discover.outputs.parity_tools != '[]' }}
         run: make install-tools TOOLS="${{ join(fromJSON(needs.discover.outputs.parity_tools), ' ') }}"
-      - name: install package-link toolchain
-        if: ${{ needs.discover.outputs.link_tools != '[]' && !contains(needs.discover.outputs.parity_tools, 'go') }}
-        run: make install-tools TOOLS="${{ join(fromJSON(needs.discover.outputs.link_tools), ' ') }}"
       - name: install symbol extractors
         if: ${{ needs.discover.outputs.extractors != '[]' }}
         run: make kit-install-symbols EXTRACTORS="${{ join(fromJSON(needs.discover.outputs.extractors), ' ') }}"
       - name: install parity prerequisites
         run: make kit-ci-setup GROUP=parity
-      - name: link local packages
-        run: make link
       - id: context_prepare
         name: prepare parity CI context
         run: make kit-ci-context-prepare GROUP=parity
       - name: API phase
-        run: make -k link-state-check parity-api-check
+        run: make -k parity-api-check
       - name: cleanup parity CI context
         if: ${{ always() && steps.context_prepare.outcome != 'skipped' }}
         run: make kit-ci-context-cleanup GROUP=parity
@@ -217,16 +206,11 @@ jobs:
       - name: install parity toolchains
         if: ${{ needs.discover.outputs.parity_tools != '[]' }}
         run: make install-tools TOOLS="${{ join(fromJSON(needs.discover.outputs.parity_tools), ' ') }}"
-      - name: install package-link toolchain
-        if: ${{ needs.discover.outputs.link_tools != '[]' && !contains(needs.discover.outputs.parity_tools, 'go') }}
-        run: make install-tools TOOLS="${{ join(fromJSON(needs.discover.outputs.link_tools), ' ') }}"
       - name: install symbol extractors
         if: ${{ needs.discover.outputs.extractors != '[]' }}
         run: make kit-install-symbols EXTRACTORS="${{ join(fromJSON(needs.discover.outputs.extractors), ' ') }}"
       - name: install parity prerequisites
         run: make kit-ci-setup GROUP=parity
-      - name: link local packages
-        run: make link
       - id: context_prepare
         name: prepare parity CI context
         run: make kit-ci-context-prepare GROUP=parity
@@ -273,8 +257,6 @@ jobs:
       - name: install PHP symbol extractor
         if: ${{ matrix.runtime == 'php' && contains(needs.discover.outputs.extractors, 'php') }}
         run: make kit-install-symbols EXTRACTORS=php
-      - name: link local packages
-        run: make link RUNTIME=${{ matrix.runtime }}
       - id: context_prepare
         name: prepare runtime CI context
         run: make kit-ci-context-prepare GROUP=runtime RUNTIME=${{ matrix.runtime }}

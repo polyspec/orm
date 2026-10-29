@@ -1,5 +1,5 @@
 <!-- doc-id: principles -->
-<!-- source-sha256: 674f2e4a68b4428afcecb442de0f982991542bc9faba09b5f1c8b0e3462f1c8f -->
+<!-- source-sha256: 56be0fdcf6ca0d0dfd479e630a29528f7d9b0243e276e38d1fe36cb5769af69b -->
 # 원칙
 
 [English](PRINCIPLES.md)
@@ -136,7 +136,7 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-check`�
   Package manager가 link, 설치 record, dependency 해석, 생성 metadata를 소유하며 source를 설치된 release version으로 위장하지 않는다.
   앱이 호환되는 native 개발 선언과 lock을 소유한다. Release 선언과 lock은 배포된 dependency의 기록으로 유지하고,
   kit은 link manifest, version alias, lock metadata를 합성하지 않으며 추적 lock을 통합 배치까지 기다리게 하지 않는다.
-  Enforced by: `make link-state-check`
+  Enforced by: none, link는 개발 환경에만 있고 거기서 make link-state-check가 검사한다. CI는 아무것도 link하지 않는다 (K824)
 - P31 gate는 우회하지 않는다. test, script, Makefile은 workflow 밖에서 CI identity(`GITHUB_ACTIONS`, `CI`)를 설정하지 않고,
   `make -o`, `--old-file`, `--assume-old`에 kit-gates의 gate를 적지 않으며, `--no-verify`를 쓰지 않는다 (K308).
   Enforced by: `make bypass-check`
@@ -220,5 +220,5 @@ owner가 2026-10-13에 이 기준을 승인했습니다. 각 기준은 위반 �
 - S11 로컬 링크: 개발 중 각 polyspec 패키지의 설치 폴더(node_modules, vendor, site-packages)는 checkout으로 가는 평범한
   디렉터리 심링크 하나입니다. 패키지 매니저의 링크 단계(npm link, Composer path repository, pip/uv editable)는 쓰지 않습니다
   (K591, K761, K765).
-  Enforced by: `make link-state-check`. kit의 K761 link test도 tool log에 npm link, composer update, editable 설치가 없음을
-  확인합니다
+  Enforced by: none, link는 개발 환경에만 있고 거기서 make link-state-check가 검사하며, CI는 아무것도 link하지 않는다 (K824).
+  kit의 K761 link test는 tool log에 npm link, composer update, editable 설치가 없음을 확인합니다

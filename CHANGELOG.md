@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Take the released kit 0.0.73 in place of 0.0.70: kit-sync writes gates.yml without the link steps of CI (K824), the PHPUnit autoloader reaches a listed run of the PHP extension (K827), and the principles of kit (KSTD-5-112).
 - No public PHP signature names an internal type: ModelMetadata, the meta() contract of generated models, and CatalogRowSnapshot, the row snapshot of the catalog API, are public and declared; Model::registerJoins of the extension is internal, as in the library (T258).
 - The orm-gen classes of packages/php (OrmGen, Generator, Scan, ScanVisitor, ChainDeclare, UsageError) are marked internal: they implement the generator command and are no API of the PHP client (T244-1).
 - performance_gate is implemented: contracts/performance-references.json records the 36 fixed references of the six clients, three databases and two workloads from the passed check run orm_check_33189_3c995a77 of 97b4566f4, and every coverage case compares its ratio with its reference (KSTD-7-6).

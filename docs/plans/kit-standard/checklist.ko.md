@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: e232e3b11a36a84122b30255d9cc6ce72fbeb12db13061eebee0e6cfbb5a3827 -->
+<!-- source-sha256: bfa128a41e37f7e39f761d53d86682c32c1f29387f869dd77a768736dfc4412b -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -370,6 +370,6 @@
 | KSTD-5-109-1 | PHP extension run guard와 그 test를 parity 선언에 등재해 검사가 그 test를 실행하게 한다 | config/parity.json packages/php/tests/ExtensionRunGuardTest.php | `make parity-declarations-check` | [v] |
 | KSTD-5-110 | conformance vector가 codec ip hex table에 row를 insert하고 address의 eq로 다시 select한다. MySQL, PostgreSQL, SQLite에서 모든 runner가 실행하므로 T251의 stage 분할과 T253의 equality가 planner vector만이 아니라 실제 database에서 성립한다. 원인: limepie가 planner vector가 잡지 못한 ip hex insert에서 MySQL 1411을 만났고, ip hex column을 쓰는 conformance vector가 없다 | contracts/fixtures/bench/bench.dbs, tests/conformance/vectors.json, tests/conformance/vectors.postgres.json, tests/conformance/vectors.sqlite.json, contracts/symbols/go.json, contracts/symbols/typescript.json, config/parity.json, packages/rust/tests/src/conformance.rs | `make run-databases TARGETS=conformance-check VECTOR=ip_hex_roundtrip` | [v] |
 | KSTD-5-111 | orm은 0.0.66 대신 release된 kit 0.0.70을 받는다: package.json의 pin과 그 lock, make kit-sync의 사본, make hooks의 hook. 원인: kit 0.0.70이 K797부터 K817까지의 족쇄를 지우는데 orm은 아직 0.0.66에서 설치한다 | package.json, package-lock.json | `make kit-check` | [v] |
-| KSTD-5-112 | orm은 0.0.70 대신 release된 kit 0.0.73을 받는다: package.json의 pin과 그 lock, make kit-sync의 사본과 make hooks의 hook. 원인: kit 0.0.72가 CI의 link 단계를 없애고(K824) Windows에서 mise를 PATH에 둔다(K820). kit 0.0.73은 K826, K827(php-extension parity binding이 필요로 하는, 나열된 run의 PHPUnit autoloader), K830을 담는다 | package.json, package-lock.json | `make kit-check` | [ ] |
+| KSTD-5-112 | orm은 0.0.70 대신 release된 kit 0.0.73을 받는다: package.json의 pin과 그 lock, make kit-sync의 사본과 make hooks의 hook. 원인: kit 0.0.72가 CI의 link 단계를 없애고(K824) Windows에서 mise를 PATH에 둔다(K820). kit 0.0.73은 K826, K827(php-extension parity binding이 필요로 하는, 나열된 run의 PHPUnit autoloader), K830을 담는다 | package.json, package-lock.json, .github/workflows/gates.yml, PRINCIPLES.md, PRINCIPLES.ko.md | `make kit-check` | [v] |
 | KSTD-5-113 | config/ci.json의 python runtime이 orm-install-python을 지명해 parity job이 symbol 추출 전에 Python client를 설치한다. 원인: setup.runtimes.python이 비어 CI가 Python package를 설치하지 않고, parity API phase가 모든 Python symbol을 R1 missing-implementation으로 보고한다 | config/ci.json | `make kit-check` | [ ] |
 | KSTD-5-114 | parity-declarations-check는 lint-ts처럼 먼저 TypeScript dist를 build해 새 checkout에서도 통과한다. 원인: shared CI group에서 그것은 build된 dist의 선언을 읽는데 새 checkout에는 dist가 없다 | Makefile | `make parity-declarations-check` | [ ] |
