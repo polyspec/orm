@@ -13,6 +13,7 @@ use PHPUnit\Framework\TestCase;
 #[Medium]
 final class ExtensionRunGuardTest extends TestCase
 {
+    // Requirements: PRT-18.
     public function testRunThatLoadsALibraryFileFails(): void
     {
         $source = self::source();
@@ -21,6 +22,7 @@ final class ExtensionRunGuardTest extends TestCase
         self::assertStringContainsString("$source/AesRotationStatus.php", $errors, 'the guard names the file');
     }
 
+    // Requirements: PRT-18.
     public function testRunThatLoadsNoLibraryFilePasses(): void
     {
         [$status, $errors] = self::child(self::source(), null);
@@ -28,6 +30,7 @@ final class ExtensionRunGuardTest extends TestCase
         self::assertSame('', $errors);
     }
 
+    // Requirements: PRT-18.
     public function testOnlyFilesOfTheFolderCount(): void
     {
         self::assertSame(

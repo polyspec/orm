@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e40ee699b510f2ec8f009ab6d10ec6737907c7854f6ed66f16759583329fe118 -->
+<!-- source-sha256: 1c56ba2241d6ef8e03e051906b7ef42ab22933ba46ffe9e55364004f18a14cfc -->
 # 변경 이력
 
 ## Unreleased
 
+- parity 선언이 PHP extension run guard를 test helper로 등재하고 그 세 test를 PRT-18에 연결한다. 그래서 make parity-declarations-check가 통과하고 검사가 그 test를 실행한다 (KSTD-5-109-1).
 - conformance vector ip_hex_roundtrip가 codec ip hex인 새 bench table ip_hex_cell에 address를 쓰고 address의 eq로 다시 읽는다. MySQL, PostgreSQL, SQLite에서 여섯 구현 모두가 실행하며, 모든 client는 pack한 address의 hex text를 bind한다. T251 전에는 MySQL이 그 text의 INET6_ATON을 거부했다. symbol snapshot은 ip_hex_cell과, 각 row가 빠뜨린 T251의 stage 분할 helper와 KSTD-5-94의 date helper를 기록한다. (KSTD-5-110)
 - orm은 0.0.66 대신 release된 kit 0.0.70을 받는다: package.json의 pin과 그 lock이며, lock에는 kit이 삭제한 toml-patch 의존이 더 이상 없다. kit-sync가 쓴 gates.yml의 shared job은 commit range를 계산하지 않는다(kit K815). (KSTD-5-111)
 - Python client는 dbspec.md DBS-104에 따라 TypeScript처럼 manifest의 model을 process마다 한 번 만든다: manifest hash를 key로 하고 text로 확인하는 registry가 이미 만든 model을 돌려주므로 register_model, Db.register, SchemaUtils.register, connect_schema는 schema를 한 번 parse하고, RuntimeModel.load_set은 같은 text에 대해 이미 parse한 document를 돌려준다. (T256)

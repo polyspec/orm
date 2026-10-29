@@ -339,6 +339,7 @@
         "packages/php/tests/dbspec_syntax_vectors.php",
         "packages/php/tests/dbspec_verify_errors_case.php",
         "packages/php/tests/deadlock_child.php",
+        "packages/php/tests/extension_run_guard.php",
         "packages/php/tests/fixtures/CodecProbeYaml.php",
         "packages/php/tests/fixtures/CodecProbeYamlStream.php",
         "packages/php/tests/generated_classes.php",
@@ -2458,6 +2459,34 @@
             {
               "test": "packages/go/orm/catalog_sqlite_sequence_test.go",
               "id": "TestCatalogSQLiteSequenceRestoration"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "files": [
+        "packages/php/tests/ExtensionRunGuardTest.php"
+      ],
+      "reason": "harness: verifies the extension run guard of the PHP test bootstrap, which fails a run of ORM_PHP_MODE=extension that loaded a file of packages/php/src; it tests the test harness rather than client behavior, in php -n child runs.",
+      "units": [
+        {
+          "id": "php-extension-run-loads-no-library-file",
+          "requirements": [
+            "PRT-18"
+          ],
+          "bindings": [
+            {
+              "test": "packages/php/tests/ExtensionRunGuardTest.php",
+              "id": "testRunThatLoadsALibraryFileFails"
+            },
+            {
+              "test": "packages/php/tests/ExtensionRunGuardTest.php",
+              "id": "testRunThatLoadsNoLibraryFilePasses"
+            },
+            {
+              "test": "packages/php/tests/ExtensionRunGuardTest.php",
+              "id": "testOnlyFilesOfTheFolderCount"
             }
           ]
         }

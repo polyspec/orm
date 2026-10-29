@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The parity declarations name the PHP extension run guard as a test helper and bind its three tests to PRT-18, so make parity-declarations-check passes and a check runs them (KSTD-5-109-1).
 - The conformance vector ip_hex_roundtrip writes an address into the new bench table ip_hex_cell of codec ip hex and reads it back by eq on the address, on MySQL, PostgreSQL and SQLite in all six implementations: every client binds the hex text of the packed address, which MySQL refused as INET6_ATON of that text before T251. The symbol snapshots record ip_hex_cell and the stage split helpers of T251 and the date helpers of KSTD-5-94, which their rows left out. (KSTD-5-110)
 - orm takes the released kit 0.0.70 in place of 0.0.66: the pin of package.json and its lock, which no longer holds the toml-patch dependency that kit deleted, and gates.yml from kit-sync, whose shared job computes no commit range (kit K815). (KSTD-5-111)
 - The Python client builds the model of a manifest once per process, by dbspec.md DBS-104 as TypeScript does: a registry keyed by the manifest hash and checked against the texts returns the model already built, so register_model, Db.register, SchemaUtils.register and connect_schema parse a schema once, and RuntimeModel.load_set returns the documents already parsed for the same texts. (T256)
