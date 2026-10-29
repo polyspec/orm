@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 4d2387b9ea18521c9cc778ebad09b9aaccc642e902e327372cb91be278a7dda9 -->
+<!-- source-sha256: 9df706e0d9e38f86c94e3e4da4697cbb01a68cdf46d5f1e93c539b734f025683 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -356,3 +356,4 @@
 | KSTD-5-97 | orm-install-php는 root Composer lock을 kit의 composer-install로 설치하므로, 받은 package가 offline worktree-setup이 읽는 Composer cache를 채운다. 원인: recipe가 composer shim을 직접 실행해 var/tools의 Composer home이 아닌 ~/Library/Caches/composer를 채웠고, worktree-setup은 symfony/polyfill-ctype, symfony/yaml, purrphp/pure-collection, purrphp/yaml을 찾지 못했다 | Makefile | `make worktree-setup NAME=composer ID=KSTD-5-97 TYPE=fix` | [o] |
 | KSTD-5-98 | release-assets와 release-candidate-assets는 주석이 선언한 대로 lease tool의 Go module(orm-install-go-lease)만 딛고 build하며, kit은 이들을 추적되는 go.work로 실행하므로(kit `K774`) 그 Go 선행 조건이 release 대상의 환경에서 build된다. 원인: kit standard(108cbbfdd) 이후 이들은 orm-install-go에 의존하고, kit release 대상의 GOWORK=off에서는 go.work만 있는 root에서 그 go mod download가 거부되고(no modules specified) ../../examples를 훑는 go-models가 main module을 찾지 못한다 | Makefile | `make orm-install-go-lease typescript-build editor-build` | [o] |
 | KSTD-5-99 | packages/python/pyproject.toml의 build-system.requires는 wheel build backend의 단일 선언인 config/toolchain.json pythonBackend의 setuptools를 지정한다. 원인: 6a5b26646이 build-system.requires를 setuptools 84.2.1로 옮기고 pythonBackend는 84.0.0에 남겼다 | packages/python/pyproject.toml | `make release-candidate-assets VERSION=0.0.18` | [!] 원인: build-system과 toolchain.json pythonBackend는 같은 선언의 중복이며, kit이 pythonBackend를 삭제한다; 재시도: kit audit의 pythonBackend 삭제가 land된다 |
+| KSTD-5-100 | orm은 kit이 삭제하는 dependency target을 하나도 지정하지 않는다(kit `K784`, `K786`): CHECK_TARGETS와 CI 그룹, contracts/check-inputs.json, AGENTS, 문서, 그 target만 읽는 config 파일 | Makefile, contracts/check-inputs.json, AGENTS.md, docs/spec/editor-stack.md, config/dependency-review.json | `make owner-validate` | [ ] |
