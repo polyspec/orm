@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 92a091d3020ac0fa14135aaed0279a29159a83053c44d8a681094f0bb955bf36 -->
+<!-- source-sha256: 2380ac6a9f6b1a692775013894296ca37c50cfb344005122e045c94fb0062137 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -362,3 +362,4 @@
 | KSTD-5-103 | orm에는 main writer hook이 없다: 추적되는 .githooks/reference-transaction을 삭제하고, make hooks가 commit하는 git의 기록 없이 .githooks/pre-commit을 쓴다. 원인: kit K801이 그 hook과 writer 변수를 삭제한다 | .githooks/reference-transaction, .githooks/pre-commit | `make hooks-check` | [o] |
 | KSTD-5-104 | orm은 build-system.requires로 uv build해 wheel을 만들고 Python client를 uv sync로 non-editable 설치한다(kit K788, K803): config/toolchain.json에는 pythonBackend가 없고, AGENTS.md와 packaging.md는 uv build를 말하며, make orm-install-python은 uv sync --locked --no-editable --group test로 packages/python/.venv에 설치하고 make link가 그것을 checkout의 link로 바꾼다. 원인: kit이 build backend pin을 삭제하고, 그 python symbols가 non-editable 환경의 설치 file 목록을 읽는다 | config/toolchain.json, Makefile, scripts/repo/python-venv.test.mts, AGENTS.md, docs/operations/packaging.md | `make repo-check/unit kit-check` | [ ] |
 | KSTD-5-105 | orm에는 pre-push hook이 없다: 추적되는 .githooks/pre-push를 삭제하고 config/checklist.json의 hooks는 pre-push를 이름하지 않는다. 원인: kit K804가 push gate와 그 hook을 삭제해서, hook이 더 이상 없는 target을 호출하고 모든 push가 실패한다 | .githooks/pre-push, config/checklist.json | `make hooks-check` | [o] |
+| KSTD-5-106 | orm에는 release consumer project, release proof, push gate workflow가 없다(kit K798, K804): config/release.json에는 consumers와 proof가 없고, tests/release-consumer와 그 lock 두 개는 owner 항목과 함께 삭제되며, Makefile에는 release-consumer target이, release.yml에는 proof 단계가 없고, .github/workflows/push-gate.yml은 그 repository 검사와 함께 삭제된다. AGENTS.md는 pre-push 강제를 이름하지 않는다. 원인: kit이 release-consumer, release-consumer-lock, release-proof와 push gate를 삭제한다 | config/release.json, tests/release-consumer, contracts/check-inputs.json, Makefile, .github/workflows/release.yml, .github/workflows/push-gate.yml, scripts/repo/ci.mts, scripts/repo/check.mts, scripts/repo/check.test.mts, AGENTS.md | `make repo-check/unit feature-unit-check/owners kit-check` | [ ] |
