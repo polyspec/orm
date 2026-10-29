@@ -491,7 +491,9 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
             if self.driver == "sqlite":
                 url = urlsplit(self.dsn)
                 query = parse_qs(url.query)
-                sqlite_native = self._native_connection(url, query, sqlite_autocommit=True)
+                sqlite_native = self._native_connection(
+                    url, query, sqlite_autocommit=True
+                )
                 sqlite_sequence_row = sqlite_native.execute(
                     "SELECT seq FROM sqlite_sequence WHERE name = 'bind_cell'"
                 ).fetchone()
@@ -551,7 +553,9 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
                             restored = sqlite_native.execute(
                                 "SELECT seq FROM sqlite_sequence WHERE name = 'bind_cell'"
                             ).fetchone()
-                            self.assertEqual(restored is not None, sqlite_sequence_existed)
+                            self.assertEqual(
+                                restored is not None, sqlite_sequence_existed
+                            )
                             self.assertEqual(
                                 restored[0] if restored is not None else None,
                                 sqlite_sequence_before,

@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- packages/python/tests/coverage_catalog_connection.py is in the format of the pinned ruff format. (T250)
+
 - make duplication-check finds no clone: the PHP without-MySQL test, the parity context test and the performance reference recorder share their child runner, command helpers and git reader, and the parity context test expects the interfaces TypeScript in the ts setup. (T249)
 
 - orm runs the hooks of kit K805: .githooks/pre-commit no longer calls the deleted commit gates, and .githooks/pre-merge-commit and config/commit-identity.json are deleted. (KSTD-5-107)

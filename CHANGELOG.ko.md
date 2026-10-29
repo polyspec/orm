@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: aa259df4e5b698f2a73be0a831d7a96ecd6e66a728f13547a4521d198e800937 -->
+<!-- source-sha256: c5df81e2ecc478b603ff9f3bc0d4c43dea724a0f6275f74aaae23d76765f8c4f -->
 # 변경 이력
 
 ## Unreleased
+
+- packages/python/tests/coverage_catalog_connection.py는 고정된 ruff format의 형식입니다. (T250)
 
 - make duplication-check가 clone을 찾지 않습니다: PHP without-MySQL test, parity context test, performance reference recorder는 child runner, command helper, git reader를 공유하고, parity context test는 ts setup에 interfaces TypeScript를 기대합니다. (T249)
 
