@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ff3ce57be598e4358c6016e79371449b1e21997bb9a3ddab7e20afe6b5bfbd44 -->
+<!-- source-sha256: a68d4871791a64ce3172c54ca8fe79516746fdeeb71fcbd2d073c607c110425b -->
 # 변경 이력
 
 ## Unreleased
+
+- `make release-assets`와 `make release-candidate-assets`는 kit standard 이전처럼 lease tool의 Go module만 딛고 build하므로, 그 Go 선행 조건이 kit release 대상의 환경에서 build됩니다. Red: `make release-assets TAG=v0.0.18`이 `go mod download`에서 멈췄습니다(no modules specified). (KSTD-5-98)
 
 - `make orm-install-php`는 root Composer lock을 Kit의 composer-install로 설치하므로, 새 worktree가 lock의 PHP package를 offline으로 찾습니다. Red: 새 orm worktree-setup이 Composer에서 실패했습니다. (KSTD-5-97)
 

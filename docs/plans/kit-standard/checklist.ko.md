@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 8549c92eedfaf47d7245df8379a52b9111ecca43ab169d62fc5e541fcc1112b1 -->
+<!-- source-sha256: 94ae665ec0767fcedd62bd1d6ee7387f8bb90a639ab8eb24e79c286b2add6af2 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -354,4 +354,4 @@
 | KSTD-5-95 | 독립적인 클라이언트 언어 검사를 CI job에서 병렬 실행한다 | .github/workflows/ci.yml Makefile contracts/check-inputs.json scripts/features/coverage.mts scripts/features/coverage.test.mts scripts/repo/check.test.mts scripts/check/run.test.mts | `make repo-check/unit`; `make runner-check`; `node --test tests/interfaces/check/ci.test.mts` | [o] |
 | KSTD-5-96 | 독립 CI 작업별 필요한 도구체인과 잠긴 의존성만 설치 | .github/workflows/ci.yml scripts/check/ci-setup.mts scripts/check/run.test.mts scripts/repo/check.test.mts | `node --test --test-name-pattern="CI group\|setup needs\|setup steps" scripts/check/run.test.mts scripts/repo/check.test.mts` | [o] |
 | KSTD-5-97 | orm-install-php는 root Composer lock을 kit의 composer-install로 설치하므로, 받은 package가 offline worktree-setup이 읽는 Composer cache를 채운다. 원인: recipe가 composer shim을 직접 실행해 var/tools의 Composer home이 아닌 ~/Library/Caches/composer를 채웠고, worktree-setup은 symfony/polyfill-ctype, symfony/yaml, purrphp/pure-collection, purrphp/yaml을 찾지 못했다 | Makefile | `make worktree-setup NAME=composer ID=KSTD-5-97 TYPE=fix` | [o] |
-| KSTD-5-98 | release-assets와 release-candidate-assets는 주석이 선언한 대로 lease tool의 Go module(orm-install-go-lease)만 딛고 build하며, kit은 이들을 추적되는 go.work로 실행하므로(kit `K774`) polyspec/orm-gen을 포함한 archive를 만든다. 원인: kit standard(108cbbfdd) 이후 이들은 orm-install-go에 의존하고, kit release 대상의 GOWORK=off에서는 go.work만 있는 root에서 그 go mod download가 거부되고(no modules specified) ../../examples를 훑는 go-models가 main module을 찾지 못한다 | Makefile | `make release-candidate-assets VERSION=0.0.19` | [~] |
+| KSTD-5-98 | release-assets와 release-candidate-assets는 주석이 선언한 대로 lease tool의 Go module(orm-install-go-lease)만 딛고 build하며, kit은 이들을 추적되는 go.work로 실행하므로(kit `K774`) 그 Go 선행 조건이 release 대상의 환경에서 build된다. 원인: kit standard(108cbbfdd) 이후 이들은 orm-install-go에 의존하고, kit release 대상의 GOWORK=off에서는 go.work만 있는 root에서 그 go mod download가 거부되고(no modules specified) ../../examples를 훑는 go-models가 main module을 찾지 못한다 | Makefile | `make orm-install-go-lease typescript-build editor-build` | [o] |

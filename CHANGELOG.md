@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- `make release-assets` and `make release-candidate-assets` build on the Go modules of the lease tool alone, as before the kit standard, so their Go prerequisites build in the environment of the kit release targets. Red: `make release-assets TAG=v0.0.18` stopped at `go mod download` (no modules specified). (KSTD-5-98)
+
 - `make orm-install-php` installs the root Composer lock through Kit's composer-install, so a new worktree finds its locked PHP packages offline. Red: a new orm worktree-setup failed at Composer (KSTD-5-97).
 
 - Install only the pinned prerequisites of each independent CI group, including native parity extractors, PHP arginfo and the minimal Go lease dependency; retain parallel client, DBspec and feature groups. (KSTD-5-96)
