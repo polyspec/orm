@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: f24fc48e6361e95a096772769f22cc79de5c204058890929cd7789bea85bd992 -->
+<!-- source-sha256: 4f83c2831aceb67bdc540ab01cd130f346fd1051455d808a3fabee40ef8fbc1b -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1325,3 +1325,4 @@
 | T238 | 완료된 worktree-stop test의 폐기 대상 prune 의존성을 제거한다. 원인: T237 test의 worktree-prune import가 제거를 막는다. WORKTREE_STOP 검증은 유지한다. | scripts/repo/worktree-stop.test.mts; paired T237 verification description | `node --test scripts/repo/worktree-stop.test.mts`; no worktree-prune import or prune-only case remains | [o] |
 | T239 | 서버를 초기화할 때 ORM 테스트 데이터베이스가 로컬 served-test 로그인을 지원하면서 인증과 TLS 검사를 유지한다. 원인: PostgreSQL이 loopback의 모든 역할을 trust하고, MySQL binary logging은 SUPER가 아닌 로그인 사용자의 audit trigger 생성을 막으며, replica 인증서는 VERIFY_IDENTITY 정상 연결을 막는다. 기존 PostgreSQL 인증과 MySQL daemon 설정은 서버를 기존 절차로 stop하고 start한 뒤 적용되며, start 명령은 lease 중인 서버를 재시작하지 않는다. | scripts/test-servers.mts; scripts/test-servers.test.mts | `node --test --test-name-pattern="PostgreSQL trusts only\|MySQL replica has a positive\|test servers keep small redo logs" scripts/test-servers.test.mts` runs three changed server configuration unit cases. `node --test --test-name-pattern="the CI workflow provides every variable" scripts/repo/check.test.mts` verifies the new server environment variable remains supplied by the declared server setup. | [o] |
 | T240 | 설치된 로컬 Kit package에서 추적하는 Kit 사본을 갱신하고 일반 파일로 유지한다 | .claude/settings.json, .editorconfig, PRINCIPLES.md, PRINCIPLES.ko.md, .github/workflows/release.yml, .github/workflows/gates.yml | `make kit-check`; confirm the six tracked copies are regular files matching the installed local Kit source. | [o] |
+| T241 | 0.0.19를 release한다. 원인: kit 0.0.66 채택(KSTD-5-101), dependency target 제거(KSTD-5-100), lease 전용 release build(KSTD-5-98), 선언된 wheel backend(KSTD-5-99)가 main에 있다. 인수: version-bump commit이 모든 manifest를 0.0.19로 맞추고 Unreleased를 0.0.19로 옮긴다. make release-candidate-assets가 orm-gen을 포함한 여덟 archive를 만든다. tag는 owner를 기다린다 | VERSION, every manifest and lock that carries the version, CHANGELOG.md, CHANGELOG.ko.md | `make release-versions TAG=v0.0.19` | [ ] |
