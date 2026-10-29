@@ -70,6 +70,10 @@
       "kind": "ecosystem",
       "tool": "ajv"
     },
+    "scripts/check/parity-context.mts": {
+      "kind": "policy",
+      "reason": "the servers and run databases of one parity job of this repository, prepared and cleaned up in separate workflow steps that share them only through GITHUB_ENV; no ecosystem tool owns a check context across steps"
+    },
     "scripts/check/record.mts": {
       "kind": "policy",
       "reason": "the run record of the check runner of this repository (.runtime/check/<id>/record.json), so a killed run stays recorded as incomplete"
