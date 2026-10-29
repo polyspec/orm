@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a68d4871791a64ce3172c54ca8fe79516746fdeeb71fcbd2d073c607c110425b -->
+<!-- source-sha256: f5ee9668fc72470ca9436eb51ab46ea6be07b4dcf2495797d2caa1ef8ceac6b9 -->
 # 변경 이력
 
 ## Unreleased
+
+- wheel build backend의 선언은 하나입니다: packages/python/pyproject.toml의 build-system.requires는 release가 build에 쓰는 config/toolchain.json pythonBackend인 setuptools 84.0.0을 지정합니다. Red: `make release-candidate-assets`가 둘이 다르다고 보고했습니다. (KSTD-5-99)
 
 - `make release-assets`와 `make release-candidate-assets`는 kit standard 이전처럼 lease tool의 Go module만 딛고 build하므로, 그 Go 선행 조건이 kit release 대상의 환경에서 build됩니다. Red: `make release-assets TAG=v0.0.18`이 `go mod download`에서 멈췄습니다(no modules specified). (KSTD-5-98)
 
