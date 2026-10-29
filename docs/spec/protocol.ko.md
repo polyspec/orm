@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 6ae02c03fafab3fcbd9eb2fc3a35e6fde8302f0e70ee84af1f208b6e269d0cc5 -->
+<!-- source-sha256: 11f65a86ec8aaba96a04d7147f7102ee6ede17c445d5a1983edcc9bd3c189c3a -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -252,7 +252,7 @@ test는 자기 클라이언트의 test entry point로 연결의 write 결과를 
 | TypeScript | `packages/ts/src/engine/`, `packages/ts/src/dbspec/` DDL |
 | Python | `packages/python/src/polyspec/orm/engine/`, `packages/python/src/polyspec/orm/dbspec/` DDL |
 
-generated code는 document set의 manifest text와 `manifestHash`를 가진다. 클라이언트는 그 text로 runtime model을 한 번 만들고, 선언한 hash와 text의 hash가 다르면 거부한다(`SCHEMA_HASH_MISMATCH`). plan 캐시 키는 manifest hash와 요청 형태다. 매개변수 값은 키에 포함하지 않는다.
+generated code는 document set의 manifest text와 `manifestHash`를 가진다. 클라이언트는 그 text로 runtime model을 한 번 만들고, 선언한 hash와 text의 hash가 다르면 거부한다(`SCHEMA_HASH_MISMATCH`). plan 캐시 키는 manifest hash와 요청 형태다. 매개변수 값은 키에 포함하지 않는다. PHP 클라이언트와 PHP extension은 plan 캐시와 statement 캐시를 항목 수와 함께 각각 보유 placeholder 8192개로 한정한다. 다행 INSERT 항목은 placeholder당 약 390 byte의 plan과 약 190 byte의 bound 값을 보유하므로, 캐시한 placeholder가 한도를 넘는 동안 가장 오래 쓰지 않은 항목부터 내보내고, placeholder가 한도보다 많은 요청은 캐시하지 않고 계획하고 실행한다. 이 한도는 PHP에만 적용한다. 항목의 placeholder에 따라 캐시가 늘어나는 것이 측정된 것은 PHP 캐시뿐이기 때문이다.
 
 한 프로세스는 여러 document set의 generated code를 읽을 수 있고, 연결 하나가 그중 여러 set을 처리할 수 있다. 연결은 자기에게 등록된 set으로만 요청을 계획한다. 요청이 실행될 수 있는 대상은 프로세스가 읽은 code가 아니라 연결이 쓰는 데이터베이스가 정하기 때문이다. set은 세 방법으로 연결에 등록된다. `utils().schema().register(schema)`는 set을 연결에 등록한다. generated code의 connect helper(Go `model.Connect(dsn, config)`, PHP `Polyspec\Orm\Tests\Model\connect($dsn, $config)`, Rust `model::connect(dsn, pool_size, config)`, TypeScript generated module의 `connect(dsn, options)`, Python generated module의 `connect(dsn, **options)`)는 연결을 열고 `connectSchema`(Go `orm.ConnectSchema`, PHP `Orm::connectSchema`, Rust `Db::connect_schema`, TypeScript `Db.connectSchema`, Python `Db.connect_schema`)로 같은 방법으로 자기 set을 등록한다. `utils().schema().install(schema)`는 set의 테이블을 만들고 데이터베이스를 확인한 뒤 같은 연결에 그 set을 등록한다. 셋 다 generated schema 값, 곧 manifest text와 선언한 `manifestHash`(Go `model.Schema`, PHP `Polyspec\Orm\Tests\Model\schema()`, Rust `model::SCHEMA`, TypeScript `SCHEMA`, Python `SCHEMA`)를 받고, text가 선언한 hash로 hash되지 않으면 어떤 statement보다 먼저 `CONFIG`로 실패한다. 등록은 외부 문서를 쓰는 set도 데이터베이스를 읽거나 쓰지 않는다. 데이터베이스는 연결마다가 아니라 set을 설치하거나 올릴 때(`install`, `addTablesAndColumns`) 확인하므로, 요청마다 연 연결은 statement 없이 set을 등록한다([schema](schema.ko.md#_6-schema-registration)). raw 연결(클라이언트의 `connect(dsn, …)`)은 set을 등록하지 않고, generated code를 읽는 것도 연결에 아무것도 등록하지 않는다. 연결에 등록되지 않은 manifest의 요청은 같은 형태의 plan이 캐시되어 있어도 실행 전에 `SCHEMA_HASH_MISMATCH`로 실패하고, manifest text가 선언한 `manifestHash`로 hash되지 않는 generated code의 요청도 그렇다. 다른 등록 호출은 없다. 모든 클라이언트가 이 규칙을 따른다.
 
