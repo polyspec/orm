@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: ffbc6ab51176368522085a52208c0f8a3d2e51fd349955a00f1bca656ee451b7 -->
+<!-- source-sha256: ae9722c5d95cec6c901c4d6ccc06490e430621905531aa047e5779e5b04a6191 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -376,3 +376,4 @@
 | KSTD-5-115 | ci workflow는 kit의 gate를 돌리지 않는다: CHECK_TARGETS와 그 CI group은 kit의 gates workflow가 병렬 job으로 돌리는 kit-gates의 target(kit-check, toolchain-check, layout-check, docs-check, rules-check, owner-validate, rebuild-check, language-check, test-markers-check, duplication-check, parity-declarations-check, parity-check, bypass-check, suppression-check, divergence-check, lint target, test-php-ext)을 빼고, ci group parity는 없어진다. local make orm-check는 그와 함께 make kit-gates를 돌린다. 원인: ci가 그것을 다시 돌려 parity group은 모든 binding을 직렬로 실행해 run 40926936508에서 76분을 넘겼고, static group은 20~49분 걸린다 | Makefile, .github/workflows/ci.yml, scripts/repo/ci.mts, scripts/repo/check.test.mts, tests/interfaces/check/ci.test.mts, AGENTS.md, AGENTS.ko.md | `make repo-check` | [v] |
 | KSTD-5-116 | make repo-check는 make spawn의 env를 그 호출 전체에서 읽고, make ci-install-tools를 mise.toml의 Go 설치로 받아들인다. 원인: main에서 그것은 env: isolatedEnvironment(...)가 호출 세 줄 아래에 있는 scripts/repo/check.test.mts:647과 ".github/workflows/ci.yml runs Go without the Go of mise.toml"을 보고하지만, ci-install-tools는 항상 그 Go를 설치한다 | scripts/repo/testcases.mts, scripts/repo/toolchains.mts, scripts/repo/check.test.mts | `make repo-check` | [v] |
 | KSTD-5-117 | kit 0.0.74 채택: kit이 삭제하는 toolchain-check, cargo-downloads-check, link-state-check를 제거하고 link-state-check 자리에 link-check를 실행한다. 원인: kit K854가 toolchain-check를, K864가 cargo-downloads-check의 검사 mode를 삭제하고 K869가 link-state-check를 link-check로 바꾸므로, 이를 부르는 orm target은 kit에 없는 target을 부른다 | Makefile, .github/workflows/ci.yml, scripts/repo/ci.mts, AGENTS.md, AGENTS.ko.md, CHANGELOG.md, CHANGELOG.ko.md | `make kit-check repo-check` | [ ] |
+| KSTD-5-118 | Python 설치의 raw uv sync를 make uv-install로 보낸다. 원인: Makefile이 uv sync를 직접 실행하는데, kit K850은 make uv-install에 repository가 쓰는 SYNC flag를 주고 symlink된 개발 폴더를 손상하지 않는다 | Makefile, CHANGELOG.md, CHANGELOG.ko.md | `make orm-install-python` | [ ] |
