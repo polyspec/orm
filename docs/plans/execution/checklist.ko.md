@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 13df3069b56e9871297d4ac88390a1d5bb44756846ee2ed4d9658a1badcf4869 -->
+<!-- source-sha256: 47133c33eb5e67407dfa6fcbb1dbc919a2a368439c9b77c902a50011c84d78ec -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1332,3 +1332,4 @@
 | T245 | CI tool 선택과 orm-install-python의 repository test는 재귀 make의 command text가 아니라 호출된 install-tools target과 그 TOOLS를 맞춘다. 원인: kit K762가 모든 재귀 make의 command line에 KIT와 KIT_EXT를 넣으므로, make --no-print-directory install-tools를 고정한 scripts/repo/check.test.mts와 scripts/repo/python-venv.test.mts의 regex가 선택이 옳은데도 실패한다 | scripts/repo/check.test.mts, scripts/repo/python-venv.test.mts | `make repo-check/unit` | [o] |
 | T246 | scripts/repo/testcases.mts의 runtime path 검사는 checkout 하나가 공유하고 run이 덮어쓸 수 있는 server 환경 TEST_ENV ?= .runtime/servers/env를 받아들인다. 원인: KSTD-5-94(b597a6c49)가 TEST_ENV를 ?=로 덮어쓸 수 있게 했는데 검사는 여전히 TEST_ENV =만 허용했다 | scripts/repo/testcases.mts, scripts/repo/check.test.mts | `node --test --test-name-pattern='the files of one run live in its run directory' scripts/repo/check.test.mts` | [o] |
 | T247 | 추적되는 모든 lock file이 다시 소유자를 가진다: packages/ts/testing/interfaces/typescript/package-lock.json은 그것이 설치하는 TypeScript를 실행하는 interface-typescript-extractor-check의 input이고, release consumer lock인 tests/release-consumer/npm/package-lock.json과 tests/release-consumer/composer/composer.lock은 contracts/check-inputs.json에 scope를 선언한다. 원인: KSTD-5-100이 inputs **/package-lock.json과 **/composer.lock으로 그것들을 소유하던 dependency-policy-check를 삭제했다 | contracts/check-inputs.json | `make feature-unit-check/owners` | [o] |
+| T248 | config/parity.json의 TypeScript binding command 세 개는 make가 include한 kit의 node:test reporter를 실행한다: parity target이 ORM_NODE_REPORTER = $(KIT)/parity-node-reporter.$(KIT_EXT)를 export하고, command는 --test-reporter=${ORM_NODE_REPORTER}를 넘긴다. 원인: KSTD-5-94(16204d8e6)가 link된 kit의 gitignore된 로컬 build인 node_modules/@polyspec/kit/dist/parity-node-reporter.mjs를 지정해서, command가 오래된 build를 실행하거나 kit이 build되지 않은 곳에서 실패한다 | config/parity.json, Makefile | `make parity-declarations-check` | [ ] |
