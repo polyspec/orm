@@ -1070,6 +1070,7 @@ caseTest('the files of one run live in its run directory and a TypeScript build 
   assert.deepEqual(typescriptHolderErrors(text('Makefile')), []);
   const makefile = [
     'TEST_ENV = .runtime/servers/env',
+    'TEST_ENV ?= .runtime/servers/env',
     'SEND_SQLITE_DSN = sqlite://$(dir $(abspath $(TEST_ENV)))send-savepoint.sqlite',
     'TIMING = .runtime/timing/dbspec.test',
     'LEASE = $(abspath .runtime/bin/lease)',
@@ -1083,8 +1084,8 @@ caseTest('the files of one run live in its run directory and a TypeScript build 
     '',
   ].join('\n');
   assert.deepEqual(runtimePathErrors(makefile), [
-    'Makefile:2 names a fixed file that runs would share; put the file of one run into $(RUN_DIR): SEND_SQLITE_DSN = sqlite://$(dir $(abspath $(TEST_ENV)))send-savepoint.sqlite',
-    'Makefile:3 names a fixed file that runs would share; put the file of one run into $(RUN_DIR): TIMING = .runtime/timing/dbspec.test',
+    'Makefile:3 names a fixed file that runs would share; put the file of one run into $(RUN_DIR): SEND_SQLITE_DSN = sqlite://$(dir $(abspath $(TEST_ENV)))send-savepoint.sqlite',
+    'Makefile:4 names a fixed file that runs would share; put the file of one run into $(RUN_DIR): TIMING = .runtime/timing/dbspec.test',
   ]);
   assert.deepEqual(typescriptHolderErrors(makefile), ['Makefile bare builds the TypeScript client without holding its build output; start the recipe with $(HOLD_TYPESCRIPT)']);
   // A target holds the build through a prerequisite that holds it, as ts-check/types does through ts-check/hold; a target

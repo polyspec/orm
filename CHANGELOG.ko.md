@@ -1,11 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 369711f477dc8f0a864575fd2113c7cb77be2b63a4f049de9e8cb1141d1f6724 -->
+<!-- source-sha256: de0259515b9a97722bc0a8e76c1628379485d19f61ebbf0e949c9a05ad639357 -->
 # 변경 이력
 
 ## Unreleased
 
+- make repo-check의 runtime path 검사는 KSTD-5-94 이후 run이 덮어쓸 수 있는 server 환경 TEST_ENV ?= .runtime/servers/env를 받아들입니다. (T246)
 - orm에는 main writer hook이 없습니다: kit K801과 함께 .githooks/reference-transaction을 삭제했고, .githooks/pre-commit은 더 이상 commit하는 git을 기록하지 않습니다. (KSTD-5-103)
-
 - orm은 Python을 uv만으로 lock합니다: make orm-python-lock이 uv lock과 uv export로 packages/python/pylock.toml을 쓰고, kit의 Python lock 장치와 함께 config/dependency-policy.json, packages/python/constraints.txt, config/release.json의 consumers.wheel.polyspec을 삭제했습니다. (KSTD-5-102)
 - polyspec/orm이 다시 orm-gen을 담습니다: bin/orm-gen, 생성기, scanner가 0.0.18처럼 packages/php에 있고 별도 package polyspec/orm-gen은 삭제되므로, polyspec/orm의 소비자는 다른 package 없이 vendor/bin/orm-gen을 실행합니다. (T244)
 - orm에는 version 검사가 없습니다: scripts/version/check.mts, 그 test, version-check target, PLN-5를 삭제했고, release 때는 kit make release-versions가 모든 manifest에 tag version을 요구합니다. (T242)

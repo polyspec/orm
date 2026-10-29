@@ -431,9 +431,9 @@ export function sharedTargetErrors(makefile: string): string[] {
 
 // runtimePathErrors returns one error for each line in the Makefile that writes a fixed file of .runtime shared by several runs (or the file beside TEST_ENV)
 // as one file. A run's own file goes in RUN_DIR. What is shared is only the server
-// environment (TEST_ENV), the built tools (.runtime/bin), the root of the run directories (.runtime/run), and the lease directories (*.leases).
+// environment (TEST_ENV, which a run may override with its own file, KSTD-5-94), the built tools (.runtime/bin), the root of the run directories (.runtime/run), and the lease directories (*.leases).
 export function runtimePathErrors(makefile: string): string[] {
-  const allowed = [/^TEST_ENV = \.runtime\/servers\/env$/, /\.runtime\/bin\//, /\.runtime\/run\)/, /\.leases\)?$/];
+  const allowed = [/^TEST_ENV \??= \.runtime\/servers\/env$/, /\.runtime\/bin\//, /\.runtime\/run\)/, /\.leases\)?$/];
   const errors: string[] = [];
   for (const [index, line] of makefile.split('\n').entries()) {
     if (/^\s*#/.test(line)) continue;
