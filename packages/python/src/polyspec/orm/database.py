@@ -2422,9 +2422,14 @@ class Db:
                 if kind == "begin":
                     began = True
         except BaseException as error:
-            frame.finished = True
+            # A statement whose subscriber failed still had its effect.
             if not began and not _subscriber_error(error):
+                # The transaction never opened, so the connection's session state is unknown: it is closed, not
+                # returned to the pool.
+                frame.finished = True
+                self._give_back(frame, broken=True)
                 raise
+            # The opened transaction is rolled back, and _finish gives its connection back.
             try:
                 self._finish(frame, False)
             except OrmError as rollback:
@@ -2442,10 +2447,10 @@ class Db:
         frame.pooled = True
         return self._shared.pool.acquire()
 
-    def _give_back(self, frame: TxFrame) -> None:
+    def _give_back(self, frame: TxFrame, broken: bool = False) -> None:
         connection, frame.connection = frame.connection, None
         if connection is not None and frame.pooled:
-            self._shared.pool.release(connection, frame.lost)
+            self._shared.pool.release(connection, broken or frame.lost)
 
     def _finish(self, frame: TxFrame, commit: bool) -> None:
         if frame.finished:

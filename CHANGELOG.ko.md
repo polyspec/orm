@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- interfaces.md INT-72에 따라 시작이 실패한 Python transaction은 pool connection을 돌려준다: 실패한 BEGIN은 connection을 닫고, BEGIN 뒤 시작 단계의 실패는 transaction을 rollback하고 connection을 돌려주므로 Db.close()가 그것을 닫고 SQLite lock이 garbage collector가 돌 때까지 잡혀 있지 않다. (T255)
+
 - codec.md COD-43에 따라 모든 구현에서 codec column은 모든 단계가 host stage일 때에만 equality로 비교한다: hex와 ip는 저장된 셀을, aes 단계는 위치와 관계없이 값의 HMAC인 blind index를 비교하므로 hex aes의 eq가 Go, PHP, PHP extension에서도 compile되고, 저장 형태가 술어 값이 아닌 텍스트에서 나오는 ordered_json aes의 eq는 Rust에서도 OPERATOR_NOT_ALLOWED이다. (T254)
 
 - 모든 codec 단계가 hex나 ip인 column의 eq, not_eq, in, not_in predicate가 codec.md COD-43에 따라 다른 구현처럼 Go에서도 compile된다: 비교 대상이 값의 결정적 함수일 때, 곧 그런 column의 셀이나 AES column의 blind index일 때 equality가 적용되며, COD-43은 더 이상 스타일 column의 predicate를 null 검사로 제한하지 않는다. (T253)

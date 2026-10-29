@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- A Python transaction whose start fails gives its pooled connection back, by interfaces.md INT-72: a failed BEGIN closes the connection, and a failed start step after BEGIN rolls the transaction back and returns the connection, so Db.close() closes it and a SQLite lock is not held until the garbage collector runs. (T255)
+
 - A codec column compares by equality in every implementation exactly when every stage is a host stage, by codec.md COD-43: hex and ip compare the stored cell, and an aes stage compares the blind index, the HMAC of the value whatever its position, so eq on hex aes compiles in Go, PHP and the PHP extension too, and eq on ordered_json aes, whose stored form comes from text a predicate value is not, is OPERATOR_NOT_ALLOWED in Rust too. (T254)
 
 - An eq, not_eq, in or not_in predicate on a column whose every codec stage is hex or ip compiles in Go as in the other implementations, by codec.md COD-43: equality applies when what is compared is a deterministic function of the value, the cell of such a column or the blind index of an AES column; COD-43 no longer limits styled predicates to null checks. (T253)

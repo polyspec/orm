@@ -71,6 +71,33 @@ class _LostRollbackDb(Db):
         return connection
 
 
+class _FailingStartConnection(_TransactionRecordingConnection):
+    """A connection whose statement `failing` fails as SQLite fails a BEGIN IMMEDIATE that waits on another
+    writer."""
+
+    def __init__(self, failing: str):
+        super().__init__()
+        self.failing = failing
+
+    def execute(self, sql: str, values):
+        if sql == self.failing:
+            self.statements.append(sql)
+            raise OrmError("CANCELED", "sqlite: database is locked")
+        return super().execute(sql, values)
+
+
+class _FailingStartDb(Db):
+    def __init__(self, failing: str):
+        self.connections = []
+        self.failing = failing
+        super().__init__("sqlite:///failing-start.sqlite", {"poolSize": 1})
+
+    def _open(self):
+        connection = _FailingStartConnection(self.failing)
+        self.connections.append(connection)
+        return connection
+
+
 class _CloseDuringTransactionDb(Db):
     def __init__(self):
         self.connections = []
@@ -309,6 +336,42 @@ class RollbackFaultTest(unittest.TestCase):
             self.assertEqual(len(db.connections), 2)
             self.assertIsNot(db.connections[1], first)
             self.assertFalse(db.connections[1].closed)
+        finally:
+            db.close()
+
+    def test_a_failed_begin_closes_its_connection(self):
+        # Requirements: INT-72.
+        db = _FailingStartDb("BEGIN IMMEDIATE")
+        try:
+            error = self.raised(lambda: db.transaction(lambda: None, {"retry": 0}))
+            self.assertIsInstance(error, OrmError)
+            self.assertEqual(error.code, "CANCELED")
+            first = db.connections[0]
+            self.assertTrue(first.closed, "the connection whose BEGIN failed is closed")
+            self.assertEqual(db.stats().open_connections, 0, "it leaves the pool")
+            self.assertEqual(db.stats().in_use, 0)
+        finally:
+            db.close()
+
+    def test_a_failed_start_step_after_begin_rolls_back_and_gives_the_connection_back(
+        self,
+    ):
+        # Requirements: INT-72.
+        db = _FailingStartDb("PRAGMA query_only = 1")
+        try:
+            error = self.raised(
+                lambda: db.transaction(lambda: None, {"retry": 0, "readOnly": True})
+            )
+            self.assertIsInstance(error, OrmError)
+            self.assertEqual(error.code, "CANCELED")
+            first = db.connections[0]
+            self.assertIn(
+                "ROLLBACK", first.statements, "the opened transaction is rolled back"
+            )
+            self.assertFalse(first.transaction)
+            self.assertEqual(db.stats().in_use, 0, "the connection is given back")
+            db.close()
+            self.assertTrue(first.closed, "close closes the given-back connection")
         finally:
             db.close()
 
