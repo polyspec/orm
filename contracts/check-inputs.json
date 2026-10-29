@@ -996,6 +996,7 @@
       "inputs": [
         "packages/ts/testing/interfaces/tsconfig.json",
         "packages/ts/testing/interfaces/typescript.mts",
+        "packages/ts/testing/interfaces/typescript/package-lock.json",
         "tests/interfaces/check/typescript-extractor.test.mts",
         "tests/interfaces/check/fixtures/typescript-constructor.ts",
         "Makefile"
@@ -4352,6 +4353,14 @@
     "tests/go.sum": {
       "scope": "suite",
       "reason": "it pins the module checksums of the Go runners and physical tests under tests/"
+    },
+    "tests/release-consumer/composer/composer.lock": {
+      "scope": "lint",
+      "reason": "the lock of the Composer consumer project, a release record: make release-consumer-lock writes it and make release-proof installs it at a release; no development check reads it"
+    },
+    "tests/release-consumer/npm/package-lock.json": {
+      "scope": "lint",
+      "reason": "the lock of the npm consumer project, a release record: make release-consumer-lock writes it and make release-proof installs it at a release; no development check reads it"
     },
     "tests/timezone/date.ini": {
       "scope": "suite",

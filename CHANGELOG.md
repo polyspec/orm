@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Every tracked lock file has an owner again: the lock of the interface TypeScript is an input of interface-typescript-extractor-check, and the release consumer locks declare their scope. (T247)
 - The repository tests of the CI tool selection and of orm-install-python match the invoked install-tools target, since kit K762 passes KIT and KIT_EXT on every recursive make. (T245)
 - The runtime path check of make repo-check accepts TEST_ENV ?= .runtime/servers/env, the server environment that a run may override since KSTD-5-94. (T246)
 - orm has no main writer hook: .githooks/reference-transaction is deleted with kit K801, and .githooks/pre-commit no longer records the committing git. (KSTD-5-103)

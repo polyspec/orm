@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4048ef0b539c3cb3b5ff3f32c6946e7b216ac31b4cc1f9cedda62406c8447550 -->
+<!-- source-sha256: 843194a46b4513f08139ac55d0e5931970736548426276bbb1667d7cefae9fdb -->
 # 변경 이력
 
 ## Unreleased
 
+- 추적되는 모든 lock file이 다시 소유자를 가집니다: interface TypeScript의 lock은 interface-typescript-extractor-check의 input이고, release consumer lock은 scope를 선언합니다. (T247)
 - CI tool 선택과 orm-install-python의 repository test는 호출된 install-tools target을 맞춥니다. kit K762가 모든 재귀 make에 KIT와 KIT_EXT를 넘기기 때문입니다. (T245)
 - make repo-check의 runtime path 검사는 KSTD-5-94 이후 run이 덮어쓸 수 있는 server 환경 TEST_ENV ?= .runtime/servers/env를 받아들입니다. (T246)
 - orm에는 main writer hook이 없습니다: kit K801과 함께 .githooks/reference-transaction을 삭제했고, .githooks/pre-commit은 더 이상 commit하는 git을 기록하지 않습니다. (KSTD-5-103)
