@@ -236,7 +236,7 @@ vendors; this file states only the rules of orm.
 - Own: A path is resolved declaratively, by a name in a tracked file, or by discovery, by a discovery rule that a document or a script states, never as a relative path.
   Enforced by: none, no check reads how the code resolves its paths
 - Own: Develop one `0.0.18` version. A public client accepts one DSN URI, whose scheme selects the database, without a separate driver argument. At runtime orm is only its client library; planning and execution run in the process that calls it.
-  Enforced by: `make release-versions`
+  Enforced by: none, no check reads the versions since kit K812; the package managers resolve them
 - Own: Each dbspec parser rejects an `identity` column unless it is the only primary key column and its type is `i64`. Every dbspec implementation (Go, PHP, the PHP-extension, TypeScript, Python, and Rust) executes the same accepted and rejected schema cases.
   Enforced by: `make conformance-check`
 - Own: SQLite live import maps only `INTEGER PRIMARY KEY AUTOINCREMENT` to the signed `i64` automatic key; an ordinary `INTEGER` remains `i32`.
@@ -278,15 +278,14 @@ vendors; this file states only the rules of orm.
   `composer update --lock` in its directory, since the content-hash of the lock covers `version`,
   and renames `## Unreleased` to `## X.Y.Z` in CHANGELOG.md and CHANGELOG.ko.md, below a new empty
   `## Unreleased`.
-  Enforced by: `make release-versions`
+  Enforced by: none, a judgement at review; no check reads the versions since kit K812
 - Own: After the CI of that commit succeeded (`ci-passed`), the maintainer tags it
   `vX.Y.Z` and pushes it with the Go module tag `packages/go/vX.Y.Z` at the same commit, which
   releases the Go module `github.com/polyspec/orm/packages/go`. Only the maintainer creates, moves or pushes a tag.
   Enforced by: none, no check sees who creates a tag; the tag push runs the release workflow
 - Own: The push of the tag runs `.github/workflows/release.yml`, which publishes the GitHub Release:
   `make release-verify` (the commit is on `main` and its check `ci-passed`
-  succeeded), `make release-versions` (every released manifest carries X.Y.Z, the module path of
-  `packages/go/go.mod` is `github.com/polyspec/orm/packages/go` and the changelogs have its section), `make release-assets`
+  succeeded), `make release-assets`
   (`polyspec-orm-npm-X.Y.Z.tgz` of `@polyspec/orm`, `polyspec-orm-php-X.Y.Z.zip` of `polyspec/orm`,
   `polyspec-orm-php-ext-php-X.Y.Z.zip` of `polyspec/orm-php-ext` and `polyspec_orm-X.Y.Z-py3-none-any.whl` of
   `polyspec-orm`) and `make release-publish` (the release

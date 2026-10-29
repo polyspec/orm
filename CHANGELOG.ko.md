@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b5b43c72716964dd055f9ed37dd23ec6809c736bcb6fb0f908fac31eb42119ee -->
+<!-- source-sha256: f9106607a9bacb4b818dc38810863b6b64afdc97363892c8ec1878426e924ea8 -->
 # 변경 이력
 
 ## Unreleased
 
+- orm은 kit K812가 삭제하는 release version check를 실행하지 않습니다: release.yml에는 release-versions 단계가 없고, AGENTS.md는 make release-versions를 지목하지 않습니다. (KSTD-5-108)
 - AGENTS.md에는 kit K805의 guided rule을 되풀이하고 make item-state를 검사로 지목하던 P27 refinement가 없습니다. (KSTD-5-106-1)
 - orm은 build backend의 유일한 선언인 build-system.requires로 uv build를 실행해 wheel을 만들고, Python client를 uv sync --locked로 editable이 아니게 설치하며, make link가 그것을 checkout의 link로 바꿉니다 (kit K788, K803): config/toolchain.json에는 pythonBackend가 없고, packages/python/pylock.toml과 그 test를 삭제했습니다. (KSTD-5-104)
 - packages/python/pyproject.toml의 build-system.requires가 wheel build backend setuptools==84.0.0의 유일한 선언이며, config/toolchain.json은 아무것도 선언하지 않습니다. (KSTD-5-99)

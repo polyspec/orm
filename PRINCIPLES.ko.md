@@ -1,5 +1,5 @@
 <!-- doc-id: principles -->
-<!-- source-sha256: e47bd98a8938c88692bdf7899504d2e793b3a96e3f189b95ef4697a85b15352a -->
+<!-- source-sha256: 674f2e4a68b4428afcecb442de0f982991542bc9faba09b5f1c8b0e3462f1c8f -->
 # 원칙
 
 [English](PRINCIPLES.md)
@@ -131,7 +131,7 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-check`�
 - P29 작업의 make target은 고정된 이름을 가진다. `install`, `build`, `test`, `lint`, `docs-check`와 `packages/`의 runtime마다
   `build-<runtime>`, `test-<runtime>`, `lint-<runtime>`이며, 모두 kit이 정의한다. 저장소는 `build: kit-build`처럼 자기
   prerequisite로 작업에 합류하고, 작업 이름으로 시작하는 다른 target으로 합류하지 않는다 (K246).
-  Enforced by: `make kit-check`
+  Enforced by: none, 안내하는 규칙이다: 저장소의 target 이름은 저장소의 것이다 (K810).
 - P30 0.0.x 개발 중 앱은 선언된 로컬 provider source를 native package manager의 방식으로 연결한다.
   Package manager가 link, 설치 record, dependency 해석, 생성 metadata를 소유하며 source를 설치된 release version으로 위장하지 않는다.
   앱이 호환되는 native 개발 선언과 lock을 소유한다. Release 선언과 lock은 배포된 dependency의 기록으로 유지하고,

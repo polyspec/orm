@@ -138,7 +138,7 @@ repository.
 - P29 The make targets of a task have fixed names: `install`, `build`, `test`, `lint`, `docs-check`, and `build-<runtime>`,
   `test-<runtime>` and `lint-<runtime>` for each runtime of `packages/`, all defined by kit. A repository joins a task by a
   prerequisite of its own, such as `build: kit-build`, never by another target that starts with a task's name (K246).
-  Enforced by: `make kit-check`
+  Enforced by: none, a guided rule: the names of the targets of a repository are its own (K810).
 - P30 During 0.0.x development, applications connect declared local provider sources through native package-manager
   mechanisms. The package manager owns links, installed records, dependency resolution and generated metadata; a source
   is not disguised as an installed released version. Applications own compatible native development declarations and

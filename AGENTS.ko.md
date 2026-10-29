@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 22c6a0ff0e86f467215f67f95579ab73573d0879b0ca0ce036128a267eed8500 -->
+<!-- source-sha256: 634492a5498052b444a11915647e9645de4487e34e335eebd0f3ad0f62287df3 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -202,7 +202,7 @@ orm 자신의 규칙만 적는다.
 - Own: 경로는 선언적으로(추적 파일에 이름을 적어) 또는 발견(discovery)으로(문서나 script가 밝힌 발견 규칙에 따라) 정하며, 상대 경로로 정하지 않는다.
   Enforced by: none, code가 경로를 해석하는 방식을 읽는 검사가 없다
 - Own: 하나의 `0.0.18` 버전을 개발한다. 공개 클라이언트는 드라이버 인자를 따로 받지 않고 URI scheme이 데이터베이스를 선택하는 DSN URI 하나를 받는다. 실행 시 orm은 클라이언트 라이브러리뿐이며 계획과 실행은 그것을 부르는 프로세스 안에서 이뤄진다.
-  Enforced by: `make release-versions`
+  Enforced by: none, kit K812 이후 version을 읽는 검사가 없다. package manager가 그것을 해석한다
 - Own: 각 dbspec parser는 `identity` 컬럼이 유일한 기본 키 컬럼이고 type이 `i64`가 아니면 거부한다. 여섯 dbspec 구현은 동일한 허용·거부 스키마 사례를 실행한다.
   Enforced by: `make conformance-check`
 - Own: SQLite 실제 스키마 가져오기는 `INTEGER PRIMARY KEY AUTOINCREMENT`만 부호 있는 `i64` 자동 키로 바꾸고 일반 `INTEGER`는 `i32`로 유지한다.
@@ -242,13 +242,12 @@ orm 자신의 규칙만 적는다.
   X.Y.Z로 바꾸고, 그중 `composer.lock`이 있는 composer.json(`packages/php-ext`)은 그 directory에서
   `composer update --lock`으로 다시 lock하며(lock의 content-hash가 `version`을 덮는다), CHANGELOG.md와 CHANGELOG.ko.md에서 `## Unreleased`를 새 빈 `## Unreleased`
   아래의 `## X.Y.Z`로 바꾼다.
-  Enforced by: `make release-versions`
+  Enforced by: none, review의 판단이다. kit K812 이후 version을 읽는 검사가 없다
 - Own: 그 commit의 CI(`ci-passed`)가 성공한 뒤 maintainer가 그 commit에 `vX.Y.Z`를 tag하고 같은 commit의 Go module
   tag `packages/go/vX.Y.Z`와 함께 push한다. 그 tag가 Go module `github.com/polyspec/orm/packages/go`를 release한다. tag를 만들고 옮기고 push하는 것은 maintainer뿐이다.
   Enforced by: none, 누가 tag를 만드는지 보는 검사가 없다. tag push는 release workflow를 실행한다
 - Own: tag의 push는 `.github/workflows/release.yml`을 실행하고, 그것이 GitHub Release를 게시한다: `make release-verify`
-  (commit이 `main`에 있고 그 check `ci-passed`가 성공했다), `make release-versions`(release하는 모든
-  manifest가 X.Y.Z를 가지고, `packages/go/go.mod`의 module path가 `github.com/polyspec/orm/packages/go`이며, 변경 이력에 그 section이 있다),
+  (commit이 `main`에 있고 그 check `ci-passed`가 성공했다),
   `make release-assets`(`@polyspec/orm`의 `polyspec-orm-npm-X.Y.Z.tgz`, `polyspec/orm`의 `polyspec-orm-php-X.Y.Z.zip`,
   `polyspec/orm-php-ext`의 `polyspec-orm-php-ext-php-X.Y.Z.zip`, `polyspec-orm`의 `polyspec_orm-X.Y.Z-py3-none-any.whl`), `make release-publish`(그 section의 notes로 만든
   release이며, GitHub release 본문의 한도인 125000자를 넘는 section은 tag의 CHANGELOG.md에서 그 section을 가리키는 한 줄이
