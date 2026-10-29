@@ -154,7 +154,7 @@ checksum = "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
 
 [[package]]
 name = "polyspec-orm-interface-symbols"
-version = "0.0.18"
+version = "0.0.19"
 dependencies = [
  "polyspec-orm-testcase",
  "quote",
@@ -164,7 +164,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-testcase"
-version = "0.0.18"
+version = "0.0.19"
 dependencies = [
  "libtest-mimic",
  "tokio",

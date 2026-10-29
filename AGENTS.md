@@ -236,7 +236,7 @@ vendors; this file states only the rules of orm.
   Enforced by: none, no check reads the code for polling, timers or symbolic links
 - Own: A path is resolved declaratively, by a name in a tracked file, or by discovery, by a discovery rule that a document or a script states, never as a relative path.
   Enforced by: none, no check reads how the code resolves its paths
-- Own: Develop one `0.0.18` version. A public client accepts one DSN URI, whose scheme selects the database, without a separate driver argument. At runtime orm is only its client library; planning and execution run in the process that calls it.
+- Own: Develop one `0.0.19` version. A public client accepts one DSN URI, whose scheme selects the database, without a separate driver argument. At runtime orm is only its client library; planning and execution run in the process that calls it.
   Enforced by: none, no check reads the versions since kit K812; the package managers resolve them
 - Own: Each dbspec parser rejects an `identity` column unless it is the only primary key column and its type is `i64`. Every dbspec implementation (Go, PHP, the PHP-extension, TypeScript, Python, and Rust) executes the same accepted and rejected schema cases.
   Enforced by: `make conformance-check`

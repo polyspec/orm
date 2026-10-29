@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: bc15f5d8eb51f420a02014c01422e7a60e7e116dfc580050aa21475cdc23e7d2 -->
+<!-- source-sha256: dc86c67dc246df0433d564f35b057b4e0e006cbfea74500dc81ff74a8acc10ad -->
 # 변경 이력
 
 ## Unreleased
+
+## 0.0.19
 
 - orm은 0.0.73 대신 release된 kit 0.0.75를 받고, kit-sync가 그로부터 쓰는 release workflow를 받는다 (KSTD-5-122).
 - make orm-install-python은 uv sync의 기본값대로 Python client를 editable로 설치한다: KSTD-5-104의 non-editable 설치는 python-models가 src/polyspec/orm/models에 쓰는 fixture model을 빠뜨려 새 venv에서 polyspec.orm.models를 import하는 모든 Python test가 실패했고 source 변경은 설치되지 않은 채 남았다. kit K855가 Python symbol을 source package에서 읽어 그 이유를 없앤다 (T259).
