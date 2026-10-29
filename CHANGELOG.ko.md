@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- orm은 0.0.66 대신 release된 kit 0.0.70을 받는다: package.json의 pin과 그 lock이며, lock에는 kit이 삭제한 toml-patch 의존이 더 이상 없다. kit-sync가 쓴 gates.yml의 shared job은 commit range를 계산하지 않는다(kit K815). (KSTD-5-111)
+
 - Python client는 dbspec.md DBS-104에 따라 TypeScript처럼 manifest의 model을 process마다 한 번 만든다: manifest hash를 key로 하고 text로 확인하는 registry가 이미 만든 model을 돌려주므로 register_model, Db.register, SchemaUtils.register, connect_schema는 schema를 한 번 parse하고, RuntimeModel.load_set은 같은 text에 대해 이미 parse한 document를 돌려준다. (T256)
 
 - interfaces.md INT-72에 따라 시작이 실패한 Python transaction은 pool connection을 돌려준다: 실패한 BEGIN은 connection을 닫고, BEGIN 뒤 시작 단계의 실패는 transaction을 rollback하고 connection을 돌려주므로 Db.close()가 그것을 닫고 SQLite lock이 garbage collector가 돌 때까지 잡혀 있지 않다. (T255)

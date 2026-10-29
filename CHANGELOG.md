@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- orm takes the released kit 0.0.70 in place of 0.0.66: the pin of package.json and its lock, which no longer holds the toml-patch dependency that kit deleted, and gates.yml from kit-sync, whose shared job computes no commit range (kit K815). (KSTD-5-111)
+
 - The Python client builds the model of a manifest once per process, by dbspec.md DBS-104 as TypeScript does: a registry keyed by the manifest hash and checked against the texts returns the model already built, so register_model, Db.register, SchemaUtils.register and connect_schema parse a schema once, and RuntimeModel.load_set returns the documents already parsed for the same texts. (T256)
 
 - A Python transaction whose start fails gives its pooled connection back, by interfaces.md INT-72: a failed BEGIN closes the connection, and a failed start step after BEGIN rolls the transaction back and returns the connection, so Db.close() closes it and a SQLite lock is not held until the garbage collector runs. (T255)

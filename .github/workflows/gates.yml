@@ -74,23 +74,13 @@ jobs:
         run: make install-tools TOOLS="${{ join(fromJSON(needs.discover.outputs.common_tools), ' ') }}"
       - name: install shared prerequisites
         run: make kit-ci-setup GROUP=shared
-      - name: commit range
-        env:
-          BASE: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          BEFORE: ${{ github.event.before }}
-        run: |
-          if [ -n "$BASE" ]; then echo "range=$BASE..$HEAD_SHA"
-          elif [ -n "$BEFORE" ] && [ "$BEFORE" != 0000000000000000000000000000000000000000 ]; then echo "range=$BEFORE..$GITHUB_SHA"
-          else echo "range=HEAD"
-          fi >> "$GITHUB_ENV"
       - id: context_prepare
         name: prepare shared CI context
         run: make kit-ci-context-prepare GROUP=shared
       - name: shared gates
         env:
           COMMON_TOOLS: ${{ join(fromJSON(needs.discover.outputs.common_tools), ' ') }}
-        run: make -k toolchain-check TOOLS="node npm mise $COMMON_TOOLS" kit-gates-static RANGE="$range"
+        run: make -k toolchain-check TOOLS="node npm mise $COMMON_TOOLS" kit-gates-static
       - name: cleanup shared CI context
         if: ${{ always() && steps.context_prepare.outcome != 'skipped' }}
         run: make kit-ci-context-cleanup GROUP=shared
