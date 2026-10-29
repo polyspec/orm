@@ -259,8 +259,7 @@
       "name": "php",
       "runner": "php",
       "roots": [
-        "packages/php",
-        "packages/php-gen"
+        "packages/php"
       ],
       "tests": [
         "packages/php/tests/Coverage*Test.php"
@@ -407,8 +406,12 @@
           "reason": "test: checks PHP-internal Request canonicalization, PendingTime lazy wrapping, and PHP weak scalar caller rules"
         },
         {
-          "glob": "packages/php-gen/tests/OrmGenScanParityTest.php",
+          "glob": "packages/php/tests/OrmGenScanParityTest.php",
           "reason": "generated: an internal test of the PHP generator component that checks parity with the TypeScript generator, not a client behaviour (K313)"
+        },
+        {
+          "glob": "packages/php/tests/OrmGenPackageTest.php",
+          "reason": "ecosystem: an internal test of the PHP package that checks that its Composer autoload and bin carry the generator, an install rule of the language ecosystem, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/php/tests/AutoloadTest.php",
@@ -1190,7 +1193,7 @@
         "packages/php/tests/**/*.php",
         "packages/php-ext/tests/**/*.php",
         "tests/**/*.php",
-        "packages/php-gen/tests/**/*.php"
+        "packages/php/tests/**/*.php"
       ]
     },
     {
@@ -6927,7 +6930,7 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testACallOnAClassOfAnotherSetIsNotThisSetsCall"
         },
         {
@@ -6971,7 +6974,7 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testAReceiverHeldInAReassignedVariableResolvesToItsClass"
         },
         {
@@ -7010,7 +7013,7 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testAFileThatDoesNotParseStopsTheGenerationAndNamesItsPosition"
         },
         {
@@ -7049,7 +7052,7 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testAUsedExternalTableThatNoSourceCallsKeepsItsModel"
         },
         {
@@ -7129,7 +7132,7 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenCliTest.php",
+          "test": "packages/php/tests/OrmGenCliTest.php",
           "id": "OrmGenCliTest::testGenTakesTheDocumentsOnlyFromTheSetFile"
         },
         {
@@ -7907,7 +7910,7 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testVector"
         },
         {
@@ -12251,7 +12254,7 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testAnAliasNamedMatchDeclaresItsGetter"
         },
         {
@@ -12309,7 +12312,7 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testANestedRelationAliasDeclaresItsGetterOnTheModelItAliasesOn"
         },
         {
@@ -12348,7 +12351,7 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testAGetterCallThatNothingAttachesStopsGeneration"
         },
         {
@@ -13293,7 +13296,7 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenCliTest.php",
+          "test": "packages/php/tests/OrmGenCliTest.php",
           "id": "OrmGenCliTest::testGenRejectsAColumnNamedAfterAModelMethod"
         },
         {
@@ -13332,7 +13335,7 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenCliTest.php",
+          "test": "packages/php/tests/OrmGenCliTest.php",
           "id": "OrmGenCliTest::testGenRejectsAColumnNameWithAnOperatorOrConnectorSegment"
         },
         {
@@ -14677,7 +14680,7 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenCliTest.php",
+          "test": "packages/php/tests/OrmGenCliTest.php",
           "id": "OrmGenCliTest::testGenGeneratesTheOwnedAndTheUsedExternalTablesOfASet"
         },
         {
@@ -14816,7 +14819,7 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenCliTest.php",
+          "test": "packages/php/tests/OrmGenCliTest.php",
           "id": "OrmGenCliTest::testGenRejectsAFileWithoutTheDbspecSignature"
         },
         {
@@ -14855,7 +14858,7 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenCliTest.php",
+          "test": "packages/php/tests/OrmGenCliTest.php",
           "id": "OrmGenCliTest::testGenPrintsEveryErrorOfTheSetFileAndWritesNothing"
         },
         {
@@ -14899,7 +14902,7 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testVector"
         },
         {
@@ -18856,14 +18859,14 @@
       "bindings": [
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testVector"
         }
       ],
       "owner": {
         "kind": "release-package",
         "artifact": "archive",
-        "package": "polyspec/orm-gen"
+        "package": "polyspec/orm"
       }
     },
     {
@@ -18875,14 +18878,14 @@
       "bindings": [
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testTheReceiverIsResolvedFromTheSource"
         }
       ],
       "owner": {
         "kind": "release-package",
         "artifact": "archive",
-        "package": "polyspec/orm-gen"
+        "package": "polyspec/orm"
       }
     },
     {
@@ -18894,14 +18897,14 @@
       "bindings": [
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testADirectoryIsScannedAndAFileThatDoesNotParseFailsTheScan"
         }
       ],
       "owner": {
         "kind": "release-package",
         "artifact": "archive",
-        "package": "polyspec/orm-gen"
+        "package": "polyspec/orm"
       }
     },
     {
@@ -18913,14 +18916,14 @@
       "bindings": [
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testAScannedDirectorySkipsItsDependenciesAndRefusesASymlink"
         }
       ],
       "owner": {
         "kind": "release-package",
         "artifact": "archive",
-        "package": "polyspec/orm-gen"
+        "package": "polyspec/orm"
       }
     },
     {
@@ -18932,14 +18935,14 @@
       "bindings": [
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testCheckComparesTheModelsWithTheScan"
         }
       ],
       "owner": {
         "kind": "release-package",
         "artifact": "archive",
-        "package": "polyspec/orm-gen"
+        "package": "polyspec/orm"
       }
     },
     {
@@ -18951,14 +18954,14 @@
       "bindings": [
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testPhpstanFindsEveryScannedChainMethod"
         }
       ],
       "owner": {
         "kind": "release-package",
         "artifact": "archive",
-        "package": "polyspec/orm-gen"
+        "package": "polyspec/orm"
       }
     },
     {
@@ -18975,7 +18978,7 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenCliTest.php",
+          "test": "packages/php/tests/OrmGenCliTest.php",
           "id": "OrmGenCliTest::testGenCheckComparesTheModelsWithoutWriting"
         },
         {
@@ -19009,14 +19012,14 @@
       "bindings": [
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenCliTest.php",
+          "test": "packages/php/tests/OrmGenCliTest.php",
           "id": "OrmGenCliTest::testGenWritesTheSameModelsHoweverThePathsAreWritten"
         }
       ],
       "owner": {
         "kind": "release-package",
         "artifact": "archive",
-        "package": "polyspec/orm-gen"
+        "package": "polyspec/orm"
       }
     },
     {
@@ -19028,14 +19031,14 @@
       "bindings": [
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenCliTest.php",
+          "test": "packages/php/tests/OrmGenCliTest.php",
           "id": "OrmGenCliTest::testGenIsTheOnlyCommand"
         }
       ],
       "owner": {
         "kind": "release-package",
         "artifact": "archive",
-        "package": "polyspec/orm-gen"
+        "package": "polyspec/orm"
       }
     },
     {
@@ -19047,14 +19050,14 @@
       "bindings": [
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenCliTest.php",
+          "test": "packages/php/tests/OrmGenCliTest.php",
           "id": "OrmGenCliTest::testTheBinComposerInstallsLoadsTheAutoloader"
         }
       ],
       "owner": {
         "kind": "release-package",
         "artifact": "archive",
-        "package": "polyspec/orm-gen"
+        "package": "polyspec/orm"
       }
     },
     {
@@ -19066,14 +19069,14 @@
       "bindings": [
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenCliTest.php",
+          "test": "packages/php/tests/OrmGenCliTest.php",
           "id": "OrmGenCliTest::testTheBinOutsideComposerNamesTheMissingAutoloader"
         }
       ],
       "owner": {
         "kind": "release-package",
         "artifact": "archive",
-        "package": "polyspec/orm-gen"
+        "package": "polyspec/orm"
       }
     },
     {
@@ -19335,7 +19338,7 @@
       "bindings": [
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testCheckComparesTheModelsWithTheScan"
         },
         {
@@ -25138,7 +25141,7 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testTheReceiverIsResolvedFromTheSource"
         },
         {
@@ -29014,7 +29017,7 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testARelationToAnEntityOfAUsedDocumentAttachesItsGetter"
         },
         {
@@ -29053,7 +29056,7 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testANameIsTypedByItsBindingInItsOwnScope"
         },
         {
@@ -29092,7 +29095,7 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testVector"
         },
         {
@@ -29916,7 +29919,7 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenCliTest.php",
+          "test": "packages/php/tests/OrmGenCliTest.php",
           "id": "OrmGenCliTest::testGenRejectsAColumnWhoseConditionMethodCollidesWithAnAggregate"
         },
         {
@@ -32986,14 +32989,14 @@
       "bindings": [
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testTheReceiverIsResolvedFromTheSource"
         }
       ],
       "owner": {
         "kind": "release-package",
         "artifact": "archive",
-        "package": "polyspec/orm-gen"
+        "package": "polyspec/orm"
       }
     },
     {

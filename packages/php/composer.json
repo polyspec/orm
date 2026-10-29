@@ -11,6 +11,7 @@
         "ext-pdo": "*",
         "ext-json": "*",
         "ext-zlib": "*",
+        "nikic/php-parser": "^5.9.0",
         "purrphp/yaml": "1.0.0-p1",
         "symfony/yaml": "^8.1"
     },
@@ -23,6 +24,7 @@
         "ext-polyspec_orm": "the dbspec surface and the error codes of this client implemented in C under the same class names (packages/php-ext)"
     },
     "bin": [
+        "bin/orm-gen",
         "bin/orm-sqlite-cancel-build.php"
     ],
     "autoload": {

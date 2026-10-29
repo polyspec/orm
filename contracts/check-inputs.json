@@ -499,9 +499,8 @@
       ],
       "inputs": [
         "packages/php/models.txt",
-        "packages/php-gen/bin/orm-gen",
-        "packages/php-gen/composer.json",
-        "packages/php-gen/src/OrmGen.php"
+        "packages/php/bin/orm-gen",
+        "packages/php/src/OrmGen.php"
       ]
     },
     "client-unit-check": {
@@ -550,15 +549,15 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php-gen/phpunit.xml.dist",
-        "packages/php-gen/composer.json",
-        "packages/php-gen/bin/orm-gen",
-        "packages/php-gen/src/OrmGen.php",
-        "packages/php-gen/src/Generator.php",
-        "packages/php-gen/src/ScanVisitor.php",
-        "packages/php-gen/tests/OrmGenCliTest.php",
-        "packages/php-gen/tests/OrmGenScanTest.php",
-        "packages/php-gen/tests/OrmGenScanParityTest.php",
+        "packages/php/bin/orm-gen",
+        "packages/php/src/OrmGen.php",
+        "packages/php/src/Generator.php",
+        "packages/php/src/ScanVisitor.php",
+        "packages/php/tests/OrmGenCliTest.php",
+        "packages/php/tests/OrmGenScanTest.php",
+        "packages/php/tests/OrmGenScanParityTest.php",
+        "packages/php/tests/OrmGenPackageTest.php",
+        "packages/php/composer.json",
         "packages/php/tests/OrmGenTestSupport.php",
         "packages/php/tests/OrmGenScanFailureCase.php",
         "tests/generator/php-scan-vectors.json",
@@ -597,11 +596,11 @@
         "packages/go/generator/gen_go_test.go",
         "packages/go/generator/gen_go_scan_test.go",
         "packages/go/orm/model.go",
-        "packages/php-gen/src/Generator.php",
+        "packages/php/src/Generator.php",
         "packages/php/src/Model.php",
         "packages/php/tests/OrmGenTest.php",
         "packages/php/tests/OrmGenTestSupport.php",
-        "packages/php-gen/tests/OrmGenScanTest.php",
+        "packages/php/tests/OrmGenScanTest.php",
         "packages/php/tests/ModelMethodsTest.php",
         "packages/php-ext/src/model_native_methods.c",
         "packages/php-ext/src/model_native_methods.h",
@@ -1107,9 +1106,8 @@
         "packages/go/generator/*.go",
         "packages/go/cmd/orm-gen/*.go",
         "packages/php/models.txt",
-        "packages/php-gen/bin/orm-gen",
-        "packages/php-gen/composer.json",
-        "packages/php-gen/src/OrmGen.php",
+        "packages/php/bin/orm-gen",
+        "packages/php/src/OrmGen.php",
         "contracts/fixtures/bench/dbspec-set.json",
         "packages/python/examples/thin_slice/main.py"
       ]
@@ -2818,8 +2816,7 @@
         "packages/php/src/Orm.php",
         "packages/php/src/Db.php",
         "packages/php/models.txt",
-        "packages/php-gen/bin/orm-gen",
-        "packages/php-gen/composer.json",
+        "packages/php/bin/orm-gen",
         "packages/php/tests/case_database.php",
         "packages/php/tests/bench.php",
         "contracts/fixtures/bench/**"
@@ -2838,8 +2835,7 @@
         "packages/php/tests/case_database.php",
         "packages/php/tests/bench.php",
         "packages/php/models.txt",
-        "packages/php-gen/bin/orm-gen",
-        "packages/php-gen/composer.json",
+        "packages/php/bin/orm-gen",
         "contracts/fixtures/bench/**"
       ]
     },
@@ -3717,11 +3713,11 @@
       "inputs": [
         "Makefile",
         "packages/php/tests/OrmGenScanFailureCase.php",
-        "packages/php-gen/tests/OrmGenScanTest.php",
+        "packages/php/tests/OrmGenScanTest.php",
         "packages/php/tests/OrmGenTestSupport.php",
         "packages/php-ext/tests/OrmGenScanNativeTest.php",
-        "packages/php-gen/src/Generator.php",
-        "packages/php-gen/src/ScanVisitor.php",
+        "packages/php/src/Generator.php",
+        "packages/php/src/ScanVisitor.php",
         "contracts/fixtures/bench/dbspec-set.json"
       ]
     },

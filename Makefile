@@ -1658,7 +1658,7 @@ php-go-text-check: php-vendor-check
 php-gen-unit-check: php-vendor-check lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php-gen/tests/OrmGenCliTest.php packages/php-gen/tests/OrmGenScanTest.php packages/php-gen/tests/OrmGenScanParityTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenCliTest.php packages/php/tests/OrmGenScanTest.php packages/php/tests/OrmGenScanParityTest.php packages/php/tests/OrmGenPackageTest.php
 
 # generator-consumer-check runs the consumer tests of each generator as a part of its own, so a failed part does not stop the others.
 .PHONY: generator-consumer-check/go generator-consumer-check/php generator-consumer-check/php-extension generator-consumer-check/typescript generator-consumer-check/python generator-consumer-check/rust-field-types generator-consumer-check/rust-field-types/generated-field-types generator-consumer-check/rust-field-types/fixed-method-list generator-consumer-check/rust-emission generator-consumer-check/rust-chain-scan generator-consumer-check/rust-chain-scan/generates-called-methods generator-consumer-check/rust-chain-scan/stored-column-name generator-consumer-check/rust-integration
@@ -1668,7 +1668,7 @@ generator-consumer-check/go:
 	cd packages/go && $(NODE) $(abspath tests/go-test.mts) -v -timeout 0 ./generator -run '^(TestGoGeneratedScalarGetterRejectsUnselectedRead|TestGoGeneratedScalarGetterCompilesAtItsDeclaredType|TestGoGeneratedNonnullStyledSetterRejectsSqlNull|TestScanGeneratesUsedMethods)$$' -count=1
 generator-consumer-check/php: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenTest.php --filter testGeneratedTypedGetterUsesPrivateModelStorageAndRejectsUnselectedRead
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php-gen/tests/OrmGenScanTest.php packages/php/tests/ModelMethodsTest.php --filter 'testTheReceiverIsResolvedFromTheSource|testADeclaredMethodBuildsTheQueryOfItsChain'
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenScanTest.php packages/php/tests/ModelMethodsTest.php --filter 'testTheReceiverIsResolvedFromTheSource|testADeclaredMethodBuildsTheQueryOfItsChain'
 generator-consumer-check/php-extension: php-vendor-check php-models
 	@set -eu; \
 	run_dir="$(abspath .runtime/run)/generator-consumer-check-$$$$"; \
@@ -1749,7 +1749,7 @@ php-orm-gen-scan-failure-case-check: php-vendor-check php-model-check orm-instal
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/php-extension/polyspec_orm.so"; \
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php-gen/tests/OrmGenScanTest.php --filter testAFileThatDoesNotParseStopsTheGenerationAndNamesItsPosition; \
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenScanTest.php --filter testAFileThatDoesNotParseStopsTheGenerationAndNamesItsPosition; \
 	env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/OrmGenScanNativeTest.php --filter testAFileThatDoesNotParseStopsTheGenerationAndNamesItsPosition
 .PHONY: phpstan-test-runner-helper-check
 phpstan-test-runner-helper-check: php-vendor-check

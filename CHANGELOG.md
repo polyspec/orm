@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- polyspec/orm holds orm-gen again: bin/orm-gen, the generator and the scanner are in packages/php as in 0.0.18, and the separate package polyspec/orm-gen is deleted, so a consumer of polyspec/orm runs vendor/bin/orm-gen with no other package. (T244)
+
 - orm has no version check: scripts/version/check.mts, its test, the version-check target and PLN-5 are deleted; at release, kit make release-versions requires the tag version in every manifest. (T242)
 
 - config/parity.json declares the Rust temporal argument test packages/rust/orm/tests/unit/temporal_args.rs, so make parity-declarations-check passes. (T243)

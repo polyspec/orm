@@ -25,7 +25,6 @@
 /vendor-php/
 /packages/php/vendor/
 /packages/php-ext/vendor/
-/packages/php-gen/vendor/
 /tests/release-consumer/composer/vendor/
 # The environment that mise installs beside the lock of a pypi tool.
 /.mise/locks/*/*/.venv/

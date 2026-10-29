@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 3d03d77270a58341ec91271d212882729b443580aa77cd58f359b4dd1625bfd2 -->
+<!-- source-sha256: 7de6116ef869b917bf3543cdb77cd6226d6432bbf6a47b2b0440ee74de18ea98 -->
 # 변경 이력
 
 ## Unreleased
+
+- polyspec/orm이 다시 orm-gen을 담습니다: bin/orm-gen, 생성기, scanner가 0.0.18처럼 packages/php에 있고 별도 package polyspec/orm-gen은 삭제되므로, polyspec/orm의 소비자는 다른 package 없이 vendor/bin/orm-gen을 실행합니다. (T244)
 
 - orm에는 version 검사가 없습니다: scripts/version/check.mts, 그 test, version-check target, PLN-5를 삭제했고, release 때는 kit make release-versions가 모든 manifest에 tag version을 요구합니다. (T242)
 

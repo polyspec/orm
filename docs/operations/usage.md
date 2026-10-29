@@ -17,7 +17,7 @@ Dialect differences are in [dialects.md](../spec/dialects.md), configuration is 
 |---|---|
 | Go 1.27+ | Engine, generator, and Go client |
 | MySQL 8.0.2+ / MariaDB 10.2+ | Primary target; PostgreSQL 12+ and SQLite 3.46+ use the same plan |
-| PHP 8.4+ (`pdo_mysql`) | Required for the runtime client; add `pdo_pgsql` and `ext-pgsql` for PostgreSQL, and `pdo_sqlite` for SQLite. PostgreSQL cancellation uses `ext-pgsql`. |
+| PHP 8.4+ (`pdo_mysql`) | Required for PHP; add `pdo_pgsql` and `ext-pgsql` for PostgreSQL, and `pdo_sqlite` for SQLite. PostgreSQL cancellation uses `ext-pgsql`. |
 | Rust 1.98+ | Required for Rust |
 | Node.js 22.16+ | Required for TypeScript |
 
@@ -72,7 +72,7 @@ Each client renders the `CREATE` statements of a document set for one dialect, i
 
 ## 3. Code generation
 
-The PHP runtime package is `polyspec/orm`; install `polyspec/orm-gen` to use `vendor/bin/orm-gen`. The generator package depends on the runtime package. Each language generates its models with its own build tool. The generator reads the dbspec document set, embeds its manifest text and `manifestHash`, and writes one model per entity with typed column getters and setters.
+Each language generates its models with its own build tool. The generator reads the dbspec document set, embeds its manifest text and `manifestHash`, and writes one model per entity with typed column getters and setters.
 
 Every generator takes the document set as its [set file](../spec/dbspec.md#document-sets), here `contracts/fixtures/bench/dbspec-set.json` beside the documents it lists, and no other form:
 
@@ -82,7 +82,7 @@ Every generator takes the document set as its [set file](../spec/dbspec.md#docum
 
 ```sh
 go run github.com/polyspec/orm/packages/go/cmd/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --lang go --out model --scan ./...
-vendor/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out src/Model --namespace 'Example\Model' --scan src # provided by polyspec/orm-gen
+vendor/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out src/Model --namespace 'Example\Model' --scan src
 npx orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out src/models --scan src
 orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out model --scan src
 ```
@@ -97,7 +97,7 @@ fn main() {
 | Language | Tool | When it runs |
 |---|---|---|
 | Go | `orm-gen gen --lang go` in a `//go:generate` line | `go generate` before `go build` |
-| PHP | `vendor/bin/orm-gen gen` from `polyspec/orm-gen` | a Composer script after the schema changes |
+| PHP | `vendor/bin/orm-gen gen` | a Composer script after the schema changes |
 | TypeScript | `orm-gen gen` of `@polyspec/orm` | the `build` script before `tsc` |
 | Python | `orm-gen gen` (Python package) | after the schema or a scanned source changes |
 | Rust | the `polyspec-orm-build` crate | `build.rs` on every `cargo build`; `polyspec_orm::models!()` includes the models as the module `model` |

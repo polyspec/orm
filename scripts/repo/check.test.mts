@@ -43,15 +43,6 @@ const text = (path: string) => readFileSync(new URL(path, repository), 'utf8');
 const trackedFiles = (pattern: string) => execFileSync('git', ['ls-files', '-z', pattern], { cwd: repository }).toString().split('\0').filter(Boolean).filter(notVendored);
 const scriptTexts = await scriptCommands(repository.pathname, trackedFiles('*'));
 const trackedAll = new Set(trackedFiles('*'));
-const phpGenBasicTests = [
-  'packages/php-gen/tests/OrmGenCliTest.php',
-  'packages/php-gen/tests/OrmGenScanTest.php',
-  'packages/php-gen/tests/OrmGenScanParityTest.php',
-];
-const phpGenTestOwnershipErrors = (paths: string[]) => paths
-  .filter(path => /\bOrmGen(?:Cli|Scan|ScanParity)Test\.php$/.test(path) && path.startsWith('packages/php/tests/'))
-  .map(path => `${path}: PHP orm-gen CLI tests belong under packages/php-gen/tests`);
-
 caseTest('dbspec apply gives the stress case its own 120 second runner deadline', COMPUTE, () => {
   const root = repository.pathname;
   const runnerOptions = (target: string) => {
@@ -86,17 +77,6 @@ caseTest('dbspec apply gives the stress case its own 120 second runner deadline'
   assert.deepEqual(pythonArgs[1]?.args.slice(-1), [
     'packages.python.tests.dbspec_apply.DbspecApplyTest.test_stress_plan_commits_each_step_and_leaves_no_postgres_relation_locks',
   ]);
-});
-
-caseTest('PHP orm-gen CLI tests stay in their owning component', COMPUTE, () => {
-  assert.deepEqual(phpGenBasicTests.filter(path => !trackedAll.has(path)), []);
-  assert.ok(!trackedAll.has('packages/php/tests/OrmGenScanTest.php'), 'scanner basics cannot live under the PHP client');
-  assert.ok(!trackedAll.has('packages/php/tests/OrmGenScanParityTest.php'), 'generator parity belongs with php-gen');
-  assert.deepEqual(phpGenTestOwnershipErrors(phpGenBasicTests), []);
-  assert.deepEqual(phpGenTestOwnershipErrors(['packages/php/tests/OrmGenScanTest.php']), [
-    'packages/php/tests/OrmGenScanTest.php: PHP orm-gen CLI tests belong under packages/php-gen/tests',
-  ]);
-  assert.ok(trackedAll.has('packages/php/tests/OrmGenTest.php'), 'the generated-model API consumer test stays with PHP');
 });
 
 const readScript = (path: string) => scriptTexts.get(path) ?? (trackedAll.has(path) && !path.endsWith('.mts') ? text(path) : undefined);
@@ -1868,7 +1848,6 @@ caseTest('a recipe or a command that runs independent tests in sequence is refus
   for (let index = plannerAt + 1; index < makefileLines.length && makefileLines[index]?.startsWith('\t'); index++) plannerRecipe.push(makefileLines[index] ?? '');
   assert.deepEqual(plannerRecipe, []);
 });
-
 
 caseTest('a script that starts a process group of its own checks that group after it ends', COMPUTE, () => {
   assert.deepEqual(detachedGroupErrors({

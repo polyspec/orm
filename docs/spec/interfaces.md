@@ -129,7 +129,7 @@ The creation spelling follows the host language. The method role, stored request
 `getBy<Chain>`, `getsBy<Chain>`, and `getCountBy<Chain>` apply a column chain as the condition and call the terminal. A chain is a combination of column keys, operators and connectors, so the set of chains has no bound, and no client lists them all. Each client reaches a chain in one of two ways, and the same chain gives the same rows in every client:
 
 - **INT-27** Go static model types declare each chain found by scanning source calls; and Rust static model types do the same; and TypeScript static model types do the same. PHP and Python resolve names as the next item says. A chain no scanned call names has no method until code calls it and the models are generated again.
-- **INT-28** The `polyspec/orm-gen` PHP generator scan checks found names but declares no method; and PHP client `polyspec/orm` resolves call names dynamically through `__call`; and PHP-extension client `polyspec/orm-php-ext` does the same; and Python package `polyspec-orm` resolves call names at runtime through `__getattr`.
+- **INT-28** The `polyspec/orm` PHP generator scan checks found names but declares no method; and PHP client `polyspec/orm` resolves call names dynamically through `__call`; and PHP-extension client `polyspec/orm-php-ext` does the same; and Python package `polyspec-orm` resolves call names at runtime through `__getattr`.
 
 The shared vector `terminal_by` in `tests/conformance/vectors.json` runs `getsBy<Chain>` on the non-unique columns `service_seq` and `is_close` in every runtime client, and the rows of each client must equal the recorded result.
 
@@ -253,7 +253,7 @@ Secrets and parameter values are excluded from logs.
 
 ## 11. Generator, schema, and extension boundaries — IF-32 to IF-34
 
-The PHP runtime package does not depend on its generator. The separate `polyspec/orm-gen` Composer package depends on `polyspec/orm` and provides the PHP CLI, generator, and source scanner. The generator reads the schema manifest and emits models, fields, column methods, and error types. Go and Rust generation also reads the scanned source and emits the chain, relation key, join, and `new<Name>` methods that the source calls. It must not emit a method for an undeclared column or operator. Generated code is checked against the manifest and the interface symbol list.
+The generator reads the schema manifest and emits models, fields, column methods, and error types. Go and Rust generation also reads the scanned source and emits the chain, relation key, join, and `new<Name>` methods that the source calls. It must not emit a method for an undeclared column or operator. Generated code is checked against the manifest and the interface symbol list.
 
 - **INT-66** The code that the generator emits passes the standard compiler of its language and the formatter and linter that the lint checks of this repository run for that language, and the generated text suppresses no finding: it carries no Rust `allow` attribute, Go `//nolint`, Python `# noqa`, PHP `@phpstan-ignore` or `phpcs:ignore`, or TypeScript `eslint-disable` or `@ts-ignore`.
 

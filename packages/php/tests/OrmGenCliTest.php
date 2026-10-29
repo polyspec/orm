@@ -2,7 +2,7 @@
 
 // orm-gen command line test: gen writes and checks the models of a dbspec
 // document set.
-// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php-gen/tests/OrmGenCliTest.php
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenCliTest.php
 declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
@@ -347,7 +347,7 @@ class OrmGenCliTest extends TestCase
         is_dir($bin) || mkdir($bin, 0o700, true);
         // __DIR__ of the bin is the real path of its folder.
         $bin = realpath($bin);
-        copy(dirname(__DIR__, 2) . '/php-gen/bin/orm-gen', "$bin/orm-gen");
+        copy(dirname(__DIR__) . '/bin/orm-gen', "$bin/orm-gen");
         [$code, $out, $err] = self::process([PHP_BINARY, "$bin/orm-gen"]);
         $missing = "$bin/../vendor/autoload.php";
         self::assertTrue(

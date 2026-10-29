@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: de30411480e396875710f3075f556e167d7bcf97cc74a80be4696d62be3fb7bf -->
+<!-- source-sha256: a08198dc67cdd69aa7b2e576656e2899d3a3dbb9944e423b18551b6251fdd311 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -130,7 +130,7 @@ classDiagram
 `getBy<Chain>`, `getsBy<Chain>`, `getCountBy<Chain>`은 컬럼 체인을 조건으로 적용하고 종단 작업을 호출한다. 체인은 컬럼 key, 연산자, 연결자의 조합이라 가능한 체인의 수에 한계가 없으며, 어떤 client도 그 목록을 다 가지지 않는다. 각 client는 체인을 두 방식 중 하나로 찾으며, 같은 체인은 모든 client에서 같은 row를 준다.
 
 - **INT-27** Go 정적 모델 타입은 scan된 소스 코드에서 모델 생성이 찾은 각 체인을 선언한다. 그리고 Rust 정적 모델 타입도 같은 동작을 하며, TypeScript 정적 모델 타입도 같다. PHP와 Python은 다음 항목처럼 이름을 해석한다. scan된 호출이 이름을 붙이지 않은 체인은 코드가 그것을 호출하고 모델을 다시 생성하기 전까지 메서드가 없다.
-- **INT-28** `polyspec/orm-gen` PHP 생성기 scan은 찾은 이름을 검사하지만 메서드를 선언하지 않는다. 그리고 PHP client `polyspec/orm`의 `__call`은 동적으로 호출 이름을 해석하며, PHP-extension client `polyspec/orm-php-ext`도 같은 동작을 한다. 그리고 Python package `polyspec-orm`의 `__getattr`도 실행 시 호출 이름을 해석한다.
+- **INT-28** `polyspec/orm` PHP 생성기 scan은 찾은 이름을 검사하지만 메서드를 선언하지 않는다. 그리고 PHP client `polyspec/orm`의 `__call`은 동적으로 호출 이름을 해석하며, PHP-extension client `polyspec/orm-php-ext`도 같은 동작을 한다. 그리고 Python package `polyspec-orm`의 `__getattr`도 실행 시 호출 이름을 해석한다.
 
 공유 vector `terminal_by`(`tests/conformance/vectors.json`)는 모든 runtime client에서 unique가 아닌 column `service_seq`와 `is_close`에 `getsBy<Chain>`을 실행하며, 각 client의 row는 기록된 결과와 같아야 한다.
 
@@ -254,7 +254,7 @@ secret과 parameter 값은 log에서 제외한다.
 
 ## 11. 생성기·스키마·확장 구분 — IF-32 ~ IF-34
 
-PHP runtime package는 자체 generator에 의존하지 않는다. 별도의 `polyspec/orm-gen` Composer package는 `polyspec/orm`에 의존하고 PHP CLI, generator, source scanner를 제공한다. 생성기는 스키마 매니페스트를 읽고 모델, 필드, 컬럼 메서드, 오류 타입을 출력한다. Go와 Rust 생성은 읽은 소스도 읽어 소스가 호출하는 체인, 관계 키, 조인, `new<Name>` 메서드를 출력한다. 선언되지 않은 컬럼이나 연산자의 메서드는 출력하지 않는다. 생성 코드는 매니페스트와 인터페이스 심볼 목록으로 검사한다.
+생성기는 스키마 매니페스트를 읽고 모델, 필드, 컬럼 메서드, 오류 타입을 출력한다. Go와 Rust 생성은 읽은 소스도 읽어 소스가 호출하는 체인, 관계 키, 조인, `new<Name>` 메서드를 출력한다. 선언되지 않은 컬럼이나 연산자의 메서드는 출력하지 않는다. 생성 코드는 매니페스트와 인터페이스 심볼 목록으로 검사한다.
 
 - **INT-66** 생성기가 내보내는 code는 그 언어의 표준 compiler와, 이 repository의 lint gate가 그 언어에 돌리는 formatter와 linter를 통과하며, 생성된 text는 어떤 finding도 억제하지 않는다: Rust `allow` attribute, Go `//nolint`, Python `# noqa`, PHP `@phpstan-ignore`나 `phpcs:ignore`, TypeScript `eslint-disable`이나 `@ts-ignore`가 없다.
 

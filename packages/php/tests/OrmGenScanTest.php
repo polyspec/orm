@@ -4,7 +4,7 @@
 // PHP sources call on a model (tests/generator/php-scan-vectors.json), resolves the receiver of a call from the source,
 // rejects a name or an argument count the chain grammar does not accept, and leaves PHPStan with no method.notFound.
 // Requirements: SCH-1, DSL-152.
-// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php-gen/tests/OrmGenScanTest.php
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenScanTest.php
 declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;

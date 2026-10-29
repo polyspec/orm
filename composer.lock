@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "d288a624412cc32c2b58a72fd727c4c4",
+    "content-hash": "0665bccfee1d8d20fad0b162ebbb97ac",
     "packages": [
         {
             "name": "nikic/php-parser",
@@ -95,13 +95,14 @@
             "dist": {
                 "type": "path",
                 "url": "packages/php",
-                "reference": "a04c2e88e4dd611eca2fbc5cb09b1cec78ceb90c"
+                "reference": "70002c55181e28c38b32dd8343c2d247b8d6f615"
             },
             "require": {
                 "composer-runtime-api": "^2.2",
                 "ext-json": "*",
                 "ext-pdo": "*",
                 "ext-zlib": "*",
+                "nikic/php-parser": "^5.9.0",
                 "php": ">=8.4",
                 "polyspec/ordered-json": "0.0.10",
                 "purrphp/yaml": "1.0.0-p1",
@@ -116,6 +117,7 @@
                 "ext-polyspec_orm": "the dbspec surface and the error codes of this client implemented in C under the same class names (packages/php-ext)"
             },
             "bin": [
+                "bin/orm-gen",
                 "bin/orm-sqlite-cancel-build.php"
             ],
             "type": "library",
@@ -135,43 +137,6 @@
                 "MIT"
             ],
             "description": "PHP client of the orm model syntax: generated models over PDO with SQL assembled in process",
-            "transport-options": {
-                "symlink": true,
-                "relative": true
-            }
-        },
-        {
-            "name": "polyspec/orm-gen",
-            "version": "0.0.18",
-            "dist": {
-                "type": "path",
-                "url": "packages/php-gen",
-                "reference": "b0c3015fa89901e66faf10b9a46401d691aff4fc"
-            },
-            "require": {
-                "composer-runtime-api": "^2.2",
-                "nikic/php-parser": "^5.9.0",
-                "php": ">=8.4",
-                "polyspec/orm": "0.0.18"
-            },
-            "bin": [
-                "bin/orm-gen"
-            ],
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "Polyspec\\Orm\\": "src/"
-                }
-            },
-            "autoload-dev": {
-                "psr-4": {
-                    "Polyspec\\Orm\\Tests\\": "tests/"
-                }
-            },
-            "license": [
-                "MIT"
-            ],
-            "description": "PHP dbspec model generator and scanner CLI for polyspec/orm",
             "transport-options": {
                 "symlink": true,
                 "relative": true
