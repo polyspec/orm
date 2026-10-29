@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- orm has no main writer hook: .githooks/reference-transaction is deleted with kit K801, and .githooks/pre-commit no longer records the committing git. (KSTD-5-103)
+
 - orm locks Python with uv alone: make orm-python-lock writes packages/python/pylock.toml with uv lock and uv export, and config/dependency-policy.json, packages/python/constraints.txt and consumers.wheel.polyspec of config/release.json are deleted with the kit Python lock machinery. (KSTD-5-102)
 - polyspec/orm holds orm-gen again: bin/orm-gen, the generator and the scanner are in packages/php as in 0.0.18, and the separate package polyspec/orm-gen is deleted, so a consumer of polyspec/orm runs vendor/bin/orm-gen with no other package. (T244)
 - orm has no version check: scripts/version/check.mts, its test, the version-check target and PLN-5 are deleted; at release, kit make release-versions requires the tag version in every manifest. (T242)
