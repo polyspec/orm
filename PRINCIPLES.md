@@ -243,3 +243,8 @@ tool lands, a standard binds the work as written here.
   type `project` is an application: it is outside the extension run and the S10 library checks, and `make test-php` runs its
   tests as its own package.
   Enforced by: `make lint-php-ext`, `make test-php-ext`, `make layout-check`, `make dependency-policy-check`
+- S11 Local links: during development each polyspec package's install folder (node_modules, vendor, site-packages) is one
+  plain directory symlink to its checkout. No package-manager link step (npm link, Composer path repository, pip/uv editable)
+  (K591, K761, K765).
+  Enforced by: `make link-state-check`; the K761 link test of kit also finds no npm link, composer update or editable install
+  in the tool log

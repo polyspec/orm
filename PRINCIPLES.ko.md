@@ -1,5 +1,5 @@
 <!-- doc-id: principles -->
-<!-- source-sha256: 327a5f77868b04023ed9e98c3c0ba8aba5fdbf022c5f7d594e21c38694e65b4b -->
+<!-- source-sha256: 04168168dd08786965f4ac6625412abd1ebb9103d3e03d01ae64688fa66e16fb -->
 # 원칙
 
 [English](PRINCIPLES.md)
@@ -221,3 +221,8 @@ owner가 2026-10-13에 이 기준을 승인했습니다. 각 기준은 위반 �
   application은 그 library를 require하는 자기 Composer package이다. 내부 class는 userland class를 확장할 수 없기 때문이다. Composer type이 `project`인 package는 application이다. extension 실행과 S10 library
   검사 밖에 있으며, `make test-php`는 그 test를 자기 package로 실행한다.
   Enforced by: `make lint-php-ext`, `make test-php-ext`, `make layout-check`, `make dependency-policy-check`
+- S11 로컬 링크: 개발 중 각 polyspec 패키지의 설치 폴더(node_modules, vendor, site-packages)는 checkout으로 가는 평범한
+  디렉터리 심링크 하나입니다. 패키지 매니저의 링크 단계(npm link, Composer path repository, pip/uv editable)는 쓰지 않습니다
+  (K591, K761, K765).
+  Enforced by: `make link-state-check`. kit의 K761 link test도 tool log에 npm link, composer update, editable 설치가 없음을
+  확인합니다
