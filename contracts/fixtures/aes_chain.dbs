@@ -1,0 +1,43 @@
+dbspec 1 aes_chain
+
+table aes_hex_cell {
+  seq i64 identity
+  aes_key_version i32
+  token varchar(255)
+  token_index varchar(64)
+  primary key (seq)
+  index ix_aes_hex_cell_token_index (token_index)
+  settings {
+    codec token aes hex
+    aes_version aes_key_version
+    blind_index token token_index
+  }
+}
+
+table hex_aes_cell {
+  seq i64 identity
+  aes_key_version i32
+  token bytes
+  token_index varchar(64)
+  primary key (seq)
+  index ix_hex_aes_cell_token_index (token_index)
+  settings {
+    codec token hex aes
+    aes_version aes_key_version
+    blind_index token token_index
+  }
+}
+
+table json_aes_cell {
+  seq i64 identity
+  aes_key_version i32
+  token bytes
+  token_index varchar(64)
+  primary key (seq)
+  index ix_json_aes_cell_token_index (token_index)
+  settings {
+    codec token ordered_json aes
+    aes_version aes_key_version
+    blind_index token token_index
+  }
+}

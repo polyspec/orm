@@ -275,10 +275,10 @@ func OpAllowed(c *runtimemodel.Field, op string) bool {
 	if colOps[op] {
 		return true
 	}
-	// A codec field compares by equality when the value determines what is compared: every stage hex or ip, or a
-	// first stage aes, compared through its blind index. Any other codec field takes only null checks.
+	// A codec field compares by equality when every stage is a host stage, which alone encodes a predicate value: hex
+	// and ip compare the stored cell, and aes compares through its blind index. Any other codec field takes only null checks.
 	if len(c.Codec) > 0 {
-		if c.Codec[0] == "aes" || !slices.ContainsFunc(c.Codec, func(s string) bool { return s != "hex" && s != "ip" }) {
+		if !slices.ContainsFunc(c.Codec, func(s string) bool { return s != "aes" && s != "hex" && s != "ip" }) {
 			return slices.Contains(equalityOps, op)
 		}
 		return op == "is_null" || op == "is_not_null"

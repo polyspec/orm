@@ -290,6 +290,24 @@ mod planner {
     }
 
     #[test]
+    fn planner_aes_hex_eq() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_aes_hex_eq");
+    }
+
+    #[test]
+    fn planner_hex_aes_eq() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_hex_aes_eq");
+    }
+
+    #[test]
+    fn planner_ordered_json_aes_eq() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_ordered_json_aes_eq");
+    }
+
+    #[test]
     fn planner_restore_first_unique_by_name() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         run("planner_restore_first_unique_by_name");

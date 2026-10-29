@@ -207,6 +207,24 @@ func TestCoveragePlannerHexEq(t *testing.T) {
 	compilePlannerCase(t, "planner_hex_eq")
 }
 
+// TestCoveragePlannerAesHexEq compiles an eq on a column of codec aes hex through its blind index.
+func TestCoveragePlannerAesHexEq(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_aes_hex_eq")
+}
+
+// TestCoveragePlannerHexAesEq compiles an eq on a column of codec hex aes through its blind index, which hashes the value whatever the stage order.
+func TestCoveragePlannerHexAesEq(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_hex_aes_eq")
+}
+
+// TestCoveragePlannerOrderedJsonAesEq refuses an eq on a column of codec ordered_json aes, whose predicate value is not encoded by the ordered_json stage.
+func TestCoveragePlannerOrderedJsonAesEq(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_ordered_json_aes_eq")
+}
+
 // TestCoveragePlannerRestoreFirstUniqueByName compiles a restore whose set covers two unique keys.
 func TestCoveragePlannerRestoreFirstUniqueByName(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
@@ -740,6 +758,9 @@ func TestCoveragePlanner(t *testing.T) {
 		"planner_ip_hex_select":                                    TestCoveragePlannerIpHexSelect,
 		"planner_ip_hex_eq":                                        TestCoveragePlannerIpHexEq,
 		"planner_hex_eq":                                           TestCoveragePlannerHexEq,
+		"planner_aes_hex_eq":                                       TestCoveragePlannerAesHexEq,
+		"planner_hex_aes_eq":                                       TestCoveragePlannerHexAesEq,
+		"planner_ordered_json_aes_eq":                              TestCoveragePlannerOrderedJsonAesEq,
 		"planner_restore_first_unique_by_name":                     TestCoveragePlannerRestoreFirstUniqueByName,
 		"planner_tables":                                           TestCoveragePlannerTables,
 		"planner_bind_types_select":                                TestCoveragePlannerBindTypesSelect,

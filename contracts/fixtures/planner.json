@@ -6279,6 +6279,181 @@
       },
       "operation": "compile",
       "schema": "contracts/fixtures/ip_hex.dbs"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "length": 0,
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`aes_key_version` AS `a__aes_key_version`, `a`.`token` AS `a__token`, `a`.`token_index` AS `a__token_index` FROM `aes_hex_cell` AS `a` WHERE `a`.`token_index` = ?",
+            "tables": [
+              "aes_hex_cell"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "length": 0,
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"aes_key_version\" AS \"a__aes_key_version\", \"a\".\"token\" AS \"a__token\", \"a\".\"token_index\" AS \"a__token_index\" FROM \"aes_hex_cell\" AS \"a\" WHERE \"a\".\"token_index\" = $1",
+            "tables": [
+              "aes_hex_cell"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "length": 0,
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"aes_key_version\" AS \"a__aes_key_version\", \"a\".\"token\" AS \"a__token\", \"a\".\"token_index\" AS \"a__token_index\" FROM \"aes_hex_cell\" AS \"a\" WHERE \"a\".\"token_index\" = ?",
+            "tables": [
+              "aes_hex_cell"
+            ]
+          }
+        ]
+      },
+      "id": "planner_aes_hex_eq",
+      "input": {
+        "entity": "aes_hex_cell",
+        "ir_version": 1,
+        "kind": "all",
+        "n_params": 1,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "token",
+                "op": "eq",
+                "p": 0
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/aes_chain.dbs"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "length": 0,
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`aes_key_version` AS `a__aes_key_version`, `a`.`token` AS `a__token`, `a`.`token_index` AS `a__token_index` FROM `hex_aes_cell` AS `a` WHERE `a`.`token_index` = ?",
+            "tables": [
+              "hex_aes_cell"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "length": 0,
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"aes_key_version\" AS \"a__aes_key_version\", \"a\".\"token\" AS \"a__token\", \"a\".\"token_index\" AS \"a__token_index\" FROM \"hex_aes_cell\" AS \"a\" WHERE \"a\".\"token_index\" = $1",
+            "tables": [
+              "hex_aes_cell"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "length": 0,
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"aes_key_version\" AS \"a__aes_key_version\", \"a\".\"token\" AS \"a__token\", \"a\".\"token_index\" AS \"a__token_index\" FROM \"hex_aes_cell\" AS \"a\" WHERE \"a\".\"token_index\" = ?",
+            "tables": [
+              "hex_aes_cell"
+            ]
+          }
+        ]
+      },
+      "id": "planner_hex_aes_eq",
+      "input": {
+        "entity": "hex_aes_cell",
+        "ir_version": 1,
+        "kind": "all",
+        "n_params": 1,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "token",
+                "op": "eq",
+                "p": 0
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/aes_chain.dbs"
+    },
+    {
+      "expected": {
+        "error": "OPERATOR_NOT_ALLOWED"
+      },
+      "id": "planner_ordered_json_aes_eq",
+      "input": {
+        "entity": "json_aes_cell",
+        "ir_version": 1,
+        "kind": "all",
+        "n_params": 1,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "token",
+                "op": "eq",
+                "p": 0
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/aes_chain.dbs"
     }
   ],
   "feature": "planner"

@@ -363,6 +363,27 @@ final class CoveragePlannerTest extends TestCase
         plannerCase($root, $fixture, 'planner_hex_eq');
     }
 
+    public function testPlannerAesHexEq(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        plannerCase($root, $fixture, 'planner_aes_hex_eq');
+    }
+
+    public function testPlannerHexAesEq(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        plannerCase($root, $fixture, 'planner_hex_aes_eq');
+    }
+
+    public function testPlannerOrderedJsonAesEq(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        plannerCase($root, $fixture, 'planner_ordered_json_aes_eq');
+    }
+
     public function testPlannerRestoreFirstUniqueByName(): void
     {
         $root = dirname(__DIR__, 3);

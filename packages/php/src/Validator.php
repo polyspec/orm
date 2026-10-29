@@ -78,9 +78,9 @@ final class Validator
     }
 
     /**
-     * Whether op is valid for the column's type and codec. An aes column compares equality by blind index,
-     * a column with only hex and ip compares equality by its deterministic encoding,
-     * and other codec columns compare only whether they are null.
+     * Whether op is valid for the column's type and codec. A column whose stages are all host stages compares
+     * equality, since only host stages encode a predicate value: hex and ip by the stored cell, aes by its
+     * blind index. Other codec columns compare only whether they are null.
      */
     public static function opAllowed(array $c, string $op): bool
     {
@@ -89,7 +89,7 @@ final class Validator
         }
         $codec = $c['codec'];
         if ($codec !== []) {
-            if ($codec[0] === 'aes' || array_diff($codec, ['hex', 'ip']) === []) {
+            if (array_diff($codec, ['aes', 'hex', 'ip']) === []) {
                 return in_array($op, self::EQUALITY, true);
             }
             return $op === 'is_null' || $op === 'is_not_null';

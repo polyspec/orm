@@ -91,6 +91,9 @@ await runCases('coverage_planner.mjs', {
   // Requirements: COD-43.
   async planner_ip_hex_eq() { compileCase('planner_ip_hex_eq'); },
   async planner_hex_eq() { compileCase('planner_hex_eq'); },
+  async planner_aes_hex_eq() { compileCase('planner_aes_hex_eq'); },
+  async planner_hex_aes_eq() { compileCase('planner_hex_aes_eq'); },
+  async planner_ordered_json_aes_eq() { compileCase('planner_ordered_json_aes_eq'); },
   async planner_restore_first_unique_by_name() { compileCase('planner_restore_first_unique_by_name'); },
   async planner_bind_types_select() { compileCase('planner_bind_types_select'); },
   async planner_bind_types_update() { compileCase('planner_bind_types_update'); },

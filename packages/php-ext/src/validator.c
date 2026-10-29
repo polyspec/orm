@@ -373,17 +373,17 @@ bool validator_op_allowed(HashTable *col, zend_string *op)
     }
     HashTable *codec = ha(orm_hash_value(col, "codec", sizeof("codec") - 1, true));
     if (has_items(codec)) {
-        bool hex_ip_only = true;
+        /* Only host stages encode a predicate value, so a column of host stages alone compares by equality. */
+        bool host_only = true;
         zval *v;
         ZEND_HASH_FOREACH_VAL(codec, v)
         {
-            if (!zv_eq_str(v, "hex") && !zv_eq_str(v, "ip")) {
-                hex_ip_only = false;
+            if (!zv_eq_str(v, "aes") && !zv_eq_str(v, "hex") && !zv_eq_str(v, "ip")) {
+                host_only = false;
             }
         }
         ZEND_HASH_FOREACH_END();
-        zval *first = zend_hash_index_find(codec, 0);
-        if (zv_eq_str(first, "aes") || hex_ip_only) {
+        if (host_only) {
             return IN(o, EQUALITY);
         }
         return streq(o, "is_null") || streq(o, "is_not_null");

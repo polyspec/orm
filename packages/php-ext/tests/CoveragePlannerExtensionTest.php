@@ -133,6 +133,24 @@ final class CoveragePlannerExtensionTest extends TestCase
     }
 
     // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
+    public function test_planner_aes_hex_eq(): void
+    {
+        $this->runPlannerCoverageCase('planner_aes_hex_eq');
+    }
+
+    // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
+    public function test_planner_hex_aes_eq(): void
+    {
+        $this->runPlannerCoverageCase('planner_hex_aes_eq');
+    }
+
+    // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
+    public function test_planner_ordered_json_aes_eq(): void
+    {
+        $this->runPlannerCoverageCase('planner_ordered_json_aes_eq');
+    }
+
+    // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
     public function test_planner_restore_first_unique_by_name(): void
     {
         $this->runPlannerCoverageCase('planner_restore_first_unique_by_name');

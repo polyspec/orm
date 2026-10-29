@@ -71,7 +71,7 @@ pub fn operator_allowed_for_field(field: &Field, op: &str, column_operator: bool
         return true;
     }
     if !field.codec.is_empty() {
-        if field.aes() || field.codec.iter().all(|stage| stage == "hex" || stage == "ip") {
+        if field.codec.iter().all(|stage| matches!(stage.as_str(), "aes" | "hex" | "ip")) {
             return equality_operator_allowed(op);
         }
         return matches!(op, "is_null" | "is_not_null");
