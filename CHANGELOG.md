@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- orm runs the hooks of kit K805: .githooks/pre-commit no longer calls the deleted commit gates, and .githooks/pre-merge-commit and config/commit-identity.json are deleted. (KSTD-5-107)
+
 - orm has no pre-push hook: .githooks/pre-push is deleted with the kit K804 push gate, and config/checklist.json hooks names commit-msg and pre-commit. (KSTD-5-105)
 
 - The TypeScript binding commands of config/parity.json run the node:test reporter of the kit that make includes (${ORM_NODE_REPORTER}), not a local build of kit dist. (T248)

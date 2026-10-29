@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a52c072816d10149e1185ddeee4767e332536e0d1b9144609851610a9ed38a7e -->
+<!-- source-sha256: 1a2c2a4a7a7ad079f84b3733d27e451255843c3c1299c2687c031c5eb341ce0e -->
 # 변경 이력
 
 ## Unreleased
+
+- orm은 kit K805의 hook을 실행합니다: .githooks/pre-commit은 삭제된 commit gate를 더 이상 호출하지 않고, .githooks/pre-merge-commit과 config/commit-identity.json을 삭제했습니다. (KSTD-5-107)
 
 - orm에는 pre-push hook이 없습니다: kit K804의 push gate와 함께 .githooks/pre-push를 삭제했고, config/checklist.json의 hooks는 commit-msg와 pre-commit을 이름합니다. (KSTD-5-105)
 

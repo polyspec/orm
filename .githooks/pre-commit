@@ -5,4 +5,3 @@
 # calls the make targets of the checks, which stay across the versions of kit.
 cd "$(git rev-parse --show-toplevel)" || exit 1
 make --no-print-directory staged-generated-hook || exit 1
-make --no-print-directory commit-gates-hook || exit 1
