@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 06e539acea0b712143d245a3a0ea4b2bf41d821cf1dd35dfc40e0f1abc71299a -->
+<!-- source-sha256: f04b5d574e8c0d703a02a797f37beae3f6df4bba34d7dfbce744cd923406365f -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -358,3 +358,4 @@
 | KSTD-5-99 | packages/python/pyproject.toml의 build-system.requires는 wheel build backend의 단일 선언인 config/toolchain.json pythonBackend의 setuptools를 지정한다. 원인: 6a5b26646이 build-system.requires를 setuptools 84.2.1로 옮기고 pythonBackend는 84.0.0에 남겼다 | packages/python/pyproject.toml | `make release-candidate-assets VERSION=0.0.18` | [!] 원인: build-system과 toolchain.json pythonBackend는 같은 선언의 중복이며, kit이 pythonBackend를 삭제한다; 재시도: kit audit의 pythonBackend 삭제가 land된다 |
 | KSTD-5-100 | orm은 kit이 삭제하는 dependency target을 하나도 지정하지 않는다(kit `K784`, `K786`): CHECK_TARGETS와 CI 그룹, contracts/check-inputs.json, AGENTS, 문서, 그 target만 읽는 config 파일 | Makefile, contracts/check-inputs.json, AGENTS.md, docs/spec/editor-stack.md, config/dependency-review.json | `make owner-validate` | [o] |
 | KSTD-5-101 | orm은 release된 kit 0.0.66을 채택한다: pin, 그 lock, 동기화된 kit 파일. 원인: gates workflow가 ci.json schema에 runner가 없는 lock된 kit 0.0.63에서 실패한다(run 40827783727, ca6805dcb). review 기록은 갱신하지 않는다: 그 advisory query는 GOWORK off로 examples module을 읽지 못하고, KSTD-5-100이 review와 policy를 삭제한다 | package.json, package-lock.json, the files of make kit-sync | `make kit-check kit-ci-plan` | [o] |
+| KSTD-5-102 | orm은 Python을 uv만으로 build하고 lock한다(kit K788, K789): config/toolchain.json에는 pythonBackend가 없고, config/release.json에는 consumers.wheel.polyspec이 없으며, config/dependency-policy.json과 packages/python/constraints.txt는 삭제되고, make orm-python-lock이 uv lock과 uv export로 packages/python/pylock.toml을 쓴다. 원인: kit이 build backend pin, python-lock, dependency policy를 삭제한다 | config/toolchain.json, config/release.json, config/dependency-policy.json, packages/python/constraints.txt, packages/python/pylock.toml, Makefile, docs/operations/packaging.md | `make orm-python-lock kit-check` | [ ] |
