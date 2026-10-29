@@ -1,6 +1,266 @@
 {
   "schema": 1,
   "kind": "fixed-performance-references",
-  "status": "pending",
-  "references": []
+  "status": "recorded",
+  "evidence": {
+    "file": "var/evidence/performance_gate/observations-2026-10-29T181932137Z-25515.json",
+    "sha256": "17c496b4cf7e8e38fc20208c501e54e11bfbd15a6748e38e517143dba0ff7ca3",
+    "recordedAt": "2026-10-29T18:20:15.719Z",
+    "checkRunId": "orm_check_33189_3c995a77",
+    "sourceCommit": "97b4566f4bfca66df51f634be8da8c511cb44346"
+  },
+  "references": [
+    {
+      "runtime": "go",
+      "database": "mysql",
+      "workload": "pk",
+      "ratio": 0.55,
+      "machine": "darwin arm64"
+    },
+    {
+      "runtime": "go",
+      "database": "mysql",
+      "workload": "list100",
+      "ratio": 0.95,
+      "machine": "darwin arm64"
+    },
+    {
+      "runtime": "go",
+      "database": "postgres",
+      "workload": "pk",
+      "ratio": 1.08,
+      "machine": "darwin arm64"
+    },
+    {
+      "runtime": "go",
+      "database": "postgres",
+      "workload": "list100",
+      "ratio": 1.05,
+      "machine": "darwin arm64"
+    },
+    {
+      "runtime": "go",
+      "database": "sqlite",
+      "workload": "pk",
+      "ratio": 0.71,
+      "machine": "darwin arm64"
+    },
+    {
+      "runtime": "go",
+      "database": "sqlite",
+      "workload": "list100",
+      "ratio": 1.07,
+      "machine": "darwin arm64"
+    },
+    {
+      "runtime": "php",
+      "database": "mysql",
+      "workload": "pk",
+      "ratio": 1.5,
+      "machine": "Darwin arm64"
+    },
+    {
+      "runtime": "php",
+      "database": "mysql",
+      "workload": "list100",
+      "ratio": 1.42,
+      "machine": "Darwin arm64"
+    },
+    {
+      "runtime": "php",
+      "database": "postgres",
+      "workload": "pk",
+      "ratio": 1.22,
+      "machine": "Darwin arm64"
+    },
+    {
+      "runtime": "php",
+      "database": "postgres",
+      "workload": "list100",
+      "ratio": 1.12,
+      "machine": "Darwin arm64"
+    },
+    {
+      "runtime": "php",
+      "database": "sqlite",
+      "workload": "pk",
+      "ratio": 3.57,
+      "machine": "Darwin arm64"
+    },
+    {
+      "runtime": "php",
+      "database": "sqlite",
+      "workload": "list100",
+      "ratio": 1.56,
+      "machine": "Darwin arm64"
+    },
+    {
+      "runtime": "php-extension",
+      "database": "mysql",
+      "workload": "pk",
+      "ratio": 1.73,
+      "machine": "Darwin arm64"
+    },
+    {
+      "runtime": "php-extension",
+      "database": "mysql",
+      "workload": "list100",
+      "ratio": 2.65,
+      "machine": "Darwin arm64"
+    },
+    {
+      "runtime": "php-extension",
+      "database": "postgres",
+      "workload": "pk",
+      "ratio": 1.45,
+      "machine": "Darwin arm64"
+    },
+    {
+      "runtime": "php-extension",
+      "database": "postgres",
+      "workload": "list100",
+      "ratio": 1.62,
+      "machine": "Darwin arm64"
+    },
+    {
+      "runtime": "php-extension",
+      "database": "sqlite",
+      "workload": "pk",
+      "ratio": 4.59,
+      "machine": "Darwin arm64"
+    },
+    {
+      "runtime": "php-extension",
+      "database": "sqlite",
+      "workload": "list100",
+      "ratio": 3.39,
+      "machine": "Darwin arm64"
+    },
+    {
+      "runtime": "typescript",
+      "database": "mysql",
+      "workload": "pk",
+      "ratio": 1.36,
+      "machine": "darwin arm64 Apple M3 Pro"
+    },
+    {
+      "runtime": "typescript",
+      "database": "mysql",
+      "workload": "list100",
+      "ratio": 1.62,
+      "machine": "darwin arm64 Apple M3 Pro"
+    },
+    {
+      "runtime": "typescript",
+      "database": "postgres",
+      "workload": "pk",
+      "ratio": 1.14,
+      "machine": "darwin arm64 Apple M3 Pro"
+    },
+    {
+      "runtime": "typescript",
+      "database": "postgres",
+      "workload": "list100",
+      "ratio": 0.89,
+      "machine": "darwin arm64 Apple M3 Pro"
+    },
+    {
+      "runtime": "typescript",
+      "database": "sqlite",
+      "workload": "pk",
+      "ratio": 1.14,
+      "machine": "darwin arm64 Apple M3 Pro"
+    },
+    {
+      "runtime": "typescript",
+      "database": "sqlite",
+      "workload": "list100",
+      "ratio": 1.32,
+      "machine": "darwin arm64 Apple M3 Pro"
+    },
+    {
+      "runtime": "python",
+      "database": "mysql",
+      "workload": "pk",
+      "ratio": 2.43,
+      "machine": "macOS-26.6.2-arm64-arm-64bit-Mach-O"
+    },
+    {
+      "runtime": "python",
+      "database": "mysql",
+      "workload": "list100",
+      "ratio": 3.72,
+      "machine": "macOS-26.6.2-arm64-arm-64bit-Mach-O"
+    },
+    {
+      "runtime": "python",
+      "database": "postgres",
+      "workload": "pk",
+      "ratio": 2.86,
+      "machine": "macOS-26.6.2-arm64-arm-64bit-Mach-O"
+    },
+    {
+      "runtime": "python",
+      "database": "postgres",
+      "workload": "list100",
+      "ratio": 4.4,
+      "machine": "macOS-26.6.2-arm64-arm-64bit-Mach-O"
+    },
+    {
+      "runtime": "python",
+      "database": "sqlite",
+      "workload": "pk",
+      "ratio": 5.03,
+      "machine": "macOS-26.6.2-arm64-arm-64bit-Mach-O"
+    },
+    {
+      "runtime": "python",
+      "database": "sqlite",
+      "workload": "list100",
+      "ratio": 5.37,
+      "machine": "macOS-26.6.2-arm64-arm-64bit-Mach-O"
+    },
+    {
+      "runtime": "rust",
+      "database": "mysql",
+      "workload": "pk",
+      "ratio": 1.39,
+      "machine": "macos aarch64"
+    },
+    {
+      "runtime": "rust",
+      "database": "mysql",
+      "workload": "list100",
+      "ratio": 1.57,
+      "machine": "macos aarch64"
+    },
+    {
+      "runtime": "rust",
+      "database": "postgres",
+      "workload": "pk",
+      "ratio": 1.49,
+      "machine": "macos aarch64"
+    },
+    {
+      "runtime": "rust",
+      "database": "postgres",
+      "workload": "list100",
+      "ratio": 1.5,
+      "machine": "macos aarch64"
+    },
+    {
+      "runtime": "rust",
+      "database": "sqlite",
+      "workload": "pk",
+      "ratio": 1.58,
+      "machine": "macos aarch64"
+    },
+    {
+      "runtime": "rust",
+      "database": "sqlite",
+      "workload": "list100",
+      "ratio": 1.42,
+      "machine": "macos aarch64"
+    }
+  ]
 }

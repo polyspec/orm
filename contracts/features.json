@@ -10837,9 +10837,9 @@
       "id": "performance_gate",
       "title": "Hot-path performance standard",
       "title_ko": "hot-path 성능 기준",
-      "status": "partial",
-      "description": "Coverage declares the same PK and descending 100-row native comparison for all six clients on MySQL, PostgreSQL, and SQLite. Each case has now run twice on its exact ORM_FEATURE_DSN, with matching before/after database-state digests. Measurements remain diagnostic; fixed per-implementation references are not recorded, so the standard remains partial pending KSTD-7-6. The separate make perf-check retains its recorded Go and PHP MySQL bounds.",
-      "description_ko": "Coverage는 여섯 클라이언트 모두에 대해 MySQL, PostgreSQL, SQLite에서 같은 PK 및 내림차순 100행 native 비교를 선언한다. 각 사례는 정확한 ORM_FEATURE_DSN에서 두 번 실행되었고, 각 실행의 데이터베이스 전후 상태 digest가 일치했다. 측정은 진단용이다. 구현별 고정 기준값은 기록되지 않아 표준은 KSTD-7-6을 기다리며 partial을 유지한다. 별도 make perf-check의 Go 및 PHP MySQL 기준값은 유지한다.",
+      "status": "implemented",
+      "description": "Coverage declares the same PK and descending 100-row native comparison for all six clients on MySQL, PostgreSQL, and SQLite. Each case runs twice on its exact ORM_FEATURE_DSN, with matching before/after database-state digests, and compares its ratio with the fixed reference of contracts/performance-references.json, recorded from one passed check run of a clean checkout. A measurement above its reference is diagnostic and never fails correctness. The separate make perf-check retains its recorded Go and PHP MySQL bounds.",
+      "description_ko": "Coverage는 여섯 클라이언트 모두에 대해 MySQL, PostgreSQL, SQLite에서 같은 PK 및 내림차순 100행 native 비교를 선언한다. 각 사례는 정확한 ORM_FEATURE_DSN에서 두 번 실행되고 데이터베이스 전후 상태 digest가 일치하며, 그 비율을 contracts/performance-references.json의 고정 기준값과 비교한다. 기준값은 깨끗한 checkout의 통과한 check run 하나에서 기록했다. 기준값을 넘는 측정은 진단용이며 correctness를 실패시키지 않는다. 별도 make perf-check의 Go 및 PHP MySQL 기준값은 유지한다.",
       "inputs": {
         "type": "BenchmarkDatabase",
         "fields": [
