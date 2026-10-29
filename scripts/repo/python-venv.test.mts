@@ -62,8 +62,9 @@ caseTest('orm-install-python builds its venv with the pinned interpreter, never 
     assert.match(result.stdout, /\s--no-print-directory install-tools TOOLS="python uv"$/m);
     assert.doesNotMatch(result.stdout, /\s--no-print-directory install-tools$/m);
     assert.match(result.stdout, /python-venv DIR=/);
-    // make puts the shims of mise before PATH, so python3 is the Python of mise.toml and the stub of PATH is never run.
-    assert.match(result.stdout, /(^|\s)\S*\/var\/tools\/mise\/shims\/python3 -m pip --python /m);
+    // uv of mise.toml installs the client into the venv of the pinned interpreter, and the python3 of PATH is never run (KSTD-5-104).
+    assert.match(result.stdout, /(^|\s)\S*\/var\/tools\/mise\/shims\/uv sync --quiet --locked --no-editable --group test$/m);
+    assert.doesNotMatch(result.stdout, /(^|[\s/])python3 -m pip/m);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

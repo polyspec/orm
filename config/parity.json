@@ -813,10 +813,6 @@
           "reason": "test: injects an unexpected exception into the private Mermaid catalog builder and verifies the same exception object escapes; the public invalid-name diagnostic is covered by dbspec-mermaid-invalid"
         },
         {
-          "glob": "packages/python/tests/test_install_lock.py",
-          "reason": "ecosystem: an internal test of the Python package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
-        },
-        {
           "glob": "packages/python/tests/test_no_path_change.py",
           "reason": "ecosystem: an internal test of the Python package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
         },

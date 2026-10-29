@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 8a50a842164d61531a4bbe7ff9c2944f0db18f21cc3d7fe6f05bb6d7b0863304 -->
+<!-- source-sha256: d780dc99d9afc8337debbf988d2d944b54b4d64059149e63ec4bee258dafc36a -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -258,7 +258,7 @@ orm 자신의 규칙만 적는다.
   분류되어 있기를 요구한다.
   Enforced by: `make release-coverage`
 - Own: Python client(`packages/python/pyproject.toml`)는 wheel `polyspec_orm-X.Y.Z-py3-none-any.whl`로 release된다(`config/release.json`의
-  `wheel`, 고정된 `buildBackend`와 함께). Rust crate `polyspec-orm`, `polyspec-orm-schema`, `polyspec-orm-build`는 git tag로 소비되고
+  `wheel`, `uv build`가 `build-system.requires`로 만든다). Rust crate `polyspec-orm`, `polyspec-orm-schema`, `polyspec-orm-build`는 git tag로 소비되고
   release archive가 없다(`config/release.json`의 `git-tag`). version을 올리는 commit이 다른 manifest와 함께 그
   모든 `version`을 설정한다.
   Enforced by: `make release-coverage`

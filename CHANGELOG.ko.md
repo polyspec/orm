@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 732019554c7e63654706d279190732985bee40a68577cbb210ff94cc72b91f10 -->
+<!-- source-sha256: c51a15c01aef28eb808023ac8b1e7e581a479689faa1fe2844b633806fc46e45 -->
 # 변경 이력
 
 ## Unreleased
 
+- orm은 build backend의 유일한 선언인 build-system.requires로 uv build를 실행해 wheel을 만들고, Python client를 uv sync --locked로 editable이 아니게 설치하며, make link가 그것을 checkout의 link로 바꿉니다 (kit K788, K803): config/toolchain.json에는 pythonBackend가 없고, packages/python/pylock.toml과 그 test를 삭제했습니다. (KSTD-5-104)
+- packages/python/pyproject.toml의 build-system.requires가 wheel build backend setuptools==84.0.0의 유일한 선언이며, config/toolchain.json은 아무것도 선언하지 않습니다. (KSTD-5-99)
 - orm에는 kit K798, K804, K805가 삭제하는 release consumer project, release proof, push gate workflow, commits check가 없습니다: config/release.json에는 consumers와 proof가 없고, tests/release-consumer와 .github/workflows/push-gate.yml을 삭제했으며, commit identity test와 subject 규칙은 config/commit-identity.json과 함께 삭제했습니다. (KSTD-5-106)
 - packages/python/tests/coverage_catalog_connection.py는 고정된 ruff format의 형식입니다. (T250)
 - make duplication-check가 clone을 찾지 않습니다: PHP without-MySQL test, parity context test, performance reference recorder는 child runner, command helper, git reader를 공유하고, parity context test는 ts setup에 interfaces TypeScript를 기대합니다. (T249)

@@ -299,7 +299,7 @@ vendors; this file states only the rules of orm.
   `config/release.json`.
   Enforced by: `make release-coverage`
 - Own: The Python client (`packages/python/pyproject.toml`) is released as the wheel
-  `polyspec_orm-X.Y.Z-py3-none-any.whl` (`wheel` in `config/release.json`, with the pinned `buildBackend`).
+  `polyspec_orm-X.Y.Z-py3-none-any.whl` (`wheel` in `config/release.json`, built by `uv build` from `build-system.requires`).
   The Rust crates `polyspec-orm`, `polyspec-orm-schema` and `polyspec-orm-build` are consumed by their git tag and have no release
   archive (`git-tag` in `config/release.json`); the version-bump commit sets the `version` of all of them
   with the other manifests.
