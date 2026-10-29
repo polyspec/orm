@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 97b5ea041e7a805b13ea63481508a166d1ca20fe779401e0b4920fcfa28ccd4d -->
+<!-- source-sha256: a52c072816d10149e1185ddeee4767e332536e0d1b9144609851610a9ed38a7e -->
 # 변경 이력
 
 ## Unreleased
+
+- orm에는 pre-push hook이 없습니다: kit K804의 push gate와 함께 .githooks/pre-push를 삭제했고, config/checklist.json의 hooks는 commit-msg와 pre-commit을 이름합니다. (KSTD-5-105)
 
 - config/parity.json의 TypeScript binding command는 kit dist의 로컬 build가 아니라 make가 include한 kit의 node:test reporter(${ORM_NODE_REPORTER})를 실행합니다. (T248)
 

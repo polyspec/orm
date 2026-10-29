@@ -1,6 +1,0 @@
-#!/bin/sh
-# The pre-push hook. Git starts it with the pushed refs on standard input. The push gate refuses the push while an item of
-# a tracker of config/checklist.json is in its active state, in a pushed commit or in the working tree. Written by
-# `make hooks`; do not edit it. It calls the make target of the push gate, which stays across the versions of kit.
-cd "$(git rev-parse --show-toplevel)" || exit 1
-exec make --no-print-directory push-gate-hook
