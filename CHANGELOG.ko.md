@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b58384bd821f28f15ad8553f863321c10bf005b1b85fc90a8c0c12bc2c43cbc1 -->
+<!-- source-sha256: ff3ce57be598e4358c6016e79371449b1e21997bb9a3ddab7e20afe6b5bfbd44 -->
 # 변경 이력
 
 ## Unreleased
+
+- `make orm-install-php`는 root Composer lock을 Kit의 composer-install로 설치하므로, 새 worktree가 lock의 PHP package를 offline으로 찾습니다. Red: 새 orm worktree-setup이 Composer에서 실패했습니다. (KSTD-5-97)
 
 - 독립 CI 그룹마다 필요한 고정 의존성만 설치하고 native parity 추출기·PHP arginfo·최소 Go lease 의존성을 연결하며 클라이언트·DBspec·기능 검사 병렬 구성을 유지합니다. (KSTD-5-96)
 

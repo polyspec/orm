@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- `make orm-install-php` installs the root Composer lock through Kit's composer-install, so a new worktree finds its locked PHP packages offline. Red: a new orm worktree-setup failed at Composer (KSTD-5-97).
+
 - Install only the pinned prerequisites of each independent CI group, including native parity extractors, PHP arginfo and the minimal Go lease dependency; retain parallel client, DBspec and feature groups. (KSTD-5-96)
 
 - Split native CI checks by client and SQL backend, run Markdown in six native jobs, and isolate performance and public-API/native-binding parity phases without dropping shared comparisons. (KSTD-5-95)
