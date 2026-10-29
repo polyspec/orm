@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: c94d1f48b94a560f3b7fbca749b35d5ac9db73fc5b10ac75c343a825e89013a8 -->
+<!-- source-sha256: abc445ce6f5ef43ffa1eece1aeb2cc42a6f4d0569498543614024ce0475a8b8f -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -374,3 +374,4 @@
 | KSTD-5-113 | config/ci.json의 python runtime이 orm-install-python을 지명해 parity job이 symbol 추출 전에 Python client를 설치한다. 원인: setup.runtimes.python이 비어 CI가 기본 uv-install로 client를 editable 설치하는데 그 파일 목록에는 module이 없고, parity API phase가 모든 Python symbol을 R1 missing-implementation으로 보고한다 | config/ci.json | `make kit-check` | [v] |
 | KSTD-5-114 | parity-declarations-check는 lint-ts처럼 먼저 TypeScript dist를 build해 새 checkout에서도 통과한다. 원인: shared CI group에서 그것은 build된 dist의 선언을 읽는데 새 checkout에는 dist가 없다 | Makefile | `make parity-declarations-check` | [v] |
 | KSTD-5-115 | ci workflow는 kit의 gate를 돌리지 않는다: CHECK_TARGETS와 그 CI group은 kit의 gates workflow가 병렬 job으로 돌리는 kit-gates의 target(kit-check, toolchain-check, layout-check, docs-check, rules-check, owner-validate, rebuild-check, language-check, test-markers-check, duplication-check, parity-declarations-check, parity-check, bypass-check, suppression-check, divergence-check, lint target, test-php-ext)을 빼고, ci group parity는 없어진다. local make orm-check는 그와 함께 make kit-gates를 돌린다. 원인: ci가 그것을 다시 돌려 parity group은 모든 binding을 직렬로 실행해 run 40926936508에서 76분을 넘겼고, static group은 20~49분 걸린다 | Makefile, .github/workflows/ci.yml, contracts/check-inputs.json | `make repo-check` | [ ] |
+| KSTD-5-116 | make repo-check는 make spawn의 env를 그 호출 전체에서 읽고, make ci-install-tools를 mise.toml의 Go 설치로 받아들인다. 원인: main에서 그것은 env: isolatedEnvironment(...)가 호출 세 줄 아래에 있는 scripts/repo/check.test.mts:647과 ".github/workflows/ci.yml runs Go without the Go of mise.toml"을 보고하지만, ci-install-tools는 항상 그 Go를 설치한다 | scripts/repo/testcases.mts, scripts/repo/toolchains.mts, scripts/repo/check.test.mts | `make repo-check` | [ ] |
