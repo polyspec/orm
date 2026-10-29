@@ -11,7 +11,7 @@ import { errorCode, errorMessage } from '../../tests/errors.mts';
 import { readJsonFile } from '../json/schema.mts';
 
 /** The record of one run: its steps, and the targets that failed or did not finish. */
-export type CheckRecord = { id: string; tree: string; commit: string; started: string; ended: string | null; result: string; reason?: string; failed: string[]; incomplete: string[]; setup: StepRecord[]; targets: StepRecord[]; reportErrors?: string[]; report?: string; disk?: { [place: string]: number } };
+export type CheckRecord = { id: string; tree: string; commit: string; clean: boolean; started: string; ended: string | null; result: string; reason?: string; failed: string[]; incomplete: string[]; setup: StepRecord[]; targets: StepRecord[]; reportErrors?: string[]; report?: string; disk?: { [place: string]: number } };
 /** The recorder of a run (startRecord). */
 export type Recorder = {
   writeErrors: string[];
@@ -68,7 +68,7 @@ function git(root: string, ...args: string[]): string {
 export function startRecord(root: string, id: string, targets: string[]): { record: CheckRecord; recorder: Recorder } {
   const path = recordPath(root, id);
   const record: CheckRecord = {
-    id, tree: git(root, 'rev-parse', 'HEAD^{tree}'), commit: git(root, 'rev-parse', 'HEAD'), started: now(), ended: null,
+    id, tree: git(root, 'rev-parse', 'HEAD^{tree}'), commit: git(root, 'rev-parse', 'HEAD'), clean: git(root, 'status', '--porcelain', '--untracked-files=no') === '', started: now(), ended: null,
     result: 'incomplete', failed: [], incomplete: [...targets], setup: [], targets: targets.map(newStep),
   };
   write(path, record);

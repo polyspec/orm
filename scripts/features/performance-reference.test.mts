@@ -1,15 +1,17 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
+import { mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, COMPUTE } from '../../tests/testcase.mts';
 import {
   PERFORMANCE_DATABASES, PERFORMANCE_RUNTIMES, PERFORMANCE_WORKLOADS,
   performanceDiagnosticArguments, performanceMeasurementRecord, performanceMeasurementsFromOutput, performanceReferenceReport,
-  performanceReferenceDeclarationFromCiReport, readPerformanceReferenceDeclaration, recordPerformanceReferencesFromCiReport, validatePerformanceMeasurements,
+  performanceReferenceDeclarationFromCheckRun, readPerformanceReferenceDeclaration, recordPerformanceReferencesFromCheckRun, validatePerformanceMeasurements,
   validatePerformanceReferenceDeclaration, writePerformanceMeasurementRecord,
   type PerformanceMeasurement,
 } from './performance-reference.mts';
+import type { CheckRecord } from '../check/record.mts';
 
 function line(runtime: string, database: string, workload: string, ratio = '1.23', machine = 'Linux arm64 CPU model'): string {
   return `PERF hot_path_gate ${runtime} ${database} ${workload}: native p50=10.0µs client p50=12.3µs ratio=${ratio} samples=1000 cpu=14.0ms wall=25.0ms machine=${machine} reference=not-recorded`;
@@ -33,8 +35,7 @@ function referenceDeclaration() {
       file: 'var/evidence/performance_gate/observations-approved.json',
       sha256: 'a'.repeat(64),
       recordedAt: '2026-10-27T00:00:00Z',
-      ciRunId: '1234567890',
-      ciRunAttempt: 1,
+      checkRunId: 'orm_check_1_00000000',
       sourceCommit: 'b'.repeat(40),
     },
     references: PERFORMANCE_RUNTIMES.flatMap(runtime => PERFORMANCE_DATABASES.flatMap(database =>
@@ -107,11 +108,11 @@ caseTest('fixed references require provenance and the exact 36 runtime database 
   assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, references: declaration.references.map((entry, index) => index === 0 ? { ...entry, ratio: Number.POSITIVE_INFINITY } : entry) }), /reference ratio is not a positive finite number/);
   assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, references: declaration.references.map((entry, index) => index === 0 ? { ...entry, runtime: 'unknown' } : entry) }), /performance runtime "unknown" is none of/);
   assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, references: declaration.references.map((entry, index) => index === 0 ? { ...entry, extra: 1 } : entry) }), /unknown fields or is not an object/);
-  assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, evidence: { ...declaration.evidence, sha256: 'not-a-hash' } }), /require CI run, attempt, source commit, file, SHA-256, and UTC evidence provenance/);
-  assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, evidence: { ...declaration.evidence, file: '/tmp/observations.json' } }), /require CI run, attempt, source commit, file, SHA-256, and UTC evidence provenance/);
-  assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, evidence: { ...declaration.evidence, ciRunId: undefined } }), /require CI run, attempt, source commit, file, SHA-256, and UTC evidence provenance/);
-  assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, evidence: { ...declaration.evidence, ciRunAttempt: 0 } }), /require CI run, attempt, source commit, file, SHA-256, and UTC evidence provenance/);
-  assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, evidence: { ...declaration.evidence, sourceCommit: 'not-a-commit' } }), /require CI run, attempt, source commit, file, SHA-256, and UTC evidence provenance/);
+  assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, evidence: { ...declaration.evidence, sha256: 'not-a-hash' } }), /require check run, source commit, file, SHA-256, and UTC evidence provenance/);
+  assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, evidence: { ...declaration.evidence, file: '/tmp/observations.json' } }), /require check run, source commit, file, SHA-256, and UTC evidence provenance/);
+  assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, evidence: { ...declaration.evidence, checkRunId: undefined } }), /require check run, source commit, file, SHA-256, and UTC evidence provenance/);
+  assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, evidence: { ...declaration.evidence, checkRunId: '../run' } }), /require check run, source commit, file, SHA-256, and UTC evidence provenance/);
+  assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, evidence: { ...declaration.evidence, sourceCommit: 'not-a-commit' } }), /require check run, source commit, file, SHA-256, and UTC evidence provenance/);
   assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, references: declaration.references.map((entry, index) => index === 1 ? { ...entry, machine: 'another machine' } : entry) }), /machine identity differs within go references/);
   assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, unexpected: true }), /unknown fields or status/);
 });
@@ -172,78 +173,85 @@ caseTest('raw observations publish atomically under ignored evidence without pro
   }
 });
 
-caseTest('the CI report recorder promotes attempt one only after matching successful performance proof', COMPUTE, async () => {
-  const root = await mkdtemp(join(tmpdir(), 'performance-reference-ci-'));
-  const reportRelative = 'var/evidence/performance_gate/ci-900-2';
-  const report = join(root, reportRelative);
-  const evidence = join(root, 'var/evidence/performance_gate');
-  const name = 'observations-2026-01-01T000200000Z-17.json';
-  const sourceLog = `/home/runner/work/orm/orm/var/evidence/performance_gate/${name}`;
-  const headSha = 'c'.repeat(40);
-  const observation = performanceMeasurementRecord(matrix().map(entry => ({
-    ...entry, ratio: entry.attempt === 1 ? 1.17 : 9.99,
-  })));
-  const targetLog = `performance_gate raw observations: ${sourceLog}\n`;
-  const record = {
-    id: 'ci_900_2_feature_performance', commit: headSha, result: 'passed',
-    targets: [{ name: 'feature-performance-check', status: 'passed', started: '2026-01-01T00:00:00.000Z',
-      ended: '2026-01-01T00:05:00.000Z', log: '.runtime/check/ci_900_2_feature_performance/report/targets/feature-performance-check.log' }],
+function gitIn(root: string, ...args: string[]): string {
+  const result = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
+  if (result.status !== 0) throw new Error(`git ${args.join(' ')}: ${result.stderr}`);
+  return result.stdout.trim();
+}
+
+function checkRunRecord(id: string, commit: string, tree: string, log: string): CheckRecord {
+  return {
+    id, tree, commit, clean: true, started: '2026-01-01T00:00:00.000Z', ended: '2026-01-01T00:05:00.000Z', result: 'passed',
+    failed: [], incomplete: [], setup: [],
+    targets: [{ name: 'feature-performance-check', status: 'passed', started: '2026-01-01T00:00:00.000Z', ended: '2026-01-01T00:05:00.000Z', log }],
   };
-  const proof = { databaseId: 900, attempt: 2, headSha,
-    jobs: [{ name: 'test (feature_performance)', conclusion: 'success' }, { name: 'test (static)', conclusion: 'failure' }] };
+}
+
+caseTest('the check run recorder promotes attempt one of a passed run on a clean checkout of HEAD', COMPUTE, async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'performance-reference-run-')));
+  const id = 'orm_check_17_0a1b2c3d';
+  const name = 'observations-2026-01-01T000200000Z-17.json';
+  const evidence = join(root, 'var/evidence/performance_gate');
+  const log = `.runtime/check/${id}/targets/feature-performance-check.log`;
+  const observation = performanceMeasurementRecord(matrix().map(entry => ({ ...entry, ratio: entry.attempt === 1 ? 1.17 : 9.99 })));
   try {
-    await mkdir(join(report, 'targets'), { recursive: true });
-    await mkdir(join(report, 'performance_gate'), { recursive: true });
     await mkdir(join(root, 'contracts'), { recursive: true });
     await writeFile(join(root, 'contracts/performance-references.json'), `${JSON.stringify({
       schema: 1, kind: 'fixed-performance-references', status: 'pending', references: [],
     }, null, 2)}\n`);
-    await writeFile(join(report, 'record.json'), `${JSON.stringify(record)}\n`);
-    await writeFile(join(report, 'targets/feature-performance-check.log'), targetLog);
-    await writeFile(join(report, 'performance_gate', name), `${JSON.stringify(observation, null, 2)}\n`);
+    gitIn(root, 'init', '--quiet');
+    gitIn(root, 'add', '-A');
+    gitIn(root, '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '--quiet', '-m', 'fixture');
+    const head = gitIn(root, 'rev-parse', 'HEAD');
+    const tree = gitIn(root, 'rev-parse', 'HEAD^{tree}');
+    await mkdir(evidence, { recursive: true });
+    await mkdir(join(root, `.runtime/check/${id}/targets`), { recursive: true });
+    await writeFile(join(evidence, name), `${JSON.stringify(observation, null, 2)}\n`);
+    await writeFile(join(root, log), `performance_gate raw observations: ${join(evidence, name)}\n`);
+    await writeFile(join(root, `.runtime/check/${id}/record.json`), `${JSON.stringify(checkRunRecord(id, head, tree, log))}\n`);
 
-    const declaration = await recordPerformanceReferencesFromCiReport(root, reportRelative, proof, '2026-01-01T01:00:00Z');
+    await writeFile(join(root, 'contracts/performance-references.json'), '{"dirty": true}\n');
+    await assert.rejects(recordPerformanceReferencesFromCheckRun(root, id, '2026-01-01T01:00:00Z'), /only from a clean checkout/);
+    gitIn(root, 'checkout', '--', 'contracts/performance-references.json');
+    await assert.rejects(recordPerformanceReferencesFromCheckRun(root, '../x', '2026-01-01T01:00:00Z'), /is not a .runtime\/check directory name/);
+
+    const declaration = await recordPerformanceReferencesFromCheckRun(root, id, '2026-01-01T01:00:00Z');
     assert.equal(declaration.status, 'recorded');
-    if (declaration.status !== 'recorded') throw new Error('successful CI report creates fixed references');
+    if (declaration.status !== 'recorded') throw new Error('a passed clean check run creates fixed references');
     assert.equal(declaration.references.length, 36);
     assert.ok(declaration.references.every(reference => reference.ratio === 1.17));
-    assert.equal(declaration.evidence.ciRunId, '900');
-    assert.equal(declaration.evidence.ciRunAttempt, 2);
-    assert.equal(declaration.evidence.sourceCommit, headSha);
-    assert.equal(await readFile(join(evidence, name), 'utf8'), await readFile(join(report, 'performance_gate', name), 'utf8'));
-    assert.equal((await readPerformanceReferenceDeclaration(root)).status, 'recorded');
+    assert.deepEqual(declaration.evidence, {
+      file: `var/evidence/performance_gate/${name}`, sha256: declaration.evidence.sha256, recordedAt: '2026-01-01T01:00:00Z',
+      checkRunId: id, sourceCommit: head,
+    });
+    assert.match(declaration.evidence.sha256, /^[a-f0-9]{64}$/);
+    assert.deepEqual(await readPerformanceReferenceDeclaration(root), declaration);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
 });
 
-caseTest('the CI report recorder rejects failed or mismatched performance jobs and cannot raise a fixed reference', COMPUTE, async () => {
+caseTest('the check run recorder rejects a failed, dirty or other-commit run and cannot raise a fixed reference', COMPUTE, () => {
   const base = performanceMeasurementRecord(matrix());
   const prior = validatePerformanceReferenceDeclaration(referenceDeclaration());
   if (prior.status !== 'recorded') throw new Error('the prior-reference fixture is recorded');
-  const checkRecord = {
-    id: 'ci_901_1_feature_performance', commit: 'd'.repeat(40), result: 'passed',
-    targets: [{ name: 'feature-performance-check', status: 'passed', started: '2026-01-01T00:00:00Z',
-      ended: '2026-01-01T00:05:00Z', log: 'performance_gate raw observations: /ci/observations-2026-01-01T000200000Z-17.json' }],
-  };
-  const proof = { databaseId: 901, attempt: 1, headSha: 'd'.repeat(40),
-    jobs: [{ name: 'test (feature_performance)', conclusion: 'success' }] };
-  const args = [base, checkRecord, proof, 'var/evidence/performance_gate/observations-2026-01-01T000200000Z-17.json',
-    'a'.repeat(64), '2026-01-01T01:00:00Z'] as const;
-  assert.throws(() => performanceReferenceDeclarationFromCiReport(...args, {
-    ...prior, references: prior.references.map(reference => ({ ...reference, ratio: 1.0 })),
-  }), /cannot raise its existing performance reference/);
-  assert.throws(() => performanceReferenceDeclarationFromCiReport(args[0], args[1],
-    { ...proof, jobs: [{ name: 'test (feature_performance)', conclusion: 'failure' }] }, args[3], args[4], args[5],
-    validatePerformanceReferenceDeclaration({ schema: 1, kind: 'fixed-performance-references', status: 'pending', references: [] })),
-  /feature_performance CI job did not pass/);
-  assert.throws(() => performanceReferenceDeclarationFromCiReport(args[0], args[1],
-    { ...proof, headSha: 'e'.repeat(40) }, args[3], args[4], args[5],
-    validatePerformanceReferenceDeclaration({ schema: 1, kind: 'fixed-performance-references', status: 'pending', references: [] })),
-  /does not belong to the successful CI run and source commit/);
-  const failedTarget = { ...checkRecord, targets: checkRecord.targets.map(target => ({ ...target, status: 'failed' })) };
-  assert.throws(() => performanceReferenceDeclarationFromCiReport(args[0], failedTarget, proof,
-    args[3], args[4], args[5], validatePerformanceReferenceDeclaration({
-      schema: 1, kind: 'fixed-performance-references', status: 'pending', references: [],
-  })), /feature-performance-check target.*did not pass/);
+  const pending = validatePerformanceReferenceDeclaration({ schema: 1, kind: 'fixed-performance-references', status: 'pending', references: [] });
+  const head = { commit: 'd'.repeat(40), tree: 'e'.repeat(40) };
+  const record = checkRunRecord('orm_check_1_00000000', head.commit, head.tree, '.runtime/check/orm_check_1_00000000/targets/feature-performance-check.log');
+  const file = 'var/evidence/performance_gate/observations-2026-01-01T000200000Z-17.json';
+  const log = `performance_gate raw observations: /checkout/${file}\n`;
+  const declare = (checkRecord: CheckRecord, previous = pending, targetLog = log) =>
+    performanceReferenceDeclarationFromCheckRun(base, checkRecord, targetLog, head, file, 'a'.repeat(64), '2026-01-01T01:00:00Z', previous);
+  assert.equal(declare(record).status, 'recorded');
+  assert.throws(() => declare(record, { ...prior, references: prior.references.map(reference => ({ ...reference, ratio: 1.0 })) }),
+    /cannot raise its existing performance reference/);
+  assert.throws(() => declare({ ...record, result: 'failed' }), /did not pass on a clean checkout of HEAD/);
+  assert.throws(() => declare({ ...record, clean: false }), /did not pass on a clean checkout of HEAD/);
+  assert.throws(() => declare({ ...record, commit: 'f'.repeat(40) }), /did not pass on a clean checkout of HEAD/);
+  assert.throws(() => declare({ ...record, tree: 'f'.repeat(40) }), /did not pass on a clean checkout of HEAD/);
+  assert.throws(() => declare({ ...record, targets: record.targets.map(target => ({ ...target, status: 'failed' })) }),
+    /feature-performance-check target.*did not pass/);
+  assert.throws(() => declare(record, pending, `${log}${log}`), /did not report this exact performance observation file/);
+  assert.throws(() => declare({ ...record, targets: record.targets.map(target => ({ ...target, started: '2026-01-01T00:03:00.000Z' })) }),
+    /were not created during the passed feature-performance-check target/);
 });

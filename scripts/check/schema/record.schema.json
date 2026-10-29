@@ -4,11 +4,12 @@
   "description": "The record that the runner writes for one run: its identity, its result, its setup steps and its targets, each step with its status and what it reported.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "tree", "commit", "started", "ended", "result", "failed", "incomplete", "setup", "targets"],
+  "required": ["id", "tree", "commit", "clean", "started", "ended", "result", "failed", "incomplete", "setup", "targets"],
   "properties": {
     "id": { "type": "string" },
     "tree": { "type": "string" },
     "commit": { "type": "string" },
+    "clean": { "type": "boolean", "description": "Whether the tracked files of the work tree equaled the commit when the run started (git status --porcelain --untracked-files=no printed nothing)." },
     "started": { "type": "string" },
     "ended": { "type": ["string", "null"] },
     "result": { "enum": ["incomplete", "passed", "failed", "crashed"] },

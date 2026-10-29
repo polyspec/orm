@@ -1,6 +1,8 @@
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { lstat, mkdir, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises';
-import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { readRecord, recordPath, type CheckRecord } from '../check/record.mts';
 
 /** Measurement records captured from the successful native children of performance_gate coverage. */
 export const PERFORMANCE_RUNTIMES = ['go', 'php', 'php-extension', 'typescript', 'python', 'rust'] as const;
@@ -59,18 +61,11 @@ export type PerformanceReference = {
 
 export type PerformanceReferenceDeclaration =
   | { schema: 1; kind: 'fixed-performance-references'; status: 'pending'; references: [] }
-  | { schema: 1; kind: 'fixed-performance-references'; status: 'recorded'; evidence: { file: string; sha256: string; recordedAt: string; ciRunId: string; ciRunAttempt: number; sourceCommit: string }; references: PerformanceReference[] };
+  | { schema: 1; kind: 'fixed-performance-references'; status: 'recorded'; evidence: { file: string; sha256: string; recordedAt: string; checkRunId: string; sourceCommit: string }; references: PerformanceReference[] };
 
 export type PerformanceReferenceReport =
   | { status: 'pending'; missing: string[] }
   | { status: 'recorded'; measurements: string[]; warnings: string[] };
-
-type PerformanceCheckRecord = {
-  id: string;
-  commit: string;
-  result: string;
-  targets: { name: string; status: string; started: string | null; ended: string | null; log?: string }[];
-};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -112,56 +107,26 @@ function parsePerformanceMeasurementRecord(value: unknown): PerformanceMeasureme
   return measurements;
 }
 
-function performanceCheckRecord(value: unknown): PerformanceCheckRecord {
-  if (!isRecord(value) || typeof value.id !== 'string' || typeof value.commit !== 'string' ||
-      typeof value.result !== 'string' || !Array.isArray(value.targets))
-    throw new Error('performance artifact has no valid check record');
-  const targets: PerformanceCheckRecord['targets'] = value.targets.map((target) => {
-    if (!isRecord(target) || typeof target.name !== 'string' || typeof target.status !== 'string' ||
-        (target.started !== null && typeof target.started !== 'string') ||
-        (target.ended !== null && typeof target.ended !== 'string') ||
-        (target.log !== undefined && typeof target.log !== 'string'))
-      throw new Error('performance artifact has a malformed target record');
-    return {
-      name: target.name, status: target.status,
-      started: typeof target.started === 'string' ? target.started : null,
-      ended: typeof target.ended === 'string' ? target.ended : null,
-      ...(typeof target.log === 'string' ? { log: target.log } : {}),
-    };
-  });
-  return { id: value.id, commit: value.commit, result: value.result, targets };
-}
-
-/** Derive fixed references only from the first attempt of a successful, matching CI feature-performance report. */
-export function performanceReferenceDeclarationFromCiReport(
+/** Derive fixed references only from attempt one of a passed feature-performance-check run on a clean checkout of `head`. */
+export function performanceReferenceDeclarationFromCheckRun(
   observationsValue: unknown,
-  checkRecordValue: unknown,
-  runValue: unknown,
+  checkRecord: CheckRecord,
+  targetLog: string,
+  head: { commit: string; tree: string },
   observationsFile: string,
   observationsSha256: string,
   recordedAt: string,
   previous: PerformanceReferenceDeclaration,
 ): PerformanceReferenceDeclaration {
-  if (!isRecord(runValue) || typeof runValue.databaseId !== 'number' || !Number.isInteger(runValue.databaseId) ||
-      typeof runValue.attempt !== 'number' || !Number.isInteger(runValue.attempt) || runValue.attempt < 1 ||
-      typeof runValue.headSha !== 'string' || !/^[a-f0-9]{40}$/.test(runValue.headSha) || !Array.isArray(runValue.jobs))
-    throw new Error('GitHub CI proof must identify a run, attempt, source commit, and job results');
-  const jobs = runValue.jobs as unknown[];
-  const performanceJobs = jobs.filter(job => isRecord(job) && job.name === 'test (feature_performance)');
-  if (performanceJobs.length !== 1 || !isRecord(performanceJobs[0]) || performanceJobs[0].conclusion !== 'success')
-    throw new Error('the feature_performance CI job did not pass');
   if (!/^var\/evidence\/performance_gate\/observations-\d{4}-\d{2}-\d{2}T\d{9}Z-\d+\.json$/.test(observationsFile) ||
       !/^[a-f0-9]{64}$/.test(observationsSha256) || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(recordedAt))
     throw new Error('performance observation evidence needs its canonical path, SHA-256, and UTC recording time');
-
-  const checkRecord = performanceCheckRecord(checkRecordValue);
-  const expectedId = `ci_${runValue.databaseId}_${runValue.attempt}_feature_performance`;
-  if (checkRecord.id !== expectedId || checkRecord.result !== 'passed' || checkRecord.commit !== runValue.headSha)
-    throw new Error('performance check record does not belong to the successful CI run and source commit');
+  if (checkRecord.result !== 'passed' || checkRecord.clean !== true || checkRecord.commit !== head.commit || checkRecord.tree !== head.tree)
+    throw new Error('the performance check run did not pass on a clean checkout of HEAD');
   const featureTarget = checkRecord.targets.find(target => target.name === 'feature-performance-check');
-  if (featureTarget?.status !== 'passed' || !featureTarget.log || !featureTarget.started || !featureTarget.ended)
-    throw new Error('the feature-performance-check target of the performance CI run did not pass');
-  const observationLines = featureTarget.log.match(/^performance_gate raw observations: (.+)$/gm) ?? [];
+  if (featureTarget?.status !== 'passed' || !featureTarget.started || !featureTarget.ended)
+    throw new Error('the feature-performance-check target of the performance check run did not pass');
+  const observationLines = targetLog.match(/^performance_gate raw observations: (.+)$/gm) ?? [];
   if (observationLines.length !== 1 || basename(observationLines[0]?.slice('performance_gate raw observations: '.length) ?? '') !== basename(observationsFile))
     throw new Error('the feature-performance-check target did not report this exact performance observation file');
   const stamp = /^observations-(\d{4}-\d{2}-\d{2}T)(\d{2})(\d{2})(\d{2})(\d{3})Z-/.exec(basename(observationsFile));
@@ -190,69 +155,51 @@ export function performanceReferenceDeclarationFromCiReport(
   }
   const declaration: PerformanceReferenceDeclaration = {
     schema: 1, kind: 'fixed-performance-references', status: 'recorded',
-    evidence: {
-      file: observationsFile, sha256: observationsSha256, recordedAt,
-      ciRunId: String(runValue.databaseId), ciRunAttempt: runValue.attempt, sourceCommit: runValue.headSha,
-    },
+    evidence: { file: observationsFile, sha256: observationsSha256, recordedAt, checkRunId: checkRecord.id, sourceCommit: checkRecord.commit },
     references,
   };
   return validatePerformanceReferenceDeclaration(declaration);
 }
 
-/** Consume one downloaded CI report and atomically update references, retaining its raw bytes as ignored evidence. */
-export async function recordPerformanceReferencesFromCiReport(
-  root: string, reportDirectory: string, runValue: unknown, recordedAt = new Date().toISOString(),
+function gitOutput(root: string, ...args: string[]): string {
+  const result = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
+  if (result.error) throw result.error;
+  if (result.status !== 0) throw new Error(`git ${args.join(' ')} exited with ${result.status}: ${result.stderr.trim()}`);
+  return result.stdout.trim();
+}
+
+/** Record the references of the check run `runId` of this checkout (.runtime/check/<runId>/record.json) atomically. */
+export async function recordPerformanceReferencesFromCheckRun(
+  root: string, runId: string, recordedAt = new Date().toISOString(),
 ): Promise<PerformanceReferenceDeclaration> {
   const canonicalRoot = await realpath(root);
-  const evidenceRoot = resolve(canonicalRoot, 'var/evidence/performance_gate');
-  const report = resolve(canonicalRoot, reportDirectory);
-  const reportRelative = relative(evidenceRoot, report);
-  if (!reportRelative || reportRelative === '..' || reportRelative.startsWith(`..${sep}`) || isAbsolute(reportRelative))
-    throw new Error(`CI performance report must be downloaded under ${relative(canonicalRoot, evidenceRoot)}`);
-  const [recordText, targetLog, runDirectory] = await Promise.all([
-    readFile(join(report, 'record.json'), 'utf8'),
-    readFile(join(report, 'targets/feature-performance-check.log'), 'utf8'),
-    realpath(report),
-  ]);
-  if (runDirectory !== report) throw new Error('CI performance report path must not contain a symlink');
-  let recordValue: unknown;
-  try { recordValue = JSON.parse(recordText) as unknown; }
-  catch (error) { throw new Error(`CI performance record is invalid JSON: ${error instanceof Error ? error.message : String(error)}`, { cause: error }); }
-  const checkRecord = performanceCheckRecord(recordValue);
+  if (!/^[A-Za-z0-9_]+$/.test(runId)) throw new Error(`check run id ${JSON.stringify(runId)} is not a .runtime/check directory name`);
+  if (gitOutput(canonicalRoot, 'status', '--porcelain', '--untracked-files=no') !== '')
+    throw new Error('performance references are recorded only from a clean checkout; commit or restore the tracked changes first');
+  const head = { commit: gitOutput(canonicalRoot, 'rev-parse', 'HEAD'), tree: gitOutput(canonicalRoot, 'rev-parse', 'HEAD^{tree}') };
+  const checkRecord = readRecord(recordPath(canonicalRoot, runId));
+  if (checkRecord.id !== runId) throw new Error(`check record ${runId} names the run ${checkRecord.id}`);
   const featureTarget = checkRecord.targets.find(target => target.name === 'feature-performance-check');
-  if (!featureTarget || featureTarget.log !== '.runtime/check/' + checkRecord.id + '/report/targets/feature-performance-check.log')
-    throw new Error('CI performance record does not name its report feature-performance-check log');
+  if (!featureTarget?.log) throw new Error(`check run ${runId} has no feature-performance-check log`);
+  const targetLog = await readFile(resolve(canonicalRoot, featureTarget.log), 'utf8');
   const observationLines = targetLog.match(/^performance_gate raw observations: (.+)$/gm) ?? [];
-  if (observationLines.length !== 1) throw new Error(`CI performance-check log reported ${observationLines.length} raw observation files; expected one`);
-  const sourceName = basename(observationLines[0]?.slice('performance_gate raw observations: '.length) ?? '');
-  if (!/^observations-\d{4}-\d{2}-\d{2}T\d{9}Z-\d+\.json$/.test(sourceName))
-    throw new Error('CI performance log reported an invalid observation filename');
-  const source = resolve(report, 'performance_gate', sourceName);
-  const sourceRelative = relative(report, source);
-  if (sourceRelative.split(sep).length !== 2 || sourceRelative.split(sep)[0] !== 'performance_gate')
-    throw new Error('CI performance observation must be a direct file in the report performance_gate directory');
+  if (observationLines.length !== 1) throw new Error(`the feature-performance-check log reported ${observationLines.length} raw observation files; expected one`);
+  const evidenceRoot = join(canonicalRoot, 'var/evidence/performance_gate');
+  const source = observationLines[0]?.slice('performance_gate raw observations: '.length) ?? '';
+  if (!isAbsolute(source) || dirname(source) !== evidenceRoot || !/^observations-\d{4}-\d{2}-\d{2}T\d{9}Z-\d+\.json$/.test(basename(source)))
+    throw new Error(`the feature-performance-check log reported ${source}, not a file directly in ${relative(canonicalRoot, evidenceRoot)}`);
   const sourceStat = await lstat(source);
-  if (!sourceStat.isFile() || sourceStat.isSymbolicLink() || await realpath(source) !== source)
-    throw new Error('CI performance observation is not a regular file');
+  if (!sourceStat.isFile() || await realpath(source) !== source)
+    throw new Error(`${relative(canonicalRoot, source)} is not a regular file`);
   const observationText = await readFile(source, 'utf8');
   let observationsValue: unknown;
   try { observationsValue = JSON.parse(observationText) as unknown; }
-  catch (error) { throw new Error(`CI performance observations are invalid JSON: ${error instanceof Error ? error.message : String(error)}`, { cause: error }); }
+  catch (error) { throw new Error(`${relative(canonicalRoot, source)} is invalid JSON: ${error instanceof Error ? error.message : String(error)}`, { cause: error }); }
   const sha256 = createHash('sha256').update(observationText).digest('hex');
   const previous = await readPerformanceReferenceDeclaration(canonicalRoot);
-  const declaration = performanceReferenceDeclarationFromCiReport(
-    observationsValue, { ...checkRecord, targets: checkRecord.targets.map(target => target.name === 'feature-performance-check'
-      ? { ...target, log: targetLog } : target) }, runValue,
-    `var/evidence/performance_gate/${sourceName}`, sha256, recordedAt, previous,
+  const declaration = performanceReferenceDeclarationFromCheckRun(
+    observationsValue, checkRecord, targetLog, head, relative(canonicalRoot, source).split(sep).join('/'), sha256, recordedAt, previous,
   );
-  await mkdir(evidenceRoot, { recursive: true });
-  const retained = join(evidenceRoot, sourceName);
-  try { await writeFile(retained, observationText, { flag: 'wx' }); }
-  catch (error) {
-    if (!(error instanceof Error) || !('code' in error) || error.code !== 'EEXIST') throw error;
-    if (await readFile(retained, 'utf8') !== observationText)
-      throw new Error(`existing evidence differs from CI observation ${sourceName}`, { cause: error });
-  }
   const declarationPath = join(canonicalRoot, 'contracts/performance-references.json');
   const temporary = `${declarationPath}.${process.pid}.next`;
   try {
@@ -266,16 +213,11 @@ export async function recordPerformanceReferencesFromCiReport(
 }
 
 async function recordPerformanceReferencesCli(arguments_: string[]): Promise<void> {
-  if (arguments_.length !== 3 || arguments_[0] !== 'record')
-    throw new Error('usage: from the ORM checkout root, run node scripts/features/performance-reference.mts record <downloaded-report-directory> <gh-run-proof.json>');
-  const root = process.cwd();
-  const proofText = await readFile(resolve(root, arguments_[2] ?? ''), 'utf8');
-  let proof: unknown;
-  try { proof = JSON.parse(proofText) as unknown; }
-  catch (error) { throw new Error(`GitHub CI run proof is invalid JSON: ${error instanceof Error ? error.message : String(error)}`, { cause: error }); }
-  const declaration = await recordPerformanceReferencesFromCiReport(root, arguments_[1] ?? '', proof);
+  if (arguments_.length !== 2 || arguments_[0] !== 'record')
+    throw new Error('usage: from the ORM checkout root, run node scripts/features/performance-reference.mts record <check run id>');
+  const declaration = await recordPerformanceReferencesFromCheckRun(process.cwd(), arguments_[1] ?? '');
   if (declaration.status !== 'recorded') throw new Error('performance reference recording did not produce a recorded declaration');
-  process.stdout.write(`recorded 36 performance references from CI run ${declaration.evidence.ciRunId}, attempt ${declaration.evidence.ciRunAttempt}, commit ${declaration.evidence.sourceCommit}\n`);
+  process.stdout.write(`recorded 36 performance references from check run ${declaration.evidence.checkRunId}, commit ${declaration.evidence.sourceCommit}\n`);
 }
 
 if (import.meta.main) {
@@ -297,14 +239,13 @@ export function validatePerformanceReferenceDeclaration(value: unknown): Perform
   if (value.status !== 'recorded' || !exactKeys(value, ['schema', 'kind', 'status', 'evidence', 'references']))
     throw new Error('performance reference declaration has unknown fields or status');
   const evidence = value.evidence;
-  if (!isRecord(evidence) || !exactKeys(evidence, ['file', 'sha256', 'recordedAt', 'ciRunId', 'ciRunAttempt', 'sourceCommit']) ||
+  if (!isRecord(evidence) || !exactKeys(evidence, ['file', 'sha256', 'recordedAt', 'checkRunId', 'sourceCommit']) ||
       typeof evidence.file !== 'string' || !/^var\/evidence\/performance_gate\/observations-[^/]+\.json$/.test(evidence.file) ||
       typeof evidence.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(evidence.sha256) ||
       typeof evidence.recordedAt !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(evidence.recordedAt) ||
-      typeof evidence.ciRunId !== 'string' || !/^\d+$/.test(evidence.ciRunId) ||
-      typeof evidence.ciRunAttempt !== 'number' || !Number.isInteger(evidence.ciRunAttempt) || evidence.ciRunAttempt < 1 ||
+      typeof evidence.checkRunId !== 'string' || !/^[A-Za-z0-9_]+$/.test(evidence.checkRunId) ||
       typeof evidence.sourceCommit !== 'string' || !/^[a-f0-9]{40}$/.test(evidence.sourceCommit))
-    throw new Error('recorded performance references require CI run, attempt, source commit, file, SHA-256, and UTC evidence provenance');
+    throw new Error('recorded performance references require check run, source commit, file, SHA-256, and UTC evidence provenance');
   if (!Array.isArray(value.references)) throw new Error('performance references must be an array');
   const expected = new Set<string>();
   const machines = new Map<PerformanceRuntime, string>();
@@ -332,7 +273,7 @@ export function validatePerformanceReferenceDeclaration(value: unknown): Perform
   return {
     schema: 1, kind: 'fixed-performance-references', status: 'recorded',
     evidence: { file: evidence.file, sha256: evidence.sha256, recordedAt: evidence.recordedAt,
-      ciRunId: evidence.ciRunId, ciRunAttempt: evidence.ciRunAttempt, sourceCommit: evidence.sourceCommit },
+      checkRunId: evidence.checkRunId, sourceCommit: evidence.sourceCommit },
     references: validated,
   };
 }
