@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1a308688cc4471bbfe380652699f97f427a4438e0296ee90b6f782d200f68753 -->
+<!-- source-sha256: b58384bd821f28f15ad8553f863321c10bf005b1b85fc90a8c0c12bc2c43cbc1 -->
 # 변경 이력
 
 ## Unreleased
@@ -39,6 +39,7 @@
 - interface checker가 manifest 단계를 다시 통과한다: docs/spec/interfaces-model.md와 그 Korean twin을 `--generate`로 contracts/interfaces.json에서 다시 생성하여 CFG-9 행에 Python cancellation case가 더해지고, PHP와 PHP extension symbol record가 그 뒤 더해진 member를 PgsqlLargeObjectStream::$context를 포함해 나열한다 (KSTD-5-89-35).
 - `make lint-php`가 PostgreSQL cancellation 이후 main에서 다시 통과한다: PHP PostgreSQL adapter가 더 이상 pg_connect, pg_query, COPY 파일 읽기와 쓰기, stream_select, large-object fopen을 @로 억제하지 않는다: 범위가 정해진 handler가 실패한 호출의 E_WARNING을 그 PDOException의 이유로 유지하므로 연결 실패는 PostgreSQL error를 밝히는 OrmException을 일으키고 warning은 ORM 밖으로 나가지 않으며, large-object stream wrapper는 streamWrapper protocol이 설정하는 $context property를 선언하고, 새 파일은 phpcs가 요구하는 layout을 따른다 (KSTD-5-89-25).
 - PHP plan cache와 statement cache는 library와 extension 모두 각각 placeholder를 최대 8,192개만 보유하여, 65,535 한도에서의 25.6 MiB와 34.4 MiB 대신 몇 MiB(library에서 plan 3.2 MiB, statement 4.3 MiB)만 유지하며, 다행 INSERT import는 cache가 찬 뒤 더 늘지 않는다 (KSTD-7-3-5).
+- protocol이 PHP cache 한도를 적는다: cache마다 보유 placeholder 8,192개, 넘는 동안 가장 오래 쓰지 않은 항목부터 내보내고, 넘는 요청은 cache하지 않고 계획하고 실행하며, PHP에만 적용한다 (KSTD-7-3-6).
 - `make dbspec-php-extension-check/vectors`가 다시 extension을 테스트한다: 내부 library 클래스 `Polyspec\Orm\Dbspec\CatalogRows`의 unit test 두 개가 library와 extension에서 실행되는 DbspecTest에서 `make dbspec-php-check/documents`가 library로 실행하는 DbspecCatalogRowsTest로 옮겨졌으므로, extension 실행이 더 이상 packages/php/src/Dbspec/CatalogRows.php를 불러오지 않는다 (KSTD-5-89-34).
 - orm이 kit K613, K614, K621 layout을 따르고 kit dist를 읽지 않는다: config/layout.kit.yml은 kit의 copy이고, config/php-lint는 없어졌으며, PRINCIPLES.md, PRINCIPLES.ko.md, .editorconfig, .claude/settings.json은 ../kit로 link되고, build.sh와 script와 test는 kit의 scripts/kit source를 실행한다 (KSTD-5-89-26).
 - main에서 `make duplication-check`가 통과한다. jscpd가 packages/php-ext, packages/php, packages/go, packages/rust, packages/ts, packages/python에서 두 번 찾은 코드는 이제 양쪽이 함께 쓰는 helper 하나에 있다(C header, PHP trait와 helper 파일, Go internal package, Rust common module과 macro, JavaScript와 Python helper). 모든 active root의 MySQL cancellation case는 controller가 wait lock 두 개를 잡은 뒤에야 두 번째 process를 시작하므로, 그 process가 wait lock을 먼저 가져가지 못한다(KSTD-5-89-22).
