@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 5cb3af204b951af1ed51f57277ba73b26958212955526ffdf2ad0568db7ce9f4 -->
+<!-- source-sha256: 3b4abe1185ab1b2fadfe9c460f411b13da1cbac860d316ebbe9e3e8a55e6b13e -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -365,3 +365,4 @@
 | KSTD-5-106 | orm에는 release consumer project, release proof, push gate workflow가 없다(kit K798, K804): config/release.json에는 consumers와 proof가 없고, tests/release-consumer와 그 lock 두 개는 owner 항목과 함께 삭제되며, Makefile에는 release-consumer target이, release.yml에는 proof 단계가 없고, .github/workflows/push-gate.yml은 그 repository 검사와 함께 삭제된다. AGENTS.md는 pre-push 강제를 이름하지 않는다. 원인: kit이 release-consumer, release-consumer-lock, release-proof와 push gate를 삭제한다 | config/release.json, tests/release-consumer, contracts/check-inputs.json, Makefile, .github/workflows/release.yml, .github/workflows/push-gate.yml, scripts/repo/ci.mts, scripts/repo/check.mts, scripts/repo/check.test.mts, AGENTS.md | `make repo-check/unit feature-unit-check/owners kit-check` | [ ] |
 | KSTD-5-106-1 | AGENTS.md에는 P27의 refinement가 없다: kit K805가 vendoring한 P27은 changelog 기록을 어떤 도구도 검사하지 않는 guided rule이며, refinement는 그것을 되풀이하고 건너뛸 수 없는 지점에서 실행되지 않는 make item-state를 검사로 지목했다. 원인: make rules-check가 그 refinement가 orm의 용어도, 건너뛸 수 없는 검사도 지목하지 않는다고 보고한다 | AGENTS.md | `make rules-check` | [ ] |
 | KSTD-5-107 | orm은 kit K805의 hook을 실행한다: make hooks가 commit-gates-hook 없는 .githooks/pre-commit을 쓰고, .githooks/pre-merge-commit과 config/commit-identity.json을 삭제한다. 원인: kit K805가 commits-check, commit gate, pre-merge-commit hook을 삭제해서, pre-commit hook이 삭제된 target을 호출하고 모든 commit을 거부했다 | .githooks/pre-commit, .githooks/pre-merge-commit, config/commit-identity.json | `make hooks-check` | [o] |
+| KSTD-5-108 | orm은 kit K812가 삭제하는 release version check를 실행하지 않는다: kit-sync는 release-versions 단계가 없는 release.yml을 쓰고, AGENTS.md는 make release-versions를 지목하지 않으므로 version 규칙은 review의 판단이며 release workflow 규칙은 version check를 나열하지 않는다. 원인: kit K812가 release-versions를 삭제하고, make rules-check가 그것을 지목하는 규칙을 보고한다 | .github/workflows/release.yml, AGENTS.md | `make rules-check kit-check` | [ ] |
