@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- Python client는 dbspec.md DBS-104에 따라 TypeScript처럼 manifest의 model을 process마다 한 번 만든다: manifest hash를 key로 하고 text로 확인하는 registry가 이미 만든 model을 돌려주므로 register_model, Db.register, SchemaUtils.register, connect_schema는 schema를 한 번 parse하고, RuntimeModel.load_set은 같은 text에 대해 이미 parse한 document를 돌려준다. (T256)
+
 - interfaces.md INT-72에 따라 시작이 실패한 Python transaction은 pool connection을 돌려준다: 실패한 BEGIN은 connection을 닫고, BEGIN 뒤 시작 단계의 실패는 transaction을 rollback하고 connection을 돌려주므로 Db.close()가 그것을 닫고 SQLite lock이 garbage collector가 돌 때까지 잡혀 있지 않다. (T255)
 
 - codec.md COD-43에 따라 모든 구현에서 codec column은 모든 단계가 host stage일 때에만 equality로 비교한다: hex와 ip는 저장된 셀을, aes 단계는 위치와 관계없이 값의 HMAC인 blind index를 비교하므로 hex aes의 eq가 Go, PHP, PHP extension에서도 compile되고, 저장 형태가 술어 값이 아닌 텍스트에서 나오는 ordered_json aes의 eq는 Rust에서도 OPERATOR_NOT_ALLOWED이다. (T254)

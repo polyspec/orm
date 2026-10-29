@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The Python client builds the model of a manifest once per process, by dbspec.md DBS-104 as TypeScript does: a registry keyed by the manifest hash and checked against the texts returns the model already built, so register_model, Db.register, SchemaUtils.register and connect_schema parse a schema once, and RuntimeModel.load_set returns the documents already parsed for the same texts. (T256)
+
 - A Python transaction whose start fails gives its pooled connection back, by interfaces.md INT-72: a failed BEGIN closes the connection, and a failed start step after BEGIN rolls the transaction back and returns the connection, so Db.close() closes it and a SQLite lock is not held until the garbage collector runs. (T255)
 
 - A codec column compares by equality in every implementation exactly when every stage is a host stage, by codec.md COD-43: hex and ip compare the stored cell, and an aes stage compares the blind index, the HMAC of the value whatever its position, so eq on hex aes compiles in Go, PHP and the PHP extension too, and eq on ordered_json aes, whose stored form comes from text a predicate value is not, is OPERATOR_NOT_ALLOWED in Rust too. (T254)

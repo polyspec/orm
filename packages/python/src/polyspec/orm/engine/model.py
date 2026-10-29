@@ -103,10 +103,7 @@ class RuntimeModel:
         text, then those of the external text marked external, as PHP's RuntimeModel::loadSet
         returns them. A text that does not start with a dbspec header, or a document with a
         diagnostic, is SCHEMA_INVALID."""
-        return parse_document_set(
-            split_documents(manifest_text),
-            [] if external_text == "" else split_documents(external_text),
-        )
+        return list(_parsed(manifest_text, external_text))
 
 
 def field_of(e: Entity, name: str) -> Field | None:
@@ -293,18 +290,43 @@ def parse_document_set(texts, external_texts=()) -> list:
     return documents
 
 
+# A process parses the texts of a document set once and builds the model of a manifest once (docs/spec/dbspec.md
+# DBS-104). The documents and the models are frozen, so every caller shares them. Two threads that miss together
+# build the same value, and either one is kept.
+_documents: dict[tuple[str, str], tuple] = {}
+_models: dict[str, RuntimeModel] = {}
+
+
+def _parsed(manifest_text: str, external_text: str) -> tuple:
+    """The parsed documents of the manifest text and the external text, parsed on their first use."""
+    key = (manifest_text, external_text)
+    documents = _documents.get(key)
+    if documents is None:
+        documents = tuple(
+            parse_document_set(
+                split_documents(manifest_text),
+                [] if external_text == "" else split_documents(external_text),
+            )
+        )
+        _documents[key] = documents
+    return documents
+
+
 def model_of_manifest(
     manifest_text: str, manifest_hash: str, external_text: str = ""
 ) -> RuntimeModel:
     """Builds the runtime model of the manifest text and of the text of the tables that its documents use from external documents,
     and checks that those texts match the documents' manifest text and external text (SCHEMA_INVALID
-    otherwise), and that manifestHash matches its hash (SCHEMA_HASH_MISMATCH otherwise)."""
-    model = model_of_documents(
-        parse_document_set(
-            split_documents(manifest_text),
-            [] if external_text == "" else split_documents(external_text),
-        )
-    )
+    otherwise), and that manifestHash matches its hash (SCHEMA_HASH_MISMATCH otherwise). The model of a hash already
+    built from the same texts is returned as it is."""
+    built = _models.get(manifest_hash)
+    if (
+        built is not None
+        and built.manifest_text == manifest_text
+        and built.external_text == external_text
+    ):
+        return built
+    model = model_of_documents(list(_parsed(manifest_text, external_text)))
     if model.manifest_text != manifest_text:
         raise OrmError(
             codes.SCHEMA_INVALID,
@@ -321,4 +343,5 @@ def model_of_manifest(
             f"generated code declares manifest {manifest_hash}, its manifest text "
             f"hashes to {model.manifest_hash}: generate the models again",
         )
+    _models[manifest_hash] = model
     return model
