@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 29b81f43799868ad75305c5a7cad5fe8366e87d99dc22f938999b987e0b2b906 -->
+<!-- source-sha256: e07cbc444553522502165de8ecc4bf44ab3c6f2fd059b170dab11fd1104edb7f -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -354,3 +354,4 @@
 | KSTD-5-95 | 독립적인 클라이언트 언어 검사를 CI job에서 병렬 실행한다 | .github/workflows/ci.yml Makefile contracts/check-inputs.json scripts/features/coverage.mts scripts/features/coverage.test.mts scripts/repo/check.test.mts scripts/check/run.test.mts | `make repo-check/unit`; `make runner-check`; `node --test tests/interfaces/check/ci.test.mts` | [o] |
 | KSTD-5-96 | 독립 CI 작업별 필요한 도구체인과 잠긴 의존성만 설치 | .github/workflows/ci.yml scripts/check/ci-setup.mts scripts/check/run.test.mts scripts/repo/check.test.mts | `node --test --test-name-pattern="CI group\|setup needs\|setup steps" scripts/check/run.test.mts scripts/repo/check.test.mts` | [o] |
 | KSTD-5-97 | orm-install-php는 root Composer lock을 kit의 composer-install로 설치하므로, 받은 package가 offline worktree-setup이 읽는 Composer cache를 채운다. 원인: recipe가 composer shim을 직접 실행해 var/tools의 Composer home이 아닌 ~/Library/Caches/composer를 채웠고, worktree-setup은 symfony/polyfill-ctype, symfony/yaml, purrphp/pure-collection, purrphp/yaml을 찾지 못했다 | Makefile | `make worktree-setup NAME=composer ID=KSTD-5-97 TYPE=fix` | [o] |
+| KSTD-5-98 | orm-install-go는 go.work workspace의 module을 go mod download all로 받으므로, release-assets가 polyspec/orm-gen을 포함한 archive를 만든다. 원인: Go module이 packages/go로 옮겨진 뒤(T137-1-5) root에는 go.work만 있고, 인자 없는 go mod download는 거기서 거부된다(no modules specified) | Makefile | `make orm-install-go` | [ ] |
