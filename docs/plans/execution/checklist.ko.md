@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 3a5a8dea8d8477854010efa23e9f982d803ea03ba44d35bf8b9f911487d02b42 -->
+<!-- source-sha256: 5241ff690e69e50ef575b3ec580b8a4723d348ff96c1893ce1342dd5ea86fdae -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1327,3 +1327,4 @@
 | T240 | 설치된 로컬 Kit package에서 추적하는 Kit 사본을 갱신하고 일반 파일로 유지한다 | .claude/settings.json, .editorconfig, PRINCIPLES.md, PRINCIPLES.ko.md, .github/workflows/release.yml, .github/workflows/gates.yml | `make kit-check`; confirm the six tracked copies are regular files matching the installed local Kit source. | [o] |
 | T241 | 0.0.19를 release한다. 원인: kit 0.0.66 채택(KSTD-5-101), dependency target 제거(KSTD-5-100), lease 전용 release build(KSTD-5-98), 선언된 wheel backend(KSTD-5-99)가 main에 있다. 인수: version-bump commit이 모든 manifest를 0.0.19로 맞추고 Unreleased를 0.0.19로 옮긴다. make release-candidate-assets가 orm-gen을 포함한 여덟 archive를 만든다. tag는 owner를 기다린다 | VERSION, every manifest and lock that carries the version, CHANGELOG.md, CHANGELOG.ko.md | `make release-versions TAG=v0.0.19` | [ ] |
 | T242 | PLN-5 test는 docs/spec/plan.md의 PLN-5에서 제품 version을 읽고 VERSION과 모든 선언이 그와 같기를 요구하므로, release commit은 test를 고치지 않는다. 원인: scripts/version/check.test.mts가 version을 literal로 적어 0.0.19 bump commit이 그것을 바꿔야 했고, kit K449는 release commit의 test를 거부한다 | scripts/version/check.test.mts, config/parity.json | `node --test scripts/version/check.test.mts` | [ ] |
+| T243 | config/parity.json이 packages/rust/orm/tests/unit/temporal_args.rs를 선언하므로 make parity-declarations-check가 main에서 통과한다. 원인: main 8685a2758에서 이 검사는 그 파일에 R5 undeclared-test를 보고한다. 4dedfb2d6(KSTD-5-94)이 owner target rust-temporal-args-check와 함께 파일을 추가했지만 parity 선언은 빠졌다 | config/parity.json | `make parity-declarations-check` | [ ] |
