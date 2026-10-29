@@ -72,8 +72,8 @@ vendors; this file states only the rules of orm.
 - Refines P24: `docs/plans/execution/checklist.md` is the only task list. Its Korean pair has the same item IDs and states. Run `make docs-check` before changing an item state. The checklist holds only items: a state marker appears only as the state at the start of an item or sub-item, never in a legend, a heading or item text, and `make docs-check` fails on any other with its file, line and column.
   Enforced by: `make docs-check`
 - Refines P27: Marking an item `[o]` also writes its changelog entry under `## Unreleased` at the top of
-  CHANGELOG.md and CHANGELOG.ko.md in the same commit (`make version-check`).
-  Enforced by: `make version-check`
+  CHANGELOG.md and CHANGELOG.ko.md in the same commit.
+  Enforced by: `make item-state`
 - Own: A received instruction is triaged first: finish the item in progress unless the instruction is explicit and urgent, then place the new work by priority before starting it.
   Enforced by: none, the order of the work is a judgement of the agent
 - Own: The repository's full test suite runs on GitHub CI after a push to `main` and on a manual run.
@@ -245,7 +245,7 @@ vendors; this file states only the rules of orm.
 - Own: A path is resolved declaratively, by a name in a tracked file, or by discovery, by a discovery rule that a document or a script states, never as a relative path.
   Enforced by: none, no check reads how the code resolves its paths
 - Own: Develop one `0.0.18` version. A public client accepts one DSN URI, whose scheme selects the database, without a separate driver argument. At runtime orm is only its client library; planning and execution run in the process that calls it.
-  Enforced by: `make version-check`
+  Enforced by: `make release-versions`
 - Own: Each dbspec parser rejects an `identity` column unless it is the only primary key column and its type is `i64`. Every dbspec implementation (Go, PHP, the PHP-extension, TypeScript, Python, and Rust) executes the same accepted and rejected schema cases.
   Enforced by: `make conformance-check`
 - Own: SQLite live import maps only `INTEGER PRIMARY KEY AUTOINCREMENT` to the signed `i64` automatic key; an ordinary `INTEGER` remains `i32`.
@@ -282,12 +282,12 @@ vendors; this file states only the rules of orm.
 
 - Own: A release starts with a version-bump commit `chore(release): Release X.Y.Z (#<checklist ID>)` on
   `main`, after the CI of the commit that carries the work succeeded: it sets VERSION and every
-  package file that `config/release.json` names in `manifests` to X.Y.Z (`make version-check`),
+  package file that `config/release.json` names in `manifests` to X.Y.Z,
   re-locks each such composer.json that has a `composer.lock` (`packages/php-ext`) with
   `composer update --lock` in its directory, since the content-hash of the lock covers `version`,
   and renames `## Unreleased` to `## X.Y.Z` in CHANGELOG.md and CHANGELOG.ko.md, below a new empty
   `## Unreleased`.
-  Enforced by: `make version-check`
+  Enforced by: `make release-versions`
 - Own: After the CI of that commit succeeded (`push-gate` and `ci-passed`), the maintainer tags it
   `vX.Y.Z` and pushes it with the Go module tag `packages/go/vX.Y.Z` at the same commit, which
   releases the Go module `github.com/polyspec/orm/packages/go`. Only the maintainer creates, moves or pushes a tag.

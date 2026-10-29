@@ -417,7 +417,7 @@ caseTest('the summary step reports a runner that did not finish, with the partia
 // and it is confirmed. The runner runs targets with `make -k`, so later parts run even when an earlier part fails. A setup part (lease, build)
 // a part that depends on it has the setup part as its prerequisite.
 const PARTS = {
-  'version-check': ['unit', 'run'], 'repo-check': ['unit', 'run'],
+  'repo-check': ['unit', 'run'],
   'testcase-check': ['go', 'node', 'runners', 'rust'], 'ts-check': ['hold', 'types', 'test'],
   'rust-check': ['check', 'clippy', 'clippy-live-db', 'clippy-test-faults'], 'rust-fmt-check': ['clients', 'bench', 'interfaces'],
   'fuzz-check': ['engine-ir', 'clients-go-orm'], 'dialect-facts-check': ['probes', 'facts'], 'feature-unit-check': ['docs', 'coverage', 'owners', 'select'],
@@ -438,14 +438,14 @@ caseTest('a target of independent commands runs each as a part of its own', COMP
   assert.deepEqual(problems, []);
 });
 
-// The make -k case puts the real definition of version-check into a temporary Makefile, with $(NODE) pointing at a node that fails in the first part, and runs the runner's
-// command `make -k version-check`. The second part runs, and make ends with a failure.
+// The make -k case puts the real definition of repo-check into a temporary Makefile, with $(NODE) pointing at a node that fails in the first part, and runs the runner's
+// command `make -k repo-check`. The second part runs, and make ends with a failure.
 caseTest('the parts of a target after a failed part still run under make -k', PROCESS, async () => {
   const base = realpathSync(mkdtempSync(join(tmpdir(), 'parts-')));
   try {
     const lines = readFileSync(resolve(repo, 'Makefile'), 'utf8').split('\n');
     const definition = [];
-    for (const target of ['version-check', 'version-check/unit', 'version-check/run']) {
+    for (const target of ['repo-check', 'repo-check/unit', 'repo-check/run']) {
       const at = lines.findIndex(line => line.startsWith(`${target}:`));
       if (at < 0) continue;
       definition.push(lines[at], ...recipe(target).map(line => `\t${line}`));
@@ -462,21 +462,21 @@ caseTest('the parts of a target after a failed part still run under make -k', PR
     writeFileSync(join(base, 'Makefile'), `NODE := ${join(base, 'bin/node')}\nKIT := ${kitDirectory}\nKIT_EXT := ${kitExtension}\n${runTests}\n${definition.join('\n')}\n`);
     mkdirSync(join(base, 'bin'));
     const log = join(base, 'ran.log');
-    writeFileSync(join(base, 'bin/node'), `#!/bin/sh\necho "$*" >> ${log}\ncase "$*" in *check.test.mts*) echo 'FAIL version unit: expected 0, actual 1'; exit 1;; esac\n`, { mode: 0o755 });
+    writeFileSync(join(base, 'bin/node'), `#!/bin/sh\necho "$*" >> ${log}\ncase "$*" in *check.test.mts*) echo 'FAIL repo unit: expected 0, actual 1'; exit 1;; esac\n`, { mode: 0o755 });
     const { command } = await import('./run.mts');
     const lines2 = [];
     const previous = process.env.PATH;
     process.env.PATH = `${join(base, 'bin')}:${previous}`;
     let failure = null;
     try {
-      await command(base)('make', ['--no-print-directory', '-k', 'version-check'], (line: string) => lines2.push(line));
+      await command(base)('make', ['--no-print-directory', '-k', 'repo-check'], (line: string) => lines2.push(line));
     } catch (error) {
       failure = error;
     } finally {
       process.env.PATH = previous;
     }
-    assert.match(errorMessage(failure), /make --no-print-directory -k version-check exited with 2/);
-    assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), [kitRunTests + ' node -- scripts/version/check.test.mts', 'scripts/version/check.mts']);
+    assert.match(errorMessage(failure), /make --no-print-directory -k repo-check exited with 2/);
+    assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), [kitRunTests + ' node -- scripts/repo/check.test.mts scripts/repo/python-venv.test.mts scripts/repo/worktree-stop.test.mts', 'scripts/repo/check.mts']);
   } finally {
     rmSync(base, { recursive: true, force: true });
   }

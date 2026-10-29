@@ -256,23 +256,6 @@
         "**/*.yaml"
       ]
     },
-    "version-check": {
-      "scope": "owner",
-      "needs": [],
-      "inputs": [
-        "VERSION",
-        "scripts/version/**",
-        "**/Cargo.toml",
-        "**/Cargo.lock",
-        "packages/php/composer.json",
-        "packages/php-gen/composer.json",
-        "packages/ts/package.json",
-        "package-lock.json",
-        "packages/php-ext/composer.json",
-        "contracts/features.json",
-        "**/*.md"
-      ]
-    },
     "testcase-check": {
       "scope": "owner",
       "needs": [

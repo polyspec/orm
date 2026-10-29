@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- orm has no version check: scripts/version/check.mts, its test, the version-check target and PLN-5 are deleted; at release, kit make release-versions requires the tag version in every manifest. (T242)
+
 - config/parity.json declares the Rust temporal argument test packages/rust/orm/tests/unit/temporal_args.rs, so make parity-declarations-check passes. (T243)
 
 - orm adopts kit 0.0.66: the pin by its release asset URL, its lock and the synced kit files, so the gates workflow validates ci.json against a schema that declares runner. (KSTD-5-101)

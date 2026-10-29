@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: cfac39e2a719e3e026cbd8e2c28c4641e332497b87cd8c3bb2db2463a756916c -->
+<!-- source-sha256: 3d03d77270a58341ec91271d212882729b443580aa77cd58f359b4dd1625bfd2 -->
 # 변경 이력
 
 ## Unreleased
+
+- orm에는 version 검사가 없습니다: scripts/version/check.mts, 그 test, version-check target, PLN-5를 삭제했고, release 때는 kit make release-versions가 모든 manifest에 tag version을 요구합니다. (T242)
 
 - config/parity.json이 Rust temporal argument test packages/rust/orm/tests/unit/temporal_args.rs를 선언하므로 make parity-declarations-check가 통과합니다. (T243)
 

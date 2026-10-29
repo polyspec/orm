@@ -2019,18 +2019,6 @@
           ]
         },
         {
-          "id": "pln-5-current-product-version",
-          "requirements": [
-            "PLN-5"
-          ],
-          "bindings": [
-            {
-              "test": "scripts/version/check.test.mts",
-              "id": "PLN-5 pins the product version to 0.0.18"
-            }
-          ]
-        },
-        {
           "id": "fcv-1-feature-coverage-owners-and-dependents",
           "requirements": [
             "FCV-1"

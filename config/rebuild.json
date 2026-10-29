@@ -330,10 +330,6 @@
       "kind": "policy",
       "reason": "the physical rule of this repository that selected and unselected generated PHP fields leave the same database state twice"
     },
-    "scripts/version/check.mts": {
-      "kind": "policy",
-      "reason": "the rule of this repository that every version declaration matches VERSION; it reads them with semver"
-    },
     "examples/complex/php/complex_functions.php": {
       "kind": "policy",
       "reason": "the functions of the complex statement example of the PHP client of this repository, which its main.php requires; it shows the product and rebuilds no tool"

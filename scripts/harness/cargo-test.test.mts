@@ -114,7 +114,7 @@ caseTest('cargo reuses what another checkout built into a shared target, and a t
 // states the reason, and accepts a directory inside this checkout.
 caseTest('make refuses a Rust target directory outside its checkout', PROCESS, () => {
   const repo = fileURLToPath(new URL('../..', import.meta.url));
-  const make = (target?: string) => spawnSync('make', ['-n', '--no-print-directory', 'version-check', ...(target ? [`CARGO_TARGET_DIR=${target}`] : [])], { cwd: repo, encoding: 'utf8', env: isolatedEnvironment() });
+  const make = (target?: string) => spawnSync('make', ['-n', '--no-print-directory', 'repo-check', ...(target ? [`CARGO_TARGET_DIR=${target}`] : [])], { cwd: repo, encoding: 'utf8', env: isolatedEnvironment() });
   const other = make(join(tmpdir(), 'another-checkout', 'packages', 'rust', 'target'));
   assert.notEqual(other.status, 0, 'make ran with the target directory of another checkout');
   assert.match(other.stderr, /CARGO_TARGET_DIR=\S+ is outside this checkout \S+; each checkout builds Rust into its own target directory/);
