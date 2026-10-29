@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- config/parity.json declares the Rust temporal argument test packages/rust/orm/tests/unit/temporal_args.rs, so make parity-declarations-check passes. (T243)
+
 - orm adopts kit 0.0.66: the pin by its release asset URL, its lock and the synced kit files, so the gates workflow validates ci.json against a schema that declares runner. (KSTD-5-101)
 - orm no longer runs or names dependency-policy-check, dependency-policy-mutation-check or dependency-review: CHECK_TARGETS, the CI groups, contracts/check-inputs.json and AGENTS drop them, and config/dependency-review.json is deleted, because the package managers verify their locks and report outdated and vulnerable dependencies. (KSTD-5-100)
 - The wheel build backend has one declaration: packages/python/pyproject.toml build-system.requires names setuptools 84.0.0, the config/toolchain.json pythonBackend that the release builds with. Red: `make release-candidate-assets` reported that the two disagree. (KSTD-5-99)

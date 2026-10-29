@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2203b7ad9b232b01612366ae4b570e99a7dd9e782c26272d21b4488e7dd7dbfb -->
+<!-- source-sha256: cfac39e2a719e3e026cbd8e2c28c4641e332497b87cd8c3bb2db2463a756916c -->
 # 변경 이력
 
 ## Unreleased
+
+- config/parity.json이 Rust temporal argument test packages/rust/orm/tests/unit/temporal_args.rs를 선언하므로 make parity-declarations-check가 통과합니다. (T243)
 
 - orm은 kit 0.0.66을 채택합니다: release asset URL로 지정한 pin, 그 lock, 동기화된 kit 파일을 받아, gates workflow가 runner를 선언하는 schema로 ci.json을 검증합니다. (KSTD-5-101)
 - orm은 dependency-policy-check, dependency-policy-mutation-check, dependency-review를 더 이상 실행하거나 언급하지 않습니다: CHECK_TARGETS, CI group, contracts/check-inputs.json, AGENTS에서 빠지고 config/dependency-review.json은 삭제됩니다. package manager가 lock을 검증하고 오래되거나 취약한 dependency를 보고하기 때문입니다. (KSTD-5-100)

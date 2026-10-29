@@ -1043,6 +1043,10 @@
           "reason": "test: asserts that Markdown output assembly detects a deliberately mutated, impossible post-validation column reference as INTERNAL; it is a defensive invariant check, not a valid public request or cross-client behavior (K313)"
         },
         {
+          "glob": "packages/rust/orm/tests/unit/temporal_args.rs",
+          "reason": "test: a unit test of the crate-private argument conversion of args.rs, reached through super, that turns chrono dates and datetimes into canonical text before binding; the canonical text is the contract of the codec and precision cases (K313)"
+        },
+        {
           "glob": "benchmarks/rust/src/native.rs",
           "reason": "harness: verifies that the standalone sqlx baseline encrypts its benchmark insert value with the documented fixture key; the assertion validates benchmark workload construction, not a Rust ORM behavior"
         },
