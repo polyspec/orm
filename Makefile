@@ -2184,6 +2184,9 @@ $(PARITY_GATE_TARGETS): export POLYSPEC_ORM_EXTENSION = $(PARITY_RUN_DIR)/polysp
 $(PARITY_GATE_TARGETS): export ORM_SEND_SQLITE_DSN = sqlite://$(PARITY_RUN_DIR)/send-savepoint.sqlite
 # ORM_CHECKOUT is the checkout root: a binding command names it with ${ORM_CHECKOUT}, since kit forbids .. in a command word.
 $(PARITY_GATE_TARGETS): export ORM_CHECKOUT = $(CURDIR)
+# ORM_NODE_REPORTER is the node:test reporter of the kit that this make includes: a node binding command names it with
+# ${ORM_NODE_REPORTER}, which is the linked source or the dist of a packed kit, as KIT and KIT_EXT of kit-bootstrap.mk select.
+$(PARITY_GATE_TARGETS): export ORM_NODE_REPORTER = $(KIT)/parity-node-reporter.$(KIT_EXT)
 $(PARITY_GATE_TARGETS): export ORM_PROGRAM_CONFORMANCE = $(PARITY_RUN_DIR)/target/debug/conformance
 
 # CI provides the declared group needs as booleans; static checks need every tool for toolchain-check,

@@ -27763,7 +27763,7 @@
             "node",
             "--conditions=orm-test",
             "--test",
-            "--test-reporter=${ORM_CHECKOUT}/node_modules/@polyspec/kit/dist/parity-node-reporter.mjs",
+            "--test-reporter=${ORM_NODE_REPORTER}",
             "tests/coverage_complex_query.mjs"
           ]
         },
@@ -30202,7 +30202,7 @@
             "node",
             "--conditions=orm-test",
             "--test",
-            "--test-reporter=${ORM_CHECKOUT}/node_modules/@polyspec/kit/dist/parity-node-reporter.mjs",
+            "--test-reporter=${ORM_NODE_REPORTER}",
             "tests/coverage_performance_gate_mysql.mjs"
           ]
         },
@@ -30273,7 +30273,7 @@
             "node",
             "--conditions=orm-test",
             "--test",
-            "--test-reporter=${ORM_CHECKOUT}/node_modules/@polyspec/kit/dist/parity-node-reporter.mjs",
+            "--test-reporter=${ORM_NODE_REPORTER}",
             "tests/coverage_performance_gate_postgres.mjs"
           ]
         },

@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 843194a46b4513f08139ac55d0e5931970736548426276bbb1667d7cefae9fdb -->
+<!-- source-sha256: 97b5ea041e7a805b13ea63481508a166d1ca20fe779401e0b4920fcfa28ccd4d -->
 # 변경 이력
 
 ## Unreleased
+
+- config/parity.json의 TypeScript binding command는 kit dist의 로컬 build가 아니라 make가 include한 kit의 node:test reporter(${ORM_NODE_REPORTER})를 실행합니다. (T248)
 
 - 추적되는 모든 lock file이 다시 소유자를 가집니다: interface TypeScript의 lock은 interface-typescript-extractor-check의 input이고, release consumer lock은 scope를 선언합니다. (T247)
 - CI tool 선택과 orm-install-python의 repository test는 호출된 install-tools target을 맞춥니다. kit K762가 모든 재귀 make에 KIT와 KIT_EXT를 넘기기 때문입니다. (T245)
