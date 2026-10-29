@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f5ee9668fc72470ca9436eb51ab46ea6be07b4dcf2495797d2caa1ef8ceac6b9 -->
+<!-- source-sha256: 1b1add57f5d580a29c875796a102c114d83b156456ce18caa7c572b8ae18df7e -->
 # 변경 이력
 
 ## Unreleased
+
+- orm은 dependency-policy-check, dependency-policy-mutation-check, dependency-review를 더 이상 실행하거나 언급하지 않습니다: CHECK_TARGETS, CI group, contracts/check-inputs.json, AGENTS에서 빠지고 config/dependency-review.json은 삭제됩니다. package manager가 lock을 검증하고 오래되거나 취약한 dependency를 보고하기 때문입니다. (KSTD-5-100)
 
 - wheel build backend의 선언은 하나입니다: packages/python/pyproject.toml의 build-system.requires는 release가 build에 쓰는 config/toolchain.json pythonBackend인 setuptools 84.0.0을 지정합니다. Red: `make release-candidate-assets`가 둘이 다르다고 보고했습니다. (KSTD-5-99)
 

@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- orm no longer runs or names dependency-policy-check, dependency-policy-mutation-check or dependency-review: CHECK_TARGETS, the CI groups, contracts/check-inputs.json and AGENTS drop them, and config/dependency-review.json is deleted, because the package managers verify their locks and report outdated and vulnerable dependencies. (KSTD-5-100)
+
 - The wheel build backend has one declaration: packages/python/pyproject.toml build-system.requires names setuptools 84.0.0, the config/toolchain.json pythonBackend that the release builds with. Red: `make release-candidate-assets` reported that the two disagree. (KSTD-5-99)
 
 - `make release-assets` and `make release-candidate-assets` build on the Go modules of the lease tool alone, as before the kit standard, so their Go prerequisites build in the environment of the kit release targets. Red: `make release-assets TAG=v0.0.18` stopped at `go mod download` (no modules specified). (KSTD-5-98)
