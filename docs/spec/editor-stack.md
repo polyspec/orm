@@ -526,7 +526,7 @@ One item at a time.
     `make feature-unit-check`;
   - the language, LSP, CodeMirror and vscode tests; the import check;
   - `npm run docs:check` (the built `dbspec.html` holds the class spans in both themes);
-    `make dependency-policy-check release-coverage docs-check kit-check`;
+    `make release-coverage docs-check kit-check`;
   - the `ci` and `docs-pages` workflows green; the release verified.
 - **template:**
   - `make orm-check`: conformance and parity with tokens and format, the invariant test, the

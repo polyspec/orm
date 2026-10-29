@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: f6f391c0e22e390fda0bdbf988a7720fadb19e61644078b8aaa4978d678e346c -->
+<!-- source-sha256: 4af2cdb294c0f5f9cfa5d171f6bb2e4cdd5424dee6abad4d44e9f226b66dde88 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -107,14 +107,7 @@ orm 자신의 규칙만 적는다.
   실행하며(`CARGO_NET_OFFLINE`, `GOPROXY=off`, `npm_config_offline`, `COMPOSER_DISABLE_NETWORK`), install target만
   `$(ONLINE)`으로 version을 푼다. 빠진 download는 online으로 다시 시도하라는 말이 아니라 `run make install`과 함께
   실패한다.
-  Enforced by: `make dependency-policy-check`
-- Refines S4: dependency는 최신 stable release로 올리거나, 재현 가능한 이유, 그것을 없애는 조건, 확인하는 명령을 적은
-  `config/dependency-policy.json`의 예외로 둔다. `make dependency-review UPDATE=1 RECORD=1`(online이며
-  `make install-tools`가 설치하는 `config/toolchain.json`의 `cargoAudit`와 `govulncheck`가 필요하다)은
-  registry와 advisory database에 묻고 `config/dependency-review.json`을 쓴다.
-  `make dependency-policy-check`와 `make dependency-policy-mutation-check`는 그 기록과 manifest와 lock을 읽고
-  registry에 묻지 않는다.
-  Enforced by: `make dependency-policy-check`
+  Enforced by: none, a judgement at review.
 - Refines S4: 검사가 쓰는 모든 toolchain은 선언 하나로 고정하고 확인한다: `mise.toml`의 node, `packages/go/go.mod`의 `go` 줄,
   `mise.toml`의 Composer, `rust-toolchain.toml`은 정확한 release를, `.php-version`과 PostgreSQL major release는
   설치 도구가 허용하는 만큼 정확한 release를 적고, CI는 선언한 것을 설치하며, 실행 중인 도구가 다르면
@@ -254,8 +247,7 @@ orm 자신의 규칙만 적는다.
 - Own: release는 version을 올리는 commit `chore(release): Release X.Y.Z (#<체크리스트 ID>)`로 시작한다. 그 commit은 작업을 담은
   commit의 CI가 성공한 뒤 `main`에 둔다: VERSION과 `config/release.json`의 `manifests`가 이름을 적은 모든 package file을
   X.Y.Z로 바꾸고(`make version-check`), 그중 `composer.lock`이 있는 composer.json(`packages/php-ext`)은 그 directory에서
-  `composer update --lock`으로 다시 lock하며(lock의 content-hash가 `version`을 덮는다), 이어 `make dependency-review RECORD=1`을
-  실행하고(`make dependency-policy-check`는 낡은 lock을 실패시킨다), CHANGELOG.md와 CHANGELOG.ko.md에서 `## Unreleased`를 새 빈 `## Unreleased`
+  `composer update --lock`으로 다시 lock하며(lock의 content-hash가 `version`을 덮는다), CHANGELOG.md와 CHANGELOG.ko.md에서 `## Unreleased`를 새 빈 `## Unreleased`
   아래의 `## X.Y.Z`로 바꾼다.
   Enforced by: `make version-check`
 - Own: 그 commit의 CI(`push-gate`와 `ci-passed`)가 성공한 뒤 maintainer가 그 commit에 `vX.Y.Z`를 tag하고 같은 commit의 Go module

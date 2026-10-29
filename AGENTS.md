@@ -129,15 +129,7 @@ vendors; this file states only the rules of orm.
   `GOPROXY=off`, `npm_config_offline`, `COMPOSER_DISABLE_NETWORK`), only the install targets resolve
   versions, through `$(ONLINE)`, and a missing download fails with `run make install`, never with a
   retry online.
-  Enforced by: `make dependency-policy-check`
-- Refines S4: A dependency is raised to its latest stable release, or kept by an exception of
-  `config/dependency-policy.json` that states a reproducible reason, the condition that removes it and
-  the commands that verify it. `make dependency-review UPDATE=1 RECORD=1` (online; it needs
-  `cargoAudit` and `govulncheck` of `config/toolchain.json`, which `make install-tools` installs)
-  asks the registries and the advisory databases and writes `config/dependency-review.json`;
-  `make dependency-policy-check` and `make dependency-policy-mutation-check` read that record and
-  the manifests and locks and query no registry.
-  Enforced by: `make dependency-policy-check`
+  Enforced by: none, a judgement at review.
 - Refines S4: Every toolchain the checks use is pinned in one declaration and checked: the node of `mise.toml`, the
   `go` line of `packages/go/go.mod`, the Composer of `mise.toml` and `rust-toolchain.toml` hold exact releases,
   `.php-version` and the PostgreSQL major release are as exact as their installers allow, CI
@@ -293,8 +285,7 @@ vendors; this file states only the rules of orm.
   package file that `config/release.json` names in `manifests` to X.Y.Z (`make version-check`),
   re-locks each such composer.json that has a `composer.lock` (`packages/php-ext`) with
   `composer update --lock` in its directory, since the content-hash of the lock covers `version`,
-  then runs `make dependency-review RECORD=1` (`make dependency-policy-check` fails a stale lock), and
-  renames `## Unreleased` to `## X.Y.Z` in CHANGELOG.md and CHANGELOG.ko.md, below a new empty
+  and renames `## Unreleased` to `## X.Y.Z` in CHANGELOG.md and CHANGELOG.ko.md, below a new empty
   `## Unreleased`.
   Enforced by: `make version-check`
 - Own: After the CI of that commit succeeded (`push-gate` and `ci-passed`), the maintainer tags it

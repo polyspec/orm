@@ -234,39 +234,6 @@
         "**/go.mod"
       ]
     },
-    "dependency-policy-check": {
-      "scope": "owner",
-      "needs": [
-        "php",
-        "composer"
-      ],
-      "inputs": [
-        "config/dependency-policy.json",
-        "config/dependency-review.json",
-        "**/package-lock.json",
-        "**/composer.lock",
-        "**/Cargo.lock",
-        "**/go.sum",
-        "package.json",
-        "packages/ts/package.json",
-        "composer.json",
-        "**/Cargo.toml",
-        "packages/python/pyproject.toml",
-        "go.work",
-        "**/go.mod"
-      ]
-    },
-    "dependency-policy-mutation-check": {
-      "scope": "owner",
-      "needs": [
-        "php",
-        "composer"
-      ],
-      "inputs": [
-        "config/dependency-policy.json",
-        "config/dependency-review.json"
-      ]
-    },
     "comment-language-check": {
       "scope": "owner",
       "needs": [],

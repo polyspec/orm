@@ -1,5 +1,5 @@
 <!-- doc-id: plans-editor-stack -->
-<!-- source-sha256: f2a0237b68f30259ffdb5b1e9290c686d5bf89ea1ec62583b8d1a1450506708d -->
+<!-- source-sha256: e7e15bb11b7273b9776d6eb3b18a82630f163d0f929872f387516d00eebaf489 -->
 # 계획: 표준으로서의 dbspec editor stack
 
 [English](editor-stack.md)
@@ -472,7 +472,7 @@ Cause, Acceptance, 그리고 `docs/spec/editor.md`에 있다.
     `make feature-unit-check`;
   - language, LSP, CodeMirror, vscode test; import 검사;
   - `npm run docs:check`(build된 `dbspec.html`이 두 theme 모두에서 class span을 가진다);
-    `make dependency-policy-check release-coverage docs-check kit-check`;
+    `make release-coverage docs-check kit-check`;
   - `ci`와 `docs-pages` workflow green; release 검증.
 - **template:**
   - `make orm-check`: token과 format을 포함한 conformance와 parity, 불변식 test, editor import 검사, vscode

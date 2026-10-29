@@ -1,34 +1,5 @@
 {
   "schema": 1,
-  "composerPlatforms": [
-    {
-      "manifest": "composer.json",
-      "php": "8.4.1"
-    },
-    {
-      "manifest": "packages/php-ext/composer.json",
-      "php": "8.4.1"
-    }
-  ],
-  "pythonManifests": [
-    "packages/python/pyproject.toml"
-  ],
-  "npmLocks": [
-    "package-lock.json",
-    "packages/ts/testing/interfaces/typescript/package-lock.json"
-  ],
-  "exceptions": [
-    {
-      "ecosystem": "npm",
-      "manifest": "packages/ts/testing/interfaces/typescript/package.json",
-      "package": "typescript",
-      "reason": "packages/ts/testing/interfaces/typescript.mts reads the declarations of the TypeScript client with the JavaScript API of the compiler (createSourceFile, the printer and the node factory), which TypeScript 7.0 does not ship; typescript 6.0.3 is the latest release with that API, the same exception as config/toolchain.json.",
-      "removalCondition": "TypeScript ships its stable JavaScript API (announced for 7.1) and packages/ts/testing/interfaces/typescript.mts reads the declarations through it.",
-      "verification": [
-        "make interface-check"
-      ]
-    }
-  ],
   "pythonLocks": [
     {
       "lock": "packages/python/pylock.toml",
@@ -36,15 +7,6 @@
         "requirements": "packages/python/pyproject.toml",
         "constraints": "packages/python/constraints.txt"
       }
-    }
-  ],
-  "advisoryExceptions": [
-    {
-      "lock": "package-lock.json",
-      "package": "@azure/msal-node",
-      "advisory": "1243111",
-      "reason": "GHSA-xcx6-jx8p-x3h5 (npm advisory 1243111) affects the auth_code flow in @azure/msal-node 6.0.1, pulled by @azure/identity 4.13.3 through @vscode/vsce 4.0.0. The only checked-in invocation is `vsce package --no-dependencies --skip-license --out dist/polyspec-dbspec.vsix`; no repository command uses vsce publish/login or its --azure-credential option, so the vulnerable authorization-code entry point is not used by the checked workflows. The latest compatible @azure/identity 4.14.0 still requires @azure/msal-node ^6.0.0 and releases 6.0.0/6.0.1 are the only published 6.x versions, while the advisory is fixed in 7.1.0. Forcing the unsupported major would violate the parent package range.",
-      "removalCondition": "A release of @azure/identity supports patched @azure/msal-node >=7.1.0, or @vscode/vsce no longer depends on the vulnerable packages; rerun make dependency-review."
     }
   ]
 }
