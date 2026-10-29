@@ -24,7 +24,6 @@ final class SqliteWithoutMysqlTest extends TestCase
         if (($argv[3] ?? '') === 'schema-bootstrap-only') {
             $schema = Polyspec\Orm\Tests\Model\schema();
             echo json_encode([
-                'schema_function' => function_exists('Polyspec\\Orm\\Tests\\Model\\schema'),
                 'schema_type' => $schema instanceof Polyspec\Orm\Schema,
                 'schema_hash' => $schema->manifestHash,
             ], JSON_THROW_ON_ERROR);
@@ -92,7 +91,6 @@ final class SqliteWithoutMysqlTest extends TestCase
 
         self::assertSame(0, $status, "schema bootstrap child exited $status: $errors; stdout: $output");
         $result = json_decode($output, true, 512, JSON_THROW_ON_ERROR);
-        self::assertSame(true, $result['schema_function'] ?? null);
         self::assertSame(true, $result['schema_type'] ?? null);
         self::assertMatchesRegularExpression('/^sha256:[0-9a-f]{64}$/', $result['schema_hash'] ?? '');
     }
