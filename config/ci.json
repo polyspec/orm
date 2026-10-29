@@ -20,7 +20,9 @@
         "orm-install-server-programs",
         "orm-install-go-lease"
       ],
-      "python": [],
+      "python": [
+        "orm-install-python"
+      ],
       "rust": [],
       "ts": [
         "orm-install-interfaces-typescript",

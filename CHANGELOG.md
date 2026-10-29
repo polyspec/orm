@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The python runtime of config/ci.json names orm-install-python, so CI installs the Python client non-editable and the parity API phase reads its symbols; the default uv-install made an editable install, whose file list holds no module (KSTD-5-113).
 - Take the released kit 0.0.73 in place of 0.0.70: kit-sync writes gates.yml without the link steps of CI (K824), the PHPUnit autoloader reaches a listed run of the PHP extension (K827), and the principles of kit (KSTD-5-112).
 - No public PHP signature names an internal type: ModelMetadata, the meta() contract of generated models, and CatalogRowSnapshot, the row snapshot of the catalog API, are public and declared; Model::registerJoins of the extension is internal, as in the library (T258).
 - The orm-gen classes of packages/php (OrmGen, Generator, Scan, ScanVisitor, ChainDeclare, UsageError) are marked internal: they implement the generator command and are no API of the PHP client (T244-1).

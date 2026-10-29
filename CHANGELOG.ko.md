@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- config/ci.json의 python runtime이 orm-install-python을 지명해 CI가 Python client를 non-editable로 설치하고 parity API phase가 그 symbol을 읽는다. 기본 uv-install은 파일 목록에 module이 없는 editable 설치를 했다 (KSTD-5-113).
 - 0.0.70 대신 release된 kit 0.0.73을 받는다: kit-sync가 CI의 link 단계 없는 gates.yml(K824)과 kit의 원칙을 쓰고, PHPUnit autoloader가 PHP extension의 나열된 run에 닿는다(K827) (KSTD-5-112).
 - 공개 PHP signature가 internal type을 부르지 않는다: generated model의 meta() 계약인 ModelMetadata와 catalog API의 row snapshot인 CatalogRowSnapshot은 공개이며 선언되고, extension의 Model::registerJoins는 library처럼 internal이다 (T258).
 - packages/php의 orm-gen class(OrmGen, Generator, Scan, ScanVisitor, ChainDeclare, UsageError)를 internal로 표시한다: 이들은 generator 명령을 구현하며 PHP client의 API가 아니다 (T244-1).
