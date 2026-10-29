@@ -1163,8 +1163,8 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         .retry(0)
     );
     // A column of codec ip hex packs its address and writes the hex text of the packed bytes on the client on every database
-    // (docs/spec/dialects.md DIA-16), and compares by equality on that text (docs/spec/codec.md COD-43); the vector inserts,
-    // reads the row back by the same address and deletes it.
+    // (docs/spec/dialects.md), and compares by equality on that text (docs/spec/codec.md); the vector inserts, reads the row
+    // back by the same address and deletes it.
     run!(
         "ip_hex_roundtrip",
         db.transaction(async || {
