@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 80f7922f40010bf1a91e5b54f5ea64de1326edbf813986abcf09214b66a28c91 -->
+<!-- source-sha256: 33be1cb2e90a396911e63272599e345cd2c9a8f356b49da391f4a937165313b7 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1329,3 +1329,4 @@
 | T242 | orm에는 version 검사가 없다: scripts/version/check.mts, 그 test scripts/version/check.test.mts, version-check target, PLN-5를 삭제하고, release 때는 kit make release-versions가 모든 manifest에 tag version을 요구한다. 원인: PLN-5 test가 version을 literal로 적어 모든 release commit이 그것을 바꿔야 했고, kit K449는 release commit의 test를 거부한다 | scripts/version/check.mts, scripts/version/check.test.mts, Makefile, contracts/check-inputs.json, config/rebuild.json, config/parity.json, docs/spec/plan.md, AGENTS.md, scripts/check/run.test.mts, scripts/harness/cargo-test.test.mts | `make parity-declarations-check owner-validate` | [o] |
 | T243 | config/parity.json이 packages/rust/orm/tests/unit/temporal_args.rs를 선언하므로 make parity-declarations-check가 main에서 통과한다. 원인: main 8685a2758에서 이 검사는 그 파일에 R5 undeclared-test를 보고한다. 4dedfb2d6(KSTD-5-94)이 owner target rust-temporal-args-check와 함께 파일을 추가했지만 parity 선언은 빠졌다 | config/parity.json | `make parity-declarations-check` | [o] |
 | T244 | polyspec/orm이 다시 orm-gen을 담는다: bin/orm-gen과 OrmGen, Generator, Scan, ScanVisitor, ChainDeclare, UsageError, 그리고 그 test가 0.0.18처럼 packages/php에 있고, packages/php-gen package와 그 release 항목은 삭제된다. 원인: T182-6-19-4(7f0249f84)가 kit이 삭제하는 kit 규칙 S10에 따라 orm-gen을 polyspec/orm-gen으로 나눴으므로, polyspec/orm link의 소비자에게 Generator가 없다 | packages/php, packages/php-gen, composer.json, composer.lock, config/release.json, Makefile, config/parity.json, contracts/check-inputs.json, contracts/symbols/php.json, docs/operations/packaging.md, docs/operations/usage.md | `make php-gen-unit-check` | [o] |
+| T245 | CI tool 선택과 orm-install-python의 repository test는 재귀 make의 command text가 아니라 호출된 install-tools target과 그 TOOLS를 맞춘다. 원인: kit K762가 모든 재귀 make의 command line에 KIT와 KIT_EXT를 넣으므로, make --no-print-directory install-tools를 고정한 scripts/repo/check.test.mts와 scripts/repo/python-venv.test.mts의 regex가 선택이 옳은데도 실패한다 | scripts/repo/check.test.mts, scripts/repo/python-venv.test.mts | `make repo-check/unit` | [ ] |
