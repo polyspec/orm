@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2ed1687236a488ab8472208142c28ee1fadc75f973bf161c044d4de6b0df8f90 -->
+<!-- source-sha256: 9aebfae71afe183bab8b6c0b6aa0271967486813af6e9ff838cf0da5a632f1cb -->
 # 변경 이력
 
 ## Unreleased
 
+- make orm-install-python은 uv sync의 기본값대로 Python client를 editable로 설치한다: KSTD-5-104의 non-editable 설치는 python-models가 src/polyspec/orm/models에 쓰는 fixture model을 빠뜨려 새 venv에서 polyspec.orm.models를 import하는 모든 Python test가 실패했고 source 변경은 설치되지 않은 채 남았다. kit K855가 Python symbol을 source package에서 읽어 그 이유를 없앤다 (T259).
 - make rust-fmt-check가 main에서 통과한다: Rust conformance runner의 import 목록과 Rust integration test의 panic! message를 rustfmt가 쓰는 대로 정리한다 (T260).
 - row lock(forShare, forUpdate와 그 NoWait 형태)은 모든 구현에서 groupLimit이 없는 관계 단계에 유효하며 그 단계의 statement가 lock을 건다. 클라이언트는 그 lock에도 트랜잭션을 요구하고 루트 lock처럼 SQLite row-lock table을 잡으며, limit_per_parent나 group_by가 있는 lock은 계속 IR_INVALID다 (T257).
 - ci workflow는 kit의 gate를 돌리지 않는다: 그 CI group은 gates workflow가 병렬 job으로 돌리는 kit-gates의 선행 target인 CI_KIT_GATES를 뺀 CHECK_TARGETS를 돌리고, group parity는 없어진다. 그 group은 모든 parity binding을 직렬로 돌려 run 40926936508에서 76분을 넘겼다 (KSTD-5-115).

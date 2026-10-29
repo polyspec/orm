@@ -728,16 +728,16 @@ dbspec-compare-check: dbspec-compare-check/unit dbspec-compare-check/runners dbs
 	rm -rf $(RUN_DIR)
 dbspec-compare-check/unit:
 	$(RUN_TESTS) node -- tests/dbspec/compare/check.test.mts
-# PYTHON_VENV is the virtual environment that orm-install-python makes. It holds the Python client installed non-editable,
+# PYTHON_VENV is the virtual environment that orm-install-python makes. It holds the Python client installed editable,
 # with the pinned dependencies of its pyproject.toml (ordered-json, cryptography, PyMySQL, psycopg, rapidyaml, ruamel.yaml) and
 # of its extra test (jsonschema-rs); the checks
-# take this interpreter as ORM_PYTHON and import the installed package, never a source path.
+# take this interpreter as ORM_PYTHON and import the package through that install.
 PYTHON_VENV = $(abspath packages/python/.venv)
 # orm-install-python installs the Python tool and its declared venv backend from mise.toml, and makes the
 # venv of that interpreter with kit's python-venv; no other python3 of PATH is used. uv sync installs the client into that venv
-# from packages/python/uv.lock, non-editable, with its group test (kit K788): the python symbols of kit read the installed file
-# list of the distribution. During development make link turns the installed package folder into the link of the checkout,
-# so the tests import the installed package and a source change needs no reinstall.
+# from packages/python/uv.lock with its group test, editable, as uv sync does by default (T259): the install imports
+# packages/python/src, so a source change needs no reinstall and the fixture models that python-models writes into
+# src/polyspec/orm/models, which the wheel excludes, are importable; the python symbols of kit read the source package (K855).
 # orm-python-lock writes the lock of the Python client with uv alone (KSTD-5-102): uv lock records packages/python/uv.lock from
 # pyproject.toml, the lock that uv sync of orm-install-python installs.
 .PHONY: orm-python-lock
@@ -748,7 +748,7 @@ orm-python-lock:
 orm-install-python:
 	$(MAKE) --no-print-directory install-tools TOOLS="python uv"
 	$(MAKE) --no-print-directory python-venv DIR=$(PYTHON_VENV)
-	cd packages/python && $(ONLINE) $(UV) sync --quiet --locked --no-editable --group test
+	cd packages/python && $(ONLINE) $(UV) sync --quiet --locked --group test
 	$(MAKE) --no-print-directory python-models
 # python-venv-check checks that the venv of orm-install-python exists and runs the Python release of mise.toml. A missing venv
 # or another release fails without a download or a repair, and names the fix: remove the venv and run make install.

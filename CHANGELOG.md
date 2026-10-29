@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- make orm-install-python installs the Python client editable, as uv sync does by default: the non-editable install of KSTD-5-104 left out the fixture models that python-models writes into src/polyspec/orm/models, so every Python test that imports polyspec.orm.models failed in a fresh venv, and a source change stayed uninstalled; kit K855 reads the Python symbols from the source package, which removes the reason (T259).
 - make rust-fmt-check passes on main: the import list of the Rust conformance runner and a panic! message of the Rust integration tests are formatted as rustfmt writes them (T260).
 - A row lock (forShare, forUpdate and their NoWait forms) is valid on a relation step without groupLimit, in every implementation, and that step's statement takes it; the client requires a transaction for it and takes the SQLite row-lock table as for a root lock, and a lock with limit_per_parent or group_by stays IR_INVALID (T257).
 - The ci workflow runs no gate of kit: its CI groups run CHECK_TARGETS without CI_KIT_GATES, the prerequisites of kit-gates, which the gates workflow runs in parallel jobs, and the group parity goes; it ran every parity binding in series, past 76 minutes in run 40926936508 (KSTD-5-115).
