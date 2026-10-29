@@ -14,6 +14,8 @@ namespace Polyspec\Orm;
  * declared as @method tags (docs/spec/dsl.md). `--set` names the set file (docs/spec/dbspec.md
  * "Document sets"): its `documents` get models, and its `external` documents are parsed with the set and
  * get none.
+ *
+ * @internal
  */
 final class OrmGen
 {

@@ -15,6 +15,8 @@ namespace Polyspec\Orm;
  * of every index. Each runs the chain of its name through Model::__call. Every
  * other method name, such as an operator chain, a finder or a join, is resolved
  * at call time by Model with the grammar of the DSL.
+ *
+ * @internal
  */
 final class Generator
 {

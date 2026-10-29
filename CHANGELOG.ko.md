@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- packages/php의 orm-gen class(OrmGen, Generator, Scan, ScanVisitor, ChainDeclare, UsageError)를 internal로 표시한다: 이들은 generator 명령을 구현하며 PHP client의 API가 아니다 (T244-1).
 - performance_gate가 구현되었다: contracts/performance-references.json이 97b4566f4의 통과한 check run orm_check_33189_3c995a77에서 여섯 client, 세 database, 두 workload의 고정 기준값 36개를 기록하고, 모든 coverage case가 그 비율을 기준값과 비교한다 (KSTD-7-6).
 - parity 선언이 PHP extension run guard를 test helper로 등재하고 그 세 test를 PRT-18에 연결한다. 그래서 make parity-declarations-check가 통과하고 검사가 그 test를 실행한다 (KSTD-5-109-1).
 - conformance vector ip_hex_roundtrip가 codec ip hex인 새 bench table ip_hex_cell에 address를 쓰고 address의 eq로 다시 읽는다. MySQL, PostgreSQL, SQLite에서 여섯 구현 모두가 실행하며, 모든 client는 pack한 address의 hex text를 bind한다. T251 전에는 MySQL이 그 text의 INET6_ATON을 거부했다. symbol snapshot은 ip_hex_cell과, 각 row가 빠뜨린 T251의 stage 분할 helper와 KSTD-5-94의 date helper를 기록한다. (KSTD-5-110)

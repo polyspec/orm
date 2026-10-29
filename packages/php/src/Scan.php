@@ -13,6 +13,8 @@ use PhpParser\ParserFactory;
  * Collects the methods that PHP sources call on the generated models, for orm-gen --scan. The sources are read with
  * nikic/php-parser. A call counts only when its receiver resolves to a model of the generated classes (docs/spec/dsl.md
  * lists the receivers); a call on any other receiver adds nothing.
+ *
+ * @internal
  */
 final class Scan
 {

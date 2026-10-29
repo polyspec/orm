@@ -12,6 +12,8 @@ use PhpParser\NodeVisitorAbstract;
  * 'many' => bool], where many marks a collection of models; a variable bound to something else maps to
  * null and hides an outer binding.
  *
+ *
+ * @internal
  */
 final class ScanVisitor extends NodeVisitorAbstract
 {
