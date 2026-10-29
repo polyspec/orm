@@ -53,7 +53,8 @@ function write(path: string, record: CheckRecord): void {
   renameSync(written, path);
 }
 
-function git(root: string, ...args: string[]): string {
+// git runs git in root and returns its trimmed output; a failed run throws with its stderr.
+export function git(root: string, ...args: string[]): string {
   const result = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
   if (result.error) throw result.error;
   if (result.status !== 0) throw new Error(`git ${args.join(' ')} exited with ${result.status}: ${result.stderr.trim()}`);

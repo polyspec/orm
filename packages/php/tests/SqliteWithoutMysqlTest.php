@@ -65,32 +65,40 @@ final class SqliteWithoutMysqlTest extends TestCase
         ], JSON_THROW_ON_ERROR);
         PHP;
 
-    public function testChildLoadsGeneratedModelSchemaBeforeConnecting(): void
+    /**
+     * Runs CHILD in `php -n` with the options and the arguments, and returns its JSON result.
+     *
+     * @param list<string> $options
+     * @param list<string> $arguments
+     * @return array<array-key, mixed>
+     */
+    private static function runChild(array $options, array $arguments): array
     {
-        $root = dirname(__DIR__, 3);
         $process = proc_open(
-            [
-                PHP_BINARY,
-                '-n',
-                '-r',
-                self::CHILD,
-                '--',
-                "$root/packages/php/tests/autoload.php",
-                sys_get_temp_dir() . '/unused-php-without-mysql-probe',
-                'schema-bootstrap-only',
-            ],
+            [PHP_BINARY, '-n', ...$options, '-r', self::CHILD, '--', ...$arguments],
             [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
             $pipes,
         );
-        self::assertIsResource($process, 'the schema bootstrap child did not start');
+        self::assertIsResource($process, 'php -n did not start');
         $output = stream_get_contents($pipes[1]);
         $errors = stream_get_contents($pipes[2]);
         fclose($pipes[1]);
         fclose($pipes[2]);
         $status = proc_close($process);
+        self::assertSame(0, $status, "the child exited with $status: stderr: $errors; stdout: $output");
+        $result = json_decode((string) $output, true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($result, 'the child printed no JSON object');
+        return $result;
+    }
 
-        self::assertSame(0, $status, "schema bootstrap child exited $status: $errors; stdout: $output");
-        $result = json_decode($output, true, 512, JSON_THROW_ON_ERROR);
+    public function testChildLoadsGeneratedModelSchemaBeforeConnecting(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $result = self::runChild([], [
+            "$root/packages/php/tests/autoload.php",
+            sys_get_temp_dir() . '/unused-php-without-mysql-probe',
+            'schema-bootstrap-only',
+        ]);
         self::assertSame(true, $result['schema_type'] ?? null);
         self::assertMatchesRegularExpression('/^sha256:[0-9a-f]{64}$/', $result['schema_hash'] ?? '');
     }
@@ -136,28 +144,7 @@ final class SqliteWithoutMysqlTest extends TestCase
                 $extensionOptions[] = '-d';
                 $extensionOptions[] = "extension=$name";
             }
-            $process = proc_open(
-                [
-                    PHP_BINARY,
-                    '-n',
-                    ...$extensionOptions,
-                    '-r',
-                    self::CHILD,
-                    '--',
-                    "$root/packages/php/tests/autoload.php",
-                    $work,
-                ],
-                [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
-                $pipes,
-            );
-            self::assertIsResource($process, 'php -n did not start');
-            $output = stream_get_contents($pipes[1]);
-            $errors = stream_get_contents($pipes[2]);
-            fclose($pipes[1]);
-            fclose($pipes[2]);
-            $status = proc_close($process);
-            self::assertSame(0, $status, "the child exited with $status: stderr: $errors; stdout: $output");
-            $result = json_decode($output, true, 512, JSON_THROW_ON_ERROR);
+            $result = self::runChild($extensionOptions, ["$root/packages/php/tests/autoload.php", $work]);
             self::assertSame('without-mysql', $result['name'] ?? null, 'the child read the SQLite row');
             self::assertSame('sqlite', $result['dialect'] ?? null, 'the SQLite DSN selects the SQLite dialect');
             self::assertSame('sqlite', $result['pdo_driver'] ?? null, 'the SQLite connection uses PDO SQLite');

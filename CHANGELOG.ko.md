@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1a2c2a4a7a7ad079f84b3733d27e451255843c3c1299c2687c031c5eb341ce0e -->
+<!-- source-sha256: aa259df4e5b698f2a73be0a831d7a96ecd6e66a728f13547a4521d198e800937 -->
 # 변경 이력
 
 ## Unreleased
+
+- make duplication-check가 clone을 찾지 않습니다: PHP without-MySQL test, parity context test, performance reference recorder는 child runner, command helper, git reader를 공유하고, parity context test는 ts setup에 interfaces TypeScript를 기대합니다. (T249)
 
 - orm은 kit K805의 hook을 실행합니다: .githooks/pre-commit은 삭제된 commit gate를 더 이상 호출하지 않고, .githooks/pre-merge-commit과 config/commit-identity.json을 삭제했습니다. (KSTD-5-107)
 

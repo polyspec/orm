@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- make duplication-check finds no clone: the PHP without-MySQL test, the parity context test and the performance reference recorder share their child runner, command helpers and git reader, and the parity context test expects the interfaces TypeScript in the ts setup. (T249)
+
 - orm runs the hooks of kit K805: .githooks/pre-commit no longer calls the deleted commit gates, and .githooks/pre-merge-commit and config/commit-identity.json are deleted. (KSTD-5-107)
 
 - orm has no pre-push hook: .githooks/pre-push is deleted with the kit K804 push gate, and config/checklist.json hooks names commit-msg and pre-commit. (KSTD-5-105)

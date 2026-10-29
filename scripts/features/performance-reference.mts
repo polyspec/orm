@@ -1,8 +1,7 @@
-import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { lstat, mkdir, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
-import { readRecord, recordPath, type CheckRecord } from '../check/record.mts';
+import { git, readRecord, recordPath, type CheckRecord } from '../check/record.mts';
 
 /** Measurement records captured from the successful native children of performance_gate coverage. */
 export const PERFORMANCE_RUNTIMES = ['go', 'php', 'php-extension', 'typescript', 'python', 'rust'] as const;
@@ -161,22 +160,15 @@ export function performanceReferenceDeclarationFromCheckRun(
   return validatePerformanceReferenceDeclaration(declaration);
 }
 
-function gitOutput(root: string, ...args: string[]): string {
-  const result = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
-  if (result.error) throw result.error;
-  if (result.status !== 0) throw new Error(`git ${args.join(' ')} exited with ${result.status}: ${result.stderr.trim()}`);
-  return result.stdout.trim();
-}
-
 /** Record the references of the check run `runId` of this checkout (.runtime/check/<runId>/record.json) atomically. */
 export async function recordPerformanceReferencesFromCheckRun(
   root: string, runId: string, recordedAt = new Date().toISOString(),
 ): Promise<PerformanceReferenceDeclaration> {
   const canonicalRoot = await realpath(root);
   if (!/^[A-Za-z0-9_]+$/.test(runId)) throw new Error(`check run id ${JSON.stringify(runId)} is not a .runtime/check directory name`);
-  if (gitOutput(canonicalRoot, 'status', '--porcelain', '--untracked-files=no') !== '')
+  if (git(canonicalRoot, 'status', '--porcelain', '--untracked-files=no') !== '')
     throw new Error('performance references are recorded only from a clean checkout; commit or restore the tracked changes first');
-  const head = { commit: gitOutput(canonicalRoot, 'rev-parse', 'HEAD'), tree: gitOutput(canonicalRoot, 'rev-parse', 'HEAD^{tree}') };
+  const head = { commit: git(canonicalRoot, 'rev-parse', 'HEAD'), tree: git(canonicalRoot, 'rev-parse', 'HEAD^{tree}') };
   const checkRecord = readRecord(recordPath(canonicalRoot, runId));
   if (checkRecord.id !== runId) throw new Error(`check record ${runId} names the run ${checkRecord.id}`);
   const featureTarget = checkRecord.targets.find(target => target.name === 'feature-performance-check');
