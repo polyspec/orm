@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 300deb318a6baa99986cabd59d7fc8a8fd4785bdc0c67c805b0dce68c4903a20 -->
+<!-- source-sha256: 3530bb01593e275e7fa28efb6779822c5bff27a405c11bb1e62eaf85de472f2e -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -377,6 +377,6 @@
 | KSTD-5-116 | make repo-check는 make spawn의 env를 그 호출 전체에서 읽고, make ci-install-tools를 mise.toml의 Go 설치로 받아들인다. 원인: main에서 그것은 env: isolatedEnvironment(...)가 호출 세 줄 아래에 있는 scripts/repo/check.test.mts:647과 ".github/workflows/ci.yml runs Go without the Go of mise.toml"을 보고하지만, ci-install-tools는 항상 그 Go를 설치한다 | scripts/repo/testcases.mts, scripts/repo/toolchains.mts, scripts/repo/check.test.mts | `make repo-check` | [v] |
 | KSTD-5-117 | kit 0.0.74 채택: kit이 삭제하는 toolchain-check, cargo-downloads-check, link-state-check를 제거하고 link-state-check 자리에 link-check를 실행한다. 원인: kit K854가 toolchain-check를, K864가 cargo-downloads-check의 검사 mode를 삭제하고 K869가 link-state-check를 link-check로 바꾸므로, 이를 부르는 orm target은 kit에 없는 target을 부른다 | Makefile, .github/workflows/ci.yml, scripts/repo/ci.mts, AGENTS.md, AGENTS.ko.md, CHANGELOG.md, CHANGELOG.ko.md | `make kit-check repo-check` | [ ] |
 | KSTD-5-118 | Python 설치의 raw uv sync를 make uv-install로 보낸다. 원인: Makefile이 uv sync를 직접 실행하는데, kit K850은 make uv-install에 repository가 쓰는 SYNC flag를 주고 symlink된 개발 폴더를 손상하지 않는다 | Makefile, CHANGELOG.md, CHANGELOG.ko.md | `make orm-install-python` | [ ] |
-| KSTD-5-119 | link.mts cargo --siblings를 checkout의 link 선언 파일로 바꾼다. 원인: kit K869는 checkout마다 하나의 link 선언이 경우별 복사, link, 설치를 대신하게 하므로, CARGO_SIBLINGS와 그 호출자는 선언이 가진 것을 다시 적는다 | Makefile, config/links.json, CHANGELOG.md, CHANGELOG.ko.md | `make link-check` | [ ] |
+| KSTD-5-119 | link.mts cargo --siblings를 checkout의 link 선언 파일로 바꾼다. 원인: kit K869는 checkout마다 하나의 link 선언이 경우별 복사, link, 설치를 대신하게 하므로, CARGO_SIBLINGS와 그 호출자는 선언이 가진 것을 다시 적는다 | Makefile, the link declaration file (K869), CHANGELOG.md, CHANGELOG.ko.md | `make link-check` | [ ] |
 | KSTD-5-120 | ci-setup이 부르는 deps-<runtime> target을 정의한다. 원인: kit K859는 package 설치 감싸기를 멈추고 ci-setup은 runtime마다 repository의 deps-<runtime> target을 내보내므로, orm은 자신의 make target으로 설치를 소유한다 | Makefile, config/ci.json, .github/workflows/ci.yml, CHANGELOG.md, CHANGELOG.ko.md | `make kit-check repo-check` | [ ] |
 | KSTD-5-121 | parity extractor의 Rust nightly를 exceptions 항목 대신 rustNightly로 선언한다. 원인: kit K837은 rustdoc nightly를 rustNightly에서 읽으므로, config/toolchain.json의 exceptions 항목은 kit이 더 읽지 않는 key다 | config/toolchain.json, CHANGELOG.md, CHANGELOG.ko.md | `make parity-api-check` | [ ] |
