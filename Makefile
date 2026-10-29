@@ -2804,7 +2804,7 @@ lint-go: go-models
 PHP_MODELS_FILE = packages/php/models.txt
 .PHONY: php-models php-model-check
 orm-install-php:
-	$(ONLINE) $(COMPOSER) install --no-interaction --no-progress --prefer-dist
+	$(ONLINE) $(MAKE) --no-print-directory composer-install DIR=.
 	$(COMPOSER) dump-autoload --no-interaction --quiet
 	$(MAKE) --no-print-directory php-models
 php-models: php-vendor-check
