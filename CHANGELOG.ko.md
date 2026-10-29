@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- 모든 codec 단계가 hex나 ip인 column의 eq, not_eq, in, not_in predicate가 codec.md COD-43에 따라 다른 구현처럼 Go에서도 compile된다: 비교 대상이 값의 결정적 함수일 때, 곧 그런 column의 셀이나 AES column의 blind index일 때 equality가 적용되며, COD-43은 더 이상 스타일 column의 predicate를 null 검사로 제한하지 않는다. (T253)
+
 - orm은 kit K790이 삭제하는 run-tests --without-library 없이 PHP extension test를 실행하며, test bootstrap은 packages/php/src의 file을 하나라도 load한 extension 실행을 그 file들을 밝히며 실패시키므로, 그 실행은 PHP fallback이 아니라 extension을 시험합니다. (KSTD-5-109)
 
 - MySQL에서 codec ip hex column은 모든 구현에서 주소를 client에서 pack하고 unpack합니다. SQL은 write 순서의 마지막 단계만 감싸기 때문입니다: insert는 MySQL이 1411로 거부하던 주소 hex text의 INET6_ATON 대신 저장되는 hex text를 bind합니다. (T251)

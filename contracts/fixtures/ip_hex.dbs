@@ -8,3 +8,12 @@ table ip {
     codec address ip hex
   }
 }
+
+table hex_cell {
+  seq i64 identity
+  token varchar(64)
+  primary key (seq)
+  settings {
+    codec token hex
+  }
+}

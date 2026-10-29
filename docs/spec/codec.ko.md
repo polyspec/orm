@@ -105,7 +105,7 @@ table service_config {
 ## 생성 코드
 - **COD-41** 읽기: 실행기가 위치형 행을 읽은 직후 `assemble.columns[].styles`에 따라 각 셀을 디코드한다.
 - **COD-42** 쓰기: `set<Col>(v)`는 선언된 스타일을 사용해 런타임 `setStyled`를 호출하고 인코딩된 바이트를 바인드한다.
-- **COD-43** 스타일 컬럼의 술어는 `isNull`과 `isNotNull`로 제한한다(`ir.OpAllowed`).
+- **COD-43** 스타일 컬럼의 술어는 비교하는 대상이 값의 결정적 함수여서 인코딩한 매개변수가 저장된 것과 같을 때에만 동등 비교(`eq`, `not_eq`, `in`, `not_in`)를 한다: 모든 단계가 `hex` 또는 `ip`인 컬럼의 셀, 그리고 AES 컬럼의 blind index([COD-4](#blind-index))이며, 무작위 nonce의 암호문은 비교하지 않는다. 그 밖의 스타일 컬럼은 `isNull`과 `isNotNull`만 받는다. 모든 validator가 이 한 규칙을 적용한다(`ir.OpAllowed`와 그 대응; planner case `planner_ip_hex_eq`, `planner_hex_eq`).
 - **COD-44** Go, PHP, PHP extension, TypeScript, Python, Rust 여섯 declared implementation의 read 경로는 key version과 stored version에 대해 하나의 오류 contract를 따른다. 선언되지 않았거나, 비었거나, 잘못된 key version은 `CONFIG`이고, 양의 i32 정수가 아닌 stored version은 `CODEC_DECODE`이며, 0이나 NaN으로 강제 변환하지 않는다. 이 규칙은 PHP extension native codec coverage가 완료됐다고 주장하지 않는다.
 - **COD-45** derived integer는 크기가 2^53 이하인 정수일 때에만 JavaScript number이며, 그래야 정확하다; 문자열과 bigint는 같은 한계로 변환된다. 소수, 유한하지 않은 number, boolean, null, 빈 문자열이나 숫자가 아닌 문자열, 그리고 더 큰 값은 잘못된 derived integer로 거부된다.
 - **COD-46** 실패한 conformance vector는 원래 error를 cause로 담아 그 error를 보고하며, write vector는 runner가 주는 transaction 안에서 그 본문을 실행한다.

@@ -6129,6 +6129,156 @@
       },
       "operation": "compile",
       "schema": "contracts/fixtures/ip_hex.dbs"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "length": 32,
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`address` AS `a__address` FROM `ip` AS `a` WHERE `a`.`address` = ?",
+            "tables": [
+              "ip"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "length": 32,
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"address\" AS \"a__address\" FROM \"ip\" AS \"a\" WHERE \"a\".\"address\" = $1",
+            "tables": [
+              "ip"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "length": 32,
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"address\" AS \"a__address\" FROM \"ip\" AS \"a\" WHERE \"a\".\"address\" = ?",
+            "tables": [
+              "ip"
+            ]
+          }
+        ]
+      },
+      "id": "planner_ip_hex_eq",
+      "input": {
+        "entity": "ip",
+        "ir_version": 1,
+        "kind": "all",
+        "n_params": 1,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "address",
+                "op": "eq",
+                "p": 0
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/ip_hex.dbs"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "length": 64,
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`token` AS `a__token` FROM `hex_cell` AS `a` WHERE `a`.`token` = ?",
+            "tables": [
+              "hex_cell"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "length": 64,
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"token\" AS \"a__token\" FROM \"hex_cell\" AS \"a\" WHERE \"a\".\"token\" = $1",
+            "tables": [
+              "hex_cell"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "length": 64,
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"token\" AS \"a__token\" FROM \"hex_cell\" AS \"a\" WHERE \"a\".\"token\" = ?",
+            "tables": [
+              "hex_cell"
+            ]
+          }
+        ]
+      },
+      "id": "planner_hex_eq",
+      "input": {
+        "entity": "hex_cell",
+        "ir_version": 1,
+        "kind": "all",
+        "n_params": 1,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "token",
+                "op": "eq",
+                "p": 0
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/ip_hex.dbs"
     }
   ],
   "feature": "planner"

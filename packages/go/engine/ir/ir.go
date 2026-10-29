@@ -231,8 +231,8 @@ var opsByType = map[string][]string{
 	"bytes":    {"eq", "not_eq", "in", "not_in", "is_null", "is_not_null"},
 }
 
-// ipOps are the operators of a field whose codec is a single ip. Its values are address text.
-var ipOps = []string{"eq", "not_eq", "in", "not_in", "is_null", "is_not_null"}
+// equalityOps are the operators of a codec field whose stored form is a deterministic function of its value.
+var equalityOps = []string{"eq", "not_eq", "in", "not_in", "is_null", "is_not_null"}
 
 // numeric is a type kind that accepts plus, minus, sum, and avg.
 func numeric(t string) bool {
@@ -275,13 +275,11 @@ func OpAllowed(c *runtimemodel.Field, op string) bool {
 	if colOps[op] {
 		return true
 	}
-	// A codec field accepts address comparison if it is ip, blind index equality if it starts with aes, and otherwise only null checks.
+	// A codec field compares by equality when the value determines what is compared: every stage hex or ip, or a
+	// first stage aes, compared through its blind index. Any other codec field takes only null checks.
 	if len(c.Codec) > 0 {
-		switch {
-		case len(c.Codec) == 1 && c.Codec[0] == "ip":
-			return slices.Contains(ipOps, op)
-		case c.Codec[0] == "aes":
-			return op == "eq" || op == "not_eq" || op == "in" || op == "not_in" || op == "is_null" || op == "is_not_null"
+		if c.Codec[0] == "aes" || !slices.ContainsFunc(c.Codec, func(s string) bool { return s != "hex" && s != "ip" }) {
+			return slices.Contains(equalityOps, op)
 		}
 		return op == "is_null" || op == "is_not_null"
 	}

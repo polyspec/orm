@@ -278,6 +278,18 @@ mod planner {
     }
 
     #[test]
+    fn planner_ip_hex_eq() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_ip_hex_eq");
+    }
+
+    #[test]
+    fn planner_hex_eq() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_hex_eq");
+    }
+
+    #[test]
     fn planner_restore_first_unique_by_name() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         run("planner_restore_first_unique_by_name");

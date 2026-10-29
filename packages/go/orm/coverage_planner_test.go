@@ -195,6 +195,18 @@ func TestCoveragePlannerIpHexSelect(t *testing.T) {
 	compilePlannerCase(t, "planner_ip_hex_select")
 }
 
+// TestCoveragePlannerIpHexEq compiles an eq on a column of codec ip hex, whose stored form is a deterministic function of the value.
+func TestCoveragePlannerIpHexEq(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_ip_hex_eq")
+}
+
+// TestCoveragePlannerHexEq compiles an eq on a column of codec hex, whose stored form is a deterministic function of the value.
+func TestCoveragePlannerHexEq(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_hex_eq")
+}
+
 // TestCoveragePlannerRestoreFirstUniqueByName compiles a restore whose set covers two unique keys.
 func TestCoveragePlannerRestoreFirstUniqueByName(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
@@ -726,6 +738,8 @@ func TestCoveragePlanner(t *testing.T) {
 		"planner_restore_primary_key_first":                        TestCoveragePlannerRestorePrimaryKeyFirst,
 		"planner_ip_hex_insert":                                    TestCoveragePlannerIpHexInsert,
 		"planner_ip_hex_select":                                    TestCoveragePlannerIpHexSelect,
+		"planner_ip_hex_eq":                                        TestCoveragePlannerIpHexEq,
+		"planner_hex_eq":                                           TestCoveragePlannerHexEq,
 		"planner_restore_first_unique_by_name":                     TestCoveragePlannerRestoreFirstUniqueByName,
 		"planner_tables":                                           TestCoveragePlannerTables,
 		"planner_bind_types_select":                                TestCoveragePlannerBindTypesSelect,

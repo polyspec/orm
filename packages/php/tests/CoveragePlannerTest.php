@@ -349,6 +349,20 @@ final class CoveragePlannerTest extends TestCase
         plannerCase($root, $fixture, 'planner_ip_hex_select');
     }
 
+    public function testPlannerIpHexEq(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        plannerCase($root, $fixture, 'planner_ip_hex_eq');
+    }
+
+    public function testPlannerHexEq(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        plannerCase($root, $fixture, 'planner_hex_eq');
+    }
+
     public function testPlannerRestoreFirstUniqueByName(): void
     {
         $root = dirname(__DIR__, 3);

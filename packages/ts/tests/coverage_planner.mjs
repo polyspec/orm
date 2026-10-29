@@ -88,6 +88,9 @@ await runCases('coverage_planner.mjs', {
   // Requirements: DIA-16.
   async planner_ip_hex_insert() { compileCase('planner_ip_hex_insert'); },
   async planner_ip_hex_select() { compileCase('planner_ip_hex_select'); },
+  // Requirements: COD-43.
+  async planner_ip_hex_eq() { compileCase('planner_ip_hex_eq'); },
+  async planner_hex_eq() { compileCase('planner_hex_eq'); },
   async planner_restore_first_unique_by_name() { compileCase('planner_restore_first_unique_by_name'); },
   async planner_bind_types_select() { compileCase('planner_bind_types_select'); },
   async planner_bind_types_update() { compileCase('planner_bind_types_update'); },
