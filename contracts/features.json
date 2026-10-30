@@ -93,6 +93,7 @@
         "packages/php-ext/tests/ConnectionUtcNativeTest.php",
         "packages/python/tests/connection_utc.py",
         "packages/ts/tests/dsn.mjs",
+        "packages/ts/tests/dsn_features.mjs",
         "packages/ts/tests/connection_utc.mjs",
         "packages/ts/tests/model.mjs",
         "packages/ts/tests/statement_timeout.mjs",
@@ -363,10 +364,11 @@
         },
         {
           "id": "dsn-typescript",
-          "command": "node packages/ts/tests/dsn.mjs",
+          "command": "node packages/ts/tests/dsn.mjs && node packages/ts/tests/dsn_features.mjs",
           "shard": "other",
           "inputs": [
             "packages/ts/tests/dsn.mjs",
+            "packages/ts/tests/dsn_features.mjs",
             "tests/dsn/sqlite-paths.json"
           ]
         },
@@ -6267,6 +6269,7 @@
         "packages/go/engine/planner/soft_delete_test.go",
         "packages/php/tests/EngineTest.php",
         "packages/ts/tests/engine.mjs",
+        "packages/ts/tests/engine_features.mjs",
         "packages/go/engine/functions_physical_test.go",
         "packages/go/engine/interface_test.go",
         "packages/go/engine/plan/plan_test.go",
@@ -6407,10 +6410,11 @@
         },
         {
           "id": "planner-typescript",
-          "command": "node packages/ts/tests/engine.mjs",
+          "command": "node packages/ts/tests/engine.mjs && node packages/ts/tests/engine_features.mjs",
           "shard": "other",
           "inputs": [
             "packages/ts/tests/engine.mjs",
+            "packages/ts/tests/engine_features.mjs",
             "tests/ir/validate.json"
           ]
         },

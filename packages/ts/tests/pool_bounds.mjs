@@ -12,6 +12,7 @@ caseTest('connection/pool-invalid-options-refused', COMPUTE, async () => {
     [{ poolSize: -1 }, 'pool size must not be negative'],
     [{ poolIdleSize: -1 }, 'pool idle size must be between 0 and the pool size 10'],
     [{ poolSize: 3, poolIdleSize: 4 }, 'pool idle size must be between 0 and the pool size 3'],
+    [{ poolIdleSize: 11 }, 'pool idle size must be between 0 and the pool size 10'],
     [{ poolLifetimeMs: -1 }, 'pool lifetime must not be negative'],
   ];
   for (const [options, message] of cases) {

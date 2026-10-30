@@ -612,7 +612,9 @@
         "packages/ts/tests/model.mjs",
         "packages/ts/tests/decimal_model_db.mjs",
         "packages/ts/tests/group_rows_db.mjs",
-        "packages/ts/tests/statement_events_server_transactions.mjs"
+        "packages/ts/tests/statement_events_server_transactions.mjs",
+        "packages/ts/tests/dsn_features.mjs",
+        "packages/ts/tests/engine_features.mjs"
       ],
       "support": [
         "packages/ts/tests/case-database.mjs",
@@ -4475,7 +4477,7 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dsn.mjs",
+          "test": "packages/ts/tests/dsn_features.mjs",
           "id": "dsn/sqlite-requires-absolute-path"
         },
         {
@@ -4516,6 +4518,11 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/mysql_tls.mjs",
           "id": "mysql_tls/parameters"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_features.mjs",
+          "id": "dsn/invalid"
         },
         {
           "implementation": "python",
@@ -4678,8 +4685,13 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dsn.mjs",
+          "test": "packages/ts/tests/dsn_features.mjs",
           "id": "dsn/timezone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_features.mjs",
+          "id": "dsn/invalid"
         },
         {
           "implementation": "python",
@@ -8826,7 +8838,7 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/engine.mjs",
+          "test": "packages/ts/tests/engine_features.mjs",
           "id": "load-set"
         },
         {
@@ -9730,7 +9742,7 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/engine.mjs",
+          "test": "packages/ts/tests/engine_features.mjs",
           "id": "engine"
         },
         {
@@ -12232,7 +12244,7 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/engine.mjs",
+          "test": "packages/ts/tests/engine_features.mjs",
           "id": "engine"
         },
         {
@@ -13057,7 +13069,7 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dsn.mjs",
+          "test": "packages/ts/tests/dsn_features.mjs",
           "id": "dsn/pool-bounds"
         },
         {
@@ -13101,7 +13113,7 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dsn.mjs",
+          "test": "packages/ts/tests/dsn_features.mjs",
           "id": "dsn/pool-bounds"
         },
         {
@@ -18594,7 +18606,7 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/engine.mjs",
+          "test": "packages/ts/tests/engine_features.mjs",
           "id": "engine"
         },
         {
@@ -18633,7 +18645,7 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/engine.mjs",
+          "test": "packages/ts/tests/engine_features.mjs",
           "id": "engine"
         },
         {
@@ -29204,7 +29216,7 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/engine.mjs",
+          "test": "packages/ts/tests/engine_features.mjs",
           "id": "engine"
         },
         {
@@ -33292,7 +33304,7 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/engine.mjs",
+          "test": "packages/ts/tests/engine_features.mjs",
           "id": "engine"
         },
         {

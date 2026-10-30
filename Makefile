@@ -1650,7 +1650,7 @@ blind-index-source-php-check: php-vendor-check
 blind-index-source-ts-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	$(NODE) --conditions=orm-test --test packages/ts/tests/engine.mjs
+	$(NODE) --conditions=orm-test --test packages/ts/tests/engine_features.mjs
 
 # The six SQLite NOWAIT callers restore busy_timeout without hiding the lock error or either failure cause.
 .PHONY: nowait-restore-check

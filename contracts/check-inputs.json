@@ -661,7 +661,7 @@
       ],
       "inputs": [
         "packages/ts/src/engine/planner.ts",
-        "packages/ts/tests/engine.mjs"
+        "packages/ts/tests/engine_features.mjs"
       ]
     },
     "blind-index-source-python-check": {
