@@ -31288,7 +31288,7 @@
         {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/integration/coverage_complex_query.rs",
-          "id": "full_product_search_request_compiles_for_mysql_and_postgres_and_rejects_sqlite"
+          "id": "coverage_complex_query::full_product_search_request_compiles_for_mysql_and_postgres_and_rejects_sqlite"
         }
       ]
     },
