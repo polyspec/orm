@@ -614,7 +614,7 @@
         "packages/python/tests/test_query_methods.py",
         "packages/rust/build/src/generate.rs",
         "packages/rust/build/tests/generate.rs",
-        "packages/rust/tests/src/integration.rs"
+        "packages/rust/tests/tests/integration_program/main.rs"
       ]
     },
     "blind-index-source-go-check": {

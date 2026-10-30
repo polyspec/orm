@@ -9,14 +9,13 @@
 // schema list can be compared when no other session on the same server runs tests.
 //
 // Usage: node scripts/case-database-check.mts (in a shell that has read TEST_ENV,
-// after the TypeScript build and the Rust integration debug build)
+// after the TypeScript build)
 import { spawn } from 'node:child_process';
 import { readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { DATABASE, PROCESS, runCase, runGroup, stepLines, type CaseBody } from '../tests/testcase.mts';
 
-import { cargoTarget } from '../tests/cargo-target.mts';
 import { errorCode } from '../tests/errors.mts';
 import mysqlDriver from 'mysql2/promise';
 import pg from 'pg';
@@ -41,7 +40,10 @@ const commands: [string, string, string[]][] = [
   ['go/model', 'go', ['test', '-v', '-timeout', '0', '-count=1', './packages/go/model']],
   ['php/model', 'php', ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', 'packages/php/tests/ModelTest.php']],
   ['typescript/model', 'node', ['packages/ts/tests/model.mjs']],
-  ['rust/integration', join(cargoTarget(), 'debug/integration'), [resolve(root, 'contracts/fixtures/bench/dbspec-set.json')]],
+  // The sections of the Rust integration program are ignored trials (packages/rust/tests/tests/integration_program), so they run
+  // with --include-ignored, one at a time; tests/cargo-test.mts builds them under the lease of the target directory.
+  ['rust/integration', 'node', ['tests/cargo-test.mts', 'integration-program', '--', 'cargo', 'test', '--locked', '--manifest-path', 'packages/rust/Cargo.toml', '-p', 'polyspec-orm-tests',
+    '--test', 'integration_program', '--', '--include-ignored', '--test-threads=1']],
 ];
 
 function mysqlConnection(dsn: string = mysqlDsn) {

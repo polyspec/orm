@@ -7,10 +7,6 @@ publish = false
 build = "build.rs"
 
 [[bin]]
-name = "integration"
-path = "src/integration.rs"
-
-[[bin]]
 name = "client_bench"
 path = "src/client_bench.rs"
 

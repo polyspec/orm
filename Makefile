@@ -1714,7 +1714,7 @@ generator-consumer-check/rust-chain-scan/generates-called-methods: lease-tool
 generator-consumer-check/rust-chain-scan/stored-column-name: lease-tool
 	cd packages/rust && $(CARGO_TEST) generator-consumer-rust-stored-column-name -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-build --test generate stored_column_name_is_rejected_as_an_output_name -- --test-threads=1 --exact
 generator-consumer-check/rust-integration: lease-tool
-	cd packages/rust && $(CARGO_TEST) generator-consumer-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-tests --bin integration generated_typed_getter_is_a_checked_public_consumer_api -- --test-threads=1 --exact
+	cd packages/rust && $(CARGO_TEST) generator-consumer-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-tests --test integration_program generated_typed_getter_is_a_checked_public_consumer_api -- --test-threads=1 --exact
 
 rust-compiler-fixtures-check: lease-tool
 	cd packages/rust && $(CARGO_TEST) rust-compiler-fixtures-native -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm --test compiler_fixtures -- --test-threads=1
@@ -2032,9 +2032,7 @@ unselected-column-physical-check: php-vendor-check
 case-database-check: php-vendor-check lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-build -- npm run typescript:build
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/integration --cwd packages/rust -- $(CARGO_COPY) debug/integration -- $(CARGO_SIBLINGS) build --locked -p polyspec-orm-tests --bin integration
-	$(WITH_TEST_ENV) CARGO_TARGET_DIR=$(RUN_TARGET) node scripts/case-database-check.mts
-	rm -rf $(RUN_DIR)
+	$(WITH_TEST_ENV) PATH="$(HOME)/.cargo/bin:$(PATH)" node scripts/case-database-check.mts
 
 # conformance-check runs the conformance runners of the four clients on the bench databases of MySQL, PostgreSQL, and SQLite,
 # and compares each output with the vector's expected values, and compares the output of that run with the common state contract (the

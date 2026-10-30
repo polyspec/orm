@@ -120,17 +120,19 @@ const RUST_TESTS: Command = {
   cwd: join(root, 'packages/rust'),
   env: { ORM_BUILD_TEST_ROOT: resolve(root, 'packages/rust/build') },
 };
-// The integration program is built under the lease of the shared Rust target directory and copied into the directory of
-// this run (scripts/cargo-build-copy.mts), which runs the copy; the build reports no case, so it runs through
-// tests/run-long.mts with no deadline.
-const RUN = join(root, `.runtime/run/client-db-rust-${process.pid}`);
-const RUST_BUILD: Command = {
-  program: 'node', args: ['tests/run-long.mts', 'rust-build/integration', '--cwd', 'packages/rust', '--', variable('LEASE'), 'run', variable('CARGO_LEASES'), 'exclusive', '--wait', '--',
-    'node', join(root, 'scripts/cargo-build-copy.mts'), RUN, 'debug/integration', '--', 'cargo', 'build', '--locked', '-p', 'polyspec-orm-tests', '--bin', 'integration'], cwd: root,
+// The sections of the integration program (packages/rust/tests/tests/integration_program) are ignored trials, which the
+// workspace run leaves out; they run once, one at a time, since each runs its case on every driver. tests/cargo-test.mts
+// fails when the build fails, so a failed build is a failure of the lane.
+const RUST_INTEGRATION: Command = {
+  program: 'node',
+  args: [
+    '../../tests/cargo-test.mts', 'integration-program', '--', 'cargo', 'test', '--locked', '-p', 'polyspec-orm-tests', '--features', variable('ORM_RUST_TEST_FEATURES'),
+    '--test', 'integration_program', '--', '--include-ignored', '--test-threads=1',
+  ],
+  cwd: join(root, 'packages/rust'),
 };
-const RUST_INTEGRATION: Command = { program: join(RUN, 'debug/integration'), args: [join(root, 'contracts/fixtures/bench/dbspec-set.json')], cwd: root };
 /** The commands this script runs, for make repo-check. */
-export const COMMANDS = [...[...GO, ...PHP, PHP_EXTENSION_BUILD, ...PHP_EXTENSION, ...PYTHON, RUST_TESTS, RUST_BUILD, RUST_INTEGRATION].map(step => render(step, root)), ...TYPESCRIPT_COMMANDS];
+export const COMMANDS = [...[...GO, ...PHP, PHP_EXTENSION_BUILD, ...PHP_EXTENSION, ...PYTHON, RUST_TESTS, RUST_INTEGRATION].map(step => render(step, root)), ...TYPESCRIPT_COMMANDS];
 
 const lanes: Record<string, (write: (line: string) => void) => Promise<string[]>> = {
   go: write => keepAll(GO, write),
@@ -147,18 +149,7 @@ const lanes: Record<string, (write: (line: string) => void) => Promise<string[]>
   },
   typescript: write => sqliteTest(write),
   python: write => keepAll(PYTHON, write),
-  rust: async write => {
-    const failed = await keepAll([RUST_TESTS], write);
-    try {
-      // The integration program runs only when its build passes; a failed build is a failure of the lane.
-      const built = await run(RUST_BUILD, write);
-      if (built !== 0) failed.push(`the build of the integration program (exit ${built}), so the integration program did not run`);
-      else failed.push(...await keepAll([RUST_INTEGRATION], write));
-    } finally {
-      rmSync(RUN, { recursive: true, force: true });
-    }
-    return failed;
-  },
+  rust: write => keepAll([RUST_TESTS, RUST_INTEGRATION], write),
 };
 
 if (import.meta.main) {

@@ -5,7 +5,7 @@ use polyspec_orm_testcase::OrPanic;
 
 polyspec_orm::models!();
 
-#[path = "../src/bench_set.rs"]
+#[path = "integration_program/bench_set.rs"]
 mod bench_set;
 
 #[allow(

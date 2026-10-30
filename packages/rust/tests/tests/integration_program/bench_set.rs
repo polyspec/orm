@@ -10,7 +10,7 @@ use std::sync::LazyLock;
 
 /// The manifest of contracts/fixtures/bench/bench_shared.dbs alone, as the set that owns it would generate it.
 static SHARED_MANIFEST: LazyLock<dbspec::Manifest> = LazyLock::new(|| {
-    let text = include_str!("../../../../contracts/fixtures/bench/bench_shared.dbs");
+    let text = include_str!("../../../../../contracts/fixtures/bench/bench_shared.dbs");
     let document = dbspec::parse(text, &Default::default()).or_panic(|e| format!("bench_shared.dbs: {e:?}")).document;
     dbspec::manifest(&[&document]).or_panic(|e| format!("bench_shared.dbs: {e:?}"))
 });

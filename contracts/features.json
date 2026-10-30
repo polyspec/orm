@@ -104,7 +104,7 @@
         "packages/go/model/coverage_dsn_test.go",
         "packages/php/tests/CoverageDsnTest.php",
         "packages/rust/orm/tests/coverage_dsn.rs",
-        "packages/rust/tests/src/integration.rs",
+        "packages/rust/tests/tests/integration_program/main.rs",
         "packages/ts/tests/coverage_dsn.mjs",
         "packages/go/orm/sqlite_path_test.go",
         "packages/rust/tests/tests/example_dsn.rs",
@@ -1062,7 +1062,7 @@
             "language": "rust",
             "part": "packages/rust/tests",
             "tests": [
-              "packages/rust/tests/src/integration.rs"
+              "packages/rust/tests/tests/integration_program/main.rs"
             ],
             "cases": [
               "dsn_model_connection"
@@ -1071,7 +1071,7 @@
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/src/integration.rs",
+                  "test": "packages/rust/tests/tests/integration_program/main.rs",
                   "cases": [
                     "dsn_model_connection"
                   ],
@@ -1084,7 +1084,7 @@
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/src/integration.rs",
+                  "test": "packages/rust/tests/tests/integration_program/main.rs",
                   "cases": [
                     "dsn_model_connection"
                   ],
@@ -1097,7 +1097,7 @@
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/src/integration.rs",
+                  "test": "packages/rust/tests/tests/integration_program/main.rs",
                   "cases": [
                     "dsn_model_connection"
                   ],
@@ -1211,7 +1211,7 @@
         "packages/ts/tests/group_rows.types.ts",
         "packages/ts/tests/aggregate_numeric.mjs",
         "packages/ts/tests/styled-value.mjs",
-        "packages/rust/tests/src/integration.rs",
+        "packages/rust/tests/tests/integration_program/main.rs",
         "packages/go/engine/engine_test.go",
         "packages/go/orm/jsontext_order_test.go",
         "packages/rust/orm/tests/model_output.rs",
@@ -2301,7 +2301,7 @@
         "packages/ts/tests/model.mjs",
         "packages/ts/tests/model-new-output-name.mjs",
         "packages/ts/tests/styled-value.mjs",
-        "packages/rust/tests/src/integration.rs",
+        "packages/rust/tests/tests/integration_program/main.rs",
         "packages/rust/build/tests/generate.rs",
         "packages/go/decimalmodel/decimal_physical_test.go",
         "packages/php/tests/DecimalModelTest.php",
@@ -3156,7 +3156,7 @@
         "packages/php-ext/tests/TransactionFailureNativeTest.php",
         "packages/ts/tests/model.mjs",
         "packages/rust/orm/tests/zone.rs",
-        "packages/rust/tests/src/integration.rs",
+        "packages/rust/tests/tests/integration_program/main.rs",
         "packages/go/orm/goexit_test.go",
         "packages/go/orm/context_reset_test.go",
         "packages/go/model/sqlite_concurrency_test.go",
@@ -7632,7 +7632,7 @@
       "tests": [
         "packages/go/model/model_test.go",
         "packages/php/tests/ModelTest.php",
-        "packages/rust/tests/src/integration.rs",
+        "packages/rust/tests/tests/integration_program/main.rs",
         "packages/ts/tests/model.mjs",
         "packages/go/model/coverage_composite_keys_test.go",
         "packages/php/tests/CoverageCompositeKeysTest.php",
@@ -8051,7 +8051,7 @@
         "packages/ts/tests/codec_case.mjs",
         "packages/php/tests/CodecVectorsTest.php",
         "packages/go/orm/fuzz_test.go",
-        "packages/rust/tests/src/integration.rs",
+        "packages/rust/tests/tests/integration_program/main.rs",
         "packages/go/orm/coverage_authenticated_encryption_test.go",
         "packages/php/tests/CoverageAuthenticatedEncryptionTest.php",
         "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
@@ -8508,7 +8508,7 @@
       ],
       "tests": [
         "packages/go/model/chunk_test.go",
-        "packages/rust/tests/src/integration.rs",
+        "packages/rust/tests/tests/integration_program/main.rs",
         "packages/php/tests/RelationKeysTest.php",
         "packages/php/tests/ParentSlotPaddingTest.php",
         "packages/php/tests/ModelTest.php",
@@ -8544,10 +8544,11 @@
         },
         {
           "id": "chunking-rust",
-          "command": "sh -c 'run=\"$PWD/.runtime/run/chunking-rust-$$\"; trap \"rm -rf \\\"$run\\\"\" EXIT; PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mts rust-build/integration -- \"$LEASE\" run \"$CARGO_LEASES\" exclusive --wait -- node scripts/cargo-build-copy.mts \"$run\" debug/integration -- cargo build --manifest-path packages/rust/Cargo.toml --locked -p polyspec-orm-tests --bin integration && \"$run/debug/integration\" \"$PWD/contracts/fixtures/bench/dbspec-set.json\" --case bind_limit_splitting'",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts chunking-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked -p polyspec-orm-tests --test integration_program -- --include-ignored --exact bind_limit_splitting",
           "shard": "rust",
           "inputs": [
-            "packages/rust/tests/src/integration.rs",
+            "packages/rust/tests/tests/integration_program/main.rs",
+            "packages/rust/tests/tests/integration_program/bench_set.rs",
             "contracts/fixtures/bench/bench.dbs",
             "contracts/fixtures/bench/bench_reader.dbs",
             "contracts/fixtures/bench/bench_shared.dbs",

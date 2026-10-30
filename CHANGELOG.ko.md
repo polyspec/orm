@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: fd51fdf3897f6214a8c653ba10aee4fbe8855228df66538895951497217867ec -->
+<!-- source-sha256: 3b9dcf5f1ba8792ff164efedc6b72a288ede498450811638356db9b427cdc1da -->
 # 변경 이력
 
 ## Unreleased
@@ -7,6 +7,7 @@
 ## 0.0.19
 
 - make install은 더 이상 kit target kit-install-php-arginfo를 부르지 않습니다. kit K930은 arginfo가 kit builder가 실행하는 PHP의 gen_stub.php에서 오므로 이 target을 없앴고, kit main에 link된 checkout의 make install은 모두 그 지점에서 멈춰 python venv, flowmark, interfaces TypeScript를 설치하지 못했습니다. ArginfoBuildTest는 build.sh가 지금 하는 일을 검사합니다: mode마다 kit builder에 인자를 넘기고, 스스로 tool을 실행하지 않은 채 builder의 status와 출력을 돌려줍니다(T328).
+- Rust integration program의 각 section은 test target integration_program(packages/rust/tests/tests/integration_program)의 ignored test이므로, section을 지정하는 rust parity binding 19개가 make feature-rust-database로 그 test를 실행하고 parity run이 그 결과를 인정한다. 이전에는 program이 자기 main의 --case로 section을 실행하며 libtest 결과 줄을 출력하지 않아 cargo test가 test를 선택하지 않았다. client-db-check의 rust lane과 case-database-check는 section을 --include-ignored --test-threads=1로 한 번 실행하고, chunking-rust는 bind_limit_splitting을 cargo test로 실행한다. 생성된 model은 바뀌지 않는다(T311).
 - go-internal-packages-go-engine-functions-physical의 rust binding은 coverage-conformance-verification-conformance-vector처럼 coverage_conformance_vector를 make feature-rust-database로 SQLite database와 함께 실행합니다. 그래서 parity 실행이 ignored trial을 ORM_FEATURE_DATABASE와 ORM_FEATURE_DSN과 함께 실행합니다. 전에는 binding에 명령이 없어 cargo가 trial을 ignored로 보고했고, 실행은 이를 skipped로 읽었습니다(T314).
 - PHP 확장 build는 kit K930이 요구하는 대로 두 build mode 모두에서 --source-copy로 packages/php/src/native/sqlite_cancel.c를 src/native/sqlite_cancel.c로 준비합니다. kit builder가 더 이상 config/release.json의 source-copy 선언을 읽지 않기 때문입니다. 전에는 확장의 모든 release build가 No rule to make target src/native/sqlite_cancel.c로 실패했습니다(T325).
 - group-count-boolean-decode와 group-rows-negative-count의 php binding은 공유 GroupRows case가 정의하는 GroupRowsTest method인 testGroupValueRejectsInvalidStoredBoolean과 testGroupRowCountEnforcesExactness에 연결됩니다. 전에는 case를 GroupRowsCases로 옮기면서 지운 method 둘에 연결되어 있어, parity 실행이 둘을 실행되지 않은 것으로 보고했습니다. 잘못된 row count에는 그 이동에서 빠진 -1.5가 다시 들어갑니다(T320).

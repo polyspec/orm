@@ -1,6 +1,6 @@
 //! Coverage and result-chain tests of the generated models on SQLite, MySQL and
 //! PostgreSQL. The models come from the same build as the integration program
-//! (src/integration.rs); each module here is one feature's cases, run by
+//! (tests/integration_program); each module here is one feature's cases, run by
 //! `cargo test --test integration`.
 polyspec_orm::models!();
 

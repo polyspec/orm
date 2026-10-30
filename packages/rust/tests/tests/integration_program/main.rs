@@ -3,12 +3,14 @@
 //! the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN and dropped when
 //! the case ends; the test fails when either is unset.
 //!
-//! Usage: integration <dbspec-set.json> [--case <case>]: the bench set (contracts/fixtures/bench/dbspec-set.json).
+//! Each section is one test that runs its case on every driver. The sections need those servers, so they are ignored
+//! trials, which the plain workspace run leaves out; the rust lane of scripts/client-db-test.mts and
+//! scripts/case-database-check.mts run them with --include-ignored, and a parity binding with make feature-rust-database.
 use polyspec_orm_testcase::OrPanic;
 
 use std::cell::Cell;
 
-#[path = "../../tests/tests/common/result_code.rs"]
+#[path = "../common/result_code.rs"]
 mod result_code;
 use result_code::code;
 
@@ -227,7 +229,7 @@ fn names(c: &Collection<Author>) -> String {
 }
 
 // Requirements: DSL-60, PLN-6, PLN-7, PLN-23, PLN-28, PLN-34, PLN-37, PLN-38, PLN-39.
-async fn conditions(t: &Target) {
+async fn conditions_case(t: &Target) {
     let db = &t.db;
     let f = seed(db).await;
     let svc = f.service.get_seq().unwrap();
@@ -265,7 +267,7 @@ async fn conditions(t: &Target) {
 }
 
 // Requirements: DBS-118, PLN-10, PLN-35, PLN-41, PLN-42, PLN-43.
-async fn joins_and_relations(t: &Target) {
+async fn joins_and_relations_case(t: &Target) {
     let db = &t.db;
     let f = seed(db).await;
     let author = User::new().on(|u: User| u.ne_name("nobody")).name("kim");
@@ -321,7 +323,7 @@ async fn joins_and_relations(t: &Target) {
 }
 
 // Requirements: PLN-8, PLN-9, PLN-14.
-async fn columns_and_subqueries(t: &Target) {
+async fn columns_and_subqueries_case(t: &Target) {
     let db = &t.db;
     let f = seed(db).await;
     let users = User::new()
@@ -395,7 +397,7 @@ async fn columns_and_subqueries(t: &Target) {
 }
 
 // Requirements: DSL-115, DSL-155, PLN-12, PLN-27.
-async fn writes(t: &Target) {
+async fn writes_case(t: &Target) {
     let db = &t.db;
     let f = seed(db).await;
     let b = Author::new().connect(db).get_by_seq(f.authors[0].get_seq().unwrap()).await.unwrap().expect("a row");
@@ -450,7 +452,7 @@ async fn writes(t: &Target) {
 }
 
 // Requirements: INT-51, INT-59, INT-61, INT-73, INT-134, INT-57, INT-79.
-async fn transactions(t: &Target) {
+async fn transactions_case(t: &Target) {
     let _aes = t.db.utils().aes();
     let _schema = t.db.utils().schema();
     let _privileges = t.db.utils().privileges();
@@ -697,7 +699,7 @@ async fn await_replica(primary: &Db, replica: &Db) {
 /// model uses the connection it is connected to and no other, and a model
 /// without a connection inside a transaction uses the transaction.
 // Requirements: PLN-31, PLN-35.
-async fn primary_and_replica(t: &Target, replica_base: &str) {
+async fn primary_and_replica_case(t: &Target, replica_base: &str) {
     let master = &t.db;
     // Waits, through the replica's existing database connection, until the replica receives the case database and the installed table.
     let replica_admin = model::connect(replica_base, 1, config()).await.unwrap();
@@ -755,7 +757,7 @@ async fn read_only_sqlite(t: &Target) {
 /// Checks schema().empty() on a new case database, with an empty PostgreSQL
 /// schema other than public, and with the installed tables.
 // Requirements: DBS-108, INT-58, SCH-7.
-async fn schema_empty(t: &Target) {
+async fn schema_empty_case(t: &Target) {
     let db = &t.db;
     assert!(db.utils().schema().empty().await.unwrap(), "{}: schema().empty() on a database without tables", t.driver);
     if let Pool::Postgres(p) = db.pool() {
@@ -772,7 +774,7 @@ async fn schema_empty(t: &Target) {
 /// Inserts and reads more values than SQLite binds in one statement: the
 /// inserts and the root IN list are split, duplicate IN values are read once,
 /// and a shape that a merge would change is rejected.
-async fn bind_limit_splitting(t: &Target) {
+async fn bind_limit_splitting_case(t: &Target) {
     let db = &t.db;
     const N: usize = 1200;
     let mut rows = Vec::with_capacity(N);
@@ -795,7 +797,7 @@ async fn bind_limit_splitting(t: &Target) {
 }
 
 // Requirements: COD-8, PLN-44, INT-60, INT-75, INT-131.
-async fn aes_rotation(t: &Target) {
+async fn aes_rotation_case(t: &Target) {
     let db = &t.db;
     let f = seed(db).await;
     let b = Author::new().connect(db).get_by_seq(f.authors[0].get_seq().unwrap()).await.unwrap().expect("a row");
@@ -831,7 +833,7 @@ async fn aes_rotation(t: &Target) {
 /// A jsontext column reads back the ordered-json value of a write with its
 /// member order, number text, and `{}` apart from `[]`; SQL NULL is distinct
 /// from a JSON literal null.
-async fn json_values(t: &Target) {
+async fn json_values_case(t: &Target) {
     fn expect_ordered(value: polyspec_orm::StyledValue<polyspec_orm::ordered_json::Value>, text: &str) {
         match value {
             polyspec_orm::StyledValue::Value(value) => assert_eq!(value.compact(), text),
@@ -906,30 +908,14 @@ async fn json_values(t: &Target) {
     );
 }
 
-#[tokio::main]
-async fn main() {
-    let args: Vec<String> = std::env::args().collect();
-    const CASES: &[&str] = &[
-        "schema_empty",
-        "conditions",
-        "joins_and_relations",
-        "columns_and_subqueries",
-        "writes",
-        "transactions",
-        "aes_rotation",
-        "json_values",
-        "bind_limit_splitting",
-        "primary_and_replica",
-    ];
-    let selected = match args.as_slice() {
-        [_, _] => None,
-        [_, _, flag, case] if flag == "--case" && CASES.contains(&case.as_str()) => Some(case.as_str()),
-        _ => {
-            eprintln!("usage: integration <dbspec-set.json> [--case <case>]; supported cases: {}", CASES.join(", "));
-            std::process::exit(2);
-        }
-    };
-    let set = polyspec_orm::dbspec::read_set(std::path::Path::new(&args[1])).or_panic(|errors| format!("{}: {errors:?}", args[1]));
+/// The drivers that each section runs its case on, each in a case database of its own.
+const DRIVERS: [&str; 3] = ["sqlite", "mysql", "postgres"];
+
+/// Checks that the models were generated from the bench set (contracts/fixtures/bench/dbspec-set.json), which the sections
+/// install; the set is read from the checkout of the crate.
+fn check_bench_set() {
+    let path = polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/bench/dbspec-set.json");
+    let set = polyspec_orm::dbspec::read_set(&path).or_panic(|errors| format!("{}: {errors:?}", path.display()));
     let text = |file: &polyspec_orm::dbspec::SetFile| {
         polyspec_orm::dbspec::read_bytes(&file.path.display().to_string(), file.bytes.clone()).or_panic(|errors| format!("{}: {errors:?}", file.path.display()))
     };
@@ -938,65 +924,112 @@ async fn main() {
     let parsed =
         polyspec_orm::dbspec::parse_set(&owned.iter().map(String::as_str).collect::<Vec<_>>(), &external.iter().map(String::as_str).collect::<Vec<_>>());
     let documents: Vec<polyspec_orm::dbspec::Document> =
-        parsed.into_iter().map(|d| d.document.unwrap_or_else(|| panic!("{}: {:?}", args[1], d.diagnostics))).collect();
-    let manifest = polyspec_orm::dbspec::manifest(&documents.iter().collect::<Vec<_>>()).or_panic(|errors| format!("{}: {errors:?}", args[1]));
+        parsed.into_iter().map(|d| d.document.unwrap_or_else(|| panic!("{}: {:?}", path.display(), d.diagnostics))).collect();
+    let manifest = polyspec_orm::dbspec::manifest(&documents.iter().collect::<Vec<_>>()).or_panic(|errors| format!("{}: {errors:?}", path.display()));
     assert_eq!(manifest.manifest_hash, model::MANIFEST_HASH, "the models were generated from another document set");
-    const DRIVERS: [&str; 3] = ["sqlite", "mysql", "postgres"];
-    if selected.is_none_or(|case| case == "schema_empty") {
-        for driver in DRIVERS {
-            let case = polyspec_orm_testcase::start(format!("schema_empty/{driver}"), polyspec_orm_testcase::DATABASE);
-            let t = Target::empty(driver).await;
-            schema_empty(&t).await;
-            t.finish().await;
-            drop(case);
-        }
+}
+
+/// Runs the case `body` of the section `name` on each driver, on a case database where the bench set is installed; each case
+/// installs its schema in its own case database and runs no more than a few hundred statements.
+async fn installed_section(name: &str, body: impl AsyncFn(&Target)) {
+    check_bench_set();
+    for driver in DRIVERS {
+        let case = polyspec_orm_testcase::start(format!("{name}/{driver}"), polyspec_orm_testcase::DATABASE);
+        let t = Target::installed(driver).await;
+        body(&t).await;
+        t.finish().await;
+        drop(case);
     }
-    for name in ["conditions", "joins_and_relations", "columns_and_subqueries", "writes", "transactions", "aes_rotation", "json_values", "bind_limit_splitting"]
-    {
-        if selected.is_some_and(|case| case != name) {
-            continue;
-        }
-        // Each case installs its schema in its own case database and runs no more than a few hundred statements.
-        for driver in DRIVERS {
-            let case = polyspec_orm_testcase::start(format!("{name}/{driver}"), polyspec_orm_testcase::DATABASE);
-            let t = Target::installed(driver).await;
-            match name {
-                "conditions" => conditions(&t).await,
-                "joins_and_relations" => joins_and_relations(&t).await,
-                "columns_and_subqueries" => columns_and_subqueries(&t).await,
-                "writes" => writes(&t).await,
-                "transactions" => transactions(&t).await,
-                "aes_rotation" => aes_rotation(&t).await,
-                "json_values" => json_values(&t).await,
-                _ => bind_limit_splitting(&t).await,
-            }
-            t.finish().await;
-            drop(case);
-        }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN; run it with --include-ignored"]
+async fn schema_empty() {
+    check_bench_set();
+    for driver in DRIVERS {
+        let case = polyspec_orm_testcase::start(format!("schema_empty/{driver}"), polyspec_orm_testcase::DATABASE);
+        let t = Target::empty(driver).await;
+        schema_empty_case(&t).await;
+        t.finish().await;
+        drop(case);
     }
-    if selected.is_none_or(|case| case == "primary_and_replica") {
-        for driver in DRIVERS {
-            let case = polyspec_orm_testcase::start(format!("primary_and_replica/{driver}"), polyspec_orm_testcase::DATABASE);
-            let t = Target::installed(driver).await;
-            if driver == "sqlite" {
-                read_only_sqlite(&t).await;
-                case.step("read_only_sqlite");
-            } else {
-                let var = format!("ORM_TEST_{}_REPLICA_DSN", driver.to_uppercase());
-                let replica = match std::env::var(&var) {
-                    Ok(v) if !v.is_empty() => v,
-                    Ok(_) => panic!(
-                        "{var} is set but empty; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers"
-                    ),
-                    Err(error) => panic!(
-                        "{var} is required ({error}); database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers"
-                    ),
-                };
-                primary_and_replica(&t, &replica).await;
-            }
-            t.finish().await;
-            drop(case);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN; run it with --include-ignored"]
+async fn conditions() {
+    installed_section("conditions", conditions_case).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN; run it with --include-ignored"]
+async fn joins_and_relations() {
+    installed_section("joins_and_relations", joins_and_relations_case).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN; run it with --include-ignored"]
+async fn columns_and_subqueries() {
+    installed_section("columns_and_subqueries", columns_and_subqueries_case).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN; run it with --include-ignored"]
+async fn writes() {
+    installed_section("writes", writes_case).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN; run it with --include-ignored"]
+async fn transactions() {
+    installed_section("transactions", transactions_case).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN; run it with --include-ignored"]
+async fn aes_rotation() {
+    installed_section("aes_rotation", aes_rotation_case).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN; run it with --include-ignored"]
+async fn json_values() {
+    installed_section("json_values", json_values_case).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN; run it with --include-ignored"]
+async fn bind_limit_splitting() {
+    installed_section("bind_limit_splitting", bind_limit_splitting_case).await;
+}
+
+/// SQLite reads a database file it may only read; MySQL and PostgreSQL read through a replica of the primary, whose DSN is
+/// ORM_TEST_<DRIVER>_REPLICA_DSN.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN and their replicas; run it with --include-ignored"]
+async fn primary_and_replica() {
+    check_bench_set();
+    for driver in DRIVERS {
+        let case = polyspec_orm_testcase::start(format!("primary_and_replica/{driver}"), polyspec_orm_testcase::DATABASE);
+        let t = Target::installed(driver).await;
+        if driver == "sqlite" {
+            read_only_sqlite(&t).await;
+            case.step("read_only_sqlite");
+        } else {
+            let var = format!("ORM_TEST_{}_REPLICA_DSN", driver.to_uppercase());
+            let replica = match std::env::var(&var) {
+                Ok(v) if !v.is_empty() => v,
+                Ok(_) => panic!(
+                    "{var} is set but empty; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers"
+                ),
+                Err(error) => panic!(
+                    "{var} is required ({error}); database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers"
+                ),
+            };
+            primary_and_replica_case(&t, &replica).await;
         }
+        t.finish().await;
+        drop(case);
     }
 }
 
