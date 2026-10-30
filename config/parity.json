@@ -3528,14 +3528,7 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/dbspec_apply.py",
-          "id": "test_lock_wait_mysql",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "dbspec-apply-python-check"
-          ]
+          "id": "test_lock_wait_mysql"
         },
         {
           "implementation": "python",
@@ -14171,14 +14164,7 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/dbspec_apply.py",
-          "id": "test_stress_plan_commits_each_step_and_leaves_no_postgres_relation_locks",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "dbspec-apply-python-check"
-          ]
+          "id": "test_stress_plan_commits_each_step_and_leaves_no_postgres_relation_locks"
         },
         {
           "implementation": "rust",
