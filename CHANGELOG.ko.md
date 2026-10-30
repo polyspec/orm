@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 419684cb894edf073e9fb47f884eedc0cf7aab9a2f4a299edc93f1113456d4d6 -->
+<!-- source-sha256: 71bcea3d16f603961964f214926e19d76ae7a02df6dfc4f5ffc9c489dcfd596f -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.19
 
+- TypeScript MySQL driver는 정수 number parameter를 bigint, 즉 LONGLONG으로 보냅니다. mysql2가 number를 DOUBLE로 보내고 ProxySQL이 DOUBLE LIMIT을 거부하기 때문입니다(T273).
 - client-pooler-check는 그 php-extension lane이 extension을 build하므로 PHP extension tool을 선언하고 설치합니다(T272).
 - PHP test helper는 하나의 helper generateModels를 통해 별도 process의 orm-gen으로 model을 생성하므로, extension으로 도는 test는 PHP library의 file을 load하지 않습니다(T270).
 - complex query와 hot-path gate의 Python parity binding은 test class를 가리키고, postgres와 sqlite hot-path binding은 mysql binding처럼 database와 그 DSN을 줍니다(T269).

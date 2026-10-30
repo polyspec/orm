@@ -1,7 +1,16 @@
-// A native MySQL binary cell reaches the model through the driver's row decoder without losing its bytes.
+// A native MySQL binary cell reaches the model through the driver's row decoder without losing its bytes, and an integral
+// number parameter reaches MySQL as an integer.
 import assert from 'node:assert/strict';
 import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 import { CORE, Db, Model, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
+import { mysqlParams } from '../dist/driver.js';
+
+// mysql2 sends a JS number as a DOUBLE, which ProxySQL refuses as a LIMIT (T273), so an integral number goes as a bigint
+// and every other value is unchanged.
+caseTest('driver-param/integer/mysql', COMPUTE, () => {
+  const bytes = Uint8Array.from([1]);
+  assert.deepEqual(mysqlParams([3, 0, -7, 2.5, null, true, 'x', 9n, bytes]), [3n, 0n, -7n, 2.5, null, true, 'x', 9n, bytes]);
+});
 
 // Requirements: INT-5, PRT-69.
 caseTest('driver-cell/bytes/mysql', COMPUTE, async () => {

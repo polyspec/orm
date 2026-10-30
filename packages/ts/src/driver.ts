@@ -340,8 +340,16 @@ function pgColumn(field: { name: string; dataTypeID: number }): DriverColumn {
   return { name: field.name, type: PG_TYPE_NAMES[field.dataTypeID] ?? `OID:${field.dataTypeID}` };
 }
 
+/**
+ * The parameters of a MySQL prepared statement: mysql2 sends a JS number as a DOUBLE, which a server or a pooler may refuse where
+ * an integer is required (ProxySQL refuses a DOUBLE LIMIT, T273), so an integral number is sent as a bigint, a LONGLONG.
+ */
+export function mysqlParams(params: readonly DriverValue[]): DriverValue[] {
+  return params.map(value => (typeof value === 'number' && Number.isInteger(value) ? BigInt(value) : value));
+}
+
 async function mysqlExecute(connection: MySqlPool | MySqlConnection, sql: string, params: readonly DriverValue[]): Promise<DriverResult> {
-  const [value, fields] = await connection.execute({ sql, rowsAsArray: true }, [...params]);
+  const [value, fields] = await connection.execute({ sql, rowsAsArray: true }, mysqlParams(params));
   const columns = (fields ?? []).map(mysqlColumn);
   if (Array.isArray(value)) return { rows: arrayRows(value), affected: 0, insertId: null, columns };
   const result = value as { affectedRows: number; insertId: number };
