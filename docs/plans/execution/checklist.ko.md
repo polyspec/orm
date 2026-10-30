@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 2d3ce340c37cb21d9b4802a2fe07ccc2fd432f8d28a86c66aeed1e0d21dfd5f1 -->
+<!-- source-sha256: a958e224ba5d67b4891f9f0767304a2694a65d401932551ad90ea65981da560c -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1353,3 +1353,4 @@
 | T265 | docs/features.md와 그 한국어 twin을 contracts/features.json에서 다시 생성한다. 원인: 5740e7397(KSTD-7-6)이 contract에서 performance_gate를 implemented로 옮기면서 scripts/features/build.mts를 돌리지 않아, feature-unit-check가 generated document is stale: docs/features.md로 실패한다(ci 40979519721, job static) | docs/features.md, docs/features.ko.md, CHANGELOG.md, CHANGELOG.ko.md | `make feature-unit-check` | [v] |
 | T266 | bench vector는 bench fixture의 ip_hex_cell table을 따른다. 원인: 9dd8819ac(KSTD-5-110)가 contracts/fixtures/bench/bench.dbs에 codec setting을 가진 ip_hex_cell table을 추가했는데, tests/dbspec/mermaid.json의 bench round trip dropped 목록도 packages/python/tests/test_orm_gen.py의 생성 module hash와 entity 수도 따라가지 않아, 모든 runtime이 24개 대신 export dropped 25 objects를 보고한다(ci 40979519721, job dbspec_go, dbspec_php_extension, client_db_rust, clients_pooler, python) | tests/dbspec/mermaid.json, packages/python/tests/test_orm_gen.py, CHANGELOG.md, CHANGELOG.ko.md | `make dbspec-go-check/engine dbspec-rust-check python-unit-check` | [ ] |
 | T267 | PHP extension declarations test는 ModelMetadata를 client class로 센다. 원인: T258(9526d6183)이 library와 stub에서 Polyspec\Orm\ModelMetadata를 공개하면서 packages/php-ext/tests/declarations_functions.php의 INTERNAL_CLASSES에 남겨 두어 DeclarationsTest::testClient가 실패한다(ci 40979519721, job dbspec_php_extension) | packages/php-ext/tests/declarations_functions.php, CHANGELOG.md, CHANGELOG.ko.md | `make dbspec-php-extension-check` | [ ] |
+| T268 | config/parity.json의 Python symbol은 import root 접두사 polyspec.orm을 가진다. 원인: kit K788(0.0.70)이 Python symbol을 import root에서 읽어 id가 polyspec.orm.X인데 Python 선언 673개는 여전히 orm.X라, parity-api가 각각을 누락이자 미선언으로 보고한다(gates 40979519777, job parity-api) | config/parity.json, CHANGELOG.md, CHANGELOG.ko.md | `make parity-declarations-check` | [ ] |
