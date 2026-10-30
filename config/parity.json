@@ -12236,7 +12236,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "coverage_conformance_vector"
+          "id": "coverage_conformance_vector",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test coverage_conformance_verification",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_conformance_vector"
+          ]
         }
       ]
     },

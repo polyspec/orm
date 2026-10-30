@@ -5,6 +5,7 @@
 
 ## 0.0.19
 
+- The rust binding of go-internal-packages-go-engine-functions-physical runs coverage_conformance_vector through make feature-rust-database with the SQLite database, as coverage-conformance-verification-conformance-vector runs it, so the parity run executes the ignored trial with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN. Before, the binding had no command, cargo reported the trial ignored, and the run read it as skipped (T314).
 - The PHP extension build stages packages/php/src/native/sqlite_cancel.c as src/native/sqlite_cancel.c with --source-copy in both build modes, as kit K930 requires, since the kit builder no longer reads the source-copy declarations of config/release.json. Before, every release build of the extension failed with No rule to make target src/native/sqlite_cancel.c (T325).
 - The rust binding of group-row-owner names collection::group_tests::grouped_rows_contain_only_group_values_and_checked_counts, the test that owns INT-68 to INT-71, so the parity run executes it. Before, it named a test that never existed, which selected no test, and the binding was reported as not executed (T312).
 - The python hot path measurement writes its PERF lines to standard output, so the unittest result line of `test_hot_path_gate` holds only its outcome and the parity run credits the three hot path units, where the lines written to standard error inside that result line hid it (T310).
