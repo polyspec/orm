@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b3c8b639f28c820046549085355fb845d818dd1c51b7381cafb77656effb84e2 -->
+<!-- source-sha256: eda8e6889cd71564424aa52d6535cad03a862c18d90b844036b95931aa64fe55 -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.19
 
+- kit 0.0.79를 채택한다(KSTD-5-125): CI는 `.github/workflows/ci-pipeline.yml`의 shared, parity, runtime 검사를 job `kit`으로 부르고 `ci-passed`가 그 성공을 요구하며, release는 성공한 `ci.yml` run의 id로 `release.yml`을 dispatch하는 것이고 그 `make release-tag`가 run의 commit에 tag한다. `make release-verify`와 push한 tag로 하는 release는 없어졌다.
 - 잘못된 date나 datetime의 native 읽기는 CODEC_DECODE OrmException "invalid date value <text>"를 원래 예외와 함께 던집니다. 전에는 행 읽기와 group 값이 오류 없이 끝났습니다. 확장은 PHP library가 읽는 대체 형식과 끝의 offset도 읽습니다(T293).
 - extension run guard는 확장이 선언한 class를 담은 library file이 load된 run만 실패시킵니다. 그래서 확장이 제공하지 않는 generator를 load한 run은 통과하고, fork된 worker도 잘못된 실패를 물려받지 않습니다(T302).
 - make run-databases는 contracts/check-inputs.json이 선언하지 않은 target을 이름을 밝혀 거부합니다. 전에는 그 target을 아무것도 필요 없는 target으로 실행했습니다(T288).

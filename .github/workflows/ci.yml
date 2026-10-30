@@ -6,7 +6,7 @@
 # once, each running make check-run GROUP=<group> on the targets CI_TARGETS_<group>;
 # the groups together run every target of CHECK_TARGETS once. The job docs runs
 # the documentation checks of the published site, and the last job ci-passed,
-# the check that the release of a tag requires (make release-verify), passes
+# the run whose id the release takes (make release-tag requires its success), passes
 # only when every other job succeeded. This is where the full suite
 # runs: on every push to main and on a manual run, never stopping at a failure, and
 # recording enough to fix every failure before the next run. A check it lacks
@@ -32,6 +32,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The gates of kit (kit S12): ci-pipeline.yml, which kit-sync copies, plans and runs the shared, parity and runtime
+  # gates. No job waits for it but ci-passed, which needs it: every other job installs what it runs itself.
+  kit:
+    uses: ./.github/workflows/ci-pipeline.yml
+    permissions:
+      contents: read
+
   test:
     # .github/runner declares the runner of every job; make repo-check
     # requires it.
@@ -340,7 +347,7 @@ jobs:
   # lists every other job.
   ci-passed:
     if: ${{ always() }}
-    needs: [test, docs, editor]
+    needs: [kit, test, docs, editor]
     runs-on: ubuntu-26.04-arm
     steps:
       - uses: actions/checkout@v5

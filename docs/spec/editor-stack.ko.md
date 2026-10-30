@@ -1,5 +1,5 @@
 <!-- doc-id: plans-editor-stack -->
-<!-- source-sha256: e7e15bb11b7273b9776d6eb3b18a82630f163d0f929872f387516d00eebaf489 -->
+<!-- source-sha256: db75a92e6b45e2fdf29350b67d8def1d235b4bd457885aa33a87d4656f95bcbb -->
 # 계획: 표준으로서의 dbspec editor stack
 
 [English](editor-stack.md)
@@ -323,8 +323,8 @@ Cause, Acceptance, 그리고 `docs/spec/editor.md`에 있다.
     runtime이 아닌 folder를 중첩하므로 S5와 kit의 `component-ports` 규칙이 거부한다). AGENTS.md(+ko)가 이 배치를 적는다.
 - **T128-R editor stack의 release.** 자기 항목이며 T126의 선례와 orm AGENTS.md:233-240을 따른다.
   - green CI 뒤의 `chore(release)` bump commit.
-  - maintainer의 tag.
-  - release workflow와 모든 npm package의 `release-verify`.
+  - 그 CI run의 id로 maintainer가 release workflow를 dispatch하고, 그 `release-tag`가 tag한다.
+  - release workflow와 모든 npm package의 archive.
 
 ## template: 단일 checklist(table)의 행과 `docs/plans/execution-plan.md`의 항목
 각 행은 1단계에서 다음 wave의 실제 ID `T<wave>.<n>`을 받는다. orm의 T128은 그 ID를 인용한다. 각 행은

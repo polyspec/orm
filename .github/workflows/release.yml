@@ -1,18 +1,21 @@
 # Release workflow of a repository that adopts kit. kit-sync copies this file from the installed package @polyspec/kit to
 # .github/workflows/release.yml, and kit-check fails when the checkout differs from it; a repository never edits it.
 #
-# A dispatch of the workflow with a tag, or a push of the tag, creates the GitHub Release of the tag as a draft with its archives,
-# and makes it public. The steps run in order and stop at the first failure; each step runs one make target of
-# kit with TAG from the environment. The first two install the package in the bootstrap order of a repository:
-#   release-tag      on a dispatch, creates the annotated tag at origin/main and pushes it, or passes when it is there
-#                    (K269); a tag pushed with the token of the run starts no second run
+# A dispatch of the workflow with the id of a successful CI run and a version releases the commit of that run (K911): it tags
+# the commit and creates the GitHub Release of the tag as a draft with its archives, and makes it public. The run is the
+# evidence; the release runs no test again. The steps run in order and stop at the first failure; each step runs one make
+# target of kit with TAG, vVERSION, from the environment:
 #   bootstrap package installs the locked kit with the exact packageManager npm for consumers, without scripts
 #   install-tools TOOLS=npm installs the npm of packageManager with the copied installer of scripts/kit/bootstrap
 #   install-packages installs package-lock.json with that npm, @polyspec/kit included, whose kit.mk has the targets below
+#   release-tag      with the kit of main: requires a completed successful push or dispatch run RUN of ci.yml on main whose
+#                    commit is on origin/main, and creates and pushes the annotated tag vVERSION and the tag of every Go module
+#                    at that commit, or passes for a tag there already (K269); a tag pushed with the token of the run starts no run
+#   checkout of the tag, then the bootstrap, npm and the packages of the tagged commit again
 #   release-prepare  the preparation that the release of the repository declares with release-prepare:: (none by default)
-#   release-tools    installs the tools that config/release.json needs for the packages of this repository
+#   release-tools    installs the tools that config/release.json needs for the packages of this repository, and the
+#                    arginfo generator of packages/php-ext or of a generated php-arginfo artifact
 #   release-tools-path puts var/tools/bin on the PATH of the steps that follow, through GITHUB_PATH
-#   release-verify   the tagged commit is on origin/main and its check runs concluded success, without running the tests again
 #   release-assets  builds the archive of every package, and packages.json of the Composer packages, into var/release/assets
 #   release-publish creates the GitHub Release of the tag as a draft, with its notes and those files
 #   release-undraft makes the release public
@@ -20,26 +23,32 @@
 name: release
 
 on:
-  push:
-    tags: ['v*', '**/v*']
   workflow_dispatch:
     inputs:
-      tag:
-        description: The tag of the release, such as v0.0.1
+      run:
+        description: The id of the successful CI run of main whose commit is released
+        required: true
+        type: string
+      version:
+        description: The version of the release, X.Y.Z, such as 0.0.1
         required: true
         type: string
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   release:
     runs-on: ubuntu-24.04
     env:
-      TAG: ${{ inputs.tag || github.ref_name }}
+      TAG: v${{ inputs.version }}
+      RUN: ${{ inputs.run }}
+      VERSION: ${{ inputs.version }}
       GH_TOKEN: ${{ github.token }}
     steps:
-      # actions/checkout v7.0.1: the whole history and every branch, so origin/main is there for the ancestry check.
+      # actions/checkout v7.0.1: main with the whole history and every branch, so origin/main is there for the ancestry check and
+      # the kit of main runs release-tag.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
@@ -52,10 +61,11 @@ jobs:
         with:
           node-version-file: mise.toml
           package-manager-cache: false
-      # shivammathur/setup-php 2.40.0: the PHP of .php-version for the Composer packages of the release. A repository that needs
-      # PHP (a Composer package of config/release.json, or php of config/toolchain.json) declares .php-version,
-      # which the kit-check of CI requires (K193); a repository without PHP has none and sets up no PHP. The release runs no
-      # kit-check of its own: release-verify refuses a commit whose CI, kit-check included, did not pass (K755).
+      # shivammathur/setup-php 2.40.0: the PHP of .php-version for the Composer packages and the extension of the release. A
+      # repository that needs PHP (a Composer package of config/release.json, or php of config/toolchain.json) declares
+      # .php-version, which the kit-check of CI requires (K193); a repository without PHP has none and sets up no PHP. The
+      # release runs no kit-check of its own: release-tag refuses a commit whose CI run, kit-check included, did not pass
+      # (K755).
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
         if: ${{ hashFiles('.php-version') != '' }}
         with:
@@ -72,9 +82,20 @@ jobs:
         run: make install-tools TOOLS=npm
       - name: install packages
         run: make install-packages
-      - name: tag
-        if: ${{ github.event_name == 'workflow_dispatch' }}
+      - name: tag the commit of the CI run
         run: make release-tag
+      # The release builds the tagged commit with its own kit and packages.
+      - name: check out the tag
+        run: git checkout --quiet "$TAG"
+      - name: bootstrap the installed kit package of the tag
+        run: |
+          if [ "$(node -p 'require("./package.json").name')" != '@polyspec/kit' ]; then
+            npm_config_cache="$PWD/var/bootstrap/npm-cache" npm exec --yes --package="$(node -p 'require("./package.json").packageManager.split("+")[0]')" -- npm ci --ignore-scripts --allow-remote=root
+          fi
+      - name: install npm of the tag
+        run: make install-tools TOOLS=npm
+      - name: install packages of the tag
+        run: make install-packages
       - name: prepare the release of the repository
         run: make release-prepare
       - name: make release-tools
@@ -84,8 +105,6 @@ jobs:
       # runner reads between steps.
       - name: put the installed tools on PATH
         run: make release-tools-path
-      - name: verify the tagged commit
-        run: make release-verify
       - name: build the assets
         run: make release-assets
       - name: create the draft release

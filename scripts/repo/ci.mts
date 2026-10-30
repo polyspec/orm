@@ -337,7 +337,8 @@ export function ownWorkflows(workflows: Record<string, string>, ownedPaths: stri
 
 // runnerErrors returns one error for each place where a job of the workflow does not run on the single runner that .github/runner declares,
 // returning one error. declared is the content of .github/runner (one runner label and a line end), and workflows is {path: text}.
-// All jobs run on the same Linux runner.
+// All jobs run on the same Linux runner. A job that calls a reusable workflow (uses) has no runs-on: GitHub refuses one there,
+// and the jobs of the called workflow run on the runners it declares; ci-pipeline.yml of kit is such a workflow, and kit owns it.
 export function runnerErrors(declared: string, workflows: Record<string, string>): string[] {
   const runner = declared.trim();
   if (!/^[a-z0-9][a-z0-9.-]*$/.test(runner) || declared !== `${runner}\n`)
@@ -348,6 +349,7 @@ export function runnerErrors(declared: string, workflows: Record<string, string>
   const errors: string[] = [];
   for (const [path, workflow] of Object.entries(workflows)) {
     for (const job of readWorkflow(workflow, path).jobs) {
+      if ('uses' in job.value) continue;
       const label = job.value['runs-on'];
       if (label === undefined) errors.push(`${path} job ${job.id} declares no runs-on`);
       else if (label !== runner) errors.push(`${path} job ${job.id} runs on ${typeof label === 'string' ? label : JSON.stringify(label)}; .github/runner declares ${runner}`);

@@ -252,7 +252,7 @@ caseTest('a workflow runs only the summary and the report upload after make orm-
 // workflow, changing one at a time.
 const declared = readFileSync(new URL('mise.toml', repository), 'utf8');
 const minimum = readPackage(join(repository.pathname, 'package.json')).engines?.['node'];
-// Kit owns gates.yml and release.yml, so the workflow rules of orm do not apply to them (KSTD-10).
+// Kit owns ci-pipeline.yml and release.yml, so the workflow rules of orm do not apply to them (KSTD-10).
 const workflows = ownWorkflows(Object.fromEntries(readdirSync(new URL('.github/workflows/', repository)).sort()
   .map(name => [`.github/workflows/${name}`, readFileSync(new URL(`.github/workflows/${name}`, repository), 'utf8')])), kitOwned);
 
@@ -943,8 +943,8 @@ caseTest('every variable a helper make command reads is exported by the Makefile
 const kitWorkflowPaths = kitOwned.filter(path => path.startsWith('.github/workflows/'));
 
 caseTest('the workflow rules skip workflows owned by @polyspec/kit', COMPUTE, () => {
-  assert.deepEqual(kitWorkflowPaths, ['.github/workflows/release.yml', '.github/workflows/gates.yml']);
-  const all = { '.github/workflows/ci.yml': 'a', '.github/workflows/release.yml': 'b', '.github/workflows/gates.yml': 'c' };
+  assert.deepEqual(kitWorkflowPaths, ['.github/workflows/release.yml', '.github/workflows/ci-pipeline.yml']);
+  const all = { '.github/workflows/ci.yml': 'a', '.github/workflows/release.yml': 'b', '.github/workflows/ci-pipeline.yml': 'c' };
   assert.deepEqual(ownWorkflows(all, kitWorkflowPaths), { '.github/workflows/ci.yml': 'a' });
   assert.deepEqual(ownWorkflows({ 'ci.yml': 'a', 'release.yml': 'b' }, kitWorkflowPaths), { 'ci.yml': 'a' });
   assert.throws(() => ownWorkflows(all, null), /no Kit-owned paths/);
@@ -978,6 +978,8 @@ caseTest('a job on another runner fails', COMPUTE, () => {
     'ci.yml job test runs on ubuntu-24.04; .github/runner declares ubuntu-26.04-arm',
   ]);
   assert.deepEqual(runnerErrors('ubuntu-26.04-arm\n', { 'ci.yml': job.replace('    runs-on: ubuntu-26.04-arm\n', '') }), ['ci.yml job test declares no runs-on']);
+  const call = 'jobs:\n  kit:\n    uses: ./.github/workflows/ci-pipeline.yml\n';
+  assert.deepEqual(runnerErrors('ubuntu-26.04-arm\n', { 'ci.yml': call }), []);
   assert.deepEqual(runnerErrors('', {}), ['.github/runner must hold one runner label and a newline, found ""']);
   assert.deepEqual(runnerErrors('macos-26\n', {}), [
     '.github/runner macos-26 is not a Linux runner; the linux-runner checks of contracts/features.json run only there',

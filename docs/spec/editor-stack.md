@@ -359,8 +359,8 @@ text lives in T128's Cause and Acceptance, plus `docs/spec/editor.md`.
 - **T128-R Release of the editor stack**, its own item, following T126's precedent and orm
   AGENTS.md:233-240.
   - A `chore(release)` bump commit after green CI.
-  - The maintainer's tag.
-  - The release workflow, and `release-verify` of every npm package.
+  - The maintainer's dispatch of the release workflow with the id of that CI run, whose `release-tag` tags it.
+  - The release workflow, and the archive of every npm package.
 
 ## template: rows of its single checklist (table) and entries of `docs/plans/execution-plan.md`
 Each row gets a real ID of the next wave, `T<wave>.<n>`, assigned in step 1. orm's T128 cites

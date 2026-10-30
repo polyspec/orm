@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 1076bd026f48d000c3b4d8bd900f13d9ec0484a47d60bed7e411fd13b95a8d70 -->
+<!-- source-sha256: be36d1e7ea0a99ee57aec0b88cf09a849e6a260b239720fa390428bcc81e9704 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -12,10 +12,11 @@ orm 자신의 규칙만 적는다.
 - Own: 0.x workflow에는 pull request, merge queue, ruleset이 없다. 항목마다 로컬에서 작업한다: 항목은 commit한 tree에서 그
   unit test가 통과하면 `[o]`가 된다. `main`에는 `[~]`인 항목이 없고 그 push의 작업이 끝났을 때 한 번 push한다. 그
   push의 CI(`.github/workflows/ci.yml`의 job `ci-passed`)가 성공해야 version을 올리는 commit과 tag를
-  만든다. tag를 만들고 옮기고 push하는 것은 maintainer뿐이며, tag의 push가 release workflow를 실행한다. release
+  만든다. release를 시작하는 것은 maintainer뿐이며, 그 CI run의 id로 release workflow를 dispatch하면 그 workflow가 run의 commit에 tag를
+  만든다. push한 tag는 run을 시작하지 않는다. release
   asset의 이름은 `<package>-<language>-<version>.<ext>`이다(예: `polyspec-orm-npm-X.Y.Z.tgz`). Python wheel은 PEP 427 이름
   `polyspec_orm-X.Y.Z-py3-none-any.whl`을 유지한다.
-  Enforced by: `make release-verify`
+  Enforced by: `make release-tag`
 - Own: 공유 도구는 npm package `@polyspec/kit`이며, `package.json`의 devDependency로 그 release의 asset과 integrity에
   고정한다. bootstrap source는 형제 Kit checkout에 있다. Makefile은 `../kit/scripts/kit/kit-bootstrap.mk`를 include하며,
   이 파일은 package가 생기기 전에 고정한 npm을 설치한 뒤 `package-lock.json`을 설치한다. 새 checkout에는 형제 Kit
@@ -244,15 +245,17 @@ orm 자신의 규칙만 적는다.
   `composer update --lock`으로 다시 lock하며(lock의 content-hash가 `version`을 덮는다), CHANGELOG.md와 CHANGELOG.ko.md에서 `## Unreleased`를 새 빈 `## Unreleased`
   아래의 `## X.Y.Z`로 바꾼다.
   Enforced by: none, review의 판단이다. kit K812 이후 version을 읽는 검사가 없다
-- Own: 그 commit의 CI(`ci-passed`)가 성공한 뒤 maintainer가 그 commit에 `vX.Y.Z`를 tag하고 같은 commit의 Go module
-  tag `packages/go/vX.Y.Z`와 함께 push한다. 그 tag가 Go module `github.com/polyspec/orm/packages/go`를 release한다. tag를 만들고 옮기고 push하는 것은 maintainer뿐이다.
-  Enforced by: none, 누가 tag를 만드는지 보는 검사가 없다. tag push는 release workflow를 실행한다
-- Own: tag의 push는 `.github/workflows/release.yml`을 실행하고, 그것이 GitHub Release를 게시한다: `make release-verify`
-  (commit이 `main`에 있고 그 check `ci-passed`가 성공했다),
+- Own: 그 commit에서 `.github/workflows/ci.yml`의 push run이 성공한 뒤(`ci-passed`) maintainer가 그 run의 id로 release를
+  dispatch한다: `gh workflow run release.yml -f run=<id> -f version=X.Y.Z`. 그 `make release-tag`는 run이 `main`에서 성공했고
+  그 commit이 `origin/main`에 있기를 요구하며, 그 commit에 annotated tag `vX.Y.Z`와 `packages/go/vX.Y.Z`를 만들어 push한다. 그
+  tag가 Go module `github.com/polyspec/orm/packages/go`를 release한다. 다른 commit에 있거나 lightweight인 tag는 거절한다. 손으로
+  tag를 만들고 옮기고 push하는 사람은 없다.
+  Enforced by: `make release-tag`
+- Own: 이어서 `.github/workflows/release.yml`이 tag한 commit에서 GitHub Release를 게시한다:
   `make release-assets`(`@polyspec/orm`의 `polyspec-orm-npm-X.Y.Z.tgz`, `polyspec/orm`의 `polyspec-orm-php-X.Y.Z.zip`,
   `polyspec/orm-php-ext`의 `polyspec-orm-php-ext-php-X.Y.Z.zip`, `polyspec-orm`의 `polyspec_orm-X.Y.Z-py3-none-any.whl`), `make release-publish`(그 section의 notes로 만든
-  release이며, GitHub release 본문의 한도인 125000자를 넘는 section은 tag의 CHANGELOG.md에서 그 section을 가리키는 한 줄이
-  된다)다. test는 다시 실행하지 않는다. `make release-coverage`는 checkout의 모든 manifest가 `config/release.json`에
+  draft release이며, GitHub release 본문의 한도인 125000자를 넘는 section은 tag의 CHANGELOG.md에서 그 section을 가리키는 한 줄이
+  된다), 그리고 그것을 공개하는 `make release-undraft`다. test는 다시 실행하지 않는다. `make release-coverage`는 checkout의 모든 manifest가 `config/release.json`에
   분류되어 있기를 요구한다.
   Enforced by: `make release-coverage`
 - Own: Python client(`packages/python/pyproject.toml`)는 wheel `polyspec_orm-X.Y.Z-py3-none-any.whl`로 release된다(`config/release.json`의

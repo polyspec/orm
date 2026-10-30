@@ -1,19 +1,21 @@
-# The gates of kit in a repository that adopts it (K270). kit-sync copies this file from the installed package @polyspec/kit to
-# .github/workflows/gates.yml, and kit-check fails when the checkout differs from it; a repository never edits it.
-# Each job installs its own locked prerequisites, declared in config/ci.json or selected from Kit's native lock targets.
-name: gates
+# The CI pipeline of kit in a repository that adopts it (K270, K910). kit-sync copies this file from the installed package
+# @polyspec/kit to .github/workflows/ci-pipeline.yml, and kit-check fails when the checkout differs from it; a repository never
+# edits it. The repository's own .github/workflows/ci.yml holds the triggers and the concurrency and calls it as a job
+# (`uses: ./.github/workflows/ci-pipeline.yml`), so one push runs one workflow: shared first, then the parity and runtime jobs in
+# parallel, then required. Each job installs only its own locked prerequisites, declared in config/ci.json or selected from the
+# repository's deps-<runtime> targets (K859), and runs kit's gate of its group with the targets that config/ci.json declares for
+# that group (targets.shared, targets.parity, targets.runtimes.<runtime>) through make ci-targets, inside its context window.
+name: ci-pipeline
 
 on:
-  pull_request:
-  push:
-    branches: [main]
-  workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
 
 jobs:
-  discover:
+  # The shared job writes the plan that names the runner of the other jobs (config/ci.json runner), so it runs on the default runner.
+  shared:
     runs-on: ubuntu-24.04
     outputs:
       runtimes: ${{ steps.plan.outputs.runtimes }}
@@ -21,11 +23,13 @@ jobs:
       parity_mode: ${{ steps.plan.outputs.parity_mode }}
       parity_matrix: ${{ steps.plan.outputs.parity_matrix }}
       has_runtimes: ${{ steps.plan.outputs.has_runtimes }}
-      common_tools: ${{ steps.plan.outputs.common_tools }}
       parity_tools: ${{ steps.plan.outputs.parity_tools }}
+      parity_targets: ${{ steps.plan.outputs.parity_targets }}
       extractors: ${{ steps.plan.outputs.extractors }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version-file: mise.toml
@@ -41,38 +45,17 @@ jobs:
         run: make install-packages
       - id: plan
         run: make kit-ci-plan
-
-  shared:
-    needs: discover
-    runs-on: ${{ needs.discover.outputs.runner }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
-        with:
-          node-version-file: mise.toml
-          package-manager-cache: false
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
-        if: ${{ contains(needs.discover.outputs.common_tools, 'php') }}
+        if: ${{ contains(steps.plan.outputs.common_tools, 'php') }}
         with:
           php-version-file: .php-version
           tools: none
           coverage: none
-      - name: bootstrap the installed kit package
-        run: |
-          if [ "$(node -p 'require("./package.json").name')" != '@polyspec/kit' ]; then
-            npm_config_cache="$PWD/var/bootstrap/npm-cache" npm exec --yes --package="$(node -p 'require("./package.json").packageManager.split("+")[0]')" -- npm ci --ignore-scripts --allow-remote=root
-          fi
-      - name: install npm
-        run: make install-tools TOOLS=npm
-      - name: install packages
-        run: make install-packages
       - name: install common gate tools
-        if: ${{ needs.discover.outputs.common_tools != '[]' }}
-        run: make install-tools TOOLS="${{ join(fromJSON(needs.discover.outputs.common_tools), ' ') }}"
+        if: ${{ steps.plan.outputs.common_tools != '[]' }}
+        run: make install-tools TOOLS="${{ join(fromJSON(steps.plan.outputs.common_tools), ' ') }}"
       - name: install PHP symbol extractor
-        if: ${{ contains(needs.discover.outputs.extractors, 'php') }}
+        if: ${{ contains(steps.plan.outputs.extractors, 'php') }}
         run: make kit-install-symbols EXTRACTORS=php
       - name: install shared prerequisites
         run: make kit-ci-setup GROUP=shared
@@ -80,15 +63,23 @@ jobs:
         name: prepare shared CI context
         run: make kit-ci-context-prepare GROUP=shared
       - name: shared gates
-        run: make -k kit-gates-static
+        run: make ci-targets TARGETS="kit-gates-static ${{ join(fromJSON(steps.plan.outputs.shared_targets), ' ') }}"
       - name: cleanup shared CI context
         if: ${{ always() && steps.context_prepare.outcome != 'skipped' }}
         run: make kit-ci-context-cleanup GROUP=shared
+      # actions/upload-artifact v7.0.1: the report of make ci-targets, var/report/ci-targets.
+      - name: report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: kit-report-shared
+          path: var/report/ci-targets/
+          if-no-files-found: ignore
 
   parity:
-    needs: discover
-    if: ${{ needs.discover.outputs.parity_mode == 'full' }}
-    runs-on: ${{ needs.discover.outputs.runner }}
+    needs: shared
+    if: ${{ needs.shared.outputs.parity_mode == 'full' }}
+    runs-on: ${{ needs.shared.outputs.runner }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -98,7 +89,7 @@ jobs:
           node-version-file: mise.toml
           package-manager-cache: false
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
-        if: ${{ contains(needs.discover.outputs.parity_tools, 'php') }}
+        if: ${{ contains(needs.shared.outputs.parity_tools, 'php') }}
         with:
           php-version-file: .php-version
           tools: none
@@ -113,26 +104,34 @@ jobs:
       - name: install packages
         run: make install-packages
       - name: install parity toolchains
-        if: ${{ needs.discover.outputs.parity_tools != '[]' }}
-        run: make install-tools TOOLS="${{ join(fromJSON(needs.discover.outputs.parity_tools), ' ') }}"
+        if: ${{ needs.shared.outputs.parity_tools != '[]' }}
+        run: make install-tools TOOLS="${{ join(fromJSON(needs.shared.outputs.parity_tools), ' ') }}"
       - name: install symbol extractors
-        if: ${{ needs.discover.outputs.extractors != '[]' }}
-        run: make kit-install-symbols EXTRACTORS="${{ join(fromJSON(needs.discover.outputs.extractors), ' ') }}"
+        if: ${{ needs.shared.outputs.extractors != '[]' }}
+        run: make kit-install-symbols EXTRACTORS="${{ join(fromJSON(needs.shared.outputs.extractors), ' ') }}"
       - name: install parity prerequisites
         run: make kit-ci-setup GROUP=parity
       - id: context_prepare
         name: prepare parity CI context
         run: make kit-ci-context-prepare GROUP=parity
       - name: parity gate
-        run: make -k kit-gates-parity
+        run: make ci-targets TARGETS="kit-gates-parity ${{ join(fromJSON(needs.shared.outputs.parity_targets), ' ') }}"
       - name: cleanup parity CI context
         if: ${{ always() && steps.context_prepare.outcome != 'skipped' }}
         run: make kit-ci-context-cleanup GROUP=parity
+      # actions/upload-artifact v7.0.1: the report of make ci-targets, var/report/ci-targets.
+      - name: report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: kit-report-parity
+          path: var/report/ci-targets/
+          if-no-files-found: ignore
 
   parity-api:
-    needs: discover
-    if: ${{ needs.discover.outputs.parity_mode == 'phases' }}
-    runs-on: ${{ needs.discover.outputs.runner }}
+    needs: shared
+    if: ${{ needs.shared.outputs.parity_mode == 'phases' }}
+    runs-on: ${{ needs.shared.outputs.runner }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -142,7 +141,7 @@ jobs:
           node-version-file: mise.toml
           package-manager-cache: false
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
-        if: ${{ contains(needs.discover.outputs.parity_tools, 'php') }}
+        if: ${{ contains(needs.shared.outputs.parity_tools, 'php') }}
         with:
           php-version-file: .php-version
           tools: none
@@ -157,30 +156,38 @@ jobs:
       - name: install packages
         run: make install-packages
       - name: install parity toolchains
-        if: ${{ needs.discover.outputs.parity_tools != '[]' }}
-        run: make install-tools TOOLS="${{ join(fromJSON(needs.discover.outputs.parity_tools), ' ') }}"
+        if: ${{ needs.shared.outputs.parity_tools != '[]' }}
+        run: make install-tools TOOLS="${{ join(fromJSON(needs.shared.outputs.parity_tools), ' ') }}"
       - name: install symbol extractors
-        if: ${{ needs.discover.outputs.extractors != '[]' }}
-        run: make kit-install-symbols EXTRACTORS="${{ join(fromJSON(needs.discover.outputs.extractors), ' ') }}"
+        if: ${{ needs.shared.outputs.extractors != '[]' }}
+        run: make kit-install-symbols EXTRACTORS="${{ join(fromJSON(needs.shared.outputs.extractors), ' ') }}"
       - name: install parity prerequisites
         run: make kit-ci-setup GROUP=parity
       - id: context_prepare
         name: prepare parity CI context
         run: make kit-ci-context-prepare GROUP=parity
       - name: API phase
-        run: make -k parity-api-check
+        run: make ci-targets TARGETS="parity-api-check ${{ join(fromJSON(needs.shared.outputs.parity_targets), ' ') }}"
       - name: cleanup parity CI context
         if: ${{ always() && steps.context_prepare.outcome != 'skipped' }}
         run: make kit-ci-context-cleanup GROUP=parity
+      # actions/upload-artifact v7.0.1: the report of make ci-targets, var/report/ci-targets.
+      - name: report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: kit-report-parity-api
+          path: var/report/ci-targets/
+          if-no-files-found: ignore
 
   parity-bindings:
-    needs: discover
-    if: ${{ needs.discover.outputs.parity_mode == 'phases' }}
+    needs: shared
+    if: ${{ needs.shared.outputs.parity_mode == 'phases' }}
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(needs.discover.outputs.parity_matrix) }}
-    runs-on: ${{ needs.discover.outputs.runner }}
+        include: ${{ fromJSON(needs.shared.outputs.parity_matrix) }}
+    runs-on: ${{ needs.shared.outputs.runner }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -190,7 +197,7 @@ jobs:
           node-version-file: mise.toml
           package-manager-cache: false
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
-        if: ${{ contains(needs.discover.outputs.parity_tools, 'php') }}
+        if: ${{ contains(needs.shared.outputs.parity_tools, 'php') }}
         with:
           php-version-file: .php-version
           tools: none
@@ -205,30 +212,38 @@ jobs:
       - name: install packages
         run: make install-packages
       - name: install parity toolchains
-        if: ${{ needs.discover.outputs.parity_tools != '[]' }}
-        run: make install-tools TOOLS="${{ join(fromJSON(needs.discover.outputs.parity_tools), ' ') }}"
+        if: ${{ needs.shared.outputs.parity_tools != '[]' }}
+        run: make install-tools TOOLS="${{ join(fromJSON(needs.shared.outputs.parity_tools), ' ') }}"
       - name: install symbol extractors
-        if: ${{ needs.discover.outputs.extractors != '[]' }}
-        run: make kit-install-symbols EXTRACTORS="${{ join(fromJSON(needs.discover.outputs.extractors), ' ') }}"
+        if: ${{ needs.shared.outputs.extractors != '[]' }}
+        run: make kit-install-symbols EXTRACTORS="${{ join(fromJSON(needs.shared.outputs.extractors), ' ') }}"
       - name: install parity prerequisites
         run: make kit-ci-setup GROUP=parity
       - id: context_prepare
         name: prepare parity CI context
         run: make kit-ci-context-prepare GROUP=parity
       - name: binding phase
-        run: make parity-bindings-${{ matrix.implementation }}-check
+        run: make ci-targets TARGETS="parity-bindings-${{ matrix.implementation }}-check"
       - name: cleanup parity CI context
         if: ${{ always() && steps.context_prepare.outcome != 'skipped' }}
         run: make kit-ci-context-cleanup GROUP=parity
+      # actions/upload-artifact v7.0.1: the report of make ci-targets, var/report/ci-targets.
+      - name: report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: kit-report-parity-bindings-${{ matrix.implementation }}
+          path: var/report/ci-targets/
+          if-no-files-found: ignore
 
   runtime:
-    needs: discover
-    if: ${{ fromJSON(needs.discover.outputs.runtimes)[0].runtime != 'none' }}
+    needs: shared
+    if: ${{ needs.shared.outputs.has_runtimes == 'true' }}
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(needs.discover.outputs.runtimes) }}
-    runs-on: ${{ needs.discover.outputs.runner }}
+        include: ${{ fromJSON(needs.shared.outputs.runtimes) }}
+    runs-on: ${{ needs.shared.outputs.runner }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
@@ -256,44 +271,36 @@ jobs:
       - name: install runtime prerequisites
         run: make kit-ci-setup GROUP=runtime RUNTIME=${{ matrix.runtime }}
       - name: install PHP symbol extractor
-        if: ${{ matrix.runtime == 'php' && contains(needs.discover.outputs.extractors, 'php') }}
+        if: ${{ matrix.runtime == 'php' && contains(needs.shared.outputs.extractors, 'php') }}
         run: make kit-install-symbols EXTRACTORS=php
       - id: context_prepare
         name: prepare runtime CI context
         run: make kit-ci-context-prepare GROUP=runtime RUNTIME=${{ matrix.runtime }}
       - name: runtime gate
-        run: make -k kit-gates-runtime-${{ matrix.runtime }}
+        run: make ci-targets TARGETS="kit-gates-runtime-${{ matrix.runtime }} ${{ join(matrix.targets, ' ') }}"
       - name: cleanup runtime CI context
         if: ${{ always() && steps.context_prepare.outcome != 'skipped' }}
         run: make kit-ci-context-cleanup GROUP=runtime RUNTIME=${{ matrix.runtime }}
+      # actions/upload-artifact v7.0.1: the report of make ci-targets, var/report/ci-targets.
+      - name: report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: kit-report-runtime-${{ matrix.runtime }}
+          path: var/report/ci-targets/
+          if-no-files-found: ignore
 
+  # The closing common part: it fails when a job of the pipeline failed or was cancelled. A job is skipped only when the parity
+  # mode excludes it, when the repository has no runtime, or when shared failed, which is a failure itself. It runs on the
+  # default runner, since the runner output of shared is empty when shared fails before the plan.
   required:
     if: ${{ always() }}
-    needs: [discover, shared, parity, parity-api, parity-bindings, runtime]
-    runs-on: ${{ needs.discover.outputs.runner }}
+    needs: [shared, parity, parity-api, parity-bindings, runtime]
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
-        with:
-          node-version-file: mise.toml
-          package-manager-cache: false
-      - name: bootstrap the installed kit package
-        run: |
-          if [ "$(node -p 'require("./package.json").name')" != '@polyspec/kit' ]; then
-            npm_config_cache="$PWD/var/bootstrap/npm-cache" npm exec --yes --package="$(node -p 'require("./package.json").packageManager.split("+")[0]')" -- npm ci --ignore-scripts --allow-remote=root
-          fi
-      - name: install npm
-        run: make install-tools TOOLS=npm
-      - name: install packages
-        run: make install-packages
-      - name: require the selected gate path
+      - name: require every job of the pipeline
         env:
-          KIT_CI_DISCOVER_RESULT: ${{ needs.discover.result }}
-          KIT_CI_PARITY_MODE: ${{ needs.discover.outputs.parity_mode }}
-          KIT_CI_HAS_RUNTIMES: ${{ needs.discover.outputs.has_runtimes }}
-          KIT_CI_SHARED_RESULT: ${{ needs.shared.result }}
-          KIT_CI_PARITY_RESULT: ${{ needs.parity.result }}
-          KIT_CI_PARITY_API_RESULT: ${{ needs.parity-api.result }}
-          KIT_CI_PARITY_BINDINGS_RESULT: ${{ needs.parity-bindings.result }}
-          KIT_CI_RUNTIME_RESULT: ${{ needs.runtime.result }}
-        run: make kit-ci-verify-gates
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "results: $RESULTS"
+          case " $RESULTS " in *' failure '*|*' cancelled '*) exit 1 ;; esac

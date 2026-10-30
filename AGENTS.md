@@ -13,11 +13,11 @@ vendors; this file states only the rules of orm.
   becomes `[o]` when its unit tests pass on the committed tree. `main` receives one push, when no
   item is `[~]` and the work of the push is complete; the CI of that push must succeed (the job
   `ci-passed` of `.github/workflows/ci.yml`) before the version-bump commit and the tag.
-  Only the maintainer creates, moves or pushes a tag, and the push of a tag runs the release
-  workflow. A release asset is named `<package>-<language>-<version>.<ext>`, for example
+  Only the maintainer starts a release, by a dispatch of the release workflow with the id of that
+  CI run, which tags its commit; a pushed tag starts no run. A release asset is named `<package>-<language>-<version>.<ext>`, for example
   `polyspec-orm-npm-X.Y.Z.tgz`; the Python wheel keeps its PEP 427 name,
   `polyspec_orm-X.Y.Z-py3-none-any.whl`.
-  Enforced by: `make release-verify`
+  Enforced by: `make release-tag`
 - Own: The shared tools are the npm package `@polyspec/kit`, a devDependency of `package.json` pinned to
   the asset of its release with its integrity. The bootstrap source is in the sibling Kit checkout:
   the Makefile includes `../kit/scripts/kit/kit-bootstrap.mk`, which installs the pinned npm before
@@ -279,18 +279,21 @@ vendors; this file states only the rules of orm.
   and renames `## Unreleased` to `## X.Y.Z` in CHANGELOG.md and CHANGELOG.ko.md, below a new empty
   `## Unreleased`.
   Enforced by: none, a judgement at review; no check reads the versions since kit K812
-- Own: After the CI of that commit succeeded (`ci-passed`), the maintainer tags it
-  `vX.Y.Z` and pushes it with the Go module tag `packages/go/vX.Y.Z` at the same commit, which
-  releases the Go module `github.com/polyspec/orm/packages/go`. Only the maintainer creates, moves or pushes a tag.
-  Enforced by: none, no check sees who creates a tag; the tag push runs the release workflow
-- Own: The push of the tag runs `.github/workflows/release.yml`, which publishes the GitHub Release:
-  `make release-verify` (the commit is on `main` and its check `ci-passed`
-  succeeded), `make release-assets`
+- Own: After the push run of `.github/workflows/ci.yml` on that commit succeeded (`ci-passed`), the maintainer
+  dispatches the release with the id of that run: `gh workflow run release.yml -f run=<id> -f version=X.Y.Z`. Its
+  `make release-tag` requires that the run succeeded on `main` and that its commit is on `origin/main`, and creates
+  and pushes the annotated tags `vX.Y.Z` and `packages/go/vX.Y.Z` at that commit, which releases the Go module
+  `github.com/polyspec/orm/packages/go`; it refuses a tag that is elsewhere or lightweight. No one creates, moves or
+  pushes a tag by hand.
+  Enforced by: `make release-tag`
+- Own: `.github/workflows/release.yml` then publishes the GitHub Release from the tagged commit:
+  `make release-assets`
   (`polyspec-orm-npm-X.Y.Z.tgz` of `@polyspec/orm`, `polyspec-orm-php-X.Y.Z.zip` of `polyspec/orm`,
   `polyspec-orm-php-ext-php-X.Y.Z.zip` of `polyspec/orm-php-ext` and `polyspec_orm-X.Y.Z-py3-none-any.whl` of
-  `polyspec-orm`) and `make release-publish` (the release
+  `polyspec-orm`), `make release-publish` (the release as a draft
   with the notes of that section; a section over 125000 characters, the limit of a GitHub release
-  body, becomes one line that links the section of CHANGELOG.md at the tag). The tests do not run
+  body, becomes one line that links the section of CHANGELOG.md at the tag) and `make release-undraft`, which makes
+  it public. The tests do not run
   again; `make release-coverage` requires every manifest of the checkout to be classified in
   `config/release.json`.
   Enforced by: `make release-coverage`

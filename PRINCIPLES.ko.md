@@ -1,5 +1,5 @@
 <!-- doc-id: principles -->
-<!-- source-sha256: 154e01445ded61346da6902f00ce57c8958673abb9a1b71ec5d4d8e42434bc7f -->
+<!-- source-sha256: 67b6e88e8cf81d3fd361d0bae15d75f1936e8f1053e1e8ee154b649193fb2a89 -->
 # 원칙
 
 [English](PRINCIPLES.md)
@@ -226,11 +226,13 @@ owner가 2026-10-13에 이 기준을 승인했습니다. 각 기준은 위반 �
   (K591, K761, K765).
   Enforced by: none, link는 개발 환경에만 있고 거기서 make link-check가 link 선언 .links에 맞춰 검사하며(K869), CI는 아무것도 link하지 않는다 (K824).
   kit의 K761 link test는 tool log에 npm link, composer update, editable 설치가 없음을 확인합니다
-- S12 저장소의 CI는 공유 gate를 kit이 주는 gates workflow(`gates.yml`, `make kit-gates`의 prerequisite)로 한 번만
-  실행합니다. 저장소의 다른 workflow도, ci-targets나 ci-setup이 읽는 입력도 kit-gates의 prerequisite를 다시 지정하지 않습니다.
-  kit 자신을 시험하는 kit의 ci.yml은 소비자 CI가 아닙니다(K870).
+- S12 저장소의 CI는 파이프라인 하나입니다. 저장소 자신의 ci.yml이 kit이 주는 workflow(`ci-pipeline.yml`)를 job `kit`으로
+  호출하고, 그 job은 `make kit-gates`의 prerequisite를 config/ci.json의 targets(`targets.shared`, `targets.parity`,
+  `targets.runtimes`)와 함께 한 번 실행하며, 같은 ci.yml의 저장소 job은 `needs: kit`으로 그 뒤를 잇습니다. 저장소의 다른 workflow도,
+  ci-targets나 ci-setup이 읽는 입력도 kit-gates의 prerequisite를 다시 지정하지 않습니다. kit 자신을 시험하는 kit의 ci.yml은 소비자
+  CI가 아닙니다(K870, K910).
   Enforced by: none, workflow는 저장소 자신의 파일이며 각 소비자가 채택 행에서 중복을 지운다
-- S13 모든 저장소가 공유하는 규칙은 똑같이 주입됩니다. 설치된 kit의 `kit.copies`에 있는 각 사본(이 파일, gates.yml,
+- S13 모든 저장소가 공유하는 규칙은 똑같이 주입됩니다. 설치된 kit의 `kit.copies`에 있는 각 사본(이 파일, ci-pipeline.yml,
   release.yml 등)은 package의 byte 그대로이며, `make kit-sync`가 쓰고 kit에서만 고칩니다. scripts/kit은 그 사본만 담습니다.
   kit 자신은 사본의 원천이므로 사본을 갖지 않습니다(K851).
   Enforced by: `make kit-inject-check`
