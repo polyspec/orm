@@ -22,7 +22,6 @@ use RuntimeException;
 use Polyspec\Orm\Dbspec\ApplyError;
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Dbspec\Diagnostic;
-use Polyspec\Orm\Dbspec\PlanSchemaMismatch;
 use Polyspec\Orm\Dbspec\Unsupported;
 use Polyspec\Orm\Orm;
 use PHPUnit\Framework\Assert;
@@ -110,7 +109,7 @@ function plan_steps(PDO $pdo, string $dialect, array $steps): void
 #[Medium]
 class DbspecPlanApplyTest extends TestCase
 {
-    public function testDriftApplyErrorKeepsTheSchemaMismatchAsItsCause(): void
+    public function testDriftApplyErrorNamesTheSchemaMismatchInItsDetail(): void
     {
         $pdo = new PDO('sqlite::memory:', options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
         $pdo->exec('CREATE TABLE stray (id INTEGER)');
@@ -122,15 +121,13 @@ class DbspecPlanApplyTest extends TestCase
             self::assertSame('drift', $error->code_);
             self::assertSame('', $error->plan);
             self::assertSame(0, $error->step);
-            self::assertInstanceOf(PlanSchemaMismatch::class, $error->getPrevious());
-            self::assertSame(
-                $error->getPrevious()->getMessage(),
-                substr($error->getMessage(), strlen('drift: ')),
-            );
+            self::assertNull($error->getPrevious());
+            self::assertNotSame('', $error->detail);
+            self::assertSame('drift: ' . $error->detail, $error->getMessage());
         }
     }
 
-    public function testRollbackDriftApplyErrorKeepsTheSchemaMismatchAsItsCause(): void
+    public function testRollbackDriftApplyErrorNamesTheSchemaMismatchInItsDetail(): void
     {
         $case = null;
         foreach (plan_vectors()['cases'] as $candidate) {
@@ -154,11 +151,9 @@ class DbspecPlanApplyTest extends TestCase
             self::assertSame('drift', $error->code_);
             self::assertSame($plan->name, $error->plan);
             self::assertSame(0, $error->step);
-            self::assertInstanceOf(PlanSchemaMismatch::class, $error->getPrevious());
-            self::assertSame(
-                'drift ' . $plan->name . ': ' . $error->getPrevious()->getMessage(),
-                $error->getMessage(),
-            );
+            self::assertNull($error->getPrevious());
+            self::assertNotSame('', $error->detail);
+            self::assertSame('drift ' . $plan->name . ': ' . $error->detail, $error->getMessage());
         }
     }
 

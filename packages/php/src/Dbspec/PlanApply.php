@@ -208,11 +208,12 @@ final class PlanApply
                     );
                 }
                 try {
-                    $a->verify($plan->to);
-                } catch (PlanSchemaMismatch $e) {
-                    throw new ApplyError('drift', $plan->name, 0, '', $e);
+                    $drift = $a->mismatch($plan->to);
                 } catch (\RuntimeException $e) {
                     throw new ApplyError('verify', $plan->name, 0, '', $e);
+                }
+                if ($drift !== '') {
+                    throw new ApplyError('drift', $plan->name, 0, $drift);
                 }
             } else {
                 $k = $a->resolve($plan, $row, $steps, false);
@@ -628,11 +629,12 @@ final class PlanApply
             $want = $plan->to;
         }
         try {
-            $this->verify($want);
-        } catch (PlanSchemaMismatch $e) {
-            throw new ApplyError('drift', '', 0, '', $e);
+            $drift = $this->mismatch($want);
         } catch (\RuntimeException $e) {
             throw new ApplyError('verify', '', 0, '', $e);
+        }
+        if ($drift !== '') {
+            throw new ApplyError('drift', '', 0, $drift);
         }
         return $position;
     }
@@ -654,36 +656,49 @@ final class PlanApply
      */
     private function verify(string $want): void
     {
+        $drift = $this->mismatch($want);
+        if ($drift !== '') {
+            throw new PlanSchemaMismatch($drift);
+        }
+    }
+
+    /**
+     * How the database's introspection differs from want schemaHash (if '', an empty database), or '' when it
+     * is want and holds no unsupported objects.
+     */
+    private function mismatch(string $want): string
+    {
         $result = Dbspec::introspect($this->c, $this->r->dialect, 'schema');
         if ($result->unsupported !== []) {
             $u = $result->unsupported[0];
-            throw new PlanSchemaMismatch(sprintf(
+            return sprintf(
                 'the database has %d objects that dbspec cannot express, first %s %s %s: %s',
                 count($result->unsupported),
                 $u->kind,
                 $u->table,
                 $u->name,
                 $u->reason
-            ));
+            );
         }
         $got = '';
         if ($result->document->tables !== []) {
             $manifest = Dbspec::manifest([$result->document]);
             if ($manifest->manifest === null) {
-                throw new PlanSchemaMismatch('the introspected schema is invalid: ' . json_encode(array_map(
+                return 'the introspected schema is invalid: ' . json_encode(array_map(
                     static fn(Diagnostic $d): array => [$d->rule, $d->line, $d->column, $d->message],
                     $manifest->diagnostics
-                )));
+                ));
             }
             $got = $manifest->manifest->schemaHash;
         }
         if ($got !== $want) {
-            throw new PlanSchemaMismatch(sprintf(
+            return sprintf(
                 'the database is at %s, not %s',
                 $got === '' ? 'empty' : $got,
                 $want === '' ? 'empty' : $want
-            ));
+            );
         }
+        return '';
     }
 
     /**

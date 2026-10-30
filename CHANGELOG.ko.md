@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2e8e71e354f47ae8d263adc12b95aa5176c8ce2e6b0e018fa863a81375be7f6d -->
+<!-- source-sha256: 2203d3a2c49084fe9d97318e48f88b4d792015f4ecbf2eac207564c95b1c024b -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.19
 
+- PHP library의 drift ApplyError는 PHP extension처럼 다시 detail에 schema mismatch를 담고 previous를 담지 않는다. KSTD-5-94는 내부 PlanSchemaMismatch를 그 원인으로 넘겼다(T277).
 - orm은 npm, Composer, Python, Go, Cargo에서 development source의 version인 공개된 ordered-json 0.0.13을 요구하므로, cargo는 link가 제공하는 source를 resolve한다(T276).
 - Public API: 어떤 public signature도 internal type을 이름 붙이지 않는다(T274). TypeScript: Core where, joins, relations, columns, order, on, row, build, Db plan, args, CatalogConnection, Subscription, ValueFunction, ColumnFunction의 constructor는 @internal을 strip하는 선언에서 빠진다. Subscription, Notification, ModelLike, SetSpec, DriverName을 export한다. IR interface ColumnFunction은 ColumnFunctionIR이다. Python: dialect base는 public Dialect이고, register_model은 public RegisteredModel을 반환한다. 둘 다 ValueFunction과 ColumnFunction은 base class를 공유하지 않고 ir method가 없다.
 - CARGO_SIBLINGS는 kit K869의 link 선언 file이 대체하는 --siblings 없이 kit cargo link를 돌립니다. orm이 그것을 채택하기 전까지 cargo는 polyspec crate를 공개 tag로 build합니다(T275).
