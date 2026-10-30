@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1f580a0ca84a859d32a6dbf19cf4e9dfad2c3b0f65290a16640656bb388c3aab -->
+<!-- source-sha256: 19d6512bda0c4e99bd558925d31cd1d7d251ddc3ad3ec4a9c07460633bbdcf2c -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.19
 
+- docs/features.md는 KSTD-7-6 이후 contracts/features.json이 밝힌 대로 performance_gate를 implemented로 보입니다(T265).
 - feature-coverage/typescript/mysql은 interfaces-typescript need를 선언하므로, CI가 그 interface case가 선언을 읽는 TypeScript를 설치합니다(T262).
 - 공유 gates job은 tests/lease가 build하는 Go module을 설치합니다(make orm-install-go-lease). parity-declarations-check가 lease-tool을 거쳐 TypeScript client를 build하기 때문입니다(T261).
 - offline Makefile 검사는 install처럼 network에서 lock을 쓰는 lock target을 받아들이므로, make orm-python-lock이 더 이상 runner-check를 실패시키지 않습니다(T263).

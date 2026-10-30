@@ -5,6 +5,7 @@
 
 ## 0.0.19
 
+- docs/features.md shows performance_gate as implemented, as contracts/features.json has stated since KSTD-7-6 (T265).
 - feature-coverage/typescript/mysql declares the interfaces-typescript need, so CI installs the TypeScript that its interface case reads declarations with (T262).
 - The shared gates job installs the Go module that tests/lease builds with (make orm-install-go-lease), since parity-declarations-check builds the TypeScript client through lease-tool (T261).
 - The offline Makefile check accepts the lock targets, which write a lock from the network as an install does, so make orm-python-lock no longer fails runner-check (T263).
