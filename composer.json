@@ -26,7 +26,7 @@
             "type": "package",
             "package": {
                 "name": "polyspec/ordered-json",
-                "version": "0.0.10",
+                "version": "0.0.13",
                 "type": "library",
                 "require": {
                     "php": ">=8.4",
@@ -46,8 +46,8 @@
                 },
                 "dist": {
                     "type": "zip",
-                    "url": "https://github.com/polyspec/ordered-json/releases/download/v0.0.10/polyspec-ordered-json-php-0.0.10.zip",
-                    "shasum": "efa11f67aa6191755cdf716396ef543ab1e8e412"
+                    "url": "https://github.com/polyspec/ordered-json/releases/download/v0.0.13/polyspec-ordered-json-php-0.0.13.zip",
+                    "shasum": "8fdf3c11ebd46eb7e82180623bd4481d7496567a"
                 }
             }
         },

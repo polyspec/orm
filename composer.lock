@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "2f24138a0cf0ccfc9c1b8909bc153aac",
+    "content-hash": "a69df618272fd054f4430c82b4692cbd",
     "packages": [
         {
             "name": "nikic/php-parser",
@@ -65,11 +65,11 @@
         },
         {
             "name": "polyspec/ordered-json",
-            "version": "0.0.10",
+            "version": "0.0.13",
             "dist": {
                 "type": "zip",
-                "url": "https://github.com/polyspec/ordered-json/releases/download/v0.0.10/polyspec-ordered-json-php-0.0.10.zip",
-                "shasum": "efa11f67aa6191755cdf716396ef543ab1e8e412"
+                "url": "https://github.com/polyspec/ordered-json/releases/download/v0.0.13/polyspec-ordered-json-php-0.0.13.zip",
+                "shasum": "8fdf3c11ebd46eb7e82180623bd4481d7496567a"
             },
             "require": {
                 "ext-json": "*",
@@ -95,7 +95,7 @@
             "dist": {
                 "type": "path",
                 "url": "packages/php",
-                "reference": "c78e17002e47fc2c5619bccc5bf19546b24c4efd"
+                "reference": "171d5ed659b0197aa01e8a5556aa46345a965485"
             },
             "require": {
                 "composer-runtime-api": "^2.2",
@@ -104,7 +104,7 @@
                 "ext-zlib": "*",
                 "nikic/php-parser": "^5.9.0",
                 "php": ">=8.4",
-                "polyspec/ordered-json": "0.0.10",
+                "polyspec/ordered-json": "0.0.13",
                 "purrphp/yaml": "1.0.0-p1",
                 "symfony/yaml": "^8.1"
             },

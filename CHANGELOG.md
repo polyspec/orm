@@ -5,6 +5,7 @@
 
 ## 0.0.19
 
+- orm requires the released ordered-json 0.0.13 in npm, Composer, Python, Go and Cargo, the version of the development source, so cargo resolves the source that the link provides (T276).
 - CARGO_SIBLINGS runs the kit cargo link without --siblings, which the link declaration file of kit K869 replaces; until orm adopts it, cargo builds the polyspec crates of their released tags (T275).
 - The TypeScript thin-slice example binds its datetime as text, as the Go and PHP examples do and as a datetime slot requires since T89-3 (T271).
 - The TypeScript MySQL driver sends an integral number parameter as a bigint, a LONGLONG, since mysql2 sends a number as a DOUBLE and ProxySQL refuses a DOUBLE LIMIT (T273).
