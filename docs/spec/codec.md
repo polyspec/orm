@@ -119,4 +119,4 @@ table service_config {
 - **COD-58** A NULL stored version of a non-NULL AES value is `CODEC_DECODE`.
 - **COD-59** A NULL AES value with a NULL version is NULL on the read path: its version is neither read nor checked, and no error is raised.
 - **COD-60** A rotation leaves a NULL AES cell unchanged whatever its version holds, since there are no stored bytes to re-encrypt.
-- **COD-61** PHP-extension package `polyspec/orm-php-ext` reads a date column of a model row or a grouped value as `Model::timeValue` of the PHP library does: a text that `Model::timeValue` reads in any of its forms reads as that date, and a stored value that no date form reads throws the `CODEC_DECODE` `OrmException` "invalid date value <text>".
+- **COD-61** PHP-extension package `polyspec/orm-php-ext` reads a date column of a model row or a grouped value as `Model::timeValue` of the PHP library does: a text that `Model::timeValue` reads in any of its forms reads as that date, and a stored value that no date form reads throws the `CODEC_DECODE` `OrmException` `"invalid date value <text>"`.
