@@ -1173,7 +1173,8 @@
         "remove-columns-keeps-primary-foreign-and-added",
         "go-model-constructor-api",
         "php-internal-model-conditions",
-        "collection-null-identity-from-physical-row"
+        "collection-null-identity-from-physical-row",
+        "php-extension-model-date-read-decode-error"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",

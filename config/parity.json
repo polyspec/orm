@@ -19133,6 +19133,40 @@
       }
     },
     {
+      "id": "php-extension-model-date-read-decode-error",
+      "kind": "feature",
+      "requirements": [
+        "COD-61"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/InvalidDateReadNativeTest.php",
+          "id": "InvalidDateReadNativeTest::testRowReadOfANonTextDateThrowsTheDecodeError"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/InvalidDateReadNativeTest.php",
+          "id": "InvalidDateReadNativeTest::testGroupedNonTextDateThrowsTheDecodeError"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/InvalidDateReadNativeTest.php",
+          "id": "InvalidDateReadNativeTest::testTextDateOfAFallbackFormReads"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/InvalidDateReadNativeTest.php",
+          "id": "InvalidDateReadNativeTest::testTextDateThatNoFormReadsThrowsTheDecodeError"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "model_queries",
+        "part": "owner/php-extension"
+      }
+    },
+    {
       "id": "model-codec-columns",
       "kind": "feature",
       "requirements": [

@@ -21,13 +21,13 @@ use function Polyspec\Orm\Tests\Model\connect;
 #[Medium]
 final class InvalidDateReadNativeTest extends TestCase
 {
-    // Requirements: COD-1.
+    // Requirements: COD-61.
     public function testRowReadOfANonTextDateThrowsTheDecodeError(): void
     {
         self::assertReadRefuses(5, static fn ($db) => self::readDay($db));
     }
 
-    // Requirements: COD-1.
+    // Requirements: COD-61.
     public function testGroupedNonTextDateThrowsTheDecodeError(): void
     {
         self::assertReadRefuses(5, static function ($db): void {
@@ -37,7 +37,7 @@ final class InvalidDateReadNativeTest extends TestCase
         });
     }
 
-    // Requirements: COD-1.
+    // Requirements: COD-61.
     public function testTextDateOfAFallbackFormReads(): void
     {
         self::withDay('2026-1-1', static function ($db): void {
@@ -47,7 +47,7 @@ final class InvalidDateReadNativeTest extends TestCase
         });
     }
 
-    // Requirements: COD-1.
+    // Requirements: COD-61.
     public function testTextDateThatNoFormReadsThrowsTheDecodeError(): void
     {
         self::assertReadRefuses('not a date', static fn ($db) => self::readDay($db));

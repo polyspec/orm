@@ -1,5 +1,5 @@
 <!-- doc-id: codec -->
-<!-- source-sha256: cab8f81e295395808ca64895c8a8e9d211a5c5932063021f88a72481673ec574 -->
+<!-- source-sha256: 2e4bbf62071b98d772bdce989793c4332b772923e688e176f5e0140d0e5b074d -->
 # 코덱 — 컬럼 스타일의 읽기/쓰기 (S2)
 
 - **COD-1** Go 데이터베이스 값 변환은 잘못된 형식, null, 범위 초과, 유한하지 않은 값, 지원하지 않는 값에 `CODEC_DECODE`를 반환한다. Host 인코딩은 단계가 없거나 텍스트·바이트가 아닌 값에 `CODEC_ENCODE`를 반환한다. 생성 모델 대입은 컬럼 이름을 붙여 변환 오류를 보고한다. 행 조립은 오류를 호출자에게 반환하고 insert는 쓰기 전에 대입 필드를 검증한다. 빈 바이트 배열은 SQL NULL과 구분한다. scalar 집계 변환은 유효한 십진수를 가장 가까운 유한 binary64 값으로 받는다.
@@ -123,3 +123,4 @@ table service_config {
 - **COD-58** NULL이 아닌 AES 값의 NULL stored version은 `CODEC_DECODE`다.
 - **COD-59** NULL AES 값과 NULL version은 read 경로에서 NULL이다. version을 읽지도 검사하지도 않으며, 오류가 없다.
 - **COD-60** rotation은 NULL AES cell을 그대로 둔다. version이 무엇이든 재암호화할 저장 바이트가 없기 때문이다.
+- **COD-61** PHP-extension 패키지 `polyspec/orm-php-ext`는 model row와 그룹 값의 date 컬럼을 PHP 라이브러리의 `Model::timeValue`와 같이 읽는다. `Model::timeValue`가 읽는 형식 중 어느 것으로든 읽히는 텍스트는 그 날짜로 읽고, 어떤 date 형식으로도 읽지 못하는 저장 값은 `CODEC_DECODE` `OrmException` "invalid date value <text>"를 던진다.
