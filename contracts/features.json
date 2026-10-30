@@ -14285,6 +14285,16 @@
       "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AutoloadTest.php"
     },
     {
+      "id": "php-extension-run-guard",
+      "paths": [
+        "packages/php/tests/extension_run_guard.php"
+      ],
+      "tests": [
+        "packages/php/tests/ExtensionRunGuardTest.php"
+      ],
+      "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ExtensionRunGuardTest.php"
+    },
+    {
       "id": "go-test-helpers",
       "paths": [
         "packages/go/model/coverage_helpers_test.go",

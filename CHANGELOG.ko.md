@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 19d6512bda0c4e99bd558925d31cd1d7d251ddc3ad3ec4a9c07460633bbdcf2c -->
+<!-- source-sha256: cda3c90f36f8d3d7d408411451e827d8813352369612b935d334d7e5a0b9efe9 -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.19
 
+- feature php-extension-run-guard가 PHP extension run guard와 ExtensionRunGuardTest.php를 소유하므로 features contract가 통과합니다(T264).
 - docs/features.md는 KSTD-7-6 이후 contracts/features.json이 밝힌 대로 performance_gate를 implemented로 보입니다(T265).
 - feature-coverage/typescript/mysql은 interfaces-typescript need를 선언하므로, CI가 그 interface case가 선언을 읽는 TypeScript를 설치합니다(T262).
 - 공유 gates job은 tests/lease가 build하는 Go module을 설치합니다(make orm-install-go-lease). parity-declarations-check가 lease-tool을 거쳐 TypeScript client를 build하기 때문입니다(T261).
