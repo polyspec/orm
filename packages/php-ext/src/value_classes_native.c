@@ -32,6 +32,7 @@ static void decimal_decode_error(const char *message)
     value_throw_orm("CODEC_DECODE", message);
 }
 
+/* Throws the CODEC_DECODE error of a failed normalization with that failure as its previous, as Decimal.php:43 does (T295). */
 static void decimal_rethrow_decode_error(void)
 {
     if (EG(exception) == NULL) return;
@@ -40,8 +41,8 @@ static void decimal_rethrow_decode_error(void)
     zend_string *text = Z_TYPE_P(message) == IS_STRING
         ? zend_strpprintf(0, "invalid decimal cell: %s", Z_STRVAL_P(message))
         : zend_string_init("invalid decimal cell", sizeof("invalid decimal cell") - 1, 0);
-    zend_clear_exception();
-    decimal_decode_error(ZSTR_VAL(text));
+    zend_object *cause = EG(exception); EG(exception) = NULL;
+    orm_throw_exception_previous("CODEC_DECODE", text, cause);
     zend_string_release(text);
 }
 
