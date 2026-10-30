@@ -182,13 +182,12 @@ failures.push(...nodeVersionErrors(existsSync(join(root, 'mise.toml')) ? readFil
 // npm installs only from release archives and the registry, with no dependency fetched from git.
 failures.push(...npmGitSourceErrors(Object.fromEntries(tracked.filter(path => /(?:^|\/)package(?:-lock)?\.json$/.test(path)).map(path => [path, readFileSync(join(root, path), 'utf8')]))));
 
-// PHP and Rust that run the checks are each also the one version declared by .php-version and rust-toolchain.toml. The version
-// being run is what php and rustc in PATH report from the repository root.
+// .php-version declares the one PHP release, which the workflows set up; no check compares the running php with it (T285). The
+// Rust that runs the checks is the one version declared by rust-toolchain.toml, which rustc in PATH reports from the root.
 const text = (path: string) => existsSync(join(root, path)) ? readFileSync(join(root, path), 'utf8') : '';
 const reported = (program: string, args: string[]) => execFileSync(program, args, { cwd: root }).toString().trim();
 const composer = readComposer(join(root, 'packages/php/composer.json'));
-const php = reported('php', ['-r', 'echo PHP_MAJOR_VERSION, ".", PHP_MINOR_VERSION;']);
-failures.push(...phpVersionErrors(text('.php-version'), composer.require?.php, workflows, php));
+failures.push(...phpVersionErrors(text('.php-version'), composer.require?.php, workflows));
 const rustc = /^rustc (\S+)/.exec(reported('rustc', ['--version']))?.[1] ?? '';
 failures.push(...rustToolchainErrors(text('rust-toolchain.toml'), makefile, workflows, rustc));
 // Every workflow sets up the Go of the go line of packages/go/go.mod, which kit's toolchain-check holds to the kit pin.
@@ -204,5 +203,5 @@ if (failures.length > 0) {
   console.error(`repository check: ${failures.length} CI server or toolchain version problems remain`);
   process.exit(1);
 }
-console.log(`repository check: ${tracked.length} tracked paths, the CI server environment, Node ${process.versions.node}, PHP ${php} and rustc ${rustc} inspected`);
+console.log(`repository check: ${tracked.length} tracked paths, the CI server environment, Node ${process.versions.node} and rustc ${rustc} inspected`);
 log.end();

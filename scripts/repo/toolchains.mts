@@ -33,17 +33,16 @@ const release = (text: string): semver.SemVer => {
 const sameMajorMinor = (a: string, b: string): boolean => semver.major(release(a)) === semver.major(release(b)) && semver.minor(release(a)) === semver.minor(release(b));
 const below = (a: string, b: string): boolean => semver.lt(release(a), release(b));
 
-// phpVersionErrors returns one error at each place where the PHP version declaration is not one, or differs from the running PHP;
-// declared is the content of `.php-version`, minimum is composer.json's require.php, and workflows is
-// {path: text}, and running is PHP_MAJOR_VERSION.PHP_MINOR_VERSION of the running php.
+// phpVersionErrors returns one error at each place where the PHP version declaration is not one; declared is the content of
+// `.php-version`, minimum is composer.json's require.php, and workflows is {path: text}. No check compares the running php
+// with the declaration: a wrong tool fails the target that runs it (kit K854, T285).
 //   - declared is one exact x.y and is not lower than minimum (">=x.y").
 //   - A shivammathur/setup-php step reads with `php-version-file: .php-version` and does not write `php-version`
 //     directly. One exception is the step that installs make php-min-check's lowest release, which
 //     reads only the output of the step `php-min` that uses scripts/php/php-min.mts --version. The last
 //     setup-php step reads .php-version, so that PHP becomes the php in PATH. A workflow that runs php or composer
 //     uses setup-php.
-//   - running is the same as declared.
-export function phpVersionErrors(declared: string, minimum: string | undefined, workflows: Record<string, string>, running: string): string[] {
+export function phpVersionErrors(declared: string, minimum: string | undefined, workflows: Record<string, string>): string[] {
   const errors: string[] = [];
   const exact = /^\d+\.\d+$/.test(declared.trim()) && declared === `${declared.trim()}\n`;
   if (!exact) errors.push(`.php-version must hold one release x.y and a newline, found ${JSON.stringify(declared)}`);
@@ -82,8 +81,6 @@ export function phpVersionErrors(declared: string, minimum: string | undefined, 
     if (last && !readsFile(last))
       errors.push(`${path} must set up the PHP of .php-version last, so that it is php on PATH`);
   }
-  if (exact && running !== declared.trim())
-    errors.push(`PHP ${running} runs the checks; .php-version declares ${declared.trim()}`);
   return errors;
 }
 

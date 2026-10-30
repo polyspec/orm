@@ -337,13 +337,12 @@ caseTest('a mise.toml node that is not one exact version fails', COMPUTE, () => 
   ]);
 });
 
-// The PHP and Rust cases check the repository's declarations and the running php and rustc, and change the minimal workflow one at a time.
-const runningPhp = execFileSync('php', ['-r', 'echo PHP_MAJOR_VERSION, ".", PHP_MINOR_VERSION;']).toString();
+// The PHP and Rust cases check the repository's declarations and the running rustc, and change the minimal workflow one at a time.
 const runningRustc = /^rustc (\S+)/.exec(execFileSync('rustc', ['--version'], { cwd: repository }).toString())?.[1] ?? '';
 
 caseTest('the checks and every workflow run the PHP of .php-version and the Rust of rust-toolchain.toml', COMPUTE, () => {
   const composer = readComposer(join(repository.pathname, 'packages/php/composer.json'));
-  assert.deepEqual(phpVersionErrors(text('.php-version'), composer.require?.php, workflows, runningPhp), []);
+  assert.deepEqual(phpVersionErrors(text('.php-version'), composer.require?.php, workflows), []);
   assert.deepEqual(rustToolchainErrors(text('rust-toolchain.toml'), text('Makefile'), workflows, runningRustc), []);
 });
 
@@ -361,31 +360,30 @@ const php = [
 ].join('\n');
 
 caseTest('a workflow that declares php-version itself fails', COMPUTE, () => {
-  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': php }, '8.5'), []);
-  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': php.replace('php-version-file: .php-version', 'php-version: "8.4"') }, '8.5'), [
+  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': php }), []);
+  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': php.replace('php-version-file: .php-version', 'php-version: "8.4"') }), [
     'ci.yml declares php-version itself; .php-version declares it',
     'ci.yml does not read php-version-file .php-version in shivammathur/setup-php',
     'ci.yml must set up the PHP of .php-version last, so that it is php on PATH',
   ]);
-  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': php.replace('shivammathur/setup-php@v2', 'actions/checkout@v5') }, '8.5'), [
+  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': php.replace('shivammathur/setup-php@v2', 'actions/checkout@v5') }), [
     'ci.yml runs PHP without shivammathur/setup-php',
   ]);
 });
 
 caseTest('a workflow that sets up PHP with a coverage driver fails', COMPUTE, () => {
-  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': php.replace('          coverage: none\n', '') }, '8.5'), [
+  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': php.replace('          coverage: none\n', '') }), [
     'ci.yml sets up PHP without coverage: none, so Xdebug or pcov can load',
   ]);
-  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': php.replace('coverage: none', 'coverage: xdebug') }, '8.5'), [
+  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': php.replace('coverage: none', 'coverage: xdebug') }), [
     'ci.yml sets up PHP without coverage: none, so Xdebug or pcov can load',
   ]);
 });
 
-caseTest('a PHP other than .php-version or below composer.json fails', COMPUTE, () => {
-  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', {}, '8.4'), ['PHP 8.4 runs the checks; .php-version declares 8.5']);
-  assert.deepEqual(phpVersionErrors('8.3\n', '>=8.4', {}, '8.3'), ['.php-version 8.3 is below packages/php/composer.json require.php >=8.4']);
-  assert.deepEqual(phpVersionErrors('8.5.10\n', '>=8.4', {}, '8.5'), ['.php-version must hold one release x.y and a newline, found "8.5.10\\n"']);
-  assert.deepEqual(phpVersionErrors('8.5\n', '^8.4', {}, '8.5'), ['packages/php/composer.json require.php must be ">=x.y", found "^8.4"']);
+caseTest('a .php-version below composer.json or not one release fails', COMPUTE, () => {
+  assert.deepEqual(phpVersionErrors('8.3\n', '>=8.4', {}), ['.php-version 8.3 is below packages/php/composer.json require.php >=8.4']);
+  assert.deepEqual(phpVersionErrors('8.5.10\n', '>=8.4', {}), ['.php-version must hold one release x.y and a newline, found "8.5.10\\n"']);
+  assert.deepEqual(phpVersionErrors('8.5\n', '^8.4', {}), ['packages/php/composer.json require.php must be ">=x.y", found "^8.4"']);
 });
 
 const toolchain = '[toolchain]\nchannel = "1.98.1"\ncomponents = ["clippy", "rustfmt"]\nprofile = "minimal"\n';
@@ -1004,13 +1002,13 @@ caseTest('the lowest PHP release comes only from the php-min step', COMPUTE, () 
     '      - run: composer install --working-dir=packages/php',
     '',
   ].join('\n');
-  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': minimum }, '8.5'), []);
-  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': minimum.replace('        id: php-min\n', '') }, '8.5'), [
+  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': minimum }), []);
+  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': minimum.replace('        id: php-min\n', '') }), [
     'ci.yml reads steps.php-min.outputs.version without the step that writes it from node scripts/php/php-min.mts',
   ]);
   const reversed = minimum.replace('          php-version: ${{ steps.php-min.outputs.version }}', '          php-version-file: .php-version#')
     .replace('          php-version-file: .php-version\n          coverage: none\n      - run', '          php-version: ${{ steps.php-min.outputs.version }}\n          coverage: none\n      - run').replace('.php-version#', '.php-version');
-  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': reversed }, '8.5'), [
+  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': reversed }), [
     'ci.yml must set up the PHP of .php-version last, so that it is php on PATH',
   ]);
 });
@@ -2141,7 +2139,7 @@ caseTest('the toolchain checks read the commands that a step runs', COMPUTE, () 
   assert.deepEqual(goVersionErrors({ 'ci.yml': go('echo go test') }), []);
   assert.deepEqual(goVersionErrors({ 'ci.yml': go('cd a; go test ./...') }), ['ci.yml runs Go without the Go of mise.toml; add a step that runs make install-tools']);
   assert.deepEqual(goVersionErrors({ 'ci.yml': go('cd a; go test ./...\n      - run: echo "make install-tools"') }), ['ci.yml runs Go without the Go of mise.toml; add a step that runs make install-tools']);
-  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': go('echo "php is not used"') }, '8.5'), []);
+  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': go('echo "php is not used"') }), []);
   const viaMake = rust.replace('run: rustup toolchain install', 'run: make orm-install-rust-toolchain');
   for (const recipe of ['\trustup toolchain install && rustup show\n', '\t@rustup toolchain install\n'])
     assert.deepEqual(rustToolchainErrors(toolchain, `${makefile}orm-install-rust-toolchain:\n${recipe}`, { 'ci.yml': viaMake }, '1.98.1'), [], recipe);
