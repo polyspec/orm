@@ -33047,7 +33047,7 @@
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/statement-events.mjs",
-          "id": "statement_events/subscriber_error/sqlite"
+          "id": "subscriber_error"
         },
         {
           "implementation": "python",
