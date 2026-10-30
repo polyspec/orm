@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: ce5ce8a6dbee2fe64a47b34c0319dc14d08b3617325e7d76b83d56bbf2b9a148 -->
+<!-- source-sha256: 004f059f9245962b585f3fdd49f30362a1a16262ce0bf7c2ebcf880e5e4c94d0 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1358,3 +1358,4 @@
 | T270 | PHP test helper는 model을 process 밖에서 생성하므로, extension run은 PHP library의 file을 load하지 않는다. 원인: statement_events_run.php, request_hook_cases.php, CoverageAuditColumnsTest.php, generated_fixture.php가 Polyspec\Orm\Generator를 process 안에서 부르고, KSTD-5-109의 run guard가 Generator.php를 load한 extension run을 실패시킨다(ci 40979519721, job feature_php_extension_mysql, _postgres, _sqlite, client_db_php_extension) | packages/php/tests/statement_events_run.php, packages/php/tests/request_hook_cases.php, packages/php/tests/CoverageAuditColumnsTest.php, packages/php/tests/generated_fixture.php, CHANGELOG.md, CHANGELOG.ko.md | `make feature-coverage/php-extension/sqlite aes-json-php-extension-check` | [ ] |
 | T271 | TypeScript thin-slice 예제는 datetime을 text로 bind한다. 원인: T89-3(ba706048e)이 date, time, datetime slot을 text 전용으로 만들었는데, 그 뒤 추가된 예제(6df466075)가 Date object를 넘겨 example-check가 CODEC_ENCODE: parameter 4 (object) is not a datetime value로 실패한다(ci 40979519721, job clients_db) | examples/thin-slice/ts/main.mts, CHANGELOG.md, CHANGELOG.ko.md | `make example-check` | [ ] |
 | T272 | client-pooler-check는 그 php-extension lane이 build에 쓰는 PHP extension tool을 선언하고 설치한다. 원인: KSTD-5-88-6(97c9bd975)이 client test에 php-extension lane을 추가했는데, client-pooler-check에는 contracts/check-inputs.json의 php-extension-tools need도 prerequisite orm-install-php-extension-tools도 없어 build가 var/tools/php-arginfo/gen_stub.php를 찾지 못한다(ci 40979519721, job clients_pooler) | contracts/check-inputs.json, Makefile, scripts/check/run.test.mts, CHANGELOG.md, CHANGELOG.ko.md | `make runner-check` | [ ] |
+| T273 | TypeScript MySQL driver는 i64 slot을 정수로 bind하므로, ProxySQL을 거친 LIMIT bind가 받아들여진다. 원인: T236(5fb006f26)이 root page limit과 offset을 i64 slot으로 bind하는데, mysqlExecute가 JS number를 넘기고 mysql2가 그것을 DOUBLE로 encode하며, ProxySQL 3.0.9가 DOUBLE LIMIT을 Incorrect arguments to mysqld_stmt_execute로 거부한다(ci 40979519721, job clients_pooler, mysql/columnsAndSubqueries) | packages/ts/src/driver.ts, packages/ts/tests, CHANGELOG.md, CHANGELOG.ko.md | `make client-pooler-check` | [ ] |
