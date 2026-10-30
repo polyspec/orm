@@ -66,6 +66,10 @@ caseTest('orm-install-python builds its venv with the pinned interpreter, never 
     // python3 of PATH is never run (KSTD-5-104).
     assert.match(result.stdout, /\s--no-print-directory uv-install DIR=packages\/python SYNC='--quiet --group test'$/m);
     assert.doesNotMatch(result.stdout, /(^|[\s/])python3 -m pip/m);
+    // uv sync installs orm editable through a .pth, so make link then writes the own link that link-check compares (T291).
+    const install = result.stdout.search(/\s--no-print-directory uv-install DIR=packages\/python /);
+    const link = result.stdout.search(/\s--no-print-directory link$/m);
+    assert.ok(install >= 0 && link > install, 'orm-install-python runs make link after uv-install');
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

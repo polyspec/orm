@@ -6,6 +6,7 @@
 
 ## 0.0.19
 
+- make orm-install-python은 orm-install-php가 composer install 뒤에 하듯 uv-install 뒤에 make link를 실행합니다. 그래서 CI venv에 link-check가 비교하는 polyspec-orm의 own link가 생깁니다(T291).
 - make orm-install-php-extension-tools는 고정된 arginfo 생성기와 parser를 다시 설치합니다. install-kit을 실행하는 CI job이 없어서, KSTD-5-123 이후 ci의 확장 빌드와 gates의 parity job이 PHP-Parser를 찾지 못했습니다(T290).
 - 출력에 정확한 pass event가 없는 physical case는 그 출력을 보이며 실패합니다. DSN은 가립니다. 그래서 실패에 판정식이 읽은 내용이 드러납니다(T287).
 - repo-check는 실행 중인 PHP를 .php-version과 비교하지 않습니다. kit K854가 모든 도구에 정한 대로, 틀린 PHP는 그 PHP를 실행하는 target이 실패시킵니다(T285).

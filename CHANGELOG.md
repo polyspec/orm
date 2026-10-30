@@ -5,6 +5,7 @@
 
 ## 0.0.19
 
+- make orm-install-python runs make link after uv-install, as orm-install-php does after composer install, so the CI venv holds the own link of polyspec-orm that link-check compares (T291).
 - make orm-install-php-extension-tools installs the pinned arginfo generator and parser again: no CI job runs install-kit, so the extension builds of ci and the parity jobs of gates found no PHP-Parser after KSTD-5-123 (T290).
 - A physical case whose output does not hold its exact pass event fails with that output, its DSN redacted, so the failure shows what the predicate read (T287).
 - repo-check compares no running PHP with .php-version: a wrong PHP fails the target that runs it, as kit K854 rules for every tool (T285).

@@ -750,6 +750,7 @@ orm-install-python:
 	$(MAKE) --no-print-directory install-tools TOOLS="python uv"
 	$(MAKE) --no-print-directory python-venv DIR=$(PYTHON_VENV)
 	$(MAKE) --no-print-directory uv-install DIR=packages/python SYNC='--quiet --group test'
+	$(MAKE) --no-print-directory link
 	$(MAKE) --no-print-directory python-models
 # python-venv-check checks that the venv of orm-install-python exists and runs the Python release of mise.toml. A missing venv
 # or another release fails without a download or a repair, and names the fix: remove the venv and run make install.
