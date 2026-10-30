@@ -9083,6 +9083,10 @@
     "exported": false,
     "signature": "private function irreversible(Polyspec\\Orm\\Dbspec\\Plan $plan, array $steps, int $i): Polyspec\\Orm\\Dbspec\\ApplyError"
   },
+  "packages/php/src/Dbspec/PlanApply.php::Polyspec\\Orm\\Dbspec\\PlanApply::mismatch": {
+    "exported": false,
+    "signature": "private function mismatch(string $want): string"
+  },
   "packages/php/src/Dbspec/PlanApply.php::Polyspec\\Orm\\Dbspec\\PlanApply::nullChecks": {
     "exported": false,
     "signature": "private function nullChecks(Polyspec\\Orm\\Dbspec\\Plan $plan, array $steps): void"
