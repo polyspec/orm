@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: bbf629517cd627b25cabbb183d59ce80e1add4f45ea17b8c8e857d7c241f717e -->
+<!-- source-sha256: c448bffe7bf6533b772306d9038e02205e2f2ad1f729abd25ed578e04c9afae8 -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.19
 
+- complex query와 hot-path gate의 Python parity binding은 test class를 가리키고, postgres와 sqlite hot-path binding은 mysql binding처럼 database와 그 DSN을 줍니다(T269).
 - config/parity.json의 Python symbol은 kit K788 이후 kit Python extractor가 읽는 import root 접두사 polyspec.orm을 가집니다(T268).
 - PHP extension declarations test는 T258이 공개한 대로 ModelMetadata를 PHP client의 class로 셉니다(T267).
 - bench vector는 bench fixture의 ip_hex_cell table을 따릅니다: Mermaid round trip은 그 settings를 dropped로 나열하고, Python generator test는 그 manifest hash와 26개 entity를 기대합니다(T266).

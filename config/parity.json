@@ -27803,7 +27803,7 @@
             "-m",
             "unittest",
             "-v",
-            "tests.coverage_complex_query.test_complex_query_product_search"
+            "tests.coverage_complex_query.ComplexQueryCoverageTest.test_complex_query_product_search"
           ]
         },
         {
@@ -30242,7 +30242,7 @@
             "-m",
             "unittest",
             "-v",
-            "tests.coverage_performance_gate_mysql.test_hot_path_gate"
+            "tests.coverage_performance_gate_mysql.CoverageTest.test_hot_path_gate"
           ]
         },
         {
@@ -30304,7 +30304,17 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/coverage_performance_gate_postgres.py",
-          "id": "test_hot_path_gate"
+          "id": "test_hot_path_gate",
+          "command": [
+            "env",
+            "ORM_FEATURE_DATABASE=postgres",
+            "ORM_FEATURE_DSN=${BENCH_POSTGRES_DSN}",
+            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
+            "-m",
+            "unittest",
+            "-v",
+            "tests.coverage_performance_gate_postgres.CoverageTest.test_hot_path_gate"
+          ]
         },
         {
           "implementation": "rust",
@@ -30343,7 +30353,17 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/coverage_performance_gate_sqlite.py",
-          "id": "test_hot_path_gate"
+          "id": "test_hot_path_gate",
+          "command": [
+            "env",
+            "ORM_FEATURE_DATABASE=sqlite",
+            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
+            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
+            "-m",
+            "unittest",
+            "-v",
+            "tests.coverage_performance_gate_sqlite.CoverageTest.test_hot_path_gate"
+          ]
         },
         {
           "implementation": "rust",
