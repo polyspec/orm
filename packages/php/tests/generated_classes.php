@@ -27,10 +27,10 @@ function requireGeneratedClasses(string $dir): void
 }
 
 /**
- * Generates the models of the documents $documents (name => text) into $output with namespace $namespace through orm-gen
- * in a process of its own: the documents are written to $source with their set file. A test that runs against the
- * extension thus never loads Generator of the library, which the extension run guard would report (T270). An orm-gen
- * that fails fails the test with its output.
+ * Generates the models of the documents $documents (name => text) into $output with namespace $namespace through
+ * orm-gen in a process of its own: the documents are written to $source with their set file. A test that runs against
+ * the extension thus never loads Generator of the library, which the extension run guard would report (T270). An
+ * orm-gen that fails fails the test with its output.
  *
  * @param array<string, string> $documents
  */
