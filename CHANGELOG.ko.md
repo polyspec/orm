@@ -6,6 +6,7 @@
 
 ## 0.0.19
 
+- PHP 확장의 네이티브 Decimal::decode는 PHP 라이브러리처럼 CODEC_ENCODE 정규화 실패를 CODEC_DECODE OrmException의 previous로 남깁니다(T295).
 - gates의 parity와 runtime context는 TEST_ENV와 함께 자기 run의 decimal DSN을 export합니다. 그래서 decimal parity case와 네이티브 decimal database test가 database를 찾습니다(T294).
 - orm은 npm, Composer, Python, Go, Cargo에서 개발 source의 version인 릴리스된 ordered-json 0.0.14를 요구합니다. root composer.json은 packaging.md가 보이는 대로 release의 packages.json repository에서 이를 읽습니다(T286).
 - PHP 확장은 PHP 라이브러리처럼 잘못된 date와 JSON encode 실패의 OrmException에 원래의 네이티브 예외를 previous로 남깁니다(T292).
