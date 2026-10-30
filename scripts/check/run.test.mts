@@ -871,6 +871,26 @@ caseTest('a CI group job records a target not-run when it needs a setup step tha
   }
 });
 
+// A target that contracts/check-inputs.json does not declare has no needs to read (T288): the runner refuses it before any step,
+// naming it, instead of running it as a target that needs nothing.
+caseTest('a run refuses an undeclared target before any step', PROCESS, async () => {
+  const { runChecks } = await import('./run.mts');
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'run-')));
+  try {
+    const ran: string[] = [];
+    const run = async (program: string, args: string[], step: (line: string) => void) => { ran.push(args.at(-1) ?? ''); step(`ran ${args.at(-1) ?? ''}`); };
+    await assert.rejects(
+      runChecks({ root, servers: null, targets: ['docs-a', 'db-b'], run, needs: { 'docs-a': [] }, id: '288-1',
+        snapshot: () => ({ text: 'stub\n', places: { '/': 1 } }), ciSetup: '', downloads: () => [] }),
+      /contracts\/check-inputs\.json declares no target db-b/,
+    );
+    assert.deepEqual(ran, []);
+    assert.equal(existsSync(join(root, '.runtime/check')), false, 'the refused run writes no record');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 // The no-server run case (G5.67) runs the runner without servers, as make docs-ci does in the docs workflow. Server and database
 // steps are absent, targets that need a database are not-run, the other targets run, and the summary and target logs remain in that run's
 // report.

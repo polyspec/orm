@@ -6,6 +6,7 @@
 ## 0.0.19
 
 - The extension run guard fails a run only for a loaded library file whose class the extension declares, so a run that loads the generator, which the extension does not provide, passes, and a forked worker no longer inherits a false failure (T302).
+- make run-databases refuses, naming it, a target that contracts/check-inputs.json does not declare, where it ran the target as one that needs nothing (T288).
 - The parity targets export ORM_PHP_DYNAMIC_MODULES, so the DeclarationsTest of the php-extension bindings reads the modules that the extension loads dynamically (T301).
 - orm takes kit 0.0.78: the restamped PRINCIPLES.ko.md of K909, and the make link --project of an installed kit that writes no Claude Code hook in CI (K916, K918) (KSTD-5-124).
 - Breaking: the generated Go getter of a plain column is `Get<X>() (T, error)` and returns `COLUMN_UNSELECTED` for a column that the read did not select (DBS-112); 0.0.18 generated `Get<X>() T`, so a caller takes the error. The generated date, time and datetime setters take the text form since T189, which also breaks a caller that passed a native value (T300).

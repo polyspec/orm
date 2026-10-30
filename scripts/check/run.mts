@@ -109,6 +109,16 @@ export async function runChecks({ root, jobSummary = false, servers: given, targ
   const runId = id ? runName(id) : `orm_check_${process.pid}_${randomBytes(4).toString('hex')}`;
   const name = runId;
   const targets = declared;
+  // A target's needs decide which setup steps run, so a target that contracts/check-inputs.json does not declare is refused before
+  // any step instead of running as one that needs nothing (T288).
+  const undeclaredError = (names: string[]) => new Error(`contracts/check-inputs.json declares no target ${names.join(', ')}; declare its scope and needs there`);
+  const undeclared = targets.filter(target => !Object.hasOwn(needs, target));
+  if (undeclared.length) throw undeclaredError(undeclared);
+  const declaredNeedsOf = (target: string): string[] => {
+    const declared = needs[target];
+    if (declared === undefined) throw undeclaredError([target]);
+    return declared;
+  };
   const { recorder, record: current } = startRecord(root, runId, targets);
   // The directory holds this run's database files (env, decimal-env, SQLite), and databases.mts drop deletes it whole. The report
   // is beside it: the drop does not delete the report.
@@ -219,7 +229,7 @@ export async function runChecks({ root, jobSummary = false, servers: given, targ
   const failedSetup: Record<string, string> = {};
   // needsOf is the needs a target declares plus the needs its setup phase requires (SETUP_NEEDS in scripts/check/ci-setup.mts).
   // wanted is the need of this run's targets.
-  const needsOf = (target: string) => expandNeeds(needs[target] ?? []);
+  const needsOf = (target: string) => expandNeeds(declaredNeedsOf(target));
   const wanted = new Set(targets.flatMap(needsOf));
   // CI setup step (scripts/check/ci-setup.mts): for each failed step in the step results the workflow gave as ORM_CI_SETUP, a setup phase
   // ci/<id> is recorded as failed, and targets declaring a need that step prepares are recorded as not-run. The step's output is in the job
