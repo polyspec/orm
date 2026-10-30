@@ -30943,7 +30943,7 @@
             "-count=1",
             "-run",
             "^TestDecimalPhysicalMySQL$",
-            "./decimalmodel"
+            "."
           ]
         },
         {
@@ -30959,7 +30959,7 @@
             "-count=1",
             "-run",
             "^TestDecimalPhysicalPostgres$",
-            "./decimalmodel"
+            "."
           ]
         },
         {
@@ -30975,7 +30975,7 @@
             "-count=1",
             "-run",
             "^TestDecimalPhysicalSQLite$",
-            "./decimalmodel"
+            "."
           ]
         },
         {
