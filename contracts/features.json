@@ -11345,7 +11345,6 @@
         "packages/go/internal/conformance/main_test.go",
         "tests/conformance/check/styled-expectations.test.mts",
         "tests/conformance/check/chain-methods.test.mts",
-        "tests/conformance/check/rust-group.physical.test.mts",
         "packages/php/testing/conformance/runner.php",
         "packages/ts/testing/conformance/runner_typescript.mts",
         "packages/rust/tests/src/conformance.rs",

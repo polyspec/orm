@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: eda8e6889cd71564424aa52d6535cad03a862c18d90b844036b95931aa64fe55 -->
+<!-- source-sha256: 28d6d31c3586c61e607cbf88388b0f6dc79c252457e3de3cdc92956e29f4cbaf -->
 # 변경 이력
 
 ## Unreleased
@@ -8,6 +8,7 @@
 
 - kit 0.0.79를 채택한다(KSTD-5-125): CI는 `.github/workflows/ci-pipeline.yml`의 shared, parity, runtime 검사를 job `kit`으로 부르고 `ci-passed`가 그 성공을 요구하며, release는 성공한 `ci.yml` run의 id로 `release.yml`을 dispatch하는 것이고 그 `make release-tag`가 run의 commit에 tag한다. `make release-verify`와 push한 tag로 하는 release는 없어졌다.
 - 잘못된 date나 datetime의 native 읽기는 CODEC_DECODE OrmException "invalid date value <text>"를 원래 예외와 함께 던집니다. 전에는 행 읽기와 group 값이 오류 없이 끝났습니다. 확장은 PHP library가 읽는 대체 형식과 끝의 offset도 읽습니다(T293).
+- decimal-physical-check의 DECIMAL_ENV 메시지는 그것을 실행하는 선언된 target인 make run-databases TARGETS=feature-helper-check를 안내합니다. conformance-check가 그 case의 상위 집합을 실행하므로 conformance-rust-group-check는 삭제됩니다(T288-1).
 - extension run guard는 확장이 선언한 class를 담은 library file이 load된 run만 실패시킵니다. 그래서 확장이 제공하지 않는 generator를 load한 run은 통과하고, fork된 worker도 잘못된 실패를 물려받지 않습니다(T302).
 - make run-databases는 contracts/check-inputs.json이 선언하지 않은 target을 이름을 밝혀 거부합니다. 전에는 그 target을 아무것도 필요 없는 target으로 실행했습니다(T288).
 - parity target은 ORM_PHP_DYNAMIC_MODULES를 export합니다. 그래서 php-extension binding의 DeclarationsTest가 확장이 동적으로 load하는 module을 읽습니다(T301).

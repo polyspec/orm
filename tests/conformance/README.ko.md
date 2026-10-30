@@ -1,5 +1,5 @@
 <!-- doc-id: tests-conformance-readme -->
-<!-- source-sha256: 27587354a0cdf1c4e51c74496616fcbd9949871b3493682e79f7b3966567b28b -->
+<!-- source-sha256: 1b48ba9a214b65b098aa97742dc519967410a2a1cf138dec401d7ba6a4e6f8a6 -->
 # 적합성 벡터
 
 한 문서와 여섯 선언 구현을 사용한다. 공통 벡터 contract는 Go, PHP, PHP-extension, Rust, TypeScript, Python에 적용된다. conformance 완료에는 각 구현이 데이터베이스에서 체인을 실행하고 JSON을 출력해야 한다.
@@ -80,4 +80,4 @@ TypeScript 파생 정수 변환은 SQLite `bigint`가 부호 있는 64비트 범
 
 Rust 실행기는 잘못된 바인딩 값과 파생 정수를 거부하고 집계 평균의 binary64 비트를 비교하며 예상 밖 벡터 오류를 프로세스 실패로 반환한다. 쓰기 벡터는 트랜잭션을 사용하므로 실패한 쓰기가 행을 남기지 않는다. 상태 검사기는 모든 데이터베이스에서 실패 뒤 행과 카운터를 확인한다.
 
-`make conformance-rust-group-check`는 각 데이터베이스에서 Rust 실행기를 두 번 실행하고 두 실행 전후의 행과 카운터를 검사하며 `aggregates` 벡터를 기록된 기대값과 비교한다. 선택한 불리언 그룹 컬럼은 결과에서 불리언으로 유지된다.
+`make conformance-check`는 모든 실행기와 마찬가지로 각 데이터베이스에서 Rust 실행기를 두 번 실행하고 두 실행 전후의 행과 카운터를 검사하며 `aggregates` 벡터를 기록된 기대값과 비교한다. 선택한 불리언 그룹 컬럼은 결과에서 불리언으로 유지된다.

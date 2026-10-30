@@ -165,7 +165,7 @@ error as a process failure. Its write vectors use transactions so a failed
 write does not leave rows. The state checker inspects rows and counters after
 that failure on every database.
 
-`make conformance-rust-group-check` runs the Rust runner twice on each database,
-checks rows and counters before and after both runs, and compares the `aggregates`
-vector with the recorded expectation. A selected boolean group column remains
-a boolean in the result.
+`make conformance-check` runs the Rust runner, as every runner, twice on each
+database, checks rows and counters before and after both runs, and compares the
+`aggregates` vector with the recorded expectation. A selected boolean group column
+remains a boolean in the result.
