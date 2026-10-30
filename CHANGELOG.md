@@ -5,6 +5,7 @@
 
 ## 0.0.19
 
+- orm takes kit 0.0.78: the restamped PRINCIPLES.ko.md of K909, and the make link --project of an installed kit that writes no Claude Code hook in CI (K916, K918) (KSTD-5-124).
 - Breaking: the generated Go getter of a plain column is `Get<X>() (T, error)` and returns `COLUMN_UNSELECTED` for a column that the read did not select (DBS-112); 0.0.18 generated `Get<X>() T`, so a caller takes the error. The generated date, time and datetime setters take the text form since T189, which also breaks a caller that passed a native value (T300).
 - make exports every variable of its TEST_ENV, as the CI contexts export the run env, so a unit that kit starts from make, such as the native suite of test-php-ext, finds the server DSNs under make run-databases (T299).
 - An exit() inside a native Db::transaction or its savepoint ends the request as it does under the PHP library: the extension runs no rollback for it and passes it on, and the lost connection rolls the writes back and releases the named lock (T297).

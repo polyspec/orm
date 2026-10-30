@@ -6,6 +6,7 @@
 
 ## 0.0.19
 
+- orm은 kit 0.0.78을 채택합니다. K909에서 다시 stamp된 PRINCIPLES.ko.md, 그리고 CI에서 Claude Code hook을 쓰지 않는 설치된 kit의 make link --project(K916, K918)가 들어 있습니다(KSTD-5-124).
 - Breaking: 일반 column의 생성된 Go getter는 `Get<X>() (T, error)`이며, read가 select하지 않은 column에는 `COLUMN_UNSELECTED`를 반환합니다(DBS-112). 0.0.18은 `Get<X>() T`를 생성했으므로 호출자는 error를 받아야 합니다. 생성된 date, time, datetime setter는 T189부터 text 형식을 받으며, 이 또한 네이티브 값을 넘기던 호출자를 깨뜨립니다(T300).
 - make는 CI context가 run env를 export하듯 자기 TEST_ENV의 모든 변수를 export합니다. 그래서 kit이 make에서 시작하는 unit(test-php-ext의 native suite 등)은 make run-databases에서 서버 DSN을 찾습니다(T299).
 - 네이티브 Db::transaction이나 그 savepoint 안의 exit()는 PHP 라이브러리에서처럼 request를 끝냅니다. 확장은 이에 대해 rollback을 실행하지 않고 그대로 넘기며, 끊긴 연결이 쓰기를 rollback하고 named lock을 해제합니다(T297).
