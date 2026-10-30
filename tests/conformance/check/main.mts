@@ -70,7 +70,7 @@ class UsageError extends Error {}
 const USAGE = 'usage: check state --dsn x [--driver d] | check counters --dsn x [--driver d] [--restore-json <snapshot>] | check run --out <new dir> [--driver d] --dsn x [--driver d --dsn x]... | check compare|record [--driver d] <go.json> <php.json> <php-extension.json> <rust.json> <typescript.json> <python.json> | check normalize --driver d --vector audit_lazy out.json';
 
 /** vectorsPath is the expectations file of a database, relative to the repository. */
-export function vectorsPath(driver: string): string {
+function vectorsPath(driver: string): string {
   return driver === '' || driver === 'mysql' ? 'tests/conformance/vectors.json' : `tests/conformance/vectors.${driver}.json`;
 }
 
@@ -288,7 +288,7 @@ const runners = { go: '', rust: '' };
  * the copy, so a build of another run of this checkout that changes the target directory does not change this run's
  * runner.
  */
-export async function buildRustRunner(context: Context, root: string, directory: string): Promise<void> {
+async function buildRustRunner(context: Context, root: string, directory: string): Promise<void> {
   const lease = process.env.LEASE ?? '';
   const leases = process.env.CARGO_LEASES ?? '';
   if (lease === '' || leases === '') throw new Error('LEASE and CARGO_LEASES are unset; run this through make, which exports them');
