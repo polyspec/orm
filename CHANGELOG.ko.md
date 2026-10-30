@@ -10,7 +10,7 @@
 - Python `Db.connect_schema`는 다른 runtime처럼 연결을 열기 전에 schema를 검사합니다. 그래서 바뀐 manifest처럼 검사에 실패한 schema는 열린 연결을 남기지 않습니다. 전에는 연결이 열린 채 남아 ResourceWarning으로 보고되었습니다. schema와 DSN이 모두 잘못되었으면 이제 schema의 CONFIG 오류가 먼저 보고됩니다(T317).
 - complex-query-public-semijoin-plan의 rust binding은 integration target에서 cargo가 보고하는 대로 module 경로를 포함한 coverage_complex_query::full_product_search_request_compiles_for_mysql_and_postgres_and_rejects_sqlite로 test를 적습니다. 그래서 parity 실행이 --exact로 이 test를 선택합니다. 전에는 module 경로가 없는 id가 아무 test도 선택하지 않아 binding이 실행되지 않은 것으로 보고되었습니다(T313).
 - dbspec-apply-chain과 dbspec-apply-stress의 python binding은 같은 파일의 형제 binding처럼 parity runner 자신의 unittest 실행으로 돕니다. 그래서 parity 실행이 이 binding들을 인정합니다. 전에는 make dbspec-apply-python-check가 python reader가 읽지 않는 형식으로 보고했습니다(T308).
-- runner check는 TEST_ENV 파일의 모든 변수를 make에 export하는 loop(T299)를 단언합니다. 전에는 T299가 제거한 complex-query DSN 이름의 export loop를 단언했으므로, 이제 runner-check가 다시 통과합니다(T315).
+- runner check는 TEST_ENV 파일의 모든 변수를 make에 export하는 loop(T299)를 확인합니다. 전에는 T299가 제거한 complex-query DSN 이름의 export loop를 확인했으므로, 이제 runner-check가 다시 통과합니다(T315).
 - pool idle과 lifetime 단위의 python binding은 pool test의 method인 test_idle_size_and_lifetime을 적습니다. 그래서 parity 실행이 이 binding들을 인정합니다. 전에는 그 파일에 한 번도 없었던 method를 적었습니다(T307).
 - Python introspect runner는 helper를 test package에서 import하고, apply runner처럼 `python -m packages.python.tests.dbspec_introspect_runner`로 실행됩니다. 그래서 support file의 parity 실행은 이 파일을 import하고 case를 보고하지 않습니다. 전에는 import가 실패해 선언되지 않은 test로 보고되었습니다(T306).
 - config/parity.json의 python binding 아홉 개는 unittest 실행이 보고하는 형식인 method 이름으로 test를 적습니다. 그래서 parity 실행이 이 binding들을 인정합니다. 전에는 `<Class>.<method>` id가 실행되지 않은 것으로 보고되었습니다(T305).
