@@ -1,5 +1,5 @@
 #!/bin/sh
-# Delegate extension builds to the canonical Kit builder, which stages the tracked source-copy declarations for each run.
+# Delegate extension builds to the canonical Kit builder, which stages the tracked sources that --source-copy names for each run.
 # Usage: sh packages/php-ext/scripts/build.sh <published polyspec_orm.so> [release|native-test]
 set -eu
 out=${1:?usage: sh packages/php-ext/scripts/build.sh <published polyspec_orm.so> [release|native-test]}
@@ -19,7 +19,8 @@ fi
 mkdir -p "$(dirname "$out")"
 out=$(cd "$(dirname "$out")" && pwd)/$(basename "$out")
 cd "$repository"
-set -- "$builder" build --output "$out" --configure-arg
+# config.m4 compiles the PHP client's SQLite cancellation helper in every mode (T325).
+set -- "$builder" build --output "$out" --source-copy packages/php/src/native/sqlite_cancel.c src/native/sqlite_cancel.c --configure-arg
 case "$mode" in
   release) set -- "$@" --disable-polyspec-orm-native-test ;;
   native-test)

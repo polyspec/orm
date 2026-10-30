@@ -5,6 +5,7 @@
 
 ## 0.0.19
 
+- The PHP extension build stages packages/php/src/native/sqlite_cancel.c as src/native/sqlite_cancel.c with --source-copy in both build modes, as kit K930 requires, since the kit builder no longer reads the source-copy declarations of config/release.json. Before, every release build of the extension failed with No rule to make target src/native/sqlite_cancel.c (T325).
 - The rust binding of group-row-owner names collection::group_tests::grouped_rows_contain_only_group_values_and_checked_counts, the test that owns INT-68 to INT-71, so the parity run executes it. Before, it named a test that never existed, which selected no test, and the binding was reported as not executed (T312).
 - The python hot path measurement writes its PERF lines to standard output, so the unittest result line of `test_hot_path_gate` holds only its outcome and the parity run credits the three hot path units, where the lines written to standard error inside that result line hid it (T310).
 - Python `Db.connect_schema` checks the schema before it opens the connection, as the other runtimes do, so a schema that fails the check, such as a changed manifest, leaves no open connection, where the connection stayed open and was reported as a ResourceWarning; with both an invalid schema and an invalid DSN, the CONFIG error of the schema is now reported first (T317).
