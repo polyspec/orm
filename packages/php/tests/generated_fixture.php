@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Tests;
 
 use RuntimeException;
-use Polyspec\Orm\Generator;
-use Polyspec\Orm\RuntimeModel;
 
 /** Generate one test's fixture models from a contract file and keep their temporary tree until process exit. */
 function loadGeneratedFixture(
@@ -45,7 +43,7 @@ function loadGeneratedDocumentSets(string $prefix, array $sets, array $outputNam
     foreach ($sets as $namespace => $documents) {
         $outputName = $outputNames[$namespace] ?? str_replace('\\', '_', $namespace);
         $output = "$work/$outputName";
-        Generator::generate(RuntimeModel::build(RuntimeModel::parse($documents)), $output, $namespace);
+        generateModels($documents, "$output-source", $output, $namespace);
         requireGeneratedClasses($output);
         require "$output/bootstrap.php";
     }

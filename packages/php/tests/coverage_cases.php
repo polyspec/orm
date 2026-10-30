@@ -84,16 +84,7 @@ function coverageGenerateFixtureModels(string $fixture, string $document, string
             exit(1);
         }
     });
-    $source = "$work/source";
-    mkdir($source, 0o700, true);
-    file_put_contents("$source/$fixture", $document);
-    $set = \Polyspec\Orm\Tests\OrmGenTestSupport::setFile($source, [$fixture]);
-    [$code, $stdout, $stderr] = \Polyspec\Orm\Tests\OrmGenTestSupport::run([
-        'gen', '--set', $set, '--out', "$work/gen", '--namespace', $namespace
-    ]);
-    if ($code !== 0) {
-        throw new RuntimeException("orm-gen failed: " . trim($stdout . "\n" . $stderr));
-    }
+    generateModels([$fixture => $document], "$work/source", "$work/gen", $namespace);
     requireGeneratedClasses("$work/gen");
     require_once "$work/gen/bootstrap.php";
 }

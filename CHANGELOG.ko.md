@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c448bffe7bf6533b772306d9038e02205e2f2ad1f729abd25ed578e04c9afae8 -->
+<!-- source-sha256: 96d69ae63b1271eda13a55e579822e9f195262a763816390c907be24cddac71b -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.19
 
+- PHP test helper는 하나의 helper generateModels를 통해 별도 process의 orm-gen으로 model을 생성하므로, extension으로 도는 test는 PHP library의 file을 load하지 않습니다(T270).
 - complex query와 hot-path gate의 Python parity binding은 test class를 가리키고, postgres와 sqlite hot-path binding은 mysql binding처럼 database와 그 DSN을 줍니다(T269).
 - config/parity.json의 Python symbol은 kit K788 이후 kit Python extractor가 읽는 import root 접두사 polyspec.orm을 가집니다(T268).
 - PHP extension declarations test는 T258이 공개한 대로 ModelMetadata를 PHP client의 class로 셉니다(T267).

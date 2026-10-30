@@ -25,10 +25,8 @@ use PHPUnit\Framework\Assert;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
-use Polyspec\Orm\Generator;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
-use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\StatementEvent;
 use Polyspec\Orm\Tests\StatementEventsCase\EventProbe;
 
@@ -50,8 +48,9 @@ function statementEventsModels(): void
         exec('rm -rf ' . escapeshellarg($work));
     });
     $fixture = (string) file_get_contents("$root/contracts/fixtures/statement_events.dbs");
-    Generator::generate(
-        RuntimeModel::build(RuntimeModel::parse(['statement_events.dbs' => $fixture])),
+    generateModels(
+        ['statement_events.dbs' => $fixture],
+        "$work/source",
         "$work/models",
         'Polyspec\\Orm\\Tests\\StatementEventsCase'
     );

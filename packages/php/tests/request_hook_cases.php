@@ -15,11 +15,9 @@ declare(strict_types=1);
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
-use Polyspec\Orm\Generator;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
 use Polyspec\Orm\Request;
-use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Tests\RequestHookCase\HookEntry;
 use Polyspec\Orm\Tests\RequestHookCase\HookItem;
 use Polyspec\Orm\Tests\RequestHookCase\HookUpsert;
@@ -41,8 +39,9 @@ function requestHookModels(): void
         exec('rm -rf ' . escapeshellarg($work));
     });
     $schemaText = (string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/request_hook.dbs');
-    Generator::generate(
-        RuntimeModel::build(RuntimeModel::parse(['request_hook.dbs' => $schemaText])),
+    generateModels(
+        ['request_hook.dbs' => $schemaText],
+        "$work/source",
         "$work/models",
         'Polyspec\\Orm\\Tests\\RequestHookCase'
     );

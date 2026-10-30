@@ -20,9 +20,7 @@ use Polyspec\Orm\Tests\CoverageAuditColumns\Card;
 use Polyspec\Orm\Tests\CoverageAuditColumns\Tag;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
-use Polyspec\Orm\Generator;
 use Polyspec\Orm\Orm;
-use Polyspec\Orm\RuntimeModel;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
@@ -67,8 +65,9 @@ function auditColumnsRows(Db $db, string $sql): array
 /** Creates the document's model in $work, then runs install, write, history check, and cleanup. */
 function auditColumnsCase(string $dsn, string $document, string $work): void
 {
-    Generator::generate(
-        RuntimeModel::build(RuntimeModel::parse(['audit_columns.dbs' => $document])),
+    generateModels(
+        ['audit_columns.dbs' => $document],
+        "$work/source",
         "$work/gen",
         'Polyspec\\Orm\\Tests\\CoverageAuditColumns'
     );
