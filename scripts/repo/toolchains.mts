@@ -128,8 +128,7 @@ export function rustToolchainErrors(toolchain: string, makefile: string, workflo
 }
 
 // goVersionErrors returns one error for each workflow that does not install the Go of mise.toml. mise.toml declares the one
-// Go release (kit K127): kit's toolchain-check requires it to be the kit pin and the running go to be that release, and
-// make install-tools installs it from mise.lock. workflows is {path: text}.
+// Go release (kit K127), and make install-tools installs it from mise.lock. workflows is {path: text}.
 //   - A workflow that runs go runs make install-tools (the tools of mise.toml) or make ci-install-tools, which installs the Go of
 //     mise.toml in every CI group (KSTD-5-116), and none sets up a second Go with
 //     actions/setup-go.

@@ -1,5 +1,5 @@
 <!-- doc-id: packaging -->
-<!-- source-sha256: f04eec005740c3b869e108c575ff1118d035fda58a6a1ae5de5b18e91c57844e -->
+<!-- source-sha256: c79a8be3736f547b25bc023b3f5df029a9ca6a4e8a6139b7221adaa1bb22baf5 -->
 # 패키징 결정
 
 | 결정 | 선택 | 이유 | 변경 조건 |
@@ -28,13 +28,14 @@
   }
   ```
 
-- Composer: `artifact` repository는 내려받은 zip의 directory이고, Composer는 zip마다 그 `composer.json`에서 이름, version, 요구 사항을 읽는다. artifact repository는 orm zip과 그것이 요구하는 polyspec package마다 그 zip(`polyspec-ordered-json-php-0.0.9.zip`)을 담는다.
+- Composer: release마다 `packages.json` asset을 게시한다. 이는 package의 `composer.json`과 그 zip의 URL·sha1을 담은 `composer` repository이고, Composer는 거기서 이름, version, 요구 사항을 읽는다(kit K865). Composer는 project의 root manifest에서만 `repositories`를 읽으므로, consumer는 orm release와 그것이 요구하는 polyspec package(ordered-json `0.0.13`)마다 그 `packages.json`을 선언한다. orm의 `packages.json`은 orm 0.0.19부터 있다.
 
   ```json
   {
     "require": { "polyspec/orm": "<version>" },
     "repositories": [
-      { "type": "artifact", "url": "vendor/polyspec" },
+      { "type": "composer", "url": "https://github.com/polyspec/orm/releases/download/v<version>/packages.json" },
+      { "type": "composer", "url": "https://github.com/polyspec/ordered-json/releases/download/v0.0.13/packages.json" },
       { "type": "vcs", "url": "https://github.com/min-0-max/yaml", "no-api": true }
     ]
   }

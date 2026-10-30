@@ -199,9 +199,9 @@ CARGO_TEST = node $(abspath tests/cargo-test.mts)
 RUN_DIR = $(abspath .runtime/run)/$@-$$PPID
 RUN_TARGET = $(RUN_DIR)/target
 CARGO_COPY = $(CARGO_LEASED) node $(abspath scripts/cargo-build-copy.mts) $(RUN_TARGET)
-# CARGO_SIBLINGS runs cargo in packages/rust through kit's cargo link, as make cargo-fetch does (K448-5). A recipe that builds the
-# crates runs it in place of a bare cargo build, which link-state-check refuses. It names no checkout, so cargo builds the polyspec
-# crates of their released tags until the link declaration file of kit K869 names the sibling checkouts (T275, KSTD-5-123).
+# CARGO_SIBLINGS runs cargo in packages/rust through kit's cargo link (K448-5). A recipe that builds the crates runs it in place
+# of a bare cargo build, which link-check refuses. It names no checkout: cargo builds the polyspec crates of the checkouts that the
+# link declaration (.links, K869) names, and of their released tags without one.
 CARGO_SIBLINGS = $(NODE) $(abspath $(KIT))/link.$(KIT_EXT) cargo $(abspath packages/rust)
 # HOLD_TYPESCRIPT holds the TypeScript build output of this checkout (the dist of packages/ts and the generated models) as one holder for the
 # lifetime of the make process. Targets that build and write that output get it on their first line,
@@ -230,7 +230,7 @@ TSC_BUILD = $(RUN_LONG) typescript-build -- node scripts/typescript/build.mts >&
 # dbspec-rust-check, dbspec-ts-check, and dbspec-compare-check run once inside feature-verify-rust or feature-verify-other, so they are not listed again.
 # contracts/check-inputs.json declares a scope for each target: owner targets
 # are also selected by make owner-check, and suite targets run only in the whole suite.
-CHECK_TARGETS = styled-column-states-unit-check group-count-boolean-unit-check model-json-ordered-number-text-unit-check runner-check scripts-typecheck docs-check docs-parse-check docs-site-check docs-site-parse-check release-coverage kit-check owner-validate comment-language-check testcase-check repo-check orm-test-servers-check docs-rules-check docs-implementation-count-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check orm-install-cli-check markdown-table-check docs-verify-idempotent go-model-check go-sqlite-version-check schema-exists-sqlite-go-check schema-exists-sqlite-php-check schema-exists-sqlite-typescript-check schema-exists-sqlite-rust-check php-model-check client-unit-check php-gen-unit-check phpstan-test-runner-helper-check php-orm-gen-scan-failure-case-check dbspec-sqlite-literal-rows-helper-check php-test-assertions-helper-check dbspec-php-interface-program-helper-check generator-consumer-check php-min-check ts-check ts-save-key-check ts-aes-auth-check ts-codec-errors-check sqlite-version-ts-check sqlite-version-rust-check relation-parent-bind-rust-check split-null-check collection-composite-key-check interface-typescript-extractor-check ts-min-check rust-check rust-build-environment-check rust-build-outdir-check rust-duplicate-catalog-check rust-time-precision-check rust-upsert-conflict-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-go-check client-db-php-check client-db-php-extension-check client-db-typescript-check client-db-python-check client-db-rust-check codec-check bind-check ir-answers-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check conformance-ts-suite-check markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/php-extension markdown-conformance-check/typescript markdown-conformance-check/python markdown-conformance-check/rust package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-stress-rust-check dbspec-introspect-python-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-language-check dbspec-plan-php-check dbspec-go-check/engine dbspec-php-check/set perf-check dbspec-php-extension-check dbspec-php-extension-check/ir dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-python-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check dbspec-verify-errors-check collection-php-extension-check model-types-php-extension-check model-native-php-extension-check feature-unit-check feature-coverage/go/mysql feature-coverage/go/postgres feature-coverage/go/sqlite feature-coverage/php/mysql feature-coverage/php/postgres feature-coverage/php/sqlite feature-coverage/php-extension/mysql feature-coverage/php-extension/postgres feature-coverage/php-extension/sqlite feature-coverage/typescript/mysql feature-coverage/typescript/postgres feature-coverage/typescript/sqlite feature-coverage/python/mysql feature-coverage/python/postgres feature-coverage/python/sqlite feature-coverage/rust/mysql feature-coverage/rust/postgres feature-coverage/rust/sqlite feature-verify-rust feature-verify-other feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check go-test-check python-check python-native-host-api-check parity-declarations-check parity-check generated-lint-check group-rows-db-go group-rows-db-python group-rows-db-typescript group-rows-db-php group-rows-db-php-extension group-rows-db-rust toolchain-check layout-check rules-check rebuild-check language-check test-markers-check duplication-check link-state-check bypass-check suppression-check divergence-check lint-ts lint-php lint-python lint-go lint-rust lint-php-ext test-php-ext collection-get-phpstan-check blind-index-source-go-check blind-index-source-php-check blind-index-source-php-extension-check blind-index-source-ts-check blind-index-source-python-check blind-index-source-rust-check dbspec-lock-go-check dbspec-lock-php-check dbspec-lock-php-extension-check dbspec-lock-python-check dbspec-lock-rust-check dbspec-lock-ts-check php-codec-causes-check scalar-subquery-column-check nowait-restore-check mermaid-error-ts-check mermaid-error-python-check mermaid-error-php-check mermaid-error-php-extension-check php-extension-build-logs-check php-catalog-bounds-check column-function-metadata-check paged-read-rust-check page-cache-unit-check rust-compiler-fixtures-check native-error-cause-check request-hook-php-extension-check request-hook-rust-check rust-causes-check go-catalog-session-error-check catalog-php-extension-surface-check transaction-failure-php-extension-check transaction-failure-go-check transaction-failure-php-check php-query-cancellation-check php-query-cancellation-extension-check transaction-failure-typescript-check transaction-failure-python-check transaction-failure-rust-check connection-timeout-php-extension-check mysql-tls-php-extension-check mysql-session-php-extension-check go-package-entry-check native-arginfo-php-extension-check request-hook-audit-native-binding-check native-api-equivalence-check php-package-entry-check php-extension-package-entry-check rust-package-entry-check typescript-package-entry-check python-package-entry-check interface-api-binding-unit-check dbspec-introspect-python-helper-check catalog-mutation-helper-ts-check catalog-mutation-helper-python-check model-chunk-composite-native-php-extension-check model-query-write-php-extension-unit-check php-lifecycle-extension-native-check dbspec-introspect-query-count-unit-check connection-statement-timeout-typescript-check connection-statement-timeout-php-extension-check connection-pool-resource-bounds-typescript-check connection-utc-typescript-check connection-utc-php-extension-check connection-utc-php-check connection-utc-rust-check complex-query-typescript-unit-check python-complex-query-check complex-query-typescript-check complex-query-typescript-request-check complex-query-rust-check complex-query-python-mysql-check complex-query-python-postgres-check complex-query-python-sqlite-check complex-query-php-db-check complex-query-php-extension-db-check makefile-pinned-node-recipes-check complex-query-go-plan-check complex-query-rust-plan-check connection-busy-timeout-php-extension-check connection-sqlite-concurrent-writers-python-check connection-sqlite-read-during-write-python-check connection-sqlite-read-during-write-php-extension-check audit-native-method-assertions-helper-check rust-closed-executor-check typescript-internal-column-error-helper-check typescript-dbspec-plan-fixture-check physical-command-case-helper-check typescript-audit-history-rows-helper-check typescript-capture-error-helper-check typescript-check-state-helper-check typescript-performance-gate-unit-check mysql-test-options-helper-check database-case-tests-helper-check dbspec-physical-database-helper-check typescript-conditional-entry-helper-check typescript-database-case-fixture-helper-check php-plan-cache-memory-check split-read-plan-check cpx5-duplicate-relation-helper-check temp-sqlite-fixture-rust-helper-check aes-json-php-extension-check aes-rotation-php-extension-check listen-notify-php-extension-check typescript-test-exact-keys-check pgsql-pdo-adapter-php-check pgsql-pdo-adapter-php-extension-check parent-slot-expansion-php-extension-check feature-performance-check php-go-text-check
+CHECK_TARGETS = styled-column-states-unit-check group-count-boolean-unit-check model-json-ordered-number-text-unit-check runner-check scripts-typecheck docs-check docs-parse-check docs-site-check docs-site-parse-check release-coverage kit-check owner-validate comment-language-check testcase-check repo-check orm-test-servers-check docs-rules-check docs-implementation-count-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check orm-install-cli-check markdown-table-check docs-verify-idempotent go-model-check go-sqlite-version-check schema-exists-sqlite-go-check schema-exists-sqlite-php-check schema-exists-sqlite-typescript-check schema-exists-sqlite-rust-check php-model-check client-unit-check php-gen-unit-check phpstan-test-runner-helper-check php-orm-gen-scan-failure-case-check dbspec-sqlite-literal-rows-helper-check php-test-assertions-helper-check dbspec-php-interface-program-helper-check generator-consumer-check php-min-check ts-check ts-save-key-check ts-aes-auth-check ts-codec-errors-check sqlite-version-ts-check sqlite-version-rust-check relation-parent-bind-rust-check split-null-check collection-composite-key-check interface-typescript-extractor-check ts-min-check rust-check rust-build-environment-check rust-build-outdir-check rust-duplicate-catalog-check rust-time-precision-check rust-upsert-conflict-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-go-check client-db-php-check client-db-php-extension-check client-db-typescript-check client-db-python-check client-db-rust-check codec-check bind-check ir-answers-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check conformance-ts-suite-check markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/php-extension markdown-conformance-check/typescript markdown-conformance-check/python markdown-conformance-check/rust package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-stress-rust-check dbspec-introspect-python-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-language-check dbspec-plan-php-check dbspec-go-check/engine dbspec-php-check/set perf-check dbspec-php-extension-check dbspec-php-extension-check/ir dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-python-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check dbspec-verify-errors-check collection-php-extension-check model-types-php-extension-check model-native-php-extension-check feature-unit-check feature-coverage/go/mysql feature-coverage/go/postgres feature-coverage/go/sqlite feature-coverage/php/mysql feature-coverage/php/postgres feature-coverage/php/sqlite feature-coverage/php-extension/mysql feature-coverage/php-extension/postgres feature-coverage/php-extension/sqlite feature-coverage/typescript/mysql feature-coverage/typescript/postgres feature-coverage/typescript/sqlite feature-coverage/python/mysql feature-coverage/python/postgres feature-coverage/python/sqlite feature-coverage/rust/mysql feature-coverage/rust/postgres feature-coverage/rust/sqlite feature-verify-rust feature-verify-other feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check go-test-check python-check python-native-host-api-check parity-declarations-check parity-check generated-lint-check group-rows-db-go group-rows-db-python group-rows-db-typescript group-rows-db-php group-rows-db-php-extension group-rows-db-rust kit-inject-check layout-check rules-check rebuild-check language-check test-markers-check duplication-check link-check bypass-check suppression-check divergence-check lint-ts lint-php lint-python lint-go lint-rust lint-php-ext test-php-ext collection-get-phpstan-check blind-index-source-go-check blind-index-source-php-check blind-index-source-php-extension-check blind-index-source-ts-check blind-index-source-python-check blind-index-source-rust-check dbspec-lock-go-check dbspec-lock-php-check dbspec-lock-php-extension-check dbspec-lock-python-check dbspec-lock-rust-check dbspec-lock-ts-check php-codec-causes-check scalar-subquery-column-check nowait-restore-check mermaid-error-ts-check mermaid-error-python-check mermaid-error-php-check mermaid-error-php-extension-check php-extension-build-logs-check php-catalog-bounds-check column-function-metadata-check paged-read-rust-check page-cache-unit-check rust-compiler-fixtures-check native-error-cause-check request-hook-php-extension-check request-hook-rust-check rust-causes-check go-catalog-session-error-check catalog-php-extension-surface-check transaction-failure-php-extension-check transaction-failure-go-check transaction-failure-php-check php-query-cancellation-check php-query-cancellation-extension-check transaction-failure-typescript-check transaction-failure-python-check transaction-failure-rust-check connection-timeout-php-extension-check mysql-tls-php-extension-check mysql-session-php-extension-check go-package-entry-check native-arginfo-php-extension-check request-hook-audit-native-binding-check native-api-equivalence-check php-package-entry-check php-extension-package-entry-check rust-package-entry-check typescript-package-entry-check python-package-entry-check interface-api-binding-unit-check dbspec-introspect-python-helper-check catalog-mutation-helper-ts-check catalog-mutation-helper-python-check model-chunk-composite-native-php-extension-check model-query-write-php-extension-unit-check php-lifecycle-extension-native-check dbspec-introspect-query-count-unit-check connection-statement-timeout-typescript-check connection-statement-timeout-php-extension-check connection-pool-resource-bounds-typescript-check connection-utc-typescript-check connection-utc-php-extension-check connection-utc-php-check connection-utc-rust-check complex-query-typescript-unit-check python-complex-query-check complex-query-typescript-check complex-query-typescript-request-check complex-query-rust-check complex-query-python-mysql-check complex-query-python-postgres-check complex-query-python-sqlite-check complex-query-php-db-check complex-query-php-extension-db-check makefile-pinned-node-recipes-check complex-query-go-plan-check complex-query-rust-plan-check connection-busy-timeout-php-extension-check connection-sqlite-concurrent-writers-python-check connection-sqlite-read-during-write-python-check connection-sqlite-read-during-write-php-extension-check audit-native-method-assertions-helper-check rust-closed-executor-check typescript-internal-column-error-helper-check typescript-dbspec-plan-fixture-check physical-command-case-helper-check typescript-audit-history-rows-helper-check typescript-capture-error-helper-check typescript-check-state-helper-check typescript-performance-gate-unit-check mysql-test-options-helper-check database-case-tests-helper-check dbspec-physical-database-helper-check typescript-conditional-entry-helper-check typescript-database-case-fixture-helper-check php-plan-cache-memory-check split-read-plan-check cpx5-duplicate-relation-helper-check temp-sqlite-fixture-rust-helper-check aes-json-php-extension-check aes-rotation-php-extension-check listen-notify-php-extension-check typescript-test-exact-keys-check pgsql-pdo-adapter-php-check pgsql-pdo-adapter-php-extension-check parent-slot-expansion-php-extension-check feature-performance-check php-go-text-check
 # CI splits make orm-check into one job per CI group and runs them at the same time (the job test, matrix group in .github/workflows/ci.yml).
 # Each job runs `make check-run GROUP=<group>`, which runs CI_TARGETS_<group>; together the groups run every target of CHECK_TARGETS
 # once each, without the gates of kit, CI_KIT_GATES (make repo-check verifies it). The gates of kit are the prerequisites of
@@ -253,9 +253,9 @@ CHECK_TARGETS = styled-column-states-unit-check group-count-boolean-unit-check m
 #   feature_helpers: the helper checks without the stress helpers and FEATURE_SUITE_HELPERS (feature-helper-check)
 #   stress_mysql: MySQL application of the 2000-table plan (feature-stress-mysql-check)
 #   stress_pg_sqlite: bench of the stress document and PostgreSQL and SQLite application (feature-stress-pg-sqlite-check)
-CI_KIT_GATES = kit-check toolchain-check layout-check docs-check rules-check owner-validate rebuild-check language-check test-markers-check duplication-check parity-declarations-check parity-check bypass-check suppression-check divergence-check lint-ts lint-php lint-python lint-go lint-rust lint-php-ext test-php-ext
+CI_KIT_GATES = kit-check kit-inject-check layout-check docs-check rules-check owner-validate rebuild-check language-check test-markers-check duplication-check parity-declarations-check parity-check bypass-check suppression-check divergence-check lint-ts lint-php lint-python lint-go lint-rust lint-php-ext test-php-ext
 CI_GROUPS = static clients_db performance client_db_go client_db_php client_db_php_extension client_db_typescript client_db_python client_db_rust clients_pooler conformance dbspec dbspec_apply dbspec_go dbspec_php dbspec_php_extension dbspec_typescript dbspec_python dbspec_rust feature_go_mysql feature_go_postgres feature_go_sqlite feature_php_mysql feature_php_postgres feature_php_sqlite feature_php_extension_mysql feature_php_extension_postgres feature_php_extension_sqlite feature_typescript_mysql feature_typescript_postgres feature_typescript_sqlite feature_python_mysql feature_python_postgres feature_python_sqlite feature_rust_mysql feature_rust_postgres feature_rust_sqlite markdown_go markdown_php markdown_php_extension markdown_typescript markdown_python markdown_rust feature_performance feature_verify_rust feature_verify_other feature_helpers stress_mysql stress_pg_sqlite python
-CI_TARGETS_static = styled-column-states-unit-check group-count-boolean-unit-check model-json-ordered-number-text-unit-check runner-check docs-parse-check release-coverage comment-language-check testcase-check repo-check orm-test-servers-check docs-rules-check docs-implementation-count-check docs-dbs-check dbspec-codemirror-check dbspec-lsp-check orm-install-cli-check markdown-table-check docs-verify-idempotent go-model-check go-sqlite-version-check schema-exists-sqlite-go-check schema-exists-sqlite-php-check schema-exists-sqlite-typescript-check schema-exists-sqlite-rust-check php-model-check client-unit-check php-gen-unit-check phpstan-test-runner-helper-check php-orm-gen-scan-failure-case-check php-test-assertions-helper-check dbspec-sqlite-literal-rows-helper-check php-min-check rust-check go-fmt-check go-vet-check rust-fmt-check codec-check bind-check ir-answers-check fuzz-check package-check ts-model-check ts-save-key-check ts-aes-auth-check ts-codec-errors-check sqlite-version-ts-check sqlite-version-rust-check relation-parent-bind-rust-check split-null-check collection-composite-key-check interface-typescript-extractor-check collection-php-extension-check model-types-php-extension-check model-native-php-extension-check model-chunk-composite-native-php-extension-check feature-unit-check generated-lint-check link-state-check collection-get-phpstan-check blind-index-source-go-check blind-index-source-php-check blind-index-source-php-extension-check blind-index-source-ts-check blind-index-source-python-check blind-index-source-rust-check rust-build-environment-check rust-build-outdir-check rust-duplicate-catalog-check php-catalog-bounds-check rust-time-precision-check rust-upsert-conflict-check php-codec-causes-check scalar-subquery-column-check nowait-restore-check dbspec-language-check docs-site-check docs-site-parse-check rust-150-check dbspec-verify-errors-check php-extension-build-logs-check column-function-metadata-check paged-read-rust-check page-cache-unit-check rust-compiler-fixtures-check native-error-cause-check request-hook-php-extension-check request-hook-rust-check rust-causes-check go-catalog-session-error-check catalog-php-extension-surface-check go-package-entry-check native-arginfo-php-extension-check request-hook-audit-native-binding-check transaction-failure-php-extension-check transaction-failure-go-check transaction-failure-php-check transaction-failure-typescript-check transaction-failure-python-check transaction-failure-rust-check php-package-entry-check php-extension-package-entry-check rust-package-entry-check typescript-package-entry-check python-package-entry-check interface-api-binding-unit-check native-api-equivalence-check model-query-write-php-extension-unit-check php-lifecycle-extension-native-check dbspec-introspect-query-count-unit-check complex-query-typescript-unit-check python-complex-query-check complex-query-typescript-request-check dbspec-vscode-check makefile-pinned-node-recipes-check complex-query-go-plan-check complex-query-rust-plan-check connection-busy-timeout-php-extension-check connection-sqlite-concurrent-writers-python-check connection-sqlite-read-during-write-python-check connection-sqlite-read-during-write-php-extension-check audit-native-method-assertions-helper-check rust-closed-executor-check physical-command-case-helper-check dbspec-physical-database-helper-check typescript-conditional-entry-helper-check typescript-database-case-fixture-helper-check php-plan-cache-memory-check split-read-plan-check cpx5-duplicate-relation-helper-check temp-sqlite-fixture-rust-helper-check typescript-performance-gate-unit-check typescript-test-exact-keys-check php-go-text-check
+CI_TARGETS_static = styled-column-states-unit-check group-count-boolean-unit-check model-json-ordered-number-text-unit-check runner-check docs-parse-check release-coverage comment-language-check testcase-check repo-check orm-test-servers-check docs-rules-check docs-implementation-count-check docs-dbs-check dbspec-codemirror-check dbspec-lsp-check orm-install-cli-check markdown-table-check docs-verify-idempotent go-model-check go-sqlite-version-check schema-exists-sqlite-go-check schema-exists-sqlite-php-check schema-exists-sqlite-typescript-check schema-exists-sqlite-rust-check php-model-check client-unit-check php-gen-unit-check phpstan-test-runner-helper-check php-orm-gen-scan-failure-case-check php-test-assertions-helper-check dbspec-sqlite-literal-rows-helper-check php-min-check rust-check go-fmt-check go-vet-check rust-fmt-check codec-check bind-check ir-answers-check fuzz-check package-check ts-model-check ts-save-key-check ts-aes-auth-check ts-codec-errors-check sqlite-version-ts-check sqlite-version-rust-check relation-parent-bind-rust-check split-null-check collection-composite-key-check interface-typescript-extractor-check collection-php-extension-check model-types-php-extension-check model-native-php-extension-check model-chunk-composite-native-php-extension-check feature-unit-check generated-lint-check link-check collection-get-phpstan-check blind-index-source-go-check blind-index-source-php-check blind-index-source-php-extension-check blind-index-source-ts-check blind-index-source-python-check blind-index-source-rust-check rust-build-environment-check rust-build-outdir-check rust-duplicate-catalog-check php-catalog-bounds-check rust-time-precision-check rust-upsert-conflict-check php-codec-causes-check scalar-subquery-column-check nowait-restore-check dbspec-language-check docs-site-check docs-site-parse-check rust-150-check dbspec-verify-errors-check php-extension-build-logs-check column-function-metadata-check paged-read-rust-check page-cache-unit-check rust-compiler-fixtures-check native-error-cause-check request-hook-php-extension-check request-hook-rust-check rust-causes-check go-catalog-session-error-check catalog-php-extension-surface-check go-package-entry-check native-arginfo-php-extension-check request-hook-audit-native-binding-check transaction-failure-php-extension-check transaction-failure-go-check transaction-failure-php-check transaction-failure-typescript-check transaction-failure-python-check transaction-failure-rust-check php-package-entry-check php-extension-package-entry-check rust-package-entry-check typescript-package-entry-check python-package-entry-check interface-api-binding-unit-check native-api-equivalence-check model-query-write-php-extension-unit-check php-lifecycle-extension-native-check dbspec-introspect-query-count-unit-check complex-query-typescript-unit-check python-complex-query-check complex-query-typescript-request-check dbspec-vscode-check makefile-pinned-node-recipes-check complex-query-go-plan-check complex-query-rust-plan-check connection-busy-timeout-php-extension-check connection-sqlite-concurrent-writers-python-check connection-sqlite-read-during-write-python-check connection-sqlite-read-during-write-php-extension-check audit-native-method-assertions-helper-check rust-closed-executor-check physical-command-case-helper-check dbspec-physical-database-helper-check typescript-conditional-entry-helper-check typescript-database-case-fixture-helper-check php-plan-cache-memory-check split-read-plan-check cpx5-duplicate-relation-helper-check temp-sqlite-fixture-rust-helper-check typescript-performance-gate-unit-check typescript-test-exact-keys-check php-go-text-check
 CI_TARGETS_clients_db = example-check
 CI_TARGETS_performance = perf-check
 CI_TARGETS_client_db_go = client-db-go-check dialect-facts-check go-test-check group-rows-db-go
@@ -386,16 +386,16 @@ testcase-check/node:
 	$(NODE) --test scripts/harness/testcase.test.mts scripts/harness/debug-mode.test.mts
 testcase-check/runners:
 	$(NODE) --test scripts/harness/go-test.test.mts scripts/harness/cargo-test.test.mts
-testcase-check/rust: cargo-downloads-check
+testcase-check/rust:
 	cd packages/rust && $(CARGO_TEST) testcase-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-testcase
 
 # Runs only the Rust cases that share the private SQLite fixture helper.
 .PHONY: temp-sqlite-fixture-rust-helper-check temp-sqlite-fixture-rust-helper-check/hot-path temp-sqlite-fixture-rust-helper-check/cpx5
 temp-sqlite-fixture-rust-helper-check:
 	+$(MAKE) --no-print-directory -k temp-sqlite-fixture-rust-helper-check/hot-path temp-sqlite-fixture-rust-helper-check/cpx5
-temp-sqlite-fixture-rust-helper-check/hot-path: cargo-downloads-check lease-tool
+temp-sqlite-fixture-rust-helper-check/hot-path: lease-tool
 	cd packages/rust && $(CARGO_TEST) temp-sqlite-fixture-hot-path -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test coverage_hot_path_read_correctness hot_path_read_correctness -- --test-threads=1 --exact
-temp-sqlite-fixture-rust-helper-check/cpx5: cargo-downloads-check lease-tool
+temp-sqlite-fixture-rust-helper-check/cpx5: lease-tool
 	cd packages/rust && $(CARGO_TEST) temp-sqlite-fixture-cpx5 -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test integration coverage_model_queries::duplicate_relation_name_reports_config_alias_hint -- --test-threads=1 --exact
 
 # client-pooler-check runs the client database tests through the PgBouncer
@@ -428,7 +428,7 @@ DBSPEC_INTROSPECT_DOCUMENT = $(RUN_DIR)/stress-$(DBSPEC_INTROSPECT_TABLES).dbs
 DBSPEC_INTROSPECT_PROFILE ?= dev
 DBSPEC_INTROSPECT_DIR = $(if $(filter dev,$(DBSPEC_INTROSPECT_PROFILE)),debug,$(DBSPEC_INTROSPECT_PROFILE))
 .PHONY: dbspec-rust-check dbspec-stress-rust-check
-dbspec-stress-rust-check: cargo-downloads-check
+dbspec-stress-rust-check:
 	cd packages/rust && $(CARGO_TEST) dbspec-stress-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --test dbspec_stress stress_document_round_trips_canonically -- --test-threads=1 --exact
 
 # dbspec-ddl-check applies every vector of tests/dbspec/ddl.json to MySQL, PostgreSQL, and
@@ -478,10 +478,10 @@ dbspec-introspect-php-extension-check: php-vendor-check
 # dbspec-introspect-rust-check runs the same round trip and the cases of tests/dbspec/introspect.json with the Rust
 # client's polyspec_orm::dbspec::introspect, and confirms catalog queries 9, 7, and 3 for every set.
 .PHONY: dbspec-introspect-rust-check
-dbspec-introspect-rust-check: cargo-downloads-check
+dbspec-introspect-rust-check:
 	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) dbspec-introspect-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_introspect -- --nocapture
 
-dbspec-introspect-query-count-rust-check: cargo-downloads-check
+dbspec-introspect-query-count-rust-check:
 	cd packages/rust && $(CARGO_TEST) dbspec-introspect-query-count-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm --test dbspec_introspect_query_count sqlite_ -- --nocapture
 
 # Observes the SQLite-memory catalog queries through each native client's introspection entry point; the round-trip cases retain the three-database count checks.
@@ -599,7 +599,7 @@ dbspec-lock-php-extension-check: php-vendor-check php-models orm-install-php-ext
 dbspec-lock-python-check: python-venv-check
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_dbspec_sqlite_lock
 
-dbspec-lock-rust-check: cargo-downloads-check
+dbspec-lock-rust-check:
 	cd packages/rust && $(CARGO_TEST) dbspec-lock-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib sqlite_lock_result_tests -- --nocapture
 
 dbspec-lock-ts-check: lease-tool
@@ -627,7 +627,7 @@ dbspec-apply-stress-bench:
 # rows and the introspected schema text must match those of the chain. Python also runs the
 # representative finalize and lock-wait scenarios on each database.
 .PHONY: dbspec-apply-pairs-check
-dbspec-apply-pairs-check: cargo-downloads-check lease-tool python-venv-check
+dbspec-apply-pairs-check: lease-tool python-venv-check
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(RUN_LONG) rust-build/dbspec_apply --cwd packages/rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm --example dbspec_apply
@@ -638,7 +638,7 @@ dbspec-apply-pairs-check: cargo-downloads-check lease-tool python-venv-check
 # dbspec-apply-rust-check runs the scenario of dbspec-apply-check, minus the 2000-table plan, with the Rust client's
 # polyspec_orm::dbspec::apply, recover, rollback, and finalize.
 .PHONY: dbspec-apply-rust-check
-dbspec-apply-rust-check: cargo-downloads-check
+dbspec-apply-rust-check:
 	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) dbspec-apply-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply -- --nocapture
 
 # dbspec-plan-ts-check builds the TypeScript client and applies every case of tests/dbspec/plans.json to MySQL, PostgreSQL, and SQLite
@@ -660,7 +660,7 @@ dbspec-apply-ts-check: lease-tool
 # dbspec-plan-rust-check applies the same cases with the Rust client's plan steps, renderer,
 # and polyspec_orm::dbspec::introspect.
 .PHONY: dbspec-plan-rust-check
-dbspec-plan-rust-check: cargo-downloads-check
+dbspec-plan-rust-check:
 	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) dbspec-plan-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_plan_apply -- --nocapture
 
 # dbspec-plan-php-check applies the same cases with the PHP client's Polyspec\Orm\Dbspec\Dbspec::planSteps and
@@ -693,7 +693,7 @@ dbspec-apply-php-extension-check: php-vendor-check
 # prints the introspection time and warns when it exceeds the reference value. dbspec-introspect-compare-bench runs the same target with the 2000
 # table document and the release runners.
 .PHONY: dbspec-introspect-compare-check dbspec-introspect-compare-bench
-dbspec-introspect-compare-check: cargo-downloads-check lease-tool python-venv-check
+dbspec-introspect-compare-check: lease-tool python-venv-check
 	$(HOLD_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_INTROSPECT_DOCUMENT))
 	$(PUBLISH) $(DBSPEC_INTROSPECT_DOCUMENT) node tests/dbspec/stress.mts $(DBSPEC_INTROSPECT_TABLES)
@@ -749,7 +749,7 @@ orm-python-lock:
 orm-install-python:
 	$(MAKE) --no-print-directory install-tools TOOLS="python uv"
 	$(MAKE) --no-print-directory python-venv DIR=$(PYTHON_VENV)
-	cd packages/python && $(ONLINE) $(UV) sync --quiet --locked --group test
+	$(MAKE) --no-print-directory uv-install DIR=packages/python SYNC='--quiet --group test'
 	$(MAKE) --no-print-directory python-models
 # python-venv-check checks that the venv of orm-install-python exists and runs the Python release of mise.toml. A missing venv
 # or another release fails without a download or a repair, and names the fix: remove the venv and run make install.
@@ -813,7 +813,7 @@ dbspec-python-check: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_ddl
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_apply
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p 'test_dbspec_*.py'
-dbspec-compare-check/prepare: cargo-downloads-check lease-tool python-venv-check
+dbspec-compare-check/prepare: lease-tool python-venv-check
 	$(HOLD_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_COMPARE_DOCUMENT))
 	$(PUBLISH) $(DBSPEC_COMPARE_DOCUMENT) node tests/dbspec/stress.mts $(DBSPEC_COMPARE_TABLES)
@@ -856,32 +856,32 @@ dbspec-stress-bench/typescript: dbspec-stress-bench/prepare lease-tool
 	$(TSC_BUILD)
 	$(NODE) --test packages/ts/tests/dbspec-stress.mjs
 	$(NODE) --test packages/ts/tests/dbspec-stress.mjs
-dbspec-stress-bench/rust: dbspec-stress-bench/prepare cargo-downloads-check
+dbspec-stress-bench/rust: dbspec-stress-bench/prepare
 	$(RUN_LONG) rust-build/dbspec_stress --cwd packages/rust -- $(CARGO_COPY) release/examples/dbspec_stress -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p polyspec-orm-schema --example dbspec_stress
 	$(RUN_TARGET)/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
 	$(RUN_TARGET)/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
 
 .PHONY: dbspec-rust-check/documents dbspec-rust-check/set dbspec-rust-check/apply-cleanup dbspec-rust-check/unicode dbspec-rust-check/show-create
 dbspec-rust-check: dbspec-rust-check/documents dbspec-rust-check/set dbspec-rust-check/apply-cleanup dbspec-rust-check/unicode dbspec-rust-check/show-create
-dbspec-rust-check/documents: cargo-downloads-check
+dbspec-rust-check/documents:
 	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_analyze --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
 	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_analyze --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
 # dbspec-rust-check/set runs every file tree case of tests/dbspec/set-files.json through the set reader
 # dbspec::read_set, every case of tests/dbspec/set-parse.json through dbspec::parse_set, and its unit cases of the normal form, the nested JSON and the schema value.
 dbspec-rust-check/set: dbspec-rust-check/set/vectors dbspec-rust-check/set/unit
 .PHONY: dbspec-rust-check/set/vectors dbspec-rust-check/set/unit
-dbspec-rust-check/set/vectors: cargo-downloads-check
+dbspec-rust-check/set/vectors:
 	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --test dbspec_set --test dbspec_set_parse -- --nocapture
-dbspec-rust-check/set/unit: cargo-downloads-check
+dbspec-rust-check/set/unit:
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm-schema --lib dbspec::set
 # dbspec-rust-check/unicode checks that the Unicode word rune table written by Go (unicode_word.rs) matches the ranges at every code point.
-dbspec-rust-check/unicode: cargo-downloads-check
+dbspec-rust-check/unicode:
 	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --lib dbspec::unicode_word -- --nocapture
-dbspec-rust-check/apply-cleanup: cargo-downloads-check
+dbspec-rust-check/apply-cleanup:
 	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup -- --nocapture
 
 .PHONY: dbspec-verify-errors-rust-check
-dbspec-verify-errors-rust-check: cargo-downloads-check lease-tool
+dbspec-verify-errors-rust-check: lease-tool
 	$(LEASE) hold $(CARGO_LEASES) exclusive --wait --pid $$PPID
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup apply_reports_verify_errors_separately_from_drift -- --nocapture
 
@@ -899,9 +899,9 @@ dbspec-verify-errors-php-extension-check: php-models orm-install-php-extension-t
 # and that the public MySQL introspection (read_catalog) reports, for each case of that catalog, the expected check, unsupported objects, and error.
 dbspec-rust-check/show-create: dbspec-rust-check/show-create/unit dbspec-rust-check/show-create/vectors
 .PHONY: dbspec-rust-check/show-create/unit dbspec-rust-check/show-create/vectors
-dbspec-rust-check/show-create/unit: cargo-downloads-check
+dbspec-rust-check/show-create/unit:
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm-schema --lib show_create_tests
-dbspec-rust-check/show-create/vectors: cargo-downloads-check
+dbspec-rust-check/show-create/vectors:
 	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --test dbspec_show_create -- --nocapture
 
 .PHONY: rust-send-savepoint-check
@@ -909,9 +909,9 @@ dbspec-rust-check/show-create/vectors: cargo-downloads-check
 rust-send-savepoint-check/%: RUN_DIR = $(abspath .runtime/run)/rust-send-savepoint-check-$$PPID
 rust-send-savepoint-check: rust-send-savepoint-check/clippy rust-send-savepoint-check/test
 .PHONY: rust-send-savepoint-check/clippy rust-send-savepoint-check/test
-rust-send-savepoint-check/clippy: cargo-downloads-check
+rust-send-savepoint-check/clippy:
 	$(RUN_LONG) rust-clippy/orm-lib --cwd packages/rust -- $(CARGO_LEASED) cargo +$(PHYSICAL_RUST_TOOLCHAIN) clippy --locked --offline -p polyspec-orm --lib -- -D warnings
-rust-send-savepoint-check/test: cargo-downloads-check
+rust-send-savepoint-check/test:
 	mkdir -p $(RUN_DIR)
 	$(WITH_TEST_ENV) cd packages/rust && ORM_SEND_SQLITE_DSN=$(SEND_SQLITE_DSN) $(CARGO_TEST) rust-send-savepoint-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib tx::send_tests:: -- --nocapture
 	$(WITH_TEST_ENV) cd packages/rust && ORM_SEND_SQLITE_DSN=$(SEND_SQLITE_DSN) $(CARGO_TEST) rust-send-savepoint-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib tx::send_tests:: -- --nocapture
@@ -1332,7 +1332,7 @@ connection-utc-php-check: php-vendor-check php-models
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter 'testConnectionTimeZone' packages/php/tests/ModelTest.php
 
 # Runs the existing Rust CFG-2 connection test by exact integration test symbol.
-connection-utc-rust-check: cargo-downloads-check lease-tool
+connection-utc-rust-check: lease-tool
 	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) connection-utc-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --test zone connections_use_utc -- --exact --test-threads=1 --nocapture
 
 # dbspec-php-extension-check/executor runs the suites of the connection, the statement path and the transactions with the extension
@@ -1541,17 +1541,17 @@ feature-coverage/python/postgres: python-venv-check
 feature-coverage/python/sqlite: python-venv-check
 	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python node scripts/features/coverage.mts --runtime python --database sqlite
 
-feature-coverage/rust/mysql: lease-tool cargo-downloads-check
+feature-coverage/rust/mysql: lease-tool
 	$(WITH_TEST_ENV) node scripts/features/coverage.mts --runtime rust --database mysql
 
-feature-coverage/rust/postgres: lease-tool cargo-downloads-check
+feature-coverage/rust/postgres: lease-tool
 	$(WITH_TEST_ENV) node scripts/features/coverage.mts --runtime rust --database postgres
 
-feature-coverage/rust/sqlite: lease-tool cargo-downloads-check
+feature-coverage/rust/sqlite: lease-tool
 	$(WITH_TEST_ENV) node scripts/features/coverage.mts --runtime rust --database sqlite
 
 feature-performance-check: RUN_DIR = $(abspath .runtime/run)/feature-performance-$$PPID
-feature-performance-check: feature-check/build php-vendor-check php-models orm-install-php-extension-tools python-venv-check cargo-downloads-check
+feature-performance-check: feature-check/build php-vendor-check php-models orm-install-php-extension-tools python-venv-check
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
 	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) node scripts/features/coverage.mts --feature performance_gate
 	rm -rf $(RUN_DIR)
@@ -1639,7 +1639,7 @@ blind-index-source-ts-check: lease-tool
 
 # The six SQLite NOWAIT callers restore busy_timeout without hiding the lock error or either failure cause.
 .PHONY: nowait-restore-check
-nowait-restore-check: lease-tool typescript-build php-vendor-check php-models python-venv-check cargo-downloads-check orm-install-php-extension-tools
+nowait-restore-check: lease-tool typescript-build php-vendor-check php-models python-venv-check orm-install-php-extension-tools
 	@set +e; status=0; \
 	$(GO_TEST) ./packages/go/orm -run '^TestAcquireSQLiteRowLock' -count=1 || status=1; \
 	$(RUN_TESTS) node --conditions=orm-test --test packages/ts/tests/sqlite-row-lock-restore.mjs || status=1; \
@@ -1687,21 +1687,21 @@ generator-consumer-check/python: python-venv-check
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_orm_gen.OrmGenTest.test_generated_typed_getter_is_the_public_column_api
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_orm_gen.OrmGenTest.test_chain_conditions packages.python.tests.test_orm_gen.OrmGenTest.test_scan_reports_unknown_model_methods packages.python.tests.test_query_methods.QueryMethodsTest.test_a_declared_method_builds_the_query_of_its_chain
 generator-consumer-check/rust-field-types: generator-consumer-check/rust-field-types/generated-field-types generator-consumer-check/rust-field-types/fixed-method-list
-generator-consumer-check/rust-field-types/generated-field-types: cargo-downloads-check lease-tool
+generator-consumer-check/rust-field-types/generated-field-types: lease-tool
 	cd packages/rust && $(CARGO_TEST) generator-consumer-rust-field-types -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-build --lib generate::field_type_tests::generated_field_types_follow_the_runtime_model -- --test-threads=1 --exact
-generator-consumer-check/rust-field-types/fixed-method-list: cargo-downloads-check lease-tool
+generator-consumer-check/rust-field-types/fixed-method-list: lease-tool
 	cd packages/rust && $(CARGO_TEST) generator-consumer-rust-fixed-method-list -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-build --lib generate::fixed_method_tests::fixed_list_names_the_public_methods_of_the_fixed_impl -- --test-threads=1 --exact
-generator-consumer-check/rust-emission: cargo-downloads-check lease-tool
+generator-consumer-check/rust-emission: lease-tool
 	cd packages/rust && $(CARGO_TEST) generator-consumer-rust-emission -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-build --test generate generated_rows_reject_unselected_fields_and_separate_group_results -- --test-threads=1 --exact
 generator-consumer-check/rust-chain-scan: generator-consumer-check/rust-chain-scan/generates-called-methods generator-consumer-check/rust-chain-scan/stored-column-name
-generator-consumer-check/rust-chain-scan/generates-called-methods: cargo-downloads-check lease-tool
+generator-consumer-check/rust-chain-scan/generates-called-methods: lease-tool
 	cd packages/rust && $(CARGO_TEST) generator-consumer-rust-chain-scan -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-build --test generate generates_called_methods -- --test-threads=1 --exact
-generator-consumer-check/rust-chain-scan/stored-column-name: cargo-downloads-check lease-tool
+generator-consumer-check/rust-chain-scan/stored-column-name: lease-tool
 	cd packages/rust && $(CARGO_TEST) generator-consumer-rust-stored-column-name -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-build --test generate stored_column_name_is_rejected_as_an_output_name -- --test-threads=1 --exact
-generator-consumer-check/rust-integration: cargo-downloads-check lease-tool
+generator-consumer-check/rust-integration: lease-tool
 	cd packages/rust && $(CARGO_TEST) generator-consumer-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-tests --bin integration generated_typed_getter_is_a_checked_public_consumer_api -- --test-threads=1 --exact
 
-rust-compiler-fixtures-check: cargo-downloads-check lease-tool
+rust-compiler-fixtures-check: lease-tool
 	cd packages/rust && $(CARGO_TEST) rust-compiler-fixtures-native -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm --test compiler_fixtures -- --test-threads=1
 	$(RUN_LONG) rust-build/compiler-fixtures -- $(CARGO_LEASED) $(NODE) $(abspath scripts/rust/compiler-fixtures.mts) $(PHYSICAL_RUST_TOOLCHAIN) --exclude-case dsl124-db-begin-e0599 --exclude-case dsl124-db-commit-e0599 --exclude-case dsl124-db-rollback-e0599 --exclude-case dsl50-ordering-list-e0277
 
@@ -1804,7 +1804,7 @@ client-db-python-check: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_statement_fault_entry
 	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_CLIENT_DB_LANGS=python node scripts/client-db-test.mts
 
-client-db-rust-check: lease-tool cargo-downloads-check
+client-db-rust-check: lease-tool
 	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANGS=rust node scripts/client-db-test.mts
 
 # Runs only the three-dialect encrypted ordered-json case with the PHP extension loaded and library excluded.
@@ -1965,7 +1965,7 @@ group-rows-db-typescript: typescript-build
 	ORM_GROUP_DATABASE=sqlite ORM_GROUP_DSN="$$BENCH_SQLITE_DSN" $(NODE) packages/ts/tests/group_rows_db.mjs
 # Runs the selected model getter/setter styled states in each native client. Each runtime reports independently.
 .PHONY: styled-column-states-unit-check
-styled-column-states-unit-check: lease-tool php-vendor-check php-model-check python-venv-check cargo-downloads-check
+styled-column-states-unit-check: lease-tool php-vendor-check php-model-check python-venv-check
 	$(HOLD_TYPESCRIPT)
 	@set +e; status=0; last_result=0; \
 	run_case() { label=$$1; shift; printf '[styled-column-states] %s\n' "$$label"; "$$@"; last_result=$$?; printf '[styled-column-states] %s exit %s\n' "$$label" "$$last_result"; if [ "$$last_result" -ne 0 ]; then status=1; fi; return 0; }; \
@@ -2186,7 +2186,7 @@ $(PARITY_GATE_TARGETS): export ORM_CHECKOUT = $(CURDIR)
 $(PARITY_GATE_TARGETS): export ORM_NODE_REPORTER = $(KIT)/parity-node-reporter.$(KIT_EXT)
 $(PARITY_GATE_TARGETS): export ORM_PROGRAM_CONFORMANCE = $(PARITY_RUN_DIR)/target/debug/conformance
 
-# CI provides the declared group needs as booleans; static checks need every tool for toolchain-check,
+# CI provides the declared group needs as booleans; static checks need every tool,
 # while the other groups install only the shared Go runner and the runtimes their targets use.
 .PHONY: ci-install-tools
 ifeq ($(GROUP),static)
@@ -2206,7 +2206,7 @@ markdown-conformance-check/php-extension: php-vendor-check php-models orm-instal
 # The Python runner reads the build information with go version -m.
 markdown-conformance-check/python: python-venv-check
 	FLOWMARK=$(FLOWMARK) $(PYTHON_VENV)/bin/python -m packages.python.tests.markdown_conformance
-markdown-conformance-check/rust: lease-tool cargo-downloads-check
+markdown-conformance-check/rust: lease-tool
 	cd packages/rust && FLOWMARK=$(FLOWMARK) PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) markdown-conformance-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test markdown_conformance -- --nocapture
 markdown-conformance-check/typescript: lease-tool
 	$(HOLD_TYPESCRIPT)
@@ -2221,7 +2221,7 @@ decimal-bench-sqlite: typescript-build
 # uses (the Rust test binary decimal_physical and the Go decimalmodel test) is a long-running
 # task, so it runs first under RUN_LONG with no deadline before the case (the Go build publishes into .runtime/bin and fills the build cache), and the case
 # Run what was built.
-decimal-physical-check: php-vendor-check cargo-downloads-check lease-tool python-venv-check orm-install-php-extension-tools
+decimal-physical-check: php-vendor-check lease-tool python-venv-check orm-install-php-extension-tools
 	$(READ_TYPESCRIPT)
 	test -n "$(DECIMAL_ENV)" -a -f "$(DECIMAL_ENV)" || { echo 'DECIMAL_ENV names no decimal database of this run; run make run-databases TARGETS=$@' >&2; exit 1; }
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/decimal-physical -- $(CARGO_LEASED) cargo test --no-run --offline --locked --manifest-path packages/rust/Cargo.toml -p polyspec-orm-tests --test decimal_physical
@@ -2310,32 +2310,32 @@ sqlite-version-ts-check: lease-tool
 
 # rust-build-environment-check runs the Rust build library path-resolution unit cases.
 .PHONY: rust-build-environment-check
-rust-build-environment-check: cargo-downloads-check lease-tool
+rust-build-environment-check: lease-tool
 	ORM_BUILD_TEST_ROOT=$(abspath packages/rust/build) $(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm-build --lib tests::build_environment::environment_subprocess
 	cd packages/rust && $(CARGO_TEST) rust-build-rerun-inputs -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-build --lib tests::rerun_inputs_name_the_set_file_and_every_document -- --test-threads=1 --exact
 
 # rust-build-outdir-check runs the missing OUT_DIR propagation unit case.
 .PHONY: rust-build-outdir-check
-rust-build-outdir-check: cargo-downloads-check lease-tool
+rust-build-outdir-check: lease-tool
 	ORM_BUILD_TEST_ROOT=$(abspath packages/rust/build) $(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm-build --lib tests::out_dir::load_requires_out_dir
 
 # rust-time-precision-check runs the Rust temporal precision bind cases without a database.
 .PHONY: rust-time-precision-check
-rust-time-precision-check: cargo-downloads-check lease-tool
+rust-time-precision-check: lease-tool
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib db::time_precision_tests
 
 # rust-temporal-args-check runs the pure Rust temporal argument conversion cases without a database.
 .PHONY: rust-temporal-args-check
-rust-temporal-args-check: cargo-downloads-check lease-tool
+rust-temporal-args-check: lease-tool
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib args::temporal_args::temporal_arguments_become_canonical_text_before_binding
 
 # Compile the public Product request for MySQL/PostgreSQL and reject SQLite without a live database.
-complex-query-rust-plan-check: cargo-downloads-check lease-tool
+complex-query-rust-plan-check: lease-tool
 	cd packages/rust && $(CARGO_TEST) complex-query-rust-plan -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test integration -- --test-threads=1 --exact coverage_complex_query::full_product_search_request_compiles_for_mysql_and_postgres_and_rejects_sqlite
 
 # rust-upsert-conflict-check exercises private planner conflict target success and error paths without a database.
 .PHONY: rust-upsert-conflict-check
-rust-upsert-conflict-check: cargo-downloads-check lease-tool
+rust-upsert-conflict-check: lease-tool
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib engine::planner::upsert_conflict_tests
 
 # Column-function metadata checks run for all six native clients and continue after a failure.
@@ -2354,7 +2354,7 @@ column-function-metadata-check/go:
 	(cd packages/go && $(GO) test ./engine/planner -run '^TestColumnFunctionMissing' -count=1) || status=1; \
 	(cd packages/go && $(GO) test ./engine/ir -run '^TestParamUsesColumnFunction' -count=1) || status=1; \
 	exit $$status
-column-function-metadata-check/rust: cargo-downloads-check lease-tool
+column-function-metadata-check/rust: lease-tool
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib column_function_metadata
 column-function-metadata-check/typescript: lease-tool
 	$(HOLD_TYPESCRIPT)
@@ -2384,7 +2384,7 @@ scalar-subquery-column-check:
 	exit $$status
 scalar-subquery-column-check/go:
 	cd packages/go && $(GO) test ./engine/planner -run '^TestScalarSubquery' -count=1
-scalar-subquery-column-check/rust: cargo-downloads-check lease-tool
+scalar-subquery-column-check/rust: lease-tool
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib scalar_subquery_
 scalar-subquery-column-check/typescript: lease-tool
 	$(HOLD_TYPESCRIPT)
@@ -2411,7 +2411,7 @@ paged-read-rust-check: lease-tool
 # Runs the database-independent page-cache and exact parameter-walk units in all six implementations.
 .PHONY: page-cache-unit-check
 .PHONY: page-cache-unit-check/go page-cache-unit-check/php page-cache-unit-check/typescript page-cache-unit-check/python page-cache-unit-check/rust
-page-cache-unit-check: lease-tool php-vendor-check php-models python-venv-check typescript-build cargo-downloads-check model-types-php-extension-check page-cache-unit-check/go page-cache-unit-check/php page-cache-unit-check/typescript page-cache-unit-check/python page-cache-unit-check/rust
+page-cache-unit-check: lease-tool php-vendor-check php-models python-venv-check typescript-build model-types-php-extension-check page-cache-unit-check/go page-cache-unit-check/php page-cache-unit-check/typescript page-cache-unit-check/python page-cache-unit-check/rust
 page-cache-unit-check/go:
 	$(GO_TEST) ./packages/go/orm -run '^(TestPlanCachePagedReadBindsPageValues|TestCanonicalizeCompositeRequestParameterWalk)$$' -count=1
 page-cache-unit-check/php:
@@ -2442,7 +2442,7 @@ split-null-check/php: php-vendor-check
 split-null-check/python: python-venv-check
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_split_null
 
-split-null-check/rust: cargo-downloads-check
+split-null-check/rust:
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib model::related_tests::split_root_merge_rejects_sql_null_identity
 
 split-null-check/go: lease-tool
@@ -2467,7 +2467,7 @@ split-read-plan-check/ts: lease-tool
 split-read-plan-check/python: python-venv-check python-models
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_split_plan
 
-split-read-plan-check/rust: cargo-downloads-check
+split-read-plan-check/rust:
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib model::split_plan_tests::split_root_in_count_plans_no_statement_over_the_bind_limit
 
 # The six native clients preserve typed composite collection components and the shared opaque encoding.
@@ -2491,7 +2491,7 @@ collection-composite-key-check: typescript-build php-vendor-check python-venv-ch
 	test $$status -eq 0
 
 # sqlite-version-rust-check runs only the Rust SQLite native-version unit cases.
-sqlite-version-rust-check: cargo-downloads-check lease-tool
+sqlite-version-rust-check: lease-tool
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib db::sqlite_version_tests
 
 # ts-min-check runs the TypeScript tests on the lowest Node release that
@@ -2697,7 +2697,7 @@ codec-check/python: python-venv-check
 codec-check/go:
 	mkdir -p $(CODEC_OUT)
 	ORM_CODEC_OUT=$(CODEC_OUT) $(GO_TEST) ./packages/go/orm -run '^TestCodecVectors$$' -count=1
-codec-check/rust: cargo-downloads-check lease-tool
+codec-check/rust: lease-tool
 	mkdir -p $(CODEC_OUT)
 	cd packages/rust && ORM_CODEC_OUT=$(CODEC_OUT) $(CARGO_TEST) codec-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test codec_vectors
 codec-check/typescript: lease-tool
@@ -2718,7 +2718,7 @@ codec-check/compare: php-vendor-check codec-check/go codec-check/rust codec-chec
 bind-check: bind-check/go bind-check/rust bind-check/typescript bind-check/python bind-check/php
 bind-check/go:
 	$(GO_TEST) ./packages/go/orm -run '^(TestBindVectors|TestBindMessageVectors)$$' -count=1
-bind-check/rust: cargo-downloads-check lease-tool
+bind-check/rust: lease-tool
 	cd packages/rust && $(CARGO_TEST) bind-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib bind_
 bind-check/typescript: lease-tool
 	$(HOLD_TYPESCRIPT)
@@ -2736,7 +2736,7 @@ bind-check/php: php-vendor-check
 ir-answers-check: ir-answers-check/go ir-answers-check/rust ir-answers-check/typescript ir-answers-check/python ir-answers-check/php
 ir-answers-check/go:
 	$(GO_TEST) -tags markdown ./packages/go/markdownmodel -run '^TestIRAnswers$$' -count=1
-ir-answers-check/rust: cargo-downloads-check lease-tool
+ir-answers-check/rust: lease-tool
 	cd packages/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) ir-answers-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test markdown_conformance -- ir_answers::
 ir-answers-check/typescript: lease-tool
 	$(HOLD_TYPESCRIPT)
@@ -2807,7 +2807,8 @@ lint-go: go-models
 PHP_MODELS_FILE = packages/php/models.txt
 .PHONY: php-models php-model-check
 orm-install-php:
-	$(ONLINE) $(MAKE) --no-print-directory composer-install DIR=.
+	$(ONLINE) $(COMPOSER) install --no-interaction --no-progress
+	$(MAKE) --no-print-directory link
 	$(COMPOSER) dump-autoload --no-interaction --quiet
 	$(MAKE) --no-print-directory php-models
 php-models: php-vendor-check
@@ -2823,6 +2824,9 @@ php-model-check: php-vendor-check
 # halves apart, orm-install-rust-toolchain before its crate cache is restored and orm-install-rust-crates after it, since a
 # restored registry replaces the crates downloaded before it.
 orm-install-rust: orm-install-rust-toolchain orm-install-rust-crates
+# deps-rust is the default CI setup of the rust runtime, which setup.runtimes.rust of config/ci.json leaves empty (kit K859).
+.PHONY: deps-rust
+deps-rust: orm-install-rust
 orm-install-rust-toolchain:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" rustup toolchain install
 	PATH="$(HOME)/.cargo/bin:$(PATH)" rustc --version
@@ -2864,10 +2868,10 @@ orm-install-server-programs:
 # PHP on PATH (scripts/ci/php-extension-tools.mts).
 orm-install-php-extension-tools:
 	$(NODE) scripts/ci/php-extension-tools.mts
-	$(MAKE) --no-print-directory kit-install-php-arginfo
 orm-install-php-extension-runtime:
 	$(MAKE) --no-print-directory orm-install-php
-	$(MAKE) --no-print-directory composer-install DIR=packages/php-ext
+	cd packages/php-ext && $(ONLINE) $(COMPOSER) install --no-interaction --no-progress
+	$(MAKE) --no-print-directory link
 	$(MAKE) --no-print-directory orm-install-php-extension-tools
 orm-install-typescript-runtime: orm-install-go-lease build-ts
 
@@ -2878,20 +2882,18 @@ ci-php-min-version:
 
 # downloads-check checks, without network, that all downloads that check reads are present, and lists each missing one with
 # `run make install` (scripts/check/downloads.mts). The runner (scripts/check/run.mts) runs the same check as the setup step downloads.
-# The crates are checked by cargo-downloads-check of the kit.mk of @polyspec/kit, which every target that runs cargo
-# --offline runs first, so a missing crate fails with its fix instead of cargo's "retry without --offline".
 downloads-check:
 	$(NODE) scripts/check/downloads.mts
 
 # rust-driver-check runs the native and driver_compare of benchmarks/rust without a DSN to confirm refusal,
 # and runs each workload once at a time on the seeded bench database to confirm that every workload finishes.
-rust-driver-check: cargo-downloads-check
+rust-driver-check:
 	$(WITH_TEST_ENV) cd benchmarks/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) rust-driver-check -- cargo test --locked --offline -- --test-threads=1
 
 # example-check runs the examples package's DSN refusal and output tests once. The output test runs the Go, PHP and Rust programs
 # of examples/complex and the Go, PHP, Rust, TypeScript and Python programs of examples/thin-slice on the seeded bench database.
 # The PHP examples load the Composer autoloader; Python runs on the orm-install-python venv.
-example-check: cargo-downloads-check php-vendor-check python-venv-check
+example-check: php-vendor-check python-venv-check
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/examples --cwd packages/rust -- $(CARGO_COPY) debug/complex debug/demo -- $(CARGO_SIBLINGS) build --locked --offline -p polyspec-orm-tests --bin complex --bin demo
 	$(WITH_TEST_ENV) EXAMPLE_RUST_COMPLEX=$(RUN_TARGET)/debug/complex EXAMPLE_RUST_DEMO=$(RUN_TARGET)/debug/demo $(GO_TEST) -tags examples ./examples -run '^(TestExampleOutputsAreIdentical|TestExamplesRequireBenchDSN)$$' -count=1
 	rm -rf $(RUN_DIR)
@@ -2900,7 +2902,7 @@ example-check: cargo-downloads-check php-vendor-check python-venv-check
 # and confirms that each test passes unchanged and prints its measurements. Performance is only measured and does not
 # fail the test (AGENTS.md). It uses the 2000-table stress document, so make bench runs it.
 TIMING_GO_DBSPEC_TEST = $(RUN_DIR)/dbspec.test
-timing-check: cargo-downloads-check lease-tool
+timing-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT)) $(dir $(TIMING_GO_DBSPEC_TEST))
 	$(PUBLISH) $(DBSPEC_STRESS_DOCUMENT) node tests/dbspec/stress.mts
@@ -3025,7 +3027,7 @@ php-extension-build-logs-check:
 
 # rust-duplicate-catalog-check runs only the catalog transaction and assignment-budget refactor units.
 .PHONY: rust-duplicate-catalog-check
-rust-duplicate-catalog-check: cargo-downloads-check lease-tool
+rust-duplicate-catalog-check: lease-tool
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) rust-duplicate-catalog -- cargo test --manifest-path packages/rust/Cargo.toml --locked --offline -p polyspec-orm-build --lib rust_duplicate_ -- --test-threads=1
 
 .PHONY: php-catalog-bounds-check
@@ -3061,7 +3063,7 @@ request-hook-rust-check: lease-tool
 # PHP client, its required modules and its PIE package.
 # dbspec-php-extension-check/silent-paths runs silent_paths.php with the extension alone (php -n, no library class): a call that must fail with an OrmException must throw, not return silently (T182-2-4).
 
-rust-causes-check: cargo-downloads-check lease-tool
+rust-causes-check: lease-tool
 	@status=0; cd packages/rust || exit; \
 	$(CARGO_TEST) rust-causes-orm -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib cause_message -- --test-threads=1 --nocapture || status=1; \
 	$(CARGO_TEST) rust-causes-build -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-build --lib --features live-db cause_message -- --test-threads=1 --nocapture || status=1; \
@@ -3097,7 +3099,7 @@ schema-exists-sqlite-typescript-check: lease-tool
 	$(TSC_BUILD)
 	$(RUN_LONG) schema-exists-sqlite-typescript -- $(NODE) packages/ts/tests/model.mjs --case schemaExistsUnderscore --dialect sqlite
 
-schema-exists-sqlite-rust-check: cargo-downloads-check lease-tool
+schema-exists-sqlite-rust-check: lease-tool
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --test schema_exists_underscore schema_exists_escapes_underscore_sqlite -- --exact
 
 catalog-php-extension-surface-check: php-vendor-check php-models
@@ -3184,7 +3186,7 @@ transaction-failure-python-check: python-venv-check
 # Runs the Rust transaction and savepoint failure cases that use only local SQLite and its authorizer.
 
 .PHONY: transaction-failure-rust-check/lib transaction-failure-rust-check/fault
-transaction-failure-rust-check: cargo-downloads-check transaction-failure-rust-check/lib transaction-failure-rust-check/fault
+transaction-failure-rust-check: transaction-failure-rust-check/lib transaction-failure-rust-check/fault
 transaction-failure-rust-check/lib:
 	$(if $(TRANSACTION_FAILURE_RUST_FAULT_FILTER),:,cd packages/rust && $(CARGO_TEST) transaction-failure-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --lib end_failures_are_reported -- --nocapture)
 transaction-failure-rust-check/fault:
@@ -3254,7 +3256,7 @@ php-extension-package-entry-check: php-vendor-check php-models
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/polyspec_orm.so"; \
 	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES='$(ORM_PHP_DYNAMIC_MODULES)' POLYSPEC_ORM_EXTENSION="$$run_dir/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'test(Package|Client)' packages/php-ext/tests/DeclarationsTest.php
 
-rust-package-entry-check: cargo-downloads-check
+rust-package-entry-check:
 	cd packages/rust && $(CARGO_TEST) rust-package-entry-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --test package_entry public_package_entry -- --exact --nocapture
 
 typescript-package-entry-check: typescript-build

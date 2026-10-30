@@ -211,7 +211,13 @@ final class OrmGenTestSupport
         return [proc_close($process), $out, $err];
     }
 
-    /** @param list<string> $command @return list<string> */
+    /**
+     * A PHP child of an extension run inherits the PHP_INI_SCAN_DIR through which run-tests of kit loads the
+     * extension (kit K900), so the command names no extension; it passes on only the auto_prepend_file of this
+     * process.
+     *
+     * @param list<string> $command @return list<string>
+     */
     private static function nativePhpCommand(array $command): array
     {
         if (
@@ -221,14 +227,7 @@ final class OrmGenTestSupport
             return $command;
         }
 
-        $extension = getenv('POLYSPEC_ORM_EXTENSION');
-        if ($extension === false || $extension === '') {
-            throw new \RuntimeException(
-                'POLYSPEC_ORM_EXTENSION is required to run PHP children in extension mode; run make test-php-ext'
-            );
-        }
-
-        $prefix = ['-d', "extension=$extension"];
+        $prefix = [];
         $prepend = ini_get('auto_prepend_file');
         if (is_string($prepend) && $prepend !== '') {
             array_push($prefix, '-d', "auto_prepend_file=$prepend");

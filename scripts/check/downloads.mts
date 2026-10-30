@@ -2,11 +2,10 @@
 // `make install` downloads them, and every recipe runs cargo, go, npm, and Composer offline (in the Makefile's
 // CARGO_NET_OFFLINE, GOPROXY, npm_config_offline, COMPOSER_DISABLE_NETWORK). So a missing download does not split results between runs that reach the registry and runs that do not;
 // it fails at once, and this check records it along with
-// `run make install`. The result is { need, message } for each missing item, where need is a needs entry of contracts/check-inputs.json (rust, go,
-// node-modules, composer).
+// `run make install`. The result is { need, message } for each missing item, where need is a needs entry of contracts/check-inputs.json (go,
+// node-modules, composer); the crates of every Cargo.lock are downloaded by install-kit of @polyspec/kit, so no check reads them (kit K864).
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { readComposer, readComposerPackages, readNpmLock } from '../json/formats.mts';
 import { makeTargets } from '../repo/testcases.mts';
@@ -60,14 +59,12 @@ export type ToolRun = (program: string, args: string[], options: { cwd: string; 
 export function missingDownloads(root: string, { run = spawnSync, env = process.env }: { run?: ToolRun; env?: NodeJS.ProcessEnv } = {}): Missing[] {
   const out: Missing[] = [];
   const tool = (need: string, what: string, program: string, args: string[], cwd = root) => {
-    const result = run(program, args, { cwd, encoding: 'utf8', env: { ...env, ...offline, PATH: `${join(homedir(), '.cargo', 'bin')}:${env.PATH ?? ''}` } });
+    const result = run(program, args, { cwd, encoding: 'utf8', env: { ...env, ...offline } });
     if (result.status !== 0) {
       const reason = `${result.stderr ?? ''}${result.stdout ?? ''}`.trim().split('\n').find(line => /error|disabled|offline|not found|missing/i.test(line) && !/retry/i.test(line)) ?? `exit ${result.status ?? result.signal ?? result.error?.message}`;
       out.push({ need, message: `${what} are not downloaded (${reason.trim()}); ${fix}` });
     }
   };
-  // The crates of every Cargo.lock are checked by make cargo-downloads-check, a target of the kit.mk of @polyspec/kit.
-  tool('rust', 'the crates of every Cargo.lock', 'make', ['--no-print-directory', 'cargo-downloads-check']);
   if (existsSync(join(root, 'go.work'))) tool('go', 'the Go modules of go.work', 'go', ['mod', 'download']);
   for (const directory of NPM_ROOTS) {
     const missing = npmMissing(root, directory);

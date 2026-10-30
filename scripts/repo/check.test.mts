@@ -627,7 +627,7 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   assert.ok(checkTargets(makefile).includes('parity-check') && kitGates(makefile).includes('parity-check'));
   for (const phase of ['parity-api-check', 'parity-bindings-go-check', 'parity-bindings-php-check', 'parity-bindings-php-extension-check', 'parity-bindings-typescript-check', 'parity-bindings-python-check', 'parity-bindings-rust-check'])
     assert.equal(checkTargets(makefile).includes(phase), false, `${phase} is not duplicated as a separate suite target`);
-  for (const gate of ['parity-check', 'toolchain-check']) assert.ok(!groups.some(group => targets[group]?.includes(gate)), `${gate} runs in the gates workflow of kit`);
+  for (const gate of ['parity-check', 'kit-inject-check']) assert.ok(!groups.some(group => targets[group]?.includes(gate)), `${gate} runs in the gates workflow of kit`);
   assert.equal(groupOutputs(targets.static ?? [], declaredNeeds(repository.pathname)).php, true,
     'the static group bootstraps the pinned PHP before the full tool inventory is installed');
   const workflowValue: unknown = parseYaml(workflow);
@@ -681,8 +681,9 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
     'the full install still prepares the TypeScript checker used by the interface extractor');
   assert.match(workflow, /id: interfaces-typescript\n        if: \$\{\{ !cancelled\(\) && steps\.group-needs\.outputs\.interfaces-typescript == 'true' \}\}\n        run: make orm-install-interfaces-typescript/);
   assert.match(workflow, /id: parity-symbols\n        if: \$\{\{ !cancelled\(\) && steps\.group-needs\.outputs\.parity-symbols == 'true' \}\}\n        run: make kit-install-symbols EXTRACTORS="go php"/);
-  assert.match(makefile, /^orm-install-php-extension-tools:\n\t\$\(NODE\) scripts\/ci\/php-extension-tools\.mts\n\t\$\(MAKE\) --no-print-directory kit-install-php-arginfo$/m,
-    'PHP extension setup installs the pinned arginfo generator and parser');
+  // install-kit installs the arginfo generator of packages/php-ext (kit K861), so the PHP extension setup only checks its tools.
+  assert.match(makefile, /^orm-install-php-extension-tools:\n\t\$\(NODE\) scripts\/ci\/php-extension-tools\.mts\n(?!\t)/m,
+    'PHP extension setup checks phpize and php-config and installs nothing of kit');
   const matrixWorkflow = workflow.split('\n  docs:')[0] ?? '';
   assert.equal((matrixWorkflow.match(/id: go-lease-modules/g) ?? []).length, 1, 'every group installs the shared runner dependency in its own job');
   assert.match(workflow, /id: go-lease-modules\n        if: \$\{\{ !cancelled\(\) \}\}\n        run: make orm-install-go-lease/);
@@ -1949,8 +1950,8 @@ caseTest('every workflow that runs on push cancels the run of the push before it
   assert.deepEqual(concurrencyErrors(ownWorkflows(Object.fromEntries(readdirSync(directory).filter(name => /\.ya?ml$/.test(name)).map(name => [name, readFileSync(join(directory, name), 'utf8')])), kitOwned)), []);
 });
 
-// mise.toml declares the one Go release (kit K127): kit's toolchain-check requires it to be the kit pin and the running go
-// to be that release, and every workflow that runs Go installs it with make install-tools, never with actions/setup-go.
+// mise.toml declares the one Go release (kit K127), which make install-tools installs from mise.lock, and every workflow
+// that runs Go installs it with make install-tools, never with actions/setup-go.
 const goWorkflow = 'jobs:\n  test:\n    steps:\n      - run: make install-tools TOOLS=npm\n      - run: make install-tools\n      - run: make orm-check\n';
 caseTest('every workflow runs the Go of mise.toml', COMPUTE, () => {
   assert.deepEqual(goVersionErrors({ 'ci.yml': goWorkflow }), []);

@@ -131,8 +131,7 @@ vendors; this file states only the rules of orm.
 - Refines S4: Every toolchain the checks use is pinned in one declaration and checked: the node of `mise.toml`, the
   `go` line of `packages/go/go.mod`, the Composer of `mise.toml` and `rust-toolchain.toml` hold exact releases,
   `.php-version` and the PostgreSQL major release are as exact as their installers allow, CI
-  installs what they declare, and `make toolchain-check` and `make repo-check` fail when a running
-  tool differs. A new release is adopted by
+  installs what they declare, and `make repo-check` fails when a running tool differs. A new release is adopted by
   changing its declaration with the CI evidence of that release.
   Enforced by: `make repo-check`
 - Own: A build output that another run or a later step reads is published atomically: it is built into a

@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2203d3a2c49084fe9d97318e48f88b4d792015f4ecbf2eac207564c95b1c024b -->
+<!-- source-sha256: fd9d71022fe2ebfd10af472bedfff8d50dcdbb4407971846784449abea0b02fb -->
 # 변경 이력
 
 ## Unreleased
@@ -7,6 +7,7 @@
 ## 0.0.19
 
 - repo-check는 실행 중인 PHP를 .php-version과 비교하지 않습니다. kit K854가 모든 도구에 정한 대로, 틀린 PHP는 그 PHP를 실행하는 target이 실패시킵니다(T285).
+- orm은 kit 0.0.75 대신 공개된 kit 0.0.77을 씁니다(KSTD-5-123): 개발 link는 link-check가 비교하는 link 선언 .links를 따르고(K869), prepare-commit-msg hook은 없어졌습니다(K892). Python client는 uv-install로 설치하고(K850), Composer는 composer install 뒤에 make link를 실행하며, deps-rust가 rust runtime의 CI setup입니다(K859). 없는 도구는 그 도구를 실행하는 target이 실패시키므로 toolchain-check는 없어졌습니다(K854). install-kit이 arginfo 생성기(K861)와 모든 Cargo.lock의 crate를 설치하므로, 내려받은 crate를 확인하는 target은 없습니다(K864). extension run의 PHP 자식 process는 PHP_INI_SCAN_DIR로 확장을 물려받으므로 test helper는 확장을 적지 않습니다(K900). packaging.md의 Composer 예시는 release의 packages.json을 읽습니다(K865).
 - SQLite fact sqlite.render.time_check와 DIA-53은 고정된 SQLite 3.54.1의 time()이 24:00:00에 00:00:00을, 24:00:01과 25:00:00에 NULL을 돌려준다고 기록합니다(T280).
 - feature-verify-rust와 feature-verify-other는 interfaces-typescript need를 선언하므로, CI가 그 feature 검증의 interface 검사가 선언을 읽는 TypeScript를 설치합니다(T278).
 - PHP library의 drift ApplyError는 PHP extension처럼 다시 detail에 schema mismatch를 담고 previous를 담지 않는다. KSTD-5-94는 내부 PlanSchemaMismatch를 그 원인으로 넘겼다(T277).

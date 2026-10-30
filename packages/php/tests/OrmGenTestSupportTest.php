@@ -108,36 +108,38 @@ final class OrmGenTestSupportTest extends TestCase
         );
     }
 
-    public function testRunProcessLoadsTheExtensionForNativePhpChildren(): void
+    public function testRunProcessLetsNativePhpChildrenInheritTheExtensionScan(): void
     {
         $dir = OrmGenTestSupport::createWorkDirectory('orm-gen-native-child-');
         $oldMode = getenv('ORM_PHP_MODE');
-        $oldExtension = getenv('POLYSPEC_ORM_EXTENSION');
+        $oldScan = getenv('PHP_INI_SCAN_DIR');
         $module = "$dir/mock.so";
         $script = "$dir/child.php";
         try {
+            mkdir("$dir/scan");
             file_put_contents($module, '');
+            file_put_contents("$dir/scan/extension.ini", "extension=$module\n");
             file_put_contents($script, "<?php fwrite(STDOUT, 'native-child');\n");
             putenv('ORM_PHP_MODE=extension');
-            putenv("POLYSPEC_ORM_EXTENSION=$module");
+            putenv("PHP_INI_SCAN_DIR=$dir/scan");
             $command = [PHP_BINARY, $script];
             $method = new \ReflectionMethod(OrmGenTestSupport::class, 'nativePhpCommand');
             $actual = $method->invoke(null, $command);
-            $expected = [PHP_BINARY, '-d', "extension=$module"];
+            $expected = [PHP_BINARY];
             $prepend = ini_get('auto_prepend_file');
             if (is_string($prepend) && $prepend !== '') {
                 array_push($expected, '-d', "auto_prepend_file=$prepend");
             }
             $expected[] = $script;
-            self::assertSame($expected, $actual);
+            self::assertSame($expected, $actual, 'the command names no extension; the child inherits the scan');
 
             [$code, $stdout, $stderr] = OrmGenTestSupport::runProcess($actual);
             self::assertSame(0, $code);
             self::assertStringContainsString('native-child', $stdout);
-            self::assertStringContainsString($module, $stderr, 'the child attempted to load the supplied module');
+            self::assertStringContainsString($module, $stderr, 'the child loaded the extension of the inherited scan');
         } finally {
             $oldMode === false ? putenv('ORM_PHP_MODE') : putenv("ORM_PHP_MODE=$oldMode");
-            $oldExtension === false ? putenv('POLYSPEC_ORM_EXTENSION') : putenv("POLYSPEC_ORM_EXTENSION=$oldExtension");
+            $oldScan === false ? putenv('PHP_INI_SCAN_DIR') : putenv("PHP_INI_SCAN_DIR=$oldScan");
             OrmGenTestSupport::removeWorkDirectory($dir);
         }
     }

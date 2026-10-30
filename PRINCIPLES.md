@@ -4,7 +4,7 @@
 [한국어](PRINCIPLES.ko.md)
 
 These are the working principles of every polyspec repository. kit vendors this file byte for byte to each repository that
-takes its tools, so each repository holds the same text and `make kit-check` fails on a difference. A repository's
+takes its tools, so each repository holds the same text and `make kit-inject-check` fails on a difference. A repository's
 AGENTS.md links here and states only the rules of its own. The principles come from the owner; a principle is changed only
 in kit, with its grounding.
 
@@ -38,7 +38,8 @@ in kit, with its grounding.
   Enforced by: `.claude/settings.json`
 - P8 Errors are never hidden: no fallback that turns a wrong input into a plausible one, no silent drop of an input or an
   output, no swallowed error. A fallback stands only where it is truly needed, with that need stated.
-  Enforced by: `make lint-ts`, `make lint-python`, `make lint-go`, `make lint-php`, `make lint-rust`, `make suppression-check`
+  Enforced by: `make lint-ts`, `make lint-python`, `make lint-go`, `make lint-php`, `make lint-rust`, `make suppression-check`,
+  catch-check (a step of `make lint-ts` and `make lint-rust`: no catch without a statement)
 - P9 Correct first; fast only when it stays correct.
   Enforced by: none, the order of correctness and speed is a judgement.
 - P10 Work reaches main in one of two ways. Direct work on main is committed through the commits of P38. Parallel or
@@ -71,7 +72,9 @@ in kit, with its grounding.
   Enforced by: none, whether a measure is a stopgap is a design judgement.
 - P17 Recovery, apply and transformation are idempotent; a change is published as an event, never found by polling; paths are
   resolved declaratively from a declared root; and multi-platform is a hard requirement, met without platform tricks.
-  Enforced by: `.claude/settings.json`
+  Enforced by: `.claude/settings.json` (its hook refuses a command that sleeps or polls in a loop, the waiting side of the
+  clause of polling; whether recovery, apply and transformation are idempotent, a change is published as an event, a path is
+  declarative and a platform trick-free is a design judgement that no check of every repository reaches)
 - P18 No script polls in a loop with no known end: no `until` or `while` with a sleep, no loop around `gh run list`, no
   watchdog. A wait is one command that its own work bounds, such as `gh run watch <id> --exit-status`, a background
   command whose completion is notified, or a message from the session that does the work.
@@ -144,7 +147,7 @@ repository.
   is not disguised as an installed released version. Applications own compatible native development declarations and
   locks. Release declarations and locks remain records of released dependencies; kit does not synthesize link manifests,
   version aliases or lock metadata, and no tracked lock waits for a coordinated batch.
-  Enforced by: none, the links exist only in development, where make link-state-check checks them; CI links nothing (K824)
+  Enforced by: none, the links exist only in development, where make link-check checks them against the link declaration .links (K869); CI links nothing (K824)
 - P31 No gate is bypassed: a test, script or Makefile never sets the CI identity (`GITHUB_ACTIONS`, `CI`) outside a workflow, never
   names a gate of kit-gates in `make -o`, `--old-file` or `--assume-old`, and never uses `--no-verify` (K308).
   Enforced by: `make bypass-check`
@@ -194,8 +197,9 @@ tool lands, a standard binds the work as written here.
   (`*.test.{ts,mts,cts,mjs,cjs,js}`, vitest's `*.{test,spec}.*`, `*Test.php`, `*_test.go`, `tests/` and `#[test]`,
   `test_*.py`); a repository may add files but never narrow the set, and a file named like a test is run by a binding.
   Enforced by: `make parity-declarations-check`
-- S4 Versions: kit enforces no version or pin; each package manager and its lock decide.
-  Enforced by: `make toolchain-check`
+- S4 Versions: kit compares and pins no version or lock; format validation of arguments is allowed. Each package manager
+  and its lock decide.
+  Enforced by: none, a comparison that kit does not make needs no check; review refuses a new one (K853).
 - S5 Folders: every monorepo has the same root folders (`packages/`, `contracts/`, `docs/`, `scripts/`, `tests/`,
   `examples/`, `benchmarks/`, `config/`). Runtime ports of the main spec live in `packages/<runtime>/`, other components in
   `packages/<component>/` and their ports in `packages/<component>/<runtime>/`; folder names carry no repository prefix. A
@@ -232,15 +236,23 @@ tool lands, a standard binds the work as written here.
   php-ext-arginfo` writes with the gen_stub.php of the PHP, is that of the stub, in a copy that keeps `composer.json` beside
   `src/`, so that `config.m4` takes the version of the extension from `../composer.json`; `make test-php-ext` compares by
   Reflection what it registers with the libraries, each name with the library that declares it, before its unit tests, which
-  are the PHPUnit files of every library run with the extension loaded and none of the sources of the library (its dependencies and
-  autoload-dev are loaded, its own autoload is not, so the library has no guard against the extension), and those of `packages/php-ext` when it holds any; its
-  parity implementation shares the tests of the libraries by this layout, with no relative path in a configuration.
-  A Composer package of
-  type `project` is an application: it is outside the extension run and the S10 library checks, and `make test-php` runs its
-  tests as its own package.
+  are the PHPUnit files run with the extension loaded and none of the sources of the library (its dependencies and autoload-dev
+  are loaded, its own autoload is not, so the library has no guard against the extension) of the folders that config/parity.json
+  declares for it: the roots of its implementation and of the PHP implementations whose tests it shares by this layout, with no
+  relative path in a configuration, as parity-check reads them (K905). A Composer package of type `project` is an application:
+  it is outside the S10 library checks and is run with the extension only when config/parity.json declares it as a PHP
+  implementation, and `make test-php` runs its tests as its own package.
   Enforced by: `make lint-php-ext`, `make test-php-ext`
 - S11 Local links: during development each polyspec package's install folder (node_modules, vendor, site-packages) is one
   plain directory symlink to its checkout. No package-manager link step (npm link, Composer path repository, pip/uv editable)
   (K591, K761, K765).
-  Enforced by: none, the links exist only in development, where make link-state-check checks them, and CI links nothing (K824);
+  Enforced by: none, the links exist only in development, where make link-check checks them against the link declaration .links (K869), and CI links nothing (K824);
   the K761 link test of kit finds no npm link, composer update or editable install in the tool log
+- S12 A repository's CI runs the shared gates once, through the gates workflow that kit gives it (`gates.yml`, the
+  prerequisites of `make kit-gates`); no other workflow of the repository, and no input that ci-targets or ci-setup reads,
+  names a prerequisite of kit-gates again. kit's own ci.yml, which tests kit itself, is no consumer CI (K870).
+  Enforced by: none, a workflow is the repository's own file; each consumer removes its duplicates in its adoption row
+- S13 The rules that every repository shares are injected identically: each copy of `kit.copies` of the installed kit (this
+  file, gates.yml, release.yml and the others) is the bytes of the package, written by `make kit-sync` and changed only in kit;
+  scripts/kit holds those copies only. kit itself is their source and holds no copies (K851).
+  Enforced by: `make kit-inject-check`

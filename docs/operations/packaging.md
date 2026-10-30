@@ -27,13 +27,14 @@ In 0.0.x the polyspec packages are distributed through GitHub only, as release a
   }
   ```
 
-- Composer: an `artifact` repository is a directory of the downloaded zips, and Composer reads the name, version and requirements of each zip from its `composer.json`. The artifact repository holds the orm zip and the zip of each polyspec package that it requires (`polyspec-ordered-json-php-0.0.9.zip`).
+- Composer: each release publishes a `packages.json` asset, a `composer` repository that holds the `composer.json` of the package with the URL and sha1 of its zip, and Composer reads the name, version and requirements from it (kit K865). A consumer declares the `packages.json` of the orm release and of each polyspec package that it requires (ordered-json `0.0.13`), since Composer reads `repositories` only from the root manifest of a project. The `packages.json` of orm exists from orm 0.0.19 on.
 
   ```json
   {
     "require": { "polyspec/orm": "<version>" },
     "repositories": [
-      { "type": "artifact", "url": "vendor/polyspec" },
+      { "type": "composer", "url": "https://github.com/polyspec/orm/releases/download/v<version>/packages.json" },
+      { "type": "composer", "url": "https://github.com/polyspec/ordered-json/releases/download/v0.0.13/packages.json" },
       { "type": "vcs", "url": "https://github.com/min-0-max/yaml", "no-api": true }
     ]
   }

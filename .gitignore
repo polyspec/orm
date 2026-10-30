@@ -68,3 +68,5 @@ go.work.sum
 /packages/php/src/native/bin/
 # PHP's arginfo generator writes this header only in a temporary native-extension build copy.
 /packages/php-ext/src/polyspec_orm_arginfo.h
+# The link declaration of the development links (kit K869); make link reads it.
+/.links

@@ -109,7 +109,7 @@ orm 자신의 규칙만 적는다.
 - Refines S4: 검사가 쓰는 모든 toolchain은 선언 하나로 고정하고 확인한다: `mise.toml`의 node, `packages/go/go.mod`의 `go` 줄,
   `mise.toml`의 Composer, `rust-toolchain.toml`은 정확한 release를, `.php-version`과 PostgreSQL major release는
   설치 도구가 허용하는 만큼 정확한 release를 적고, CI는 선언한 것을 설치하며, 실행 중인 도구가 다르면
-  `make toolchain-check`와 `make repo-check`가 실패한다. 새 release는 그 release의 CI 증거와 함께 선언을 바꾸어 들인다.
+  `make repo-check`가 실패한다. 새 release는 그 release의 CI 증거와 함께 선언을 바꾸어 들인다.
   Enforced by: `make repo-check`
 - Own: 다른 실행이나 뒤의 단계가 읽는 build 출력은 원자적으로 publish한다: 옆의 임시 file이나 directory에
   build하고 rename으로 최종 경로에 놓으므로(`$(PUBLISH)`, scripts/typescript/build.mts) 멈춘 build가 반쪽

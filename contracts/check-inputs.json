@@ -118,7 +118,7 @@
         ".editorconfig"
       ]
     },
-    "toolchain-check": {
+    "kit-inject-check": {
       "scope": "suite",
       "needs": []
     },
@@ -146,7 +146,7 @@
       "scope": "suite",
       "needs": []
     },
-    "link-state-check": {
+    "link-check": {
       "scope": "suite",
       "needs": []
     },

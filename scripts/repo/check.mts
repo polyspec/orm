@@ -190,7 +190,7 @@ const composer = readComposer(join(root, 'packages/php/composer.json'));
 failures.push(...phpVersionErrors(text('.php-version'), composer.require?.php, workflows));
 const rustc = /^rustc (\S+)/.exec(reported('rustc', ['--version']))?.[1] ?? '';
 failures.push(...rustToolchainErrors(text('rust-toolchain.toml'), makefile, workflows, rustc));
-// Every workflow sets up the Go of the go line of packages/go/go.mod, which kit's toolchain-check holds to the kit pin.
+// Every workflow sets up the Go of the go line of packages/go/go.mod, the one Go release of mise.toml (kit K127).
 failures.push(...goVersionErrors(workflows));
 // Composer is the one exact release declared by the mise.toml tool http:composer. The running one need only match its major and minor (patch does not matter).
 // Every tracked go.mod declares the module path of its own directory.

@@ -1,11 +1,11 @@
 <!-- doc-id: principles -->
-<!-- source-sha256: 56be0fdcf6ca0d0dfd479e630a29528f7d9b0243e276e38d1fe36cb5769af69b -->
+<!-- source-sha256: 3b6dffdc1cc278d44501af83fbdcc27b7740419756f832f076f43e92725ffd47 -->
 # 원칙
 
 [English](PRINCIPLES.md)
 
 이것은 모든 polyspec repository의 작업 원칙입니다. kit은 자기 tool을 받는 각 repository에 이 파일을 byte 그대로
-vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-check`는 차이가 있으면 실패합니다. repository의 AGENTS.md는
+vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-inject-check`는 차이가 있으면 실패합니다. repository의 AGENTS.md는
 여기로 link하고 자기만의 규칙만 적습니다. 원칙은 owner에게서 옵니다; 원칙은 kit에서만, 근거와 함께 바꿉니다.
 
 ## 책임
@@ -38,7 +38,8 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-check`�
   Enforced by: `.claude/settings.json`
 - P8 오류는 숨기지 않습니다: 잘못된 입력을 그럴듯한 입력으로 바꾸는 fallback도, 입력이나 출력을 조용히 버리는 것도, 삼킨
   오류도 없습니다. fallback은 정말 필요한 곳에만 그 필요를 적고 둡니다.
-  Enforced by: `make lint-ts`, `make lint-python`, `make lint-go`, `make lint-php`, `make lint-rust`, `make suppression-check`
+  Enforced by: `make lint-ts`, `make lint-python`, `make lint-go`, `make lint-php`, `make lint-rust`, `make suppression-check`,
+  catch-check(`make lint-ts`와 `make lint-rust`의 한 단계: 문장 없는 catch 금지)
 - P9 올바름이 먼저입니다; 빠름은 올바름을 지킬 때만 좇습니다.
   Enforced by: none, 올바름과 빠름의 순서는 판단입니다.
 - P10 main에 작업이 들어가는 길은 둘입니다. main에서 직접 하는 작업은 P38의 commit으로 들어갑니다. 병렬이나 격리된
@@ -70,7 +71,8 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-check`�
   Enforced by: none, 임시방편인지는 설계 판단입니다.
 - P17 복구, 적용, 변환은 멱등입니다; 변경은 polling으로 찾지 않고 event로 게시합니다; 경로는 선언된 root에서 선언적으로
   결정합니다; multi-platform은 필수 요구이며 platform 꼼수 없이 채웁니다.
-  Enforced by: `.claude/settings.json`
+  Enforced by: `.claude/settings.json`(그 hook이 sleep하거나 loop로 polling하는 명령을 거부함, polling 조항의 기다림 쪽; 복구,
+  적용, 변환의 멱등, 변경의 event 게시, 경로의 선언성, platform 꼼수 없음은 모든 저장소가 가진 어떤 check도 닿지 않는 설계 판단)
 - P18 끝이 정해지지 않은 loop로 주기적으로 살피는 script는 쓰지 않습니다: sleep을 넣은 `until`이나 `while`, `gh run list`를
   감싼 loop, watchdog 모두 쓰지 않습니다. 기다림은 자기 일이 끝을 정하는 명령 하나입니다: `gh run watch <id> --exit-status`,
   완료가 알려지는 background 명령, 또는 그 일을 하는 세션의 메시지.
@@ -136,7 +138,7 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-check`�
   Package manager가 link, 설치 record, dependency 해석, 생성 metadata를 소유하며 source를 설치된 release version으로 위장하지 않는다.
   앱이 호환되는 native 개발 선언과 lock을 소유한다. Release 선언과 lock은 배포된 dependency의 기록으로 유지하고,
   kit은 link manifest, version alias, lock metadata를 합성하지 않으며 추적 lock을 통합 배치까지 기다리게 하지 않는다.
-  Enforced by: none, link는 개발 환경에만 있고 거기서 make link-state-check가 검사한다. CI는 아무것도 link하지 않는다 (K824)
+  Enforced by: none, link는 개발 환경에만 있고 거기서 make link-check가 link 선언 .links에 맞춰 검사한다(K869). CI는 아무것도 link하지 않는다 (K824)
 - P31 gate는 우회하지 않는다. test, script, Makefile은 workflow 밖에서 CI identity(`GITHUB_ACTIONS`, `CI`)를 설정하지 않고,
   `make -o`, `--old-file`, `--assume-old`에 kit-gates의 gate를 적지 않으며, `--no-verify`를 쓰지 않는다 (K308).
   Enforced by: `make bypass-check`
@@ -183,8 +185,9 @@ owner가 2026-10-13에 이 기준을 승인했습니다. 각 기준은 위반 �
   (`*.test.{ts,mts,cts,mjs,cjs,js}`, vitest의 `*.{test,spec}.*`, `*Test.php`, `*_test.go`, `tests/`와 `#[test]`, `test_*.py`).
   repository는 파일을 더할 수만 있고 좁힐 수 없으며, test처럼 이름 붙은 파일은 binding이 실행합니다.
   Enforced by: `make parity-declarations-check`
-- S4 버전: kit은 버전도 pin도 강제하지 않습니다. 각 package manager와 그 lock이 정합니다.
-  Enforced by: `make toolchain-check`
+- S4 버전: kit은 버전도 lock도 비교하지 않고 pin하지 않습니다. 인자의 형식 검증은 허용됩니다. 각 package manager와 그 lock이
+  정합니다.
+  Enforced by: none, kit이 하지 않는 비교에는 검사가 필요 없고, 새 비교는 리뷰가 거부합니다(K853).
 - S5 폴더: 모든 monorepo는 같은 root 폴더(`packages/`, `contracts/`, `docs/`, `scripts/`, `tests/`, `examples/`,
   `benchmarks/`, `config/`)를 가집니다. 주 spec의 runtime port는 `packages/<runtime>/`, 다른 component는
   `packages/<component>/`, 그 port는 `packages/<component>/<runtime>/`에 두며, 폴더 이름에 repository prefix를 붙이지
@@ -212,13 +215,22 @@ owner가 2026-10-13에 이 기준을 승인했습니다. 각 기준은 위반 �
   header의 stub hash가 stub의 것인지 확인한 뒤 phpize로 build하며, `composer.json`을 `src/` 옆에 둔 사본에서 build하므로
   `config.m4`가 extension의 version을 `../composer.json`에서 가져온다. `make test-php-ext`는 unit test 전에 등록한 것을
   Reflection으로 library와 비교하되 이름마다 그것을 선언한 library와 비교하며, unit test는 extension을 load하고 library의 source는 하나도 load하지 않고
-  (dependency와 autoload-dev는 load하고 library 자신의 autoload는 load하지 않으므로 library에는 extension에 대한 guard가 없다) 실행하는 모든
-  library의 PHPUnit 파일과 (있다면) `packages/php-ext`의 것이다. parity implementation은 이 layout으로 library의 test를 공유하며,
-  설정에 상대 경로를 두지 않는다. Composer type이 `project`인 package는 application이다. extension 실행과 S10 library
-  검사 밖에 있으며, `make test-php`는 그 test를 자기 package로 실행한다.
+  (dependency와 autoload-dev는 load하고 library 자신의 autoload는 load하지 않으므로 library에는 extension에 대한 guard가 없다) 실행하는,
+  config/parity.json이 extension에 선언한 폴더의 PHPUnit 파일이다. 곧 extension 구현의 root와, 이 layout으로 test를 공유하는 PHP
+  구현의 root이며, 설정에 상대 경로를 두지 않고, parity-check가 읽는 것과 같다(K905). Composer type이 `project`인 package는
+  application이다. S10 library 검사 밖에 있고 config/parity.json이 PHP 구현으로 선언할 때만 extension과 함께 실행되며,
+  `make test-php`는 그 test를 자기 package로 실행한다.
   Enforced by: `make lint-php-ext`, `make test-php-ext`
 - S11 로컬 링크: 개발 중 각 polyspec 패키지의 설치 폴더(node_modules, vendor, site-packages)는 checkout으로 가는 평범한
   디렉터리 심링크 하나입니다. 패키지 매니저의 링크 단계(npm link, Composer path repository, pip/uv editable)는 쓰지 않습니다
   (K591, K761, K765).
-  Enforced by: none, link는 개발 환경에만 있고 거기서 make link-state-check가 검사하며, CI는 아무것도 link하지 않는다 (K824).
+  Enforced by: none, link는 개발 환경에만 있고 거기서 make link-check가 link 선언 .links에 맞춰 검사하며(K869), CI는 아무것도 link하지 않는다 (K824).
   kit의 K761 link test는 tool log에 npm link, composer update, editable 설치가 없음을 확인합니다
+- S12 저장소의 CI는 공유 gate를 kit이 주는 gates workflow(`gates.yml`, `make kit-gates`의 prerequisite)로 한 번만
+  실행합니다. 저장소의 다른 workflow도, ci-targets나 ci-setup이 읽는 입력도 kit-gates의 prerequisite를 다시 지정하지 않습니다.
+  kit 자신을 시험하는 kit의 ci.yml은 소비자 CI가 아닙니다(K870).
+  Enforced by: none, workflow는 저장소 자신의 파일이며 각 소비자가 채택 행에서 중복을 지운다
+- S13 모든 저장소가 공유하는 규칙은 똑같이 주입됩니다. 설치된 kit의 `kit.copies`에 있는 각 사본(이 파일, gates.yml,
+  release.yml 등)은 package의 byte 그대로이며, `make kit-sync`가 쓰고 kit에서만 고칩니다. scripts/kit은 그 사본만 담습니다.
+  kit 자신은 사본의 원천이므로 사본을 갖지 않습니다(K851).
+  Enforced by: `make kit-inject-check`

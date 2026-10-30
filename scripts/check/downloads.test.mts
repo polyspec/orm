@@ -30,26 +30,24 @@ caseTest('the npm and Composer packages of a lock file must be present, whatever
   }
 });
 
-caseTest('a crate or Go module that is not downloaded names make install, never a retry online', PROCESS, () => {
+caseTest('a Go module that is not downloaded names make install, never a retry online', PROCESS, () => {
   const root = mkdtempSync(join(tmpdir(), 'orm-downloads-'));
   try {
     write(join(root, 'go.work'), 'go 1.27.2\n');
-    // make cargo-downloads-check of @polyspec/kit answers as it does for a crate that is not in the registry, and go as an
-    // offline go does for a module that is not downloaded.
+    // go answers as an offline go does for a module that is not downloaded. install-kit of @polyspec/kit downloads the crates
+    // of every Cargo.lock, so no download check reads them (kit K864).
     const calls: string[] = [];
     const run = (program: string, args: string[]) => {
       calls.push([program, ...args].join(' '));
-      if (program === 'make') return { status: 2, stderr: '[cargo-downloads] the crates of 1 of 3 Cargo.lock files are not in the registry of CARGO_HOME:\npackages/rust/Cargo.lock: error: failed to download `serde v1.0.0`\nhelp: retry without the offline flag\n' };
       return { status: 1, stderr: 'go: example.com/m@v1.0.0: module lookup disabled by GOPROXY=off\n' };
     };
     const missing = missingDownloads(root, { run });
-    assert.deepEqual(calls, ['make --no-print-directory cargo-downloads-check', 'go mod download']);
-    assert.deepEqual(missing.map(entry => entry.need), ['rust', 'go']);
-    const [rust, go] = missing;
-    assert.ok(rust && go, 'both downloads are missing');
-    assert.equal(rust.message, 'the crates of every Cargo.lock are not downloaded (packages/rust/Cargo.lock: error: failed to download `serde v1.0.0`); run make install, which downloads it');
+    assert.deepEqual(calls, ['go mod download']);
+    assert.deepEqual(missing.map(entry => entry.need), ['go']);
+    const [go] = missing;
+    assert.ok(go, 'the download is missing');
     assert.equal(go.message, 'the Go modules of go.work are not downloaded (go: example.com/m@v1.0.0: module lookup disabled by GOPROXY=off); run make install, which downloads it');
-    for (const { message } of missing) assert.doesNotMatch(message, /retry/i);
+    assert.doesNotMatch(go.message, /retry/i);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
