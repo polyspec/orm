@@ -8,7 +8,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { testDirectoryOf } from './packages.mts';
-import { cargoBuildArgs, cargoFeaturesForPackage, cargoPathModuleFiles, cargoTargetArgs, cargoWorkspaceManifestPath, checkCoverage, coverageItems, databaseDsn, databases, executeCoverage, observedCases, languages, NATIVE_DEADLINE, run, goPerformanceMeasurements, runCoverageSchedule, selectFeatures, selectRuntimeDatabase, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
+import { cargoBuildArgs, cargoFeaturesForPackage, cargoPathModuleFiles, cargoTargetArgs, cargoWorkspaceManifestPath, checkCoverage, coverageItems, databaseDsn, databases, executeCoverage, goRunPatterns, observedCases, languages, NATIVE_DEADLINE, run, goPerformanceMeasurements, runCoverageSchedule, selectFeatures, selectRuntimeDatabase, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
 import { readFeatures } from './manifest.mts';
 import { readParityConfig, type ParityConfig } from '../json/formats.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
@@ -1304,6 +1304,22 @@ caseTest('every native run reports its command and TAP result', 8000, async () =
 // test inside its own deadline, as it stopped the Go model_generation case (testcase.Process) after 120000 ms (T185).
 caseTest('a coverage process deadline is not shorter than the longest declared test class', COMPUTE, () => {
   assert.ok(NATIVE_DEADLINE >= PROCESS, `NATIVE_DEADLINE ${NATIVE_DEADLINE} ms is shorter than PROCESS ${PROCESS} ms`);
+});
+
+// A go symbol <parent>/<case> names a subtest: go test -run applies each level of a pattern to every test, so the plain
+// symbols share one pattern and the subtests of each parent another, and the pass event of a parent that runs only for its
+// requested subtests is no case (T326-1).
+caseTest('go symbols select their tests and subtests by one run pattern per parent', COMPUTE, () => {
+  assert.deepEqual(goRunPatterns(['TestFirst', 'TestPlanner/planner_count', 'TestSecond', 'TestPlanner/planner_statement']),
+    ['^(TestFirst|TestSecond)$', '^(TestPlanner)$/^(planner_count|planner_statement)$']);
+  assert.deepEqual(goRunPatterns(['TestPlanner/a.b']), ['^(TestPlanner)$/^(a\\.b)$']);
+  const event = (Action: string, Test: string) => JSON.stringify({ Action, Package: 'orm', Test });
+  const subtests = ['TestPlanner/planner_count', 'TestPlanner/planner_statement'];
+  const output = [event('pass', 'TestPlanner/planner_count'), event('pass', 'TestPlanner/planner_statement'), event('pass', 'TestPlanner')].join('\n');
+  assert.deepEqual(observedCases('go', output, ['count', 'statement'], subtests),
+    [{ id: 'count', database: 'none', value_json: 'true' }, { id: 'statement', database: 'none', value_json: 'true' }]);
+  assert.throws(() => observedCases('go', [event('pass', 'TestPlanner/planner_count'), event('pass', 'TestPlanner')].join('\n'), ['count', 'statement'], subtests), /differ/);
+  assert.throws(() => observedCases('go', event('pass', 'TestOther'), ['count'], ['TestPlanner/planner_count']), /differ/);
 });
 
 // A file of database items prints `CASE <id> [<database>] PASS` for its own database; a line of another listed database belongs

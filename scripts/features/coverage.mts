@@ -389,6 +389,7 @@ async function nativeTest(item: Item, command: NativeCommand, root: string): Pro
     command.cases?.every((id: string) => Object.hasOwn(symbols, id)) &&
     Object.values(symbols).every(symbol => typeof symbol === 'string' &&
       (phpSymbols ? /^[A-Za-z_][A-Za-z0-9_]*$/.test(symbol) :
+        command.runner === 'go' ? /^[A-Za-z_][A-Za-z0-9_]*(?:\/[A-Za-z0-9_-]+)?$/.test(symbol) :
         /^(?:[A-Za-z_][A-Za-z0-9_]*::)*[A-Za-z_][A-Za-z0-9_]*$/.test(symbol))) &&
     new Set(Object.values(symbols)).size === Object.values(symbols).length : symbols === undefined;
   if (!command || typeof command !== 'object' || Array.isArray(command) ||
@@ -449,9 +450,12 @@ async function nativeTest(item: Item, command: NativeCommand, root: string): Pro
   const source = await readFile(testPath, 'utf8');
   const nativeSymbols = command.cases.map((id: string) => symbols?.[id] ?? '');
   for (const symbol of nativeSymbols) {
-    const short = symbol.split('::').at(-1) ?? '';
+    // A go symbol <parent>/<case> names the subtest that its parent runs by the case id, a string literal of the file (T326-1).
+    const [named = '', subtest] = command.runner === 'go' ? symbol.split('/', 2) : [symbol];
+    const short = named.split('::').at(-1) ?? '';
     const pattern = command.runner === 'go' ? `\\bfunc\\s+${short}\\s*\\(` : `\\bfn\\s+${short}\\s*\\(`;
-    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(short) || !new RegExp(pattern).test(source))
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(short) || !new RegExp(pattern).test(source) ||
+      (subtest !== undefined && (!/^[A-Za-z0-9_-]+$/.test(subtest) || !source.includes(`"${subtest}"`))))
       throw new Error(`test symbol ${symbol} is absent from declared test file`);
   }
   // Go and Rust build the test binary once before running it (buildNative). Here only the build unit
@@ -487,6 +491,26 @@ export function goPerformanceMeasurements(output: string): string[] {
     }
   }
   return measurements;
+}
+
+/**
+ * The -test.run patterns that select the go symbols: a plain symbol names a test, and <parent>/<case> names the subtest
+ * <case> of the test <parent>. go test applies each /-separated level of a pattern to every test it runs, so the plain
+ * symbols share one pattern and the subtests of each parent take one pattern of their own (T326-1).
+ */
+export function goRunPatterns(symbols: string[]): string[] {
+  const escape = (name: string) => name.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&');
+  const plain: string[] = [];
+  const subtests = new Map<string, string[]>();
+  for (const symbol of symbols) {
+    const [parent = '', ...rest] = symbol.split('/');
+    if (rest.length === 0) plain.push(escape(symbol));
+    else subtests.set(parent, [...(subtests.get(parent) ?? []), escape(rest.join('/'))]);
+  }
+  return [
+    ...(plain.length ? [`^(${plain.join('|')})$`] : []),
+    ...[...subtests].map(([parent, cases]) => `^(${escape(parent)})$/^(${cases.join('|')})$`),
+  ];
 }
 
 export function observedCases(format: Spec['format'], output: string, requested: string[], nativeSymbols: string[] = requested, database = 'none', databases: string[] = [database]): CaseResult[] {
@@ -537,10 +561,12 @@ export function observedCases(format: Spec['format'], output: string, requested:
       }
     }
   } else if (format === 'go') {
+    // go test also reports the pass of a parent that ran only for the requested subtests; that pass is no case.
+    const parents = new Set(nativeSymbols.filter(symbol => symbol.includes('/')).map(symbol => symbol.slice(0, symbol.indexOf('/'))));
     for (const line of output.split(/\r?\n/)) {
       if (!line) continue;
       const event = parseGoTestEvent(line, 'go test -json');
-      if (event.Action === 'pass' && event.Test) add(event.Test);
+      if (event.Action === 'pass' && event.Test && !(parents.has(event.Test) && !nativeSymbols.includes(event.Test))) add(event.Test);
     }
   } else {
     for (const line of output.split(/\r?\n/)) {
@@ -828,8 +854,8 @@ function prepared(spec: Spec, builds: Builds): Prepared[] {
     const test2json = builds.test2json;
     if (!test2json || test2json.error !== undefined) throw new Error(`go test2json build failed: ${test2json?.error ?? 'it was not built'}`);
     if (!binary || binary.error !== undefined) throw new Error(`go test build failed: ${binary?.error ?? 'it was not built'}`);
-    return [{ program: test2json.binary, args: ['-t', binary.binary, '-test.v=test2json',
-      '-test.count=1', '-test.run', `^(${spec.symbols.join('|')})$`], cwd: spec.cwd, label: `go test ${binary.binary}` }];
+    return goRunPatterns(spec.symbols).map(pattern => ({ program: test2json.binary, args: ['-t', binary.binary, '-test.v=test2json',
+      '-test.count=1', '-test.run', pattern], cwd: spec.cwd, label: `go test ${binary.binary} -test.run ${pattern}` }));
   }
   const crate = builds.cargo.get(spec.cwd);
   if (!crate || crate.error !== undefined) throw new Error(`cargo test build failed: ${crate?.error ?? 'it was not built'}`);

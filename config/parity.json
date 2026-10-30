@@ -7340,27 +7340,27 @@
         {
           "implementation": "go",
           "test": "packages/go/orm/coverage_planner_test.go",
-          "id": "TestCoveragePlannerParamUsesColumnFunction"
+          "id": "TestCoveragePlanner/param_uses_column_function"
         },
         {
           "implementation": "go",
           "test": "packages/go/orm/coverage_planner_test.go",
-          "id": "TestCoveragePlannerParamUsesInterval"
+          "id": "TestCoveragePlanner/param_uses_interval"
         },
         {
           "implementation": "go",
           "test": "packages/go/orm/coverage_planner_test.go",
-          "id": "TestCoveragePlannerParamUsesContains"
+          "id": "TestCoveragePlanner/param_uses_contains"
         },
         {
           "implementation": "go",
           "test": "packages/go/orm/coverage_planner_test.go",
-          "id": "TestCoveragePlannerParamUsesIfParent"
+          "id": "TestCoveragePlanner/param_uses_if_parent"
         },
         {
           "implementation": "go",
           "test": "packages/go/orm/coverage_planner_test.go",
-          "id": "TestCoveragePlannerParamUsesOptimistic"
+          "id": "TestCoveragePlanner/param_uses_optimistic"
         },
         {
           "implementation": "php",
@@ -9284,17 +9284,17 @@
         {
           "implementation": "go",
           "test": "packages/go/orm/coverage_planner_test.go",
-          "id": "TestCoveragePlannerRejectsUpsertPrimaryAndUniqueKey"
+          "id": "TestCoveragePlanner/planner_rejects_upsert_primary_and_unique_key"
         },
         {
           "implementation": "go",
           "test": "packages/go/orm/coverage_planner_test.go",
-          "id": "TestCoveragePlannerRejectsUpsertUniqueKeyNotAssigned"
+          "id": "TestCoveragePlanner/planner_rejects_upsert_unique_key_not_assigned"
         },
         {
           "implementation": "go",
           "test": "packages/go/orm/coverage_planner_test.go",
-          "id": "TestCoveragePlannerRejectsUpsertWithoutAKey"
+          "id": "TestCoveragePlanner/planner_rejects_upsert_without_a_key"
         },
         {
           "implementation": "php",
