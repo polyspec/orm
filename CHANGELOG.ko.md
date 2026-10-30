@@ -6,6 +6,7 @@
 
 ## 0.0.19
 
+- extension run guard는 확장이 선언한 class를 담은 library file이 load된 run만 실패시킵니다. 그래서 확장이 제공하지 않는 generator를 load한 run은 통과하고, fork된 worker도 잘못된 실패를 물려받지 않습니다(T302).
 - parity target은 ORM_PHP_DYNAMIC_MODULES를 export합니다. 그래서 php-extension binding의 DeclarationsTest가 확장이 동적으로 load하는 module을 읽습니다(T301).
 - orm은 kit 0.0.78을 채택합니다. K909에서 다시 stamp된 PRINCIPLES.ko.md, 그리고 CI에서 Claude Code hook을 쓰지 않는 설치된 kit의 make link --project(K916, K918)가 들어 있습니다(KSTD-5-124).
 - Breaking: 일반 column의 생성된 Go getter는 `Get<X>() (T, error)`이며, read가 select하지 않은 column에는 `COLUMN_UNSELECTED`를 반환합니다(DBS-112). 0.0.18은 `Get<X>() T`를 생성했으므로 호출자는 error를 받아야 합니다. 생성된 date, time, datetime setter는 T189부터 text 형식을 받으며, 이 또한 네이티브 값을 넘기던 호출자를 깨뜨립니다(T300).

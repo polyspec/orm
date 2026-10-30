@@ -2468,7 +2468,7 @@
       "files": [
         "packages/php/tests/ExtensionRunGuardTest.php"
       ],
-      "reason": "harness: verifies the extension run guard of the PHP test bootstrap, which fails a run of ORM_PHP_MODE=extension that loaded a file of packages/php/src; it tests the test harness rather than client behavior, in php -n child runs.",
+      "reason": "harness: verifies the extension run guard of the PHP test bootstrap, which fails a run of ORM_PHP_MODE=extension that loaded a file of packages/php/src holding a class the extension declares; it tests the test harness rather than client behavior, in php -n child runs.",
       "units": [
         {
           "id": "php-extension-run-loads-no-library-file",
@@ -2486,7 +2486,15 @@
             },
             {
               "test": "packages/php/tests/ExtensionRunGuardTest.php",
-              "id": "testOnlyFilesOfTheFolderCount"
+              "id": "testRunThatLoadsOnlyLibraryToolingPasses"
+            },
+            {
+              "test": "packages/php/tests/ExtensionRunGuardTest.php",
+              "id": "testOnlyDeclaredClassesOfTheFolderCount"
+            },
+            {
+              "test": "packages/php/tests/ExtensionRunGuardTest.php",
+              "id": "testDeclaredClassesAreTheClassKeysOfTheRecord"
             }
           ]
         }

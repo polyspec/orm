@@ -17,7 +17,7 @@ if (getenv('ORM_PHP_MODE') === 'extension') {
     if ($librarySource === false) {
         throw new RuntimeException('packages/php/src is missing; the extension run guard reads it');
     }
-    guardExtensionRun($librarySource);
+    guardExtensionRun($librarySource, dirname(__DIR__, 3) . '/contracts/symbols/php-extension.json');
 }
 require_once __DIR__ . '/bench.php';
 require_once __DIR__ . '/generated_classes.php';
