@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 3736bbe47490ead79a954ae6267d7c9cd7528c8ef5d108c700f50eafbc74d402 -->
+<!-- source-sha256: 0c5e161caa9e87aa82e5e5ea3132c6bec2278ce34640aaaa6b1172f912c51178 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1348,3 +1348,4 @@
 | T260 | make rust-fmt-check가 main에서 통과한다. 원인: d76cd25f4에서 rustfmt가 KSTD-5-110이 IpHexCell을 순서에 맞지 않게 더한 import 목록 packages/rust/tests/src/conformance.rs:12와 폭을 넘는 panic! message packages/rust/tests/src/integration.rs:460을 보고하므로, 0.0.19 release 전에 static gate가 red다 | packages/rust/tests/src/conformance.rs, packages/rust/tests/src/integration.rs, CHANGELOG.md, CHANGELOG.ko.md | `make rust-fmt-check` | [v] |
 | T261 | gates shared job은 tests/lease가 build하는 Go module을 설치한다. 원인: kit-gates-static이 parity-declarations-check를 돌리고 그 prerequisite typescript-build가 lease-tool을 돌리는데 config/ci.json setup.shared가 비어 있어, go build ./tests/lease가 GOPROXY=off에서 golang.org/x/sys를 찾지 못한다(gates 40979519777, job shared) | config/ci.json, scripts/check/parity-context.test.mts, CHANGELOG.md, CHANGELOG.ko.md | `make runner-check` | [ ] |
 | T262 | feature-coverage/typescript/mysql은 interfaces-typescript need를 선언한다. 원인: 그 interface_contract case가 packages/ts/testing/interfaces/typescript/node_modules/typescript를 import하는 TypeScript interface check를 돌리는데, contracts/check-inputs.json이 그 target에 interfaces-typescript need를 주지 않아 CI가 make orm-install-interfaces-typescript를 건너뛴다(ci 40979519721, job feature_typescript_mysql: ERR_MODULE_NOT_FOUND) | contracts/check-inputs.json, CHANGELOG.md, CHANGELOG.ko.md | `make --no-print-directory ci-group-needs GROUP=feature_typescript_mysql \| grep -qx interfaces-typescript=true` | [ ] |
+| T263 | offline Makefile 검사는 본래 network에서 lock을 쓰는 lock target을 받아들인다. 원인: scripts/check/downloads.mts가 $(ONLINE)을 install target에서만 허용하는데 orm-python-lock(KSTD-5-102)이 uv lock을 online으로 돌려 runner-check가 실패한다(ci 40979519721, job static) | scripts/check/downloads.mts, scripts/check/downloads.test.mts, CHANGELOG.md, CHANGELOG.ko.md | `make runner-check` | [ ] |
