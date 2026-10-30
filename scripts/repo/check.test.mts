@@ -681,9 +681,9 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
     'the full install still prepares the TypeScript checker used by the interface extractor');
   assert.match(workflow, /id: interfaces-typescript\n        if: \$\{\{ !cancelled\(\) && steps\.group-needs\.outputs\.interfaces-typescript == 'true' \}\}\n        run: make orm-install-interfaces-typescript/);
   assert.match(workflow, /id: parity-symbols\n        if: \$\{\{ !cancelled\(\) && steps\.group-needs\.outputs\.parity-symbols == 'true' \}\}\n        run: make kit-install-symbols EXTRACTORS="go php"/);
-  // install-kit installs the arginfo generator of packages/php-ext (kit K861), so the PHP extension setup only checks its tools.
-  assert.match(makefile, /^orm-install-php-extension-tools:\n\t\$\(NODE\) scripts\/ci\/php-extension-tools\.mts\n(?!\t)/m,
-    'PHP extension setup checks phpize and php-config and installs nothing of kit');
+  // No CI job runs install-kit, so the PHP extension setup that every job runs installs the arginfo generator itself (T290).
+  assert.match(makefile, /^orm-install-php-extension-tools:\n\t\$\(NODE\) scripts\/ci\/php-extension-tools\.mts\n\t\$\(MAKE\) --no-print-directory kit-install-php-arginfo$/m,
+    'PHP extension setup installs the pinned arginfo generator and parser');
   const matrixWorkflow = workflow.split('\n  docs:')[0] ?? '';
   assert.equal((matrixWorkflow.match(/id: go-lease-modules/g) ?? []).length, 1, 'every group installs the shared runner dependency in its own job');
   assert.match(workflow, /id: go-lease-modules\n        if: \$\{\{ !cancelled\(\) \}\}\n        run: make orm-install-go-lease/);

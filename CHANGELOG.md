@@ -5,6 +5,7 @@
 
 ## 0.0.19
 
+- make orm-install-php-extension-tools installs the pinned arginfo generator and parser again: no CI job runs install-kit, so the extension builds of ci and the parity jobs of gates found no PHP-Parser after KSTD-5-123 (T290).
 - A physical case whose output does not hold its exact pass event fails with that output, its DSN redacted, so the failure shows what the predicate read (T287).
 - repo-check compares no running PHP with .php-version: a wrong PHP fails the target that runs it, as kit K854 rules for every tool (T285).
 - orm takes the released kit 0.0.77 in place of 0.0.75 (KSTD-5-123): the development links follow the link declaration .links, which link-check compares (K869), and the prepare-commit-msg hook is gone (K892); the Python client installs through uv-install (K850), Composer runs as composer install followed by make link, and deps-rust is the CI setup of the rust runtime (K859); toolchain-check is gone, since a missing tool fails the target that runs it (K854); install-kit installs the arginfo generator (K861) and the crates of every Cargo.lock, so no target checks the downloaded crates (K864); a PHP child of an extension run inherits the extension through PHP_INI_SCAN_DIR, so the test helper names none (K900); and the Composer example of packaging.md reads the packages.json of a release (K865).
