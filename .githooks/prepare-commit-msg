@@ -1,7 +1,0 @@
-#!/bin/sh
-# The prepare-commit-msg hook. Git runs it before each commit with the file of the message, the source of the message and, for an
-# amend or a commit of another commit, the sha of that commit. The commit-msg check reads the index against the parent of an amended
-# commit, so the hook records the amend (K380-2). Written by `make hooks`; do not edit it. It calls the make target of the record,
-# which stays across the versions of kit.
-cd "$(git rev-parse --show-toplevel)" || exit 1
-exec make --no-print-directory prepare-commit-msg-hook SOURCE="$2" SHA="$3"
