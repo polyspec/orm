@@ -5,6 +5,7 @@
 
 ## 0.0.19
 
+- Nine python bindings of config/parity.json name their test by its method, the form that the unittest run reports, so the parity run credits them, where their `<Class>.<method>` ids were reported not executed (T305).
 - The php-extension binding of schema-existence-and-installation names SchemaUtilsNativeTest::testExistsEscapesUnderscoreInSqliteSchemaName in its class form, so the parity run credits it, where the bare spelling of a test that another unit binds with its class was reported not executed (T304).
 - Kit 0.0.79 is adopted (KSTD-5-125): CI calls the shared, parity and runtime checks of `.github/workflows/ci-pipeline.yml` as its job `kit`, whose success `ci-passed` requires, and a release is a dispatch of `release.yml` with the id of a successful `ci.yml` run, whose `make release-tag` tags its commit; `make release-verify` and the release by a pushed tag are gone.
 - A native read of an invalid date or datetime throws the CODEC_DECODE OrmException "invalid date value <text>" with its native cause, where a row read or a grouped value ended without an error, and the extension reads the fallback forms and the end offsets that the PHP library reads (T293).

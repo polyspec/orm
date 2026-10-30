@@ -42963,7 +42963,7 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/test_orm_gen.py",
-          "id": "OrmGenTest.test_generated_module_imports_and_builds_the_model"
+          "id": "test_generated_module_imports_and_builds_the_model"
         }
       ]
     },
@@ -42982,7 +42982,7 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/test_clock_source.py",
-          "id": "WallMicrosTest.test_estimate_below_wall_clamps_and_reanchors"
+          "id": "test_estimate_below_wall_clamps_and_reanchors"
         }
       ]
     },
@@ -43001,7 +43001,7 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/test_rollback_fault.py",
-          "id": "RollbackFaultEntryTest.test_the_distribution_holds_the_test_entry_point_that_no_import_loads"
+          "id": "test_the_distribution_holds_the_test_entry_point_that_no_import_loads"
         }
       ]
     },
@@ -43020,7 +43020,7 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/test_driver_cells.py",
-          "id": "MysqlCells.test_decimal_and_newdecimal_cells_are_their_exact_text"
+          "id": "test_decimal_and_newdecimal_cells_are_their_exact_text"
         }
       ]
     },
@@ -43039,7 +43039,7 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/test_driver_cells.py",
-          "id": "PostgresCells.test_numeric_cells_load_as_text"
+          "id": "test_numeric_cells_load_as_text"
         }
       ]
     },
@@ -43058,7 +43058,7 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/test_placeholders.py",
-          "id": "MysqlPlaceholders.test_question_marks_become_format_markers_in_order"
+          "id": "test_question_marks_become_format_markers_in_order"
         }
       ]
     },
@@ -43077,7 +43077,7 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/test_placeholders.py",
-          "id": "PostgresPlaceholders.test_numbered_markers_become_named_markers_and_may_repeat"
+          "id": "test_numbered_markers_become_named_markers_and_may_repeat"
         }
       ]
     },
@@ -43096,7 +43096,7 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/test_rollback_fault.py",
-          "id": "NativeFaultEntryUnitTest.test_test_fault_facade_sets_only_the_requested_connection_state"
+          "id": "test_test_fault_facade_sets_only_the_requested_connection_state"
         }
       ]
     },
@@ -43153,7 +43153,7 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/test_clock_source.py",
-          "id": "NativeDialectHookTest.test_python_dialect_hooks_keep_their_native_forms"
+          "id": "test_python_dialect_hooks_keep_their_native_forms"
         }
       ]
     }
