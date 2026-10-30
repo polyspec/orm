@@ -169,6 +169,14 @@ static void take_exception(zval *out)
     zend_clear_exception();
 }
 
+/* An exit() unwinds the request as a pending object that is not Throwable. The PHP library runs neither its catch (\Throwable) nor
+ * its finally blocks for it, so a native transaction runs no rollback and passes it on; the lost connection ends the transaction
+ * (CFG-7, T297). */
+static bool exit_pending(void)
+{
+    return EG(exception) != NULL && (zend_is_unwind_exit(EG(exception)) || zend_is_graceful_exit(EG(exception)));
+}
+
 /* Sets an owned exception as the pending one. */
 static void put_exception(zval *ex)
 {
@@ -5318,7 +5326,9 @@ static bool savepoint_tx(zval *self, zval *frame, zval *fn, dbs_transaction_call
         zval ret;
         ZVAL_UNDEF(&ret);
         bool ok = invoke_transaction_callback(self, fn, callback, context, &ret);
-        if (!ok) {
+        if (!ok && exit_pending()) {
+            frames_pop();
+        } else if (!ok) {
             zval ex, failure, ended;
             take_exception(&ex);
             frames_pop();
@@ -5949,6 +5959,11 @@ static bool run_transaction(zval *self, zval *fn, dbs_transaction_callback callb
     zval v;
     ZVAL_UNDEF(&v);
     bool ok = invoke_transaction_callback(self, fn, callback, context, &v);
+    if (!ok && exit_pending()) {
+        frames_pop();
+        zval_ptr_dtor(&frame);
+        return false;
+    }
     if (!ok) {
         zval ex, failure, cleanup;
         take_exception(&ex);
@@ -6063,6 +6078,12 @@ static bool transaction_impl(zval *self, zval *fn, dbs_transaction_callback call
                 zval_ptr_dtor(&record);
             }
             return true;
+        }
+        if (exit_pending()) {
+            if (has_record) {
+                zval_ptr_dtor(&record);
+            }
+            return false;
         }
         zval ex;
         take_exception(&ex);
