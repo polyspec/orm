@@ -7,7 +7,6 @@ import os
 import platform
 import re
 import statistics
-import sys
 import time
 from datetime import datetime
 from decimal import Decimal
@@ -252,7 +251,6 @@ def measure(database, name, client, native, expected_rows):
         f"client p50={client_p50 / 1000:.1f}µs ratio={ratio:.2f} "
         f"samples={PAIRS} cpu={cpu_ms:.1f}ms wall={wall_ms:.1f}ms "
         f"machine={platform.platform()} reference=not-recorded",
-        file=sys.stderr,
         flush=True,
     )
 

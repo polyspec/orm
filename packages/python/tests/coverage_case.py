@@ -71,7 +71,8 @@ def coverage_main(test_class: type) -> None:
     """The entry point of a coverage program: `python -m <module> <case id>...` runs exactly the test methods of the
     command line, in their order, and exits nonzero when one fails; an unknown, repeated or missing ID is a usage error
     before any case runs. The checker reads the output as CASE lines only, so the unittest report is kept back and
-    written to standard error when a case fails; a passing run writes nothing but the CASE lines."""
+    written to standard error when a case fails; a passing run writes nothing but the CASE lines and the PERF lines of a
+    performance owner, which the checker reads apart from the CASE lines."""
     names = sorted(
         name[len("test_") :] for name in dir(test_class) if name.startswith("test_")
     )

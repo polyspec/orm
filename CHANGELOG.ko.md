@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b822184c877bac2c5bcbb107d64daf7e350b23233be0e47d98c13a5fd0693e38 -->
+<!-- source-sha256: 56a0a2322aa5b3b5e667ebdd44302f384b5a17507b60f84d96470ac2b0f0770e -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.19
 
+- python hot path 측정은 PERF 줄을 표준 출력에 씁니다. 그래서 `test_hot_path_gate`의 unittest 결과 줄에는 결과만 남고, parity 실행이 hot path 단위 세 개를 인정합니다. 전에는 그 결과 줄 안에 표준 오류로 쓰인 줄이 결과를 가렸습니다(T310).
 - dbspec-apply-chain과 dbspec-apply-stress의 python binding은 같은 파일의 형제 binding처럼 parity runner 자신의 unittest 실행으로 돕니다. 그래서 parity 실행이 이 binding들을 인정합니다. 전에는 make dbspec-apply-python-check가 python reader가 읽지 않는 형식으로 보고했습니다(T308).
 - runner check는 TEST_ENV 파일의 모든 변수를 make에 export하는 loop(T299)를 단언합니다. 전에는 T299가 제거한 complex-query DSN 이름의 export loop를 단언했으므로, 이제 runner-check가 다시 통과합니다(T315).
 - pool idle과 lifetime 단위의 python binding은 pool test의 method인 test_idle_size_and_lifetime을 적습니다. 그래서 parity 실행이 이 binding들을 인정합니다. 전에는 그 파일에 한 번도 없었던 method를 적었습니다(T307).

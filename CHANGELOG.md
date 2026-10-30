@@ -5,6 +5,7 @@
 
 ## 0.0.19
 
+- The python hot path measurement writes its PERF lines to standard output, so the unittest result line of `test_hot_path_gate` holds only its outcome and the parity run credits the three hot path units, where the lines written to standard error inside that result line hid it (T310).
 - The python bindings of dbspec-apply-chain and dbspec-apply-stress run under the parity runner's own unittest run, as their sibling bindings of the same file do, so the parity run credits them, where make dbspec-apply-python-check reported them in a form that the python reader does not read (T308).
 - The runner check asserts the loop that exports every variable of the TEST_ENV file into make (T299), where it asserted the export loop over the complex-query DSN names that T299 removed, so runner-check passes again (T315).
 - The python bindings of the pool idle and lifetime units name test_idle_size_and_lifetime, the method of the pool test, so the parity run credits them, where they named a method that the file never held (T307).
