@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9aebfae71afe183bab8b6c0b6aa0271967486813af6e9ff838cf0da5a632f1cb -->
+<!-- source-sha256: bc15f5d8eb51f420a02014c01422e7a60e7e116dfc580050aa21475cdc23e7d2 -->
 # 변경 이력
 
 ## Unreleased
 
+- orm은 0.0.73 대신 release된 kit 0.0.75를 받고, kit-sync가 그로부터 쓰는 release workflow를 받는다 (KSTD-5-122).
 - make orm-install-python은 uv sync의 기본값대로 Python client를 editable로 설치한다: KSTD-5-104의 non-editable 설치는 python-models가 src/polyspec/orm/models에 쓰는 fixture model을 빠뜨려 새 venv에서 polyspec.orm.models를 import하는 모든 Python test가 실패했고 source 변경은 설치되지 않은 채 남았다. kit K855가 Python symbol을 source package에서 읽어 그 이유를 없앤다 (T259).
 - make rust-fmt-check가 main에서 통과한다: Rust conformance runner의 import 목록과 Rust integration test의 panic! message를 rustfmt가 쓰는 대로 정리한다 (T260).
 - row lock(forShare, forUpdate와 그 NoWait 형태)은 모든 구현에서 groupLimit이 없는 관계 단계에 유효하며 그 단계의 statement가 lock을 건다. 클라이언트는 그 lock에도 트랜잭션을 요구하고 루트 lock처럼 SQLite row-lock table을 잡으며, limit_per_parent나 group_by가 있는 lock은 계속 IR_INVALID다 (T257).

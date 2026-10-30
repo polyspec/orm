@@ -13,8 +13,8 @@
 #   release-tools    installs the tools that config/release.json needs for the packages of this repository
 #   release-tools-path puts var/tools/bin on the PATH of the steps that follow, through GITHUB_PATH
 #   release-verify   the tagged commit is on origin/main and its check runs concluded success, without running the tests again
-#   release-assets  builds the archive of every package into var/release/assets
-#   release-publish creates the GitHub Release of the tag as a draft, with its notes and archives
+#   release-assets  builds the archive of every package, and packages.json of the Composer packages, into var/release/assets
+#   release-publish creates the GitHub Release of the tag as a draft, with its notes and those files
 #   release-undraft makes the release public
 # A failed step leaves the release a draft and fails the run.
 name: release
