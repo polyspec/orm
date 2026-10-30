@@ -25,7 +25,15 @@ if TYPE_CHECKING:
     from polyspec.orm.database import Db
     from polyspec.orm.group_rows import GroupRows
 
-__all__ = ["Collection", "EntityDef", "Key", "Model", "Page", "register_model"]
+__all__ = [
+    "Collection",
+    "EntityDef",
+    "Key",
+    "Model",
+    "Page",
+    "RegisteredModel",
+    "register_model",
+]
 
 
 class EntityDef:
@@ -33,13 +41,13 @@ class EntityDef:
 
     __slots__ = ("model", "entity", "create")
 
-    def __init__(self, model: "_RegisteredModel", entity, create):
+    def __init__(self, model: "RegisteredModel", entity, create):
         self.model = model
         self.entity = entity
         self.create = create
 
 
-class _RegisteredModel:
+class RegisteredModel:
     """The parsed document set and the constructors of its entities."""
 
     __slots__ = ("runtime", "entities", "ctors")
@@ -60,9 +68,9 @@ class _RegisteredModel:
 
 def register_model(
     manifest_text: str, manifest_hash: str, external_text: str = ""
-) -> _RegisteredModel:
+) -> RegisteredModel:
     """Makes a runtime model from the manifest text and hash that the generated code holds."""
-    return _RegisteredModel(
+    return RegisteredModel(
         model_of_manifest(manifest_text, manifest_hash, external_text)
     )
 

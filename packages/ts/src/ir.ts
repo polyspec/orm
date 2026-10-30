@@ -53,7 +53,7 @@ export interface Item {
 
 export interface JoinedReference { conn?: string; join: string; }
 export interface OrmFunction { name: string; ps?: number[]; }
-export interface ColumnFunction { column: string; fn: OrmFunction; }
+export interface ColumnFunctionIR { column: string; fn: OrmFunction; }
 export interface Subquery { query: RequestQuery; column?: string; agg?: string; }
 export interface ColumnReferenceIR { path: string; column: string; }
 
@@ -70,7 +70,7 @@ export interface Predicate {
   sub?: Subquery;
 }
 
-export interface Projection { mode?: '' | 'all' | 'none'; add?: string[]; remove?: string[]; fn?: Record<string, ColumnFunction>; sub?: Record<string, Subquery>; }
+export interface Projection { mode?: '' | 'all' | 'none'; add?: string[]; remove?: string[]; fn?: Record<string, ColumnFunctionIR>; sub?: Record<string, Subquery>; }
 export interface Order { column?: string; desc?: boolean; random?: boolean; fn?: OrmFunction; }
 export type Limit = { offset: number; count: number; offset_p?: never; count_p?: never }
   | { offset_p: number; count_p: number; offset?: never; count?: never };

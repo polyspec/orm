@@ -753,11 +753,11 @@
   },
   "packages/ts/src/codec.ts::CodecError": {
     "exported": true,
-    "signature": "class CodecError { public constructor(public readonly code: typeof codes.CONFIG | typeof codes.CODEC_DECODE | typeof codes.CODEC_ENCODE | typeof codes.CODEC_UNSUPPORTED, message: string, options?: ErrorOptions); }"
+    "signature": "class CodecError { public constructor(public readonly code: typeof CONFIG | typeof CODEC_DECODE | typeof CODEC_ENCODE | typeof CODEC_UNSUPPORTED, message: string, options?: ErrorOptions); }"
   },
   "packages/ts/src/codec.ts::CodecError#field.code": {
     "exported": true,
-    "signature": "typeof codes.CONFIG | typeof codes.CODEC_DECODE | typeof codes.CODEC_ENCODE | typeof codes.CODEC_UNSUPPORTED"
+    "signature": "typeof CONFIG | typeof CODEC_DECODE | typeof CODEC_ENCODE | typeof CODEC_UNSUPPORTED"
   },
   "packages/ts/src/codec.ts::CodecValue": {
     "exported": true,
@@ -7059,6 +7059,10 @@
     "exported": false,
     "signature": "async function mysqlKill(pool: MySqlPool, connection: MySqlConnection, done: StatementDone): Promise\u003cvoid\u003e"
   },
+  "packages/ts/src/driver.ts::mysqlParams": {
+    "exported": true,
+    "signature": "export function mysqlParams(params: readonly DriverValue[]): DriverValue[]"
+  },
   "packages/ts/src/driver.ts::mysqlScan": {
     "exported": false,
     "signature": "function mysqlScan(connection: MySqlConnection, sql: string, params: readonly DriverValue[], sink: RowSink): Promise\u003cvoid\u003e"
@@ -8967,19 +8971,19 @@
     "exported": true,
     "signature": "{\"rel\":\"text\",\"kind\":\"text\",\"step\":\"integer\",\"parent_keys\":\"list\u003cKeyReference\u003e\",\"child_keys\":\"list\u003cKeyReference\u003e\",\"key\":\"list\u003cKeyReference\u003e\",\"flatten\":\"bool\",\"cascade\":\"bool\",\"assemble\":\"Assemble\"}"
   },
-  "packages/ts/src/ir.ts::ColumnFunction": {
+  "packages/ts/src/ir.ts::ColumnFunctionIR": {
     "exported": true,
-    "signature": "interface ColumnFunction"
+    "signature": "interface ColumnFunctionIR"
   },
-  "packages/ts/src/ir.ts::ColumnFunction#field.column": {
+  "packages/ts/src/ir.ts::ColumnFunctionIR#field.column": {
     "exported": true,
     "signature": "string"
   },
-  "packages/ts/src/ir.ts::ColumnFunction#field.fn": {
+  "packages/ts/src/ir.ts::ColumnFunctionIR#field.fn": {
     "exported": true,
     "signature": "OrmFunction"
   },
-  "packages/ts/src/ir.ts::ColumnFunction#wire": {
+  "packages/ts/src/ir.ts::ColumnFunctionIR#wire": {
     "exported": true,
     "signature": "{\"column\":\"text\",\"fn\":\"OrmFunction\"}"
   },
@@ -9385,7 +9389,7 @@
   },
   "packages/ts/src/ir.ts::Projection#field.fn": {
     "exported": true,
-    "signature": "Record\u003cstring, ColumnFunction\u003e"
+    "signature": "Record\u003cstring, ColumnFunctionIR\u003e"
   },
   "packages/ts/src/ir.ts::Projection#field.mode": {
     "exported": true,
@@ -9401,7 +9405,7 @@
   },
   "packages/ts/src/ir.ts::Projection#wire": {
     "exported": true,
-    "signature": "{\"mode\":\"text\",\"add\":\"list\u003ctext\u003e\",\"remove\":\"list\u003ctext\u003e\",\"fn\":\"map\u003cColumnFunction\u003e\",\"sub\":\"map\u003cSubquery\u003e\"}"
+    "signature": "{\"mode\":\"text\",\"add\":\"list\u003ctext\u003e\",\"remove\":\"list\u003ctext\u003e\",\"fn\":\"map\u003cColumnFunctionIR\u003e\",\"sub\":\"map\u003cSubquery\u003e\"}"
   },
   "packages/ts/src/ir.ts::QueryKind": {
     "exported": true,
@@ -20953,34 +20957,38 @@
   },
   "packages/ts/src/values.ts::ColumnFunction": {
     "exported": true,
-    "signature": "class ColumnFunction"
+    "signature": "class ColumnFunction { public constructor(public readonly name: string, public readonly args: readonly unknown[]); }"
+  },
+  "packages/ts/src/values.ts::ColumnFunction#field.args": {
+    "exported": true,
+    "signature": "readonly unknown[]"
   },
   "packages/ts/src/values.ts::ColumnFunction#field.kind": {
     "exported": false,
     "signature": "unknown"
   },
-  "packages/ts/src/values.ts::FunctionValue": {
-    "exported": false,
-    "signature": "class FunctionValue { public constructor(public readonly name: string, public readonly args: readonly unknown[]); }"
-  },
-  "packages/ts/src/values.ts::FunctionValue#field.args": {
-    "exported": false,
-    "signature": "readonly unknown[]"
-  },
-  "packages/ts/src/values.ts::FunctionValue#field.name": {
-    "exported": false,
+  "packages/ts/src/values.ts::ColumnFunction#field.name": {
+    "exported": true,
     "signature": "string"
-  },
-  "packages/ts/src/values.ts::FunctionValue.ir": {
-    "exported": false,
-    "signature": "public ir(param: (value: unknown) =\u003e number): OrmFunction"
   },
   "packages/ts/src/values.ts::ValueFunction": {
     "exported": true,
-    "signature": "class ValueFunction"
+    "signature": "class ValueFunction { public constructor(public readonly name: string, public readonly args: readonly unknown[]); }"
+  },
+  "packages/ts/src/values.ts::ValueFunction#field.args": {
+    "exported": true,
+    "signature": "readonly unknown[]"
   },
   "packages/ts/src/values.ts::ValueFunction#field.kind": {
     "exported": false,
     "signature": "unknown"
+  },
+  "packages/ts/src/values.ts::ValueFunction#field.name": {
+    "exported": true,
+    "signature": "string"
+  },
+  "packages/ts/src/values.ts::functionIR": {
+    "exported": true,
+    "signature": "export function functionIR(fn: ValueFunction | ColumnFunction, param: (value: unknown) =\u003e number): OrmFunction"
   }
 }

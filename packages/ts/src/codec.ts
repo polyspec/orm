@@ -6,6 +6,7 @@ import { isScalar, parseAllDocuments, stringify as stringifyYaml, visit } from '
 import { present } from './present.js';
 import { StyledValue } from './styled_value.js';
 import * as codes from './codes.js';
+import type { CODEC_DECODE, CODEC_ENCODE, CODEC_UNSUPPORTED, CONFIG } from './codes.js';
 
 export type CodecValue = null | boolean | number | string | CodecValue[] | { [key: string]: CodecValue };
 export type EncodedValue = string | Uint8Array | null;
@@ -134,7 +135,7 @@ function unpackIp(value: Buffer): string {
 }
 
 export class CodecError extends Error {
-  public constructor(public readonly code: typeof codes.CONFIG | typeof codes.CODEC_DECODE | typeof codes.CODEC_ENCODE | typeof codes.CODEC_UNSUPPORTED, message: string, options?: ErrorOptions) {
+  public constructor(public readonly code: typeof CONFIG | typeof CODEC_DECODE | typeof CODEC_ENCODE | typeof CODEC_UNSUPPORTED, message: string, options?: ErrorOptions) {
     super(`${code}: ${message}`, options);
   }
 }

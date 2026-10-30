@@ -42,8 +42,8 @@
     "go": "sha256:7fc56e9dbbc918648cf7d87e40761212ebb27125541c0c4974887a43f3d6519f",
     "php": "sha256:8d73fe9fefc98f6a92a86e9e7705e1a146b71c61fb4bf9abdc1f67d2ab2cb250",
     "rust": "sha256:8f00feeec13c0c56dfd6cb48e738223e4b8784cbed5f5b1efba1eb131cf0f82e",
-    "typescript": "sha256:150e2b7b162cd1a9a72fa67f77de87801d88259b731e1f911369cf2ae379bf18",
-    "python": "sha256:62a11ab13689733f6435342b997d5f1537fa2e69dbe232c87b410edf336d0832"
+    "typescript": "sha256:463c66d56a9e96c719fad6199400a03f2d8f08ee025433e57b2ea2798f0c69a2",
+    "python": "sha256:eb01a77933538b8db3720f6281ff5a0f7ad312c81b9395dd6dab652fbb2ac4da"
   },
   "native_surfaces": [
     {
@@ -4319,7 +4319,7 @@
         "go": "packages/go/engine/ir/ir.go::ColFunc",
         "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::ColFunc",
         "rust": "packages/rust/orm/src/ir.rs::ColFunc",
-        "typescript": "packages/ts/src/ir.ts::ColumnFunction",
+        "typescript": "packages/ts/src/ir.ts::ColumnFunctionIR",
         "python": "packages/python/src/polyspec/orm/ir.py::IRColFunc"
       },
       "fields": {

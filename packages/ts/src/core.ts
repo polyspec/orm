@@ -1,11 +1,11 @@
 import { Db } from './database.js';
-import type { ColumnFunction as IRColumnFunction, Group, Item, Limit, Order, Predicate, KeyPair, Relation, Request, RequestQuery, Subquery, Join, QueryKind } from './ir.js';
+import type { ColumnFunctionIR, Group, Item, Limit, Order, Predicate, KeyPair, Relation, Request, RequestQuery, Subquery, Join, QueryKind } from './ir.js';
 import { fieldOf, type Entity, type Field, type RuntimeModel } from './engine/model.js';
 import type { ChainKey } from './names.js';
 import { present } from './present.js';
 import { OrmError } from './runtime_error.js';
 import { normalizeDecimal } from './decimal.js';
-import { ColumnFunction, ValueFunction } from './values.js';
+import { ColumnFunction, ValueFunction, functionIR } from './values.js';
 import { StyledValue } from './styled_value.js';
 import { hostEncode } from './codec.js';
 import { Value as JsonValue } from '@polyspec/ordered-json';
@@ -152,11 +152,17 @@ export class Core {
   public group = false;
   public target: Core | undefined;
 
+  /** @internal */
   public where = new CondGroup();
+  /** @internal */
   public on: CondGroup | undefined;
+  /** @internal */
   public joins: JoinSpec[] = [];
+  /** @internal */
   public relations: RelSpec[] = [];
+  /** @internal */
   public columns = new Columns();
+  /** @internal */
   public order: OrderSpec[] = [];
   public groupBy: string[] = [];
   public limit: Limit | undefined;
@@ -184,6 +190,7 @@ export class Core {
   public duplication: Core | undefined;
 
   public values = new Map<string, unknown>();
+  /** @internal */
   public row: RowState | undefined;
 
   public constructor(public readonly ent: EntityDef) {}
@@ -477,6 +484,7 @@ export class Core {
     return `${this.ent.entity.name}_${many ? 'models' : 'model'}`;
   }
 
+  /** @internal */
   public build(kind: QueryKind): BuiltRequest {
     const r = new BuiltRequest(kind, this.ent.model.manifestHash);
     if (this.error) { r.fail(this.error); return r; }
@@ -600,7 +608,7 @@ export class BuiltRequest {
       else {
         if (o.column !== undefined) item.column = o.column;
         if (o.desc) item.desc = true;
-        if (o.fn) item.fn = o.fn.ir(v => this.param(v));
+        if (o.fn) item.fn = functionIR(o.fn, v => this.param(v));
       }
       (q.order ??= []).push(item);
     }
@@ -629,7 +637,7 @@ export class BuiltRequest {
     if (spec.remove.length > 0) out.remove = [...spec.remove];
     for (const name of spec.order) {
       const fn = spec.funcs.get(name);
-      if (fn) (out.fn ??= {})[name] = { column: fn.column, fn: fn.fn.ir(v => this.param(v)) } satisfies IRColumnFunction;
+      if (fn) (out.fn ??= {})[name] = { column: fn.column, fn: functionIR(fn.fn, v => this.param(v)) } satisfies ColumnFunctionIR;
       const sub = spec.subs.get(name);
       if (sub) {
         const built = this.subquery(sub(c.self), c, true);
@@ -702,11 +710,11 @@ export class BuiltRequest {
         break;
       }
       case 'column_fn':
-        out.fn = present(p.fn, 'the function of a column function condition').ir(v => this.param(v));
+        out.fn = functionIR(present(p.fn, 'the function of a column function condition'), v => this.param(v));
         out.p = this.param(p.value);
         break;
       case 'value_fn':
-        out.value = present(p.fn, 'the function of a value function condition').ir(v => this.param(v));
+        out.value = functionIR(present(p.fn, 'the function of a value function condition'), v => this.param(v));
         break;
       default:
         out.p = this.param(p.value);

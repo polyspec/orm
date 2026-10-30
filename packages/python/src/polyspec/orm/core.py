@@ -6,7 +6,7 @@ from polyspec.orm.engine.model import Field, field_of
 from polyspec.orm.errors import OrmError
 from polyspec.orm.names import ChainKey
 from polyspec.orm.styled_value import StyledValue
-from polyspec.orm.values import ColumnFunction, ValueFunction
+from polyspec.orm.values import ColumnFunction, ValueFunction, _function_ir
 
 __all__ = ["Core"]
 
@@ -793,7 +793,7 @@ class BuiltRequest:
                 if o.get("desc"):
                     item["desc"] = True
                 if o.get("fn"):
-                    item["fn"] = o["fn"].ir(lambda v: self.param(v))
+                    item["fn"] = _function_ir(o["fn"], lambda v: self.param(v))
             q.setdefault("order", []).append(item)
         if c.group_by:
             q["group_by"] = list(c.group_by)
@@ -845,7 +845,7 @@ class BuiltRequest:
             if function is not None:
                 out.setdefault("fn", {})[name] = {
                     "column": function["column"],
-                    "fn": function["fn"].ir(lambda v: self.param(v)),
+                    "fn": _function_ir(function["fn"], lambda v: self.param(v)),
                 }
             sub = c.columns_subs.get(name)
             if sub is not None:
@@ -945,10 +945,10 @@ class BuiltRequest:
                 return out
             out["sub"] = sub
         elif kind == "column_fn":
-            out["fn"] = p["fn"].ir(lambda v: self.param(v))
+            out["fn"] = _function_ir(p["fn"], lambda v: self.param(v))
             out["p"] = self.param(p["value"])
         elif kind == "value_fn":
-            out["value"] = p["fn"].ir(lambda v: self.param(v))
+            out["value"] = _function_ir(p["fn"], lambda v: self.param(v))
         else:
             out["p"] = self.param(p["value"])
         return out

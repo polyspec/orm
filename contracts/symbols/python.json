@@ -2215,9 +2215,113 @@
     "exported": true,
     "signature": "def validate(self, request: dict) -\u003e None"
   },
+  "packages/python/src/polyspec/orm/engine/dialect.py::Dialect": {
+    "exported": true,
+    "signature": "class Dialect"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::Dialect.clock_operand": {
+    "exported": true,
+    "signature": "def clock_operand(self, col: str, precision: int) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::Dialect.column_function": {
+    "exported": true,
+    "signature": "def column_function(self, name: str, col: str, arg)"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::Dialect.contains_binary": {
+    "exported": true,
+    "signature": "def contains_binary(self, col: str, value) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::Dialect.decodes_stage": {
+    "exported": true,
+    "signature": "def decodes_stage(self, stage: str) -\u003e bool"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::Dialect.force_index": {
+    "exported": true,
+    "signature": "def force_index(self, name: str) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::Dialect.fulltext": {
+    "exported": true,
+    "signature": "def fulltext(self, cols, value, boolean: bool)"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::Dialect.handles_stage": {
+    "exported": true,
+    "signature": "def handles_stage(self, stage: str) -\u003e bool"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::Dialect.like": {
+    "exported": true,
+    "signature": "def like(self, col: str, ph: str) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::Dialect.limit": {
+    "exported": true,
+    "signature": "def limit(self, offset: int, count: int) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::Dialect.limit_params": {
+    "exported": true,
+    "signature": "def limit_params(self, offset: str, count: str) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::Dialect.now": {
+    "exported": true,
+    "signature": "def now(self, precision: int) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::Dialect.nulls_order": {
+    "exported": true,
+    "signature": "def nulls_order(self, desc: bool) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::Dialect.placeholder": {
+    "exported": true,
+    "signature": "def placeholder(self, n: int) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::Dialect.quote": {
+    "exported": true,
+    "signature": "def quote(self, ident: str) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::Dialect.random": {
+    "exported": true,
+    "signature": "def random(self) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::Dialect.read_expr": {
+    "exported": true,
+    "signature": "def read_expr(self, col: str, stages) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::Dialect.read_time": {
+    "exported": true,
+    "signature": "def read_time(self, col: str, precision: int) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::Dialect.read_uuid": {
+    "exported": true,
+    "signature": "def read_uuid(self, col: str) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::Dialect.row_lock": {
+    "exported": true,
+    "signature": "def row_lock(self, mode: str)"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::Dialect.tuple_in": {
+    "exported": true,
+    "signature": "def tuple_in(self, cols, rows, negate: bool) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::Dialect.upsert": {
+    "exported": true,
+    "signature": "def upsert(self, conflict, assigns: str) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::Dialect.value_function": {
+    "exported": true,
+    "signature": "def value_function(self, name: str, arg, now)"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::Dialect.write_expr": {
+    "exported": true,
+    "signature": "def write_expr(self, ph: str, stages) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::Dialect.write_time": {
+    "exported": true,
+    "signature": "def write_time(self, ph: str) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::Dialect.write_uuid": {
+    "exported": true,
+    "signature": "def write_uuid(self, ph: str) -\u003e str"
+  },
   "packages/python/src/polyspec/orm/engine/dialect.py::MysqlDialect": {
     "exported": true,
-    "signature": "class MysqlDialect(_Dialect)"
+    "signature": "class MysqlDialect(Dialect)"
   },
   "packages/python/src/polyspec/orm/engine/dialect.py::MysqlDialect.column_function": {
     "exported": true,
@@ -2293,7 +2397,7 @@
   },
   "packages/python/src/polyspec/orm/engine/dialect.py::PostgresDialect": {
     "exported": true,
-    "signature": "class PostgresDialect(_Dialect)"
+    "signature": "class PostgresDialect(Dialect)"
   },
   "packages/python/src/polyspec/orm/engine/dialect.py::PostgresDialect.column_function": {
     "exported": true,
@@ -2349,7 +2453,7 @@
   },
   "packages/python/src/polyspec/orm/engine/dialect.py::SqliteDialect": {
     "exported": true,
-    "signature": "class SqliteDialect(_Dialect)"
+    "signature": "class SqliteDialect(Dialect)"
   },
   "packages/python/src/polyspec/orm/engine/dialect.py::SqliteDialect.clock_operand": {
     "exported": true,
@@ -3615,9 +3719,17 @@
     "exported": true,
     "signature": "int"
   },
+  "packages/python/src/polyspec/orm/model.py::RegisteredModel": {
+    "exported": true,
+    "signature": "class RegisteredModel"
+  },
+  "packages/python/src/polyspec/orm/model.py::RegisteredModel.entity_of": {
+    "exported": true,
+    "signature": "def entity_of(self, name: str, ctor) -\u003e EntityDef"
+  },
   "packages/python/src/polyspec/orm/model.py::register_model": {
     "exported": true,
-    "signature": "def register_model(manifest_text: str, manifest_hash: str, external_text: str='') -\u003e _RegisteredModel"
+    "signature": "def register_model(manifest_text: str, manifest_hash: str, external_text: str='') -\u003e RegisteredModel"
   },
   "packages/python/src/polyspec/orm/model_exec.py::create": {
     "exported": true,
@@ -3945,10 +4057,10 @@
   },
   "packages/python/src/polyspec/orm/values.py::ColumnFunction": {
     "exported": true,
-    "signature": "class ColumnFunction(_FunctionValue)"
+    "signature": "class ColumnFunction"
   },
   "packages/python/src/polyspec/orm/values.py::ValueFunction": {
     "exported": true,
-    "signature": "class ValueFunction(_FunctionValue)"
+    "signature": "class ValueFunction"
   }
 }

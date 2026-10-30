@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 8e288b4f361281b1aa6781b47facb57c89fa9d8e6039a99251b973ddd0d20d16 -->
+<!-- source-sha256: 2e8e71e354f47ae8d263adc12b95aa5176c8ce2e6b0e018fa863a81375be7f6d -->
 # 변경 이력
 
 ## Unreleased
@@ -7,6 +7,7 @@
 ## 0.0.19
 
 - orm은 npm, Composer, Python, Go, Cargo에서 development source의 version인 공개된 ordered-json 0.0.13을 요구하므로, cargo는 link가 제공하는 source를 resolve한다(T276).
+- Public API: 어떤 public signature도 internal type을 이름 붙이지 않는다(T274). TypeScript: Core where, joins, relations, columns, order, on, row, build, Db plan, args, CatalogConnection, Subscription, ValueFunction, ColumnFunction의 constructor는 @internal을 strip하는 선언에서 빠진다. Subscription, Notification, ModelLike, SetSpec, DriverName을 export한다. IR interface ColumnFunction은 ColumnFunctionIR이다. Python: dialect base는 public Dialect이고, register_model은 public RegisteredModel을 반환한다. 둘 다 ValueFunction과 ColumnFunction은 base class를 공유하지 않고 ir method가 없다.
 - CARGO_SIBLINGS는 kit K869의 link 선언 file이 대체하는 --siblings 없이 kit cargo link를 돌립니다. orm이 그것을 채택하기 전까지 cargo는 polyspec crate를 공개 tag로 build합니다(T275).
 - TypeScript thin-slice 예제는 Go와 PHP 예제처럼, 그리고 T89-3 이후 datetime slot이 요구하는 대로 datetime을 text로 bind합니다(T271).
 - TypeScript MySQL driver는 정수 number parameter를 bigint, 즉 LONGLONG으로 보냅니다. mysql2가 number를 DOUBLE로 보내고 ProxySQL이 DOUBLE LIMIT을 거부하기 때문입니다(T273).

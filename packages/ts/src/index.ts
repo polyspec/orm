@@ -13,7 +13,8 @@ export type { CatalogAssignment, CatalogColumn, CatalogGridCell, CatalogGridResu
 export { Db, registerModel } from './database.js';
 export type { ConnectOptions, Key, RequestHook, Schema, TransactionOptions } from './database.js';
 export type { StatementEvent, StatementKind, StatementSubscriber } from './events.js';
-export type { Isolation, PoolStats } from './driver.js';
+export type { DriverName, Isolation, PoolStats } from './driver.js';
+export type { Notification, Subscription } from './listen.js';
 export { Utils, SchemaUtils, PrivilegeUtils, AesUtils } from './utils.js';
 export type { AesRotationStatus, TablePrivileges } from './utils.js';
 export { Model, Collection } from './model.js';
@@ -40,7 +41,7 @@ export {
 export type * from './dbspec/index.js';
 export type { ModelClass, Page } from './model.js';
 export { CORE, Core } from './core.js';
-export type { EntityDef } from './core.js';
+export type { EntityDef, ModelLike, SetSpec } from './core.js';
 export type { ChainKey } from './names.js';
 export { orm, ColumnFunction, ValueFunction } from './values.js';
 export * from './models/models.js';

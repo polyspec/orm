@@ -23509,11 +23509,9 @@
             "@polyspec/orm!Core#aggFn:member",
             "@polyspec/orm!Core#aggregate:member(1)",
             "@polyspec/orm!Core#alias:member",
-            "@polyspec/orm!Core#build:member(1)",
             "@polyspec/orm!Core#by:member(1)",
             "@polyspec/orm!Core#clone:member(1)",
             "@polyspec/orm!Core#column:member(1)",
-            "@polyspec/orm!Core#columns:member",
             "@polyspec/orm!Core#conn:member",
             "@polyspec/orm!Core#connector:member(1)",
             "@polyspec/orm!Core#deleteLock:member",
@@ -23530,7 +23528,6 @@
             "@polyspec/orm!Core#groupLimit:member",
             "@polyspec/orm!Core#index:member",
             "@polyspec/orm!Core#join:member(1)",
-            "@polyspec/orm!Core#joins:member",
             "@polyspec/orm!Core#jsonColumn:member(1)",
             "@polyspec/orm!Core#keyName:member",
             "@polyspec/orm!Core#limit:member",
@@ -23541,16 +23538,12 @@
             "@polyspec/orm!Core#newValue:member(1)",
             "@polyspec/orm!Core#newValues:member",
             "@polyspec/orm!Core#news:member",
-            "@polyspec/orm!Core#on:member",
-            "@polyspec/orm!Core#order:member",
             "@polyspec/orm!Core#orderBy:member(1)",
             "@polyspec/orm!Core#parentNode:member",
             "@polyspec/orm!Core#possible:member",
             "@polyspec/orm!Core#putSet:member(1)",
-            "@polyspec/orm!Core#relations:member",
             "@polyspec/orm!Core#removeColumn:member(1)",
             "@polyspec/orm!Core#resultName:member(1)",
-            "@polyspec/orm!Core#row:member",
             "@polyspec/orm!Core#self:member",
             "@polyspec/orm!Core#setDuplication:member(1)",
             "@polyspec/orm!Core#setGroupLimit:member(1)",
@@ -23562,7 +23555,6 @@
             "@polyspec/orm!Core#subject:member(1)",
             "@polyspec/orm!Core#target:member",
             "@polyspec/orm!Core#values:member",
-            "@polyspec/orm!Core#where:member",
             "@polyspec/orm!Core#whereChain:member(1)",
             "@polyspec/orm!Core:class",
             "@polyspec/orm!Core:constructor(1)",
@@ -23594,7 +23586,13 @@
             "@polyspec/orm!Model#removeAllColumns:member(1)",
             "@polyspec/orm!Model#save:member(1)",
             "@polyspec/orm!Model:class",
-            "@polyspec/orm!Model:constructor(1)"
+            "@polyspec/orm!Model:constructor(1)",
+            "@polyspec/orm!SetSpec#column:member",
+            "@polyspec/orm!SetSpec#minus:member",
+            "@polyspec/orm!SetSpec#null:member",
+            "@polyspec/orm!SetSpec#plus:member",
+            "@polyspec/orm!SetSpec#value:member",
+            "@polyspec/orm!SetSpec:interface"
           ]
         }
       ]
@@ -23699,13 +23697,11 @@
             "@polyspec/orm!Db#aesKey:member",
             "@polyspec/orm!Db#aesKeyring:member",
             "@polyspec/orm!Db#aesVersion:member",
-            "@polyspec/orm!Db#args:member(1)",
             "@polyspec/orm!Db#blindIndexKey:member",
             "@polyspec/orm!Db#clockMicros:member(1)",
             "@polyspec/orm!Db#closed:member",
             "@polyspec/orm!Db#driver:member",
             "@polyspec/orm!Db#now:member(1)",
-            "@polyspec/orm!Db#plan:member(1)",
             "@polyspec/orm!Db#requestHook:member",
             "@polyspec/orm!Db#root:member(1)",
             "@polyspec/orm!Db#signal:member",
@@ -33487,7 +33483,6 @@
             "@polyspec/orm!CatalogConnection#tablePage:member(1)",
             "@polyspec/orm!CatalogConnection#updateRow:member(1)",
             "@polyspec/orm!CatalogConnection:class",
-            "@polyspec/orm!CatalogConnection:constructor(1)",
             "@polyspec/orm!CatalogGridCell:type",
             "@polyspec/orm!CatalogGridResult#columns:member",
             "@polyspec/orm!CatalogGridResult#rows:member",
@@ -33528,6 +33523,7 @@
             "@polyspec/orm!CatalogTableRef#namespace:member",
             "@polyspec/orm!CatalogTableRef:interface",
             "@polyspec/orm!CatalogValue:type",
+            "@polyspec/orm!DriverName:type",
             "@polyspec/orm!connectCatalog:function(1)"
           ]
         }
@@ -33913,6 +33909,8 @@
             "@polyspec/orm!HexCell:class",
             "@polyspec/orm!IpHexCell.entity:member",
             "@polyspec/orm!IpHexCell:class",
+            "@polyspec/orm!ModelLike#[CORE]:member",
+            "@polyspec/orm!ModelLike:interface",
             "@polyspec/orm!NoteReader.entity:member",
             "@polyspec/orm!NoteReader:class",
             "@polyspec/orm!Project.entity:member",
@@ -37065,6 +37063,8 @@
             "polyspec.orm.engine.model.model_of_manifest",
             "polyspec.orm.engine.model_of_documents",
             "polyspec.orm.engine.model_of_manifest",
+            "polyspec.orm.model.RegisteredModel",
+            "polyspec.orm.model.RegisteredModel.entity_of",
             "polyspec.orm.model.register_model",
             "polyspec.orm.register_model"
           ]
@@ -39137,6 +39137,9 @@
             "@polyspec/orm!Child#rel:member",
             "@polyspec/orm!Child#step:member",
             "@polyspec/orm!Child:interface",
+            "@polyspec/orm!ColumnFunctionIR#column:member",
+            "@polyspec/orm!ColumnFunctionIR#fn:member",
+            "@polyspec/orm!ColumnFunctionIR:interface",
             "@polyspec/orm!ColumnReferenceIR#column:member",
             "@polyspec/orm!ColumnReferenceIR#path:member",
             "@polyspec/orm!ColumnReferenceIR:interface",
@@ -39711,7 +39714,30 @@
             "polyspec.orm.engine.dialect.is_value_function",
             "polyspec.orm.engine.dialect.literal",
             "polyspec.orm.engine.dialect.quote_with",
-            "polyspec.orm.engine.dialect.value_function_units"
+            "polyspec.orm.engine.dialect.value_function_units",
+            "polyspec.orm.engine.dialect.Dialect",
+            "polyspec.orm.engine.dialect.Dialect.quote",
+            "polyspec.orm.engine.dialect.Dialect.clock_operand",
+            "polyspec.orm.engine.dialect.Dialect.placeholder",
+            "polyspec.orm.engine.dialect.Dialect.like",
+            "polyspec.orm.engine.dialect.Dialect.limit",
+            "polyspec.orm.engine.dialect.Dialect.limit_params",
+            "polyspec.orm.engine.dialect.Dialect.force_index",
+            "polyspec.orm.engine.dialect.Dialect.upsert",
+            "polyspec.orm.engine.dialect.Dialect.read_expr",
+            "polyspec.orm.engine.dialect.Dialect.write_expr",
+            "polyspec.orm.engine.dialect.Dialect.read_time",
+            "polyspec.orm.engine.dialect.Dialect.write_time",
+            "polyspec.orm.engine.dialect.Dialect.now",
+            "polyspec.orm.engine.dialect.Dialect.handles_stage",
+            "polyspec.orm.engine.dialect.Dialect.decodes_stage",
+            "polyspec.orm.engine.dialect.Dialect.column_function",
+            "polyspec.orm.engine.dialect.Dialect.value_function",
+            "polyspec.orm.engine.dialect.Dialect.contains_binary",
+            "polyspec.orm.engine.dialect.Dialect.fulltext",
+            "polyspec.orm.engine.dialect.Dialect.tuple_in",
+            "polyspec.orm.engine.dialect.Dialect.random",
+            "polyspec.orm.engine.dialect.Dialect.nulls_order"
           ]
         },
         {
@@ -42232,7 +42258,15 @@
           "implementation": "typescript",
           "symbols": [
             "@polyspec/orm!Db#listen:member(1)",
-            "@polyspec/orm!Db#notify:member(1)"
+            "@polyspec/orm!Db#notify:member(1)",
+            "@polyspec/orm!Notification#channel:member",
+            "@polyspec/orm!Notification#payload:member",
+            "@polyspec/orm!Notification#pid:member",
+            "@polyspec/orm!Notification:interface",
+            "@polyspec/orm!Subscription#close:member(1)",
+            "@polyspec/orm!Subscription#receive:member(1)",
+            "@polyspec/orm!Subscription#unlisten:member(1)",
+            "@polyspec/orm!Subscription:class"
           ]
         }
       ]
@@ -42547,7 +42581,10 @@
             "polyspec.orm.engine.dialect.SqliteDialect.restart_identity",
             "polyspec.orm.engine.dialect.PostgresDialect.read_uuid",
             "polyspec.orm.engine.dialect.PostgresDialect.write_uuid",
-            "polyspec.orm.engine.dialect.SqliteDialect.row_lock"
+            "polyspec.orm.engine.dialect.SqliteDialect.row_lock",
+            "polyspec.orm.engine.dialect.Dialect.read_uuid",
+            "polyspec.orm.engine.dialect.Dialect.write_uuid",
+            "polyspec.orm.engine.dialect.Dialect.row_lock"
           ]
         }
       ]

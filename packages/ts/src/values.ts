@@ -1,20 +1,25 @@
 import type { OrmFunction } from './ir.js';
 
-/** An ORM function value: the model method that receives it records the column and operator. */
-abstract class FunctionValue {
-  public constructor(public readonly name: string, public readonly args: readonly unknown[]) {}
-  public ir(param: (value: unknown) => number): OrmFunction {
-    const out: OrmFunction = { name: this.name };
-    if (this.args.length > 0) out.ps = this.args.map(param);
-    return out;
-  }
+/** A value function: the compared value itself; the model method that receives it records the column and operator. */
+export class ValueFunction {
+  private readonly kind = 'value' as const;
+  /** @internal */
+  public constructor(/** @internal */ public readonly name: string, /** @internal */ public readonly args: readonly unknown[]) {}
 }
 
-/** A value function: the compared value itself. */
-export class ValueFunction extends FunctionValue { private readonly kind = 'value' as const; }
-
 /** A column function: wraps the compared column; the compared value follows it. */
-export class ColumnFunction extends FunctionValue { private readonly kind = 'column' as const; }
+export class ColumnFunction {
+  private readonly kind = 'column' as const;
+  /** @internal */
+  public constructor(/** @internal */ public readonly name: string, /** @internal */ public readonly args: readonly unknown[]) {}
+}
+
+/** The IR of an ORM function value: its name and the bind slots of its arguments. */
+export function functionIR(fn: ValueFunction | ColumnFunction, param: (value: unknown) => number): OrmFunction {
+  const out: OrmFunction = { name: fn.name };
+  if (fn.args.length > 0) out.ps = fn.args.map(param);
+  return out;
+}
 
 const value = (name: string, ...args: unknown[]) => new ValueFunction(name, args);
 const column = (name: string, ...args: unknown[]) => new ColumnFunction(name, args);

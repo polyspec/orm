@@ -5,26 +5,30 @@ from typing import Any, Callable
 __all__ = ["orm", "ValueFunction", "ColumnFunction"]
 
 
-class _FunctionValue:
-    """ORM function value: the model method that takes it records the column and the operator."""
+def _function_ir(
+    value: "ValueFunction | ColumnFunction", param: Callable[[Any], int]
+) -> dict:
+    """The IR of an ORM function value: its name and the bind slots of its arguments."""
+    out: dict = {"name": value.name}
+    if value.args:
+        out["ps"] = [param(arg) for arg in value.args]
+    return out
+
+
+class ValueFunction:
+    """Value function: is the comparison value itself; the model method that takes it records the column and the operator."""
 
     def __init__(self, name: str, args: tuple):
         self.name = name
         self.args = args
 
-    def ir(self, param: Callable[[Any], int]) -> dict:
-        out: dict = {"name": self.name}
-        if self.args:
-            out["ps"] = [param(value) for value in self.args]
-        return out
 
+class ColumnFunction:
+    """Column function: wraps the column being compared; the model method that takes it records the column and the operator."""
 
-class ValueFunction(_FunctionValue):
-    """Value function: is the comparison value itself."""
-
-
-class ColumnFunction(_FunctionValue):
-    """Column function: wraps the column being compared."""
+    def __init__(self, name: str, args: tuple):
+        self.name = name
+        self.args = args
 
 
 def _value(name: str, *args) -> ValueFunction:

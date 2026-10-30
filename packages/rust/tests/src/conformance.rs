@@ -897,8 +897,8 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         events.push(json!(left));
         Ok::<Value, polyspec_orm::Error>(Value::Array(events))
     });
-    // PRT-8: a relation step's own row lock. Outside a transaction it is refused as a root lock is; inside one, the
-    // relation's statement carries the lock.
+    // A relation step's own row lock (docs/spec/protocol.md). Outside a transaction it is refused as a root lock is;
+    // inside one, the relation's statement carries the lock.
     run!("relation_row_lock", async {
         let read = async || {
             author()

@@ -1135,6 +1135,7 @@ const BEGIN_SQL: Record<DriverName, { read: string; write: string }> = {
 export class CatalogConnection {
   private closed = false;
 
+  /** @internal */
   public constructor(public readonly dialect: DriverName, private readonly pool: DriverPool) {}
 
   /** Releases the connection pool. An operation after close fails with CATALOG_CLOSED and sends no statement. */

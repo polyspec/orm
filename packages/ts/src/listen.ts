@@ -127,6 +127,7 @@ export function checkChannel(channel: string): void {
 
 /** A LISTEN subscription of a handle: the receives use the abort signal of the handle that listened (DIA-195). */
 export class Subscription {
+  /** @internal */
   public constructor(private readonly listener: PostgresListener, private readonly signal: AbortSignal | undefined) {}
 
   /** Waits for the next notification; see PostgresListener.receive. */

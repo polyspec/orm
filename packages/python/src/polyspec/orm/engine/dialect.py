@@ -1,6 +1,7 @@
 # Per-database SQL fragments (docs/spec/dialects.md). The planner does not write quotes or placeholders
 # directly.
 __all__ = [
+    "Dialect",
     "MysqlDialect",
     "PostgresDialect",
     "SqliteDialect",
@@ -110,7 +111,7 @@ def _conflict_upsert(conflict, assigns: str) -> str:
     return f" ON CONFLICT ({keys}) DO UPDATE SET {assigns}"
 
 
-class _Dialect:
+class Dialect:
     """The SQL fragments that the database handles."""
 
     name = ""
@@ -218,7 +219,7 @@ def _ascii_lower(x: str) -> str:
     )
 
 
-class MysqlDialect(_Dialect):
+class MysqlDialect(Dialect):
     """AES and hex are on the host side, so the row's key version chooses the key and every dialect writes the same hex text; ip is on the SQL side."""
 
     name = "mysql"
@@ -314,7 +315,7 @@ class MysqlDialect(_Dialect):
         return f"ALTER TABLE {quote_with('`', table)} AUTO_INCREMENT = 1"
 
 
-class PostgresDialect(_Dialect):
+class PostgresDialect(Dialect):
     """All codec stages are on the host side: an ip value is stored as bytes in a bytea column."""
 
     name = "postgres"
@@ -411,7 +412,7 @@ class PostgresDialect(_Dialect):
         return f"{doc} @@ {query}('simple', {value('')})"
 
 
-class SqliteDialect(_Dialect):
+class SqliteDialect(Dialect):
     """All codec stages are on the host side."""
 
     name = "sqlite"

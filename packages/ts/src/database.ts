@@ -1189,6 +1189,7 @@ export class Db {
     if (failed) throw failure;
   }
 
+  /** @internal */
   public async plan(request: Request): Promise<Cached> {
     if (this.closed) throw new OrmError(codes.CONFIG, 'database is closed');
     // A connection plans only the sets registered to it. It checks this before looking at the plan cache.
@@ -1221,7 +1222,11 @@ export class Db {
     return precision === 0 ? text.slice(0, 19) : text.slice(0, 20 + precision);
   }
 
-  /** Resolves the bind slots of a step; masked marks secret and clock positions. */
+  /**
+   * Resolves the bind slots of a step; masked marks secret and clock positions.
+   *
+   * @internal
+   */
   public args(step: PlanStep, params: readonly unknown[], parents: readonly unknown[] = [], audit?: AuditRecord): { values: unknown[]; masked: unknown[] } {
     const values: unknown[] = [];
     const masked: unknown[] = [];
