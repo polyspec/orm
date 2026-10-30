@@ -881,6 +881,11 @@
           "hex_cell"
         ],
         [
+          "settings",
+          "ip_hex_cell",
+          "ip_hex_cell"
+        ],
+        [
           "index",
           "service_member",
           "ix_service_member_service"

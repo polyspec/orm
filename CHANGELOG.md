@@ -5,6 +5,7 @@
 
 ## 0.0.19
 
+- The bench vectors follow the ip_hex_cell table of the bench fixture: the Mermaid round trip lists its settings as dropped, and the Python generator test expects its manifest hash and 26 entities (T266).
 - The feature php-extension-run-guard owns the PHP extension run guard and ExtensionRunGuardTest.php, so the features contract passes (T264).
 - docs/features.md shows performance_gate as implemented, as contracts/features.json has stated since KSTD-7-6 (T265).
 - feature-coverage/typescript/mysql declares the interfaces-typescript need, so CI installs the TypeScript that its interface case reads declarations with (T262).

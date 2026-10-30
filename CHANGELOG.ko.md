@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: cda3c90f36f8d3d7d408411451e827d8813352369612b935d334d7e5a0b9efe9 -->
+<!-- source-sha256: 6fd7d10f347efd922b61549964c5ef2b8f005ab4619c949c046372eb9a27e001 -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.19
 
+- bench vector는 bench fixture의 ip_hex_cell table을 따릅니다: Mermaid round trip은 그 settings를 dropped로 나열하고, Python generator test는 그 manifest hash와 26개 entity를 기대합니다(T266).
 - feature php-extension-run-guard가 PHP extension run guard와 ExtensionRunGuardTest.php를 소유하므로 features contract가 통과합니다(T264).
 - docs/features.md는 KSTD-7-6 이후 contracts/features.json이 밝힌 대로 performance_gate를 implemented로 보입니다(T265).
 - feature-coverage/typescript/mysql은 interfaces-typescript need를 선언하므로, CI가 그 interface case가 선언을 읽는 TypeScript를 설치합니다(T262).
