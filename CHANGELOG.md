@@ -5,6 +5,7 @@
 
 ## 0.0.19
 
+- An exit() inside a native Db::transaction or its savepoint ends the request as it does under the PHP library: the extension runs no rollback for it and passes it on, and the lost connection rolls the writes back and releases the named lock (T297).
 - The peak child of DeclarationsTest runs with -n and the extension's modules, so the extension that the run ini already loads is not loaded twice (T298).
 - The Makefile derives the dynamic PHP modules that the extension declarations load under php -n from the PHP that kit runs, and test-php-ext passes them, so the native suite runs DeclarationsTest without a workflow value (T296).
 - The native Decimal::decode of the PHP extension keeps the CODEC_ENCODE normalization failure as the previous of its CODEC_DECODE OrmException, as the PHP library does (T295).

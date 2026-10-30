@@ -6,6 +6,7 @@
 
 ## 0.0.19
 
+- 네이티브 Db::transaction이나 그 savepoint 안의 exit()는 PHP 라이브러리에서처럼 request를 끝냅니다. 확장은 이에 대해 rollback을 실행하지 않고 그대로 넘기며, 끊긴 연결이 쓰기를 rollback하고 named lock을 해제합니다(T297).
 - DeclarationsTest의 peak child는 -n과 확장의 module로 실행됩니다. 그래서 run ini가 이미 load한 확장을 두 번 load하지 않습니다(T298).
 - Makefile은 확장 declarations가 php -n에서 load하는 동적 PHP module을 kit이 실행하는 PHP에서 도출하고, test-php-ext가 이를 넘깁니다. 그래서 native suite는 workflow 값 없이 DeclarationsTest를 실행합니다(T296).
 - PHP 확장의 네이티브 Decimal::decode는 PHP 라이브러리처럼 CODEC_ENCODE 정규화 실패를 CODEC_DECODE OrmException의 previous로 남깁니다(T295).
