@@ -7978,7 +7978,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/coverage_dsn.rs",
-          "id": "coverage_dsn_connection"
+          "id": "coverage_dsn_connection",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/orm",
+            "FEATURE_CARGO_TARGET=--test coverage_dsn",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_dsn_connection"
+          ]
         }
       ],
       "owner": {
@@ -13714,7 +13726,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
-          "id": "coverage_transactions::coverage_transaction_savepoint"
+          "id": "coverage_transactions::coverage_transaction_savepoint",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test integration",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_transactions::coverage_transaction_savepoint"
+          ]
         },
         {
           "implementation": "rust",
@@ -13866,7 +13890,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
-          "id": "coverage_transactions::coverage_transaction_savepoint"
+          "id": "coverage_transactions::coverage_transaction_savepoint",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test integration",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_transactions::coverage_transaction_savepoint"
+          ]
         }
       ]
     },
@@ -28337,7 +28373,18 @@
         {
           "implementation": "go",
           "test": "packages/go/model/coverage_conformance_verification_test.go",
-          "id": "TestCoverageConformanceVector"
+          "id": "TestCoverageConformanceVector",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageConformanceVector",
+            "FEATURE_PACKAGE=./model"
+          ]
         },
         {
           "implementation": "php-extension",
@@ -28357,7 +28404,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "coverage_conformance_vector"
+          "id": "coverage_conformance_vector",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test coverage_conformance_verification",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_conformance_vector"
+          ]
         },
         {
           "implementation": "php",
@@ -30312,17 +30371,51 @@
         {
           "implementation": "go",
           "test": "packages/go/bench/coverage_performance_gate_postgres_test.go",
-          "id": "TestCoveragePerformanceGatePostgres"
+          "id": "TestCoveragePerformanceGatePostgres",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=postgres",
+            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
+            "FEATURE_TEST=TestCoveragePerformanceGatePostgres",
+            "FEATURE_PACKAGE=./bench"
+          ]
         },
         {
           "implementation": "php",
           "test": "packages/php/tests/CoveragePerformanceGatePostgresTest.php",
-          "id": "CoveragePerformanceGatePostgresTest::testHotPathGate"
+          "id": "CoveragePerformanceGatePostgresTest::testHotPathGate",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-php-database",
+            "FEATURE_DATABASE=postgres",
+            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
+            "FEATURE_FILE=packages/php/tests/CoveragePerformanceGatePostgresTest.php",
+            "FEATURE_TEST=CoveragePerformanceGatePostgresTest::testHotPathGate"
+          ]
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoveragePerformanceGateExtensionPostgresTest.php",
-          "id": "CoveragePerformanceGateExtensionPostgresTest::testHotPathGate"
+          "id": "CoveragePerformanceGateExtensionPostgresTest::testHotPathGate",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-php-database",
+            "FEATURE_PHP_EXTENSION=${ORM_PARITY_PHP_EXTENSION}",
+            "FEATURE_DATABASE=postgres",
+            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
+            "FEATURE_FILE=packages/php-ext/tests/CoveragePerformanceGateExtensionPostgresTest.php",
+            "FEATURE_TEST=CoveragePerformanceGateExtensionPostgresTest::testHotPathGate"
+          ]
         },
         {
           "implementation": "typescript",
@@ -30357,7 +30450,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/coverage_performance_gate.rs",
-          "id": "coverage_hot_path_gate_postgres"
+          "id": "coverage_hot_path_gate_postgres",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test coverage_performance_gate",
+            "FEATURE_DATABASE=postgres",
+            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
+            "FEATURE_TEST=coverage_hot_path_gate_postgres"
+          ]
         }
       ]
     },
@@ -30371,22 +30476,66 @@
         {
           "implementation": "go",
           "test": "packages/go/bench/coverage_performance_gate_sqlite_test.go",
-          "id": "TestCoveragePerformanceGateSQLite"
+          "id": "TestCoveragePerformanceGateSQLite",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoveragePerformanceGateSQLite",
+            "FEATURE_PACKAGE=./bench"
+          ]
         },
         {
           "implementation": "php",
           "test": "packages/php/tests/CoveragePerformanceGateSqliteTest.php",
-          "id": "CoveragePerformanceGateSqliteTest::testHotPathGate"
+          "id": "CoveragePerformanceGateSqliteTest::testHotPathGate",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-php-database",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_FILE=packages/php/tests/CoveragePerformanceGateSqliteTest.php",
+            "FEATURE_TEST=CoveragePerformanceGateSqliteTest::testHotPathGate"
+          ]
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoveragePerformanceGateExtensionSqliteTest.php",
-          "id": "CoveragePerformanceGateExtensionSqliteTest::testHotPathGate"
+          "id": "CoveragePerformanceGateExtensionSqliteTest::testHotPathGate",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-php-database",
+            "FEATURE_PHP_EXTENSION=${ORM_PARITY_PHP_EXTENSION}",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_FILE=packages/php-ext/tests/CoveragePerformanceGateExtensionSqliteTest.php",
+            "FEATURE_TEST=CoveragePerformanceGateExtensionSqliteTest::testHotPathGate"
+          ]
         },
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_performance_gate_sqlite.mjs",
-          "id": "hot_path_gate"
+          "id": "hot_path_gate",
+          "command": [
+            "env",
+            "ORM_FEATURE_DATABASE=sqlite",
+            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
+            "node",
+            "--conditions=orm-test",
+            "--test",
+            "--test-reporter=${ORM_NODE_REPORTER}",
+            "tests/coverage_performance_gate_sqlite.mjs"
+          ]
         },
         {
           "implementation": "python",
@@ -30406,7 +30555,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/coverage_performance_gate.rs",
-          "id": "coverage_hot_path_gate_sqlite"
+          "id": "coverage_hot_path_gate_sqlite",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test coverage_performance_gate",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_hot_path_gate_sqlite"
+          ]
         }
       ]
     },
@@ -30555,7 +30716,17 @@
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/group_rows_db.mjs",
-          "id": "group_rows_database"
+          "id": "group_rows_database",
+          "command": [
+            "env",
+            "ORM_GROUP_DATABASE=sqlite",
+            "ORM_GROUP_DSN=${BENCH_SQLITE_DSN}",
+            "node",
+            "--conditions=orm-test",
+            "--test",
+            "--test-reporter=${ORM_NODE_REPORTER}",
+            "tests/group_rows_db.mjs"
+          ]
         },
         {
           "implementation": "python",
@@ -30565,7 +30736,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/integration/coverage_group_rows_db.rs",
-          "id": "coverage_group_rows_db::coverage_group_rows_db"
+          "id": "coverage_group_rows_db::coverage_group_rows_db",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test integration",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_group_rows_db::coverage_group_rows_db"
+          ]
         }
       ]
     },
@@ -30750,17 +30933,50 @@
         {
           "implementation": "go",
           "test": "packages/go/decimalmodel/decimal_physical_test.go",
-          "id": "TestDecimalPhysicalMySQL"
+          "id": "TestDecimalPhysicalMySQL",
+          "command": [
+            "go",
+            "test",
+            "-tags",
+            "decimalphysical",
+            "-json",
+            "-count=1",
+            "-run",
+            "^TestDecimalPhysicalMySQL$",
+            "./decimalmodel"
+          ]
         },
         {
           "implementation": "go",
           "test": "packages/go/decimalmodel/decimal_physical_test.go",
-          "id": "TestDecimalPhysicalPostgres"
+          "id": "TestDecimalPhysicalPostgres",
+          "command": [
+            "go",
+            "test",
+            "-tags",
+            "decimalphysical",
+            "-json",
+            "-count=1",
+            "-run",
+            "^TestDecimalPhysicalPostgres$",
+            "./decimalmodel"
+          ]
         },
         {
           "implementation": "go",
           "test": "packages/go/decimalmodel/decimal_physical_test.go",
-          "id": "TestDecimalPhysicalSQLite"
+          "id": "TestDecimalPhysicalSQLite",
+          "command": [
+            "go",
+            "test",
+            "-tags",
+            "decimalphysical",
+            "-json",
+            "-count=1",
+            "-run",
+            "^TestDecimalPhysicalSQLite$",
+            "./decimalmodel"
+          ]
         },
         {
           "implementation": "php",
@@ -30780,17 +30996,41 @@
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/decimal_model_db.mjs",
-          "id": "decimal_db/mysql/round_trip"
+          "id": "decimal_db/mysql/round_trip",
+          "command": [
+            "node",
+            "--conditions=orm-test",
+            "--test-reporter=${ORM_NODE_REPORTER}",
+            "tests/decimal_model_db.mjs",
+            "--dialect",
+            "mysql"
+          ]
         },
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/decimal_model_db.mjs",
-          "id": "decimal_db/postgres/round_trip"
+          "id": "decimal_db/postgres/round_trip",
+          "command": [
+            "node",
+            "--conditions=orm-test",
+            "--test-reporter=${ORM_NODE_REPORTER}",
+            "tests/decimal_model_db.mjs",
+            "--dialect",
+            "postgres"
+          ]
         },
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/decimal_model_db.mjs",
-          "id": "decimal_db/sqlite/round_trip"
+          "id": "decimal_db/sqlite/round_trip",
+          "command": [
+            "node",
+            "--conditions=orm-test",
+            "--test-reporter=${ORM_NODE_REPORTER}",
+            "tests/decimal_model_db.mjs",
+            "--dialect",
+            "sqlite"
+          ]
         },
         {
           "implementation": "python",
@@ -31640,7 +31880,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs",
-          "id": "coverage_model_queries::coverage_model_query_remove_columns"
+          "id": "coverage_model_queries::coverage_model_query_remove_columns",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test integration",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_model_queries::coverage_model_query_remove_columns"
+          ]
         },
         {
           "implementation": "python",
@@ -32417,7 +32669,18 @@
         {
           "implementation": "go",
           "test": "packages/go/orm/coverage_audit_triggers_test.go",
-          "id": "TestCoverageSoftDeleteRestore"
+          "id": "TestCoverageSoftDeleteRestore",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageSoftDeleteRestore",
+            "FEATURE_PACKAGE=./orm"
+          ]
         },
         {
           "implementation": "php",
@@ -32447,7 +32710,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/coverage_audit_triggers.rs",
-          "id": "coverage_soft_delete_restore"
+          "id": "coverage_soft_delete_restore",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/orm",
+            "FEATURE_CARGO_TARGET=--test coverage_audit_triggers",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_soft_delete_restore"
+          ]
         }
       ]
     },

@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 28d6d31c3586c61e607cbf88388b0f6dc79c252457e3de3cdc92956e29f4cbaf -->
+<!-- source-sha256: f0b01d0388ae402484b580c98c8a3406b08ce02e1f10d229bcc0ed60c542274b -->
 # 변경 이력
 
 ## Unreleased
@@ -20,6 +20,7 @@
 - Makefile은 확장 declarations가 php -n에서 load하는 동적 PHP module을 kit이 실행하는 PHP에서 도출하고, test-php-ext가 이를 넘깁니다. 그래서 native suite는 workflow 값 없이 DeclarationsTest를 실행합니다(T296).
 - PHP 확장의 네이티브 Decimal::decode는 PHP 라이브러리처럼 CODEC_ENCODE 정규화 실패를 CODEC_DECODE OrmException의 previous로 남깁니다(T295).
 - gates의 parity와 runtime context는 TEST_ENV와 함께 자기 run의 decimal DSN을 export합니다. 그래서 decimal parity case와 네이티브 decimal database test가 database를 찾습니다(T294).
+- ORM_FEATURE_DATABASE와 ORM_FEATURE_DSN을 필수로 요구하는 test의 parity binding은 database별 make wrapper를 거쳐 실행됩니다. 새 feature-php-database는 PHP 라이브러리와 확장의 case를 그렇게 실행합니다. 직접 실행되던 hot path measurement와 Go, Rust database case의 binding 15개에는 이것이 없었습니다. TypeScript SQLite hot path measurement와 group rows binding은 command에서 database를 지정하고, TypeScript decimal binding 세 개는 dialect를 넘기며, Go conformance vector binding은 feature-go-unit을 거쳐 실행됩니다. Go decimal binding은 decimalphysical build tag를 넘기고, feature-rust-database는 ignored test도 포함하므로 Rust conformance vector가 실행됩니다(T282).
 - orm은 npm, Composer, Python, Go, Cargo에서 개발 source의 version인 릴리스된 ordered-json 0.0.14를 요구합니다. root composer.json은 packaging.md가 보이는 대로 release의 packages.json repository에서 이를 읽습니다(T286).
 - PHP 확장은 PHP 라이브러리처럼 잘못된 date와 JSON encode 실패의 OrmException에 원래의 네이티브 예외를 previous로 남깁니다(T292).
 - decimal physical check의 Python case는 unittest 보고를 검사가 읽는 stdout에 씁니다. 그래서 통과한 실행이 통과로 관측됩니다(T289).
