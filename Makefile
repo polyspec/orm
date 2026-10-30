@@ -2144,15 +2144,16 @@ php-extension-context-prepare:
 php-extension-context-cleanup:
 	$(NODE) scripts/check/parity-context.mts cleanup php-ext
 # interface-check runs first: it reads the API units of config/parity.json and the symbol snapshots that parity-check reads.
-# The bench and complex-query DSNs of a run are in its TEST_ENV file (run-databases writes them). Export them into make itself,
-# so the parity units, which kit starts from make, inherit them. A TEST_ENV without them exports nothing and the guard names what is missing.
-BENCH_DSN_NAMES := BENCH_MYSQL_DSN BENCH_POSTGRES_DSN BENCH_SQLITE_DSN ORM_BENCH_MYSQL_DSN
+# The servers, bench and complex-query DSNs of a run are in its TEST_ENV file (run-databases writes it; its lines are export NAME='value',
+# scripts/check/databases.mts environmentFile). Export every variable of it into make itself, as the CI contexts export the run env
+# (scripts/check/parity-context.mts), so the units that kit starts from make, such as the parity units and the native suite of test-php-ext,
+# inherit the run (T299). A TEST_ENV without the complex-query DSNs exports none of them, and the guard below names what is missing.
 COMPLEX_QUERY_RUNTIMES := GO PHP PHP_EXTENSION TYPESCRIPT PYTHON RUST
 COMPLEX_QUERY_DIALECTS := MYSQL POSTGRES SQLITE
 COMPLEX_QUERY_DSN_NAMES := $(foreach runtime,$(COMPLEX_QUERY_RUNTIMES),$(foreach dialect,$(COMPLEX_QUERY_DIALECTS),COMPLEX_QUERY_$(runtime)_$(dialect)_DSN))
 ifneq ($(wildcard $(abspath $(TEST_ENV))),)
-$(foreach v,$(BENCH_DSN_NAMES),$(eval export $(v) := $(shell . $(abspath $(TEST_ENV)) >/dev/null 2>&1 && printf "%s" "$$$(v)")))
-$(foreach v,$(COMPLEX_QUERY_DSN_NAMES),$(eval export $(v) := $(shell . $(abspath $(TEST_ENV)) >/dev/null 2>&1 && printf "%s" "$$$(v)")))
+TEST_ENV_NAMES := $(shell sed -n "s/^export \([A-Z_][A-Z0-9_]*\)=.*/\1/p" $(abspath $(TEST_ENV)))
+$(foreach v,$(TEST_ENV_NAMES),$(eval export $(v) := $(shell . $(abspath $(TEST_ENV)) >/dev/null 2>&1 && printf "%s" "$$$(v)")))
 endif
 # The decimal DSNs of a run are in its DECIMAL_ENV file (run-databases writes them), read by the python decimal unit.
 DECIMAL_DSN_NAMES := DECIMAL_MYSQL_DSN DECIMAL_POSTGRES_DSN DECIMAL_SQLITE_DSN
