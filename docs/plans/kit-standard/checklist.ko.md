@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 9610373237f2761bfe9d23956b3be5b4caf6fa40dd2251cb9956f7ec20da369a -->
+<!-- source-sha256: 27feda46005380b3e8ea471d7f3bb9d45dff57ea9676cc667f96c3945c2c7ec7 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -378,6 +378,6 @@
 | KSTD-5-117 | K854, K864, K869를 담는 kit release를 채택한다(0.0.75에는 없다): kit이 삭제하는 toolchain-check, cargo-downloads-check, link-state-check를 제거하고 link-state-check 자리에 link-check를 실행한다. 원인: kit K854가 toolchain-check를, K864가 cargo-downloads-check의 검사 mode를 삭제하고 K869가 link-state-check를 link-check로 바꾸므로, 이를 부르는 orm target은 kit에 없는 target을 부른다 | Makefile, .github/workflows/ci.yml, scripts/repo/ci.mts, AGENTS.md, AGENTS.ko.md, CHANGELOG.md, CHANGELOG.ko.md | `make kit-check repo-check` | [ ] |
 | KSTD-5-118 | Python 설치의 raw uv sync를 make uv-install로 보낸다. 원인: Makefile이 uv sync를 직접 실행하는데, kit K850은 make uv-install에 repository가 쓰는 SYNC flag를 주고 symlink된 개발 폴더를 손상하지 않는다 | Makefile, CHANGELOG.md, CHANGELOG.ko.md | `make orm-install-python` | [ ] |
 | KSTD-5-119 | link.mts cargo --siblings를 checkout의 link 선언 파일로 바꾼다. 원인: kit K869는 checkout마다 하나의 link 선언이 경우별 복사, link, 설치를 대신하게 하므로, CARGO_SIBLINGS와 그 호출자는 선언이 가진 것을 다시 적는다 | Makefile, the link declaration file (K869), CHANGELOG.md, CHANGELOG.ko.md | `make link-check` | [ ] |
-| KSTD-5-120 | ci-setup이 부르는 deps-<runtime> target을 정의한다. 원인: kit K859는 package 설치 감싸기를 멈추고 ci-setup은 runtime마다 repository의 deps-<runtime> target을 내보내므로, orm은 자신의 make target으로 설치를 소유한다 | Makefile, config/ci.json, .github/workflows/ci.yml, CHANGELOG.md, CHANGELOG.ko.md | `make kit-check repo-check` | [ ] |
+| KSTD-5-120 | ci-setup이 부르는 `deps-<runtime>` target을 정의한다. 원인: kit K859는 package 설치 감싸기를 멈추고 ci-setup은 runtime마다 repository의 `deps-<runtime>` target을 내보내므로, orm은 자신의 make target으로 설치를 소유한다 | Makefile, config/ci.json, .github/workflows/ci.yml, CHANGELOG.md, CHANGELOG.ko.md | `make kit-check repo-check` | [ ] |
 | KSTD-5-121 | parity extractor의 Rust nightly를 exceptions 항목 대신 rustNightly로 선언한다. 원인: kit K837은 rustdoc nightly를 rustNightly에서 읽으므로, config/toolchain.json의 exceptions 항목은 kit이 더 읽지 않는 key다 | config/toolchain.json, CHANGELOG.md, CHANGELOG.ko.md | `make parity-api-check` | [ ] |
 | KSTD-5-122 | orm은 0.0.73 대신 release된 kit 0.0.75를 받는다: package.json의 pin과 그 lock, make kit-sync의 사본. 원인: kit 0.0.75는 K855(T259가 기대는, source package에서 읽는 Python symbol), K858(worktree가 자기 var/tools를 가진다), K875(sha 없는 Red 줄), K877(documents-stamp가 PATHS를 받는다), K891(amend의 fix-test 판정), K893을 담고, 그 release.yml은 0.0.73의 사본과 다르다 | package.json, package-lock.json, .github/workflows/release.yml, CHANGELOG.md, CHANGELOG.ko.md | `make kit-check` | [v] |
