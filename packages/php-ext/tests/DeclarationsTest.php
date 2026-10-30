@@ -30,8 +30,8 @@ function requiredModules(): array
 
 /**
  * dynamicModules are the modules that php -n loads from extension_dir: ORM_PHP_DYNAMIC_MODULES, a comma list that the
- * make variable declares. Empty when this PHP has them built in; CI declares pdo for Ubuntu, where pdo is a shared
- * module.
+ * Makefile derives from this PHP (PHP_EXTENSION_DYNAMIC_MODULES). Empty when this PHP has them built in; pdo on
+ * Ubuntu, where pdo is a shared module.
  * @return list<string>
  */
 function dynamicModules(): array
@@ -39,7 +39,7 @@ function dynamicModules(): array
     $declared = getenv('ORM_PHP_DYNAMIC_MODULES');
     if ($declared === false) {
         throw new RuntimeException(
-            'ORM_PHP_DYNAMIC_MODULES is not declared; the make variable declares it, empty by default',
+            'ORM_PHP_DYNAMIC_MODULES is not declared; the Makefile derives it as PHP_EXTENSION_DYNAMIC_MODULES',
         );
     }
     $modules = array_values(array_filter(explode(',', $declared), static fn(string $module): bool => $module !== ''));
