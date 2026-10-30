@@ -3045,6 +3045,7 @@
         "php",
         "composer",
         "node-modules",
+        "interfaces-typescript",
         "php-extension-tools",
         "databases",
         "python"
@@ -3058,6 +3059,7 @@
         "php",
         "composer",
         "node-modules",
+        "interfaces-typescript",
         "php-extension-tools",
         "databases",
         "python"

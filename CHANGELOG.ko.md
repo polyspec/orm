@@ -6,6 +6,7 @@
 
 ## 0.0.19
 
+- feature-verify-rust와 feature-verify-other는 interfaces-typescript need를 선언하므로, CI가 그 feature 검증의 interface 검사가 선언을 읽는 TypeScript를 설치합니다(T278).
 - PHP library의 drift ApplyError는 PHP extension처럼 다시 detail에 schema mismatch를 담고 previous를 담지 않는다. KSTD-5-94는 내부 PlanSchemaMismatch를 그 원인으로 넘겼다(T277).
 - orm은 npm, Composer, Python, Go, Cargo에서 development source의 version인 공개된 ordered-json 0.0.13을 요구하므로, cargo는 link가 제공하는 source를 resolve한다(T276).
 - Public API: 어떤 public signature도 internal type을 이름 붙이지 않는다(T274). TypeScript: Core where, joins, relations, columns, order, on, row, build, Db plan, args, CatalogConnection, Subscription, ValueFunction, ColumnFunction의 constructor는 @internal을 strip하는 선언에서 빠진다. Subscription, Notification, ModelLike, SetSpec, DriverName을 export한다. IR interface ColumnFunction은 ColumnFunctionIR이다. Python: dialect base는 public Dialect이고, register_model은 public RegisteredModel을 반환한다. 둘 다 ValueFunction과 ColumnFunction은 base class를 공유하지 않고 ir method가 없다.

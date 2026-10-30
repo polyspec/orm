@@ -89,6 +89,18 @@ caseTest('the client pooler check declares the PHP extension tools that its exte
   }
 });
 
+// The feature verification targets run the verification commands of the changed features, the TypeScript interface check among
+// them, which reads declarations with the TypeScript of make orm-install-interfaces-typescript (T278).
+caseTest('the feature verification targets declare the TypeScript extractor need', COMPUTE, () => {
+  const inputs: unknown = JSON.parse(readFileSync(join(repo, 'contracts/check-inputs.json'), 'utf8'));
+  if (!isRecord(inputs) || !isRecord(inputs.targets)) throw new Error('contracts/check-inputs.json has no targets object');
+  for (const name of ['feature-verify-rust', 'feature-verify-other']) {
+    const target: unknown = inputs.targets[name];
+    if (!isRecord(target) || !isStringArray(target.needs)) throw new Error(`${name} has no needs list`);
+    assert.ok(target.needs.includes('interfaces-typescript'), name);
+  }
+});
+
 caseTest('the canonical parity target declares every client and fixture setup need', COMPUTE, () => {
   const inputs: unknown = JSON.parse(readFileSync(join(repo, 'contracts/check-inputs.json'), 'utf8'));
   if (!isRecord(inputs) || !isRecord(inputs.targets)) throw new Error('contracts/check-inputs.json has no targets object');
