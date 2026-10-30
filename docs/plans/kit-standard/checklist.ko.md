@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 27feda46005380b3e8ea471d7f3bb9d45dff57ea9676cc667f96c3945c2c7ec7 -->
+<!-- source-sha256: 0b4f64e3baf07a315dca521157dbb66569604b9a09b461f1ddaa25a976881c54 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -381,3 +381,4 @@
 | KSTD-5-120 | ci-setup이 부르는 `deps-<runtime>` target을 정의한다. 원인: kit K859는 package 설치 감싸기를 멈추고 ci-setup은 runtime마다 repository의 `deps-<runtime>` target을 내보내므로, orm은 자신의 make target으로 설치를 소유한다 | Makefile, config/ci.json, .github/workflows/ci.yml, CHANGELOG.md, CHANGELOG.ko.md | `make kit-check repo-check` | [ ] |
 | KSTD-5-121 | parity extractor의 Rust nightly를 exceptions 항목 대신 rustNightly로 선언한다. 원인: kit K837은 rustdoc nightly를 rustNightly에서 읽으므로, config/toolchain.json의 exceptions 항목은 kit이 더 읽지 않는 key다 | config/toolchain.json, CHANGELOG.md, CHANGELOG.ko.md | `make parity-api-check` | [ ] |
 | KSTD-5-122 | orm은 0.0.73 대신 release된 kit 0.0.75를 받는다: package.json의 pin과 그 lock, make kit-sync의 사본. 원인: kit 0.0.75는 K855(T259가 기대는, source package에서 읽는 Python symbol), K858(worktree가 자기 var/tools를 가진다), K875(sha 없는 Red 줄), K877(documents-stamp가 PATHS를 받는다), K891(amend의 fix-test 판정), K893을 담고, 그 release.yml은 0.0.73의 사본과 다르다 | package.json, package-lock.json, .github/workflows/release.yml, CHANGELOG.md, CHANGELOG.ko.md | `make kit-check` | [v] |
+| KSTD-5-123 | K899, K900, K895, K892, K869를 담은 kit 0.0.77을 채택한다. 이에 따라 config/documents.json은 사이트 페이지를 interpolation으로 선언하고, K895가 거기서 찾는 날것 꺾쇠 단어 4건은 code로 쓴다. Makefile의 `link.mts cargo --siblings` 호출은 K869의 link 선언 파일이 된다. 원인: kit 0.0.77은 orm 0.0.19에 필요한 run-tests의 PHPUnit vendor(K899)와 PHPUnit 자식 process의 extension(K900)을 고친다. K895는 렌더되는 page에서 꺾쇠 안 날것 단어를 거부하고, K869는 sibling flag를 대체한다 | package.json, package-lock.json, config/documents.json, Makefile, .github/workflows/gates.yml, .github/workflows/release.yml, CHANGELOG.md, CHANGELOG.ko.md | `make kit-check repo-check documents-check` | [ ] |
