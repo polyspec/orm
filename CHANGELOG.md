@@ -5,6 +5,7 @@
 
 ## 0.0.19
 
+- The parity targets export ORM_PHP_DYNAMIC_MODULES, so the DeclarationsTest of the php-extension bindings reads the modules that the extension loads dynamically (T301).
 - orm takes kit 0.0.78: the restamped PRINCIPLES.ko.md of K909, and the make link --project of an installed kit that writes no Claude Code hook in CI (K916, K918) (KSTD-5-124).
 - Breaking: the generated Go getter of a plain column is `Get<X>() (T, error)` and returns `COLUMN_UNSELECTED` for a column that the read did not select (DBS-112); 0.0.18 generated `Get<X>() T`, so a caller takes the error. The generated date, time and datetime setters take the text form since T189, which also breaks a caller that passed a native value (T300).
 - make exports every variable of its TEST_ENV, as the CI contexts export the run env, so a unit that kit starts from make, such as the native suite of test-php-ext, finds the server DSNs under make run-databases (T299).

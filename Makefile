@@ -2181,6 +2181,9 @@ $(PARITY_GATE_TARGETS): export FLOWMARK := $(FLOWMARK)
 $(PARITY_GATE_TARGETS): export ORM_PARITY_PHP_EXTENSION = $(PARITY_RUN_DIR)/polyspec_orm.so
 $(PARITY_GATE_TARGETS): export ORM_PARITY_PHP_EXTENSION_NATIVE_TEST = $(PARITY_NATIVE_TEST_EXTENSION)
 $(PARITY_GATE_TARGETS): export POLYSPEC_ORM_EXTENSION = $(PARITY_RUN_DIR)/polyspec_orm.so
+# ORM_PHP_DYNAMIC_MODULES names the modules the extension loads dynamically, as test-php-ext exports it (T296), for the
+# DeclarationsTest of the php-extension bindings.
+$(PARITY_GATE_TARGETS): export ORM_PHP_DYNAMIC_MODULES = $(PHP_EXTENSION_DYNAMIC_MODULES)
 # ORM_SEND_SQLITE_DSN names a file in the run-owned directory; the send-savepoint cases create it themselves.
 $(PARITY_GATE_TARGETS): export ORM_SEND_SQLITE_DSN = sqlite://$(PARITY_RUN_DIR)/send-savepoint.sqlite
 # ORM_CHECKOUT is the checkout root: a binding command names it with ${ORM_CHECKOUT}, since kit forbids .. in a command word.
