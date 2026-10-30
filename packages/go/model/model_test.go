@@ -742,6 +742,7 @@ func TestAESRotation(t *testing.T) {
 
 // TestDuplicateRelationNamesTheAliasCall: two unaliased relations of one child entity have one result name, and the CONFIG message names that
 // result and the alias call (CPX-5).
+// Requirements: CPX-5, DSL-128.
 func TestDuplicateRelationNamesTheAliasCall(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {

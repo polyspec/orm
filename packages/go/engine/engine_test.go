@@ -147,6 +147,7 @@ func TestRowLock(t *testing.T) {
 	}
 }
 
+// Requirements: DSL-95.
 func TestJoinAndPlacement(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	e := testEngine(t)

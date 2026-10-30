@@ -291,7 +291,7 @@ A host-native API uses its host language’s public primitive and has no common 
 
 | Requirement | Completion item | Runtime | Status | Host primitive | Executable case |
 |---|---|---|---|---|---|
-| CFG-9 | KSTD-2-11-16 | go | implemented | Db.WithContext | packages/go/orm/cancel_test.go::TestWithContextCancels |
+| CFG-9 | KSTD-2-11-16 | go | implemented | Db.WithContext | packages/go/orm/cancel_test.go::TestWithContextCancels<br>packages/go/orm/cancel_test.go::TestWithContextCancelsInsideTransaction |
 | CFG-9 | KSTD-2-11-16 | php | implemented | Cancellation::cancel and Db::withCancellation | packages/php/tests/QueryCancellationTest.php::testCancellationInterruptsSqliteVmRollsBackAndKeepsRootConnectionUsable<br>packages/php/tests/QueryCancellationTest.php::testPostgresNoticeCancelsActiveStatementRollsBackAndReusesRoot<br>packages/php/tests/QueryCancellationTest.php::testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot |
 | CFG-9 | KSTD-2-11-16 | php-extension | implemented | Cancellation::cancel and Db::withCancellation | packages/php-ext/tests/QueryCancellationNativeTest.php::testNativeCancellationInterruptsSqliteRollsBackAndKeepsRootConnectionUsable<br>packages/php-ext/tests/QueryCancellationNativeTest.php::testPostgresNoticeCancelsActiveStatementRollsBackAndReusesRoot<br>packages/php-ext/tests/QueryCancellationNativeTest.php::testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot |
 | CFG-9 | KSTD-2-11-16 | python | implemented | Db.with_future | packages/python/tests/coverage_transactions.py::test_handle_abandoned_query<br>packages/python/tests/test_query_cancel.py::test_cancel_interrupts_active_statement_and_root_is_reusable |

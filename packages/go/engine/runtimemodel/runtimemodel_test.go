@@ -131,6 +131,7 @@ func TestLoadRejectsInvalidManifestText(t *testing.T) {
 
 // TestLoadFilesRejectsFileWithoutSignature checks that a file with no signature (a DbSchema project XML,
 // an empty file) is rejected, without parsing it, by a single SCHEMA_INVALID signature diagnostic.
+// Requirements: DBS-4, DBS-155.
 func TestLoadFilesRejectsFileWithoutSignature(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, name := range []string{"dbschema.dbs", "empty.dbs"} {

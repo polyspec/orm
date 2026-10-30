@@ -61,6 +61,7 @@ func recovered(fn func()) (value any) {
 // TestTransactionReportsFailedLockRelease checks that when MySQL RELEASE_LOCK at the end of a transaction
 // fails or cannot release the lock, commit and rollback return that error.
 // That connection is not returned to the pool (TestFailedTransactionEndDiscardsConnection).
+// Requirements: INT-72.
 func TestTransactionReportsFailedLockRelease(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	dsn := os.Getenv("ORM_TEST_MYSQL_DSN")
@@ -112,6 +113,7 @@ func TestTransactionReportsFailedLockRelease(t *testing.T) {
 // fails, the connection is discarded rather than returned to the pool. The session's state after a failed cleanup cannot be known,
 // so a connection returned to the pool is either clean or discarded. In a pool with one connection, the next use
 // receives the same session (CONNECTION_ID) if the connection came back, and a named lock not released remains on that session.
+// Requirements: INT-72.
 func TestFailedTransactionEndDiscardsConnection(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	dsn := os.Getenv("ORM_TEST_MYSQL_DSN")
@@ -205,6 +207,7 @@ func TestFailedTransactionEndDiscardsConnection(t *testing.T) {
 // TestTransactionReportsFailedRollback checks that when the native rollback fails, the callback
 // error, a panic, a callback that has already ended, and a failed begin report that error together
 // (checked).
+// Requirements: INT-72.
 func TestTransactionReportsFailedRollback(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	useFailingDriver(t, "sqlite")
@@ -262,6 +265,7 @@ func TestTransactionReportsFailedRollback(t *testing.T) {
 // TestTransactionReportsFailedSQLiteModeReset checks that when the PRAGMA restoring the SQLite read-only mode
 // fails, commit and rollback return that error. A query_only that could not be
 // restored remains on the connection.
+// Requirements: INT-72.
 func TestTransactionReportsFailedSQLiteModeReset(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	useFailingDriver(t, "sqlite")

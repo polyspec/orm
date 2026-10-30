@@ -246,6 +246,7 @@ func TestAnalyzeIsParse(t *testing.T) {
 // TestFormat checks that a document with no diagnostic formats to its
 // canonical text, that the output formats to itself, and that a document with
 // a diagnostic is refused with the diagnostics of Parse.
+// Requirements: DBS-141, ORES-14.
 func TestFormat(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	text := joinLines(sampleDocument, false)

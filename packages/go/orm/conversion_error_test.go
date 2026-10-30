@@ -96,6 +96,7 @@ func mustInt64(v any) int64 {
 	return n
 }
 
+// Requirements: INT-98.
 func TestDatabaseValueConversionRejectsInvalidValues(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, v := range []any{nil, "bad", "1.5", uint64(math.MaxUint64), math.Inf(1)} {
@@ -142,6 +143,7 @@ func TestDatabaseValueConversionRejectsInvalidValues(t *testing.T) {
 }
 
 // A time(p) value is text with exactly p fractional digits.
+// Requirements: INT-99.
 func TestTimeTextHasExactlyPrecisionDigits(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, c := range []struct {
@@ -158,6 +160,7 @@ func TestTimeTextHasExactlyPrecisionDigits(t *testing.T) {
 	}
 }
 
+// Requirements: INT-99.
 func TestDatabaseValueConversionPreservesValidValues(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	if got, err := orm.AsInt64("42"); err != nil || got != 42 {

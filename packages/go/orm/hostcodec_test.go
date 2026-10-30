@@ -53,6 +53,7 @@ func TestHostAESReadsSharedFixedVector(t *testing.T) {
 	}
 }
 
+// Requirements: COD-4.
 func TestBlindIndexIsStableAndKeyed(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	a, err := BlindIndex("member@example.test", "blind-key")
@@ -93,6 +94,7 @@ func TestHostEncodingRejectsUnsupportedInput(t *testing.T) {
 	}
 }
 
+// Requirements: COD-6.
 func TestHostAESDecodesByStoredVersion(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	oldValue, err := HostEncode("old@example.test", []string{"aes"}, "old-key")

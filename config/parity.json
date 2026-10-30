@@ -3642,6 +3642,11 @@
           "id": "TestIntrospectRoundTrip"
         },
         {
+          "implementation": "go",
+          "test": "packages/go/engine/dbspec/introspect_query_count_test.go",
+          "id": "TestIntrospectSQLiteFulltextTableMatchesSharedFixture"
+        },
+        {
           "implementation": "php",
           "test": "packages/php/tests/DbspecIntrospectTest.php",
           "id": "DbspecIntrospectTest::testRoundTrip"
@@ -3988,6 +3993,11 @@
           "implementation": "go",
           "test": "packages/go/engine/dbspec/manifest_test.go",
           "id": "TestDocumentSets/repeated-document-name"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/engine/dbspec/manifest_test.go",
+          "id": "TestManifestRejectsRepeatedDocumentName"
         },
         {
           "implementation": "php",
@@ -4743,6 +4753,11 @@
             "FEATURE_TEST=TestCoverageGeneratedModelConnection",
             "FEATURE_PACKAGE=./model"
           ]
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/dsn_test.go",
+          "id": "TestDriverFromDSN"
         },
         {
           "implementation": "php",
@@ -6776,6 +6791,11 @@
           "implementation": "go",
           "test": "packages/go/orm/cancel_test.go",
           "id": "TestWithContextCancels"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/cancel_test.go",
+          "id": "TestWithContextCancelsInsideTransaction"
         },
         {
           "implementation": "typescript",
@@ -8943,6 +8963,11 @@
           "implementation": "go",
           "test": "packages/go/orm/plan_cache_test.go",
           "id": "TestCanonicalizePadsInListAndRejectsOutOfRangeParam"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/plan_cache_test.go",
+          "id": "TestPadInRepeatsTheLastCompositeTuple"
         }
       ]
     },
@@ -9259,6 +9284,16 @@
           "implementation": "go",
           "test": "packages/go/engine/query_forms_test.go",
           "id": "TestExplicitKeyJoinPlacesChildConditionsInGroup"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/engine/engine_test.go",
+          "id": "TestJoinAndPlacement"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/engine/query_forms_test.go",
+          "id": "TestUnplacedJoinConditionsAreAppended"
         },
         {
           "implementation": "php",
@@ -14210,6 +14245,11 @@
           "id": "TestApplyChain"
         },
         {
+          "implementation": "go",
+          "test": "packages/go/engine/dbspec/apply_test.go",
+          "id": "TestFinalizeMarksPlanDone"
+        },
+        {
           "implementation": "php",
           "test": "packages/php/tests/DbspecApplyTest.php",
           "id": "DbspecApplyTest::testScenario"
@@ -14995,6 +15035,11 @@
           "id": "TestGoGenerationCommandReportsSetErrors/file_diagnostics"
         },
         {
+          "implementation": "go",
+          "test": "packages/go/engine/runtimemodel/runtimemodel_test.go",
+          "id": "TestLoadFilesRejectsFileWithoutSignature"
+        },
+        {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenCliTest.php",
           "id": "OrmGenCliTest::testGenRejectsAFileWithoutTheDbspecSignature"
@@ -15334,6 +15379,22 @@
             "FEATURE_DATABASE=mysql",
             "FEATURE_DSN_ENV=BENCH_MYSQL_DSN",
             "FEATURE_TEST=TestCoverageCatalogRead",
+            "FEATURE_PACKAGE=./orm"
+          ]
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_catalog_connection_test.go",
+          "id": "TestCoverageCatalogGridCells",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageCatalogGridCells",
             "FEATURE_PACKAGE=./orm"
           ]
         },
@@ -17197,6 +17258,11 @@
           "id": "TestGroupCountRejectsInvalidStoredBoolean"
         },
         {
+          "implementation": "go",
+          "test": "packages/go/orm/group_rows_test.go",
+          "id": "TestGroupColumnValueChecksDeclaredType"
+        },
+        {
           "implementation": "php",
           "test": "packages/php/tests/GroupRowsTest.php",
           "id": "GroupRowsTest::testGroupValueRejectsInvalidStoredBoolean"
@@ -17544,6 +17610,11 @@
           "id": "TestDecodeSelectedRowRejectsInvalidRuntimeScalars"
         },
         {
+          "implementation": "go",
+          "test": "packages/go/orm/conversion_error_test.go",
+          "id": "TestDatabaseValueConversionRejectsInvalidValues"
+        },
+        {
           "implementation": "php",
           "test": "packages/php/tests/RuntimeDbTest.php",
           "id": "RuntimeDbTest::testInvalidStoredCellsFailTypedReads"
@@ -17719,6 +17790,38 @@
             "FEATURE_DATABASE=sqlite",
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=TestCoverageCatalogRead",
+            "FEATURE_PACKAGE=./orm"
+          ]
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_catalog_connection_test.go",
+          "id": "TestCoverageCatalogGridCells",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageCatalogGridCells",
+            "FEATURE_PACKAGE=./orm"
+          ]
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_catalog_connection_test.go",
+          "id": "TestCoverageCatalogGridDeclared",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageCatalogGridDeclared",
             "FEATURE_PACKAGE=./orm"
           ]
         },
@@ -18969,6 +19072,11 @@
           "id": "TestGeneratedFieldTypes"
         },
         {
+          "implementation": "go",
+          "test": "packages/go/orm/timezone_test.go",
+          "id": "TestNativeTimeIsRefusedByDatetime"
+        },
+        {
           "implementation": "php",
           "test": "packages/php/tests/ModelMethodsTest.php",
           "id": "ModelMethodsTest::testATimeSetterTakesTheTextForm"
@@ -19164,6 +19272,21 @@
           "implementation": "go",
           "test": "packages/go/generator/gen_go_check_test.go",
           "id": "TestGoGenerationCheckReportsDifferences"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_check_test.go",
+          "id": "TestGoGenerationCheckReportsAHandWrittenFileOfAGeneratedName"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_check_test.go",
+          "id": "TestGoGenerationCheckKeepsOutputOnGenerationError"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_check_test.go",
+          "id": "TestGoGenerationCheckCommandReportsDifferences"
         },
         {
           "implementation": "php",
@@ -25739,6 +25862,11 @@
           "id": "TestGroupRowsRejectInvalidCountsAndPreserveSelectedValues"
         },
         {
+          "implementation": "go",
+          "test": "packages/go/orm/group_rows_test.go",
+          "id": "TestGroupColumnDeclarationRejectsMissingAndDuplicateCount"
+        },
+        {
           "implementation": "php",
           "test": "packages/php/tests/GroupRowsTest.php",
           "id": "GroupRowsTest::testOwner"
@@ -27175,6 +27303,26 @@
           "id": "TestCatalogSessionEndReportsRollbackCauseWithoutPrimary"
         },
         {
+          "implementation": "go",
+          "test": "packages/go/orm/transaction_end_test.go",
+          "id": "TestTransactionReportsFailedLockRelease"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/transaction_end_test.go",
+          "id": "TestFailedTransactionEndDiscardsConnection"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/transaction_end_test.go",
+          "id": "TestTransactionReportsFailedRollback"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/transaction_end_test.go",
+          "id": "TestTransactionReportsFailedSQLiteModeReset"
+        },
+        {
           "implementation": "rust",
           "test": "packages/rust/orm/src/tx.rs",
           "id": "tx::tests::dropped_transaction_closes_its_connection"
@@ -27457,6 +27605,11 @@
           "implementation": "go",
           "test": "packages/go/orm/install_test.go",
           "id": "TestSchemaEmpty"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/install_test.go",
+          "id": "TestInstallAppliesRenderedStatements"
         },
         {
           "implementation": "php",
@@ -28092,6 +28245,11 @@
           "implementation": "go",
           "test": "packages/go/model/sqlite_concurrency_test.go",
           "id": "TestSQLiteWritersOnSeveralConnections"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/model/sqlite_concurrency_test.go",
+          "id": "TestSQLiteWritersInSeveralProcesses"
         },
         {
           "implementation": "php",
@@ -28733,6 +28891,16 @@
           "id": "TestAnalyzeSampleTokens"
         },
         {
+          "implementation": "go",
+          "test": "packages/go/engine/dbspec/analyze_test.go",
+          "id": "TestAnalyzeClasses"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/engine/dbspec/analyze_test.go",
+          "id": "TestAnalyzeIsParse"
+        },
+        {
           "implementation": "php",
           "test": "packages/php/tests/CoverageSchemaDefinitionTest.php",
           "id": "CoverageSchemaDefinitionTest::testDbspecAnalyzeTokens"
@@ -28787,6 +28955,11 @@
           "id": "TestCoverageDbspecFormat"
         },
         {
+          "implementation": "go",
+          "test": "packages/go/engine/dbspec/analyze_test.go",
+          "id": "TestFormat"
+        },
+        {
           "implementation": "php",
           "test": "packages/php/tests/CoverageSchemaDefinitionTest.php",
           "id": "CoverageSchemaDefinitionTest::testDbspecFormat"
@@ -28825,6 +28998,11 @@
           "implementation": "go",
           "test": "packages/go/orm/coverage_schema_definition_test.go",
           "id": "TestCoverageDbspecFormatRefusal"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/engine/dbspec/analyze_test.go",
+          "id": "TestFormat"
         },
         {
           "implementation": "php",
@@ -28903,6 +29081,11 @@
           "implementation": "go",
           "test": "packages/go/orm/coverage_authenticated_encryption_test.go",
           "id": "TestCoverageAesEnvelopeDecrypt"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/hostcodec_test.go",
+          "id": "TestHostAESReadsSharedFixedVector"
         },
         {
           "implementation": "php",
@@ -29037,6 +29220,11 @@
           "id": "TestCoverageAesWrongKeyRejected"
         },
         {
+          "implementation": "go",
+          "test": "packages/go/orm/hostcodec_test.go",
+          "id": "TestHostAESDecodesByStoredVersion"
+        },
+        {
           "implementation": "php",
           "test": "packages/php/tests/CoverageAuthenticatedEncryptionTest.php",
           "id": "CoverageAuthenticatedEncryptionTest::testAesWrongKeyRejected"
@@ -29079,6 +29267,11 @@
           "implementation": "go",
           "test": "packages/go/orm/coverage_authenticated_encryption_test.go",
           "id": "TestCoverageBlindIndexVector"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/hostcodec_test.go",
+          "id": "TestBlindIndexIsStableAndKeyed"
         },
         {
           "implementation": "php",
@@ -29808,6 +30001,11 @@
           "id": "TestCPX5DuplicateRelationNameIsRejectedDuringQueryCompilation"
         },
         {
+          "implementation": "go",
+          "test": "packages/go/model/model_test.go",
+          "id": "TestDuplicateRelationNamesTheAliasCall"
+        },
+        {
           "implementation": "php",
           "test": "packages/php/tests/Cpx5DuplicateRelationTest.php",
           "id": "Cpx5DuplicateRelationTest::testGetQueryRejectsDuplicateRelationWithAliasHint"
@@ -30267,6 +30465,11 @@
           "implementation": "go",
           "test": "packages/go/generator/gen_go_test.go",
           "id": "TestGeneratedFieldTypes"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_scan_test.go",
+          "id": "TestGoGeneratedScalarGetterCompilesAtItsDeclaredType"
         },
         {
           "implementation": "php",
@@ -30895,6 +31098,22 @@
           "id": "TestGroupRowsDatabase"
         },
         {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_model_queries_test.go",
+          "id": "TestCoverageGroupRowsDatabase",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageGroupRowsDatabase",
+            "FEATURE_PACKAGE=./model"
+          ]
+        },
+        {
           "implementation": "php",
           "test": "packages/php/tests/GroupRowsDbTest.php",
           "id": "GroupRowsDbTest::testGroupRows"
@@ -31511,6 +31730,11 @@
           "id": "TestSqliteSessionClassifiesBeginErrorAndRestoresState"
         },
         {
+          "implementation": "go",
+          "test": "packages/go/engine/dbspec/sqlite_lock_result_test.go",
+          "id": "TestSqliteLockResult"
+        },
+        {
           "implementation": "php",
           "test": "packages/php/tests/DbspecSqliteLockTest.php",
           "id": "DbspecSqliteLockTest::testOnlySqliteBusyAndLockedErrorInfoCodesAreClassifiedAsLocks"
@@ -31843,6 +32067,16 @@
           "id": "TestAddTablesAndColumnsSQLite"
         },
         {
+          "implementation": "go",
+          "test": "packages/go/orm/add_tables_and_columns_test.go",
+          "id": "TestAddTablesAndColumnsMySQL"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/add_tables_and_columns_test.go",
+          "id": "TestAddTablesAndColumnsPostgres"
+        },
+        {
           "implementation": "php",
           "test": "packages/php/tests/AddTablesAndColumnsTest.php",
           "id": "AddTablesAndColumnsTest::testAddTablesAndColumns"
@@ -31887,6 +32121,16 @@
           "id": "TestAddTablesAndColumnsDiffersSQLite"
         },
         {
+          "implementation": "go",
+          "test": "packages/go/orm/add_tables_and_columns_test.go",
+          "id": "TestAddTablesAndColumnsDiffersMySQL"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/add_tables_and_columns_test.go",
+          "id": "TestAddTablesAndColumnsDiffersPostgres"
+        },
+        {
           "implementation": "php",
           "test": "packages/php/tests/AddTablesAndColumnsTest.php",
           "id": "AddTablesAndColumnsTest::testAddTablesAndColumnsDiffers"
@@ -31925,6 +32169,16 @@
           "implementation": "go",
           "test": "packages/go/orm/add_tables_and_columns_test.go",
           "id": "TestAddTablesAndColumnsIndexSQLite"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/add_tables_and_columns_test.go",
+          "id": "TestAddTablesAndColumnsIndexMySQL"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/add_tables_and_columns_test.go",
+          "id": "TestAddTablesAndColumnsIndexPostgres"
         },
         {
           "implementation": "php",
@@ -31976,6 +32230,16 @@
           "id": "TestAddTablesAndColumnsTransactionSQLite"
         },
         {
+          "implementation": "go",
+          "test": "packages/go/orm/add_tables_and_columns_test.go",
+          "id": "TestAddTablesAndColumnsTransactionMySQL"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/add_tables_and_columns_test.go",
+          "id": "TestAddTablesAndColumnsTransactionPostgres"
+        },
+        {
           "implementation": "php",
           "test": "packages/php/tests/AddTablesAndColumnsTest.php",
           "id": "AddTablesAndColumnsTest::testAddTablesAndColumnsTransaction"
@@ -32023,6 +32287,16 @@
           "implementation": "go",
           "test": "packages/go/orm/add_tables_and_columns_test.go",
           "id": "TestAddTablesAndColumnsEditedManifestSQLite"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/add_tables_and_columns_test.go",
+          "id": "TestAddTablesAndColumnsEditedManifestMySQL"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/add_tables_and_columns_test.go",
+          "id": "TestAddTablesAndColumnsEditedManifestPostgres"
         },
         {
           "implementation": "php",
@@ -32571,6 +32845,11 @@
           "implementation": "go",
           "test": "packages/go/engine/dbspec/apply_test.go",
           "id": "TestApplyReportsCleanupErrors"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/engine/dbspec/apply_test.go",
+          "id": "TestApplyStopWithCleanupFailureReturnsJoin"
         }
       ],
       "owner": {
@@ -33337,6 +33616,16 @@
           "id": "TestRuntimeValueTypes"
         },
         {
+          "implementation": "go",
+          "test": "packages/go/orm/conversion_error_test.go",
+          "id": "TestTimeTextHasExactlyPrecisionDigits"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/conversion_error_test.go",
+          "id": "TestDatabaseValueConversionPreservesValidValues"
+        },
+        {
           "implementation": "php",
           "test": "packages/php/tests/RuntimeDbTest.php",
           "id": "RuntimeDbTest::testI16ValuesAndDefaults"
@@ -33409,6 +33698,11 @@
           "implementation": "go",
           "test": "packages/go/orm/value_types_test.go",
           "id": "TestRuntimeValueTypes"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/model/styled_state_test.go",
+          "id": "TestStyledStatesAcrossDatabases"
         },
         {
           "implementation": "rust",

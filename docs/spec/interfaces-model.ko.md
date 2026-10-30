@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces-model -->
-<!-- source-sha256: d1324d959b1792239c4cb71b5a4916cc35fc72485381a2e196abeec110811878 -->
+<!-- source-sha256: ca9465a6a4ca99d3a6b17795a97665886aa0a3c78bcc84bbb3b16af1a7558c53 -->
 # 공통 구성요소
 
 <!-- contracts/interfaces.json에서 생성됨. 직접 수정하지 않는다. -->
@@ -292,7 +292,7 @@ Host-native API는 해당 host의 공개 primitive 형식으로만 선언하며 
 
 | 요구사항 | 완료 checklist 항목 | Runtime | 상태 | Host primitive | 실행 case |
 |---|---|---|---|---|---|
-| CFG-9 | KSTD-2-11-16 | go | implemented | Db.WithContext | packages/go/orm/cancel_test.go::TestWithContextCancels |
+| CFG-9 | KSTD-2-11-16 | go | implemented | Db.WithContext | packages/go/orm/cancel_test.go::TestWithContextCancels<br>packages/go/orm/cancel_test.go::TestWithContextCancelsInsideTransaction |
 | CFG-9 | KSTD-2-11-16 | php | implemented | Cancellation::cancel and Db::withCancellation | packages/php/tests/QueryCancellationTest.php::testCancellationInterruptsSqliteVmRollsBackAndKeepsRootConnectionUsable<br>packages/php/tests/QueryCancellationTest.php::testPostgresNoticeCancelsActiveStatementRollsBackAndReusesRoot<br>packages/php/tests/QueryCancellationTest.php::testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot |
 | CFG-9 | KSTD-2-11-16 | php-extension | implemented | Cancellation::cancel and Db::withCancellation | packages/php-ext/tests/QueryCancellationNativeTest.php::testNativeCancellationInterruptsSqliteRollsBackAndKeepsRootConnectionUsable<br>packages/php-ext/tests/QueryCancellationNativeTest.php::testPostgresNoticeCancelsActiveStatementRollsBackAndReusesRoot<br>packages/php-ext/tests/QueryCancellationNativeTest.php::testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot |
 | CFG-9 | KSTD-2-11-16 | python | implemented | Db.with_future | packages/python/tests/coverage_transactions.py::test_handle_abandoned_query<br>packages/python/tests/test_query_cancel.py::test_cancel_interrupts_active_statement_and_root_is_reusable |

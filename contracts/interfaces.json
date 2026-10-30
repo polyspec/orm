@@ -92,7 +92,10 @@
           "status": "implemented",
           "primitive": "Db.WithContext",
           "surface": "Db.withContext",
-          "cases": [{ "test": "packages/go/orm/cancel_test.go", "id": "TestWithContextCancels" }]
+          "cases": [
+            { "test": "packages/go/orm/cancel_test.go", "id": "TestWithContextCancels" },
+            { "test": "packages/go/orm/cancel_test.go", "id": "TestWithContextCancelsInsideTransaction" }
+          ]
         },
         "typescript": {
           "status": "implemented",

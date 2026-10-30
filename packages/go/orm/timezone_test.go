@@ -526,6 +526,7 @@ func TestStatementTimeoutThroughAPooler(t *testing.T) {
 
 // TestNativeTimeIsRefusedByDatetime checks that a native time.Time is no value of a datetime column: the
 // setter takes the text form only, so the write is refused with CODEC_ENCODE.
+// Requirements: DBS-121.
 func TestNativeTimeIsRefusedByDatetime(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "zone")
