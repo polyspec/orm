@@ -35,10 +35,11 @@ caseTest('Rust workspace dispatch skips only the database cases owned by the fea
   assert.ok(rustCommand?.endsWith('--exact'), 'libtest skips must match the full declared symbol');
 });
 
-caseTest('the rust lane runs the ignored sections of the integration program once, one at a time', COMPUTE, () => {
+caseTest('the rust lane runs only the ignored sections of the integration program, one at a time', COMPUTE, () => {
   const command = CLIENT_DB_COMMANDS.find(entry => entry.includes('tests/cargo-test.mts integration-program'));
   assert.ok(command?.includes('-p polyspec-orm-tests'), `the integration program command: ${command}`);
-  assert.ok(command?.endsWith('--test integration_program -- --include-ignored --test-threads=1'), `the integration program command: ${command}`);
+  assert.ok(command?.endsWith('--test integration_program -- --ignored --test-threads=1'), `the integration program command: ${command}`);
+  assert.ok(!command?.includes('--include-ignored'), `the non-ignored tests of the integration program belong to the workspace lane: ${command}`);
 });
 
 // fake logs each program's arguments, and provides a fake program that prints one line and exits with 3 when an argument contains failing.

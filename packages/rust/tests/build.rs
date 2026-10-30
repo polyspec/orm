@@ -1,10 +1,11 @@
+#[path = "bench_model.rs"]
+mod bench_model;
+
 fn main() {
-    let mut builder = polyspec_orm_build::Builder::set("../../../contracts/fixtures/bench/dbspec-set.json")
-        .scan("src")
-        .scan("tests/integration")
-        .scan("tests/integration_program")
-        .scan("../../../examples/complex/rust")
-        .scan("../../../examples/thin-slice/rust");
+    let mut builder = polyspec_orm_build::Builder::set(bench_model::SET);
+    for path in bench_model::SCAN {
+        builder = builder.scan(*path);
+    }
     println!("cargo:rerun-if-env-changed=ORM_COMPILER_FIXTURE_SOURCE");
     if let Some(source) = std::env::var_os("ORM_COMPILER_FIXTURE_SOURCE") {
         builder = builder.scan(std::path::PathBuf::from(source));

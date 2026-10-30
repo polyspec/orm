@@ -4,17 +4,17 @@ use polyspec_orm_testcase::OrPanic;
 
 use std::path::Path;
 
-/// Generates into `out` with the same set and scan paths as build.rs, and reads the model, manifest and external text.
+#[path = "../bench_model.rs"]
+mod bench_model;
+
+/// Generates into `out` with the set and scan paths that build.rs reads from bench_model.rs, and reads the model, manifest and external text.
 fn generate(out: &Path) -> (String, String, String) {
     let root = polyspec_orm_testcase::manifest_dir();
-    let model = polyspec_orm_build::Builder::set(root.join("../../../contracts/fixtures/bench/dbspec-set.json"))
-        .scan(root.join("src"))
-        .scan(root.join("tests/integration"))
-        .scan(root.join("../../../examples/complex/rust"))
-        .scan(root.join("../../../examples/thin-slice/rust"))
-        .out_dir(out)
-        .try_generate()
-        .or_panic(|e| format!("generate: {e}"));
+    let mut builder = polyspec_orm_build::Builder::set(root.join(bench_model::SET));
+    for path in bench_model::SCAN {
+        builder = builder.scan(root.join(path));
+    }
+    let model = builder.out_dir(out).try_generate().or_panic(|e| format!("generate: {e}"));
     let read = |path: &Path| std::fs::read_to_string(path).or_panic(|e| format!("{}: {e}", path.display()));
     (read(&model), read(&out.join(polyspec_orm_build::MANIFEST_FILE)), read(&out.join(polyspec_orm_build::EXTERNAL_FILE)))
 }

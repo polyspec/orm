@@ -120,14 +120,15 @@ const RUST_TESTS: Command = {
   cwd: join(root, 'packages/rust'),
   env: { ORM_BUILD_TEST_ROOT: resolve(root, 'packages/rust/build') },
 };
-// The sections of the integration program (packages/rust/tests/tests/integration_program) are ignored trials, which the
-// workspace run leaves out; they run once, one at a time, since each runs its case on every driver. tests/cargo-test.mts
+// The sections of the integration program (packages/rust/tests/tests/integration_program) are its ignored trials, which the
+// workspace run leaves out; --ignored runs only them, once, one at a time, since each runs its case on every driver. The
+// other tests of the program run in the workspace run, where the database coverage tests are skipped. tests/cargo-test.mts
 // fails when the build fails, so a failed build is a failure of the lane.
 const RUST_INTEGRATION: Command = {
   program: 'node',
   args: [
     '../../tests/cargo-test.mts', 'integration-program', '--', 'cargo', 'test', '--locked', '-p', 'polyspec-orm-tests', '--features', variable('ORM_RUST_TEST_FEATURES'),
-    '--test', 'integration_program', '--', '--include-ignored', '--test-threads=1',
+    '--test', 'integration_program', '--', '--ignored', '--test-threads=1',
   ],
   cwd: join(root, 'packages/rust'),
 };
