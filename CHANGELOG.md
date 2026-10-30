@@ -5,6 +5,7 @@
 
 ## 0.0.19
 
+- The shared gates job installs the Go module that tests/lease builds with (make orm-install-go-lease), since parity-declarations-check builds the TypeScript client through lease-tool (T261).
 - The offline Makefile check accepts the lock targets, which write a lock from the network as an install does, so make orm-python-lock no longer fails runner-check (T263).
 - orm takes the released kit 0.0.75 in place of 0.0.73, with the release workflow that kit-sync writes from it (KSTD-5-122).
 - make orm-install-python installs the Python client editable, as uv sync does by default: the non-editable install of KSTD-5-104 left out the fixture models that python-models writes into src/polyspec/orm/models, so every Python test that imports polyspec.orm.models failed in a fresh venv, and a source change stayed uninstalled; kit K855 reads the Python symbols from the source package, which removes the reason (T259).

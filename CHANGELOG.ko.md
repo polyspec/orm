@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7442d98394e5045a9246c56cacfb8cf69451392b3f13429dbb4dee513529ff09 -->
+<!-- source-sha256: 185c3fc304498af4acb3efc5dc5bdde93792b767372cfeb11d8638282c904e89 -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.19
 
+- 공유 gates job은 tests/lease가 build하는 Go module을 설치합니다(make orm-install-go-lease). parity-declarations-check가 lease-tool을 거쳐 TypeScript client를 build하기 때문입니다(T261).
 - offline Makefile 검사는 install처럼 network에서 lock을 쓰는 lock target을 받아들이므로, make orm-python-lock이 더 이상 runner-check를 실패시키지 않습니다(T263).
 - orm은 0.0.73 대신 release된 kit 0.0.75를 받고, kit-sync가 그로부터 쓰는 release workflow를 받는다 (KSTD-5-122).
 - make orm-install-python은 uv sync의 기본값대로 Python client를 editable로 설치한다: KSTD-5-104의 non-editable 설치는 python-models가 src/polyspec/orm/models에 쓰는 fixture model을 빠뜨려 새 venv에서 polyspec.orm.models를 import하는 모든 Python test가 실패했고 source 변경은 설치되지 않은 채 남았다. kit K855가 Python symbol을 source package에서 읽어 그 이유를 없앤다 (T259).
