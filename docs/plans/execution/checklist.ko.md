@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: c6f56952e251635a9c78e13859be1cc51566403f5e05bbfd641694f283cbea79 -->
+<!-- source-sha256: ce5ce8a6dbee2fe64a47b34c0319dc14d08b3617325e7d76b83d56bbf2b9a148 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1357,3 +1357,4 @@
 | T269 | complex query와 hot-path gate의 Python parity binding은 load 가능한 test를 가리킨다. 원인: KSTD-5-94(16204d8e6)가 complex-query와 mysql hot-path test를 test class 없이 가리켰고, KSTD-5-89-9(fcda34baa)가 postgres와 sqlite hot-path binding에 command를 주지 않아, unittest가 _FailedTest를 load하거나 ORM_FEATURE_DATABASE 없이 돈다(gates 40979519777, job parity-bindings python) | config/parity.json, CHANGELOG.md, CHANGELOG.ko.md | `make parity-bindings-python-check` | [ ] |
 | T270 | PHP test helper는 model을 process 밖에서 생성하므로, extension run은 PHP library의 file을 load하지 않는다. 원인: statement_events_run.php, request_hook_cases.php, CoverageAuditColumnsTest.php, generated_fixture.php가 Polyspec\Orm\Generator를 process 안에서 부르고, KSTD-5-109의 run guard가 Generator.php를 load한 extension run을 실패시킨다(ci 40979519721, job feature_php_extension_mysql, _postgres, _sqlite, client_db_php_extension) | packages/php/tests/statement_events_run.php, packages/php/tests/request_hook_cases.php, packages/php/tests/CoverageAuditColumnsTest.php, packages/php/tests/generated_fixture.php, CHANGELOG.md, CHANGELOG.ko.md | `make feature-coverage/php-extension/sqlite aes-json-php-extension-check` | [ ] |
 | T271 | TypeScript thin-slice 예제는 datetime을 text로 bind한다. 원인: T89-3(ba706048e)이 date, time, datetime slot을 text 전용으로 만들었는데, 그 뒤 추가된 예제(6df466075)가 Date object를 넘겨 example-check가 CODEC_ENCODE: parameter 4 (object) is not a datetime value로 실패한다(ci 40979519721, job clients_db) | examples/thin-slice/ts/main.mts, CHANGELOG.md, CHANGELOG.ko.md | `make example-check` | [ ] |
+| T272 | client-pooler-check는 그 php-extension lane이 build에 쓰는 PHP extension tool을 선언하고 설치한다. 원인: KSTD-5-88-6(97c9bd975)이 client test에 php-extension lane을 추가했는데, client-pooler-check에는 contracts/check-inputs.json의 php-extension-tools need도 prerequisite orm-install-php-extension-tools도 없어 build가 var/tools/php-arginfo/gen_stub.php를 찾지 못한다(ci 40979519721, job clients_pooler) | contracts/check-inputs.json, Makefile, scripts/check/run.test.mts, CHANGELOG.md, CHANGELOG.ko.md | `make runner-check` | [ ] |
