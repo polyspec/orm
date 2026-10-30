@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: a08198dc67cdd69aa7b2e576656e2899d3a3dbb9944e423b18551b6251fdd311 -->
+<!-- source-sha256: 0fe2c3b4753f92d87564b3051b6d6d149fbbcfc47d156a526876ae0be4441bb1 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -553,3 +553,4 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 - **INT-146** PHP-extension 패키지 `polyspec/orm-php-ext`는 native extension 선언을 통해 INT-144와 같은 `Polyspec\Orm\Go::quote`, `Go::json`, `GoMap` 텍스트 동작을 공개한다. 인용 문자열과 JSON 문서는 Go 호환 이스케이프, 순서, 잘못된 UTF-8 처리 및 지원하지 않는 값 오류를 동일하게 따른다.
 - **INT-147** Python `polyspec-orm` 패키지는 engine dialect hook을 Python 형식으로 공개한다: `MysqlDialect.restart_identity`, `PostgresDialect.restart_identity`, `SqliteDialect.restart_identity`, `PostgresDialect.read_uuid`, `PostgresDialect.write_uuid`, `SqliteDialect.row_lock`. 이는 기존 identity 재시작, UUID, row-lock 의미(PRT-2/27, DIA-48/PRT-67, PRT-8)의 native 선언이며 다른 client가 같은 callable dialect method를 제공한다는 뜻은 아니다.
 - **INT-148** Python wheel은 test-only fault facade인 `polyspec.orm.testing.fail_next_rollback`, `fail_next_statement`, `fix_clock`, `last_affected`를 공개한다. 이들은 명시적으로 import하며 `polyspec.orm`에서 재노출하지 않는다. 동작은 PRT-47, PRT-52, PRT-57, PRT-62에 정의한다.
+- **INT-149** PostgreSQL과 MySQL에서 모든 client의 연결은 이미 보낸 statement text에 대해 statement event마다 server transaction 하나를 쓴다(tests/events/vectors.json `server_transactions`). text를 처음 실행할 때 client는 마찬가지로 event마다 transaction 하나를 쓰거나, 따로 드는 round trip으로 text를 prepare해 서로 다른 text마다 transaction 하나를 더 쓴다. vector는 database마다 driver가 보내는 것에 따라 각 client를 `first_run_clients`나 `first_run_prepare_clients`에 올린다. PostgreSQL 연결은 또한 TimeZone을 SET statement가 아니라 startup parameter에서 받는다. SQLite에는 server process도 wire protocol도 없으므로 server-transaction 규칙이 적용되지 않는다.

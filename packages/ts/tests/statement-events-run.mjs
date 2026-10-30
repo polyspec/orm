@@ -155,38 +155,51 @@ export async function runEventCase(c, dialect, dsn, check) {
 }
 
 /**
- * Runs the server_transactions of the vector on the PostgreSQL case database dsn. The backend that the probe returns
- * is used to count the server transactions of one page run by the difference in local transaction numbers. Since the pool size is 1, all
- * statements run on one backend.
+ * Runs one entry of the vector's server_transactions on a case database dsn of its database. The difference in the
+ * values that the probe returns counts the server transactions of one page run. Since the pool size is 1, all
+ * statements run on one server connection. typescript must be in exactly one of first_run_clients and
+ * first_run_prepare_clients; for the second, the first run adds the number of statement texts to the event count.
  */
 export async function runServerTransactions(spec, dsn, check) {
+  const onePerEvent = spec.first_run_clients.includes('typescript');
+  const withPrepares = spec.first_run_prepare_clients.includes('typescript');
+  if (onePerEvent === withPrepares) throw new Error('typescript must be in exactly one of first_run_clients and first_run_prepare_clients');
   const setup = await Db.connectSchema(dsn, schema);
   try { await setup.utils().schema().install(schema); } finally { await setup.close(); }
   const db = await Db.connectSchema(dsn, schema, { poolSize: 1 });
   try {
     const u = db.utils();
-    const zone = await u.read('utility', [], "SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'");
-    // Through a pooler, the pooler applies the startup parameters to the server connection with SET, so
-    // the source does not identify the client. The source is compared only when connecting directly to the server.
-    const pooled = process.env.ORM_TEST_POSTGRES_DSN !== process.env.ORM_TEST_POSTGRES_SERVER_DSN;
-    check(zone.length === 1 && zone[0][0] === spec.time_zone.setting && (pooled || zone[0][1] === spec.time_zone.source),
-      `TimeZone setting and source = ${JSON.stringify(zone)}, want ${JSON.stringify(spec.time_zone)}${pooled ? ' (pooled)' : ''}`);
-    const probe = async () => Number((await u.read('utility', [], spec.probe))[0][0]);
-    const first = await probe();
-    const cost = await probe() - first;
+    const scalar = async sql => Number((await u.read('utility', [], sql))[0][0]);
+    if (spec.setup !== undefined) {
+      const instruments = await scalar(spec.setup);
+      if (instruments !== spec.setup_want) throw new Error(`the server counts transactions only with its instruments on: setup returned ${instruments}, want ${spec.setup_want}`);
+    }
+    if (spec.time_zone !== undefined) {
+      const zone = await u.read('utility', [], "SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'");
+      // Through a pooler, the pooler applies the startup parameters to the server connection with SET, so
+      // the source does not identify the client. The source is compared only when connecting directly to the server.
+      const pooled = process.env.ORM_TEST_POSTGRES_DSN !== process.env.ORM_TEST_POSTGRES_SERVER_DSN;
+      check(zone.length === 1 && zone[0][0] === spec.time_zone.setting && (pooled || zone[0][1] === spec.time_zone.source),
+        `TimeZone setting and source = ${JSON.stringify(zone)}, want ${JSON.stringify(spec.time_zone)}${pooled ? ' (pooled)' : ''}`);
+    }
+    const first = await scalar(spec.probe);
+    const cost = await scalar(spec.probe) - first;
+    if (cost !== spec.probe_cost) throw new Error(`the probe spent ${cost} server transactions, want probe_cost ${spec.probe_cost}`);
     const run = new EventRun(db, check);
     const page = vectors.cases.find(c => c.id === spec.page);
-    const compareFirst = spec.first_run_clients.includes('typescript');
-    let before = await probe();
+    let before = await scalar(spec.probe);
     for (const name of ['first', 'second']) {
       run.records = [];
       for (const s of page.steps) await run.checked(s);
-      const events = run.records.filter(r => r.sql !== spec.probe).length;
-      const after = await probe();
+      const records = run.records.filter(r => r.sql !== spec.probe);
+      const events = records.length;
+      const texts = new Set(records.map(r => r.sql)).size;
+      const after = await scalar(spec.probe);
       const transactions = after - before - cost;
       before = after;
-      console.log(`server_transactions ${name} run: ${events} events, ${transactions} transactions`);
-      if (name === 'second' || compareFirst) check(transactions === events, `${name} run spent ${transactions} server transactions for ${events} statement events, want one per event`);
+      console.log(`server_transactions typescript ${spec.database} ${name} run: ${events} events, ${texts} statement texts, ${transactions} transactions`);
+      const want = name === 'first' && withPrepares ? events + texts : events;
+      check(transactions === want, `${name} run spent ${transactions} server transactions for ${events} statement events of ${texts} statement texts, want ${want}`);
     }
   } finally { await db.close(); }
 }

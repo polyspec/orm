@@ -1317,23 +1317,46 @@
   ],
   "fixture": "contracts/fixtures/statement_events.dbs",
   "note": "Statement events (docs/operations/usage.md \"Statement events\"). Each event holds the seven fields of INT-91. Each case runs on a new case database with the fixture installed (unless install is false), opens a new connection, registers one recording subscriber, runs the steps in order and compares the recorded events of every dialect: sql, binds, kind, tables, transaction (renumbered from 1 in the order of appearance within the case, null outside a transaction) and error (the error code of the statement, or null). With compare \"tables\" only the events that name a table are compared. elapsed is checked to be non-negative. Step ops: create (insert a row with label), get (read the row with label), count (count the rows; result is the expected count), update (read the row with label, then change its label to `to`), delete (read the row with label, then delete it), transaction (run steps in a transaction; fail makes the callback fail after its steps with an error of its own, reported as error \"callback\"), install (install the fixture), fail_subscriber (register a second subscriber that fails on the first event of kind), stop_failing (remove it), unsubscribe (remove the recording subscriber). A step with error expects the operation to fail with that code; \"callback\" is the error of the callback itself.",
-  "server_transactions": {
-    "database": "postgres",
-    "first_run_clients": [
-      "php",
-      "typescript"
-    ],
-    "first_run_prepare_clients": [
-      "go",
-      "rust"
-    ],
-    "note": "Server transactions per statement on PostgreSQL. The case runs on a new case database with the fixture installed and opens a new connection (pool size 1 where the client pools). The connection's TimeZone must be UTC from a startup parameter (pg_settings source client), not from a SET statement. Through a pooler (ORM_TEST_POSTGRES_DSN differs from ORM_TEST_POSTGRES_SERVER_DSN) the pooler applies the client's startup parameters to its server connection with SET, so the source says nothing about the client there and only the setting is compared; the transaction counts are the same on both paths. probe returns the local transaction number of the backend, which grows by one for every server transaction, including the implicit transaction of a Parse that a driver sends with its own Sync. The case runs the probe twice; the difference is the cost of one probe. It then runs the probe once more and the steps of the case named by page twice, each run followed by the probe, and counts the recording subscriber's events of each run without the probe's. The transactions of a run are the probe difference minus the cost of one probe. The second run, whose statements the connection has sent before, must spend one transaction per event in every client. A client whose connection lives for one request (PHP) sends each statement in one round trip; a pooled client prepares a statement text once per connection and then reuses it (docs/operations/perf.md, F1). The first run must spend one transaction per event in the clients of first_run_clients: PHP, and TypeScript, whose `pg` driver sends the Parse of a named statement together with its first Bind and Execute. The first run of the clients of first_run_prepare_clients must spend one transaction per event plus one per distinct statement text of the run: Go (the pgx statement cache) and Rust (sqlx) prepare a new statement text in a round trip of its own before its first execution on a connection, and both declare the parameter types the plan gives without reading the catalog.",
-    "page": "model_statements",
-    "probe": "SELECT split_part(virtualtransaction, '/', 2)::bigint FROM pg_locks WHERE pid = pg_backend_pid() AND locktype = 'virtualxid'",
-    "time_zone": {
-      "setting": "UTC",
-      "source": "client"
+  "server_transactions": [
+    {
+      "database": "mysql",
+      "first_run_clients": [
+        "go",
+        "php",
+        "php-extension",
+        "python",
+        "rust",
+        "typescript"
+      ],
+      "first_run_prepare_clients": [],
+      "note": "MySQL. probe sums the transaction count of the connection's thread in performance_schema, which grows by one for every statement that opens a transactional table; a read of performance_schema opens none, so the probe costs no transaction (probe_cost 0). The summary is kept only while the transaction instrument, the global, thread and current-transaction consumers and the instrumentation of the thread are on; setup counts them and must return setup_want, so a server whose configuration turns one off fails instead of counting 0. Measured on 2026-10-31 on MySQL 8.4.11 with make run-databases TARGETS=parity-check UNITS=statement-events-server-transactions, first / second run transactions for 8 events of 5 statement texts: go 8 / 8, php 8 / 8, php-extension 8 / 8, python 8 / 8, rust 8 / 8, typescript 8 / 8. A MySQL prepare (COM_STMT_PREPARE) opens no transaction, so every client is in first_run_clients.",
+      "page": "model_statements",
+      "probe": "SELECT CAST(COALESCE(SUM(COUNT_STAR), 0) AS SIGNED) FROM performance_schema.events_transactions_summary_by_thread_by_event_name WHERE THREAD_ID = PS_CURRENT_THREAD_ID() AND EVENT_NAME = 'transaction'",
+      "probe_cost": 0,
+      "setup": "SELECT CAST((SELECT COUNT(*) FROM performance_schema.setup_instruments WHERE NAME = 'transaction' AND ENABLED = 'YES') + (SELECT COUNT(*) FROM performance_schema.setup_consumers WHERE NAME IN ('global_instrumentation', 'thread_instrumentation', 'events_transactions_current') AND ENABLED = 'YES') + (SELECT COUNT(*) FROM performance_schema.threads WHERE THREAD_ID = PS_CURRENT_THREAD_ID() AND INSTRUMENTED = 'YES') AS SIGNED)",
+      "setup_want": 5
+    },
+    {
+      "database": "postgres",
+      "first_run_clients": [
+        "php",
+        "php-extension",
+        "python",
+        "typescript"
+      ],
+      "first_run_prepare_clients": [
+        "go",
+        "rust"
+      ],
+      "note": "PostgreSQL. probe returns the local transaction number of the backend, which grows by one for every server transaction, including the implicit transaction of a Parse that a driver sends with its own Sync, and costs one transaction itself (probe_cost). The connection's TimeZone must be UTC from a startup parameter (pg_settings source client), not from a SET statement. Through a pooler (ORM_TEST_POSTGRES_DSN differs from ORM_TEST_POSTGRES_SERVER_DSN) the pooler applies the client's startup parameters to its server connection with SET, so the source says nothing about the client there and only the setting is compared; the transaction counts are the same on both paths. A client whose connection lives for one request (PHP) sends each statement in one round trip; a pooled client prepares a statement text once per connection and then reuses it (docs/operations/perf.md, F1). TypeScript's `pg` driver sends the Parse of a named statement together with its first Bind and Execute. Go (the pgx statement cache) and Rust (sqlx) prepare a new statement text in a round trip of its own before its first execution on a connection, and both declare the parameter types the plan gives without reading the catalog. Measured on 2026-10-31 on PostgreSQL 17.11 with the same command, first / second run: go 13 / 8, rust 13 / 8, php 8 / 8, php-extension 8 / 8, typescript 8 / 8, python 8 / 9 (psycopg 3.3.6 prepares a text on its fifth execution, a Parse with its own Sync; T329).",
+      "page": "model_statements",
+      "probe": "SELECT split_part(virtualtransaction, '/', 2)::bigint FROM pg_locks WHERE pid = pg_backend_pid() AND locktype = 'virtualxid'",
+      "probe_cost": 1,
+      "time_zone": {
+        "setting": "UTC",
+        "source": "client"
+      }
     }
-  },
+  ],
   "version": 1
 }

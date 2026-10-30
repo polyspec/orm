@@ -3878,6 +3878,7 @@
       ],
       "parity": [
         "statement-events",
+        "statement-events-server-transactions",
         "coverage-statement-events-statement-events"
       ],
       "fixtures": [
@@ -3894,6 +3895,7 @@
         "packages/go/orm/statement_events_test.go",
         "packages/go/orm/statement_events_export_test.go",
         "packages/ts/tests/statement-events.mjs",
+        "packages/ts/tests/statement_events_server_transactions.mjs",
         "packages/php/tests/StatementEventsTest.php",
         "packages/rust/orm/tests/statement_events.rs",
         "packages/go/orm/coverage_statement_events_test.go",
@@ -3902,6 +3904,7 @@
         "packages/php-ext/tests/CoverageStatementEventsTest.php",
         "packages/ts/tests/coverage_statement_events.mjs",
         "packages/python/tests/statement_events.py",
+        "packages/python/tests/statement_events_server_transactions.py",
         "packages/python/tests/test_event_placeholders.py",
         "packages/python/tests/test_subscriber_error.py",
         "packages/python/tests/coverage_statement_events.py",
@@ -3949,10 +3952,11 @@
         },
         {
           "id": "statement-events-typescript",
-          "command": "node packages/ts/tests/statement-events.mjs",
+          "command": "node packages/ts/tests/statement-events.mjs && node packages/ts/tests/statement_events_server_transactions.mjs",
           "shard": "other",
           "inputs": [
             "packages/ts/tests/statement-events.mjs",
+            "packages/ts/tests/statement_events_server_transactions.mjs",
             "packages/ts/tests/case-database.mjs",
             "packages/ts/tests/statement-events-run.mjs",
             "contracts/fixtures/statement_events.dbs",
@@ -3987,6 +3991,7 @@
           "shard": "other",
           "inputs": [
             "packages/python/tests/statement_events.py",
+            "packages/python/tests/statement_events_server_transactions.py",
             "tests/events/vectors.json"
           ]
         },

@@ -611,7 +611,8 @@
         "packages/ts/tests/coverage_*.mjs",
         "packages/ts/tests/model.mjs",
         "packages/ts/tests/decimal_model_db.mjs",
-        "packages/ts/tests/group_rows_db.mjs"
+        "packages/ts/tests/group_rows_db.mjs",
+        "packages/ts/tests/statement_events_server_transactions.mjs"
       ],
       "support": [
         "packages/ts/tests/case-database.mjs",
@@ -11831,6 +11832,50 @@
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/statement-events.mjs"
+        }
+      ]
+    },
+    {
+      "id": "statement-events-server-transactions",
+      "kind": "feature",
+      "requirements": [
+        "INT-149"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/statement_events_test.go",
+          "id": "TestStatementEventsServerTransactions"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementEventsTest.php",
+          "id": "StatementEventsTest::testServerTransactions"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsTestExtensionTest.php",
+          "id": "StatementEventsTestExtensionTest::testServerTransactions"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/statement_events_server_transactions.py",
+          "id": "test_server_transactions"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/statement_events.rs",
+          "id": "statement_events_server_transactions"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement_events_server_transactions.mjs",
+          "id": "server-transactions/mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement_events_server_transactions.mjs",
+          "id": "server-transactions/postgres"
         }
       ]
     },

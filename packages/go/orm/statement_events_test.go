@@ -334,24 +334,28 @@ func TestStatementEventsSQLite(t *testing.T) {
 	runEventCases(t, "sqlite", true)
 }
 
-// serverTransactions is the server_transactions of the vector.
+// serverTransactions is one entry of the vector's server_transactions: the run on one database.
 type serverTransactions struct {
 	Database               string   `json:"database"`
 	FirstRunClients        []string `json:"first_run_clients"`
 	FirstRunPrepareClients []string `json:"first_run_prepare_clients"`
 	Page                   string   `json:"page"`
 	Probe                  string   `json:"probe"`
-	TimeZone               struct {
+	ProbeCost              int64    `json:"probe_cost"`
+	Setup                  string   `json:"setup"`
+	SetupWant              int64    `json:"setup_want"`
+	TimeZone               *struct {
 		Setting string `json:"setting"`
 		Source  string `json:"source"`
 	} `json:"time_zone"`
 }
 
-// TestStatementEventsServerTransactions runs the vector's server_transactions on the PostgreSQL case
-// database. From the difference in the backend's local transaction numbers that the probe returns, it counts the
-// server transactions of the page run. The pool size is 1, so every statement runs on one backend.
-// The pgx statement cache prepares a statement text the first time a connection sends it, in its own round trip,
-// so if go is in first_run_prepare_clients, the first run adds the number of statement texts to the event count.
+// TestStatementEventsServerTransactions runs every entry of the vector's server_transactions on a case database of
+// its database. From the difference in the values that the probe returns, it counts the server transactions of the
+// page run. The pool size is 1, so every statement runs on one server connection. The pgx statement cache prepares a
+// statement text the first time a connection sends it, in its own round trip, so if go is in
+// first_run_prepare_clients, the first run adds the number of statement texts to the event count.
+// Requirements: INT-149.
 func TestStatementEventsServerTransactions(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	raw, err := os.ReadFile(eventsVector)
@@ -359,17 +363,25 @@ func TestStatementEventsServerTransactions(t *testing.T) {
 		t.Fatal(err)
 	}
 	var doc struct {
-		Cases              []eventCase        `json:"cases"`
-		ServerTransactions serverTransactions `json:"server_transactions"`
+		Cases              []eventCase          `json:"cases"`
+		ServerTransactions []serverTransactions `json:"server_transactions"`
 	}
 	if err := json.Unmarshal(raw, &doc); err != nil {
 		t.Fatal(err)
 	}
-	spec := doc.ServerTransactions
+	for _, spec := range doc.ServerTransactions {
+		t.Run(spec.Database, func(t *testing.T) {
+			runServerTransactions(t, doc.Cases, spec)
+		})
+	}
+}
+
+// runServerTransactions runs one entry of server_transactions on a new case database of its database.
+func runServerTransactions(t *testing.T, cases []eventCase, spec serverTransactions) {
 	var page *eventCase
-	for i := range doc.Cases {
-		if doc.Cases[i].ID == spec.Page {
-			page = &doc.Cases[i]
+	for i := range cases {
+		if cases[i].ID == spec.Page {
+			page = &cases[i]
 		}
 	}
 	if page == nil {
@@ -396,15 +408,26 @@ func TestStatementEventsServerTransactions(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer testcase.Close(t, db)
-	var setting, source string
-	if err := orm.ReadForTest(db, "SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'", &setting, &source); err != nil {
-		t.Fatal(err)
+	if spec.Setup != "" {
+		var n int64
+		if err := orm.ReadForTest(db, spec.Setup, &n); err != nil {
+			t.Fatal(err)
+		}
+		if n != spec.SetupWant {
+			t.Fatalf("the server counts transactions only with its instruments on: setup returned %d, want %d", n, spec.SetupWant)
+		}
 	}
-	// Through a pooler, the pooler applies the startup parameters to the server connection with SET,
-	// so the source does not name the client. The source is compared only when connecting directly to the server.
-	pooled := os.Getenv("ORM_TEST_POSTGRES_DSN") != os.Getenv("ORM_TEST_POSTGRES_SERVER_DSN")
-	if setting != spec.TimeZone.Setting || (!pooled && source != spec.TimeZone.Source) {
-		t.Errorf("TimeZone setting and source = %s, %s, want %s, %s (pooled %v)", setting, source, spec.TimeZone.Setting, spec.TimeZone.Source, pooled)
+	if spec.TimeZone != nil {
+		var setting, source string
+		if err := orm.ReadForTest(db, "SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'", &setting, &source); err != nil {
+			t.Fatal(err)
+		}
+		// Through a pooler, the pooler applies the startup parameters to the server connection with SET,
+		// so the source does not name the client. The source is compared only when connecting directly to the server.
+		pooled := os.Getenv("ORM_TEST_POSTGRES_DSN") != os.Getenv("ORM_TEST_POSTGRES_SERVER_DSN")
+		if setting != spec.TimeZone.Setting || (!pooled && source != spec.TimeZone.Source) {
+			t.Errorf("TimeZone setting and source = %s, %s, want %s, %s (pooled %v)", setting, source, spec.TimeZone.Setting, spec.TimeZone.Source, pooled)
+		}
 	}
 	probe := func() int64 {
 		var n int64
@@ -415,6 +438,9 @@ func TestStatementEventsServerTransactions(t *testing.T) {
 	}
 	first := probe()
 	cost := probe() - first
+	if cost != spec.ProbeCost {
+		t.Fatalf("the probe spent %d server transactions, want probe_cost %d", cost, spec.ProbeCost)
+	}
 	r := &eventRun{t: t, db: db, schema: s, ent: rowEntity("event_probe", s, "seq", "label"), numbers: map[int64]int64{}}
 	if r.stopRec, err = db.Subscribe(r.record); err != nil {
 		t.Fatal(err)

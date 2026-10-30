@@ -6,8 +6,12 @@ namespace Polyspec\Orm\Extension\Tests;
 
 use Polyspec\Orm\Tests\StatementEventsTest;
 
-// Requirements: INT-77, INT-91, INT-96, PLN-44.
+// Requirements: INT-77, INT-91, INT-96, INT-149, PLN-44.
 #[\PHPUnit\Framework\Attributes\Medium]
 final class StatementEventsTestExtensionTest extends StatementEventsTest
 {
+    protected static function serverTransactionsClient(): string
+    {
+        return 'php-extension';
+    }
 }

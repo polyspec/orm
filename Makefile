@@ -1850,10 +1850,12 @@ complex-query-rust-check/sqlite:
 python-install-changed-database-check: python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.install_changed_database
 # python-statement-events-check runs every case of tests/events/vectors.json with the Python client on SQLite, MySQL and
-# PostgreSQL (packages/python/tests/statement_events.py).
+# PostgreSQL (packages/python/tests/statement_events.py), and each entry of its server_transactions on its database
+# (packages/python/tests/statement_events_server_transactions.py).
 .PHONY: python-statement-events-check
 python-statement-events-check: python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.statement_events
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.statement_events_server_transactions
 # python-mysql-session-check reads the session sql_mode of a Python MySQL connection and compares it with
 # tests/dsn/mysql-session.json (packages/python/tests/mysql_session.py); it needs the database variables of make
 # orm-test-servers (WITH_TEST_ENV).

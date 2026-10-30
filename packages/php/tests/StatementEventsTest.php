@@ -3,8 +3,8 @@
 // Statement events on SQLite, MySQL and PostgreSQL: every case of the shared
 // vector tests/events/vectors.json in a case database of its own
 // (statement_events_run.php), one data set per case id that runs the case on each
-// database in turn, and the vector's server_transactions on
-// PostgreSQL. The test fails when ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN
+// database in turn, and each entry of the vector's server_transactions on
+// its database. The test fails when ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN
 // is unset.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist
 // packages/php/tests/StatementEventsTest.php [--filter <method or data set>]
@@ -93,12 +93,21 @@ class StatementEventsTest extends TestCase
         }
     }
 
+    /** The key of this client in the lists of server_transactions. */
+    protected static function serverTransactionsClient(): string
+    {
+        return 'php';
+    }
+
+    // Requirements: INT-149.
     public function testServerTransactions(): void
     {
         $vector = statementEventsVector();
         $cases = array_column($vector['cases'], null, 'id');
-        $spec = $vector['server_transactions'];
-        with_case_database($spec['database'], static function (string $text): void {
-        }, static fn(string $dsn) => runServerTransactions($spec, $cases, $dsn));
+        $client = static::serverTransactionsClient();
+        foreach ($vector['server_transactions'] as $spec) {
+            with_case_database($spec['database'], static function (string $text): void {
+            }, static fn(string $dsn) => runServerTransactions($spec, $cases, $dsn, $client));
+        }
     }
 }

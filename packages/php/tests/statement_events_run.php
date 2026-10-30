@@ -270,16 +270,23 @@ function runCase(array $case, string $driver, string $dsn): void
 }
 
 /**
- * Runs the vector's server_transactions on the PostgreSQL case database. The backend that the probe returns
- * local transaction number difference counts the server transactions of one page run. A PHP connection lives only
- * for one request, so each request is a first run, and the PHP of first_run_clients must have one
- * transaction per event even on the first run.
+ * Runs one entry of the vector's server_transactions on a case database of its database. The difference in the
+ * values that the probe returns counts the server transactions of one page run. A PHP connection lives only for one
+ * request, so each request is a first run; client is the key of this client in the lists of the entry (php, or
+ * php-extension for the extension), and it must be in exactly one of them.
  *
  * @param array<string, mixed> $spec
  * @param array<string, array<string, mixed>> $cases
  */
-function runServerTransactions(array $spec, array $cases, string $dsn): void
+function runServerTransactions(array $spec, array $cases, string $dsn, string $client): void
 {
+    $onePerEvent = in_array($client, $spec['first_run_clients'], true);
+    $withPrepares = in_array($client, $spec['first_run_prepare_clients'], true);
+    Assert::assertNotSame(
+        $onePerEvent,
+        $withPrepares,
+        "$client must be in exactly one of first_run_clients and first_run_prepare_clients"
+    );
     $setup = Orm::connectSchema($dsn, \Polyspec\Orm\Tests\StatementEventsCase\schema(), new Config());
     try {
         $setup->utils()->schema()->install(\Polyspec\Orm\Tests\StatementEventsCase\schema());
@@ -289,42 +296,56 @@ function runServerTransactions(array $spec, array $cases, string $dsn): void
     $db = Orm::connectSchema($dsn, \Polyspec\Orm\Tests\StatementEventsCase\schema(), new Config());
     try {
         $u = $db->utils();
-        $zone = $db->fetch('utility', [], null, "SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'");
-        // Through a pooler, the pooler applies the startup parameters to the server connection as SET, so
-        // the source does not name the client. The source is compared only when it reaches the server directly.
-        $pooled = getenv('ORM_TEST_POSTGRES_DSN') !== getenv('ORM_TEST_POSTGRES_SERVER_DSN');
-        Assert::assertTrue(
-            count($zone) === 1 && $zone[0][0] === $spec['time_zone']['setting'] && (
-                $pooled || $zone[0][1] === $spec['time_zone']['source']
-            ),
-            'TimeZone setting and source = ' . json_encode($zone) . ', want ' . json_encode($spec['time_zone']) . (
-                $pooled ? ' (pooled)' : ''
-            )
-        );
+        if (isset($spec['setup'])) {
+            $instruments = (int) $u->read('utility', [], $spec['setup'], []);
+            Assert::assertSame(
+                $spec['setup_want'],
+                $instruments,
+                "the server counts transactions only with its instruments on: setup returned $instruments"
+            );
+        }
+        if (isset($spec['time_zone'])) {
+            $zone = $db->fetch('utility', [], null, "SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'");
+            // Through a pooler, the pooler applies the startup parameters to the server connection as SET, so
+            // the source does not name the client. The source is compared only when it reaches the server directly.
+            $pooled = getenv('ORM_TEST_POSTGRES_DSN') !== getenv('ORM_TEST_POSTGRES_SERVER_DSN');
+            Assert::assertTrue(
+                count($zone) === 1 && $zone[0][0] === $spec['time_zone']['setting'] && (
+                    $pooled || $zone[0][1] === $spec['time_zone']['source']
+                ),
+                'TimeZone setting and source = ' . json_encode($zone) . ', want ' . json_encode($spec['time_zone']) . (
+                    $pooled ? ' (pooled)' : ''
+                )
+            );
+        }
         $probe = static fn(): int => (int) $u->read('utility', [], $spec['probe'], []);
         $first = $probe();
         $cost = $probe() - $first;
+        Assert::assertSame($spec['probe_cost'], $cost, "the probe spent $cost server transactions");
         $run = new EventRun($db);
         $run->stopRecording = $db->subscribe($run->record(...));
-        $compareFirst = in_array('php', $spec['first_run_clients'], true);
         $before = $probe();
         foreach (['first', 'second'] as $page) {
             $run->records = [];
             foreach ($cases[$spec['page']]['steps'] as $step) {
                 $run->checked($step);
             }
-            $events = count(array_filter($run->records, static fn(array $r): bool => $r['sql'] !== $spec['probe']));
+            $records = array_filter($run->records, static fn(array $r): bool => $r['sql'] !== $spec['probe']);
+            $events = count($records);
+            $texts = count(array_unique(array_column($records, 'sql')));
             $after = $probe();
             $transactions = $after - $before - $cost;
             $before = $after;
-            fwrite(STDERR, "server_transactions $page run: $events events, $transactions transactions\n");
+            fwrite(STDERR, "server_transactions $client {$spec['database']} $page run: $events events, "
+                . "$texts statement texts, $transactions transactions\n");
             $run->assertElapsed();
-            if ($page === 'second' || $compareFirst) {
-                Assert::assertTrue(
-                    $transactions === $events,
-                    "$page run spent $transactions server transactions for $events statement events, want one per event"
-                );
-            }
+            $want = $page === 'first' && $withPrepares ? $events + $texts : $events;
+            Assert::assertSame(
+                $want,
+                $transactions,
+                "$page run spent $transactions server transactions for $events statement events of $texts statement "
+                    . "texts, want $want"
+            );
         }
     } finally {
         $db->close();

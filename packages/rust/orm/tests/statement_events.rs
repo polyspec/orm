@@ -301,47 +301,77 @@ async fn coverage_statement_events() {
     run_cases(feature_database::selected()).await;
 }
 
-/// Runs the vector's server_transactions in a PostgreSQL case database. The number of server transactions counted for one run of a page, which the probe returns,
-/// counts the server transactions of one page run from the difference in the backend's local transaction numbers. With pool size
-/// 1, all statements run on one backend. The probe sends through sqlx on the same pool, so there are no
-/// events for it. sqlx prepares the first statement text it sends on a connection with its own round trip before running it, so
-/// if rust is in first_run_prepare_clients, the first run adds the number of statement texts to the event count.
+/// Runs every entry of the vector's server_transactions on a case database of its database. The difference in the
+/// values that the probe returns counts the server transactions of one page run. With pool size 1, all statements
+/// run on one server connection. The probe and the setup are sent through sqlx on the same pool, so there are no
+/// events for them. sqlx prepares the first statement text it sends on a connection with its own round trip before
+/// running it, so if rust is in first_run_prepare_clients, the first run adds the number of statement texts to the
+/// event count.
+// Requirements: INT-149.
 async fn statement_events_server_transactions() {
     let vector: Value = serde_json::from_str(VECTOR).expect("tests/events/vectors.json");
-    let spec = &vector["server_transactions"];
+    let page_of = |spec: &Value| vector["cases"].as_array().expect("vector cases").iter().find(|c| c["id"] == spec["page"]).expect("server_transactions page is a case").clone();
+    let mut failures = Vec::new();
+    for spec in vector["server_transactions"].as_array().expect("server_transactions entries") {
+        let page = page_of(spec);
+        failures.extend(server_transactions_entry(spec, &page).await);
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// The integer in the one cell of sql, read through sqlx on the pool of db.
+async fn scalar(db: &Db, sql: &str) -> i64 {
+    match db.pool() {
+        polyspec_orm::db::Pool::Postgres(p) => sqlx::query_scalar::<_, i64>(sqlx::AssertSqlSafe(sql.to_owned())).fetch_one(p).await,
+        polyspec_orm::db::Pool::MySql(p) => sqlx::query_scalar::<_, i64>(sqlx::AssertSqlSafe(sql.to_owned())).fetch_one(p).await,
+        _ => panic!("server_transactions runs on a server database"),
+    }
+    .unwrap_or_else(|e| panic!("{sql}: {e}"))
+}
+
+/// Runs one entry of server_transactions on a new case database of its database and returns its failures.
+async fn server_transactions_entry(spec: &Value, page: &Value) -> Vec<String> {
     let listed = |key: &str| match spec[key].as_array() {
         Some(clients) => clients.iter().any(|c| c == "rust"),
-        None => panic!("the server_transactions vector has no list {key}"),
+        None => panic!("the server_transactions entry has no list {key}"),
     };
     let (one_per_event, with_prepares) = (listed("first_run_clients"), listed("first_run_prepare_clients"));
     assert!(one_per_event != with_prepares, "rust is in exactly one of first_run_clients and first_run_prepare_clients");
-    let page = vector["cases"].as_array().expect("vector cases").iter().find(|c| c["id"] == spec["page"]).expect("server_transactions page is a case");
     let probe_sql = spec["probe"].as_str().expect("probe").to_owned();
-    let driver = "postgres";
-    assert_eq!(spec["database"], driver, "server_transactions database");
+    let driver: &'static str = match spec["database"].as_str() {
+        Some("mysql") => "mysql",
+        Some("postgres") => "postgres",
+        other => panic!("server_transactions runs on mysql or postgres, not {other:?}"),
+    };
     let database = CaseDatabase::create(driver).await;
     let run = async {
         let setup = Db::connect_schema(database.dsn(), &EVENTS_SCHEMA, 1, polyspec_orm::Config::default()).await.expect("connect");
         setup.utils().schema().install(&EVENTS_SCHEMA).await.expect("install");
         setup.close().await;
         let db = Db::connect_schema(database.dsn(), &EVENTS_SCHEMA, 1, polyspec_orm::Config::default()).await.expect("connect");
-        let polyspec_orm::db::Pool::Postgres(pool) = db.pool() else { panic!("postgres pool") };
-        let (setting, source): (String, String) =
-            sqlx::query_as("SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'").fetch_one(pool).await.expect("TimeZone");
-        // Through a pooler, the pooler applies the startup parameters to the server connection with SET, so
-        // the source does not name the client. The source is compared only when it reaches the server directly.
-        let pooled = optional_env("ORM_TEST_POSTGRES_DSN") != optional_env("ORM_TEST_POSTGRES_SERVER_DSN");
-        assert_eq!(setting, spec["time_zone"]["setting"], "TimeZone setting");
-        if !pooled {
-            assert_eq!(source, spec["time_zone"]["source"], "TimeZone source");
+        if let Some(sql) = spec["setup"].as_str() {
+            let instruments = scalar(&db, sql).await;
+            assert_eq!(Some(instruments), spec["setup_want"].as_i64(), "the server counts transactions only with its instruments on: setup");
         }
-        let probe = || async { sqlx::query_scalar::<_, i64>(sqlx::AssertSqlSafe(probe_sql.clone())).fetch_one(pool).await.expect("probe") };
-        let first = probe().await;
-        let cost = probe().await - first;
+        if !spec["time_zone"].is_null() {
+            let polyspec_orm::db::Pool::Postgres(pool) = db.pool() else { panic!("time_zone is checked on postgres") };
+            let (setting, source): (String, String) =
+                sqlx::query_as("SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'").fetch_one(pool).await.expect("TimeZone");
+            // Through a pooler, the pooler applies the startup parameters to the server connection with SET, so
+            // the source does not name the client. The source is compared only when it reaches the server directly.
+            let pooled = optional_env("ORM_TEST_POSTGRES_DSN") != optional_env("ORM_TEST_POSTGRES_SERVER_DSN");
+            assert_eq!(setting, spec["time_zone"]["setting"], "TimeZone setting");
+            if !pooled {
+                assert_eq!(source, spec["time_zone"]["source"], "TimeZone source");
+            }
+        }
+        let first = scalar(&db, &probe_sql).await;
+        let cost = scalar(&db, &probe_sql).await - first;
+        assert_eq!(Some(cost), spec["probe_cost"].as_i64(), "the probe's server transactions");
         let recorded = Arc::new(Mutex::new(Recorded::default()));
         let recording = subscribe_recording(&db, &recorded);
         let r = EventRun::new(driver, db.clone(), recorded, recording);
-        let mut before = probe().await;
+        let mut before = scalar(&db, &probe_sql).await;
         let mut failures = Vec::new();
         for name in ["first", "second"] {
             for s in page["steps"].as_array().expect("page steps") {
@@ -351,23 +381,25 @@ async fn statement_events_server_transactions() {
             let records = std::mem::take(&mut r.recorded.lock().unwrap().records);
             let events = records.len() as i64;
             let texts = records.iter().map(|e| e["sql"].as_str().unwrap_or_default().to_owned()).collect::<std::collections::BTreeSet<_>>().len() as i64;
-            let after = probe().await;
+            let after = scalar(&db, &probe_sql).await;
             let transactions = after - before - cost;
             before = after;
-            println!("server_transactions {name} run: {events} events, {texts} statement texts, {transactions} transactions");
+            println!("server_transactions rust {driver} {name} run: {events} events, {texts} statement texts, {transactions} transactions");
             let want = if name == "first" && with_prepares { events + texts } else { events };
             if transactions != want {
-                failures
-                    .push(format!("{name} run spent {transactions} server transactions for {events} statement events of {texts} statement texts, want {want}"));
+                failures.push(format!(
+                    "{driver} {name} run spent {transactions} server transactions for {events} statement events of {texts} statement texts, want {want}"
+                ));
             }
         }
         db.close().await;
-        assert!(failures.is_empty(), "{}", failures.join("\n"));
+        failures
     };
-    if tokio::time::timeout(CASE_DEADLINE, run).await.is_err() {
-        panic!("server_transactions: timeout after {CASE_DEADLINE:?}");
-    }
+    let Ok(failures) = tokio::time::timeout(CASE_DEADLINE, run).await else {
+        panic!("server_transactions {driver}: timeout after {CASE_DEADLINE:?}");
+    };
     database.drop().await;
+    failures
 }
 
 fn main() {

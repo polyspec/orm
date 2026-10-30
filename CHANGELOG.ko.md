@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2bc981554943e880035700df828257596323e0400f669688722b7af467d20442 -->
+<!-- source-sha256: 3d336b20525e17c9827104e79bb46bd3a82aff08a53da5cb02daabbb92b584fb -->
 # 변경 이력
 
 ## Unreleased
@@ -7,6 +7,7 @@
 ## 0.0.19
 
 - Go planner coverage의 case 함수 91개는 contracts/fixtures/planner.json의 각 case를 id로 실행하는 `TestCoveragePlanner`의 subtest로만 실행된다. 이 함수들은 unexported이고, feature coverage와 planner-param-uses, planner-upsert-conflict-key-validation의 go binding은 각 함수를 `TestCoveragePlanner/<case>`로 지정한다. 이전에는 go test가 각 case를 두 번 실행했고, 그중 한 번은 어느 parity binding도 지정하지 않는 exported test였다. feature coverage는 go symbol `<parent>/<case>`를 parent마다 run pattern 하나로 선택하고 parent의 pass는 세지 않는다(T326-1).
+- tests/events/vectors.json의 server_transactions vector는 database마다, 곧 PostgreSQL과 MySQL에 entry 하나씩을 두고, feature unit statement-events-server-transactions가 이를 go, php, php-extension, python, rust, typescript에 bind합니다. 이전에는 go, php, rust, typescript만 PostgreSQL에서만 실행했고 어떤 unit도 이들을 bind하지 않았습니다. MySQL은 performance_schema에서 연결 thread의 transaction 수를 셉니다. transaction instrument나 그 consumer가 꺼져 있거나 probe 자체의 비용이 probe_cost와 다르면 test가 실패합니다. docs/spec/interfaces.md는 이 규칙을 INT-149로 적습니다(T323).
 - make install은 더 이상 kit target kit-install-php-arginfo를 부르지 않습니다. kit K930은 arginfo가 kit builder가 실행하는 PHP의 gen_stub.php에서 오므로 이 target을 없앴고, kit main에 link된 checkout의 make install은 모두 그 지점에서 멈춰 python venv, flowmark, interfaces TypeScript를 설치하지 못했습니다. ArginfoBuildTest는 build.sh가 지금 하는 일을 검사합니다: mode마다 kit builder에 인자를 넘기고, 스스로 tool을 실행하지 않은 채 builder의 status와 출력을 돌려줍니다(T328).
 - Rust integration program의 각 section은 test target integration_program(packages/rust/tests/tests/integration_program)의 ignored test이므로, section을 지정하는 rust parity binding 19개가 make feature-rust-database로 그 test를 실행하고 parity run이 그 결과를 인정한다. 이전에는 program이 자기 main의 --case로 section을 실행하며 libtest 결과 줄을 출력하지 않아 cargo test가 test를 선택하지 않았다. client-db-check의 rust lane과 case-database-check는 section을 --include-ignored --test-threads=1로 한 번 실행하고, chunking-rust는 bind_limit_splitting을 cargo test로 실행한다. 생성된 model은 바뀌지 않는다(T311).
 - go-internal-packages-go-engine-functions-physical의 rust binding은 coverage-conformance-verification-conformance-vector처럼 coverage_conformance_vector를 make feature-rust-database로 SQLite database와 함께 실행합니다. 그래서 parity 실행이 ignored trial을 ORM_FEATURE_DATABASE와 ORM_FEATURE_DSN과 함께 실행합니다. 전에는 binding에 명령이 없어 cargo가 trial을 ignored로 보고했고, 실행은 이를 skipped로 읽었습니다(T314).
