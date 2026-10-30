@@ -5,6 +5,7 @@
 
 ## 0.0.19
 
+- CARGO_SIBLINGS runs the kit cargo link without --siblings, which the link declaration file of kit K869 replaces; until orm adopts it, cargo builds the polyspec crates of their released tags (T275).
 - The TypeScript thin-slice example binds its datetime as text, as the Go and PHP examples do and as a datetime slot requires since T89-3 (T271).
 - The TypeScript MySQL driver sends an integral number parameter as a bigint, a LONGLONG, since mysql2 sends a number as a DOUBLE and ProxySQL refuses a DOUBLE LIMIT (T273).
 - client-pooler-check declares and installs the PHP extension tools, since its php-extension lane builds the extension (T272).

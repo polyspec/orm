@@ -199,10 +199,10 @@ CARGO_TEST = node $(abspath tests/cargo-test.mts)
 RUN_DIR = $(abspath .runtime/run)/$@-$$PPID
 RUN_TARGET = $(RUN_DIR)/target
 CARGO_COPY = $(CARGO_LEASED) node $(abspath scripts/cargo-build-copy.mts) $(RUN_TARGET)
-# CARGO_SIBLINGS runs cargo in packages/rust through kit's cargo link, as make cargo-fetch does (K448-5): the polyspec crates that a
-# sibling checkout provides are patched to their paths, so a build never resolves them from their git tag. A recipe that builds the
-# crates runs it in place of a bare cargo build, which link-state-check refuses.
-CARGO_SIBLINGS = $(NODE) $(abspath $(KIT))/link.$(KIT_EXT) cargo --siblings $(abspath packages/rust)
+# CARGO_SIBLINGS runs cargo in packages/rust through kit's cargo link, as make cargo-fetch does (K448-5). A recipe that builds the
+# crates runs it in place of a bare cargo build, which link-state-check refuses. It names no checkout, so cargo builds the polyspec
+# crates of their released tags until the link declaration file of kit K869 names the sibling checkouts (T275, KSTD-5-123).
+CARGO_SIBLINGS = $(NODE) $(abspath $(KIT))/link.$(KIT_EXT) cargo $(abspath packages/rust)
 # HOLD_TYPESCRIPT holds the TypeScript build output of this checkout (the dist of packages/ts and the generated models) as one holder for the
 # lifetime of the make process. Targets that build and write that output get it on their first line,
 # so they do not change output that another run's build is still writing. If another run holds it, it waits for the directory change notice. If an ancestor
