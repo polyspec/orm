@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 57fa21448afff18f095396d1300f1e7be55f7d7c719359cd1060b289b5f65b0a -->
+<!-- source-sha256: 2b661cbf5b85b42edc7ab3f641543f02a06f33ba0f43717df237d65c14bf8983 -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.19
 
+- make install은 더 이상 kit target kit-install-php-arginfo를 부르지 않습니다. kit K930은 arginfo가 kit builder가 실행하는 PHP의 gen_stub.php에서 오므로 이 target을 없앴고, kit main에 link된 checkout의 make install은 모두 그 지점에서 멈춰 python venv, flowmark, interfaces TypeScript를 설치하지 못했습니다. ArginfoBuildTest는 build.sh가 지금 하는 일을 검사합니다: mode마다 kit builder에 인자를 넘기고, 스스로 tool을 실행하지 않은 채 builder의 status와 출력을 돌려줍니다(T328).
 - go-internal-packages-go-engine-functions-physical의 rust binding은 coverage-conformance-verification-conformance-vector처럼 coverage_conformance_vector를 make feature-rust-database로 SQLite database와 함께 실행합니다. 그래서 parity 실행이 ignored trial을 ORM_FEATURE_DATABASE와 ORM_FEATURE_DSN과 함께 실행합니다. 전에는 binding에 명령이 없어 cargo가 trial을 ignored로 보고했고, 실행은 이를 skipped로 읽었습니다(T314).
 - PHP 확장 build는 kit K930이 요구하는 대로 두 build mode 모두에서 --source-copy로 packages/php/src/native/sqlite_cancel.c를 src/native/sqlite_cancel.c로 준비합니다. kit builder가 더 이상 config/release.json의 source-copy 선언을 읽지 않기 때문입니다. 전에는 확장의 모든 release build가 No rule to make target src/native/sqlite_cancel.c로 실패했습니다(T325).
 - group-row-owner의 rust binding은 INT-68부터 INT-71을 가진 test인 collection::group_tests::grouped_rows_contain_only_group_values_and_checked_counts를 지정합니다. 그래서 parity 실행이 이 test를 실행합니다. 전에는 존재한 적 없는 test를 지정해 아무 test도 선택하지 않았고, binding은 실행되지 않은 것으로 보고되었습니다(T312).

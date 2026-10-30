@@ -4,13 +4,35 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Extension\Tests;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;
 
+// build.sh delegates the build to the kit builder of the installed package. Arginfo comes from PHP's gen_stub.php,
+// which the kit builder runs (K930), so build.sh runs no phpize, PHP or downloader of its own.
 #[Large]
 final class ArginfoBuildTest extends TestCase
 {
-    public function testBuildRequiresTheInstalledGeneratorBeforeItCanRunToolsOrDownloadAnything(): void
+    /** @return array<string, array{string, list<string>}> */
+    public static function modes(): array
+    {
+        $cancel = ['--source-copy', 'packages/php/src/native/sqlite_cancel.c', 'src/native/sqlite_cancel.c'];
+        return [
+            'release' => ['release', [...$cancel, '--configure-arg', '--disable-polyspec-orm-native-test']],
+            'native-test' => ['native-test', [
+                ...$cancel,
+                '--configure-arg',
+                '--enable-polyspec-orm-native-test',
+                '--source-copy',
+                'packages/php-ext/testing/native/module.c',
+                'src/native_test.c',
+            ]],
+        ];
+    }
+
+    /** @param list<string> $modeArgs */
+    #[DataProvider('modes')]
+    public function testBuildDelegatesEachModeToTheKitBuilderWithoutRunningATool(string $mode, array $modeArgs): void
     {
         $root = dirname(__DIR__, 4) . '/orm-arginfo-' . bin2hex(random_bytes(8));
         $testRoot = getenv('KIT_TEST_ROOT');
@@ -19,17 +41,10 @@ final class ArginfoBuildTest extends TestCase
         }
         $package = $root . '/packages/php-ext';
         $bin = $root . '/bin';
-        $arginfo = $root . '/var/tools/php-arginfo';
-        $phpConfigBin = $root . '/var/tools/bin';
         $kit = $root . '/node_modules/@polyspec/kit';
-        $prefix = $root . '/php-prefix';
         mkdir($package . '/scripts', 0777, true);
-        mkdir($package . '/src', 0777, true);
         mkdir($bin, 0777, true);
-        mkdir($arginfo, 0777, true);
-        mkdir($phpConfigBin, 0777, true);
         mkdir($kit . '/scripts', 0777, true);
-        mkdir($prefix . '/lib/php/build', 0777, true);
         $marker = $root . '/invoked';
         $kitProof = $root . '/kit-cli.json';
 
@@ -47,27 +62,20 @@ final class ArginfoBuildTest extends TestCase
             self::assertSame(0, proc_close($git), $gitError);
 
             copy(__DIR__ . '/../scripts/build.sh', $package . '/scripts/build.sh');
-            copy(__DIR__ . '/../composer.json', $package . '/composer.json');
-            copy(__DIR__ . '/../src/polyspec_orm.stub.php', $package . '/src/polyspec_orm.stub.php');
-            copy(__DIR__ . '/../src/config.m4', $package . '/src/config.m4');
             file_put_contents($kit . '/package.json', json_encode([
                 'name' => '@polyspec/kit',
                 'type' => 'module',
                 'exports' => ['./php-extension' => './scripts/php-extension.mjs'],
             ], JSON_THROW_ON_ERROR));
+            // The fake builder records how it was called and fails with a status and a message of its own, which
+            // build.sh must return unchanged.
             file_put_contents($kit . '/scripts/php-extension.mjs', <<<JS
 import { writeFileSync } from 'node:fs';
 writeFileSync(process.env.KIT_CLI_PROOF, JSON.stringify({ file: import.meta.filename, args: process.argv.slice(2) }));
-console.error('var/tools/php-arginfo/PHP-Parser-5.0.0/lib/PhpParser is missing; run make install-tools');
-process.exit(1);
+console.error('the fake kit builder stopped');
+process.exit(7);
 JS);
-            $generator = "<?php\n\$version = \"5.0.0\";\n";
-            file_put_contents($arginfo . '/gen_stub.php', $generator);
-            file_put_contents($prefix . '/lib/php/build/gen_stub.php', $generator);
-            $phpConfig = $phpConfigBin . '/php-config';
-            file_put_contents($phpConfig, "#!/bin/sh\nprintf '%s\\n' " . escapeshellarg($prefix) . "\n");
-            chmod($phpConfig, 0755);
-            foreach (['phpize', 'php', 'curl', 'wget'] as $tool) {
+            foreach (['phpize', 'php', 'php-config', 'curl', 'wget'] as $tool) {
                 $file = $bin . '/' . $tool;
                 file_put_contents(
                     $file,
@@ -79,7 +87,7 @@ JS);
 
             $pipes = [];
             $process = proc_open(
-                ['/bin/sh', $package . '/scripts/build.sh', $root . '/polyspec_orm.so'],
+                ['/bin/sh', $package . '/scripts/build.sh', $root . '/polyspec_orm.so', $mode],
                 [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
                 $pipes,
                 $root,
@@ -98,25 +106,12 @@ JS);
             $exit = proc_close($process);
             $output = $stdout . $stderr;
 
-            self::assertSame(1, $exit, $output);
-            self::assertStringContainsString('PHP-Parser-5.0.0/lib/PhpParser is missing', $output);
-            self::assertStringContainsString('run make install-tools', $output);
+            self::assertSame(7, $exit, $output);
+            self::assertStringContainsString('the fake kit builder stopped', $output);
             $proof = json_decode(file_get_contents($kitProof), true, flags: JSON_THROW_ON_ERROR);
             self::assertSame(realpath($kit . '/scripts/php-extension.mjs'), $proof['file']);
-            self::assertSame(
-                [
-                    'build',
-                    '--output',
-                    $root . '/polyspec_orm.so',
-                    '--configure-arg',
-                    '--disable-polyspec-orm-native-test',
-                ],
-                $proof['args']
-            );
-            self::assertFileDoesNotExist(
-                $marker,
-                'The build invoked phpize, PHP, or a downloader before reporting the missing generator.',
-            );
+            self::assertSame(['build', '--output', $root . '/polyspec_orm.so', ...$modeArgs], $proof['args']);
+            self::assertFileDoesNotExist($marker, 'build.sh invoked phpize, PHP, or a downloader itself.');
         } finally {
             $this->removeTree($root);
         }
