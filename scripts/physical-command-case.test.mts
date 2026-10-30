@@ -52,6 +52,20 @@ caseTest('rejects a failed or unexpected TeamCity event and nonmatching exact ou
     { kind: 'predicate', accepts: output => output === 'accepted' }, 'missing predicate output'), /missing predicate output/);
 });
 
+caseTest('a nonmatching output fails with that output and its DSN redacted', COMPUTE, async () => {
+  const run = async () => 'connected to dsn-secret\nCASE other PASS';
+  await assert.rejects(runPhysicalCommandCase(run, 'node', [], {}, 'dsn-secret',
+    { kind: 'exact', output: 'CASE group_rows_mysql PASS' }, 'missing exact output'), (error: Error) => {
+    assert.equal(error.message, 'missing exact output; the output was:\nconnected to [redacted]\nCASE other PASS');
+    return true;
+  });
+  await assert.rejects(runPhysicalCommandCase(async () => '', 'node', [], {}, 'dsn-secret',
+    { kind: 'predicate', accepts: output => output === 'accepted' }, 'missing predicate output'), (error: Error) => {
+    assert.equal(error.message, 'missing predicate output; the output was empty');
+    return true;
+  });
+});
+
 caseTest('matches the exact PHP decimal PHPUnit class and data-set events', COMPUTE, () => {
   const database = 'mysql';
   const classSuite = "##teamcity[testSuiteStarted name='Polyspec\\Orm\\Tests\\DecimalModelDbTest']";

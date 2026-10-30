@@ -6,6 +6,7 @@
 
 ## 0.0.19
 
+- 출력에 정확한 pass event가 없는 physical case는 그 출력을 보이며 실패합니다. DSN은 가립니다. 그래서 실패에 판정식이 읽은 내용이 드러납니다(T287).
 - repo-check는 실행 중인 PHP를 .php-version과 비교하지 않습니다. kit K854가 모든 도구에 정한 대로, 틀린 PHP는 그 PHP를 실행하는 target이 실패시킵니다(T285).
 - orm은 kit 0.0.75 대신 공개된 kit 0.0.77을 씁니다(KSTD-5-123): 개발 link는 link-check가 비교하는 link 선언 .links를 따르고(K869), prepare-commit-msg hook은 없어졌습니다(K892). Python client는 uv-install로 설치하고(K850), Composer는 composer install 뒤에 make link를 실행하며, deps-rust가 rust runtime의 CI setup입니다(K859). 없는 도구는 그 도구를 실행하는 target이 실패시키므로 toolchain-check는 없어졌습니다(K854). install-kit이 arginfo 생성기(K861)와 모든 Cargo.lock의 crate를 설치하므로, 내려받은 crate를 확인하는 target은 없습니다(K864). extension run의 PHP 자식 process는 PHP_INI_SCAN_DIR로 확장을 물려받으므로 test helper는 확장을 적지 않습니다(K900). packaging.md의 Composer 예시는 release의 packages.json을 읽습니다(K865).
 - SQLite fact sqlite.render.time_check와 DIA-53은 고정된 SQLite 3.54.1의 time()이 24:00:00에 00:00:00을, 24:00:01과 25:00:00에 NULL을 돌려준다고 기록합니다(T280).

@@ -69,7 +69,10 @@ export async function runPhysicalCommandCase(
     ? JSON.stringify([...output.matchAll(/^##teamcity\[testFinished name='([^']*)'/gm)].map(match => match[1])) === JSON.stringify([expected.testName])
       && !/^##teamcity\[test(?:Failed|Ignored) /m.test(output)
     : expected.kind === 'exact' ? output.trim() === expected.output : expected.accepts(output);
-  if (!passed) throw new Error(failureMessage);
+  if (!passed) {
+    const shown = output.replaceAll(dsn, '[redacted]');
+    throw new Error(shown.trim() === '' ? `${failureMessage}; the output was empty` : `${failureMessage}; the output was:\n${shown}`);
+  }
 }
 
 /** Confirms a physical test left the database unchanged and reports the observed state. */
