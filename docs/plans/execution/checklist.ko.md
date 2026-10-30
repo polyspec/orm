@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 0c5e161caa9e87aa82e5e5ea3132c6bec2278ce34640aaaa6b1172f912c51178 -->
+<!-- source-sha256: aac1ed4c0bab63bd1682bdab0cd226530a180348b6c7fcc82d3955d52b934982 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1349,3 +1349,4 @@
 | T261 | gates shared job은 tests/lease가 build하는 Go module을 설치한다. 원인: kit-gates-static이 parity-declarations-check를 돌리고 그 prerequisite typescript-build가 lease-tool을 돌리는데 config/ci.json setup.shared가 비어 있어, go build ./tests/lease가 GOPROXY=off에서 golang.org/x/sys를 찾지 못한다(gates 40979519777, job shared) | config/ci.json, scripts/check/parity-context.test.mts, CHANGELOG.md, CHANGELOG.ko.md | `make runner-check` | [ ] |
 | T262 | feature-coverage/typescript/mysql은 interfaces-typescript need를 선언한다. 원인: 그 interface_contract case가 packages/ts/testing/interfaces/typescript/node_modules/typescript를 import하는 TypeScript interface check를 돌리는데, contracts/check-inputs.json이 그 target에 interfaces-typescript need를 주지 않아 CI가 make orm-install-interfaces-typescript를 건너뛴다(ci 40979519721, job feature_typescript_mysql: ERR_MODULE_NOT_FOUND) | contracts/check-inputs.json, CHANGELOG.md, CHANGELOG.ko.md | `make --no-print-directory ci-group-needs GROUP=feature_typescript_mysql \| grep -qx interfaces-typescript=true` | [ ] |
 | T263 | offline Makefile 검사는 본래 network에서 lock을 쓰는 lock target을 받아들인다. 원인: scripts/check/downloads.mts가 $(ONLINE)을 install target에서만 허용하는데 orm-python-lock(KSTD-5-102)이 uv lock을 online으로 돌려 runner-check가 실패한다(ci 40979519721, job static) | scripts/check/downloads.mts, scripts/check/downloads.test.mts, CHANGELOG.md, CHANGELOG.ko.md | `make runner-check` | [ ] |
+| T264 | 한 feature가 PHP extension run guard와 그 test를 소유한다. 원인: KSTD-5-109가 packages/php/tests/extension_run_guard.php와 ExtensionRunGuardTest.php를 contracts/features.json 항목 없이 추가해, feature_helpers, stress_mysql, stress_pg_sqlite, feature_verify_rust, feature_verify_other에서 features contract가 실패한다(ci 40979519721) | contracts/features.json, CHANGELOG.md, CHANGELOG.ko.md | `make feature-helper-check` | [ ] |
