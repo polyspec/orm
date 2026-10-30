@@ -44,7 +44,7 @@ async function main(): Promise<void> {
       // A secret bind is reported as the marker $SECRET; the native statement needs the key it stands for.
       lastArgs = event.binds.map(value => (value === '$SECRET' ? AES_KEY : value));
     });
-    const now = new Date(Date.UTC(2026, 8, 11, 0, 0, 0));
+    const now = '2026-09-11 00:00:00';
     const query = () => new Author().connect(db)
       .serviceSeq(7)
       .andIsClose(false)

@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 71bcea3d16f603961964f214926e19d76ae7a02df6dfc4f5ffc9c489dcfd596f -->
+<!-- source-sha256: a6dbec4c8119f9018916b893c0699cc0337276d4db0a2f5e8ec9ec7abc59a1dd -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.19
 
+- TypeScript thin-slice 예제는 Go와 PHP 예제처럼, 그리고 T89-3 이후 datetime slot이 요구하는 대로 datetime을 text로 bind합니다(T271).
 - TypeScript MySQL driver는 정수 number parameter를 bigint, 즉 LONGLONG으로 보냅니다. mysql2가 number를 DOUBLE로 보내고 ProxySQL이 DOUBLE LIMIT을 거부하기 때문입니다(T273).
 - client-pooler-check는 그 php-extension lane이 extension을 build하므로 PHP extension tool을 선언하고 설치합니다(T272).
 - PHP test helper는 하나의 helper generateModels를 통해 별도 process의 orm-gen으로 model을 생성하므로, extension으로 도는 test는 PHP library의 file을 load하지 않습니다(T270).
