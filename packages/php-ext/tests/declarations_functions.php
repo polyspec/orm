@@ -58,7 +58,8 @@ const CLIENT_CLASSES = [
     'Polyspec\\Orm\\Schema',
     'Polyspec\\Orm\\RuntimeModel',
     'Polyspec\\Orm\\GroupRow',
-    'Polyspec\\Orm\\GroupRows'
+    'Polyspec\\Orm\\GroupRows',
+    'Polyspec\\Orm\\ModelMetadata'
 ];
 
 const INTERNAL_CLASSES = [
@@ -67,7 +68,6 @@ const INTERNAL_CLASSES = [
     'Polyspec\\Orm\\Internal\\PgsqlStatementIterator',
     'Polyspec\\Orm\\CollectionIterator',
     'Polyspec\\Orm\\CollectionDeleteCallback',
-    'Polyspec\\Orm\\ModelMetadata',
     'Polyspec\\Orm\\ModelCreatesCallback',
     'Polyspec\\Orm\\ModelRestoreHook',
     'Polyspec\\Orm\\ModelRestoreOrCreateCallback',
