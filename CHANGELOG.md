@@ -5,6 +5,7 @@
 
 ## 0.0.19
 
+- A native read of an invalid date or datetime throws the CODEC_DECODE OrmException "invalid date value <text>" with its native cause, where a row read or a grouped value ended without an error, and the extension reads the fallback forms and the end offsets that the PHP library reads (T293).
 - The extension run guard fails a run only for a loaded library file whose class the extension declares, so a run that loads the generator, which the extension does not provide, passes, and a forked worker no longer inherits a false failure (T302).
 - make run-databases refuses, naming it, a target that contracts/check-inputs.json does not declare, where it ran the target as one that needs nothing (T288).
 - The parity targets export ORM_PHP_DYNAMIC_MODULES, so the DeclarationsTest of the php-extension bindings reads the modules that the extension loads dynamically (T301).

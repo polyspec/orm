@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e872d6edb67790f49f425c93b733d53c02d5a182c4dd75676813553c5fc29a6b -->
+<!-- source-sha256: b3c8b639f28c820046549085355fb845d818dd1c51b7381cafb77656effb84e2 -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.19
 
+- 잘못된 date나 datetime의 native 읽기는 CODEC_DECODE OrmException "invalid date value <text>"를 원래 예외와 함께 던집니다. 전에는 행 읽기와 group 값이 오류 없이 끝났습니다. 확장은 PHP library가 읽는 대체 형식과 끝의 offset도 읽습니다(T293).
 - extension run guard는 확장이 선언한 class를 담은 library file이 load된 run만 실패시킵니다. 그래서 확장이 제공하지 않는 generator를 load한 run은 통과하고, fork된 worker도 잘못된 실패를 물려받지 않습니다(T302).
 - make run-databases는 contracts/check-inputs.json이 선언하지 않은 target을 이름을 밝혀 거부합니다. 전에는 그 target을 아무것도 필요 없는 target으로 실행했습니다(T288).
 - parity target은 ORM_PHP_DYNAMIC_MODULES를 export합니다. 그래서 php-extension binding의 DeclarationsTest가 확장이 동적으로 load하는 module을 읽습니다(T301).

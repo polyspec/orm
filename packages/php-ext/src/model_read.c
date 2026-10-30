@@ -370,7 +370,7 @@ static bool read_column_convert(zval *model, zval *db, zval *zone, zval *column,
             zval_ptr_dtor(&args[0]); zval_ptr_dtor(&args[1]); if (!Z_ISUNDEF(rv)) zval_ptr_dtor(&rv);
             zval_ptr_dtor(&value); return EG(exception) == NULL;
         }
-        bool ok = model_time_value_in_zone(&value, zone, out, NULL); zval_ptr_dtor(&value); return ok;
+        bool ok = model_time_value_in_zone(&value, zone, out); zval_ptr_dtor(&value); return ok;
     }
     if (!read_convert_resource(&value)) { zval_ptr_dtor(&value); return false; }
     if (Z_TYPE(value) == IS_STRING) { ZVAL_COPY_VALUE(out, &value); return true; }
@@ -468,7 +468,7 @@ ZEND_METHOD(Polyspec_Orm_Model, assembleRow)
                     if (numeric) { double n = zval_get_double(&converted); zval_ptr_dtor(&converted); ZVAL_DOUBLE(&converted, n); }
                 } else if (read_string_is(kind, "date") || read_string_is(kind, "datetime")) {
                     zval time;
-                    if (!model_time_value_in_zone(&converted, zone, &time, NULL)) { zval_ptr_dtor(&converted); zval_ptr_dtor(&st); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); RETURN_THROWS(); }
+                    if (!model_time_value_in_zone(&converted, zone, &time)) { zval_ptr_dtor(&converted); zval_ptr_dtor(&st); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); RETURN_THROWS(); }
                     zval_ptr_dtor(&converted); ZVAL_COPY_VALUE(&converted, &time);
                 }
             }
@@ -780,7 +780,7 @@ ZEND_METHOD(Polyspec_Orm_Model, groupValue)
     }
     if(read_string_is(type,"f64")){zval args[2],rv;ZVAL_COPY(&args[0],&value);ZVAL_COPY(&args[1],name);bool ok=read_model_static_call(ZEND_THIS,"groupFloat",&rv,2,args);zval_ptr_dtor(&args[0]);zval_ptr_dtor(&args[1]);zval_ptr_dtor(&value);zval_ptr_dtor(&meta);if(!ok)RETURN_THROWS();ZVAL_COPY_VALUE(return_value,&rv);return;}
     if(read_string_is(type,"decimal")){if(declared==NULL){zval_ptr_dtor(&value);zval_ptr_dtor(&meta);zend_string *message=strpprintf(0,"decimal group column %s has no declaration",Z_STRVAL_P(name));read_throw("INTERNAL",ZSTR_VAL(message));zend_string_release(message);RETURN_THROWS();}zval *precision=read_array(declared,"precision"),*scale=read_array(declared,"scale");zval driver;if(precision==NULL||scale==NULL||!read_call(db,"driver",&driver,0,NULL)){zval_ptr_dtor(&value);zval_ptr_dtor(&meta);RETURN_THROWS();}bool sqlite=Z_TYPE(driver)==IS_STRING&&zend_string_equals_literal(Z_STR(driver),"sqlite");zval_ptr_dtor(&driver);zval args[3],rv;ZVAL_COPY(&args[0],&value);ZVAL_COPY(&args[1],precision);ZVAL_COPY(&args[2],scale);zend_class_entry *decimal=read_lookup_class("Polyspec\\Orm\\Decimal");bool ok=decimal!=NULL&&read_static_call(decimal,sqlite?"fromScaled":"decode",&rv,3,args);for(int i=0;i<3;i++)zval_ptr_dtor(&args[i]);zval_ptr_dtor(&value);zval_ptr_dtor(&meta);if(!ok)RETURN_THROWS();ZVAL_COPY_VALUE(return_value,&rv);return;}
-    if(read_string_is(type,"date")||read_string_is(type,"datetime")){zval zone;if(!read_call(db,"zone",&zone,0,NULL)){zval_ptr_dtor(&value);zval_ptr_dtor(&meta);RETURN_THROWS();}bool ok=model_time_value_in_zone(&value,&zone,return_value,NULL);zval_ptr_dtor(&zone);zval_ptr_dtor(&value);zval_ptr_dtor(&meta);if(!ok)RETURN_THROWS();return;}
+    if(read_string_is(type,"date")||read_string_is(type,"datetime")){zval zone;if(!read_call(db,"zone",&zone,0,NULL)){zval_ptr_dtor(&value);zval_ptr_dtor(&meta);RETURN_THROWS();}bool ok=model_time_value_in_zone(&value,&zone,return_value);zval_ptr_dtor(&zone);zval_ptr_dtor(&value);zval_ptr_dtor(&meta);if(!ok)RETURN_THROWS();return;}
     if(read_string_is(type,"varchar")||read_string_is(type,"text")||read_string_is(type,"time")||read_string_is(type,"uuid")||read_string_is(type,"bytes")){if(Z_TYPE(value)!=IS_STRING){zval_ptr_dtor(&value);zval_ptr_dtor(&meta);zend_string *message=strpprintf(0,"group column %s is not text or bytes",Z_STRVAL_P(name));read_throw("CODEC_DECODE",ZSTR_VAL(message));zend_string_release(message);RETURN_THROWS();}zval_ptr_dtor(&meta);ZVAL_COPY_VALUE(return_value,&value);return;}
     zend_string *message=strpprintf(0,"group column %s has unsupported type %s",Z_STRVAL_P(name),Z_STRVAL_P(type));zval_ptr_dtor(&value);zval_ptr_dtor(&meta);read_throw("INTERNAL",ZSTR_VAL(message));zend_string_release(message);RETURN_THROWS();
 }

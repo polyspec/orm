@@ -7,7 +7,7 @@
 void model_native_init(zend_class_entry *ce);
 bool model_result_name(zend_object *object, bool many, zend_string **result);
 /* A conversion that a native exception ends hands that exception to *cause when cause is not NULL, and releases it otherwise. */
-bool model_time_value_in_zone(zval *input, zval *zone, zval *ret, zend_object **cause);
+bool model_time_value_in_zone(zval *input, zval *zone, zval *ret);
 zend_string *model_decimal_normalize(zend_string *input, zend_long precision, zend_long scale);
 void model_native_fail(model_state *state, const char *message);
 bool model_reject_null_scalar_args(zend_execute_data *execute_data, const char *const *types, uint32_t type_count);

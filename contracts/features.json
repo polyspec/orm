@@ -1308,7 +1308,8 @@
         "packages/php-ext/tests/GroupRowsTestExtensionTest.php",
         "packages/php-ext/tests/InsertPartsTestExtensionTest.php",
         "packages/php-ext/tests/ModelTestExtensionTest.php",
-        "packages/rust/orm/src/value.rs"
+        "packages/rust/orm/src/value.rs",
+        "packages/php-ext/tests/InvalidDateReadNativeTest.php"
       ],
       "docs": [
         "docs/spec/dsl.md",

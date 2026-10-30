@@ -808,7 +808,51 @@ static bool model_zone(model_state *s, zval *zone)
     return EG(exception) == NULL;
 }
 
-bool model_time_value_in_zone(zval *input, zval *zone, zval *ret, zend_object **cause)
+/* Reads text into time with DateTimeImmutable::createFromFormat(format, text, zone); time stays undefined when the format does
+ * not read it. */
+static void model_time_from_format(const char *format, zval *text, zval *zone, zval *time)
+{
+    zval callable, fmt, class_name, method_name, args[3];
+    array_init(&callable);
+    ZVAL_STRING(&class_name, "DateTimeImmutable");
+    ZVAL_STRING(&method_name, "createFromFormat");
+    add_next_index_zval(&callable, &class_name);
+    add_next_index_zval(&callable, &method_name);
+    ZVAL_STRING(&fmt, format);
+    ZVAL_COPY(&args[0], &fmt);
+    ZVAL_COPY(&args[1], text);
+    ZVAL_COPY(&args[2], zone);
+    call_user_function(NULL, NULL, &callable, time, 3, args);
+    for (size_t j = 0; j < 3; j++) zval_ptr_dtor(&args[j]);
+    zval_ptr_dtor(&fmt);
+    zval_ptr_dtor(&callable);
+    if (Z_TYPE_P(time) != IS_OBJECT) {
+        zval_ptr_dtor(time);
+        ZVAL_UNDEF(time);
+    }
+}
+
+/* Whether text ends with a UTC offset, the pattern [+-]\d\d(:?\d\d)?$ of Model::timeValue. */
+static bool model_time_ends_with_offset(const zend_string *text)
+{
+    const char *s = ZSTR_VAL(text);
+    size_t n = ZSTR_LEN(text);
+#define MODEL_DIGIT(c) ((c) >= '0' && (c) <= '9')
+#define MODEL_SIGN(c) ((c) == '+' || (c) == '-')
+    bool ends = (n >= 3 && MODEL_SIGN(s[n - 3]) && MODEL_DIGIT(s[n - 2]) && MODEL_DIGIT(s[n - 1]))
+        || (n >= 5 && MODEL_SIGN(s[n - 5]) && MODEL_DIGIT(s[n - 4]) && MODEL_DIGIT(s[n - 3]) && MODEL_DIGIT(s[n - 2]) && MODEL_DIGIT(s[n - 1]))
+        || (n >= 6 && MODEL_SIGN(s[n - 6]) && MODEL_DIGIT(s[n - 5]) && MODEL_DIGIT(s[n - 4]) && s[n - 3] == ':'
+            && MODEL_DIGIT(s[n - 2]) && MODEL_DIGIT(s[n - 1]));
+#undef MODEL_DIGIT
+#undef MODEL_SIGN
+    return ends;
+}
+
+/* Reads input as a date in zone into ret, as Model::timeValue of the PHP library does: the form of its length, then a text
+ * with a UTC offset through the DateTimeImmutable constructor, then each fallback form. A value that no form reads throws the
+ * CODEC_DECODE OrmException "invalid date value <text>", whose previous is the exception of the constructor when it threw, so
+ * false always leaves an exception pending (T293). */
+bool model_time_value_in_zone(zval *input, zval *zone, zval *ret)
 {
     zend_class_entry *immutable = php_date_get_immutable_ce();
     zend_class_entry *interface = php_date_get_interface_ce();
@@ -816,65 +860,49 @@ bool model_time_value_in_zone(zval *input, zval *zone, zval *ret, zend_object **
     ZVAL_UNDEF(&time);
     if (Z_TYPE_P(input) == IS_OBJECT && instanceof_function(Z_OBJCE_P(input), interface)) {
         zend_call_method_with_1_params(NULL, immutable, NULL, "createfrominterface", &time, input);
+        if (EG(exception) != NULL) {
+            if (Z_TYPE(time) != IS_UNDEF) zval_ptr_dtor(&time);
+            return false;
+        }
     } else {
         zend_string *text = zval_try_get_string(input);
-        if (text == NULL) { /* caller owns zone */ return false; }
-        const char *format = NULL;
-        switch (ZSTR_LEN(text)) {
-            case 19: format = "!Y-m-d H:i:s"; break;
-            case 26: format = "!Y-m-d H:i:s.u"; break;
-            case 10: format = "!Y-m-d"; break;
-            default: break;
-        }
+        if (text == NULL) return false;
         zval input_text;
         ZVAL_STR_COPY(&input_text, text);
-        if (format != NULL) {
-            zval callable, fmt, class_name, method_name, args[3];
-            array_init(&callable);
-            ZVAL_STRING(&class_name, "DateTimeImmutable");
-            ZVAL_STRING(&method_name, "createFromFormat");
-            add_next_index_zval(&callable, &class_name);
-            add_next_index_zval(&callable, &method_name);
-            ZVAL_STRING(&fmt, format);
-            ZVAL_COPY(&args[0], &fmt);
-            ZVAL_COPY(&args[1], &input_text);
-            ZVAL_COPY(&args[2], zone);
-            call_user_function(NULL, NULL, &callable, &time, 3, args);
-            for (size_t j = 0; j < 3; j++) zval_ptr_dtor(&args[j]);
-            zval_ptr_dtor(&fmt);
-            zval_ptr_dtor(&callable);
-        }
-        if (Z_TYPE(time) != IS_OBJECT && EG(exception) == NULL) {
-            /* Date strings carrying an explicit UTC offset are parsed by DateTimeImmutable's standard constructor. */
-            bool has_offset = false;
-            for (size_t i = 0; i < ZSTR_LEN(text); i++) {
-                if ((text->val[i] == '+' || text->val[i] == '-') && i > 0 && ZSTR_LEN(text) - i >= 3
-                    && text->val[i + 1] >= '0' && text->val[i + 1] <= '9'
-                    && text->val[i + 2] >= '0' && text->val[i + 2] <= '9') {
-                    has_offset = true;
-                    break;
-                }
+        const char *format = ZSTR_LEN(text) == 19 ? "!Y-m-d H:i:s" : ZSTR_LEN(text) == 26 ? "!Y-m-d H:i:s.u"
+            : ZSTR_LEN(text) == 10 ? "!Y-m-d" : NULL;
+        if (format != NULL) model_time_from_format(format, &input_text, zone, &time);
+        zend_object *cause = NULL;
+        if (Z_TYPE(time) == IS_UNDEF && EG(exception) == NULL && model_time_ends_with_offset(text)) {
+            object_init_ex(&time, immutable);
+            zend_call_method_with_2_params(Z_OBJ(time), immutable, NULL, "__construct", NULL, &input_text, zone);
+            if (EG(exception) != NULL) {
+                cause = EG(exception);
+                EG(exception) = NULL;
+                zval_ptr_dtor(&time);
+                ZVAL_UNDEF(&time);
             }
-            if (has_offset) {
-                object_init_ex(&time, immutable);
-                if (EG(exception) == NULL) zend_call_method_with_2_params(Z_OBJ(time), immutable, NULL, "__construct", NULL, &input_text, zone);
+        } else {
+            static const char *const fallbacks[] = {"!Y-m-d H:i:s.u", "!Y-m-d H:i:s", "!Y-m-d"};
+            for (size_t i = 0; i < 3 && Z_TYPE(time) == IS_UNDEF && EG(exception) == NULL; i++) {
+                model_time_from_format(fallbacks[i], &input_text, zone, &time);
             }
         }
         zval_ptr_dtor(&input_text);
+        if (EG(exception) != NULL) {
+            if (cause != NULL) OBJ_RELEASE(cause);
+            if (Z_TYPE(time) != IS_UNDEF) zval_ptr_dtor(&time);
+            zend_string_release(text);
+            return false;
+        }
+        if (Z_TYPE(time) == IS_UNDEF) {
+            zend_string *message = strpprintf(0, "invalid date value %s", ZSTR_VAL(text));
+            orm_throw_exception_previous("CODEC_DECODE", message, cause);
+            zend_string_release(message);
+            zend_string_release(text);
+            return false;
+        }
         zend_string_release(text);
-    }
-    if (EG(exception) != NULL) {
-        zend_object *exception = EG(exception);
-        EG(exception) = NULL;
-        if (cause != NULL) *cause = exception;
-        else OBJ_RELEASE(exception);
-        /* caller owns zone */
-        if (Z_TYPE(time) != IS_UNDEF) zval_ptr_dtor(&time);
-        return false;
-    }
-    if (Z_TYPE(time) != IS_OBJECT) {
-        /* caller owns zone */
-        return false;
     }
     zend_call_method_with_1_params(Z_OBJ(time), Z_OBJCE(time), NULL, "settimezone", ret, zone);
     zval_ptr_dtor(&time);
@@ -891,7 +919,7 @@ static bool model_time_value(model_state *s, zval *input, zval *ret)
         if (Z_TYPE(zone) != IS_UNDEF) zval_ptr_dtor(&zone);
         return false;
     }
-    bool ok = model_time_value_in_zone(input, &zone, ret, NULL);
+    bool ok = model_time_value_in_zone(input, &zone, ret);
     zval_ptr_dtor(&zone);
     return ok;
 }
@@ -978,16 +1006,7 @@ ZEND_METHOD(Polyspec_Orm_Model, readColumn)
         if (!pending_time_parts(pending_ce, value, &text_rv, &zone_rv, &text, &zone)) RETURN_THROWS();
         zval converted;
         ZVAL_UNDEF(&converted);
-        zend_object *cause = NULL;
-        if (!model_time_value_in_zone(text, zone, &converted, &cause)) {
-            if (EG(exception) != NULL) RETURN_THROWS();
-            smart_str message = {0};
-            smart_str_append_printf(&message, "invalid date value %s", Z_STRVAL_P(text));
-            zend_string *error = smart_str_extract(&message);
-            orm_throw_exception_previous("CODEC_DECODE", error, cause);
-            zend_string_release(error);
-            RETURN_THROWS();
-        }
+        if (!model_time_value_in_zone(text, zone, &converted)) RETURN_THROWS();
         zval_ptr_dtor(value);
         ZVAL_COPY_VALUE(value, &converted);
     }
@@ -1064,11 +1083,6 @@ ZEND_METHOD(Polyspec_Orm_Model, writeColumn)
         ZVAL_UNDEF(&parsed);
         if (!model_time_value(s, input, &parsed)) {
             zval_ptr_dtor(&meta); zval_ptr_dtor(&value); zval_ptr_dtor(&set_value);
-            if (EG(exception) != NULL) RETURN_THROWS();
-            smart_str message = {0};
-            smart_str_append_printf(&message, "invalid date value %s", Z_STRVAL_P(input));
-            zend_string *text = smart_str_extract(&message);
-            model_throw_orm("CODEC_DECODE", ZSTR_VAL(text)); zend_string_release(text);
             RETURN_THROWS();
         }
         zval_ptr_dtor(&value);
