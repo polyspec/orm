@@ -5,6 +5,7 @@
 
 ## 0.0.19
 
+- The parity and runtime contexts of the gates export the decimal DSNs of their run beside its TEST_ENV, so the decimal parity cases and the native decimal database test find their databases (T294).
 - orm requires the released ordered-json 0.0.14 in npm, Composer, Python, Go and Cargo, the version of the development source; the root composer.json reads it from the packages.json repository of the release, as packaging.md shows (T286).
 - The PHP extension keeps the native exception as the previous of the OrmException of an invalid date and of a JSON encode failure, as the PHP library does (T292).
 - The Python case of the decimal physical check writes its unittest report on stdout, the stream the check reads, so a passing run is observed (T289).
