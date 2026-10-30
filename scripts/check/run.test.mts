@@ -77,6 +77,18 @@ caseTest('the TypeScript coverage that runs the interface case declares the Type
   assert.ok(target.needs.includes('interfaces-typescript'));
 });
 
+// client-pooler-check runs every client lane of scripts/client-db-test.mts, so its php-extension lane builds the extension with
+// the tools of make orm-install-php-extension-tools, as client-db-php-extension-check does (T272).
+caseTest('the client pooler check declares the PHP extension tools that its extension lane builds with', COMPUTE, () => {
+  const inputs: unknown = JSON.parse(readFileSync(join(repo, 'contracts/check-inputs.json'), 'utf8'));
+  if (!isRecord(inputs) || !isRecord(inputs.targets)) throw new Error('contracts/check-inputs.json has no targets object');
+  for (const name of ['client-pooler-check', 'client-db-php-extension-check']) {
+    const target: unknown = inputs.targets[name];
+    if (!isRecord(target) || !isStringArray(target.needs)) throw new Error(`${name} has no needs list`);
+    assert.ok(target.needs.includes('php-extension-tools'), name);
+  }
+});
+
 caseTest('the canonical parity target declares every client and fixture setup need', COMPUTE, () => {
   const inputs: unknown = JSON.parse(readFileSync(join(repo, 'contracts/check-inputs.json'), 'utf8'));
   if (!isRecord(inputs) || !isRecord(inputs.targets)) throw new Error('contracts/check-inputs.json has no targets object');

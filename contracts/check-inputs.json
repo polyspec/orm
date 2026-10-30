@@ -1676,6 +1676,7 @@
         "rust",
         "php",
         "composer",
+        "php-extension-tools",
         "node-modules",
         "python",
         "databases"

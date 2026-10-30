@@ -5,6 +5,7 @@
 
 ## 0.0.19
 
+- client-pooler-check declares and installs the PHP extension tools, since its php-extension lane builds the extension (T272).
 - The PHP test helpers generate their models with orm-gen in a process of their own, through one helper generateModels, so a test that runs against the extension loads no file of the PHP library (T270).
 - The Python parity bindings of the complex query and the hot-path gate name their test class, and the postgres and sqlite hot-path bindings give the database and its DSN, as the mysql binding does (T269).
 - The Python symbols of config/parity.json carry the import-root prefix polyspec.orm that the kit Python extractor reads since kit K788 (T268).

@@ -399,8 +399,9 @@ temp-sqlite-fixture-rust-helper-check/cpx5: cargo-downloads-check lease-tool
 	cd packages/rust && $(CARGO_TEST) temp-sqlite-fixture-cpx5 -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test integration coverage_model_queries::duplicate_relation_name_reports_config_alias_hint -- --test-threads=1 --exact
 
 # client-pooler-check runs the client database tests through the PgBouncer
-# pooler in transaction mode for PostgreSQL and the ProxySQL pooler for MySQL.
-client-pooler-check: lease-tool python-venv-check
+# pooler in transaction mode for PostgreSQL and the ProxySQL pooler for MySQL. Its php-extension lane builds the
+# extension, so it installs the PHP extension tools (T272).
+client-pooler-check: lease-tool python-venv-check orm-install-php-extension-tools
 	$(HOLD_TYPESCRIPT)
 	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_TEST_POSTGRES_DSN="$$ORM_TEST_PGBOUNCER_DSN" ORM_TEST_MYSQL_DSN="$$ORM_TEST_PROXYSQL_DSN" node scripts/client-db-test.mts
 
