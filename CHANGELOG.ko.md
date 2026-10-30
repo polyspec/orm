@@ -6,6 +6,7 @@
 
 ## 0.0.19
 
+- Python introspect runner는 helper를 test package에서 import하고, apply runner처럼 `python -m packages.python.tests.dbspec_introspect_runner`로 실행됩니다. 그래서 support file의 parity 실행은 이 파일을 import하고 case를 보고하지 않습니다. 전에는 import가 실패해 선언되지 않은 test로 보고되었습니다(T306).
 - config/parity.json의 python binding 아홉 개는 unittest 실행이 보고하는 형식인 method 이름으로 test를 적습니다. 그래서 parity 실행이 이 binding들을 인정합니다. 전에는 `<Class>.<method>` id가 실행되지 않은 것으로 보고되었습니다(T305).
 - schema-existence-and-installation의 php-extension binding은 SchemaUtilsNativeTest::testExistsEscapesUnderscoreInSqliteSchemaName을 class 형식으로 적습니다. 그래서 parity 실행이 이 test를 인정합니다. 전에는 다른 단위가 class와 함께 묶은 test를 method 이름만으로 적어서, 실행되지 않은 것으로 보고되었습니다(T304).
 - kit 0.0.79를 채택한다(KSTD-5-125): CI는 `.github/workflows/ci-pipeline.yml`의 shared, parity, runtime 검사를 job `kit`으로 부르고 `ci-passed`가 그 성공을 요구하며, release는 성공한 `ci.yml` run의 id로 `release.yml`을 dispatch하는 것이고 그 `make release-tag`가 run의 commit에 tag한다. `make release-verify`와 push한 tag로 하는 release는 없어졌다.

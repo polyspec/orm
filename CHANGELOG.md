@@ -5,6 +5,7 @@
 
 ## 0.0.19
 
+- The Python introspect runner imports its helper from the test package and runs as `python -m packages.python.tests.dbspec_introspect_runner`, like the apply runner, so the parity run of the support file imports it and reports no case, where its import failed and was reported as an undeclared test (T306).
 - Nine python bindings of config/parity.json name their test by its method, the form that the unittest run reports, so the parity run credits them, where their `<Class>.<method>` ids were reported not executed (T305).
 - The php-extension binding of schema-existence-and-installation names SchemaUtilsNativeTest::testExistsEscapesUnderscoreInSqliteSchemaName in its class form, so the parity run credits it, where the bare spelling of a test that another unit binds with its class was reported not executed (T304).
 - Kit 0.0.79 is adopted (KSTD-5-125): CI calls the shared, parity and runtime checks of `.github/workflows/ci-pipeline.yml` as its job `kit`, whose success `ci-passed` requires, and a release is a dispatch of `release.yml` with the id of a successful `ci.yml` run, whose `make release-tag` tags its commit; `make release-verify` and the release by a pushed tag are gone.
