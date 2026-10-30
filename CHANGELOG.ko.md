@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2b661cbf5b85b42edc7ab3f641543f02a06f33ba0f43717df237d65c14bf8983 -->
+<!-- source-sha256: fd51fdf3897f6214a8c653ba10aee4fbe8855228df66538895951497217867ec -->
 # 변경 이력
 
 ## Unreleased
@@ -9,6 +9,7 @@
 - make install은 더 이상 kit target kit-install-php-arginfo를 부르지 않습니다. kit K930은 arginfo가 kit builder가 실행하는 PHP의 gen_stub.php에서 오므로 이 target을 없앴고, kit main에 link된 checkout의 make install은 모두 그 지점에서 멈춰 python venv, flowmark, interfaces TypeScript를 설치하지 못했습니다. ArginfoBuildTest는 build.sh가 지금 하는 일을 검사합니다: mode마다 kit builder에 인자를 넘기고, 스스로 tool을 실행하지 않은 채 builder의 status와 출력을 돌려줍니다(T328).
 - go-internal-packages-go-engine-functions-physical의 rust binding은 coverage-conformance-verification-conformance-vector처럼 coverage_conformance_vector를 make feature-rust-database로 SQLite database와 함께 실행합니다. 그래서 parity 실행이 ignored trial을 ORM_FEATURE_DATABASE와 ORM_FEATURE_DSN과 함께 실행합니다. 전에는 binding에 명령이 없어 cargo가 trial을 ignored로 보고했고, 실행은 이를 skipped로 읽었습니다(T314).
 - PHP 확장 build는 kit K930이 요구하는 대로 두 build mode 모두에서 --source-copy로 packages/php/src/native/sqlite_cancel.c를 src/native/sqlite_cancel.c로 준비합니다. kit builder가 더 이상 config/release.json의 source-copy 선언을 읽지 않기 때문입니다. 전에는 확장의 모든 release build가 No rule to make target src/native/sqlite_cancel.c로 실패했습니다(T325).
+- group-count-boolean-decode와 group-rows-negative-count의 php binding은 공유 GroupRows case가 정의하는 GroupRowsTest method인 testGroupValueRejectsInvalidStoredBoolean과 testGroupRowCountEnforcesExactness에 연결됩니다. 전에는 case를 GroupRowsCases로 옮기면서 지운 method 둘에 연결되어 있어, parity 실행이 둘을 실행되지 않은 것으로 보고했습니다. 잘못된 row count에는 그 이동에서 빠진 -1.5가 다시 들어갑니다(T320).
 - group-row-owner의 rust binding은 INT-68부터 INT-71을 가진 test인 collection::group_tests::grouped_rows_contain_only_group_values_and_checked_counts를 지정합니다. 그래서 parity 실행이 이 test를 실행합니다. 전에는 존재한 적 없는 test를 지정해 아무 test도 선택하지 않았고, binding은 실행되지 않은 것으로 보고되었습니다(T312).
 - TypeScript model test는 각 case를 parity id로 node:test에 등록하고, case가 선언한 dialect에서 실행합니다. 그래서 parity 실행이 이 파일의 TypeScript binding을 인정합니다. 전에는 model.mjs가 section을 node:test 밖에서 실행해 이 파일의 binding이 모두 실행되지 않은 것으로 보고되었습니다. cancellation, transaction 끝 실패, MySQL transaction 안 install, styled state case는 다른 runtime에서 같은 동작을 시험하는 unit에 bind되며 Go TestMySQLInstallInsideTransaction도 함께 bind됩니다. --case와 --dialect 인자 대신 --test-name-pattern으로 case를 고릅니다(T318).
 - python hot path 측정은 PERF 줄을 표준 출력에 씁니다. 그래서 `test_hot_path_gate`의 unittest 결과 줄에는 결과만 남고, parity 실행이 hot path 단위 세 개를 인정합니다. 전에는 그 결과 줄 안에 표준 오류로 쓰인 줄이 결과를 가렸습니다(T310).

@@ -17094,7 +17094,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/GroupRowsTest.php",
-          "id": "GroupRowsTest::testGroupBooleanRejectsInvalidStoredValue"
+          "id": "GroupRowsTest::testGroupValueRejectsInvalidStoredBoolean"
         },
         {
           "implementation": "php-extension",
@@ -25582,7 +25582,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/GroupRowsTest.php",
-          "id": "GroupRowsTest::testNegativeCountIsCodecDecode"
+          "id": "GroupRowsTest::testGroupRowCountEnforcesExactness"
         },
         {
           "implementation": "php-extension",

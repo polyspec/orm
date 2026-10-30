@@ -117,7 +117,8 @@ trait GroupRowsCases
     public function testGroupRowCountEnforcesExactness(): void
     {
         $this->assertGroupRowOwnership();
-        foreach ([true, -1, '-1', '00', 1.5, 9007199254740992, 9007199254740992.0, '9007199254740992'] as $invalid) {
+        $invalidCounts = [true, -1, -1.5, '-1', '00', 1.5, 9007199254740992, 9007199254740992.0, '9007199254740992'];
+        foreach ($invalidCounts as $invalid) {
             try {
                 new GroupRow([['row_count', $invalid]]);
                 self::fail('an invalid row_count was accepted');
