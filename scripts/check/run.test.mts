@@ -121,7 +121,8 @@ caseTest('the canonical parity target declares every client and fixture setup ne
   assert.ok(expandNeeds(['databases']).includes('go-lease'));
   const makefile = readFileSync(join(repo, 'Makefile'), 'utf8');
   assert.match(makefile, /COMPLEX_QUERY_DSN_NAMES := \$\(foreach runtime,\$\(COMPLEX_QUERY_RUNTIMES\),\$\(foreach dialect,\$\(COMPLEX_QUERY_DIALECTS\),COMPLEX_QUERY_\$\(runtime\)_\$\(dialect\)_DSN\)\)/);
-  assert.match(makefile, /\$\(foreach v,\$\(COMPLEX_QUERY_DSN_NAMES\),\$\(eval export \$\(v\) :=/);
+  // T299: make exports every variable of the TEST_ENV file of the run into itself, the complex-query DSNs among them.
+  assert.match(makefile, /\$\(foreach v,\$\(TEST_ENV_NAMES\),\$\(eval export \$\(v\) :=/);
   assert.match(makefile, /for v in BENCH_MYSQL_DSN BENCH_POSTGRES_DSN BENCH_SQLITE_DSN \$\(COMPLEX_QUERY_DSN_NAMES\);/);
 });
 
