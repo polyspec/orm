@@ -22,7 +22,7 @@
   },
   "devDependencies": {
     "@polyspec/kit": "https://github.com/polyspec/kit/releases/download/v0.0.77/polyspec-kit-npm-0.0.77.tgz",
-    "@polyspec/ordered-json": "https://github.com/polyspec/ordered-json/releases/download/v0.0.13/polyspec-ordered-json-npm-0.0.13.tgz",
+    "@polyspec/ordered-json": "https://github.com/polyspec/ordered-json/releases/download/v0.0.14/polyspec-ordered-json-npm-0.0.14.tgz",
     "@types/mdast": "4.0.4",
     "@types/node": "26.6.5",
     "@types/semver": "7.8.0",
@@ -43,7 +43,7 @@
     "yaml": "2.9.1"
   },
   "overrides": {
-    "@polyspec/ordered-json": "https://github.com/polyspec/ordered-json/releases/download/v0.0.13/polyspec-ordered-json-npm-0.0.13.tgz",
+    "@polyspec/ordered-json": "https://github.com/polyspec/ordered-json/releases/download/v0.0.14/polyspec-ordered-json-npm-0.0.14.tgz",
     "vite": "^7.0.0"
   }
 }

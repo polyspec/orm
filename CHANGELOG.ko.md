@@ -6,6 +6,7 @@
 
 ## 0.0.19
 
+- orm은 npm, Composer, Python, Go, Cargo에서 개발 source의 version인 릴리스된 ordered-json 0.0.14를 요구합니다. root composer.json은 packaging.md가 보이는 대로 release의 packages.json repository에서 이를 읽습니다(T286).
 - PHP 확장은 PHP 라이브러리처럼 잘못된 date와 JSON encode 실패의 OrmException에 원래의 네이티브 예외를 previous로 남깁니다(T292).
 - decimal physical check의 Python case는 unittest 보고를 검사가 읽는 stdout에 씁니다. 그래서 통과한 실행이 통과로 관측됩니다(T289).
 - make orm-install-python은 orm-install-php가 composer install 뒤에 하듯 uv-install 뒤에 make link를 실행합니다. 그래서 CI venv에 link-check가 비교하는 polyspec-orm의 own link가 생깁니다(T291).
