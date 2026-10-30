@@ -7,7 +7,6 @@ import json
 import os
 import sys
 import time
-from datetime import datetime, timezone
 from urllib.parse import unquote, urlparse, parse_qs
 
 ITERATIONS = 500
@@ -41,6 +40,7 @@ def main() -> None:
     target = dsn()
     # The client and the native driver load after the check, so a missing DSN ends the program without them.
     from polyspec.orm.models.models import Author, connect
+    from polyspec.orm.placeholders import for_mysql
     import pymysql
 
     url = urlparse(target)
@@ -55,7 +55,7 @@ def main() -> None:
     db = connect(target, aesKey=AES_KEY, blindIndexKey="bench-blind-index")
     try:
         db.subscribe(on_statement)
-        now = datetime(2026, 9, 11, 0, 0, 0, tzinfo=timezone.utc)
+        now = "2026-09-11 00:00:00"
 
         def query():
             return (
@@ -103,11 +103,10 @@ def main() -> None:
         raw = pymysql.connect(**connection_args)
         try:
             with raw.cursor() as cursor:
-                native = p50(
-                    lambda: (
-                        cursor.execute(last["sql"], last["binds"]) and cursor.fetchall()
-                    )
-                )
+                # The statement event carries the ? markers of orm; PyMySQL takes the %s markers of its pyformat
+                # style, so the native run translates them as the client does (for_mysql).
+                sql, binds = for_mysql(last["sql"], last["binds"])
+                native = p50(lambda: cursor.execute(sql, binds) and cursor.fetchall())
         finally:
             raw.close()
         print(
