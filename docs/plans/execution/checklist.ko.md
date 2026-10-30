@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 917c11c626bc58ff4768106c2af2513dc1418047b4f87e7f374b4a46628685cd -->
+<!-- source-sha256: 6878e92ff2922d97b460cd3e1834f44ea00ec919f4c64c6c66e86bc60d9a1d42 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1351,3 +1351,4 @@
 | T263 | offline Makefile 검사는 본래 network에서 lock을 쓰는 lock target을 받아들인다. 원인: scripts/check/downloads.mts가 $(ONLINE)을 install target에서만 허용하는데 orm-python-lock(KSTD-5-102)이 uv lock을 online으로 돌려 runner-check가 실패한다(ci 40979519721, job static) | scripts/check/downloads.mts, scripts/check/downloads.test.mts, CHANGELOG.md, CHANGELOG.ko.md | `make runner-check` | [v] |
 | T264 | 한 feature가 PHP extension run guard와 그 test를 소유한다. 원인: KSTD-5-109가 packages/php/tests/extension_run_guard.php와 ExtensionRunGuardTest.php를 contracts/features.json 항목 없이 추가해, feature_helpers, stress_mysql, stress_pg_sqlite, feature_verify_rust, feature_verify_other에서 features contract가 실패한다(ci 40979519721) | contracts/features.json, CHANGELOG.md, CHANGELOG.ko.md | `var/tools/bin/node scripts/features/check.mts` | [v] |
 | T265 | docs/features.md와 그 한국어 twin을 contracts/features.json에서 다시 생성한다. 원인: 5740e7397(KSTD-7-6)이 contract에서 performance_gate를 implemented로 옮기면서 scripts/features/build.mts를 돌리지 않아, feature-unit-check가 generated document is stale: docs/features.md로 실패한다(ci 40979519721, job static) | docs/features.md, docs/features.ko.md, CHANGELOG.md, CHANGELOG.ko.md | `make feature-unit-check` | [v] |
+| T266 | bench vector는 bench fixture의 ip_hex_cell table을 따른다. 원인: 9dd8819ac(KSTD-5-110)가 contracts/fixtures/bench/bench.dbs에 codec setting을 가진 ip_hex_cell table을 추가했는데, tests/dbspec/mermaid.json의 bench round trip dropped 목록도 packages/python/tests/test_orm_gen.py의 생성 module hash와 entity 수도 따라가지 않아, 모든 runtime이 24개 대신 export dropped 25 objects를 보고한다(ci 40979519721, job dbspec_go, dbspec_php_extension, client_db_rust, clients_pooler, python) | tests/dbspec/mermaid.json, packages/python/tests/test_orm_gen.py, CHANGELOG.md, CHANGELOG.ko.md | `make dbspec-go-check/engine dbspec-rust-check python-unit-check` | [ ] |
