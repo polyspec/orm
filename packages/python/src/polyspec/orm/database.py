@@ -1733,8 +1733,13 @@ class Db:
 
     @staticmethod
     def connect_schema(dsn: str, schema: Schema, options: dict | None = None) -> Db:
+        """Connects and registers the set of the schema. The schema is checked before the connection opens, as in
+        the other runtimes, so a schema that fails the check opens no connection (INT-54)."""
+        from polyspec.orm.utils import _schema_model
+
+        model = _schema_model(schema)
         db = Db(dsn, options)
-        db.register(schema)
+        db._register_set(schema.manifest_hash, model)
         return db
 
     def _open(self):

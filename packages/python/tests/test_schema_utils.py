@@ -103,6 +103,39 @@ class SchemaRegisterTest(unittest.TestCase):
                 Db.connect_schema(f"sqlite://{tmp}/changed.sqlite3", changed)
             self.assertEqual(caught.exception.code, "CONFIG")
 
+    # Requirements: INT-54.
+    def test_failed_connect_schema_leaves_no_open_connection(self):
+        import gc
+        import warnings
+
+        from polyspec.orm.database import Db
+        from polyspec.orm.errors import OrmError
+        from polyspec.orm.schema import Schema
+
+        with tempfile.TemporaryDirectory(prefix="orm-schema-connect-failed-") as tmp:
+            other = generate_document(
+                f"{tmp}/note", ROOT / "contracts" / "fixtures" / "install" / "note.dbs"
+            ).SCHEMA
+            changed = Schema(
+                manifest_text=other.manifest_text,
+                manifest_hash=self.schema.manifest_hash,
+                external_text=other.external_text,
+            )
+            # A connection that nothing closed is reported as a ResourceWarning when it is collected.
+            with warnings.catch_warnings(record=True) as reported:
+                warnings.simplefilter("always", ResourceWarning)
+                with self.assertRaises(OrmError):
+                    Db.connect_schema(f"sqlite://{tmp}/changed.sqlite3", changed)
+                gc.collect()
+            self.assertEqual(
+                [
+                    str(w.message)
+                    for w in reported
+                    if issubclass(w.category, ResourceWarning)
+                ],
+                [],
+            )
+
     def test_registering_the_same_set_again_changes_nothing(self):
         before = dict(self.db.engines)
         self.db.utils().schema().register(self.schema)
