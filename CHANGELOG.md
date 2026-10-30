@@ -5,6 +5,7 @@
 
 ## 0.0.19
 
+- The Python symbols of config/parity.json carry the import-root prefix polyspec.orm that the kit Python extractor reads since kit K788 (T268).
 - The PHP extension declarations test counts ModelMetadata among the classes of the PHP client, as T258 made it public (T267).
 - The bench vectors follow the ip_hex_cell table of the bench fixture: the Mermaid round trip lists its settings as dropped, and the Python generator test expects its manifest hash and 26 entities (T266).
 - The feature php-extension-run-guard owns the PHP extension run guard and ExtensionRunGuardTest.php, so the features contract passes (T264).

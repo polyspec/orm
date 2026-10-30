@@ -19418,7 +19418,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.VERSION_MISMATCH"
+          "symbol": "polyspec.orm.codes.VERSION_MISMATCH"
         },
         {
           "implementation": "rust",
@@ -19455,7 +19455,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.SCHEMA_HASH_MISMATCH"
+          "symbol": "polyspec.orm.codes.SCHEMA_HASH_MISMATCH"
         },
         {
           "implementation": "rust",
@@ -19492,7 +19492,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.SCHEMA_INVALID"
+          "symbol": "polyspec.orm.codes.SCHEMA_INVALID"
         },
         {
           "implementation": "rust",
@@ -19529,7 +19529,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.DIALECT_UNKNOWN"
+          "symbol": "polyspec.orm.codes.DIALECT_UNKNOWN"
         },
         {
           "implementation": "rust",
@@ -19566,7 +19566,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.IR_INVALID"
+          "symbol": "polyspec.orm.codes.IR_INVALID"
         },
         {
           "implementation": "rust",
@@ -19603,7 +19603,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.CAPABILITY_UNSUPPORTED"
+          "symbol": "polyspec.orm.codes.CAPABILITY_UNSUPPORTED"
         },
         {
           "implementation": "rust",
@@ -19640,7 +19640,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.ENTITY_UNKNOWN"
+          "symbol": "polyspec.orm.codes.ENTITY_UNKNOWN"
         },
         {
           "implementation": "rust",
@@ -19677,7 +19677,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.COLUMN_UNKNOWN"
+          "symbol": "polyspec.orm.codes.COLUMN_UNKNOWN"
         },
         {
           "implementation": "rust",
@@ -19714,7 +19714,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.RELATION_UNKNOWN"
+          "symbol": "polyspec.orm.codes.RELATION_UNKNOWN"
         },
         {
           "implementation": "rust",
@@ -19751,7 +19751,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.INDEX_UNKNOWN"
+          "symbol": "polyspec.orm.codes.INDEX_UNKNOWN"
         },
         {
           "implementation": "rust",
@@ -19788,7 +19788,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.COLUMN_ALIAS_CONFLICT"
+          "symbol": "polyspec.orm.codes.COLUMN_ALIAS_CONFLICT"
         },
         {
           "implementation": "rust",
@@ -19825,7 +19825,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.OPERATOR_UNKNOWN"
+          "symbol": "polyspec.orm.codes.OPERATOR_UNKNOWN"
         },
         {
           "implementation": "rust",
@@ -19862,7 +19862,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.FUNCTION_UNKNOWN"
+          "symbol": "polyspec.orm.codes.FUNCTION_UNKNOWN"
         },
         {
           "implementation": "rust",
@@ -19899,7 +19899,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.OPERATOR_NOT_ALLOWED"
+          "symbol": "polyspec.orm.codes.OPERATOR_NOT_ALLOWED"
         },
         {
           "implementation": "rust",
@@ -19936,7 +19936,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.OR_AT_GROUP_START"
+          "symbol": "polyspec.orm.codes.OR_AT_GROUP_START"
         },
         {
           "implementation": "rust",
@@ -19973,7 +19973,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.EMPTY_IN"
+          "symbol": "polyspec.orm.codes.EMPTY_IN"
         },
         {
           "implementation": "rust",
@@ -20010,7 +20010,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.ENTITY_NOT_JOINED"
+          "symbol": "polyspec.orm.codes.ENTITY_NOT_JOINED"
         },
         {
           "implementation": "rust",
@@ -20047,7 +20047,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.LIMIT_IN_RELATION"
+          "symbol": "polyspec.orm.codes.LIMIT_IN_RELATION"
         },
         {
           "implementation": "rust",
@@ -20084,7 +20084,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.NO_ROWS"
+          "symbol": "polyspec.orm.codes.NO_ROWS"
         },
         {
           "implementation": "rust",
@@ -20124,7 +20124,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.ROW_NOT_DELETED"
+          "symbol": "polyspec.orm.codes.ROW_NOT_DELETED"
         },
         {
           "implementation": "rust",
@@ -20161,7 +20161,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.BATCH_TOO_LARGE"
+          "symbol": "polyspec.orm.codes.BATCH_TOO_LARGE"
         },
         {
           "implementation": "rust",
@@ -20198,7 +20198,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.REVISION_CHANGED"
+          "symbol": "polyspec.orm.codes.REVISION_CHANGED"
         },
         {
           "implementation": "rust",
@@ -20235,7 +20235,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.COLUMN_UNSELECTED"
+          "symbol": "polyspec.orm.codes.COLUMN_UNSELECTED"
         },
         {
           "implementation": "rust",
@@ -20272,7 +20272,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.OPTIMISTIC_LOCK"
+          "symbol": "polyspec.orm.codes.OPTIMISTIC_LOCK"
         },
         {
           "implementation": "rust",
@@ -20312,7 +20312,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.WRITE_CONFLICT"
+          "symbol": "polyspec.orm.codes.WRITE_CONFLICT"
         },
         {
           "implementation": "rust",
@@ -20349,7 +20349,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.CODEC_DECODE"
+          "symbol": "polyspec.orm.codes.CODEC_DECODE"
         },
         {
           "implementation": "rust",
@@ -20386,7 +20386,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.CODEC_ENCODE"
+          "symbol": "polyspec.orm.codes.CODEC_ENCODE"
         },
         {
           "implementation": "rust",
@@ -20423,7 +20423,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.CODEC_UNSUPPORTED"
+          "symbol": "polyspec.orm.codes.CODEC_UNSUPPORTED"
         },
         {
           "implementation": "rust",
@@ -20460,7 +20460,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.CONFIG"
+          "symbol": "polyspec.orm.codes.CONFIG"
         },
         {
           "implementation": "rust",
@@ -20500,7 +20500,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.CANCELED"
+          "symbol": "polyspec.orm.codes.CANCELED"
         },
         {
           "implementation": "rust",
@@ -20537,7 +20537,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.ROLLBACK"
+          "symbol": "polyspec.orm.codes.ROLLBACK"
         },
         {
           "implementation": "rust",
@@ -20577,7 +20577,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.FAULT"
+          "symbol": "polyspec.orm.codes.FAULT"
         },
         {
           "implementation": "rust",
@@ -20614,7 +20614,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.SUBSCRIBER"
+          "symbol": "polyspec.orm.codes.SUBSCRIBER"
         },
         {
           "implementation": "rust",
@@ -20654,7 +20654,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.SCHEMA_DIFFERS"
+          "symbol": "polyspec.orm.codes.SCHEMA_DIFFERS"
         },
         {
           "implementation": "rust",
@@ -20691,7 +20691,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.INTERNAL"
+          "symbol": "polyspec.orm.codes.INTERNAL"
         },
         {
           "implementation": "rust",
@@ -20728,7 +20728,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.LOCK_NOT_AVAILABLE"
+          "symbol": "polyspec.orm.codes.LOCK_NOT_AVAILABLE"
         },
         {
           "implementation": "rust",
@@ -20765,7 +20765,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.DEADLOCK"
+          "symbol": "polyspec.orm.codes.DEADLOCK"
         },
         {
           "implementation": "rust",
@@ -20802,7 +20802,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.DUPLICATE_KEY"
+          "symbol": "polyspec.orm.codes.DUPLICATE_KEY"
         },
         {
           "implementation": "rust",
@@ -20839,7 +20839,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.FOREIGN_KEY"
+          "symbol": "polyspec.orm.codes.FOREIGN_KEY"
         },
         {
           "implementation": "rust",
@@ -20876,7 +20876,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.CONSTRAINT"
+          "symbol": "polyspec.orm.codes.CONSTRAINT"
         },
         {
           "implementation": "rust",
@@ -20913,7 +20913,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.READ_ONLY"
+          "symbol": "polyspec.orm.codes.READ_ONLY"
         },
         {
           "implementation": "rust",
@@ -20950,7 +20950,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.CONNECTION_LOST"
+          "symbol": "polyspec.orm.codes.CONNECTION_LOST"
         },
         {
           "implementation": "rust",
@@ -20987,7 +20987,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.DRIVER"
+          "symbol": "polyspec.orm.codes.DRIVER"
         },
         {
           "implementation": "rust",
@@ -21038,10 +21038,10 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.AesKeyring",
-            "orm.aes.AesKeyring",
-            "orm.aes.AesKeyring.key",
-            "orm.aes.AesKeyring.rotate_row"
+            "polyspec.orm.AesKeyring",
+            "polyspec.orm.aes.AesKeyring",
+            "polyspec.orm.aes.AesKeyring.key",
+            "polyspec.orm.aes.AesKeyring.rotate_row"
           ]
         },
         {
@@ -21098,7 +21098,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.aes.AesKeyring.versions"
+          "symbol": "polyspec.orm.aes.AesKeyring.versions"
         },
         {
           "implementation": "rust",
@@ -21154,7 +21154,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.utils.AesRotationStatus"
+          "symbol": "polyspec.orm.utils.AesRotationStatus"
         },
         {
           "implementation": "rust",
@@ -21213,7 +21213,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.utils.AesUtils"
+          "symbol": "polyspec.orm.utils.AesUtils"
         },
         {
           "implementation": "rust",
@@ -21258,7 +21258,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.utils.AesUtils.status"
+          "symbol": "polyspec.orm.utils.AesUtils.status"
         },
         {
           "implementation": "rust",
@@ -21306,7 +21306,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.utils.AesUtils.rotate"
+          "symbol": "polyspec.orm.utils.AesUtils.rotate"
         },
         {
           "implementation": "rust",
@@ -21344,8 +21344,8 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.blind_index",
-            "orm.codec.blind_index"
+            "polyspec.orm.blind_index",
+            "polyspec.orm.codec.blind_index"
           ]
         },
         {
@@ -21410,13 +21410,13 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.codec.host_encode",
-            "orm.host_encode",
-            "orm.php_serialize",
-            "orm.codec.encode",
-            "orm.decimal.decimal_scaled",
-            "orm.decimal.normalize_decimal",
-            "orm.encode"
+            "polyspec.orm.codec.host_encode",
+            "polyspec.orm.host_encode",
+            "polyspec.orm.php_serialize",
+            "polyspec.orm.codec.encode",
+            "polyspec.orm.decimal.decimal_scaled",
+            "polyspec.orm.decimal.normalize_decimal",
+            "polyspec.orm.encode"
           ]
         },
         {
@@ -21486,11 +21486,11 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.codec.host_decode",
-            "orm.host_decode",
-            "orm.codec.decode",
-            "orm.decimal.decimal_from_scaled",
-            "orm.decode"
+            "polyspec.orm.codec.host_decode",
+            "polyspec.orm.host_decode",
+            "polyspec.orm.codec.decode",
+            "polyspec.orm.decimal.decimal_from_scaled",
+            "polyspec.orm.decode"
           ]
         },
         {
@@ -21545,11 +21545,11 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.Collection",
-            "orm.model.Collection",
-            "orm.model.Collection.fetched_values",
-            "orm.model.Collection.has",
-            "orm.model.Collection.put"
+            "polyspec.orm.Collection",
+            "polyspec.orm.model.Collection",
+            "polyspec.orm.model.Collection.fetched_values",
+            "polyspec.orm.model.Collection.has",
+            "polyspec.orm.model.Collection.put"
           ]
         },
         {
@@ -21605,7 +21605,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.model.Collection.get"
+          "symbol": "polyspec.orm.model.Collection.get"
         },
         {
           "implementation": "rust",
@@ -21648,7 +21648,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.model.Collection.first"
+          "symbol": "polyspec.orm.model.Collection.first"
         },
         {
           "implementation": "rust",
@@ -21703,18 +21703,18 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.database.key_of_values",
-            "orm.database.key_text",
-            "orm.database.key_value",
-            "orm.database.row_key",
-            "orm.database.scalar_key",
-            "orm.model.Collection.keys",
-            "orm.utils.valid_key",
-            "orm.Key",
-            "orm.keys.Key",
-            "orm.keys.key_text",
-            "orm.keys.scalar_key",
-            "orm.model.Key"
+            "polyspec.orm.database.key_of_values",
+            "polyspec.orm.database.key_text",
+            "polyspec.orm.database.key_value",
+            "polyspec.orm.database.row_key",
+            "polyspec.orm.database.scalar_key",
+            "polyspec.orm.model.Collection.keys",
+            "polyspec.orm.utils.valid_key",
+            "polyspec.orm.Key",
+            "polyspec.orm.keys.Key",
+            "polyspec.orm.keys.key_text",
+            "polyspec.orm.keys.scalar_key",
+            "polyspec.orm.model.Key"
           ]
         },
         {
@@ -21779,7 +21779,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.model.Collection.to_array"
+          "symbol": "polyspec.orm.model.Collection.to_array"
         },
         {
           "implementation": "rust",
@@ -21821,7 +21821,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.model.Collection.delete"
+          "symbol": "polyspec.orm.model.Collection.delete"
         },
         {
           "implementation": "rust",
@@ -21861,7 +21861,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.model.Collection.connect"
+          "symbol": "polyspec.orm.model.Collection.connect"
         },
         {
           "implementation": "rust",
@@ -21907,8 +21907,8 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.core.Core.connect",
-            "orm.model.Model.connect"
+            "polyspec.orm.core.Core.connect",
+            "polyspec.orm.model.Model.connect"
           ]
         },
         {
@@ -21951,9 +21951,9 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.core.Core.relation",
-            "orm.model.Model.relation",
-            "orm.model.Model.relations"
+            "polyspec.orm.core.Core.relation",
+            "polyspec.orm.model.Model.relation",
+            "polyspec.orm.model.Model.relations"
           ]
         },
         {
@@ -22009,7 +22009,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.database.Db.close"
+          "symbol": "polyspec.orm.database.Db.close"
         },
         {
           "implementation": "rust",
@@ -22103,12 +22103,12 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.connect",
-            "orm.database.Db.connect",
-            "orm.database.connect",
-            "orm.database.parse_dsn",
-            "orm.markdown.MarkdownDsn",
-            "orm.markdown.parse_markdown_dsn"
+            "polyspec.orm.connect",
+            "polyspec.orm.database.Db.connect",
+            "polyspec.orm.database.connect",
+            "polyspec.orm.database.parse_dsn",
+            "polyspec.orm.markdown.MarkdownDsn",
+            "polyspec.orm.markdown.parse_markdown_dsn"
           ]
         },
         {
@@ -22191,7 +22191,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.database.Db.connect_schema"
+          "symbol": "polyspec.orm.database.Db.connect_schema"
         },
         {
           "implementation": "rust",
@@ -22240,7 +22240,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.database.Db.execute"
+          "symbol": "polyspec.orm.database.Db.execute"
         },
         {
           "implementation": "rust",
@@ -22304,7 +22304,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.database.Db.stats"
+          "symbol": "polyspec.orm.database.Db.stats"
         },
         {
           "implementation": "rust",
@@ -22376,11 +22376,11 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.database.Db.subscribe",
-            "orm.events.Subscribers",
-            "orm.events.Subscribers.next_transaction",
-            "orm.events.Subscribers.send",
-            "orm.events.Subscribers.subscribe"
+            "polyspec.orm.database.Db.subscribe",
+            "polyspec.orm.events.Subscribers",
+            "polyspec.orm.events.Subscribers.next_transaction",
+            "polyspec.orm.events.Subscribers.send",
+            "polyspec.orm.events.Subscribers.subscribe"
           ]
         },
         {
@@ -22446,7 +22446,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.database.Db.transaction"
+          "symbol": "polyspec.orm.database.Db.transaction"
         },
         {
           "implementation": "rust",
@@ -22553,7 +22553,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.database.Db.utils"
+          "symbol": "polyspec.orm.database.Db.utils"
         },
         {
           "implementation": "rust",
@@ -22596,7 +22596,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.utils.Utils.was_inserted"
+          "symbol": "polyspec.orm.utils.Utils.was_inserted"
         },
         {
           "implementation": "rust",
@@ -22636,7 +22636,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.utils.Utils.backend_waiting_for_lock"
+          "symbol": "polyspec.orm.utils.Utils.backend_waiting_for_lock"
         },
         {
           "implementation": "rust",
@@ -22682,9 +22682,9 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.RequestHook",
-            "orm.database.Db.with_request_hook",
-            "orm.database.RequestHook"
+            "polyspec.orm.RequestHook",
+            "polyspec.orm.database.Db.with_request_hook",
+            "polyspec.orm.database.RequestHook"
           ]
         },
         {
@@ -22735,7 +22735,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.utils.PrivilegeUtils.grant_table"
+          "symbol": "polyspec.orm.utils.PrivilegeUtils.grant_table"
         },
         {
           "implementation": "rust",
@@ -22772,7 +22772,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.utils.PrivilegeUtils.inspect_table"
+          "symbol": "polyspec.orm.utils.PrivilegeUtils.inspect_table"
         },
         {
           "implementation": "rust",
@@ -22817,7 +22817,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.utils.PrivilegeUtils.revoke_table"
+          "symbol": "polyspec.orm.utils.PrivilegeUtils.revoke_table"
         },
         {
           "implementation": "rust",
@@ -22854,7 +22854,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.utils.SchemaUtils.add_tables_and_columns"
+          "symbol": "polyspec.orm.utils.SchemaUtils.add_tables_and_columns"
         },
         {
           "implementation": "rust",
@@ -22891,7 +22891,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.utils.SchemaUtils.empty"
+          "symbol": "polyspec.orm.utils.SchemaUtils.empty"
         },
         {
           "implementation": "rust",
@@ -22967,7 +22967,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.utils.SchemaUtils.exists"
+          "symbol": "polyspec.orm.utils.SchemaUtils.exists"
         },
         {
           "implementation": "rust",
@@ -23004,7 +23004,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.utils.SchemaUtils.install"
+          "symbol": "polyspec.orm.utils.SchemaUtils.install"
         },
         {
           "implementation": "rust",
@@ -23041,7 +23041,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.utils.SchemaUtils.installed"
+          "symbol": "polyspec.orm.utils.SchemaUtils.installed"
         },
         {
           "implementation": "rust",
@@ -23082,7 +23082,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.utils.SchemaUtils.register"
+          "symbol": "polyspec.orm.utils.SchemaUtils.register"
         },
         {
           "implementation": "rust",
@@ -23119,7 +23119,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.utils.Utils.local"
+          "symbol": "polyspec.orm.utils.Utils.local"
         },
         {
           "implementation": "rust",
@@ -23159,7 +23159,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.utils.Utils.lock"
+          "symbol": "polyspec.orm.utils.Utils.lock"
         },
         {
           "implementation": "rust",
@@ -23200,11 +23200,11 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.utils.BACKEND_WAITING_FOR_LOCK",
-            "orm.utils.POSTGRES_ADVISORY_LOCK",
-            "orm.utils.POSTGRES_SET_LOCAL",
-            "orm.utils.TablePrivileges",
-            "orm.utils.Utils.privileges"
+            "polyspec.orm.utils.BACKEND_WAITING_FOR_LOCK",
+            "polyspec.orm.utils.POSTGRES_ADVISORY_LOCK",
+            "polyspec.orm.utils.POSTGRES_SET_LOCAL",
+            "polyspec.orm.utils.TablePrivileges",
+            "polyspec.orm.utils.Utils.privileges"
           ]
         },
         {
@@ -23249,7 +23249,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.utils.Utils.schema"
+          "symbol": "polyspec.orm.utils.Utils.schema"
         },
         {
           "implementation": "rust",
@@ -23289,7 +23289,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.utils.Utils.set_local"
+          "symbol": "polyspec.orm.utils.Utils.set_local"
         },
         {
           "implementation": "rust",
@@ -23329,7 +23329,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.utils.Utils.stats"
+          "symbol": "polyspec.orm.utils.Utils.stats"
         },
         {
           "implementation": "rust",
@@ -23388,38 +23388,38 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.core.Core",
-            "orm.core.Core.add_column",
-            "orm.core.Core.add_column_func",
-            "orm.core.Core.add_column_sub",
-            "orm.core.Core.add_name",
-            "orm.core.Core.aggregate",
-            "orm.core.Core.build",
-            "orm.core.Core.by",
-            "orm.core.Core.clone",
-            "orm.core.Core.column",
-            "orm.core.Core.connector",
-            "orm.core.Core.fail",
-            "orm.core.Core.fail_error",
-            "orm.core.Core.join",
-            "orm.core.Core.negated",
-            "orm.core.Core.new_group",
-            "orm.core.Core.new_value",
-            "orm.core.Core.order_by",
-            "orm.core.Core.put_minus",
-            "orm.core.Core.put_plus",
-            "orm.core.Core.put_set",
-            "orm.core.Core.remove_column",
-            "orm.core.Core.result_name",
-            "orm.core.Core.set_duplication",
-            "orm.core.Core.set_group_limit",
-            "orm.core.Core.set_limit",
-            "orm.core.Core.set_new",
-            "orm.core.Core.set_on",
-            "orm.core.Core.set_value",
-            "orm.core.Core.subject",
-            "orm.core.Core.typed_column",
-            "orm.core.Core.where_chain"
+            "polyspec.orm.core.Core",
+            "polyspec.orm.core.Core.add_column",
+            "polyspec.orm.core.Core.add_column_func",
+            "polyspec.orm.core.Core.add_column_sub",
+            "polyspec.orm.core.Core.add_name",
+            "polyspec.orm.core.Core.aggregate",
+            "polyspec.orm.core.Core.build",
+            "polyspec.orm.core.Core.by",
+            "polyspec.orm.core.Core.clone",
+            "polyspec.orm.core.Core.column",
+            "polyspec.orm.core.Core.connector",
+            "polyspec.orm.core.Core.fail",
+            "polyspec.orm.core.Core.fail_error",
+            "polyspec.orm.core.Core.join",
+            "polyspec.orm.core.Core.negated",
+            "polyspec.orm.core.Core.new_group",
+            "polyspec.orm.core.Core.new_value",
+            "polyspec.orm.core.Core.order_by",
+            "polyspec.orm.core.Core.put_minus",
+            "polyspec.orm.core.Core.put_plus",
+            "polyspec.orm.core.Core.put_set",
+            "polyspec.orm.core.Core.remove_column",
+            "polyspec.orm.core.Core.result_name",
+            "polyspec.orm.core.Core.set_duplication",
+            "polyspec.orm.core.Core.set_group_limit",
+            "polyspec.orm.core.Core.set_limit",
+            "polyspec.orm.core.Core.set_new",
+            "polyspec.orm.core.Core.set_on",
+            "polyspec.orm.core.Core.set_value",
+            "polyspec.orm.core.Core.subject",
+            "polyspec.orm.core.Core.typed_column",
+            "polyspec.orm.core.Core.where_chain"
           ]
         },
         {
@@ -23643,23 +23643,23 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.Db",
-            "orm.database.Db",
-            "orm.database.Db.active_frame",
-            "orm.database.Db.args",
-            "orm.database.Db.clock_micros",
-            "orm.database.Db.closed",
-            "orm.database.Db.listen",
-            "orm.database.Db.notify",
-            "orm.database.Db.now",
-            "orm.database.Db.plan",
-            "orm.database.Db.register",
-            "orm.database.Db.root",
-            "orm.database.Db.row_lock",
-            "orm.database.Db.with_future",
-            "orm.database.format_instant",
-            "orm.database.read_time",
-            "orm.database.time_value"
+            "polyspec.orm.Db",
+            "polyspec.orm.database.Db",
+            "polyspec.orm.database.Db.active_frame",
+            "polyspec.orm.database.Db.args",
+            "polyspec.orm.database.Db.clock_micros",
+            "polyspec.orm.database.Db.closed",
+            "polyspec.orm.database.Db.listen",
+            "polyspec.orm.database.Db.notify",
+            "polyspec.orm.database.Db.now",
+            "polyspec.orm.database.Db.plan",
+            "polyspec.orm.database.Db.register",
+            "polyspec.orm.database.Db.root",
+            "polyspec.orm.database.Db.row_lock",
+            "polyspec.orm.database.Db.with_future",
+            "polyspec.orm.database.format_instant",
+            "polyspec.orm.database.read_time",
+            "polyspec.orm.database.time_value"
           ]
         },
         {
@@ -23773,15 +23773,15 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.CodecError",
-            "orm.OrmError",
-            "orm.codec.CodecError",
-            "orm.codes",
-            "orm.errors.OrmError",
-            "orm.errors.joined_errors",
-            "orm.errors.rollback_failed",
-            "orm.joined_errors",
-            "orm.rollback_failed"
+            "polyspec.orm.CodecError",
+            "polyspec.orm.OrmError",
+            "polyspec.orm.codec.CodecError",
+            "polyspec.orm.codes",
+            "polyspec.orm.errors.OrmError",
+            "polyspec.orm.errors.joined_errors",
+            "polyspec.orm.errors.rollback_failed",
+            "polyspec.orm.joined_errors",
+            "polyspec.orm.rollback_failed"
           ]
         },
         {
@@ -23851,8 +23851,8 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.model.Model.gets_page",
-            "orm.model.Page"
+            "polyspec.orm.model.Model.gets_page",
+            "polyspec.orm.model.Page"
           ]
         },
         {
@@ -23900,7 +23900,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.utils.PrivilegeUtils"
+          "symbol": "polyspec.orm.utils.PrivilegeUtils"
         },
         {
           "implementation": "rust",
@@ -23973,8 +23973,8 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.Schema",
-            "orm.schema.Schema"
+            "polyspec.orm.Schema",
+            "polyspec.orm.schema.Schema"
           ]
         },
         {
@@ -24048,8 +24048,8 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.utils.SchemaUtils",
-            "orm.utils.SchemaUtils.db"
+            "polyspec.orm.utils.SchemaUtils",
+            "polyspec.orm.utils.SchemaUtils.db"
           ]
         },
         {
@@ -24107,8 +24107,8 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.DbStats",
-            "orm.database.DbStats"
+            "polyspec.orm.DbStats",
+            "polyspec.orm.database.DbStats"
           ]
         },
         {
@@ -24225,8 +24225,8 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.events.StatementEvent",
-            "orm.events.statement_kind"
+            "polyspec.orm.events.StatementEvent",
+            "polyspec.orm.events.statement_kind"
           ]
         },
         {
@@ -24327,7 +24327,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.styled_value.StyledValue"
+          "symbol": "polyspec.orm.styled_value.StyledValue"
         },
         {
           "implementation": "rust",
@@ -24379,8 +24379,8 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.utils.Utils",
-            "orm.utils.Utils.aes"
+            "polyspec.orm.utils.Utils",
+            "polyspec.orm.utils.Utils.aes"
           ]
         },
         {
@@ -24432,12 +24432,12 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.StyledValue",
-            "orm.codec.ordered_json_value",
-            "orm.ordered_json_value",
-            "orm.styled_value.StyledValue",
-            "orm.styled_value.StyledValue.payload",
-            "orm.styled_value.StyledValue.to_json"
+            "polyspec.orm.StyledValue",
+            "polyspec.orm.codec.ordered_json_value",
+            "polyspec.orm.ordered_json_value",
+            "polyspec.orm.styled_value.StyledValue",
+            "polyspec.orm.styled_value.StyledValue.payload",
+            "polyspec.orm.styled_value.StyledValue.to_json"
           ]
         },
         {
@@ -24487,7 +24487,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.styled_value.StyledValue.sql_null"
+          "symbol": "polyspec.orm.styled_value.StyledValue.sql_null"
         },
         {
           "implementation": "rust",
@@ -24530,7 +24530,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.styled_value.StyledValue.value"
+          "symbol": "polyspec.orm.styled_value.StyledValue.value"
         },
         {
           "implementation": "rust",
@@ -24570,7 +24570,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.model.Page"
+          "symbol": "polyspec.orm.model.Page"
         },
         {
           "implementation": "rust",
@@ -24640,7 +24640,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.group_rows.GroupRow"
+          "symbol": "polyspec.orm.group_rows.GroupRow"
         },
         {
           "implementation": "rust",
@@ -24704,8 +24704,8 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.group_rows.GroupRows",
-            "orm.group_rows.GroupRows.values"
+            "polyspec.orm.group_rows.GroupRows",
+            "polyspec.orm.group_rows.GroupRows.values"
           ]
         },
         {
@@ -24752,7 +24752,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.group_rows.GroupRow.to_array"
+          "symbol": "polyspec.orm.group_rows.GroupRow.to_array"
         },
         {
           "implementation": "rust",
@@ -24797,7 +24797,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.group_rows.GroupRow.value"
+          "symbol": "polyspec.orm.group_rows.GroupRow.value"
         },
         {
           "implementation": "rust",
@@ -24837,7 +24837,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.group_rows.GroupRows.length"
+          "symbol": "polyspec.orm.group_rows.GroupRows.length"
         },
         {
           "implementation": "rust",
@@ -24878,7 +24878,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.group_rows.GroupRows.to_array"
+          "symbol": "polyspec.orm.group_rows.GroupRows.to_array"
         },
         {
           "implementation": "rust",
@@ -24920,7 +24920,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.model.Collection.length"
+          "symbol": "polyspec.orm.model.Collection.length"
         },
         {
           "implementation": "rust",
@@ -24963,7 +24963,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.model.Collection.to_json_text"
+          "symbol": "polyspec.orm.model.Collection.to_json_text"
         },
         {
           "implementation": "rust",
@@ -25010,7 +25010,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.model.Collection.fetched"
+          "symbol": "polyspec.orm.model.Collection.fetched"
         },
         {
           "implementation": "rust",
@@ -25050,7 +25050,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.model.Collection.values"
+          "symbol": "polyspec.orm.model.Collection.values"
         },
         {
           "implementation": "rust",
@@ -25093,7 +25093,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.model.Collection.entries"
+          "symbol": "polyspec.orm.model.Collection.entries"
         },
         {
           "implementation": "rust",
@@ -25616,7 +25616,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.QUERY_READ_ONLY"
+          "symbol": "polyspec.orm.codes.QUERY_READ_ONLY"
         },
         {
           "implementation": "rust",
@@ -25653,7 +25653,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.QUERY_LIMIT_INVALID"
+          "symbol": "polyspec.orm.codes.QUERY_LIMIT_INVALID"
         },
         {
           "implementation": "rust",
@@ -25690,7 +25690,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.CATALOG_LIMIT"
+          "symbol": "polyspec.orm.codes.CATALOG_LIMIT"
         },
         {
           "implementation": "rust",
@@ -25727,7 +25727,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.CATALOG_VALUE"
+          "symbol": "polyspec.orm.codes.CATALOG_VALUE"
         },
         {
           "implementation": "rust",
@@ -25764,7 +25764,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.CATALOG_PARAM"
+          "symbol": "polyspec.orm.codes.CATALOG_PARAM"
         },
         {
           "implementation": "rust",
@@ -25801,7 +25801,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.CATALOG_CLOSED"
+          "symbol": "polyspec.orm.codes.CATALOG_CLOSED"
         },
         {
           "implementation": "rust",
@@ -25838,7 +25838,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.TABLE_METADATA_INVALID"
+          "symbol": "polyspec.orm.codes.TABLE_METADATA_INVALID"
         },
         {
           "implementation": "rust",
@@ -25875,7 +25875,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.TABLE_REFERENCE_INVALID"
+          "symbol": "polyspec.orm.codes.TABLE_REFERENCE_INVALID"
         },
         {
           "implementation": "rust",
@@ -25912,7 +25912,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.TABLE_NOT_FOUND"
+          "symbol": "polyspec.orm.codes.TABLE_NOT_FOUND"
         },
         {
           "implementation": "rust",
@@ -25949,7 +25949,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.TABLE_KIND_UNSUPPORTED"
+          "symbol": "polyspec.orm.codes.TABLE_KIND_UNSUPPORTED"
         },
         {
           "implementation": "rust",
@@ -25986,7 +25986,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.TOOL_BIND_INVALID"
+          "symbol": "polyspec.orm.codes.TOOL_BIND_INVALID"
         },
         {
           "implementation": "rust",
@@ -26023,7 +26023,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.TOOL_BIND_LIMIT"
+          "symbol": "polyspec.orm.codes.TOOL_BIND_LIMIT"
         },
         {
           "implementation": "rust",
@@ -26060,7 +26060,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.TOOL_QUERY_COLUMNS"
+          "symbol": "polyspec.orm.codes.TOOL_QUERY_COLUMNS"
         },
         {
           "implementation": "rust",
@@ -26097,7 +26097,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.TOOL_QUERY_STATEMENT"
+          "symbol": "polyspec.orm.codes.TOOL_QUERY_STATEMENT"
         },
         {
           "implementation": "rust",
@@ -26134,7 +26134,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.TABLE_NAMESPACE_UNSUPPORTED"
+          "symbol": "polyspec.orm.codes.TABLE_NAMESPACE_UNSUPPORTED"
         },
         {
           "implementation": "rust",
@@ -26171,7 +26171,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.TABLE_NAMESPACE_UNAVAILABLE"
+          "symbol": "polyspec.orm.codes.TABLE_NAMESPACE_UNAVAILABLE"
         },
         {
           "implementation": "rust",
@@ -26208,7 +26208,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.TABLE_PAGE_INVALID"
+          "symbol": "polyspec.orm.codes.TABLE_PAGE_INVALID"
         },
         {
           "implementation": "rust",
@@ -26245,7 +26245,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.TABLE_PAGE_UNSUPPORTED"
+          "symbol": "polyspec.orm.codes.TABLE_PAGE_UNSUPPORTED"
         },
         {
           "implementation": "rust",
@@ -26282,7 +26282,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.TABLE_PAGE_METADATA_CHANGED"
+          "symbol": "polyspec.orm.codes.TABLE_PAGE_METADATA_CHANGED"
         },
         {
           "implementation": "rust",
@@ -26319,7 +26319,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.ROW_SNAPSHOT_INVALID"
+          "symbol": "polyspec.orm.codes.ROW_SNAPSHOT_INVALID"
         },
         {
           "implementation": "rust",
@@ -26356,7 +26356,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.ROW_SNAPSHOT_LIMIT"
+          "symbol": "polyspec.orm.codes.ROW_SNAPSHOT_LIMIT"
         },
         {
           "implementation": "rust",
@@ -26393,7 +26393,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.ROW_INSERT_INVALID"
+          "symbol": "polyspec.orm.codes.ROW_INSERT_INVALID"
         },
         {
           "implementation": "rust",
@@ -26430,7 +26430,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.ROW_INSERT_IDENTITY_REQUIRED"
+          "symbol": "polyspec.orm.codes.ROW_INSERT_IDENTITY_REQUIRED"
         },
         {
           "implementation": "rust",
@@ -26467,7 +26467,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.ROW_INSERT_UNSUPPORTED"
+          "symbol": "polyspec.orm.codes.ROW_INSERT_UNSUPPORTED"
         },
         {
           "implementation": "rust",
@@ -26504,7 +26504,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.ROW_UPDATE_INVALID"
+          "symbol": "polyspec.orm.codes.ROW_UPDATE_INVALID"
         },
         {
           "implementation": "rust",
@@ -26541,7 +26541,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.ROW_UPDATE_LIMIT"
+          "symbol": "polyspec.orm.codes.ROW_UPDATE_LIMIT"
         },
         {
           "implementation": "rust",
@@ -26578,7 +26578,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.ROW_CONFLICT"
+          "symbol": "polyspec.orm.codes.ROW_CONFLICT"
         },
         {
           "implementation": "rust",
@@ -26615,7 +26615,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.ROW_IDENTITY_AMBIGUOUS"
+          "symbol": "polyspec.orm.codes.ROW_IDENTITY_AMBIGUOUS"
         },
         {
           "implementation": "rust",
@@ -26652,7 +26652,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.ROW_SCHEMA_CHANGED"
+          "symbol": "polyspec.orm.codes.ROW_SCHEMA_CHANGED"
         },
         {
           "implementation": "rust",
@@ -26689,7 +26689,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.ROW_WRITE_MISMATCH"
+          "symbol": "polyspec.orm.codes.ROW_WRITE_MISMATCH"
         },
         {
           "implementation": "rust",
@@ -26726,7 +26726,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.ROW_MUTATION_UNSUPPORTED"
+          "symbol": "polyspec.orm.codes.ROW_MUTATION_UNSUPPORTED"
         },
         {
           "implementation": "rust",
@@ -26763,7 +26763,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.ROW_COMMIT_REJECTED"
+          "symbol": "polyspec.orm.codes.ROW_COMMIT_REJECTED"
         },
         {
           "implementation": "rust",
@@ -26800,7 +26800,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.ROW_COMMIT_INDETERMINATE"
+          "symbol": "polyspec.orm.codes.ROW_COMMIT_INDETERMINATE"
         },
         {
           "implementation": "rust",
@@ -26837,7 +26837,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.ROW_ROLLBACK_FAILED"
+          "symbol": "polyspec.orm.codes.ROW_ROLLBACK_FAILED"
         },
         {
           "implementation": "rust",
@@ -26874,7 +26874,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.GRID_TEMPORAL_VALUE"
+          "symbol": "polyspec.orm.codes.GRID_TEMPORAL_VALUE"
         },
         {
           "implementation": "rust",
@@ -26911,7 +26911,7 @@
         },
         {
           "implementation": "python",
-          "symbol": "orm.codes.GRID_TEMPORAL_PRECISION"
+          "symbol": "polyspec.orm.codes.GRID_TEMPORAL_PRECISION"
         },
         {
           "implementation": "rust",
@@ -33254,41 +33254,41 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.CatalogConnection",
-            "orm.catalog.CatalogColumn",
-            "orm.catalog.CatalogConnection",
-            "orm.catalog.CatalogConnection.close",
-            "orm.catalog.CatalogConnection.current_namespace",
-            "orm.catalog.CatalogConnection.delete_row",
-            "orm.catalog.CatalogConnection.describe_table",
-            "orm.catalog.CatalogConnection.dialect",
-            "orm.catalog.CatalogConnection.insert_row",
-            "orm.catalog.CatalogConnection.read_only_grid_query",
-            "orm.catalog.CatalogConnection.read_only_query",
-            "orm.catalog.CatalogConnection.row_snapshot_from_page",
-            "orm.catalog.CatalogConnection.table_page",
-            "orm.catalog.CatalogConnection.update_row",
-            "orm.catalog.CatalogMutationResult",
-            "orm.catalog.CatalogQueryResult",
-            "orm.catalog.CatalogResult",
-            "orm.catalog.CatalogRowSnapshot",
-            "orm.catalog.CatalogRowSnapshot.keys",
-            "orm.catalog.CatalogRowSnapshot.revision",
-            "orm.catalog.CatalogTableMetadata",
-            "orm.catalog.CatalogTableMetadata.column_index",
-            "orm.catalog.CatalogTablePage",
-            "orm.catalog.CatalogTablePage.column_index",
-            "orm.catalog.DEFAULT_BYTES",
-            "orm.catalog.DEFAULT_ROWS",
-            "orm.catalog.GridCell",
-            "orm.catalog.METADATA_BYTES",
-            "orm.catalog.METADATA_ROWS",
-            "orm.catalog.PAGE_BYTES",
-            "orm.catalog.SNAPSHOT_BYTES",
-            "orm.catalog.SQL_BYTES",
-            "orm.catalog.T",
-            "orm.catalog.connect_catalog",
-            "orm.connect_catalog"
+            "polyspec.orm.CatalogConnection",
+            "polyspec.orm.catalog.CatalogColumn",
+            "polyspec.orm.catalog.CatalogConnection",
+            "polyspec.orm.catalog.CatalogConnection.close",
+            "polyspec.orm.catalog.CatalogConnection.current_namespace",
+            "polyspec.orm.catalog.CatalogConnection.delete_row",
+            "polyspec.orm.catalog.CatalogConnection.describe_table",
+            "polyspec.orm.catalog.CatalogConnection.dialect",
+            "polyspec.orm.catalog.CatalogConnection.insert_row",
+            "polyspec.orm.catalog.CatalogConnection.read_only_grid_query",
+            "polyspec.orm.catalog.CatalogConnection.read_only_query",
+            "polyspec.orm.catalog.CatalogConnection.row_snapshot_from_page",
+            "polyspec.orm.catalog.CatalogConnection.table_page",
+            "polyspec.orm.catalog.CatalogConnection.update_row",
+            "polyspec.orm.catalog.CatalogMutationResult",
+            "polyspec.orm.catalog.CatalogQueryResult",
+            "polyspec.orm.catalog.CatalogResult",
+            "polyspec.orm.catalog.CatalogRowSnapshot",
+            "polyspec.orm.catalog.CatalogRowSnapshot.keys",
+            "polyspec.orm.catalog.CatalogRowSnapshot.revision",
+            "polyspec.orm.catalog.CatalogTableMetadata",
+            "polyspec.orm.catalog.CatalogTableMetadata.column_index",
+            "polyspec.orm.catalog.CatalogTablePage",
+            "polyspec.orm.catalog.CatalogTablePage.column_index",
+            "polyspec.orm.catalog.DEFAULT_BYTES",
+            "polyspec.orm.catalog.DEFAULT_ROWS",
+            "polyspec.orm.catalog.GridCell",
+            "polyspec.orm.catalog.METADATA_BYTES",
+            "polyspec.orm.catalog.METADATA_ROWS",
+            "polyspec.orm.catalog.PAGE_BYTES",
+            "polyspec.orm.catalog.SNAPSHOT_BYTES",
+            "polyspec.orm.catalog.SQL_BYTES",
+            "polyspec.orm.catalog.T",
+            "polyspec.orm.catalog.connect_catalog",
+            "polyspec.orm.connect_catalog"
           ]
         },
         {
@@ -33600,12 +33600,12 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.ColumnFunction",
-            "orm.ValueFunction",
-            "orm.orm",
-            "orm.values.ColumnFunction",
-            "orm.values.ValueFunction",
-            "orm.values.orm"
+            "polyspec.orm.ColumnFunction",
+            "polyspec.orm.ValueFunction",
+            "polyspec.orm.orm",
+            "polyspec.orm.values.ColumnFunction",
+            "polyspec.orm.values.ValueFunction",
+            "polyspec.orm.values.orm"
           ]
         },
         {
@@ -33810,10 +33810,10 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.EntityDef",
-            "orm.Model",
-            "orm.model.EntityDef",
-            "orm.model.Model.entity_def"
+            "polyspec.orm.EntityDef",
+            "polyspec.orm.Model",
+            "polyspec.orm.model.EntityDef",
+            "polyspec.orm.model.Model.entity_def"
           ]
         },
         {
@@ -35636,39 +35636,39 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.model.Model.add_all_columns",
-            "orm.model.Model.alias",
-            "orm.model.Model.and_",
-            "orm.model.Model.and_not",
-            "orm.model.Model.delete_lock",
-            "orm.model.Model.duplication",
-            "orm.model.Model.expect_revision",
-            "orm.model.Model.fetch_key",
-            "orm.model.Model.fetch_value",
-            "orm.model.Model.for_share",
-            "orm.model.Model.for_share_no_wait",
-            "orm.model.Model.for_update",
-            "orm.model.Model.for_update_no_wait",
-            "orm.model.Model.group_limit",
-            "orm.model.Model.limit",
-            "orm.model.Model.not_",
-            "orm.model.Model.on",
-            "orm.model.Model.or_",
-            "orm.model.Model.or_not",
-            "orm.model.Model.order_by_random",
-            "orm.model.Model.parent_node",
-            "orm.model.Model.remove_all_columns",
-            "orm.names.ChainKey",
-            "orm.names.check_column_name",
-            "orm.names.column_name",
-            "orm.names.op_allowed",
-            "orm.names.parse_chain",
-            "orm.names.parse_order",
-            "orm.names.pascal",
-            "orm.names.snake",
-            "orm.names.split_pair",
-            "orm.names.upper_first",
-            "orm.names.words"
+            "polyspec.orm.model.Model.add_all_columns",
+            "polyspec.orm.model.Model.alias",
+            "polyspec.orm.model.Model.and_",
+            "polyspec.orm.model.Model.and_not",
+            "polyspec.orm.model.Model.delete_lock",
+            "polyspec.orm.model.Model.duplication",
+            "polyspec.orm.model.Model.expect_revision",
+            "polyspec.orm.model.Model.fetch_key",
+            "polyspec.orm.model.Model.fetch_value",
+            "polyspec.orm.model.Model.for_share",
+            "polyspec.orm.model.Model.for_share_no_wait",
+            "polyspec.orm.model.Model.for_update",
+            "polyspec.orm.model.Model.for_update_no_wait",
+            "polyspec.orm.model.Model.group_limit",
+            "polyspec.orm.model.Model.limit",
+            "polyspec.orm.model.Model.not_",
+            "polyspec.orm.model.Model.on",
+            "polyspec.orm.model.Model.or_",
+            "polyspec.orm.model.Model.or_not",
+            "polyspec.orm.model.Model.order_by_random",
+            "polyspec.orm.model.Model.parent_node",
+            "polyspec.orm.model.Model.remove_all_columns",
+            "polyspec.orm.names.ChainKey",
+            "polyspec.orm.names.check_column_name",
+            "polyspec.orm.names.column_name",
+            "polyspec.orm.names.op_allowed",
+            "polyspec.orm.names.parse_chain",
+            "polyspec.orm.names.parse_order",
+            "polyspec.orm.names.pascal",
+            "polyspec.orm.names.snake",
+            "polyspec.orm.names.split_pair",
+            "polyspec.orm.names.upper_first",
+            "polyspec.orm.names.words"
           ]
         },
         {
@@ -36588,8 +36588,8 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.model.Model.to_array",
-            "orm.model.Model.to_json_text"
+            "polyspec.orm.model.Model.to_array",
+            "polyspec.orm.model.Model.to_json_text"
           ]
         },
         {
@@ -36848,13 +36848,13 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.model.Model.create",
-            "orm.model.Model.creates",
-            "orm.model.Model.delete",
-            "orm.model.Model.restore",
-            "orm.model.Model.restore_or_create",
-            "orm.model.Model.save",
-            "orm.model.Model.update"
+            "polyspec.orm.model.Model.create",
+            "polyspec.orm.model.Model.creates",
+            "polyspec.orm.model.Model.delete",
+            "polyspec.orm.model.Model.restore",
+            "polyspec.orm.model.Model.restore_or_create",
+            "polyspec.orm.model.Model.save",
+            "polyspec.orm.model.Model.update"
           ]
         },
         {
@@ -37028,25 +37028,25 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.Entity",
-            "orm.Field",
-            "orm.RuntimeModel",
-            "orm.engine.Entity",
-            "orm.engine.Field",
-            "orm.engine.RuntimeModel",
-            "orm.engine.entity_of",
-            "orm.engine.field_of",
-            "orm.engine.model.Entity",
-            "orm.engine.model.Field",
-            "orm.engine.model.RuntimeModel",
-            "orm.engine.model.entity_of",
-            "orm.engine.model.field_of",
-            "orm.engine.model.model_of_documents",
-            "orm.engine.model.model_of_manifest",
-            "orm.engine.model_of_documents",
-            "orm.engine.model_of_manifest",
-            "orm.model.register_model",
-            "orm.register_model"
+            "polyspec.orm.Entity",
+            "polyspec.orm.Field",
+            "polyspec.orm.RuntimeModel",
+            "polyspec.orm.engine.Entity",
+            "polyspec.orm.engine.Field",
+            "polyspec.orm.engine.RuntimeModel",
+            "polyspec.orm.engine.entity_of",
+            "polyspec.orm.engine.field_of",
+            "polyspec.orm.engine.model.Entity",
+            "polyspec.orm.engine.model.Field",
+            "polyspec.orm.engine.model.RuntimeModel",
+            "polyspec.orm.engine.model.entity_of",
+            "polyspec.orm.engine.model.field_of",
+            "polyspec.orm.engine.model.model_of_documents",
+            "polyspec.orm.engine.model.model_of_manifest",
+            "polyspec.orm.engine.model_of_documents",
+            "polyspec.orm.engine.model_of_manifest",
+            "polyspec.orm.model.register_model",
+            "polyspec.orm.register_model"
           ]
         },
         {
@@ -37460,7 +37460,7 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.model.Model"
+            "polyspec.orm.model.Model"
           ]
         },
         {
@@ -38571,13 +38571,13 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.model.Model.get",
-            "orm.model.Model.get_avg",
-            "orm.model.Model.get_count",
-            "orm.model.Model.get_query",
-            "orm.model.Model.get_sum",
-            "orm.model.Model.gets",
-            "orm.model.Model.gets_count"
+            "polyspec.orm.model.Model.get",
+            "polyspec.orm.model.Model.get_avg",
+            "polyspec.orm.model.Model.get_count",
+            "polyspec.orm.model.Model.get_query",
+            "polyspec.orm.model.Model.get_sum",
+            "polyspec.orm.model.Model.gets",
+            "polyspec.orm.model.Model.gets_count"
           ]
         },
         {
@@ -38908,36 +38908,36 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.bind_check.ParamSlot",
-            "orm.bind_check.bind_slot_type",
-            "orm.bind_check.check_param",
-            "orm.bind_check.transform_param",
-            "orm.bind_check.use_slot_type",
-            "orm.canonical.canonical_request",
-            "orm.engine.params.ParamUse",
-            "orm.engine.params.function_type",
-            "orm.engine.params.interval_type",
-            "orm.engine.params.param_uses",
-            "orm.ir.IRAssign",
-            "orm.ir.IRColFunc",
-            "orm.ir.IRColRef",
-            "orm.ir.IRColumns",
-            "orm.ir.IRFunc",
-            "orm.ir.IRGroup",
-            "orm.ir.IRIfParent",
-            "orm.ir.IRItem",
-            "orm.ir.IRJoin",
-            "orm.ir.IRJoinedRef",
-            "orm.ir.IRKeyPair",
-            "orm.ir.IRLimit",
-            "orm.ir.IROptimist",
-            "orm.ir.IROrder",
-            "orm.ir.IRPred",
-            "orm.ir.IRQuery",
-            "orm.ir.IRRelation",
-            "orm.ir.IRRequest",
-            "orm.ir.IRSub",
-            "orm.meet.meet_kind"
+            "polyspec.orm.bind_check.ParamSlot",
+            "polyspec.orm.bind_check.bind_slot_type",
+            "polyspec.orm.bind_check.check_param",
+            "polyspec.orm.bind_check.transform_param",
+            "polyspec.orm.bind_check.use_slot_type",
+            "polyspec.orm.canonical.canonical_request",
+            "polyspec.orm.engine.params.ParamUse",
+            "polyspec.orm.engine.params.function_type",
+            "polyspec.orm.engine.params.interval_type",
+            "polyspec.orm.engine.params.param_uses",
+            "polyspec.orm.ir.IRAssign",
+            "polyspec.orm.ir.IRColFunc",
+            "polyspec.orm.ir.IRColRef",
+            "polyspec.orm.ir.IRColumns",
+            "polyspec.orm.ir.IRFunc",
+            "polyspec.orm.ir.IRGroup",
+            "polyspec.orm.ir.IRIfParent",
+            "polyspec.orm.ir.IRItem",
+            "polyspec.orm.ir.IRJoin",
+            "polyspec.orm.ir.IRJoinedRef",
+            "polyspec.orm.ir.IRKeyPair",
+            "polyspec.orm.ir.IRLimit",
+            "polyspec.orm.ir.IROptimist",
+            "polyspec.orm.ir.IROrder",
+            "polyspec.orm.ir.IRPred",
+            "polyspec.orm.ir.IRQuery",
+            "polyspec.orm.ir.IRRelation",
+            "polyspec.orm.ir.IRRequest",
+            "polyspec.orm.ir.IRSub",
+            "polyspec.orm.meet.meet_kind"
           ]
         },
         {
@@ -39633,65 +39633,65 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.engine.Engine",
-            "orm.engine.Engine.compile",
-            "orm.engine.Engine.manifest_hash",
-            "orm.engine.Engine.validate",
-            "orm.engine.planner.Planner",
-            "orm.engine.planner.Planner.compile",
-            "orm.engine.validate.IR_VERSION",
-            "orm.engine.validate.validate",
-            "orm.model_exec.execute_query",
-            "orm.model_exec.load",
-            "orm.model_of_documents",
-            "orm.engine.dialect.MysqlDialect",
-            "orm.engine.dialect.MysqlDialect.column_function",
-            "orm.engine.dialect.MysqlDialect.contains_binary",
-            "orm.engine.dialect.MysqlDialect.decodes_stage",
-            "orm.engine.dialect.MysqlDialect.force_index",
-            "orm.engine.dialect.MysqlDialect.fulltext",
-            "orm.engine.dialect.MysqlDialect.handles_stage",
-            "orm.engine.dialect.MysqlDialect.like",
-            "orm.engine.dialect.MysqlDialect.limit",
-            "orm.engine.dialect.MysqlDialect.limit_params",
-            "orm.engine.dialect.MysqlDialect.now",
-            "orm.engine.dialect.MysqlDialect.quote",
-            "orm.engine.dialect.MysqlDialect.random",
-            "orm.engine.dialect.MysqlDialect.read_expr",
-            "orm.engine.dialect.MysqlDialect.read_time",
-            "orm.engine.dialect.MysqlDialect.upsert",
-            "orm.engine.dialect.MysqlDialect.value_function",
-            "orm.engine.dialect.MysqlDialect.write_expr",
-            "orm.engine.dialect.PostgresDialect",
-            "orm.engine.dialect.PostgresDialect.column_function",
-            "orm.engine.dialect.PostgresDialect.fulltext",
-            "orm.engine.dialect.PostgresDialect.like",
-            "orm.engine.dialect.PostgresDialect.limit",
-            "orm.engine.dialect.PostgresDialect.nulls_order",
-            "orm.engine.dialect.PostgresDialect.placeholder",
-            "orm.engine.dialect.PostgresDialect.quote",
-            "orm.engine.dialect.PostgresDialect.read_time",
-            "orm.engine.dialect.PostgresDialect.value_function",
-            "orm.engine.dialect.PostgresDialect.write_time",
-            "orm.engine.dialect.SqliteDialect",
-            "orm.engine.dialect.SqliteDialect.clock_operand",
-            "orm.engine.dialect.SqliteDialect.column_function",
-            "orm.engine.dialect.SqliteDialect.contains_binary",
-            "orm.engine.dialect.SqliteDialect.force_index",
-            "orm.engine.dialect.SqliteDialect.fulltext",
-            "orm.engine.dialect.SqliteDialect.like",
-            "orm.engine.dialect.SqliteDialect.limit",
-            "orm.engine.dialect.SqliteDialect.now",
-            "orm.engine.dialect.SqliteDialect.quote",
-            "orm.engine.dialect.SqliteDialect.tuple_in",
-            "orm.engine.dialect.SqliteDialect.value_function",
-            "orm.engine.dialect.column_function_arity",
-            "orm.engine.dialect.column_function_types",
-            "orm.engine.dialect.dialect_of",
-            "orm.engine.dialect.is_value_function",
-            "orm.engine.dialect.literal",
-            "orm.engine.dialect.quote_with",
-            "orm.engine.dialect.value_function_units"
+            "polyspec.orm.engine.Engine",
+            "polyspec.orm.engine.Engine.compile",
+            "polyspec.orm.engine.Engine.manifest_hash",
+            "polyspec.orm.engine.Engine.validate",
+            "polyspec.orm.engine.planner.Planner",
+            "polyspec.orm.engine.planner.Planner.compile",
+            "polyspec.orm.engine.validate.IR_VERSION",
+            "polyspec.orm.engine.validate.validate",
+            "polyspec.orm.model_exec.execute_query",
+            "polyspec.orm.model_exec.load",
+            "polyspec.orm.model_of_documents",
+            "polyspec.orm.engine.dialect.MysqlDialect",
+            "polyspec.orm.engine.dialect.MysqlDialect.column_function",
+            "polyspec.orm.engine.dialect.MysqlDialect.contains_binary",
+            "polyspec.orm.engine.dialect.MysqlDialect.decodes_stage",
+            "polyspec.orm.engine.dialect.MysqlDialect.force_index",
+            "polyspec.orm.engine.dialect.MysqlDialect.fulltext",
+            "polyspec.orm.engine.dialect.MysqlDialect.handles_stage",
+            "polyspec.orm.engine.dialect.MysqlDialect.like",
+            "polyspec.orm.engine.dialect.MysqlDialect.limit",
+            "polyspec.orm.engine.dialect.MysqlDialect.limit_params",
+            "polyspec.orm.engine.dialect.MysqlDialect.now",
+            "polyspec.orm.engine.dialect.MysqlDialect.quote",
+            "polyspec.orm.engine.dialect.MysqlDialect.random",
+            "polyspec.orm.engine.dialect.MysqlDialect.read_expr",
+            "polyspec.orm.engine.dialect.MysqlDialect.read_time",
+            "polyspec.orm.engine.dialect.MysqlDialect.upsert",
+            "polyspec.orm.engine.dialect.MysqlDialect.value_function",
+            "polyspec.orm.engine.dialect.MysqlDialect.write_expr",
+            "polyspec.orm.engine.dialect.PostgresDialect",
+            "polyspec.orm.engine.dialect.PostgresDialect.column_function",
+            "polyspec.orm.engine.dialect.PostgresDialect.fulltext",
+            "polyspec.orm.engine.dialect.PostgresDialect.like",
+            "polyspec.orm.engine.dialect.PostgresDialect.limit",
+            "polyspec.orm.engine.dialect.PostgresDialect.nulls_order",
+            "polyspec.orm.engine.dialect.PostgresDialect.placeholder",
+            "polyspec.orm.engine.dialect.PostgresDialect.quote",
+            "polyspec.orm.engine.dialect.PostgresDialect.read_time",
+            "polyspec.orm.engine.dialect.PostgresDialect.value_function",
+            "polyspec.orm.engine.dialect.PostgresDialect.write_time",
+            "polyspec.orm.engine.dialect.SqliteDialect",
+            "polyspec.orm.engine.dialect.SqliteDialect.clock_operand",
+            "polyspec.orm.engine.dialect.SqliteDialect.column_function",
+            "polyspec.orm.engine.dialect.SqliteDialect.contains_binary",
+            "polyspec.orm.engine.dialect.SqliteDialect.force_index",
+            "polyspec.orm.engine.dialect.SqliteDialect.fulltext",
+            "polyspec.orm.engine.dialect.SqliteDialect.like",
+            "polyspec.orm.engine.dialect.SqliteDialect.limit",
+            "polyspec.orm.engine.dialect.SqliteDialect.now",
+            "polyspec.orm.engine.dialect.SqliteDialect.quote",
+            "polyspec.orm.engine.dialect.SqliteDialect.tuple_in",
+            "polyspec.orm.engine.dialect.SqliteDialect.value_function",
+            "polyspec.orm.engine.dialect.column_function_arity",
+            "polyspec.orm.engine.dialect.column_function_types",
+            "polyspec.orm.engine.dialect.dialect_of",
+            "polyspec.orm.engine.dialect.is_value_function",
+            "polyspec.orm.engine.dialect.literal",
+            "polyspec.orm.engine.dialect.quote_with",
+            "polyspec.orm.engine.dialect.value_function_units"
           ]
         },
         {
@@ -39884,7 +39884,7 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.engine.model.RuntimeModel.load_set"
+            "polyspec.orm.engine.model.RuntimeModel.load_set"
           ]
         },
         {
@@ -40557,76 +40557,76 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.dbspec.CANONICAL",
-            "orm.dbspec.DBSPEC_SIGNATURE",
-            "orm.dbspec.DbspecAnalysis",
-            "orm.dbspec.DbspecColumn",
-            "orm.dbspec.DbspecDefault",
-            "orm.dbspec.DbspecDiagnostic",
-            "orm.dbspec.DbspecDocument",
-            "orm.dbspec.DbspecPosition",
-            "orm.dbspec.DbspecTable",
-            "orm.dbspec.DbspecToken",
-            "orm.dbspec.DbspecType",
-            "orm.dbspec.RESERVED",
-            "orm.dbspec.SCHEMA",
-            "orm.dbspec.UUID_PATTERN",
-            "orm.dbspec.analyze_dbspec",
-            "orm.dbspec.audit.audit_excluded",
-            "orm.dbspec.audit.audit_line",
-            "orm.dbspec.audit.audit_records",
-            "orm.dbspec.check.read_check",
-            "orm.dbspec.check_set",
-            "orm.dbspec.default_text",
-            "orm.dbspec.emit.CANONICAL",
-            "orm.dbspec.emit.SCHEMA",
-            "orm.dbspec.emit.default_text",
-            "orm.dbspec.emit.emit_document",
-            "orm.dbspec.emit.type_text",
-            "orm.dbspec.emit_dbspec",
-            "orm.dbspec.emit_document",
-            "orm.dbspec.file.DBSPEC_SIGNATURE",
-            "orm.dbspec.file.read_dbspec_bytes",
-            "orm.dbspec.file.read_dbspec_file",
-            "orm.dbspec.format_dbspec",
-            "orm.dbspec.model.DbspecCheck",
-            "orm.dbspec.model.DbspecColumn",
-            "orm.dbspec.model.DbspecDefault",
-            "orm.dbspec.model.DbspecDiagnostic",
-            "orm.dbspec.model.DbspecDiagram",
-            "orm.dbspec.model.DbspecDocument",
-            "orm.dbspec.model.DbspecForeignKey",
-            "orm.dbspec.model.DbspecIndex",
-            "orm.dbspec.model.DbspecIndexColumn",
-            "orm.dbspec.model.DbspecPlacement",
-            "orm.dbspec.model.DbspecPosition",
-            "orm.dbspec.model.DbspecPrimaryKey",
-            "orm.dbspec.model.DbspecSetting",
-            "orm.dbspec.model.DbspecStoreShard",
-            "orm.dbspec.model.DbspecTable",
-            "orm.dbspec.model.DbspecType",
-            "orm.dbspec.model.DbspecUnique",
-            "orm.dbspec.model.DbspecUse",
-            "orm.dbspec.model.RULES",
-            "orm.dbspec.names.MAX_NAME_BYTES",
-            "orm.dbspec.names.generated_names",
-            "orm.dbspec.parse.RESERVED",
-            "orm.dbspec.parse.parse_dbspec",
-            "orm.dbspec.parse.parse_document",
-            "orm.dbspec.parse.valid_name",
-            "orm.dbspec.parse.well_formed",
-            "orm.dbspec.parse_dbspec",
-            "orm.dbspec.parse_dbspec_set",
-            "orm.dbspec.parse_document",
-            "orm.dbspec.read_dbspec_bytes",
-            "orm.dbspec.read_dbspec_file",
-            "orm.dbspec.read_dbspec_set",
-            "orm.dbspec.set_file.read_dbspec_set",
-            "orm.dbspec.set_parse.parse_dbspec_set",
-            "orm.dbspec.type_text",
-            "orm.dbspec.unicode_word.WORD_RANGES",
-            "orm.dbspec.valid_name",
-            "orm.dbspec.well_formed"
+            "polyspec.orm.dbspec.CANONICAL",
+            "polyspec.orm.dbspec.DBSPEC_SIGNATURE",
+            "polyspec.orm.dbspec.DbspecAnalysis",
+            "polyspec.orm.dbspec.DbspecColumn",
+            "polyspec.orm.dbspec.DbspecDefault",
+            "polyspec.orm.dbspec.DbspecDiagnostic",
+            "polyspec.orm.dbspec.DbspecDocument",
+            "polyspec.orm.dbspec.DbspecPosition",
+            "polyspec.orm.dbspec.DbspecTable",
+            "polyspec.orm.dbspec.DbspecToken",
+            "polyspec.orm.dbspec.DbspecType",
+            "polyspec.orm.dbspec.RESERVED",
+            "polyspec.orm.dbspec.SCHEMA",
+            "polyspec.orm.dbspec.UUID_PATTERN",
+            "polyspec.orm.dbspec.analyze_dbspec",
+            "polyspec.orm.dbspec.audit.audit_excluded",
+            "polyspec.orm.dbspec.audit.audit_line",
+            "polyspec.orm.dbspec.audit.audit_records",
+            "polyspec.orm.dbspec.check.read_check",
+            "polyspec.orm.dbspec.check_set",
+            "polyspec.orm.dbspec.default_text",
+            "polyspec.orm.dbspec.emit.CANONICAL",
+            "polyspec.orm.dbspec.emit.SCHEMA",
+            "polyspec.orm.dbspec.emit.default_text",
+            "polyspec.orm.dbspec.emit.emit_document",
+            "polyspec.orm.dbspec.emit.type_text",
+            "polyspec.orm.dbspec.emit_dbspec",
+            "polyspec.orm.dbspec.emit_document",
+            "polyspec.orm.dbspec.file.DBSPEC_SIGNATURE",
+            "polyspec.orm.dbspec.file.read_dbspec_bytes",
+            "polyspec.orm.dbspec.file.read_dbspec_file",
+            "polyspec.orm.dbspec.format_dbspec",
+            "polyspec.orm.dbspec.model.DbspecCheck",
+            "polyspec.orm.dbspec.model.DbspecColumn",
+            "polyspec.orm.dbspec.model.DbspecDefault",
+            "polyspec.orm.dbspec.model.DbspecDiagnostic",
+            "polyspec.orm.dbspec.model.DbspecDiagram",
+            "polyspec.orm.dbspec.model.DbspecDocument",
+            "polyspec.orm.dbspec.model.DbspecForeignKey",
+            "polyspec.orm.dbspec.model.DbspecIndex",
+            "polyspec.orm.dbspec.model.DbspecIndexColumn",
+            "polyspec.orm.dbspec.model.DbspecPlacement",
+            "polyspec.orm.dbspec.model.DbspecPosition",
+            "polyspec.orm.dbspec.model.DbspecPrimaryKey",
+            "polyspec.orm.dbspec.model.DbspecSetting",
+            "polyspec.orm.dbspec.model.DbspecStoreShard",
+            "polyspec.orm.dbspec.model.DbspecTable",
+            "polyspec.orm.dbspec.model.DbspecType",
+            "polyspec.orm.dbspec.model.DbspecUnique",
+            "polyspec.orm.dbspec.model.DbspecUse",
+            "polyspec.orm.dbspec.model.RULES",
+            "polyspec.orm.dbspec.names.MAX_NAME_BYTES",
+            "polyspec.orm.dbspec.names.generated_names",
+            "polyspec.orm.dbspec.parse.RESERVED",
+            "polyspec.orm.dbspec.parse.parse_dbspec",
+            "polyspec.orm.dbspec.parse.parse_document",
+            "polyspec.orm.dbspec.parse.valid_name",
+            "polyspec.orm.dbspec.parse.well_formed",
+            "polyspec.orm.dbspec.parse_dbspec",
+            "polyspec.orm.dbspec.parse_dbspec_set",
+            "polyspec.orm.dbspec.parse_document",
+            "polyspec.orm.dbspec.read_dbspec_bytes",
+            "polyspec.orm.dbspec.read_dbspec_file",
+            "polyspec.orm.dbspec.read_dbspec_set",
+            "polyspec.orm.dbspec.set_file.read_dbspec_set",
+            "polyspec.orm.dbspec.set_parse.parse_dbspec_set",
+            "polyspec.orm.dbspec.type_text",
+            "polyspec.orm.dbspec.unicode_word.WORD_RANGES",
+            "polyspec.orm.dbspec.valid_name",
+            "polyspec.orm.dbspec.well_formed"
           ]
         },
         {
@@ -41145,26 +41145,26 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.dbspec.DBSPEC_SET_NAME",
-            "orm.dbspec.DbspecSet",
-            "orm.dbspec.DbspecSetDocument",
-            "orm.dbspec.DbspecSetError",
-            "orm.dbspec.DbspecSetFile",
-            "orm.dbspec.MANIFEST",
-            "orm.dbspec.dbspec_manifest",
-            "orm.dbspec.emit.MANIFEST",
-            "orm.dbspec.manifest.check_set",
-            "orm.dbspec.manifest.dbspec_manifest",
-            "orm.dbspec.set_file.DBSPEC_SET_NAME",
-            "orm.dbspec.set_file.DbspecSet",
-            "orm.dbspec.set_file.DbspecSetError",
-            "orm.dbspec.set_file.DbspecSetFile",
-            "orm.dbspec.set_parse.DbspecSetDocument",
-            "orm.engine.model.parse_document_set",
-            "orm.engine.model.split_documents",
-            "orm.engine.parse_document_set",
-            "orm.engine.split_documents",
-            "orm.parse_document_set"
+            "polyspec.orm.dbspec.DBSPEC_SET_NAME",
+            "polyspec.orm.dbspec.DbspecSet",
+            "polyspec.orm.dbspec.DbspecSetDocument",
+            "polyspec.orm.dbspec.DbspecSetError",
+            "polyspec.orm.dbspec.DbspecSetFile",
+            "polyspec.orm.dbspec.MANIFEST",
+            "polyspec.orm.dbspec.dbspec_manifest",
+            "polyspec.orm.dbspec.emit.MANIFEST",
+            "polyspec.orm.dbspec.manifest.check_set",
+            "polyspec.orm.dbspec.manifest.dbspec_manifest",
+            "polyspec.orm.dbspec.set_file.DBSPEC_SET_NAME",
+            "polyspec.orm.dbspec.set_file.DbspecSet",
+            "polyspec.orm.dbspec.set_file.DbspecSetError",
+            "polyspec.orm.dbspec.set_file.DbspecSetFile",
+            "polyspec.orm.dbspec.set_parse.DbspecSetDocument",
+            "polyspec.orm.engine.model.parse_document_set",
+            "polyspec.orm.engine.model.split_documents",
+            "polyspec.orm.engine.parse_document_set",
+            "polyspec.orm.engine.split_documents",
+            "polyspec.orm.parse_document_set"
           ]
         },
         {
@@ -41333,56 +41333,56 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.dbspec.Renderer",
-            "orm.dbspec.introspect.Connection",
-            "orm.dbspec.introspect.Connection.execute",
-            "orm.dbspec.introspect.introspect_catalog",
-            "orm.dbspec.introspect.introspect_dbspec",
-            "orm.dbspec.introspect_catalog.Catalog",
-            "orm.dbspec.introspect_catalog.Catalog.add_table",
-            "orm.dbspec.introspect_catalog.Catalog.document",
-            "orm.dbspec.introspect_catalog.Catalog.drop_column",
-            "orm.dbspec.introspect_catalog.Catalog.report",
-            "orm.dbspec.introspect_catalog.Catalog.table",
-            "orm.dbspec.introspect_catalog.CatalogRow",
-            "orm.dbspec.introspect_catalog.CatalogRow.flag",
-            "orm.dbspec.introspect_catalog.CatalogRow.integer",
-            "orm.dbspec.introspect_catalog.CatalogRow.nullable_text",
-            "orm.dbspec.introspect_catalog.CatalogRow.text",
-            "orm.dbspec.introspect_catalog.action_name",
-            "orm.dbspec.introspect_catalog.quote",
-            "orm.dbspec.introspect_catalog.table_types",
-            "orm.dbspec.introspect_check.CheckDecodeError",
-            "orm.dbspec.introspect_check.decode_check",
-            "orm.dbspec.introspect_check.unscaled_decimal",
-            "orm.dbspec.introspect_mysql.read_mysql",
-            "orm.dbspec.introspect_postgres.read_postgres",
-            "orm.dbspec.introspect_sqlite.read_sqlite",
-            "orm.dbspec.introspect_trigger.recognize_triggers",
-            "orm.dbspec.names.rendered_column",
-            "orm.dbspec.names.renderer_name",
-            "orm.dbspec.render.Renderer",
-            "orm.dbspec.render.Renderer.column",
-            "orm.dbspec.render.Renderer.create_table",
-            "orm.dbspec.render.Renderer.default_text",
-            "orm.dbspec.render.Renderer.foreign_key",
-            "orm.dbspec.render.Renderer.history",
-            "orm.dbspec.render.Renderer.list",
-            "orm.dbspec.render.Renderer.literal",
-            "orm.dbspec.render.Renderer.operand",
-            "orm.dbspec.render.Renderer.predicate",
-            "orm.dbspec.render.Renderer.q",
-            "orm.dbspec.render.Renderer.reject",
-            "orm.dbspec.render.Renderer.table",
-            "orm.dbspec.render.Renderer.trigger",
-            "orm.dbspec.render.Renderer.triggers",
-            "orm.dbspec.render.Renderer.type_check",
-            "orm.dbspec.render.Renderer.type_text",
-            "orm.dbspec.render.UUID_PATTERN",
-            "orm.dbspec.render.render_dbspec",
-            "orm.dbspec.render.render_dbspec_statements",
-            "orm.dbspec.render_dbspec",
-            "orm.dbspec.render_dbspec_statements"
+            "polyspec.orm.dbspec.Renderer",
+            "polyspec.orm.dbspec.introspect.Connection",
+            "polyspec.orm.dbspec.introspect.Connection.execute",
+            "polyspec.orm.dbspec.introspect.introspect_catalog",
+            "polyspec.orm.dbspec.introspect.introspect_dbspec",
+            "polyspec.orm.dbspec.introspect_catalog.Catalog",
+            "polyspec.orm.dbspec.introspect_catalog.Catalog.add_table",
+            "polyspec.orm.dbspec.introspect_catalog.Catalog.document",
+            "polyspec.orm.dbspec.introspect_catalog.Catalog.drop_column",
+            "polyspec.orm.dbspec.introspect_catalog.Catalog.report",
+            "polyspec.orm.dbspec.introspect_catalog.Catalog.table",
+            "polyspec.orm.dbspec.introspect_catalog.CatalogRow",
+            "polyspec.orm.dbspec.introspect_catalog.CatalogRow.flag",
+            "polyspec.orm.dbspec.introspect_catalog.CatalogRow.integer",
+            "polyspec.orm.dbspec.introspect_catalog.CatalogRow.nullable_text",
+            "polyspec.orm.dbspec.introspect_catalog.CatalogRow.text",
+            "polyspec.orm.dbspec.introspect_catalog.action_name",
+            "polyspec.orm.dbspec.introspect_catalog.quote",
+            "polyspec.orm.dbspec.introspect_catalog.table_types",
+            "polyspec.orm.dbspec.introspect_check.CheckDecodeError",
+            "polyspec.orm.dbspec.introspect_check.decode_check",
+            "polyspec.orm.dbspec.introspect_check.unscaled_decimal",
+            "polyspec.orm.dbspec.introspect_mysql.read_mysql",
+            "polyspec.orm.dbspec.introspect_postgres.read_postgres",
+            "polyspec.orm.dbspec.introspect_sqlite.read_sqlite",
+            "polyspec.orm.dbspec.introspect_trigger.recognize_triggers",
+            "polyspec.orm.dbspec.names.rendered_column",
+            "polyspec.orm.dbspec.names.renderer_name",
+            "polyspec.orm.dbspec.render.Renderer",
+            "polyspec.orm.dbspec.render.Renderer.column",
+            "polyspec.orm.dbspec.render.Renderer.create_table",
+            "polyspec.orm.dbspec.render.Renderer.default_text",
+            "polyspec.orm.dbspec.render.Renderer.foreign_key",
+            "polyspec.orm.dbspec.render.Renderer.history",
+            "polyspec.orm.dbspec.render.Renderer.list",
+            "polyspec.orm.dbspec.render.Renderer.literal",
+            "polyspec.orm.dbspec.render.Renderer.operand",
+            "polyspec.orm.dbspec.render.Renderer.predicate",
+            "polyspec.orm.dbspec.render.Renderer.q",
+            "polyspec.orm.dbspec.render.Renderer.reject",
+            "polyspec.orm.dbspec.render.Renderer.table",
+            "polyspec.orm.dbspec.render.Renderer.trigger",
+            "polyspec.orm.dbspec.render.Renderer.triggers",
+            "polyspec.orm.dbspec.render.Renderer.type_check",
+            "polyspec.orm.dbspec.render.Renderer.type_text",
+            "polyspec.orm.dbspec.render.UUID_PATTERN",
+            "polyspec.orm.dbspec.render.render_dbspec",
+            "polyspec.orm.dbspec.render.render_dbspec_statements",
+            "polyspec.orm.dbspec.render_dbspec",
+            "polyspec.orm.dbspec.render_dbspec_statements"
           ]
         },
         {
@@ -41645,46 +41645,46 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.dbspec.add_tables.add_tables_and_columns_steps",
-            "orm.dbspec.add_tables_and_columns_steps",
-            "orm.dbspec.compare.compare_schemas",
-            "orm.dbspec.compare.is_schema_text",
-            "orm.dbspec.external_differences",
-            "orm.dbspec.installed.compare_set",
-            "orm.dbspec.installed.installed_differences",
-            "orm.dbspec.installed.qualified",
-            "orm.dbspec.installed.schema_document",
-            "orm.dbspec.installed_differences",
-            "orm.dbspec.manifest.external_differences",
-            "orm.dbspec.plan.chain_plans",
-            "orm.dbspec.plan.emit_plan",
-            "orm.dbspec.plan.parse_plan",
-            "orm.dbspec.plan.plan_diagnostic",
-            "orm.dbspec.plan.plan_schema_text",
-            "orm.dbspec.plan.plan_to",
-            "orm.dbspec.plan.sorted_by",
-            "orm.dbspec.plan_diff.append",
-            "orm.dbspec.plan_diff.column_of",
-            "orm.dbspec.plan_diff.diff_plan",
-            "orm.dbspec.plan_diff.plan_diff",
-            "orm.dbspec.plan_diff.renamed_or",
-            "orm.dbspec.plan_diff.same_default",
-            "orm.dbspec.plan_diff.same_type",
-            "orm.dbspec.plan_diff.sorted_keys",
-            "orm.dbspec.plan_diff.widens",
-            "orm.dbspec.plan_objects.check_of",
-            "orm.dbspec.plan_objects.collect_changes",
-            "orm.dbspec.plan_objects.diff_objects",
-            "orm.dbspec.plan_objects.diff_triggers",
-            "orm.dbspec.plan_objects.foreign_key_def",
-            "orm.dbspec.plan_objects.foreign_key_of",
-            "orm.dbspec.plan_objects.has_triggers",
-            "orm.dbspec.plan_objects.index_def",
-            "orm.dbspec.plan_objects.index_of",
-            "orm.dbspec.plan_objects.rename_check",
-            "orm.dbspec.plan_objects.unique_of",
-            "orm.dbspec.plan_steps.effect_text",
-            "orm.dbspec.plan_steps.plan_steps"
+            "polyspec.orm.dbspec.add_tables.add_tables_and_columns_steps",
+            "polyspec.orm.dbspec.add_tables_and_columns_steps",
+            "polyspec.orm.dbspec.compare.compare_schemas",
+            "polyspec.orm.dbspec.compare.is_schema_text",
+            "polyspec.orm.dbspec.external_differences",
+            "polyspec.orm.dbspec.installed.compare_set",
+            "polyspec.orm.dbspec.installed.installed_differences",
+            "polyspec.orm.dbspec.installed.qualified",
+            "polyspec.orm.dbspec.installed.schema_document",
+            "polyspec.orm.dbspec.installed_differences",
+            "polyspec.orm.dbspec.manifest.external_differences",
+            "polyspec.orm.dbspec.plan.chain_plans",
+            "polyspec.orm.dbspec.plan.emit_plan",
+            "polyspec.orm.dbspec.plan.parse_plan",
+            "polyspec.orm.dbspec.plan.plan_diagnostic",
+            "polyspec.orm.dbspec.plan.plan_schema_text",
+            "polyspec.orm.dbspec.plan.plan_to",
+            "polyspec.orm.dbspec.plan.sorted_by",
+            "polyspec.orm.dbspec.plan_diff.append",
+            "polyspec.orm.dbspec.plan_diff.column_of",
+            "polyspec.orm.dbspec.plan_diff.diff_plan",
+            "polyspec.orm.dbspec.plan_diff.plan_diff",
+            "polyspec.orm.dbspec.plan_diff.renamed_or",
+            "polyspec.orm.dbspec.plan_diff.same_default",
+            "polyspec.orm.dbspec.plan_diff.same_type",
+            "polyspec.orm.dbspec.plan_diff.sorted_keys",
+            "polyspec.orm.dbspec.plan_diff.widens",
+            "polyspec.orm.dbspec.plan_objects.check_of",
+            "polyspec.orm.dbspec.plan_objects.collect_changes",
+            "polyspec.orm.dbspec.plan_objects.diff_objects",
+            "polyspec.orm.dbspec.plan_objects.diff_triggers",
+            "polyspec.orm.dbspec.plan_objects.foreign_key_def",
+            "polyspec.orm.dbspec.plan_objects.foreign_key_of",
+            "polyspec.orm.dbspec.plan_objects.has_triggers",
+            "polyspec.orm.dbspec.plan_objects.index_def",
+            "polyspec.orm.dbspec.plan_objects.index_of",
+            "polyspec.orm.dbspec.plan_objects.rename_check",
+            "polyspec.orm.dbspec.plan_objects.unique_of",
+            "polyspec.orm.dbspec.plan_steps.effect_text",
+            "polyspec.orm.dbspec.plan_steps.plan_steps"
           ]
         },
         {
@@ -41914,11 +41914,11 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.dbspec.apply.DbspecApplyError",
-            "orm.dbspec.apply.apply_plans",
-            "orm.dbspec.apply.finalize_plans",
-            "orm.dbspec.apply.recover_plans",
-            "orm.dbspec.apply.rollback_plans"
+            "polyspec.orm.dbspec.apply.DbspecApplyError",
+            "polyspec.orm.dbspec.apply.apply_plans",
+            "polyspec.orm.dbspec.apply.finalize_plans",
+            "polyspec.orm.dbspec.apply.recover_plans",
+            "polyspec.orm.dbspec.apply.rollback_plans"
           ]
         },
         {
@@ -42086,8 +42086,8 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.dbspec.mermaid.export_mermaid",
-            "orm.dbspec.mermaid.import_mermaid"
+            "polyspec.orm.dbspec.mermaid.export_mermaid",
+            "polyspec.orm.dbspec.mermaid.import_mermaid"
           ]
         },
         {
@@ -42182,8 +42182,8 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.database.Db.listen",
-            "orm.database.Db.notify"
+            "polyspec.orm.database.Db.listen",
+            "polyspec.orm.database.Db.notify"
           ]
         },
         {
@@ -42492,17 +42492,17 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.bin_orm_gen.main",
-            "orm.generate.python.generate_models",
-            "orm.generate.python.render_models",
-            "orm.generate.scan.scan_model_calls",
-            "orm.driver_cells.mysql_conversions",
-            "orm.driver_cells.postgres_loaders",
-            "orm.placeholders.MYSQL_QUOTES",
-            "orm.placeholders.POSTGRES_QUOTES",
-            "orm.placeholders.for_mysql",
-            "orm.placeholders.for_postgres",
-            "orm.clock.wall_micros"
+            "polyspec.orm.bin_orm_gen.main",
+            "polyspec.orm.generate.python.generate_models",
+            "polyspec.orm.generate.python.render_models",
+            "polyspec.orm.generate.scan.scan_model_calls",
+            "polyspec.orm.driver_cells.mysql_conversions",
+            "polyspec.orm.driver_cells.postgres_loaders",
+            "polyspec.orm.placeholders.MYSQL_QUOTES",
+            "polyspec.orm.placeholders.POSTGRES_QUOTES",
+            "polyspec.orm.placeholders.for_mysql",
+            "polyspec.orm.placeholders.for_postgres",
+            "polyspec.orm.clock.wall_micros"
           ]
         }
       ]
@@ -42522,12 +42522,12 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.engine.dialect.MysqlDialect.restart_identity",
-            "orm.engine.dialect.PostgresDialect.restart_identity",
-            "orm.engine.dialect.SqliteDialect.restart_identity",
-            "orm.engine.dialect.PostgresDialect.read_uuid",
-            "orm.engine.dialect.PostgresDialect.write_uuid",
-            "orm.engine.dialect.SqliteDialect.row_lock"
+            "polyspec.orm.engine.dialect.MysqlDialect.restart_identity",
+            "polyspec.orm.engine.dialect.PostgresDialect.restart_identity",
+            "polyspec.orm.engine.dialect.SqliteDialect.restart_identity",
+            "polyspec.orm.engine.dialect.PostgresDialect.read_uuid",
+            "polyspec.orm.engine.dialect.PostgresDialect.write_uuid",
+            "polyspec.orm.engine.dialect.SqliteDialect.row_lock"
           ]
         }
       ]
@@ -42547,10 +42547,10 @@
         {
           "implementation": "python",
           "symbols": [
-            "orm.testing.fail_next_rollback",
-            "orm.testing.fail_next_statement",
-            "orm.testing.fix_clock",
-            "orm.testing.last_affected"
+            "polyspec.orm.testing.fail_next_rollback",
+            "polyspec.orm.testing.fail_next_statement",
+            "polyspec.orm.testing.fix_clock",
+            "polyspec.orm.testing.last_affected"
           ]
         }
       ]

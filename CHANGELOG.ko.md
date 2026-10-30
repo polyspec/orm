@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d686457bd0ab41f806a11df3932d0cc1c8ae789bcbf0bfe18abfc71167fc40a1 -->
+<!-- source-sha256: bbf629517cd627b25cabbb183d59ce80e1add4f45ea17b8c8e857d7c241f717e -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.19
 
+- config/parity.json의 Python symbol은 kit K788 이후 kit Python extractor가 읽는 import root 접두사 polyspec.orm을 가집니다(T268).
 - PHP extension declarations test는 T258이 공개한 대로 ModelMetadata를 PHP client의 class로 셉니다(T267).
 - bench vector는 bench fixture의 ip_hex_cell table을 따릅니다: Mermaid round trip은 그 settings를 dropped로 나열하고, Python generator test는 그 manifest hash와 26개 entity를 기대합니다(T266).
 - feature php-extension-run-guard가 PHP extension run guard와 ExtensionRunGuardTest.php를 소유하므로 features contract가 통과합니다(T264).
