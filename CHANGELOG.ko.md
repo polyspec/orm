@@ -6,6 +6,7 @@
 
 ## 0.0.19
 
+- schema-existence-and-installation의 php-extension binding은 SchemaUtilsNativeTest::testExistsEscapesUnderscoreInSqliteSchemaName을 class 형식으로 적습니다. 그래서 parity 실행이 이 test를 인정합니다. 전에는 다른 단위가 class와 함께 묶은 test를 method 이름만으로 적어서, 실행되지 않은 것으로 보고되었습니다(T304).
 - kit 0.0.79를 채택한다(KSTD-5-125): CI는 `.github/workflows/ci-pipeline.yml`의 shared, parity, runtime 검사를 job `kit`으로 부르고 `ci-passed`가 그 성공을 요구하며, release는 성공한 `ci.yml` run의 id로 `release.yml`을 dispatch하는 것이고 그 `make release-tag`가 run의 commit에 tag한다. `make release-verify`와 push한 tag로 하는 release는 없어졌다.
 - 잘못된 date나 datetime의 native 읽기는 CODEC_DECODE OrmException "invalid date value <text>"를 원래 예외와 함께 던집니다. 전에는 행 읽기와 group 값이 오류 없이 끝났습니다. 확장은 PHP library가 읽는 대체 형식과 끝의 offset도 읽습니다(T293).
 - decimal-physical-check의 DECIMAL_ENV 메시지는 그것을 실행하는 선언된 target인 make run-databases TARGETS=feature-helper-check를 안내합니다. conformance-check가 그 case의 상위 집합을 실행하므로 conformance-rust-group-check는 삭제됩니다(T288-1).

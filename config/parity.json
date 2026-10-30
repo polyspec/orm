@@ -33183,7 +33183,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/SchemaUtilsNativeTest.php",
-          "id": "testExistsEscapesUnderscoreInSqliteSchemaName"
+          "id": "SchemaUtilsNativeTest::testExistsEscapesUnderscoreInSqliteSchemaName"
         },
         {
           "implementation": "typescript",
