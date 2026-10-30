@@ -6,6 +6,7 @@
 
 ## 0.0.19
 
+- SQLite fact sqlite.render.time_check와 DIA-53은 고정된 SQLite 3.54.1의 time()이 24:00:00에 00:00:00을, 24:00:01과 25:00:00에 NULL을 돌려준다고 기록합니다(T280).
 - feature-verify-rust와 feature-verify-other는 interfaces-typescript need를 선언하므로, CI가 그 feature 검증의 interface 검사가 선언을 읽는 TypeScript를 설치합니다(T278).
 - PHP library의 drift ApplyError는 PHP extension처럼 다시 detail에 schema mismatch를 담고 previous를 담지 않는다. KSTD-5-94는 내부 PlanSchemaMismatch를 그 원인으로 넘겼다(T277).
 - orm은 npm, Composer, Python, Go, Cargo에서 development source의 version인 공개된 ordered-json 0.0.13을 요구하므로, cargo는 link가 제공하는 source를 resolve한다(T276).

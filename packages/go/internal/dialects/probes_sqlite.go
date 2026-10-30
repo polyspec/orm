@@ -353,8 +353,8 @@ func sqliteProbes() []Probe {
 			e.Fails("INSERT INTO t VALUES ('2021-02-29')", "CHECK constraint failed")
 			e.Fails("INSERT INTO t VALUES ('x')", "CHECK constraint failed")
 		}),
-		p("render.time_check", "the pinned SQLite 3.54.1 time() returns NULL for 24:00:00; the renderer CHECK rejects values outside a time of day", func(e *Env) {
-			e.Want("SELECT coalesce(time('24:00:00'), 'NULL') || ' ' || coalesce(time('25:00:00'), 'NULL')", "NULL NULL")
+		p("render.time_check", "the pinned SQLite 3.54.1 time() returns 00:00:00 for 24:00:00 and NULL for 24:00:01 and 25:00:00; the renderer CHECK rejects values outside a time of day", func(e *Env) {
+			e.Want("SELECT coalesce(time('24:00:00'), 'NULL') || ' ' || coalesce(time('24:00:01'), 'NULL') || ' ' || coalesce(time('25:00:00'), 'NULL')", "00:00:00 NULL NULL")
 			e.Exec("CREATE TABLE t (v TIME, CONSTRAINT t_v_time CHECK (v IS time(v) AND v < '24:00:00'))", "INSERT INTO t VALUES ('23:59:59'), (NULL)")
 			e.Fails("INSERT INTO t VALUES ('24:00:00')", "CHECK constraint failed")
 			e.Fails("INSERT INTO t VALUES ('7:00')", "CHECK constraint failed")

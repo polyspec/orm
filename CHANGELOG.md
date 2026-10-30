@@ -5,6 +5,7 @@
 
 ## 0.0.19
 
+- The SQLite fact sqlite.render.time_check and DIA-53 record that the pinned SQLite 3.54.1 time() returns 00:00:00 for 24:00:00 and NULL for 24:00:01 and 25:00:00 (T280).
 - feature-verify-rust and feature-verify-other declare the interfaces-typescript need, so CI installs the TypeScript that the interface check of their feature verification reads declarations with (T278).
 - A drift ApplyError of the PHP library names the schema mismatch in its detail again and carries no previous, as the PHP extension does; KSTD-5-94 had passed the internal PlanSchemaMismatch as its cause (T277).
 - orm requires the released ordered-json 0.0.13 in npm, Composer, Python, Go and Cargo, the version of the development source, so cargo resolves the source that the link provides (T276).
