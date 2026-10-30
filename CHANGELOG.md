@@ -17,7 +17,7 @@
 - The TypeScript thin-slice example binds its datetime as text, as the Go and PHP examples do and as a datetime slot requires since T89-3 (T271).
 - The TypeScript MySQL driver sends an integral number parameter as a bigint, a LONGLONG, since mysql2 sends a number as a DOUBLE and ProxySQL refuses a DOUBLE LIMIT (T273).
 - client-pooler-check declares and installs the PHP extension tools, since its php-extension lane builds the extension (T272).
-- The PHP test helpers generate their models with orm-gen in a process of their own, through one helper generateModels, so a test that runs against the extension loads no file of the PHP library (T270).
+- The PHP test helpers generate their models with orm-gen in a process of their own, through one helper generateModels, so a test that runs against the extension loads no file of the PHP library; every PHP test that an extension run executes uses it, and none names Generator (T270).
 - The Python parity bindings of the complex query and the hot-path gate name their test class, and the postgres and sqlite hot-path bindings give the database and its DSN, as the mysql binding does (T269).
 - The Python symbols of config/parity.json carry the import-root prefix polyspec.orm that the kit Python extractor reads since kit K788 (T268).
 - The PHP extension declarations test counts ModelMetadata among the classes of the PHP client, as T258 made it public (T267).

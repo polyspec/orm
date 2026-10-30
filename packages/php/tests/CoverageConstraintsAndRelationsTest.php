@@ -15,7 +15,6 @@ use Polyspec\Orm\Tests\Model\NoteReader;
 use Polyspec\Orm\Tests\Model\SharedNote;
 use Polyspec\Orm\Tests\Model\User;
 use Polyspec\Orm\Code;
-use Polyspec\Orm\Generator;
 use Polyspec\Orm\OrmException;
 use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Tests\CoverageConstraints\Refusal\RefusedRow;

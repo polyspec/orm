@@ -19,7 +19,6 @@ use Polyspec\Orm\Tests\CoverageAudit\Item;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
-use Polyspec\Orm\Generator;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\RuntimeModel;
 use PHPUnit\Framework\Assert;

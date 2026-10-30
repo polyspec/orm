@@ -12,6 +12,7 @@ namespace Polyspec\Orm\Tests;
 
 use Closure;
 use ReflectionMethod;
+use RuntimeException;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Tests\Model\Author;
@@ -19,7 +20,6 @@ use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Engine;
-use Polyspec\Orm\Generator;
 use Polyspec\Orm\OrmException;
 use Polyspec\Orm\Registry;
 use Polyspec\Orm\RuntimeModel;
@@ -272,9 +272,11 @@ DBSPEC;
     public function testGeneratedFilesAreCurrent(): void
     {
         $root = dirname(__DIR__, 3);
-        $bench = self::bench();
-        $lines = Generator::check($bench, "$root/packages/php/gen", 'Polyspec\\Orm\\Tests\\Model');
-        self::assertTrue($lines === [], implode("\n", $lines));
+        [$code, $out, $err] = OrmGenTestSupport::run([
+            'gen', '--set', "$root/contracts/fixtures/bench/dbspec-set.json", '--out', "$root/packages/php/gen",
+            '--namespace', 'Polyspec\\Orm\\Tests\\Model', '--check'
+        ]);
+        self::assertTrue($code === 0, trim("$out\n$err"));
     }
 
     // Requirements: DBS-116.
@@ -302,10 +304,12 @@ DBSPEC;
         $model = RuntimeModel::build(RuntimeModel::parse(['small.dbs' => $doc]));
         self::assertTrue($model->entities['small_value']['columns']['level']['type'] === 'i16', 'i16 type');
         $out = sys_get_temp_dir() . '/orm-php-runtime-i16-' . getmypid();
-        Generator::generate($model, $out, 'Polyspec\\Orm\\Tests\\Small');
+        generateModels(['small.dbs' => $doc], "$out-source", $out, 'Polyspec\\Orm\\Tests\\Small');
         $body = (string) file_get_contents("$out/SmallValue.php");
         array_map('unlink', glob("$out/*.php"));
         rmdir($out);
+        array_map('unlink', glob("$out-source/*"));
+        rmdir("$out-source");
         self::assertTrue(
             str_contains(
                 $body,
@@ -329,18 +333,19 @@ DBSPEC;
         // jsonText is a public static method of Model. A column json_text would generate an instance method of that
         // name, which PHP refuses when the model class loads, so generation refuses the column instead.
         $doc = "dbspec 1 small\n\ntable small_value {\n  seq i64 identity\n  json_text i32\n  primary key (seq)\n}\n";
-        $model = RuntimeModel::build(RuntimeModel::parse(['small.dbs' => $doc]));
         $out = sys_get_temp_dir() . '/orm-php-runtime-json-text-' . getmypid();
         $message = '';
         try {
-            Generator::generate($model, $out, 'Polyspec\\Orm\\Tests\\Small');
-        } catch (OrmException $e) {
+            generateModels(['small.dbs' => $doc], "$out-source", $out, 'Polyspec\\Orm\\Tests\\Small');
+        } catch (RuntimeException $e) {
             $message = $e->getMessage();
         }
         if (is_dir($out)) {
             array_map('unlink', glob("$out/*.php") ?: []);
             rmdir($out);
         }
+        array_map('unlink', glob("$out-source/*") ?: []);
+        is_dir("$out-source") && rmdir("$out-source");
         self::assertTrue(
             str_contains($message, 'the condition method jsonText is also the model method jsonText'),
             "refused: $message"

@@ -33,11 +33,9 @@ use Polyspec\Orm\Code;
 use Polyspec\Orm\Collection;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
-use Polyspec\Orm\Generator;
 use Polyspec\Orm\Model;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
-use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\StyledValue;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
@@ -1244,8 +1242,9 @@ class ModelTest extends TestCase
             $table = case_name();
             $probe = "dbspec 1 pooler_probe\n\ntable $table {\n  seq i64 identity\n  label varchar(16)\n  primary "
                 . "key (seq)\n}\n";
-            Generator::generate(
-                RuntimeModel::build(RuntimeModel::parse(['pooler_probe.dbs' => $probe])),
+            generateModels(
+                ['pooler_probe.dbs' => $probe],
+                self::$work . "/pooler-source",
                 self::$work . "/pooler",
                 'Polyspec\\Orm\\Tests\\PoolerProbe'
             );

@@ -30,17 +30,19 @@ function requireGeneratedClasses(string $dir): void
  * Generates the models of the documents $documents (name => text) into $output with namespace $namespace through
  * orm-gen in a process of its own: the documents are written to $source with their set file. A test that runs against
  * the extension thus never loads Generator of the library, which the extension run guard would report (T270). An
- * orm-gen that fails fails the test with its output.
+ * orm-gen that fails fails the test with its output. The external documents $external (name => text) are written to
+ * $source too and are named as external in the set file.
  *
  * @param array<string, string> $documents
+ * @param array<string, string> $external
  */
-function generateModels(array $documents, string $source, string $output, string $namespace): void
+function generateModels(array $documents, string $source, string $output, string $namespace, array $external = []): void
 {
     is_dir($source) || mkdir($source, 0o700, true);
-    foreach ($documents as $name => $text) {
+    foreach ([...$documents, ...$external] as $name => $text) {
         file_put_contents("$source/$name", $text);
     }
-    $set = \Polyspec\Orm\Tests\OrmGenTestSupport::setFile($source, array_keys($documents));
+    $set = \Polyspec\Orm\Tests\OrmGenTestSupport::setFile($source, array_keys($documents), array_keys($external));
     [$code, $stdout, $stderr] = \Polyspec\Orm\Tests\OrmGenTestSupport::run([
         'gen', '--set', $set, '--out', $output, '--namespace', $namespace
     ]);

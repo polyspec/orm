@@ -20,9 +20,7 @@ use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
-use Polyspec\Orm\Generator;
 use Polyspec\Orm\OrmException;
-use Polyspec\Orm\RuntimeModel;
 
 #[Medium]
 final class DecimalModelDbTest extends TestCase
@@ -35,11 +33,19 @@ final class DecimalModelDbTest extends TestCase
     /** Generates the model of the fixture into a new directory. */
     private static function generate(): string
     {
-        $model = RuntimeModel::build(
-            RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/decimal_schema.dbs'])
-        );
         $generated = sys_get_temp_dir() . '/orm-decimal-php-' . bin2hex(random_bytes(8));
-        Generator::generate($model, $generated, 'DecimalFixture');
+        $source = sys_get_temp_dir() . '/orm-decimal-source-' . bin2hex(random_bytes(8));
+        $fixture = dirname(__DIR__, 3) . '/contracts/fixtures/decimal_schema.dbs';
+        try {
+            generateModels(
+                ['decimal_schema.dbs' => (string) file_get_contents($fixture)],
+                $source,
+                $generated,
+                'DecimalFixture'
+            );
+        } finally {
+            exec('rm -rf ' . escapeshellarg($source));
+        }
         return $generated;
     }
 

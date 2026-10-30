@@ -12,10 +12,8 @@ namespace Polyspec\Orm\Tests;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
-use Polyspec\Orm\Generator;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
-use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Tests\RevisionCase\Note;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
@@ -33,8 +31,9 @@ class RevisionTest extends TestCase
     {
         self::$work = sys_get_temp_dir() . '/orm-php-revision-' . getmypid();
         is_dir(self::$work) || mkdir(self::$work, 0o700, true);
-        Generator::generate(
-            RuntimeModel::build(RuntimeModel::parse(['revision.dbs' => self::DOCUMENT])),
+        generateModels(
+            ['revision.dbs' => self::DOCUMENT],
+            self::$work . '/source',
             self::$work . '/models',
             'Polyspec\\Orm\\Tests\\RevisionCase'
         );

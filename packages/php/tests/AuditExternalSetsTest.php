@@ -19,7 +19,6 @@ namespace Polyspec\Orm\Tests;
 use PDO;
 use RuntimeException;
 use Polyspec\Orm\Config;
-use Polyspec\Orm\Generator;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Schema;
@@ -47,10 +46,12 @@ final class AuditExternalSetsTest extends TestCase
     private static function generateMember(string $work): void
     {
         $path = static fn(string $name): string => \coverageRepositoryRoot() . "/contracts/fixtures/external/$name.dbs";
-        Generator::generate(
-            RuntimeModel::build(RuntimeModel::files([$path('member')], [$path('core')])),
+        generateModels(
+            ['member.dbs' => (string) file_get_contents($path('member'))],
+            "$work/source",
             "$work/member",
-            'Polyspec\\Orm\\Tests\\AuditExternalSets\\Member'
+            'Polyspec\\Orm\\Tests\\AuditExternalSets\\Member',
+            ['core.dbs' => (string) file_get_contents($path('core'))]
         );
         requireGeneratedClasses("$work/member");
     }

@@ -29,7 +29,6 @@ use Polyspec\Orm\Tests\Model\User;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
-use Polyspec\Orm\Generator;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
 use Polyspec\Orm\RuntimeModel;
@@ -69,7 +68,12 @@ final class SchemaSetTest extends TestCase
         self::$decimalModel = RuntimeModel::build(
             RuntimeModel::parse(['decimal_schema.dbs' => self::$decimalDocuments[0]])
         );
-        Generator::generate(self::$decimalModel, self::$work . "/decimal", 'Polyspec\\Orm\\Tests\\SchemaSetDecimal');
+        generateModels(
+            ['decimal_schema.dbs' => self::$decimalDocuments[0]],
+            self::$work . "/decimal-source",
+            self::$work . "/decimal",
+            'Polyspec\\Orm\\Tests\\SchemaSetDecimal'
+        );
         requireGeneratedClasses(self::$work . "/decimal");
         require self::$work . "/decimal/bootstrap.php";
     }
@@ -234,14 +238,16 @@ final class SchemaSetTest extends TestCase
             $db->utils()->schema()->install(\Polyspec\Orm\Tests\SchemaSetDecimal\schema());
             self::check((new DecimalCase())($db)->getCount() === 0, 'decimal read');
             // The generated code of the edited text declares the hash of the real decimal set.
-            $editedModel = RuntimeModel::build(
-                RuntimeModel::parse(
-                    ['decimal_schema.dbs' => str_replace('decimal(13,4)', 'decimal(14,4)', self::$decimalDocuments[0])]
-                )
-            );
+            $editedText = str_replace('decimal(13,4)', 'decimal(14,4)', self::$decimalDocuments[0]);
+            $editedModel = RuntimeModel::build(RuntimeModel::parse(['decimal_schema.dbs' => $editedText]));
             $namespace = 'SchemaSetEdited' . (++$edits) . '\\Orm';
             $dir = self::$work . "/edited-$edits";
-            Generator::generate($editedModel, $dir, $namespace);
+            generateModels(
+                ['decimal_schema.dbs' => $editedText],
+                self::$work . "/edited-$edits-source",
+                $dir,
+                $namespace
+            );
             foreach (glob("$dir/*.php") as $file) {
                 file_put_contents(
                     $file,
@@ -300,6 +306,13 @@ final class SchemaSetTest extends TestCase
         }
         $fixture = static fn(string $name): string => \coverageRepositoryRoot()
             . "/contracts/fixtures/external/$name.dbs";
+        $read = static function (array $names) use ($fixture): array {
+            $texts = [];
+            foreach ($names as $name) {
+                $texts["$name.dbs"] = (string) file_get_contents($fixture($name));
+            }
+            return $texts;
+        };
         $built = [];
         foreach (
             [
@@ -309,11 +322,14 @@ final class SchemaSetTest extends TestCase
             'drifted' => ['ExtDrifted', ['member'], ['core_extra']],
             ] as $key => [$prefix, $owned, $external]
         ) {
-            $model = RuntimeModel::build(
-                RuntimeModel::files(array_map($fixture, $owned), array_map($fixture, $external))
-            );
             $namespace = "Polyspec\\Orm\\Tests\\$prefix";
-            Generator::generate($model, self::$work . "/$prefix", $namespace);
+            generateModels(
+                $read($owned),
+                self::$work . "/$prefix-source",
+                self::$work . "/$prefix",
+                $namespace,
+                $read($external)
+            );
             requireGeneratedClasses(self::$work . "/$prefix");
             require self::$work . "/$prefix/bootstrap.php";
             $built[$key] = ("$namespace\\schema")();

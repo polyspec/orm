@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: fd9d71022fe2ebfd10af472bedfff8d50dcdbb4407971846784449abea0b02fb -->
+<!-- source-sha256: c9e512a98acf4eb4416d53ac3ade216c944d34daa7a205cc30aa2ab5968f6a49 -->
 # 변경 이력
 
 ## Unreleased
@@ -18,7 +18,7 @@
 - TypeScript thin-slice 예제는 Go와 PHP 예제처럼, 그리고 T89-3 이후 datetime slot이 요구하는 대로 datetime을 text로 bind합니다(T271).
 - TypeScript MySQL driver는 정수 number parameter를 bigint, 즉 LONGLONG으로 보냅니다. mysql2가 number를 DOUBLE로 보내고 ProxySQL이 DOUBLE LIMIT을 거부하기 때문입니다(T273).
 - client-pooler-check는 그 php-extension lane이 extension을 build하므로 PHP extension tool을 선언하고 설치합니다(T272).
-- PHP test helper는 하나의 helper generateModels를 통해 별도 process의 orm-gen으로 model을 생성하므로, extension으로 도는 test는 PHP library의 file을 load하지 않습니다(T270).
+- PHP test helper는 하나의 helper generateModels를 통해 별도 process의 orm-gen으로 model을 생성하므로, extension으로 실행되는 test는 PHP library의 file을 load하지 않습니다. extension run이 실행하는 모든 PHP test가 이 helper를 쓰고, 어느 test도 Generator를 적지 않습니다(T270).
 - complex query와 hot-path gate의 Python parity binding은 test class를 가리키고, postgres와 sqlite hot-path binding은 mysql binding처럼 database와 그 DSN을 줍니다(T269).
 - config/parity.json의 Python symbol은 kit K788 이후 kit Python extractor가 읽는 import root 접두사 polyspec.orm을 가집니다(T268).
 - PHP extension declarations test는 T258이 공개한 대로 ModelMetadata를 PHP client의 class로 셉니다(T267).
