@@ -5,6 +5,7 @@
 
 ## 0.0.19
 
+- The rust binding of group-row-owner names collection::group_tests::grouped_rows_contain_only_group_values_and_checked_counts, the test that owns INT-68 to INT-71, so the parity run executes it. Before, it named a test that never existed, which selected no test, and the binding was reported as not executed (T312).
 - The python hot path measurement writes its PERF lines to standard output, so the unittest result line of `test_hot_path_gate` holds only its outcome and the parity run credits the three hot path units, where the lines written to standard error inside that result line hid it (T310).
 - Python `Db.connect_schema` checks the schema before it opens the connection, as the other runtimes do, so a schema that fails the check, such as a changed manifest, leaves no open connection, where the connection stayed open and was reported as a ResourceWarning; with both an invalid schema and an invalid DSN, the CONFIG error of the schema is now reported first (T317).
 - The rust binding of complex-query-public-semijoin-plan names its test with the module path, coverage_complex_query::full_product_search_request_compiles_for_mysql_and_postgres_and_rejects_sqlite, as cargo reports it in the integration target; the parity run selects it with --exact. Before, the id without the module path selected no test, and the binding was reported as not executed (T313).

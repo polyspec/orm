@@ -25647,7 +25647,7 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/src/collection.rs",
-          "id": "collection::group_tests::group_row_owner_selected_values_counts_and_types"
+          "id": "collection::group_tests::grouped_rows_contain_only_group_values_and_checked_counts"
         }
       ]
     },
