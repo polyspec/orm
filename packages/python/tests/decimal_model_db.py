@@ -127,4 +127,5 @@ if __name__ == "__main__":
         )
     if arguments:
         DecimalModelDbTest.dialects = (arguments[1],)
-    testcase.main(argv=sys.argv[:1])
+    # run of scripts/physical.mts returns stdout, the stream the decimal physical check reads the report from (T289).
+    testcase.main(argv=sys.argv[:1], stream=sys.stdout)

@@ -12,7 +12,7 @@ import os
 import sys
 import threading
 import unittest
-from typing import Any, Optional
+from typing import Any, Optional, TextIO
 
 # The deadline classes. A case uses the class of the work it does; a case that takes longer than its class states its own
 # deadline with the reason in a comment.
@@ -116,10 +116,18 @@ class CaseRunner(unittest.TextTestRunner):
     resultclass = CaseResult
 
 
-def main(module: Optional[str] = "__main__", **options: Any) -> None:
-    """unittest.main with CaseRunner, one line per case (verbosity 2); a test module ends with it."""
+def main(
+    module: Optional[str] = "__main__", stream: Optional[TextIO] = None, **options: Any
+) -> None:
+    """unittest.main with CaseRunner, one line per case (verbosity 2); a test module ends with it. The report goes to
+    stream, stderr by default as TextTestRunner writes it; a caller that reads stdout passes sys.stdout."""
     options.setdefault("verbosity", 2)
-    unittest.main(module=module, testRunner=CaseRunner, **options)
+    runner = (
+        CaseRunner
+        if stream is None
+        else CaseRunner(stream=stream, verbosity=options["verbosity"])
+    )
+    unittest.main(module=module, testRunner=runner, **options)
 
 
 if __name__ == "__main__":

@@ -147,5 +147,34 @@ class EveryTestTest(unittest.TestCase):
         )
 
 
+class StreamTest(unittest.TestCase):
+    def test_main_writes_the_report_on_the_stream_it_is_given(self) -> None:
+        # A caller that reads stdout, as run of scripts/physical.mts does, passes it to main (T289).
+        code = textwrap.dedent("""
+            import sys
+            import unittest
+            from packages.python.tests import testcase
+
+
+            class Sample(unittest.TestCase):
+                def test_pass(self):
+                    pass
+
+
+            testcase.main(argv=sys.argv[:1], stream=sys.stdout)
+        """)
+        result = subprocess.run(
+            [sys.executable, "-c", code],
+            cwd=REPOSITORY_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=testcase.PROCESS,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("test_pass (__main__.Sample.test_pass) ... ok", result.stdout)
+        self.assertRegex(result.stdout, r"(?m)^Ran 1 test in ")
+        self.assertNotIn("Ran 1 test", result.stderr)
+
+
 if __name__ == "__main__":
     testcase.main()
