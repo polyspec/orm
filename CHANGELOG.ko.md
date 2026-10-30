@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c2a971c96cd533ea90d781df04d5ce8ead8d878898ee4ad8ea6edebec2ec2847 -->
+<!-- source-sha256: 57fa21448afff18f095396d1300f1e7be55f7d7c719359cd1060b289b5f65b0a -->
 # 변경 이력
 
 ## Unreleased
@@ -9,6 +9,7 @@
 - go-internal-packages-go-engine-functions-physical의 rust binding은 coverage-conformance-verification-conformance-vector처럼 coverage_conformance_vector를 make feature-rust-database로 SQLite database와 함께 실행합니다. 그래서 parity 실행이 ignored trial을 ORM_FEATURE_DATABASE와 ORM_FEATURE_DSN과 함께 실행합니다. 전에는 binding에 명령이 없어 cargo가 trial을 ignored로 보고했고, 실행은 이를 skipped로 읽었습니다(T314).
 - PHP 확장 build는 kit K930이 요구하는 대로 두 build mode 모두에서 --source-copy로 packages/php/src/native/sqlite_cancel.c를 src/native/sqlite_cancel.c로 준비합니다. kit builder가 더 이상 config/release.json의 source-copy 선언을 읽지 않기 때문입니다. 전에는 확장의 모든 release build가 No rule to make target src/native/sqlite_cancel.c로 실패했습니다(T325).
 - group-row-owner의 rust binding은 INT-68부터 INT-71을 가진 test인 collection::group_tests::grouped_rows_contain_only_group_values_and_checked_counts를 지정합니다. 그래서 parity 실행이 이 test를 실행합니다. 전에는 존재한 적 없는 test를 지정해 아무 test도 선택하지 않았고, binding은 실행되지 않은 것으로 보고되었습니다(T312).
+- TypeScript model test는 각 case를 parity id로 node:test에 등록하고, case가 선언한 dialect에서 실행합니다. 그래서 parity 실행이 이 파일의 TypeScript binding을 인정합니다. 전에는 model.mjs가 section을 node:test 밖에서 실행해 이 파일의 binding이 모두 실행되지 않은 것으로 보고되었습니다. cancellation, transaction 끝 실패, MySQL transaction 안 install, styled state case는 다른 runtime에서 같은 동작을 시험하는 unit에 bind되며 Go TestMySQLInstallInsideTransaction도 함께 bind됩니다. --case와 --dialect 인자 대신 --test-name-pattern으로 case를 고릅니다(T318).
 - python hot path 측정은 PERF 줄을 표준 출력에 씁니다. 그래서 `test_hot_path_gate`의 unittest 결과 줄에는 결과만 남고, parity 실행이 hot path 단위 세 개를 인정합니다. 전에는 그 결과 줄 안에 표준 오류로 쓰인 줄이 결과를 가렸습니다(T310).
 - Python `Db.connect_schema`는 다른 runtime처럼 연결을 열기 전에 schema를 검사합니다. 그래서 바뀐 manifest처럼 검사에 실패한 schema는 열린 연결을 남기지 않습니다. 전에는 연결이 열린 채 남아 ResourceWarning으로 보고되었습니다. schema와 DSN이 모두 잘못되었으면 이제 schema의 CONFIG 오류가 먼저 보고됩니다(T317).
 - complex-query-public-semijoin-plan의 rust binding은 integration target에서 cargo가 보고하는 대로 module 경로를 포함한 coverage_complex_query::full_product_search_request_compiles_for_mysql_and_postgres_and_rejects_sqlite로 test를 적습니다. 그래서 parity 실행이 --exact로 이 test를 선택합니다. 전에는 module 경로가 없는 id가 아무 test도 선택하지 않아 binding이 실행되지 않은 것으로 보고되었습니다(T313).

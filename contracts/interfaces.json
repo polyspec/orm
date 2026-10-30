@@ -101,7 +101,8 @@
           "cases": [
             { "test": "packages/ts/tests/coverage_transactions.mjs", "id": "handle_abandoned_query [sqlite]", "phase": "before-start" },
             { "test": "packages/ts/tests/coverage_transactions.mjs", "id": "handle_abandoned_query [mysql]" },
-            { "test": "packages/ts/tests/coverage_transactions.mjs", "id": "handle_abandoned_query [postgres]" }
+            { "test": "packages/ts/tests/coverage_transactions.mjs", "id": "handle_abandoned_query [postgres]" },
+            { "test": "packages/ts/tests/model.mjs", "id": "cancellation" }
           ]
         },
         "python": {

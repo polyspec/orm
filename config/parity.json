@@ -6834,6 +6834,11 @@
             "-v",
             "tests.coverage_transactions.CoverageTest.test_handle_abandoned_query"
           ]
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model.mjs",
+          "id": "cancellation"
         }
       ]
     },
@@ -27086,6 +27091,26 @@
           "implementation": "rust",
           "test": "packages/rust/orm/src/tx.rs",
           "id": "tx::tests::one_shot_transaction_preserves_callback_error_and_rolls_back"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model.mjs",
+          "id": "failedLocalReset"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model.mjs",
+          "id": "failedLockRelease"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model.mjs",
+          "id": "failedEndDiscards"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model.mjs",
+          "id": "failedRollback"
         }
       ]
     },
@@ -27210,6 +27235,11 @@
           "implementation": "rust",
           "test": "packages/rust/orm/src/tx.rs",
           "id": "tx::tests::savepoint_end_failures_are_reported"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model.mjs",
+          "id": "failedSavepointEnd"
         }
       ]
     },
@@ -27285,6 +27315,16 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_schema_install.mjs",
           "id": "schema_install_existing"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model.mjs",
+          "id": "installInsideTransaction"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/install_test.go",
+          "id": "TestMySQLInstallInsideTransaction"
         }
       ]
     },
@@ -33153,6 +33193,11 @@
           "implementation": "python",
           "test": "packages/python/tests/test_styled_sql_null.py",
           "id": "test_root_row_reads_sql_null_as_styled_value"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model.mjs",
+          "id": "styledStates"
         }
       ]
     },

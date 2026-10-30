@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces-model -->
-<!-- source-sha256: e9bafeb33680b978a944cd6bbb0eaac358ebf25907e358532611620fc421f0c1 -->
+<!-- source-sha256: d1324d959b1792239c4cb71b5a4916cc35fc72485381a2e196abeec110811878 -->
 # 공통 구성요소
 
 <!-- contracts/interfaces.json에서 생성됨. 직접 수정하지 않는다. -->
@@ -297,7 +297,7 @@ Host-native API는 해당 host의 공개 primitive 형식으로만 선언하며 
 | CFG-9 | KSTD-2-11-16 | php-extension | implemented | Cancellation::cancel and Db::withCancellation | packages/php-ext/tests/QueryCancellationNativeTest.php::testNativeCancellationInterruptsSqliteRollsBackAndKeepsRootConnectionUsable<br>packages/php-ext/tests/QueryCancellationNativeTest.php::testPostgresNoticeCancelsActiveStatementRollsBackAndReusesRoot<br>packages/php-ext/tests/QueryCancellationNativeTest.php::testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot |
 | CFG-9 | KSTD-2-11-16 | python | implemented | Db.with_future | packages/python/tests/coverage_transactions.py::test_handle_abandoned_query<br>packages/python/tests/test_query_cancel.py::test_cancel_interrupts_active_statement_and_root_is_reusable |
 | CFG-9 | KSTD-2-11-16 | rust | implemented | dropping the statement future | packages/rust/orm/tests/zone.rs::dropping_a_query_cancels_it |
-| CFG-9 | KSTD-2-11-16 | typescript | implemented | Db.withSignal | packages/ts/tests/coverage_transactions.mjs::handle_abandoned_query [sqlite] (before-start)<br>packages/ts/tests/coverage_transactions.mjs::handle_abandoned_query [mysql]<br>packages/ts/tests/coverage_transactions.mjs::handle_abandoned_query [postgres] |
+| CFG-9 | KSTD-2-11-16 | typescript | implemented | Db.withSignal | packages/ts/tests/coverage_transactions.mjs::handle_abandoned_query [sqlite] (before-start)<br>packages/ts/tests/coverage_transactions.mjs::handle_abandoned_query [mysql]<br>packages/ts/tests/coverage_transactions.mjs::handle_abandoned_query [postgres]<br>packages/ts/tests/model.mjs::cancellation |
 
 모든 runtime에 정확한 실행 case가 있어야 공통 동작이 완료된다. `unresolved` 상태는 지정된 checklist 작업이 해결될 때까지 완료를 막는다.
 

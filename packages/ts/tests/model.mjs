@@ -6,9 +6,9 @@
 // case database of its own (case-database.mjs), created on those servers and
 // dropped when the case ends; the databases the DSNs name are not changed.
 //
+// Each case is one node:test test named by its parity id; node --test-name-pattern selects one.
 // Usage: node packages/ts/tests/model.mjs (after npm run typescript:build)
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   Account, AesKeyring, Author, CORE, CompositeAccount, CompositeMembership, Db, Model, OrmError, SCHEMA, Service,
@@ -16,42 +16,48 @@ import {
   registerModel,
 } from '../dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { DATABASE, sections } from '../../../tests/testcase.mts';
+import { DATABASE, caseTest, withTemporaryDirectory } from '../../../tests/testcase.mts';
 import { installBench } from './bench-set.mjs';
 import { mysqlConnection, postgresClient, withCaseDatabase } from './case-database.mjs';
 import { schemaOf } from './schema_of.mjs';
 const root = new URL('../../..', import.meta.url).pathname;
-const args = process.argv.slice(2);
-const selectedCases = ['conditions', 'joinsAndRelations', 'columnsAndSubqueries', 'writes', 'styledStates', 'aesRotation', 'transactions', 'schemaExistsUnderscore', 'schemaEmpty'];
-if (args.length !== 0 && (args.length !== 4 || args[0] !== '--case' || !selectedCases.includes(args[1]) || args[2] !== '--dialect' || !['sqlite', 'mysql', 'postgres'].includes(args[3]))) {
-  throw new Error(`usage: model.mjs [--case ${selectedCases.join('|')} --dialect sqlite|mysql|postgres]`);
-}
-const selectedCase = args.length === 0 ? undefined : args[1];
-if (selectedCase === 'schemaExistsUnderscore' && args[3] !== 'sqlite') {
-  throw new Error('schemaExistsUnderscore is a SQLite-only case');
-}
-const work = await mkdtemp(join(tmpdir(), 'orm-ts-model-'));
 
 let failures = 0;
+let current = '';
 function check(cond, message) {
   if (!cond) { failures++; console.error(`FAIL ${current}: ${message}`); }
 }
 async function code(promise) {
   try { await promise; return null; } catch (error) { return error instanceof OrmError ? error.code : String(error); }
 }
-let current = '';
-// Each section is one case, with the DATABASE deadline: a section installs the schema and runs up to
-// several hundred statements.
-const caseLog = sections();
-let caseFailures = 0;
-function begin(name) {
-  current = name;
-  caseFailures = failures;
-  caseLog.begin(`model/${name}`, DATABASE);
+
+/** The DSN of a server dialect; a database test never skips, so a missing one fails the case. */
+function dsnOf(dialect) {
+  const name = `ORM_TEST_${dialect.toUpperCase()}_DSN`;
+  if (!process.env[name]) throw new Error(`${name} is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers`);
+  return process.env[name];
 }
-function end() {
-  caseLog.end(failures > caseFailures ? `${failures - caseFailures} check(s) failed; each FAIL line above names one` : undefined);
+
+/**
+ * Registers the case name with node:test and runs body(dialect, step) for each of its dialects. A failed check writes its
+ * FAIL <dialect>/<name> line and the case goes on; the case fails once at its end. Each dialect has the DATABASE deadline:
+ * it installs the schema and runs up to several hundred statements. A case past its deadline ends the process through
+ * execute() of tests/testcase.mts.
+ */
+function modelCase(name, dialects, body) {
+  caseTest(name, DATABASE * dialects.length, async ({ step }) => {
+    const before = failures;
+    for (const dialect of dialects) {
+      current = `${dialect}/${name}`;
+      try {
+        if (dialect !== 'sqlite') dsnOf(dialect);
+        await body(dialect, step);
+      } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
+    }
+    if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
+  });
 }
+const DIALECTS = ['sqlite', 'mysql', 'postgres'];
 
 /** Runs statements on the PostgreSQL database of a DSN through the pg driver. */
 async function postgres(dsn, statements) {
@@ -343,6 +349,7 @@ async function authorStyledCells(dialect, dsn, seq) {
   try { const { rows } = await conn.query(sql); return rows[0]; } finally { await conn.end(); }
 }
 
+// Requirements: COD-20.
 async function styledStates(db, dsn) {
   const dialect = new URL(dsn).protocol.slice(0, -1);
   const fixture = JSON.parse(await readFile(join(root, 'contracts/fixtures/styled_column_states.json'), 'utf8'));
@@ -563,6 +570,7 @@ async function insertParts(db) {
 }
 
 /** A MySQL install inside a transaction returns CONFIG: schema statements commit implicitly. */
+// Requirements: INT-55.
 async function mysqlInstallInsideTransaction(db) {
   let inside = null;
   await db.transaction(async () => { inside = await code(db.utils().schema().install(SCHEMA)); });
@@ -651,260 +659,209 @@ async function storedCell(dialect, dsn, sqlitePath) {
   try { const { rows } = await client.query(sql); return [rows[0].config, rows[0].aes_key_version]; } finally { await client.end(); }
 }
 
-// failedLocalReset and failedLockRelease install no schema and create no table, so
-// they only connect to the database the DSN points to. Each of the other cases gets its own case database.
-const targets = [['sqlite', `sqlite://${join(work, 'model.sqlite')}?_pragma=busy_timeout(5000)`]];
-if (selectedCase === undefined || args[3] === 'mysql') {
-  if (!process.env.ORM_TEST_MYSQL_DSN) throw new Error('ORM_TEST_MYSQL_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers');
-  targets.push(['mysql', process.env.ORM_TEST_MYSQL_DSN]);
-}
-if (selectedCase === undefined || args[3] === 'postgres') {
-  if (!process.env.ORM_TEST_POSTGRES_DSN) throw new Error('ORM_TEST_POSTGRES_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers');
-  targets.push(['postgres', process.env.ORM_TEST_POSTGRES_DSN]);
-}
-const cases = { conditions, joinsAndRelations, columnsAndSubqueries, writes, styledStates, transactions, aesRotation, bindLimitSplitting, insertParts, schemaExistsUnderscore };
-if (selectedCase !== undefined) targets.splice(0, targets.length, ...targets.filter(([dialect]) => dialect === args[3]));
-const dialects = targets.map(([dialect]) => dialect);
+const cases = { conditions, joinsAndRelations, columnsAndSubqueries, writes, styledStates, transactions, aesRotation, bindLimitSplitting, insertParts };
 
 /**
- * Runs body(dsn, database) on a new case database for the dialect within an open case, and drops it when done. A SQLite DSN
- * Has a busy_timeout. A failure of the body or of the database drop becomes a FAIL of the open case.
+ * Runs body(dsn, database) on a new case database for the dialect, and drops it when done. A SQLite DSN has a
+ * busy_timeout. A failure of the body or of the database drop fails the dialect of the case.
  */
-async function inCaseDatabase(dialect, body) {
-  try {
-    await withCaseDatabase(dialect, text => caseLog.step(text), database =>
-      body(dialect === 'sqlite' ? `${database.dsn}?_pragma=busy_timeout(5000)` : database.dsn, database));
-  } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
+function inCaseDatabase(dialect, step, body) {
+  return withCaseDatabase(dialect, step, database =>
+    body(dialect === 'sqlite' ? `${database.dsn}?_pragma=busy_timeout(5000)` : database.dsn, database));
 }
 
-try {
-  if (selectedCase === undefined || selectedCase === 'schemaEmpty') {
-  for (const dialect of dialects) {
-    begin(`${dialect}/schemaEmpty`);
-    await inCaseDatabase(dialect, dsn => schemaEmpty(dialect, dsn));
-    end();
-  }
-  }
-  for (const dialect of dialects) {
-    for (const [name, fn] of Object.entries(cases).filter(([name]) => selectedCase === undefined ? name !== 'schemaExistsUnderscore' : name === selectedCase)) {
-      begin(`${dialect}/${name}`);
-      await inCaseDatabase(dialect, async dsn => {
-        await install(dsn);
-        const db = await connect(dsn);
-        try { await fn(db, dsn); } finally { await db.close(); }
-      });
-      end();
-    }
-  }
-  if (selectedCase === undefined) {
-  for (const dialect of dialects) {
-    begin(`${dialect}/cancellation`);
-    await inCaseDatabase(dialect, async dsn => {
-      await install(dsn);
-      const db = await connect(dsn);
-      try {
-        const fixture = await seed(db);
-        const before = new AbortController();
-        before.abort();
-        check(await code(new Author().connect(db.withSignal(before.signal)).getCount()) === 'CANCELED', 'a signal aborted before the statement');
-        // The running statement is an update of a row that another connection holds, so it waits
-        // for the lock until the signal aborts. SQLite waits for a lock in its busy handler, which
-        // an abort does not interrupt, so SQLite checks only the signal aborted before.
-        if (dialect !== 'sqlite') {
-          const release = await holdRows(dialect, dsn, 'author');
-          try {
-            const row = fixture.authors[0];
-            const running = new AbortController();
-            const timer = setTimeout(() => running.abort(), 300);
-            // The statement returns CANCELED after the abort while the other connection still holds the row:
-            // it ended because of the signal, not because the lock was released or its wait timed out.
-            check(await code(row.connect(db.withSignal(running.signal)).setName('changed').update()) === 'CANCELED', 'a statement cancelled while it runs');
-            check(running.signal.aborted, 'the cancelled statement returned only after the abort');
-            clearTimeout(timer);
-          } finally { await release(); }
-        }
-        check(typeof await new Author().connect(db).getCount() === 'number', 'the connection is usable after a cancellation');
-      } finally { await db.close(); }
-    });
-    end();
-  }
-  for (const dialect of dialects) {
-    begin(`${dialect}/aesJsonColumn`);
-    // The SQLite case connects with a DSN without busy_timeout and reads the stored cells directly from the file.
-    await inCaseDatabase(dialect, (dsn, database) => aesJsonColumn(dialect, database.dsn, database.path));
-    end();
-  }
-  for (const dialect of dialects.filter(dialect => dialect === 'mysql')) {
-    begin(`${dialect}/installInsideTransaction`);
-    await inCaseDatabase(dialect, async dsn => {
-      await install(dsn);
-      const db = await connect(dsn);
-      try { await mysqlInstallInsideTransaction(db); } finally { await db.close(); }
-    });
-    end();
-  }
-  // If the MySQL local value reset at the end of a transaction fails, commit and rollback report that error.
-  // A MySQL user variable survives COMMIT and ROLLBACK (mysql.context.user_variable_session_scope).
-  // The real server does not reject the reset, so the control of the transaction connection makes only the reset fail.
-  begin('mysql/failedLocalReset');
-  try {
-    const db = await connectBench(process.env.ORM_TEST_MYSQL_DSN);
-    try {
-      const failReset = () => {
-        const session = db.utils().active('setLocal').session;
-        const control = session.control.bind(session);
-        session.control = (sql, params, done) => sql.startsWith('SET @`orm.') && sql.endsWith('= NULL') ? Promise.reject(new Error('reset rejected by the test driver')) : control(sql, params, done);
-      };
-      const message = async promise => { try { await promise; return 'no error'; } catch (error) { return String(error?.message); } };
-      const committed = await message(db.transaction(async () => { failReset(); await db.utils().setLocal('ormtest.actor', 'tester'); }, { retry: 0 }));
-      check(committed.includes('reset rejected by the test driver'), `commit reports the failed reset: ${committed}`);
-      let rolledBack = null;
-      try {
-        await db.transaction(async () => { failReset(); await db.utils().setLocal('ormtest.actor', 'tester'); throw new Error('callback failed'); }, { retry: 0 });
-      } catch (error) { rolledBack = error; }
-      check(rolledBack instanceof OrmError && rolledBack.code === 'ROLLBACK' && rolledBack.message.startsWith('ROLLBACK: transaction failed (callback failed) and rollback failed (') && rolledBack.message.includes('callback failed') && rolledBack.message.includes('reset rejected by the test driver'), `rollback reports the callback and the failed reset: ${rolledBack?.message}`);
-    } finally {
-      await db.close();
-    }
-  } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
-  end();
-  const failureMessage = async promise => { try { await promise; return 'no error'; } catch (error) { return String(error?.message); } };
-  // Checks that the message is a ROLLBACK that includes both the cause and the error at the end of the transaction.
-  const checkBoth = (what, message, cause, end) => check(message.startsWith('ROLLBACK: transaction failed (') && message.includes(cause) && message.includes(`and rollback failed (`) && message.includes(end), `${what} reports the cause and the failed transaction end: ${message}`);
-  // If MySQL RELEASE_LOCK at the end of a transaction fails or cannot release the lock, commit and rollback
-  // report that error, and that connection is not returned to the pool (mysql/failedEndDiscards). The real server does not reject RELEASE_LOCK, so
-  // the control of the transaction connection makes only RELEASE_LOCK fail.
-  begin('mysql/failedLockRelease');
-  try {
-    const db = await connectBench(process.env.ORM_TEST_MYSQL_DSN);
-    try {
-      const key = name => `orm_test.${name}.${process.pid}`;
-      const failRelease = () => {
-        const session = db.utils().active('lock').session;
-        const control = session.control.bind(session);
-        session.control = (sql, params, done) => sql.startsWith('SELECT RELEASE_LOCK') ? Promise.reject(new Error('statement rejected by the test driver')) : control(sql, params, done);
-      };
-      const committed = await failureMessage(db.transaction(async () => { failRelease(); await db.utils().lock(key('commit')); }, { retry: 0 }));
-      check(committed.includes('statement rejected by the test driver'), `commit reports the failed release: ${committed}`);
-      const rolledBack = await failureMessage(db.transaction(async () => { failRelease(); await db.utils().lock(key('rollback')); throw new Error('callback failed'); }, { retry: 0 }));
-      checkBoth('rollback', rolledBack, 'callback failed', 'statement rejected by the test driver');
-      // If the lock was released in advance, RELEASE_LOCK at the end of the transaction returns 0.
-      const notHeld = await failureMessage(db.transaction(async () => {
-        await db.utils().lock(key('released'));
-        await db.utils().active('lock').session.control('DO RELEASE_LOCK(?)', [key('released')], () => undefined);
-      }, { retry: 0 }));
-      check(notHeld.includes(`lock ${key('released')} was not held at transaction end`), `a lock released early is reported: ${notHeld}`);
-    } finally {
-      await db.close();
-    }
-  } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
-  end();
-  // A connection whose cleanup at the end of a transaction (RELEASE_LOCK) fails is discarded and not returned to the pool. After a failed cleanup,
-  // the session state is unknown, so a connection returned to the pool is either clean or discarded. In a pool with one connection,
-  // if the next transaction gets the same session (CONNECTION_ID), the connection came back, and a lock that was not released stays
-  // on that session. A transaction that ended cleanly reuses the same session.
-  begin('mysql/failedEndDiscards');
-  try {
-    const db = await connectBench(process.env.ORM_TEST_MYSQL_DSN, { poolSize: 1 });
-    const other = await connectBench(process.env.ORM_TEST_MYSQL_DSN);
-    try {
-      const key = name => `orm_test.discard.${name}.${process.pid}`;
-      const session = () => db.transaction(async () => Number((await db.utils().active('lock').session.control('SELECT CONNECTION_ID()', [], () => undefined)).rows[0][0]), { retry: 0 });
-      // free checks whether another connection gets the lock within 5 seconds. The server soon releases the lock of an ended session.
-      const free = async name => other.transaction(async () => {
-        const control = other.utils().active('lock').session.control.bind(other.utils().active('lock').session);
-        const got = Number((await control('SELECT GET_LOCK(?, 5)', [key(name)], () => undefined)).rows[0][0]);
-        if (got === 1) await control('DO RELEASE_LOCK(?)', [key(name)], () => undefined);
-        return got === 1;
-      }, { retry: 0 });
-      const failRelease = () => {
-        const active = db.utils().active('lock').session;
-        const control = active.control.bind(active);
-        active.control = (sql, params, done) => sql.startsWith('SELECT RELEASE_LOCK') ? Promise.reject(new Error('statement rejected by the test driver')) : control(sql, params, done);
-      };
-      const clean = await session();
-      await db.transaction(async () => { await db.utils().lock(key('clean')); }, { retry: 0 });
-      check(await session() === clean, 'a transaction that ended cleanly keeps its session');
-      for (const [name, fail] of [['rollback', true], ['commit', false]]) {
-        const before = await session();
-        const message = await failureMessage(db.transaction(async () => { failRelease(); await db.utils().lock(key(name)); if (fail) throw new Error('callback failed'); }, { retry: 0 }));
-        check(message.includes('statement rejected by the test driver'), `${name} reports the failed release: ${message}`);
-        const after = await session();
-        check(after !== before, `${name}: session ${before} returned to the pool after its transaction end failed`);
-        check(await free(name), `${name}: the lock ${key(name)} is still held after its transaction end failed`);
-      }
-    } finally {
-      await db.close();
-      await other.close();
-    }
-  } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
-  end();
-  // If the native rollback, the SQLite mode restore, or the rollback after begin fails, the transaction reports that error
-  // together with its cause. The real SQLite does not reject this statement, so the connection's statement preparation makes it fail.
-  // The rollback returns the failure after actually finishing.
-  begin('sqlite/failedRollback');
-  try {
-    const db = await connectBench(`sqlite://${join(work, 'transaction-end.sqlite')}`);
-    try {
-      const state = db.pool.state;
-      const native = state.db;
-      const statement = state.statement.bind(state);
-      let rejects = () => false;
-      let rejectRollback = false;
-      // ROLLBACK returns the failure after actually running.
-      state.statement = sql => {
-        if (rejects(sql)) throw new Error('statement rejected by the test driver');
-        const prepared = statement(sql);
-        if (!rejectRollback || sql !== 'ROLLBACK') return prepared;
-        return { run: (...values) => { prepared.run(...values); throw new Error('rollback rejected by the test driver'); } };
-      };
-      rejectRollback = true;
-      const rolledBack = await failureMessage(db.transaction(async () => { throw new Error('callback failed'); }, { retry: 0 }));
-      checkBoth('rollback', rolledBack, 'callback failed', 'rollback rejected by the test driver');
-      rejects = sql => sql === 'PRAGMA query_only = 1';
-      const began = await failureMessage(db.transaction(async () => {}, { readOnly: true, retry: 0 }));
-      checkBoth('begin', began, 'statement rejected by the test driver', 'rollback rejected by the test driver');
-      rejectRollback = false;
-      rejects = sql => sql === 'PRAGMA query_only = 0';
-      const committed = await failureMessage(db.transaction(async () => {}, { readOnly: true, retry: 0 }));
-      check(committed.includes('statement rejected by the test driver'), `commit reports the failed mode reset: ${committed}`);
-      const modeRolledBack = await failureMessage(db.transaction(async () => { throw new Error('callback failed'); }, { readOnly: true, retry: 0 }));
-      checkBoth('mode reset', modeRolledBack, 'callback failed', 'statement rejected by the test driver');
-      check(!native.isTransaction, 'the failed mode reset still rolls the transaction back');
-    } finally {
-      await db.close();
-    }
-  } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
-  end();
-  // If ROLLBACK TO SAVEPOINT or RELEASE SAVEPOINT, which ends a nested transaction's savepoint, fails, the callback
-  // reports its error together with that error, and a successful callback reports the failed RELEASE SAVEPOINT. The real SQLite
-  // does not reject this statement, so the control of the transaction connection makes it fail.
-  begin('sqlite/failedSavepointEnd');
-  try {
-    const db = await connectBench(`sqlite://${join(work, 'savepoint-end.sqlite')}`);
-    try {
-      const nested = (rejects, callback) => failureMessage(db.transaction(async () => {
-        const session = db.utils().active('transaction').session;
-        const control = session.control.bind(session);
-        session.control = (sql, params, done) => rejects(sql) ? Promise.reject(new Error('statement rejected by the test driver')) : control(sql, params, done);
-        try { return await db.transaction(callback); } finally { session.control = control; }
-      }, { retry: 0 }));
-      for (const statement of ['ROLLBACK TO SAVEPOINT', 'RELEASE SAVEPOINT']) {
-        const failed = await nested(sql => sql.startsWith(statement), async () => { throw new Error('callback failed'); });
-        checkBoth(statement, failed, 'callback failed', 'statement rejected by the test driver');
-      }
-      const released = await nested(sql => sql.startsWith('RELEASE SAVEPOINT'), async () => {});
-      check(released.includes('statement rejected by the test driver'), `a successful callback reports the failed release: ${released}`);
-      const both = await nested(sql => sql.startsWith('ROLLBACK TO SAVEPOINT') || sql.startsWith('RELEASE SAVEPOINT'), async () => { throw new Error('callback failed'); });
-      checkBoth('both statements', both, 'callback failed', 'statement rejected by the test driver');
-      check(both.split('statement rejected by the test driver').length === 3, `both savepoint statements are reported: ${both}`);
-    } finally {
-      await db.close();
-    }
-  } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
-  end();
-  }
-} finally {
-  await rm(work, { recursive: true, force: true });
+/** Runs fn(db, dsn) on a new case database of the dialect with the schema installed. */
+function installed(fn) {
+  return (dialect, step) => inCaseDatabase(dialect, step, async dsn => {
+    await install(dsn);
+    const db = await connect(dsn);
+    try { await fn(db, dsn, dialect); } finally { await db.close(); }
+  });
 }
-if (failures > 0) process.exitCode = 1;
+
+const failureMessage = async promise => { try { await promise; return 'no error'; } catch (error) { return String(error?.message); } };
+// Checks that the message is a ROLLBACK that includes both the cause and the error at the end of the transaction.
+const checkBoth = (what, message, cause, end) => check(message.startsWith('ROLLBACK: transaction failed (') && message.includes(cause) && message.includes(`and rollback failed (`) && message.includes(end), `${what} reports the cause and the failed transaction end: ${message}`);
+
+modelCase('schemaEmpty', DIALECTS, (dialect, step) => inCaseDatabase(dialect, step, dsn => schemaEmpty(dialect, dsn)));
+for (const [name, fn] of Object.entries(cases)) modelCase(name, DIALECTS, installed(fn));
+modelCase('schemaExistsUnderscore', ['sqlite'], installed(schemaExistsUnderscore));
+// Requirements: CFG-9.
+modelCase('cancellation', DIALECTS, installed(async (db, dsn, dialect) => {
+  const fixture = await seed(db);
+  const before = new AbortController();
+  before.abort();
+  check(await code(new Author().connect(db.withSignal(before.signal)).getCount()) === 'CANCELED', 'a signal aborted before the statement');
+  // The running statement is an update of a row that another connection holds, so it waits
+  // for the lock until the signal aborts. SQLite waits for a lock in its busy handler, which
+  // an abort does not interrupt, so SQLite checks only the signal aborted before.
+  if (dialect !== 'sqlite') {
+    const release = await holdRows(dialect, dsn, 'author');
+    try {
+      const row = fixture.authors[0];
+      const running = new AbortController();
+      const timer = setTimeout(() => running.abort(), 300);
+      // The statement returns CANCELED after the abort while the other connection still holds the row:
+      // it ended because of the signal, not because the lock was released or its wait timed out.
+      check(await code(row.connect(db.withSignal(running.signal)).setName('changed').update()) === 'CANCELED', 'a statement cancelled while it runs');
+      check(running.signal.aborted, 'the cancelled statement returned only after the abort');
+      clearTimeout(timer);
+    } finally { await release(); }
+  }
+  check(typeof await new Author().connect(db).getCount() === 'number', 'the connection is usable after a cancellation');
+}));
+// The SQLite case connects with a DSN without busy_timeout and reads the stored cells directly from the file.
+modelCase('aesJsonColumn', DIALECTS, (dialect, step) => inCaseDatabase(dialect, step, (dsn, database) => aesJsonColumn(dialect, database.dsn, database.path)));
+modelCase('installInsideTransaction', ['mysql'], installed(mysqlInstallInsideTransaction));
+// If the MySQL local value reset at the end of a transaction fails, commit and rollback report that error.
+// A MySQL user variable survives COMMIT and ROLLBACK (mysql.context.user_variable_session_scope).
+// The real server does not reject the reset, so the control of the transaction connection makes only the reset fail.
+// Requirements: INT-72.
+modelCase('failedLocalReset', ['mysql'], async () => {
+  const db = await connectBench(dsnOf('mysql'));
+  try {
+    const failReset = () => {
+      const session = db.utils().active('setLocal').session;
+      const control = session.control.bind(session);
+      session.control = (sql, params, done) => sql.startsWith('SET @`orm.') && sql.endsWith('= NULL') ? Promise.reject(new Error('reset rejected by the test driver')) : control(sql, params, done);
+    };
+    const message = async promise => { try { await promise; return 'no error'; } catch (error) { return String(error?.message); } };
+    const committed = await message(db.transaction(async () => { failReset(); await db.utils().setLocal('ormtest.actor', 'tester'); }, { retry: 0 }));
+    check(committed.includes('reset rejected by the test driver'), `commit reports the failed reset: ${committed}`);
+    let rolledBack = null;
+    try {
+      await db.transaction(async () => { failReset(); await db.utils().setLocal('ormtest.actor', 'tester'); throw new Error('callback failed'); }, { retry: 0 });
+    } catch (error) { rolledBack = error; }
+    check(rolledBack instanceof OrmError && rolledBack.code === 'ROLLBACK' && rolledBack.message.startsWith('ROLLBACK: transaction failed (callback failed) and rollback failed (') && rolledBack.message.includes('callback failed') && rolledBack.message.includes('reset rejected by the test driver'), `rollback reports the callback and the failed reset: ${rolledBack?.message}`);
+  } finally {
+    await db.close();
+  }
+});
+// If MySQL RELEASE_LOCK at the end of a transaction fails or cannot release the lock, commit and rollback
+// report that error, and that connection is not returned to the pool (mysql/failedEndDiscards). The real server does not reject RELEASE_LOCK, so
+// the control of the transaction connection makes only RELEASE_LOCK fail.
+// Requirements: INT-72.
+modelCase('failedLockRelease', ['mysql'], async () => {
+  const db = await connectBench(dsnOf('mysql'));
+  try {
+    const key = name => `orm_test.${name}.${process.pid}`;
+    const failRelease = () => {
+      const session = db.utils().active('lock').session;
+      const control = session.control.bind(session);
+      session.control = (sql, params, done) => sql.startsWith('SELECT RELEASE_LOCK') ? Promise.reject(new Error('statement rejected by the test driver')) : control(sql, params, done);
+    };
+    const committed = await failureMessage(db.transaction(async () => { failRelease(); await db.utils().lock(key('commit')); }, { retry: 0 }));
+    check(committed.includes('statement rejected by the test driver'), `commit reports the failed release: ${committed}`);
+    const rolledBack = await failureMessage(db.transaction(async () => { failRelease(); await db.utils().lock(key('rollback')); throw new Error('callback failed'); }, { retry: 0 }));
+    checkBoth('rollback', rolledBack, 'callback failed', 'statement rejected by the test driver');
+    // If the lock was released in advance, RELEASE_LOCK at the end of the transaction returns 0.
+    const notHeld = await failureMessage(db.transaction(async () => {
+      await db.utils().lock(key('released'));
+      await db.utils().active('lock').session.control('DO RELEASE_LOCK(?)', [key('released')], () => undefined);
+    }, { retry: 0 }));
+    check(notHeld.includes(`lock ${key('released')} was not held at transaction end`), `a lock released early is reported: ${notHeld}`);
+  } finally {
+    await db.close();
+  }
+});
+// A connection whose cleanup at the end of a transaction (RELEASE_LOCK) fails is discarded and not returned to the pool. After a failed cleanup,
+// the session state is unknown, so a connection returned to the pool is either clean or discarded. In a pool with one connection,
+// if the next transaction gets the same session (CONNECTION_ID), the connection came back, and a lock that was not released stays
+// on that session. A transaction that ended cleanly reuses the same session.
+// Requirements: INT-72.
+modelCase('failedEndDiscards', ['mysql'], async () => {
+  const db = await connectBench(dsnOf('mysql'), { poolSize: 1 });
+  const other = await connectBench(dsnOf('mysql'));
+  try {
+    const key = name => `orm_test.discard.${name}.${process.pid}`;
+    const session = () => db.transaction(async () => Number((await db.utils().active('lock').session.control('SELECT CONNECTION_ID()', [], () => undefined)).rows[0][0]), { retry: 0 });
+    // free checks whether another connection gets the lock within 5 seconds. The server soon releases the lock of an ended session.
+    const free = async name => other.transaction(async () => {
+      const control = other.utils().active('lock').session.control.bind(other.utils().active('lock').session);
+      const got = Number((await control('SELECT GET_LOCK(?, 5)', [key(name)], () => undefined)).rows[0][0]);
+      if (got === 1) await control('DO RELEASE_LOCK(?)', [key(name)], () => undefined);
+      return got === 1;
+    }, { retry: 0 });
+    const failRelease = () => {
+      const active = db.utils().active('lock').session;
+      const control = active.control.bind(active);
+      active.control = (sql, params, done) => sql.startsWith('SELECT RELEASE_LOCK') ? Promise.reject(new Error('statement rejected by the test driver')) : control(sql, params, done);
+    };
+    const clean = await session();
+    await db.transaction(async () => { await db.utils().lock(key('clean')); }, { retry: 0 });
+    check(await session() === clean, 'a transaction that ended cleanly keeps its session');
+    for (const [name, fail] of [['rollback', true], ['commit', false]]) {
+      const before = await session();
+      const message = await failureMessage(db.transaction(async () => { failRelease(); await db.utils().lock(key(name)); if (fail) throw new Error('callback failed'); }, { retry: 0 }));
+      check(message.includes('statement rejected by the test driver'), `${name} reports the failed release: ${message}`);
+      const after = await session();
+      check(after !== before, `${name}: session ${before} returned to the pool after its transaction end failed`);
+      check(await free(name), `${name}: the lock ${key(name)} is still held after its transaction end failed`);
+    }
+  } finally {
+    await db.close();
+    await other.close();
+  }
+});
+// If the native rollback, the SQLite mode restore, or the rollback after begin fails, the transaction reports that error
+// together with its cause. The real SQLite does not reject this statement, so the connection's statement preparation makes it fail.
+// The rollback returns the failure after actually finishing.
+// Requirements: INT-72.
+modelCase('failedRollback', ['sqlite'], () => withTemporaryDirectory('orm-ts-model-', async work => {
+  const db = await connectBench(`sqlite://${join(work, 'transaction-end.sqlite')}`);
+  try {
+    const state = db.pool.state;
+    const native = state.db;
+    const statement = state.statement.bind(state);
+    let rejects = () => false;
+    let rejectRollback = false;
+    // ROLLBACK returns the failure after actually running.
+    state.statement = sql => {
+      if (rejects(sql)) throw new Error('statement rejected by the test driver');
+      const prepared = statement(sql);
+      if (!rejectRollback || sql !== 'ROLLBACK') return prepared;
+      return { run: (...values) => { prepared.run(...values); throw new Error('rollback rejected by the test driver'); } };
+    };
+    rejectRollback = true;
+    const rolledBack = await failureMessage(db.transaction(async () => { throw new Error('callback failed'); }, { retry: 0 }));
+    checkBoth('rollback', rolledBack, 'callback failed', 'rollback rejected by the test driver');
+    rejects = sql => sql === 'PRAGMA query_only = 1';
+    const began = await failureMessage(db.transaction(async () => {}, { readOnly: true, retry: 0 }));
+    checkBoth('begin', began, 'statement rejected by the test driver', 'rollback rejected by the test driver');
+    rejectRollback = false;
+    rejects = sql => sql === 'PRAGMA query_only = 0';
+    const committed = await failureMessage(db.transaction(async () => {}, { readOnly: true, retry: 0 }));
+    check(committed.includes('statement rejected by the test driver'), `commit reports the failed mode reset: ${committed}`);
+    const modeRolledBack = await failureMessage(db.transaction(async () => { throw new Error('callback failed'); }, { readOnly: true, retry: 0 }));
+    checkBoth('mode reset', modeRolledBack, 'callback failed', 'statement rejected by the test driver');
+    check(!native.isTransaction, 'the failed mode reset still rolls the transaction back');
+  } finally {
+    await db.close();
+  }
+}));
+// If ROLLBACK TO SAVEPOINT or RELEASE SAVEPOINT, which ends a nested transaction's savepoint, fails, the callback
+// reports its error together with that error, and a successful callback reports the failed RELEASE SAVEPOINT. The real SQLite
+// does not reject this statement, so the control of the transaction connection makes it fail.
+// Requirements: DIA-181, PLN-17.
+modelCase('failedSavepointEnd', ['sqlite'], () => withTemporaryDirectory('orm-ts-model-', async work => {
+  const db = await connectBench(`sqlite://${join(work, 'savepoint-end.sqlite')}`);
+  try {
+    const nested = (rejects, callback) => failureMessage(db.transaction(async () => {
+      const session = db.utils().active('transaction').session;
+      const control = session.control.bind(session);
+      session.control = (sql, params, done) => rejects(sql) ? Promise.reject(new Error('statement rejected by the test driver')) : control(sql, params, done);
+      try { return await db.transaction(callback); } finally { session.control = control; }
+    }, { retry: 0 }));
+    for (const statement of ['ROLLBACK TO SAVEPOINT', 'RELEASE SAVEPOINT']) {
+      const failed = await nested(sql => sql.startsWith(statement), async () => { throw new Error('callback failed'); });
+      checkBoth(statement, failed, 'callback failed', 'statement rejected by the test driver');
+    }
+    const released = await nested(sql => sql.startsWith('RELEASE SAVEPOINT'), async () => {});
+    check(released.includes('statement rejected by the test driver'), `a successful callback reports the failed release: ${released}`);
+    const both = await nested(sql => sql.startsWith('ROLLBACK TO SAVEPOINT') || sql.startsWith('RELEASE SAVEPOINT'), async () => { throw new Error('callback failed'); });
+    checkBoth('both statements', both, 'callback failed', 'statement rejected by the test driver');
+    check(both.split('statement rejected by the test driver').length === 3, `both savepoint statements are reported: ${both}`);
+  } finally {
+    await db.close();
+  }
+}));

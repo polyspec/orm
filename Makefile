@@ -3115,7 +3115,7 @@ schema-exists-sqlite-php-check: php-vendor-check php-models
 schema-exists-sqlite-typescript-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	$(RUN_LONG) schema-exists-sqlite-typescript -- $(NODE) packages/ts/tests/model.mjs --case schemaExistsUnderscore --dialect sqlite
+	$(RUN_TESTS) node --test-name-pattern='^schemaExistsUnderscore$$' packages/ts/tests/model.mjs
 
 schema-exists-sqlite-rust-check: lease-tool
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --test schema_exists_underscore schema_exists_escapes_underscore_sqlite -- --exact

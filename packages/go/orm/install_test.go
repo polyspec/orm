@@ -16,7 +16,7 @@ import (
 
 // TestMySQLInstallInsideTransaction rejects a MySQL install in a transaction,
 // where the implicit commit of schema statements would end the transaction.
-// Requirements: INT-55.
+// Requirements: INT-55, PLN-44.
 func TestMySQLInstallInsideTransaction(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	dsn := newDatabase(t, "mysql")
