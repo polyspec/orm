@@ -13009,7 +13009,7 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/connection_pool.py",
-          "id": "test_idle_size_and_connection_lifetime"
+          "id": "test_idle_size_and_lifetime"
         },
         {
           "implementation": "rust",
@@ -13102,7 +13102,7 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/connection_pool.py",
-          "id": "test_idle_size_and_connection_lifetime"
+          "id": "test_idle_size_and_lifetime"
         },
         {
           "implementation": "rust",

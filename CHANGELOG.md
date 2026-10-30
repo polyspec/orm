@@ -5,6 +5,7 @@
 
 ## 0.0.19
 
+- The python bindings of the pool idle and lifetime units name test_idle_size_and_lifetime, the method of the pool test, so the parity run credits them, where they named a method that the file never held (T307).
 - The Python introspect runner imports its helper from the test package and runs as `python -m packages.python.tests.dbspec_introspect_runner`, like the apply runner, so the parity run of the support file imports it and reports no case, where its import failed and was reported as an undeclared test (T306).
 - Nine python bindings of config/parity.json name their test by its method, the form that the unittest run reports, so the parity run credits them, where their `<Class>.<method>` ids were reported not executed (T305).
 - The php-extension binding of schema-existence-and-installation names SchemaUtilsNativeTest::testExistsEscapesUnderscoreInSqliteSchemaName in its class form, so the parity run credits it, where the bare spelling of a test that another unit binds with its class was reported not executed (T304).
