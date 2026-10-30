@@ -375,7 +375,9 @@ final class DeclarationsTest extends TestCase
     }
 
     // The limit/columns document is parsed in a child process so PHPUnit's already-held memory does not change the
-    // measurement. The child loads this run's extension and uses its default 128 MiB memory limit.
+    // measurement. Like the declarations child it runs with -n, so the PHP_INI_SCAN_DIR of the run, which already loads
+    // the extension (kit K900), does not load it twice; it loads this run's extension and the modules the extension
+    // requires itself, with the default 128 MiB memory limit.
     public function testLimitColumnsPeak(): void
     {
         $extension = getenv('POLYSPEC_ORM_EXTENSION');
@@ -402,7 +404,17 @@ echo json_encode([
 ], JSON_THROW_ON_ERROR), PHP_EOL;
 PHP;
         $process = proc_open(
-            [PHP_BINARY, '-d', 'extension=' . $extension, '-d', 'memory_limit=128M', '-r', $code],
+            [
+                PHP_BINARY,
+                '-n',
+                ...moduleArguments(dynamicModules(), (string) ini_get('extension_dir')),
+                '-d',
+                'extension=' . $extension,
+                '-d',
+                'memory_limit=128M',
+                '-r',
+                $code,
+            ],
             [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
             $pipes,
         );
