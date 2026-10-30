@@ -108,13 +108,18 @@ export function prepareContext(scope: ContextScope, root: string = resolve(proce
   if (databaseResult.status !== 0 || databaseResult.signal !== null) {
     throw new Error(`${scope} database setup ${commandFailure(databaseResult)} for ${name}; inspect the setup output and rerun the Kit gate`);
   }
-  if (!existsSync(testEnv)) throw new Error(`${testEnv} was not written by the database setup; fix scripts/check/databases.mts create`);
-  const exports = { ...environmentFile(readFileSync(testEnv, 'utf8')), TEST_ENV: testEnv, STEP_RUN_DIR: directory };
+  // The decimal databases of the run are in decimal-env (databases.mts createDecimal); the Makefile assigns DECIMAL_ENV
+  // itself, so its DSNs are exported as variables, as those of env are (T294).
+  const decimalEnv = join(directory, 'decimal-env');
+  for (const file of [testEnv, decimalEnv]) {
+    if (!existsSync(file)) throw new Error(`${file} was not written by the database setup; fix scripts/check/databases.mts create`);
+  }
+  const exports = { ...environmentFile(readFileSync(testEnv, 'utf8')), ...environmentFile(readFileSync(decimalEnv, 'utf8')), TEST_ENV: testEnv, STEP_RUN_DIR: directory };
   for (const [key, value] of Object.entries(exports)) {
     if (!/^[A-Z_][A-Z0-9_]*$/.test(key) || /[\r\n]/.test(value)) throw new Error(`${key} cannot be exported through GITHUB_ENV`);
   }
   appendFileSync(githubEnv, Object.entries(exports).map(([key, value]) => `${key}=${value}\n`).join(''));
-  console.log(`${scope} context ${runId}/${attempt} is ready; TEST_ENV and STEP_RUN_DIR are available to the provider gate`);
+  console.log(`${scope} context ${runId}/${attempt} is ready; TEST_ENV, its database variables, the decimal DSNs and STEP_RUN_DIR are available to the provider gate`);
 }
 
 /** Drop the run databases, stop only the server set this context started, and remove only its marker-owned directory. */

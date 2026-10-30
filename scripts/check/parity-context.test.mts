@@ -27,7 +27,7 @@ function contextDirectory(root: string, scope: 'parity' | 'php-ext') {
   return resolve(root, `.runtime/run/kit-${scope}-4321-2`);
 }
 
-const stub = (root: string, calls: string[], failCreate = false): ContextCommand => (program, args, cwd) => {
+const stub = (root: string, calls: string[], failCreate = false, decimal = true): ContextCommand => (program, args, cwd) => {
   assert.equal(cwd, root);
   calls.push(`${program} ${args.join(' ')}`);
   if (program === 'make' && args.includes('orm-test-servers')) {
@@ -38,6 +38,7 @@ const stub = (root: string, calls: string[], failCreate = false): ContextCommand
     const directory = args.find(value => value.startsWith('DIRECTORY='))?.slice('DIRECTORY='.length) ?? '';
     mkdirSync(directory, { recursive: true });
     writeFileSync(join(directory, 'env'), "export BENCH_SQLITE_DSN='sqlite:///tmp/bench.sqlite'\n");
+    if (decimal) writeFileSync(join(directory, 'decimal-env'), "export DECIMAL_SQLITE_DSN='sqlite:///tmp/decimal.sqlite'\n");
   } else if (program === 'node' && args[1] === 'drop') {
     rmSync(args[3] ?? '', { recursive: true, force: true });
   } else if (program === 'make' && args.includes('orm-test-servers-stop')) {
@@ -78,9 +79,18 @@ caseTest('parity context prepares owned resources and exports only its run paths
     ]);
     assert.deepEqual(readFileSync(f.githubEnv, 'utf8').trim().split('\n'), [
       "BENCH_SQLITE_DSN=sqlite:///tmp/bench.sqlite",
+      "DECIMAL_SQLITE_DSN=sqlite:///tmp/decimal.sqlite",
       `TEST_ENV=${join(f.directory, 'env')}`,
       `STEP_RUN_DIR=${f.directory}`,
     ]);
+  } finally { f.dispose(); }
+});
+
+caseTest('parity context refuses a database setup that wrote no decimal environment', COMPUTE, () => {
+  const f = fixture();
+  try {
+    assert.throws(() => prepareContext('parity', f.root, f.env, stub(f.root, [], false, false)), /decimal-env was not written by the database setup/);
+    assert.equal(readFileSync(f.githubEnv, 'utf8'), '');
   } finally { f.dispose(); }
 });
 
