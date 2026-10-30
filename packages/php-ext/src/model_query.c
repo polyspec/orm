@@ -256,10 +256,11 @@ ZEND_METHOD(Polyspec_Orm_Model, resolved)
     zval text_rv, zone_rv;
     zval *text, *zone;
     if (!pending_time_parts(pending_ce, value, &text_rv, &zone_rv, &text, &zone)) RETURN_THROWS();
-    if (!model_time_value_in_zone(text, zone, return_value)) {
+    zend_object *cause = NULL;
+    if (!model_time_value_in_zone(text, zone, return_value, &cause)) {
         if (EG(exception) != NULL) RETURN_THROWS();
         zend_string *message = strpprintf(0, "invalid date value %s", Z_STRVAL_P(text));
-        query_throw_orm("CODEC_DECODE", message);
+        orm_throw_exception_previous("CODEC_DECODE", message, cause);
         zend_string_release(message);
         RETURN_THROWS();
     }
@@ -345,12 +346,13 @@ ZEND_METHOD(Polyspec_Orm_Model, columnValue)
         RETURN_STR(normalized);
     }
     if (zend_string_equals_literal(Z_STR_P(type), "date") || zend_string_equals_literal(Z_STR_P(type), "datetime")) {
-        if (!model_time_value_in_zone(&value, zone, return_value)) {
+        zend_object *cause = NULL;
+        if (!model_time_value_in_zone(&value, zone, return_value, &cause)) {
             zval_ptr_dtor(&value);
             if (EG(exception) != NULL) RETURN_THROWS();
             zend_string *text = zval_get_string(input);
             zend_string *message = strpprintf(0, "invalid date value %s", ZSTR_VAL(text));
-            query_throw_orm("CODEC_DECODE", message);
+            orm_throw_exception_previous("CODEC_DECODE", message, cause);
             zend_string_release(message); zend_string_release(text); RETURN_THROWS();
         }
         zval_ptr_dtor(&value);
@@ -1106,12 +1108,16 @@ ZEND_METHOD(Polyspec_Orm_Model, timeValue)
         Z_PARAM_ZVAL(input)
         Z_PARAM_OBJECT(zone)
     ZEND_PARSE_PARAMETERS_END();
-    if (model_time_value_in_zone(input, zone, return_value)) return;
+    zend_object *cause = NULL;
+    if (model_time_value_in_zone(input, zone, return_value, &cause)) return;
     if (EG(exception) != NULL) RETURN_THROWS();
     zend_string *text = zval_try_get_string(input);
-    if (text == NULL) RETURN_THROWS();
+    if (text == NULL) {
+        if (cause != NULL) OBJ_RELEASE(cause);
+        RETURN_THROWS();
+    }
     zend_string *message = strpprintf(0, "invalid date value %s", ZSTR_VAL(text));
-    query_throw_orm("CODEC_DECODE", message);
+    orm_throw_exception_previous("CODEC_DECODE", message, cause);
     zend_string_release(message);
     zend_string_release(text);
     RETURN_THROWS();

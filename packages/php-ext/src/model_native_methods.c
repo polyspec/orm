@@ -808,7 +808,7 @@ static bool model_zone(model_state *s, zval *zone)
     return EG(exception) == NULL;
 }
 
-bool model_time_value_in_zone(zval *input, zval *zone, zval *ret)
+bool model_time_value_in_zone(zval *input, zval *zone, zval *ret, zend_object **cause)
 {
     zend_class_entry *immutable = php_date_get_immutable_ce();
     zend_class_entry *interface = php_date_get_interface_ce();
@@ -866,7 +866,8 @@ bool model_time_value_in_zone(zval *input, zval *zone, zval *ret)
     if (EG(exception) != NULL) {
         zend_object *exception = EG(exception);
         EG(exception) = NULL;
-        OBJ_RELEASE(exception);
+        if (cause != NULL) *cause = exception;
+        else OBJ_RELEASE(exception);
         /* caller owns zone */
         if (Z_TYPE(time) != IS_UNDEF) zval_ptr_dtor(&time);
         return false;
@@ -890,7 +891,7 @@ static bool model_time_value(model_state *s, zval *input, zval *ret)
         if (Z_TYPE(zone) != IS_UNDEF) zval_ptr_dtor(&zone);
         return false;
     }
-    bool ok = model_time_value_in_zone(input, &zone, ret);
+    bool ok = model_time_value_in_zone(input, &zone, ret, NULL);
     zval_ptr_dtor(&zone);
     return ok;
 }
@@ -977,12 +978,13 @@ ZEND_METHOD(Polyspec_Orm_Model, readColumn)
         if (!pending_time_parts(pending_ce, value, &text_rv, &zone_rv, &text, &zone)) RETURN_THROWS();
         zval converted;
         ZVAL_UNDEF(&converted);
-        if (!model_time_value_in_zone(text, zone, &converted)) {
+        zend_object *cause = NULL;
+        if (!model_time_value_in_zone(text, zone, &converted, &cause)) {
             if (EG(exception) != NULL) RETURN_THROWS();
             smart_str message = {0};
             smart_str_append_printf(&message, "invalid date value %s", Z_STRVAL_P(text));
             zend_string *error = smart_str_extract(&message);
-            model_throw_orm("CODEC_DECODE", ZSTR_VAL(error));
+            orm_throw_exception_previous("CODEC_DECODE", error, cause);
             zend_string_release(error);
             RETURN_THROWS();
         }

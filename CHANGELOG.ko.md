@@ -6,6 +6,7 @@
 
 ## 0.0.19
 
+- PHP 확장은 PHP 라이브러리처럼 잘못된 date와 JSON encode 실패의 OrmException에 원래의 네이티브 예외를 previous로 남깁니다(T292).
 - make orm-install-python은 orm-install-php가 composer install 뒤에 하듯 uv-install 뒤에 make link를 실행합니다. 그래서 CI venv에 link-check가 비교하는 polyspec-orm의 own link가 생깁니다(T291).
 - make orm-install-php-extension-tools는 고정된 arginfo 생성기와 parser를 다시 설치합니다. install-kit을 실행하는 CI job이 없어서, KSTD-5-123 이후 ci의 확장 빌드와 gates의 parity job이 PHP-Parser를 찾지 못했습니다(T290).
 - 출력에 정확한 pass event가 없는 physical case는 그 출력을 보이며 실패합니다. DSN은 가립니다. 그래서 실패에 판정식이 읽은 내용이 드러납니다(T287).

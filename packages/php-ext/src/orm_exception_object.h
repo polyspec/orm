@@ -58,4 +58,19 @@ static inline bool orm_throw_exception(const char *code_name, zend_string *messa
     return false;
 }
 
+/* Throws the OrmException of code_name with message, whose previous is the native exception previous when it is not NULL, as
+ * the PHP library passes the exception it caught (KSTD-5-94, T292); it takes previous over and releases it when no exception is
+ * thrown. A failure path of a native method returns the false it returns. */
+static inline bool orm_throw_exception_previous(const char *code_name, zend_string *message, zend_object *previous)
+{
+    zval exception;
+    if (!orm_exception_object(NULL, code_name, message, &exception)) {
+        if (previous != NULL) OBJ_RELEASE(previous);
+        return false;
+    }
+    if (previous != NULL) zend_exception_set_previous(Z_OBJ(exception), previous);
+    zend_throw_exception_object(&exception);
+    return false;
+}
+
 #endif
