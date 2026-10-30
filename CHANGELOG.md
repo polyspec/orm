@@ -5,6 +5,7 @@
 
 ## 0.0.19
 
+- feature-coverage/typescript/mysql declares the interfaces-typescript need, so CI installs the TypeScript that its interface case reads declarations with (T262).
 - The shared gates job installs the Go module that tests/lease builds with (make orm-install-go-lease), since parity-declarations-check builds the TypeScript client through lease-tool (T261).
 - The offline Makefile check accepts the lock targets, which write a lock from the network as an install does, so make orm-python-lock no longer fails runner-check (T263).
 - orm takes the released kit 0.0.75 in place of 0.0.73, with the release workflow that kit-sync writes from it (KSTD-5-122).

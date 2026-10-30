@@ -67,6 +67,16 @@ caseTest('dialect facts declares the isolated MySQL privilege fixture as a setup
   assert.ok(expanded.includes('server-programs'));
 });
 
+// The TypeScript coverage of mysql runs the cases of no database, interface_contract among them, which reads declarations with
+// the TypeScript of make orm-install-interfaces-typescript (T262).
+caseTest('the TypeScript coverage that runs the interface case declares the TypeScript extractor need', COMPUTE, () => {
+  const inputs: unknown = JSON.parse(readFileSync(join(repo, 'contracts/check-inputs.json'), 'utf8'));
+  if (!isRecord(inputs) || !isRecord(inputs.targets)) throw new Error('contracts/check-inputs.json has no targets object');
+  const target = inputs.targets['feature-coverage/typescript/mysql'];
+  if (!isRecord(target) || !isStringArray(target.needs)) throw new Error('feature-coverage/typescript/mysql has no needs list');
+  assert.ok(target.needs.includes('interfaces-typescript'));
+});
+
 caseTest('the canonical parity target declares every client and fixture setup need', COMPUTE, () => {
   const inputs: unknown = JSON.parse(readFileSync(join(repo, 'contracts/check-inputs.json'), 'utf8'));
   if (!isRecord(inputs) || !isRecord(inputs.targets)) throw new Error('contracts/check-inputs.json has no targets object');
