@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { isolatedEnvironment } from '../../tests/environment.mts';
 import { caseTest, PROCESS } from '../../tests/testcase.mts';
 import { dist, root } from './lib.mts';
 
@@ -24,7 +25,7 @@ caseTest('an interrupted docs build leaves the published site as it was', PROCES
     const build = spawn(process.execPath, ['scripts/docs/build.mts'], {
       cwd: root,
       detached: true,
-      env: { ...process.env, npm_execpath: npmCli() },
+      env: isolatedEnvironment({ npm_execpath: npmCli() }),
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let output = '';
@@ -38,7 +39,9 @@ caseTest('an interrupted docs build leaves the published site as it was', PROCES
       build.on('exit', code => reject(new Error(`the build ended with ${code} before it rendered pages:\n${output}`)));
     });
     await rendering;
-    process.kill(-build.pid!, 'SIGKILL');
+    const pid = build.pid;
+    assert.ok(pid !== undefined, 'the build started a process group');
+    process.kill(-pid, 'SIGKILL');
     await new Promise(resolve => build.on('exit', resolve));
     assert.equal(existsSync(path.join(dist, 'index.html')), true, 'the published site lost its index.html');
     assert.equal(readFileSync(path.join(dist, 'index.html'), 'utf8'), 'previous');

@@ -51,6 +51,7 @@
 
 ## 0.0.19
 
+- The docs build test gave its build the environment of the test process and used a non-null assertion, which repo-check and lint-ts refuse. It now runs the build with isolatedEnvironment and checks the process group id instead of asserting it (CR11).
 - Recipes that hold the lease (WITH_TEST_ENV, check-run and run-databases) called make recursively, which GNU make runs even under make -n, so a dry run of check-run ran the whole check. They now build the lease program through a shell step, only when it is missing or older than a source of tests/lease (CR11).
 - The arginfo header was copied in place, so a copy that was stopped left the previous header partial, and the PHP extension build read it. The header is now written to a temporary file and renamed over the previous one, so an interrupted write leaves the previous header whole (CR3).
 - Every kit parity job created the 18 complex-query fixture databases, although none of its targets reads them: about 60 s per job of the databases step. A context now creates them only when one of its targets needs them, by its check inputs or its recipe (CR7).
