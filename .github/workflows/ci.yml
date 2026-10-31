@@ -78,6 +78,46 @@ jobs:
         with:
           node-version-file: mise.toml
           package-manager-cache: false
+      # The npm packages are restored by the hash of every package-lock.json (B3-4); setup-node keeps its own cache off (scripts/repo/node.mts).
+      - name: cache of the npm packages
+        id: cache-npm
+        if: ${{ !cancelled() }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-packages-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+      # The tools that make install-tools puts under var/tools are restored by the lock files that name them (B3-4).
+      - name: cache of the tools of mise.toml
+        id: cache-tools
+        if: ${{ !cancelled() }}
+        uses: actions/cache@v4
+        with:
+          path: var/tools
+          key: tools-${{ runner.os }}-${{ hashFiles('mise.toml', '.mise/locks/**', 'config/toolchain.json') }}
+      # The Go modules are restored by the hash of every go.sum (B3-4).
+      - name: cache of the Go modules
+        id: cache-go
+        if: ${{ !cancelled() }}
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: go-modules-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+      # The composer packages are restored by the hash of every composer.lock (B3-4).
+      - name: cache of the composer packages
+        id: cache-composer
+        if: ${{ !cancelled() }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer
+          key: composer-packages-${{ runner.os }}-${{ hashFiles('**/composer.lock') }}
+      # The uv packages are restored by the hash of every uv.lock (B3-4).
+      - name: cache of the uv packages
+        id: cache-uv
+        if: ${{ !cancelled() }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-packages-${{ runner.os }}-${{ hashFiles('**/uv.lock') }}
       # The bootstrap of kit (K992): .github/actions/kit-bootstrap installs the locked kit package and the packages.
       - uses: ./.github/actions/kit-bootstrap
         id: kit-bootstrap
@@ -256,6 +296,22 @@ jobs:
         with:
           node-version-file: mise.toml
           package-manager-cache: false
+      # The npm packages are restored by the hash of every package-lock.json (B3-4); setup-node keeps its own cache off (scripts/repo/node.mts).
+      - name: cache of the npm packages
+        id: cache-npm
+        if: ${{ !cancelled() }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-packages-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+      # The tools that make install-tools puts under var/tools are restored by the lock files that name them (B3-4).
+      - name: cache of the tools of mise.toml
+        id: cache-tools
+        if: ${{ !cancelled() }}
+        uses: actions/cache@v4
+        with:
+          path: var/tools
+          key: tools-${{ runner.os }}-${{ hashFiles('mise.toml', '.mise/locks/**', 'config/toolchain.json') }}
       # The bootstrap of kit (K992): .github/actions/kit-bootstrap installs the locked kit package and the packages.
       - uses: ./.github/actions/kit-bootstrap
         id: kit-bootstrap
@@ -300,6 +356,22 @@ jobs:
         with:
           node-version-file: mise.toml
           package-manager-cache: false
+      # The npm packages are restored by the hash of every package-lock.json (B3-4); setup-node keeps its own cache off (scripts/repo/node.mts).
+      - name: cache of the npm packages
+        id: cache-npm
+        if: ${{ !cancelled() }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-packages-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+      # The tools that make install-tools puts under var/tools are restored by the lock files that name them (B3-4).
+      - name: cache of the tools of mise.toml
+        id: cache-tools
+        if: ${{ !cancelled() }}
+        uses: actions/cache@v4
+        with:
+          path: var/tools
+          key: tools-${{ runner.os }}-${{ hashFiles('mise.toml', '.mise/locks/**', 'config/toolchain.json') }}
       # The bootstrap of kit (K992): .github/actions/kit-bootstrap installs the locked kit package and the packages.
       - uses: ./.github/actions/kit-bootstrap
         id: kit-bootstrap
@@ -309,6 +381,14 @@ jobs:
         if: ${{ !cancelled() }}
         run: make install-tools TOOLS=go
       # dbspec-vscode-check builds the shared lease runner; it uses only x/sys from the Go client module.
+      # The Go modules are restored by the hash of every go.sum (B3-4).
+      - name: cache of the Go modules
+        id: cache-go
+        if: ${{ !cancelled() }}
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: go-modules-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
       - name: Go lease module of the check runner
         id: go-lease-modules
         if: ${{ !cancelled() }}
@@ -337,6 +417,22 @@ jobs:
         with:
           node-version-file: mise.toml
           package-manager-cache: false
+      # The npm packages are restored by the hash of every package-lock.json (B3-4); setup-node keeps its own cache off (scripts/repo/node.mts).
+      - name: cache of the npm packages
+        id: cache-npm
+        if: ${{ !cancelled() }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-packages-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+      # The tools that make install-tools puts under var/tools are restored by the lock files that name them (B3-4).
+      - name: cache of the tools of mise.toml
+        id: cache-tools
+        if: ${{ !cancelled() }}
+        uses: actions/cache@v4
+        with:
+          path: var/tools
+          key: tools-${{ runner.os }}-${{ hashFiles('mise.toml', '.mise/locks/**', 'config/toolchain.json') }}
       # The bootstrap of kit (K992): .github/actions/kit-bootstrap installs the locked kit package and the packages.
       - uses: ./.github/actions/kit-bootstrap
         id: kit-bootstrap

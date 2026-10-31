@@ -8,7 +8,7 @@ import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { errorCode } from '../../tests/errors.mts';
 import { main as startServers, paths as serverPaths, SERVER_VARIABLES, TestServerError } from '../test-servers.mts';
-import { AFTER_GROUP_CHECK, CI_PASSED_STEPS, CI_RUN_EXCEPTIONS, ciPassedErrors, ciGroups, jobOverlapErrors, jobTargets, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
+import { AFTER_GROUP_CHECK, CI_PASSED_STEPS, CI_RUN_EXCEPTIONS, ciPassedErrors, ciGroups, jobOverlapErrors, jobTargets, lockedCacheErrors, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { parseArguments as parseKitTestArguments } from '@polyspec/kit/run-tests';
 import { fixlessMessageErrors } from './messages.mts';
@@ -2287,4 +2287,10 @@ caseTest('the lease tool is built once for two targets of one job', PROCESS, () 
 // or the editor job (make ci-vscode-integration). A target that two jobs run is run twice in one CI run.
 caseTest('no target of CHECK_TARGETS runs in two CI jobs', COMPUTE, () => {
   assert.deepEqual(jobOverlapErrors(text('Makefile')), []);
+});
+
+// The locked caches case (CR8, B3-4) checks that every CI job restores the caches of its locked installs: npm is cached by its
+// package-lock.json files, and the composer, uv, Go module and mise tool installs each follow a cache keyed by their lock file.
+caseTest('every CI job restores the caches of its locked installs', COMPUTE, () => {
+  assert.deepEqual(lockedCacheErrors(text('.github/workflows/ci.yml')), []);
 });

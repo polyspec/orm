@@ -105,6 +105,35 @@ export function kitGates(makefile: string): string[] {
   return /^CI_KIT_GATES = (.*)$/m.exec(makefile)?.[1]?.trim().split(/\s+/).filter(Boolean) ?? [];
 }
 
+// lockedCacheErrors returns one error for each place where a CI job does not restore the caches of its locked installs (B3-4).
+// A job that installs the npm packages, the composer packages, the uv packages, the Go modules or the tools of mise.toml must restore,
+// before that install, a cache whose key is the hash of the lock file the install reads. setup-node keeps its own npm cache off
+// (scripts/repo/node.mts), so the npm cache is the one this check reads.
+export function lockedCacheErrors(workflow: string): string[] {
+  const errors: string[] = [];
+  const installs: [RegExp, string, string, string][] = [
+    [/\bnpm\b/, '~/.npm', 'package-lock.json', 'the npm packages'],
+    [/\borm-install-php\b/, '~/.cache/composer', 'composer.lock', 'the composer packages'],
+    [/\borm-install-python\b/, '~/.cache/uv', 'uv.lock', 'the uv packages'],
+    [/\borm-install-go\b/, '~/go/pkg/mod', 'go.sum', 'the Go modules'],
+    [/\b(?:ci-)?install-tools\b/, 'var/tools', 'mise.toml', 'the tools of mise.toml'],
+  ];
+  for (const job of readWorkflow(workflow).jobs) {
+    for (const step of job.steps) {
+    }
+    job.steps.forEach((step, index) => {
+      for (const [pattern, path, lock, what] of installs) {
+        if (!pattern.test(step.run)) continue;
+        const restored = job.steps.slice(0, index).some(earlier => earlier.uses?.split('@')[0] === 'actions/cache' &&
+          String(earlier.with['path'] ?? '').split(/\s+/).includes(path) && String(earlier.with['key'] ?? '').includes(`hashFiles(`) &&
+          String(earlier.with['key'] ?? '').includes(lock));
+        if (!restored) errors.push(`ci.yml job ${job.id} step ${step.name} installs ${what} with no cache before it, keyed by the hash of ${lock} (${path})`);
+      }
+    });
+  }
+  return errors;
+}
+
 // jobTargets names the CHECK_TARGETS that the docs and editor jobs of ci.yml run, outside the test groups. The docs job runs the
 // targets that make docs-ci names; the editor job runs the CHECK_TARGETS in the prerequisite chain of the target that make
 // ci-vscode-integration runs. A job reaches a target through prerequisites, so each target is counted once for the job that runs it.
@@ -789,6 +818,8 @@ export const CI_PASSED_STEP: Record<string, unknown> = { name: 'every job passed
 export const CI_PASSED_STEPS: Record<string, unknown>[] = [
   { uses: 'actions/checkout@v5' },
   { uses: 'actions/setup-node@v7', with: { 'node-version-file': 'mise.toml', 'package-manager-cache': false } },
+  { name: 'cache of the npm packages', id: 'cache-npm', if: NOT_CANCELLED, uses: 'actions/cache@v4', with: { path: '~/.npm', key: 'npm-packages-${{ runner.os }}-${{ hashFiles(\'**/package-lock.json\') }}' } },
+  { name: 'cache of the tools of mise.toml', id: 'cache-tools', if: NOT_CANCELLED, uses: 'actions/cache@v4', with: { path: 'var/tools', key: 'tools-${{ runner.os }}-${{ hashFiles(\'mise.toml\', \'.mise/locks/**\', \'config/toolchain.json\') }}' } },
   { uses: './.github/actions/kit-bootstrap', id: 'kit-bootstrap', if: NOT_CANCELLED },
   CI_PASSED_STEP,
 ];
