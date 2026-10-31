@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- In a checkout without packages/ts/src/codes.ts, which T339 made untracked output of orm-codes, make docs-build and make typescript-build failed with TS2307 for ./codes.js, so every docs-pages run on main failed (T339-3). Both targets now have orm-codes-typescript as a prerequisite, and docs-pages.yml installs the Go of mise.toml that orm-gen errors runs with.
 - Kit 0.0.83 is the pinned release (T339-2); the integrity of the lock equals the sha512 of polyspec-kit-npm-0.0.83.tgz, and make kit-sync changes no copy. Its checkParity returns a promise, so the API declaration test of tests/interfaces/check/api.test.mts compared the findings of a pending promise and failed; the test awaits it. Kit 0.0.83 reads a generated error file that .gitignore ignores, such as packages/ts/src/codes.ts, as present (K968), so parity-declarations-check no longer reports the generated codes files of T339 as missing.
 - layout-check of CI failed with ".mise/locks/npm-npm/12.2.0/node_modules/ is not ignored by Git (K372)" (T339): the sidecar folder of the npm of mise.toml had no .gitignore. Its .gitignore ignores node_modules/.
 - rules-check of kit 0.0.82 reaches a target only through a make call or the arguments of a repository file (K941), and no CI job runs the aggregate make feature-coverage, so three rules of AGENTS.md that named it failed (T339). They name the eighteen targets feature-coverage/<runtime>/<database> that the CI groups run.

@@ -2610,7 +2610,8 @@ dbspec-go-check/unicode:
 docs-dev:
 	$(NPM) run docs:dev
 
-docs-build:
+# docs-build compiles the TypeScript client (npm run typescript:build), which imports the generated codes.ts.
+docs-build: orm-codes-typescript
 	$(NPM) run docs:build
 
 # docs-ci runs, as the make orm-check runner, the document checks (docs-verify-idempotent, docs-check) that the docs job of CI (ci.yml) runs
@@ -2945,7 +2946,8 @@ timing-check: lease-tool
 	PATH="$(HOME)/.cargo/bin:$(PATH)" DBSPEC_STRESS_DOCUMENT=$(abspath $(DBSPEC_STRESS_DOCUMENT)) TIMING_GO_DBSPEC_TEST=$(abspath $(TIMING_GO_DBSPEC_TEST)) TIMING_RUST_STRESS=$(RUN_TARGET)/release/examples/dbspec_stress $(NODE) --test --test-concurrency=1 tests/timing/preempted.test.mts
 	rm -rf $(RUN_DIR)
 
-typescript-build: lease-tool
+# typescript-build compiles packages/ts, which imports codes.ts, the output of orm-codes-typescript (config/generated.json).
+typescript-build: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-build -- npm run typescript:build
 

@@ -51,6 +51,11 @@ jobs:
         id: node-modules
         if: ${{ !cancelled() }}
         run: make install-packages
+      # make docs-build writes codes.ts of the TypeScript client with orm-gen errors, a Go program.
+      - name: Go of mise.toml
+        id: go
+        if: ${{ !cancelled() }}
+        run: make install-tools TOOLS=go
       - name: build the site
         id: build
         if: ${{ !cancelled() }}
