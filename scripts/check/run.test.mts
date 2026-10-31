@@ -285,7 +285,7 @@ caseTest('make orm-check delegates to ci-targets and make check-run starts the r
   assert.ok(!ormCheck.some(line => line.includes('FINAL_RUN=1')), ormCheck.join('\n'));
   const run = recipe('check-run');
   assert.ok(run.slice(0, 2).every(line => line.startsWith('$(if $(GROUP),') && line.endsWith(')')), run.join('\n'));
-  assert.deepEqual(run.slice(2), ['$(BUILD_LEASE) && $(NODE) scripts/check/run.mts $(abspath $(TEST_ENV)) $(CHECK_RUN_TARGETS)']);
+  assert.deepEqual(run.slice(2), ['( $(LEASE_READY) ) && $(NODE) scripts/check/run.mts $(abspath $(TEST_ENV)) $(CHECK_RUN_TARGETS)']);
   // dry runs make -n check-run with only the variables given (isolatedEnvironment: GITHUB_ACTIONS is never inherited), so the case is a local run.
   const dry = (variables: Record<string, string>) => spawnSync('make', ['-n', '--no-print-directory', 'check-run'], { cwd: repo, encoding: 'utf8', env: isolatedEnvironment(variables) });
   const plain = dry({});

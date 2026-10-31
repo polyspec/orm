@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9844ef8855f0c9e39cf17828bdcdbc62e8a433f508317a5365255d12a447b521 -->
+<!-- source-sha256: 32235b4dacc85ae88983d14c20b614c68f307c25e31a22bdf11e4c4762c5cc62 -->
 # 변경 이력
 
 ## Unreleased
 
+- lease를 잡는 recipe(WITH_TEST_ENV, check-run, run-databases)는 make를 재귀로 호출했고, GNU make는 make -n 아래에서도 그것을 실행하므로 check-run의 dry run이 검사 전체를 돌렸다. 이제 이 recipe들은 lease program이 없거나 tests/lease의 어떤 source보다 오래된 때에만 shell 단계로 그것을 빌드한다 (CR11).
 - arginfo header는 제자리에서 복사됐으므로, 중단된 복사는 이전 header를 불완전하게 남겼고 PHP extension 빌드는 그것을 읽었다. 이제 header는 임시 파일에 쓰인 뒤 이전 header 위로 이름이 바뀌므로, 중단된 쓰기는 이전 header를 온전하게 남긴다 (CR3).
 - 모든 kit parity job은 target 중 어느 것도 읽지 않는 complex-query fixture 데이터베이스 18개를 만들었다. 이제 context는 target의 check input이나 recipe가 필요로 할 때만 그것을 만든다 (CR7).
 - Go, PHP, Python model과 orm-codes 파일은 입력이 바뀌지 않았는데도 그것이 필요한 target마다 다시 생성됐다 (한 CI run에서 generator 호출 1451회). 이제 generator는 추적되는 입력의 key가 바뀔 때만 실행되며, 그 stamp는 출력 옆에 원자적으로 기록된다 (CR6).

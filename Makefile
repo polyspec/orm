@@ -155,7 +155,7 @@ commit-msg-check:
 # WITH_TEST_ENV sets, through TEST_TZ, the time zone of the process that runs the database client last: it exports TZ and,
 # for PHP, which does not read TZ, adds tests/timezone/date.ini (which sets date.timezone to ${TZ}) to the front of PHP_INI_SCAN_DIR
 # after the separator (PHP's default scan directory is still read).
-WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make orm-test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && $(MAKE) -s $(LEASE) && "$(LEASE)" hold "$${ORM_TEST_SERVERS_LEASES:?$(abspath $(TEST_ENV)) names no lease directory; run make orm-test-servers to rewrite it}" shared --pid $$$$ && export TZ=$(TEST_TZ) PHP_INI_SCAN_DIR=:$(abspath tests/timezone) &&
+WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make orm-test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && ( $(LEASE_READY) ) && "$(LEASE)" hold "$${ORM_TEST_SERVERS_LEASES:?$(abspath $(TEST_ENV)) names no lease directory; run make orm-test-servers to rewrite it}" shared --pid $$$$ && export TZ=$(TEST_TZ) PHP_INI_SCAN_DIR=:$(abspath tests/timezone) &&
 # TEST_TZ is the process time zone of the checks that run database clients. It must be a non-UTC zone so that a defect where a client reads a database's
 # zone-less datetime as the process's local time shows up even on a UTC CI runner. Every client reads and writes with the
 # time zone of the connection (+00:00), so the results must not depend on this value (docs/spec/dialects.md).
@@ -188,6 +188,10 @@ GO_VERSION = $(shell $(GO) version)
 # task, so it runs with no deadline under RUN_LONG.
 LEASE = $(abspath .runtime/bin/lease)
 BUILD_LEASE = $(RUN_LONG) go-build/lease -- $(PUBLISH) $(LEASE) go build -o @OUT@ ./tests/lease >&2
+# LEASE_READY builds the lease program unless the program is present and no source of tests/lease is newer than it. It is a shell
+# step, not a $(MAKE) call: GNU make runs a recipe line that calls $(MAKE) even under make -n, so the recipes that hold a lease
+# (WITH_TEST_ENV, check-run, run-databases) would run their checks in a dry run.
+LEASE_READY = { test -x "$(LEASE)" && test -z "$$(find tests/lease -name '*.go' -newer "$(LEASE)")"; } || $(BUILD_LEASE)
 # CARGO_LEASED runs cargo's build of the Rust target directory (CARGO_TARGET_DIR, which the concurrent runs of this checkout share)
 # under an exclusive lease. If a build of another run in this checkout holds the lease, it waits for the directory change notice
 # (--wait). Builds run one at a time anyway, because of cargo's own lock.
@@ -225,7 +229,7 @@ export TYPESCRIPT_LEASES
 SEND_SQLITE_DSN = sqlite://$(RUN_DIR)/send-savepoint.sqlite
 
 # The lease program is a file target of its sources, so a job builds it once: the publish of the build runs only while the file
-# is missing or older than a source, and the recipes that need it make it through `$(MAKE) -s $(LEASE)`, which is up to date after the first.
+# is missing or older than a source; the recipes that need it reach the same condition through LEASE_READY, which builds nothing once it holds.
 LEASE_SOURCES = $(wildcard tests/lease/*.go)
 $(LEASE): $(LEASE_SOURCES)
 	$(BUILD_LEASE)
@@ -329,7 +333,7 @@ databases-create: typescript-build
 	$(NODE) scripts/check/databases.mts create '$(SERVERS)' '$(DIRECTORY)' '$(NAME)'$(if $(COMPLEX_QUERY), --complex-query)
 
 run-databases:
-	$(MAKE) -s $(LEASE) && VECTOR='$(VECTOR)' RECORD='$(RECORD)' $(NODE) scripts/check/run.mts --job-summary $(abspath $(TEST_ENV)) $(TARGETS)
+	( $(LEASE_READY) ) && VECTOR='$(VECTOR)' RECORD='$(RECORD)' $(NODE) scripts/check/run.mts --job-summary $(abspath $(TEST_ENV)) $(TARGETS)
 
 # orm-check delegates to Kit's ci-targets guard without setting FINAL_RUN: CI accepts it on GitHub Actions, while a local
 # final verification must explicitly pass FINAL_RUN=1 after every checklist item is terminal. ci-targets records its report
@@ -347,7 +351,7 @@ orm-check:
 check-run:
 	$(if $(GROUP),$(if $(filter $(GROUP),$(CI_GROUPS)),,$(error GROUP $(GROUP) names no CI group; give one of CI_GROUPS: $(CI_GROUPS))))
 	$(if $(GROUP),$(if $(filter true,$(GITHUB_ACTIONS)),,$(error GROUP runs one CI group of make check-run on GitHub Actions only; run make orm-check without GROUP, which runs every target of CHECK_TARGETS)))
-	$(MAKE) -s $(LEASE) && $(NODE) scripts/check/run.mts $(abspath $(TEST_ENV)) $(CHECK_RUN_TARGETS)
+	( $(LEASE_READY) ) && $(NODE) scripts/check/run.mts $(abspath $(TEST_ENV)) $(CHECK_RUN_TARGETS)
 
 # ci-group-needs writes the setup steps that the job of CI group GROUP runs as step output lines (`<output>=true|false`): it decides them from the need
 # that each target of the group declares in contracts/check-inputs.json (scripts/check/ci-setup.mts). The workflow adds those lines
