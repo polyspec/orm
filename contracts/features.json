@@ -364,12 +364,19 @@
         },
         {
           "id": "dsn-typescript",
-          "command": "node packages/ts/tests/dsn.mjs && node packages/ts/tests/dsn_features.mjs",
+          "command": "node packages/ts/tests/dsn.mjs",
           "shard": "other",
           "inputs": [
             "packages/ts/tests/dsn.mjs",
-            "packages/ts/tests/dsn_features.mjs",
             "tests/dsn/sqlite-paths.json"
+          ]
+        },
+        {
+          "id": "dsn-features-typescript",
+          "command": "node packages/ts/tests/dsn_features.mjs",
+          "shard": "other",
+          "inputs": [
+            "packages/ts/tests/dsn_features.mjs"
           ]
         },
         {
@@ -3954,10 +3961,21 @@
         },
         {
           "id": "statement-events-typescript",
-          "command": "node packages/ts/tests/statement-events.mjs && node packages/ts/tests/statement_events_server_transactions.mjs",
+          "command": "node packages/ts/tests/statement-events.mjs",
           "shard": "other",
           "inputs": [
             "packages/ts/tests/statement-events.mjs",
+            "packages/ts/tests/case-database.mjs",
+            "packages/ts/tests/statement-events-run.mjs",
+            "contracts/fixtures/statement_events.dbs",
+            "tests/events/vectors.json"
+          ]
+        },
+        {
+          "id": "statement-events-server-transactions-typescript",
+          "command": "node packages/ts/tests/statement_events_server_transactions.mjs",
+          "shard": "other",
+          "inputs": [
             "packages/ts/tests/statement_events_server_transactions.mjs",
             "packages/ts/tests/case-database.mjs",
             "packages/ts/tests/statement-events-run.mjs",
@@ -6410,12 +6428,19 @@
         },
         {
           "id": "planner-typescript",
-          "command": "node packages/ts/tests/engine.mjs && node packages/ts/tests/engine_features.mjs",
+          "command": "node packages/ts/tests/engine.mjs",
           "shard": "other",
           "inputs": [
             "packages/ts/tests/engine.mjs",
-            "packages/ts/tests/engine_features.mjs",
             "tests/ir/validate.json"
+          ]
+        },
+        {
+          "id": "planner-engine-features-typescript",
+          "command": "node packages/ts/tests/engine_features.mjs",
+          "shard": "other",
+          "inputs": [
+            "packages/ts/tests/engine_features.mjs"
           ]
         },
         {
