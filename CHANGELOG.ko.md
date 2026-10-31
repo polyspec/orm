@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+## 0.0.19
+
 - make docs-rules-check와 make makefile-pinned-node-recipes-check가 test (static)에서 실패했다 (T339-20). T339 row 둘이 문체 규칙이 금지하는 표현을 썼고, GroupRows PHP extension test는 T339-9가 단일 build 경로로 바꾼 build.sh 호출을 여전히 기대했다. 이제 row의 문장을 고쳤고, test는 $(call php_ext_build,...)를 기대하며 그 호출의 module과 mode를 읽는다.
 - make example-check가 ModuleNotFoundError: No module named 'packages'로 실패했다: T339-14가 Python thin-slice 예제의 models import를 packages.python.tests.models.models로 바꿨는데, test는 그 예제를 examples에서 script로 실행했다 (T339-19). 이제 test와 README는 orm의 모든 Python test처럼 checkout의 root에서 module packages.python.examples.thin_slice.main으로 실행한다.
 - Python conformance와 model-generation test가 FileNotFoundError로 실패했다: 그중 셋이 옛 models 경로 packages/python/src/polyspec/orm/models를 path 조각으로 조립했고 T339-14의 검색은 그것을 찾지 못했다(T339-18). 이제 packages/python/tests/models를 읽는다.
@@ -18,7 +20,6 @@
 - packages/php-ext/scripts/build.sh는 없거나 오래된 arginfo header나 SQLite cancel callback 사본을 거절하는데, 68개 recipe와 scripts/client-db-test.mts, ArginfoBuildTest의 fixture가 그것 없이 실행했으므로 kit / runtime (php-ext)이 실패했다(T339-9). 이제 PHP 확장의 모든 build는 그 source를 먼저 쓰는 make php-ext-build(php-ext-sources, 전 php-ext-release-sources)를 실행한다. recipe는 $(call php_ext_build,<output>,<mode>)로 build하고, make repo-check는 build.sh의 다른 호출을 실패시킨다. native-arginfo-php-extension-check는 빠져 있던 server 환경과 함께 데이터베이스 사례를 실행한다.
 - make ts-min-check가 node와 npm을 경로 없이 시작했으므로 make kit-check가 세 finding으로 실패했고, generatedCodesErrors test에서 반복된 예상 finding 목록 때문에 make duplication-check가 실패했다(T339-8). 이제 ts-min-check는 가장 낮은 Node release의 node로 mise.toml npm의 npm-cli.js를 경로로 실행하고, test는 공통 finding을 한 번만 이름한다.
 
-## 0.0.19
 
 - Python의 기술된 테이블 읽기는 date, time, datetime cell마다 driver의 값을 그대로 반환했습니다(T334-3-3-10). MySQL과 PostgreSQL의 DATE cell은 CATALOG_VALUE로 실패했고, MySQL DATETIME과 PostgreSQL timestamp cell은 datetime으로, PostgreSQL time cell은 time으로 읽혀 선언된 정밀도를 갖지 않았으며, SQLite cell은 형식 검사 없이 반환되었습니다. 이제 table_page와 insert_row, update_row, delete_row가 읽는 행(lookup, RETURNING, 생성된 키의 재읽기)은 INT-103이 적는 대로 date, time, datetime cell마다 선언된 정밀도 p를 정확히 가진 dbspec 텍스트를 str로 반환합니다. MySQL과 PostgreSQL은 p를 native type 또는 INT-101의 기본값에서 얻고, SQLite는 저장된 텍스트를 유지하되 그 소수 자릿수가 열의 dbspec CHECK가 고정하는 p와 같아야 하며, describe_table은 그 p를 CatalogColumn.check_precision으로 보고합니다. p 뒤의 0이 아닌 자릿수나 그런 CHECK가 없는 SQLite 열은 GRID_TEMPORAL_PRECISION으로, dbspec 형식 밖의 값은 GRID_TEMPORAL_VALUE로 실패합니다. catalog 쓰기는 쓴 값마다 다시 읽은 cell과 정확히 비교하고, date, time, datetime 열에 대한 datetime을 ROW_INSERT_INVALID 또는 ROW_UPDATE_INVALID로 거절합니다. Python 행 revision이 hash하는 descriptor가 이제 모든 열의 check_precision을 담으므로, 모든 행의 revision이 이전 버전이 계산한 값과 달라집니다. MySQL TIMESTAMP, PostgreSQL timestamptz와 timetz, read_only_query와 read_only_grid_query는 바뀌지 않습니다. make catalog-mutation-helper-python-check가 packages/python/tests/test_catalog_described_temporal.py의 unit test를 실행합니다.
 - make lint-go가 packages/go/orm/catalog_temporal.go에서 errcheck로 실패했으며, 그 temporal native type의 정밀도는 strconv.Atoi의 오류를 버렸다(T334-3-3-11). 각 type의 pattern은 정밀도를 0부터 6까지의 한 자리 숫자로 잡으므로, 정밀도는 실패할 수 있는 변환 없이 그 숫자이다.
