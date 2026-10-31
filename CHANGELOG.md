@@ -11,6 +11,7 @@
 
 ## 0.0.19
 
+- The helper error-codes of contracts/features.json names docs/spec/errors.yaml, the orm-gen errors command and the generated files that Git tracks (codes.go, polyspec_orm.stub.php, codes.rs), and its command compares only those; it named the TypeScript, PHP and Python code files that T339 made build output, so make feature-unit-check failed with "matches no tracked file" (T339-1).
 - packages/rust/orm/tests/statement_events.rs is in the form of rustfmt again: the closure page_of that T323 wrote on one line is a block, so make rust-fmt-check passes (T323-1).
 - Every case of packages/rust/testing/compiler-fixtures/cases.json is one trial `compiler_fixtures::<id>` of packages/rust/orm/tests/compiler_fixtures.rs, which reads the file, so a new case runs with no edit; each case declares its requirements there, and make rust-compiler-fixtures-check runs that test alone. Before, the native file ran 7 of the 12 cases and a full run of compiler-fixtures.mts excluded 4 of them by name, so 3 cases ran twice and 5 had no native test (T334-3-10). The runner takes only --case.
 - Every go test of the repository carries the tag ormtest of the test entry point: tests/go-test.mts merges GO_TEST_TAGS into each run, so the rollback and statement fault tests of the package orm run in the plain go lane of client-db-test.mts, which ran ./packages/go/... without them and a second, separately tagged command for them; the per-target copies of -tags ormtest are gone (T334-3-6-1).

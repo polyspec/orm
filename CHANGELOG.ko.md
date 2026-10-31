@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f581d6208c99223e549878c68c4cab480e5166508e108e8b54f49645346009a5 -->
+<!-- source-sha256: b061baf11c21f79f307d98357323b301705c81a6dcb9b4db2487c40940d30bfd -->
 # 변경 이력
 
 ## Unreleased
@@ -12,6 +12,7 @@
 
 ## 0.0.19
 
+- contracts/features.json의 helper error-codes는 docs/spec/errors.yaml, orm-gen errors 명령, Git이 추적하는 생성 파일(codes.go, polyspec_orm.stub.php, codes.rs)을 이름하고 그 command는 그것만 비교합니다. T339가 build 결과물로 만든 TypeScript, PHP, Python 코드 파일을 이름했으므로 make feature-unit-check가 "matches no tracked file"로 실패했습니다(T339-1).
 - packages/rust/orm/tests/statement_events.rs는 다시 rustfmt 형식입니다. T323이 한 줄로 쓴 closure page_of가 block이 되어 make rust-fmt-check가 통과합니다(T323-1).
 - packages/rust/testing/compiler-fixtures/cases.json의 모든 case는 그 파일을 읽는 packages/rust/orm/tests/compiler_fixtures.rs의 trial `compiler_fixtures::<id>` 하나이므로 새 case는 편집 없이 실행됩니다. 각 case는 그곳에 requirement를 선언하고, make rust-compiler-fixtures-check는 그 test만 실행합니다. 이전에는 native 파일이 12개 중 7개를 실행하고 compiler-fixtures.mts 전체 실행이 그중 4개를 이름으로 빼서 3개는 두 번 실행되고 5개는 native test가 없었습니다(T334-3-10). runner는 --case만 받습니다.
 - 저장소의 모든 go test는 test entry point의 tag ormtest를 가진다. tests/go-test.mts가 각 실행에 GO_TEST_TAGS를 합치므로, package orm의 rollback·statement fault test는 client-db-test.mts의 일반 go lane에서 실행된다. 그 lane은 ./packages/go/...를 그 test 없이 실행하고, 따로 tag를 단 두 번째 명령으로 그것들을 실행했다. target마다 있던 -tags ormtest 사본은 지웠다 (T334-3-6-1).
