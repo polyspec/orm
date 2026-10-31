@@ -24,7 +24,8 @@ export type ContextCommand = (command: string, args: string[], cwd: string, env:
 // A context with no target creates no complex-query databases.
 export function complexQueryNeeded(targets: readonly string[]): boolean {
   if (targets.length === 0) return false;
-  const declared = (JSON.parse(readFileSync(join(REPOSITORY, CHECK_INPUTS), 'utf8')) as { targets?: Record<string, { inputs?: string[] }> }).targets ?? {};
+  const parsed: unknown = JSON.parse(readFileSync(join(REPOSITORY, CHECK_INPUTS), 'utf8'));
+  const declared = declaredInputs(parsed);
   const lines = readFileSync(join(REPOSITORY, 'Makefile'), 'utf8').split('\n');
   const reads = new Set<string>();
   let owners: string[] = [];
@@ -36,7 +37,20 @@ export function complexQueryNeeded(targets: readonly string[]): boolean {
     const rule = /^([^\s#:=][^:=]*?)\s*:(?![=])/.exec(line);
     owners = rule ? (rule[1] ?? '').trim().split(/\s+/) : [];
   }
-  return targets.some(target => (declared[target]?.inputs ?? []).includes(COMPLEX_QUERY_FIXTURES) || reads.has(target));
+  return targets.some(target => (declared.get(target) ?? []).includes(COMPLEX_QUERY_FIXTURES) || reads.has(target));
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
+
+// declaredInputs maps each target of contracts/check-inputs.json to its declared inputs; a target with no list has none.
+function declaredInputs(value: unknown): Map<string, string[]> {
+  const inputs = new Map<string, string[]>();
+  const targets = isRecord(value) && isRecord(value.targets) ? value.targets : {};
+  for (const [name, entry] of Object.entries(targets)) {
+    const list: unknown[] = isRecord(entry) && Array.isArray(entry.inputs) ? entry.inputs : [];
+    inputs.set(name, list.filter((item): item is string => typeof item === 'string'));
+  }
+  return inputs;
 }
 
 function run(command: string, args: string[], cwd: string, env: NodeJS.ProcessEnv): ContextCommandResult {

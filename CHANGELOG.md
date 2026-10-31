@@ -51,6 +51,7 @@
 
 ## 0.0.19
 
+- The complex-query context check cast the parsed check inputs to a type, which lint-ts refuses. It reads them through type guards (CR7).
 - The workflow cache check had an empty loop and read the step values with String(), which lint-ts refuses. It reads only the values that are strings (CR8).
 - The docs build test gave its build the environment of the test process and used a non-null assertion, which repo-check and lint-ts refuse. It now runs the build with isolatedEnvironment and checks the process group id instead of asserting it (CR11).
 - Recipes that hold the lease (WITH_TEST_ENV, check-run and run-databases) called make recursively, which GNU make runs even under make -n, so a dry run of check-run ran the whole check. They now build the lease program through a shell step, only when it is missing or older than a source of tests/lease (CR11).
