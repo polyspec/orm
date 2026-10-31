@@ -690,8 +690,9 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   const tsMin = /^ts-min-check:.*\n((?:\t.*\n)*)/m.exec(makefile)?.[1];
   assert.ok(tsMin !== undefined, 'the Makefile has no recipe of ts-min-check');
   assert.doesNotMatch(tsMin, /\$\$NODE_MIN\/npm\b/, 'ts-min-check runs the npm of the lowest Node release');
-  assert.match(tsMin, /NPM_BIN="\$\$\(\$\(KIT_TOOLS\)\/bin\/mise where npm:npm\)\/node_modules\/\.bin" && PATH="\$\$NPM_BIN:\$\$NODE_MIN:/,
-    'ts-min-check puts the npm of mise.toml before the lowest Node release');
+  assert.match(tsMin, /NPM_CLI="\$\$\(\$\(KIT_TOOLS\)\/bin\/mise where npm:npm\)\/node_modules\/npm\/bin\/npm-cli\.js" && /,
+    'ts-min-check runs the npm of mise.toml');
+  assert.match(tsMin, /"\$\$NODE_MIN\/node" "\$\$NPM_CLI" run typescript:test/, 'ts-min-check runs npm with the lowest Node release');
   assert.doesNotMatch(makefile, /^install-packages:\s+orm-install-interfaces-typescript$/m,
     'Kit owns npm package installation; the package target does not widen it with TypeScript 6');
   assert.match(makefile, /^install:.*orm-install-interfaces-typescript$/m,
@@ -2219,27 +2220,21 @@ caseTest('a target that reads an error code file has the target that writes it a
     '',
   ].join('\n');
   const missing = (target: string, language: string) => `Makefile ${target} reads the ${language} error code file without the prerequisite orm-codes-${language}, which writes it; add orm-codes-${language}, or php-vendor-check or python-venv-check, which have it, to its prerequisites`;
-  assert.deepEqual(generatedCodesErrors(kit + makefile), [
+  // A recipe that starts the interface checker, here through the coverage tests of a client, reads the files of every language.
+  const bare = [
     missing('ts-bare', 'typescript'),
     missing('php-bare', 'php'),
     missing('php-extension-run', 'php'),
     missing('python-bare', 'python'),
     missing('docs-bare', 'typescript'),
-    // A recipe that starts the interface checker, here through the coverage tests of a client, reads the files of every language.
     missing('checker-bare', 'typescript'),
     missing('checker-bare', 'php'),
     missing('checker-bare', 'python'),
-  ]);
+  ];
+  assert.deepEqual(generatedCodesErrors(kit + makefile), bare);
   // A kit target whose recipe kit.mk owns reads the files as well: the Makefile adds its prerequisite.
   assert.deepEqual(generatedCodesErrors(makefile), [
-    missing('ts-bare', 'typescript'),
-    missing('php-bare', 'php'),
-    missing('php-extension-run', 'php'),
-    missing('python-bare', 'python'),
-    missing('docs-bare', 'typescript'),
-    missing('checker-bare', 'typescript'),
-    missing('checker-bare', 'php'),
-    missing('checker-bare', 'python'),
+    ...bare,
     missing('lint-ts', 'typescript'),
     missing('lint-php', 'php'),
     missing('test-php-ext', 'php'),

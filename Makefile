@@ -2493,10 +2493,11 @@ sqlite-version-rust-check: lease-tool
 
 # ts-min-check runs the TypeScript tests on the lowest Node release that
 # package.json supports. The npm of that release refuses the checkout, whose devEngines names the npm of mise.toml
-# (EBADDEVENGINES), so the bin directory of that npm, whose npm runs the node on PATH, comes before the lowest Node.
+# (EBADDEVENGINES), so the lowest Node runs the npm-cli.js of the npm of mise.toml; the lowest Node comes first on PATH
+# for the scripts that npm starts.
 ts-min-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
-	$(WITH_TEST_ENV) NODE_MIN="$$($(NODE) scripts/typescript/node-min.mts)" && NPM_BIN="$$($(KIT_TOOLS)/bin/mise where npm:npm)/node_modules/.bin" && PATH="$$NPM_BIN:$$NODE_MIN:$$PATH" && export PATH && node --version && npm --version && npm run typescript:test
+	$(WITH_TEST_ENV) NODE_MIN="$$($(NODE) scripts/typescript/node-min.mts)" && NPM_CLI="$$($(KIT_TOOLS)/bin/mise where npm:npm)/node_modules/npm/bin/npm-cli.js" && PATH="$$NODE_MIN:$$PATH" && export PATH && "$$NODE_MIN/node" --version && "$$NODE_MIN/node" "$$NPM_CLI" --version && "$$NODE_MIN/node" "$$NPM_CLI" run typescript:test
 
 # dbspec-ts-check builds the TypeScript client and runs the shared dbspec vectors, set file vectors, plan vectors, Mermaid
 # vectors, apply cleanup errors, the rules they do not yet cover, and the check that the Unicode word table matches its ranges at every code point.

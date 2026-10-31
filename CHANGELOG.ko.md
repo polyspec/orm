@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- make ts-min-check가 node와 npm을 경로 없이 시작했으므로 make kit-check가 세 finding으로 실패했고, generatedCodesErrors test에서 반복된 예상 finding 목록 때문에 make duplication-check가 실패했다(T339-8). 이제 ts-min-check는 가장 낮은 Node release의 node로 mise.toml npm의 npm-cli.js를 경로로 실행하고, test는 공통 finding을 한 번만 이름한다.
+
 ## 0.0.19
 
 - Python의 기술된 테이블 읽기는 date, time, datetime cell마다 driver의 값을 그대로 반환했습니다(T334-3-3-10). MySQL과 PostgreSQL의 DATE cell은 CATALOG_VALUE로 실패했고, MySQL DATETIME과 PostgreSQL timestamp cell은 datetime으로, PostgreSQL time cell은 time으로 읽혀 선언된 정밀도를 갖지 않았으며, SQLite cell은 형식 검사 없이 반환되었습니다. 이제 table_page와 insert_row, update_row, delete_row가 읽는 행(lookup, RETURNING, 생성된 키의 재읽기)은 INT-103이 적는 대로 date, time, datetime cell마다 선언된 정밀도 p를 정확히 가진 dbspec 텍스트를 str로 반환합니다. MySQL과 PostgreSQL은 p를 native type 또는 INT-101의 기본값에서 얻고, SQLite는 저장된 텍스트를 유지하되 그 소수 자릿수가 열의 dbspec CHECK가 고정하는 p와 같아야 하며, describe_table은 그 p를 CatalogColumn.check_precision으로 보고합니다. p 뒤의 0이 아닌 자릿수나 그런 CHECK가 없는 SQLite 열은 GRID_TEMPORAL_PRECISION으로, dbspec 형식 밖의 값은 GRID_TEMPORAL_VALUE로 실패합니다. catalog 쓰기는 쓴 값마다 다시 읽은 cell과 정확히 비교하고, date, time, datetime 열에 대한 datetime을 ROW_INSERT_INVALID 또는 ROW_UPDATE_INVALID로 거절합니다. Python 행 revision이 hash하는 descriptor가 이제 모든 열의 check_precision을 담으므로, 모든 행의 revision이 이전 버전이 계산한 값과 달라집니다. MySQL TIMESTAMP, PostgreSQL timestamptz와 timetz, read_only_query와 read_only_grid_query는 바뀌지 않습니다. make catalog-mutation-helper-python-check가 packages/python/tests/test_catalog_described_temporal.py의 unit test를 실행합니다.
