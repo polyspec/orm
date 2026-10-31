@@ -5,7 +5,8 @@
 //
 // Usage: node scripts/php/php-ext-arginfo.mts
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, cpSync, mkdirSync, rmSync } from 'node:fs';
+import { createReadStream, createWriteStream, cpSync, mkdirSync, renameSync, rmSync } from 'node:fs';
+import { pipeline } from 'node:stream/promises';
 import { join, resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '../..');
@@ -21,16 +22,32 @@ function run(program: string, args: readonly string[]): void {
   if (result.status !== 0) throw new Error(`${program} ${args.join(' ')} exited with ${result.status ?? result.signal}`);
 }
 
-try {
-  mkdirSync(work, { recursive: true });
-  cpSync(extension, source, { recursive: true });
-  run(tool('phpize'), []);
-  run(tool('php'), [join(source, 'build/gen_stub.php'), join(source, 'polyspec_orm.stub.php')]);
-  copyFileSync(join(source, 'polyspec_orm_arginfo.h'), join(extension, 'polyspec_orm_arginfo.h'));
-  console.log('[php-ext-arginfo] wrote packages/php-ext/src/polyspec_orm_arginfo.h');
-} catch (error) {
-  console.error(`php-ext-arginfo: ${error instanceof Error ? error.message : String(error)}`);
-  process.exitCode = 1;
-} finally {
-  rmSync(work, { recursive: true, force: true });
+// publishHeader writes the generated header to the checkout's header. The copy goes to a temporary file beside the destination, and a
+// rename replaces the destination, as scripts/publish-output.mts does, so a copy that is stopped leaves the previous header whole.
+export async function publishHeader(header: string, destination: string): Promise<void> {
+  const next = `${destination}.next-${process.pid}`;
+  try {
+    await pipeline(createReadStream(header), createWriteStream(next));
+    renameSync(next, destination);
+  } finally {
+    rmSync(next, { force: true });
+  }
 }
+
+async function main(): Promise<void> {
+  try {
+    mkdirSync(work, { recursive: true });
+    cpSync(extension, source, { recursive: true });
+    run(tool('phpize'), []);
+    run(tool('php'), [join(source, 'build/gen_stub.php'), join(source, 'polyspec_orm.stub.php')]);
+    await publishHeader(join(source, 'polyspec_orm_arginfo.h'), join(extension, 'polyspec_orm_arginfo.h'));
+    console.log('[php-ext-arginfo] wrote packages/php-ext/src/polyspec_orm_arginfo.h');
+  } catch (error) {
+    console.error(`php-ext-arginfo: ${error instanceof Error ? error.message : String(error)}`);
+    process.exitCode = 1;
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+}
+
+if (import.meta.main) await main();

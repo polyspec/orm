@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9ecd123ef35ff813d555d747aba9432ebb30f3b1e659cd88ca0a6ff192cb86c7 -->
+<!-- source-sha256: 9844ef8855f0c9e39cf17828bdcdbc62e8a433f508317a5365255d12a447b521 -->
 # 변경 이력
 
 ## Unreleased
 
+- arginfo header는 제자리에서 복사됐으므로, 중단된 복사는 이전 header를 불완전하게 남겼고 PHP extension 빌드는 그것을 읽었다. 이제 header는 임시 파일에 쓰인 뒤 이전 header 위로 이름이 바뀌므로, 중단된 쓰기는 이전 header를 온전하게 남긴다 (CR3).
 - 모든 kit parity job은 target 중 어느 것도 읽지 않는 complex-query fixture 데이터베이스 18개를 만들었다. 이제 context는 target의 check input이나 recipe가 필요로 할 때만 그것을 만든다 (CR7).
 - Go, PHP, Python model과 orm-codes 파일은 입력이 바뀌지 않았는데도 그것이 필요한 target마다 다시 생성됐다 (한 CI run에서 generator 호출 1451회). 이제 generator는 추적되는 입력의 key가 바뀔 때만 실행되며, 그 stamp는 출력 옆에 원자적으로 기록된다 (CR6).
 - CI job들은 lock file이 바뀌지 않았는데도 npm, composer, uv, Go, mise.toml 패키지를 매 실행마다 다시 설치했다. 이제 각 job은 설치 전에 npm, Go module, composer, uv, tool 캐시를 그 lock file의 hash로 키를 잡아 복원한다 (CR8).
