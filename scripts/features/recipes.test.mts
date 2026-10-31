@@ -56,8 +56,13 @@ caseTest('the recipe fixtures with and without a database are valid', COMPUTE, (
 caseTest('a recipe without a fixture refuses a database op', COMPUTE, () => {
   const recipe = read(resolve(fixtures, 'without-database.json'));
   const withOp = structuredClone(recipe);
-  const kase = (withOp.cases as Json[])[0] as { [key: string]: Json };
-  (kase.steps as Json[]).push({ op: 'sql.exec', sql: 'SELECT 1', reason: 'a database op in a recipe without a fixture' });
+  const cases = withOp.cases;
+  assert.ok(Array.isArray(cases) && cases.length > 0, 'the recipe has a case');
+  const kase = cases[0];
+  assert.ok(typeof kase === 'object' && kase !== null && !Array.isArray(kase), 'the first case is an object');
+  const steps = kase.steps;
+  assert.ok(Array.isArray(steps), 'the case has steps');
+  steps.push({ op: 'sql.exec', sql: 'SELECT 1', reason: 'a database op in a recipe without a fixture' });
   assert.notDeepEqual(refused(withOp, 'without-database + sql.exec'), [], 'a recipe without a fixture accepted sql.exec');
 });
 

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 54417c397008433fa8c9d3ffa390d234b5ba8f6f9eb5a8c39c78d7703c83b77e -->
+<!-- source-sha256: ece94350700e49acebac3952bd848638741df18bacfae8df2ab225c52c71d3c1 -->
 # 변경 이력
 
 ## Unreleased
 
+- recipe 시험은 JSON 값을 타입으로 캐스트했고 lint-ts가 이를 거부한다. 이제 shape를 확인해 좁힌다 (CR13).
 - complex-query context 검사는 파싱한 check input을 타입으로 캐스트했고 lint-ts가 이를 거부한다. 이제 type guard로 읽는다 (CR7).
 - workflow cache 검사에는 빈 loop가 있었고 step 값을 String()으로 읽었는데, lint-ts가 이를 거부한다. 이제 문자열인 값만 읽는다 (CR8).
 - docs build test는 build에 test process의 환경을 그대로 주었고 non-null assertion을 썼는데, repo-check와 lint-ts가 이를 거부한다. 이제 build를 isolatedEnvironment로 실행하며, process group id를 단언하지 않고 확인한다 (CR11).

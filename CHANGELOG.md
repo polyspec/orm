@@ -51,6 +51,7 @@
 
 ## 0.0.19
 
+- The recipe test cast its JSON values to types, which lint-ts refuses. It narrows them with checks of shape (CR13).
 - The complex-query context check cast the parsed check inputs to a type, which lint-ts refuses. It reads them through type guards (CR7).
 - The workflow cache check had an empty loop and read the step values with String(), which lint-ts refuses. It reads only the values that are strings (CR8).
 - The docs build test gave its build the environment of the test process and used a non-null assertion, which repo-check and lint-ts refuse. It now runs the build with isolatedEnvironment and checks the process group id instead of asserting it (CR11).
