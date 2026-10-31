@@ -929,17 +929,12 @@ fn check_bench_set() {
     assert_eq!(manifest.manifest_hash, model::MANIFEST_HASH, "the models were generated from another document set");
 }
 
-/// Runs the case `body` of the section `name` on each driver, on a case database where the bench set is installed; each case
-/// installs its schema in its own case database and runs no more than a few hundred statements.
-async fn installed_section(name: &str, body: impl AsyncFn(&Target)) {
-    check_bench_set();
-    for driver in DRIVERS {
-        let case = polyspec_orm_testcase::start(format!("{name}/{driver}"), polyspec_orm_testcase::DATABASE);
-        let t = Target::installed(driver).await;
-        body(&t).await;
-        t.finish().await;
-        drop(case);
-    }
+/// Runs the section case `body` on a case database of `driver` where the bench set is installed; each case installs its schema in
+/// its own case database and runs no more than a few hundred statements.
+async fn installed_section(driver: &str, body: impl AsyncFn(&Target)) {
+    let t = Target::installed(driver).await;
+    body(&t).await;
+    t.finish().await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -958,49 +953,89 @@ async fn schema_empty() {
 #[tokio::test(flavor = "multi_thread")]
 #[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN; run it with --include-ignored"]
 async fn conditions() {
-    installed_section("conditions", conditions_case).await;
+    check_bench_set();
+    for driver in DRIVERS {
+        let case = polyspec_orm_testcase::start(format!("conditions/{driver}"), polyspec_orm_testcase::DATABASE);
+        installed_section(driver, conditions_case).await;
+        drop(case);
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]
 #[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN; run it with --include-ignored"]
 async fn joins_and_relations() {
-    installed_section("joins_and_relations", joins_and_relations_case).await;
+    check_bench_set();
+    for driver in DRIVERS {
+        let case = polyspec_orm_testcase::start(format!("joins_and_relations/{driver}"), polyspec_orm_testcase::DATABASE);
+        installed_section(driver, joins_and_relations_case).await;
+        drop(case);
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]
 #[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN; run it with --include-ignored"]
 async fn columns_and_subqueries() {
-    installed_section("columns_and_subqueries", columns_and_subqueries_case).await;
+    check_bench_set();
+    for driver in DRIVERS {
+        let case = polyspec_orm_testcase::start(format!("columns_and_subqueries/{driver}"), polyspec_orm_testcase::DATABASE);
+        installed_section(driver, columns_and_subqueries_case).await;
+        drop(case);
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]
 #[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN; run it with --include-ignored"]
 async fn writes() {
-    installed_section("writes", writes_case).await;
+    check_bench_set();
+    for driver in DRIVERS {
+        let case = polyspec_orm_testcase::start(format!("writes/{driver}"), polyspec_orm_testcase::DATABASE);
+        installed_section(driver, writes_case).await;
+        drop(case);
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]
 #[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN; run it with --include-ignored"]
 async fn transactions() {
-    installed_section("transactions", transactions_case).await;
+    check_bench_set();
+    for driver in DRIVERS {
+        let case = polyspec_orm_testcase::start(format!("transactions/{driver}"), polyspec_orm_testcase::DATABASE);
+        installed_section(driver, transactions_case).await;
+        drop(case);
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]
 #[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN; run it with --include-ignored"]
 async fn aes_rotation() {
-    installed_section("aes_rotation", aes_rotation_case).await;
+    check_bench_set();
+    for driver in DRIVERS {
+        let case = polyspec_orm_testcase::start(format!("aes_rotation/{driver}"), polyspec_orm_testcase::DATABASE);
+        installed_section(driver, aes_rotation_case).await;
+        drop(case);
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]
 #[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN; run it with --include-ignored"]
 async fn json_values() {
-    installed_section("json_values", json_values_case).await;
+    check_bench_set();
+    for driver in DRIVERS {
+        let case = polyspec_orm_testcase::start(format!("json_values/{driver}"), polyspec_orm_testcase::DATABASE);
+        installed_section(driver, json_values_case).await;
+        drop(case);
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]
 #[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN; run it with --include-ignored"]
 async fn bind_limit_splitting() {
-    installed_section("bind_limit_splitting", bind_limit_splitting_case).await;
+    check_bench_set();
+    for driver in DRIVERS {
+        let case = polyspec_orm_testcase::start(format!("bind_limit_splitting/{driver}"), polyspec_orm_testcase::DATABASE);
+        installed_section(driver, bind_limit_splitting_case).await;
+        drop(case);
+    }
 }
 
 /// SQLite reads a database file it may only read; MySQL and PostgreSQL read through a replica of the primary, whose DSN is
