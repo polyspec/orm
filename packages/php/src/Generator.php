@@ -67,11 +67,16 @@ final class Generator
         if (!is_dir($outDir) && !mkdir($outDir, 0o755, true)) {
             throw new OrmException(Code::CONFIG, "cannot create $outDir");
         }
-        foreach (self::generated($outDir) as $file) {
-            unlink($file);
-        }
+        // A reader of $outDir, such as a test that starts while another process regenerates it, sees
+        // each file whole: a changed file is replaced by a rename, an unchanged file is left as it is,
+        // and a generated file that the model no longer makes is removed after the new files are written.
         foreach ($files as $name => $body) {
             self::write("$outDir/$name", $body);
+        }
+        foreach (self::generated($outDir) as $file) {
+            if (!array_key_exists(basename($file), $files) && !unlink($file)) {
+                throw new OrmException(Code::CONFIG, "cannot remove $file");
+            }
         }
     }
 
@@ -167,9 +172,15 @@ final class Generator
         return $files;
     }
 
+    /** Writes $body to $path through a temporary file of the same directory and a rename, unless $path holds it already. */
     private static function write(string $path, string $body): void
     {
-        if (file_put_contents($path, $body) === false) {
+        if (is_file($path) && file_get_contents($path) === $body) {
+            return;
+        }
+        $next = $path . '.next-' . getmypid();
+        if (file_put_contents($next, $body) === false || !rename($next, $path)) {
+            is_file($next) && unlink($next);
             throw new OrmException(Code::CONFIG, "cannot write $path");
         }
     }

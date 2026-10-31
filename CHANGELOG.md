@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- orm-gen gen of the PHP client removed every generated file of its output directory and then wrote each file in place, so a PHP test that started while another make process of the same run ran make php-models failed with "Failed opening required packages/php/gen/bootstrap.php" (T341). The generator now leaves a file that already holds its content as it is, writes a changed file to a temporary file of the same directory and renames it over the old one, and removes a generated file that the model no longer makes only after the new files are in place.
+
 ## 0.0.19
 
 - make docs-rules-check and make makefile-pinned-node-recipes-check failed in test (static) (T339-20). Two T339 rows used expressions that the writing style forbids, and the GroupRows PHP extension test still expected the build.sh call that T339-9 replaced with the one build path; the rows are reworded, and the test expects $(call php_ext_build,...) and reads the module and the mode of that call.

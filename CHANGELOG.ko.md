@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 8ffc0c55715adf4852c61077465e2b5eed74fdb1f0809d9293e2152584e234ab -->
+<!-- source-sha256: 54db92879a14681bee93b18cc87ece5390dff56b5bc10522bbfdd5a2b48f9ca2 -->
 # 변경 이력
 
 ## Unreleased
+
+- PHP client의 orm-gen gen은 출력 directory의 모든 생성 파일을 지운 뒤 각 파일을 덮어 썼으므로, 같은 실행의 다른 make process가 make php-models를 실행하는 동안 시작된 PHP test가 "Failed opening required packages/php/gen/bootstrap.php"로 실패했다(T341). 이제 generator는 이미 같은 내용을 가진 파일을 그대로 두고, 바뀐 파일은 같은 directory의 임시 파일에 쓴 뒤 이전 파일 위로 rename하며, model이 더 이상 만들지 않는 생성 파일은 새 파일을 모두 쓴 뒤에만 지운다.
 
 ## 0.0.19
 

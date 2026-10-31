@@ -27,6 +27,47 @@ final class OrmGenTest extends TestCase
         return OrmGenTestSupport::run($args);
     }
 
+    // A make run starts orm-gen gen for an output directory while PHP tests of the same run read it,
+    // so a rerun replaces each file whole: an unchanged file is left as it is, a changed file is
+    // replaced by a rename, a generated file the model no longer makes is removed, and no temporary
+    // file remains. A rewrite in place shows a reader a missing or partial file.
+    public function testGenReplacesEachFileWholeAndLeavesUnchangedFiles(): void
+    {
+        $dir = self::$work . '/whole-files';
+        $namespace = 'Polyspec\\Orm\\Tests\\GeneratedWholeFiles';
+        $set = OrmGenTestSupport::setFile($dir, ['whole.dbs']);
+        $gen = function (string $tables) use ($dir, $set, $namespace): void {
+            file_put_contents("$dir/whole.dbs", "dbspec 1 whole\n$tables");
+            [$code, $out, $err] = self::tool(['gen', '--set', $set, '--out', "$dir/model", '--namespace', $namespace]);
+            self::assertSame(0, $code, "$out $err");
+        };
+        $item = "\ntable item {\n  id i32\n  primary key (id)\n}\n";
+        $gen($item . "\ntable note {\n  id i32\n  primary key (id)\n}\n");
+        $inodes = static function () use ($dir): array {
+            clearstatcache();
+            $map = [];
+            foreach (scandir("$dir/model") as $name) {
+                if ($name !== '.' && $name !== '..') {
+                    $map[$name] = fileinode("$dir/model/$name");
+                }
+            }
+            return $map;
+        };
+        $before = $inodes();
+        self::assertArrayHasKey('Note.php', $before);
+
+        $gen($item . "\ntable note {\n  id i32\n  primary key (id)\n}\n");
+        self::assertSame($before, $inodes(), 'a rerun with the same model rewrote an unchanged file');
+
+        $gen($item);
+        $after = $inodes();
+        self::assertSame(['Item.php', 'bootstrap.php', 'schema_declarations.php'], array_keys($after));
+        // Each remaining file changed, since every file carries the manifest hash of the document set.
+        foreach ($after as $changed => $inode) {
+            self::assertNotSame($before[$changed], $inode, "$changed was not replaced by a rename");
+        }
+    }
+
     // Requirements: DBS-104, DBS-112, DBS-114, INT-66.
     public function testGeneratedTypedGetterUsesPrivateModelStorageAndRejectsUnselectedRead(): void
     {
