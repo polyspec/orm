@@ -1,6 +1,16 @@
-use polyspec_orm_testcase::{case, PROCESS};
+//! The Rust compiler fixtures of packages/rust/testing/compiler-fixtures/cases.json, one libtest-mimic trial
+//! `compiler_fixtures::<id>` per case: scripts/rust/compiler-fixtures.mts compiles the consumer of the case against the
+//! generated model under the cargo target lease, and the case declares its requirements in the file.
+//! Requirements: DBS-112, DBS-114, DBS-174, DSL-49, DSL-50, DSL-124, PLN-4, PLN-19.
+
+use polyspec_orm_testcase::{Trial, PROCESS};
 use std::fs;
 use std::process::Command;
+
+#[derive(serde::Deserialize)]
+struct Fixture {
+    id: String,
+}
 
 fn run_fixture(id: &str) {
     let root = polyspec_orm_testcase::manifest_dir().join("../../..");
@@ -20,39 +30,13 @@ fn run_fixture(id: &str) {
     assert!(status.success(), "Rust compiler fixture {id} failed: {status}");
 }
 
-// Requirements: DSL-124, PLN-19.
-#[test]
-fn dsl124_transaction_control_methods_are_not_public() {
-    let _case = case!(PROCESS * 3);
-    run_fixture("dsl124-db-begin-e0599");
-    run_fixture("dsl124-db-commit-e0599");
-    run_fixture("dsl124-db-rollback-e0599");
-}
-
-// Requirements: DSL-50, PLN-4.
-#[test]
-fn dsl50_ordering_list_is_rejected() {
-    let _case = case!(PROCESS);
-    run_fixture("dsl50-ordering-list-e0277");
-}
-
-// Requirements: DSL-49.
-#[test]
-fn dsl49_nonnull_null_is_rejected() {
-    let _case = case!(PROCESS);
-    run_fixture("dsl49-nonnull-null-e0277");
-}
-
-// Requirements: DBS-174.
-#[test]
-fn dbs174_render_rejects_unrepresentable_unknown_dialect() {
-    let _case = case!(PROCESS);
-    run_fixture("dbs174-render-unknown-dialect-e0308");
-}
-
-// Requirements: DBS-174.
-#[test]
-fn dbs174_plan_steps_reject_unrepresentable_unknown_dialect() {
-    let _case = case!(PROCESS);
-    run_fixture("dbs174-plan-unknown-dialect-e0308");
+fn main() {
+    let path = polyspec_orm_testcase::manifest_dir().join("../testing/compiler-fixtures/cases.json");
+    let fixtures: Vec<Fixture> = serde_json::from_slice(&fs::read(path).expect("compiler-fixtures/cases.json")).expect("compiler-fixtures/cases.json");
+    assert!(!fixtures.is_empty(), "compiler-fixtures/cases.json has no case");
+    let trials: Vec<Trial> = fixtures
+        .into_iter()
+        .map(|fixture| polyspec_orm_testcase::trial(format!("compiler_fixtures::{}", fixture.id), PROCESS, move || run_fixture(&fixture.id)))
+        .collect();
+    polyspec_orm_testcase::run(trials);
 }

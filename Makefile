@@ -1708,7 +1708,6 @@ generator-consumer-check/rust-integration: lease-tool
 
 rust-compiler-fixtures-check: lease-tool
 	cd packages/rust && $(CARGO_TEST) rust-compiler-fixtures-native -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm --test compiler_fixtures -- --test-threads=1
-	$(RUN_LONG) rust-build/compiler-fixtures -- $(CARGO_LEASED) $(NODE) $(abspath scripts/rust/compiler-fixtures.mts) $(PHYSICAL_RUST_TOOLCHAIN) --exclude-case dsl124-db-begin-e0599 --exclude-case dsl124-db-commit-e0599 --exclude-case dsl124-db-rollback-e0599 --exclude-case dsl50-ordering-list-e0277
 
 # Native no-database cases bind driver errors, cells and the Markdown wire handshake to each runtime's native call path.
 .PHONY: native-error-cause-check

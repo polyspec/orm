@@ -3868,7 +3868,7 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/compiler_fixtures.rs",
-          "id": "dbs174_plan_steps_reject_unrepresentable_unknown_dialect"
+          "id": "compiler_fixtures::dbs174-plan-unknown-dialect-e0308"
         }
       ]
     },
@@ -3907,7 +3907,7 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/compiler_fixtures.rs",
-          "id": "dbs174_render_rejects_unrepresentable_unknown_dialect"
+          "id": "compiler_fixtures::dbs174-render-unknown-dialect-e0308"
         }
       ]
     },
@@ -13659,7 +13659,17 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/compiler_fixtures.rs",
-          "id": "dsl124_transaction_control_methods_are_not_public"
+          "id": "compiler_fixtures::dsl124-db-begin-e0599"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "compiler_fixtures::dsl124-db-commit-e0599"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "compiler_fixtures::dsl124-db-rollback-e0599"
         }
       ]
     },
@@ -14172,7 +14182,7 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/compiler_fixtures.rs",
-          "id": "dsl49_nonnull_null_is_rejected"
+          "id": "compiler_fixtures::dsl49-nonnull-null-e0277"
         }
       ]
     },
@@ -31014,7 +31024,7 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/compiler_fixtures.rs",
-          "id": "dsl50_ordering_list_is_rejected"
+          "id": "compiler_fixtures::dsl50-ordering-list-e0277"
         }
       ]
     },

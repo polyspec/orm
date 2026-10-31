@@ -3,9 +3,10 @@
   "type": "array",
   "items": {
     "type": "object",
-    "required": ["id", "expect", "source"],
+    "required": ["id", "requirements", "expect", "source"],
     "properties": {
       "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+      "requirements": { "type": "array", "items": { "type": "string", "pattern": "^[A-Z]+-[0-9]+[a-z]?$" }, "minItems": 1, "uniqueItems": true },
       "expect": { "enum": ["success", "error"] },
       "source": { "type": "string" },
       "code": { "type": "string", "minLength": 1 },

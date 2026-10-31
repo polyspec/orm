@@ -43,21 +43,16 @@ const selectedFeatures = features;
 const selectedTarget = target;
 const caseArguments = process.argv.slice(3);
 const requestedCases: string[] = [];
-const excludedCases: string[] = [];
 for (let index = 0; index < caseArguments.length; index++) {
   const argument = caseArguments[index];
-  if (argument === '--case' || argument === '--exclude-case') {
+  if (argument === '--case') {
     const id = caseArguments[++index];
-    if (id === undefined || id === '' || id.startsWith('--')) throw new Error(`${argument} needs a compiler fixture id`);
-    (argument === '--case' ? requestedCases : excludedCases).push(id);
+    if (id === undefined || id === '' || id.startsWith('--')) throw new Error('--case needs a compiler fixture id');
+    requestedCases.push(id);
   } else if (argument?.startsWith('--case=')) {
     const id = argument.slice('--case='.length);
     if (id === '') throw new Error('--case needs a compiler fixture id');
     requestedCases.push(id);
-  } else if (argument?.startsWith('--exclude-case=')) {
-    const id = argument.slice('--exclude-case='.length);
-    if (id === '') throw new Error('--exclude-case needs a compiler fixture id');
-    excludedCases.push(id);
   } else {
     throw new Error(`unknown compiler fixture argument ${argument}`);
   }
@@ -72,16 +67,12 @@ for (const fixture of fixtures) {
   }
 }
 const known = new Set(fixtures.map(fixture => fixture.id));
-if (requestedCases.length > 0 && excludedCases.length > 0) throw new Error('select or exclude compiler fixtures, not both');
-for (const [label, ids] of [['selection', requestedCases], ['exclusion', excludedCases]] as const) {
-  if (new Set(ids).size !== ids.length) throw new Error(`compiler fixture ${label}s must be unique`);
-  for (const id of ids) if (!known.has(id)) throw new Error(`unknown Rust compiler fixture ${id}`);
-}
+// Each case is one trial of packages/rust/orm/tests/compiler_fixtures.rs, which runs this runner with that case.
+if (requestedCases.length === 0) throw new Error('select a compiler fixture with --case; make rust-compiler-fixtures-check runs every case as its own trial');
+if (new Set(requestedCases).size !== requestedCases.length) throw new Error('compiler fixture selections must be unique');
+for (const id of requestedCases) if (!known.has(id)) throw new Error(`unknown Rust compiler fixture ${id}`);
 const selected = new Set(requestedCases);
-const excluded = new Set(excludedCases);
-const selectedFixtures = requestedCases.length > 0
-  ? fixtures.filter(fixture => selected.has(fixture.id))
-  : fixtures.filter(fixture => !excluded.has(fixture.id));
+const selectedFixtures = fixtures.filter(fixture => selected.has(fixture.id));
 
 function check(id: string, source: string): Promise<{ status: number | null; signal: NodeJS.Signals | null; messages: CompilerMessage[] }> {
   return new Promise((resolveRun, rejectRun) => {
