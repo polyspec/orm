@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-// fixtures maps each fixture run to the fixture tests it selects. The fixtures (testcase_fixture_test.go) build only with
-// the tag testcasefixture, which only runFixture gives to the child go test.
+// fixtures maps each fixture run to the fixture tests it selects. The fixtures (testdata/fixture/fixture_test.go) live in
+// testdata, which go test ./... never matches, so only runFixture runs them, with a child go test of that directory.
 var fixtures = map[string]string{
 	"report":   "^TestFixture(Pass|Fail|Skip|Group|Run)$",
 	"deadline": "^TestFixtureDeadline$",
@@ -19,7 +19,7 @@ var fixtures = map[string]string{
 
 // runFixture runs the fixture tests of name with a child `go test -v` and returns its output and exit error.
 func runFixture(name string) (string, error) {
-	command := exec.Command("go", "test", "-tags", "testcasefixture", "-run", fixtures[name], "-count=1", "-v", ".")
+	command := exec.Command("go", "test", "-run", fixtures[name], "-count=1", "-v", "./testdata/fixture")
 	output, err := command.CombinedOutput()
 	return string(output), err
 }

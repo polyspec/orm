@@ -238,8 +238,8 @@
           "reason": "harness: tests testcase step-budget and stalled-case cancellation primitives used to run tests; it does not exercise an ORM contract"
         },
         {
-          "glob": "packages/go/testcase/testcase_fixture_test.go",
-          "reason": "harness: supplies tagged child-process fixtures whose deliberate pass, failure, skip, group and deadline outcomes are inspected by the testcase harness tests"
+          "glob": "packages/go/testcase/testdata/fixture/fixture_test.go",
+          "reason": "harness: supplies testdata child-process fixtures whose deliberate pass, failure, skip, group and deadline outcomes are inspected by the testcase harness tests"
         },
         {
           "glob": "packages/go/testcase/testcase_test.go",
