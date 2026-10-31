@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ece94350700e49acebac3952bd848638741df18bacfae8df2ab225c52c71d3c1 -->
+<!-- source-sha256: 7c1506aa0b777fad29166e4523c76e4dff67fda055b12d2166697557b6256dac -->
 # 변경 이력
 
 ## Unreleased
 
+- publish-output은 명령이 끝나자마자 출력 파일을 확인했고, 복사가 파일을 만들기 전에 검사했으므로 빠른 명령이 "wrote no"로 실패했다. 부하가 걸린 병렬 실행에서 640회 중 2회 실패했다(CR3 owner 검사의 phpstan owner). 이제 검사 전에 복사가 끝나기를 기다린다 (CR22).
 - recipe 시험은 JSON 값을 타입으로 캐스트했고 lint-ts가 이를 거부한다. 이제 shape를 확인해 좁힌다 (CR13).
 - complex-query context 검사는 파싱한 check input을 타입으로 캐스트했고 lint-ts가 이를 거부한다. 이제 type guard로 읽는다 (CR7).
 - workflow cache 검사에는 빈 loop가 있었고 step 값을 String()으로 읽었는데, lint-ts가 이를 거부한다. 이제 문자열인 값만 읽는다 (CR8).

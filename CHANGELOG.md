@@ -51,6 +51,7 @@
 
 ## 0.0.19
 
+- publish-output checked the output file of a command's standard output as soon as the command exited, before the copy had created it, so a fast command failed with "wrote no": under parallel load 2 of 640 runs failed, in the phpstan owner of the CR3 owner check. The check now waits for the copy to finish (CR22).
 - The recipe test cast its JSON values to types, which lint-ts refuses. It narrows them with checks of shape (CR13).
 - The complex-query context check cast the parsed check inputs to a type, which lint-ts refuses. It reads them through type guards (CR7).
 - The workflow cache check had an empty loop and read the step values with String(), which lint-ts refuses. It reads only the values that are strings (CR8).

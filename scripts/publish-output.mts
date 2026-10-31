@@ -22,7 +22,13 @@ for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) process.on(signal
 
 const replaced = args.includes('@OUT@');
 const child = spawn(program, args.map(arg => (arg === '@OUT@' ? next : arg)), { stdio: ['inherit', replaced ? 'inherit' : 'pipe', 'inherit'] });
-if (!replaced) child.stdout?.pipe(createWriteStream(next));
+// The standard output is copied into the temporary file; its stream is finished before the file is checked, since the file exists only once the stream has opened it.
+const copied = replaced ? undefined : new Promise<void>((resolve, reject) => {
+  const sink = createWriteStream(next);
+  sink.once('error', reject);
+  sink.once('finish', () => resolve());
+  child.stdout?.pipe(sink);
+});
 const code = await new Promise<number>(resolve => {
   child.on('error', error => { console.error(`publish-output: ${program}: ${error.message}`); resolve(127); });
   child.on('close', (status, signal) => resolve(status ?? (signal === null ? 1 : 128)));
@@ -31,6 +37,7 @@ if (code !== 0) {
   discard();
   process.exit(code);
 }
+if (copied !== undefined) await copied;
 if (!existsSync(next)) {
   console.error(`publish-output: ${[program, ...args].join(' ')} wrote no ${next}; the command must write the file that @OUT@ names`);
   process.exit(1);
