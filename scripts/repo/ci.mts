@@ -105,6 +105,41 @@ export function kitGates(makefile: string): string[] {
   return /^CI_KIT_GATES = (.*)$/m.exec(makefile)?.[1]?.trim().split(/\s+/).filter(Boolean) ?? [];
 }
 
+// jobTargets names the CHECK_TARGETS that the docs and editor jobs of ci.yml run, outside the test groups. The docs job runs the
+// targets that make docs-ci names; the editor job runs the CHECK_TARGETS in the prerequisite chain of the target that make
+// ci-vscode-integration runs. A job reaches a target through prerequisites, so each target is counted once for the job that runs it.
+export function jobTargets(makefile: string): { docs: string[]; editor: string[] } {
+  const check = checkTargets(makefile);
+  const entries = makeTargets(makefile);
+  const named = (name: string) => entries.filter(entry => entry.target === name);
+  const reach = (roots: string[]): string[] => {
+    const seen = new Set<string>();
+    const stack = [...roots];
+    for (let name = stack.pop(); name !== undefined; name = stack.pop()) {
+      if (seen.has(name)) continue;
+      seen.add(name);
+      for (const entry of named(name)) stack.push(...entry.prerequisites);
+    }
+    return check.filter(target => seen.has(target));
+  };
+  const words = (name: string) => named(name).flatMap(entry => entry.commands).flatMap(command => command.split(/\s+/));
+  return { docs: reach(words('docs-ci')), editor: reach(words('ci-vscode-integration')) };
+}
+
+// jobOverlapErrors returns one error for each CHECK_TARGETS target that two CI jobs run: a test group, the kit gates, the docs job or the
+// editor job (jobTargets). Each job that runs a target repeats the work of the other, so every target runs in one job.
+export function jobOverlapErrors(makefile: string): string[] {
+  const { groups, targets } = ciGroups(makefile);
+  const owners = new Map<string, string[]>();
+  const add = (job: string, target: string) => owners.set(target, [...(owners.get(target) ?? []), job]);
+  for (const group of groups) for (const target of targets[group] ?? []) add(`CI group ${group}`, target);
+  for (const target of kitGates(makefile)) add('the kit gates', target);
+  const jobs = jobTargets(makefile);
+  for (const target of jobs.docs) add('the docs job', target);
+  for (const target of jobs.editor) add('the editor job', target);
+  return [...owners].filter(([, runs]) => runs.length > 1).map(([target, runs]) => `${target} runs in ${runs.join(' and ')}; every target runs in one CI job`);
+}
+
 // ciGroupErrors returns one error at each place where the CI groups do not split CHECK_TARGETS. For a job that runs GROUP_CHECK,
 // the matrix groups equal CI_GROUPS, each CI group has a CI_TARGETS_<group>, the targets of all groups together equal CHECK_TARGETS
 // without the gates of kit (CI_KIT_GATES), which the gates workflow runs, and no target is in two groups. So the two workflows
@@ -131,6 +166,10 @@ export function ciGroupErrors(workflow: string, makefile: string): string[] {
   for (const gate of gates) if (!all.includes(gate)) errors.push(`CI_KIT_GATES names ${gate}, which is not a target of CHECK_TARGETS`);
   const owners = new Map<string, string[]>();
   for (const group of groups) for (const target of targets[group] ?? []) owners.set(target, [...(owners.get(target) ?? []), group]);
+  // The docs and editor jobs run their own targets (jobTargets), so each CHECK_TARGETS target is run by one job.
+  const own = jobTargets(makefile);
+  for (const target of own.docs) owners.set(target, [...(owners.get(target) ?? []), 'docs']);
+  for (const target of own.editor) owners.set(target, [...(owners.get(target) ?? []), 'editor']);
   for (const [target, runs] of owners) if (gates.includes(target)) errors.push(`CI group ${runs.join(', ')} runs ${target}, a gate of kit (CI_KIT_GATES) that the gates workflow runs`);
   for (const target of checks) {
     const runs = owners.get(target) ?? [];

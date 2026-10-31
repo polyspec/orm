@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 48a98b628b44d530525f795eec421874227c74db242c454104c96263739fa406 -->
+<!-- source-sha256: ff07ecc91bf7a82793409c74f93181506ab98fab23a1b52f9df3d3557f40dc60 -->
 # 변경 이력
 
 ## Unreleased
 
+- 한 CI run에서 일부 target이 두 job에서 실행됐다: static group, docs job, editor job이 docs-verify-idempotent, docs-site-check, dbspec-vscode-check를 각각 실행했고, docs-check는 kit job과 docs job에서 모두 실행됐다. 이제 각 target은 한 job에서만 실행되며, 두 CI job이 같은 target을 실행하면 repo check의 case가 실패한다 (CR9).
 - lease 도구가 필요한 target마다 도구를 다시 빌드해서, 한 job의 여러 target이 같은 프로그램의 빌드를 반복했다. 이제 lease 프로그램은 그 source의 file target이어서 한 번 빌드되고, 이후에는 최신으로 확인된다 (CR11). docs 빌드 test(CR2)도 node:test로 case를 직접 선언했는데 repo 규칙이 이를 금지하므로, 이제 caseTest를 쓴다.
 - recipe 스키마는 fixture가 없는 recipe에 데이터베이스 op(`sql.exec`, `model.connect`)를 받아들여, 그런 동작이 세 데이터베이스 없이 실행될 수 있었다. 이제 그 op를 거부한다 (CR13).
 - docs 빌드는 게시된 폴더에 직접 사이트를 렌더링해서, 중단된 빌드는 사이트의 절반을 남겼다. 이제 임시 폴더에 렌더링한 뒤 이름 바꾸기 한 번으로 게시한다 (CR2).

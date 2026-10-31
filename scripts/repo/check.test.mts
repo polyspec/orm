@@ -8,7 +8,7 @@ import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { errorCode } from '../../tests/errors.mts';
 import { main as startServers, paths as serverPaths, SERVER_VARIABLES, TestServerError } from '../test-servers.mts';
-import { AFTER_GROUP_CHECK, CI_PASSED_STEPS, CI_RUN_EXCEPTIONS, ciPassedErrors, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
+import { AFTER_GROUP_CHECK, CI_PASSED_STEPS, CI_RUN_EXCEPTIONS, ciPassedErrors, ciGroups, jobOverlapErrors, jobTargets, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { parseArguments as parseKitTestArguments } from '@polyspec/kit/run-tests';
 import { fixlessMessageErrors } from './messages.mts';
@@ -592,8 +592,9 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   const { groups, targets } = ciGroups(makefile);
   assert.ok(groups.length > 1, 'the Makefile declares more than one CI group');
   const byCodeUnit = (a: string, b: string) => (a < b ? -1 : Number(a > b));
-  assert.deepEqual(groups.flatMap(group => targets[group] ?? []).sort(byCodeUnit), checkTargets(makefile).filter(target => !kitGates(makefile).includes(target)).sort(byCodeUnit));
-  assert.ok((targets.static ?? []).includes('dbspec-vscode-check'), 'the database-free VS Code extension check runs in the static CI group');
+  const own = jobTargets(makefile);
+  assert.deepEqual([...groups.flatMap(group => targets[group] ?? []), ...own.docs, ...own.editor].sort(byCodeUnit), checkTargets(makefile).filter(target => !kitGates(makefile).includes(target)).sort(byCodeUnit));
+  assert.ok(jobTargets(makefile).editor.includes('dbspec-vscode-check'), 'the VS Code extension check runs in the editor job, which ci-vscode-integration reaches (CR9)');
   assert.ok((targets.static ?? []).includes('catalog-row-baseline-go-check'), 'the appended owner check runs in the static CI group');
   // The group-rows-db targets each run in exactly one CI group (KSTD-10-1).
   for (const target of ['group-rows-db-go', 'group-rows-db-typescript', 'group-rows-db-python', 'group-rows-db-php', 'group-rows-db-php-extension', 'group-rows-db-rust']) {
@@ -2280,4 +2281,10 @@ caseTest('the lease tool is built once for two targets of one job', PROCESS, () 
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// The CI jobs case (CR9) checks that no CHECK_TARGETS target runs in two CI jobs: a test group, the kit gates, the docs job (make docs-ci)
+// or the editor job (make ci-vscode-integration). A target that two jobs run is run twice in one CI run.
+caseTest('no target of CHECK_TARGETS runs in two CI jobs', COMPUTE, () => {
+  assert.deepEqual(jobOverlapErrors(text('Makefile')), []);
 });
