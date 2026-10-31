@@ -51,6 +51,7 @@
 
 ## 0.0.19
 
+- The recipe schema accepted a database op (`sql.exec`, `model.connect`) in a recipe without a fixture, so such a behaviour could run without the three databases. It now refuses that op (CR13).
 - The docs build rendered the site into the published folder in place, so an interrupted build left half of the site behind. It now renders into a staging folder and publishes it by one rename (CR2).
 - The check runner printed no `::error` line for a failed target, so on GitHub Actions a failure was visible only when the job ended. A failed target now prints its `::error` line when it ends (CR1).
 - make docs-rules-check and make makefile-pinned-node-recipes-check failed in test (static) (T339-20). Two T339 rows used expressions that the writing style forbids, and the GroupRows PHP extension test still expected the build.sh call that T339-9 replaced with the one build path; the rows are reworded, and the test expects $(call php_ext_build,...) and reads the module and the mode of that call.

@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-check-recipes -->
-<!-- source-sha256: 3d41a779b6c8bd834ccf67d6ea943ce34d6196987fc87e33a2010fe9e92a5805 -->
+<!-- source-sha256: cbfcbc011e673841eeb46648108c4270f77b73102d0a36b4198227c5d0effccb -->
 # 병렬 check runner와 모든 공통 동작의 recipe 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -16,7 +16,7 @@
 | CR10 | B3-6 작업의 Rust 빌드는 crate마다 프로파일과 기능별로 한 번만 컴파일한다: dbspec_apply는 두 target이 빌드한다(Makefile:635, :827). 실행 41213234811의 kit / parity-bindings(rust)에서 polyspec-orm은 40번, polyspec-orm-build는 22번, polyspec-orm-case-clock은 2번 컴파일되었다. 이 행은 세 crate를 모두 다룬다. 행은 먼저 cargo의 fingerprint에서 어떤 기능, 플래그 또는 환경의 차이가 재빌드를 일으키는지 찾고, 사이트들이 한 빌드를 공유하게 한다. Red: 사례가 한 작업의 두 사이트에 대한 `Compiling polyspec-orm` 줄을 계수한다 | the rust targets dbspec_apply, polyspec-orm, polyspec-orm-build and polyspec-orm-case-clock in the Makefile, scripts/repo/check.test.mts | `node --test scripts/repo/check.test.mts` | [ ] |
 | CR11 | B3-7 lease 도구는 CI 작업마다 한 번 빌드된다: lease-tool(.PHONY, 선행 조건 줄 119개)과 WITH_TEST_ENV(137회 사용)는 매번 `$(BUILD_LEASE)`를 실행한다. 도구는 이미 `$(PUBLISH)`가 원자적으로 게시하므로, 바뀌는 것은 빌드가 작업마다 한 번 실행된다는 점이다. Red: `scripts/repo/check.test.mts`의 사례가 lease-tool target 두 개를 실행하고 go 빌드 두 번을 계수한다 | the lease-tool target and WITH_TEST_ENV in the Makefile, scripts/repo/check.test.mts | `node --test scripts/repo/check.test.mts` | [ ] |
 | CR12 | B1-4 보호 장치 규칙. Red: `node --test scripts/repo/check.test.mts`: `vendor-php/bin/orm-gen gen`의 고정 Makefile 줄이 `unpublishedOutputErrors`를 통과한다(:2048의 사례) | scripts/repo/testcases.mts, scripts/repo/check.test.mts | `node --test scripts/repo/check.test.mts`; `make repo-check` | [ ] |
-| CR13 | B2-2a 데이터베이스 op. Red: `node --test scripts/features/recipes.test.mts`: fixture가 없는 `sql.exec` recipe가 받아들여진다 | scripts/features/schema/recipe.schema.json, scripts/features/recipes.test.mts | `node --test scripts/features/recipes.test.mts` | [ ] |
+| CR13 | B2-2a 데이터베이스 op. Red: `node --test scripts/features/recipes.test.mts`: fixture가 없는 `sql.exec` recipe가 받아들여진다 | scripts/features/schema/recipe.schema.json, scripts/features/recipes.test.mts | `node --test scripts/features/recipes.test.mts` | [v] |
 | CR14 | B2-4 orm 규칙, 행 8과 함께. Red: `node --test scripts/repo/check.test.mts`: 새 사례가 fixture의 네이티브로 묶인 공통 단위에 대한 발견 사항을 찾지 못한다 | AGENTS.md, scripts/repo/check.test.mts | `node --test scripts/repo/check.test.mts`; `make repo-check` | [ ] |
 | CR15 | T334-3 변환 행들 뒤의 나머지 공통 단위. Red: 행 7의 검사가 여전히 네이티브로 묶인 단위의 이름을 적는다 | the native tests of the remaining shared units, their recipe cases, config/parity.json | `node --test scripts/repo/check.test.mts`; `make repo-check` | [ ] |
 | CR16 | B2-6, conformance 외의 suite로서 더 적은 데이터베이스에서 발견된 suite마다 한 행. 검색은 S4의 41개 suite 각각을 데이터베이스에 대해 확인하며, 첫 행에 기록한다. Red: 그 suite 자신의 make target이 빠진 데이터베이스의 DSN으로 실패한다 | the suite's make target, its recipe or test files | `make <suite-target>`, the suite's own make target, named in the row once the search finds the suite | [ ] |

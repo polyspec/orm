@@ -14,7 +14,42 @@
   },
   "if": { "type": "object", "required": ["fixture"], "properties": { "fixture": true } },
   "then": { "$ref": "#/$defs/expectations/databases" },
-  "else": { "$ref": "#/$defs/expectations/none" },
+  "else": {
+    "allOf": [
+      {
+        "$ref": "#/$defs/expectations/none"
+      },
+      {
+        "type": "object",
+        "properties": {
+          "cases": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "steps": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "op": {
+                        "not": {
+                          "enum": [
+                            "model.connect",
+                            "sql.exec"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
   "$defs": {
     "requirements": {
       "type": "array",

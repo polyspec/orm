@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 72321822cc2ac4b5195c653fb1b0dd4fde3ecb124e3984d8c975b41436da6212 -->
+<!-- source-sha256: 7604256f1f5c4f014eb0a289e5cd9125de6726d7ab3680a4e09822e2be420154 -->
 # 변경 이력
 
 ## Unreleased
 
+- recipe 스키마는 fixture가 없는 recipe에 데이터베이스 op(`sql.exec`, `model.connect`)를 받아들여, 그런 동작이 세 데이터베이스 없이 실행될 수 있었다. 이제 그 op를 거부한다 (CR13).
 - docs 빌드는 게시된 폴더에 직접 사이트를 렌더링해서, 중단된 빌드는 사이트의 절반을 남겼다. 이제 임시 폴더에 렌더링한 뒤 이름 바꾸기 한 번으로 게시한다 (CR2).
 - check runner는 실패한 target의 `::error` 줄을 출력하지 않아, GitHub Actions에서 실패는 작업이 끝나야 보였다. 이제 실패한 target은 끝날 때 `::error` 줄을 출력한다 (CR1).
 ## 0.0.21

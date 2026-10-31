@@ -52,6 +52,15 @@ caseTest('the recipe fixtures with and without a database are valid', COMPUTE, (
   }
 });
 
+// B2-2a: a database op (model.connect, sql.exec) needs the three databases, so a recipe without a fixture cannot hold one.
+caseTest('a recipe without a fixture refuses a database op', COMPUTE, () => {
+  const recipe = read(resolve(fixtures, 'without-database.json'));
+  const withOp = structuredClone(recipe);
+  const kase = (withOp.cases as Json[])[0] as { [key: string]: Json };
+  (kase.steps as Json[]).push({ op: 'sql.exec', sql: 'SELECT 1', reason: 'a database op in a recipe without a fixture' });
+  assert.notDeepEqual(refused(withOp, 'without-database + sql.exec'), [], 'a recipe without a fixture accepted sql.exec');
+});
+
 caseTest('the recipe schema refuses each break of the format', COMPUTE, () => {
   const database = read(resolve(fixtures, 'database.json'));
   const none = read(resolve(fixtures, 'without-database.json'));
