@@ -180,6 +180,25 @@ repository.
 - P38 main may be written directly, by one actor per checkout, through commits; a branch reaches main by the fast-forward of
   `make land`, which runs the gates that its changed paths select (K404, K446, K603).
   Enforced by: none, make land is the way a branch reaches main, and no hook can see which way a change took.
+- P39 A release asset keeps the file name its packer gives: npm pack's `scope-name-<version>.tgz` and the PEP 427
+  `<dist>-<version>-<tags>.whl` of a wheel, whose file name pip parses to install it. Composer names no archive file and
+  kit packs the Composer zip, so that zip is the label of its package with .zip, `<vendor>-<product>-<runtime>-<version>.zip`
+  (K985). Each package asset carries the GitHub label
+  `<vendor>-<product>-<runtime>-<version>`: the vendor is the owner of repositoryUrl, and the product and the runtime are
+  declared for each package in config/release.json, the runtime one of the six runtimes ts, go, rust, php, php-ext and
+  python. A package manager's name never stands in for the runtime, and the package name is never read for the product or
+  the runtime. Only package assets carry a label; packages.json, a file of the release, carries none and names each zip in
+  its dist.url (K980).
+  Enforced by: `make release-assets`, `make release-publish`
+- P40 One concept has one name across the rules, the configuration fields, the file names and the documents: ts, go,
+  rust, php, php-ext and python are runtimes, and a field for them is `runtime`. A new name first reuses the one kit already
+  has for the same concept (K981).
+  Enforced by: none, whether two names denote one concept is a judgement at review.
+- P41 A convention shared across repositories is first a rule of this document with its check; the code implements the
+  rule (K981).
+  Enforced by: none, whether a change introduces a shared convention is a judgement at review.
+- P42 The Task of a checklist item states its requirement, never the release or the version that will carry it (K981).
+  Enforced by: none, whether a Task names a release instead of its requirement is a judgement at review.
 
 ## Repository standards
 

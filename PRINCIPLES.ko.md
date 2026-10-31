@@ -1,5 +1,5 @@
 <!-- doc-id: principles -->
-<!-- source-sha256: 7455a64bef50d5af753d555c78f1ff26aab23540466bbc4db07c2cfcf53adfb0 -->
+<!-- source-sha256: 9a859a8f96804c6ea0bb45ee724b59b1c52ef6ada1dec9c24ebbe27597109e6e -->
 # 원칙
 
 [English](PRINCIPLES.md)
@@ -165,6 +165,21 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-inject-
 - P38 main은 checkout마다 한 행위자가 commit으로 직접 쓸 수 있다. branch는 바뀐 경로가 고르는 gate를 실행하는 `make land`의
   fast-forward로 main에 들어간다 (K404, K446, K603).
   Enforced by: none, make land가 branch가 main에 들어가는 길이며, 변경이 어느 길로 왔는지 hook은 보지 못한다.
+- P39 release asset은 packer가 붙인 파일 이름을 유지한다. npm pack의 `scope-name-<version>.tgz`, pip이 설치하려고 파일 이름을
+  해석하는 wheel의 PEP 427 `<dist>-<version>-<tags>.whl`이다. Composer는 archive 파일 이름을 정하지 않고 Composer zip은 kit이
+  만들므로, 그 zip은 package의 label에 .zip을 붙인 `<vendor>-<product>-<runtime>-<version>.zip`이다 (K985).
+  각 package asset은 GitHub label `<vendor>-<product>-<runtime>-<version>`을 단다. vendor는 repositoryUrl의 owner이고,
+  product와 runtime은 config/release.json에 package마다 선언하며, runtime은 여섯 runtime ts, go, rust, php, php-ext, python
+  중 하나다. package manager의 이름이 runtime을 대신하지 않고, product나 runtime을 package 이름에서 읽지 않는다. label은
+  package asset만 달며, release의 파일인 packages.json은 달지 않고 dist.url에 각 zip을 적는다 (K980).
+  Enforced by: `make release-assets`, `make release-publish`
+- P40 한 개념은 규칙, 설정 필드, 파일 이름, 문서에서 이름 하나를 쓴다. ts, go, rust, php, php-ext, python은 runtime이고,
+  그것을 담는 필드는 `runtime`이다. 새 이름은 같은 개념에 kit이 이미 쓰는 이름을 먼저 다시 쓴다 (K981).
+  Enforced by: none, 두 이름이 한 개념을 가리키는지는 review의 판단이다.
+- P41 여러 저장소에 걸친 관례는 먼저 검사와 함께 이 문서의 규칙이 되고, 코드는 그 규칙을 구현한다 (K981).
+  Enforced by: none, 변경이 공유 관례를 들이는지는 review의 판단이다.
+- P42 checklist 항목의 Task는 요구사항을 적고, 그것을 담을 릴리스나 버전은 적지 않는다 (K981).
+  Enforced by: none, Task가 요구사항 대신 릴리스를 적는지는 review의 판단이다.
 
 ## Repository 기준
 

@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: be36d1e7ea0a99ee57aec0b88cf09a849e6a260b239720fa390428bcc81e9704 -->
+<!-- source-sha256: ba605cda1f9e251baf4d2be3f8ea03ef5eee6fd97d425da3d99a967d533b07a3 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -14,7 +14,7 @@ orm 자신의 규칙만 적는다.
   push의 CI(`.github/workflows/ci.yml`의 job `ci-passed`)가 성공해야 version을 올리는 commit과 tag를
   만든다. release를 시작하는 것은 maintainer뿐이며, 그 CI run의 id로 release workflow를 dispatch하면 그 workflow가 run의 commit에 tag를
   만든다. push한 tag는 run을 시작하지 않는다. release
-  asset의 이름은 `<package>-<language>-<version>.<ext>`이다(예: `polyspec-orm-npm-X.Y.Z.tgz`). Python wheel은 PEP 427 이름
+  asset의 이름은 packer가 붙인 이름이다(P39, 예: `@polyspec/orm`의 `polyspec-orm-X.Y.Z.tgz`). Python wheel은 PEP 427 이름
   `polyspec_orm-X.Y.Z-py3-none-any.whl`을 유지한다.
   Enforced by: `make release-tag`
 - Own: 공유 도구는 npm package `@polyspec/kit`이며, `package.json`의 devDependency로 그 release의 asset과 integrity에
@@ -252,8 +252,8 @@ orm 자신의 규칙만 적는다.
   tag를 만들고 옮기고 push하는 사람은 없다.
   Enforced by: `make release-tag`
 - Own: 이어서 `.github/workflows/release.yml`이 tag한 commit에서 GitHub Release를 게시한다:
-  `make release-assets`(`@polyspec/orm`의 `polyspec-orm-npm-X.Y.Z.tgz`, `polyspec/orm`의 `polyspec-orm-php-X.Y.Z.zip`,
-  `polyspec/orm-php-ext`의 `polyspec-orm-php-ext-php-X.Y.Z.zip`, `polyspec-orm`의 `polyspec_orm-X.Y.Z-py3-none-any.whl`), `make release-publish`(그 section의 notes로 만든
+  `make release-assets`(`@polyspec/orm`의 `polyspec-orm-X.Y.Z.tgz`, `polyspec/orm`의 `polyspec-orm-php-X.Y.Z.zip`,
+  `polyspec/orm-php-ext`의 `polyspec-orm-php-ext-X.Y.Z.zip`, `polyspec-orm`의 `polyspec_orm-X.Y.Z-py3-none-any.whl`), `make release-publish`(그 section의 notes로 만든
   draft release이며, GitHub release 본문의 한도인 125000자를 넘는 section은 tag의 CHANGELOG.md에서 그 section을 가리키는 한 줄이
   된다), 그리고 그것을 공개하는 `make release-undraft`다. test는 다시 실행하지 않는다. `make release-coverage`는 checkout의 모든 manifest가 `config/release.json`에
   분류되어 있기를 요구한다.

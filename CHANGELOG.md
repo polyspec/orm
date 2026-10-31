@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- orm takes kit 0.0.86 (T344). Each package of config/release.json declares its product and runtime, as the release schema of kit 0.0.86 requires (P39): the asset label is `<vendor>-<product>-<runtime>-<version>`, and a release asset keeps the file name its packer gives, `polyspec-orm-X.Y.Z.tgz` for `@polyspec/orm` in place of `polyspec-orm-npm-X.Y.Z.tgz`. make kit-sync wrote P39 into PRINCIPLES.md and PRINCIPLES.ko.md. orm takes ordered-json 0.0.15 in every ecosystem, through its npm, Composer, Go, Python and Rust pins, and packaging.md names its assets `polyspec-ordered-json-0.0.15.tgz` and the Composer and wheel names of that release.
 - orm-gen gen of the PHP client removed every generated file of its output directory and then wrote each file in place, so a PHP test that started while another make process of the same run ran make php-models failed with "Failed opening required packages/php/gen/bootstrap.php" (T341). The generator now leaves a file that already holds its content as it is, writes a changed file to a temporary file of the same directory and renames it over the old one, and removes a generated file that the model no longer makes only after the new files are in place.
 
 ## 0.0.19

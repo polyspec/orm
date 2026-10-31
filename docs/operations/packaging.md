@@ -14,27 +14,27 @@
 
 ## Installing from release assets
 
-In 0.0.x the polyspec packages are distributed through GitHub only, as release assets and tags: the npm, Composer and Python packages are on no registry (npm, Packagist, PyPI). Each GitHub Release carries `polyspec-orm-npm-<version>.tgz`, `polyspec-orm-php-<version>.zip`, `polyspec-orm-gen-php-<version>.zip`, `polyspec-orm-php-ext-php-<version>.zip` (`<package>-<language>-<version>.<ext>`) and the Python wheel `polyspec_orm-<version>-py3-none-any.whl` (see Python client release). Each asset holds the manifest of the repository tree unchanged, and that manifest names every other polyspec package by the exact version of its release, so a project downloads the release assets it needs and installs them together. `make release-assets TAG=vX.Y.Z` builds them from the tagged commit.
+In 0.0.x the polyspec packages are distributed through GitHub only, as release assets and tags: the npm, Composer and Python packages are on no registry (npm, Packagist, PyPI). Each GitHub Release carries `polyspec-orm-<version>.tgz`, `polyspec-orm-php-<version>.zip` and `polyspec-orm-php-ext-<version>.zip`, each named by its label with .zip (P39), and the Python wheel `polyspec_orm-<version>-py3-none-any.whl` (see Python client release). Each asset holds the manifest of the repository tree unchanged, and that manifest names every other polyspec package by the exact version of its release, so a project downloads the release assets it needs and installs them together. `make release-assets TAG=vX.Y.Z` builds them from the tagged commit.
 
 - npm: list every tarball as a `file:` dependency, the orm tarball and the tarball of each polyspec package it depends on, from the GitHub Release of the version that the orm `package.json` names. npm satisfies the exact version of `@polyspec/ordered-json` with the tarball installed beside it:
 
   ```json
   {
     "dependencies": {
-      "@polyspec/orm": "file:vendor/polyspec-orm-npm-<version>.tgz",
-      "@polyspec/ordered-json": "file:vendor/polyspec-ordered-json-npm-0.0.14.tgz"
+      "@polyspec/orm": "file:vendor/polyspec-orm-<version>.tgz",
+      "@polyspec/ordered-json": "file:vendor/polyspec-ordered-json-0.0.16.tgz"
     }
   }
   ```
 
-- Composer: each release publishes a `packages.json` asset, a `composer` repository that holds the `composer.json` of the package with the URL and sha1 of its zip, and Composer reads the name, version and requirements from it (kit K865). A consumer declares the `packages.json` of the orm release and of each polyspec package that it requires (ordered-json `0.0.14`), since Composer reads `repositories` only from the root manifest of a project. The `packages.json` of orm exists from orm 0.0.19 on.
+- Composer: each release publishes a `packages.json` asset, a `composer` repository that holds the `composer.json` of the package with the URL and sha1 of its zip, and Composer reads the name, version and requirements from it (kit K865). A consumer declares the `packages.json` of the orm release and of each polyspec package that it requires (ordered-json `0.0.16`), since Composer reads `repositories` only from the root manifest of a project. The `packages.json` of orm exists from orm 0.0.19 on.
 
   ```json
   {
     "require": { "polyspec/orm": "<version>" },
     "repositories": [
       { "type": "composer", "url": "https://github.com/polyspec/orm/releases/download/v<version>/packages.json" },
-      { "type": "composer", "url": "https://github.com/polyspec/ordered-json/releases/download/v0.0.14/packages.json" },
+      { "type": "composer", "url": "https://github.com/polyspec/ordered-json/releases/download/v0.0.16/packages.json" },
       { "type": "vcs", "url": "https://github.com/min-0-max/yaml", "no-api": true }
     ]
   }
@@ -46,9 +46,9 @@ In 0.0.x the polyspec packages are distributed through GitHub only, as release a
 
 ## Python client release
 
-The Python client, `packages/python/pyproject.toml` (distribution `polyspec-orm`), is released as a PEP 427 wheel, `polyspec_orm-<version>-py3-none-any.whl`, one of the assets of its GitHub Release beside the npm and Composer archives. `make release-assets TAG=vX.Y.Z` builds the wheel from the tagged commit with `uv build`, which takes the build backend from `build-system.requires` of the pyproject.toml (`setuptools==84.0.0`). The wheel keeps the PEP 427 name because it is not an archive of the `<package>-<language>-<version>.<ext>` form.
+The Python client, `packages/python/pyproject.toml` (distribution `polyspec-orm`), is released as a PEP 427 wheel, `polyspec_orm-<version>-py3-none-any.whl`, one of the assets of its GitHub Release beside the npm and Composer archives. `make release-assets TAG=vX.Y.Z` builds the wheel from the tagged commit with `uv build`, which takes the build backend from `build-system.requires` of the pyproject.toml (`setuptools==84.0.0`). The wheel keeps the PEP 427 name, which its packer gives and pip parses, because it is not an archive of the npm or Composer form.
 
-A `Requires-Dist` of the wheel is an exact `name==version` for a registry package, and a direct reference with the sha256 of the asset for a polyspec package (kit K49): `polyspec-ordered-json @ https://github.com/polyspec/ordered-json/releases/download/v0.0.14/polyspec_ordered_json-0.0.14-py3-none-any.whl#sha256=bd2f…0f4b`. ordered-json is on no package index, and the reference names its release asset, so a pip install without a lock fetches it from GitHub and never asks a package index for that name. The lock of the Python client, `packages/python/uv.lock`, holds every dependency, transitive ones included, with the hash of each file, and ordered-json by the URL of its release asset with its sha256; `make orm-python-lock` writes it with `uv lock` from `packages/python/pyproject.toml`. `make orm-install-python` installs the client non-editable from it with `uv sync --locked --no-editable --group test`, and uv checks each file by the hash of the lock. The wheel supports Python 3.14 and CPython only: `requires-python` is `>=3.14`, the minor release of the Python of `mise.toml` that CI tests, and no older release, since the dependency `polyspec-ordered-json==0.0.9` requires 3.14; `packages/python/tests/test_requires_python.py` compares the two. The toolchain of orm is the CPython of python-build-standalone, and the package declares the classifier `Programming Language :: Python :: Implementation :: CPython`. Its dependency on `psycopg-binary==3.3.6` therefore names the binary build of psycopg directly, with no marker for other implementations.
+A `Requires-Dist` of the wheel is an exact `name==version` for a registry package, and a direct reference with the sha256 of the asset for a polyspec package (kit K49): `polyspec-ordered-json @ https://github.com/polyspec/ordered-json/releases/download/v0.0.16/polyspec_ordered_json-0.0.16-py3-none-any.whl#sha256=c242…0f45`. ordered-json is on no package index, and the reference names its release asset, so a pip install without a lock fetches it from GitHub and never asks a package index for that name. The lock of the Python client, `packages/python/uv.lock`, holds every dependency, transitive ones included, with the hash of each file, and ordered-json by the URL of its release asset with its sha256; `make orm-python-lock` writes it with `uv lock` from `packages/python/pyproject.toml`. `make orm-install-python` installs the client non-editable from it with `uv sync --locked --no-editable --group test`, and uv checks each file by the hash of the lock. The wheel supports Python 3.14 and CPython only: `requires-python` is `>=3.14`, the minor release of the Python of `mise.toml` that CI tests, and no older release, since the dependency `polyspec-ordered-json==0.0.9` requires 3.14; `packages/python/tests/test_requires_python.py` compares the two. The toolchain of orm is the CPython of python-build-standalone, and the package declares the classifier `Programming Language :: Python :: Implementation :: CPython`. Its dependency on `psycopg-binary==3.3.6` therefore names the binary build of psycopg directly, with no marker for other implementations.
 
 The binary extra of psycopg is written as the two plain requirements that it expands to, `psycopg==3.3.6` and `psycopg-binary==3.3.6`. The extra excludes PyPy, which a plain requirement cannot express, so `psycopg-binary` is also required there.
 

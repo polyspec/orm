@@ -9,12 +9,16 @@
     {
       "kind": "npm",
       "directory": "packages/ts",
-      "name": "@polyspec/orm"
+      "name": "@polyspec/orm",
+      "product": "orm",
+      "runtime": "ts"
     },
     {
       "kind": "composer",
       "directory": "packages/php",
       "name": "polyspec/orm",
+      "product": "orm",
+      "runtime": "php",
       "generated": [
         {
           "kind": "make",
@@ -29,6 +33,8 @@
       "kind": "composer",
       "directory": "packages/php-ext",
       "name": "polyspec/orm-php-ext",
+      "product": "orm",
+      "runtime": "php-ext",
       "generated": [
         {
           "kind": "make",
@@ -44,6 +50,8 @@
       "kind": "wheel",
       "directory": "packages/python",
       "name": "polyspec-orm",
+      "product": "orm",
+      "runtime": "python",
       "generated": [
         {
           "kind": "make",
@@ -57,17 +65,23 @@
     {
       "kind": "npm",
       "directory": "packages/dbspec-language",
-      "name": "@polyspec/dbspec-language"
+      "name": "@polyspec/dbspec-language",
+      "product": "dbspec-language",
+      "runtime": "ts"
     },
     {
       "kind": "npm",
       "directory": "packages/dbspec-lsp",
-      "name": "@polyspec/dbspec-lsp"
+      "name": "@polyspec/dbspec-lsp",
+      "product": "dbspec-lsp",
+      "runtime": "ts"
     },
     {
       "kind": "npm",
       "directory": "packages/dbspec-codemirror",
-      "name": "@polyspec/dbspec-codemirror"
+      "name": "@polyspec/dbspec-codemirror",
+      "product": "dbspec-codemirror",
+      "runtime": "ts"
     }
   ],
   "manifests": {

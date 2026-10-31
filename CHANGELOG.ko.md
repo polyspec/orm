@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: acb3b7e905b39866b92738d52dc4b1b2a7f72b1f762f609fae6c23b13db91203 -->
+<!-- source-sha256: 4643ad1faf260f522cf51cbceff11c9a6a324cf4dc81cfae2363801ea8b5a137 -->
 # 변경 이력
 
 ## Unreleased
 
+- orm은 kit 0.0.86를 채택한다(T344). config/release.json은 package마다 product와 runtime을 선언하며, 이는 kit 0.0.86의 release schema가 요구한다(P39): asset label은 `<vendor>-<product>-<runtime>-<version>`이고, release asset은 packer가 붙인 파일 이름을 유지한다(`@polyspec/orm`은 `polyspec-orm-npm-X.Y.Z.tgz`가 아니라 `polyspec-orm-X.Y.Z.tgz`). make kit-sync가 P39를 PRINCIPLES.md와 PRINCIPLES.ko.md에 썼다. orm은 모든 생태계의 ordered-json pin(npm, Composer, Go, Python, Rust)을 0.0.15로 옮기며, packaging.md는 그 release의 asset `polyspec-ordered-json-0.0.15.tgz`와 Composer, wheel 이름을 적는다.
 - PHP client의 orm-gen gen은 출력 directory의 모든 생성 파일을 지운 뒤 각 파일을 덮어 썼으므로, 같은 실행의 다른 make process가 make php-models를 실행하는 동안 시작된 PHP test가 "Failed opening required packages/php/gen/bootstrap.php"로 실패했다(T341). 이제 generator는 이미 같은 내용을 가진 파일을 그대로 두고, 바뀐 파일은 같은 directory의 임시 파일에 쓴 뒤 이전 파일 위로 rename하며, model이 더 이상 만들지 않는 생성 파일은 새 파일을 모두 쓴 뒤에만 지운다.
 
 ## 0.0.19

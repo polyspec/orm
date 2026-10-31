@@ -14,8 +14,8 @@ vendors; this file states only the rules of orm.
   item is `[~]` and the work of the push is complete; the CI of that push must succeed (the job
   `ci-passed` of `.github/workflows/ci.yml`) before the version-bump commit and the tag.
   Only the maintainer starts a release, by a dispatch of the release workflow with the id of that
-  CI run, which tags its commit; a pushed tag starts no run. A release asset is named `<package>-<language>-<version>.<ext>`, for example
-  `polyspec-orm-npm-X.Y.Z.tgz`; the Python wheel keeps its PEP 427 name,
+  CI run, which tags its commit; a pushed tag starts no run. A release asset keeps the file name its packer gives (P39), for example
+  `polyspec-orm-X.Y.Z.tgz` for `@polyspec/orm`; the Python wheel keeps its PEP 427 name,
   `polyspec_orm-X.Y.Z-py3-none-any.whl`.
   Enforced by: `make release-tag`
 - Own: The shared tools are the npm package `@polyspec/kit`, a devDependency of `package.json` pinned to
@@ -288,8 +288,8 @@ vendors; this file states only the rules of orm.
   Enforced by: `make release-tag`
 - Own: `.github/workflows/release.yml` then publishes the GitHub Release from the tagged commit:
   `make release-assets`
-  (`polyspec-orm-npm-X.Y.Z.tgz` of `@polyspec/orm`, `polyspec-orm-php-X.Y.Z.zip` of `polyspec/orm`,
-  `polyspec-orm-php-ext-php-X.Y.Z.zip` of `polyspec/orm-php-ext` and `polyspec_orm-X.Y.Z-py3-none-any.whl` of
+  (`polyspec-orm-X.Y.Z.tgz` of `@polyspec/orm`, `polyspec-orm-php-X.Y.Z.zip` of `polyspec/orm`,
+  `polyspec-orm-php-ext-X.Y.Z.zip` of `polyspec/orm-php-ext` and `polyspec_orm-X.Y.Z-py3-none-any.whl` of
   `polyspec-orm`), `make release-publish` (the release as a draft
   with the notes of that section; a section over 125000 characters, the limit of a GitHub release
   body, becomes one line that links the section of CHANGELOG.md at the tag) and `make release-undraft`, which makes

@@ -1,6 +1,10 @@
 # Release workflow of a repository that adopts kit. kit-sync copies this file from the installed package @polyspec/kit to
 # .github/workflows/release.yml, and kit-check fails when the checkout differs from it; a repository never edits it.
 #
+# The workflow starts by itself when a push run of the CI workflow ci succeeds on main (K987): it checks out the head_sha of that
+# run, and release-tag with AUTO releases it only when it is the version commit of the top ## X.Y.Z of its change log, which is
+# the tip of its push; a commit whose top version is tagged elsewhere ends green with nothing to release, and a top version that
+# no run released fails and names its version commit. A concurrency group of the job runs one release of the repository at a time.
 # A dispatch of the workflow with the id of a successful CI run releases the commit of that run (K911): it tags the commit with
 # the version of the newest section ## X.Y.Z of its change log (K924) and creates the GitHub Release of the tag as a draft with
 # its archives, and makes it public. The run is the evidence; the release runs no test again. The steps run in order and stop at
@@ -23,6 +27,10 @@
 name: release
 
 on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       run:
@@ -36,16 +44,24 @@ permissions:
 
 jobs:
   release:
+    # A workflow_run starts the release for a successful push or dispatch run of CI alone (K987). The concurrency group is the job's,
+    # so a run whose job is skipped never replaces the pending release of a version commit.
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch')) }}
+    concurrency:
+      group: release-${{ github.repository }}
+      cancel-in-progress: false
     runs-on: ubuntu-24.04
     env:
-      RUN: ${{ inputs.run }}
+      RUN: ${{ inputs.run || github.event.workflow_run.id }}
       GH_TOKEN: ${{ github.token }}
     steps:
-      # actions/checkout v7.0.1: main with the whole history and every branch, so origin/main is there for the ancestry check and
-      # the kit of main runs release-tag.
+      # actions/checkout v7.0.1: with the whole history and every branch, so origin/main is there for the ancestry check; a
+      # workflow_run checks out the head_sha of its CI run, never a later main (K987), and a dispatch checks out main, whose kit
+      # runs release-tag.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha }}
       - name: verify the Composer archive tool
         run: command -v zip >/dev/null || { echo 'Info-ZIP is required for Composer release archives; install the zip package on the Ubuntu runner'; exit 1; }
       # actions/setup-node v7.1.0: the Node.js of mise.toml starts the bootstrap, which installs that release into var/tools
@@ -81,11 +97,13 @@ jobs:
       - name: install packages
         run: make install-packages
       - name: tag the commit of the CI run
-        run: make release-tag
+        run: make release-tag ${{ github.event_name == 'workflow_run' && 'AUTO=1' || '' }}
       # The release builds the tagged commit with its own kit and packages.
       - name: check out the tag
+        if: ${{ env.TAG != '' }}
         run: git checkout --quiet "$TAG"
       - name: bootstrap the installed kit package of the tag
+        if: ${{ env.TAG != '' }}
         run: |
           if [ "$(node -p 'require("./package.json").name')" != '@polyspec/kit' ]; then
             # npm 11 of the runner refuses to run in a folder whose devEngines names npm 12.2.0 (EBADDEVENGINES), so the npm of
@@ -95,21 +113,29 @@ jobs:
             (cd "${RUNNER_TEMP:?RUNNER_TEMP is not set}" && npm_config_cache="$root/var/bootstrap/npm-cache" npm exec --yes --package="npm@$version" -- npm --prefix "$root" ci --ignore-scripts --allow-remote=root)
           fi
       - name: install npm of the tag
+        if: ${{ env.TAG != '' }}
         run: make install-tools TOOLS=npm
       - name: install packages of the tag
+        if: ${{ env.TAG != '' }}
         run: make install-packages
       - name: prepare the release of the repository
+        if: ${{ env.TAG != '' }}
         run: make release-prepare
       - name: make release-tools
+        if: ${{ env.TAG != '' }}
         run: make release-tools
       # The tools of var/tools/bin — the Go of mise.toml that the release builds with, and whatever else the packages
       # need — join PATH for the steps that follow; a step's PATH is its own, so the export goes to the file the
       # runner reads between steps.
       - name: put the installed tools on PATH
+        if: ${{ env.TAG != '' }}
         run: make release-tools-path
       - name: build the assets
+        if: ${{ env.TAG != '' }}
         run: make release-assets
       - name: create the draft release
+        if: ${{ env.TAG != '' }}
         run: make release-publish
       - name: make the release public
+        if: ${{ env.TAG != '' }}
         run: make release-undraft TAG="$TAG"
