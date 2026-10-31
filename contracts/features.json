@@ -1273,7 +1273,6 @@
         "packages/python/tests/test_styled_column_states.py",
         "packages/python/tests/test_styled_sql_null.py",
         "packages/python/tests/test_decimal_model.py",
-        "packages/python/tests/test_decimal_model_sqlite_ddl.py",
         "packages/python/tests/decimal_model_db.py",
         "packages/python/tests/test_model_fields.py",
         "packages/python/tests/test_values.py",
@@ -1723,11 +1722,10 @@
         },
         {
           "id": "decimal-python-unit",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_decimal_model && packages/python/.venv/bin/python -m packages.python.tests.test_decimal_model_sqlite_ddl",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_decimal_model",
           "shard": "other",
           "inputs": [
             "packages/python/tests/test_decimal_model.py",
-            "packages/python/tests/test_decimal_model_sqlite_ddl.py",
             "packages/python/src/polyspec/orm/decimal.py",
             "contracts/fixtures/decimal_model.json"
           ]

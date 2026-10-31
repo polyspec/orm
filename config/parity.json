@@ -849,10 +849,6 @@
           "reason": "test: exercises the private _aggregate_number conversion helper with Python Decimal and bool inputs; public aggregate value behavior is covered by the six-client aggregate-numeric suite"
         },
         {
-          "glob": "packages/python/tests/test_decimal_model_sqlite_ddl.py",
-          "reason": "test: repeats the public SQLite decimal DDL assertion already exercised on every client by the types-and-defaults vector of the six-client dbspec-ddl suite; the file adds no distinct accepted schema or output behavior"
-        },
-        {
           "glob": "packages/python/tests/coverage_case_test.py",
           "reason": "harness: tests the Python feature-coverage runner’s case selection, database iteration and result events; client behavior is exercised by the declared feature owner cases"
         },

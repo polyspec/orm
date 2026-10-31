@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 6f40bd36377ea03313fb5e8f381e259d0e05203ead3f322213e78837980cd410 -->
+<!-- source-sha256: 20ae88713ebe477e3231a1b932bd386a219e69e150926958d91c7571c22a727b -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.19
 
+- tests/dbspec/ddl.json의 types-and-defaults case는 scale 4인 SQLite decimal column `amount decimal(13,4) null`을 MySQL, PostgreSQL, SQLite statement와 함께 선언하고, SQLite step 두 개가 9999999999999는 넣고 10000000000000은 그 CHECK로 거부합니다. 그래서 여섯 runtime의 dbspec-ddl suite가 그 scaled integer 저장을 검사합니다. decimal-model suite 파일 안에 suite 밖의 case로 있던 typescript `decimal_model/sqlite_decimal_ddl`과, scale 4 column이 없는 vector의 반복으로 선언되어 있던 python test_decimal_model_sqlite_ddl.py는 지웁니다(T327).
 - parity unit request-hook-reads-params의 TypeScript binding은 request_hook.mjs request-hook/reads_params 하나다. packages/ts/tests/coverage_request_hook_reads_params.mjs는 삭제되었다. 이 파일은 request_hook_run.mjs의 같은 case를 자기 assertion 없이 runCase로 실행해 node:test test를 등록하지 않았고, parity 실행이 그 unit을 실행되지 않은 것으로 보고하게 했다 (T322).
 - build.rs와 coverage_model_generation.rs가 공유하는 bench model 목록 packages/rust/tests/bench_model.rs는 build.rs가 선언된 곳에 선언됩니다: config/parity.json의 rust support 파일, feature의 test 파일, build.rs를 지정하는 각 check의 입력입니다. 이전에는 parity 선언 검사가 이 파일을 선언되지 않은 test로, feature 검사가 어느 feature에도 속하지 않은 rust test 파일로 보고했습니다(T334-2).
 - Rust integration program의 section trial(conditions, joins_and_relations, columns_and_subqueries, writes, transactions, aes_rotation, json_values, bind_limit_splitting)은 schema_empty처럼 자기 본문에서 driver마다 case를 시작합니다. 이전에는 installed_section helper 안에서 case를 시작했으므로, 모든 Rust test가 case를 시작하는지 보는 저장소 검사가 trial에서 case 시작을 찾지 못했습니다(T334-1).

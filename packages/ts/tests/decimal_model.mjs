@@ -1,11 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import { normalizeDecimal, decimalScaled, decimalFromScaled } from '../dist/decimal.js';
-import { parseDbspec, renderDbspec } from '../dist/dbspec/index.js';
-import { caseTest, cases, COMPUTE } from '../../../tests/testcase.mts';
+import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 
 const fixture = JSON.parse(await readFile(new URL('../../../contracts/fixtures/decimal_model.json', import.meta.url), 'utf8'));
 const columns = new Map(fixture.columns.map(column => [column.id, column]));
-const run = cases();
 for (const testCase of fixture.cases) caseTest(testCase.id, COMPUTE, () => {
   const column = columns.get(testCase.column);
   if (!column) throw new Error(`${testCase.id}: unknown column ${testCase.column}`);
@@ -20,13 +18,3 @@ for (const testCase of fixture.cases) caseTest(testCase.id, COMPUTE, () => {
     if (!testCase.expected.error || error.code !== testCase.expected.error) throw error;
   }
 });
-// The dbspec renderer writes SQLite decimal columns as scaled integer storage.
-await run.run('decimal_model/sqlite_decimal_ddl', COMPUTE, () => {
-  const parsed = parseDbspec('dbspec 1 decimal\n\ntable t {\n  seq i64\n  amount decimal(13,4)\n  primary key (seq)\n}\n', {});
-  if (parsed.diagnostics.length !== 0) throw new Error(`decimal document: ${JSON.stringify(parsed.diagnostics)}`);
-  const rendered = renderDbspec([parsed.document], 'sqlite');
-  if (rendered.diagnostics.length !== 0 || !rendered.statements[0].includes('"amount" DECIMALINT(13,4) NOT NULL')) {
-    throw new Error(`SQLite decimal DDL ${JSON.stringify(rendered)} must use exact scaled storage`);
-  }
-});
-run.finish();
