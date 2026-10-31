@@ -1,5 +1,6 @@
+import { renameSync, rmSync } from 'node:fs';
 import path from 'node:path';
-import { root } from './lib.mts';
+import { dist, root } from './lib.mts';
 import { runChild, runLong, type Step } from '../../tests/testcase.mts';
 
 // The docs build is a long task: vitepress builds every page. The Mermaid diagrams are drawn by the reader's browser
@@ -25,8 +26,14 @@ const passed = await runLong('docs-build', async ({ step }) => {
     await command([npm, ...build], step);
   }
   const vitepress = path.join(root, 'node_modules/vitepress/bin/vitepress.js');
-  const args = [vitepress, 'build', 'docs'];
+  // The site is rendered into a staging folder and published by one rename, so an interrupted build leaves the published site as it was (B1-4).
+  const staging = `${dist}.tmp`;
+  rmSync(staging, { recursive: true, force: true });
+  const args = [vitepress, 'build', 'docs', '--outDir', staging];
   step(`node ${path.relative(root, vitepress)} ${args.slice(1).join(' ')}`);
   await command(args, step);
+  rmSync(dist, { recursive: true, force: true });
+  renameSync(staging, dist);
+  step(`published ${path.relative(root, dist)}`);
 });
 if (!passed) process.exit(1);
