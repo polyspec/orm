@@ -765,26 +765,6 @@ export const CI_PASSED_STEPS: Record<string, unknown>[] = [
   CI_PASSED_STEP,
 ];
 
-// The error code files of TypeScript, PHP and Python are build output of make orm-codes (config/generated.json), which runs orm-gen
-// with the Go of mise.toml. CODE_READERS are the steps whose targets build or read them.
-const CODE_READERS = /^make (?:check-run|docs-ci|ci-vscode-integration)\b/;
-
-// ciErrorCodesErrors returns one error for each job of ci.yml that runs a step of CODE_READERS without an earlier step that installs Go
-// and a later one, still before it, that runs make orm-codes.
-export function ciErrorCodesErrors(workflow: string): string[] {
-  const errors: string[] = [];
-  for (const job of readWorkflow(workflow, 'ci.yml').jobs) {
-    const runs = job.steps.map(step => step.run.trim());
-    const reader = runs.findIndex(run => CODE_READERS.test(run));
-    if (reader < 0) continue;
-    const codes = runs.findIndex(run => run === 'make orm-codes');
-    const go = runs.findIndex(run => /^make (?:ci-install-tools\b|install-tools TOOLS="?[^"]*\bgo\b)/.test(run));
-    if (codes < 0 || codes > reader) errors.push(`ci.yml job ${job.id} runs ${runs[reader]} without an earlier step make orm-codes, which writes the error code files it reads`);
-    else if (go < 0 || go > codes) errors.push(`ci.yml job ${job.id} runs make orm-codes without an earlier step that installs the Go of mise.toml`);
-  }
-  return errors;
-}
-
 // ciPassedErrors returns one error for each place where ci.yml has no job ci-passed, where it is not the last job, where it is not `if: ${{ always() }}`, or where needs is not equal to all the other jobs,
 // or where a step is not in CI_PASSED_STEPS.
 export function ciPassedErrors(workflow: string): string[] {

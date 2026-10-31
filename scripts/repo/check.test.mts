@@ -8,7 +8,7 @@ import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { errorCode } from '../../tests/errors.mts';
 import { main as startServers, paths as serverPaths, SERVER_VARIABLES, TestServerError } from '../test-servers.mts';
-import { AFTER_GROUP_CHECK, CI_PASSED_STEPS, CI_RUN_EXCEPTIONS, ciErrorCodesErrors, ciPassedErrors, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
+import { AFTER_GROUP_CHECK, CI_PASSED_STEPS, CI_RUN_EXCEPTIONS, ciPassedErrors, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { parseArguments as parseKitTestArguments } from '@polyspec/kit/run-tests';
 import { fixlessMessageErrors } from './messages.mts';
@@ -27,7 +27,7 @@ import { parse as parseYaml, stringify } from 'yaml';
 import { parse as parseToml } from 'smol-toml';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
 import { detachedGroupErrors, timeFailureErrors } from './sources.mts';
-import { callerEnvironmentErrors, generateRuns, scriptCommands, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, makeTargets, rustTestCaseErrors, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
+import { callerEnvironmentErrors, generateRuns, scriptCommands, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, makeTargets, rustTestCaseErrors, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
 
 // yamlSteps writes steps (the values of a workflow's steps) as the list under a job's steps:, six spaces deep.
 const yamlSteps = (steps: unknown[]) => stringify(steps).split('\n').map(line => line ? `      ${line}` : line).join('\n');
@@ -2167,18 +2167,63 @@ caseTest('the toolchain checks read the commands that a step runs', COMPUTE, () 
   assert.deepEqual(rustToolchainErrors(toolchain, makefile, { 'ci.yml': rust.replace('cargo test --locked', 'echo "cargo +nightly"') }, '1.98.1'), []);
 });
 
-caseTest('a CI job that reads the error code files writes them first with make orm-codes and Go', COMPUTE, () => {
-  const job = (...runs: string[]) => `jobs:\n  docs:\n    steps:\n${runs.map(run => `      - run: ${run}\n`).join('')}`;
-  assert.deepEqual(ciErrorCodesErrors(job('make install-tools TOOLS=npm', 'make install-tools TOOLS=go', 'make orm-codes', 'make docs-ci')), []);
-  assert.deepEqual(ciErrorCodesErrors(job('make ci-install-tools GROUP=x', 'make orm-codes', 'make check-run GROUP=x')), []);
-  assert.deepEqual(ciErrorCodesErrors(job('make install-tools TOOLS=npm', 'make lint')), []);
-  assert.deepEqual(ciErrorCodesErrors(job('make install-tools TOOLS=npm', 'make docs-ci')), [
-    'ci.yml job docs runs make docs-ci without an earlier step make orm-codes, which writes the error code files it reads',
+// The error code files are build output of orm-codes-<lang> (config/generated.json): a target that reads one has the target that
+// writes it among its prerequisites, directly or through a hub, so make writes the file before the recipe reads it.
+caseTest('a target that reads an error code file has the target that writes it as a prerequisite', COMPUTE, () => {
+  assert.deepEqual(generatedCodesErrors(text('Makefile')), []);
+  const kit = 'lint-ts: typescript-build\nlint-php test-php-ext: orm-codes-php\nparity-declarations-check parity-check parity-api-check $(KIT_PARITY_BINDING_TARGETS): orm-codes\n';
+  const makefile = [
+    'orm-codes: orm-codes-typescript orm-codes-php orm-codes-python',
+    'orm-codes-typescript orm-codes-php orm-codes-python: orm-codes-%:',
+    '\tcd packages/go && $(PUBLISH) $(CURDIR)/$(ORM_CODES_$*) $(GO) run ./cmd/orm-gen errors --lang $* --out @OUT@',
+    'typescript-build: lease-tool orm-codes-typescript',
+    '\t$(HOLD_TYPESCRIPT)',
+    'php-vendor-check: orm-codes-php',
+    '\ttest -f vendor-php/autoload.php',
+    'python-venv-check: orm-codes-python',
+    '\ttest -x $(PYTHON_VENV)/bin/python',
+    'ts-hub: lease-tool',
+    '\t$(HOLD_TYPESCRIPT)',
+    '\t$(TSC_BUILD)',
+    'ts-bare: lease-tool',
+    '\t$(HOLD_TYPESCRIPT)',
+    '\t$(TSC_BUILD)',
+    'ts-hub: orm-codes-typescript',
+    'ts-later: ts-hub',
+    '\tnpm run typescript:check',
+    'php-unit: php-vendor-check',
+    '\tenv ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- packages/php/tests/CodeCatalogTest.php',
+    'php-bare:',
+    '\t$(PHP) packages/php/bin/tool.php',
+    'php-extension-run: lease-tool',
+    '\tPOLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) go test ./x',
+    'python-unit: python-venv-check',
+    '\t$(RUN_TESTS) python --venv $(PYTHON_VENV) --module x',
+    'python-bare:',
+    '\t$(PYTHON_VENV)/bin/python -m x',
+    'all-codes: orm-codes',
+    '\tORM_PYTHON=$(PYTHON_VENV)/bin/python POLYSPEC_ORM_EXTENSION=x node scripts/features/owners.mts',
+    'extension-build:',
+    '\tsh packages/php-ext/scripts/build.sh x.so',
+    '',
+  ].join('\n');
+  const missing = (target: string, language: string) => `Makefile ${target} reads the ${language} error code file without the prerequisite orm-codes-${language}, which writes it; add orm-codes-${language}, or php-vendor-check or python-venv-check, which have it, to its prerequisites`;
+  assert.deepEqual(generatedCodesErrors(kit + makefile), [
+    missing('ts-bare', 'typescript'),
+    missing('php-bare', 'php'),
+    missing('php-extension-run', 'php'),
+    missing('python-bare', 'python'),
   ]);
-  assert.deepEqual(ciErrorCodesErrors(job('make install-tools TOOLS=go', 'make docs-ci', 'make orm-codes')), [
-    'ci.yml job docs runs make docs-ci without an earlier step make orm-codes, which writes the error code files it reads',
-  ]);
-  assert.deepEqual(ciErrorCodesErrors(job('make install-tools TOOLS=npm', 'make orm-codes', 'make ci-vscode-integration')), [
-    'ci.yml job docs runs make orm-codes without an earlier step that installs the Go of mise.toml',
+  // A kit target whose recipe kit.mk owns reads the files as well: the Makefile adds its prerequisite.
+  assert.deepEqual(generatedCodesErrors(makefile), [
+    missing('ts-bare', 'typescript'),
+    missing('php-bare', 'php'),
+    missing('php-extension-run', 'php'),
+    missing('python-bare', 'python'),
+    missing('lint-ts', 'typescript'),
+    missing('lint-php', 'php'),
+    missing('test-php-ext', 'php'),
+    ...['parity-declarations-check', 'parity-check', 'parity-api-check', '$(KIT_PARITY_BINDING_TARGETS)']
+      .flatMap(target => [missing(target, 'typescript'), missing(target, 'php'), missing(target, 'python')]),
   ]);
 });

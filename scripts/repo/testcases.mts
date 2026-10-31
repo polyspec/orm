@@ -516,6 +516,54 @@ export function typescriptHolderErrors(makefile: string): string[] {
     .map(rule => `Makefile ${rule.target} builds the TypeScript client without holding its build output; start the recipe with $(HOLD_TYPESCRIPT)`);
 }
 
+// CODES_READERS are, for each error code file that make orm-codes-<lang> writes (config/generated.json), the recipe text of a target
+// that reads it: TypeScript compiles packages/ts/src (a build, or the holding of the build output), PHP runs packages/php/src through
+// PHPUnit, the PHP of the checkout, the Composer autoloader or a program given the extension, and Python runs the editable venv,
+// whose polyspec.orm imports codes.
+const CODES_READERS: Record<string, RegExp> = {
+  typescript: /\$\(TSC_BUILD\)|\$\(HOLD_TYPESCRIPT\)|typescript:(?:build|test|check)\b|docs:build\b/,
+  php: /\bphpunit\b|\$\(PHP\)|vendor-php\/|POLYSPEC_ORM_EXTENSION=/,
+  python: /\$\(PYTHON_VENV\)|\$\(RUN_TESTS\) python\b/,
+};
+// KIT_CODES_READERS are the targets whose recipe kit.mk owns and that read error code files: the Makefile only adds their
+// prerequisites. The parity targets read the error files of every implementation of config/parity.json.
+const KIT_CODES_READERS: Record<string, string[]> = {
+  'lint-ts': ['typescript'],
+  'lint-php': ['php'],
+  'test-php-ext': ['php'],
+  'parity-declarations-check': ['typescript', 'php', 'python'],
+  'parity-check': ['typescript', 'php', 'python'],
+  'parity-api-check': ['typescript', 'php', 'python'],
+  '$(KIT_PARITY_BINDING_TARGETS)': ['typescript', 'php', 'python'],
+};
+
+// generatedCodesErrors returns one error for each make target that reads an error code file without orm-codes-<lang>, which writes
+// it, among its prerequisites, directly or through a prerequisite such as the hubs php-vendor-check and python-venv-check, or
+// orm-codes, which writes all three: make then writes the file before the recipe reads it. A reader is found by its recipe text
+// alone (CODES_READERS) or is a kit target (KIT_CODES_READERS); a program that a recipe starts and that reads a file without such
+// text, as a Go test that runs a client, is not seen.
+export function generatedCodesErrors(makefile: string): string[] {
+  const targets = makeTargets(makefile);
+  const prerequisites = new Map<string, string[]>();
+  for (const rule of targets) prerequisites.set(rule.target, [...(prerequisites.get(rule.target) ?? []), ...rule.prerequisites]);
+  const reaches = (target: string, wanted: string, seen = new Set<string>()): boolean => {
+    if (seen.has(target)) return false;
+    seen.add(target);
+    return (prerequisites.get(target) ?? []).some(prerequisite => prerequisite === wanted || prerequisite === 'orm-codes' || reaches(prerequisite, wanted, seen));
+  };
+  const readers = new Map<string, Set<string>>();
+  for (const rule of targets)
+    for (const [language, reader] of Object.entries(CODES_READERS))
+      if (rule.commands.some(command => reader.test(command))) readers.set(rule.target, (readers.get(rule.target) ?? new Set()).add(language));
+  for (const [target, languages] of Object.entries(KIT_CODES_READERS)) readers.set(target, new Set([...(readers.get(target) ?? []), ...languages]));
+  const errors: string[] = [];
+  for (const [target, languages] of readers)
+    for (const language of languages)
+      if (!target.startsWith('orm-codes') && !reaches(target, `orm-codes-${language}`))
+        errors.push(`Makefile ${target} reads the ${language} error code file without the prerequisite orm-codes-${language}, which writes it; add orm-codes-${language}, or php-vendor-check or python-venv-check, which have it, to its prerequisites`);
+  return errors;
+}
+
 // unleasedCargoErrors returns one error for each segment in which a command outside the Makefile (verification command, script, package.json script) builds in the shared Rust target
 // directory (CARGO_TARGET_DIR) without a lease, or runs a program from it.
 // The build runs under `"$LEASE" run "$CARGO_LEASES" exclusive --wait --` (tests/cargo-test.mts does this itself),

@@ -126,11 +126,6 @@ jobs:
         id: go-lease-modules
         if: ${{ !cancelled() }}
         run: make orm-install-go-lease
-      # The error code files of TypeScript, PHP and Python are build output of orm-gen errors (config/generated.json).
-      - name: error code files
-        id: error-codes
-        if: ${{ !cancelled() }}
-        run: make orm-codes
       - name: Go modules
         id: go-modules
         if: ${{ !cancelled() && steps.group-needs.outputs.go == 'true' }}
@@ -293,11 +288,6 @@ jobs:
         id: go
         if: ${{ !cancelled() }}
         run: make install-tools TOOLS=go
-      # The error code files of TypeScript, PHP and Python are build output of orm-gen errors (config/generated.json).
-      - name: error code files
-        id: error-codes
-        if: ${{ !cancelled() }}
-        run: make orm-codes
       # docs-verify-idempotent builds docs/.vitepress/dist twice and compares
       # every byte, and docs-check builds it and reads its pages and links
       # with Node. make docs-ci runs the two through the runner of make orm-check,
@@ -357,11 +347,6 @@ jobs:
         id: go-lease-modules
         if: ${{ !cancelled() }}
         run: make orm-install-go-lease
-      # The error code files of TypeScript, PHP and Python are build output of orm-gen errors (config/generated.json).
-      - name: error code files
-        id: error-codes
-        if: ${{ !cancelled() }}
-        run: make orm-codes
       - name: VS Code of the integration test
         id: vscode
         if: ${{ !cancelled() }}

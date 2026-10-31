@@ -402,7 +402,7 @@ temp-sqlite-fixture-rust-helper-check/cpx5: lease-tool
 # client-pooler-check runs the client database tests through the PgBouncer
 # pooler in transaction mode for PostgreSQL and the ProxySQL pooler for MySQL. Its php-extension lane builds the
 # extension, so it installs the PHP extension tools (T272).
-client-pooler-check: lease-tool python-venv-check orm-install-php-extension-tools
+client-pooler-check: lease-tool python-venv-check orm-install-php-extension-tools orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_TEST_POSTGRES_DSN="$$ORM_TEST_PGBOUNCER_DSN" ORM_TEST_MYSQL_DSN="$$ORM_TEST_PROXYSQL_DSN" node scripts/client-db-test.mts
 
@@ -452,11 +452,11 @@ dbspec-introspect-check:
 # conformance-ts-suite-check runs the conformance vectors of each dialect as node:test tests named by their vectors, the
 # TypeScript bindings of the conformance units of config/parity.json, each on a bench database it seeds and drops itself.
 .PHONY: conformance-ts-suite-check
-conformance-ts-suite-check: lease-tool
+conformance-ts-suite-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(WITH_TEST_ENV) node --test --conditions=orm-test packages/ts/tests/coverage_conformance_mysql.mjs packages/ts/tests/coverage_conformance_postgres.mjs packages/ts/tests/coverage_conformance_sqlite.mjs packages/ts/tests/conformance_vector_count.test.mts
-dbspec-introspect-ts-check: lease-tool
+dbspec-introspect-ts-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(WITH_TEST_ENV) node --test packages/ts/tests/dbspec-introspect.mjs packages/ts/tests/dbspec-introspect-round-trip.mjs
@@ -495,7 +495,7 @@ dbspec-sqlite-literal-rows-helper-check: php-vendor-check
 dbspec-introspect-php-extension-query-count-check: php-vendor-check php-models
 	@set -eu; run_dir="$(abspath .runtime/run)/dbspec-introspect-php-extension-query-count-check-$$PPID"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; $(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/php-extension/polyspec_orm.so"; env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecIntrospectNativeTest.php
 
-dbspec-introspect-query-count-unit-check: php-vendor-check python-venv-check dbspec-introspect-query-count-rust-check dbspec-introspect-php-extension-query-count-check
+dbspec-introspect-query-count-unit-check: php-vendor-check python-venv-check dbspec-introspect-query-count-rust-check dbspec-introspect-php-extension-query-count-check orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(GO_TEST) ./packages/go/engine/dbspec -run '^(TestQueryCountIsIndependentOfSQLiteTableCount|TestSQLiteUnsupportedColumnReasonQuotesMissingCheck)$$' -count=1
 	$(TSC_BUILD)
@@ -603,7 +603,7 @@ dbspec-lock-python-check: python-venv-check
 dbspec-lock-rust-check:
 	cd packages/rust && $(CARGO_TEST) dbspec-lock-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib sqlite_lock_result_tests -- --nocapture
 
-dbspec-lock-ts-check: lease-tool
+dbspec-lock-ts-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NODE) --test packages/ts/tests/dbspec-begin-exclusive-lock.mjs
@@ -628,7 +628,7 @@ dbspec-apply-stress-bench:
 # rows and the introspected schema text must match those of the chain. Python also runs the
 # representative finalize and lock-wait scenarios on each database.
 .PHONY: dbspec-apply-pairs-check
-dbspec-apply-pairs-check: lease-tool python-venv-check
+dbspec-apply-pairs-check: lease-tool python-venv-check php-vendor-check orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(RUN_LONG) rust-build/dbspec_apply --cwd packages/rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm --example dbspec_apply
@@ -645,7 +645,7 @@ dbspec-apply-rust-check:
 # dbspec-plan-ts-check builds the TypeScript client and applies every case of tests/dbspec/plans.json to MySQL, PostgreSQL, and SQLite
 # with its renderDbspec, planSteps, and introspectDbspec.
 .PHONY: dbspec-plan-ts-check
-dbspec-plan-ts-check: lease-tool
+dbspec-plan-ts-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(WITH_TEST_ENV) node --test packages/ts/tests/dbspec-plan-physical.mjs
@@ -653,7 +653,7 @@ dbspec-plan-ts-check: lease-tool
 # dbspec-apply-ts-check builds the TypeScript client and runs the scenario of dbspec-apply-check, minus the 2000-table plan,
 # with its applyPlans, recoverPlans, rollbackPlans, and finalizePlans.
 .PHONY: dbspec-apply-ts-check
-dbspec-apply-ts-check: lease-tool
+dbspec-apply-ts-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(WITH_TEST_ENV) node --test packages/ts/tests/dbspec-apply-physical.mjs
@@ -694,7 +694,7 @@ dbspec-apply-php-extension-check: php-vendor-check
 # prints the introspection time and warns when it exceeds the reference value. dbspec-introspect-compare-bench runs the same target with the 2000
 # table document and the release runners.
 .PHONY: dbspec-introspect-compare-check dbspec-introspect-compare-bench
-dbspec-introspect-compare-check: lease-tool python-venv-check
+dbspec-introspect-compare-check: lease-tool python-venv-check php-vendor-check orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_INTROSPECT_DOCUMENT))
 	$(PUBLISH) $(DBSPEC_INTROSPECT_DOCUMENT) node tests/dbspec/stress.mts $(DBSPEC_INTROSPECT_TABLES)
@@ -754,9 +754,10 @@ orm-install-python: orm-codes-python
 	$(MAKE) --no-print-directory install-link
 	$(MAKE) --no-print-directory python-models
 # python-venv-check checks that the venv of orm-install-python exists and runs the Python release of mise.toml. A missing venv
-# or another release fails without a download or a repair, and names the fix: remove the venv and run make install.
+# or another release fails without a download or a repair, and names the fix: remove the venv and run make install. Every target
+# that runs that venv reads codes.py, which polyspec.orm imports, so its prerequisite orm-codes-python writes the file first.
 .PHONY: python-venv-check
-python-venv-check:
+python-venv-check: orm-codes-python
 	@test -x $(PYTHON_VENV)/bin/python || { echo "python-venv-check: $(PYTHON_VENV)/bin/python is missing; run make install, which creates it"; exit 1; }
 	@got=$$($(PYTHON_VENV)/bin/python -c 'import platform; print(platform.python_version())') || { echo "python-venv-check: $(PYTHON_VENV)/bin/python does not run; remove $(PYTHON_VENV) and run make install, which builds it from the Python of mise.toml"; exit 1; }; \
 	want=$$(mise current python) || { echo "python-venv-check: mise does not name the Python of mise.toml; run make install-tools"; exit 1; }; \
@@ -764,9 +765,10 @@ python-venv-check:
 
 # php-vendor-check fails when vendor-php/autoload.php or the PHPUnit of packages/php or packages/php-ext, which orm-install-php
 # creates with Composer, is missing, and names the make step that creates it; it installs nothing. A target that runs PHP
-# through packages/php/tests/autoload.php or a package's PHPUnit takes it as a prerequisite.
+# through packages/php/tests/autoload.php or a package's PHPUnit takes it as a prerequisite. Such a target reads Code.php of
+# packages/php/src, so its prerequisite orm-codes-php writes the file first.
 .PHONY: php-vendor-check
-php-vendor-check:
+php-vendor-check: orm-codes-php
 	@for file in vendor-php/autoload.php vendor-php/bin/phpunit; do test -f $$file || { echo "php-vendor-check: $$file is missing; run make orm-install-php, which installs it with Composer"; exit 1; }; done
 	@$(NODE) scripts/php/vendor-autoload-check.mjs
 
@@ -815,7 +817,7 @@ dbspec-python-check: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_ddl
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_apply
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p 'test_dbspec_*.py'
-dbspec-compare-check/prepare: lease-tool python-venv-check
+dbspec-compare-check/prepare: lease-tool python-venv-check php-vendor-check orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_COMPARE_DOCUMENT))
 	$(PUBLISH) $(DBSPEC_COMPARE_DOCUMENT) node tests/dbspec/stress.mts $(DBSPEC_COMPARE_TABLES)
@@ -853,7 +855,7 @@ dbspec-stress-bench/php: php-vendor-check dbspec-stress-bench/prepare
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecStressTest.php
 dbspec-stress-bench/php-introspect: php-vendor-check dbspec-stress-bench/prepare
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecIntrospectStressTest.php
-dbspec-stress-bench/typescript: dbspec-stress-bench/prepare lease-tool
+dbspec-stress-bench/typescript: dbspec-stress-bench/prepare lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NODE) --test packages/ts/tests/dbspec-stress.mjs
@@ -888,7 +890,7 @@ dbspec-verify-errors-rust-check: lease-tool
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup apply_reports_verify_errors_separately_from_drift -- --nocapture
 
 .PHONY: dbspec-verify-errors-check dbspec-verify-errors-php-extension-check
-dbspec-verify-errors-check: dbspec-verify-errors-rust-check dbspec-verify-errors-php-extension-check php-vendor-check python-venv-check lease-tool
+dbspec-verify-errors-check: dbspec-verify-errors-rust-check dbspec-verify-errors-php-extension-check php-vendor-check python-venv-check lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(GO_TEST) ./packages/go/engine/dbspec -run '^TestSettledVerifyPreservesIntrospectionErrors$$' -count=1
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter testVerifyErrorsAreNotDriftAndPreserveCause packages/php/tests/DbspecApplyCleanupTest.php
@@ -1433,7 +1435,7 @@ orm-test-servers-leases-clear:
 # make owner-check, a target of the kit.mk of @polyspec/kit, passes this target the paths that changed under the rules of
 # config/owner-checks.json; hooks-check first checks that the hooks are installed.
 .PHONY: feature-owner-check
-feature-owner-check: hooks-check
+feature-owner-check: hooks-check orm-codes
 	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python node scripts/features/owners.mts $(PATHS)
 
 feature-unit-check: feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select
@@ -1479,7 +1481,7 @@ feature-rust-database:
 # feature-verify-rust runs the verification commands of shard rust, and feature-verify-other runs shard other. Commands shared by features
 # execute once in their shard (scripts/features/check.mts).
 feature-check: feature-coverage feature-verify-rust feature-verify-other
-feature-check/build: lease-tool
+feature-check/build: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-build -- npm run typescript:build
 # The Python owners of the coverage run on the client's venv (ORM_PYTHON), which imports the installed client (scripts/features/coverage.mts).
@@ -1571,7 +1573,7 @@ FEATURE_STRESS_PG_SQLITE_HELPERS = dbspec-stress dbspec-apply-stress-pg-sqlite
 FEATURE_STRESS_HELPERS = $(FEATURE_STRESS_MYSQL_HELPERS) $(FEATURE_STRESS_PG_SQLITE_HELPERS)
 FEATURE_SUITE_HELPERS = bench-database case-database conformance-result conformance-runners native-query-probe python-test-harness phpstan-test-runner php-orm-gen-scan-failure-case audit-native-method-assertions dbspec-sqlite-literal-rows dbspec-introspect-case-rendering-python typescript-catalog-mutation-lock python-catalog-mutation-lock php-group-rows-test-cases php-model-types-test-cases php-dbspec-interface-program php-database-test-assertions php-extension-model-assembly-test-support typescript-internal-column-error typescript-dbspec-plan-fixture physical-command-output typescript-audit-history-rows typescript-captured-error typescript-check-state typescript-mysql-test-options typescript-database-case-tests typescript-dbspec-physical-database typescript-conditional-entry typescript-database-case-fixture rust-temp-sqlite-fixture php-cpx5-duplicate-relation-cases
 feature-helper-check: RUN_DIR = $(abspath .runtime/run)/feature-helper-check-$$PPID
-feature-helper-check: feature-check/build
+feature-helper-check: feature-check/build php-vendor-check python-venv-check
 	@set -eu; run_dir="$(RUN_DIR)"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; \
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$(PHP_EXTENSION_LIBRARY)"; \
 	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python POLYSPEC_ORM_EXTENSION="$(PHP_EXTENSION_LIBRARY)" node scripts/features/check.mts --run --helpers $(addprefix --without-helper ,$(FEATURE_STRESS_HELPERS) $(FEATURE_SUITE_HELPERS))
@@ -1614,7 +1616,7 @@ client-unit-check/code-catalog: php-vendor-check
 client-unit-check/hostcodec: php-vendor-check
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/HostcodecTest.php
 # client-unit-check/insert-parts runs the cases of contracts/fixtures/insert_parts.json in PHP and TypeScript.
-client-unit-check/insert-parts: php-vendor-check lease-tool
+client-unit-check/insert-parts: php-vendor-check lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/InsertPartsTest.php
 	$(TSC_BUILD)
@@ -1626,7 +1628,7 @@ client-unit-check/engine: php-vendor-check
 blind-index-source-php-check: php-vendor-check
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/BlindIndexSourcePlannerTest.php
 
-blind-index-source-ts-check: lease-tool
+blind-index-source-ts-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NODE) --conditions=orm-test --test packages/ts/tests/engine_features.mjs
@@ -1653,7 +1655,7 @@ client-unit-check/orm-gen: php-vendor-check
 php-go-text-check: php-vendor-check
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/GoSerializationTest.php
 
-php-gen-unit-check: php-vendor-check lease-tool
+php-gen-unit-check: php-vendor-check lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenCliTest.php packages/php/tests/OrmGenScanTest.php packages/php/tests/OrmGenScanParityTest.php packages/php/tests/OrmGenPackageTest.php
@@ -1708,12 +1710,12 @@ native-error-cause-check/typescript-driver:
 	$(NODE) --test packages/ts/tests/driver-error-lock-wait.mjs packages/ts/tests/driver-cell-bytes.mjs
 native-error-cause-check/typescript-markdown:
 	$(NODE) packages/ts/tests/markdown.mjs
-native-error-cause-check/python-driver:
+native-error-cause-check/python-driver: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p test_driver_errors.py
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p test_driver_cells.py
-native-error-cause-check/python-markdown:
+native-error-cause-check/python-markdown: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p test_markdown.py -k test_markdown_connect_refused
-native-error-cause-check/php:
+native-error-cause-check/php: php-vendor-check
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmExceptionLockWaitTest.php packages/php/tests/MarkdownTest.php packages/php/tests/NativeCellReadTest.php
 native-error-cause-check/rust-markdown:
 	cd packages/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) native-error-cause-markdown-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --test markdown --features test-faults markdown_connect_refused -- --nocapture
@@ -1788,7 +1790,7 @@ client-db-php-check: php-vendor-check php-models
 client-db-php-extension-check: lease-tool php-vendor-check php-models orm-install-php-extension-tools
 	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANGS=php-extension node scripts/client-db-test.mts
 
-client-db-typescript-check: lease-tool
+client-db-typescript-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANGS=typescript node scripts/client-db-test.mts
@@ -1927,7 +1929,7 @@ conformance-result-check: conformance-result-check/php conformance-result-check/
 .PHONY: conformance-result-check/php conformance-result-check/typescript conformance-result-check/go conformance-result-check/python
 conformance-result-check/php: php-vendor-check
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ConformanceResultTest.php
-conformance-result-check/typescript: lease-tool
+conformance-result-check/typescript: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-build -- npm run typescript:build
 	$(NODE) --test tests/conformance/check/result_typescript.test.mts
@@ -1937,7 +1939,7 @@ conformance-result-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.conformance_result
 
 conformance-result-physical-check: RUN_DIR = $(abspath .runtime/run)/conformance-result-physical-check-$$PPID
-conformance-result-physical-check: lease-tool conformance-python-models
+conformance-result-physical-check: lease-tool conformance-python-models php-vendor-check orm-codes-typescript
 	@set -eu; run_dir="$(RUN_DIR)"; trap 'rm -rf "$$run_dir"' EXIT; \
 	$(HOLD_TYPESCRIPT); \
 	rm -rf "$$run_dir"; \
@@ -1949,7 +1951,7 @@ group-rows-physical-check: php-vendor-check
 
 # group-rows-db-python runs tests/test_group_rows_db.py on the bench database of BENCH_SQLITE_DSN (make run-databases sets it).
 .PHONY: group-rows-db-python group-rows-db-typescript
-group-rows-db-python:
+group-rows-db-python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p test_group_rows_db.py
 # group-rows-db-typescript runs packages/ts/tests/group_rows_db.mjs on the bench database of BENCH_SQLITE_DSN; the script throws on a failed check.
 group-rows-db-typescript: typescript-build
@@ -1957,7 +1959,7 @@ group-rows-db-typescript: typescript-build
 	ORM_GROUP_DATABASE=sqlite ORM_GROUP_DSN="$$BENCH_SQLITE_DSN" $(NODE) packages/ts/tests/group_rows_db.mjs
 # Runs the selected model getter/setter styled states in each native client. Each runtime reports independently.
 .PHONY: styled-column-states-unit-check
-styled-column-states-unit-check: lease-tool php-vendor-check php-model-check python-venv-check
+styled-column-states-unit-check: lease-tool php-vendor-check php-model-check python-venv-check orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	@set +e; status=0; last_result=0; \
 	run_case() { label=$$1; shift; printf '[styled-column-states] %s\n' "$$label"; "$$@"; last_result=$$?; printf '[styled-column-states] %s exit %s\n' "$$label" "$$last_result"; if [ "$$last_result" -ne 0 ]; then status=1; fi; return 0; }; \
@@ -2009,7 +2011,7 @@ unselected-column-physical-check: php-vendor-check
 # case-database-check runs the model case of four clients on two shared test databases, leaving one table in each,
 # and checks that the cases pass without changing the shared database or the PostgreSQL schema, and leave no
 # `orm_case_` database or `orm-case-` SQLite file of their own (T25).
-case-database-check: php-vendor-check lease-tool
+case-database-check: php-vendor-check lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-build -- npm run typescript:build
 	$(WITH_TEST_ENV) PATH="$(HOME)/.cargo/bin:$(PATH)" node scripts/case-database-check.mts
@@ -2065,7 +2067,7 @@ endif
 .PHONY: conformance-check/python
 conformance-check/python: lease-tool python-venv-check conformance-python-models
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.testcase packages.python.tests.conformance_mysql packages.python.tests.conformance_postgres packages.python.tests.conformance_sqlite
-conformance-check/run: lease-tool conformance-python-models
+conformance-check/run: lease-tool conformance-python-models php-vendor-check orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	rm -rf $(RUN_DIR)
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
@@ -2202,7 +2204,7 @@ markdown-conformance-check/python: python-venv-check
 	FLOWMARK=$(FLOWMARK) $(PYTHON_VENV)/bin/python -m packages.python.tests.markdown_conformance
 markdown-conformance-check/rust: lease-tool
 	cd packages/rust && FLOWMARK=$(FLOWMARK) PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) markdown-conformance-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test markdown_conformance -- --nocapture
-markdown-conformance-check/typescript: lease-tool
+markdown-conformance-check/typescript: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	FLOWMARK=$(FLOWMARK) $(NODE) --conditions=orm-test packages/ts/tests/markdown_conformance.mjs
@@ -2251,7 +2253,7 @@ go-model-check:
 # ts-model-check builds the TypeScript client, then fails when the models
 # script scans a source that does not call models or misses one that does,
 # or when the committed src/models/models.ts differs from its output.
-ts-model-check: lease-tool
+ts-model-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NODE) --test packages/ts/tests/models-scan.mjs
@@ -2263,14 +2265,14 @@ perf-check:
 # scripts-typecheck checks the repository's TypeScript-based scripts (the .mts files of scripts/ and tests/, tsconfig.json) with tsc.
 # Some scripts import the build output of packages/ts and packages/dbspec-language (through docs/.vitepress/dbs.ts), so
 # they are checked after that build.
-scripts-typecheck: lease-tool
+scripts-typecheck: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NPM) run --workspace @polyspec/dbspec-language build
 	$(RUN_LONG) scripts-typecheck -- node_modules/.bin/tsc -p tsconfig.json
 
 ts-check: ts-check/hold ts-check/types ts-check/test
-ts-check/hold: lease-tool
+ts-check/hold: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 ts-check/types: ts-check/hold
 	$(TSC_BUILD)
@@ -2279,25 +2281,25 @@ ts-check/test: ts-check/hold
 	$(WITH_TEST_ENV) npm run typescript:test
 
 # ts-save-key-check builds the TypeScript client and runs only the save key error cases.
-ts-save-key-check: lease-tool
+ts-save-key-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NODE) --test packages/ts/tests/save-key-errors.test.mjs
 
 # ts-aes-auth-check builds the TypeScript client and runs only the AES authentication error cases.
-ts-aes-auth-check: lease-tool
+ts-aes-auth-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NODE) --test packages/ts/tests/codec-aes-errors.test.mjs
 
 # ts-codec-errors-check builds the TypeScript client and runs only codec error propagation cases.
-ts-codec-errors-check: lease-tool
+ts-codec-errors-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NODE) --test packages/ts/tests/codec-errors.test.mjs
 
 # sqlite-version-ts-check runs only the TypeScript SQLite native-version unit cases.
-sqlite-version-ts-check: lease-tool
+sqlite-version-ts-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NODE) --test packages/ts/tests/sqlite-version.test.mjs
@@ -2350,7 +2352,7 @@ column-function-metadata-check/go:
 	exit $$status
 column-function-metadata-check/rust: lease-tool
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib column_function_metadata
-column-function-metadata-check/typescript: lease-tool
+column-function-metadata-check/typescript: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(RUN_LONG) column-function-metadata-typescript -- $(NODE) --test packages/ts/tests/column_function_metadata.mjs
@@ -2380,7 +2382,7 @@ scalar-subquery-column-check/go:
 	cd packages/go && $(GO) test ./engine/planner -run '^TestScalarSubquery' -count=1
 scalar-subquery-column-check/rust: lease-tool
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib scalar_subquery_
-scalar-subquery-column-check/typescript: lease-tool
+scalar-subquery-column-check/typescript: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(RUN_LONG) scalar-subquery-column-typescript -- $(NODE) packages/ts/tests/scalar_subquery_type.mjs
@@ -2408,11 +2410,11 @@ paged-read-rust-check: lease-tool
 page-cache-unit-check: lease-tool php-vendor-check php-models python-venv-check typescript-build model-types-php-extension-check page-cache-unit-check/go page-cache-unit-check/php page-cache-unit-check/typescript page-cache-unit-check/python page-cache-unit-check/rust
 page-cache-unit-check/go:
 	$(GO_TEST) ./packages/go/orm -run '^(TestPlanCachePagedReadBindsPageValues|TestCanonicalizeCompositeRequestParameterWalk)$$' -count=1
-page-cache-unit-check/php:
+page-cache-unit-check/php: php-vendor-check
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/PlanCacheBoundTest.php
 page-cache-unit-check/typescript:
 	$(NODE) --test packages/ts/tests/plan-cache-in.mjs
-page-cache-unit-check/python:
+page-cache-unit-check/python: python-venv-check
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_plan_cache_bound
 page-cache-unit-check/rust:
 	cd packages/rust && $(CARGO_TEST) page-cache-unit-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib paged_ -- --test-threads=1 --nocapture
@@ -2425,7 +2427,7 @@ php-plan-cache-memory-check: lease-tool php-vendor-check php-models
 # Focused split-merge NULL boundary cases in each native client.
 split-null-check: split-null-check/ts split-null-check/php split-null-check/python split-null-check/rust split-null-check/go split-null-check/php-extension
 
-split-null-check/ts: lease-tool
+split-null-check/ts: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NODE) --conditions=orm-test --test packages/ts/tests/split-null.test.mjs
@@ -2453,7 +2455,7 @@ split-read-plan-check: split-read-plan-check/go split-read-plan-check/ts split-r
 split-read-plan-check/go: lease-tool
 	$(GO_TEST) ./packages/go/orm -run '^TestSplitRootInCountPlansNoStatementOverTheBindLimit$$' -count=1
 
-split-read-plan-check/ts: lease-tool
+split-read-plan-check/ts: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NODE) --test packages/ts/tests/split-plan.test.mjs
@@ -2490,7 +2492,7 @@ sqlite-version-rust-check: lease-tool
 
 # ts-min-check runs the TypeScript tests on the lowest Node release that
 # package.json supports.
-ts-min-check: lease-tool
+ts-min-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(WITH_TEST_ENV) NODE_MIN="$$($(NODE) scripts/typescript/node-min.mts)" && PATH="$$NODE_MIN:$$PATH" && export PATH && "$$NODE_MIN/node" --version && "$$NODE_MIN/npm" run typescript:test
 
@@ -2498,7 +2500,7 @@ ts-min-check: lease-tool
 # vectors, apply cleanup errors, the rules they do not yet cover, and the check that the Unicode word table matches its ranges at every code point.
 # The stress document is run by make bench.
 .PHONY: dbspec-ts-check
-dbspec-ts-check: lease-tool
+dbspec-ts-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NODE) --test packages/ts/tests/browser-entry.mjs packages/ts/tests/dbspec.mjs packages/ts/tests/dbspec-canonical.mjs packages/ts/tests/dbspec-normalize.mjs packages/ts/tests/dbspec-positions.mjs packages/ts/tests/dbspec-invalid.mjs packages/ts/tests/dbspec-files.mjs packages/ts/tests/dbspec-hashes.mjs packages/ts/tests/dbspec-sets.mjs packages/ts/tests/dbspec-set.mjs packages/ts/tests/dbspec-set-edges.mjs packages/ts/tests/dbspec-set-parse.mjs packages/ts/tests/dbspec-analyze.mjs packages/ts/tests/dbspec-syntax.mjs packages/ts/tests/syntax-vectors.mjs packages/ts/tests/dbspec-rules.mjs packages/ts/tests/dbspec-render.mjs packages/ts/tests/dbspec-render-dialect.mjs packages/ts/tests/dbspec-plan.mjs packages/ts/tests/dbspec-plan-cases.mjs packages/ts/tests/dbspec-plan-invalid.mjs packages/ts/tests/dbspec-plan-chains.mjs packages/ts/tests/dbspec-plan-parse.mjs packages/ts/tests/dbspec-plan-comparisons.mjs packages/ts/tests/dbspec-mermaid-export.mjs packages/ts/tests/dbspec-mermaid-import.mjs packages/ts/tests/dbspec-mermaid-invalid.mjs packages/ts/tests/dbspec-mermaid-round-trip.mjs packages/ts/tests/dbspec-apply-cleanup.mjs packages/ts/tests/dbspec-unicode.mjs packages/ts/tests/dbspec-show-create.mjs packages/ts/tests/dbspec-show-create-introspect.mjs
@@ -2510,7 +2512,7 @@ dbspec-ts-check: lease-tool
 # its modes, exit codes, stderr lines and the --write and --check of the editor fixtures.
 .PHONY: dbspec-language-check
 # dbspec-lsp-check builds the language server and runs its stdio sessions over the editor fixtures and file trees.
-dbspec-lsp-check: lease-tool
+dbspec-lsp-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NPM) run --workspace @polyspec/dbspec-language build
@@ -2518,7 +2520,7 @@ dbspec-lsp-check: lease-tool
 	$(NODE) --test packages/dbspec-lsp/tests/session.test.mjs
 
 # dbspec-codemirror-check builds the CodeMirror adapter and runs the editor fixtures through an EditorState.
-dbspec-codemirror-check: lease-tool
+dbspec-codemirror-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NPM) run --workspace @polyspec/dbspec-language build
@@ -2527,7 +2529,7 @@ dbspec-codemirror-check: lease-tool
 
 # dbspec-vscode-check builds the VS Code extension (the type check and the esbuild bundles of the extension and the
 # bundled language server) and checks its manifest and bundles without VS Code.
-dbspec-vscode-check: lease-tool
+dbspec-vscode-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NPM) run --workspace @polyspec/dbspec-language build
@@ -2553,7 +2555,7 @@ dbspec-vscode-integration: dbspec-vscode-check
 ci-vscode-integration:
 	xvfb-run -a $(MAKE) --no-print-directory dbspec-vscode-integration
 
-dbspec-language-check: lease-tool
+dbspec-language-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NPM) run --workspace @polyspec/dbspec-language build
@@ -2566,7 +2568,7 @@ CLI_PREFIX ?= $(HOME)/.local
 # CLI_PREFIX without a symbolic link (scripts/install-cli.mts): a copy of both packages and a script that runs node
 # with the copied entry. Put $(CLI_PREFIX)/bin on PATH; uninstall-cli removes the copy and the script.
 .PHONY: orm-install-cli uninstall-cli
-orm-install-cli: lease-tool
+orm-install-cli: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NPM) run --workspace @polyspec/dbspec-language build
@@ -2577,7 +2579,7 @@ uninstall-cli:
 
 # orm-install-cli-check installs dbspec-fmt into a temporary prefix with scripts/install-cli.mts, runs it and uninstalls it
 # (tests/cli/install-cli.test.mts); the install reads the registry.
-orm-install-cli-check: lease-tool
+orm-install-cli-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NPM) run --workspace @polyspec/dbspec-language build
@@ -2642,7 +2644,7 @@ docs-implementation-count-check:
 
 # docs-dbs-check runs the unit cases of the dbs fence (docs/.vitepress/dbs.ts) after building the packages it reads, and
 # type-checks the site's TypeScript with docs/.vitepress/tsconfig.json, the project that make lint-ts also judges it by.
-docs-dbs-check: lease-tool
+docs-dbs-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NPM) run --workspace @polyspec/dbspec-language build
@@ -2684,7 +2686,7 @@ codec-check/go:
 	$(GO_TEST) ./packages/go/orm -run '^TestRecipeCodecNone$$' -count=1
 codec-check/rust: lease-tool
 	cd packages/rust && $(CARGO_TEST) codec-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test codec_none
-codec-check/typescript: lease-tool
+codec-check/typescript: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NODE) --test packages/ts/tests/codec-none.test.mjs
@@ -2703,7 +2705,7 @@ bind-check/go:
 	$(GO_TEST) ./packages/go/orm -run '^(TestBindVectors|TestBindMessageVectors)$$' -count=1
 bind-check/rust: lease-tool
 	cd packages/rust && $(CARGO_TEST) bind-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib bind_
-bind-check/typescript: lease-tool
+bind-check/typescript: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NODE) packages/ts/tests/markdown.mjs
@@ -2721,7 +2723,7 @@ ir-answers-check/go:
 	$(GO_TEST) -tags markdown ./packages/go/markdownmodel -run '^TestIRAnswers$$' -count=1
 ir-answers-check/rust: lease-tool
 	cd packages/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) ir-answers-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test markdown_conformance -- ir_answers::
-ir-answers-check/typescript: lease-tool
+ir-answers-check/typescript: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NODE) --conditions=orm-test packages/ts/tests/ir_answers.mjs
@@ -2770,8 +2772,10 @@ install: orm-codes orm-install-php orm-install-rust orm-install-go orm-install-p
 # orm-codes writes the error code constants of TypeScript, PHP and Python from docs/spec/errors.yaml with orm-gen errors; they are
 # build output and never tracked (P34). Go and Rust keep theirs tracked, since a go.mod or Cargo.toml consumer installs the tagged tree
 # (config/generated.json, tracked). The PHP and Python packages declare their file as a make entry of config/release.json, and the
-# install of each runtime writes its file before the runtime reads it. orm-gen runs online, since a job that installs only one
-# runtime has not downloaded the Go modules of orm-gen.
+# install of each runtime writes its file. Every target that reads a file has orm-codes-<lang> among its prerequisites, directly or
+# through php-vendor-check or python-venv-check, so make writes it before the recipe reads it (make repo-check). The file is published
+# by a rename ($(PUBLISH)), since the make processes of several runs write it while others read it. orm-gen runs online, since a
+# job that installs only one runtime has not downloaded the Go modules of orm-gen.
 ORM_CODES_typescript = packages/ts/src/codes.ts
 PHP_EXT_SQLITE_CANCEL = packages/php-ext/src/native/sqlite_cancel.c
 ORM_CODES_php = packages/php/src/Code.php
@@ -2779,7 +2783,7 @@ ORM_CODES_python = packages/python/src/polyspec/orm/codes.py
 .PHONY: orm-codes orm-codes-typescript orm-codes-php orm-codes-python
 orm-codes: orm-codes-typescript orm-codes-php orm-codes-python
 orm-codes-typescript orm-codes-php orm-codes-python: orm-codes-%:
-	cd packages/go && $(ONLINE) $(GO) run ./cmd/orm-gen errors --lang $* --yaml $(CURDIR)/docs/spec/errors.yaml --out $(CURDIR)/$(ORM_CODES_$*)
+	cd packages/go && $(ONLINE) $(PUBLISH) $(CURDIR)/$(ORM_CODES_$*) $(GO) run ./cmd/orm-gen errors --lang $* --yaml $(CURDIR)/docs/spec/errors.yaml --out @OUT@
 # orm-install-interfaces-typescript installs the TypeScript 6.0.3 that packages/ts/testing/interfaces/typescript.mts reads declarations with
 # (config/toolchain.json exceptions): TypeScript 7.0 ships no JavaScript API of its compiler.
 # install-packages installs the TypeScript of tests/interfaces from its lock, so a fresh make install leaves the extractor with its checker.
@@ -2791,6 +2795,10 @@ lint-ts: typescript-build
 # parity-declarations-check reads the symbols of the TypeScript client from packages/ts/dist/index.d.ts, which typescript-build
 # writes; a fresh checkout of the shared gates job has no dist (KSTD-5-114).
 parity-declarations-check: typescript-build
+# The parity gates of kit read the error file of every implementation of config/parity.json (errors.file): codes.ts, Code.php and
+# codes.py among them. lint-php analyses packages/php/src, and test-php-ext compares the extension with that library and runs its tests.
+parity-declarations-check parity-check parity-api-check $(KIT_PARITY_BINDING_TARGETS): orm-codes
+lint-php test-php-ext: orm-codes-php
 # The staged commit gate has no ignored generated models; recreate them before linting Go modules.
 lint-go: go-models
 # orm-install-php installs the one Composer project of the repository, the development root (vendor-php): it installs packages/php
@@ -2810,7 +2818,7 @@ php-models: php-vendor-check
 	while IFS= read -r entry; do case "$$entry" in ""|"#"*) continue ;; esac; vendor-php/bin/orm-gen gen $$entry || exit 1; done < $(CURDIR)/$(PHP_MODELS_FILE)
 # php-cancel-helper-build publishes the SQLite loadable callback as an explicit product build; PHP queries only load its platform artifact.
 .PHONY: php-cancel-helper-build
-php-cancel-helper-build:
+php-cancel-helper-build: php-vendor-check
 	$(RUN_LONG) php-cancel-helper-build -- env POLYSPEC_ORM_PACKAGE_ROOT=$(CURDIR)/packages/php $(PHP) packages/php/bin/orm-sqlite-cancel-build.php
 # php-model-check fails when the PHP models that orm-install-php wrote differ from what the entries of PHP_MODELS_FILE generate (orm-gen gen --check).
 php-model-check: php-vendor-check
@@ -2912,7 +2920,7 @@ example-check: php-vendor-check python-venv-check
 # and confirms that each test passes unchanged and prints its measurements. Performance is only measured and does not
 # fail the test (AGENTS.md). It uses the 2000-table stress document, so make bench runs it.
 TIMING_GO_DBSPEC_TEST = $(RUN_DIR)/dbspec.test
-timing-check: lease-tool
+timing-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT)) $(dir $(TIMING_GO_DBSPEC_TEST))
 	$(PUBLISH) $(DBSPEC_STRESS_DOCUMENT) node tests/dbspec/stress.mts
@@ -2923,7 +2931,8 @@ timing-check: lease-tool
 	PATH="$(HOME)/.cargo/bin:$(PATH)" DBSPEC_STRESS_DOCUMENT=$(abspath $(DBSPEC_STRESS_DOCUMENT)) TIMING_GO_DBSPEC_TEST=$(abspath $(TIMING_GO_DBSPEC_TEST)) TIMING_RUST_STRESS=$(RUN_TARGET)/release/examples/dbspec_stress $(NODE) --test --test-concurrency=1 tests/timing/preempted.test.mts
 	rm -rf $(RUN_DIR)
 
-# typescript-build compiles packages/ts, which imports codes.ts, the output of orm-codes-typescript (config/generated.json).
+# typescript-build compiles packages/ts, which imports codes.ts, the output of orm-codes-typescript (config/generated.json). A target
+# that compiles it in its own recipe ($(TSC_BUILD), or the holding of the build output) has orm-codes-typescript as well (make repo-check).
 typescript-build: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-build -- npm run typescript:build
@@ -2980,13 +2989,13 @@ clippy-crate: lease-tool ## Clippy of the package CRATE with the lint-rust flags
 # group-rows-phpstan-check runs PHPStan at level 9 over the fixture of KSTD-5-53: a row of GroupRows is typed as GroupRow for its
 # caller, so calling its method on each row passes; a mixed row fails it.
 .PHONY: group-rows-phpstan-check
-group-rows-phpstan-check:
+group-rows-phpstan-check: php-vendor-check
 	cd packages/php && $(PHPSTAN) analyse --no-progress --error-format=raw --memory-limit=-1 --level=9 --configuration=$(KIT_PACKAGE)/phpstan.dist.neon --autoload-file=../../vendor-php/autoload.php tests/phpstan/GroupRowsIteration.php
 
 # collection-raw-phpstan-check runs PHPStan at level 5 over the fixture of KSTD-5-54: a raw Collection parameter carries no
 # method of the base Model, so calling a column getter on its rows is no false method.notFound.
 .PHONY: collection-raw-phpstan-check
-collection-raw-phpstan-check:
+collection-raw-phpstan-check: php-vendor-check
 	cd packages/php && $(PHPSTAN) analyse --no-progress --error-format=raw --memory-limit=-1 --level=5 --configuration=$(KIT_PACKAGE)/phpstan.dist.neon --autoload-file=../../vendor-php/autoload.php tests/phpstan/RawCollection.php
 
 # dbspec-php-extension-check/markdown runs MarkdownTest with the extension loaded: the markdown IR uses of KSTD-5-80.
@@ -3005,7 +3014,7 @@ print-CARGO_PROFILE_DEV_DEBUG:
 
 # Collection lookups retain the caller's model type and their nullable result.
 .PHONY: collection-get-phpstan-check
-collection-get-phpstan-check:
+collection-get-phpstan-check: php-vendor-check
 	@set -eu; \
 	phpstan_tmp=$$(mktemp -d "$${TMPDIR:?}/collection-get-phpstan.XXXXXX"); \
 	trap 'rm -rf "$$phpstan_tmp"' EXIT; \
@@ -3016,7 +3025,7 @@ collection-get-phpstan-check:
 # KSTD-5-62: only the private catalog-document build failure is a Mermaid diagnostic. These owner targets run the
 # focused unexpected-error identity cases; the PHP extension variant builds a test-only module around the actual mermaid.c.
 .PHONY: mermaid-error-ts-check mermaid-error-python-check mermaid-error-php-check mermaid-error-php-extension-check
-mermaid-error-ts-check: lease-tool
+mermaid-error-ts-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NODE) --test packages/ts/tests/dbspec-mermaid-errors.mjs
@@ -3114,7 +3123,7 @@ schema-exists-sqlite-go-check:
 schema-exists-sqlite-php-check: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/SchemaExistsSqliteTest.php --filter testEscapesUnderscoreInSchemaPrefix
 
-schema-exists-sqlite-typescript-check: lease-tool
+schema-exists-sqlite-typescript-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(RUN_TESTS) node --test-name-pattern='^schemaExistsUnderscore$$' packages/ts/tests/model.mjs
@@ -3282,20 +3291,20 @@ rust-package-entry-check:
 typescript-package-entry-check: typescript-build
 	$(NODE) --conditions=orm-test --test --test-name-pattern='package-entry/runtime-exports' packages/ts/tests/statement_fault_entry.mjs
 
-complex-query-typescript-unit-check: lease-tool
+complex-query-typescript-unit-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NODE) packages/ts/tests/fulltext-search.mjs
 	$(NODE) packages/ts/tests/fulltext-chain-types.mjs
 	$(NODE) packages/ts/tests/paginate-order.mjs
 
-complex-query-typescript-request-check: lease-tool
+complex-query-typescript-request-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NODE) packages/ts/tests/complex-query-request.mjs
 	$(NODE) packages/ts/tests/complex-query-request-types.mjs
 
-complex-query-typescript-check: lease-tool
+complex-query-typescript-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(READ_TYPESCRIPT)

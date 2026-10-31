@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CI_SETUP, groupSetupErrors, RUNNER_STEPS } from '../check/ci-setup.mts';
-import { ciGroups, ciErrorCodesErrors, ciPassedErrors, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, helperEnvironmentErrors, helperRunErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, ownWorkflows } from './ci.mts';
+import { ciGroups, ciPassedErrors, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, helperEnvironmentErrors, helperRunErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, ownWorkflows } from './ci.mts';
 import { workflowSteps } from './workflow.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { fixlessMessageErrors, messageFiles } from './messages.mts';
@@ -14,7 +14,7 @@ import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
 import { kitCopies, kitOwnedPaths } from './kit-copies.mts';
 import { segments } from './shell.mts';
 import { detachedGroupErrors, timeFailureErrors } from './sources.mts';
-import { callerEnvironmentErrors, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, scriptCommands, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, rustTestCaseErrors, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
+import { callerEnvironmentErrors, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, scriptCommands, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, rustTestCaseErrors, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
 import { checkInputErrors } from '../features/owners.mts';
 import { COMPUTE, sections } from '../../tests/testcase.mts';
 import { declaredNeeds, readCheckInputs } from '../check/inputs.mts';
@@ -46,8 +46,6 @@ failures.push(...ciCheckTargetErrors(ci, makefile));
 failures.push(...ciReportPathErrors(ci, makefile));
 // The last job of ci.yml, ci-passed, takes every other job as needs and runs with `if: always()`. The ruleset requires that check.
 failures.push(...ciPassedErrors(ci));
-// Every job of ci.yml that builds or reads the error code files writes them first with make orm-codes and the Go of mise.toml.
-failures.push(...ciErrorCodesErrors(ci));
 // CI does not run again the verification command that the feature-check of make orm-check runs.
 const features = readFeatures(root);
 failures.push(...ciDuplicateCommandErrors(ci, makefile, featureCommands(features)));
@@ -162,6 +160,8 @@ failures.push(...unpublishedOutputErrors(makefile));
 // Test servers use an empty port chosen by make orm-test-servers, not a fixed port.
 failures.push(...fixedPortErrors(Object.fromEntries(tracked.filter(path => path === 'Makefile' || path.endsWith('.sh')).map(path => [path, readFileSync(join(root, path), 'utf8')]))));
 failures.push(...typescriptHolderErrors(makefile));
+// Every target that reads an error code file has orm-codes-<lang>, which writes it, among its prerequisites.
+failures.push(...generatedCodesErrors(makefile));
 failures.push(...typescriptReaderErrors(makefile, readTracked));
 // make orm-check runs the generation (go generate and git diff) of the same directory only once.
 const checkTargetSet = new Set(checkTargets(makefile));
