@@ -2174,7 +2174,8 @@
         "packages/python/src/polyspec/orm/catalog.py",
         "packages/python/tests/test_catalog_mutation_helper.py",
         "packages/python/tests/test_catalog_row_baseline.py",
-        "packages/python/tests/test_catalog_mysql_visibility.py"
+        "packages/python/tests/test_catalog_mysql_visibility.py",
+        "packages/python/tests/test_catalog_described_temporal.py"
       ]
     },
     "dbspec-introspect-compare-check": {

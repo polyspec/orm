@@ -11947,7 +11947,8 @@
         "packages/go/orm/catalog_page_validation_test.go",
         "packages/php/tests/CatalogPageValidationTest.php",
         "packages/ts/tests/catalog-page-validation.test.mjs",
-        "packages/python/tests/test_catalog_page_validation.py"
+        "packages/python/tests/test_catalog_page_validation.py",
+        "packages/python/tests/test_catalog_described_temporal.py"
       ],
       "docs": [
         "docs/spec/schema.md",

@@ -36,7 +36,7 @@ class CatalogPageValidationTest(unittest.TestCase):
                     calls += 1
                     return before if calls == 1 else after
 
-                def run(self, _query, _params, _max_rows, _max_bytes):
+                def run(self, _query, _params, _max_rows, _max_bytes, described=None):
                     return type("Raw", (), {"names": names, "rows": []})()
 
             catalog = object.__new__(CatalogConnection)

@@ -83,6 +83,10 @@
     "exported": true,
     "signature": "bool"
   },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogColumn#field.check_precision": {
+    "exported": true,
+    "signature": "int | None"
+  },
   "packages/python/src/polyspec/orm/catalog.py::CatalogColumn#field.default_expression": {
     "exported": true,
     "signature": "str | None"

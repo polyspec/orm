@@ -17695,6 +17695,11 @@
           ]
         },
         {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_described_temporal.py",
+          "id": "test_described_temporal_text"
+        },
+        {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
           "id": "coverage_catalog_read",

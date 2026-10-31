@@ -204,16 +204,6 @@ def _mysql_time_value(value, precision: int) -> str:
     )
 
 
-def _mysql_datetime_text(value, precision: int) -> str:
-    """A PyMySQL DATETIME value as exact dbspec text for mutation comparison."""
-    if not isinstance(value, datetime):
-        raise _error(
-            codes.CATALOG_VALUE,
-            f"unsupported native type {type(value).__name__}",
-        )
-    return _datetime_text(value, precision, "MySQL DATETIME")
-
-
 def _mysql_catalog_value(value, code, precision: int):
     """Decodes MySQL TIME driver values to canonical text; other values keep their native form."""
     if value is None:
@@ -223,88 +213,224 @@ def _mysql_catalog_value(value, code, precision: int):
     return _check_value(value)
 
 
-def _same_column_value(actual, expected, column: CatalogColumn, dialect: str) -> bool:
-    """Compares temporal driver values with canonical text using descriptor precision."""
-    if dialect == "mysql":
-        match = re.fullmatch(
-            r"datetime(?:\((\d+)\))?", column.native_type, re.IGNORECASE
+# A read of a described table returns the dbspec text of each date, time and datetime cell with exactly the declared
+# precision p of its column (INT-103): a str, never a datetime or time. MySQL and PostgreSQL take p from the native type,
+# or the default of INT-101 (0 on MySQL, 6 on PostgreSQL) when the type names none; SQLite keeps the stored text, whose
+# fraction digits must be the p that the dbspec CHECK of the column fixes.
+_MYSQL_TIME_TYPE = re.compile(r"time(?:\(([0-6])\))?")
+_MYSQL_DATETIME_TYPE = re.compile(r"datetime(?:\(([0-6])\))?")
+_POSTGRES_TIME_TYPE = re.compile(r"time(?:\(([0-6])\))? without time zone")
+_POSTGRES_TIMESTAMP_TYPE = re.compile(r"timestamp(?:\(([0-6])\))? without time zone")
+_DESCRIBED_DATE_TEXT = re.compile(r"([0-9]{4})-([0-9]{2})-([0-9]{2})")
+_DESCRIBED_TIME_TEXT = re.compile(
+    r"([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.([0-9]{1,6}))?"
+)
+_DESCRIBED_DATETIME_TEXT = re.compile(r"([0-9]{4}-[0-9]{2}-[0-9]{2}) ([0-9:.]+)")
+_CHECK_OPENING = re.compile(r"CHECK\s*\(", re.IGNORECASE)
+_CHECK_GLOB = re.compile(r"GLOB '((?:\[0-9\])*)'")
+_CHECK_WHOLE_TEMPORAL = re.compile(r"IS (time|datetime)\(")
+
+
+def _temporal_kind(column: CatalogColumn, dialect: str):
+    """The dbspec temporal kind of a column, date, time or datetime, with its precision p and whether p is declared;
+    None for every other type. A SQLite p is the CHECK precision of the column, undeclared when no CHECK fixes it."""
+    native = column.native_type.strip()
+
+    def precision_of(match, fallback: int) -> int:
+        return fallback if match.group(1) is None else int(match.group(1))
+
+    if dialect in ("mysql", "postgres"):
+        lower = native.lower()
+        if lower == "date":
+            return "date", 0, True
+        time_type, datetime_type, fallback = (
+            (_MYSQL_TIME_TYPE, _MYSQL_DATETIME_TYPE, 0)
+            if dialect == "mysql"
+            else (_POSTGRES_TIME_TYPE, _POSTGRES_TIMESTAMP_TYPE, 6)
         )
+        match = time_type.fullmatch(lower)
         if match is not None:
-            precision = int(match.group(1) or 0)
-            if isinstance(actual, datetime) and isinstance(expected, str):
-                return _mysql_datetime_text(actual, precision) == expected
-            if isinstance(expected, datetime) and isinstance(actual, str):
-                return _mysql_datetime_text(expected, precision) == actual
-    if dialect == "postgres":
-        match = re.fullmatch(
-            r"time(?:\((\d+)\))?(?: without time zone)?",
-            column.native_type,
-            re.IGNORECASE,
-        )
+            return "time", precision_of(match, fallback), True
+        match = datetime_type.fullmatch(lower)
         if match is not None:
-            precision = int(match.group(1) or 6)
-            if isinstance(actual, datetime_time) and isinstance(expected, str):
-                return _postgres_time_text(actual, precision) == expected
-            if isinstance(expected, datetime_time) and isinstance(actual, str):
-                return _postgres_time_text(expected, precision) == actual
-        match = re.fullmatch(
-            r"timestamp(?:\((\d+)\))?(?: without time zone)?",
-            column.native_type,
-            re.IGNORECASE,
+            return "datetime", precision_of(match, fallback), True
+    elif dialect == "sqlite":
+        upper = native.upper()
+        if upper == "DATE":
+            return "date", 0, True
+        if upper in ("TIME", "DATETIME"):
+            kind = "time" if upper == "TIME" else "datetime"
+            if column.check_precision is None:
+                return kind, 0, False
+            return kind, column.check_precision, True
+    return None
+
+
+def _temporal_value_error(column: CatalogColumn, reason: str) -> OrmError:
+    return _error(codes.GRID_TEMPORAL_VALUE, f"column {column.name!r}: {reason}")
+
+
+def _described_date(text: str, column: CatalogColumn) -> str:
+    """A dbspec date YYYY-MM-DD, a calendar date from 0001-01-01 to 9999-12-31."""
+    match = _DESCRIBED_DATE_TEXT.fullmatch(text)
+    if match is None:
+        raise _temporal_value_error(column, f"{text!r} is not a dbspec date")
+    try:
+        date(*(int(part) for part in match.groups()))
+    except ValueError:
+        raise _temporal_value_error(
+            column,
+            f"{text!r} is outside 0001-01-01 to 9999-12-31 or is not a calendar date",
+        ) from None
+    return text
+
+
+def _described_clock(text: str, column: CatalogColumn) -> tuple:
+    """A dbspec time HH:MM:SS with up to six fraction digits within 00:00:00 to 23:59:59.999999, as its six-digit text
+    and the number of fraction digits it has."""
+    match = _DESCRIBED_TIME_TEXT.fullmatch(text)
+    if match is None:
+        raise _temporal_value_error(column, f"{text!r} is not a dbspec time")
+    hour, minute, second = (int(part) for part in match.groups()[:3])
+    if hour > 23 or minute > 59 or second > 59:
+        raise _temporal_value_error(
+            column, f"{text!r} is outside 00:00:00 to 23:59:59.999999"
         )
-        if match is not None:
-            precision = int(match.group(1) or 6)
-            if isinstance(actual, datetime) and isinstance(expected, str):
-                return _postgres_datetime_text(actual, precision) == expected
-            if isinstance(expected, datetime) and isinstance(actual, str):
-                return _postgres_datetime_text(expected, precision) == actual
-    return _same_row([actual], [expected])
+    fraction = match.group(4) or ""
+    return f"{text[:8]}.{fraction.ljust(6, '0')}", len(fraction)
 
 
-def _postgres_time_text(value: datetime_time, precision: int) -> str:
-    """A psycopg TIME result as dbspec text at the column's declared precision."""
-    if value.tzinfo is not None:
+def _described_text(text: str, kind: str, column: CatalogColumn) -> tuple:
+    """Checks that text is in the dbspec form of its kind; returns its text with six fraction digits (a date as it is)
+    and its number of fraction digits."""
+    if kind == "date":
+        return _described_date(text, column), 0
+    if kind == "time":
+        return _described_clock(text, column)
+    match = _DESCRIBED_DATETIME_TEXT.fullmatch(text)
+    if match is None:
+        raise _temporal_value_error(column, f"{text!r} is not a dbspec datetime")
+    clock, digits = _described_clock(match.group(2), column)
+    return f"{_described_date(match.group(1), column)} {clock}", digits
+
+
+def _described_temporal(value, column: CatalogColumn, dialect: str):
+    """The catalog value of one driver value of a described column: the dbspec text of a date, time or datetime column
+    with exactly its declared precision, and every other value as it is. A value outside the dbspec form fails with
+    GRID_TEMPORAL_VALUE; a non-zero digit past p, or on SQLite fraction digits other than the CHECK precision or no CHECK
+    precision, fails with GRID_TEMPORAL_PRECISION."""
+    temporal = _temporal_kind(column, dialect)
+    if temporal is None or value is None:
+        return value
+    kind, precision, declared = temporal
+    if dialect == "sqlite":
+        if not isinstance(value, str):
+            raise _temporal_value_error(
+                column, f"holds a {type(value).__name__}, not a dbspec {kind}"
+            )
+        _, digits = _described_text(value, kind, column)
+        if kind == "date":
+            return value
+        if not declared:
+            raise _error(
+                codes.GRID_TEMPORAL_PRECISION,
+                f"column {column.name!r} has no dbspec CHECK that fixes its fraction digits",
+            )
+        if digits != precision:
+            raise _error(
+                codes.GRID_TEMPORAL_PRECISION,
+                f"column {column.name!r} holds {digits} fraction digits; its dbspec CHECK fixes {precision}",
+            )
+        return value
+    if isinstance(value, str):
+        text, _ = _described_text(value, kind, column)
+    elif isinstance(value, datetime):
+        if kind != "datetime" or value.tzinfo is not None:
+            raise _temporal_value_error(
+                column,
+                f"a {'zoned ' if value.tzinfo else ''}datetime value of a {kind} column",
+            )
+        text = (
+            f"{value.year:04d}-{value.month:02d}-{value.day:02d} "
+            f"{value.hour:02d}:{value.minute:02d}:{value.second:02d}.{value.microsecond:06d}"
+        )
+    elif isinstance(value, date):
+        if kind != "date":
+            raise _temporal_value_error(column, f"a date value of a {kind} column")
+        text = f"{value.year:04d}-{value.month:02d}-{value.day:02d}"
+    elif isinstance(value, timedelta):
+        if kind != "time":
+            raise _temporal_value_error(column, f"a time value of a {kind} column")
+        micros = (value.days * 86400 + value.seconds) * 1000000 + value.microseconds
+        if not 0 <= micros < 86400 * 1000000:
+            raise _temporal_value_error(
+                column, "time outside 00:00:00 to 23:59:59.999999"
+            )
+        seconds, fraction = divmod(micros, 1000000)
+        text = f"{seconds // 3600:02d}:{seconds // 60 % 60:02d}:{seconds % 60:02d}.{fraction:06d}"
+    else:
+        raise _temporal_value_error(
+            column, f"holds a {type(value).__name__}, not a dbspec {kind}"
+        )
+    if kind == "date":
+        return text
+    # text has six fraction digits here; it keeps exactly p of them.
+    dot = text.rindex(".")
+    if text[dot + 1 + precision :].strip("0"):
         raise _error(
-            codes.CATALOG_VALUE, "PostgreSQL time unexpectedly has a time zone"
+            codes.GRID_TEMPORAL_PRECISION,
+            f"column {column.name!r}: {kind} value {value!r} has a non-zero digit past its {precision} fraction digits",
         )
-    if not 0 <= precision <= 6:
-        raise _error(
-            codes.CATALOG_VALUE, f"invalid PostgreSQL TIME precision {precision}"
+    return text[:dot] if precision == 0 else text[: dot + 1 + precision]
+
+
+def _check_precision(table_sql: str, column: str):
+    """The fraction digits that the dbspec CHECK of a SQLite TIME or DATETIME column fixes (engine/dbspec/render.go): the
+    count of the [0-9] groups of its GLOB, or 0 for a CHECK of the whole form without a fraction. None when no CHECK of the
+    table definition names the column."""
+    quoted = '"' + column.replace('"', '""') + '"'
+    for clause in _check_clauses(table_sql):
+        if quoted not in clause:
+            continue
+        glob = _CHECK_GLOB.search(clause)
+        if glob is not None:
+            return len(glob.group(1)) // len("[0-9]")
+        if _CHECK_WHOLE_TEMPORAL.search(clause):
+            return 0
+    return None
+
+
+def _check_clauses(table_sql: str) -> list:
+    """The text inside each CHECK ( ... ) of a table definition, balanced over its parentheses."""
+    clauses = []
+    for opening in _CHECK_OPENING.finditer(table_sql):
+        depth, index = 1, opening.end()
+        while index < len(table_sql) and depth > 0:
+            if table_sql[index] == "(":
+                depth += 1
+            elif table_sql[index] == ")":
+                depth -= 1
+            index += 1
+        clauses.append(
+            table_sql[opening.end() :]
+            if depth != 0
+            else table_sql[opening.end() : index - 1]
         )
-    if value.microsecond % 10 ** (6 - precision) != 0:
-        raise _error(codes.CATALOG_VALUE, "time exceeds its declared precision")
-    clock = f"{value.hour:02d}:{value.minute:02d}:{value.second:02d}"
-    return (
-        clock
-        if precision == 0
-        else f"{clock}.{value.microsecond:06d}"[: len(clock) + precision + 1]
-    )
+    return clauses
 
 
-def _postgres_datetime_text(value: datetime, precision: int) -> str:
-    """A psycopg TIMESTAMP result as dbspec text at its declared precision."""
-    return _datetime_text(value, precision, "PostgreSQL TIMESTAMP")
-
-
-def _datetime_text(value: datetime, precision: int, native_type: str) -> str:
-    """Formats a naive datetime at exact declared precision for a driver comparison."""
-    if value.tzinfo is not None:
-        raise _error(codes.CATALOG_VALUE, f"{native_type} unexpectedly has a time zone")
-    if not 0 <= precision <= 6:
-        raise _error(
-            codes.CATALOG_VALUE, f"invalid {native_type} precision {precision}"
-        )
-    if value.microsecond % 10 ** (6 - precision) != 0:
-        raise _error(codes.CATALOG_VALUE, "datetime exceeds its declared precision")
-    base = (
-        f"{value.year:04d}-{value.month:02d}-{value.day:02d} "
-        f"{value.hour:02d}:{value.minute:02d}:{value.second:02d}"
-    )
-    return (
-        base
-        if precision == 0
-        else f"{base}.{value.microsecond:06d}"[: len(base) + precision + 1]
-    )
+def _temporal_write_value(
+    column: CatalogColumn, value, dialect: str, code: str
+) -> None:
+    """Refuses a datetime assigned to a date, time or datetime column: a catalog write takes the dbspec text of the
+    column, and a datetime has no declared precision."""
+    if isinstance(value, datetime):
+        temporal = _temporal_kind(column, dialect)
+        if temporal is not None:
+            raise _error(
+                code,
+                f"column {column.name!r} takes the dbspec text of a {temporal[0]}, not a datetime",
+            )
 
 
 def _params(values) -> list:
@@ -514,6 +640,9 @@ class CatalogColumn:
     automatic_key: bool = False
     default_expression: str | None = None
     expression_default: bool = False
+    # SQLite only: the fraction digits that the dbspec CHECK of a TIME or DATETIME column fixes; None when no CHECK fixes
+    # them and on the other dialects.
+    check_precision: int | None = None
 
 
 @dataclass
@@ -682,18 +811,15 @@ def _validate_inserted_locator_row(
     cells: list,
     changes,
     mismatch_message: str,
-    dialect: str,
 ) -> None:
     _check_cells(metadata, cells)
     _revision(metadata, cells)
     for index, value in changes:
-        if not _same_column_value(
-            cells[index], value, metadata.columns[index], dialect
-        ):
+        if not _same_row([cells[index]], [value]):
             raise _error(codes.ROW_WRITE_MISMATCH, mismatch_message)
 
 
-def _changes(metadata: CatalogTableMetadata, values, code: str) -> list:
+def _changes(metadata: CatalogTableMetadata, values, code: str, dialect: str) -> list:
     """Checks named assignments against a descriptor and returns (column index, normalized value) in the order given."""
     values = list(values)
     if not values or len(values) > len(metadata.columns):
@@ -715,6 +841,7 @@ def _changes(metadata: CatalogTableMetadata, values, code: str) -> list:
             raise _error(code, f"generated column {name!r} is not writable")
         if value is None and not column.nullable:
             raise _error(code, f"NULL in non-null column {name!r}")
+        _temporal_write_value(column, value, dialect, code)
         if _exceeds_declared_capacity(column, value):
             raise _error(
                 code, f"value exceeds the declared capacity of column {name!r}"
@@ -921,8 +1048,16 @@ class _Session:
         self.raw = wrapper.connection
 
     def run(
-        self, sql: str, params=(), max_rows=None, max_bytes=None, grid=False
+        self,
+        sql: str,
+        params=(),
+        max_rows=None,
+        max_bytes=None,
+        grid=False,
+        described: CatalogTableMetadata | None = None,
     ) -> _Raw:
+        """Runs one statement. described is the descriptor of a read of a table's columns in physical order: its date, time
+        and datetime cells become their dbspec text at the declared precision of their column."""
         if self.dialect == "sqlite":
             text, args = sql, tuple(params)
         elif self.dialect == "mysql":
@@ -936,9 +1071,10 @@ class _Session:
         unsigned: list = []
         budget = 0
         try:
-            if grid and self.dialect == "postgres":
-                # Grid cells read PostgreSQL date, time and timestamp values as their text, so that 24:00:00 and infinity are
-                # seen as the server writes them, as the Rust grid reads them. psycopg is imported only by a PostgreSQL grid.
+            if (grid or described is not None) and self.dialect == "postgres":
+                # Grid cells and the cells of a described table read PostgreSQL date, time and timestamp values as their
+                # text, so that 24:00:00 and infinity are seen as the server writes them, as the Rust grid reads them.
+                # psycopg is imported only by such a PostgreSQL read.
                 from psycopg.postgres import types as pg_types
                 from psycopg.types.string import TextLoader
 
@@ -948,6 +1084,8 @@ class _Session:
             if cursor.description:
                 names = [column[0] for column in cursor.description]
                 type_codes = [column[1] for column in cursor.description]
+                if described is not None:
+                    _same_names(names, described.columns)
                 if grid and self.dialect == "mysql":
                     # pymysql exposes the UNSIGNED flag only on the private result of a cursor: Cursor.description has no
                     # flags, and no public pymysql API reports them. The attribute is read here, for grid queries only.
@@ -968,6 +1106,15 @@ class _Session:
                     converted = (
                         list(row)
                         if grid
+                        else [
+                            _check_value(
+                                _described_temporal(
+                                    value, described.columns[index], self.dialect
+                                )
+                            )
+                            for index, value in enumerate(row)
+                        ]
+                        if described is not None
                         else [
                             _mysql_catalog_value(
                                 value,
@@ -1060,6 +1207,8 @@ class _Session:
             if ordinal > 0:
                 keys.append((ordinal, len(columns)))
             columns.append(column)
+        if dialect == "sqlite":
+            self._sqlite_check_precisions(table, columns)
         keys.sort(key=lambda item: item[0])
         for position, (ordinal, _) in enumerate(keys, start=1):
             if ordinal != position:
@@ -1098,6 +1247,32 @@ class _Session:
             reliable_row_identity=reliable,
         )
 
+    def _sqlite_check_precisions(self, table: dict, columns: list) -> None:
+        """Records the CHECK precision of each SQLite TIME and DATETIME column: the dbspec renderer writes the fraction
+        digits of such a column into a CHECK of the table's own definition. A view has no CHECK."""
+        temporal = [
+            column
+            for column in columns
+            if column.native_type.upper() in ("TIME", "DATETIME")
+        ]
+        if not temporal:
+            return
+        rows = self.run(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name=?",
+            [table["name"]],
+            2,
+            METADATA_BYTES,
+        ).rows
+        if not rows:
+            return
+        if len(rows) != 1 or len(rows[0]) != 1 or not isinstance(rows[0][0], str):
+            raise _error(
+                codes.TABLE_METADATA_INVALID,
+                f"the definition of table {table['name']!r} is not one text",
+            )
+        for column in temporal:
+            column.check_precision = _check_precision(rows[0][0], column.name)
+
     def lookup(self, metadata: CatalogTableMetadata, keys: list, lock: bool) -> list:
         suffix = " FOR UPDATE" if lock and self.dialect != "sqlite" else ""
         columns = _quote_list(
@@ -1107,7 +1282,7 @@ class _Session:
             f"SELECT {columns} FROM {_qualified(metadata.table, self.dialect)} "
             f"WHERE {_key_predicate(metadata, self.dialect, 1)} LIMIT 2{suffix}"
         )
-        raw = self.run(query, keys, 2, PAGE_BYTES)
+        raw = self.run(query, keys, 2, PAGE_BYTES, described=metadata)
         _same_names(raw.names, metadata.columns)
         return raw.rows
 
@@ -1332,7 +1507,7 @@ class CatalogConnection:
                 query += " ORDER BY " + _quote_list(metadata.primary_key, self.dialect)
             # One extra row is the sentinel that reports has_more.
             query += f" LIMIT {limit + 1} OFFSET {offset}"
-            raw = session.run(query, [], limit + 1, PAGE_BYTES)
+            raw = session.run(query, [], limit + 1, PAGE_BYTES, described=metadata)
             _same_names(raw.names, metadata.columns)
             if session.describe(ref) != metadata:
                 raise _error(
@@ -1446,7 +1621,7 @@ class CatalogConnection:
         statement's returned row or insert acknowledgement. The method rejects an existing explicit key, revalidates the
         descriptor and re-reads the row by its key before commit. Every supplied value must read back exactly."""
         key_indexes = _descriptor(declared)
-        changes = _changes(declared, values, codes.ROW_INSERT_INVALID)
+        changes = _changes(declared, values, codes.ROW_INSERT_INVALID, self._dialect)
         provided = {index: value for index, value in changes}
         omitted_indexes = []
         for index in key_indexes:
@@ -1510,7 +1685,9 @@ class CatalogConnection:
                     f"SELECT {selected} FROM {_qualified(descriptor.table, 'mysql')} "
                     f"WHERE {where} LIMIT 2 FOR UPDATE"
                 )
-                existing = session.run(locator_sql, locator_args, 2, PAGE_BYTES).rows
+                existing = session.run(
+                    locator_sql, locator_args, 2, PAGE_BYTES, described=descriptor
+                ).rows
                 if existing:
                     raise _error(
                         codes.ROW_IDENTITY_AMBIGUOUS,
@@ -1541,7 +1718,9 @@ class CatalogConnection:
                             codes.ROW_WRITE_MISMATCH,
                             "expected exactly one inserted row",
                         )
-                    located = session.run(locator_sql, locator_args, 2, PAGE_BYTES)
+                    located = session.run(
+                        locator_sql, locator_args, 2, PAGE_BYTES, described=descriptor
+                    )
                     _same_names(located.names, descriptor.columns)
                     if len(located.rows) != 1:
                         raise _error(
@@ -1554,7 +1733,6 @@ class CatalogConnection:
                         returned,
                         changes,
                         "locator values differ from requested values",
-                        self._dialect,
                     )
                     keys = [returned[index] for index in key_indexes]
                 elif self._dialect == "mysql":
@@ -1595,7 +1773,9 @@ class CatalogConnection:
                         f"SELECT {selected} FROM {_qualified(descriptor.table, 'mysql')} "
                         f"WHERE {' AND '.join(predicates)} LIMIT 2 FOR UPDATE"
                     )
-                    located = session.run(sql, key_args, 2, PAGE_BYTES)
+                    located = session.run(
+                        sql, key_args, 2, PAGE_BYTES, described=descriptor
+                    )
                     _same_names(located.names, descriptor.columns)
                     if len(located.rows) != 1:
                         raise _error(
@@ -1608,14 +1788,15 @@ class CatalogConnection:
                         returned,
                         changes,
                         "stored inserted values differ",
-                        self._dialect,
                     )
                     keys = [returned[index] for index in key_indexes]
                 else:
                     returning = _quote_list(
                         [column.name for column in descriptor.columns], self._dialect
                     )
-                    returned = session.run(f"{query} RETURNING {returning}", args)
+                    returned = session.run(
+                        f"{query} RETURNING {returning}", args, described=descriptor
+                    )
                     _same_names(returned.names, descriptor.columns)
                     if len(returned.rows) != 1 or len(returned.rows[0]) != len(
                         descriptor.columns
@@ -1644,9 +1825,7 @@ class CatalogConnection:
             if session.describe(declared.table) != descriptor:
                 raise _error(codes.ROW_SCHEMA_CHANGED, "insertion descriptor changed")
             for index, value in changes:
-                if not _same_column_value(
-                    after[0][index], value, descriptor.columns[index], self._dialect
-                ):
+                if not _same_row([after[0][index]], [value]):
                     raise _error(
                         codes.ROW_WRITE_MISMATCH,
                         f"stored inserted values of {descriptor.columns[index].name!r} differ",
@@ -1661,7 +1840,9 @@ class CatalogConnection:
         """Updates the row of an original snapshot. Inside the transaction it re-reads the row by its original keys, locks
         it, compares it with the snapshot and then writes. After the write it re-reads the row by its resulting keys and
         requires every ordinary column to hold the value that was written."""
-        changes = _changes(original.metadata, values, codes.ROW_UPDATE_INVALID)
+        changes = _changes(
+            original.metadata, values, codes.ROW_UPDATE_INVALID, self._dialect
+        )
         updated = list(original.cells)
         for index, value in changes:
             updated[index] = value
@@ -1710,9 +1891,7 @@ class CatalogConnection:
                 if column.generated:
                     # A generated column may be recomputed by the database.
                     continue
-                if not _same_column_value(
-                    after[0][index], updated[index], column, self._dialect
-                ):
+                if not _same_row([after[0][index]], [updated[index]]):
                     raise _error(
                         codes.ROW_WRITE_MISMATCH,
                         f"stored ordinary values of {column.name!r} differ",

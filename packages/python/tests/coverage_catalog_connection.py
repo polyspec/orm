@@ -11,7 +11,6 @@ import sys
 import tempfile
 import unittest
 from contextlib import closing
-from datetime import datetime
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
 
@@ -419,37 +418,12 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
                 page = self.catalog.table_page(
                     {"namespace": self.catalog.current_namespace(), "name": name}, 1, 0
                 )
-                values = page.result.rows[0][1:]
-                if self.driver == "mysql":
-                    self.assertIsInstance(values[0], str)
-                    self.assertIsInstance(values[1], datetime)
-                    self.assertIsInstance(values[2], str)
-                    self.assertIsInstance(values[3], datetime)
-                    fractions = [
-                        int(value.split(".", 1)[1].ljust(6, "0")) if "." in value else 0
-                        for value in (values[0], values[2])
-                    ]
-                    fractions = [
-                        fractions[0],
-                        values[1].microsecond,
-                        fractions[1],
-                        values[3].microsecond,
-                    ]
-                    expected_fractions = [0, 0, 123000, 123000]
-                elif self.driver == "sqlite":
-                    fractions = [
-                        len(value.split(".", 1)[1]) if "." in value else 0
-                        for value in values
-                    ]
-                    expected_fractions = [0, 0, 3, 3]
-                else:
-                    fractions = [value.microsecond for value in values]
-                    expected_fractions = [123456, 123456, 123000, 123000]
                 self.assertEqual(
-                    expected_fractions,
-                    fractions,
-                    f"{self.driver}: temporal table reads use native defaults and declared precision",
+                    [t0, dt0, "12:34:56.123", "2026-01-02 03:04:05.123"],
+                    page.result.rows[0][1:],
+                    f"{self.driver}: a table read returns the dbspec text of its declared precision",
                 )
+                self.assertEqual(inserted.rows, page.result.rows)
                 if self.driver == "mysql":
                     with self.assertRaises(
                         Exception, msg="MySQL rejects temporal precision above 6"

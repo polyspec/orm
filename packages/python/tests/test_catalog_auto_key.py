@@ -31,7 +31,7 @@ class _FakeMysqlSession:
         self.calls = []
         self.locator_reads = 0
 
-    def run(self, sql, params=(), max_rows=None, max_bytes=None):
+    def run(self, sql, params=(), max_rows=None, max_bytes=None, described=None):
         self.calls.append(("run", sql, list(params)))
         names = [column.name for column in self.metadata.columns]
         if sql.startswith("SELECT 1 FROM"):
@@ -73,7 +73,7 @@ class _FakeMysqlCatalog(CatalogConnection):
 
 
 class _FakePostgresSession(_FakeMysqlSession):
-    def run(self, sql, params=(), max_rows=None, max_bytes=None):
+    def run(self, sql, params=(), max_rows=None, max_bytes=None, described=None):
         self.calls.append(("run", sql, list(params)))
         if sql.startswith("LOCK TABLE"):
             return _Raw([], [], 0)
@@ -188,13 +188,21 @@ class CatalogAutoKeyTest(unittest.TestCase):
             original_run = _Session.run
 
             def fail_commit(
-                session, sql, params=(), max_rows=None, max_bytes=None, grid=False
+                session,
+                sql,
+                params=(),
+                max_rows=None,
+                max_bytes=None,
+                grid=False,
+                described=None,
             ):
                 if sql == "COMMIT":
                     raise sqlite3.OperationalError(
                         "injected commit acknowledgement loss"
                     )
-                return original_run(session, sql, params, max_rows, max_bytes, grid)
+                return original_run(
+                    session, sql, params, max_rows, max_bytes, grid, described
+                )
 
             with (
                 patch.object(_Session, "run", fail_commit),
@@ -223,14 +231,22 @@ class CatalogAutoKeyTest(unittest.TestCase):
             original_run = _Session.run
 
             def fail_commit_and_rollback(
-                session, sql, params=(), max_rows=None, max_bytes=None, grid=False
+                session,
+                sql,
+                params=(),
+                max_rows=None,
+                max_bytes=None,
+                grid=False,
+                described=None,
             ):
                 statements.append(sql)
                 if sql == "COMMIT":
                     raise commit_error
                 if sql == "ROLLBACK":
                     raise rollback_error
-                return original_run(session, sql, params, max_rows, max_bytes, grid)
+                return original_run(
+                    session, sql, params, max_rows, max_bytes, grid, described
+                )
 
             with (
                 patch.object(_Session, "run", fail_commit_and_rollback),
