@@ -40,10 +40,10 @@ const commands: [string, string, string[]][] = [
   ['go/model', 'go', ['test', '-v', '-timeout', '0', '-count=1', './packages/go/model']],
   ['php/model', 'php', ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', 'packages/php/tests/ModelTest.php']],
   ['typescript/model', 'node', ['packages/ts/tests/model.mjs']],
-  // The sections of the Rust integration program are its ignored trials (packages/rust/tests/tests/integration_program), so they run
-  // with --ignored, which runs only them, one at a time; tests/cargo-test.mts builds them under the lease of the target directory.
+  // The sections of the Rust integration program (packages/rust/tests/tests/integration_program) check an empty database and install
+  // the bench set, so the check runs that target; tests/cargo-test.mts builds it under the lease of the target directory.
   ['rust/integration', 'node', ['tests/cargo-test.mts', 'integration-program', '--', 'cargo', 'test', '--locked', '--manifest-path', 'packages/rust/Cargo.toml', '-p', 'polyspec-orm-tests',
-    '--test', 'integration_program', '--', '--ignored', '--test-threads=1']],
+    '--test', 'integration_program']],
 ];
 
 function mysqlConnection(dsn: string = mysqlDsn) {

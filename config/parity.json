@@ -4822,7 +4822,7 @@
         {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "coverage_generated_model_connection",
+          "id": "coverage_generated_model_connection_sqlite",
           "command": [
             "make",
             "-s",
@@ -4833,7 +4833,7 @@
             "FEATURE_CARGO_TARGET=--test integration_program",
             "FEATURE_DATABASE=sqlite",
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_generated_model_connection"
+            "FEATURE_TEST=coverage_generated_model_connection_sqlite"
           ]
         }
       ]

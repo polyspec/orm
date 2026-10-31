@@ -120,20 +120,8 @@ const RUST_TESTS: Command = {
   cwd: join(root, 'packages/rust'),
   env: { ORM_BUILD_TEST_ROOT: resolve(root, 'packages/rust/build') },
 };
-// The sections of the integration program (packages/rust/tests/tests/integration_program) are its ignored trials, which the
-// workspace run leaves out; --ignored runs only them, once, one at a time, since each runs its case on every driver. The
-// other tests of the program run in the workspace run, where the database coverage tests are skipped. tests/cargo-test.mts
-// fails when the build fails, so a failed build is a failure of the lane.
-const RUST_INTEGRATION: Command = {
-  program: 'node',
-  args: [
-    '../../tests/cargo-test.mts', 'integration-program', '--', 'cargo', 'test', '--locked', '-p', 'polyspec-orm-tests', '--features', variable('ORM_RUST_TEST_FEATURES'),
-    '--test', 'integration_program', '--', '--ignored', '--test-threads=1',
-  ],
-  cwd: join(root, 'packages/rust'),
-};
 /** The commands this script runs, for make repo-check. */
-export const COMMANDS = [...[...GO, ...PHP, PHP_EXTENSION_BUILD, ...PHP_EXTENSION, ...PYTHON, RUST_TESTS, RUST_INTEGRATION].map(step => render(step, root)), ...TYPESCRIPT_COMMANDS];
+export const COMMANDS = [...[...GO, ...PHP, PHP_EXTENSION_BUILD, ...PHP_EXTENSION, ...PYTHON, RUST_TESTS].map(step => render(step, root)), ...TYPESCRIPT_COMMANDS];
 
 const lanes: Record<string, (write: (line: string) => void) => Promise<string[]>> = {
   go: write => keepAll(GO, write),
@@ -150,7 +138,7 @@ const lanes: Record<string, (write: (line: string) => void) => Promise<string[]>
   },
   typescript: write => sqliteTest(write),
   python: write => keepAll(PYTHON, write),
-  rust: write => keepAll([RUST_TESTS, RUST_INTEGRATION], write),
+  rust: write => keepAll([RUST_TESTS], write),
 };
 
 if (import.meta.main) {

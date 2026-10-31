@@ -3,9 +3,9 @@
 //! the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN and dropped when
 //! the case ends; the test fails when either is unset.
 //!
-//! Each section is one test that runs its case on every driver. The sections need those servers, so they are ignored
-//! trials, which the plain workspace run leaves out; the rust lane of scripts/client-db-test.mts and
-//! scripts/case-database-check.mts run them with --include-ignored, and a parity binding with make feature-rust-database.
+//! Each section is one test that runs its case on every driver, in case databases of its own, so the sections run in parallel.
+//! The workspace cargo test of the rust lane of scripts/client-db-test.mts runs them, scripts/case-database-check.mts runs the
+//! target, and a parity binding runs one section through make feature-rust-database.
 use polyspec_orm_testcase::OrPanic;
 
 use std::cell::Cell;
@@ -97,18 +97,34 @@ use polyspec_orm_case_database::CaseDatabase;
 
 const TARGET_POOL_SIZE: u32 = 4;
 
+/// A generated model connects through model::connect to a case database of `driver` where the bench set is installed, and reads.
+async fn coverage_generated_model_connection_for(driver: &str) {
+    let t = Target::installed(driver).await;
+    let db = model::connect(&t.dsn, 1, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: model::connect: {e}"));
+    Author::new().connect(&db).get_count().await.or_panic(|e| format!("{driver}: count: {e}"));
+    db.close().await;
+    t.finish().await;
+}
+
 #[tokio::test]
 // Requirements: CFG-1.
-async fn coverage_generated_model_connection() {
+async fn coverage_generated_model_connection_mysql() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    let driver = std::env::var("ORM_FEATURE_DATABASE")
-        .expect("ORM_FEATURE_DATABASE is required; run it through make feature-check, which sets it for each coverage case");
-    let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required; run it through make feature-check, which sets it for each coverage case");
-    assert!(["mysql", "postgres", "sqlite"].contains(&driver.as_str()));
-    assert!(!dsn.is_empty());
-    let db = model::connect(&dsn, 1, polyspec_orm::Config::default()).await.unwrap();
-    Author::new().connect(&db).get_count().await.unwrap();
-    db.close().await;
+    coverage_generated_model_connection_for("mysql").await;
+}
+
+#[tokio::test]
+// Requirements: CFG-1.
+async fn coverage_generated_model_connection_postgres() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    coverage_generated_model_connection_for("postgres").await;
+}
+
+#[tokio::test]
+// Requirements: CFG-1.
+async fn coverage_generated_model_connection_sqlite() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    coverage_generated_model_connection_for("sqlite").await;
 }
 
 struct Target {
@@ -938,7 +954,6 @@ async fn installed_section(driver: &str, body: impl AsyncFn(&Target)) {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN; run it with --include-ignored"]
 async fn schema_empty() {
     check_bench_set();
     for driver in DRIVERS {
@@ -951,7 +966,6 @@ async fn schema_empty() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN; run it with --include-ignored"]
 async fn conditions() {
     check_bench_set();
     for driver in DRIVERS {
@@ -962,7 +976,6 @@ async fn conditions() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN; run it with --include-ignored"]
 async fn joins_and_relations() {
     check_bench_set();
     for driver in DRIVERS {
@@ -973,7 +986,6 @@ async fn joins_and_relations() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN; run it with --include-ignored"]
 async fn columns_and_subqueries() {
     check_bench_set();
     for driver in DRIVERS {
@@ -984,7 +996,6 @@ async fn columns_and_subqueries() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN; run it with --include-ignored"]
 async fn writes() {
     check_bench_set();
     for driver in DRIVERS {
@@ -995,7 +1006,6 @@ async fn writes() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN; run it with --include-ignored"]
 async fn transactions() {
     check_bench_set();
     for driver in DRIVERS {
@@ -1006,7 +1016,6 @@ async fn transactions() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN; run it with --include-ignored"]
 async fn aes_rotation() {
     check_bench_set();
     for driver in DRIVERS {
@@ -1017,7 +1026,6 @@ async fn aes_rotation() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN; run it with --include-ignored"]
 async fn json_values() {
     check_bench_set();
     for driver in DRIVERS {
@@ -1028,7 +1036,6 @@ async fn json_values() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN; run it with --include-ignored"]
 async fn bind_limit_splitting() {
     check_bench_set();
     for driver in DRIVERS {
@@ -1041,7 +1048,6 @@ async fn bind_limit_splitting() {
 /// SQLite reads a database file it may only read; MySQL and PostgreSQL read through a replica of the primary, whose DSN is
 /// ORM_TEST_<DRIVER>_REPLICA_DSN.
 #[tokio::test(flavor = "multi_thread")]
-#[ignore = "a section needs the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN and their replicas; run it with --include-ignored"]
 async fn primary_and_replica() {
     check_bench_set();
     for driver in DRIVERS {

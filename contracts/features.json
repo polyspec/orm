@@ -1085,7 +1085,7 @@
                     "dsn_model_connection"
                   ],
                   "symbols": {
-                    "dsn_model_connection": "coverage_generated_model_connection"
+                    "dsn_model_connection": "coverage_generated_model_connection_mysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -1098,7 +1098,7 @@
                     "dsn_model_connection"
                   ],
                   "symbols": {
-                    "dsn_model_connection": "coverage_generated_model_connection"
+                    "dsn_model_connection": "coverage_generated_model_connection_postgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -1111,7 +1111,7 @@
                     "dsn_model_connection"
                   ],
                   "symbols": {
-                    "dsn_model_connection": "coverage_generated_model_connection"
+                    "dsn_model_connection": "coverage_generated_model_connection_sqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -8577,7 +8577,7 @@
         },
         {
           "id": "chunking-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts chunking-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked -p polyspec-orm-tests --test integration_program -- --include-ignored --exact bind_limit_splitting",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts chunking-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked -p polyspec-orm-tests --test integration_program -- --exact bind_limit_splitting",
           "shard": "rust",
           "inputs": [
             "packages/rust/tests/tests/integration_program/main.rs",
