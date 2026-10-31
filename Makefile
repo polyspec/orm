@@ -3404,6 +3404,7 @@ native-api-equivalence-check: php-vendor-check php-models orm-install-php-extens
 
 native-arginfo-php-extension-check: php-vendor-check php-models
 	@set -eu; \
+	$(NODE) --test scripts/php/php-ext-arginfo.test.mts; \
 	run_dir="$(abspath .runtime/run)/native-arginfo-php-extension-check-$$PPID"; \
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
