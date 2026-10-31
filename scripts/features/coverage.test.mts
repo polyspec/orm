@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
+import { setup } from '@polyspec/kit/test-hooks';
 import { execFileSync } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 import { chmod, mkdtemp, mkdir, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
@@ -1029,9 +1030,22 @@ async function exportLease(root: string): Promise<() => void> {
   };
 }
 
+// The fixture crate of the overlap case is written and built in a setup, a long operation without a deadline, so the
+// `cargo test --no-run` of the case finds it built and only the FIFO decides the overlap, whatever the load (T335).
+const overlapRustFile = 'packages/rust/orm/src/lib.rs';
+let overlapRoot = '';
+setup('coverage overlap fixture crate', async () => {
+  overlapRoot = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-overlap-')));
+  await mkdir(join(overlapRoot, overlapRustFile, '..'), { recursive: true });
+  await writeFile(join(overlapRoot, 'packages/rust/Cargo.toml'), '[workspace]\nmembers = ["orm"]\nresolver = "2"\n');
+  await writeFile(join(overlapRoot, 'packages/rust/orm/Cargo.toml'), '[package]\nname = "coverage_overlap"\nversion = "0.0.1"\nedition = "2021"\n');
+  await writeFile(join(overlapRoot, overlapRustFile), '#[cfg(test)] mod tests { #[test] fn first() {} }\n');
+  execFileSync('cargo', ['test', '--no-run', '--manifest-path', join(overlapRoot, 'packages/rust/Cargo.toml'), '--package', 'coverage_overlap', '--lib'], { stdio: 'inherit' });
+});
+
 caseTest('coverage runs without cargo proceed while the Rust test build runs', 120000, async () => {
-  const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-overlap-')));
-  const rustFile = 'packages/rust/orm/src/lib.rs';
+  const root = overlapRoot;
+  const rustFile = overlapRustFile;
   const phpFile = 'packages/php/tests/OwnerTest.php';
   const fifo = join(root, 'build-gate');
   const written = join(root, 'written');
@@ -1050,10 +1064,7 @@ caseTest('coverage runs without cargo proceed while the Rust test build runs', 1
     execFileSync('mkfifo', [fifo]);
     await writeFile(join(root, 'bin/cargo'), `#!/bin/sh\nprintf '%s\\n' "$*" >> ${JSON.stringify(cargoArguments)}\ncase " $* " in *" test "*"--no-run "*) read gate < ${JSON.stringify(fifo)} ;; esac\nexec ${JSON.stringify(realCargo)} "$@"\n`);
     await chmod(join(root, 'bin/cargo'), 0o755);
-    for (const file of [rustFile, phpFile]) await mkdir(join(root, file, '..'), { recursive: true });
-    await writeFile(join(root, 'packages/rust/Cargo.toml'), '[workspace]\nmembers = ["orm"]\nresolver = "2"\n');
-    await writeFile(join(root, 'packages/rust/orm/Cargo.toml'), '[package]\nname = "coverage_overlap"\nversion = "0.0.1"\nedition = "2021"\n');
-    await writeFile(join(root, rustFile), '#[cfg(test)] mod tests { #[test] fn first() {} }\n');
+    await mkdir(join(root, phpFile, '..'), { recursive: true });
     // Only the first run writes to the FIFO. The write waits until cargo opens the FIFO to read it.
     await writeFile(join(root, phpFile), '<?php\n');
     await phpunitStub(root, phpFile, PASSED, `if (!file_exists(${JSON.stringify(written)})) { file_put_contents(${JSON.stringify(fifo)}, "go\\n"); touch(${JSON.stringify(written)}); }\n`);

@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 06e23a3b0607959c02dcb15b512a2f8bc1e38e5a8d531e366daa8ea858192845 -->
+<!-- source-sha256: 853e76da81832b8eee4087afc438ab94ee64fe80a9da1fcc312e4c9120b09e5c -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.19
 
+- coverage case "coverage runs without cargo proceed while the Rust test build runs"는 fixture crate를 deadline이 없는 긴 operation인 @polyspec/kit/test-hooks의 setup에서 쓰고 build합니다. 그래서 case의 cargo test --no-run은 이미 build된 crate를 찾고 겹침은 FIFO만으로 판정됩니다. 이전에는 case가 실행의 30000 ms 예산 안에서 crate를 compile했으므로 부하 평균 83에서 실패했습니다(T335).
 - contracts/features.json의 feature가 검증하는 TypeScript test 파일은 각각 자기 verification command를 가집니다. dsn, statement-events, planner는 두 파일을 각 파일이 읽는 input과 함께 두 command로 나눕니다. T319와 T323이 두 파일을 &&로 이었으므로 첫 실패가 다음 test를 멈추었고, make repo-check/unit이 세 command를 거부했습니다(T337).
 - packages/php-ext/scripts/build.sh는 다시 잠긴 kit 0.0.79가 기대하는 대로 확장을 build합니다. 0.0.79 builder가 config/release.json의 source-copy 항목에서 직접 staging하는 packages/php/src/native/sqlite_cancel.c에 더 이상 --source-copy를 넘기지 않으므로, build가 "source-copy output src/native/sqlite_cancel.c collides with a file already in packages/php-ext/src"로 실패하지 않습니다. K930 형식은 그것을 담은 kit release를 채택할 때 돌아옵니다(T325-2).
 - client-db-check와 client-pooler-check의 rust lane, case-database-check의 rust command는 libtest --ignored로 Rust integration program의 ignored section trial만 실행합니다. --include-ignored로 실행하면 feature-check의 변수 없이 실패하는 coverage_generated_model_connection도 실행되고 generated getter test가 한 번 더 실행되었습니다. build.rs와 coverage_model_generation_check는 bench model의 set과 scan 경로를 목록 하나(packages/rust/tests/bench_model.rs)에서 읽습니다. 이전에는 check가 scan 경로를 따로 복사해 두었고 그 복사본에 tests/integration_program이 없어서, 생성한 model에 program이 호출하는 chain method가 없었습니다(T334).
