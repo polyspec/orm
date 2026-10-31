@@ -1,5 +1,5 @@
 <!-- doc-id: contributing -->
-<!-- source-sha256: 7211f83f0a341633fd47a57b1b010778ad8320e0e782cb08b3f37bdaa4c51522 -->
+<!-- source-sha256: 522f54e91260e3dbb0aec8a643271e4b510470dfb4684ed15fc0e7fec757060e -->
 # 기여 안내
 
 ## 필수 작업 순서

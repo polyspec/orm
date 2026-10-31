@@ -1,5 +1,5 @@
 <!-- doc-id: packaging -->
-<!-- source-sha256: 3e95d22868f4591fa13006018e8262ec3a5a4d37c794214df96c7184830a952a -->
+<!-- source-sha256: f68843ba7742cb62de749bbfb2b156755083293fb9483d8b52ead6909a415a1a -->
 # 패키징 결정
 
 | 결정 | 선택 | 이유 | 변경 조건 |
