@@ -2778,16 +2778,19 @@ install: orm-codes orm-install-php orm-install-rust orm-install-go orm-install-p
 # (config/generated.json, tracked). The PHP and Python packages declare their file as a make entry of config/release.json, and the
 # install of each runtime writes its file. Every target that reads a file has orm-codes-<lang> among its prerequisites, directly or
 # through php-vendor-check or python-venv-check, so make writes it before the recipe reads it (make repo-check). The file is published
-# by a rename ($(PUBLISH)), since the make processes of several runs write it while others read it. orm-gen runs online, since a
-# job that installs only one runtime has not downloaded the Go modules of orm-gen.
+# by a rename ($(PUBLISH)), since the make processes of several runs write it while others read it. orm-gen runs offline, as every check
+# does: its prerequisite orm-install-go-codes downloads the Go modules that go.sum pins, since a job that installs only one
+# runtime has not downloaded them.
 ORM_CODES_typescript = packages/ts/src/codes.ts
 PHP_EXT_SQLITE_CANCEL = packages/php-ext/src/native/sqlite_cancel.c
 ORM_CODES_php = packages/php/src/Code.php
 ORM_CODES_python = packages/python/src/polyspec/orm/codes.py
-.PHONY: orm-codes orm-codes-typescript orm-codes-php orm-codes-python
+.PHONY: orm-codes orm-codes-typescript orm-codes-php orm-codes-python orm-install-go-codes
+orm-install-go-codes:
+	cd packages/go && $(ONLINE) $(GO) mod download
 orm-codes: orm-codes-typescript orm-codes-php orm-codes-python
-orm-codes-typescript orm-codes-php orm-codes-python: orm-codes-%:
-	cd packages/go && $(ONLINE) $(PUBLISH) $(CURDIR)/$(ORM_CODES_$*) $(GO) run ./cmd/orm-gen errors --lang $* --yaml $(CURDIR)/docs/spec/errors.yaml --out @OUT@
+orm-codes-typescript orm-codes-php orm-codes-python: orm-codes-%: orm-install-go-codes
+	cd packages/go && $(PUBLISH) $(CURDIR)/$(ORM_CODES_$*) $(GO) run ./cmd/orm-gen errors --lang $* --yaml $(CURDIR)/docs/spec/errors.yaml --out @OUT@
 # orm-install-interfaces-typescript installs the TypeScript 6.0.3 that packages/ts/testing/interfaces/typescript.mts reads declarations with
 # (config/toolchain.json exceptions): TypeScript 7.0 ships no JavaScript API of its compiler.
 # install-packages installs the TypeScript of tests/interfaces from its lock, so a fresh make install leaves the extractor with its checker.
@@ -2887,9 +2890,10 @@ $(PHP_EXT_SQLITE_CANCEL): packages/php/src/native/sqlite_cancel.c
 # kit's build-php-ext builds with its own recipe and reads the same sources.
 build-php-ext: php-ext-sources
 # packages/php-ext/src/polyspec_orm_arginfo.h is the arginfo header of the one stub, written by scripts/php/php-ext-arginfo.mts for the archive;
-# the build of the extension writes its own in a temporary copy.
+# the build of the extension writes its own in a temporary copy. The gen_stub.php of the PHP fetches the PHP-Parser release
+# that it names itself, as the build of kit does (K941); the offline settings of cargo, Go, npm and Composer do not reach it.
 packages/php-ext/src/polyspec_orm_arginfo.h: packages/php-ext/src/polyspec_orm.stub.php
-	$(ONLINE) $(NODE) scripts/php/php-ext-arginfo.mts
+	$(NODE) scripts/php/php-ext-arginfo.mts
 .PHONY: php-ext-sources
 php-ext-sources: packages/php-ext/src/polyspec_orm_arginfo.h $(PHP_EXT_SQLITE_CANCEL)
 # php-ext-build is the one build of the PHP extension: it writes PHP_EXT_OUT with packages/php-ext/scripts/build.sh in PHP_EXT_MODE

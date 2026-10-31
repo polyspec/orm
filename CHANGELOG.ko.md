@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- make runner-check가 T339가 깨뜨린 두 기대값에서 실패했다(T339-12). 오류 코드 target은 install target 밖에서 $(ONLINE)으로 orm-gen을 실행했다: 이제 go.sum이 고정한 Go module을 내려받는 install target orm-install-go-codes 뒤에 offline으로 실행한다. arginfo header recipe는 어떤 도구도 읽지 않는 $(ONLINE)을 가졌고, 그것을 뺐다. parity job test는 이제 오류 코드 파일을 생성하는 check를 가진 모든 job에 Go를, orm-install-typescript-runtime의 prerequisite에 orm-codes-typescript를 기대한다.
 - make ts-min-check가 다시 EBADDEVENGINES로 실패했다: T339-8은 바깥 npm을 경로로 시작했지만, typescript:test 안의 npm run typescript:build는 PATH 맨 앞에서 가장 낮은 Node release의 npm 11을 찾았다(T339-11). 이제 mise.toml npm의 .bin folder가 가장 낮은 Node보다 PATH 앞에 온다.
 - kit 0.0.83의 python symbol extractor는 git이 나열하는 파일만 읽었고 codes.py는 추적하지 않는 build 산출물이므로, make parity-api-check가 python 오류 코드를 없다고 판정했다(99개 finding, T339-10). 고정된 kit release는 0.0.84이며, 그 extractor는 디스크의 .py 파일을 읽는다(K977).
 - packages/php-ext/scripts/build.sh는 없거나 오래된 arginfo header나 SQLite cancel callback 사본을 거절하는데, 68개 recipe와 scripts/client-db-test.mts, ArginfoBuildTest의 fixture가 그것 없이 실행했으므로 kit / runtime (php-ext)이 실패했다(T339-9). 이제 PHP 확장의 모든 build는 그 source를 먼저 쓰는 make php-ext-build(php-ext-sources, 전 php-ext-release-sources)를 실행한다. recipe는 $(call php_ext_build,<output>,<mode>)로 build하고, make repo-check는 build.sh의 다른 호출을 실패시킨다. native-arginfo-php-extension-check는 빠져 있던 server 환경과 함께 데이터베이스 사례를 실행한다.
