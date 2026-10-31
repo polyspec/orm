@@ -36,6 +36,12 @@
 /packages/python/src/*.egg-info/
 # The models that orm-gen writes at each orm-install-python (make python-models; P34: generated output is never tracked).
 /packages/python/tests/models/models.py
+# The stamps of the generators (scripts/generate/once.mts): the key of the inputs that each generated output was built from (make go-models, orm-codes-<lang>, python-models).
+/packages/go/go-models.key
+/packages/ts/src/orm-codes.key
+/packages/php/src/orm-codes.key
+/packages/python/src/polyspec/orm/orm-codes.key
+/packages/python/tests/models/python-models.key
 __pycache__/
 *.pyc
 /var/

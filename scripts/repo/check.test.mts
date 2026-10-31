@@ -2294,3 +2294,28 @@ caseTest('no target of CHECK_TARGETS runs in two CI jobs', COMPUTE, () => {
 caseTest('every CI job restores the caches of its locked installs', COMPUTE, () => {
   assert.deepEqual(lockedCacheErrors(text('.github/workflows/ci.yml')), []);
 });
+
+// The generator case (CR6, B3-2) runs go-models twice on the same inputs with a fake go on the command line. The fake logs each `run`,
+// the generator call. The first make runs the generator and the second, on the same tracked inputs, runs none.
+caseTest('an up-to-date Go model generator runs nothing again', PROCESS, () => {
+  const dir = mkdtempSync(join(tmpdir(), 'orm-generate-once-'));
+  try {
+    const log = join(dir, 'go.log');
+    const fake = join(dir, 'go');
+    writeFileSync(fake, `#!/bin/sh\ncase "$1" in\n  version) echo fake ;;\n  run) echo run >> "${log}" ;;\nesac\nexit 0\n`);
+    chmodSync(fake, 0o755);
+    const stamp = join(dir, 'go-models.key');
+    const calls = () => (existsSync(log) ? readFileSync(log, 'utf8').split('\n').filter(Boolean).length : 0);
+    const make = () => {
+      const result = spawnSync('make', ['-s', 'go-models', `GO=${fake}`, `GO_MODELS_STAMP=${stamp}`], { cwd: fileURLToPath(repository), encoding: 'utf8', env: isolatedEnvironment() });
+      assert.equal(result.status, 0, result.stderr || result.stdout);
+    };
+    make();
+    const first = calls();
+    assert.ok(first > 0, 'the first run generates the Go models');
+    make();
+    assert.equal(calls() - first, 0, `the second run on the same inputs generated ${calls() - first} times; an up-to-date generator writes nothing`);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

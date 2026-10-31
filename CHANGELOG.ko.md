@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c761a8842784d1bf4edfc649eda49a2c1308fef8b3c546954a9517bbcca30613 -->
+<!-- source-sha256: 93060aa7193c2e4a097f44cb1dbd3b05dc5b9572e058e8a41f50aa74f312ab4b -->
 # 변경 이력
 
 ## Unreleased
 
+- Go, PHP, Python model과 orm-codes 파일은 입력이 바뀌지 않았는데도 그것이 필요한 target마다 다시 생성됐다 (한 CI run에서 generator 호출 1451회). 이제 generator는 추적되는 입력의 key가 바뀔 때만 실행되며, 그 stamp는 출력 옆에 원자적으로 기록된다 (CR6).
 - CI job들은 lock file이 바뀌지 않았는데도 npm, composer, uv, Go, mise.toml 패키지를 매 실행마다 다시 설치했다. 이제 각 job은 설치 전에 npm, Go module, composer, uv, tool 캐시를 그 lock file의 hash로 키를 잡아 복원한다 (CR8).
 - 한 CI run에서 일부 target이 두 job에서 실행됐다: static group, docs job, editor job이 docs-verify-idempotent, docs-site-check, dbspec-vscode-check를 각각 실행했고, docs-check는 kit job과 docs job에서 모두 실행됐다. 이제 각 target은 한 job에서만 실행되며, 두 CI job이 같은 target을 실행하면 repo check의 case가 실패한다 (CR9).
 - lease 도구가 필요한 target마다 도구를 다시 빌드해서, 한 job의 여러 target이 같은 프로그램의 빌드를 반복했다. 이제 lease 프로그램은 그 source의 file target이어서 한 번 빌드되고, 이후에는 최신으로 확인된다 (CR11). docs 빌드 test(CR2)도 node:test로 case를 직접 선언했는데 repo 규칙이 이를 금지하므로, 이제 caseTest를 쓴다.

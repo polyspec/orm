@@ -179,6 +179,11 @@ RUN_LONG = node tests/run-long.mts
 # (scripts/publish-output.mts). In `$(PUBLISH) <output> <command>`, the command's @OUT@ argument is the temporary file,
 # and if there is no @OUT@, the command's standard output is the temporary file. The reader sees only files of a finished build.
 PUBLISH = node $(abspath scripts/publish-output.mts)
+# GENERATE_ONCE runs a generator only when the key of its tracked inputs differs from its stamp (scripts/generate/once.mts, B3-2). A generated
+# output is ignored by git, so the key does not depend on it. Each stamp is a file beside the output it guards (gitignored, as the output is),
+# so a stamp is never a fixed file of .runtime shared by runs. GO_VERSION is the Go toolchain's version.
+GENERATE_ONCE = node $(abspath scripts/generate/once.mts)
+GO_VERSION = $(shell $(GO) version)
 # LEASE is the program that handles holding a test resource shared by several runs (tests/lease). Its build is a long-running
 # task, so it runs with no deadline under RUN_LONG.
 LEASE = $(abspath .runtime/bin/lease)
@@ -2035,8 +2040,9 @@ PYTHON_MODELS_SET = contracts/fixtures/bench/dbspec-set.json
 PYTHON_MODELS_OUT = packages/python/tests/models
 PYTHON_MODELS_SCAN = packages/python/examples/thin_slice/main.py
 .PHONY: python-models
+PYTHON_MODELS_STAMP = $(CURDIR)/packages/python/tests/models/python-models.key
 python-models: python-venv-check
-	$(PYTHON_VENV)/bin/orm-gen gen --set $(PYTHON_MODELS_SET) --out $(PYTHON_MODELS_OUT) --scan $(PYTHON_MODELS_SCAN)
+	$(GENERATE_ONCE) $(PYTHON_MODELS_STAMP) "" packages/python/uv.lock packages/python/src $(PYTHON_MODELS_SET) $(PYTHON_MODELS_SCAN) -- $(PYTHON_VENV)/bin/orm-gen gen --set $(PYTHON_MODELS_SET) --out $(PYTHON_MODELS_OUT) --scan $(PYTHON_MODELS_SCAN)
 .PHONY: python-model-check
 python-model-check: python-venv-check
 	$(PYTHON_VENV)/bin/orm-gen gen --check --set $(PYTHON_MODELS_SET) --out $(PYTHON_MODELS_OUT) --scan $(PYTHON_MODELS_SCAN)
@@ -2827,7 +2833,7 @@ orm-install-go-codes:
 	cd packages/go && $(ONLINE) $(GO) mod download
 orm-codes: orm-codes-typescript orm-codes-php orm-codes-python
 orm-codes-typescript orm-codes-php orm-codes-python: orm-codes-%: orm-install-go-codes
-	cd packages/go && $(PUBLISH) $(CURDIR)/$(ORM_CODES_$*) $(GO) run ./cmd/orm-gen errors --lang $* --yaml $(CURDIR)/docs/spec/errors.yaml --out @OUT@
+	$(GENERATE_ONCE) $(CURDIR)/$(dir $(ORM_CODES_$*))orm-codes.key "$(GO_VERSION)" packages/go docs/spec/errors.yaml -- sh -c 'cd packages/go && $(PUBLISH) $(CURDIR)/$(ORM_CODES_$*) $(GO) run ./cmd/orm-gen errors --lang $* --yaml $(CURDIR)/docs/spec/errors.yaml --out @OUT@'
 # orm-install-interfaces-typescript installs the TypeScript 6.0.3 that packages/ts/testing/interfaces/typescript.mts reads declarations with
 # (config/toolchain.json exceptions): TypeScript 7.0 ships no JavaScript API of its compiler.
 # install-packages installs the TypeScript of tests/interfaces from its lock, so a fresh make install leaves the extractor with its checker.
@@ -2858,8 +2864,9 @@ orm-install-php: orm-codes-php
 	$(ONLINE) $(COMPOSER) install --no-interaction --no-progress
 	$(COMPOSER) dump-autoload --no-interaction --quiet
 	$(MAKE) --no-print-directory php-models
+PHP_MODELS_STAMP = $(CURDIR)/packages/php/gen/php-models.key
 php-models: php-vendor-check
-	while IFS= read -r entry; do case "$$entry" in ""|"#"*) continue ;; esac; vendor-php/bin/orm-gen gen $$entry || exit 1; done < $(CURDIR)/$(PHP_MODELS_FILE)
+	$(GENERATE_ONCE) $(PHP_MODELS_STAMP) "" composer.lock packages/php/src packages/php/bin $(PHP_MODELS_FILE) -- sh -c 'while IFS= read -r entry; do case "$$entry" in ""|"#"*) continue ;; esac; vendor-php/bin/orm-gen gen $$entry || exit 1; done < $(CURDIR)/$(PHP_MODELS_FILE)'
 # php-cancel-helper-build publishes the SQLite loadable callback as an explicit product build; PHP queries only load its platform artifact.
 .PHONY: php-cancel-helper-build
 php-cancel-helper-build: php-vendor-check
@@ -2885,8 +2892,9 @@ orm-install-rust-crates:
 # against the same entries (no network).
 GO_MODELS_FILE = packages/go/models.txt
 .PHONY: go-models
+GO_MODELS_STAMP = $(CURDIR)/packages/go/go-models.key
 go-models:
-	cd packages/go && while IFS= read -r entry; do case "$$entry" in ''|'#'*) continue ;; esac; $(GO) run ./cmd/orm-gen gen --lang go $$entry || exit 1; done < $(CURDIR)/$(GO_MODELS_FILE)
+	$(GENERATE_ONCE) $(GO_MODELS_STAMP) "$(GO_VERSION)" packages/go -- sh -c 'cd packages/go && while IFS= read -r entry; do case "$$entry" in ""|"#"*) continue ;; esac; $(GO) run ./cmd/orm-gen gen --lang go $$entry || exit 1; done < $(CURDIR)/$(GO_MODELS_FILE)'
 
 # The runtime build compiles Go packages that import these generated models.
 build-go: go-models
