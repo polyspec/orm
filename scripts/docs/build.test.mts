@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { test } from 'node:test';
+import { caseTest, PROCESS } from '../../tests/testcase.mts';
 import { dist, root } from './lib.mts';
 
 // The npm that runs the prebuilds is the npm of this checkout: the wrapper var/tools/bin/npm runs its npm-cli.js.
@@ -16,7 +16,7 @@ function npmCli(): string {
   return cli;
 }
 
-test('an interrupted docs build leaves the published site as it was', async () => {
+caseTest('an interrupted docs build leaves the published site as it was', PROCESS, async () => {
   rmSync(dist, { recursive: true, force: true });
   mkdirSync(dist, { recursive: true });
   writeFileSync(path.join(dist, 'index.html'), 'previous');

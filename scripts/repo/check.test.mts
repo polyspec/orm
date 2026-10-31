@@ -2259,3 +2259,25 @@ caseTest('only php-ext-build runs the build of the PHP extension', COMPUTE, () =
   const direct = (target: string) => `Makefile ${target} runs packages/php-ext/scripts/build.sh itself; build the extension with $(call php_ext_build,<output>,<mode>), which runs php-ext-build after php-ext-sources`;
   assert.deepEqual(phpExtensionBuildErrors(makefile), [direct('direct'), direct('in-a-chain')]);
 });
+
+// The lease tool is built once per job (B3-7): two targets of one job that need it run one build, and the second finds the
+// published file up to date. The build is the publish of the lease program (BUILD_LEASE), so a fake publish, given on the
+// command line, counts its calls and writes the output file it is given.
+caseTest('the lease tool is built once for two targets of one job', PROCESS, () => {
+  const dir = mkdtempSync(join(tmpdir(), 'orm-lease-build-'));
+  try {
+    const log = join(dir, 'build.log');
+    const publish = join(dir, 'publish');
+    writeFileSync(publish, `#!/bin/sh\necho build >> "${log}"\nmkdir -p "$(dirname "$1")"\ntouch "$1"\n`);
+    chmodSync(publish, 0o755);
+    const lease = join(dir, 'bin', 'lease');
+    for (let run = 0; run < 2; run += 1) {
+      const result = spawnSync('make', ['-s', 'lease-tool', `LEASE=${lease}`, `PUBLISH=${publish}`], { cwd: fileURLToPath(repository), encoding: 'utf8', env: isolatedEnvironment() });
+      assert.equal(result.status, 0, result.stderr || result.stdout);
+    }
+    const builds = existsSync(log) ? readFileSync(log, 'utf8').split('\n').filter(Boolean).length : 0;
+    assert.equal(builds, 1, `the lease tool was built ${builds} times by two targets of one job; it is built once`);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

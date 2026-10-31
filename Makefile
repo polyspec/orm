@@ -155,7 +155,7 @@ commit-msg-check:
 # WITH_TEST_ENV sets, through TEST_TZ, the time zone of the process that runs the database client last: it exports TZ and,
 # for PHP, which does not read TZ, adds tests/timezone/date.ini (which sets date.timezone to ${TZ}) to the front of PHP_INI_SCAN_DIR
 # after the separator (PHP's default scan directory is still read).
-WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make orm-test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && $(BUILD_LEASE) && "$(LEASE)" hold "$${ORM_TEST_SERVERS_LEASES:?$(abspath $(TEST_ENV)) names no lease directory; run make orm-test-servers to rewrite it}" shared --pid $$$$ && export TZ=$(TEST_TZ) PHP_INI_SCAN_DIR=:$(abspath tests/timezone) &&
+WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make orm-test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && $(MAKE) -s $(LEASE) && "$(LEASE)" hold "$${ORM_TEST_SERVERS_LEASES:?$(abspath $(TEST_ENV)) names no lease directory; run make orm-test-servers to rewrite it}" shared --pid $$$$ && export TZ=$(TEST_TZ) PHP_INI_SCAN_DIR=:$(abspath tests/timezone) &&
 # TEST_TZ is the process time zone of the checks that run database clients. It must be a non-UTC zone so that a defect where a client reads a database's
 # zone-less datetime as the process's local time shows up even on a UTC CI runner. Every client reads and writes with the
 # time zone of the connection (+00:00), so the results must not depend on this value (docs/spec/dialects.md).
@@ -219,9 +219,14 @@ export TYPESCRIPT_LEASES
 # SEND_SQLITE_DSN is the SQLite file of rust-send-savepoint-check. It is placed in the RUN_DIR of one run.
 SEND_SQLITE_DSN = sqlite://$(RUN_DIR)/send-savepoint.sqlite
 
-.PHONY: lease-tool
-lease-tool:
+# The lease program is a file target of its sources, so a job builds it once: the publish of the build runs only while the file
+# is missing or older than a source, and the recipes that need it make it through `$(MAKE) -s $(LEASE)`, which is up to date after the first.
+LEASE_SOURCES = $(wildcard tests/lease/*.go)
+$(LEASE): $(LEASE_SOURCES)
 	$(BUILD_LEASE)
+
+.PHONY: lease-tool
+lease-tool: $(LEASE)
 TSC_BUILD = $(RUN_LONG) typescript-build -- node scripts/typescript/build.mts >&2
 
 # check runs CHECK_TARGETS one at a time with scripts/check/run.mts. The runner creates its own bench
@@ -319,7 +324,7 @@ databases-create: typescript-build
 	$(NODE) scripts/check/databases.mts create '$(SERVERS)' '$(DIRECTORY)' '$(NAME)'$(if $(COMPLEX_QUERY), --complex-query)
 
 run-databases:
-	$(BUILD_LEASE) && VECTOR='$(VECTOR)' RECORD='$(RECORD)' $(NODE) scripts/check/run.mts --job-summary $(abspath $(TEST_ENV)) $(TARGETS)
+	$(MAKE) -s $(LEASE) && VECTOR='$(VECTOR)' RECORD='$(RECORD)' $(NODE) scripts/check/run.mts --job-summary $(abspath $(TEST_ENV)) $(TARGETS)
 
 # orm-check delegates to Kit's ci-targets guard without setting FINAL_RUN: CI accepts it on GitHub Actions, while a local
 # final verification must explicitly pass FINAL_RUN=1 after every checklist item is terminal. ci-targets records its report
@@ -337,7 +342,7 @@ orm-check:
 check-run:
 	$(if $(GROUP),$(if $(filter $(GROUP),$(CI_GROUPS)),,$(error GROUP $(GROUP) names no CI group; give one of CI_GROUPS: $(CI_GROUPS))))
 	$(if $(GROUP),$(if $(filter true,$(GITHUB_ACTIONS)),,$(error GROUP runs one CI group of make check-run on GitHub Actions only; run make orm-check without GROUP, which runs every target of CHECK_TARGETS)))
-	$(BUILD_LEASE) && $(NODE) scripts/check/run.mts $(abspath $(TEST_ENV)) $(CHECK_RUN_TARGETS)
+	$(MAKE) -s $(LEASE) && $(NODE) scripts/check/run.mts $(abspath $(TEST_ENV)) $(CHECK_RUN_TARGETS)
 
 # ci-group-needs writes the setup steps that the job of CI group GROUP runs as step output lines (`<output>=true|false`): it decides them from the need
 # that each target of the group declares in contracts/check-inputs.json (scripts/check/ci-setup.mts). The workflow adds those lines
@@ -1377,19 +1382,19 @@ BUILD_STOP_PROCESS = $(RUN_LONG) go-build/stop-process -- $(PUBLISH) $(STOP_PROC
 
 orm-test-servers-check:
 	$(BUILD_STOP_PROCESS)
-	$(BUILD_LEASE)
+	$(MAKE) -s $(LEASE)
 	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) --test scripts/test-servers.test.mts scripts/test-servers-mysql.test.mts
 
 orm-test-servers:
 	$(BUILD_STOP_PROCESS)
-	$(BUILD_LEASE)
+	$(MAKE) -s $(LEASE)
 	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts start
 
 # The dialect-facts probe needs its own writable MySQL server with binary logging and trust-function-creators disabled.
 .PHONY: orm-test-mysql-privilege-start
 orm-test-mysql-privilege-start:
 	$(BUILD_STOP_PROCESS)
-	$(BUILD_LEASE)
+	$(MAKE) -s $(LEASE)
 	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts mysql-privilege-start
 
 # make orm-test-servers-tls loads the TLS files of the MySQL TLS cases into running
@@ -1400,7 +1405,7 @@ orm-test-servers-tls:
 
 orm-test-servers-stop:
 	$(BUILD_STOP_PROCESS)
-	$(BUILD_LEASE)
+	$(MAKE) -s $(LEASE)
 	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts stop
 
 # worktree-remove WORKTREE=<path> removes a worktree of this repository: it first stops the servers that run from the
@@ -1416,11 +1421,11 @@ worktree-remove:
 # deletes dead leases (those whose holder and releaser have both ended) and records what it deleted. A dead lease may also be taken by the next request (tests/lease).
 SERVERS_LEASES = $(abspath .runtime/servers.leases)
 orm-test-servers-leases:
-	$(BUILD_LEASE)
+	$(MAKE) -s $(LEASE)
 	$(LEASE) list $(SERVERS_LEASES)
 
 orm-test-servers-leases-clear:
-	$(BUILD_LEASE)
+	$(MAKE) -s $(LEASE)
 	$(LEASE) clear-dead $(SERVERS_LEASES)
 
 # feature-unit-check checks that the feature documents match the manifest, and runs the unit tests of coverage and owner selection.

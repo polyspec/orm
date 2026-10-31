@@ -51,6 +51,7 @@
 
 ## 0.0.19
 
+- Every target that needed the lease tool rebuilt it, so a job with several targets ran the build of the same program again and again. The lease program is now a file target of its sources, built once and then found up to date (CR11). The docs build test (CR2) also declared its case with node:test directly, which the repo rule forbids; it now uses caseTest.
 - The recipe schema accepted a database op (`sql.exec`, `model.connect`) in a recipe without a fixture, so such a behaviour could run without the three databases. It now refuses that op (CR13).
 - The docs build rendered the site into the published folder in place, so an interrupted build left half of the site behind. It now renders into a staging folder and publishes it by one rename (CR2).
 - The check runner printed no `::error` line for a failed target, so on GitHub Actions a failure was visible only when the job ended. A failed target now prints its `::error` line when it ends (CR1).
