@@ -171,6 +171,7 @@ const run = async (program, args, step, spawned = () => {}) => {
   const name = args[1] === 'databases-create' ? (args.includes('COMPLEX_QUERY=1') ? 'databases create complex-query' : 'databases create')
     : args[0] === 'scripts/check/databases.mts' ? \`databases \${args[1]}\` : args.at(-1);
   appendFileSync(log, name + '\\n');
+  if (process.env.STUB_TRACE) console.log('started ' + name);
   if (kill && name === kill) process.kill(process.pid, 'SIGKILL');
   if (failing && name === 'databases create') {
     step('databases: CREATE DATABASE orm_check_x_bench failed: ERROR 1045 (28000): Access denied for user');
@@ -333,6 +334,21 @@ caseTest('a run records its setup steps and its targets', PROCESS, () => {
     assert.deepEqual([record.result, record.failed], ['failed', ['b']]);
     assert.deepEqual(record.setup.map(step => [step.name, step.status]), [['downloads', 'passed'], ['servers', 'passed'], ['databases/create', 'passed'], ['databases/drop', 'passed']]);
     assert.equal(record.tree, c.git('rev-parse', 'HEAD^{tree}').trim());
+  } finally {
+    cleanup();
+  }
+});
+
+// A failed target prints its ::error line when it ends, on GitHub Actions, so the failure is visible before the next target starts (B1-3).
+caseTest('a failed target prints its ::error line on GitHub Actions before the next target starts', PROCESS, () => {
+  const c = checkout(scope);
+  try {
+    const result = c.run('', { GITHUB_ACTIONS: 'true', STUB_TRACE: '1' });
+    const lines = result.stdout.split('\n');
+    const error = lines.findIndex(line => line.startsWith('::error title=check/b::'));
+    const next = lines.indexOf('started c');
+    assert.ok(error >= 0, `no ::error line for target b in the output:\n${result.stdout}`);
+    assert.ok(next > error, `the ::error line is at ${error}, and target c starts at ${next}`);
   } finally {
     cleanup();
   }

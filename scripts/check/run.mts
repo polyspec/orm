@@ -203,6 +203,8 @@ export async function runChecks({ root, jobSummary = false, servers: given, targ
     // Warnings (`WARNING`) are not failures. They are kept in the step's record and summary, and on GitHub Actions they are also written as `::warning::` annotations.
     const warnings = found.warnings();
     if (process.env.GITHUB_ACTIONS === 'true') for (const warning of warnings) console.log(`::warning title=${label}::${warning}`);
+    // A failed target ends with its ::error line, so its failure is visible when it ends and not when the job ends (B1-3).
+    if (!passed && process.env.GITHUB_ACTIONS === 'true') console.log(`::error title=check/${label}::${lines[0] ?? 'the target ended with a failure'}`);
     const details: Partial<StepRecord> & { elapsed: number } = { log: relative(root, log), elapsed: Math.round(elapsed), disk: after.places, ...(passed ? {} : { failures: lines }), ...(warnings.length ? { warnings } : {}), ...(truncated ? { truncated } : {}) };
     // After copying the run directory (.runtime/run/<target>-<make pid>) left by a failed target into the report, it is deleted. The report
     // keeps the evidence, and nothing is left on disk.

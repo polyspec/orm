@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 38be92d83e21eb1dde7e629fd4e36a85148810c6426e4890f3eef5ffcab3ce7b -->
+<!-- source-sha256: 47d04cb2fc75251bd2a8c86f15b4de2030a264023b782934798c9b406795cee1 -->
 # 변경 이력
 
 ## Unreleased
 
+- check runner는 실패한 target의 `::error` 줄을 출력하지 않아, GitHub Actions에서 실패는 작업이 끝나야 보였다. 이제 실패한 target은 끝날 때 `::error` 줄을 출력한다 (CR1).
 ## 0.0.21
 
 - client-statement-runner는 statement runner의 Rust 기호를 두 공개 경로, 곧 crate root re-export와 정의 module 모두에 선언한다: `polyspec_orm::Utils::run`과 `polyspec_orm::utils::Utils::run`, `polyspec_orm::TxFrame::run`과 `polyspec_orm::tx::TxFrame::run` (T346-11).

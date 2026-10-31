@@ -1,10 +1,10 @@
 <!-- doc-id: checklist-check-recipes -->
-<!-- source-sha256: a8afe291617b7ad4610210303c2ea3efb7b259cb9884d5104166012d417dda55 -->
+<!-- source-sha256: 9fb47c1cbfcbf8b24a4f9aca0b58e14f3ff242593dfdd949c1c82381e5ef2b1b -->
 # 병렬 check runner와 모든 공통 동작의 recipe 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
 |---|---|---|---|---|
-| CR1 | B1-3 target 끝의 ::error. Red: `node --test scripts/check/run.test.mts`: 새 사례가 두 번째 target 전에 `::error`를 찾지 못한다 | scripts/check/run.mts, scripts/check/run.test.mts | `node --test scripts/check/run.test.mts`; `make runner-check` | [ ] |
+| CR1 | B1-3 target 끝의 ::error. Red: `node --test scripts/check/run.test.mts`: 새 사례가 두 번째 target 전에 `::error`를 찾지 못한다 | scripts/check/run.mts, scripts/check/run.test.mts | `node --test scripts/check/run.test.mts`; `make runner-check` | [v] |
 | CR2 | B1-4 docs writer. Red: 이 행에 이름이 있는 자신의 테스트 파일에 있는 중단 테스트가 docs/.vitepress/dist를 반쯤 남긴다 | scripts/docs/idempotent.mts, the interrupt test file of the docs writer (named in the first commit of the row) | `make docs-verify-idempotent` | [ ] |
 | CR3 | B1-4 arginfo writer. Red: 이 행에 이름이 있는 자신의 테스트 파일에 있는 중단 테스트가 헤더를 반쯤 남긴다 | scripts/php/php-ext-arginfo.mts, the interrupt test file of the arginfo writer (named in the first commit of the row) | `make native-arginfo-php-extension-check` | [ ] |
 | CR4 | B1-7 소스와 모드마다 PHP 확장 빌드 하나: Makefile의 `$(call php_ext_build,...)` 사이트 69개(그중 46개는 target별 실행 디렉터리로 빌드)가 같은 소스를 다시 빌드한다. 실행 41215303803의 test(client_db_php_extension)에서 13번, 약 196초다. php-ext-build는 빌드를 모든 RUN_DIR 밖의 선언된 위치(`var/php-ext/build/<key>/`, 어떤 사이트의 trap도 지우지 않는다)에 원자적으로 게시한다. 키는 다음의 해시다: packages/php-ext의 추적되는 소스(src/, config.m4, composer.json, testing/native/module.c), arginfo 헤더와 sqlite_cancel.c 사본(php-ext-sources 뒤에 계산), `php-config --version`의 출력, 모드와 configure 인자, 환경의 CC와 CFLAGS, kit 빌더의 버전. 그 위치가 없을 때만 빌드하며, kit의 holder lock 선례를 따르는 그 위치의 holder lock 아래에서 빌드한다. 그래서 두 번째 호출자는 기다렸다가 첫 빌드를 읽는다. 각 사이트는 그것을 자신의 실행 디렉터리에 복사한다. Red: `node --test packages/php-ext/tests/build-cache.test.mts`(새 파일): 한 실행에서 확장 사이트 두 개는 phpize를 두 번 실행한다고 계수한다 | the php-ext build targets in the Makefile, packages/php-ext/tests/build-cache.test.mts (new) | `node --test packages/php-ext/tests/build-cache.test.mts` | [ ] |

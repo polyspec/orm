@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+
+
 ## 0.0.21
 
 - client-statement-runner declares each Rust symbol of the statement runner at both public paths, the crate-root re-export and the module of its definition: `polyspec_orm::Utils::run` and `polyspec_orm::utils::Utils::run`, `polyspec_orm::TxFrame::run` and `polyspec_orm::tx::TxFrame::run` (T346-11).
@@ -41,6 +43,7 @@
 - The coverage owners of `statement_runner` share their helpers instead of copying them: the Go owner reads the selected database through `featureDatabase`, and the PHP and PHP-extension owners call `coverStatementRunner` of `StatementRunnerCases`, so the duplication check of the shared gates passes (T345-10).
 - The statement runner passes the runtime gates and the parity checks: its Python test is formatted, the PHP trait `StatementRunnerCases` has its own file loaded by the test bootstrap, the TypeScript bindings name each database case, the Go coverage binding runs through `feature-go-unit` and the Rust one binds the trial that runs, and the frame of INT-150 is public in every runtime with only its `run` and its result type, its state and constructor internal (T345-11).
 
+
 ## 0.0.20
 
 - orm takes kit 0.0.86 (T344). Each package of config/release.json declares its product and runtime, as the release schema of kit 0.0.86 requires (P39): the asset label is `<vendor>-<product>-<runtime>-<version>`, and a release asset keeps the file name its packer gives, `polyspec-orm-X.Y.Z.tgz` for `@polyspec/orm` in place of `polyspec-orm-npm-X.Y.Z.tgz`. make kit-sync wrote P39 into PRINCIPLES.md and PRINCIPLES.ko.md. orm takes ordered-json 0.0.15 in every ecosystem, through its npm, Composer, Go, Python and Rust pins, and packaging.md names its assets `polyspec-ordered-json-0.0.15.tgz` and the Composer and wheel names of that release.
@@ -48,6 +51,7 @@
 
 ## 0.0.19
 
+- The check runner printed no `::error` line for a failed target, so on GitHub Actions a failure was visible only when the job ended. A failed target now prints its `::error` line when it ends (CR1).
 - make docs-rules-check and make makefile-pinned-node-recipes-check failed in test (static) (T339-20). Two T339 rows used expressions that the writing style forbids, and the GroupRows PHP extension test still expected the build.sh call that T339-9 replaced with the one build path; the rows are reworded, and the test expects $(call php_ext_build,...) and reads the module and the mode of that call.
 - make example-check failed with ModuleNotFoundError: No module named 'packages': T339-14 made the Python thin-slice example import its models as packages.python.tests.models.models, and the tests ran it as a script from examples (T339-19). The tests and the README now run it from the root of the checkout as the module packages.python.examples.thin_slice.main, as every Python test of orm runs.
 - The Python conformance and model-generation tests failed with FileNotFoundError: three of them built the old models path packages/python/src/polyspec/orm/models from path components, which the search of T339-14 did not find (T339-18). They read packages/python/tests/models.
