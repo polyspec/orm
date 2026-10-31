@@ -349,7 +349,8 @@ static zend_string *gz_deflate(zend_string *in)
     return out;
 }
 
-/* preg_match('//u'): whether the bytes are valid UTF-8 (surrogates and code points above U+10FFFF are not). */
+/* preg_match('//u') and mb_check_encoding of Codec.php: whether the bytes are valid UTF-8 (no overlong form, no surrogate,
+ * nothing above U+10FFFF); a text stage and the YAML stream (COD-13) check their bytes with it. */
 static bool valid_utf8(const unsigned char *s, size_t n)
 {
     size_t i = 0;
@@ -436,44 +437,6 @@ static bool node_line(zval *node, zend_long *line)
     }
     *line = zval_get_long(&rv);
     zval_ptr_dtor(&rv);
-    return true;
-}
-
-/* Codec.php yamlStream: the stream rule of YAML 1.2 that the reader does not apply (COD-13), the stream is UTF-8: no overlong
- * form, no surrogate, nothing above U+10FFFF. */
-static bool utf8_valid(const unsigned char *s, size_t n)
-{
-    size_t i = 0;
-    while (i < n) {
-        unsigned char c = s[i];
-        size_t len;
-        uint32_t cp, min;
-        if (c < 0x80) {
-            i++;
-            continue;
-        } else if ((c & 0xE0) == 0xC0) {
-            len = 2, cp = c & 0x1F, min = 0x80;
-        } else if ((c & 0xF0) == 0xE0) {
-            len = 3, cp = c & 0x0F, min = 0x800;
-        } else if ((c & 0xF8) == 0xF0) {
-            len = 4, cp = c & 0x07, min = 0x10000;
-        } else {
-            return false;
-        }
-        if (i + len > n) {
-            return false;
-        }
-        for (size_t k = 1; k < len; k++) {
-            if ((s[i + k] & 0xC0) != 0x80) {
-                return false;
-            }
-            cp = (cp << 6) | (s[i + k] & 0x3F);
-        }
-        if (cp < min || cp > 0x10FFFF || (cp >= 0xD800 && cp <= 0xDFFF)) {
-            return false;
-        }
-        i += len;
-    }
     return true;
 }
 
@@ -733,7 +696,7 @@ static bool yaml_node(zval *node, zval *schema, zval *out, zend_string **err)
 /* yamlDecode: one YAML document, read by purr and resolved by its core schema. */
 static bool yaml_decode_text(zend_string *text, zval *out, zend_string **err)
 {
-    if (!utf8_valid((const unsigned char *)ZSTR_VAL(text), ZSTR_LEN(text))) {
+    if (!valid_utf8((const unsigned char *)ZSTR_VAL(text), ZSTR_LEN(text))) {
         *err = zend_string_init(ZEND_STRL("the stream is not UTF-8"), 0);
         return false;
     }
