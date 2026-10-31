@@ -6,6 +6,10 @@ rust-version = "1.99.0"
 publish = false
 build = "build.rs"
 
+# The helpers that the test programs share: the recipe helper (docs/spec/feature-coverage.md FCV-2 to FCV-4).
+[lib]
+path = "src/lib.rs"
+
 [[bin]]
 name = "client_bench"
 path = "src/client_bench.rs"
@@ -29,6 +33,12 @@ path = "../../../examples/thin-slice/rust/main.rs"
 [[test]]
 name = "coverage_conformance_verification"
 path = "tests/coverage_conformance_verification.rs"
+harness = false
+
+# Each case of the codec recipe, tests/codec/codec.json, is the trial codec_none::<case id> (FCV-3).
+[[test]]
+name = "codec_none"
+path = "tests/codec_none.rs"
 harness = false
 
 [[test]]

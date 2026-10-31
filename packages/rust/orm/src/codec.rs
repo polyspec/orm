@@ -770,83 +770,14 @@ mod tests {
         assert_eq!(php_int_key("-0"), None);
     }
 
-    /// AES v2 uses an authenticated envelope and rejects tampering.
+    /// An empty stage list returns the cell as Rust holds it, bytes as bytes and empty text as empty text (COD-31); the other
+    /// clients read a cell as text, so the codec recipe does not hold these.
     #[test]
-    // The test of COD-5 (docs/spec).
-    fn aes_vectors() {
+    // The test of COD-31 (docs/spec).
+    fn empty_stage_list_returns_the_cell() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let styles = vec!["aes".to_string(), "hex".to_string()];
-        let encoded = host_encode(&Param::Str("member@example.test".into()), &styles, "key-v1").unwrap();
-        let Param::Str(encoded) = encoded else { panic!("AES+hex must produce text") };
-        assert_eq!(host_decode(&Val::Str(encoded.clone()), &styles, "key-v1").unwrap(), Val::Str("member@example.test".into()));
-        let mut tampered = hex_decode(&encoded).unwrap();
-        *tampered.last_mut().unwrap() ^= 1;
-        assert_eq!(host_decode(&Val::Str(hex_upper(&tampered)), &styles, "key-v1").unwrap_err().code(), CODEC_DECODE);
-        assert_eq!(host_encode(&Param::Null, &styles, "key-v1").unwrap(), Param::Null);
-        let fixed = hex_decode("4F524D2D414553320000112233445566778899AABB651DA9F08BE2FA7CD7B2DF5C04D91B32189DCD854A70762F99271A2BEBA64A248E24").unwrap();
-        assert_eq!(host_decode(&Val::Str(hex_upper(&fixed)), &styles, "bench-salt").unwrap(), Val::Str("user42@example.com".into()));
-    }
-
-    #[test]
-    // The test of COD-4 (docs/spec).
-    fn blind_index_vector() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        assert_eq!(
-            blind_index(&Param::Str("member@example.test".into()), "blind-key").unwrap(),
-            "1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8"
-        );
-    }
-
-    #[test]
-    // Requirements: COD-4, COD-34.
-    fn codec_value_edges() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        assert_eq!(
-            blind_index(&Param::Str("member@example.test".into()), "blind-key").unwrap(),
-            "1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8"
-        );
-        assert_eq!(decode(&["serialize".to_owned()], &Val::Str("O:8:\"stdClass\":0:{}".into())).unwrap_err().code(), CODEC_UNSUPPORTED);
-    }
-
-    #[test]
-    // The test of COD-29, COD-33, COD-34, COD-35 (docs/spec).
-    fn errors_and_keys() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        for (styles, raw, code) in [
-            (vec!["ordered_json"], "{bad", "CODEC_DECODE"),
-            (vec!["serialize"], "O:8:\"stdClass\":0:{}", "CODEC_UNSUPPORTED"),
-            (vec!["serialize"], "a:1:{i:0;", "CODEC_DECODE"),
-            (vec!["serialize", "gz"], "not zlib", "CODEC_DECODE"),
-            (vec!["serialize", "base64"], "@@@", "CODEC_DECODE"),
-            (vec!["yaml"], "a: 1\na: 2\n", "CODEC_DECODE"),
-            (vec!["yaml"], "---\na: 1\n---\na: 2\n", "CODEC_DECODE"),
-            (vec!["yaml"], "a: &x [1]\nb: *x\n", "CODEC_DECODE"),
-            (vec!["yaml"], "a: !custom value\n", "CODEC_DECODE"),
-            (vec!["yaml"], "value: .inf\n", "CODEC_DECODE"),
-            (vec!["yaml"], "true: value\n", "CODEC_DECODE"),
-        ] {
-            let styles: Vec<String> = styles.into_iter().map(String::from).collect();
-            match decode(&styles, &Val::Str(raw.into())) {
-                Err(e) => assert_eq!(e.code(), code, "{raw}"),
-                Ok(v) => panic!("{raw}: {v:?}"),
-            }
-        }
-        let v: Value = serde_json::json!({"07": 1, "-3": 2, "10": 3, "x": 4.0, "y": 1e25});
-        match encode(&["serialize"], StyledValue::Value(&v)).unwrap() {
-            Param::Str(s) => assert_eq!(s, "a:5:{i:-3;i:2;s:2:\"07\";i:1;i:10;i:3;s:1:\"x\";d:4;s:1:\"y\";d:1.0E+25;}"),
-            other => panic!("{other:?}"),
-        }
-        assert_eq!(encode(&["filepart"], StyledValue::Value(&serde_json::json!({}))).unwrap_err().code(), CODEC_UNSUPPORTED);
-        assert_eq!(encode(&["serialize", "yaml"], StyledValue::Value(&serde_json::json!({}))).unwrap_err().code(), CODEC_UNSUPPORTED);
-        let yaml = vec!["yaml".to_string()];
-        assert_eq!(decode(&yaml, &Val::Str("1: value\n".into())).unwrap(), Val::Json(serde_json::json!({"1": "value"})));
-        assert_eq!(decode(&["base64".into()], &Val::Bytes(vec![0xff])).unwrap_err().code(), CODEC_DECODE);
-        assert_eq!(host_decode(&Val::Bytes(vec![0xff]), &["hex".into()], "").unwrap_err().code(), CODEC_DECODE);
-        assert_eq!(decode(&["serialize".into()], &Val::Str("b:2;".into())).unwrap_err().code(), CODEC_DECODE);
-        assert_eq!(decode(&["serialize".into()], &Val::Str("d:NAN;".into())).unwrap_err().code(), CODEC_DECODE);
         assert_eq!(decode(&[], &Val::Bytes(vec![0xff])).unwrap(), Val::Bytes(vec![0xff]));
         assert_eq!(decode(&[], &Val::Str(String::new())).unwrap(), Val::Str(String::new()));
-        assert_eq!(decode(&["ordered_json".into()], &Val::Str(String::new())).unwrap_err().code(), CODEC_DECODE);
     }
 
     #[test]
@@ -896,217 +827,35 @@ mod tests {
         assert!(error.to_string().contains("aes: authentication failed: "), "{error}");
     }
 
-    /// The yaml stage reads one YAML 1.2 document with the core schema into the common value
-    /// model (docs/spec/codec.md, yaml): plain scalars resolve by the core schema tags, integral keys
-    /// become decimal strings, and the refused forms return CODEC_DECODE instead of a string.
+    /// The values that the codec recipe holds once T334-3-14b lands: the i64 bounds and an integral float beyond 2^53, which the
+    /// TypeScript and Python codecs refuse today, and the non-printable characters of YAML 1.2, which only Rust refuses today.
     #[test]
-    // The test of COD-29 (docs/spec).
-    fn yaml_reads_the_core_schema() {
+    // The test of COD-13, COD-16, COD-29 (docs/spec).
+    fn yaml_values_of_t334_3_14b() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let yaml = vec!["yaml".to_string()];
-        let mut wrong = Vec::new();
-        for (text, want) in [
-            ("---\n", serde_json::json!(null)),
-            ("\u{feff}a: 1\n", serde_json::json!({"a": 1})),
-            ("Null\n", serde_json::json!(null)),
-            ("NULL\n", serde_json::json!(null)),
-            ("~\n", serde_json::json!(null)),
-            ("a:\n", serde_json::json!({"a": null})),
-            ("07\n", serde_json::json!(7)),
-            ("0o17\n", serde_json::json!(15)),
-            ("0x1F\n", serde_json::json!(31)),
-            ("+12\n", serde_json::json!(12)),
-            ("-9223372036854775808\n", serde_json::json!(i64::MIN)),
-            ("0b101\n", serde_json::json!("0b101")),
-            ("-0x1\n", serde_json::json!("-0x1")),
-            ("0x-1\n", serde_json::json!("0x-1")),
-            ("1_000\n", serde_json::json!("1_000")),
-            ("tRuE\n", serde_json::json!("tRuE")),
-            ("yes\n", serde_json::json!("yes")),
-            (".nAn\n", serde_json::json!(".nAn")),
-            ("'true'\n", serde_json::json!("true")),
-            ("\"07\"\n", serde_json::json!("07")),
-            ("1e3\n", serde_json::json!(1000.0)),
-            (".5\n", serde_json::json!(0.5)),
-            ("2.0\n", serde_json::json!(2.0)),
-            ("-0.0\n", serde_json::json!(-0.0)),
-            ("0x1F: a\n07: b\n+3: c\n", serde_json::json!({"31": "a", "7": "b", "3": "c"})),
-            ("'1.5': a\n'true': b\n", serde_json::json!({"1.5": "a", "true": "b"})),
-            ("tRuE: a\n", serde_json::json!({"tRuE": "a"})),
-        ] {
-            match decode(&yaml, &Val::Str(text.into())) {
-                Ok(Val::Json(got)) if got == want && format!("{got:?}") == format!("{want:?}") => {}
-                other => wrong.push(format!("{text:?}: got {other:?}, want {want}")),
+        assert_eq!(decode(&yaml, &Val::Str("-9223372036854775808\n".into())).unwrap(), Val::Json(serde_json::json!(i64::MIN)));
+        for text in ["a: x\u{7}y\n", "a: \"x\u{9f}\"\n", "a: \u{feff}x\n"] {
+            assert_eq!(decode(&yaml, &Val::Str(text.into())).unwrap_err().code(), CODEC_DECODE, "{text:?}");
+        }
+        for value in [serde_json::json!(1e25), serde_json::json!(i64::MIN), serde_json::json!(i64::MAX)] {
+            let Param::Str(text) = encode(&["yaml"], StyledValue::Value(&value)).unwrap() else { panic!("{value}: yaml writes text") };
+            match decode(&yaml, &Val::Str(text.clone())).unwrap() {
+                Val::Json(got) => assert!(got == value && format!("{got:?}") == format!("{value:?}"), "{value}: wrote {text:?}, read {got}"),
+                other => panic!("{value}: read {other:?}"),
             }
         }
-        for text in [
-            "9223372036854775808\n",
-            "0x8000000000000000\n",
-            "1e400\n",
-            "-.INF\n",
-            ".NaN\n",
-            "a: [.inf]\n",
-            "? [a]\n: b\n",
-            "? {a: 1}\n: b\n",
-            "~: a\n",
-            "Null: a\n",
-            "1.5: a\n",
-            "False: a\n",
-            "1e3: a\n",
-            "",
-            "# comment\n",
-            "a: !!str x\n",
-            "a: ! x\n",
-            "!!map {a: 1}\n",
-            "&x a\n",
-            "a: &x [1]\n",
-            "1: a\n01: b\n",
-            "a: 1\n'a': 2\n",
-            "--- 1\n--- 2\n",
-            "a: [1\n",
-            "a: x\u{7}y\n",
-            "a: \"x\u{9f}\"\n",
-            "a: \u{feff}x\n",
-        ] {
-            match decode(&yaml, &Val::Str(text.into())) {
-                Err(e) => {
-                    if e.code() != CODEC_DECODE {
-                        wrong.push(format!("{text:?}: got Err({e:?}), want CODEC_DECODE"));
-                    }
-                }
-                other => wrong.push(format!("{text:?}: got {other:?}, want CODEC_DECODE")),
-            }
-        }
-        assert_eq!(decode(&yaml, &Val::Bytes(vec![b'a', b':', b' ', 0xff])).unwrap_err().code(), CODEC_DECODE);
-        assert!(wrong.is_empty(), "Rust yaml decode:\n{}", wrong.join("\n"));
-    }
-
-    /// A YAML write reads back as the same value, floats as floats; a value the common value
-    /// model does not hold, or text that does not read back as the value, returns CODEC_ENCODE.
-    #[test]
-    // The test of COD-13 (docs/spec).
-    fn yaml_writes_what_it_reads() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let yaml = vec!["yaml".to_string()];
-        let mut wrong = Vec::new();
-        for value in [
-            serde_json::json!(null),
-            serde_json::json!(2.0),
-            serde_json::json!(-0.0),
-            serde_json::json!(1e25),
-            serde_json::json!(1e-7),
-            serde_json::json!(i64::MIN),
-            serde_json::json!(i64::MAX),
-            serde_json::json!([
-                "",
-                " a",
-                "a ",
-                "07",
-                "1e3",
-                "Null",
-                "yes",
-                "~",
-                "-",
-                "0x1F",
-                "a\nb",
-                "a: b",
-                "#",
-                "\u{85}",
-                "한글",
-                "0o17",
-                "\u{7}",
-                "a\u{1b}",
-                "a\u{7f}",
-                "\u{9f}",
-                "\u{feff}a",
-                "\u{fffe}",
-                "\u{ffff}",
-                "0x1F",
-                "1_000",
-                "2014-12-31"
-            ]),
-            serde_json::json!({"1": [], "07": {}, "true": [[1, 2], {"a": [null]}], "": "x"}),
-        ] {
-            let text = match encode(&["yaml"], StyledValue::Value(&value)) {
-                Ok(Param::Str(text)) => text,
-                other => {
-                    wrong.push(format!("{value}: encode {other:?}"));
-                    continue;
-                }
-            };
-            match decode(&yaml, &Val::Str(text.clone())) {
-                Ok(Val::Json(got)) if got == value && format!("{got:?}") == format!("{value:?}") => {}
-                other => wrong.push(format!("{value}: wrote {text:?}, read {other:?}")),
-            }
-        }
-        assert!(wrong.is_empty(), "Rust yaml encode:\n{}", wrong.join("\n"));
+        // serde_json holds u64, which the common value model (i64) does not; the other clients cannot pass it.
         assert_eq!(encode(&["yaml"], StyledValue::Value(&serde_json::json!(u64::MAX))).unwrap_err().code(), CODEC_ENCODE);
     }
 
-    /// The json stage returns the ordered-json value with its member order,
-    /// number text, and {} apart from []; the write keeps the same text.
+    /// An ordered-json value is the input of an `ordered_json` stage only (COD-16); the codec recipe passes a plain value to
+    /// serialize, so this Rust input type stays here.
     #[test]
     // The test of COD-16 (docs/spec).
-    fn json_stage_keeps_ordered_json() {
+    fn serialize_refuses_an_ordered_json_value() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let text = r#"{"b":1,"a":[],"c":{},"n":1.50}"#;
-        for styles in [vec!["ordered_json"], vec!["ordered_json", "gz"], vec!["ordered_json", "base64"]] {
-            let value = strict_json::parse(text).unwrap();
-            let stored = encode_ordered(&styles, StyledValue::Value(&value)).unwrap();
-            let raw = match stored {
-                Param::Str(s) => Val::Str(s),
-                Param::Bytes(b) => Val::Bytes(b),
-                other => panic!("{styles:?}: stored {other:?}"),
-            };
-            if styles.len() == 1 {
-                assert_eq!(raw, Val::Str(text.into()), "{styles:?}: stored text");
-            }
-            let owned: Vec<String> = styles.iter().map(|s| s.to_string()).collect();
-            match decode(&owned, &raw).unwrap() {
-                Val::Ordered(v) => assert_eq!(v.compact(), text, "{styles:?}: read"),
-                other => panic!("{styles:?}: read {other:?}"),
-            }
-        }
-        assert_eq!(encode_ordered(&["ordered_json"], StyledValue::Value(&strict_json::Value::null())).unwrap(), Param::Str("null".into()));
         assert_eq!(encode_ordered(&["serialize"], StyledValue::Value(&strict_json::parse("{}").unwrap())).unwrap_err().code(), CODEC_UNSUPPORTED);
-        assert_eq!(decode(&["ordered_json".to_string()], &Val::Str("{".into())).unwrap_err().code(), CODEC_DECODE);
-    }
-
-    #[test]
-    fn encoding_binary_stages_round_trips_json() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let value = serde_json::json!({"name": "Ada", "scores": [3, 5]});
-        let text = serde_json::to_string(&value).unwrap();
-        let expected = strict_json::parse(&text).unwrap();
-        for stage in ["base64", "gz"] {
-            let stored = encode(&["ordered_json", stage], StyledValue::Value(&value)).unwrap();
-            let raw = match stored {
-                Param::Str(text) => Val::Str(text),
-                Param::Bytes(bytes) => Val::Bytes(bytes),
-                other => panic!("{stage}: stored {other:?}"),
-            };
-            assert_eq!(decode(&["ordered_json".into(), stage.into()], &raw).unwrap(), Val::Ordered(expected.clone()), "{stage}");
-        }
-    }
-
-    /// A first `gz` or `base64` stage serializes nothing: it stores the UTF-8 text of a string value and refuses any
-    /// other value (docs/spec/codec.md, Stage lists).
-    #[test]
-    // The test of COD-14 (docs/spec).
-    fn leading_gz_and_base64_store_the_text() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let value = serde_json::json!({"a": [1, "x"], "b": null});
-        let text = Value::String("한 text".into());
-        for stage in ["gz", "base64"] {
-            assert_eq!(encode(&[stage], StyledValue::Value(&value)).unwrap_err().code(), CODEC_ENCODE, "{stage}: a map");
-            let raw = match encode(&[stage], StyledValue::Value(&text)).unwrap() {
-                Param::Str(s) => Val::Str(s),
-                Param::Bytes(b) => Val::Bytes(b),
-                other => panic!("{stage}: stored {other:?}"),
-            };
-            assert_eq!(decode(&[stage.to_string()], &raw).unwrap(), Val::Str("한 text".into()), "{stage}: read");
-            assert_eq!(encode(&[stage], StyledValue::SqlNull).unwrap(), Param::Null, "{stage}: SQL NULL write");
-        }
     }
 
     #[test]

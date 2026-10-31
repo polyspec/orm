@@ -33,6 +33,7 @@ export const parseComposer = (text: string, source: string): ComposerManifest =>
 /** The fields of config/parity.json that the scripts read: the implementations and the units. */
 export type ParityConfig = {
   testPatterns?: { runner: string; globs: string[] }[];
+  suites?: string[];
   implementations: {
     name: string;
     runner: string;

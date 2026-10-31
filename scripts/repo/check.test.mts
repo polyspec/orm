@@ -447,14 +447,8 @@ caseTest('the PHP extension suite and its profiled native cases use their owning
   const filterText = /^PHP_EXTENSION_NATIVE_CASES = (.+)$/m.exec(makefile)?.[1];
   assert.ok(filterText, 'the extension suite declares its native test selection');
   const nativeCases = new RegExp(filterText);
-  assert.ok(nativeCases.test('Polyspec\\Orm\\Extension\\Tests\\CodecVectorsExtensionTest::testPhpVector'));
-  assert.ok(!nativeCases.test('Polyspec\\Orm\\Tests\\CodecVectorsTest::testPhpVector'));
-  for (const runtime of ['Go', 'Rust', 'Typescript', 'Python']) {
-    assert.ok(
-      !nativeCases.test(`Polyspec\\Orm\\Extension\\Tests\\CodecVectorsExtensionTest::test${runtime}Output "json.null"`),
-      `${runtime} output vectors need the writers of codec-check`,
-    );
-  }
+  assert.ok(nativeCases.test('Polyspec\\Orm\\Extension\\Tests\\CodecRecipeTestExtensionTest::testNone "decode_errors"'));
+  assert.ok(!nativeCases.test('Polyspec\\Orm\\Tests\\CodecRecipeTest::testNone "decode_errors"'));
   for (const test of [
     'Polyspec\\Orm\\Extension\\Tests\\MermaidErrorBoundaryTest::testCatalogBuildFailureBecomesDiagnostic',
     'Polyspec\\Orm\\Extension\\Tests\\MermaidErrorBoundaryTest::testUnexpectedNativeCatalogErrorKeepsIdentity',
@@ -465,10 +459,10 @@ caseTest('the PHP extension suite and its profiled native cases use their owning
     assert.ok(!nativeCases.test(test), `${test} requires its dedicated native-test profile`);
   }
   assert.match(makefile, /test-php-ext: export CASES \?= \$\(PHP_EXTENSION_NATIVE_CASES\)/);
-  assert.match(makefile, /^codec-check\/compare: .*build-php-ext$/m);
+  assert.match(makefile, /^codec-check\/php-extension: .*build-php-ext$/m);
   assert.match(
     makefile,
-    /ORM_CODEC_OUT=\$\(CODEC_OUT\) env ORM_PHP_MODE=extension .*--configuration packages\/php-ext\/phpunit\.xml\.dist --filter 'test\(Go\|Rust\|Typescript\|Python\)Output' packages\/php-ext\/tests\/CodecVectorsExtensionTest\.php/,
+    /env ORM_PHP_MODE=extension .*--configuration packages\/php-ext\/phpunit\.xml\.dist packages\/php-ext\/tests\/CodecRecipeTestExtensionTest\.php/,
   );
   for (const [target, source] of [
     ['mermaid-error-php-extension-check', 'packages/php-ext/tests/MermaidErrorBoundaryTest.php'],
@@ -925,10 +919,10 @@ caseTest('a workflow that runs a verification command of feature-check again fai
   const commands = featureCommands({ features: [{ verification: [
     { id: 'interfaces', command: 'PATH="$HOME/.cargo/bin:$PATH" go run ./tests/interfaces/check --self-test' },
     { id: 'perf', command: 'node scripts/perf-test.mts' },
-    { id: 'elsewhere', command: 'php packages/php/tests/CodecVectorsTest.php', cwd: 'packages/php' },
+    { id: 'elsewhere', command: 'php packages/php/tests/CodecRecipeTest.php', cwd: 'packages/php' },
   ] }] });
   assert.deepEqual(commands, ['PATH="$HOME/.cargo/bin:$PATH" go run ./tests/interfaces/check --self-test', 'node scripts/perf-test.mts']);
-  const twice = steps.replace('make repo-check', 'make orm-check\n          make interface-check fuzz-check\n          node scripts/perf-test.mts\n          php packages/php/tests/CodecVectorsTest.php');
+  const twice = steps.replace('make repo-check', 'make orm-check\n          make interface-check fuzz-check\n          node scripts/perf-test.mts\n          php packages/php/tests/CodecRecipeTest.php');
   assert.deepEqual(ciDuplicateCommandErrors(twice, make, commands), [
     'ci.yml step "checks" runs make interface-check, whose commands make orm-check runs in feature-check',
     'ci.yml step "checks" runs node scripts/perf-test.mts, which make orm-check runs in feature-check',
@@ -1681,7 +1675,7 @@ caseTest('a workflow that runs a test runner after make orm-check fails by ident
     '          make fuzz-check vet-again',
     '          go vet ./... && go test -v -timeout 0 ./...',
     '          (cd packages/rust && cargo test --locked -p polyspec-orm codec)',
-    '          php packages/php/tests/CodecVectorsTest.php',
+    '          php packages/php/tests/CodecRecipeTest.php',
     '          node --test scripts/x.test.mjs',
     '          go run ./tests/interfaces/check --results tests/conformance/out',
   ].join('\n'));
@@ -1691,7 +1685,7 @@ caseTest('a workflow that runs a test runner after make orm-check fails by ident
     message('go vet'),
     message('go test'),
     message('cargo test'),
-    message('php packages/php/tests/CodecVectorsTest.php'),
+    message('php packages/php/tests/CodecRecipeTest.php'),
     message('node test'),
     message('go test'),
   ]);

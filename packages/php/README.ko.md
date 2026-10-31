@@ -1,5 +1,5 @@
 <!-- doc-id: packages-orm-php-readme -->
-<!-- source-sha256: 80112d8a08e73f18a2f90e5d48cb473e73f02773ebf51ea7816282abfad85065 -->
+<!-- source-sha256: 83039d5e9d6e8fb6c8c11638763018fa58772e3fb1b2536757e75f7a64a53b2a -->
 # orm — PHP 클라이언트
 
 PHP 클라이언트: PDO 호환 드라이버(`pdo_mysql`, `pdo_pgsql`과 `ext-pgsql`, `pdo_sqlite`) 위의 생성 모델(`Polyspec\Orm\Tests\Model\Author`, …). PostgreSQL 연결에는 `pdo_pgsql`과 `ext-pgsql`이 모두 필요하며, 취소에는 `ext-pgsql`의 protocol API를 쓴다. 라이브러리가
@@ -34,7 +34,7 @@ extension은 없다. PHP 8.4 이상. Version 0.0.19. DSN의 scheme이 PDO driver
   `RuntimeDbTest.php`(runtime model, 설치, audit), `SchemaSetTest.php`(한 process의 여러
   문서 묶음), `AddTablesAndColumnsTest.php`(설치한 묶음에 더하는 table과 컬럼),
   `MysqlTlsTest.php`(DSN parameter와 MySQL TLS), `ClockTest.php`, `DriverErrorTest.php`, `RollbackTest.php`,
-  `EngineTest.php`, `HostcodecTest.php`, `DsnTest.php`,
+  `EngineTest.php`, `HostcodecTest.php`, `CodecRecipeTest.php`(코덱 recipe `tests/codec/codec.json`), `DsnTest.php`,
   `RelationKeysTest.php`, `PerfGateTest.php`, `OrmGenTest.php`(command line), 그리고 `Dbspec/`의 `dbspec_*`
   test. conformance runner는
   `packages/php/testing/conformance/runner.php`다.
@@ -155,6 +155,7 @@ savepoint는 message `transaction failed (<cause>) and rollback failed (<rollbac
     vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RuntimeModelTest.php
     vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/EngineTest.php
     vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/HostcodecTest.php
+    vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecRecipeTest.php
     vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DsnTest.php
     vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php
     vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenTest.php

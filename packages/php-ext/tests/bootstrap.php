@@ -33,7 +33,9 @@ require_once dirname(__DIR__, 2) . '/php/tests/dbspec_verify_errors_case.php';
 // class per file (PSR-1).
 require_once dirname(__DIR__, 2) . '/php/tests/SchemaSetTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CoverageSchemaDefinitionTest.php';
-require_once dirname(__DIR__, 2) . '/php/tests/CodecVectorsTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/Recipe.php';
+require_once dirname(__DIR__, 2) . '/php/tests/CodecRecipeTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/CodecErrorCauseTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DbspecIntrospectTest.php';
 require_once __DIR__ . '/CatalogPageMutationPdo.php';
 require_once __DIR__ . '/CatalogPageMutationStatement.php';
@@ -66,7 +68,6 @@ require_once dirname(__DIR__, 2) . '/php/tests/AesJsonTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/AesVersionCodesTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ClockTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CodeCatalogTest.php';
-require_once dirname(__DIR__, 2) . '/php/tests/CodecAesVectorsTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CollectionIdentityTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DbspecAnalyzeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DbspecApplyCleanupTest.php';

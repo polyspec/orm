@@ -8085,9 +8085,7 @@
         "aes-json-column"
       ],
       "fixtures": [
-        "tests/codec/aes-vectors.json",
-        "tests/codec/vectors.json",
-        "tests/codec/decode-vectors.json",
+        "tests/codec/codec.json",
         "contracts/fixtures/authenticated_encryption.json",
         "packages/go/orm/coverage_fixture_test.go",
         "packages/php/tests/coverage_cases.php",
@@ -8107,12 +8105,7 @@
         "packages/rust/orm/tests/aes_keys.rs",
         "packages/ts/tests/model.mjs",
         "packages/php/tests/HostcodecTest.php",
-        "packages/ts/tests/codec-vector.mjs",
-        "packages/ts/tests/codec-aes-vector.mjs",
-        "packages/ts/tests/codec-decode-vector.mjs",
-        "packages/ts/tests/codec-values.mjs",
         "packages/ts/tests/codec_case.mjs",
-        "packages/php/tests/CodecVectorsTest.php",
         "packages/go/orm/fuzz_test.go",
         "packages/rust/tests/tests/integration_program/main.rs",
         "packages/go/orm/coverage_authenticated_encryption_test.go",
@@ -8121,15 +8114,8 @@
         "packages/rust/orm/tests/coverage_authenticated_encryption.rs",
         "packages/ts/tests/coverage_authenticated_encryption.mjs",
         "contracts/fixtures/secret_config.dbs",
-        "packages/python/tests/test_codec_decode_vectors.py",
-        "packages/rust/orm/tests/codec_vectors.rs",
-        "packages/php/tests/CodecAesVectorsTest.php",
-        "packages/rust/orm/tests/codec_aes_vectors.rs",
         "packages/python/tests/test_authenticated_encryption.py",
         "packages/python/tests/test_aes_rotate.py",
-        "packages/python/tests/test_codec_aes_vectors.py",
-        "packages/python/tests/test_codec_vectors.py",
-        "packages/python/tests/codec_vector.py",
         "packages/python/tests/coverage_authenticated_encryption.py",
         "packages/php/tests/AesVersionCodesTest.php",
         "packages/ts/tests/aes-version-codes.mjs",
@@ -8150,10 +8136,17 @@
         "packages/php/tests/ModelTest.php",
         "packages/php-ext/tests/AesJsonTestExtensionTest.php",
         "packages/php-ext/tests/AesVersionCodesTestExtensionTest.php",
-        "packages/php-ext/tests/CodecAesVectorsTestExtensionTest.php",
-        "packages/php-ext/tests/CodecVectorsExtensionTest.php",
         "packages/php-ext/tests/HostcodecTestExtensionTest.php",
-        "packages/php-ext/tests/ModelTestExtensionTest.php"
+        "packages/php-ext/tests/ModelTestExtensionTest.php",
+        "packages/go/orm/recipe_codec_test.go",
+        "packages/php/tests/CodecRecipeTest.php",
+        "packages/php/tests/CodecErrorCauseTest.php",
+        "packages/php-ext/tests/CodecRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/CodecErrorCauseTestExtensionTest.php",
+        "packages/ts/tests/codec-none.test.mjs",
+        "packages/python/tests/test_codec_none.py",
+        "packages/rust/tests/tests/codec_none.rs",
+        "packages/rust/orm/tests/styled_column_states.rs"
       ],
       "docs": [
         "docs/spec/codec.md",
@@ -8162,18 +8155,18 @@
       "verification": [
         {
           "id": "encryption-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run 'Codec|AES|Rotation|BlindIndex' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run 'Codec|AES|Rotation|BlindIndex|TestRecipeCodecNone' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/aes_json_test.go",
             "packages/go/orm/aes_keys_test.go",
             "packages/go/orm/aes_rotation_test.go",
             "packages/go/orm/codec_test.go",
+            "packages/go/orm/recipe_codec_test.go",
+            "packages/go/internal/recipe/recipe.go",
+            "tests/codec/codec.json",
             "packages/go/orm/coverage_authenticated_encryption_test.go",
             "packages/go/orm/hostcodec_test.go",
-            "tests/codec/vectors.json",
-            "tests/codec/aes-vectors.json",
-            "tests/codec/decode-vectors.json",
             "contracts/fixtures/authenticated_encryption.json"
           ]
         },
@@ -8190,50 +8183,47 @@
           "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/HostcodecTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/HostcodecTest.php",
-            "tests/codec/decode-vectors.json"
+            "packages/php/tests/HostcodecTest.php"
           ]
         },
         {
           "id": "encryption-codec-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'testPhpVector' packages/php/tests/CodecVectorsTest.php",
+          "command": "env ORM_PHP_MODE=library node \"$(node --input-type=module -e 'import { fileURLToPath } from \"node:url\"; process.stdout.write(fileURLToPath(import.meta.resolve(\"@polyspec/kit/run-tests\")))')\" phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecRecipeTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/CodecVectorsTest.php",
-            "tests/codec/vectors.json"
+            "packages/php/tests/CodecRecipeTest.php",
+            "packages/php/tests/Recipe.php",
+            "tests/codec/codec.json"
           ]
         },
         {
-          "id": "encryption-aes-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecAesVectorsTest.php",
+          "id": "codec-error-cause-php",
+          "command": "env ORM_PHP_MODE=library node \"$(node --input-type=module -e 'import { fileURLToPath } from \"node:url\"; process.stdout.write(fileURLToPath(import.meta.resolve(\"@polyspec/kit/run-tests\")))')\" phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecErrorCauseTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/CodecAesVectorsTest.php",
-            "tests/codec/aes-vectors.json"
+            "packages/php/tests/CodecErrorCauseTest.php"
           ]
         },
         {
-          "id": "codec-aes-vectors-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts codec-aes-vectors-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test codec_aes_vectors",
+          "id": "codec-recipe-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts codec-recipe-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test codec_none",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/codec_aes_vectors.rs",
-            "tests/codec/aes-vectors.json"
+            "packages/rust/tests/tests/codec_none.rs",
+            "packages/rust/tests/src/recipe.rs",
+            "tests/codec/codec.json"
           ]
         },
         {
           "id": "encryption-typescript",
-          "command": "node --test packages/ts/tests/codec-vector.mjs packages/ts/tests/codec-aes-vector.mjs packages/ts/tests/codec-decode-vector.mjs packages/ts/tests/codec-values.mjs",
+          "command": "node --test packages/ts/tests/codec-none.test.mjs packages/ts/tests/codec-errors.test.mjs",
           "shard": "other",
           "inputs": [
-            "packages/ts/tests/codec-vector.mjs",
-            "packages/ts/tests/codec-aes-vector.mjs",
-            "packages/ts/tests/codec-decode-vector.mjs",
-            "packages/ts/tests/codec-values.mjs",
+            "packages/ts/tests/codec-none.test.mjs",
+            "packages/ts/tests/recipe.mjs",
+            "packages/ts/tests/codec-errors.test.mjs",
             "packages/ts/tests/codec_case.mjs",
-            "tests/codec/aes-vectors.json",
-            "tests/codec/vectors.json",
-            "tests/codec/decode-vectors.json"
+            "tests/codec/codec.json"
           ]
         },
         {
@@ -8245,13 +8235,11 @@
           ]
         },
         {
-          "id": "codec-vectors-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts codec-vectors-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test codec_vectors",
+          "id": "styled-column-states-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts styled-column-states-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test styled_column_states",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/codec_vectors.rs",
-            "tests/codec/vectors.json",
-            "tests/codec/decode-vectors.json",
+            "packages/rust/orm/tests/styled_column_states.rs",
             "contracts/fixtures/styled_column_states.json"
           ]
         },
@@ -8283,18 +8271,16 @@
         },
         {
           "id": "encryption-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_authenticated_encryption && packages/python/.venv/bin/python -m packages.python.tests.test_aes_rotate && packages/python/.venv/bin/python -m packages.python.tests.test_codec_aes_vectors && packages/python/.venv/bin/python -m packages.python.tests.test_codec_vectors && packages/python/.venv/bin/python -m packages.python.tests.test_codec_decode_vectors && packages/python/.venv/bin/python -m packages.python.tests.aes_json && packages/python/.venv/bin/python -m packages.python.tests.aes_rotation && packages/python/.venv/bin/python -m packages.python.tests.test_aes_version_codes",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_authenticated_encryption && packages/python/.venv/bin/python -m packages.python.tests.test_aes_rotate && packages/python/.venv/bin/python -m packages.python.tests.test_codec_none && packages/python/.venv/bin/python -m packages.python.tests.aes_json && packages/python/.venv/bin/python -m packages.python.tests.aes_rotation && packages/python/.venv/bin/python -m packages.python.tests.test_aes_version_codes",
           "shard": "other",
           "inputs": [
             "packages/python/tests/test_authenticated_encryption.py",
             "packages/python/tests/test_aes_rotate.py",
-            "packages/python/tests/test_codec_aes_vectors.py",
-            "packages/python/tests/test_codec_vectors.py",
-            "packages/python/tests/test_codec_decode_vectors.py",
+            "packages/python/tests/test_codec_none.py",
+            "packages/python/tests/recipe.py",
+            "tests/codec/codec.json",
             "packages/python/src/polyspec/orm/aes.py",
             "packages/python/src/polyspec/orm/codec.py",
-            "tests/codec/vectors.json",
-            "tests/codec/aes-vectors.json",
             "contracts/fixtures/authenticated_encryption.json",
             "packages/python/tests/aes_json.py",
             "contracts/fixtures/secret_config.dbs",

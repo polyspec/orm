@@ -66,7 +66,21 @@
         { "type": "object", "required": ["decimal"], "additionalProperties": false, "properties": { "decimal": { "type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$" } } },
         { "type": "object", "required": ["bytes_hex"], "additionalProperties": false, "properties": { "bytes_hex": { "type": "string", "pattern": "^([0-9a-f]{2})*$" } } },
         { "type": "object", "required": ["bool"], "additionalProperties": false, "properties": { "bool": { "type": "boolean" } } },
-        { "type": "object", "required": ["null"], "additionalProperties": false, "properties": { "null": { "type": "string", "minLength": 1 } } }
+        { "type": "object", "required": ["null"], "additionalProperties": false, "properties": { "null": { "type": "string", "minLength": 1 } } },
+        { "type": "object", "required": ["nil"], "additionalProperties": false, "properties": { "nil": { "const": true } } },
+        { "type": "object", "required": ["float"], "additionalProperties": false, "properties": { "float": { "type": "string", "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][+-]?[0-9]+)?$" } } },
+        { "type": "object", "required": ["array"], "additionalProperties": false, "properties": { "array": { "type": "array", "items": { "$ref": "#/$defs/value" } } } },
+        {
+          "type": "object",
+          "required": ["object"],
+          "additionalProperties": false,
+          "properties": {
+            "object": {
+              "type": "array",
+              "items": { "type": "array", "prefixItems": [{ "type": "string" }, { "$ref": "#/$defs/value" }], "minItems": 2, "maxItems": 2 }
+            }
+          }
+        }
       ]
     },
     "ref": {
@@ -116,10 +130,14 @@
     "step": {
       "type": "object",
       "required": ["op"],
-      "properties": { "op": { "enum": ["model.connect", "codec.decode", "sql.exec"] } },
+      "properties": { "op": { "enum": ["model.connect", "codec.decode", "codec.encode", "codec.host_encode", "codec.host_decode", "codec.blind_index", "sql.exec"] } },
       "oneOf": [
         { "$ref": "#/$defs/ops/model.connect" },
         { "$ref": "#/$defs/ops/codec.decode" },
+        { "$ref": "#/$defs/ops/codec.encode" },
+        { "$ref": "#/$defs/ops/codec.host_encode" },
+        { "$ref": "#/$defs/ops/codec.host_decode" },
+        { "$ref": "#/$defs/ops/codec.blind_index" },
         { "$ref": "#/$defs/ops/sql.exec" }
       ]
     },
@@ -143,6 +161,57 @@
           "styles": { "type": "array", "items": { "type": "string", "minLength": 1 } },
           "raw": { "$ref": "#/$defs/argument" },
           "as": { "$ref": "#/$defs/name" },
+          "expect": { "$ref": "#/$defs/expect" }
+        }
+      },
+      "codec.encode": {
+        "type": "object",
+        "required": ["op", "styles", "value"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "codec.encode" },
+          "styles": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+          "value": { "$ref": "#/$defs/argument" },
+          "as": { "$ref": "#/$defs/name" },
+          "expect": { "$ref": "#/$defs/expect" }
+        },
+        "anyOf": [{ "properties": { "as": true }, "required": ["as"] }, { "properties": { "expect": true }, "required": ["expect"] }]
+      },
+      "codec.host_encode": {
+        "type": "object",
+        "required": ["op", "styles", "value", "key"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "codec.host_encode" },
+          "styles": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+          "value": { "$ref": "#/$defs/argument" },
+          "key": { "type": "string" },
+          "as": { "$ref": "#/$defs/name" },
+          "expect": { "$ref": "#/$defs/expect" }
+        },
+        "anyOf": [{ "properties": { "as": true }, "required": ["as"] }, { "properties": { "expect": true }, "required": ["expect"] }]
+      },
+      "codec.host_decode": {
+        "type": "object",
+        "required": ["op", "styles", "raw", "key", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "codec.host_decode" },
+          "styles": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+          "raw": { "$ref": "#/$defs/argument" },
+          "key": { "type": "string" },
+          "as": { "$ref": "#/$defs/name" },
+          "expect": { "$ref": "#/$defs/expect" }
+        }
+      },
+      "codec.blind_index": {
+        "type": "object",
+        "required": ["op", "value", "key", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "codec.blind_index" },
+          "value": { "$ref": "#/$defs/argument" },
+          "key": { "type": "string" },
           "expect": { "$ref": "#/$defs/expect" }
         }
       },

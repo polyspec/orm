@@ -126,8 +126,6 @@ rules:
       # The table of Unicode letters and digits that every lexer reads is written from the data of Go's unicode package,
       # the reference of packages/go/engine/dbspec.
       - "!tests/dbspec/unicode/**"
-      # The codec vectors are the output of the PHP codecs, the ground truth of docs/spec/codec.md.
-      - "!tests/codec/gen.php"
       # Programs that need operating-system calls Node does not offer: setsid for the lease releaser, and
       # the exit notification of another process (kqueue, pidfd) for stop-process.
       - "!tests/lease/**"
@@ -138,9 +136,8 @@ rules:
       # The symbol extractors of the comment tokens of Go, PHP and Python: each runs the tokenizer of its own language (go/scanner
       # in ScanComments mode, PHP's token_get_all, Python's tokenize and ast), the S9 rule for a symbol extractor.
       - "!scripts/comments/tokens/**"
-      # PHP mode-check uses PHP's extension_loaded API, and codec generation uses PHP serialize/YAML output as the declared vector ground.
+      # PHP mode-check uses PHP's extension_loaded API.
       - "!scripts/php/mode-check.php"
-      - "!tests/codec/gen_functions.php"
       # These Node tools exercise the Composer-generated PHP autoloader's installed-file format, which is consumed by orm-install-php.
       - "!scripts/php/vendor-autoload-check.mjs"
       - "!scripts/php/vendor-autoload-check.test.mjs"

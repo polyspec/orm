@@ -1,22 +1,177 @@
 {
   "$schema": "../../schema/recipe.schema.json",
-  "requirements": ["COD-1"],
+  "requirements": [
+    "COD-1",
+    "COD-4",
+    "COD-5",
+    "COD-16"
+  ],
   "cases": [
     {
       "id": "decode_text",
-      "requirements": ["COD-1"],
+      "requirements": [
+        "COD-1"
+      ],
       "steps": [
         {
           "op": "codec.decode",
           "styles": [],
-          "raw": { "text": "a" },
-          "expect": { "none": { "value": { "text": "a" } } }
+          "raw": {
+            "text": "a"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "text": "a"
+              }
+            }
+          }
         },
         {
           "op": "codec.decode",
           "styles": [],
-          "raw": { "date": "2024-02-29" },
-          "expect": { "none": { "value": { "time": "12:34:56.5" } } }
+          "raw": {
+            "date": "2024-02-29"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "time": "12:34:56.5"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "encode_round_trip",
+      "requirements": [
+        "COD-16"
+      ],
+      "steps": [
+        {
+          "op": "codec.encode",
+          "styles": [
+            "ordered_json"
+          ],
+          "value": {
+            "object": [
+              [
+                "b",
+                {
+                  "array": [
+                    {
+                      "int": "1"
+                    },
+                    {
+                      "float": "1.5"
+                    }
+                  ]
+                }
+              ],
+              [
+                "a",
+                {
+                  "nil": true
+                }
+              ]
+            ]
+          },
+          "as": "cell",
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "7b2262223a5b312c312e355d2c2261223a6e756c6c7d"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "ordered_json"
+          ],
+          "raw": {
+            "ref": "cell"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "object": [
+                  [
+                    "b",
+                    {
+                      "array": [
+                        {
+                          "int": "1"
+                        },
+                        {
+                          "float": "1.5"
+                        }
+                      ]
+                    }
+                  ],
+                  [
+                    "a",
+                    {
+                      "nil": true
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "host_stages",
+      "requirements": [
+        "COD-4",
+        "COD-5"
+      ],
+      "steps": [
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "aes",
+            "hex"
+          ],
+          "value": {
+            "text": "a"
+          },
+          "key": "k",
+          "as": "envelope"
+        },
+        {
+          "op": "codec.host_decode",
+          "styles": [
+            "aes",
+            "hex"
+          ],
+          "raw": {
+            "ref": "envelope"
+          },
+          "key": "k",
+          "expect": {
+            "none": {
+              "value": {
+                "text": "a"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.blind_index",
+          "value": {
+            "text": "a"
+          },
+          "key": "k",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
         }
       ]
     }

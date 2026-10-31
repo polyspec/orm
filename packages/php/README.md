@@ -35,7 +35,7 @@ the client on SQLite with `php -n` and only the extensions it needs, so that `my
   `RuntimeDbTest.php` (the runtime model, installation and audit), `SchemaSetTest.php` (several
   document sets in one process), `AddTablesAndColumnsTest.php` (tables and columns added to an installed set),
   `MysqlTlsTest.php` (the DSN parameters and MySQL TLS), `ClockTest.php`, `DriverErrorTest.php`, `RollbackTest.php`,
-  `EngineTest.php`, `HostcodecTest.php`, `DsnTest.php`,
+  `EngineTest.php`, `HostcodecTest.php`, `CodecRecipeTest.php` (the codec recipe `tests/codec/codec.json`), `DsnTest.php`,
   `RelationKeysTest.php`, `PerfGateTest.php`, `OrmGenTest.php` (the command line), and the `dbspec_*`
   tests of `Dbspec/`. The conformance runner is
   `packages/php/testing/conformance/runner.php`.
@@ -162,6 +162,7 @@ the cause and `$rollback` is the rollback error. A `ROLLBACK` error is not retri
     vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RuntimeModelTest.php
     vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/EngineTest.php
     vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/HostcodecTest.php
+    vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecRecipeTest.php
     vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DsnTest.php
     vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php
     vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenTest.php

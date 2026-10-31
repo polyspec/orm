@@ -6,20 +6,17 @@ namespace Polyspec\Orm\Tests;
 
 final class CodecYamlProbe
 {
-    /** @return array<string, mixed> */
-    public static function run(string $operation, string $failure, ?string $extension = null): array
+    /**
+     * Runs the probe in a PHP child. A native child of an extension run inherits the PHP_INI_SCAN_DIR through which
+     * run-tests of kit loads the extension (kit K900), so the command names no extension, which would load it twice;
+     * the child reports whether Codec is the internal class of the extension.
+     *
+     * @return array<string, mixed>
+     */
+    public static function run(string $operation, string $failure, bool $native = false): array
     {
-        $command = [PHP_BINARY];
-        if ($extension !== null) {
-            array_push($command, '-d', "extension=$extension");
-        }
-        array_push(
-            $command,
-            __DIR__ . '/codec-yaml-probe.php',
-            $operation,
-            $failure,
-            $extension === null ? 'library' : 'native'
-        );
+        $mode = $native ? 'native' : 'library';
+        $command = [PHP_BINARY, __DIR__ . '/codec-yaml-probe.php', $operation, $failure, $mode];
         $pipes = [];
         $process = proc_open(
             $command,

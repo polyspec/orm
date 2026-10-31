@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
-import { Value as JsonValue, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { CodecError, decode } from '../dist/index.js';
+import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
+import { CodecError, StyledValue, decode, encode } from '../dist/index.js';
 
 function thrown(operation) {
   try {
@@ -71,4 +71,18 @@ caseTest('YAML policy errors remain CODEC_DECODE and valid values still decode',
   assert(json.payload() instanceof JsonValue);
   assert.equal(stringifyJson(json.payload()), '{"value":2}');
   assert.equal(decode(['yaml'], 'value: 2\n').kind, 'value');
+});
+
+// The JavaScript inputs of the ordered_json and serialize stages, which no recipe value names (COD-16, COD-21); the codec
+// cases that every client shares are the codec recipe, tests/codec/codec.json (codec-none.test.mjs).
+caseTest('codec/javascript-inputs', COMPUTE, () => {
+  const orderedText = '{"b":1,"a":[],"c":{},"n":1.50}';
+  assert.equal(encode(['ordered_json'], StyledValue.value({ b: 1, a: [], c: {}, n: parseJson('1.50') })), orderedText);
+  for (const value of [Number.NaN, { a: undefined }, new Uint8Array([1])]) {
+    const error = thrown(() => encode(['ordered_json'], StyledValue.value(value)));
+    assert.equal(error?.code, 'CODEC_ENCODE', String(value));
+  }
+  const error = thrown(() => encode(['serialize'], StyledValue.value(parseJson('{}'))));
+  assert(error instanceof CodecError);
+  assert.equal(error.code, 'CODEC_ENCODE');
 });

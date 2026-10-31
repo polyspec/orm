@@ -583,16 +583,34 @@ def _decode_yaml(data: bytes):
         return _validate_codec_value(_yaml_node(tree, root), "yaml decode")
     except CodecError:
         raise
-    except (ryml.ExceptionBasic, TypeError, ValueError) as error:
+    except ryml.ExceptionBasic as error:
+        # str() of a rapidyaml exception is empty; its message is the attribute msg.
+        raise CodecError(codes.CODEC_DECODE, f"yaml: {error.msg}") from None
+    except (TypeError, ValueError) as error:
         raise CodecError(codes.CODEC_DECODE, f"yaml: {error}") from None
+
+
+_YAML_1_1_BREAKS = ("\x85", "\u2028", "\u2029")
+
+
+class _YamlRepresenter(ruamel.yaml.representer.SafeRepresenter):
+    def represent_str(self, data: str):
+        style = '"' if any(mark in data for mark in _YAML_1_1_BREAKS) else None
+        return self.represent_scalar("tag:yaml.org,2002:str", data, style=style)
+
+
+_YamlRepresenter.add_representer(str, _YamlRepresenter.represent_str)
 
 
 def _yaml_dump(value) -> str:
     import io
 
-    # ruamel.yaml's safe emitter writes YAML 1.2: strings that would resolve under the core schema are quoted,
-    # U+0085 is written as content (PyYAML's emitter folds it as a line break). No anchors or aliases are created.
+    # ruamel.yaml's safe emitter writes YAML 1.2: strings that would resolve under the core schema are quoted.
+    # No anchors or aliases are created. Its emitter still counts U+0085, U+2028 and U+2029 as line breaks, as YAML 1.1
+    # does, and pads a single-quoted scalar after one inside a collection, so a string that holds one is written
+    # double-quoted, where the emitter escapes it (\\N, \\L, \\P) and the YAML 1.2 reader takes it as content.
     dumper = ruamel.yaml.YAML(typ="safe", pure=True)
+    dumper.Representer = _YamlRepresenter
     dumper.default_flow_style = False
     dumper.allow_unicode = True
     dumper.width = 4096

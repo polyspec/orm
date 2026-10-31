@@ -5999,6 +5999,10 @@
     "exported": true,
     "signature": "public static function encode(array $styles, Polyspec\\Orm\\StyledValue $v): Polyspec\\Orm\\Bytes|string|null"
   },
+  "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::finiteValue": {
+    "exported": false,
+    "signature": "private static function finiteValue(mixed $value): bool"
+  },
   "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::hostDecode": {
     "exported": true,
     "signature": "public static function hostDecode(mixed $raw, array $styles, string $aesKey): ?string"
@@ -6027,6 +6031,10 @@
     "exported": false,
     "signature": "private static function rowVersion(array $vals, int $index): int"
   },
+  "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::serializedObjectOrReference": {
+    "exported": false,
+    "signature": "private static function serializedObjectOrReference(string $text): bool"
+  },
   "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::unpackIp": {
     "exported": false,
     "signature": "private static function unpackIp(string $b): string"
@@ -6039,9 +6047,17 @@
     "exported": false,
     "signature": "private static function yamlDecode(string $text): mixed"
   },
+  "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::yamlIntegerInRange": {
+    "exported": false,
+    "signature": "private static function yamlIntegerInRange(Purr\\Yaml\\Node\\ScalarNode $node): void"
+  },
   "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::yamlNode": {
     "exported": false,
     "signature": "private static function yamlNode(Purr\\Yaml\\Node\\AbstractNode $node, Purr\\Yaml\\Schema\\CoreSchema $schema): mixed"
+  },
+  "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::yamlStream": {
+    "exported": false,
+    "signature": "private static function yamlStream(string $text): void"
   },
   "packages/php/src/Collection.php::Polyspec\\Orm\\Collection": {
     "exported": true,

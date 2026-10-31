@@ -18,7 +18,15 @@ dependencies = [
     # Same install as psycopg[binary]==3.3.6: the extra binary requires psycopg-binary==3.3.6.
     "psycopg==3.3.6",
     "psycopg-binary==3.3.6",
-    "rapidyaml==0.15.2",
+    # rapidyaml 0.15.2 writes each error to stderr before its python module raises it; the fork polyspec/rapidyaml-python
+    # 0.15.2.post1 installs error handlers that only throw (biojppm/rapidyaml#679). Its CPython 3.14 wheel of each platform is a direct
+    # reference to the release asset and its sha256 (docs/operations/packaging.md, kit K49).
+    "rapidyaml @ https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl#sha256=2cb4de79c43c0e64c6d9a351ef566ed847e1809e2ceba8190534bd9b7570bc14 ; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "rapidyaml @ https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl#sha256=fc6c1570512ea36044b3f0ec5ed20c665f7bd1528c1aa159cd9cb5ca95caa1b9 ; sys_platform == 'linux' and platform_machine == 'aarch64'",
+    "rapidyaml @ https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-macosx_11_0_arm64.whl#sha256=bce9b42f6b56678f066ecd088be73add18a279c73e21619860666236afd574f4 ; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "rapidyaml @ https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-macosx_10_15_x86_64.whl#sha256=fc7a1b516bf6c59605beb5e7430a0350351bcce5a5ae7915527eec90f46dad35 ; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+    "rapidyaml @ https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-win_amd64.whl#sha256=8692aa30e4bdae6efc8a743de5188349f0cf78bde3587e087de1f06c5178b72d ; sys_platform == 'win32' and platform_machine == 'AMD64'",
+    "rapidyaml @ https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-win_arm64.whl#sha256=1c799d5fea34c449197f99cc52d8d85f0c14117bce049e4e3b27d49a716299c6 ; sys_platform == 'win32' and platform_machine == 'ARM64'",
     "ruamel.yaml==0.19.1",
 ]
 

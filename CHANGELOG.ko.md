@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b061baf11c21f79f307d98357323b301705c81a6dcb9b4db2487c40940d30bfd -->
+<!-- source-sha256: 3cbf025e489de5a50fe23679e8e8b2552094dcbbc39397d1e088f15cc5544188 -->
 # 변경 이력
 
 ## Unreleased
@@ -15,6 +15,8 @@
 
 ## 0.0.19
 
+- codec suite는 recipe 하나, tests/codec/codec.json이다(FCV-2~FCV-4, COD-40). 그 case는 database 없이 codec.decode, codec.encode, codec.host_encode, codec.host_decode, codec.blind_index를 호출하고 각 step이 내는 byte나 값을 적는다. Go TestRecipeCodecNone, PHP CodecRecipeTest, PHP 확장 CodecRecipeTestExtensionTest, TypeScript codec-none.test.mjs, Python test_codec_none.py, Rust test codec_none이 각 runtime의 recipe helper로 그것을 실행하고, make codec-check가 여섯을 실행한다. tests/codec/vectors.json, decode-vectors.json, aes-vectors.json, PHP generator gen.php, runtime별 vector runner는 제거되며, parity unit codec-aes, codec-decode와 recipe가 case를 담은 feature unit도 제거된다. PHP cause test는 CodecErrorCauseTest로 옮긴다. COD-40은 이제 PHP 확장이 `Polyspec\Orm\Codec`을 C로 구현한다고 적는다(T334-3-14).
+- 모든 runtime의 codec이 docs/spec/codec.md대로 읽는다. Go는 byte order mark로 시작하는 YAML stream을 읽고, UTF-8이 아닌 stream, b:0;과 b:1;이 아닌 serialize bool, 유한하지 않은 실수 d:NAN;, d:INF;, d:-INF;를 거부한다. PHP와 PHP 확장은 UTF-8이 아닌 YAML stream, i64 밖의 따옴표 없는 YAML 정수, 유한하지 않은 serialize 실수를 거부한다. TypeScript는 core schema의 모든 정수 형식의 YAML key를 십진 문자열로 읽고, 같은 십진 문자열의 두 key를 거부한다. Go와 Python은 U+0085, U+2028, U+2029를 담은 YAML 문자열을 double-quoted로 써서 쓴 그대로 다시 읽히게 하고, Go는 explicit scalar key를 읽는다. COD-16은 공통 값 모델의 실수가 유한하다고 적는다(T334-3-14).
 - contracts/features.json의 helper error-codes는 docs/spec/errors.yaml, orm-gen errors 명령, Git이 추적하는 생성 파일(codes.go, polyspec_orm.stub.php, codes.rs)을 이름하고 그 command는 그것만 비교합니다. T339가 build 결과물로 만든 TypeScript, PHP, Python 코드 파일을 이름했으므로 make feature-unit-check가 "matches no tracked file"로 실패했습니다(T339-1).
 - packages/rust/orm/tests/statement_events.rs는 다시 rustfmt 형식입니다. T323이 한 줄로 쓴 closure page_of가 block이 되어 make rust-fmt-check가 통과합니다(T323-1).
 - packages/rust/testing/compiler-fixtures/cases.json의 모든 case는 그 파일을 읽는 packages/rust/orm/tests/compiler_fixtures.rs의 trial `compiler_fixtures::<id>` 하나이므로 새 case는 편집 없이 실행됩니다. 각 case는 그곳에 requirement를 선언하고, make rust-compiler-fixtures-check는 그 test만 실행합니다. 이전에는 native 파일이 12개 중 7개를 실행하고 compiler-fixtures.mts 전체 실행이 그중 4개를 이름으로 빼서 3개는 두 번 실행되고 5개는 native test가 없었습니다(T334-3-10). runner는 --case만 받습니다.

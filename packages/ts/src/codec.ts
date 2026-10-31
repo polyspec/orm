@@ -2,7 +2,7 @@ import { deflateSync, inflateSync } from 'node:zlib';
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'node:crypto';
 import { isIP } from 'node:net';
 import { Value as JsonValue, parse as orderedJsonParse, stringify as orderedJsonStringify } from '@polyspec/ordered-json';
-import { isScalar, parseAllDocuments, stringify as stringifyYaml, visit } from 'yaml';
+import { isMap, isScalar, parseAllDocuments, stringify as stringifyYaml, visit } from 'yaml';
 import { present } from './present.js';
 import { StyledValue } from './styled_value.js';
 import * as codes from './codes.js';
@@ -354,6 +354,22 @@ function decodeYaml(current: Uint8Array): CodecValue {
       Node(_key, node) {
         if (node.anchor !== undefined) throw new Error(`anchor &${node.anchor} is not supported`);
         if (node.tag !== undefined) throw new Error(`explicit tag ${node.tag} is not supported`);
+        // docs/spec/codec.md (yaml): an integral key is its decimal string, and two keys of one string are duplicates.
+        if (isMap(node)) {
+          const keys = new Set<string>();
+          for (const pair of node.items) {
+            const key = pair.key;
+            if (!isScalar(key) || typeof key.value !== 'string') continue;
+            let name: string = key.value;
+            if (key.type === 'PLAIN') {
+              const text = key.source ?? name;
+              const tag = schema.tags.find(candidate => candidate.default === true && candidate.test?.test(text))?.tag;
+              if (tag === 'tag:yaml.org,2002:int') key.value = name = BigInt(text).toString();
+            }
+            if (keys.has(name)) throw new Error(`duplicate map key ${name}`);
+            keys.add(name);
+          }
+        }
       },
       Pair(_key, pair) {
         if (!isScalar(pair.key) || typeof pair.key.value !== 'string') throw new Error('map keys must be scalar strings');

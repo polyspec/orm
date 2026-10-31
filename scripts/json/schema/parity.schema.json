@@ -5,6 +5,7 @@
   "type": "object",
   "required": ["implementations", "units"],
   "properties": {
+    "suites": { "type": "array", "items": { "type": "string" } },
     "implementations": {
       "type": "array",
       "items": {

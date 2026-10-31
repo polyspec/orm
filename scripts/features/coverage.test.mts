@@ -620,7 +620,7 @@ caseTest('aggregate numeric TypeScript cases are owned by the client', 1000, asy
 
 caseTest('TypeScript behavior tests stay in their client directory', 1000, async () => {
   const root = new URL('../..', import.meta.url);
-  const expected = ['codec-vector', 'dsn', 'engine', 'generate', 'model', 'sqlite-concurrency'];
+  const expected = ['dsn', 'engine', 'generate', 'model', 'sqlite-concurrency'];
   const entries = await readdir(new URL('packages/ts/tests/', root));
   for (const name of expected) assert.ok(entries.includes(`${name}.mjs`), `${name}.mjs missing from owner`);
   await assert.rejects(readdir(new URL('tests/typescript/', root)), { code: 'ENOENT' });

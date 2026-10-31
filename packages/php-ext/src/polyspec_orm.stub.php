@@ -1373,8 +1373,8 @@ final class PrivilegeUtils
 namespace Polyspec\Orm;
 
 /**
- * Column-style codecs (docs/spec/codec.md), the codec of the PHP library. The extension implements the codec in C (codec.c);
- * the methods the extension does not implement yet throw CODEC_UNSUPPORTED and name the item that implements them.
+ * Column-style codecs (docs/spec/codec.md), the codec of the PHP library. The extension implements every method in C (codec.c,
+ * a port of Codec.php), and its lane runs the codec recipe through it (COD-40).
  */
 final class Codec
 {

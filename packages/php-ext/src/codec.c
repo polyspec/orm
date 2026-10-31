@@ -11,8 +11,10 @@
 #include "ext/standard/base64.h"
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_interfaces.h"
+#include "Zend/zend_enum.h"
 #include "Zend/zend_smart_str.h"
 #include <arpa/inet.h>
+#include <ctype.h>
 #include <math.h>
 #include <stdarg.h>
 #include <string.h>
@@ -437,6 +439,119 @@ static bool node_line(zval *node, zend_long *line)
     return true;
 }
 
+/* Codec.php yamlStream: the stream rule of YAML 1.2 that the reader does not apply (COD-13), the stream is UTF-8: no overlong
+ * form, no surrogate, nothing above U+10FFFF. */
+static bool utf8_valid(const unsigned char *s, size_t n)
+{
+    size_t i = 0;
+    while (i < n) {
+        unsigned char c = s[i];
+        size_t len;
+        uint32_t cp, min;
+        if (c < 0x80) {
+            i++;
+            continue;
+        } else if ((c & 0xE0) == 0xC0) {
+            len = 2, cp = c & 0x1F, min = 0x80;
+        } else if ((c & 0xF0) == 0xE0) {
+            len = 3, cp = c & 0x0F, min = 0x800;
+        } else if ((c & 0xF8) == 0xF0) {
+            len = 4, cp = c & 0x07, min = 0x10000;
+        } else {
+            return false;
+        }
+        if (i + len > n) {
+            return false;
+        }
+        for (size_t k = 1; k < len; k++) {
+            if ((s[i + k] & 0xC0) != 0x80) {
+                return false;
+            }
+            cp = (cp << 6) | (s[i + k] & 0x3F);
+        }
+        if (cp < min || cp > 0x10FFFF || (cp >= 0xD800 && cp <= 0xDFFF)) {
+            return false;
+        }
+        i += len;
+    }
+    return true;
+}
+
+/* Codec.php yamlIntegerInRange: an integer of the core schema outside i64 is not a value of the common value model (COD-16); the
+ * reader turns a decimal one into a float and wraps an octal or hexadecimal one, so the plain text is checked here. */
+static bool yaml_integer_in_range(zval *node, zend_string **err)
+{
+    zval style, value;
+    if (!call_method(node, "getStyle", &style, 0, NULL)) {
+        return false;
+    }
+    bool plain = Z_TYPE(style) == IS_OBJECT && zend_string_equals_literal(Z_STR_P(zend_enum_fetch_case_name(Z_OBJ(style))), "Plain");
+    zval_ptr_dtor(&style);
+    if (!plain) {
+        return true;
+    }
+    if (!call_method(node, "getValue", &value, 0, NULL)) {
+        return false;
+    }
+    const char *s = Z_STRVAL(value);
+    size_t n = Z_STRLEN(value), i = 0, digits;
+    bool in_range = true, integer = false;
+    if (n > 2 && s[0] == '0' && (s[1] == 'o' || s[1] == 'x')) {
+        bool hex = s[1] == 'x';
+        for (i = 2; i < n && (hex ? isxdigit((unsigned char)s[i]) : (s[i] >= '0' && s[i] <= '7')); i++) {
+        }
+        if (i == n) {
+            integer = true;
+            for (i = 2; i + 1 < n && s[i] == '0'; i++) {
+            }
+            digits = n - i;
+            /* 2^63 - 1 is 21 octal digits, all 7, and 7fffffffffffffff. */
+            in_range = hex ? digits < 16 || (digits == 16 && s[i] >= '0' && s[i] <= '7') : digits <= 21;
+        }
+    } else {
+        size_t start = n > 0 && (s[0] == '+' || s[0] == '-') ? 1 : 0;
+        for (i = start; i < n && s[i] >= '0' && s[i] <= '9'; i++) {
+        }
+        if (i == n && n > start) {
+            integer = true;
+            for (i = start; i + 1 < n && s[i] == '0'; i++) {
+            }
+            digits = n - i;
+            const char *max = s[0] == '-' ? "9223372036854775808" : "9223372036854775807";
+            in_range = digits < 19 || (digits == 19 && memcmp(s + i, max, 19) <= 0);
+        }
+    }
+    if (integer && !in_range) {
+        zend_long line = 0;
+        if (!node_line(node, &line)) {
+            zval_ptr_dtor(&value);
+            return false;
+        }
+        *err = zend_strpprintf(0, "integer %s at line " ZEND_LONG_FMT " is outside the i64 range", s, line);
+        zval_ptr_dtor(&value);
+        return false;
+    }
+    zval_ptr_dtor(&value);
+    return true;
+}
+
+/* Codec.php finiteValue: a float of the common value model is finite (COD-16). */
+static bool finite_value(zval *v)
+{
+    if (Z_TYPE_P(v) == IS_DOUBLE) {
+        return zend_finite(Z_DVAL_P(v));
+    }
+    if (Z_TYPE_P(v) == IS_ARRAY) {
+        zval *item;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(v), item) {
+            if (!finite_value(item)) {
+                return false;
+            }
+        } ZEND_HASH_FOREACH_END();
+    }
+    return true;
+}
+
 /* Codec.php yamlNode: a purr node as a PHP value, with the checks of the codec's YAML rules. err gets the message of a rule. */
 static bool yaml_node(zval *node, zval *schema, zval *out, zend_string **err)
 {
@@ -481,6 +596,9 @@ static bool yaml_node(zval *node, zval *schema, zval *out, zend_string **err)
 
     IS_A(node, "Purr\\Yaml\\Node\\ScalarNode", yes);
     if (yes) {
+        if (!yaml_integer_in_range(node, err)) {
+            return false;
+        }
         zval arg;
         ZVAL_COPY(&arg, node);
         bool ok = call_method(schema, "resolve", out, 1, &arg);
@@ -615,6 +733,10 @@ static bool yaml_node(zval *node, zval *schema, zval *out, zend_string **err)
 /* yamlDecode: one YAML document, read by purr and resolved by its core schema. */
 static bool yaml_decode_text(zend_string *text, zval *out, zend_string **err)
 {
+    if (!utf8_valid((const unsigned char *)ZSTR_VAL(text), ZSTR_LEN(text))) {
+        *err = zend_string_init(ZEND_STRL("the stream is not UTF-8"), 0);
+        return false;
+    }
     zend_class_entry *stream_ce = class_named("Purr\\Yaml\\YamlStream");
     zend_class_entry *schema_ce = class_named("Purr\\Yaml\\Schema\\CoreSchema");
     if (stream_ce == NULL || schema_ce == NULL) {
@@ -876,6 +998,58 @@ static bool codec_copy_or_read_stream(zval *raw, zval *value)
     return true;
 }
 
+/* Reads the decimal digits at s[*at], moving *at past them; false when there is none. */
+static bool serialized_digits(const char *s, size_t len, size_t *at, size_t *value)
+{
+    size_t start = *at;
+    *value = 0;
+    while (*at < len && s[*at] >= '0' && s[*at] <= '9') {
+        *value = *value * 10 + (size_t)(s[*at] - '0');
+        (*at)++;
+    }
+    return *at > start;
+}
+
+/* Whether a value of the serialized text starts with O:, C:, R: or r: (COD-34), as Codec::serializedObjectOrReference: the walk
+ * reads each value by its type letter and skips a string by its byte length, so the letters inside a string are text; it stops
+ * at the first value it cannot read and leaves that format failure to unserialize. */
+static bool serialized_object_or_reference(const char *s, size_t len)
+{
+    size_t at = 0, n;
+    while (at < len) {
+        char type = s[at];
+        if (strchr("OCRr", type) != NULL && at + 1 < len && s[at + 1] == ':') {
+            return true;
+        }
+        if (type == '}') {
+            at++;
+        } else if (type == 'N' && at + 1 < len && s[at + 1] == ';') {
+            at += 2;
+        } else if (type == 's' && at + 1 < len && s[at + 1] == ':') {
+            at += 2;
+            if (!serialized_digits(s, len, &at, &n) || at + 1 >= len || s[at] != ':' || s[at + 1] != '"') {
+                return false;
+            }
+            at += 2 + n + 2;
+        } else if (type == 'a' && at + 1 < len && s[at + 1] == ':') {
+            at += 2;
+            if (!serialized_digits(s, len, &at, &n) || at + 1 >= len || s[at] != ':' || s[at + 1] != '{') {
+                return false;
+            }
+            at += 2;
+        } else if (strchr("bid", type) != NULL && at + 1 < len && s[at + 1] == ':') {
+            const char *end = memchr(s + at, ';', len - at);
+            if (end == NULL) {
+                return false;
+            }
+            at = (size_t)(end - s) + 1;
+        } else {
+            return false;
+        }
+    }
+    return false;
+}
+
 static bool decode_stages(HashTable *styles, zval *raw, zval *ret)
 {
     zend_long n = zend_hash_num_elements(styles);
@@ -940,10 +1114,7 @@ static bool decode_stages(HashTable *styles, zval *raw, zval *ret)
             if (!need_string(&cur, "unserialize")) {
                 ok = false;
             } else {
-                const char *s = Z_STRVAL(cur);
-                size_t len = Z_STRLEN(cur);
-                bool object_form = len >= 2 && strchr("OCrR", s[0]) != NULL && s[1] == ':';
-                if (object_form || zend_memnstr(s, ";O:", 3, s + len) != NULL || zend_memnstr(s, ";C:", 3, s + len) != NULL) {
+                if (serialized_object_or_reference(Z_STRVAL(cur), Z_STRLEN(cur))) {
                     ok = orm_fail("CODEC_UNSUPPORTED", zend_string_init(ZEND_STRL("serialize: objects and references are not supported"), 0));
                 } else {
                     zval args[2], opts, result;
@@ -961,6 +1132,10 @@ static bool decode_stages(HashTable *styles, zval *raw, zval *ret)
                             zval_ptr_dtor(&result);
                             ok = orm_fail("CODEC_DECODE", zend_string_init(ZEND_STRL("serialize: bad format"), 0));
                         }
+                    }
+                    if (ok && !finite_value(&result)) {
+                        zval_ptr_dtor(&result);
+                        ok = orm_fail("CODEC_DECODE", zend_string_init(ZEND_STRL("serialize: non-finite numbers are not supported"), 0));
                     }
                     if (ok) {
                         zval_ptr_dtor(&cur);

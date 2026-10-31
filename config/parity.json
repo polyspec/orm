@@ -363,7 +363,8 @@
         "packages/php/tests/GroupRowsDbCases.php",
         "packages/php/tests/PostgresSessionSettings.php",
         "packages/php/tests/QueryCancellationDbCases.php",
-        "packages/php/tests/AuthenticatedEncryptionFixtureCases.php"
+        "packages/php/tests/AuthenticatedEncryptionFixtureCases.php",
+        "packages/php/tests/Recipe.php"
       ],
       "symbols": {
         "extractor": "php",
@@ -648,7 +649,8 @@
         "packages/ts/tests/generated_model_output.mjs",
         "packages/ts/tests/schema_of.mjs",
         "packages/ts/tests/generator_scan.mjs",
-        "packages/ts/tests/markdown-read-db.mjs"
+        "packages/ts/tests/markdown-read-db.mjs",
+        "packages/ts/tests/recipe.mjs"
       ],
       "args": [
         "--conditions=orm-test"
@@ -913,7 +915,8 @@
         "packages/python/tests/runner_connect.py",
         "packages/python/tests/server_database.py",
         "packages/python/tests/was_inserted_child.py",
-        "packages/python/tests/coverage_performance_gate.py"
+        "packages/python/tests/coverage_performance_gate.py",
+        "packages/python/tests/recipe.py"
       ],
       "command": "packages/python/.venv/bin/python",
       "env": [],
@@ -994,7 +997,9 @@
         "packages/rust/orm/tests/common/clock_test_support.rs",
         "packages/rust/schema/tests/common/json_lines.rs",
         "packages/rust/tests/tests/common/temp_sqlite.rs",
-        "packages/rust/orm/tests/common/rollback_probe.rs"
+        "packages/rust/orm/tests/common/rollback_probe.rs",
+        "packages/rust/tests/src/lib.rs",
+        "packages/rust/tests/src/recipe.rs"
       ],
       "symbols": {
         "extractor": "rust",
@@ -1201,10 +1206,6 @@
     {
       "root": "tests/analyzers",
       "reason": "harness: Analyzers for the Go test conventions of the repository; the tooling implements no contract, so its tests belong to no implementation."
-    },
-    {
-      "root": "tests/codec",
-      "reason": "generated: The PHP generator of tests/codec/vectors.json, which the codec suites read; the generator is single-language tooling that implements no contract."
     },
     {
       "root": "packages/dbspec-codemirror",
@@ -2686,86 +2687,6 @@
         "artifact": "archive",
         "package": "@polyspec/orm"
       }
-    },
-    {
-      "id": "ts-codec-values",
-      "kind": "feature",
-      "requirements": [
-        "COD-4",
-        "COD-34"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/codec_test.go",
-          "id": "TestCodecValueEdges"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CodecVectorsTest.php",
-          "id": "CodecVectorsTest::testCodecValueEdges"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
-          "id": "CoverageAuthenticatedEncryptionExtensionTest::testCodecValueEdges"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/codec-values.mjs",
-          "id": "codec values"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/codec_vector.py",
-          "id": "test_value_edges"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/codec.rs",
-          "id": "codec::tests::codec_value_edges"
-        }
-      ]
-    },
-    {
-      "id": "codec-json-yaml-malformed-decode",
-      "kind": "feature",
-      "requirements": [
-        "COD-33",
-        "COD-35"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/codec_test.go",
-          "id": "TestCodecErrors"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CodecVectorsTest.php",
-          "id": "CodecVectorsTest::testCodecExpectedExceptionCause"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
-          "id": "CoverageAuthenticatedEncryptionExtensionTest::testCodecMalformedInputUsesDecodeCode"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/codec-errors.test.mjs",
-          "id": "codec/malformed-json-and-yaml"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/codec_vector.py",
-          "id": "test_error_cases"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/codec.rs",
-          "id": "codec::tests::errors_and_keys"
-        }
-      ]
     },
     {
       "id": "model-ip-input-rejects-whitespace",
@@ -9538,7 +9459,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/codec_vectors.rs",
+          "test": "packages/rust/orm/tests/styled_column_states.rs",
           "symbol": "styled_column_state_fixture"
         }
       ]
@@ -9629,6 +9550,9 @@
       "kind": "suite",
       "requirements": [
         "COD-3",
+        "COD-4",
+        "COD-5",
+        "COD-8",
         "COD-9",
         "COD-10",
         "COD-11",
@@ -9636,132 +9560,96 @@
         "COD-13",
         "COD-14",
         "COD-16",
+        "COD-20",
         "COD-28",
         "COD-29",
         "COD-30",
-        "COD-33",
-        "COD-36",
-        "COD-38",
-        "COD-40",
-        "PLN-15"
-      ],
-      "file": "tests/codec/vectors.json",
-      "cases": "$.vectors[*].name",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/codec_test.go",
-          "symbol": "TestCodecVectors"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CodecVectorsTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\CodecVectorsTest::testPhpVector"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CodecVectorsExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CodecVectorsExtensionTest::testPhpVector"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/codec-vector.mjs"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_codec_vectors.py"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/codec_vectors.rs",
-          "symbol": "vectors"
-        }
-      ]
-    },
-    {
-      "id": "codec-aes",
-      "kind": "suite",
-      "requirements": [
-        "COD-3",
-        "COD-5",
-        "COD-40",
-        "PLN-15"
-      ],
-      "file": "tests/codec/aes-vectors.json",
-      "cases": "$.vectors[*].name",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/codec_test.go",
-          "symbol": "TestCodecAESVectors"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CodecAesVectorsTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\CodecAesVectorsTest::testVector"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CodecAesVectorsTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CodecAesVectorsTestExtensionTest::testVector"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/codec_aes_vectors.rs",
-          "symbol": "aes_vectors"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/codec-aes-vector.mjs"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_codec_aes_vectors.py"
-        }
-      ]
-    },
-    {
-      "id": "codec-decode",
-      "kind": "suite",
-      "requirements": [
-        "COD-14",
-        "COD-29",
         "COD-31",
+        "COD-33",
+        "COD-34",
+        "COD-35",
+        "COD-36",
         "COD-37",
+        "COD-38",
         "COD-39",
         "COD-40",
         "PLN-15"
       ],
-      "file": "tests/codec/decode-vectors.json",
-      "cases": "$.vectors[*].name",
+      "file": "tests/codec/codec.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/codec_test.go",
-          "symbol": "TestCodecDecodeVectors"
+          "test": "packages/go/orm/recipe_codec_test.go",
+          "symbol": "TestRecipeCodecNone"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/HostcodecTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\HostcodecTest::testDecodeVector"
+          "test": "packages/php/tests/CodecRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\CodecRecipeTest::testNone"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/HostcodecTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\HostcodecTestExtensionTest::testDecodeVector"
+          "test": "packages/php-ext/tests/CodecRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CodecRecipeTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/codec-decode-vector.mjs"
+          "test": "packages/ts/tests/codec-none.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_codec_decode_vectors.py"
+          "test": "packages/python/tests/test_codec_none.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/codec_vectors.rs",
-          "symbol": "decode_vectors"
+          "test": "packages/rust/tests/tests/codec_none.rs",
+          "symbol": "codec_none"
+        }
+      ]
+    },
+    {
+      "id": "codec-json-yaml-malformed-decode",
+      "kind": "feature",
+      "requirements": [
+        "COD-33",
+        "COD-35"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_codec_test.go",
+          "id": "TestRecipeCodecNone/decode_errors"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CodecErrorCauseTest.php",
+          "id": "CodecErrorCauseTest::testCodecExpectedExceptionCause"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
+          "id": "CoverageAuthenticatedEncryptionExtensionTest::testCodecMalformedInputUsesDecodeCode"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CodecErrorCauseTestExtensionTest.php",
+          "id": "CodecErrorCauseTestExtensionTest::testCodecExpectedExceptionCause"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/codec-errors.test.mjs",
+          "id": "codec/malformed-json-and-yaml"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_codec_none.py",
+          "id": "decode_errors"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/codec_none.rs",
+          "id": "codec_none::decode_errors"
         }
       ]
     },
@@ -13473,7 +13361,7 @@
         {
           "implementation": "go",
           "test": "packages/go/orm/codec_test.go",
-          "id": "TestCodecErrors"
+          "id": "TestOrderedJSONCodecTakesGoJSONInputs"
         }
       ],
       "owner": {
@@ -16983,87 +16871,6 @@
       }
     },
     {
-      "id": "rust-codec-aes-vectors",
-      "kind": "feature",
-      "requirements": [
-        "COD-5"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/codec.rs",
-          "id": "codec::tests::aes_vectors"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/codec_test.go",
-          "id": "TestCodecAESVectors"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CodecAesVectorsTest.php",
-          "id": "CodecAesVectorsTest::testVector"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CodecAesVectorsTestExtensionTest.php",
-          "id": "CodecAesVectorsTestExtensionTest::testVector"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/codec-aes-vector.mjs",
-          "id": "aes.invalid_tag"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_codec_aes_vectors.py",
-          "id": "aes.invalid_tag"
-        }
-      ]
-    },
-    {
-      "id": "rust-codec-errors-and-keys",
-      "kind": "feature",
-      "requirements": [
-        "COD-29",
-        "COD-33",
-        "COD-34",
-        "COD-35"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/codec.rs",
-          "id": "codec::tests::errors_and_keys"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/codec_test.go",
-          "id": "TestCodecErrors"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CodecVectorsTest.php",
-          "id": "CodecVectorsTest::testPhpError"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CodecVectorsExtensionTest.php",
-          "id": "CodecVectorsExtensionTest::testPhpError"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/codec-values.mjs",
-          "id": "codec values"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/codec_vector.py",
-          "id": "test_error_cases"
-        }
-      ]
-    },
-    {
       "id": "rust-codec-json-literal-null-is-distinct-from-sql-null",
       "kind": "feature",
       "requirements": [
@@ -17099,162 +16906,6 @@
           "implementation": "python",
           "test": "packages/python/tests/test_styled_column_states.py",
           "id": "nonnull_value_null"
-        }
-      ]
-    },
-    {
-      "id": "rust-codec-json-stage-keeps-ordered-json",
-      "kind": "feature",
-      "requirements": [
-        "COD-16"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/codec.rs",
-          "id": "codec::tests::json_stage_keeps_ordered_json"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/codec_test.go",
-          "id": "TestOrderedJSONCodecPreservesKindsAndObjectOrder"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CodecVectorsTest.php",
-          "id": "CodecVectorsTest::testOrderedJsonPreservesOrderAndNumberText"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CodecVectorsExtensionTest.php",
-          "id": "CodecVectorsExtensionTest::testOrderedJsonPreservesOrderAndNumberText"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/codec-values.mjs",
-          "id": "codec values"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_values.py",
-          "id": "test_ordered_json_decode_keeps_member_order"
-        }
-      ]
-    },
-    {
-      "id": "rust-codec-leading-gz-and-base64-store-the-text",
-      "kind": "feature",
-      "requirements": [
-        "COD-14"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/codec.rs",
-          "id": "codec::tests::leading_gz_and_base64_store_the_text"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/codec_test.go",
-          "id": "TestCodecVectors"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CodecVectorsTest.php",
-          "id": "CodecVectorsTest::testPhpVector"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CodecVectorsExtensionTest.php",
-          "id": "CodecVectorsExtensionTest::testPhpVector"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/codec-vector.mjs",
-          "id": "base64_text.string"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_codec_vectors.py",
-          "id": "base64_text.string"
-        }
-      ]
-    },
-    {
-      "id": "rust-codec-yaml-reads-the-core-schema",
-      "kind": "feature",
-      "requirements": [
-        "COD-29"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/codec.rs",
-          "id": "codec::tests::yaml_reads_the_core_schema"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/codec_test.go",
-          "id": "TestCodecErrors"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CodecVectorsTest.php",
-          "id": "CodecVectorsTest::testYamlCoreSchema"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CodecVectorsExtensionTest.php",
-          "id": "CodecVectorsExtensionTest::testYamlCoreSchema"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/codec-values.mjs",
-          "id": "codec values"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/codec_vector.py",
-          "id": "test_error_cases"
-        }
-      ]
-    },
-    {
-      "id": "rust-codec-yaml-writes-what-it-reads",
-      "kind": "feature",
-      "requirements": [
-        "COD-13"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/codec.rs",
-          "id": "codec::tests::yaml_writes_what_it_reads"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/codec_test.go",
-          "id": "TestCodecVectors"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CodecVectorsTest.php",
-          "id": "CodecVectorsTest::testPhpVector"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CodecVectorsExtensionTest.php",
-          "id": "CodecVectorsExtensionTest::testPhpVector"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/codec-vector.mjs",
-          "id": "yaml.nested_map"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_codec_vectors.py",
-          "id": "yaml.nested_map"
         }
       ]
     },
@@ -29173,6 +28824,16 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/codec-aes-errors.test.mjs",
           "id": "codec/aes_round_trip"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/HostcodecTest.php",
+          "id": "HostcodecTest::testHostcodec"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/HostcodecTestExtensionTest.php",
+          "id": "HostcodecTestExtensionTest::testHostcodec"
         }
       ]
     },
@@ -31025,45 +30686,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/compiler_fixtures.rs",
           "id": "compiler_fixtures::dsl50-ordering-list-e0277"
-        }
-      ]
-    },
-    {
-      "id": "codec-serialized-object-rejected",
-      "kind": "feature",
-      "requirements": [
-        "COD-34"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/codec_test.go",
-          "id": "TestCodecErrors"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CodecVectorsTest.php",
-          "id": "CodecVectorsTest::testPhpError"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
-          "id": "CoverageAuthenticatedEncryptionExtensionTest::testSerializedPhpObjectsAreRejected"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/codec-values.mjs",
-          "id": "codec values"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/codec_vector.py",
-          "id": "test_error_cases"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/codec.rs",
-          "id": "codec::tests::errors_and_keys"
         }
       ]
     },

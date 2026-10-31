@@ -150,8 +150,12 @@ func Encode(styles []string, v StyledValue) (any, error) {
 			if i != 0 {
 				return nil, codecErr(CodeCodecUnsupported, "yaml must be the first style")
 			}
-			var err error
-			cur, err = goyaml.Marshal(value)
+			var doc goyaml.Node
+			err := doc.Encode(yamlFloats(value))
+			if err == nil {
+				yamlQuoteBreaks(&doc)
+				cur, err = goyaml.Marshal(&doc)
+			}
 			if err != nil {
 				return nil, codecErr(CodeCodecEncode, "yaml: %v", err)
 			}
@@ -226,10 +230,51 @@ func NormalizeStyled(styles []string, nullable bool, v StyledValue) (StyledValue
 	return Decode(styles, stored)
 }
 
+// yamlQuoteBreaks double-quotes each string scalar, a key or a value, that holds U+0085, U+2028 or U+2029 (COD-29): yaml.v3
+// escapes them there, and elsewhere counts them as line breaks, as YAML 1.1 does, and pads the text after one.
+func yamlQuoteBreaks(node *goyaml.Node) {
+	if node.Kind == goyaml.ScalarNode && node.Tag == "!!str" && strings.ContainsAny(node.Value, "\u0085\u2028\u2029") {
+		node.Style = goyaml.DoubleQuotedStyle
+	}
+	for _, child := range node.Content {
+		yamlQuoteBreaks(child)
+	}
+}
+
+// yamlFloats is value with each float as a YAML scalar node whose text keeps a fraction or an exponent, so that it reads back
+// as a float and not as an integer (COD-29): yaml.v3 writes the float 2.0 as 2, which the YAML 1.2 core schema reads as an int.
+func yamlFloats(value any) any {
+	switch x := value.(type) {
+	case float64:
+		text := strconv.FormatFloat(x, 'g', -1, 64)
+		if !strings.ContainsAny(text, ".eEn") {
+			text += ".0"
+		}
+		return &goyaml.Node{Kind: goyaml.ScalarNode, Tag: "!!float", Value: text}
+	case []any:
+		out := make([]any, len(x))
+		for i, item := range x {
+			out[i] = yamlFloats(item)
+		}
+		return out
+	case map[string]any:
+		out := make(map[string]any, len(x))
+		for k, item := range x {
+			out[k] = yamlFloats(item)
+		}
+		return out
+	}
+	return value
+}
+
 // yamlDecode reads one YAML 1.2 document. goccy/go-yaml reads U+0085 as content, as YAML 1.2
 // rules (5.4), where yaml.v3 reads it as a line break; its AST keeps each scalar's source text
 // and style, so the plain scalars resolve by the core schema below.
 func yamlDecode(b []byte) (any, error) {
+	b, err := yamlStream(b)
+	if err != nil {
+		return nil, err
+	}
 	file, err := yamlparser.ParseBytes(b, 0)
 	if err != nil {
 		return nil, codecErr(CodeCodecDecode, "yaml: %v", err)
@@ -249,6 +294,15 @@ func yamlDecode(b []byte) (any, error) {
 		return nil, nil
 	}
 	return yamlNode(file.Docs[0].Body)
+}
+
+// yamlStream applies the stream rules of YAML 1.2 that the parser does not (COD-13): the stream is UTF-8, and a byte order
+// mark may start it (5.2). It returns the stream without its byte order mark.
+func yamlStream(b []byte) ([]byte, error) {
+	if !utf8.Valid(b) {
+		return nil, codecErr(CodeCodecDecode, "yaml: the stream is not UTF-8")
+	}
+	return bytes.TrimPrefix(b, []byte("\uFEFF")), nil
 }
 
 func yamlLine(node ast.Node) int {
@@ -376,6 +430,10 @@ func yamlCoreScalar(text string, line int) (any, error) {
 }
 
 func yamlMapKey(node ast.Node) (string, error) {
+	// An explicit key (? key) is the key it holds; a collection there is refused below as any collection key is.
+	if explicit, ok := node.(*ast.MappingKeyNode); ok {
+		node = explicit.Value
+	}
 	line := yamlLine(node)
 	var value any
 	var err error
@@ -577,7 +635,13 @@ func (p *phpParser) value() (any, error) {
 		}
 		switch t {
 		case 'b':
-			return s == "1", nil
+			switch s {
+			case "0":
+				return false, nil
+			case "1":
+				return true, nil
+			}
+			return nil, p.fail("bad bool " + s)
 		case 'i':
 			n, err := strconv.ParseInt(s, 10, 64)
 			if err != nil {
@@ -585,16 +649,9 @@ func (p *phpParser) value() (any, error) {
 			}
 			return n, nil
 		default:
-			switch s {
-			case "INF":
-				return math.Inf(1), nil
-			case "-INF":
-				return math.Inf(-1), nil
-			case "NAN":
-				return math.NaN(), nil
-			}
+			// A float of the common value model is finite (COD-16), so INF, -INF and NAN are not values.
 			f, err := strconv.ParseFloat(s, 64)
-			if err != nil {
+			if err != nil || math.IsNaN(f) || math.IsInf(f, 0) {
 				return nil, p.fail("bad float " + s)
 			}
 			return f, nil

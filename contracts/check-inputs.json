@@ -523,9 +523,6 @@
         "packages/php/tests/RelationKeysTest.php",
         "packages/php/tests/ParentSlotPaddingTest.php",
         "packages/php/tests/HostcodecTest.php",
-        "packages/php/tests/CodecAesVectorsTest.php",
-        "tests/codec/aes-vectors.json",
-        "tests/codec/decode-vectors.json",
         "packages/php/tests/EngineTest.php",
         "tests/ir/validate.json",
         "packages/php/tests/RuntimeModelTest.php",
@@ -1553,7 +1550,17 @@
       ],
       "inputs": [
         "tests/codec/**",
-        "packages/php/tests/CodecVectorsTest.php"
+        "packages/go/orm/recipe_codec_test.go",
+        "packages/go/internal/recipe/recipe.go",
+        "packages/php/tests/CodecRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php-ext/tests/CodecRecipeTestExtensionTest.php",
+        "packages/ts/tests/codec-none.test.mjs",
+        "packages/ts/tests/recipe.mjs",
+        "packages/python/tests/test_codec_none.py",
+        "packages/python/tests/recipe.py",
+        "packages/rust/tests/tests/codec_none.rs",
+        "packages/rust/tests/src/recipe.rs"
       ]
     },
     "php-codec-causes-check": {
@@ -1566,7 +1573,7 @@
       "inputs": [
         "Makefile",
         "packages/php/src/Codec.php",
-        "packages/php/tests/CodecVectorsTest.php",
+        "packages/php/tests/CodecErrorCauseTest.php",
         "packages/php/tests/CodecYamlCauseTest.php",
         "packages/php/tests/CodecYamlProbe.php",
         "packages/php/tests/codec-yaml-probe.php",
@@ -3199,7 +3206,6 @@
         "tests/dbspec/cases.json",
         "contracts/fixtures/planner.json",
         "tests/ir/validate.json",
-        "tests/codec/decode-vectors.json",
         "tests/dbspec/stress.mts"
       ]
     },
@@ -3380,7 +3386,7 @@
         "packages/python/tests/test_styled_column_states.py",
         "packages/rust/orm/src/codec.rs",
         "packages/rust/orm/src/model.rs",
-        "packages/rust/orm/tests/codec_vectors.rs"
+        "packages/rust/orm/tests/styled_column_states.rs"
       ]
     },
     "request-hook-php-extension-check": {

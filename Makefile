@@ -7,7 +7,7 @@
 .PHONY: client-db-go-check client-db-php-check client-db-php-extension-check client-db-typescript-check client-db-python-check client-db-rust-check
 .PHONY: feature-coverage/go/mysql feature-coverage/go/postgres feature-coverage/go/sqlite feature-coverage/php/mysql feature-coverage/php/postgres feature-coverage/php/sqlite feature-coverage/php-extension/mysql feature-coverage/php-extension/postgres feature-coverage/php-extension/sqlite feature-coverage/typescript/mysql feature-coverage/typescript/postgres feature-coverage/typescript/sqlite feature-coverage/python/mysql feature-coverage/python/postgres feature-coverage/python/sqlite feature-coverage/rust/mysql feature-coverage/rust/postgres feature-coverage/rust/sqlite feature-performance-check
 # It is an independent part of the target that does not stop at a failure (scripts/check/run.mts runs it with make -k).
-.PHONY: comment-language-check/unit comment-language-check/run repo-check/unit repo-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces fuzz-check/engine-ir fuzz-check/clients-go-orm dialect-facts-check/probes dialect-facts-check/facts feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select testcase-check/go testcase-check/node testcase-check/runners testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/code-catalog client-unit-check/hostcodec client-unit-check/codec-aes client-unit-check/insert-parts client-unit-check/engine client-unit-check/runtime-model php-gen-unit-check client-unit-check/orm-gen client-unit-check/model-methods client-unit-check/client-generics client-unit-check/perf-extensions client-unit-check/dbspec-runners
+.PHONY: comment-language-check/unit comment-language-check/run repo-check/unit repo-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces fuzz-check/engine-ir fuzz-check/clients-go-orm dialect-facts-check/probes dialect-facts-check/facts feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select testcase-check/go testcase-check/node testcase-check/runners testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/code-catalog client-unit-check/hostcodec client-unit-check/insert-parts client-unit-check/engine client-unit-check/runtime-model php-gen-unit-check client-unit-check/orm-gen client-unit-check/model-methods client-unit-check/client-generics client-unit-check/perf-extensions client-unit-check/dbspec-runners
 .PHONY: aes-json-php-extension-check aes-rotation-php-extension-check
 .PHONY: request-hook-php-extension-check
 .PHONY: t182-php-extension-model-check t182-php-extension-schema-check
@@ -990,9 +990,8 @@ PHP_EXTENSION_LIBRARY = $(RUN_DIR)/php-extension/polyspec_orm.so
 test-php-ext: export ORM_PHP_MODE = extension
 test-php-ext: export POLYSPEC_ORM_EXTENSION ?= $(CURDIR)/var/php-ext/polyspec_orm.so
 test-php-ext: export ORM_PHP_DYNAMIC_MODULES = $(PHP_EXTENSION_DYNAMIC_MODULES)
-# The extension target owns the native package tests. Other-language codec output vectors are compared in codec-check below,
-# where this run's writers have populated ORM_CODEC_OUT.
-PHP_EXTENSION_NATIVE_CASES = ^Polyspec\\Orm\\Extension\\Tests\\(?!(?:CodecVectorsExtensionTest::test(?:Go|Rust|Typescript|Python)Output|MermaidErrorBoundaryTest::|ParentSlotExpansionNativeTest::|MarkdownConformanceNativeTest::))
+# The extension target owns the native package tests.
+PHP_EXTENSION_NATIVE_CASES = ^Polyspec\\Orm\\Extension\\Tests\\(?!(?:MermaidErrorBoundaryTest::|ParentSlotExpansionNativeTest::|MarkdownConformanceNativeTest::))
 test-php-ext: export CASES ?= $(PHP_EXTENSION_NATIVE_CASES)
 # PHP_EXTENSION_TESTS runs PHPUnit files of packages/php with the extension loaded, through kit's run-tests, which gives each test
 # its own timeout (K436); the test bootstrap fails either extension PHPUnit command that loads a userland fallback (T182-6-19).
@@ -1005,16 +1004,16 @@ PHP_CODEC_CAUSE_NATIVE_YAML_FILTER = testYamlExpectedCauseIdentity|testYamlUnexp
 php-codec-causes-check: php-models build-php-ext
 	@set -eu; \
 	status=0; \
-	if env ORM_PHP_MODE=library $(RUN_TESTS) phpunit --timeout 300 -- --configuration packages/php/phpunit.xml.dist --filter '$(PHP_CODEC_CAUSE_TEST_FILTER)' packages/php/tests/CodecVectorsTest.php; then :; else status=1; fi; \
+	if env ORM_PHP_MODE=library $(RUN_TESTS) phpunit --timeout 300 -- --configuration packages/php/phpunit.xml.dist --filter '$(PHP_CODEC_CAUSE_TEST_FILTER)' packages/php/tests/CodecErrorCauseTest.php; then :; else status=1; fi; \
 	if env ORM_PHP_MODE=library $(RUN_TESTS) phpunit --timeout 300 -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecYamlCauseTest.php; then :; else status=1; fi; \
-	if env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --timeout 300 --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php/phpunit.xml.dist --filter '$(PHP_CODEC_CAUSE_NATIVE_FILTER)' packages/php/tests/CodecVectorsTest.php; then :; else status=1; fi; \
+	if env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --timeout 300 --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php/phpunit.xml.dist --filter '$(PHP_CODEC_CAUSE_NATIVE_FILTER)' packages/php/tests/CodecErrorCauseTest.php; then :; else status=1; fi; \
 	if env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --timeout 300 --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist --filter '$(PHP_CODEC_CAUSE_NATIVE_YAML_FILTER)' packages/php-ext/tests/CodecCauseTest.php; then :; else status=1; fi; \
 	exit "$$status"
 dbspec-php-extension-check/%: RUN_DIR = $(if $(DBSPEC_PHP_EXTENSION_CHILD_RUN_DIR),$(DBSPEC_PHP_EXTENSION_CHILD_RUN_DIR),$(abspath .runtime/run)/dbspec-php-extension-check-$$PPID)
 dbspec-php-extension-check/analyze: DBSPEC_PHP_EXTENSION_CHILD_RUN_DIR = $(abspath .runtime/run)/dbspec-php-extension-check-analyze-$$PPID
 dbspec-php-extension-check/ir: DBSPEC_PHP_EXTENSION_CHILD_RUN_DIR = $(abspath .runtime/run)/dbspec-php-extension-check-ir-$$PPID
-.PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/plan-apply dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/codec dbspec-php-extension-check/code-catalog dbspec-php-extension-check/decode dbspec-php-extension-check/aes dbspec-php-extension-check/hostcodec dbspec-php-extension-check/ir dbspec-php-extension-check/planner dbspec-php-extension-check/executor
-DBSPEC_PHP_EXTENSION_PARTS = dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/stress-canonical dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/plan-apply dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/codec dbspec-php-extension-check/code-catalog dbspec-php-extension-check/decode dbspec-php-extension-check/aes dbspec-php-extension-check/hostcodec dbspec-php-extension-check/planner dbspec-php-extension-check/executor
+.PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/plan-apply dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/codec dbspec-php-extension-check/code-catalog dbspec-php-extension-check/aes dbspec-php-extension-check/hostcodec dbspec-php-extension-check/ir dbspec-php-extension-check/planner dbspec-php-extension-check/executor
+DBSPEC_PHP_EXTENSION_PARTS = dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/stress-canonical dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/plan-apply dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/codec dbspec-php-extension-check/code-catalog dbspec-php-extension-check/aes dbspec-php-extension-check/hostcodec dbspec-php-extension-check/planner dbspec-php-extension-check/executor
 .PHONY: dbspec-php-extension-check
 dbspec-php-extension-check:
 	@set -eu; \
@@ -1241,27 +1240,19 @@ dbspec-php-extension-check/show-create: php-vendor-check dbspec-php-extension-ch
 # dbspec-php-extension-check/set runs DbspecSetTest with the extension: Dbspec::readSet on every case of tests/dbspec/set-files.json and the focused cases.
 dbspec-php-extension-check/set: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecSetTest.php
-# dbspec-php-extension-check/codec runs CodecVectorsTest with the extension: the PHP side of tests/codec/vectors.json (each vector decodes
-# to its value and encodes as the file says, with the YAML and error cases of the test). The outputs of the other languages are read by
-# codec-check/compare, which runs them; this target does not read them.
+# dbspec-php-extension-check/codec runs the codec recipe tests/codec/codec.json through the extension's codec (docs/spec/codec.md COD-40).
 dbspec-php-extension-check/codec: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/CodecVectorsExtensionTest.php --filter 'testPhpVector|test_yaml_core|testPhpError|testPhpYamlIntegerMapKey'
+	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/CodecRecipeTestExtensionTest.php
 # dbspec-php-extension-check/code-catalog runs CodeCatalogTest with the extension: the codes of docs/spec/errors.yaml against Code.php, and the
 # class that the extension registers as Polyspec\Orm\Code, which must hold the same codes.
 dbspec-php-extension-check/code-catalog: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_TESTS) packages/php/tests/CodeCatalogTest.php
-# dbspec-php-extension-check/aes runs CodecAesVectorsTest with the extension: the AES v2 vectors of tests/codec/aes-vectors.json (the aes
-# and hex host stages round-trip, the fixed envelope decodes, and the empty-key and tampered cases give their codes).
+# dbspec-php-extension-check/aes runs CodecErrorCauseTest with the extension: a codec error keeps the native error as its cause.
 dbspec-php-extension-check/aes: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_TESTS) packages/php/tests/CodecAesVectorsTest.php
-# dbspec-php-extension-check/hostcodec runs the whole HostcodecTest with the extension: the host stages (aes, hex, ip), the blind index
-# and the shared decode vectors.
+	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/CodecErrorCauseTestExtensionTest.php
+# dbspec-php-extension-check/hostcodec runs the whole HostcodecTest with the extension: the AES v2 envelope and its key checks.
 dbspec-php-extension-check/hostcodec: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_TESTS) packages/php/tests/HostcodecTest.php
-# dbspec-php-extension-check/decode runs the codec-decode suite (tests/codec/decode-vectors.json) with the extension: the test_decode_vector
-# data sets of HostcodecTest, which decode each stored cell through Codec::hostDecode (hex, ip) or Codec::decode.
-dbspec-php-extension-check/decode: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_TESTS) packages/php/tests/HostcodecTest.php --filter testDecodeVector
 # dbspec-php-extension-check/ir runs only the native Validator owner over shared tests/ir/validate.json, without the PHP fallback.
 PHP_EXTENSION_IR_TEST_FILTER ?= testValidate
 dbspec-php-extension-check/ir: php-vendor-check dbspec-php-extension-check/prepare
@@ -1607,7 +1598,7 @@ fuzz-check/clients-go-orm:
 PHP = php
 # RUN_TESTS is kit's run-tests: it runs a unit tool with its reader and fails when no test ran (kit package, ./run-tests).
 RUN_TESTS = $(NODE) $(KIT)/run-tests.$(KIT_EXT)
-client-unit-check: client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/code-catalog client-unit-check/hostcodec client-unit-check/codec-aes client-unit-check/insert-parts client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/model-methods client-unit-check/client-generics client-unit-check/perf-extensions client-unit-check/dbspec-runners
+client-unit-check: client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/code-catalog client-unit-check/hostcodec client-unit-check/insert-parts client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/model-methods client-unit-check/client-generics client-unit-check/perf-extensions client-unit-check/dbspec-runners
 client-unit-check/dbspec-runners: php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRunnerTest.php
 client-unit-check/dsn: php-vendor-check
@@ -1621,9 +1612,6 @@ client-unit-check/code-catalog: php-vendor-check
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodeCatalogTest.php
 client-unit-check/hostcodec: php-vendor-check
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/HostcodecTest.php
-# client-unit-check/codec-aes runs the AES v2 vectors of tests/codec/aes-vectors.json, one data set per name.
-client-unit-check/codec-aes: php-vendor-check
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecAesVectorsTest.php
 # client-unit-check/insert-parts runs the cases of contracts/fixtures/insert_parts.json in PHP and TypeScript.
 client-unit-check/insert-parts: php-vendor-check lease-tool
 	$(HOLD_TYPESCRIPT)
@@ -1981,7 +1969,7 @@ styled-column-states-unit-check: lease-tool php-vendor-check php-model-check pyt
 	run_case typescript-build $(TSC_BUILD); \
 	if [ "$$last_result" -eq 0 ]; then run_case typescript $(NODE) --test --test-name-pattern='^(sql_null|json_null|json_object_with_kind|empty_text|serialize_sql_null|serialize_value_null|yaml_sql_null|yaml_value_null|unselected|nonnull_sql_null|jsons_sql_null|jsons_value_null|nonnull_value_null)$$' packages/ts/tests/styled-value.mjs; fi; \
 	run_case python $(PYTHON_VENV)/bin/python -m packages.python.tests.test_styled_column_states; \
-	run_case rust env PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) styled-column-states-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --manifest-path packages/rust/Cargo.toml --locked --offline -p polyspec-orm --test codec_vectors 'styled_column_state_fixture::' -- --test-threads=1; \
+	run_case rust env PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) styled-column-states-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --manifest-path packages/rust/Cargo.toml --locked --offline -p polyspec-orm --test styled_column_states 'styled_column_state_fixture::' -- --test-threads=1; \
 	exit "$$status"
 
 # group-rows-db-go runs TestGroupRowsDatabase (packages/go/model/group_rows_db_test.go) on BENCH_SQLITE_DSN.
@@ -2685,36 +2673,24 @@ go-vet-check/orm:
 	$(RUN_LONG) go-build/orm-vet -- $(PUBLISH) $(ORM_VET) go build -o @OUT@ ./tests/analyzers/orm-vet
 	$(RUN_LONG) go-vet/orm -- go vet -vettool=$(ORM_VET) $(GO_PACKAGES)
 
-# codec-check decodes tests/codec/vectors.json with the PHP codec and encodes it, then decodes the output that the Go, Rust,
-# TypeScript, and Python codec tests run by this target wrote to this make run's directory (CODEC_OUT, ORM_CODEC_OUT)
-# (tests/codec/README.md). It does not read output written by other targets or earlier runs, so that output always comes from the current code of this checkout.
-# The four writers are independent parts, so if one fails the others still run (make -k), and the comparison, which reads all four
-# outputs, comes after them. The run directory of a failed run is moved into the report by the runner.
-CODEC_OUT = $(abspath .runtime/run)/codec-check-$$PPID
-.PHONY: codec-check codec-check/go codec-check/rust codec-check/typescript codec-check/python codec-check/compare
-codec-check: codec-check/compare
-# codec-check/python runs the shared vectors through the Python codec and writes its encodings to ORM_CODEC_OUT for
-# codec-check/compare.
+# codec-check runs the codec recipe tests/codec/codec.json without a database in the six clients (docs/spec/feature-coverage.md
+# FCV-3): each part runs its client's entry, so one that fails names its client while the others still run (make -k).
+.PHONY: codec-check codec-check/go codec-check/rust codec-check/typescript codec-check/python codec-check/php codec-check/php-extension
+codec-check: codec-check/go codec-check/rust codec-check/typescript codec-check/python codec-check/php codec-check/php-extension
 codec-check/python: python-venv-check
-	mkdir -p $(CODEC_OUT)
-	ORM_CODEC_OUT=$(CODEC_OUT) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_vectors
-	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_aes_vectors
-	$(PYTHON_VENV)/bin/python -m packages.python.tests.codec_vector
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_none
 codec-check/go:
-	mkdir -p $(CODEC_OUT)
-	ORM_CODEC_OUT=$(CODEC_OUT) $(GO_TEST) ./packages/go/orm -run '^TestCodecVectors$$' -count=1
+	$(GO_TEST) ./packages/go/orm -run '^TestRecipeCodecNone$$' -count=1
 codec-check/rust: lease-tool
-	mkdir -p $(CODEC_OUT)
-	cd packages/rust && ORM_CODEC_OUT=$(CODEC_OUT) $(CARGO_TEST) codec-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test codec_vectors
+	cd packages/rust && $(CARGO_TEST) codec-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test codec_none
 codec-check/typescript: lease-tool
 	$(HOLD_TYPESCRIPT)
-	mkdir -p $(CODEC_OUT)
 	$(TSC_BUILD)
-	ORM_CODEC_OUT=$(CODEC_OUT) $(NODE) packages/ts/tests/codec-vector.mjs
-codec-check/compare: php-vendor-check codec-check/go codec-check/rust codec-check/typescript codec-check/python build-php-ext
-	ORM_CODEC_OUT=$(CODEC_OUT) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecVectorsTest.php
-	ORM_CODEC_OUT=$(CODEC_OUT) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'test(Go|Rust|Typescript|Python)Output' packages/php-ext/tests/CodecVectorsExtensionTest.php
-	rm -rf $(CODEC_OUT)
+	$(NODE) --test packages/ts/tests/codec-none.test.mjs
+codec-check/php: php-vendor-check
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecRecipeTest.php
+codec-check/php-extension: php-vendor-check build-php-ext
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CodecRecipeTestExtensionTest.php
 
 # bind-check runs the shared cases of tests/bind/vectors.json in the five clients (tests/bind/README.md): the bind
 # cases check a parameter against the logical type of its slot, and the message cases write it as an IR executor

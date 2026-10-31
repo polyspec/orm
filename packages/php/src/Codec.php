@@ -9,6 +9,7 @@ use Purr\Yaml\Node\AbstractNode;
 use Purr\Yaml\Node\AliasNode;
 use Purr\Yaml\Node\MappingNode;
 use Purr\Yaml\Node\ScalarNode;
+use Purr\Yaml\Node\ScalarStyle;
 use Purr\Yaml\Node\SequenceNode;
 use Purr\Yaml\Exception\ParseException;
 use Purr\Yaml\Exception\ReferenceException;
@@ -79,7 +80,7 @@ final class Codec
                     }
                     break;
                 case 'serialize':
-                    if (preg_match('/^(O|C|r|R):/', $v) === 1 || str_contains($v, ';O:') || str_contains($v, ';C:')) {
+                    if (self::serializedObjectOrReference($v)) {
                         throw new OrmException(
                             Code::CODEC_UNSUPPORTED,
                             'serialize: objects and references are not supported'
@@ -91,6 +92,10 @@ final class Codec
                         throw new OrmException(Code::CODEC_DECODE, 'serialize: bad format');
                     }
                     $v = self::normalize($v);
+                    // A float of the common value model is finite (COD-16), so INF, -INF and NAN are not values.
+                    if (!self::finiteValue($v)) {
+                        throw new OrmException(Code::CODEC_DECODE, 'serialize: non-finite numbers are not supported');
+                    }
                     break;
                 case 'yaml':
                     try {
@@ -219,6 +224,7 @@ final class Codec
      */
     private static function yamlDecode(string $text): mixed
     {
+        self::yamlStream($text);
         $documents = (new YamlStream())->fromString($text);
         switch (count($documents)) {
             case 0:
@@ -227,6 +233,42 @@ final class Codec
                 return self::yamlNode($documents->at(0)->getRoot(), new CoreSchema());
             default:
                 throw new \InvalidArgumentException('multiple documents are not supported');
+        }
+    }
+
+    /** The stream rule of YAML 1.2 that the reader does not apply (docs/spec/codec.md COD-13): the stream is UTF-8. */
+    private static function yamlStream(string $text): void
+    {
+        if (!mb_check_encoding($text, 'UTF-8')) {
+            throw new \InvalidArgumentException('the stream is not UTF-8');
+        }
+    }
+
+    /**
+     * An integer of the core schema outside i64 is not a value of the common value model (COD-16); the reader turns a
+     * decimal one into a float and wraps an octal or hexadecimal one, so the plain text is checked here.
+     */
+    private static function yamlIntegerInRange(ScalarNode $node): void
+    {
+        if ($node->getStyle() !== ScalarStyle::Plain) {
+            return;
+        }
+        $text = $node->getValue();
+        if (preg_match('/^[-+]?[0-9]+$/', $text) === 1) {
+            $sign = $text[0] === '-' ? '-' : '';
+            $digits = ltrim(ltrim($text, '+-'), '0');
+            $inRange = filter_var($sign . ($digits === '' ? '0' : $digits), FILTER_VALIDATE_INT) !== false;
+        } elseif (preg_match('/^0o0*([0-7]+)$/', $text, $m) === 1) {
+            // 2^63 - 1 is 21 octal digits, all 7.
+            $inRange = strlen($m[1]) <= 21;
+        } elseif (preg_match('/^0x0*([0-9a-fA-F]+)$/', $text, $m) === 1) {
+            $inRange = strlen($m[1]) < 16
+                || (strlen($m[1]) === 16 && strcmp(strtolower($m[1]), '7fffffffffffffff') <= 0);
+        } else {
+            return;
+        }
+        if (!$inRange) {
+            throw new \InvalidArgumentException("integer {$text} at line {$node->getLine()} is outside the i64 range");
         }
     }
 
@@ -242,6 +284,7 @@ final class Codec
             throw new \InvalidArgumentException("tag {$node->findTag()} at line {$node->getLine()} is not supported");
         }
         if ($node instanceof ScalarNode) {
+            self::yamlIntegerInRange($node);
             return $schema->resolve($node);
         }
         if ($node instanceof SequenceNode) {
@@ -275,6 +318,21 @@ final class Codec
             return $out;
         }
         throw new \InvalidArgumentException('node ' . get_debug_type($node) . ' is not supported');
+    }
+
+    private static function finiteValue(mixed $value): bool
+    {
+        if (is_float($value)) {
+            return is_finite($value);
+        }
+        if (is_array($value)) {
+            foreach ($value as $item) {
+                if (!self::finiteValue($item)) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     private static function validateYamlValue(mixed $value): void
@@ -498,6 +556,41 @@ final class Codec
             throw new OrmException(Code::INTERNAL, "the AES version cell $index is missing from the row");
         }
         return AesKeyring::storedVersion($vals[$index]);
+    }
+
+    /**
+     * Whether a value of the serialized text starts with O:, C:, R: or r: (COD-34). The walk reads each value by its
+     * type letter and skips a string by its byte length, so the letters inside a string are text; it stops at the first
+     * value it cannot read and leaves that format failure to unserialize.
+     */
+    private static function serializedObjectOrReference(string $text): bool
+    {
+        $at = 0;
+        $length = strlen($text);
+        while ($at < $length) {
+            $type = $text[$at];
+            if (in_array($type, ['O', 'C', 'R', 'r'], true) && substr($text, $at + 1, 1) === ':') {
+                return true;
+            }
+            if ($type === '}' || $type === 'N' && substr($text, $at, 2) === 'N;') {
+                $at += $type === '}' ? 1 : 2;
+                continue;
+            }
+            if ($type === 's' && preg_match('/\Gs:(\d+):"/', $text, $m, 0, $at) === 1) {
+                $at += strlen($m[0]) + (int) $m[1] + 2;
+                continue;
+            }
+            if ($type === 'a' && preg_match('/\Ga:\d+:\{/', $text, $m, 0, $at) === 1) {
+                $at += strlen($m[0]);
+                continue;
+            }
+            if (preg_match('/\G[bid]:[^;]*;/', $text, $m, 0, $at) === 1) {
+                $at += strlen($m[0]);
+                continue;
+            }
+            return false;
+        }
+        return false;
     }
 
     /** unserialize gives PHP arrays as-is; nothing to change in the value model (int keys stay int keys). */

@@ -18131,6 +18131,10 @@
     "exported": false,
     "signature": "func(b []byte) (any, error)"
   },
+  "packages/go/orm/codec.go::yamlFloats": {
+    "exported": false,
+    "signature": "func(value any) any"
+  },
   "packages/go/orm/codec.go::yamlLine": {
     "exported": false,
     "signature": "func(node ast.Node) int"
@@ -18147,9 +18151,17 @@
     "exported": false,
     "signature": "func(node ast.Node) (any, error)"
   },
+  "packages/go/orm/codec.go::yamlQuoteBreaks": {
+    "exported": false,
+    "signature": "func(node *goyaml.Node)"
+  },
   "packages/go/orm/codec.go::yamlScalar": {
     "exported": false,
     "signature": "func(node ast.Node) (string, bool, bool)"
+  },
+  "packages/go/orm/codec.go::yamlStream": {
+    "exported": false,
+    "signature": "func(b []byte) ([]byte, error)"
   },
   "packages/go/orm/collection.go::AsBool": {
     "exported": true,

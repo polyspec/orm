@@ -23,10 +23,12 @@ _.showAll
 _.resultclass
 warning
 
-# Attributes that a library reads: ruamel.yaml's emitter options and representer hook, sqlite3's autocommit mode.
+# Attributes that a library reads: ruamel.yaml's emitter options, its representer hook and representer class, sqlite3's
+# autocommit mode.
 _.default_flow_style
 _.allow_unicode
 _.ignore_aliases
+_.Representer
 _.isolation_level
 
 # Public API of the Python client, kept in parity with the other languages (docs/spec/interfaces.md).

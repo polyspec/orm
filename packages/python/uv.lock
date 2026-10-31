@@ -1,6 +1,15 @@
 version = 1
 revision = 5
 requires-python = ">=3.14"
+resolution-markers = [
+    "platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "platform_machine == 'aarch64' and sys_platform == 'linux'",
+    "platform_machine == 'arm64' and sys_platform == 'darwin'",
+    "platform_machine == 'x86_64' and sys_platform == 'darwin'",
+    "platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "platform_machine == 'ARM64' and sys_platform == 'win32'",
+    "(platform_machine != 'arm64' and platform_machine != 'x86_64' and sys_platform == 'darwin') or (platform_machine != 'aarch64' and platform_machine != 'x86_64' and sys_platform == 'linux') or (platform_machine != 'AMD64' and platform_machine != 'ARM64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32')",
+]
 
 [[package]]
 name = "cffi"
@@ -198,7 +207,12 @@ dependencies = [
     { name = "psycopg" },
     { name = "psycopg-binary" },
     { name = "pymysql" },
-    { name = "rapidyaml" },
+    { name = "rapidyaml", version = "0.15.2.post1", source = { url = "https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-macosx_10_15_x86_64.whl" }, marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
+    { name = "rapidyaml", version = "0.15.2.post1", source = { url = "https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-macosx_11_0_arm64.whl" }, marker = "platform_machine == 'arm64' and sys_platform == 'darwin'" },
+    { name = "rapidyaml", version = "0.15.2.post1", source = { url = "https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl" }, marker = "platform_machine == 'aarch64' and sys_platform == 'linux'" },
+    { name = "rapidyaml", version = "0.15.2.post1", source = { url = "https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl" }, marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "rapidyaml", version = "0.15.2.post1", source = { url = "https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-win_amd64.whl" }, marker = "platform_machine == 'AMD64' and sys_platform == 'win32'" },
+    { name = "rapidyaml", version = "0.15.2.post1", source = { url = "https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-win_arm64.whl" }, marker = "platform_machine == 'ARM64' and sys_platform == 'win32'" },
     { name = "ruamel-yaml" },
 ]
 
@@ -215,7 +229,12 @@ requires-dist = [
     { name = "psycopg", specifier = "==3.3.6" },
     { name = "psycopg-binary", specifier = "==3.3.6" },
     { name = "pymysql", specifier = "==1.2.3" },
-    { name = "rapidyaml", specifier = "==0.15.2" },
+    { name = "rapidyaml", marker = "platform_machine == 'arm64' and sys_platform == 'darwin'", url = "https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-macosx_11_0_arm64.whl" },
+    { name = "rapidyaml", marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'", url = "https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-macosx_10_15_x86_64.whl" },
+    { name = "rapidyaml", marker = "platform_machine == 'aarch64' and sys_platform == 'linux'", url = "https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl" },
+    { name = "rapidyaml", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'", url = "https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl" },
+    { name = "rapidyaml", marker = "platform_machine == 'AMD64' and sys_platform == 'win32'", url = "https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-win_amd64.whl" },
+    { name = "rapidyaml", marker = "platform_machine == 'ARM64' and sys_platform == 'win32'", url = "https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-win_arm64.whl" },
     { name = "ruamel-yaml", specifier = "==0.19.1" },
 ]
 
@@ -286,23 +305,105 @@ wheels = [
 
 [[package]]
 name = "rapidyaml"
-version = "0.15.2"
-source = { registry = "https://pypi.org/simple" }
+version = "0.15.2.post1"
+source = { url = "https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-macosx_10_15_x86_64.whl" }
+resolution-markers = [
+    "platform_machine == 'x86_64' and sys_platform == 'darwin'",
+]
 dependencies = [
     { name = "deprecation" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8d/5e/80ea1e8ca5785ad52f835f663e8384961bdb258de71a5bd332e99a2d7b20/rapidyaml-0.15.2.tar.gz", hash = "sha256:a3b075636e6b5673ddf7a50122b029cd44623f18e84bcd4f18425df328425a09", size = 500792, upload-time = "2026-06-25T18:56:18.685Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9b/c9/4e9b60e49972cc8a5ec43965da392050ce6a2ada56e1514cb50f5516e57a/rapidyaml-0.15.2-cp314-cp314-macosx_10_15_universal2.whl", hash = "sha256:45cd97f0197647254510f7a87f396f7eec906a2a60789997501b6af107bb474d", size = 5595911, upload-time = "2026-06-25T18:55:47.807Z" },
-    { url = "https://files.pythonhosted.org/packages/48/d8/2caaee06a66cc5cbdaa85775f3667811e04712f0c7fe0fcbedd6a25d2a78/rapidyaml-0.15.2-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:0bf166372a0ffe961ce34b4dc5de8746553ac5cabc14a740fb604a0b916588fd", size = 5617870, upload-time = "2026-06-25T18:55:49.487Z" },
-    { url = "https://files.pythonhosted.org/packages/c4/8e/00f9efbbb95865c83735ffeaa75ccbf5e93ca1d400c7452799a67635d0f9/rapidyaml-0.15.2-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:0027ebd90d0bb8ec773b34dfac45878d228211a74bd710c283927dc1d56d5955", size = 5595906, upload-time = "2026-06-25T18:55:50.869Z" },
-    { url = "https://files.pythonhosted.org/packages/97/d6/b560a34da534740bf405af7d8a7929349fe5e391366072174a9f2eeff4d3/rapidyaml-0.15.2-cp314-cp314-manylinux1_i686.manylinux_2_28_i686.manylinux_2_5_i686.whl", hash = "sha256:74ff75b2bbbad2fcdbe838b241cb7ec781c1046c469f67d18182a884650737ed", size = 298577, upload-time = "2026-06-25T18:55:52.244Z" },
-    { url = "https://files.pythonhosted.org/packages/c9/82/434405a32cf536ca450494151126f95ec1b5c340412c03dd09ae341880a7/rapidyaml-0.15.2-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:8a33e5125cb55497e8124ddcdaf554cdd6b996c154c1133c7b97aecb415b5195", size = 600970, upload-time = "2026-06-25T18:55:53.226Z" },
-    { url = "https://files.pythonhosted.org/packages/d5/c2/cf6226c805de21f7b168db20bcc0878f7a3cc5a858d4a3355146908da9e3/rapidyaml-0.15.2-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:ff157603c519791c630443e13250ce10a9055281c591b24cd807ac615ea371b1", size = 612818, upload-time = "2026-06-25T18:55:54.291Z" },
-    { url = "https://files.pythonhosted.org/packages/1f/2e/76094c4723d197b535c670593f872fb2b3f2cd8d0bac6451d5e69b5e8de3/rapidyaml-0.15.2-cp314-cp314-win32.whl", hash = "sha256:433353f9fce16783157afce7065862c1ebb9e3070e963b99be05be2921464f9d", size = 326085, upload-time = "2026-06-25T18:55:55.597Z" },
-    { url = "https://files.pythonhosted.org/packages/89/56/81eca4ac9c7868a7f24df5a7f572aec0ac84bddad69678e8db31a1812421/rapidyaml-0.15.2-cp314-cp314-win_amd64.whl", hash = "sha256:3edfa1049f4d0fc2fb35cbef7690e7c05d2c79e1f8813413d84d1a07f412ed57", size = 392285, upload-time = "2026-06-25T18:55:56.737Z" },
-    { url = "https://files.pythonhosted.org/packages/e0/d7/cbcf6d233439b857ad82306ab2d513854b197da97a9e94e2a7c02f2ca2d4/rapidyaml-0.15.2-cp314-cp314-win_arm64.whl", hash = "sha256:b64909d0c97d389f9c919e15b8a55c3ef6eff1c807b611fbefed2fb71f975a1b", size = 385299, upload-time = "2026-06-25T18:55:58.051Z" },
+    { url = "https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:fc7a1b516bf6c59605beb5e7430a0350351bcce5a5ae7915527eec90f46dad35" },
 ]
+
+[package.metadata]
+requires-dist = [{ name = "deprecation" }]
+
+[[package]]
+name = "rapidyaml"
+version = "0.15.2.post1"
+source = { url = "https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-macosx_11_0_arm64.whl" }
+resolution-markers = [
+    "platform_machine == 'arm64' and sys_platform == 'darwin'",
+]
+dependencies = [
+    { name = "deprecation" },
+]
+wheels = [
+    { url = "https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:bce9b42f6b56678f066ecd088be73add18a279c73e21619860666236afd574f4" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "deprecation" }]
+
+[[package]]
+name = "rapidyaml"
+version = "0.15.2.post1"
+source = { url = "https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl" }
+resolution-markers = [
+    "platform_machine == 'aarch64' and sys_platform == 'linux'",
+]
+dependencies = [
+    { name = "deprecation" },
+]
+wheels = [
+    { url = "https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:fc6c1570512ea36044b3f0ec5ed20c665f7bd1528c1aa159cd9cb5ca95caa1b9" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "deprecation" }]
+
+[[package]]
+name = "rapidyaml"
+version = "0.15.2.post1"
+source = { url = "https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl" }
+resolution-markers = [
+    "platform_machine == 'x86_64' and sys_platform == 'linux'",
+]
+dependencies = [
+    { name = "deprecation" },
+]
+wheels = [
+    { url = "https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:2cb4de79c43c0e64c6d9a351ef566ed847e1809e2ceba8190534bd9b7570bc14" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "deprecation" }]
+
+[[package]]
+name = "rapidyaml"
+version = "0.15.2.post1"
+source = { url = "https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-win_amd64.whl" }
+resolution-markers = [
+    "platform_machine == 'AMD64' and sys_platform == 'win32'",
+]
+dependencies = [
+    { name = "deprecation" },
+]
+wheels = [
+    { url = "https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-win_amd64.whl", hash = "sha256:8692aa30e4bdae6efc8a743de5188349f0cf78bde3587e087de1f06c5178b72d" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "deprecation" }]
+
+[[package]]
+name = "rapidyaml"
+version = "0.15.2.post1"
+source = { url = "https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-win_arm64.whl" }
+resolution-markers = [
+    "platform_machine == 'ARM64' and sys_platform == 'win32'",
+]
+dependencies = [
+    { name = "deprecation" },
+]
+wheels = [
+    { url = "https://github.com/polyspec/rapidyaml-python/releases/download/v0.15.2.post1/rapidyaml-0.15.2.post1-cp314-cp314-win_arm64.whl", hash = "sha256:1c799d5fea34c449197f99cc52d8d85f0c14117bce049e4e3b27d49a716299c6" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "deprecation" }]
 
 [[package]]
 name = "ruamel-yaml"

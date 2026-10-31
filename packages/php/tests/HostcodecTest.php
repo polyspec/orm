@@ -6,8 +6,6 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-use RuntimeException;
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Bytes;
@@ -30,6 +28,7 @@ class HostcodecTest extends TestCase
         self::fail("$what: no error");
     }
 
+    // Requirements: COD-5.
     public function testHostcodec(): void
     {
         $fixed = '4F524D2D414553320000112233445566778899AABB651DA9F08BE2FA7CD7B2DF5C04D91B32189DCD854A70762F'
@@ -108,46 +107,5 @@ class HostcodecTest extends TestCase
             static fn() => Codec::hostEncode('x', ['gz'], ''),
             'codec style as host stage → CODEC_UNSUPPORTED'
         );
-    }
-
-    /** @return iterable<string, array{array<string, mixed>}> for each vector in tests/codec/decode-vectors.json */
-    public static function decodeVectors(): iterable
-    {
-        $vectors = json_decode(
-            (string) file_get_contents(dirname(__DIR__, 3) . '/tests/codec/decode-vectors.json'),
-            true,
-            512,
-            JSON_THROW_ON_ERROR
-        )['vectors'];
-        if ($vectors === []) {
-            throw new RuntimeException('decode-vectors.json has no vectors');
-        }
-        foreach ($vectors as $v) {
-            yield $v['name'] => [$v];
-        }
-    }
-
-    // Shared decode vectors (tests/codec/decode-vectors.json): stored cells decode only in the form the encoder writes,
-    // and other forms are CODEC_DECODE. Host stage lists without aes are read by hostDecode with no key, and the rest
-    // by decode.
-    /** @param array<string, mixed> $v */
-    #[DataProvider('decodeVectors')]
-    public function testDecodeVector(array $v): void
-    {
-        $raw = array_key_exists('stored', $v) ? $v['stored'] : (string) hex2bin($v['stored_hex']);
-        $host = array_diff($v['styles'], ['hex', 'ip']) === [];
-        $got = null;
-        $code = '';
-        try {
-            $got = $host ? Codec::hostDecode($raw, $v['styles'], '') : Codec::decode($v['styles'], $raw)->payload();
-        } catch (OrmException $e) {
-            $code = $e->code_;
-        }
-        if (array_key_exists('error', $v)) {
-            self::assertSame($v['error'], $code, 'got ' . ($code !== '' ? $code : json_encode($got)));
-        } else {
-            self::assertSame('', $code, 'error');
-            self::assertSame($v['value'], $got);
-        }
     }
 }

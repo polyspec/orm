@@ -323,12 +323,15 @@ async fn statement_events_server_transactions() {
 
 /// The integer in the one cell of sql, read through sqlx on the pool of db.
 async fn scalar(db: &Db, sql: &str) -> i64 {
-    match db.pool() {
+    let read = match db.pool() {
         polyspec_orm::db::Pool::Postgres(p) => sqlx::query_scalar::<_, i64>(sqlx::AssertSqlSafe(sql.to_owned())).fetch_one(p).await,
         polyspec_orm::db::Pool::MySql(p) => sqlx::query_scalar::<_, i64>(sqlx::AssertSqlSafe(sql.to_owned())).fetch_one(p).await,
         _ => panic!("server_transactions runs on a server database"),
+    };
+    match read {
+        Ok(value) => value,
+        Err(e) => panic!("{sql}: {e}"),
     }
-    .unwrap_or_else(|e| panic!("{sql}: {e}"))
 }
 
 /// Runs one entry of server_transactions on a new case database of its database and returns its failures.
