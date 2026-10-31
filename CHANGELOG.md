@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- make parity-api-check found the python error codes missing, 99 findings, because the python symbol extractor of kit 0.0.83 read only the files git lists and codes.py is untracked build output (T339-10). The pinned kit release is 0.0.84, whose extractor reads the .py files on disk (K977).
 - kit / runtime (php-ext) failed because packages/php-ext/scripts/build.sh refuses a missing or stale arginfo header or copy of the SQLite cancel callback, while 68 recipes, scripts/client-db-test.mts and the fixture of ArginfoBuildTest ran it without them (T339-9). Every build of the PHP extension now runs make php-ext-build, which writes those sources first (php-ext-sources, formerly php-ext-release-sources); a recipe builds with $(call php_ext_build,<output>,<mode>), and make repo-check fails any other call of build.sh. native-arginfo-php-extension-check runs its database cases with the server environment it lacked.
 - make kit-check failed with three findings because make ts-min-check started node and npm by their bare names, and make duplication-check failed on a repeated list of expected findings in the test of generatedCodesErrors (T339-8). ts-min-check now runs the npm-cli.js of the npm of mise.toml with the node of the lowest Node release by their paths, and the test names the shared findings once.
 
