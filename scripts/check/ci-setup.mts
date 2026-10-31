@@ -24,6 +24,9 @@ export const CI_SETUP: Record<string, string | null> = {
   'go-lease-modules': 'go-lease',
   // The full Go workspace modules and generated models are installed only for groups that declare Go work.
   'go-modules': 'go',
+  // make orm-codes writes the error code files that the builds read (config/generated.json); a target whose build misses them fails on
+  // its own and names the missing module.
+  'error-codes': null,
   // npm installs the pinned npm after Kit's bootstrap installs the repository dependencies and exposes its Makefile.
   npm: 'node-modules',
   'interfaces-typescript': 'interfaces-typescript',

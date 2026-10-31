@@ -3,6 +3,7 @@
 # 변경 이력
 
 ## Unreleased
+- CI의 test, docs, editor job이 packages/ts/src/codes.ts 없이 TypeScript client를 build해 TS2307로 실패했습니다(T339). 오류 코드 파일은 build 결과물인데 설치 target만 이를 썼습니다. 이제 이 job들은 검사 전에 step error-codes에서 make orm-codes를 실행하고, docs는 이를 위해 mise.toml의 Go를 설치합니다. repo-check는 그 step 없이 check-run, docs-ci, ci-vscode-integration을 실행하는 ci.yml job을 실패시킵니다.
 - CI의 PHP job이 install-link에서 "uv workspace dir could not start: spawnSync uv ENOENT"로 실패했습니다(T339). kit의 link는 orm의 uv project를 읽는데 그 job은 uv를 설치하지 않습니다. orm-install-php와 orm-install-php-extension-runtime은 더 이상 link하지 않고, orm-install-python과 make install이 link하며, repo-check는 link하는 PHP 설치 recipe를 실패시킵니다. .gitignore는 layout-check가 root에서 보고한 ruff cache를 무시합니다.
 - kit 0.0.82에서 모든 CI job이 두 곳에서 실패했습니다(T339). actions/setup-node의 npm cache가 checkout 안에서 runner의 npm 11을 실행했고, devEngines가 이를 EBADDEVENGINES로 거부했습니다. 이제 모든 setup-node step이 package-manager-cache: false를 설정하며, repo-check는 npm을 cache하는 step을 거부합니다. orm-install-python, orm-install-php, orm-install-php-extension-runtime의 link는 make link를 실행했는데, 그 Claude Code hook은 CI에 없는 kit checkout을 요구합니다. 이제 이들은 hook 없는 kit의 link인 make install-link를 실행합니다.
 

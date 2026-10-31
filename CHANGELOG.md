@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The jobs test, docs and editor of CI built the TypeScript client without packages/ts/src/codes.ts and failed with TS2307 (T339): the error code files are build output, and only the install targets wrote them. Each of these jobs now runs make orm-codes in a step error-codes before its checks, and docs installs the Go of mise.toml for it; repo-check fails a job of ci.yml that runs check-run, docs-ci or ci-vscode-integration without that step.
 - The PHP jobs of CI failed at install-link with "uv workspace dir could not start: spawnSync uv ENOENT" (T339): the link of kit reads the uv project of orm, and those jobs install no uv. orm-install-php and orm-install-php-extension-runtime no longer link; orm-install-python and make install link, and repo-check fails a PHP install recipe that links. .gitignore ignores the ruff cache, which layout-check reported at the root.
 - With kit 0.0.82 every CI job failed in two places (T339). The npm cache of actions/setup-node ran the npm 11 of the runner in the checkout, which devEngines refuses with EBADDEVENGINES. Every setup-node step now sets package-manager-cache: false, and repo-check refuses a step that caches npm. The link of orm-install-python, orm-install-php and orm-install-php-extension-runtime ran make link, whose Claude Code hook needs a kit checkout that CI does not have. They now run make install-link, the link of kit without the hook.
 

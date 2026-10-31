@@ -8,7 +8,7 @@ import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { errorCode } from '../../tests/errors.mts';
 import { main as startServers, paths as serverPaths, SERVER_VARIABLES, TestServerError } from '../test-servers.mts';
-import { AFTER_GROUP_CHECK, CI_PASSED_STEPS, CI_RUN_EXCEPTIONS, ciPassedErrors, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
+import { AFTER_GROUP_CHECK, CI_PASSED_STEPS, CI_RUN_EXCEPTIONS, ciErrorCodesErrors, ciPassedErrors, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { parseArguments as parseKitTestArguments } from '@polyspec/kit/run-tests';
 import { fixlessMessageErrors } from './messages.mts';
@@ -2171,4 +2171,20 @@ caseTest('the toolchain checks read the commands that a step runs', COMPUTE, () 
     assert.deepEqual(rustToolchainErrors(toolchain, `${makefile}orm-install-rust-toolchain:\n${recipe}`, { 'ci.yml': viaMake }, '1.98.1'),
       ['ci.yml does not install the toolchain of rust-toolchain.toml with rustup toolchain install'], recipe);
   assert.deepEqual(rustToolchainErrors(toolchain, makefile, { 'ci.yml': rust.replace('cargo test --locked', 'echo "cargo +nightly"') }, '1.98.1'), []);
+});
+
+caseTest('a CI job that reads the error code files writes them first with make orm-codes and Go', COMPUTE, () => {
+  const job = (...runs: string[]) => `jobs:\n  docs:\n    steps:\n${runs.map(run => `      - run: ${run}\n`).join('')}`;
+  assert.deepEqual(ciErrorCodesErrors(job('make install-tools TOOLS=npm', 'make install-tools TOOLS=go', 'make orm-codes', 'make docs-ci')), []);
+  assert.deepEqual(ciErrorCodesErrors(job('make ci-install-tools GROUP=x', 'make orm-codes', 'make check-run GROUP=x')), []);
+  assert.deepEqual(ciErrorCodesErrors(job('make install-tools TOOLS=npm', 'make lint')), []);
+  assert.deepEqual(ciErrorCodesErrors(job('make install-tools TOOLS=npm', 'make docs-ci')), [
+    'ci.yml job docs runs make docs-ci without an earlier step make orm-codes, which writes the error code files it reads',
+  ]);
+  assert.deepEqual(ciErrorCodesErrors(job('make install-tools TOOLS=go', 'make docs-ci', 'make orm-codes')), [
+    'ci.yml job docs runs make docs-ci without an earlier step make orm-codes, which writes the error code files it reads',
+  ]);
+  assert.deepEqual(ciErrorCodesErrors(job('make install-tools TOOLS=npm', 'make orm-codes', 'make ci-vscode-integration')), [
+    'ci.yml job docs runs make orm-codes without an earlier step that installs the Go of mise.toml',
+  ]);
 });

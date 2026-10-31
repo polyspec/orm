@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CI_SETUP, groupSetupErrors, RUNNER_STEPS } from '../check/ci-setup.mts';
-import { ciGroups, ciPassedErrors, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, helperEnvironmentErrors, helperRunErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, ownWorkflows } from './ci.mts';
+import { ciGroups, ciErrorCodesErrors, ciPassedErrors, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, helperEnvironmentErrors, helperRunErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, ownWorkflows } from './ci.mts';
 import { workflowSteps } from './workflow.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { fixlessMessageErrors, messageFiles } from './messages.mts';
@@ -46,6 +46,8 @@ failures.push(...ciCheckTargetErrors(ci, makefile));
 failures.push(...ciReportPathErrors(ci, makefile));
 // The last job of ci.yml, ci-passed, takes every other job as needs and runs with `if: always()`. The ruleset requires that check.
 failures.push(...ciPassedErrors(ci));
+// Every job of ci.yml that builds or reads the error code files writes them first with make orm-codes and the Go of mise.toml.
+failures.push(...ciErrorCodesErrors(ci));
 // CI does not run again the verification command that the feature-check of make orm-check runs.
 const features = readFeatures(root);
 failures.push(...ciDuplicateCommandErrors(ci, makefile, featureCommands(features)));
