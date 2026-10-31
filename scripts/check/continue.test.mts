@@ -182,15 +182,16 @@ caseTest('client-db-test runs the next lane after a failed lane in sequence and 
 });
 
 // The php-extension lane case (KSTD-5-88-6) checks that the lane of the implementation php-extension of config/parity.json builds the
-// extension into the directory of its run, then runs every PHP database test file of the php lane with that build loaded, through
-// kit's run-tests in extension mode, and removes the build.
+// extension into the directory of its run through make php-ext-build, then runs every PHP database test file of the php lane with
+// that build loaded, through kit's run-tests in extension mode, and removes the build.
 caseTest('client-db-test runs the php-extension lane with the extension it builds', PROCESS, () => {
-  const f = fake(['php', 'node'], 'none');
+  const f = fake(['php', 'node', 'make'], 'none');
   try {
     const result = f.run(['scripts/client-db-test.mts'], { ORM_RUST_TEST_FEATURES: 'none', ORM_CLIENT_DB_LANGS: 'php-extension', ORM_CLIENT_DB_LANES: '' });
     assert.equal(result.status, 0, result.stdout + result.stderr);
     const ran = f.ran();
-    const library = /^node tests\/run-long\.mts php-extension-build -- sh packages\/php-ext\/scripts\/build\.sh (\S+\/php-extension\/polyspec_orm\.so)$/.exec(ran[0] ?? '')?.[1];
+    // The lane builds through make php-ext-build, the one build of the extension (Makefile).
+    const library = /^make --no-print-directory php-ext-build PHP_EXT_OUT=(\S+\/php-extension\/polyspec_orm\.so) PHP_EXT_MODE=release$/.exec(ran[0] ?? '')?.[1];
     assert.ok(library, `the lane did not build the extension first: ${ran.join('\n')}`);
     const php = readFileSync(join(repo, 'scripts/client-db-test.mts'), 'utf8').match(/const PHP_TESTS = \[([^\]]*)\]/)?.[1]?.match(/'(\w+)'/g)?.map(name => name.slice(1, -1)) ?? [];
     assert.ok(php.length > 0, 'scripts/client-db-test.mts names no PHP_TESTS');

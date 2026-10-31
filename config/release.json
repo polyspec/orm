@@ -32,7 +32,7 @@
       "generated": [
         {
           "kind": "make",
-          "target": "php-ext-release-sources",
+          "target": "php-ext-sources",
           "outputs": [
             "src/polyspec_orm_arginfo.h",
             "src/native/sqlite_cancel.c"

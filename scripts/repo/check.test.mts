@@ -27,7 +27,7 @@ import { parse as parseYaml, stringify } from 'yaml';
 import { parse as parseToml } from 'smol-toml';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
 import { detachedGroupErrors, timeFailureErrors } from './sources.mts';
-import { callerEnvironmentErrors, generateRuns, scriptCommands, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, makeTargets, rustTestCaseErrors, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
+import { callerEnvironmentErrors, generateRuns, scriptCommands, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, phpExtensionBuildErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, makeTargets, rustTestCaseErrors, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
 
 // yamlSteps writes steps (the values of a workflow's steps) as the list under a job's steps:, six spaces deep.
 const yamlSteps = (steps: unknown[]) => stringify(steps).split('\n').map(line => line ? `      ${line}` : line).join('\n');
@@ -834,7 +834,7 @@ caseTest('feature helper checks provision the databases and PHP extension their 
   assert.ok(needs.includes('complex-query'), 'Go complex-query helper requires its run-owned owner databases');
   assert.ok(needs.includes('php-extension-tools'), 'the helper target builds the PHP extension');
   const recipe = makeRecipes(text('Makefile')).find(unit => unit.name === 'Makefile feature-helper-check')?.commands.join('\n') ?? '';
-  assert.match(recipe, /php-extension-build .*packages\/php-ext\/scripts\/build\.sh/);
+  assert.match(recipe, /\$\(call php_ext_build,/);
   assert.match(recipe, /POLYSPEC_ORM_EXTENSION=/);
 });
 
@@ -2241,4 +2241,26 @@ caseTest('a target that reads an error code file has the target that writes it a
     ...['parity-declarations-check', 'parity-check', 'parity-api-check', '$(KIT_PARITY_BINDING_TARGETS)']
       .flatMap(target => [missing(target, 'typescript'), missing(target, 'php'), missing(target, 'python')]),
   ]);
+});
+
+// build.sh reads the arginfo header and the copy of the SQLite cancel callback, build output of php-ext-sources, and refuses a stale
+// or missing one: only php-ext-build, which has php-ext-sources as a prerequisite, runs it.
+caseTest('only php-ext-build runs the build of the PHP extension', COMPUTE, () => {
+  assert.deepEqual(phpExtensionBuildErrors(text('Makefile')), []);
+  const makefile = [
+    'php-ext-build: php-ext-sources',
+    '\t$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$(PHP_EXT_OUT)" $(PHP_EXT_MODE)',
+    'through-call: php-vendor-check',
+    '\t$(call php_ext_build,"$$run_dir/polyspec_orm.so",native-test)',
+    'direct: php-vendor-check php-ext-sources',
+    '\t$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/polyspec_orm.so"',
+    'in-a-chain:',
+    '\t@set -eu; \\',
+    '\tif sh packages/php-ext/scripts/build.sh x.so; then :; fi',
+    'unrelated:',
+    '\tsh packages/php-ext/scripts/other.sh',
+    '',
+  ].join('\n');
+  const direct = (target: string) => `Makefile ${target} runs packages/php-ext/scripts/build.sh itself; build the extension with $(call php_ext_build,<output>,<mode>), which runs php-ext-build after php-ext-sources`;
+  assert.deepEqual(phpExtensionBuildErrors(makefile), [direct('direct'), direct('in-a-chain')]);
 });

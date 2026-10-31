@@ -570,6 +570,16 @@ export function generatedCodesErrors(makefile: string): string[] {
   return errors;
 }
 
+// phpExtensionBuildErrors returns one error for each target other than php-ext-build whose recipe runs
+// packages/php-ext/scripts/build.sh: php-ext-build is the one build of the PHP extension, after php-ext-sources, which writes the
+// sources that build.sh reads, so a recipe builds it with $(call php_ext_build,<output>,<mode>).
+export function phpExtensionBuildErrors(makefile: string): string[] {
+  return [...new Set(makeTargets(makefile)
+    .filter(rule => rule.target !== 'php-ext-build' && rule.commands.some(command => /packages\/php-ext\/scripts\/build\.sh\b/.test(command)))
+    .map(rule => rule.target))]
+    .map(target => `Makefile ${target} runs packages/php-ext/scripts/build.sh itself; build the extension with $(call php_ext_build,<output>,<mode>), which runs php-ext-build after php-ext-sources`);
+}
+
 // unleasedCargoErrors returns one error for each segment in which a command outside the Makefile (verification command, script, package.json script) builds in the shared Rust target
 // directory (CARGO_TARGET_DIR) without a lease, or runs a program from it.
 // The build runs under `"$LEASE" run "$CARGO_LEASES" exclusive --wait --` (tests/cargo-test.mts does this itself),

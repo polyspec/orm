@@ -66,7 +66,7 @@ go.work.sum
 /packages/php/markdownmodel/
 /packages/php/complexmodel/
 /packages/php/src/native/bin/
-# The arginfo header and the copy of the SQLite cancel callback of the PHP extension are build output (make php-ext-release-sources).
+# The arginfo header and the copy of the SQLite cancel callback of the PHP extension are build output (make php-ext-sources).
 /packages/php-ext/src/polyspec_orm_arginfo.h
 /packages/php-ext/src/native/sqlite_cancel.c
 # The error code constants of TypeScript, PHP and Python are build output (make orm-codes).

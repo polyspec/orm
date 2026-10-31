@@ -14,7 +14,7 @@ import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
 import { kitCopies, kitOwnedPaths } from './kit-copies.mts';
 import { segments } from './shell.mts';
 import { detachedGroupErrors, timeFailureErrors } from './sources.mts';
-import { callerEnvironmentErrors, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, scriptCommands, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, rustTestCaseErrors, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
+import { callerEnvironmentErrors, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, scriptCommands, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, phpExtensionBuildErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, rustTestCaseErrors, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
 import { checkInputErrors } from '../features/owners.mts';
 import { COMPUTE, sections } from '../../tests/testcase.mts';
 import { declaredNeeds, readCheckInputs } from '../check/inputs.mts';
@@ -162,6 +162,8 @@ failures.push(...fixedPortErrors(Object.fromEntries(tracked.filter(path => path 
 failures.push(...typescriptHolderErrors(makefile));
 // Every target that reads an error code file has orm-codes-<lang>, which writes it, among its prerequisites.
 failures.push(...generatedCodesErrors(makefile));
+// Only php-ext-build, which has php-ext-sources as a prerequisite, runs the build of the PHP extension.
+failures.push(...phpExtensionBuildErrors(makefile));
 failures.push(...typescriptReaderErrors(makefile, readTracked));
 // make orm-check runs the generation (go generate and git diff) of the same directory only once.
 const checkTargetSet = new Set(checkTargets(makefile));
