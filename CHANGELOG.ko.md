@@ -3,6 +3,7 @@
 # 변경 이력
 
 ## Unreleased
+- Kit 0.0.83이 고정된 release이다(T339-2). lock의 integrity는 polyspec-kit-npm-0.0.83.tgz의 sha512와 같고, make kit-sync는 어떤 사본도 바꾸지 않는다. 그 checkParity는 promise를 반환하므로 tests/interfaces/check/api.test.mts의 API 선언 test는 대기 중인 promise의 findings를 비교해 실패했다. test는 이제 그것을 await한다. Kit 0.0.83은 .gitignore가 무시하는 생성 오류 파일(packages/ts/src/codes.ts 등)을 있는 것으로 읽으므로(K968), parity-declarations-check는 T339의 생성 codes 파일을 더 이상 없다고 보고하지 않는다.
 - CI의 layout-check가 ".mise/locks/npm-npm/12.2.0/node_modules/ is not ignored by Git (K372)"로 실패했습니다(T339). mise.toml의 npm sidecar folder에 .gitignore가 없었습니다. 그 .gitignore가 node_modules/를 무시합니다.
 - kit 0.0.82의 rules-check는 make 호출이나 저장소 파일의 인자를 통해서만 target에 도달하며(K941), 어떤 CI job도 합계 target make feature-coverage를 실행하지 않으므로 그것을 이름한 AGENTS.md의 세 규칙이 실패했습니다(T339). 이 규칙들은 CI group이 실행하는 열여덟 target feature-coverage/<runtime>/<database>를 이름합니다.
 - CI의 test, docs, editor job이 packages/ts/src/codes.ts 없이 TypeScript client를 build해 TS2307로 실패했습니다(T339). 오류 코드 파일은 build 결과물인데 설치 target만 이를 썼습니다. 이제 이 job들은 검사 전에 step error-codes에서 make orm-codes를 실행하고, docs는 이를 위해 mise.toml의 Go를 설치합니다. repo-check는 그 step 없이 check-run, docs-ci, ci-vscode-integration을 실행하는 ci.yml job을 실패시킵니다.

@@ -186,7 +186,7 @@ const sources = (): Map<string, string> => new Map([
   ['codes.py', 'IR_INVALID = "IR_INVALID"\n'],
 ]);
 
-caseTest('all API units have native declarations for their symbols', COMPUTE, () => {
+caseTest('all API units have native declarations for their symbols', COMPUTE, async () => {
   const ids = (readParity(root).units ?? [])
     .filter(unit => unit.kind === 'api')
     .map(unit => unit.id)
@@ -202,7 +202,7 @@ caseTest('all API units have native declarations for their symbols', COMPUTE, ()
   for (const id of expectedAddedErrorUnits) {
     assert.ok(ids.includes(id), `API unit count includes the expected error contract ${id}`);
   }
-  const result = checkParity(root, { execute: false, units: ids, say: () => {} });
+  const result = await checkParity(root, { execute: false, units: ids, say: () => {} });
   assert.deepEqual(result.findings, [], 'one or more selected API declarations do not match their source symbols');
 });
 
