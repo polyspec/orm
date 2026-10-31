@@ -13,6 +13,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
+// Requirements: CFG-26.
 // TestSQLiteFileNameIsThePath checks that a SQLite DSN with a query creates the file from the
 // path alone. An opener that puts the query in the file name makes a file such as `named.sqlite?_pragma=…`
 // (docs/spec/dialects.md "Probe environment").

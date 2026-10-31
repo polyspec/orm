@@ -140,6 +140,7 @@ class DsnTest extends TestCase
         }
     }
 
+    // Requirements: CFG-26.
     // A SQLite DSN with a query makes the file from the path only. The query is not put in the file name.
     // The opener makes a file like `named.sqlite?_pragma=…` (docs/spec/dialects.md "Probe environment").
     public function testSqliteFileName(): void

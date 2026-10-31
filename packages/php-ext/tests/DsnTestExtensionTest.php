@@ -7,7 +7,7 @@ namespace Polyspec\Orm\Extension\Tests;
 use Polyspec\Orm\Tests\DsnTest;
 use Polyspec\Orm\Orm;
 
-// Requirements: CFG-11.
+// Requirements: CFG-11, CFG-26.
 #[\PHPUnit\Framework\Attributes\Small]
 final class DsnTestExtensionTest extends DsnTest
 {

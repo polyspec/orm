@@ -50,7 +50,7 @@ await run.run('dsn/pool-bounds', COMPUTE, async () => {
   if (mysql.pool.pool.config.connectionLimit !== 3 || mysql.pool.pool.listenerCount('release') !== 1 || mysql.pool.pool.listenerCount('connection') !== 2) throw new Error('mysql pool bounds were not applied');
   await mysql.close();
 });
-// A SQLite DSN with a query creates the file from the path alone. An opener that puts the query in the file name
+// Requirements: CFG-26. A SQLite DSN with a query creates the file from the path alone. An opener that puts the query in the file name
 // creates a file such as `named.sqlite?_pragma=…` (docs/spec/dialects.md "Probe environment").
 await run.run('dsn/sqlite-file-name', COMPUTE, async () => {
   const directory = mkdtempSync(join(tmpdir(), 'orm-ts-sqlite-name-'));

@@ -7,10 +7,11 @@
 # fails the case.
 # Usage: python -m packages.python.tests.connection_utc
 import datetime
+import os
 import tempfile
 import unittest
 
-from polyspec.orm.database import parse_dsn
+from polyspec.orm.database import connect, parse_dsn
 from polyspec.orm.errors import OrmError
 from . import testcase
 
@@ -49,6 +50,26 @@ class DsnTimezoneTest(unittest.TestCase):
             parse_dsn("sqlite://relative.sqlite")
         self.assertEqual(raised.exception.code, "CONFIG")
         self.assertEqual(parse_dsn("sqlite:///tmp/orm-example.sqlite").driver, "sqlite")
+
+    # Requirements: CFG-26. A SQLite DSN with a query creates the file from the path alone. An opener that puts the
+    # query in the file name creates a file such as `named.sqlite?_pragma=…` (docs/spec/dialects.md "Probe environment").
+    def test_sqlite_file_name_is_the_path(self):
+        with tempfile.TemporaryDirectory(prefix="orm-python-sqlite-name-") as directory:
+            connect(
+                f"sqlite://{directory}/named.sqlite?_pragma=busy_timeout(5000)&timezone=%2B00:00"
+            ).close()
+            names = sorted(os.listdir(directory))
+        self.assertIn("named.sqlite", names, f"files {names}: named.sqlite is missing")
+        allowed = (
+            "named.sqlite",
+            "named.sqlite-journal",
+            "named.sqlite-shm",
+            "named.sqlite-wal",
+        )
+        for name in names:
+            self.assertIn(
+                name, allowed, f"files {names}: {name} is not named by the path"
+            )
 
     # Every client rejects a DSN timezone other than UTC before opening a connection (CFG-2).
     def test_dsn_rejects_non_utc_timezones(self):

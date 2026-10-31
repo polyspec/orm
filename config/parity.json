@@ -222,10 +222,6 @@
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/orm/sqlite_file_name_test.go",
-          "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
-        },
-        {
           "glob": "packages/go/orm/statement_fault_entry_test.go",
           "reason": "harness: an internal package test of the go module that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
@@ -4477,9 +4473,19 @@
           "id": "TestSQLiteDSNRequiresAbsolutePath"
         },
         {
+          "implementation": "go",
+          "test": "packages/go/orm/sqlite_file_name_test.go",
+          "id": "TestSQLiteFileNameIsThePath"
+        },
+        {
           "implementation": "php",
           "test": "packages/php/tests/DsnTest.php",
           "id": "DsnTest::testSqliteDsnRequiresAbsolutePath"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnTest.php",
+          "id": "DsnTest::testSqliteFileName"
         },
         {
           "implementation": "php-extension",
@@ -4487,9 +4493,19 @@
           "id": "OrmExceptionNativeTest::testNativeOrmRequiresAbsoluteSqlitePath"
         },
         {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnTestExtensionTest.php",
+          "id": "DsnTestExtensionTest::testSqliteFileName"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/dsn_features.mjs",
           "id": "dsn/sqlite-requires-absolute-path"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_features.mjs",
+          "id": "dsn/sqlite-file-name"
         },
         {
           "implementation": "python",
@@ -4497,9 +4513,19 @@
           "id": "test_sqlite_dsn_requires_absolute_path"
         },
         {
+          "implementation": "python",
+          "test": "packages/python/tests/connection_utc.py",
+          "id": "test_sqlite_file_name_is_the_path"
+        },
+        {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/zone.rs",
           "id": "sqlite_dsn_requires_absolute_path"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/sqlite_file_name.rs",
+          "id": "sqlite_file_name_is_the_path"
         }
       ]
     },

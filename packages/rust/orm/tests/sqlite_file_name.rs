@@ -8,6 +8,7 @@ mod json_trials;
 
 use polyspec_orm_testcase::Trial;
 
+// Requirements: CFG-26.
 async fn sqlite_file_name_is_the_path() {
     let directory = std::env::temp_dir().join(format!("orm-rust-sqlite-name-{}", std::process::id()));
     assert!(!directory.exists(), "{} already exists", directory.display());
