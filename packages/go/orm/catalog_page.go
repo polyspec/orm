@@ -58,11 +58,7 @@ func (c *CatalogConnection) TablePage(ctx context.Context, table CatalogTableRef
 		if len(metadata.Columns) == 0 {
 			return CatalogTablePage{}, catalogErr("TABLE_PAGE_UNSUPPORTED", "relation has no selectable columns")
 		}
-		columns := make([]string, len(metadata.Columns))
-		for i, column := range metadata.Columns {
-			columns[i] = catalogQuote(column.Name, c.dialect)
-		}
-		query := "SELECT " + strings.Join(columns, ",") + " FROM " + catalogQualified(table, c.dialect)
+		query := "SELECT " + catalogSelectList(metadata, c.dialect) + " FROM " + catalogQualified(table, c.dialect)
 		if len(metadata.PrimaryKey) > 0 {
 			query += " ORDER BY " + catalogQuoteList(metadata.PrimaryKey, c.dialect)
 		}
@@ -82,7 +78,7 @@ func (c *CatalogConnection) TablePage(ctx context.Context, table CatalogTableRef
 		if !sameDescriptor(after, metadata) {
 			return CatalogTablePage{}, catalogErr(catalogCodePageChanged, "descriptor changed during read")
 		}
-		rows, err := catalogConvert(raw, catalogNativeTypes(metadata))
+		rows, err := catalogConvertDescribed(raw, metadata, c.dialect)
 		if err != nil {
 			return CatalogTablePage{}, err
 		}

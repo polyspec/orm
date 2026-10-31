@@ -6,7 +6,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 	"unicode/utf8"
 )
 
@@ -59,7 +58,7 @@ func catalogDeclaredCapacity(pattern *regexp.Regexp, nativeType string) (uint64,
 
 // catalogChanges checks named assignments against a descriptor and returns them in the order given. Unknown, duplicate
 // and generated columns, a NULL in a non-null column and unsupported values fail before any statement runs.
-func catalogChanges(metadata CatalogTableMetadata, values []CatalogAssignment, code string, allowEmpty bool) ([]catalogChange, error) {
+func catalogChanges(metadata CatalogTableMetadata, values []CatalogAssignment, code string, allowEmpty bool, dialect string) ([]catalogChange, error) {
 	if (!allowEmpty && len(values) == 0) || len(values) > len(metadata.Columns) {
 		return nil, catalogErr(code, "invalid column assignments")
 	}
@@ -84,6 +83,9 @@ func catalogChanges(metadata CatalogTableMetadata, values []CatalogAssignment, c
 		}
 		if column.Generated {
 			return nil, catalogErr(code, "generated column %q is not writable", column.Name)
+		}
+		if err := catalogTemporalWriteValue(column, normalized[i], dialect, code); err != nil {
+			return nil, err
 		}
 		if normalized[i] == nil && !column.Nullable {
 			return nil, catalogErr(code, "NULL in non-null column %q", column.Name)
@@ -122,7 +124,7 @@ func (s *catalogSession) lookup(metadata CatalogTableMetadata, keys []any, lock 
 	if lock && s.dialect != "sqlite" {
 		suffix = " FOR UPDATE"
 	}
-	query := "SELECT " + catalogColumnList(metadata, s.dialect) + " FROM " + catalogQualified(metadata.Table, s.dialect) +
+	query := "SELECT " + catalogSelectList(metadata, s.dialect) + " FROM " + catalogQualified(metadata.Table, s.dialect) +
 		" WHERE " + catalogKeyPredicate(metadata, s.dialect, 1) + " LIMIT 2" + suffix
 	return catalogReadRows(s, metadata, query, keys)
 }
@@ -136,7 +138,7 @@ func (c *CatalogConnection) InsertRow(ctx context.Context, declared CatalogTable
 	if err != nil {
 		return CatalogMutationResult{}, err
 	}
-	changes, err := catalogChanges(declared, values, "ROW_INSERT_INVALID", true)
+	changes, err := catalogChanges(declared, values, "ROW_INSERT_INVALID", true, c.dialect)
 	if err != nil {
 		return CatalogMutationResult{}, err
 	}
@@ -272,7 +274,7 @@ func (c *CatalogConnection) InsertRow(ctx context.Context, declared CatalogTable
 			return CatalogMutationResult{}, catalogErr(catalogCodeRowSchema, "insertion descriptor changed")
 		}
 		for _, change := range changes {
-			same, err := catalogSameWrittenCell(c.db, after[0][change.index], change.value, descriptor.Columns[change.index], c.dialect)
+			same, err := catalogSameCell(after[0][change.index], change.value)
 			if err != nil {
 				return CatalogMutationResult{}, err
 			}
@@ -291,7 +293,7 @@ func (c *CatalogConnection) UpdateRow(ctx context.Context, original CatalogRowSn
 	if err := original.valid(); err != nil {
 		return CatalogMutationResult{}, err
 	}
-	changes, err := catalogChanges(original.metadata, values, "ROW_UPDATE_INVALID", false)
+	changes, err := catalogChanges(original.metadata, values, "ROW_UPDATE_INVALID", false, c.dialect)
 	if err != nil {
 		return CatalogMutationResult{}, err
 	}
@@ -366,7 +368,7 @@ func (c *CatalogConnection) UpdateRow(ctx context.Context, original CatalogRowSn
 				// A generated column may be recomputed by the database.
 				continue
 			}
-			same, err := catalogSameWrittenCell(c.db, after[0][i], updated[i], descriptor.Columns[i], c.dialect)
+			same, err := catalogSameCell(after[0][i], updated[i])
 			if err != nil {
 				return CatalogMutationResult{}, err
 			}
@@ -453,66 +455,6 @@ func catalogCheckCurrent(current [][]any, original []any) error {
 // catalogSameCell reports whether two cells are equal by type and exact value.
 func catalogSameCell(a, b any) (bool, error) {
 	return catalogSameRow([]any{a}, []any{b})
-}
-
-// catalogSameWrittenCell compares a requested value with its stored form. A database driver may read DATETIME or
-// TIMESTAMP text as time.Time, while catalog temporal bind values use the dbspec text form. Compare those forms by
-// instant only for temporal columns; every other value keeps the exact typed comparison.
-func catalogSameWrittenCell(db *DB, stored, requested any, column CatalogColumn, dialect string) (bool, error) {
-	if slices.Contains([]string{"mysql", "postgres", "sqlite"}, dialect) {
-		if value, ok := stored.(time.Time); ok {
-			if text, ok := requested.(string); ok {
-				if precision, ok := catalogDateTimePrecision(column.NativeType, dialect); ok {
-					canonical, err := db.bindTimeValue(text, "datetime", precision)
-					if err != nil {
-						return false, err
-					}
-					canonicalText, ok := canonical.(string)
-					if !ok {
-						return false, nil
-					}
-					parsed, err := time.Parse(time.RFC3339Nano, strings.Replace(canonicalText, " ", "T", 1)+"Z")
-					if err == nil {
-						return value.Equal(parsed), nil
-					}
-				}
-			}
-		}
-	}
-	return catalogSameCell(stored, requested)
-}
-
-// catalogDateTimePrecision reads the precision of the supported timezone-free native timestamp types. A PostgreSQL
-// timestamp without an explicit precision defaults to six fraction digits; MySQL defaults to zero. SQLite has no native
-// temporal precision, so its declared-type metadata cannot supply one: the actual DDL CHECK enforces it, and comparison
-// normalizes through the maximum six-digit text form.
-func catalogDateTimePrecision(nativeType, dialect string) (int, bool) {
-	nativeType = strings.ToUpper(strings.TrimSpace(nativeType))
-	nativeType = strings.TrimSuffix(nativeType, " WITHOUT TIME ZONE")
-	base := ""
-	switch {
-	case strings.HasPrefix(nativeType, "DATETIME"):
-		base = "DATETIME"
-	case strings.HasPrefix(nativeType, "TIMESTAMP"):
-		base = "TIMESTAMP"
-	default:
-		return 0, false
-	}
-	remainder := strings.TrimSpace(strings.TrimPrefix(nativeType, base))
-	if remainder == "" {
-		if dialect == "postgres" && base == "TIMESTAMP" {
-			return 6, true
-		}
-		if dialect == "sqlite" {
-			return 6, true
-		}
-		return 0, true
-	}
-	if !strings.HasPrefix(remainder, "(") || !strings.HasSuffix(remainder, ")") {
-		return 0, false
-	}
-	precision, err := strconv.Atoi(remainder[1 : len(remainder)-1])
-	return precision, err == nil && precision >= 0 && precision <= 6
 }
 
 // columnNames lists the column names of a descriptor.

@@ -11943,6 +11943,7 @@
         "packages/rust/build/src/catalog/row_snapshot.rs",
         "packages/rust/build/src/tool_db.rs",
         "packages/go/orm/catalog_mutation_test.go",
+        "packages/go/orm/catalog_temporal_test.go",
         "packages/go/orm/catalog_page_validation_test.go",
         "packages/php/tests/CatalogPageValidationTest.php",
         "packages/ts/tests/catalog-page-validation.test.mjs",

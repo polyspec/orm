@@ -319,22 +319,14 @@ func catalogTemporalDefaultPrecisionCheck(t *testing.T, driver string, c *orm.Ca
 	for i, name := range []string{"t0", "dt0", "t3", "dt3"} {
 		column := slices.IndexFunc(metadata.Columns, func(column orm.CatalogColumn) bool { return column.Name == name })
 		value := inserted.Rows[0][column]
-		if i == 0 || i == 2 {
-			text, ok := value.(string)
-			want := []string{t0Value, dt0Value, t3Value, dt3Value}[i]
-			if !ok || text != want {
-				t.Fatalf("%s: typed temporal Catalog insert %s = %T(%v), want %q", driver, name, value, value, want)
-			}
-			if dot := strings.IndexByte(text, '.'); dot >= 0 {
-				got[i] = len(text) - dot - 1
-			}
-			continue
+		text, ok := value.(string)
+		want := []string{t0Value, dt0Value, t3Value, dt3Value}[i]
+		if !ok || text != want {
+			t.Fatalf("%s: typed temporal Catalog insert %s = %T(%v), want %q", driver, name, value, value, want)
 		}
-		timestamp, ok := value.(time.Time)
-		if !ok {
-			t.Fatalf("%s: %s has type %T, want time.Time", driver, name, value)
+		if dot := strings.IndexByte(text, '.'); dot >= 0 {
+			got[i] = len(text) - dot - 1
 		}
-		got[i] = len(strings.TrimRight(fmt.Sprintf("%09d", timestamp.Nanosecond()), "0"))
 	}
 	want := []int{0, 0, 3, 3}
 	if driver == "postgres" {

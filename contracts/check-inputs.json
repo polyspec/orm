@@ -3470,6 +3470,24 @@
         "packages/go/orm/catalog_row_baseline_test.go"
       ]
     },
+    "catalog-described-temporal-go-check": {
+      "scope": "owner",
+      "needs": [
+        "go"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/go/orm/catalog.go",
+        "packages/go/orm/catalog_insert_defaults.go",
+        "packages/go/orm/catalog_metadata.go",
+        "packages/go/orm/catalog_mutation.go",
+        "packages/go/orm/catalog_mutation_test.go",
+        "packages/go/orm/catalog_page.go",
+        "packages/go/orm/catalog_query.go",
+        "packages/go/orm/catalog_temporal.go",
+        "packages/go/orm/catalog_temporal_test.go"
+      ]
+    },
     "catalog-php-extension-surface-check": {
       "scope": "owner",
       "needs": [

@@ -26,7 +26,7 @@ func catalogReadRows(s *catalogSession, metadata CatalogTableMetadata, query str
 	if err := catalogSameNames(raw.names, metadata.Columns); err != nil {
 		return nil, err
 	}
-	return catalogConvert(raw, catalogNativeTypes(metadata))
+	return catalogConvertDescribed(raw, metadata, s.dialect)
 }
 
 // catalogWriteWords are the keywords that a read query never uses as a statement or clause: a query that contains one is

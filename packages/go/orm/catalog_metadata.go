@@ -36,6 +36,9 @@ type CatalogColumn struct {
 	AutomaticKey      bool
 	DefaultExpression *string
 	ExpressionDefault bool
+	// checkPrecision is, on SQLite, the fraction digits that the dbspec CHECK of a TIME or DATETIME column fixes; nil
+	// when no CHECK fixes them and on the other dialects.
+	checkPrecision *int
 }
 
 // CatalogTableMetadata describes a table: its kind, its columns, its primary key in constraint order and whether that key
@@ -185,6 +188,12 @@ func (s *catalogSession) describe(ref CatalogTableRef) (CatalogTableMetadata, er
 		}
 	}
 
+	if s.dialect == "sqlite" {
+		if err := s.sqliteCheckPrecisions(ref, columns); err != nil {
+			return CatalogTableMetadata{}, err
+		}
+	}
+
 	reliable := (kind == CatalogKindTable || kind == CatalogKindPartitioned) && len(keys) > 0
 	primaryKey := make([]string, 0, len(keys))
 	for _, key := range keys {
@@ -313,3 +322,45 @@ func catalogNativeTypes(metadata CatalogTableMetadata) []string {
 
 // sameDescriptor reports whether two descriptors are equal.
 func sameDescriptor(a, b CatalogTableMetadata) bool { return reflect.DeepEqual(a, b) }
+
+// sqliteCheckPrecisions records the CHECK precision of each SQLite TIME and DATETIME column: the dbspec renderer writes
+// the fraction digits of such a column into a CHECK of the table's own definition. A view has no CHECK.
+func (s *catalogSession) sqliteCheckPrecisions(ref CatalogTableRef, columns []CatalogColumn) error {
+	temporal := false
+	for _, column := range columns {
+		switch strings.ToUpper(column.NativeType) {
+		case "TIME", "DATETIME":
+			temporal = true
+		}
+	}
+	if !temporal {
+		return nil
+	}
+	raw, err := s.queryRaw("SELECT sql FROM sqlite_master WHERE type='table' AND name=?", []any{ref.Name}, 2, catalogMetadataBytes)
+	if err != nil {
+		return err
+	}
+	rows, err := catalogConvert(raw, raw.types)
+	if err != nil {
+		return err
+	}
+	if len(rows) == 0 {
+		return nil
+	}
+	if len(rows) != 1 || len(rows[0]) != 1 {
+		return catalogErr(catalogCodeMetadata, "the definition of table %q is not one text", ref.Name)
+	}
+	definition, ok := rows[0][0].(string)
+	if !ok {
+		return catalogErr(catalogCodeMetadata, "the definition of table %q is not one text", ref.Name)
+	}
+	for i, column := range columns {
+		switch strings.ToUpper(column.NativeType) {
+		case "TIME", "DATETIME":
+			if precision, ok := catalogCheckPrecision(definition, column.Name); ok {
+				columns[i].checkPrecision = &precision
+			}
+		}
+	}
+	return nil
+}

@@ -17677,7 +17677,7 @@
   },
   "packages/go/orm/catalog_metadata.go::CatalogColumn": {
     "exported": true,
-    "signature": "type CatalogColumn struct { Name string NativeType string Nullable bool Generated bool AutomaticKey bool DefaultExpression *string ExpressionDefault bool }"
+    "signature": "type CatalogColumn struct { Name string NativeType string Nullable bool Generated bool AutomaticKey bool DefaultExpression *string ExpressionDefault bool checkPrecision *int }"
   },
   "packages/go/orm/catalog_metadata.go::CatalogColumn#field.AutomaticKey": {
     "exported": true,
@@ -17706,6 +17706,10 @@
   "packages/go/orm/catalog_metadata.go::CatalogColumn#field.Nullable": {
     "exported": true,
     "signature": "bool"
+  },
+  "packages/go/orm/catalog_metadata.go::CatalogColumn#field.checkPrecision": {
+    "exported": false,
+    "signature": "*int"
   },
   "packages/go/orm/catalog_metadata.go::CatalogConnection.DescribeTable": {
     "exported": true,
@@ -17779,6 +17783,10 @@
     "exported": false,
     "signature": "receiver=*catalogSession func(ref CatalogTableRef) (CatalogTableMetadata, error)"
   },
+  "packages/go/orm/catalog_metadata.go::catalogSession.sqliteCheckPrecisions": {
+    "exported": false,
+    "signature": "receiver=*catalogSession func(ref CatalogTableRef, columns []CatalogColumn) error"
+  },
   "packages/go/orm/catalog_metadata.go::catalogText": {
     "exported": false,
     "signature": "func(value any) (string, error)"
@@ -17841,7 +17849,7 @@
   },
   "packages/go/orm/catalog_mutation.go::catalogChanges": {
     "exported": false,
-    "signature": "func(metadata CatalogTableMetadata, values []CatalogAssignment, code string, allowEmpty bool) ([]catalogChange, error)"
+    "signature": "func(metadata CatalogTableMetadata, values []CatalogAssignment, code string, allowEmpty bool, dialect string) ([]catalogChange, error)"
   },
   "packages/go/orm/catalog_mutation.go::catalogCheckCurrent": {
     "exported": false,
@@ -17850,10 +17858,6 @@
   "packages/go/orm/catalog_mutation.go::catalogColumnList": {
     "exported": false,
     "signature": "func(metadata CatalogTableMetadata, dialect string) string"
-  },
-  "packages/go/orm/catalog_mutation.go::catalogDateTimePrecision": {
-    "exported": false,
-    "signature": "func(nativeType, dialect string) (int, bool)"
   },
   "packages/go/orm/catalog_mutation.go::catalogDeclaredCapacity": {
     "exported": false,
@@ -17870,10 +17874,6 @@
   "packages/go/orm/catalog_mutation.go::catalogSameCell": {
     "exported": false,
     "signature": "func(a, b any) (bool, error)"
-  },
-  "packages/go/orm/catalog_mutation.go::catalogSameWrittenCell": {
-    "exported": false,
-    "signature": "func(db *DB, stored, requested any, column CatalogColumn, dialect string) (bool, error)"
   },
   "packages/go/orm/catalog_mutation.go::catalogSession.lookup": {
     "exported": false,
@@ -18050,6 +18050,38 @@
   "packages/go/orm/catalog_query.go::isASCIILetter": {
     "exported": false,
     "signature": "func(c byte) bool"
+  },
+  "packages/go/orm/catalog_temporal.go::catalogCheckClauses": {
+    "exported": false,
+    "signature": "func(tableSQL string) []string"
+  },
+  "packages/go/orm/catalog_temporal.go::catalogCheckPrecision": {
+    "exported": false,
+    "signature": "func(tableSQL, column string) (int, bool)"
+  },
+  "packages/go/orm/catalog_temporal.go::catalogConvertDescribed": {
+    "exported": false,
+    "signature": "func(raw catalogRaw, metadata CatalogTableMetadata, dialect string) ([][]any, error)"
+  },
+  "packages/go/orm/catalog_temporal.go::catalogDescribedFraction": {
+    "exported": false,
+    "signature": "func(text, kind string) (int, error)"
+  },
+  "packages/go/orm/catalog_temporal.go::catalogDescribedTemporal": {
+    "exported": false,
+    "signature": "func(value any, column CatalogColumn, dialect string) (any, error)"
+  },
+  "packages/go/orm/catalog_temporal.go::catalogSelectList": {
+    "exported": false,
+    "signature": "func(metadata CatalogTableMetadata, dialect string) string"
+  },
+  "packages/go/orm/catalog_temporal.go::catalogTemporalKind": {
+    "exported": false,
+    "signature": "func(column CatalogColumn, dialect string) (kind string, precision int, declared bool, ok bool)"
+  },
+  "packages/go/orm/catalog_temporal.go::catalogTemporalWriteValue": {
+    "exported": false,
+    "signature": "func(column CatalogColumn, value any, dialect, code string) error"
   },
   "packages/go/orm/codec.go::Decode": {
     "exported": true,

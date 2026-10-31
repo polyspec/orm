@@ -49,7 +49,7 @@ func catalogInsertReturningKeys(
 	keyIndexes []int,
 	dialect string,
 ) ([]any, error) {
-	returning := query + " RETURNING " + catalogColumnList(metadata, dialect)
+	returning := query + " RETURNING " + catalogSelectList(metadata, dialect)
 	rows, err := catalogReadRows(s, metadata, returning, args)
 	if err != nil {
 		return nil, err

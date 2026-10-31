@@ -17606,8 +17606,8 @@
         },
         {
           "implementation": "go",
-          "test": "packages/go/orm/catalog_mutation_test.go",
-          "id": "TestCatalogSameWrittenCellMatchesDateTimeTextToDriverTime",
+          "test": "packages/go/orm/catalog_temporal_test.go",
+          "id": "TestCatalogDescribedTemporalText",
           "command": [
             "make",
             "-s",
@@ -17616,7 +17616,7 @@
             "feature-go-unit",
             "FEATURE_DATABASE=sqlite",
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCatalogSameWrittenCellMatchesDateTimeTextToDriverTime",
+            "FEATURE_TEST=TestCatalogDescribedTemporalText",
             "FEATURE_PACKAGE=./orm"
           ]
         },
