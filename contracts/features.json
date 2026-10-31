@@ -3301,7 +3301,7 @@
         },
         {
           "id": "transactions-rollback-fault-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -tags ormtest -run '^TestRollbackFault' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestRollbackFault' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/rollback_fault_entry_test.go",
@@ -3358,7 +3358,7 @@
         },
         {
           "id": "statement-fault-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -tags ormtest -run '^TestStatementFault' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestStatementFault' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/statement_fault_entry_test.go",

@@ -19,6 +19,7 @@ import { DATABASE, PROCESS, runCase, runGroup, stepLines, type CaseBody } from '
 import { errorCode } from '../tests/errors.mts';
 import mysqlDriver from 'mysql2/promise';
 import pg from 'pg';
+import { withTestTags } from '../tests/go-test.mts';
 
 const root = resolve(new URL('..', import.meta.url).pathname);
 // required is the value of an environment variable that the check needs; database checks never skip.
@@ -36,8 +37,9 @@ const leftover = `orm_leftover_${process.pid}`;
 // If a case that reads the shared database is changed and a case still treats the database as empty, these commands
 // fail. Each command reports its own cases (Go and TypeScript print RUN/STEP/PASS/FAIL, PHP prints PHPUnit), so run them as a group.
 const commands: [string, string, string[]][] = [
-  ['go/schema-empty', 'go', ['test', '-v', '-timeout', '0', '-count=1', './packages/go/orm', '-run', '^TestSchemaEmpty$']],
-  ['go/model', 'go', ['test', '-v', '-timeout', '0', '-count=1', './packages/go/model']],
+  // The Go runs take the build tags of every go test of the repository (GO_TEST_TAGS of tests/go-test.mts).
+  ['go/schema-empty', 'go', ['test', ...withTestTags(['-v', '-timeout', '0', '-count=1', './packages/go/orm', '-run', '^TestSchemaEmpty$'])]],
+  ['go/model', 'go', ['test', ...withTestTags(['-v', '-timeout', '0', '-count=1', './packages/go/model'])]],
   ['php/model', 'php', ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', 'packages/php/tests/ModelTest.php']],
   ['typescript/model', 'node', ['packages/ts/tests/model.mjs']],
   // The sections of the Rust integration program (packages/rust/tests/tests/integration_program) check an empty database and install

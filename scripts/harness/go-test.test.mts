@@ -6,7 +6,7 @@ import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { buildArguments, packages, testEvents } from '../../tests/go-test.mts';
+import { buildArguments, GO_TEST_TAGS, packages, testEvents, withTestTags } from '../../tests/go-test.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { execFailure } from '../../tests/errors.mts';
@@ -17,6 +17,17 @@ caseTest('the build step keeps packages and build flags and runs no test', COMPU
   assert.deepEqual(buildArguments(['-v', '-timeout=0', '-count', '1', '-race', './packages/go/...', '-run=X']), ['-race', './packages/go/...', '-run', '^$', '-count=1']);
   assert.equal(packages(['-v', './packages/go/orm', './packages/go/orm/pg', '-run', 'X']), 'packages/go/orm,packages/go/orm/pg');
   assert.equal(packages(['-v']), '.');
+});
+
+// Every go test of the repository builds the test entry point (protocol §3), whose file and tests carry the tag ormtest:
+// a run without it would leave rollback_fault_test.go and statement_fault_test.go out unseen. The tags of a run are merged
+// with GO_TEST_TAGS, in either flag form, and a run with no tags gets them alone.
+caseTest('every go test run carries the test entry point tag', COMPUTE, () => {
+  assert.deepEqual(GO_TEST_TAGS, ['ormtest']);
+  assert.deepEqual(withTestTags(['-v', './packages/go/...']), ['-tags', 'ormtest', '-v', './packages/go/...']);
+  assert.deepEqual(withTestTags(['-tags', 'featurecoverage', './packages/go/orm']), ['-tags', 'featurecoverage,ormtest', './packages/go/orm']);
+  assert.deepEqual(withTestTags(['-tags=physical,ormtest', './packages/go/internal/dialects']), ['-tags=physical,ormtest', './packages/go/internal/dialects']);
+  assert.throws(() => withTestTags(['-tags', 'a', '-tags', 'b', './x']), /more than one -tags/);
 });
 
 // A slow but normal build runs to the end with no deadline. The fake go at the front of PATH, in the build phase (-run '^$'),

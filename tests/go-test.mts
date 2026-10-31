@@ -2,7 +2,7 @@
 // compile does not report cases. So first, with the same package, build tags, and build flags, run
 // `go test -run '^$' -count=1`, which runs no tests, as the long task `go-build/<packages>`
 // without a deadline (runLong: compiler output and exit code as STEP lines) to fill the build cache, then run `go test`
-// with the received arguments as-is. Test cases in the run step get their own deadlines via packages/go/testcase.
+// with the received arguments, whose tags are merged with GO_TEST_TAGS. Test cases in the run step get their own deadlines via packages/go/testcase.
 // The run step runs `go test -json` (test2json) and passes the Output of its events through as human-readable output.
 // A run that selects tests with `-run` fails if no test was run (no `"Action":"run"` event): a misspelled
 // pattern runs nothing and still exits 0, so unless treated as failure, it passes without testing anything. The count
@@ -16,6 +16,26 @@ import { parseGoTestEvent } from '../scripts/json/formats.mts';
 // Flags that only set the run are removed from the build step. A flag that takes a separate value also removes the next argument.
 const runFlags = new Set(['-v', '-run', '-count', '-timeout', '-fuzz', '-fuzztime', '-bench', '-benchtime', '-json', '-failfast', '-short', '-shuffle', '-parallel', '-cpu']);
 const valued = new Set(['-run', '-count', '-timeout', '-fuzz', '-fuzztime', '-bench', '-benchtime', '-shuffle', '-parallel', '-cpu']);
+
+// GO_TEST_TAGS are the build tags of every go test of the repository: ormtest builds the test entry point (protocol §3) and
+// the tests that arm it, which a run without the tag would leave out unseen. Each run takes them here, so no target repeats them.
+export const GO_TEST_TAGS = ['ormtest'];
+
+// withTestTags are the arguments with GO_TEST_TAGS merged into their -tags flag, in either flag form, or put first when
+// there is none. Two -tags flags are refused: go keeps only the last, so one of them would be dropped unseen.
+export function withTestTags(args: string[]): string[] {
+  const at = args.flatMap((arg, index) => (arg === '-tags' || arg.startsWith('-tags=') ? [index] : []));
+  if (at.length > 1) throw new Error(`go-test: more than one -tags flag in ${args.join(' ')}`);
+  const index = at[0];
+  if (index === undefined) return ['-tags', GO_TEST_TAGS.join(','), ...args];
+  const inline = args[index]?.startsWith('-tags=') ?? false;
+  const given = (inline ? args[index]?.slice('-tags='.length) : args[index + 1]) ?? '';
+  const tags = [...new Set([...given.split(',').filter(Boolean), ...GO_TEST_TAGS])].join(',');
+  const out = [...args];
+  if (inline) out[index] = `-tags=${tags}`;
+  else out[index + 1] = tags;
+  return out;
+}
 
 // buildArguments are the build step's arguments: the go test arguments with the run flags removed.
 export function buildArguments(args: string[]): string[] {
@@ -106,11 +126,12 @@ export function testEvents(write: (text: string) => unknown = (text: string) => 
 }
 
 if (process.argv[1] && new URL(import.meta.url).pathname === process.argv[1]) {
-  const args = process.argv.slice(2);
-  if (args.length === 0) {
+  const given = process.argv.slice(2);
+  if (given.length === 0) {
     console.error('usage: node tests/go-test.mts <go test arguments...>');
     process.exit(2);
   }
+  const args = withTestTags(given);
   const pattern = selection(args);
   const built = await runLong(`go-build/${packages(args)}`, async ({ step }) => {
     const { code } = await go(buildArguments(args), step);
