@@ -955,6 +955,7 @@
         "packages/rust/orm/tests/unit/ir_request.rs",
         "packages/rust/schema/tests/common/dbspec_cases.rs",
         "packages/rust/tests/build.rs",
+        "packages/rust/tests/bench_model.rs",
         "packages/rust/tests/src/client_bench.rs",
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/rust/tests/tests/common/mod.rs",

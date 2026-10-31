@@ -100,7 +100,8 @@
         "scripts/rust/compiler-fixtures.schema.json",
         "packages/rust/orm/tests/compiler_fixtures.rs",
         "packages/rust/testing/compiler-fixtures/cases.json",
-        "packages/rust/tests/build.rs"
+        "packages/rust/tests/build.rs",
+        "packages/rust/tests/bench_model.rs"
       ]
     },
     "kit-check": {
@@ -3124,6 +3125,7 @@
         "packages/rust/tests/tests/integration/main.rs",
         "packages/rust/tests/Cargo.toml",
         "packages/rust/tests/build.rs",
+        "packages/rust/tests/bench_model.rs",
         "packages/rust/Cargo.toml",
         "contracts/fixtures/complex_query/complex_query.dbs",
         "contracts/fixtures/complex_query/complex_query.json",
