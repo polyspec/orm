@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b6de6547cd72766eee818a800d730d534f8df00daee05e59083f2ae9548244af -->
+<!-- source-sha256: 7c3d629bd781cf22f4551df893e530a9539519e47391ff6947d2d92fef528e1a -->
 # 변경 이력
 
 ## Unreleased
@@ -7,6 +7,7 @@
 ## 0.0.19
 
 - Rust integration program의 section trial(conditions, joins_and_relations, columns_and_subqueries, writes, transactions, aes_rotation, json_values, bind_limit_splitting)은 schema_empty처럼 자기 본문에서 driver마다 case를 시작합니다. 이전에는 installed_section helper 안에서 case를 시작했으므로, 모든 Rust test가 case를 시작하는지 보는 저장소 검사가 trial에서 case 시작을 찾지 못했습니다(T334-1).
+- make install은 lock된 kit 0.0.79의 PHP arginfo generator와 parser를 다시 설치합니다. orm-install-php-extension-tools는 T328이 아직 release되지 않은 kit K930을 위해 지웠던 make kit-install-php-arginfo를 실행합니다. 그것이 없으면 새 checkout의 extension build는 모두 var/tools/php-arginfo/PHP-Parser-5.6.1이 없어 멈추었습니다(T338).
 - coverage case "coverage runs without cargo proceed while the Rust test build runs"는 fixture crate를 deadline이 없는 긴 operation인 @polyspec/kit/test-hooks의 setup에서 쓰고 build합니다. 그래서 case의 cargo test --no-run은 이미 build된 crate를 찾고 겹침은 FIFO만으로 판정됩니다. 이전에는 case가 실행의 30000 ms 예산 안에서 crate를 compile했으므로 부하 평균 83에서 실패했습니다(T335).
 - contracts/features.json의 feature가 검증하는 TypeScript test 파일은 각각 자기 verification command를 가집니다. dsn, statement-events, planner는 두 파일을 각 파일이 읽는 input과 함께 두 command로 나눕니다. T319와 T323이 두 파일을 &&로 이었으므로 첫 실패가 다음 test를 멈추었고, make repo-check/unit이 세 command를 거부했습니다(T337).
 - packages/php-ext/scripts/build.sh는 다시 잠긴 kit 0.0.79가 기대하는 대로 확장을 build합니다. 0.0.79 builder가 config/release.json의 source-copy 항목에서 직접 staging하는 packages/php/src/native/sqlite_cancel.c에 더 이상 --source-copy를 넘기지 않으므로, build가 "source-copy output src/native/sqlite_cancel.c collides with a file already in packages/php-ext/src"로 실패하지 않습니다. K930 형식은 그것을 담은 kit release를 채택할 때 돌아옵니다(T325-2).

@@ -2871,10 +2871,11 @@ orm-install-flowmark:
 orm-install-server-programs:
 	$(ONLINE) $(NODE) scripts/ci/server-programs.mts
 # orm-install-php-extension-tools checks that the phpize and php-config used by the build of the PHP extension polyspec_orm are those of the
-# PHP on PATH (scripts/ci/php-extension-tools.mts). Arginfo comes from PHP's gen_stub.php, which the kit builder runs (K930); nothing is
-# installed for it.
+# PHP on PATH (scripts/ci/php-extension-tools.mts), and installs the pinned arginfo generator and parser that the build reads; no CI job
+# runs install-kit, so every job that builds the extension gets them here (T290).
 orm-install-php-extension-tools:
 	$(NODE) scripts/ci/php-extension-tools.mts
+	$(MAKE) --no-print-directory kit-install-php-arginfo
 orm-install-php-extension-runtime:
 	$(MAKE) --no-print-directory orm-install-php
 	cd packages/php-ext && $(ONLINE) $(COMPOSER) install --no-interaction --no-progress
