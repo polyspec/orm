@@ -5,7 +5,7 @@ from pathlib import Path
 
 from polyspec.orm import Schema
 from polyspec.orm.dbspec import dbspec_manifest, parse_dbspec, read_dbspec_file
-from polyspec.orm.models import models
+from .models import models
 
 _PATH = (
     Path(__file__).resolve().parents[3]

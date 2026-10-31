@@ -2,7 +2,9 @@
 # stdout: the result as JSON. stderr: p50 of the generated client and of the
 # same SQL through PyMySQL directly.
 #
-#   python3 packages/python/examples/thin_slice/main.py
+#   python -m packages.python.examples.thin_slice.main   (from the root of the checkout, with the venv of make install)
+#
+# The models are the bench models that make python-models generates into packages/python/tests/models.
 import json
 import os
 import sys
@@ -39,7 +41,7 @@ def p50(f) -> int:
 def main() -> None:
     target = dsn()
     # The client and the native driver load after the check, so a missing DSN ends the program without them.
-    from polyspec.orm.models.models import Author, connect
+    from packages.python.tests.models.models import Author, connect
     from polyspec.orm.placeholders import for_mysql
     import pymysql
 

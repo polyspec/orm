@@ -5,7 +5,7 @@ import tempfile
 import tracemalloc
 import unittest
 
-from polyspec.orm.models import models
+from .models import models
 
 from . import testcase
 from .bench_set import install_bench

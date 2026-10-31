@@ -4,7 +4,7 @@
 from polyspec.ordered_json import parse as parse_json
 from polyspec.ordered_json import stringify as stringify_json
 from polyspec.orm import OrmError, StyledValue, codes
-from polyspec.orm.models import models
+from .models import models
 
 from .coverage_case import (
     CoverageCase,

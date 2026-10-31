@@ -79,7 +79,7 @@ _.n_params
 _.plus_p
 _.minus_p
 
-# Core methods that the generated models (src/polyspec/orm/models, excluded as generated text) and every model that
+# Core methods that the generated models (tests/models, Git-ignored generated text) and every model that
 # orm-gen writes call.
 _.add_column
 _.typed_column

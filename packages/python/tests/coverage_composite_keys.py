@@ -4,7 +4,7 @@
 import json
 import re
 
-from polyspec.orm.models import models
+from .models import models
 
 from .coverage_case import (
     REPOSITORY_ROOT,

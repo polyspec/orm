@@ -2,7 +2,7 @@
 # The runner packages/python/testing/conformance/runner_python.py runs every vector once, in the order of tests/conformance/vectors.json,
 # against the bench database of the dialect (BENCH_MYSQL_DSN, BENCH_POSTGRES_DSN or BENCH_SQLITE_DSN, which
 # make run-databases and make orm-check create), with the models that orm-gen writes from
-# contracts/fixtures/bench/dbspec-set.json (packages/python/src/polyspec/orm/models, kept current by
+# contracts/fixtures/bench/dbspec-set.json (packages/python/tests/models, kept current by
 # make python-model-check). Each case compares the output of its vector with the expectation recorded for that
 # database, as tests/conformance/check/main.mts compares it: numbers by their exact value.
 # A whole run, not one vector at a time, gives the recorded statements, since a vector's first use of a
@@ -80,7 +80,7 @@ def audit_lazy_baseline(dialect, original):
 
 def assert_audit_lazy_tables_empty(dsn):
     """Refuse to normalize identity counters when audit_lazy's tables already contain rows."""
-    from polyspec.orm.models import models
+    from .models import models
 
     db = models.connect(dsn)
     try:

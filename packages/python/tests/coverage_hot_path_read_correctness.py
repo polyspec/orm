@@ -5,7 +5,7 @@ import tempfile
 import unittest
 
 from polyspec.orm.codec import host_encode
-from polyspec.orm.models import models
+from .models import models
 
 from .coverage_case import coverage_main
 from .coverage_performance_gate import typed_native_values

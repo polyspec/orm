@@ -6,7 +6,7 @@ import threading
 
 from polyspec.orm import codes
 from polyspec.orm.errors import OrmError
-from polyspec.orm.models import models
+from .models import models
 
 from .coverage_case import (
     CoverageCase,

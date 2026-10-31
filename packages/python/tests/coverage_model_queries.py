@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from polyspec.orm import orm
 from polyspec.orm.errors import OrmError
-from polyspec.orm.models import models
+from .models import models
 
 from .coverage_case import (
     CoverageCase,

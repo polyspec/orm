@@ -5,7 +5,7 @@
 from polyspec.orm import Db
 from polyspec.orm.engine import model_of_documents, parse_document_set
 from polyspec.orm.errors import OrmError
-from polyspec.orm.models import models
+from .models import models
 from polyspec.orm.schema import Schema
 from .coverage_case import expect_equal, CoverageCase, coverage_main, table_exists
 

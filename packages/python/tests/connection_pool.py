@@ -18,7 +18,7 @@ import psycopg
 from psycopg.pq import ConnStatus
 from polyspec.orm.errors import OrmError
 from polyspec.orm.database import _MysqlConnection, _PostgresConnection
-from polyspec.orm.models import models
+from .models import models
 from polyspec.orm.database import _Pool, _PoolConfig
 
 from . import testcase

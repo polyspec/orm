@@ -6,7 +6,7 @@ import unittest
 
 from polyspec.orm import codes
 from polyspec.orm.errors import OrmError
-from polyspec.orm.models import models as bench
+from .models import models as bench
 from . import testcase
 
 

@@ -95,7 +95,7 @@ class ConnectionUtcTest(unittest.TestCase):
     deadline = testcase.DATABASE
 
     def connections_use_utc(self, dialect: str, db) -> None:
-        from polyspec.orm.models import models
+        from .models import models
         from .bench_set import install_bench
 
         install_bench(db)
@@ -179,7 +179,7 @@ class ConnectionUtcTest(unittest.TestCase):
     # The test of DSL-141, DIA-57 (docs/spec).
     # Requirements: CFG-2, CFG-7.
     def test_connections_use_utc(self):
-        from polyspec.orm.models import models
+        from .models import models
         from .case_database import case_database
 
         for dialect in DIALECTS:
@@ -197,7 +197,7 @@ class ConnectionUtcTest(unittest.TestCase):
                             db.close()
 
     def test_other_zone_refused(self):
-        from polyspec.orm.models import models
+        from .models import models
         from .case_database import case_database
 
         for dialect in DIALECTS:

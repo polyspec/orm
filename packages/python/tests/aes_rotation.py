@@ -6,7 +6,7 @@ import tempfile
 import unittest
 
 from polyspec.orm.aes import AesKeyring
-from polyspec.orm.models import models
+from .models import models
 
 from . import testcase
 from .bench_set import install_bench

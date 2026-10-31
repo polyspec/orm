@@ -2,7 +2,7 @@
 # connection of its driver, as the DSN coverage of Go, PHP, TypeScript and Rust does. The feature coverage check runs
 # `-m packages.python.tests.coverage_dsn dsn_connection` (scripts/features/coverage.mts, coverage_case.py).
 from polyspec.orm import Db
-from polyspec.orm.models import models
+from .models import models
 from .coverage_case import error_code, expect_equal, CoverageCase, coverage_main
 
 

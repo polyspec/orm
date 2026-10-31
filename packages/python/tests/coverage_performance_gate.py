@@ -13,7 +13,7 @@ from decimal import Decimal
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from polyspec.orm.codec import host_decode
-from polyspec.orm.models import models
+from .models import models
 
 WARMUP = 100
 PAIRS = 1000

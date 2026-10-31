@@ -1,7 +1,7 @@
 # parameter_chunking coverage: a root IN list beyond the bind limit of every driver runs in parts and counts right with
 # repeated and absent values, and a limit, which the parts would change, is refused with IR_INVALID, as the
 # parameter_chunking coverage of Go, PHP, TypeScript and Rust does. It only reads.
-from polyspec.orm.models import models
+from .models import models
 from .coverage_case import error_code, expect_equal, CoverageCase, coverage_main
 
 

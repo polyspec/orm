@@ -1,12 +1,12 @@
 # Generated models type their fields with the value types of docs/spec/dbspec.md "Runtime model", as the Go, PHP, TypeScript
 # and Rust models do: each getter returns the type of its column, None for a null column, and each setter takes it; a
 # getter whose value has another type raises TypeError, as a typed PHP getter and a TypeScript getter do. The cases
-# read the committed bench models (polyspec.orm.models.models) through typing.get_type_hints.
+# read the generated bench models (packages/python/tests/models/models.py) through typing.get_type_hints.
 import typing
 import unittest
 
 from polyspec.orm import OrmError, StyledValue
-from polyspec.orm.models import models
+from .models import models
 from . import testcase
 
 # (model, column, getter type, setter type) for every column category of the bench models.

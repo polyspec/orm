@@ -739,8 +739,8 @@ PYTHON_VENV = $(abspath packages/python/.venv)
 # orm-install-python installs the Python tool and its declared venv backend from mise.toml, and makes the
 # venv of that interpreter with kit's python-venv; no other python3 of PATH is used. uv sync installs the client into that venv
 # from packages/python/uv.lock with its group test, editable, as uv sync does by default (T259): the install imports
-# packages/python/src, so a source change needs no reinstall and the fixture models that python-models writes into
-# src/polyspec/orm/models, which the wheel excludes, are importable; the python symbols of kit read the source package (K855).
+# packages/python/src, so a source change needs no reinstall. The fixture models that python-models writes are no part of the client: they live in
+# packages/python/tests/models, the tests' own package, outside the source package whose python symbols kit reads (K855, K977).
 # orm-python-lock writes the lock of the Python client with uv alone (KSTD-5-102): uv lock records packages/python/uv.lock from
 # pyproject.toml, the lock that uv sync of orm-install-python installs.
 .PHONY: orm-python-lock
@@ -2027,7 +2027,7 @@ case-database-check: php-vendor-check lease-tool orm-codes-typescript
 # document set, the output directory and the source scanned for model calls. python-models writes them, and it is the last step of
 # orm-install-python, so every reader of the venv finds them. python-model-check runs orm-gen gen --check against the same entry (no network).
 PYTHON_MODELS_SET = contracts/fixtures/bench/dbspec-set.json
-PYTHON_MODELS_OUT = packages/python/src/polyspec/orm/models
+PYTHON_MODELS_OUT = packages/python/tests/models
 PYTHON_MODELS_SCAN = packages/python/examples/thin_slice/main.py
 .PHONY: python-models
 python-models: python-venv-check
@@ -2976,7 +2976,7 @@ editor-build: typescript-build
 # skip ignored paths. Each step fails on its first finding; the generated Python is linted without vulture, whose exclusion
 # of the models in packages/python/pyproject.toml stays as it is. Generated Go source is formatted here; tracked Go tests are
 # formatted by go-fmt-check.
-GENERATED_PY_MODELS = packages/python/src/polyspec/orm/models/models.py
+GENERATED_PY_MODELS = packages/python/tests/models/models.py
 GENERATED_PHP = packages/php/gen
 GENERATED_GO = ./model ./markdownmodel ./decimalmodel
 GENERATED_TS = packages/ts/src/models/models.ts
