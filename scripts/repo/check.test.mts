@@ -685,6 +685,13 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
     assert.ok(recipe !== undefined, `the Makefile has no recipe of ${target}`);
     assert.doesNotMatch(recipe, /\b(?:install-)?link\b/, `${target} links, but its CI job installs no uv`);
   }
+  // The npm that the lowest Node release bundles refuses the checkout, whose devEngines names the npm of mise.toml
+  // (EBADDEVENGINES): ts-min-check runs the npm of mise.toml, whose bin directory comes before the lowest Node.
+  const tsMin = /^ts-min-check:.*\n((?:\t.*\n)*)/m.exec(makefile)?.[1];
+  assert.ok(tsMin !== undefined, 'the Makefile has no recipe of ts-min-check');
+  assert.doesNotMatch(tsMin, /\$\$NODE_MIN\/npm\b/, 'ts-min-check runs the npm of the lowest Node release');
+  assert.match(tsMin, /NPM_BIN="\$\$\(\$\(KIT_TOOLS\)\/bin\/mise where npm:npm\)\/node_modules\/\.bin" && PATH="\$\$NPM_BIN:\$\$NODE_MIN:/,
+    'ts-min-check puts the npm of mise.toml before the lowest Node release');
   assert.doesNotMatch(makefile, /^install-packages:\s+orm-install-interfaces-typescript$/m,
     'Kit owns npm package installation; the package target does not widen it with TypeScript 6');
   assert.match(makefile, /^install:.*orm-install-interfaces-typescript$/m,
