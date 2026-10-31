@@ -194,12 +194,8 @@ caseTest('client-db-test runs the php-extension lane with the extension it build
     assert.ok(library, `the lane did not build the extension first: ${ran.join('\n')}`);
     const php = readFileSync(join(repo, 'scripts/client-db-test.mts'), 'utf8').match(/const PHP_TESTS = \[([^\]]*)\]/)?.[1]?.match(/'(\w+)'/g)?.map(name => name.slice(1, -1)) ?? [];
     assert.ok(php.length > 0, 'scripts/client-db-test.mts names no PHP_TESTS');
-    const expected = php.flatMap(test => test === 'ModelTest'
-      ? [
-        `node ${kitRunTests} phpunit --timeout 120 --php-extension ${library} -- --configuration packages/php/phpunit.xml.dist --filter testPrimaryAndReplica packages/php/tests/ModelTest.php`,
-        `node ${kitRunTests} phpunit --php-extension ${library} -- --configuration packages/php/phpunit.xml.dist --exclude-filter testPrimaryAndReplica packages/php/tests/ModelTest.php`,
-      ]
-      : [`node ${kitRunTests} phpunit --php-extension ${library} -- --configuration packages/php/phpunit.xml.dist packages/php/tests/${test}.php`]);
+    // Each PHP test file is one run with no --timeout, --filter or --exclude-filter: every test keeps the limit of its PHPUnit size.
+    const expected = php.map(test => `node ${kitRunTests} phpunit --php-extension ${library} -- --configuration packages/php/phpunit.xml.dist packages/php/tests/${test}.php`);
     assert.deepEqual(ran.slice(1), expected);
     assert.ok(!existsSync(library), `the lane left its build ${library}`);
     assert.match(result.stdout, /client-db-test: every lane passed: php-extension\n/);

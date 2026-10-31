@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: cf1b30e0827ece1caad34ed1e926d77e6cf7a13f58cf9105d416a7f4d4a9b25c -->
+<!-- source-sha256: 953637c3b86061d78f8ce1889886380f278624d8701783b36742d488ce365437 -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.19
 
+- scripts/client-db-test.mts의 PHP extension lane은 모든 PHP test 파일처럼 ModelTest를 --timeout, --filter, --exclude-filter 없이 한 번 실행한다. 각 test는 kit이 --timeout이 없을 때 적용하는 #[Medium]의 120초 제한을 유지한다. 이전에는 lane이 testPrimaryAndReplica만 --timeout 120으로, 나머지 ModelTest test는 --exclude-filter로 실행했다 (T334-3-9).
 - config/toolchain.json은 더 이상 packages/ts/testing/interfaces/typescript의 typescript 6.0.3 예외를 선언하지 않습니다. kit는 선언된 version을 판단하지 않기 때문입니다(S4). 그 package는 packages/ts/testing/interfaces/typescript.mts가 읽는 compiler의 JavaScript API를 위해 package.json에 pin 6.0.3을 유지합니다(T340).
 - TypeScript vector suite 파일은 각자 fixture case만 담고 통째로 실행된다. feature case는 value_function_ir.mjs(coverage_planner.mjs에서), styled-value-features.mjs(styled-value.mjs에서), dbspec-show-create-introspect.mjs(dbspec-show-create.mjs에서)로 옮겨졌고, 그 binding은 새 파일을 가리키며, config/parity.json은 이들에 --test-skip-pattern도 --test-name-pattern도 넘기지 않는다. 이전에는 suite binding이 자기 파일의 feature case를 skip했고, feature binding 둘이 파일을 case 하나로 좁혔다 (T334-3-8).
 - 의도적으로 실패, skip, 정지하는 Go testcase harness의 fixture test는 build tag 없는 package packages/go/testcase/testdata/fixture다. testdata는 Go가 fixture를 두는 곳이고 go test ./...가 결코 고르지 않으며, runFixture가 go test ./testdata/fixture로 이를 실행한다. 이전에는 testcase_fixture_test.go가 tag testcasefixture에서만 build되어, packages/go/testcase의 평범한 build가 그 파일을 무시했다 (T334-3-7).
