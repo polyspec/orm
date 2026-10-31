@@ -30783,15 +30783,16 @@
           "test": "packages/php/tests/CoveragePerformanceGatePostgresTest.php",
           "id": "CoveragePerformanceGatePostgresTest::testHotPathGate",
           "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-php-database",
-            "FEATURE_DATABASE=postgres",
-            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
-            "FEATURE_FILE=packages/php/tests/CoveragePerformanceGatePostgresTest.php",
-            "FEATURE_TEST=CoveragePerformanceGatePostgresTest::testHotPathGate"
+            "env",
+            "ORM_FEATURE_DATABASE=postgres",
+            "ORM_FEATURE_DSN=${BENCH_POSTGRES_DSN}",
+            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
+            "--teamcity",
+            "--configuration",
+            "phpunit.xml.dist",
+            "--filter",
+            "testHotPathGate",
+            "tests/CoveragePerformanceGatePostgresTest.php"
           ]
         },
         {
@@ -30799,16 +30800,21 @@
           "test": "packages/php-ext/tests/CoveragePerformanceGateExtensionPostgresTest.php",
           "id": "CoveragePerformanceGateExtensionPostgresTest::testHotPathGate",
           "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-php-database",
-            "FEATURE_PHP_EXTENSION=${ORM_PARITY_PHP_EXTENSION}",
-            "FEATURE_DATABASE=postgres",
-            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
-            "FEATURE_FILE=packages/php-ext/tests/CoveragePerformanceGateExtensionPostgresTest.php",
-            "FEATURE_TEST=CoveragePerformanceGateExtensionPostgresTest::testHotPathGate"
+            "env",
+            "ORM_PHP_MODE=extension",
+            "POLYSPEC_ORM_EXTENSION=${ORM_PARITY_PHP_EXTENSION}",
+            "ORM_FEATURE_DATABASE=postgres",
+            "ORM_FEATURE_DSN=${BENCH_POSTGRES_DSN}",
+            "php",
+            "-d",
+            "extension=${ORM_PARITY_PHP_EXTENSION}",
+            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
+            "--teamcity",
+            "--configuration",
+            "phpunit.xml.dist",
+            "--filter",
+            "testHotPathGate",
+            "tests/CoveragePerformanceGateExtensionPostgresTest.php"
           ]
         },
         {
@@ -30888,15 +30894,16 @@
           "test": "packages/php/tests/CoveragePerformanceGateSqliteTest.php",
           "id": "CoveragePerformanceGateSqliteTest::testHotPathGate",
           "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-php-database",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_FILE=packages/php/tests/CoveragePerformanceGateSqliteTest.php",
-            "FEATURE_TEST=CoveragePerformanceGateSqliteTest::testHotPathGate"
+            "env",
+            "ORM_FEATURE_DATABASE=sqlite",
+            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
+            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
+            "--teamcity",
+            "--configuration",
+            "phpunit.xml.dist",
+            "--filter",
+            "testHotPathGate",
+            "tests/CoveragePerformanceGateSqliteTest.php"
           ]
         },
         {
@@ -30904,16 +30911,21 @@
           "test": "packages/php-ext/tests/CoveragePerformanceGateExtensionSqliteTest.php",
           "id": "CoveragePerformanceGateExtensionSqliteTest::testHotPathGate",
           "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-php-database",
-            "FEATURE_PHP_EXTENSION=${ORM_PARITY_PHP_EXTENSION}",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_FILE=packages/php-ext/tests/CoveragePerformanceGateExtensionSqliteTest.php",
-            "FEATURE_TEST=CoveragePerformanceGateExtensionSqliteTest::testHotPathGate"
+            "env",
+            "ORM_PHP_MODE=extension",
+            "POLYSPEC_ORM_EXTENSION=${ORM_PARITY_PHP_EXTENSION}",
+            "ORM_FEATURE_DATABASE=sqlite",
+            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
+            "php",
+            "-d",
+            "extension=${ORM_PARITY_PHP_EXTENSION}",
+            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
+            "--teamcity",
+            "--configuration",
+            "phpunit.xml.dist",
+            "--filter",
+            "testHotPathGate",
+            "tests/CoveragePerformanceGateExtensionSqliteTest.php"
           ]
         },
         {

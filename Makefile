@@ -1482,16 +1482,6 @@ feature-rust-unit:
 feature-rust-database:
 	$(WITH_TEST_ENV) cd $(FEATURE_CRATE) && ORM_FEATURE_DATABASE=$(FEATURE_DATABASE) ORM_FEATURE_DSN="$$$(FEATURE_DSN_ENV)" $(CARGO_TEST) feature-rust-database -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline $(FEATURE_CARGO_TARGET) -- --test-threads=1 --include-ignored --exact $(FEATURE_TEST)
 
-# feature-php-database runs one PHP database test of a feature against one database, as a parity binding names it, with the
-# PHPUnit invocation of kit's php runner (php, the PHPUnit of vendor-php with --teamcity and the phpunit.xml.dist of the test's
-# package) under the test environment of feature-rust-database (WITH_TEST_ENV): FEATURE_DATABASE and FEATURE_DSN_ENV set
-# ORM_FEATURE_DATABASE and ORM_FEATURE_DSN, FEATURE_FILE is the test file, FEATURE_TEST its Class::method, and FEATURE_PHP_EXTENSION,
-# for the extension, the module that php loads and POLYSPEC_ORM_EXTENSION names (T282).
-.PHONY: feature-php-database
-feature-php-database:
-	@case "$(FEATURE_DATABASE)" in mysql|postgres|sqlite) ;; *) echo "feature-php-database: FEATURE_DATABASE is '$(FEATURE_DATABASE)'; give mysql, postgres or sqlite" >&2; exit 2 ;; esac
-	$(WITH_TEST_ENV) ORM_FEATURE_DATABASE=$(FEATURE_DATABASE) ORM_FEATURE_DSN="$${$(FEATURE_DSN_ENV):?$(FEATURE_DSN_ENV) is not set; run make run-databases}" $(if $(FEATURE_PHP_EXTENSION),POLYSPEC_ORM_EXTENSION="$(FEATURE_PHP_EXTENSION)") php $(if $(FEATURE_PHP_EXTENSION),-d extension="$(FEATURE_PHP_EXTENSION)") vendor-php/bin/phpunit --teamcity --configuration $(dir $(patsubst %/,%,$(dir $(FEATURE_FILE))))phpunit.xml.dist --filter '/(?:^|\\)$(FEATURE_TEST)(?: with data set |$$)/' $(FEATURE_FILE)
-
 # feature-check is the feature coverage and all verification commands. Its aggregate feature-coverage target depends on the runtime/database
 # cells and the exclusive performance target; CI runs each SQL cell, each runtime's Markdown target, and performance in separate groups.
 # feature-verify-rust runs the verification commands of shard rust, and feature-verify-other runs shard other. Commands shared by features
