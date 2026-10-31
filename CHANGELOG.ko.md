@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9576d731eab68a07dac7b618ab202272421fba538b18e2846f54ba5ba85208f8 -->
+<!-- source-sha256: f581d6208c99223e549878c68c4cab480e5166508e108e8b54f49645346009a5 -->
 # 변경 이력
 
 ## Unreleased
@@ -12,6 +12,7 @@
 
 ## 0.0.19
 
+- packages/rust/orm/tests/statement_events.rs는 다시 rustfmt 형식입니다. T323이 한 줄로 쓴 closure page_of가 block이 되어 make rust-fmt-check가 통과합니다(T323-1).
 - packages/rust/testing/compiler-fixtures/cases.json의 모든 case는 그 파일을 읽는 packages/rust/orm/tests/compiler_fixtures.rs의 trial `compiler_fixtures::<id>` 하나이므로 새 case는 편집 없이 실행됩니다. 각 case는 그곳에 requirement를 선언하고, make rust-compiler-fixtures-check는 그 test만 실행합니다. 이전에는 native 파일이 12개 중 7개를 실행하고 compiler-fixtures.mts 전체 실행이 그중 4개를 이름으로 빼서 3개는 두 번 실행되고 5개는 native test가 없었습니다(T334-3-10). runner는 --case만 받습니다.
 - 저장소의 모든 go test는 test entry point의 tag ormtest를 가진다. tests/go-test.mts가 각 실행에 GO_TEST_TAGS를 합치므로, package orm의 rollback·statement fault test는 client-db-test.mts의 일반 go lane에서 실행된다. 그 lane은 ./packages/go/...를 그 test 없이 실행하고, 따로 tag를 단 두 번째 명령으로 그것들을 실행했다. target마다 있던 -tags ormtest 사본은 지웠다 (T334-3-6-1).
 - scripts/features/schema/recipe.schema.json은 FCV-2부터 FCV-4의 recipe 형식을 닫는다: recipe와 사례의 key, recipe wrapper, 데이터베이스 하나 또는 세 개 모두의 SQL, 결과, op model.connect, codec.decode, sql.exec와 그 field이다. fixture가 있는 recipe는 정확히 mysql, postgres, sqlite를, 없는 recipe는 정확히 none을 기대한다. make feature-unit-check가 실행하는 scripts/features/recipes.test.mts는 parity suite의 모든 recipe를 ajv로 그 schema에 대해 검증하고, schema가 형식의 각 위반을 거부하는지 확인한다. 그 입력은 contracts/check-inputs.json에 선언된다.

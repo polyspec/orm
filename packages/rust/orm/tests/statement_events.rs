@@ -310,7 +310,9 @@ async fn coverage_statement_events() {
 // Requirements: INT-149.
 async fn statement_events_server_transactions() {
     let vector: Value = serde_json::from_str(VECTOR).expect("tests/events/vectors.json");
-    let page_of = |spec: &Value| vector["cases"].as_array().expect("vector cases").iter().find(|c| c["id"] == spec["page"]).expect("server_transactions page is a case").clone();
+    let page_of = |spec: &Value| {
+        vector["cases"].as_array().expect("vector cases").iter().find(|c| c["id"] == spec["page"]).expect("server_transactions page is a case").clone()
+    };
     let mut failures = Vec::new();
     for spec in vector["server_transactions"].as_array().expect("server_transactions entries") {
         let page = page_of(spec);
