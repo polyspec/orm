@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- make runner-check failed because its parts case still expected client-unit-check/codec-aes, which T334-3-14 removed when the AES vectors moved into the codec recipe (T339-13). The case expects the parts the Makefile declares.
 - make runner-check failed on two expectations that T339 broke (T339-12). The error code targets ran orm-gen with $(ONLINE) outside an install target: they now run offline after the install target orm-install-go-codes, which downloads the Go modules that go.sum pins. The arginfo header recipe carried $(ONLINE), which none of its tools reads, and lost it. The test of the parity jobs now expects Go in every job whose checks generate the error code files, and orm-codes-typescript among the prerequisites of orm-install-typescript-runtime.
 - make ts-min-check failed with EBADDEVENGINES again: T339-8 started the outer npm by its path, but npm run typescript:build inside typescript:test found the npm 11 of the lowest Node release first on PATH (T339-11). The .bin folder of the npm of mise.toml now comes before the lowest Node on PATH.
 - make parity-api-check found the python error codes missing, 99 findings, because the python symbol extractor of kit 0.0.83 read only the files git lists and codes.py is untracked build output (T339-10). The pinned kit release is 0.0.84, whose extractor reads the .py files on disk (K977).
