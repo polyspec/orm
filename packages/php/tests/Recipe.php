@@ -214,7 +214,12 @@ final class Recipe
             case 'bool':
                 return $w['bool'];
             case 'int':
-                return (int) $w['int'];
+                // A cast clamps a text beyond PHP_INT_MAX or PHP_INT_MIN; such an integer has no PHP value (COD-62).
+                $int = filter_var($w['int'], FILTER_VALIDATE_INT);
+                if ($int === false) {
+                    throw new \LogicException("the recipe integer {$w['int']} has no PHP value");
+                }
+                return $int;
             case 'float':
                 return (float) $w['float'];
             case 'text':

@@ -14,3 +14,9 @@ func TestRecipeCodecNone(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	recipe.Run(t, "../../../tests/codec/codec.json", recipe.None)
 }
+
+// TestRecipeCodecIntegerBeyondI64 runs tests/codec/codec-integer-beyond-i64.json: an integer beyond i64 is refused (COD-62).
+func TestRecipeCodecIntegerBeyondI64(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	recipe.Run(t, "../../../tests/codec/codec-integer-beyond-i64.json", recipe.None)
+}

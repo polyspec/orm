@@ -8082,7 +8082,8 @@
         "aes-rotation-stored-version-zero",
         "aes-rotation-row-without-aes-column",
         "aes-rotation-status-operation",
-        "aes-json-column"
+        "aes-json-column",
+        "codec-integer-beyond-i64"
       ],
       "fixtures": [
         "tests/codec/codec.json",
@@ -8146,7 +8147,10 @@
         "packages/ts/tests/codec-none.test.mjs",
         "packages/python/tests/test_codec_none.py",
         "packages/rust/tests/tests/codec_none.rs",
-        "packages/rust/orm/tests/styled_column_states.rs"
+        "packages/rust/orm/tests/styled_column_states.rs",
+        "packages/ts/tests/codec-integer-beyond-i64.test.mjs",
+        "packages/python/tests/test_codec_integer_beyond_i64.py",
+        "packages/rust/tests/tests/codec_integer_beyond_i64.rs"
       ],
       "docs": [
         "docs/spec/codec.md",
@@ -8333,7 +8337,8 @@
           "go": {
             "part": "packages/go/orm",
             "tests": [
-              "packages/go/orm/coverage_authenticated_encryption_test.go"
+              "packages/go/orm/coverage_authenticated_encryption_test.go",
+              "packages/go/orm/recipe_codec_test.go"
             ],
             "inputs": [
               "contracts/fixtures/authenticated_encryption.json"
@@ -8394,9 +8399,10 @@
             }
           },
           "rust": {
-            "part": "packages/rust/orm",
+            "part": "packages/rust",
             "tests": [
-              "packages/rust/orm/tests/coverage_authenticated_encryption.rs"
+              "packages/rust/orm/tests/coverage_authenticated_encryption.rs",
+              "packages/rust/tests/tests/codec_integer_beyond_i64.rs"
             ],
             "inputs": [
               "contracts/fixtures/authenticated_encryption.json"
@@ -8427,7 +8433,8 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
-              "packages/ts/tests/coverage_authenticated_encryption.mjs"
+              "packages/ts/tests/coverage_authenticated_encryption.mjs",
+              "packages/ts/tests/codec-integer-beyond-i64.test.mjs"
             ],
             "inputs": [
               "contracts/fixtures/authenticated_encryption.json"
@@ -8451,7 +8458,8 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_authenticated_encryption.py"
+              "packages/python/tests/coverage_authenticated_encryption.py",
+              "packages/python/tests/test_codec_integer_beyond_i64.py"
             ],
             "inputs": [
               "contracts/fixtures/authenticated_encryption.json"

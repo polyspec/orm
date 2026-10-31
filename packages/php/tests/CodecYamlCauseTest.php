@@ -18,7 +18,7 @@ final class CodecYamlCauseTest extends TestCase
             ['decode', 'parse', Code::CODEC_DECODE],
             ['decode', 'reference', Code::CODEC_DECODE],
             ['decode', 'policy', Code::CODEC_DECODE],
-            ['dump', 'dump', Code::CODEC_ENCODE],
+            ['dump', 'policy', Code::CODEC_ENCODE],
         ];
         foreach ($cases as [$operation, $failure, $code]) {
             $result = CodecYamlProbe::run($operation, $failure);

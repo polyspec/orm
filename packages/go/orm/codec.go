@@ -296,13 +296,32 @@ func yamlDecode(b []byte) (any, error) {
 	return yamlNode(file.Docs[0].Body)
 }
 
-// yamlStream applies the stream rules of YAML 1.2 that the parser does not (COD-13): the stream is UTF-8, and a byte order
-// mark may start it (5.2). It returns the stream without its byte order mark.
+// yamlStream applies the stream rules of YAML 1.2 that the parser does not (COD-13): the stream is UTF-8, a byte order
+// mark may start it (5.2) and appears nowhere else, and every character is printable (5.1). It returns the stream without
+// its byte order mark.
 func yamlStream(b []byte) ([]byte, error) {
 	if !utf8.Valid(b) {
 		return nil, codecErr(CodeCodecDecode, "yaml: the stream is not UTF-8")
 	}
-	return bytes.TrimPrefix(b, []byte("\uFEFF")), nil
+	b = bytes.TrimPrefix(b, []byte("\uFEFF"))
+	for at, r := range string(b) {
+		if !yamlPrintable(r) {
+			return nil, codecErr(CodeCodecDecode, "yaml: character U+%04X at byte %d is not printable", r, at)
+		}
+	}
+	return b, nil
+}
+
+// yamlPrintable reports whether a character may appear in a YAML stream (YAML 1.2.2, 5.1, c-printable). A byte order mark
+// is the encoding mark at the start of the stream (5.2) and never content.
+func yamlPrintable(r rune) bool {
+	switch {
+	case r == '\t', r == '\n', r == '\r', r >= ' ' && r <= '~', r == 0x85:
+		return true
+	case r == 0xFEFF:
+		return false
+	}
+	return r >= 0xA0 && r <= 0xD7FF || r >= 0xE000 && r <= 0xFFFD || r >= 0x10000 && r <= 0x10FFFF
 }
 
 func yamlLine(node ast.Node) int {
@@ -544,20 +563,26 @@ func phpFloat(f float64) string {
 	if math.IsNaN(f) {
 		return "NAN"
 	}
-	s := strconv.FormatFloat(f, 'g', -1, 64)
-	if i := strings.IndexByte(s, 'e'); i >= 0 {
-		mant, exp := s[:i], s[i+1:]
-		if !strings.Contains(mant, ".") {
-			mant += ".0"
-		}
-		sign := exp[0]
-		exp = strings.TrimLeft(exp[1:], "0")
-		if exp == "" {
-			exp = "0"
-		}
-		return mant + "E" + string(sign) + exp
+	// PHP writes the shortest digits (serialize_precision -1) in the exponent form when the decimal exponent is below -4
+	// or above 16, and in fixed notation otherwise (zend_gcvt with precision 17).
+	s := strconv.FormatFloat(f, 'e', -1, 64)
+	i := strings.IndexByte(s, 'e')
+	mant, exp := s[:i], s[i+1:]
+	e, err := strconv.Atoi(exp)
+	if err != nil {
+		panic(fmt.Sprintf("orm: FormatFloat wrote the exponent %q", exp))
 	}
-	return s
+	if e >= -4 && e <= 16 {
+		return strconv.FormatFloat(f, 'f', -1, 64)
+	}
+	if !strings.Contains(mant, ".") {
+		mant += ".0"
+	}
+	sign := "+"
+	if e < 0 {
+		sign, e = "-", -e
+	}
+	return mant + "E" + sign + strconv.Itoa(e)
 }
 
 func phpUnserialize(b []byte) (any, error) {

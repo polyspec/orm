@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace {
     require __DIR__ . '/fixtures/CodecProbeYamlStream.php';
-    require __DIR__ . '/fixtures/CodecProbeYaml.php';
+    require __DIR__ . '/fixtures/CodecProbeDumper.php';
     require dirname(__DIR__, 3) . '/vendor-php/autoload.php';
 
     $operation = $argv[1] ?? '';
@@ -14,7 +14,6 @@ namespace {
         'parse' => new \Purr\Yaml\Exception\ParseException('parse sentinel', 1, 'value: ['),
         'reference' => \Purr\Yaml\Exception\ReferenceException::undefinedAnchor('missing', 1),
         'policy' => new \InvalidArgumentException('policy sentinel'),
-        'dump' => new \Symfony\Component\Yaml\Exception\DumpException('dump sentinel'),
         'runtime' => new \RuntimeException('runtime sentinel'),
         'type' => new \TypeError('type sentinel'),
         'error' => new \Error('error sentinel'),
@@ -24,7 +23,7 @@ namespace {
     if ($operation === 'decode') {
         \Purr\Yaml\YamlStream::$failure = $previous;
     } elseif ($operation === 'dump') {
-        \Symfony\Component\Yaml\Yaml::$failure = $previous;
+        \Purr\Yaml\Dumper\Dumper::$failure = $previous;
     } else {
         throw new \InvalidArgumentException("unknown probe operation $operation");
     }
@@ -38,7 +37,7 @@ namespace {
         fwrite(STDERR, 'the codec returned instead of propagating the configured YAML failure');
         exit(1);
     } catch (\Throwable $actual) {
-        $expectedFailure = in_array($failure, ['parse', 'reference', 'policy', 'dump'], true);
+        $expectedFailure = in_array($failure, ['parse', 'reference', 'policy'], true);
         if ($expectedFailure) {
             $valid = $actual instanceof \Polyspec\Orm\OrmException
                 && $actual->code_ === $expectedCode

@@ -1,6 +1,7 @@
 # codec: converts the stored cell of a styled column to a value, and a value to a stored cell (docs/spec/codec.md).
 # Stages are applied in write order; decode undoes them in reverse order.
 import base64
+import decimal
 import hashlib
 import hmac
 import ipaddress
@@ -33,7 +34,9 @@ __all__ = [
     "ordered_json_value",
 ]
 
-_SAFE_INTEGER = 9007199254740991  # 2^53 - 1
+# The integer of the common value model is i64 (COD-16).
+_I64_MIN = -(1 << 63)
+_I64_MAX = (1 << 63) - 1
 _AES_PREFIX = b"ORM-AES2\x00"
 
 
@@ -224,17 +227,15 @@ def _decode_base64(data: bytes) -> bytes:
 
 
 def _validate_codec_value(value, operation: str):
-    # codec value model: None, bool, str, int within the safe range, finite float, list, and dict with str keys.
+    # codec value model: None, bool, str, int within i64, finite float, list, and dict with str keys.
     if value is None or isinstance(value, (bool, str)):
         return value
     if isinstance(value, int):
-        if not -_SAFE_INTEGER <= value <= _SAFE_INTEGER:
+        if not _I64_MIN <= value <= _I64_MAX:
             raise ValueError(f"{operation}: number is outside the supported range")
         return value
     if isinstance(value, float):
-        if not math.isfinite(value) or (
-            value.is_integer() and not -_SAFE_INTEGER <= value <= _SAFE_INTEGER
-        ):
+        if not math.isfinite(value):
             raise ValueError(f"{operation}: number is outside the supported range")
         return value
     if isinstance(value, list):
@@ -249,23 +250,27 @@ def _validate_codec_value(value, operation: str):
 def _php_key(key: str) -> str:
     if re.fullmatch(r"(?:0|-[1-9][0-9]*|[1-9][0-9]*)", key):
         number = int(key)
-        if -_SAFE_INTEGER <= number <= _SAFE_INTEGER:
+        if _I64_MIN <= number <= _I64_MAX:
             return f"i:{number};"
     return f's:{len(key.encode(_UTF8))}:"{key}";'
 
 
 def _php_float(value: float) -> str:
-    # PHP serialize float notation: the exponent is E followed by a signed digit count, and the mantissa is an integer part followed by .0.
-    source = repr(value)
-    match = re.fullmatch(r"(.+?)e([+-]?)([0-9]+)", source, re.IGNORECASE)
-    if match is None:
-        return source
-    mantissa = match.group(1)
-    if "." not in mantissa:
-        mantissa = f"{mantissa}.0"
-    exponent = int(f"{match.group(2) or '+'}{match.group(3)}")
-    sign = "-" if exponent < 0 else "+"
-    return f"{mantissa}E{sign}{abs(exponent)}"
+    # PHP serialize float notation: the shortest digits (serialize_precision -1), in the exponent form E followed by a
+    # signed exponent when the decimal exponent is below -4 or above 16, and in fixed notation otherwise (zend_gcvt with
+    # precision 17); a mantissa of one digit is followed by .0.
+    sign = "-" if math.copysign(1.0, value) < 0 else ""
+    _, digits, exponent = decimal.Decimal(repr(abs(value))).normalize().as_tuple()
+    text = "".join(map(str, digits))
+    point = len(text) + exponent
+    if point - 1 < -4 or point - 1 > 16:
+        mantissa = f"{text[0]}.{text[1:] or '0'}"
+        return f"{sign}{mantissa}E{'-' if point - 1 < 0 else '+'}{abs(point - 1)}"
+    if point <= 0:
+        return f"{sign}0.{'0' * -point}{text}"
+    if point >= len(text):
+        return f"{sign}{text}{'0' * (point - len(text))}"
+    return f"{sign}{text[:point]}.{text[point:]}"
 
 
 def php_serialize(value) -> str:
@@ -276,8 +281,10 @@ def php_serialize(value) -> str:
     if isinstance(value, bool):
         return "b:1;" if value else "b:0;"
     if isinstance(value, int):
-        if not -_SAFE_INTEGER <= value <= _SAFE_INTEGER:
-            raise CodecError(codes.CODEC_ENCODE, f"number {value} is not finite")
+        if not _I64_MIN <= value <= _I64_MAX:
+            raise CodecError(
+                codes.CODEC_ENCODE, f"integer {value} is outside the i64 range"
+            )
         return f"i:{value};"
     if isinstance(value, float):
         if not math.isfinite(value):
@@ -351,9 +358,9 @@ class _PhpParser:
             try:
                 number = int(value)
             except ValueError:
-                number = _SAFE_INTEGER + 1
-            if not -_SAFE_INTEGER <= number <= _SAFE_INTEGER:
-                self._fail("bad or unsafe int")
+                number = _I64_MAX + 1
+            if not _I64_MIN <= number <= _I64_MAX:
+                self._fail("bad int or an int outside i64")
             return number
         if kind == "d":
             self._expect(58)
@@ -368,10 +375,7 @@ class _PhpParser:
         if kind == "s":
             self._expect(58)
             length = self._until(58)
-            if (
-                not length.isdigit()
-                or not -_SAFE_INTEGER <= int(length) <= _SAFE_INTEGER
-            ):
+            if not length.isdigit() or not _I64_MIN <= int(length) <= _I64_MAX:
                 self._fail("bad string length")
             length = int(length)
             self._expect(34)
@@ -394,7 +398,7 @@ class _PhpParser:
     def _array(self):
         self._expect(58)
         count = self._until(58)
-        if not count.isdigit() or not -_SAFE_INTEGER <= int(count) <= _SAFE_INTEGER:
+        if not count.isdigit() or not _I64_MIN <= int(count) <= _I64_MAX:
             self._fail("bad array length")
         count = int(count)
         self._expect(123)
@@ -565,9 +569,22 @@ def _yaml_node(tree, node):
     return _yaml_scalar(_yaml_text(tree.val(node)), not tree.is_val_quoted(node))
 
 
+# A character outside c-printable (YAML 1.2.2, 5.1), or a byte order mark, which is the encoding mark at the start of the
+# stream (5.2) and never content.
+_YAML_NOT_PRINTABLE = re.compile(
+    "[^\t\n\r\x20-\x7e\x85\xa0-\ud7ff\ue000-\ufefe\uff00-\ufffd\U00010000-\U0010ffff]"
+)
+
+
 def _decode_yaml(data: bytes):
     try:
-        _text(data, "decode")
+        text = _text(data, "decode").removeprefix("\ufeff")
+        refused = _YAML_NOT_PRINTABLE.search(text)
+        if refused is not None:
+            raise CodecError(
+                codes.CODEC_DECODE,
+                f"yaml: character U+{ord(refused.group()):04X} at {refused.start()} is not printable",
+            )
         tree = ryml.parse_in_arena(data)
         root = tree.root_id()
         if tree.is_stream(root):

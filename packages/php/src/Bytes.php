@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Polyspec\Orm;
 
 use Polyspec\OrderedJson\Value;
-use Symfony\Component\Yaml\Yaml;
 
 use function Polyspec\OrderedJson\parse as orderedJsonParse;
 use function Polyspec\OrderedJson\stringify as orderedJsonStringify;

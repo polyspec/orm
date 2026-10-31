@@ -2,8 +2,8 @@
  * Polyspec\Orm\Codec of the PHP library (packages/php/src/Codec.php) in C. The dispatch of the stages, the byte work (gz with
  * libz, base64 strictly as the encoder writes it, the ip packing), the value checks and the error codes are made here, the same
  * as Codec.php. The parsers and writers that the library itself calls are called through the engine by the same public names:
- * Polyspec\OrderedJson\parse and stringify (the ordered-json value), Purr\Yaml (the YAML node model and CoreSchema) and
- * Symfony\Component\Yaml\Yaml::dump, and serialize, unserialize, json_encode and get_object_vars of PHP's own core. Each step
+ * Polyspec\OrderedJson\parse and stringify (the ordered-json value), Purr\Yaml (the YAML node model, CoreSchema and the
+ * Dumper), and serialize, unserialize, json_encode and get_object_vars of PHP's own core. Each step
  * keeps the order and the exception classes of Codec.php, so a failure gives the same code.
  */
 #include "codec.h"
@@ -73,8 +73,7 @@ static bool yaml_decode_exception_expected(void)
 
 static bool yaml_encode_exception_expected(void)
 {
-    return exception_is("Symfony\\Component\\Yaml\\Exception\\DumpException")
-        || exception_is("InvalidArgumentException");
+    return exception_is("InvalidArgumentException");
 }
 
 /* Releases a string that may be NULL (a style that is not set). */
@@ -694,10 +693,42 @@ static bool yaml_node(zval *node, zval *schema, zval *out, zend_string **err)
 }
 
 /* yamlDecode: one YAML document, read by purr and resolved by its core schema. */
+/* Whether a character may appear in a YAML stream (YAML 1.2.2, 5.1, c-printable), as Codec::yamlStream. A byte order mark is
+ * the encoding mark at the start of the stream (5.2) and never content. */
+static bool yaml_printable(unsigned long cp)
+{
+    if (cp == '\t' || cp == '\n' || cp == '\r' || (cp >= 0x20 && cp <= 0x7E) || cp == 0x85) return true;
+    if (cp == 0xFEFF) return false;
+    return (cp >= 0xA0 && cp <= 0xD7FF) || (cp >= 0xE000 && cp <= 0xFFFD) || (cp >= 0x10000 && cp <= 0x10FFFF);
+}
+
+/* The stream rules of YAML 1.2 that the reader does not apply, as Codec::yamlStream: the stream is UTF-8, a byte order mark
+ * may start it and appears nowhere else, and every character is printable. */
+static bool yaml_stream(zend_string *text, zend_string **err)
+{
+    const unsigned char *s = (const unsigned char *)ZSTR_VAL(text);
+    size_t n = ZSTR_LEN(text), i = 0;
+    if (!valid_utf8(s, n)) {
+        *err = zend_string_init(ZEND_STRL("the stream is not UTF-8"), 0);
+        return false;
+    }
+    if (n >= 3 && s[0] == 0xEF && s[1] == 0xBB && s[2] == 0xBF) i = 3;
+    while (i < n) {
+        size_t at = i, len = s[i] < 0x80 ? 1 : s[i] < 0xE0 ? 2 : s[i] < 0xF0 ? 3 : 4;
+        unsigned long cp = len == 1 ? s[i] : len == 2 ? s[i] & 0x1F : len == 3 ? s[i] & 0x0F : s[i] & 0x07;
+        for (size_t k = 1; k < len; k++) cp = (cp << 6) | (s[i + k] & 0x3F);
+        i += len;
+        if (!yaml_printable(cp)) {
+            *err = zend_strpprintf(0, "character U+%04lX at byte %zu is not printable", cp, at);
+            return false;
+        }
+    }
+    return true;
+}
+
 static bool yaml_decode_text(zend_string *text, zval *out, zend_string **err)
 {
-    if (!valid_utf8((const unsigned char *)ZSTR_VAL(text), ZSTR_LEN(text))) {
-        *err = zend_string_init(ZEND_STRL("the stream is not UTF-8"), 0);
+    if (!yaml_stream(text, err)) {
         return false;
     }
     zend_class_entry *stream_ce = class_named("Purr\\Yaml\\YamlStream");
@@ -754,24 +785,174 @@ static bool yaml_decode_text(zend_string *text, zval *out, zend_string **err)
     return ok;
 }
 
-/* Symfony's dump flags Codec.php passes: DUMP_EXCEPTION_ON_INVALID_TYPE, DUMP_EMPTY_ARRAY_AS_SEQUENCE and DUMP_NUMERIC_KEY_AS_STRING. */
-#define YAML_DUMP_FLAGS (16 | 1024 | 4096)
+/* A new object of the class, built as `new` builds it with the arguments; it takes no ownership of them. */
+static bool new_with(zval *obj, const char *cls, uint32_t argc, zval *argv)
+{
+    zend_class_entry *ce = class_named(cls);
+    if (ce == NULL) {
+        return false;
+    }
+    object_init_ex(obj, ce);
+    zend_call_known_instance_method(ce->constructor, Z_OBJ_P(obj), NULL, argc, argv);
+    if (EG(exception) != NULL) {
+        zval_ptr_dtor(obj);
+        return false;
+    }
+    return true;
+}
 
+/* A case of an enum of purrphp/yaml, such as ScalarStyle::DoubleQuoted. */
+static bool enum_case(zval *out, const char *cls, const char *name)
+{
+    zend_class_entry *ce = class_named(cls);
+    if (ce == NULL) {
+        return false;
+    }
+    ZVAL_OBJ_COPY(out, zend_enum_get_case_cstr(ce, name));
+    return true;
+}
+
+/* new ScalarNode($text) or, with quoted, new ScalarNode($text, ScalarStyle::DoubleQuoted); it takes ownership of text. */
+static bool yaml_scalar(zend_string *text, bool quoted, zval *out)
+{
+    zval args[2];
+    ZVAL_STR(&args[0], text);
+    uint32_t argc = 1;
+    if (quoted) {
+        if (!enum_case(&args[1], "Purr\\Yaml\\Node\\ScalarStyle", "DoubleQuoted")) {
+            zval_ptr_dtor(&args[0]);
+            return false;
+        }
+        argc = 2;
+    }
+    bool ok = new_with(out, "Purr\\Yaml\\Node\\ScalarNode", argc, args);
+    for (uint32_t i = 0; i < argc; i++) {
+        zval_ptr_dtor(&args[i]);
+    }
+    return ok;
+}
+
+/* yamlNodeOf of Codec.php: the YAML node of a common value, its strings and keys double-quoted and a float by its shortest
+ * text with its fraction. */
+static bool yaml_node_of(zval *v, zval *out)
+{
+    switch (Z_TYPE_P(v)) {
+        case IS_NULL:
+            return yaml_scalar(zend_string_init(ZEND_STRL("null"), 0), false, out);
+        case IS_TRUE:
+            return yaml_scalar(zend_string_init(ZEND_STRL("true"), 0), false, out);
+        case IS_FALSE:
+            return yaml_scalar(zend_string_init(ZEND_STRL("false"), 0), false, out);
+        case IS_LONG:
+            return yaml_scalar(zend_long_to_str(Z_LVAL_P(v)), false, out);
+        case IS_DOUBLE: {
+            zval args[2], text;
+            ZVAL_COPY(&args[0], v);
+            ZVAL_LONG(&args[1], PHP_JSON_PRESERVE_ZERO_FRACTION | PHP_JSON_THROW_ON_ERROR);
+            bool ok = call_fn("json_encode", &text, 2, args);
+            zval_ptr_dtor(&args[0]);
+            return ok && yaml_scalar(Z_STR(text), false, out);
+        }
+        case IS_STRING:
+            return yaml_scalar(zend_string_copy(Z_STR_P(v)), true, out);
+        case IS_ARRAY:
+            break;
+        default:
+            zend_throw_exception(class_named("InvalidArgumentException"), "value type is not supported", 0);
+            return false;
+    }
+    HashTable *ht = Z_ARRVAL_P(v);
+    uint32_t n = zend_hash_num_elements(ht), i = 0;
+    bool list = zend_array_is_list(ht);
+    zval *items = n > 0 ? safe_emalloc(n, sizeof(zval), 0) : NULL;
+    bool ok = true;
+    zend_string *key;
+    zend_ulong idx;
+    zval *item;
+    ZEND_HASH_FOREACH_KEY_VAL(ht, idx, key, item)
+    {
+        zval node;
+        if (!yaml_node_of(item, &node)) {
+            ok = false;
+            break;
+        }
+        if (list) {
+            ZVAL_COPY_VALUE(&items[i++], &node);
+            continue;
+        }
+        zval pair[2];
+        ZVAL_COPY_VALUE(&pair[1], &node);
+        if (!yaml_scalar(key != NULL ? zend_string_copy(key) : zend_long_to_str((zend_long)idx), true, &pair[0])) {
+            zval_ptr_dtor(&pair[1]);
+            ok = false;
+            break;
+        }
+        ok = new_with(&items[i], "Purr\\Yaml\\Node\\MappingEntry", 2, pair);
+        zval_ptr_dtor(&pair[0]);
+        zval_ptr_dtor(&pair[1]);
+        if (!ok) {
+            break;
+        }
+        i++;
+    }
+    ZEND_HASH_FOREACH_END();
+    zval collection, args[2];
+    uint32_t argc = 1;
+    if (ok) {
+        ok = new_with(&collection, list ? "Purr\\Yaml\\Node\\NodeList" : "Purr\\Yaml\\Node\\MappingEntryList", i, items);
+    }
+    for (uint32_t k = 0; k < i; k++) {
+        zval_ptr_dtor(&items[k]);
+    }
+    if (items != NULL) {
+        efree(items);
+    }
+    if (!ok) {
+        return false;
+    }
+    ZVAL_COPY_VALUE(&args[0], &collection);
+    if (n == 0) {
+        if (!enum_case(&args[1], "Purr\\Yaml\\Node\\CollectionStyle", "Flow")) {
+            zval_ptr_dtor(&args[0]);
+            return false;
+        }
+        argc = 2;
+    }
+    ok = new_with(out, list ? "Purr\\Yaml\\Node\\SequenceNode" : "Purr\\Yaml\\Node\\MappingNode", argc, args);
+    for (uint32_t k = 0; k < argc; k++) {
+        zval_ptr_dtor(&args[k]);
+    }
+    return ok;
+}
+
+/* The YAML text of a common value, as Codec.php writes it: the Dumper of purrphp/yaml writes its node, then a line break. */
 static bool yaml_dump(zval *value, zval *out, zend_string **err)
 {
     if (!yaml_validate(value, err)) {
         return false;
     }
-    zval args[4];
-    ZVAL_COPY(&args[0], value);
-    ZVAL_LONG(&args[1], 20);
-    ZVAL_LONG(&args[2], 2);
-    ZVAL_LONG(&args[3], YAML_DUMP_FLAGS);
-    bool ok = call_static("Symfony\\Component\\Yaml\\Yaml", "dump", out, 4, args);
-    for (int i = 0; i < 4; i++) {
-        zval_ptr_dtor(&args[i]);
+    zval root, document, dumper, text;
+    if (!yaml_node_of(value, &root)) {
+        return false;
     }
-    return ok;
+    bool ok = new_with(&document, "Purr\\Yaml\\Document", 1, &root);
+    zval_ptr_dtor(&root);
+    if (!ok) {
+        return false;
+    }
+    zend_class_entry *dumper_ce = class_named("Purr\\Yaml\\Dumper\\Dumper");
+    ok = dumper_ce != NULL && new_object(&dumper, dumper_ce);
+    if (ok) {
+        ok = call_method(&dumper, "dumpDocument", &text, 1, &document);
+        zval_ptr_dtor(&dumper);
+    }
+    zval_ptr_dtor(&document);
+    if (!ok) {
+        return false;
+    }
+    ZVAL_STR(out, zend_string_concat2(Z_STRVAL(text), Z_STRLEN(text), "\n", 1));
+    zval_ptr_dtor(&text);
+    return true;
 }
 
 /* ---- ordered JSON: the text of a value, as Codec.php jsonText ---- */
@@ -973,16 +1154,38 @@ static bool serialized_digits(const char *s, size_t len, size_t *at, size_t *val
     return *at > start;
 }
 
-/* Whether a value of the serialized text starts with O:, C:, R: or r: (COD-34), as Codec::serializedObjectOrReference: the walk
- * reads each value by its type letter and skips a string by its byte length, so the letters inside a string are text; it stops
- * at the first value it cannot read and leaves that format failure to unserialize. */
-static bool serialized_object_or_reference(const char *s, size_t len)
+/* Whether the text of a serialized integer, with its optional sign and leading zeros, is in the i64 range, as
+ * Codec::serializedI64; a text that is no integer is left to unserialize. */
+static bool serialized_i64(const char *s, size_t len)
+{
+    size_t at = 0;
+    bool negative = false;
+    if (at < len && (s[at] == '+' || s[at] == '-')) {
+        negative = s[at] == '-';
+        at++;
+    }
+    if (at == len) return true;
+    for (size_t i = at; i < len; i++) {
+        if (s[i] < '0' || s[i] > '9') return true;
+    }
+    while (at + 1 < len && s[at] == '0') at++;
+    const char *limit = negative ? "9223372036854775808" : "9223372036854775807";
+    size_t digits = len - at, limit_len = strlen(limit);
+    return digits < limit_len || (digits == limit_len && memcmp(s + at, limit, limit_len) <= 0);
+}
+
+/* The refusal of a serialized text that unserialize would read without an error, as Codec::serializedRefusal: a value that
+ * starts with O:, C:, R: or r: is CODEC_UNSUPPORTED (COD-34), and an integer outside i64 is CODEC_DECODE (COD-16), since
+ * unserialize clamps it. The walk reads each value by its type letter and skips a string by its byte length, so the letters
+ * inside a string are text; it stops at the first value it cannot read and leaves that format failure to unserialize.
+ * It returns false after it has set the error. */
+static bool serialized_refusal(const char *s, size_t len)
 {
     size_t at = 0, n;
     while (at < len) {
         char type = s[at];
         if (strchr("OCRr", type) != NULL && at + 1 < len && s[at + 1] == ':') {
-            return true;
+            return orm_fail("CODEC_UNSUPPORTED", zend_string_init(ZEND_STRL("serialize: objects and references are not supported"), 0));
         }
         if (type == '}') {
             at++;
@@ -991,26 +1194,29 @@ static bool serialized_object_or_reference(const char *s, size_t len)
         } else if (type == 's' && at + 1 < len && s[at + 1] == ':') {
             at += 2;
             if (!serialized_digits(s, len, &at, &n) || at + 1 >= len || s[at] != ':' || s[at + 1] != '"') {
-                return false;
+                return true;
             }
             at += 2 + n + 2;
         } else if (type == 'a' && at + 1 < len && s[at + 1] == ':') {
             at += 2;
             if (!serialized_digits(s, len, &at, &n) || at + 1 >= len || s[at] != ':' || s[at + 1] != '{') {
-                return false;
+                return true;
             }
             at += 2;
         } else if (strchr("bid", type) != NULL && at + 1 < len && s[at + 1] == ':') {
             const char *end = memchr(s + at, ';', len - at);
             if (end == NULL) {
-                return false;
+                return true;
+            }
+            if (type == 'i' && !serialized_i64(s + at + 2, (size_t)(end - s) - at - 2)) {
+                return orm_failf("CODEC_DECODE", "serialize: integer %.*s is outside the i64 range", (int)((size_t)(end - s) - at - 2), s + at + 2);
             }
             at = (size_t)(end - s) + 1;
         } else {
-            return false;
+            return true;
         }
     }
-    return false;
+    return true;
 }
 
 static bool decode_stages(HashTable *styles, zval *raw, zval *ret)
@@ -1077,8 +1283,8 @@ static bool decode_stages(HashTable *styles, zval *raw, zval *ret)
             if (!need_string(&cur, "unserialize")) {
                 ok = false;
             } else {
-                if (serialized_object_or_reference(Z_STRVAL(cur), Z_STRLEN(cur))) {
-                    ok = orm_fail("CODEC_UNSUPPORTED", zend_string_init(ZEND_STRL("serialize: objects and references are not supported"), 0));
+                if (!serialized_refusal(Z_STRVAL(cur), Z_STRLEN(cur))) {
+                    ok = false;
                 } else {
                     zval args[2], opts, result;
                     array_init(&opts);

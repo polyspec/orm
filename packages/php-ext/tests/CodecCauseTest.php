@@ -18,7 +18,7 @@ final class CodecCauseTest extends TestCase
                 ['decode', 'parse', \Polyspec\Orm\Code::CODEC_DECODE],
                 ['decode', 'reference', \Polyspec\Orm\Code::CODEC_DECODE],
                 ['decode', 'policy', \Polyspec\Orm\Code::CODEC_DECODE],
-                ['dump', 'dump', \Polyspec\Orm\Code::CODEC_ENCODE],
+                ['dump', 'policy', \Polyspec\Orm\Code::CODEC_ENCODE],
             ] as [$operation, $failure, $code]
         ) {
             $result = CodecYamlProbe::run($operation, $failure, true);

@@ -1,0 +1,100 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "COD-62"
+  ],
+  "cases": [
+    {
+      "id": "integer_beyond_i64",
+      "requirements": [
+        "COD-62"
+      ],
+      "steps": [
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "int": "18446744073709551615"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "yaml"
+          ],
+          "value": {
+            "int": "18446744073709551615"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "array": [
+              {
+                "int": "1"
+              },
+              {
+                "int": "18446744073709551615"
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "yaml"
+          ],
+          "value": {
+            "object": [
+              [
+                "a",
+                {
+                  "int": "18446744073709551615"
+                }
+              ]
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "int": "9223372036854775808"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

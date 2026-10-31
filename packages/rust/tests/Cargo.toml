@@ -59,6 +59,11 @@ path = "tests/catalog_connection_sqlite.rs"
 harness = false
 
 [[test]]
+name = "codec_integer_beyond_i64"
+path = "tests/codec_integer_beyond_i64.rs"
+harness = false
+
+[[test]]
 name = "markdown_conformance"
 path = "tests/markdown_conformance.rs"
 test = false

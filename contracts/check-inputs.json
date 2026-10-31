@@ -1691,7 +1691,7 @@
         "packages/php/tests/CodecYamlCauseTest.php",
         "packages/php/tests/CodecYamlProbe.php",
         "packages/php/tests/codec-yaml-probe.php",
-        "packages/php/tests/fixtures/CodecProbeYaml.php",
+        "packages/php/tests/fixtures/CodecProbeDumper.php",
         "packages/php/tests/fixtures/CodecProbeYamlStream.php",
         "packages/php-ext/tests/CodecCauseTest.php",
         "packages/php-ext/src/codec.c"

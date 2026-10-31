@@ -5,9 +5,15 @@ declare(strict_types=1);
 namespace Polyspec\Orm;
 
 use Polyspec\OrderedJson\Value;
+use Purr\Yaml\Document;
+use Purr\Yaml\Dumper\Dumper;
 use Purr\Yaml\Node\AbstractNode;
 use Purr\Yaml\Node\AliasNode;
+use Purr\Yaml\Node\CollectionStyle;
+use Purr\Yaml\Node\MappingEntry;
+use Purr\Yaml\Node\MappingEntryList;
 use Purr\Yaml\Node\MappingNode;
+use Purr\Yaml\Node\NodeList;
 use Purr\Yaml\Node\ScalarNode;
 use Purr\Yaml\Node\ScalarStyle;
 use Purr\Yaml\Node\SequenceNode;
@@ -15,8 +21,6 @@ use Purr\Yaml\Exception\ParseException;
 use Purr\Yaml\Exception\ReferenceException;
 use Purr\Yaml\Schema\CoreSchema;
 use Purr\Yaml\YamlStream;
-use Symfony\Component\Yaml\Exception\DumpException;
-use Symfony\Component\Yaml\Yaml;
 
 use function Polyspec\OrderedJson\parse as orderedJsonParse;
 use function Polyspec\OrderedJson\stringify as orderedJsonStringify;
@@ -80,11 +84,9 @@ final class Codec
                     }
                     break;
                 case 'serialize':
-                    if (self::serializedObjectOrReference($v)) {
-                        throw new OrmException(
-                            Code::CODEC_UNSUPPORTED,
-                            'serialize: objects and references are not supported'
-                        );
+                    $refusal = self::serializedRefusal($v);
+                    if ($refusal !== null) {
+                        throw $refusal;
                     }
                     // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- a bad format returns false, reported as CODEC_DECODE below
                     $v = @unserialize($v, ['allowed_classes' => false]);
@@ -152,9 +154,8 @@ final class Codec
                     }
                     try {
                         self::validateYamlValue($value);
-                        $cur = Yaml::dump($value, 20, 2, Yaml::DUMP_EXCEPTION_ON_INVALID_TYPE
-                            | Yaml::DUMP_EMPTY_ARRAY_AS_SEQUENCE | Yaml::DUMP_NUMERIC_KEY_AS_STRING);
-                    } catch (DumpException | \InvalidArgumentException $e) {
+                        $cur = (new Dumper())->dumpDocument(new Document(self::yamlNodeOf($value))) . "\n";
+                    } catch (\InvalidArgumentException $e) {
                         throw new OrmException(Code::CODEC_ENCODE, 'yaml: ' . $e->getMessage(), $e);
                     }
                     break;
@@ -236,11 +237,25 @@ final class Codec
         }
     }
 
-    /** The stream rule of YAML 1.2 that the reader does not apply (docs/spec/codec.md COD-13): the stream is UTF-8. */
+    /**
+     * The stream rules of YAML 1.2 that the reader does not apply (docs/spec/codec.md COD-13): the stream is UTF-8,
+     * a byte order mark may start it (5.2) and appears nowhere else, and every character is printable (5.1,
+     * c-printable).
+     */
     private static function yamlStream(string $text): void
     {
         if (!mb_check_encoding($text, 'UTF-8')) {
             throw new \InvalidArgumentException('the stream is not UTF-8');
+        }
+        $stream = str_starts_with($text, "\u{FEFF}") ? substr($text, 3) : $text;
+        $notPrintable = '/[^\t\n\r\x{20}-\x{7E}\x{85}\x{A0}-\x{D7FF}\x{E000}-\x{FEFE}\x{FF00}-\x{FFFD}'
+            . '\x{10000}-\x{10FFFF}]/u';
+        if (preg_match($notPrintable, $stream, $match, PREG_OFFSET_CAPTURE) === 1) {
+            throw new \InvalidArgumentException(sprintf(
+                'character U+%04X at byte %d is not printable',
+                mb_ord($match[0][0], 'UTF-8'),
+                $match[0][1]
+            ));
         }
     }
 
@@ -333,6 +348,36 @@ final class Codec
             }
         }
         return true;
+    }
+
+    /**
+     * The YAML node of a common value, which the Dumper of purrphp/yaml writes. A string, a key or a value, is
+     * double-quoted, so the core schema reads it as a string and each character outside c-printable is its escape
+     * (COD-29); a float is written by its shortest text with its fraction, so it reads back as a float; a key is the
+     * string of a PHP array key.
+     */
+    private static function yamlNodeOf(mixed $value): AbstractNode
+    {
+        return match (true) {
+            $value === null => new ScalarNode('null'),
+            is_bool($value) => new ScalarNode($value ? 'true' : 'false'),
+            is_int($value) => new ScalarNode((string) $value),
+            is_float($value) => new ScalarNode(json_encode($value, JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR)),
+            is_string($value) => new ScalarNode($value, ScalarStyle::DoubleQuoted),
+            $value === [] => new SequenceNode(new NodeList(), CollectionStyle::Flow),
+            is_array($value) && array_is_list($value) => new SequenceNode(
+                new NodeList(...array_map(self::yamlNodeOf(...), $value))
+            ),
+            is_array($value) => new MappingNode(new MappingEntryList(...array_map(
+                static fn (int|string $key, mixed $item): MappingEntry => new MappingEntry(
+                    new ScalarNode((string) $key, ScalarStyle::DoubleQuoted),
+                    self::yamlNodeOf($item),
+                ),
+                array_keys($value),
+                $value,
+            ))),
+            default => throw new \InvalidArgumentException('value type is not supported'),
+        };
     }
 
     private static function validateYamlValue(mixed $value): void
@@ -559,18 +604,20 @@ final class Codec
     }
 
     /**
-     * Whether a value of the serialized text starts with O:, C:, R: or r: (COD-34). The walk reads each value by its
-     * type letter and skips a string by its byte length, so the letters inside a string are text; it stops at the first
-     * value it cannot read and leaves that format failure to unserialize.
+     * The refusal of a serialized text that unserialize would read without an error: a value that starts with O:,
+     * C:, R: or r: is CODEC_UNSUPPORTED (COD-34), and an integer outside i64 is CODEC_DECODE (COD-16), since
+     * unserialize clamps it to PHP_INT_MAX or PHP_INT_MIN. The walk reads each value by its type letter and skips a
+     * string by its byte length, so the letters inside a string are text; it stops at the first value it cannot read
+     * and leaves that format failure to unserialize.
      */
-    private static function serializedObjectOrReference(string $text): bool
+    private static function serializedRefusal(string $text): ?OrmException
     {
         $at = 0;
         $length = strlen($text);
         while ($at < $length) {
             $type = $text[$at];
             if (in_array($type, ['O', 'C', 'R', 'r'], true) && substr($text, $at + 1, 1) === ':') {
-                return true;
+                return new OrmException(Code::CODEC_UNSUPPORTED, 'serialize: objects and references are not supported');
             }
             if ($type === '}' || $type === 'N' && substr($text, $at, 2) === 'N;') {
                 $at += $type === '}' ? 1 : 2;
@@ -584,13 +631,26 @@ final class Codec
                 $at += strlen($m[0]);
                 continue;
             }
-            if (preg_match('/\G[bid]:[^;]*;/', $text, $m, 0, $at) === 1) {
+            if (preg_match('/\G([bid]):([^;]*);/', $text, $m, 0, $at) === 1) {
+                if ($m[1] === 'i' && !self::serializedI64($m[2])) {
+                    return new OrmException(Code::CODEC_DECODE, "serialize: integer {$m[2]} is outside the i64 range");
+                }
                 $at += strlen($m[0]);
                 continue;
             }
-            return false;
+            return null;
         }
-        return false;
+        return null;
+    }
+
+    /** Whether the text of a serialized integer, with its optional sign and leading zeros, is in the i64 range. */
+    private static function serializedI64(string $digits): bool
+    {
+        if (preg_match('/^([+-]?)0*([0-9]+)$/', $digits, $m) !== 1) {
+            return true;
+        }
+        $limit = $m[1] === '-' ? '9223372036854775808' : '9223372036854775807';
+        return strlen($m[2]) < strlen($limit) || strlen($m[2]) === strlen($limit) && strcmp($m[2], $limit) <= 0;
     }
 
     /** unserialize gives PHP arrays as-is; nothing to change in the value model (int keys stay int keys). */

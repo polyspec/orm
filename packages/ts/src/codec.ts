@@ -2,13 +2,14 @@ import { deflateSync, inflateSync } from 'node:zlib';
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'node:crypto';
 import { isIP } from 'node:net';
 import { Value as JsonValue, parse as orderedJsonParse, stringify as orderedJsonStringify } from '@polyspec/ordered-json';
-import { isMap, isScalar, parseAllDocuments, stringify as stringifyYaml, visit } from 'yaml';
+import { Document, isMap, isScalar, parseAllDocuments, visit } from 'yaml';
 import { present } from './present.js';
 import { StyledValue } from './styled_value.js';
 import * as codes from './codes.js';
 import type { CODEC_DECODE, CODEC_ENCODE, CODEC_UNSUPPORTED, CONFIG } from './codes.js';
 
-export type CodecValue = null | boolean | number | string | CodecValue[] | { [key: string]: CodecValue };
+/** The common value model of COD-16: an integer is a bigint within i64, and a float is a finite number. */
+export type CodecValue = null | boolean | bigint | number | string | CodecValue[] | { [key: string]: CodecValue };
 export type EncodedValue = string | Uint8Array | null;
 /** The value of a column with an ordered_json stage: an ordered-json value. */
 export type { JsonValue };
@@ -140,6 +141,14 @@ export class CodecError extends Error {
   }
 }
 
+const I64_MIN = -(1n << 63n);
+const I64_MAX = (1n << 63n) - 1n;
+
+/** Whether an integer is in the i64 range of the common value model (COD-16). */
+function i64(value: bigint): boolean {
+  return value >= I64_MIN && value <= I64_MAX;
+}
+
 const utf8 = new TextEncoder();
 const text = new TextDecoder('utf-8', { fatal: true });
 
@@ -249,7 +258,7 @@ export function encodeStyled(styles: readonly string[], state: StyledValue<unkno
       case 'yaml':
         if (index !== 0) throw new CodecError(codes.CODEC_UNSUPPORTED, 'yaml must be the first style');
         try {
-          current = utf8.encode(stringifyYaml(validateCodecValue(commonValue(transformed, 'yaml'), 'yaml encode'), { version: '1.2', schema: 'core', sortMapEntries: true }));
+          current = utf8.encode(yamlText(validateCodecValue(commonValue(transformed, 'yaml'), 'yaml encode')));
         } catch (error) {
           throw new CodecError(codes.CODEC_ENCODE, `yaml: ${String(error)}`);
         }
@@ -275,16 +284,38 @@ export function encodeStyled(styles: readonly string[], state: StyledValue<unkno
   return string(current, 'encode');
 }
 
+/**
+ * Writes a common value as one YAML document. An integer is a bigint and a float a number, so a float whose text has no
+ * fraction or exponent is written with one fraction digit and reads back as a float (COD-29). A string, a key or a value,
+ * that holds a character outside c-printable is double-quoted, and the character is written as its escape (YAML 1.2.2,
+ * 5.7): the library escapes only the characters below U+0020, and these characters come only from string content, so
+ * each one left in the text is inside a double-quoted scalar.
+ */
+function yamlText(value: CodecValue): string {
+  const document = new Document(value, { version: '1.2', schema: 'core', sortMapEntries: true });
+  visit(document, {
+    Scalar(_key, node) {
+      if (typeof node.value === 'number' && /^-?[0-9]+$/.test(JSON.stringify(node.value))) node.minFractionDigits = 1;
+      if (typeof node.value === 'string' && YAML_NOT_PRINTABLE.test(node.value)) node.type = 'QUOTE_DOUBLE';
+    },
+  });
+  return document.toString().replace(new RegExp(YAML_NOT_PRINTABLE.source, 'gu'), character => {
+    const point = present(character.codePointAt(0), 'a character to escape');
+    const hex = point.toString(16).toUpperCase();
+    return point <= 0xff ? `\\x${hex.padStart(2, '0')}` : point <= 0xffff ? `\\u${hex.padStart(4, '0')}` : `\\U${hex.padStart(8, '0')}`;
+  });
+}
+
 /** Rejects an ordered-json value for a stage that takes the common value model. */
 function commonValue(value: unknown, style: string): CodecValue {
   if (value instanceof JsonValue) throw new CodecError(codes.CODEC_ENCODE, `${style}: an ordered-json value is written only by the ordered_json stage`);
-  if (!isCodecValue(value)) throw new CodecError(codes.CODEC_ENCODE, `${style}: the value is not a codec value (null, boolean, number, string, array or plain object of them)`);
+  if (!isCodecValue(value)) throw new CodecError(codes.CODEC_ENCODE, `${style}: the value is not a codec value (null, boolean, bigint, number, string, array or plain object of them)`);
   return value;
 }
 
-/** Whether `value` has the shape of a CodecValue: null, a boolean, number or string, or an array or plain object of them. */
+/** Whether `value` has the shape of a CodecValue: null, a boolean, bigint, number or string, or an array or plain object of them. */
 function isCodecValue(value: unknown): value is CodecValue {
-  if (value === null || typeof value === 'boolean' || typeof value === 'number' || typeof value === 'string') return true;
+  if (value === null || typeof value === 'boolean' || typeof value === 'bigint' || typeof value === 'number' || typeof value === 'string') return true;
   if (Array.isArray(value)) return value.every(isCodecValue);
   if (typeof value !== 'object') return false;
   const proto: unknown = Object.getPrototypeOf(value);
@@ -338,9 +369,19 @@ function jsonText(value: unknown, depth: number): string {
   return `{${members.join(',')}}`;
 }
 
+// A character outside c-printable (YAML 1.2.2, 5.1), or a byte order mark, which is the encoding mark at the start of the
+// stream (5.2) and never content.
+const YAML_NOT_PRINTABLE = /[^\t\n\r\x20-\x7e\x85\xa0-\ud7ff\ue000-\ufefe\uff00-\ufffd\u{10000}-\u{10ffff}]/u;
+
 function decodeYaml(current: Uint8Array): CodecValue {
   try {
-    const documents = parseAllDocuments(string(current, 'decode'), { version: '1.2', schema: 'core', strict: true, uniqueKeys: true, stringKeys: true });
+    const source = string(current, 'decode');
+    const stream = source.startsWith('\ufeff') ? source.slice(1) : source;
+    const refused = YAML_NOT_PRINTABLE.exec(stream);
+    if (refused !== null) {
+      throw new CodecError(codes.CODEC_DECODE, `yaml: character U+${present(refused[0].codePointAt(0), 'the refused character').toString(16).toUpperCase().padStart(4, '0')} at ${refused.index} is not printable`);
+    }
+    const documents = parseAllDocuments(stream, { version: '1.2', schema: 'core', strict: true, uniqueKeys: true, stringKeys: true, intAsBigInt: true });
     // A stream without a document (empty, or comments only) is not a YAML value.
     if (documents.length === 0) throw new Error('no document');
     if (documents.length > 1) throw new Error('multiple documents are not supported');
@@ -393,8 +434,12 @@ function decodeYaml(current: Uint8Array): CodecValue {
 
 function validateCodecValue(value: unknown, operation: string): CodecValue {
   if (value === null || typeof value === 'boolean' || typeof value === 'string') return value;
+  if (typeof value === 'bigint') {
+    if (!i64(value)) throw new Error(`${operation}: integer ${value} is outside the i64 range`);
+    return value;
+  }
   if (typeof value === 'number') {
-    if (!Number.isFinite(value) || (Number.isInteger(value) && !Number.isSafeInteger(value))) throw new Error(`${operation}: number is outside the supported range`);
+    if (!Number.isFinite(value)) throw new Error(`${operation}: number ${value} is not finite`);
     return value;
   }
   if (Array.isArray(value)) return value.map(item => validateCodecValue(item, operation));
@@ -407,9 +452,13 @@ function validateCodecValue(value: unknown, operation: string): CodecValue {
 function phpSerialize(value: CodecValue): string {
   if (value === null) return 'N;';
   if (typeof value === 'boolean') return value ? 'b:1;' : 'b:0;';
+  if (typeof value === 'bigint') {
+    if (!i64(value)) throw new CodecError(codes.CODEC_ENCODE, `integer ${value} is outside the i64 range`);
+    return `i:${value};`;
+  }
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) throw new CodecError(codes.CODEC_ENCODE, `number ${value} is not finite`);
-    return Number.isSafeInteger(value) ? `i:${value};` : `d:${phpFloat(value)};`;
+    return `d:${phpFloat(value)};`;
   }
   if (typeof value === 'string') return `s:${utf8.encode(value).length}:"${value}";`;
   if (Array.isArray(value)) {
@@ -420,21 +469,26 @@ function phpSerialize(value: CodecValue): string {
 }
 
 function phpKey(key: string): string {
-  if (/^(?:0|-[1-9][0-9]*|[1-9][0-9]*)$/.test(key)) {
-    const number = Number(key);
-    if (Number.isSafeInteger(number)) return `i:${number};`;
-  }
+  if (/^(?:0|-[1-9][0-9]*|[1-9][0-9]*)$/.test(key) && i64(BigInt(key))) return `i:${key};`;
   return `s:${utf8.encode(key).length}:"${key}";`;
 }
 
+/**
+ * The PHP serialize float notation: the shortest digits (serialize_precision -1), in the exponent form E followed by a
+ * signed exponent when the decimal exponent is below -4 or above 16, and in fixed notation otherwise (zend_gcvt with
+ * precision 17); a mantissa of one digit is followed by .0.
+ */
 function phpFloat(value: number): string {
-  const source = value.toString();
-  const match = /^(.+?)e([+-]?)([0-9]+)$/i.exec(source);
-  if (!match) return source;
-  const significand = present(match[1], 'the significand of an exponent float');
-  const mantissa = significand.includes('.') ? significand : `${significand}.0`;
-  const exponent = Number(`${match[2] || '+'}${present(match[3], 'the exponent of an exponent float')}`);
-  return `${mantissa}E${exponent < 0 ? '-' : '+'}${Math.abs(exponent)}`;
+  const sign = value < 0 || Object.is(value, -0) ? '-' : '';
+  const match = present(/^([0-9])(?:\.([0-9]+))?e([+-][0-9]+)$/.exec(Math.abs(value).toExponential()), 'the exponent form of a float');
+  const lead = present(match[1], 'the first digit of a float');
+  const digits = `${lead}${match[2] ?? ''}`;
+  const exponent = Number(match[3]);
+  if (exponent < -4 || exponent > 16) return `${sign}${lead}.${match[2] ?? '0'}E${exponent < 0 ? '-' : '+'}${Math.abs(exponent)}`;
+  const point = exponent + 1;
+  if (point <= 0) return `${sign}0.${'0'.repeat(-point)}${digits}`;
+  if (point >= digits.length) return `${sign}${digits}${'0'.repeat(point - digits.length)}`;
+  return `${sign}${digits.slice(0, point)}.${digits.slice(point)}`;
 }
 
 class PhpParser {
@@ -486,8 +540,10 @@ class PhpParser {
       }
       case 'i': {
         this.expect(58);
-        const value = Number(this.until(59));
-        if (!Number.isSafeInteger(value)) this.fail('bad or unsafe int');
+        const raw = this.until(59);
+        if (!/^[+-]?[0-9]+$/.test(raw)) this.fail('bad int');
+        const value = BigInt(raw);
+        if (!i64(value)) this.fail(`integer ${raw} is outside the i64 range`);
         return value;
       }
       case 'd': {
@@ -530,8 +586,8 @@ class PhpParser {
     let sequential = true;
     for (let index = 0; index < count; index++) {
       const key = this.value();
-      if (typeof key !== 'number' && typeof key !== 'string') this.fail('array key must be int or string');
-      if (typeof key !== 'number' || key !== index) sequential = false;
+      if (typeof key !== 'bigint' && typeof key !== 'string') this.fail('array key must be int or string');
+      if (typeof key !== 'bigint' || key !== BigInt(index)) sequential = false;
       entries.push([String(key), this.value()]);
     }
     this.expect(125);

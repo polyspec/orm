@@ -2686,14 +2686,15 @@ go-vet-check/orm:
 codec-check: codec-check/go codec-check/rust codec-check/typescript codec-check/python codec-check/php codec-check/php-extension
 codec-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_none
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_integer_beyond_i64
 codec-check/go:
-	$(GO_TEST) ./packages/go/orm -run '^TestRecipeCodecNone$$' -count=1
+	$(GO_TEST) ./packages/go/orm -run '^(TestRecipeCodecNone|TestRecipeCodecIntegerBeyondI64)$$' -count=1
 codec-check/rust: lease-tool
-	cd packages/rust && $(CARGO_TEST) codec-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test codec_none
+	cd packages/rust && $(CARGO_TEST) codec-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test codec_none --test codec_integer_beyond_i64
 codec-check/typescript: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	$(NODE) --test packages/ts/tests/codec-none.test.mjs
+	$(NODE) --test packages/ts/tests/codec-none.test.mjs packages/ts/tests/codec-integer-beyond-i64.test.mjs
 codec-check/php: php-vendor-check
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecRecipeTest.php
 codec-check/php-extension: php-vendor-check build-php-ext

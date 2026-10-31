@@ -142,7 +142,7 @@ function jsonText(w) {
 function toValue(w) {
   if ('nil' in w || 'null' in w) return null;
   if ('bool' in w) return w.bool;
-  if ('int' in w) return Number(w.int);
+  if ('int' in w) return BigInt(w.int);
   if ('float' in w) return Number(w.float);
   if ('text' in w) return w.text;
   if ('bytes_hex' in w) return Buffer.from(w.bytes_hex, 'hex');
@@ -156,7 +156,7 @@ function fromValue(value) {
   if (value instanceof JsonValue) return fromJson(value);
   if (value === null) return { nil: true };
   if (typeof value === 'boolean') return { bool: value };
-  if (typeof value === 'number') return { number: value };
+  if (typeof value === 'number') return { float: Object.is(value, -0) ? '-0.0' : String(value) };
   if (typeof value === 'bigint') return { int: String(value) };
   if (typeof value === 'string') return { text: value };
   if (value instanceof Uint8Array) return { bytes_hex: Buffer.from(value).toString('hex') };
@@ -179,16 +179,13 @@ function fromJson(value) {
 }
 
 // equal compares a decoded wrapper with an expected one: an ordered-json value by its number text and member order (COD-16),
-// every other value by number value and with its object as a set of pairs (FCV-4). A JavaScript number does not tell an
-// integer from an integral float (COD-3), so it equals an int or a float wrapper of the same value.
+// every other value by number value, an integer as a bigint and a float as a number, and with its object as a set of pairs
+// (FCV-4).
 function equal(got, want, ordered) {
-  if ('number' in got) {
-    const expected = 'int' in want ? Number(want.int) : 'float' in want ? Number(want.float) : undefined;
-    return expected !== undefined && Object.is(got.number, expected);
-  }
   const kind = Object.keys(got)[0];
   if (kind !== Object.keys(want)[0]) return false;
-  if (kind === 'int' || kind === 'float') return ordered ? got[kind] === want[kind] : Number(got[kind]) === Number(want[kind]);
+  if (kind === 'int') return ordered ? got.int === want.int : BigInt(got.int) === BigInt(want.int);
+  if (kind === 'float') return ordered ? got.float === want.float : Object.is(Number(got.float), Number(want.float));
   if (kind === 'array') return got.array.length === want.array.length && got.array.every((item, index) => equal(item, want.array[index], ordered));
   if (kind === 'object') {
     if (got.object.length !== want.object.length) return false;

@@ -1958,6 +1958,22 @@
               }
             }
           }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "float": "4.0"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "643a343b"
+              }
+            }
+          }
         }
       ]
     },
@@ -13451,6 +13467,90 @@
               "error": "CODEC_DECODE"
             }
           }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "a: x\u0007y\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "a: xy\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "a: \"x\"\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "a: \"x\u0000\"\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "a: ﻿x\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "a: 1\n﻿b: 2\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE"
+            }
+          }
         }
       ]
     },
@@ -13874,6 +13974,112 @@
                     "",
                     {
                       "text": "x"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "yaml"
+          ],
+          "value": {
+            "object": [
+              [
+                "a b",
+                {
+                  "text": "x\u0007y﻿  z"
+                }
+              ],
+              [
+                "c",
+                {
+                  "array": [
+                    {
+                      "text": "\u0000\u001b"
+                    }
+                  ]
+                }
+              ]
+            ]
+          },
+          "as": "cell6"
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "ref": "cell6"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "object": [
+                  [
+                    "a b",
+                    {
+                      "text": "x\u0007y﻿  z"
+                    }
+                  ],
+                  [
+                    "c",
+                    {
+                      "array": [
+                        {
+                          "text": "\u0000\u001b"
+                        }
+                      ]
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "? \"a\\u2028b\"\n: 1\n"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "object": [
+                  [
+                    "a b",
+                    {
+                      "int": "1"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "? a\n: 1\n"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "object": [
+                  [
+                    "a",
+                    {
+                      "int": "1"
                     }
                   ]
                 ]
@@ -15170,6 +15376,452 @@
             "none": {
               "value": {
                 "float": "2.0"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "codec_integers_of_i64",
+      "requirements": [
+        "COD-10",
+        "COD-16",
+        "COD-29",
+        "COD-40"
+      ],
+      "steps": [
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "i:-9223372036854775808;"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "int": "-9223372036854775808"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "i:9223372036854775807;"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "int": "9223372036854775807"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "i:9223372036854775808;"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "int": "9223372036854775807"
+          },
+          "as": "cell",
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "693a393232333337323033363835343737353830373b"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "int": "-9223372036854775808"
+          },
+          "as": "min",
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "693a2d393232333337323033363835343737353830383b"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "9223372036854775807\n"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "int": "9223372036854775807"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "-9223372036854775808\n"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "int": "-9223372036854775808"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "yaml"
+          ],
+          "value": {
+            "int": "9223372036854775807"
+          },
+          "as": "ymax"
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "ref": "ymax"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "int": "9223372036854775807"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "yaml"
+          ],
+          "value": {
+            "int": "-9223372036854775808"
+          },
+          "as": "ymin"
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "ref": "ymin"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "int": "-9223372036854775808"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "d:1.0E+25;"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "float": "1e25"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "float": "1e25"
+          },
+          "as": "fs"
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "ref": "fs"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "float": "1e25"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "yaml"
+          ],
+          "value": {
+            "float": "1e25"
+          },
+          "as": "fy"
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "ref": "fy"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "float": "1e25"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "serialize_float_notation",
+      "requirements": [
+        "COD-3",
+        "COD-10",
+        "COD-16",
+        "COD-40"
+      ],
+      "steps": [
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "float": "4.0"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "643a343b"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "float": "-0.0"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "643a2d303b"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "float": "2.5"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "643a322e353b"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "float": "123456789.0"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "643a3132333435363738393b"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "float": "0.0001"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "643a302e303030313b"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "float": "1e-5"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "643a312e30452d353b"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "float": "1.5e-7"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "643a312e35452d373b"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "float": "1e16"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "643a31303030303030303030303030303030303b"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "float": "1e17"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "643a312e30452b31373b"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "float": "1.5e17"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "643a312e35452b31373b"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "float": "1e20"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "643a312e30452b32303b"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "float": "1e25"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "643a312e30452b32353b"
               }
             }
           }

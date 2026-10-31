@@ -138,6 +138,7 @@ pub fn encode(styles: &[&str], v: StyledValue<&Value>) -> Result<Param> {
                     return Err(err(CODEC_UNSUPPORTED, "serialize must be the first encoding style"));
                 }
                 let mut s = String::new();
+                number_check(&value, "serialize")?;
                 php_serialize(&mut s, &value)?;
                 cur = s.into_bytes();
             }
@@ -334,7 +335,7 @@ fn yaml_decode(bytes: &[u8]) -> Result<Value> {
 /// number outside the common value model returns CODEC_ENCODE. The written text is read back, and
 /// a text that does not read back as the value returns CODEC_ENCODE instead of storing it.
 fn yaml_encode(value: &Value) -> Result<Vec<u8>> {
-    yaml_number_check(value)?;
+    number_check(value, "yaml")?;
     let text = serde_saphyr::to_string(value).map_err(|e| err(CODEC_ENCODE, format!("yaml: {e}")))?;
     match yaml_decode(text.as_bytes()) {
         Ok(read) if read == *value => Ok(text.into_bytes()),
@@ -343,14 +344,14 @@ fn yaml_encode(value: &Value) -> Result<Vec<u8>> {
     }
 }
 
-/// Refuses a number the common value model does not hold: an integer beyond i64.
-fn yaml_number_check(value: &Value) -> Result<()> {
+/// Refuses a number the common value model (COD-16) does not hold: an integer beyond i64.
+fn number_check(value: &Value, style: &str) -> Result<()> {
     match value {
         Value::Number(number) if number.is_u64() && number.as_i64().is_none() => {
-            Err(err(CODEC_ENCODE, format!("yaml: integer {number} is outside the i64 range")))
+            Err(err(CODEC_ENCODE, format!("{style}: integer {number} is outside the i64 range")))
         }
-        Value::Array(items) => items.iter().try_for_each(yaml_number_check),
-        Value::Object(map) => map.values().try_for_each(yaml_number_check),
+        Value::Array(items) => items.iter().try_for_each(|item| number_check(item, style)),
+        Value::Object(map) => map.values().try_for_each(|item| number_check(item, style)),
         _ => Ok(()),
     }
 }
@@ -420,8 +421,10 @@ fn php_float(f: f64) -> String {
     let sci = format!("{f:e}"); // shortest mantissa, e.g. "1.5e25", "2e0", "1e-7"
     let (mant, exp) = sci.split_once('e').unwrap();
     let exp: i32 = exp.parse().unwrap();
-    if (-4..21).contains(&exp) {
-        return format!("{f}"); // Display: "2", "0.1", "1.5"
+    // PHP writes the shortest digits (serialize_precision -1) in the exponent form when the decimal exponent is below -4
+    // or above 16, and in fixed notation otherwise (zend_gcvt with precision 17).
+    if (-4..=16).contains(&exp) {
+        return format!("{f}"); // Display: "2", "0.1", "1.5", "10000000000000000"
     }
     let mant = if mant.contains('.') { mant.to_string() } else { format!("{mant}.0") };
     format!("{mant}E{}{}", if exp < 0 { "-" } else { "+" }, exp.abs())
