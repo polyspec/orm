@@ -43,7 +43,11 @@ func TestExampleOutputsAreIdentical(t *testing.T) {
 			if name == "thin-slice" {
 				// The TypeScript and Python programs run on the Node and the venv interpreter that orm-install-python makes.
 				tsOut := runExample(t, c, "ts", "node", filepath.Join(name, "ts", "main.mts"))
-				pyOut := runExample(t, c, "python", filepath.Join("..", "packages", "python", ".venv", "bin", "python"), filepath.Join("..", "packages", "python", "examples", "thin_slice", "main.py"))
+				python, err := filepath.Abs(filepath.Join(pythonRoot, "packages", "python", ".venv", "bin", "python"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				pyOut := runExampleIn(t, c, "python", pythonRoot, python, "-m", pythonThinSlice)
 				if !bytes.Equal(goOut, tsOut) {
 					t.Errorf("%s: go and ts outputs differ\n--- go\n%s\n--- ts\n%s", name, goOut, tsOut)
 				}
@@ -61,9 +65,16 @@ func TestExampleOutputsAreIdentical(t *testing.T) {
 // runExample runs one program, returns its stdout, and records its run time.
 func runExample(t *testing.T, c *testcase.Case, lang string, args ...string) []byte {
 	t.Helper()
+	return runExampleIn(t, c, lang, "", args...)
+}
+
+// runExampleIn is runExample with the working directory dir; an empty dir is this directory.
+func runExampleIn(t *testing.T, c *testcase.Case, lang, dir string, args ...string) []byte {
+	t.Helper()
 	start := time.Now()
 	var stdout, stderr bytes.Buffer
 	cmd := exec.CommandContext(c.Context(), args[0], args[1:]...)
+	cmd.Dir = dir
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {

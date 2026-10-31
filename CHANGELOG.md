@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- make example-check failed with ModuleNotFoundError: No module named 'packages': T339-14 made the Python thin-slice example import its models as packages.python.tests.models.models, and the tests ran it as a script from examples (T339-19). The tests and the README now run it from the root of the checkout as the module packages.python.examples.thin_slice.main, as every Python test of orm runs.
 - The Python conformance and model-generation tests failed with FileNotFoundError: three of them built the old models path packages/python/src/polyspec/orm/models from path components, which the search of T339-14 did not find (T339-18). They read packages/python/tests/models.
 - test (feature_verify_rust) and test (feature_verify_other) failed: the feature check walked the implementation roots on disk and named the fixture models that make python-models generates into packages/python/tests/models, which Git ignores, a python test file of no feature (T339-17). The feature check now classifies kit's checked files of those roots, the set that kit's parity declaration check classifies.
 - make parity-declarations-check found packages/python/tests/models/__init__.py undeclared, an R5 finding, because T339-14 added the package file of the moved fixture models without declaring it (T339-16). config/parity.json declares it as a support file of the Python implementation.

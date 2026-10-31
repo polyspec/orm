@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- make example-check가 ModuleNotFoundError: No module named 'packages'로 실패했다: T339-14가 Python thin-slice 예제의 models import를 packages.python.tests.models.models로 바꿨는데, test는 그 예제를 examples에서 script로 실행했다 (T339-19). 이제 test와 README는 orm의 모든 Python test처럼 checkout의 root에서 module packages.python.examples.thin_slice.main으로 실행한다.
 - Python conformance와 model-generation test가 FileNotFoundError로 실패했다: 그중 셋이 옛 models 경로 packages/python/src/polyspec/orm/models를 path 조각으로 조립했고 T339-14의 검색은 그것을 찾지 못했다(T339-18). 이제 packages/python/tests/models를 읽는다.
 - test (feature_verify_rust)와 test (feature_verify_other)가 실패했다: feature 검사는 디스크의 구현 root를 walk했고, make python-models가 packages/python/tests/models에 생성하며 Git이 무시하는 fixture model을 어떤 feature에도 속하지 않는 python test 파일로 판정했다(T339-17). 이제 feature 검사는 그 root에서 kit이 검사하는 파일, 즉 kit의 parity 선언 검사가 분류하는 집합을 분류한다.
 - make parity-declarations-check가 packages/python/tests/models/__init__.py를 선언되지 않았다고 판정했다(R5 finding). T339-14가 옮긴 fixture model의 package 파일을 선언 없이 추가했기 때문이다(T339-16). config/parity.json은 그것을 Python 구현의 support 파일로 선언한다.

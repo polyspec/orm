@@ -16,8 +16,10 @@ import (
 )
 
 // withoutBenchDSN is the environment without ORM_BENCH_MYSQL_DSN. If empty, it is set to an empty value.
-// pythonThinSlice is the Python client example of the thin slice; it lives in the Python package, relative to this directory.
-var pythonThinSlice = filepath.Join("..", "packages", "python", "examples", "thin_slice", "main.py")
+// pythonThinSlice is the module of the Python client example of the thin slice, which runs with -m from the root of the
+// checkout (pythonRoot, relative to this directory), as every Python test of orm does.
+const pythonThinSlice = "packages.python.examples.thin_slice.main"
+const pythonRoot = ".."
 
 func withoutBenchDSN(empty bool) []string {
 	var env []string
@@ -35,6 +37,7 @@ func withoutBenchDSN(empty bool) []string {
 func TestExamplesRequireBenchDSN(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	programs := map[string][]string{}
+	dirs := map[string]string{"python/thin-slice": pythonRoot}
 	for _, name := range []string{"complex", "thin-slice"} {
 		bin := filepath.Join(t.TempDir(), name)
 		if out, err := exec.Command("go", "build", "-o", bin, "./"+name+"/go").CombinedOutput(); err != nil {
@@ -44,7 +47,7 @@ func TestExamplesRequireBenchDSN(t *testing.T) {
 		programs["php/"+name] = []string{"php", filepath.Join(name, "php", "main.php")}
 		if name == "thin-slice" {
 			programs["ts/"+name] = []string{"node", filepath.Join(name, "ts", "main.mts")}
-			programs["python/"+name] = []string{"python3", pythonThinSlice}
+			programs["python/"+name] = []string{"python3", "-m", pythonThinSlice}
 		}
 	}
 	for name, args := range programs {
@@ -56,6 +59,7 @@ func TestExamplesRequireBenchDSN(t *testing.T) {
 			t.Run(name+"/"+state, func(t *testing.T) {
 				var stderr bytes.Buffer
 				cmd := exec.Command(args[0], args[1:]...)
+				cmd.Dir = dirs[name]
 				cmd.Env = withoutBenchDSN(empty)
 				cmd.Stderr = &stderr
 				err := cmd.Run()
