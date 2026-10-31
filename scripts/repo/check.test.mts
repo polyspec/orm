@@ -690,8 +690,10 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   const tsMin = /^ts-min-check:.*\n((?:\t.*\n)*)/m.exec(makefile)?.[1];
   assert.ok(tsMin !== undefined, 'the Makefile has no recipe of ts-min-check');
   assert.doesNotMatch(tsMin, /\$\$NODE_MIN\/npm\b/, 'ts-min-check runs the npm of the lowest Node release');
-  assert.match(tsMin, /NPM_CLI="\$\$\(\$\(KIT_TOOLS\)\/bin\/mise where npm:npm\)\/node_modules\/npm\/bin\/npm-cli\.js" && /,
+  assert.match(tsMin, /NPM_DIR="\$\$\(\$\(KIT_TOOLS\)\/bin\/mise where npm:npm\)\/node_modules" && NPM_CLI="\$\$NPM_DIR\/npm\/bin\/npm-cli\.js" && /,
     'ts-min-check runs the npm of mise.toml');
+  // The npm scripts start npm by name (npm run typescript:build), so the npm of mise.toml comes before the lowest Node.
+  assert.match(tsMin, /PATH="\$\$NPM_DIR\/\.bin:\$\$NODE_MIN:\$\$PATH"/, 'the npm scripts of ts-min-check find the npm of the lowest Node release');
   assert.match(tsMin, /"\$\$NODE_MIN\/node" "\$\$NPM_CLI" run typescript:test/, 'ts-min-check runs npm with the lowest Node release');
   assert.doesNotMatch(makefile, /^install-packages:\s+orm-install-interfaces-typescript$/m,
     'Kit owns npm package installation; the package target does not widen it with TypeScript 6');
