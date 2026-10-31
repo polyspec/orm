@@ -50,7 +50,8 @@ final class ArginfoBuildTest extends TestCase
             copy(__DIR__ . '/../composer.json', $package . '/composer.json');
             copy(__DIR__ . '/../src/polyspec_orm.stub.php', $package . '/src/polyspec_orm.stub.php');
             copy(__DIR__ . '/../src/config.m4', $package . '/src/config.m4');
-            // build.sh refuses a copy of the SQLite cancel callback that differs from its source before it runs the builder.
+            // build.sh refuses a copy of the SQLite cancel callback that differs from its source
+            // before it runs the builder.
             mkdir($root . '/packages/php/src/native', 0777, true);
             mkdir($package . '/src/native', 0777, true);
             copy(__DIR__ . '/../../php/src/native/sqlite_cancel.c', $root . '/packages/php/src/native/sqlite_cancel.c');

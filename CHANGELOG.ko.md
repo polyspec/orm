@@ -5,6 +5,7 @@
 ## Unreleased
 
 - make parity-api-check가 어떤 API unit도 선언하지 않은 polyspec.orm.models의 public symbol 1254개를 찾았다(T339-14). make python-models가 생성하는 fixture model은 wheel이 제외한 client의 source package에 쓰였는데, kit 0.0.84의 extractor는 entry 아래 디스크의 모든 .py 파일을 읽는다(K977). 이제 model은 test 자체 package인 packages/python/tests/models에 있고, 그 model의 setuptools와 vulture exclude는 사라졌다.
+- make lint-php가 T339-9가 ArginfoBuildTest의 fixture에 넣은 주석에서 실패했다: 그 줄은 125자로 phpcs 한도 120을 넘었다(T339-15). 주석은 이제 두 줄이다.
 - make runner-check의 parts case가 여전히 client-unit-check/codec-aes를 기대했으므로 실패했다. 이 part는 T334-3-14가 AES vector를 codec recipe로 옮기며 지웠다(T339-13). 이제 case는 Makefile이 선언한 part를 기대한다.
 - make runner-check가 T339가 깨뜨린 두 기대값에서 실패했다(T339-12). 오류 코드 target은 install target 밖에서 $(ONLINE)으로 orm-gen을 실행했다: 이제 go.sum이 고정한 Go module을 내려받는 install target orm-install-go-codes 뒤에 offline으로 실행한다. arginfo header recipe는 어떤 도구도 읽지 않는 $(ONLINE)을 가졌고, 그것을 뺐다. parity job test는 이제 오류 코드 파일을 생성하는 check를 가진 모든 job에 Go를, orm-install-typescript-runtime의 prerequisite에 orm-codes-typescript를 기대한다.
 - make ts-min-check가 다시 EBADDEVENGINES로 실패했다: T339-8은 바깥 npm을 경로로 시작했지만, typescript:test 안의 npm run typescript:build는 PATH 맨 앞에서 가장 낮은 Node release의 npm 11을 찾았다(T339-11). 이제 mise.toml npm의 .bin folder가 가장 낮은 Node보다 PATH 앞에 온다.
