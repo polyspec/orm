@@ -295,7 +295,7 @@ const node = [
   '      - uses: actions/setup-node@v7',
   '        with:',
   '          node-version-file: mise.toml',
-  '          cache: npm',
+  '          package-manager-cache: false',
   '      - run: npm ci',
   '',
 ].join('\n');
@@ -314,6 +314,16 @@ caseTest('a workflow that declares node-version itself fails', COMPUTE, () => {
   assert.deepEqual(nodeVersionErrors(mise('26.8.1'), '>=22.16.0', { 'ci.yml': unset }, '26.8.1'), [
     'ci.yml runs Node without actions/setup-node',
   ]);
+});
+
+caseTest('a setup-node step that caches npm fails', COMPUTE, () => {
+  // The cache of setup-node runs the npm of the runner in the checkout, which devEngines refuses (EBADDEVENGINES).
+  for (const cache of ['cache: npm', 'package-manager-cache: true']) {
+    const cached = node.replace('package-manager-cache: false', cache);
+    assert.deepEqual(nodeVersionErrors(mise('26.8.1'), '>=22.16.0', { 'ci.yml': cached }, '26.8.1'), [
+      'ci.yml does not set package-manager-cache: false without cache in actions/setup-node; its npm cache runs the npm of the runner, which devEngines refuses',
+    ]);
+  }
 });
 
 caseTest('a Node other than that of mise.toml fails', COMPUTE, () => {

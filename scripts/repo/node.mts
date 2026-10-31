@@ -23,7 +23,8 @@ const miseNode = (miseToml: string): string => {
 //   - declared (the tool node in the content of miseToml, `mise.toml`) is one exact x.y.z.
 //   - minimum (">=x.y.z" in package.json engines.node) is not higher than declared.
 //   - The actions/setup-node step of the workflows ({path: text}) reads the version with `node-version-file: mise.toml`
-//     and does not write `node-version` directly. A workflow that uses Node uses setup-node.
+//     and does not write `node-version` directly, and sets `package-manager-cache: false` without `cache`: its npm cache
+//     runs the npm of the runner in the checkout, which devEngines of package.json refuses. A workflow that uses Node uses setup-node.
 //   - running (process.versions.node) is the same as declared.
 export function nodeVersionErrors(miseToml: string, minimum: string | undefined, workflows: Record<string, string>, running: string): string[] {
   const errors: string[] = [];
@@ -43,6 +44,8 @@ export function nodeVersionErrors(miseToml: string, minimum: string | undefined,
       if (Object.hasOwn(step.with, 'node-version')) errors.push(`${path} declares node-version itself; mise.toml declares it`);
       if (step.with['node-version-file'] !== 'mise.toml')
         errors.push(`${path} does not read node-version-file mise.toml in actions/setup-node`);
+      if (step.with['package-manager-cache'] !== false || Object.hasOwn(step.with, 'cache'))
+        errors.push(`${path} does not set package-manager-cache: false without cache in actions/setup-node; its npm cache runs the npm of the runner, which devEngines refuses`);
     }
   }
   if (exact && running !== exact)

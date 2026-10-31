@@ -29,7 +29,7 @@ jobs:
         if: ${{ !cancelled() }}
         with:
           node-version-file: mise.toml
-          cache: npm
+          package-manager-cache: false
       # Bootstrap the declared npm and package lock with the runner's Node;
       # Make can read its Kit include only after this installs @polyspec/kit.
       - name: bootstrap the installed kit package

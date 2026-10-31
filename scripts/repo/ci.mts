@@ -758,7 +758,7 @@ export function concurrencyErrors(workflows: Record<string, string>): string[] {
 export const CI_PASSED_STEP: Record<string, unknown> = { name: 'every job passed', if: NOT_CANCELLED, env: { RESULTS: '${{ toJSON(needs) }}' }, run: 'make ci-passed' };
 export const CI_PASSED_STEPS: Record<string, unknown>[] = [
   { uses: 'actions/checkout@v5' },
-  { uses: 'actions/setup-node@v7', with: { 'node-version-file': 'mise.toml' } },
+  { uses: 'actions/setup-node@v7', with: { 'node-version-file': 'mise.toml', 'package-manager-cache': false } },
   { name: 'bootstrap the installed kit package', id: 'kit-bootstrap', if: NOT_CANCELLED, run: KIT_BOOTSTRAP_COMMAND },
   // These steps install the pinned npm and the packages before make ci-passed runs.
   { name: 'npm of devEngines', id: 'npm', if: NOT_CANCELLED, run: 'make install-tools TOOLS=npm' },

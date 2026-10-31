@@ -750,7 +750,7 @@ orm-install-python: orm-codes-python
 	$(MAKE) --no-print-directory install-tools TOOLS="python uv"
 	$(MAKE) --no-print-directory python-venv DIR=$(PYTHON_VENV)
 	$(MAKE) --no-print-directory uv-install DIR=packages/python SYNC='--quiet --group test'
-	$(MAKE) --no-print-directory link
+	$(MAKE) --no-print-directory install-link
 	$(MAKE) --no-print-directory python-models
 # python-venv-check checks that the venv of orm-install-python exists and runs the Python release of mise.toml. A missing venv
 # or another release fails without a download or a repair, and names the fix: remove the venv and run make install.
@@ -2827,7 +2827,7 @@ PHP_MODELS_FILE = packages/php/models.txt
 .PHONY: php-models php-model-check
 orm-install-php: orm-codes-php
 	$(ONLINE) $(COMPOSER) install --no-interaction --no-progress
-	$(MAKE) --no-print-directory link
+	$(MAKE) --no-print-directory install-link
 	$(COMPOSER) dump-autoload --no-interaction --quiet
 	$(MAKE) --no-print-directory php-models
 php-models: php-vendor-check
@@ -2906,7 +2906,7 @@ php-ext-release-sources: packages/php-ext/src/polyspec_orm_arginfo.h $(PHP_EXT_S
 orm-install-php-extension-runtime:
 	$(MAKE) --no-print-directory orm-install-php
 	cd packages/php-ext && $(ONLINE) $(COMPOSER) install --no-interaction --no-progress
-	$(MAKE) --no-print-directory link
+	$(MAKE) --no-print-directory install-link
 	$(MAKE) --no-print-directory orm-install-php-extension-tools
 orm-install-typescript-runtime: orm-install-go-lease orm-codes-typescript build-ts
 
