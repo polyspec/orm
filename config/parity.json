@@ -899,6 +899,7 @@
       ],
       "support": [
         "packages/python/tests/__init__.py",
+        "packages/python/tests/models/__init__.py",
         "packages/python/tests/bench_set.py",
         "packages/python/tests/case_database.py",
         "packages/python/tests/conformance_case.py",

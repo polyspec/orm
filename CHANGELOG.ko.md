@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- make parity-declarations-check가 packages/python/tests/models/__init__.py를 선언되지 않았다고 판정했다(R5 finding). T339-14가 옮긴 fixture model의 package 파일을 선언 없이 추가했기 때문이다(T339-16). config/parity.json은 그것을 Python 구현의 support 파일로 선언한다.
 - make parity-api-check가 어떤 API unit도 선언하지 않은 polyspec.orm.models의 public symbol 1254개를 찾았다(T339-14). make python-models가 생성하는 fixture model은 wheel이 제외한 client의 source package에 쓰였는데, kit 0.0.84의 extractor는 entry 아래 디스크의 모든 .py 파일을 읽는다(K977). 이제 model은 test 자체 package인 packages/python/tests/models에 있고, 그 model의 setuptools와 vulture exclude는 사라졌다.
 - make lint-php가 T339-9가 ArginfoBuildTest의 fixture에 넣은 주석에서 실패했다: 그 줄은 125자로 phpcs 한도 120을 넘었다(T339-15). 주석은 이제 두 줄이다.
 - make runner-check의 parts case가 여전히 client-unit-check/codec-aes를 기대했으므로 실패했다. 이 part는 T334-3-14가 AES vector를 codec recipe로 옮기며 지웠다(T339-13). 이제 case는 Makefile이 선언한 part를 기대한다.

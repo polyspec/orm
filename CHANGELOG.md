@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- make parity-declarations-check found packages/python/tests/models/__init__.py undeclared, an R5 finding, because T339-14 added the package file of the moved fixture models without declaring it (T339-16). config/parity.json declares it as a support file of the Python implementation.
 - make parity-api-check found 1254 public symbols of polyspec.orm.models that no API unit declares (T339-14). The fixture models that make python-models generates were written into the source package of the client, which the wheel excluded, while the extractor of kit 0.0.84 reads every .py file on disk under the entry (K977). The models now live in packages/python/tests/models, the tests' own package, and the setuptools and vulture excludes of them are gone.
 - make lint-php failed on a comment that T339-9 added to the fixture of ArginfoBuildTest: the line was 125 characters, over the phpcs limit of 120 (T339-15). The comment is two lines.
 - make runner-check failed because its parts case still expected client-unit-check/codec-aes, which T334-3-14 removed when the AES vectors moved into the codec recipe (T339-13). The case expects the parts the Makefile declares.
