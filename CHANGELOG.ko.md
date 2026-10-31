@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c0707ac19fe5fe2d04e481e47444fbbf16f6ca5718e73f5c66e4fe5c5a77b906 -->
+<!-- source-sha256: 77ac733ba5c89f6cc10d9d92bd22881700c892cddb6e32ae875fcbdce74a8aac -->
 # 변경 이력
 
 ## Unreleased
 
+- workflow cache 검사에는 빈 loop가 있었고 step 값을 String()으로 읽었는데, lint-ts가 이를 거부한다. 이제 문자열인 값만 읽는다 (CR8).
 - docs build test는 build에 test process의 환경을 그대로 주었고 non-null assertion을 썼는데, repo-check와 lint-ts가 이를 거부한다. 이제 build를 isolatedEnvironment로 실행하며, process group id를 단언하지 않고 확인한다 (CR11).
 - lease를 잡는 recipe(WITH_TEST_ENV, check-run, run-databases)는 make를 재귀로 호출했고, GNU make는 make -n 아래에서도 그것을 실행하므로 check-run의 dry run이 검사 전체를 돌렸다. 이제 이 recipe들은 lease program이 없거나 tests/lease의 어떤 source보다 오래된 때에만 shell 단계로 그것을 빌드한다 (CR11).
 - arginfo header는 제자리에서 복사됐으므로, 중단된 복사는 이전 header를 불완전하게 남겼고 PHP extension 빌드는 그것을 읽었다. 이제 header는 임시 파일에 쓰인 뒤 이전 header 위로 이름이 바뀌므로, 중단된 쓰기는 이전 header를 온전하게 남긴다 (CR3).

@@ -118,15 +118,15 @@ export function lockedCacheErrors(workflow: string): string[] {
     [/\borm-install-go\b/, '~/go/pkg/mod', 'go.sum', 'the Go modules'],
     [/\b(?:ci-)?install-tools\b/, 'var/tools', 'mise.toml', 'the tools of mise.toml'],
   ];
+  // text reads a workflow value that is a string, and is empty otherwise.
+  const text = (value: unknown): string => (typeof value === 'string' ? value : '');
   for (const job of readWorkflow(workflow).jobs) {
-    for (const step of job.steps) {
-    }
     job.steps.forEach((step, index) => {
       for (const [pattern, path, lock, what] of installs) {
         if (!pattern.test(step.run)) continue;
         const restored = job.steps.slice(0, index).some(earlier => earlier.uses?.split('@')[0] === 'actions/cache' &&
-          String(earlier.with['path'] ?? '').split(/\s+/).includes(path) && String(earlier.with['key'] ?? '').includes(`hashFiles(`) &&
-          String(earlier.with['key'] ?? '').includes(lock));
+          text(earlier.with['path']).split(/\s+/).includes(path) && text(earlier.with['key']).includes(`hashFiles(`) &&
+          text(earlier.with['key']).includes(lock));
         if (!restored) errors.push(`ci.yml job ${job.id} step ${step.name} installs ${what} with no cache before it, keyed by the hash of ${lock} (${path})`);
       }
     });
