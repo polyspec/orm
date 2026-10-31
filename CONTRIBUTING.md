@@ -4,7 +4,7 @@
 ## Required workflow
 
 1. Read `AGENTS.md` when it is present and read the relevant files in `contracts/features.json`. A
-   fresh checkout installs kit first: `make install-tools TOOLS=npm` (the npm of `packageManager`), then
+   fresh checkout installs kit first: `make install-tools TOOLS=npm` (the npm of `mise.toml`, which `devEngines` of `package.json` names), then
    `make install-packages` (`package-lock.json`, `@polyspec/kit` included), whose Makefile targets the
    rest needs. Then run `make install` once: it downloads what the checks read (npm, Composer and Go dependencies, the Rust
    toolchain and crates, the lowest Node), and the checks run offline, so a missing download fails

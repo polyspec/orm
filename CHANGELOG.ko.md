@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- Kit 0.0.82가 고정된 release이며(T339), mise.toml의 npm을 함께 채택한다(K938): package.json은 packageManager 대신 devEngines에 npm 12.2.0을 선언하고, mise.toml은 "npm:npm"을 선언하며 그 digest는 mise.lock과 .mise/locks/npm-npm/12.2.0에 있고, ci.yml과 docs-pages.yml의 bootstrap 단계는 devEngines의 npm을 checkout 밖에서 실행한다. 생성 파일은 kit 0.0.82의 설정을 따른다: packages/ts/src/codes.ts, packages/php/src/Code.php, packages/python/src/polyspec/orm/codes.py는 더는 추적되지 않고 `make orm-codes`가 install 때 docs/spec/errors.yaml로부터 쓴다. config/generated.json은 packages/go/orm/codes.go와 packages/rust/orm/src/codes.rs를 이유와 함께 `tracked`로 선언한다. config/release.json의 PHP, Python, PHP extension package는 php-arginfo와 source-copy 대신 make 항목(`orm-codes-php`, `orm-codes-python`, `php-ext-release-sources`)을 선언한다. packages/php-ext/src/native/sqlite_cancel.c는 make 규칙이 packages/php/src/native/sqlite_cancel.c로부터 쓰는 무시되는 복사본이고, packages/php-ext/scripts/build.sh는 없거나 다른 복사본을 거부한다. `make orm-install-php-extension-tools`는 kit-install-php-arginfo를 더는 실행하지 않는다.
+
 ## 0.0.19
 
 - 저장소의 모든 go test는 test entry point의 tag ormtest를 가진다. tests/go-test.mts가 각 실행에 GO_TEST_TAGS를 합치므로, package orm의 rollback·statement fault test는 client-db-test.mts의 일반 go lane에서 실행된다. 그 lane은 ./packages/go/...를 그 test 없이 실행하고, 따로 tag를 단 두 번째 명령으로 그것들을 실행했다. target마다 있던 -tags ormtest 사본은 지웠다 (T334-3-6-1).

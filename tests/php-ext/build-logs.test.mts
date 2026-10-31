@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { isolatedEnvironment } from '../environment.mts';
 import { PROCESS, caseTest, withTemporaryDirectory } from '../testcase.mts';
@@ -30,10 +30,18 @@ function readCliProof(file: string): { file: string; args: string[] } {
   return { file: proof.file, args: proof.args };
 }
 
+// The SQLite cancel callback that the extension compiles: its one source in the PHP library and the copy that make writes.
+const cancelSource = 'packages/php/src/native/sqlite_cancel.c';
+const cancelCopy = 'packages/php-ext/src/native/sqlite_cancel.c';
+
 function initCheckout(checkout: string): string {
   const packageRoot = join(checkout, 'packages/php-ext');
   mkdirSync(join(packageRoot, 'scripts'), { recursive: true });
   writeFileSync(join(packageRoot, 'scripts/build.sh'), readFileSync(buildScript));
+  for (const file of [cancelSource, cancelCopy]) {
+    mkdirSync(join(checkout, file, '..'), { recursive: true });
+    writeFileSync(join(checkout, file), 'int cancel;\n');
+  }
   const git = spawnSync('git', ['init', '--quiet', checkout], { encoding: 'utf8' });
   assert.equal(git.status, 0, git.stderr);
   return packageRoot;
@@ -73,6 +81,30 @@ writeFileSync(process.env.KIT_CLI_PROOF, JSON.stringify({ file: import.meta.file
           'src/native_test.c',
         ]);
       }
+    }
+  });
+});
+
+caseTest('the PHP extension wrapper refuses a missing or different copy of the SQLite cancel callback before the build', PROCESS, async ({ signal }) => {
+  await withTemporaryDirectory('orm-php-extension-cancel-copy-', temporary => {
+    const checkout = join(temporary, 'checkout');
+    const packageRoot = initCheckout(checkout);
+    installFakeKit(checkout, `import { writeFileSync } from 'node:fs';
+writeFileSync(process.env.KIT_CLI_PROOF, 'called');
+`);
+    const proofPath = join(temporary, 'cli-proof.json');
+    const env = isolatedEnvironment({ PATH: process.env.PATH ?? '', TMPDIR: temporary, KIT_CLI_PROOF: proofPath });
+    const copies: Array<[string, () => void]> = [
+      ['different', () => writeFileSync(join(checkout, cancelCopy), 'int other;\n')],
+      ['missing', () => rmSync(join(checkout, cancelCopy))],
+    ];
+    for (const [state, make] of copies) {
+      make();
+      const result = spawnSync('sh', [join(packageRoot, 'scripts/build.sh'), 'extension/polyspec_orm.so'], { cwd: temporary, env, encoding: 'utf8', signal });
+      assert.equal(result.error, undefined, `build script could not start: ${result.error?.message ?? ''}`);
+      assert.equal(result.status, 1, `${state} copy: ${result.stderr}`);
+      assert.match(result.stderr, /packages\/php-ext\/src\/native\/sqlite_cancel\.c is missing or differs/, `${state} copy`);
+      assert.equal(existsSync(proofPath), false, `${state} copy: the Kit CLI ran`);
     }
   });
 });

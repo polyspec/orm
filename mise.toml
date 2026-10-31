@@ -1,8 +1,10 @@
 # The tools of orm that mise installs into var/tools/mise (kit K127): `make toolchain-lock` writes their digests into
 # mise.lock and `make install-tools` installs them with `mise install --locked`. go and python are at the pins of kit.
 [tools]
-# node is at the pin of kit (K171): make install-tools TOOLS=npm installs it into var/tools, and every check runs it.
+# node and npm are at the pins of kit (K171, K938): make install-tools TOOLS=npm installs them into var/tools, and every check runs
+# them; devEngines of package.json names the same npm.
 node = "26.12.0"
+"npm:npm" = "12.2.0"
 go = "1.27.3"
 python = "3.14.8"
 uv = "0.13.0"

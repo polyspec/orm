@@ -5,7 +5,7 @@
 ## 필수 작업 순서
 
 1. `AGENTS.md`가 있으면 읽고 `contracts/features.json`에서 관련 경로를 읽는다. 새 checkout은 kit을
-   먼저 설치한다: `make install-tools TOOLS=npm`(`packageManager`의 npm), 그다음 `make install-packages`
+   먼저 설치한다: `make install-tools TOOLS=npm`(`package.json`의 `devEngines`가 이름하는 `mise.toml`의 npm), 그다음 `make install-packages`
    (`@polyspec/kit`을 포함한 `package-lock.json`)이며, 나머지가 필요로 하는 Makefile target은 여기서 온다.
    그다음 `make install`을 한 번
    실행한다. 그것은 검사가 읽는 것(npm, Composer, Go 의존성, Rust toolchain과 crate, 가장 낮은 Node)을

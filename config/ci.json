@@ -4,11 +4,13 @@
   "parityMode": "phases",
   "setup": {
     "shared": [
-      "orm-install-go-lease"
+      "orm-install-go-lease",
+      "orm-codes"
     ],
     "parity": [
       "orm-install-flowmark",
-      "orm-install-interfaces-typescript"
+      "orm-install-interfaces-typescript",
+      "orm-codes"
     ],
     "runtimes": {
       "go": [
@@ -33,7 +35,16 @@
     }
   },
   "tools": {
+    "parity": [
+      "go"
+    ],
+    "php": [
+      "go"
+    ],
     "php-ext": [
+      "go"
+    ],
+    "python": [
       "go"
     ],
     "ts": [

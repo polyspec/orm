@@ -746,7 +746,7 @@ orm-python-lock:
 	cd packages/python && $(ONLINE) $(UV) lock
 
 .PHONY: orm-install-python
-orm-install-python:
+orm-install-python: orm-codes-python
 	$(MAKE) --no-print-directory install-tools TOOLS="python uv"
 	$(MAKE) --no-print-directory python-venv DIR=$(PYTHON_VENV)
 	$(MAKE) --no-print-directory uv-install DIR=packages/python SYNC='--quiet --group test'
@@ -984,7 +984,7 @@ dbspec-php-check/set-parse: php-vendor-check
 # run's directory, checks that its Reflection matches src/polyspec_orm.stub.php and the PHP client's public classes (DeclarationsTest), and
 # runs the PHP client's tests (packages/php/tests) with the extension loaded; the test bootstrap fails a run that loaded any file of
 # packages/php/src, so no fallback class stands in for the extension (packages/php/tests/extension_run_guard.php). A run that holds results of a whole document set runs twice. The build uses the phpize and
-# php-config on PATH, which make orm-install-php-extension-tools checks; make php-ext-arginfo rewrites the header from the stub.
+# php-config on PATH, which make orm-install-php-extension-tools checks; make packages/php-ext/src/polyspec_orm_arginfo.h rewrites the header from the stub.
 PHP_EXTENSION_LIBRARY = $(RUN_DIR)/php-extension/polyspec_orm.so
 # Kit's test-php-ext runner starts PHP children outside the invoking make recipe; expose the same built module to those children.
 test-php-ext: export ORM_PHP_MODE = extension
@@ -2783,13 +2783,26 @@ blind-index-source-rust-check: lease-tool
 	cd packages/rust && $(CARGO_TEST) blind-index-source-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib blind_index_source
 
 # install downloads what the checks read: the Composer packages, the Rust toolchain and the crates of every Cargo.lock, the
-# Go modules, the lowest Node of ts-min-check, and the gen_stub.php and PHP-Parser used by the PHP extension. CI bootstraps
+# Go modules, the lowest Node of ts-min-check, and the error code files of orm-codes. CI bootstraps
 # the root npm dependencies and @polyspec/kit before Make reads the installed kit.mk; install-packages adds the separate
 # TypeScript 6 checker used only by the interface extractor. Independent install parts run with make -k.
 
 .PHONY: docs-ci
 .PHONY: install orm-install-interfaces-typescript orm-install-php orm-install-rust orm-install-rust-toolchain orm-install-rust-crates orm-install-go orm-install-go-lease orm-install-server-programs orm-install-php-extension-tools orm-install-php-extension-runtime orm-install-typescript-runtime ci-php-min-version downloads-check
-install: orm-install-php orm-install-rust orm-install-go orm-install-php-extension-tools orm-install-python orm-install-flowmark orm-install-interfaces-typescript
+install: orm-codes orm-install-php orm-install-rust orm-install-go orm-install-php-extension-tools orm-install-python orm-install-flowmark orm-install-interfaces-typescript
+# orm-codes writes the error code constants of TypeScript, PHP and Python from docs/spec/errors.yaml with orm-gen errors; they are
+# build output and never tracked (P34). Go and Rust keep theirs tracked, since a go.mod or Cargo.toml consumer installs the tagged tree
+# (config/generated.json, tracked). The PHP and Python packages declare their file as a make entry of config/release.json, and the
+# install of each runtime writes its file before the runtime reads it. orm-gen runs online, since a job that installs only one
+# runtime has not downloaded the Go modules of orm-gen.
+ORM_CODES_typescript = packages/ts/src/codes.ts
+PHP_EXT_SQLITE_CANCEL = packages/php-ext/src/native/sqlite_cancel.c
+ORM_CODES_php = packages/php/src/Code.php
+ORM_CODES_python = packages/python/src/polyspec/orm/codes.py
+.PHONY: orm-codes orm-codes-typescript orm-codes-php orm-codes-python
+orm-codes: orm-codes-typescript orm-codes-php orm-codes-python
+orm-codes-typescript orm-codes-php orm-codes-python: orm-codes-%:
+	cd packages/go && $(ONLINE) $(GO) run ./cmd/orm-gen errors --lang $* --yaml $(CURDIR)/docs/spec/errors.yaml --out $(CURDIR)/$(ORM_CODES_$*)
 # orm-install-interfaces-typescript installs the TypeScript 6.0.3 that packages/ts/testing/interfaces/typescript.mts reads declarations with
 # (config/toolchain.json exceptions): TypeScript 7.0 ships no JavaScript API of its compiler.
 # install-packages installs the TypeScript of tests/interfaces from its lock, so a fresh make install leaves the extractor with its checker.
@@ -2812,7 +2825,7 @@ lint-go: go-models
 # orm-gen gen --check against the same entries (no network).
 PHP_MODELS_FILE = packages/php/models.txt
 .PHONY: php-models php-model-check
-orm-install-php:
+orm-install-php: orm-codes-php
 	$(ONLINE) $(COMPOSER) install --no-interaction --no-progress
 	$(MAKE) --no-print-directory link
 	$(COMPOSER) dump-autoload --no-interaction --quiet
@@ -2871,17 +2884,31 @@ orm-install-flowmark:
 orm-install-server-programs:
 	$(ONLINE) $(NODE) scripts/ci/server-programs.mts
 # orm-install-php-extension-tools checks that the phpize and php-config used by the build of the PHP extension polyspec_orm are those of the
-# PHP on PATH (scripts/ci/php-extension-tools.mts), and installs the pinned arginfo generator and parser that the build reads; no CI job
-# runs install-kit, so every job that builds the extension gets them here (T290).
-orm-install-php-extension-tools:
+# PHP on PATH (scripts/ci/php-extension-tools.mts), and writes the copy of the SQLite cancel callback that the build compiles; every
+# job that builds the extension runs it (T290). The build runs the gen_stub.php of that PHP itself, so nothing installs the arginfo
+# generator (kit K930).
+orm-install-php-extension-tools: $(PHP_EXT_SQLITE_CANCEL)
 	$(NODE) scripts/ci/php-extension-tools.mts
-	$(MAKE) --no-print-directory kit-install-php-arginfo
+# The extension compiles native/sqlite_cancel.c (packages/php-ext/src/config.m4), whose one source is the PHP library's
+# packages/php/src/native/sqlite_cancel.c: the copy is build output and never tracked (P34). kit's build-php-ext takes it as a
+# prerequisite, packages/php-ext/scripts/build.sh refuses a copy that differs from its source, and the make entry of packages/php-ext in
+# config/release.json writes it with the arginfo header (php-ext-release-sources) for the archive.
+$(PHP_EXT_SQLITE_CANCEL): packages/php/src/native/sqlite_cancel.c
+	mkdir -p $(@D)
+	cp $< $@.tmp.$$ && mv $@.tmp.$$ $@
+build-php-ext: $(PHP_EXT_SQLITE_CANCEL)
+# packages/php-ext/src/polyspec_orm_arginfo.h is the arginfo header of the one stub, written by scripts/php/php-ext-arginfo.mts for the archive;
+# the build of the extension writes its own in a temporary copy.
+packages/php-ext/src/polyspec_orm_arginfo.h: packages/php-ext/src/polyspec_orm.stub.php
+	$(ONLINE) $(NODE) scripts/php/php-ext-arginfo.mts
+.PHONY: php-ext-release-sources
+php-ext-release-sources: packages/php-ext/src/polyspec_orm_arginfo.h $(PHP_EXT_SQLITE_CANCEL)
 orm-install-php-extension-runtime:
 	$(MAKE) --no-print-directory orm-install-php
 	cd packages/php-ext && $(ONLINE) $(COMPOSER) install --no-interaction --no-progress
 	$(MAKE) --no-print-directory link
 	$(MAKE) --no-print-directory orm-install-php-extension-tools
-orm-install-typescript-runtime: orm-install-go-lease build-ts
+orm-install-typescript-runtime: orm-install-go-lease orm-codes-typescript build-ts
 
 # All setup steps of CI run make targets (make repo-check). ci-php-min-version records the lowest
 # PHP release of make php-min-check as the input of setup-php (version=x.y). Each client refuses SQLite below 3.46 when it connects.

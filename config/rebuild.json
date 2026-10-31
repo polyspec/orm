@@ -238,6 +238,10 @@
       "kind": "policy",
       "reason": "the rule N17 of this repository that the PHP client runs on SQLite with no MySQL driver loaded; it runs PHPUnit under php -n"
     },
+    "scripts/php/php-ext-arginfo.mts": {
+      "kind": "ecosystem",
+      "tool": "phpize and the gen_stub.php of PHP write the arginfo header of the extension stub"
+    },
     "scripts/php/php-min.mts": {
       "kind": "policy",
       "reason": "finds the PHP of the lowest release that composer.json declares, so the client is tested on its declared floor, a rule of this repository; it reads PATH and brew --prefix"

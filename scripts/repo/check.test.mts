@@ -673,7 +673,7 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   }
   assert.doesNotMatch(makefile, /parity\.(?:mjs|mts).*--phase/,
     'the canonical Kit parity target owns phase execution');
-  assert.match(makefile, /^orm-install-python:\n\t\$\(MAKE\) --no-print-directory install-tools TOOLS="python uv"$/m,
+  assert.match(makefile, /^orm-install-python: orm-codes-python\n\t\$\(MAKE\) --no-print-directory install-tools TOOLS="python uv"$/m,
     'the Python installer does not widen a runtime-specific setup back to the full tool inventory');
   assert.doesNotMatch(makefile, /^install-packages:\s+orm-install-interfaces-typescript$/m,
     'Kit owns npm package installation; the package target does not widen it with TypeScript 6');
@@ -681,9 +681,10 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
     'the full install still prepares the TypeScript checker used by the interface extractor');
   assert.match(workflow, /id: interfaces-typescript\n        if: \$\{\{ !cancelled\(\) && steps\.group-needs\.outputs\.interfaces-typescript == 'true' \}\}\n        run: make orm-install-interfaces-typescript/);
   assert.match(workflow, /id: parity-symbols\n        if: \$\{\{ !cancelled\(\) && steps\.group-needs\.outputs\.parity-symbols == 'true' \}\}\n        run: make kit-install-symbols EXTRACTORS="go php"/);
-  // No CI job runs install-kit, so the PHP extension setup that every job runs installs the arginfo generator itself (T290).
-  assert.match(makefile, /^orm-install-php-extension-tools:\n\t\$\(NODE\) scripts\/ci\/php-extension-tools\.mts\n\t\$\(MAKE\) --no-print-directory kit-install-php-arginfo$/m,
-    'PHP extension setup installs the pinned arginfo generator and parser');
+  // The PHP extension setup that every job runs writes the copy of the SQLite cancel callback that the build compiles (T290); the
+  // build runs the gen_stub.php of the PHP itself, so the setup installs no arginfo generator (kit K930).
+  assert.match(makefile, /^orm-install-php-extension-tools: \$\(PHP_EXT_SQLITE_CANCEL\)\n\t\$\(NODE\) scripts\/ci\/php-extension-tools\.mts\n(?!\t)/m,
+    'PHP extension setup writes the copy of the SQLite cancel callback and installs no arginfo generator');
   const matrixWorkflow = workflow.split('\n  docs:')[0] ?? '';
   assert.equal((matrixWorkflow.match(/id: go-lease-modules/g) ?? []).length, 1, 'every group installs the shared runner dependency in its own job');
   assert.match(workflow, /id: go-lease-modules\n        if: \$\{\{ !cancelled\(\) \}\}\n        run: make orm-install-go-lease/);
@@ -1886,8 +1887,12 @@ caseTest('every CI step runs a make target', COMPUTE, () => {
   const bootstrap = CI_RUN_EXCEPTIONS['.github/workflows/ci.yml']?.['bootstrap the installed kit package'] ?? '';
   const bootstrapWorkflow = (command: string) => `jobs:\n  test:\n    steps:\n      - uses: actions/checkout@v5\n      - name: bootstrap the installed kit package\n        run: |\n${command.split('\n').map(line => `          ${line}`).join('\n')}\n`;
   assert.deepEqual(ciMakeErrors({ '.github/workflows/ci.yml': bootstrapWorkflow(bootstrap) }), []);
+  // A changed bootstrap loses its exception, so each command of the step that is not make is an error, as in a workflow with no
+  // exception for it.
+  const unexcepted = ciMakeErrors({ '.github/workflows/other.yml': bootstrapWorkflow(bootstrap) }).length;
+  assert.ok(unexcepted > 0);
   const changedBootstrap = ciMakeErrors({ '.github/workflows/ci.yml': bootstrapWorkflow(bootstrap.replace('--ignore-scripts', '')) });
-  assert.equal(changedBootstrap.length, 2);
+  assert.equal(changedBootstrap.length, unexcepted);
   for (const error of changedBootstrap)
     assert.match(error, /step "bootstrap the installed kit package" runs .*; run it through a make target/);
   const root = new URL('../..', import.meta.url).pathname;

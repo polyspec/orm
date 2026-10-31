@@ -14,7 +14,16 @@
     {
       "kind": "composer",
       "directory": "packages/php",
-      "name": "polyspec/orm"
+      "name": "polyspec/orm",
+      "generated": [
+        {
+          "kind": "make",
+          "target": "orm-codes-php",
+          "outputs": [
+            "src/Code.php"
+          ]
+        }
+      ]
     },
     {
       "kind": "composer",
@@ -22,21 +31,28 @@
       "name": "polyspec/orm-php-ext",
       "generated": [
         {
-          "kind": "php-arginfo",
-          "stub": "src/polyspec_orm.stub.php",
-          "output": "src/polyspec_orm_arginfo.h"
-        },
-        {
-          "kind": "source-copy",
-          "source": "packages/php/src/native/sqlite_cancel.c",
-          "output": "src/native/sqlite_cancel.c"
+          "kind": "make",
+          "target": "php-ext-release-sources",
+          "outputs": [
+            "src/polyspec_orm_arginfo.h",
+            "src/native/sqlite_cancel.c"
+          ]
         }
       ]
     },
     {
       "kind": "wheel",
       "directory": "packages/python",
-      "name": "polyspec-orm"
+      "name": "polyspec-orm",
+      "generated": [
+        {
+          "kind": "make",
+          "target": "orm-codes-python",
+          "outputs": [
+            "src/polyspec/orm/codes.py"
+          ]
+        }
+      ]
     },
     {
       "kind": "npm",

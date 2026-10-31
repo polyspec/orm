@@ -1,5 +1,5 @@
 <!-- doc-id: principles -->
-<!-- source-sha256: 67b6e88e8cf81d3fd361d0bae15d75f1936e8f1053e1e8ee154b649193fb2a89 -->
+<!-- source-sha256: 7455a64bef50d5af753d555c78f1ff26aab23540466bbc4db07c2cfcf53adfb0 -->
 # 원칙
 
 [English](PRINCIPLES.md)
@@ -150,8 +150,9 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-inject-
 - P33 작업에 필요한데 docs/spec에 없는 규칙은 docs/spec에 먼저 쓴다. requirement는 그것을 test하는 test만 인용하고, unit을 통과하려고
   버리지 않으며, 검사를 피하려고 이름을 바꾸지 않는다.
   Enforced by: `make parity-declarations-check`
-- P34 반복된 code는 제외가 아니라 하나의 module로 재구성해서 고친다. tool source는 분류하고, 생성물은 Git에 추적하지 않는다.
-  Enforced by: `make duplication-check`, `make rebuild-check`, `.githooks/pre-commit`
+- P34 반복된 code는 제외가 아니라 하나의 module로 재구성해서 고친다. tool source는 분류하고, 생성물은 Git에 추적하지 않는다. 다만 consumer가 tagged tree 그 자체로 설치하는 생성 source(Go module, Rust crate)는 추적하고, 그 이유를 config/generated.json에 선언한다.
+  배포되는 package가 생성물을 필요로 하면 그 생성 경로마다 그것을 만드는 저장소의 make target을 config/release.json에 선언한다. release는 먼저 tagged commit과 다른 checkout, 변경되었거나 추적되지 않은 경로, 바깥에서 link된 dependency를 거부한다. 그다음 선언된 경로를 지우고 checkout에서 그 target을 실행하며, 선언된 경로가 결과에 없거나 Git에 추적되면 실패한다.
+  Enforced by: `make duplication-check`, `make rebuild-check`, `.githooks/pre-commit`, `make release-assets`.
 - P35 로컬 source 개발은 provider release를 기다리지 않는다. Native source 연결 누락은 파일과 행을 밝혀
   kit 결함으로 보고하며 호환되지 않는 dependency requirement는 앱의 native 선언에서 수정한다.
   Release 설치는 개발 source 상태와 독립적으로 lock의 정확한 배포 graph를 사용한다.
@@ -185,9 +186,13 @@ owner가 2026-10-13에 이 기준을 승인했습니다. 각 기준은 위반 �
   (`*.test.{ts,mts,cts,mjs,cjs,js}`, vitest의 `*.{test,spec}.*`, `*Test.php`, `*_test.go`, `tests/`와 `#[test]`, `test_*.py`).
   repository는 파일을 더할 수만 있고 좁힐 수 없으며, test처럼 이름 붙은 파일은 binding이 실행합니다.
   Enforced by: `make parity-declarations-check`
-- S4 버전: kit은 버전도 lock도 비교하지 않고 pin하지 않습니다. 인자의 형식 검증은 허용됩니다. 각 package manager와 그 lock이
-  정합니다.
-  Enforced by: none, kit이 하지 않는 비교에는 검사가 필요 없고, 새 비교는 리뷰가 거부합니다(K853).
+- S4 버전: kit은 버전도 lock도 비교하지 않고 pin하지 않습니다. 각 package manager와 그 lock이 정합니다. 예외는 둘입니다. 하나는
+  kit의 bootstrap 도구 mise의 digest로, bootstrap이 어떤 package manager보다 먼저 기준으로 검사하며 mise의 설치 상태는 그
+  digest만으로 판정합니다. 다른 하나는 release가 그 버전을 취하는, change log의 저장소 자신의 release heading과 release tag의
+  순서(가장 새것이 먼저)입니다. 인자의 형식 검증은 허용됩니다. checkout의 npm은 mise.toml의 npm:npm이며 mise.lock에 lock되고,
+  kit은 자기 npm을 설치하지 않습니다(K938).
+  Enforced by: `make install-tools`(mise의 설치 상태를 digest marker만으로 판정하며 TOOLS=npm 형태가 실행합니다), `make release-tag`(release는 모든 release tag보다
+  새것), `make docs-check`(change log heading 순서); 다른 버전 비교는 리뷰가 거부합니다(K853).
 - S5 폴더: 모든 monorepo는 같은 root 폴더(`packages/`, `contracts/`, `docs/`, `scripts/`, `tests/`, `examples/`,
   `benchmarks/`, `config/`)를 가집니다. 주 spec의 runtime port는 `packages/<runtime>/`, 다른 component는
   `packages/<component>/`, 그 port는 `packages/<component>/<runtime>/`에 두며, 폴더 이름에 repository prefix를 붙이지
@@ -211,7 +216,7 @@ owner가 2026-10-13에 이 기준을 승인했습니다. 각 기준은 위반 �
   등록한다. library는 `polyspec/<repository>`라는 이름의 `packages/php`이거나, component마다 `polyspec/<repository>-<component>`라는
   이름의 `packages/<component>/php`이며, 저장소에는 extension이 하나다. `packages/php-ext/`에 두며 source는 `src/`에, stub은 하나,
   `src/polyspec_<repository>.stub.php`이다. 이름은 `polyspec/<repository>-php-ext`와 `polyspec_<repository>`이고, 저장소
-  이름의 hyphen은 underscore가 된다. `make build-php-ext`는 `make php-ext-arginfo`가 PHP의 gen_stub.php로 쓰는 arginfo
+  이름의 hyphen은 underscore가 된다. `make build-php-ext`는 PHP의 gen_stub.php가 쓰는 arginfo
   header의 stub hash가 stub의 것인지 확인한 뒤 phpize로 build하며, `composer.json`을 `src/` 옆에 둔 사본에서 build하므로
   `config.m4`가 extension의 version을 `../composer.json`에서 가져온다. `make test-php-ext`는 unit test 전에 등록한 것을
   Reflection으로 library와 비교하되 이름마다 그것을 선언한 library와 비교하며, unit test는 extension을 load하고 library의 source는 하나도 load하지 않고

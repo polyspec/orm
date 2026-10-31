@@ -66,7 +66,12 @@ go.work.sum
 /packages/php/markdownmodel/
 /packages/php/complexmodel/
 /packages/php/src/native/bin/
-# PHP's arginfo generator writes this header only in a temporary native-extension build copy.
+# The arginfo header and the copy of the SQLite cancel callback of the PHP extension are build output (make php-ext-release-sources).
 /packages/php-ext/src/polyspec_orm_arginfo.h
+/packages/php-ext/src/native/sqlite_cancel.c
+# The error code constants of TypeScript, PHP and Python are build output (make orm-codes).
+/packages/ts/src/codes.ts
+/packages/php/src/Code.php
+/packages/python/src/polyspec/orm/codes.py
 # The link declaration of the development links (kit K869); make link reads it.
 /.links

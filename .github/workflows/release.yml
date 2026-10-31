@@ -1,20 +1,20 @@
 # Release workflow of a repository that adopts kit. kit-sync copies this file from the installed package @polyspec/kit to
 # .github/workflows/release.yml, and kit-check fails when the checkout differs from it; a repository never edits it.
 #
-# A dispatch of the workflow with the id of a successful CI run and a version releases the commit of that run (K911): it tags
-# the commit and creates the GitHub Release of the tag as a draft with its archives, and makes it public. The run is the
-# evidence; the release runs no test again. The steps run in order and stop at the first failure; each step runs one make
-# target of kit with TAG, vVERSION, from the environment:
-#   bootstrap package installs the locked kit with the exact packageManager npm for consumers, without scripts
-#   install-tools TOOLS=npm installs the npm of packageManager with the copied installer of scripts/kit/bootstrap
+# A dispatch of the workflow with the id of a successful CI run releases the commit of that run (K911): it tags the commit with
+# the version of the newest section ## X.Y.Z of its change log (K924) and creates the GitHub Release of the tag as a draft with
+# its archives, and makes it public. The run is the evidence; the release runs no test again. The steps run in order and stop at
+# the first failure; each step runs one make target of kit with TAG, vX.Y.Z, from the environment, which release-tag writes:
+#   bootstrap package installs the locked kit with the npm that devEngines.packageManager names for consumers, without scripts
+#   install-tools TOOLS=npm installs the mise, the node and the npm of mise.toml with the copied installer of scripts/kit/bootstrap
 #   install-packages installs package-lock.json with that npm, @polyspec/kit included, whose kit.mk has the targets below
 #   release-tag      with the kit of main: requires a completed successful push or dispatch run RUN of ci.yml on main whose
-#                    commit is on origin/main, and creates and pushes the annotated tag vVERSION and the tag of every Go module
-#                    at that commit, or passes for a tag there already (K269); a tag pushed with the token of the run starts no run
+#                    commit is on origin/main, reads X.Y.Z from the change log of that commit, creates and pushes the annotated
+#                    tag vX.Y.Z and the tag of every Go module at that commit, or passes for a tag there already (K269), and
+#                    appends TAG and VERSION to GITHUB_ENV; a tag pushed with the token of the run starts no run
 #   checkout of the tag, then the bootstrap, npm and the packages of the tagged commit again
 #   release-prepare  the preparation that the release of the repository declares with release-prepare:: (none by default)
-#   release-tools    installs the tools that config/release.json needs for the packages of this repository, and the
-#                    arginfo generator of packages/php-ext or of a generated php-arginfo artifact
+#   release-tools    installs the tools that config/release.json needs for the packages of this repository; a make entry adds none
 #   release-tools-path puts var/tools/bin on the PATH of the steps that follow, through GITHUB_PATH
 #   release-assets  builds the archive of every package, and packages.json of the Composer packages, into var/release/assets
 #   release-publish creates the GitHub Release of the tag as a draft, with its notes and those files
@@ -29,10 +29,6 @@ on:
         description: The id of the successful CI run of main whose commit is released
         required: true
         type: string
-      version:
-        description: The version of the release, X.Y.Z, such as 0.0.1
-        required: true
-        type: string
 
 permissions:
   contents: write
@@ -42,9 +38,7 @@ jobs:
   release:
     runs-on: ubuntu-24.04
     env:
-      TAG: v${{ inputs.version }}
       RUN: ${{ inputs.run }}
-      VERSION: ${{ inputs.version }}
       GH_TOKEN: ${{ github.token }}
     steps:
       # actions/checkout v7.0.1: main with the whole history and every branch, so origin/main is there for the ancestry check and
@@ -76,7 +70,11 @@ jobs:
       - name: bootstrap the installed kit package
         run: |
           if [ "$(node -p 'require("./package.json").name')" != '@polyspec/kit' ]; then
-            npm_config_cache="$PWD/var/bootstrap/npm-cache" npm exec --yes --package="$(node -p 'require("./package.json").packageManager.split("+")[0]')" -- npm ci --ignore-scripts --allow-remote=root
+            # npm 11 of the runner refuses to run in a folder whose devEngines names npm 12.2.0 (EBADDEVENGINES), so the npm of
+            # devEngines runs outside the checkout with --prefix (K938-1).
+            root="$PWD"
+            version="$(node -p 'require("./package.json").devEngines.packageManager.version')"
+            (cd "${RUNNER_TEMP:?RUNNER_TEMP is not set}" && npm_config_cache="$root/var/bootstrap/npm-cache" npm exec --yes --package="npm@$version" -- npm --prefix "$root" ci --ignore-scripts --allow-remote=root)
           fi
       - name: install npm
         run: make install-tools TOOLS=npm
@@ -90,7 +88,11 @@ jobs:
       - name: bootstrap the installed kit package of the tag
         run: |
           if [ "$(node -p 'require("./package.json").name')" != '@polyspec/kit' ]; then
-            npm_config_cache="$PWD/var/bootstrap/npm-cache" npm exec --yes --package="$(node -p 'require("./package.json").packageManager.split("+")[0]')" -- npm ci --ignore-scripts --allow-remote=root
+            # npm 11 of the runner refuses to run in a folder whose devEngines names npm 12.2.0 (EBADDEVENGINES), so the npm of
+            # devEngines runs outside the checkout with --prefix (K938-1).
+            root="$PWD"
+            version="$(node -p 'require("./package.json").devEngines.packageManager.version')"
+            (cd "${RUNNER_TEMP:?RUNNER_TEMP is not set}" && npm_config_cache="$root/var/bootstrap/npm-cache" npm exec --yes --package="npm@$version" -- npm --prefix "$root" ci --ignore-scripts --allow-remote=root)
           fi
       - name: install npm of the tag
         run: make install-tools TOOLS=npm
@@ -100,7 +102,7 @@ jobs:
         run: make release-prepare
       - name: make release-tools
         run: make release-tools
-      # The tools of var/tools/bin — the Go of the kit pin (toolchain-pins.json) that the release builds with, and whatever else the packages
+      # The tools of var/tools/bin — the Go of mise.toml that the release builds with, and whatever else the packages
       # need — join PATH for the steps that follow; a step's PATH is its own, so the export goes to the file the
       # runner reads between steps.
       - name: put the installed tools on PATH

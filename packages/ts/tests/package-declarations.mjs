@@ -81,7 +81,7 @@ try {
   const installed = await runLong('package-declarations/install', async ({ step }) => {
     const packed = await command('npm', ['pack', '--ignore-scripts', '--json', '--pack-destination', work], { cwd: client }, step);
     if (packed.code !== 0) throw new Error(`npm pack exited with ${packed.code}`);
-    // npm 12 (packageManager) writes the result of `npm pack --json` as an object keyed by the package name.
+    // npm 12 (devEngines) writes the result of `npm pack --json` as an object keyed by the package name.
     const [{ filename, name: packageName }] = Object.values(JSON.parse(packed.stdout));
     name = packageName;
     const target = join(project, 'node_modules', ...name.split('/'));

@@ -37,7 +37,11 @@ jobs:
       - name: bootstrap the installed kit package
         run: |
           if [ "$(node -p 'require("./package.json").name')" != '@polyspec/kit' ]; then
-            npm_config_cache="$PWD/var/bootstrap/npm-cache" npm exec --yes --package="$(node -p 'require("./package.json").packageManager.split("+")[0]')" -- npm ci --ignore-scripts --allow-remote=root
+            # npm 11 of the runner refuses to run in a folder whose devEngines names npm 12.2.0 (EBADDEVENGINES), so the npm of
+            # devEngines runs outside the checkout with --prefix (K938-1).
+            root="$PWD"
+            version="$(node -p 'require("./package.json").devEngines.packageManager.version')"
+            (cd "${RUNNER_TEMP:?RUNNER_TEMP is not set}" && npm_config_cache="$root/var/bootstrap/npm-cache" npm exec --yes --package="npm@$version" -- npm --prefix "$root" ci --ignore-scripts --allow-remote=root)
           fi
       - name: install npm
         run: make install-tools TOOLS=npm
@@ -97,7 +101,11 @@ jobs:
       - name: bootstrap the installed kit package
         run: |
           if [ "$(node -p 'require("./package.json").name')" != '@polyspec/kit' ]; then
-            npm_config_cache="$PWD/var/bootstrap/npm-cache" npm exec --yes --package="$(node -p 'require("./package.json").packageManager.split("+")[0]')" -- npm ci --ignore-scripts --allow-remote=root
+            # npm 11 of the runner refuses to run in a folder whose devEngines names npm 12.2.0 (EBADDEVENGINES), so the npm of
+            # devEngines runs outside the checkout with --prefix (K938-1).
+            root="$PWD"
+            version="$(node -p 'require("./package.json").devEngines.packageManager.version')"
+            (cd "${RUNNER_TEMP:?RUNNER_TEMP is not set}" && npm_config_cache="$root/var/bootstrap/npm-cache" npm exec --yes --package="npm@$version" -- npm --prefix "$root" ci --ignore-scripts --allow-remote=root)
           fi
       - name: install npm
         run: make install-tools TOOLS=npm
@@ -149,7 +157,11 @@ jobs:
       - name: bootstrap the installed kit package
         run: |
           if [ "$(node -p 'require("./package.json").name')" != '@polyspec/kit' ]; then
-            npm_config_cache="$PWD/var/bootstrap/npm-cache" npm exec --yes --package="$(node -p 'require("./package.json").packageManager.split("+")[0]')" -- npm ci --ignore-scripts --allow-remote=root
+            # npm 11 of the runner refuses to run in a folder whose devEngines names npm 12.2.0 (EBADDEVENGINES), so the npm of
+            # devEngines runs outside the checkout with --prefix (K938-1).
+            root="$PWD"
+            version="$(node -p 'require("./package.json").devEngines.packageManager.version')"
+            (cd "${RUNNER_TEMP:?RUNNER_TEMP is not set}" && npm_config_cache="$root/var/bootstrap/npm-cache" npm exec --yes --package="npm@$version" -- npm --prefix "$root" ci --ignore-scripts --allow-remote=root)
           fi
       - name: install npm
         run: make install-tools TOOLS=npm
@@ -205,7 +217,11 @@ jobs:
       - name: bootstrap the installed kit package
         run: |
           if [ "$(node -p 'require("./package.json").name')" != '@polyspec/kit' ]; then
-            npm_config_cache="$PWD/var/bootstrap/npm-cache" npm exec --yes --package="$(node -p 'require("./package.json").packageManager.split("+")[0]')" -- npm ci --ignore-scripts --allow-remote=root
+            # npm 11 of the runner refuses to run in a folder whose devEngines names npm 12.2.0 (EBADDEVENGINES), so the npm of
+            # devEngines runs outside the checkout with --prefix (K938-1).
+            root="$PWD"
+            version="$(node -p 'require("./package.json").devEngines.packageManager.version')"
+            (cd "${RUNNER_TEMP:?RUNNER_TEMP is not set}" && npm_config_cache="$root/var/bootstrap/npm-cache" npm exec --yes --package="npm@$version" -- npm --prefix "$root" ci --ignore-scripts --allow-remote=root)
           fi
       - name: install npm
         run: make install-tools TOOLS=npm
@@ -259,7 +275,11 @@ jobs:
       - name: bootstrap the installed kit package
         run: |
           if [ "$(node -p 'require("./package.json").name')" != '@polyspec/kit' ]; then
-            npm_config_cache="$PWD/var/bootstrap/npm-cache" npm exec --yes --package="$(node -p 'require("./package.json").packageManager.split("+")[0]')" -- npm ci --ignore-scripts --allow-remote=root
+            # npm 11 of the runner refuses to run in a folder whose devEngines names npm 12.2.0 (EBADDEVENGINES), so the npm of
+            # devEngines runs outside the checkout with --prefix (K938-1).
+            root="$PWD"
+            version="$(node -p 'require("./package.json").devEngines.packageManager.version')"
+            (cd "${RUNNER_TEMP:?RUNNER_TEMP is not set}" && npm_config_cache="$root/var/bootstrap/npm-cache" npm exec --yes --package="npm@$version" -- npm --prefix "$root" ci --ignore-scripts --allow-remote=root)
           fi
       - name: install npm
         run: make install-tools TOOLS=npm
@@ -290,17 +310,43 @@ jobs:
           path: var/report/ci-targets/
           if-no-files-found: ignore
 
-  # The closing common part: it fails when a job of the pipeline failed or was cancelled. A job is skipped only when the parity
-  # mode excludes it, when the repository has no runtime, or when shared failed, which is a failure itself. It runs on the
+  # The closing common part: it fails when a job that the plan selected does not succeed. The plan selects shared, the parity job
+  # of parity_mode full, the parity-api and parity-bindings jobs of phases, and runtime when the repository has one (K950). A job
+  # the plan did not select is skipped and is not a result; a selected job that is skipped fails the pipeline. It runs on the
   # default runner, since the runner output of shared is empty when shared fails before the plan.
   required:
     if: ${{ always() }}
     needs: [shared, parity, parity-api, parity-bindings, runtime]
     runs-on: ubuntu-24.04
+    env:
+      SHARED_RESULT: ${{ needs.shared.result }}
+      PARITY_RESULT: ${{ needs.parity.result }}
+      PARITY_API_RESULT: ${{ needs.parity-api.result }}
+      PARITY_BINDINGS_RESULT: ${{ needs.parity-bindings.result }}
+      RUNTIME_RESULT: ${{ needs.runtime.result }}
+      SHARED_SELECTED: 'true'
+      PARITY_SELECTED: ${{ needs.shared.outputs.parity_mode == 'full' }}
+      PARITY_API_SELECTED: ${{ needs.shared.outputs.parity_mode == 'phases' }}
+      PARITY_BINDINGS_SELECTED: ${{ needs.shared.outputs.parity_mode == 'phases' }}
+      RUNTIME_SELECTED: ${{ needs.shared.outputs.has_runtimes == 'true' }}
     steps:
-      - name: require every job of the pipeline
-        env:
-          RESULTS: ${{ join(needs.*.result, ' ') }}
+      - name: require every job that the plan selected
         run: |
-          echo "results: $RESULTS"
-          case " $RESULTS " in *' failure '*|*' cancelled '*) exit 1 ;; esac
+          failed=0
+          judge() {
+            if [ "$3" != true ]; then
+              echo "$1: not selected by the plan, not judged"
+              return 0
+            fi
+            echo "$1: $2"
+            if [ "$2" != success ]; then
+              echo "$1 ended with $2, and the plan selected it; expected success" >&2
+              failed=1
+            fi
+          }
+          judge shared "$SHARED_RESULT" "$SHARED_SELECTED"
+          judge parity "$PARITY_RESULT" "$PARITY_SELECTED"
+          judge parity-api "$PARITY_API_RESULT" "$PARITY_API_SELECTED"
+          judge parity-bindings "$PARITY_BINDINGS_RESULT" "$PARITY_BINDINGS_SELECTED"
+          judge runtime "$RUNTIME_RESULT" "$RUNTIME_SELECTED"
+          exit "$failed"

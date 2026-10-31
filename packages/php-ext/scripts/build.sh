@@ -19,6 +19,12 @@ fi
 mkdir -p "$(dirname "$out")"
 out=$(cd "$(dirname "$out")" && pwd)/$(basename "$out")
 cd "$repository"
+# The build compiles the copy of the SQLite cancel callback that make writes from the PHP library's one source; a missing or
+# different copy is refused, so no build compiles another revision of it.
+if ! cmp -s packages/php/src/native/sqlite_cancel.c packages/php-ext/src/native/sqlite_cancel.c; then
+  echo "build.sh: packages/php-ext/src/native/sqlite_cancel.c is missing or differs from packages/php/src/native/sqlite_cancel.c; run make packages/php-ext/src/native/sqlite_cancel.c" >&2
+  exit 1
+fi
 set -- "$builder" build --output "$out" --configure-arg
 case "$mode" in
   release) set -- "$@" --disable-polyspec-orm-native-test ;;

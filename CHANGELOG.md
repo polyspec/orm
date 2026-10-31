@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- Kit 0.0.82 is the pinned release (T339), with the npm of mise.toml (K938): package.json declares npm 12.2.0 in devEngines in place of packageManager, mise.toml declares "npm:npm" with its digests in mise.lock and .mise/locks/npm-npm/12.2.0, and the bootstrap step of ci.yml and docs-pages.yml runs the npm of devEngines outside the checkout. The generated files follow the configuration of kit 0.0.82: packages/ts/src/codes.ts, packages/php/src/Code.php and packages/python/src/polyspec/orm/codes.py are no longer tracked, and `make orm-codes` writes them from docs/spec/errors.yaml at install; config/generated.json declares packages/go/orm/codes.go and packages/rust/orm/src/codes.rs as `tracked` with their reasons; the PHP, Python and PHP extension packages of config/release.json declare make entries (`orm-codes-php`, `orm-codes-python`, `php-ext-release-sources`) in place of php-arginfo and source-copy; packages/php-ext/src/native/sqlite_cancel.c is an ignored copy that a make rule writes from packages/php/src/native/sqlite_cancel.c, and packages/php-ext/scripts/build.sh refuses a missing or different copy; `make orm-install-php-extension-tools` no longer runs kit-install-php-arginfo.
+
 ## 0.0.19
 
 - Every go test of the repository carries the tag ormtest of the test entry point: tests/go-test.mts merges GO_TEST_TAGS into each run, so the rollback and statement fault tests of the package orm run in the plain go lane of client-db-test.mts, which ran ./packages/go/... without them and a second, separately tagged command for them; the per-target copies of -tags ormtest are gone (T334-3-6-1).
