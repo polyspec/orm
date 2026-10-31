@@ -24,7 +24,7 @@ RUNNER = (
     / "conformance"
     / "runner_python.py"
 )
-MODELS = REPOSITORY_ROOT / "packages" / "python" / "src" / "polyspec" / "orm" / "models"
+MODELS = REPOSITORY_ROOT / "packages" / "python" / "tests" / "models"
 VECTORS = REPOSITORY_ROOT / "tests" / "conformance"
 
 

@@ -14,7 +14,7 @@ VECTOR_FILES = {
     "sqlite": "vectors.sqlite.json",
 }
 SELECTED = ["conditions_values", "creates_and_save", "functions", "relations"]
-MODELS = REPOSITORY_ROOT / "packages" / "python" / "src" / "polyspec" / "orm" / "models"
+MODELS = REPOSITORY_ROOT / "packages" / "python" / "tests" / "models"
 
 
 def conformance_vector(item):

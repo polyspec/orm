@@ -10,7 +10,7 @@ from pathlib import Path
 from .coverage_case import REPOSITORY_ROOT, expect_equal, CoverageCase, coverage_main
 
 SET = "contracts/fixtures/bench/dbspec-set.json"
-MODELS = REPOSITORY_ROOT / "packages" / "python" / "src" / "polyspec" / "orm" / "models"
+MODELS = REPOSITORY_ROOT / "packages" / "python" / "tests" / "models"
 
 
 def orm_gen(out: Path) -> tuple[int, str, str]:
