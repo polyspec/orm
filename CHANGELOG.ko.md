@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e53c620a6144319843b41fa3c493a7309387eb9510988da709c2a0112737b0df -->
+<!-- source-sha256: 87318733b63bdf0fca10674bc5b0996a78fb62baeebf628cf7bf2dd1e17bf1cf -->
 # 변경 이력
 
 ## Unreleased
@@ -7,6 +7,7 @@
 ## 0.0.19
 
 - 저장소의 모든 go test는 test entry point의 tag ormtest를 가진다. tests/go-test.mts가 각 실행에 GO_TEST_TAGS를 합치므로, package orm의 rollback·statement fault test는 client-db-test.mts의 일반 go lane에서 실행된다. 그 lane은 ./packages/go/...를 그 test 없이 실행하고, 따로 tag를 단 두 번째 명령으로 그것들을 실행했다. target마다 있던 -tags ormtest 사본은 지웠다 (T334-3-6-1).
+- scripts/features/schema/recipe.schema.json은 FCV-2부터 FCV-4의 recipe 형식을 닫는다: recipe와 사례의 key, recipe wrapper, 데이터베이스 하나 또는 세 개 모두의 SQL, 결과, op model.connect, codec.decode, sql.exec와 그 field이다. fixture가 있는 recipe는 정확히 mysql, postgres, sqlite를, 없는 recipe는 정확히 none을 기대한다. make feature-unit-check가 실행하는 scripts/features/recipes.test.mts는 parity suite의 모든 recipe를 ajv로 그 schema에 대해 검증하고, schema가 형식의 각 위반을 거부하는지 확인한다. 그 입력은 contracts/check-inputs.json에 선언된다.
 - docs/spec/feature-coverage.md는 FCV-2부터 FCV-4 대신 모든 orm 테스트가 하나의 spec에 있다는 것과 recipe 형식을 적는다: recipe는 `$schema`가 scripts/features/schema/recipe.schema.json을 가리키며 requirement, .dbs fixture, generated model create로 넣는 seed 행, 각 op가 여섯 runtime 모두의 public API 호출 하나인 step으로 된 사례를 가진 parity suite 파일이다. fixture가 있는 recipe는 데이터베이스마다 suite unit 하나이고, 각 unit은 command line이 없는 공유 helper를 호출하는 runtime의 ecosystem 테스트 pattern entry 하나에 묶인다. 결과를 비교하는 모든 step은 정확히 mysql, postgres, sqlite 또는 none을 기대하고, 값은 recipe wrapper이며 int는 10진 문자열이다. op model.connect, codec.decode, sql.exec가 목록의 처음이다. FCV-2부터 FCV-4는 검사기가 밖에서 고른 데이터베이스에 대해 coverage 테스트를 두 번째로 실행하는 것을 적었다.
 - scripts/client-db-test.mts의 PHP extension lane은 모든 PHP test 파일처럼 ModelTest를 --timeout, --filter, --exclude-filter 없이 한 번 실행한다. 각 test는 kit이 --timeout이 없을 때 적용하는 #[Medium]의 120초 제한을 유지한다. 이전에는 lane이 testPrimaryAndReplica만 --timeout 120으로, 나머지 ModelTest test는 --exclude-filter로 실행했다 (T334-3-9).
 - config/toolchain.json은 더 이상 packages/ts/testing/interfaces/typescript의 typescript 6.0.3 예외를 선언하지 않습니다. kit는 선언된 version을 판단하지 않기 때문입니다(S4). 그 package는 packages/ts/testing/interfaces/typescript.mts가 읽는 compiler의 JavaScript API를 위해 package.json에 pin 6.0.3을 유지합니다(T340).

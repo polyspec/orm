@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "orm recipe",
+  "description": "The recipe format of docs/spec/feature-coverage.md (FCV-2 to FCV-4). A recipe with a fixture expects exactly mysql, postgres and sqlite; a recipe without one expects exactly none.",
+  "type": "object",
+  "required": ["$schema", "requirements", "cases"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string", "pattern": "(^|/)recipe\\.schema\\.json$" },
+    "requirements": { "$ref": "#/$defs/requirements" },
+    "fixture": { "type": "string", "pattern": "^[A-Za-z0-9_./-]+\\.dbs$" },
+    "seed": { "$ref": "#/$defs/seed" },
+    "cases": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/case" } }
+  },
+  "if": { "type": "object", "required": ["fixture"], "properties": { "fixture": true } },
+  "then": { "$ref": "#/$defs/expectations/databases" },
+  "else": { "$ref": "#/$defs/expectations/none" },
+  "$defs": {
+    "requirements": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[A-Z]+-[0-9]+[a-z]?$" }
+    },
+    "name": { "type": "string", "pattern": "^[a-z_][a-z0-9_]*$" },
+    "seed": {
+      "type": "object",
+      "required": ["rows"],
+      "additionalProperties": false,
+      "properties": {
+        "rows": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/name" },
+          "additionalProperties": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "minProperties": 1,
+              "propertyNames": { "$ref": "#/$defs/name" },
+              "additionalProperties": { "$ref": "#/$defs/value" }
+            }
+          }
+        }
+      }
+    },
+    "case": {
+      "type": "object",
+      "required": ["id", "requirements", "steps"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/name" },
+        "requirements": { "$ref": "#/$defs/requirements" },
+        "seed": { "$ref": "#/$defs/seed" },
+        "steps": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/step" } }
+      }
+    },
+    "value": {
+      "description": "A recipe wrapper: one key that names the form of the value.",
+      "oneOf": [
+        { "type": "object", "required": ["int"], "additionalProperties": false, "properties": { "int": { "type": "string", "pattern": "^-?(0|[1-9][0-9]{0,19})$" } } },
+        { "type": "object", "required": ["text"], "additionalProperties": false, "properties": { "text": { "type": "string" } } },
+        { "type": "object", "required": ["date"], "additionalProperties": false, "properties": { "date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" } } },
+        { "type": "object", "required": ["time"], "additionalProperties": false, "properties": { "time": { "type": "string", "pattern": "^[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?$" } } },
+        { "type": "object", "required": ["datetime"], "additionalProperties": false, "properties": { "datetime": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?$" } } },
+        { "type": "object", "required": ["decimal"], "additionalProperties": false, "properties": { "decimal": { "type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$" } } },
+        { "type": "object", "required": ["bytes_hex"], "additionalProperties": false, "properties": { "bytes_hex": { "type": "string", "pattern": "^([0-9a-f]{2})*$" } } },
+        { "type": "object", "required": ["bool"], "additionalProperties": false, "properties": { "bool": { "type": "boolean" } } },
+        { "type": "object", "required": ["null"], "additionalProperties": false, "properties": { "null": { "type": "string", "minLength": 1 } } }
+      ]
+    },
+    "ref": {
+      "type": "object",
+      "required": ["ref"],
+      "additionalProperties": false,
+      "properties": { "ref": { "type": "string", "pattern": "^[a-z_][a-z0-9_]*(\\.[A-Za-z0-9_]+)*$" } }
+    },
+    "argument": { "oneOf": [{ "$ref": "#/$defs/value" }, { "$ref": "#/$defs/ref" }] },
+    "sql": {
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        {
+          "type": "object",
+          "required": ["mysql", "postgres", "sqlite"],
+          "additionalProperties": false,
+          "properties": {
+            "mysql": { "type": "string", "minLength": 1 },
+            "postgres": { "type": "string", "minLength": 1 },
+            "sqlite": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    },
+    "outcome": {
+      "oneOf": [
+        { "type": "object", "required": ["value"], "additionalProperties": false, "properties": { "value": { "$ref": "#/$defs/value" } } },
+        { "type": "object", "required": ["error"], "additionalProperties": false, "properties": { "error": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" } } }
+      ]
+    },
+    "expect": {
+      "description": "The outcome of each database: exactly mysql, postgres and sqlite, or exactly none; the root selects which.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["mysql", "postgres", "sqlite"],
+          "additionalProperties": false,
+          "properties": {
+            "mysql": { "$ref": "#/$defs/outcome" },
+            "postgres": { "$ref": "#/$defs/outcome" },
+            "sqlite": { "$ref": "#/$defs/outcome" }
+          }
+        },
+        { "type": "object", "required": ["none"], "additionalProperties": false, "properties": { "none": { "$ref": "#/$defs/outcome" } } }
+      ]
+    },
+    "step": {
+      "type": "object",
+      "required": ["op"],
+      "properties": { "op": { "enum": ["model.connect", "codec.decode", "sql.exec"] } },
+      "oneOf": [
+        { "$ref": "#/$defs/ops/model.connect" },
+        { "$ref": "#/$defs/ops/codec.decode" },
+        { "$ref": "#/$defs/ops/sql.exec" }
+      ]
+    },
+    "ops": {
+      "model.connect": {
+        "type": "object",
+        "required": ["op", "pool_size", "as"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "model.connect" },
+          "pool_size": { "type": "integer", "minimum": 1 },
+          "as": { "$ref": "#/$defs/name" }
+        }
+      },
+      "codec.decode": {
+        "type": "object",
+        "required": ["op", "styles", "raw", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "codec.decode" },
+          "styles": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+          "raw": { "$ref": "#/$defs/argument" },
+          "as": { "$ref": "#/$defs/name" },
+          "expect": { "$ref": "#/$defs/expect" }
+        }
+      },
+      "sql.exec": {
+        "type": "object",
+        "required": ["op", "sql", "reason"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "sql.exec" },
+          "sql": { "$ref": "#/$defs/sql" },
+          "reason": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "expectations": {
+      "databases": {
+        "type": "object",
+        "properties": {
+          "cases": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "steps": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "expect": { "type": "object", "required": ["mysql", "postgres", "sqlite"], "properties": { "mysql": true, "postgres": true, "sqlite": true } }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "none": {
+        "type": "object",
+        "properties": {
+          "cases": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "steps": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "expect": { "type": "object", "required": ["none"], "properties": { "none": true } }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

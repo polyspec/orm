@@ -1448,7 +1448,7 @@ feature-unit-check: feature-unit-check/docs feature-unit-check/coverage feature-
 feature-unit-check/docs:
 	$(NODE) scripts/features/build.mts --check
 feature-unit-check/coverage:
-	$(RUN_TESTS) node -- scripts/features/coverage.test.mts scripts/features/languages.test.mts scripts/features/performance-reference.test.mts
+	$(RUN_TESTS) node -- scripts/features/coverage.test.mts scripts/features/languages.test.mts scripts/features/performance-reference.test.mts scripts/features/recipes.test.mts
 feature-unit-check/owners:
 	$(RUN_TESTS) node -- scripts/features/owners.test.mts scripts/features/manifest.test.mts
 feature-unit-check/select:

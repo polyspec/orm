@@ -1,0 +1,36 @@
+{
+  "$schema": "../../schema/recipe.schema.json",
+  "requirements": ["COD-1"],
+  "fixture": "contracts/fixtures/audit.dbs",
+  "seed": { "rows": { "audit_log": [{ "seq": { "int": "1" }, "label": { "text": "first" } }] } },
+  "cases": [
+    {
+      "id": "decode_and_exec",
+      "requirements": ["COD-1"],
+      "seed": { "rows": { "audit_log": [{ "seq": { "int": "18446744073709551615" }, "stamp": { "datetime": "2024-02-29 01:02:03.500000" } }] } },
+      "steps": [
+        { "op": "model.connect", "pool_size": 1, "as": "db" },
+        { "op": "sql.exec", "sql": { "mysql": "SELECT 1", "postgres": "SELECT 1", "sqlite": "SELECT 1" }, "reason": "a fixture of the schema check" },
+        {
+          "op": "codec.decode",
+          "styles": ["ordered_json"],
+          "raw": { "text": "" },
+          "expect": { "mysql": { "error": "CODEC_DECODE" }, "postgres": { "error": "CODEC_DECODE" }, "sqlite": { "error": "CODEC_DECODE" } }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [],
+          "raw": { "bytes_hex": "6162" },
+          "as": "decoded",
+          "expect": { "mysql": { "value": { "bytes_hex": "6162" } }, "postgres": { "value": { "bytes_hex": "6162" } }, "sqlite": { "value": { "bytes_hex": "6162" } } }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [],
+          "raw": { "ref": "decoded" },
+          "expect": { "mysql": { "value": { "null": "text" } }, "postgres": { "value": { "decimal": "-1.50" } }, "sqlite": { "value": { "bool": true } } }
+        }
+      ]
+    }
+  ]
+}
