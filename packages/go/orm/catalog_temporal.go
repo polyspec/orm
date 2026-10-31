@@ -3,7 +3,6 @@ package orm
 import (
 	"fmt"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -31,12 +30,12 @@ var (
 // column, and declared is false when no CHECK fixes it.
 func catalogTemporalKind(column CatalogColumn, dialect string) (kind string, precision int, declared bool, ok bool) {
 	native := strings.TrimSpace(column.NativeType)
+	// The pattern of each type captures the precision as one digit from 0 to 6.
 	precisionOf := func(match []string, fallback int) int {
 		if match[1] == "" {
 			return fallback
 		}
-		p, _ := strconv.Atoi(match[1])
-		return p
+		return int(match[1][0] - '0')
 	}
 	switch dialect {
 	case "mysql":

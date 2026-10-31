@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a22511d08775de649b106d99a7237f7ae05e869d094e9e1fb5fa746855187fe2 -->
+<!-- source-sha256: 5140079e4b19c80ba8a924d115e24644bf7afecc090fdc7e10686cabbe099c8a -->
 # 변경 이력
 
 ## Unreleased
 
+- make lint-go가 packages/go/orm/catalog_temporal.go에서 errcheck로 실패했으며, 그 temporal native type의 정밀도는 strconv.Atoi의 오류를 버렸다(T334-3-3-11). 각 type의 pattern은 정밀도를 0부터 6까지의 한 자리 숫자로 잡으므로, 정밀도는 실패할 수 있는 변환 없이 그 숫자이다.
 - make ts-min-check는 가장 낮은 Node release의 npm, 곧 npm 11로 npm run typescript:test를 실행했고, 그 npm은 devEngines가 npm 12.2.0을 이름하는 checkout을 EBADDEVENGINES로 거부한다(T339-7). recipe는 PATH의 node를 실행하는 mise.toml npm의 bin directory를 가장 낮은 Node 앞에 두므로, test는 선언된 npm으로 그 Node에서 실행된다.
 - T339-4가 ci.yml의 error-codes step을 제거한 뒤, fresh checkout에서 docs job과 feature-coverage, client-db job이 실패했다(T339-6): make docs-verify-idempotent와 make orm-docs-check는 npm script 안에서 TypeScript client를 build하고, scripts/features/coverage.mts, scripts/features/owners.mts, scripts/client-db-test.mts가 시작하는 coverage test는 interface checker를 실행하며, 그 API unit은 모든 구현의 오류 코드 파일을 읽으므로 ./codes.js에 대한 TS2307이나 packages/php/src/Code.php에 대한 ENOENT로 실패했다. 이 target들은 이제 orm-codes-typescript 또는 orm-codes를 prerequisite로 가지며, generatedCodesErrors는 recipe가 이름하는 npm script와 runner로 그런 reader를 찾는다.
 - error code 파일이 없는 checkout에서 파일을 읽는 target이 아무것도 파일을 쓰기 전에 실행되었다. make ts-codec-errors-check는 ./codes.js에 대한 TS2307로, make client-unit-check/code-catalog는 "Code.php has no constant for VERSION_MISMATCH"로, make mermaid-error-python-check는 "cannot import name 'codes' from partially initialized module 'polyspec.orm'"로 실패했다(T339-4). install target과, CI job 세 개 및 kit의 shared와 parity setup의 make orm-codes step만 파일을 썼다. 이제 파일을 읽는 모든 target은 orm-codes-typescript, orm-codes-php 또는 orm-codes-python을 prerequisite로 가진다. php-vendor-check와 python-venv-check는 그 runtime의 파일을, 자신의 recipe에서 TypeScript client를 compile하는 target과 lint-php, test-php-ext는 자기 파일을, kit의 parity gate는 orm-codes를 가진다. 여러 실행의 make process가 파일을 쓰는 동안 다른 process가 읽으므로 orm-codes-<lang>은 파일을 rename으로 publish한다. CI step error-codes, config/ci.json의 orm-codes setup, 그 step을 요구하던 repo-check rule은 제거되었다. repo-check는 recipe가 error code 파일을 읽으면서 그 파일을 쓰는 prerequisite가 없는 target을 실패시킨다. docs/operations/packaging.md는 세 파일을 추적되지 않는 build 산출물로 설명한다.
