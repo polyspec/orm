@@ -210,7 +210,7 @@ async function databaseRecipe(path, database) {
   if (recipe.fixture === undefined) throw new Error(`recipe ${name}: no fixture, so it has no database`);
   const schema = await fixtureSchema(resolve(root, recipe.fixture));
   for (const recipeCase of recipe.cases) {
-    caseTest(`${name}/${recipeCase.id}/${database}`, DATABASE, ({ step }) =>
+    caseTest(recipeCase.id, DATABASE, ({ step }) =>
       withCaseDatabase(database, step, caseDatabase => runCase({ name, recipe, recipeCase, database, schema, caseDatabase, step })));
   }
 }

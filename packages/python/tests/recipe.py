@@ -358,7 +358,6 @@ def _run_case(
         db.utils().schema().install(schema)
     finally:
         db.close()
-    testcase.step("schema installed")
     catalog = connect_catalog(dsn)
     try:
         namespace = catalog.current_namespace()
@@ -385,7 +384,6 @@ def _run_case(
                             f"recipe {path}, case {case['id']}, {part} seed row {index} of {table}, database {database}: "
                             f"{error!r}"
                         ) from error
-        testcase.step("seed rows inserted")
         for index, step in enumerate(case["steps"]):
             try:
                 _run_database_step(step, context)
@@ -393,7 +391,6 @@ def _run_case(
                 raise AssertionError(
                     f"recipe {path}, case {case['id']}, step {index} ({step['op']}), database {database}: {error}"
                 ) from error
-            testcase.step(f"step {index} {step['op']}")
     finally:
         catalog.close()
 
