@@ -3365,6 +3365,7 @@
         "packages/ts/src/codec.ts",
         "packages/ts/src/model.ts",
         "packages/ts/tests/styled-value.mjs",
+        "packages/ts/tests/styled-value-features.mjs",
         "packages/python/src/polyspec/orm/styled_value.py",
         "packages/python/src/polyspec/orm/codec.py",
         "packages/python/src/polyspec/orm/model.py",

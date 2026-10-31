@@ -1220,6 +1220,7 @@
         "packages/ts/tests/group_rows.types.ts",
         "packages/ts/tests/aggregate_numeric.mjs",
         "packages/ts/tests/styled-value.mjs",
+        "packages/ts/tests/styled-value-features.mjs",
         "packages/rust/tests/tests/integration_program/main.rs",
         "packages/go/engine/engine_test.go",
         "packages/go/orm/jsontext_order_test.go",
@@ -1538,6 +1539,15 @@
           "shard": "other",
           "inputs": [
             "packages/ts/tests/styled-value.mjs"
+          ]
+        },
+        {
+          "id": "styled-query-features-typescript",
+          "command": "node packages/ts/tests/styled-value-features.mjs",
+          "shard": "other",
+          "inputs": [
+            "packages/ts/tests/styled-value-features.mjs",
+            "contracts/fixtures/styled_column_states.json"
           ]
         },
         {
@@ -2308,6 +2318,7 @@
         "packages/ts/tests/model.mjs",
         "packages/ts/tests/model-new-output-name.mjs",
         "packages/ts/tests/styled-value.mjs",
+        "packages/ts/tests/styled-value-features.mjs",
         "packages/rust/tests/tests/integration_program/main.rs",
         "packages/rust/build/tests/generate.rs",
         "packages/go/decimalmodel/decimal_physical_test.go",
@@ -2421,6 +2432,15 @@
           "shard": "other",
           "inputs": [
             "packages/ts/tests/styled-value.mjs"
+          ]
+        },
+        {
+          "id": "styled-write-features-typescript",
+          "command": "node packages/ts/tests/styled-value-features.mjs",
+          "shard": "other",
+          "inputs": [
+            "packages/ts/tests/styled-value-features.mjs",
+            "contracts/fixtures/styled_column_states.json"
           ]
         },
         {
@@ -4850,6 +4870,7 @@
         "packages/go/engine/dbspec/show_create_introspect_test.go",
         "packages/php/tests/DbspecShowCreateTest.php",
         "packages/ts/tests/dbspec-show-create.mjs",
+        "packages/ts/tests/dbspec-show-create-introspect.mjs",
         "packages/go/orm/coverage_schema_definition_test.go",
         "packages/php/tests/CoverageSchemaDefinitionTest.php",
         "packages/php/tests/DbspecBehaviourTest.php",
@@ -5117,6 +5138,7 @@
             "packages/ts/tests/dbspec-unicode.mjs",
             "packages/ts/src/dbspec/unicode_word.ts",
             "packages/ts/tests/dbspec-show-create.mjs",
+            "packages/ts/tests/dbspec-show-create-introspect.mjs",
             "tests/dbspec/show-create.json",
             "tests/dbspec/cases.json",
             "tests/dbspec/cases.mts",
@@ -6299,6 +6321,7 @@
         "packages/php/tests/CoveragePlannerTest.php",
         "packages/rust/orm/tests/unit/coverage_planner.rs",
         "packages/ts/tests/coverage_planner.mjs",
+        "packages/ts/tests/value_function_ir.mjs",
         "packages/go/engine/planner/restore_test.go",
         "packages/python/tests/coverage_planner.py",
         "packages/go/engine/ir/validate_test.go",
@@ -6439,6 +6462,14 @@
           "shard": "other",
           "inputs": [
             "packages/ts/tests/engine_features.mjs"
+          ]
+        },
+        {
+          "id": "value-function-ir-typescript",
+          "command": "node packages/ts/tests/value_function_ir.mjs",
+          "shard": "other",
+          "inputs": [
+            "packages/ts/tests/value_function_ir.mjs"
           ]
         },
         {

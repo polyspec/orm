@@ -2791,7 +2791,7 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/styled-value.mjs",
+          "test": "packages/ts/tests/styled-value-features.mjs",
           "id": "styled-value/ip-host-input"
         },
         {
@@ -4863,7 +4863,7 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/styled-value.mjs",
+          "test": "packages/ts/tests/styled-value-features.mjs",
           "id": "styled-value/model-states"
         },
         {
@@ -9275,10 +9275,7 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_planner.mjs",
-          "args": [
-            "--test-skip-pattern=^value_function_ir_parameter_indexes$"
-          ]
+          "test": "packages/ts/tests/coverage_planner.mjs"
         },
         {
           "implementation": "python",
@@ -9533,10 +9530,7 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/styled-value.mjs",
-          "args": [
-            "--test-skip-pattern=^(?:styled-value/model-states|styled-value/ip-host-input|styled-value/lost-output|styled-value/json-column)$"
-          ]
+          "test": "packages/ts/tests/styled-value.mjs"
         },
         {
           "implementation": "python",
@@ -11269,10 +11263,7 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create.mjs",
-          "args": [
-            "--test-skip-pattern=^introspection/"
-          ]
+          "test": "packages/ts/tests/dbspec-show-create.mjs"
         },
         {
           "implementation": "python",
@@ -12183,47 +12174,47 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create.mjs",
+          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
           "id": "introspection/non-ascii-literal"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create.mjs",
+          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
           "id": "introspection/literal-with-quote"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create.mjs",
+          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
           "id": "introspection/literal-with-backslash"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create.mjs",
+          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
           "id": "introspection/literal-with-parentheses"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create.mjs",
+          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
           "id": "introspection/two-checks-target-non-ascii"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create.mjs",
+          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
           "id": "introspection/two-checks-target-ascii"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create.mjs",
+          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
           "id": "introspection/literal-ends-with-backslash"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create.mjs",
+          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
           "id": "introspection/non-ascii-literal-with-quote"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create.mjs",
+          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
           "id": "introspection/name-without-check"
         },
         {
@@ -12649,11 +12640,8 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/styled-value.mjs",
-          "id": "styled-value/json-column",
-          "args": [
-            "--test-name-pattern=^styled-value/json-column$"
-          ]
+          "test": "packages/ts/tests/styled-value-features.mjs",
+          "id": "styled-value/json-column"
         }
       ]
     },
@@ -13606,11 +13594,8 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/styled-value.mjs",
-          "id": "styled-value/lost-output",
-          "args": [
-            "--test-name-pattern=^styled-value/lost-output$"
-          ]
+          "test": "packages/ts/tests/styled-value-features.mjs",
+          "id": "styled-value/lost-output"
         }
       ],
       "owner": {
@@ -18678,7 +18663,7 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_planner.mjs",
+          "test": "packages/ts/tests/value_function_ir.mjs",
           "id": "value_function_ir_parameter_indexes"
         },
         {

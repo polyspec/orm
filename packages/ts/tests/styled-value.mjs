@@ -1,12 +1,12 @@
 import { readFile } from 'node:fs/promises';
 import { decode, encode } from '../dist/codec.js';
 import * as orm from '../dist/index.js';
-import { caseTest, cases as caseRunner, COMPUTE } from '../../../tests/testcase.mts';
+import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 
 const fixture = JSON.parse(await readFile(new URL('../../../contracts/fixtures/styled_column_states.json', import.meta.url), 'utf8'));
 if (typeof orm.StyledValue !== 'function') throw new Error('the TypeScript client exports no StyledValue class');
 
-const suite = caseRunner();
+// Requirements: COD-17, COD-18, COD-19, COD-20, COD-24, COD-25, COD-26, COD-27, COD-32.
 for (const entry of fixture.cases) caseTest(entry.id, COMPUTE, () => {
   if (!Object.hasOwn(entry, 'stored_text') && !Object.hasOwn(entry, 'write_text')) {
     if (!['unselected', 'nonnull_sql_null'].includes(entry.id)) throw new Error(`${entry.id}: fixture case has no codec operation`);
@@ -31,109 +31,3 @@ for (const entry of fixture.cases) caseTest(entry.id, COMPUTE, () => {
     if (encoded !== entry.write_text) throw new Error(`${entry.id}: encoded cell differs from fixture`);
   }
 });
-
-const cases = Object.fromEntries(fixture.cases.map(entry => [entry.id, entry]));
-const probeText = 'dbspec 1 styled_probe\n\ntable styled_probe {\n  seq i64\n  payload text\n  primary key (seq)\n  settings {\n    codec payload ordered_json\n  }\n}\n';
-const { manifest } = orm.dbspecManifest([orm.parseDbspec(probeText, {}).document]);
-const model = orm.registerModel(manifest.manifestText, manifest.manifestHash);
-// Requirements: COD-20, COD-25.
-await suite.run('styled-value/model-states', COMPUTE, () => {
-  const probe = new orm.Core({ model, entity: model.entities.get('styled_probe'), create: () => { throw new Error('not used'); } });
-  try { probe.column('payload'); throw new Error('unselected getter was accepted'); }
-  catch (error) { if (error.code !== cases.unselected.getter_error) throw error; }
-  try { probe.setValue('payload', orm.StyledValue.sqlNull()); throw new Error('non-null column accepted SQL NULL'); }
-  catch (error) { if (error.code !== cases.nonnull_sql_null.error) throw error; }
-  probe.setValue('payload', orm.StyledValue.value(null));
-  if (JSON.stringify(probe.column('payload')) !== JSON.stringify(cases.nonnull_value_null.getter)) {
-    throw new Error('non-null column rejected JSON literal null');
-  }
-});
-
-// Requirements: COD-38.
-caseTest('styled-value/ip-host-input', COMPUTE, () => {
-  const ipText = 'dbspec 1 ip_probe\n\ntable ip_probe {\n  seq i64\n  address bytes null\n  primary key (seq)\n  settings {\n    codec address ip\n  }\n}\n';
-  const { manifest: ipManifest } = orm.dbspecManifest([orm.parseDbspec(ipText, {}).document]);
-  const ipModel = orm.registerModel(ipManifest.manifestText, ipManifest.manifestHash);
-  const ipEntity = ipModel.entities.get('ip_probe');
-  const def = { model: ipModel, entity: ipEntity, create: () => { throw new Error('not used'); } };
-  const invalid = '10. 0.0.1';
-  const key = { conn: '', op: '', column: 'address', columns: [], compare: '' };
-
-  const assigned = new orm.Core(def);
-  try { assigned.setValue('address', invalid); throw new Error('invalid IP assignment was accepted'); }
-  catch (error) { if (error.code !== 'CODEC_ENCODE') throw error; }
-  if (assigned.sets.length !== 0) throw new Error('invalid IP assignment changed the pending write');
-  assigned.setValue('address', null);
-  if (assigned.values.get('address') !== null) throw new Error('SQL NULL assignment was changed');
-  assigned.setValue('address', '10.0.0.1');
-  if (assigned.values.get('address') !== '10.0.0.1') throw new Error('valid IP assignment was encoded or normalized');
-
-  const condition = new orm.Core(def);
-  condition.whereChain('', [key], [invalid]);
-  if (condition.error?.code !== 'CODEC_ENCODE' || condition.where.items.length !== 0) {
-    throw new Error(`invalid IP condition = ${condition.error?.code ?? 'accepted'}, want CODEC_ENCODE before planning`);
-  }
-  const validCondition = new orm.Core(def);
-  validCondition.whereChain('', [key], ['10.0.0.1']);
-  if (validCondition.error || validCondition.where.items[0]?.pred?.value !== '10.0.0.1') {
-    throw new Error('valid IP condition was encoded, normalized, or rejected');
-  }
-  const nullCondition = new orm.Core(def);
-  nullCondition.whereChain('', [key], [null]);
-  if (nullCondition.error || nullCondition.where.items[0]?.pred?.kind !== 'null') {
-    throw new Error('nullable IP condition did not remain an IS NULL condition');
-  }
-});
-
-function rejectsLostOutput(label, read) {
-  try { read(); throw new Error(`${label}: input was silently omitted`); }
-  catch (error) { if (error.code !== 'CODEC_ENCODE') throw error; }
-}
-// Requirements: COD-21.
-await suite.run('styled-value/lost-output', COMPUTE, () => {
-  rejectsLostOutput('styled toJSON', () => orm.StyledValue.value({ missing: undefined }).toJSON());
-  rejectsLostOutput('nested styled JSON.stringify', () => JSON.stringify(orm.StyledValue.value({ nested: { missing: undefined } })));
-  rejectsLostOutput('styled array gap', () => orm.StyledValue.value(Object.assign([], { 1: 'present' })).toJSON());
-  const hidden = Object.defineProperty({ present: 1 }, 'missing', { value: 2 });
-  rejectsLostOutput('hidden styled member', () => orm.StyledValue.value(hidden).toJSON());
-  const keyed = { present: 1, [Symbol('missing')]: 2 };
-  rejectsLostOutput('symbol styled member', () => orm.StyledValue.value(keyed).toJSON());
-  rejectsLostOutput('map styled value', () => orm.StyledValue.value(new Map([['missing', 1]])).toJSON());
-  const extra = ['present'];
-  extra.missing = 2;
-  rejectsLostOutput('extra styled array member', () => orm.StyledValue.value(extra).toJSON());
-  const changed = { present: 1 };
-  const state = orm.StyledValue.value(changed);
-  changed.missing = undefined;
-  rejectsLostOutput('mutated styled value', () => state.toJSON());
-  const rejected = new orm.Author();
-  rejectsLostOutput('setter before assignment', () => rejected.setJsonSetting(orm.StyledValue.value({ missing: undefined })));
-  try { rejected.getJsonSetting(); throw new Error('a rejected setter changed the model'); }
-  catch (error) { if (error.code !== 'COLUMN_UNSELECTED') throw error; }
-  const document = { present: 1 };
-  const author = new orm.Author().setJsonSetting(orm.StyledValue.value(document));
-  document.missing = undefined;
-  rejectsLostOutput('model array', () => author.toArray());
-  rejectsLostOutput('model JSON value', () => author.toJSON());
-  rejectsLostOutput('model JSON text', () => author.toJSONText());
-});
-// Core.jsonColumn, which the getter of an ordered_json column calls: it takes a styled SQL NULL or ordered-json value and
-// refuses any other value with a TypeError that names the column.
-// Requirements: DBS-112, DBS-114.
-await suite.run('styled-value/json-column', COMPUTE, () => {
-  try { new orm.Author().getJsonSetting(); throw new Error('the unselected getter was accepted'); }
-  catch (error) { if (error.code !== 'COLUMN_UNSELECTED') throw error; }
-  const stored = decode(['ordered_json'], '{"b":1,"a":[true,null]}');
-  const got = new orm.Author().setJsonSetting(stored).getJsonSetting();
-  if (!(got instanceof orm.StyledValue) || got.kind !== 'value' || JSON.stringify(got) !== JSON.stringify(stored)) {
-    throw new Error(`the getter changed an ordered-json value: ${JSON.stringify(got)}`);
-  }
-  const none = new orm.Author().setJsonSetting(orm.StyledValue.sqlNull()).getJsonSetting();
-  if (!(none instanceof orm.StyledValue) || none.kind !== 'sql-null') throw new Error('the getter changed a styled SQL NULL');
-  const plain = new orm.Author().setJsonSetting(orm.StyledValue.value({ plain: 1 }));
-  try { plain.getJsonSetting(); throw new Error('the getter returned a value that is no ordered-json value'); }
-  catch (error) {
-    if (!(error instanceof TypeError) || !error.message.includes('author.json_setting')) throw error;
-  }
-});
-suite.finish();
