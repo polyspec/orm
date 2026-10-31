@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7c3d629bd781cf22f4551df893e530a9539519e47391ff6947d2d92fef528e1a -->
+<!-- source-sha256: 585b7123345ff5997f6c487ce3946e43da5c8439034a02beef1aa300e60ff439 -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.19
 
+- parity unit request-hook-reads-params의 TypeScript binding은 request_hook.mjs request-hook/reads_params 하나다. packages/ts/tests/coverage_request_hook_reads_params.mjs는 삭제되었다. 이 파일은 request_hook_run.mjs의 같은 case를 자기 assertion 없이 runCase로 실행해 node:test test를 등록하지 않았고, parity 실행이 그 unit을 실행되지 않은 것으로 보고하게 했다 (T322).
 - Rust integration program의 section trial(conditions, joins_and_relations, columns_and_subqueries, writes, transactions, aes_rotation, json_values, bind_limit_splitting)은 schema_empty처럼 자기 본문에서 driver마다 case를 시작합니다. 이전에는 installed_section helper 안에서 case를 시작했으므로, 모든 Rust test가 case를 시작하는지 보는 저장소 검사가 trial에서 case 시작을 찾지 못했습니다(T334-1).
 - make install은 lock된 kit 0.0.79의 PHP arginfo generator와 parser를 다시 설치합니다. orm-install-php-extension-tools는 T328이 아직 release되지 않은 kit K930을 위해 지웠던 make kit-install-php-arginfo를 실행합니다. 그것이 없으면 새 checkout의 extension build는 모두 var/tools/php-arginfo/PHP-Parser-5.6.1이 없어 멈추었습니다(T338).
 - coverage case "coverage runs without cargo proceed while the Rust test build runs"는 fixture crate를 deadline이 없는 긴 operation인 @polyspec/kit/test-hooks의 setup에서 쓰고 build합니다. 그래서 case의 cargo test --no-run은 이미 build된 crate를 찾고 겹침은 FIFO만으로 판정됩니다. 이전에는 case가 실행의 30000 ms 예산 안에서 crate를 compile했으므로 부하 평균 83에서 실패했습니다(T335).

@@ -12571,7 +12571,6 @@
         "packages/go/orm/request_hook_test.go",
         "packages/go/orm/coverage_request_hook_test.go",
         "packages/ts/tests/request_hook.mjs",
-        "packages/ts/tests/coverage_request_hook_reads_params.mjs",
         "packages/ts/tests/coverage_request_hook.mjs",
         "packages/ts/tests/request_hook_run.mjs",
         "packages/php/tests/RequestHookTest.php",

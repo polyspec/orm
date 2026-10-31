@@ -6562,11 +6562,6 @@
           "id": "CoverageRequestHookExtensionTest::testReadsParams"
         },
         {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_request_hook_reads_params.mjs",
-          "id": "request-hook-reads-params"
-        },
-        {
           "implementation": "python",
           "test": "packages/python/tests/test_request_hook.py",
           "id": "test_reads_params"
