@@ -2135,13 +2135,17 @@ parity-check: parity-prepare
 
 # Kit's gates workflow runs parity context preparation and cleanup in separate job steps. This context gives that job the same
 # run-owned servers, benchmark fixtures and build-output directory as run-databases, while GITHUB_ENV carries the two paths to the gate.
+# PARITY_CONTEXT_TARGETS and PHP_EXTENSION_CONTEXT_TARGETS name the targets that the context's databases serve. The databases get the
+# complex-query fixtures only when one of them needs it (complexQueryNeeded, parity-context.mts, B3-3); none is named by default.
+PARITY_CONTEXT_TARGETS ?=
+PHP_EXTENSION_CONTEXT_TARGETS ?=
 .PHONY: parity-context-prepare parity-context-cleanup
 parity-context-prepare:
-	$(NODE) scripts/check/parity-context.mts prepare parity
+	$(NODE) scripts/check/parity-context.mts prepare parity $(PARITY_CONTEXT_TARGETS)
 parity-context-cleanup:
 	$(NODE) scripts/check/parity-context.mts cleanup parity
 php-extension-context-prepare:
-	$(NODE) scripts/check/parity-context.mts prepare php-ext
+	$(NODE) scripts/check/parity-context.mts prepare php-ext $(PHP_EXTENSION_CONTEXT_TARGETS)
 php-extension-context-cleanup:
 	$(NODE) scripts/check/parity-context.mts cleanup php-ext
 # interface-check runs first: it reads the API units of config/parity.json and the symbol snapshots that parity-check reads.

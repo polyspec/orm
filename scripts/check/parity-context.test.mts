@@ -27,6 +27,30 @@ function contextDirectory(root: string, scope: 'parity' | 'php-ext') {
   return resolve(root, `.runtime/run/kit-${scope}-4321-2`);
 }
 
+// The complex-query rule (CR7, B3-3): the databases of a context get the complex-query fixtures only when one of its targets needs them.
+caseTest('a parity context whose targets need no complex-query fixture creates none', COMPUTE, () => {
+  const f = fixture();
+  try {
+    const calls: string[] = [];
+    prepareContext('parity', f.root, f.env, stub(f.root, calls), ['collection-php-extension-check']);
+    assert.ok(calls.some(call => call.includes('databases-create')), 'the context creates its databases');
+    assert.deepEqual(calls.filter(call => call.includes('COMPLEX_QUERY')), [], 'no COMPLEX_QUERY for a context whose targets meet neither condition');
+  } finally {
+    f.dispose();
+  }
+});
+
+caseTest('a parity context with a target that reads a complex-query DSN creates the fixtures', COMPUTE, () => {
+  const f = fixture();
+  try {
+    const calls: string[] = [];
+    prepareContext('parity', f.root, f.env, stub(f.root, calls), ['complex-query-python-mysql-check']);
+    assert.ok(calls.some(call => call.endsWith('COMPLEX_QUERY=1')), 'the target reads COMPLEX_QUERY_PYTHON_MYSQL_DSN, so the fixtures are created');
+  } finally {
+    f.dispose();
+  }
+});
+
 const stub = (root: string, calls: string[], failCreate = false, decimal = true): ContextCommand => (program, args, cwd) => {
   assert.equal(cwd, root);
   calls.push(`${program} ${args.join(' ')}`);
@@ -75,7 +99,7 @@ caseTest('parity context prepares owned resources and exports only its run paths
     prepareContext('parity', f.root, f.env, stub(f.root, calls));
     assert.deepEqual(calls, [
       'make --no-print-directory orm-test-servers',
-      `make --no-print-directory databases-create SERVERS=${f.serverEnv} DIRECTORY=${f.directory} NAME=orm_kit_parity_4321_2 COMPLEX_QUERY=1`,
+      `make --no-print-directory databases-create SERVERS=${f.serverEnv} DIRECTORY=${f.directory} NAME=orm_kit_parity_4321_2`,
     ]);
     assert.deepEqual(readFileSync(f.githubEnv, 'utf8').trim().split('\n'), [
       "BENCH_SQLITE_DSN=sqlite:///tmp/bench.sqlite",
@@ -116,7 +140,7 @@ caseTest('PHP extension runtime gets owned database fixtures without building pa
     prepareContext('php-ext', f.root, f.env, stub(f.root, calls));
     assert.deepEqual(calls, [
       'make --no-print-directory orm-test-servers',
-      `make --no-print-directory databases-create SERVERS=${f.serverEnv} DIRECTORY=${directory} NAME=orm_kit_php_ext_4321_2 COMPLEX_QUERY=1`,
+      `make --no-print-directory databases-create SERVERS=${f.serverEnv} DIRECTORY=${directory} NAME=orm_kit_php_ext_4321_2`,
     ]);
     assert.equal(readFileSync(f.githubEnv, 'utf8').includes(`STEP_RUN_DIR=${directory}\n`), true);
     cleanupContext('php-ext', f.root, f.env, stub(f.root, calls));

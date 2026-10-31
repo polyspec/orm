@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 93060aa7193c2e4a097f44cb1dbd3b05dc5b9572e058e8a41f50aa74f312ab4b -->
+<!-- source-sha256: 9ecd123ef35ff813d555d747aba9432ebb30f3b1e659cd88ca0a6ff192cb86c7 -->
 # 변경 이력
 
 ## Unreleased
 
+- 모든 kit parity job은 target 중 어느 것도 읽지 않는 complex-query fixture 데이터베이스 18개를 만들었다. 이제 context는 target의 check input이나 recipe가 필요로 할 때만 그것을 만든다 (CR7).
 - Go, PHP, Python model과 orm-codes 파일은 입력이 바뀌지 않았는데도 그것이 필요한 target마다 다시 생성됐다 (한 CI run에서 generator 호출 1451회). 이제 generator는 추적되는 입력의 key가 바뀔 때만 실행되며, 그 stamp는 출력 옆에 원자적으로 기록된다 (CR6).
 - CI job들은 lock file이 바뀌지 않았는데도 npm, composer, uv, Go, mise.toml 패키지를 매 실행마다 다시 설치했다. 이제 각 job은 설치 전에 npm, Go module, composer, uv, tool 캐시를 그 lock file의 hash로 키를 잡아 복원한다 (CR8).
 - 한 CI run에서 일부 target이 두 job에서 실행됐다: static group, docs job, editor job이 docs-verify-idempotent, docs-site-check, dbspec-vscode-check를 각각 실행했고, docs-check는 kit job과 docs job에서 모두 실행됐다. 이제 각 target은 한 job에서만 실행되며, 두 CI job이 같은 target을 실행하면 repo check의 case가 실패한다 (CR9).
