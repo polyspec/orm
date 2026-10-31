@@ -2203,6 +2203,10 @@ caseTest('a target that reads an error code file has the target that writes it a
     '\t$(PYTHON_VENV)/bin/python -m x',
     'all-codes: orm-codes',
     '\tORM_PYTHON=$(PYTHON_VENV)/bin/python POLYSPEC_ORM_EXTENSION=x node scripts/features/owners.mts',
+    'docs-bare:',
+    '\t$(NPM) run docs:verify-idempotent',
+    'checker-bare: lease-tool',
+    '\t$(NODE) scripts/features/coverage.mts --runtime go --database mysql',
     'extension-build:',
     '\tsh packages/php-ext/scripts/build.sh x.so',
     '',
@@ -2213,6 +2217,11 @@ caseTest('a target that reads an error code file has the target that writes it a
     missing('php-bare', 'php'),
     missing('php-extension-run', 'php'),
     missing('python-bare', 'python'),
+    missing('docs-bare', 'typescript'),
+    // A recipe that starts the interface checker, here through the coverage tests of a client, reads the files of every language.
+    missing('checker-bare', 'typescript'),
+    missing('checker-bare', 'php'),
+    missing('checker-bare', 'python'),
   ]);
   // A kit target whose recipe kit.mk owns reads the files as well: the Makefile adds its prerequisite.
   assert.deepEqual(generatedCodesErrors(makefile), [
@@ -2220,6 +2229,10 @@ caseTest('a target that reads an error code file has the target that writes it a
     missing('php-bare', 'php'),
     missing('php-extension-run', 'php'),
     missing('python-bare', 'python'),
+    missing('docs-bare', 'typescript'),
+    missing('checker-bare', 'typescript'),
+    missing('checker-bare', 'php'),
+    missing('checker-bare', 'python'),
     missing('lint-ts', 'typescript'),
     missing('lint-php', 'php'),
     missing('test-php-ext', 'php'),

@@ -521,12 +521,16 @@ export function typescriptHolderErrors(makefile: string): string[] {
 // PHPUnit, the PHP of the checkout, the Composer autoloader or a program given the extension, and Python runs the editable venv,
 // whose polyspec.orm imports codes.
 const CODES_READERS: Record<string, RegExp> = {
-  typescript: /\$\(TSC_BUILD\)|\$\(HOLD_TYPESCRIPT\)|typescript:(?:build|test|check)\b|docs:build\b/,
+  typescript: /\$\(TSC_BUILD\)|\$\(HOLD_TYPESCRIPT\)|typescript:(?:build|test|check)\b|docs:(?:build|check|verify-idempotent)\b/,
   php: /\bphpunit\b|\$\(PHP\)|vendor-php\/|POLYSPEC_ORM_EXTENSION=/,
   python: /\$\(PYTHON_VENV\)|\$\(RUN_TESTS\) python\b/,
 };
 // KIT_CODES_READERS are the targets whose recipe kit.mk owns and that read error code files: the Makefile only adds their
 // prerequisites. The parity targets read the error files of every implementation of config/parity.json.
+// ALL_CODES_READERS start the interface checker tests/interfaces/check/main.mts, directly or through the coverage tests of each
+// client (coverage_interface_contract) that the feature, owner and client-db runners start; its API units read the error code
+// files of every implementation.
+const ALL_CODES_READERS = /tests\/interfaces\/check\/main\.mts|scripts\/features\/(?:coverage|owners)\.mts|scripts\/client-db-test\.mts/;
 const KIT_CODES_READERS: Record<string, string[]> = {
   'lint-ts': ['typescript'],
   'lint-php': ['php'],
@@ -555,6 +559,8 @@ export function generatedCodesErrors(makefile: string): string[] {
   for (const rule of targets)
     for (const [language, reader] of Object.entries(CODES_READERS))
       if (rule.commands.some(command => reader.test(command))) readers.set(rule.target, (readers.get(rule.target) ?? new Set()).add(language));
+  for (const rule of targets)
+    if (rule.commands.some(command => ALL_CODES_READERS.test(command))) readers.set(rule.target, new Set([...(readers.get(rule.target) ?? []), ...Object.keys(CODES_READERS)]));
   for (const [target, languages] of Object.entries(KIT_CODES_READERS)) readers.set(target, new Set([...(readers.get(target) ?? []), ...languages]));
   const errors: string[] = [];
   for (const [target, languages] of readers)

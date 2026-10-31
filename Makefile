@@ -402,7 +402,7 @@ temp-sqlite-fixture-rust-helper-check/cpx5: lease-tool
 # client-pooler-check runs the client database tests through the PgBouncer
 # pooler in transaction mode for PostgreSQL and the ProxySQL pooler for MySQL. Its php-extension lane builds the
 # extension, so it installs the PHP extension tools (T272).
-client-pooler-check: lease-tool python-venv-check orm-install-php-extension-tools orm-codes-typescript
+client-pooler-check: lease-tool python-venv-check orm-install-php-extension-tools orm-codes-typescript orm-codes
 	$(HOLD_TYPESCRIPT)
 	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_TEST_POSTGRES_DSN="$$ORM_TEST_PGBOUNCER_DSN" ORM_TEST_MYSQL_DSN="$$ORM_TEST_PROXYSQL_DSN" node scripts/client-db-test.mts
 
@@ -1489,64 +1489,64 @@ feature-check/build: lease-tool orm-codes-typescript
 # (POLYSPEC_ORM_EXTENSION).
 feature-coverage: feature-coverage/go/mysql feature-coverage/go/postgres feature-coverage/go/sqlite feature-coverage/php/mysql feature-coverage/php/postgres feature-coverage/php/sqlite feature-coverage/php-extension/mysql feature-coverage/php-extension/postgres feature-coverage/php-extension/sqlite feature-coverage/typescript/mysql feature-coverage/typescript/postgres feature-coverage/typescript/sqlite feature-coverage/python/mysql feature-coverage/python/postgres feature-coverage/python/sqlite feature-coverage/rust/mysql feature-coverage/rust/postgres feature-coverage/rust/sqlite feature-performance-check
 
-feature-coverage/go/mysql: lease-tool
+feature-coverage/go/mysql: lease-tool orm-codes
 	$(WITH_TEST_ENV) node scripts/features/coverage.mts --runtime go --database mysql
 
-feature-coverage/go/postgres: lease-tool
+feature-coverage/go/postgres: lease-tool orm-codes
 	$(WITH_TEST_ENV) node scripts/features/coverage.mts --runtime go --database postgres
 
-feature-coverage/go/sqlite: lease-tool
+feature-coverage/go/sqlite: lease-tool orm-codes
 	$(WITH_TEST_ENV) node scripts/features/coverage.mts --runtime go --database sqlite
 
-feature-coverage/php/mysql: php-vendor-check php-models
+feature-coverage/php/mysql: php-vendor-check php-models orm-codes
 	$(WITH_TEST_ENV) node scripts/features/coverage.mts --runtime php --database mysql
 
-feature-coverage/php/postgres: php-vendor-check php-models
+feature-coverage/php/postgres: php-vendor-check php-models orm-codes
 	$(WITH_TEST_ENV) node scripts/features/coverage.mts --runtime php --database postgres
 
-feature-coverage/php/sqlite: php-vendor-check php-models
+feature-coverage/php/sqlite: php-vendor-check php-models orm-codes
 	$(WITH_TEST_ENV) node scripts/features/coverage.mts --runtime php --database sqlite
 
-feature-coverage/php-extension/mysql: php-vendor-check php-models orm-install-php-extension-tools
+feature-coverage/php-extension/mysql: php-vendor-check php-models orm-install-php-extension-tools orm-codes
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
 	$(WITH_TEST_ENV) POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) node scripts/features/coverage.mts --runtime php-extension --database mysql
 	rm -rf $(RUN_DIR)
 
-feature-coverage/php-extension/postgres: php-vendor-check php-models orm-install-php-extension-tools
+feature-coverage/php-extension/postgres: php-vendor-check php-models orm-install-php-extension-tools orm-codes
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
 	$(WITH_TEST_ENV) POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) node scripts/features/coverage.mts --runtime php-extension --database postgres
 	rm -rf $(RUN_DIR)
 
-feature-coverage/php-extension/sqlite: php-vendor-check php-models orm-install-php-extension-tools
+feature-coverage/php-extension/sqlite: php-vendor-check php-models orm-install-php-extension-tools orm-codes
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
 	$(WITH_TEST_ENV) POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) node scripts/features/coverage.mts --runtime php-extension --database sqlite
 	rm -rf $(RUN_DIR)
 
-feature-coverage/typescript/mysql: feature-check/build
+feature-coverage/typescript/mysql: feature-check/build orm-codes
 	$(WITH_TEST_ENV) node scripts/features/coverage.mts --runtime typescript --database mysql
 
-feature-coverage/typescript/postgres: feature-check/build
+feature-coverage/typescript/postgres: feature-check/build orm-codes
 	$(WITH_TEST_ENV) node scripts/features/coverage.mts --runtime typescript --database postgres
 
-feature-coverage/typescript/sqlite: feature-check/build
+feature-coverage/typescript/sqlite: feature-check/build orm-codes
 	$(WITH_TEST_ENV) node scripts/features/coverage.mts --runtime typescript --database sqlite
 
-feature-coverage/python/mysql: python-venv-check
+feature-coverage/python/mysql: python-venv-check orm-codes
 	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python node scripts/features/coverage.mts --runtime python --database mysql
 
-feature-coverage/python/postgres: python-venv-check
+feature-coverage/python/postgres: python-venv-check orm-codes
 	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python node scripts/features/coverage.mts --runtime python --database postgres
 
-feature-coverage/python/sqlite: python-venv-check
+feature-coverage/python/sqlite: python-venv-check orm-codes
 	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python node scripts/features/coverage.mts --runtime python --database sqlite
 
-feature-coverage/rust/mysql: lease-tool
+feature-coverage/rust/mysql: lease-tool orm-codes
 	$(WITH_TEST_ENV) node scripts/features/coverage.mts --runtime rust --database mysql
 
-feature-coverage/rust/postgres: lease-tool
+feature-coverage/rust/postgres: lease-tool orm-codes
 	$(WITH_TEST_ENV) node scripts/features/coverage.mts --runtime rust --database postgres
 
-feature-coverage/rust/sqlite: lease-tool
+feature-coverage/rust/sqlite: lease-tool orm-codes
 	$(WITH_TEST_ENV) node scripts/features/coverage.mts --runtime rust --database sqlite
 
 feature-performance-check: RUN_DIR = $(abspath .runtime/run)/feature-performance-$$PPID
@@ -1781,25 +1781,25 @@ php-without-mysql-check:
 
 client-db-check: client-db-go-check client-db-php-check client-db-php-extension-check client-db-typescript-check client-db-python-check client-db-rust-check
 
-client-db-go-check: lease-tool
+client-db-go-check: lease-tool orm-codes
 	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANGS=go node scripts/client-db-test.mts
 
-client-db-php-check: php-vendor-check php-models
+client-db-php-check: php-vendor-check php-models orm-codes
 	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANGS=php node scripts/client-db-test.mts
 
-client-db-php-extension-check: lease-tool php-vendor-check php-models orm-install-php-extension-tools
+client-db-php-extension-check: lease-tool php-vendor-check php-models orm-install-php-extension-tools orm-codes
 	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANGS=php-extension node scripts/client-db-test.mts
 
-client-db-typescript-check: lease-tool orm-codes-typescript
+client-db-typescript-check: lease-tool orm-codes-typescript orm-codes
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANGS=typescript node scripts/client-db-test.mts
 
-client-db-python-check: python-venv-check
+client-db-python-check: python-venv-check orm-codes
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_statement_fault_entry
 	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_CLIENT_DB_LANGS=python node scripts/client-db-test.mts
 
-client-db-rust-check: lease-tool
+client-db-rust-check: lease-tool orm-codes
 	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANGS=rust node scripts/client-db-test.mts
 
 # Runs only the three-dialect encrypted ordered-json case with the PHP extension loaded and library excluded.
@@ -2611,7 +2611,7 @@ docs-build: orm-codes-typescript
 docs-ci:
 	$(NODE) scripts/check/run.mts --job-summary - docs-verify-idempotent docs-check docs-site-check
 
-orm-docs-check:
+orm-docs-check: orm-codes-typescript
 	$(NPM) run docs:check
 
 # docs-check is the kit task of the documents (config/documents.json): the pairs, the stamps and the Markdown checks of the documents.
@@ -2632,7 +2632,7 @@ docs-site-check: docs-site-parse-check orm-docs-check
 docs-site-parse-check:
 	$(NODE) --test tests/docs/html.test.mts
 
-docs-verify-idempotent:
+docs-verify-idempotent: orm-codes-typescript
 	$(NPM) run docs:verify-idempotent
 
 docs-rules-check:
