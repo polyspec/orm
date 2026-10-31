@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- make docs-rules-check와 make makefile-pinned-node-recipes-check가 test (static)에서 실패했다 (T339-20). T339 row 둘이 문체 규칙이 금지하는 표현을 썼고, GroupRows PHP extension test는 T339-9가 단일 build 경로로 바꾼 build.sh 호출을 여전히 기대했다. 이제 row의 문장을 고쳤고, test는 $(call php_ext_build,...)를 기대하며 그 호출의 module과 mode를 읽는다.
 - make example-check가 ModuleNotFoundError: No module named 'packages'로 실패했다: T339-14가 Python thin-slice 예제의 models import를 packages.python.tests.models.models로 바꿨는데, test는 그 예제를 examples에서 script로 실행했다 (T339-19). 이제 test와 README는 orm의 모든 Python test처럼 checkout의 root에서 module packages.python.examples.thin_slice.main으로 실행한다.
 - Python conformance와 model-generation test가 FileNotFoundError로 실패했다: 그중 셋이 옛 models 경로 packages/python/src/polyspec/orm/models를 path 조각으로 조립했고 T339-14의 검색은 그것을 찾지 못했다(T339-18). 이제 packages/python/tests/models를 읽는다.
 - test (feature_verify_rust)와 test (feature_verify_other)가 실패했다: feature 검사는 디스크의 구현 root를 walk했고, make python-models가 packages/python/tests/models에 생성하며 Git이 무시하는 fixture model을 어떤 feature에도 속하지 않는 python test 파일로 판정했다(T339-17). 이제 feature 검사는 그 root에서 kit이 검사하는 파일, 즉 kit의 parity 선언 검사가 분류하는 집합을 분류한다.

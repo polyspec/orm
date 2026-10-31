@@ -76,7 +76,7 @@ caseTest('the GroupRows PHP extension target builds in its own run directory', C
   assert.match(target, /^\$\(abspath \.runtime\/run\)\/group-rows-db-php-extension-\$\$PPID/m);
   assert.match(target, /run_dir="\$\(RUN_DIR\)"/);
   assert.match(target, /trap 'rm -rf "\$\$run_dir"' EXIT/);
-  assert.match(target, /build\.sh "\$\$run_dir\/php-extension\/polyspec_orm\.so"/);
+  assert.match(target, /\$\(call php_ext_build,"\$\$run_dir\/php-extension\/polyspec_orm\.so",release\)/);
   assert.match(target, /\$\(PHP_EXTENSION_NATIVE_TESTS\) packages\/php-ext\/tests\/GroupRowsDbNativeTest\.php/);
 
   const root = new URL('../..', import.meta.url).pathname;
@@ -91,8 +91,12 @@ caseTest('the GroupRows PHP extension target builds in its own run directory', C
       '#!/bin/sh',
       'set -eu',
       'test "$1" = php-extension-build',
+      // php-ext-build runs `build.sh <output> <mode>` (T339-9): the module is the argument after build.sh, the mode the last.
       'module=',
-      'for argument do module=$argument; done',
+      'mode=',
+      'previous=',
+      'for argument do if [ "$previous" = packages/php-ext/scripts/build.sh ]; then module=$argument; fi; mode=$argument; previous=$argument; done',
+      'test "$mode" = release',
       'case "$module" in */group-rows-db-php-extension-*/php-extension/polyspec_orm.so) ;; *) exit 41 ;; esac',
       'mkdir -p "$(dirname "$module")"',
       'printf module > "$module"',
