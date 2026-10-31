@@ -2827,7 +2827,6 @@ PHP_MODELS_FILE = packages/php/models.txt
 .PHONY: php-models php-model-check
 orm-install-php: orm-codes-php
 	$(ONLINE) $(COMPOSER) install --no-interaction --no-progress
-	$(MAKE) --no-print-directory install-link
 	$(COMPOSER) dump-autoload --no-interaction --quiet
 	$(MAKE) --no-print-directory php-models
 php-models: php-vendor-check
@@ -2906,7 +2905,6 @@ php-ext-release-sources: packages/php-ext/src/polyspec_orm_arginfo.h $(PHP_EXT_S
 orm-install-php-extension-runtime:
 	$(MAKE) --no-print-directory orm-install-php
 	cd packages/php-ext && $(ONLINE) $(COMPOSER) install --no-interaction --no-progress
-	$(MAKE) --no-print-directory install-link
 	$(MAKE) --no-print-directory orm-install-php-extension-tools
 orm-install-typescript-runtime: orm-install-go-lease orm-codes-typescript build-ts
 

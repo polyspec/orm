@@ -685,6 +685,12 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
     'the canonical Kit parity target owns phase execution');
   assert.match(makefile, /^orm-install-python: orm-codes-python\n\t\$\(MAKE\) --no-print-directory install-tools TOOLS="python uv"$/m,
     'the Python installer does not widen a runtime-specific setup back to the full tool inventory');
+  // The link of kit reads the uv project of orm, and a PHP job installs no uv, so only orm-install-python and make install link.
+  for (const target of ['orm-install-php', 'orm-install-php-extension-runtime']) {
+    const recipe = new RegExp(`^${target}:.*\\n((?:\\t.*\\n)*)`, 'm').exec(makefile)?.[1];
+    assert.ok(recipe !== undefined, `the Makefile has no recipe of ${target}`);
+    assert.doesNotMatch(recipe, /\b(?:install-)?link\b/, `${target} links, but its CI job installs no uv`);
+  }
   assert.doesNotMatch(makefile, /^install-packages:\s+orm-install-interfaces-typescript$/m,
     'Kit owns npm package installation; the package target does not widen it with TypeScript 6');
   assert.match(makefile, /^install:.*orm-install-interfaces-typescript$/m,

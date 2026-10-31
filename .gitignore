@@ -75,3 +75,5 @@ go.work.sum
 /packages/python/src/polyspec/orm/codes.py
 # The link declaration of the development links (kit K869); make link reads it.
 /.links
+# The cache of ruff, which make lint-python writes at the root of the checkout
+/.ruff_cache/
