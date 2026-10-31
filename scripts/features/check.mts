@@ -1,12 +1,12 @@
-import { readFile, readdir, stat } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { execFileSync, spawn } from 'node:child_process';
-import path, { resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { COMPUTE, runGroup, sections, stepLines, type Step } from '../../tests/testcase.mts';
 import { errorCode, errorMessage } from '../../tests/errors.mts';
 import type { Check } from './select.mts';
 import { manifestInputErrors } from './owners.mts';
 import { readFeatures, type FeatureManifest } from './manifest.mts';
-import { boundTestPaths, implementationLanguages, implementationSourceRoots, implementationTestInventory, koreanDocumentPath, unlistedFeatureTestErrors, unitTests, unknownParityUnits } from './languages.mts';
+import { boundTestPaths, implementationFiles, implementationLanguages, implementationTestInventory, koreanDocumentPath, unlistedFeatureTestErrors, unitTests, unknownParityUnits } from './languages.mts';
 import { JsonError, readJsonFile, SchemaError } from '../json/schema.mts';
 import { parseSelection, selectChecks, selectionErrors, SHARDS } from './select.mts';
 import { completionItemAdapterErrors } from './behavior-adapters.mts';
@@ -131,32 +131,8 @@ for (const feature of manifest.features) {
 // Every declared shared test (or exact parity test binding) belongs to a feature; the parity declaration check validates
 // the remaining implementation test classifications. A shared vector contract covers all clients because the conformance
 // comparator fails when one language does not run the declared vectors.
-const skipDirectories = new Set(['.git', '__pycache__', 'dist', 'node_modules', 'target', 'vendor', 'venv', '.venv']);
-const walk = async (directory: string): Promise<string[]> => {
-  const entries = await readdir(resolve(root, directory), { withFileTypes: true });
-  const files: string[] = [];
-  for (const entry of entries) {
-    if (entry.isDirectory()) {
-      if (!skipDirectories.has(entry.name)) files.push(...await walk(path.posix.join(directory, entry.name)));
-    } else if (entry.isFile()) {
-      files.push(path.relative(root, resolve(root, directory, entry.name)).split(path.sep).join('/'));
-    }
-  }
-  return files;
-};
 const tracked = execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean);
-const sourceRoots = implementationSourceRoots();
-const allImplementationFiles = new Set<string>();
-for (const directories of Object.values(sourceRoots)) {
-  for (const directory of directories) {
-    try {
-      if ((await stat(resolve(root, directory))).isDirectory()) for (const file of await walk(directory)) allImplementationFiles.add(file);
-      else allImplementationFiles.add(directory);
-    } catch (error) {
-      if (errorCode(error) !== 'ENOENT' && errorCode(error) !== 'ENOTDIR') throw error;
-    }
-  }
-}
+const allImplementationFiles = new Set<string>(implementationFiles(root));
 for (const language of implementationLanguages()) for (const file of boundTestPaths(language)) allImplementationFiles.add(file);
 const discovered = implementationTestInventory(allImplementationFiles);
 const existing: Record<string, Set<string>> = Object.fromEntries(Object.entries(discovered).map(([language, files]) => [language, new Set(files)]));

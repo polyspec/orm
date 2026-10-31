@@ -2,6 +2,7 @@ import { resolve } from 'node:path';
 import { readParityConfig, type ParityConfig } from '../json/formats.mts';
 import { matchesAny } from '@polyspec/kit/glob';
 import { CONVENTIONS, readDeclaration, testNamed, within } from '@polyspec/kit/parity-declaration';
+import { checkedFiles } from '@polyspec/kit/tracked-files';
 
 // The language set of the feature checks is the declared implementations of config/parity.json, the one source of it; a
 // feature's languages are the implementations that its parity units bind.
@@ -16,6 +17,16 @@ export function implementationLanguages(): string[] {
 /** Source roots whose test conventions are part of each implementation's declaration. */
 export function implementationSourceRoots(config: ParityConfig = parity): Record<string, string[]> {
   return Object.fromEntries(config.implementations.map(implementation => [implementation.name, implementation.roots]));
+}
+
+/**
+ * The files of the implementation source roots that the feature check classifies: kit's checked files of `base` (the files Git
+ * tracks or would track, so a generated file that the repository ignores, such as the fixture models of make python-models, is
+ * not a test file), which are the files the parity declaration check of kit classifies. A root is a folder or one file.
+ */
+export function implementationFiles(base: string = root, config: ParityConfig = parity): string[] {
+  const roots = config.implementations.flatMap(implementation => implementation.roots);
+  return checkedFiles(base).filter(file => roots.some(directory => file === directory || within(directory, file))).sort();
 }
 
 const units = new Map(parity.units.map(unit => [unit.id, unit]));

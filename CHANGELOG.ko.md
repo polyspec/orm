@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- test (feature_verify_rust)와 test (feature_verify_other)가 실패했다: feature 검사는 디스크의 구현 root를 walk했고, make python-models가 packages/python/tests/models에 생성하며 Git이 무시하는 fixture model을 어떤 feature에도 속하지 않는 python test 파일로 판정했다(T339-17). 이제 feature 검사는 그 root에서 kit이 검사하는 파일, 즉 kit의 parity 선언 검사가 분류하는 집합을 분류한다.
 - make parity-declarations-check가 packages/python/tests/models/__init__.py를 선언되지 않았다고 판정했다(R5 finding). T339-14가 옮긴 fixture model의 package 파일을 선언 없이 추가했기 때문이다(T339-16). config/parity.json은 그것을 Python 구현의 support 파일로 선언한다.
 - make parity-api-check가 어떤 API unit도 선언하지 않은 polyspec.orm.models의 public symbol 1254개를 찾았다(T339-14). make python-models가 생성하는 fixture model은 wheel이 제외한 client의 source package에 쓰였는데, kit 0.0.84의 extractor는 entry 아래 디스크의 모든 .py 파일을 읽는다(K977). 이제 model은 test 자체 package인 packages/python/tests/models에 있고, 그 model의 setuptools와 vulture exclude는 사라졌다.
 - make lint-php가 T339-9가 ArginfoBuildTest의 fixture에 넣은 주석에서 실패했다: 그 줄은 125자로 phpcs 한도 120을 넘었다(T339-15). 주석은 이제 두 줄이다.

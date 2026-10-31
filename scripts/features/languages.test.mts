@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import { readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { caseTest, COMPUTE } from '../../tests/testcase.mts';
 import { readParityConfig } from '../json/formats.mts';
 import { parseJson } from '../json/schema.mts';
-import { boundTestPaths, featureLanguages, implementationInternalTestPaths, implementationLanguages, implementationSourceRoots, implementationSupportGlobs, implementationTestGlobs, implementationTestInventory, isDeclaredSharedTest, isFeatureTestPath, isImplementationInternalTest, koreanDocumentPath, unknownParityUnits, unitTests, unlistedFeatureTestErrors } from './languages.mts';
+import { boundTestPaths, featureLanguages, implementationFiles, implementationInternalTestPaths, implementationLanguages, implementationSourceRoots, implementationSupportGlobs, implementationTestGlobs, implementationTestInventory, isDeclaredSharedTest, isFeatureTestPath, isImplementationInternalTest, koreanDocumentPath, unknownParityUnits, unitTests, unlistedFeatureTestErrors } from './languages.mts';
 
 const root = resolve(new URL('../..', import.meta.url).pathname);
 const parity = readParityConfig(resolve(root, 'config/parity.json'));
@@ -139,4 +141,31 @@ caseTest('the complex-query feature fixture declares its exact shared case and e
     operation: 'paginate products matching category membership and full-text terms, then fetch the declared relations',
     expected: { row_seqs: fixture.expected.row_seqs, total_count: fixture.expected.total_count },
   }]);
+});
+
+// A generated file that the repository ignores is no test file: the fixture models that make python-models writes into
+// packages/python/tests/models matched the Python test glob on disk, and the feature check named them a test of no feature,
+// while kit's parity declaration check reads only the files Git tracks or would track (T339-17).
+caseTest('the implementation files are the checked files of the roots, without the files Git ignores', COMPUTE, () => {
+  const base = mkdtempSync(join(tmpdir(), 'orm-feature-files-'));
+  try {
+    mkdirSync(join(base, 'packages/python/tests/models'), { recursive: true });
+    mkdirSync(join(base, 'docs'), { recursive: true });
+    writeFileSync(join(base, '.gitignore'), '/packages/python/tests/models/models.py\n');
+    writeFileSync(join(base, 'packages/python/tests/test_tracked.py'), '');
+    writeFileSync(join(base, 'packages/python/tests/test_untracked.py'), '');
+    writeFileSync(join(base, 'packages/python/tests/models/__init__.py'), '');
+    writeFileSync(join(base, 'packages/python/tests/models/models.py'), '');
+    writeFileSync(join(base, 'docs/test_outside.py'), '');
+    execFileSync('git', ['init', '-q'], { cwd: base });
+    execFileSync('git', ['add', '.gitignore', 'packages/python/tests/test_tracked.py'], { cwd: base });
+    const config = { ...parity, implementations: parity.implementations.map(entry => ({ ...entry, roots: entry.name === 'python' ? ['packages/python'] : [] })) };
+    assert.deepEqual(implementationFiles(base, config), [
+      'packages/python/tests/models/__init__.py',
+      'packages/python/tests/test_tracked.py',
+      'packages/python/tests/test_untracked.py',
+    ]);
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
 });

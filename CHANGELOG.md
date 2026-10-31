@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- test (feature_verify_rust) and test (feature_verify_other) failed: the feature check walked the implementation roots on disk and named the fixture models that make python-models generates into packages/python/tests/models, which Git ignores, a python test file of no feature (T339-17). The feature check now classifies kit's checked files of those roots, the set that kit's parity declaration check classifies.
 - make parity-declarations-check found packages/python/tests/models/__init__.py undeclared, an R5 finding, because T339-14 added the package file of the moved fixture models without declaring it (T339-16). config/parity.json declares it as a support file of the Python implementation.
 - make parity-api-check found 1254 public symbols of polyspec.orm.models that no API unit declares (T339-14). The fixture models that make python-models generates were written into the source package of the client, which the wheel excluded, while the extractor of kit 0.0.84 reads every .py file on disk under the entry (K977). The models now live in packages/python/tests/models, the tests' own package, and the setuptools and vulture excludes of them are gone.
 - make lint-php failed on a comment that T339-9 added to the fixture of ArginfoBuildTest: the line was 125 characters, over the phpcs limit of 120 (T339-15). The comment is two lines.
