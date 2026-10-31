@@ -30798,7 +30798,6 @@
           "command": [
             "env",
             "ORM_PHP_MODE=extension",
-            "POLYSPEC_ORM_EXTENSION=${ORM_PARITY_PHP_EXTENSION}",
             "ORM_FEATURE_DATABASE=postgres",
             "ORM_FEATURE_DSN=${BENCH_POSTGRES_DSN}",
             "php",
@@ -30909,7 +30908,6 @@
           "command": [
             "env",
             "ORM_PHP_MODE=extension",
-            "POLYSPEC_ORM_EXTENSION=${ORM_PARITY_PHP_EXTENSION}",
             "ORM_FEATURE_DATABASE=sqlite",
             "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
             "php",
