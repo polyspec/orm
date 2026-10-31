@@ -993,6 +993,7 @@ static void cat_column_names(zval *metadata, zval *out)
 
 /* The page of a table in primary-key order, read in an open read session (Catalog::tablePage). */
 static bool cat_named_result(zval *names, zval *rows, zval *out);
+static bool cat_described_rows(zval *rows, zval *metadata, const char *dialect);
 
 static bool cat_table_page(zval *db, const char *dialect, zval *pdo, zend_string *ns, zend_string *name, zend_long limit, zend_long offset, zval *out)
 {
@@ -1079,7 +1080,7 @@ static bool cat_table_page(zval *db, const char *dialect, zval *pdo, zend_string
         add_next_index_str(&native_types, zend_string_copy(Z_STR_P(native)));
     } ZEND_HASH_FOREACH_END();
     zval converted;
-    ok = cat_convert_rows(&rows, &native_types, &converted);
+    ok = cat_convert_rows(&rows, &native_types, &converted) && cat_described_rows(&converted, &metadata, dialect);
     zval_ptr_dtor(&native_types);
     zval_ptr_dtor(&rows);
     if (!ok) {
@@ -1215,6 +1216,105 @@ static bool cat_datetime_text(const char *s, size_t n, zval *out)
     zval_ptr_dtor(&date);
     zval_ptr_dtor(&time);
     ZVAL_STR(out, text);
+    return true;
+}
+
+/* ---- described temporal cells (INT-103, INT-117) ---------------------------------------------------------------------------- */
+
+/*
+ * The temporal kind of a native type of a described MySQL or PostgreSQL column (Catalog::temporalKind): 'd' for a date,
+ * 't' for a time and 'x' for a datetime, by the first word of the type; 0 for every other type and every SQLite type.
+ */
+static char cat_temporal_kind(const char *dialect, const char *type)
+{
+    if (strcmp(dialect, "sqlite") == 0) return 0;
+    size_t n = strcspn(type, "( ");
+    if (zend_binary_strncasecmp(type, n, "DATE", 4, 4) == 0 && n == 4) return 'd';
+    if (zend_binary_strncasecmp(type, n, "TIME", 4, 4) == 0 && n == 4) return 't';
+    if (strcmp(dialect, "mysql") == 0 && n == 8 && zend_binary_strncasecmp(type, n, "DATETIME", 8, 8) == 0) return 'x';
+    if (strcmp(dialect, "postgres") == 0 && n == 9 && zend_binary_strncasecmp(type, n, "TIMESTAMP", 9, 9) == 0) return 'x';
+    return 0;
+}
+
+/*
+ * The fraction digits of a described temporal column (Catalog::declaredPrecision): the digits of the first "(n)" of its
+ * native type, and otherwise the default of the database, 0 on MySQL and 6 on PostgreSQL.
+ */
+static zend_long cat_declared_precision(const char *dialect, const char *type)
+{
+    for (const char *open = strchr(type, '('); open != NULL; open = strchr(open + 1, '(')) {
+        const char *p = open + 1;
+        zend_long digits = 0;
+        while (cat_digit(*p) && digits < 1000000) digits = digits * 10 + (*p++ - '0');
+        if (p > open + 1 && *p == ')') return digits;
+    }
+    return strcmp(dialect, "postgres") == 0 ? 6 : 0;
+}
+
+/*
+ * A temporal value of a described column in its declared precision p (Catalog::describedTemporal): exactly p fraction
+ * digits, which drops the fraction when p is 0. A non-zero digit beyond p fails with GRID_TEMPORAL_PRECISION.
+ */
+static bool cat_described_temporal(zval *value, char kind, zend_long precision, zval *out)
+{
+    const char *s = Z_STRVAL_P(value);
+    size_t n = Z_STRLEN_P(value);
+    if (kind == 'd') return cat_date_text(s, n, out);
+    zval text;
+    if (!(kind == 't' ? cat_time_text(s, n, &text) : cat_datetime_text(s, n, &text))) return false;
+    const char *t = Z_STRVAL(text);
+    size_t length = Z_STRLEN(text);
+    size_t dot = (size_t)((const char *)zend_memrchr(t, '.', length) - t);
+    size_t end = (size_t)precision > length - dot - 1 ? length : dot + 1 + (size_t)precision;
+    for (size_t i = end; i < length; i++) {
+        if (t[i] != '0') {
+            db_throw_orm("GRID_TEMPORAL_PRECISION", "temporal value \"%s\" has more fraction digits than its precision " ZEND_LONG_FMT,
+                         s, precision);
+            zval_ptr_dtor(&text);
+            return false;
+        }
+    }
+    ZVAL_STRINGL(out, t, precision == 0 ? dot : end);
+    zval_ptr_dtor(&text);
+    return true;
+}
+
+/*
+ * Converts the converted rows of a read of a described table in place (Catalog::describedRows): a MySQL or PostgreSQL
+ * date, time or timestamp cell becomes its dbspec text with exactly the fraction digits of its column. On failure the
+ * rows are released, as cat_convert_rows releases its output.
+ */
+static bool cat_described_rows(zval *rows, zval *metadata, const char *dialect)
+{
+    zval rv_cols, *columns = catalog_prop(metadata, "columns", &rv_cols);
+    zval described;
+    array_init(&described);
+    zval *row;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(rows), row) {
+        zval out_row;
+        array_init(&out_row);
+        zend_ulong i = 0;
+        zval *cell;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(row), cell) {
+            zval *column = zend_hash_index_find(Z_ARRVAL_P(columns), i++);
+            zval trv, *native = column == NULL ? NULL : catalog_prop(column, "nativeType", &trv);
+            char kind = native != NULL && Z_TYPE_P(native) == IS_STRING && Z_TYPE_P(cell) == IS_STRING
+                ? cat_temporal_kind(dialect, Z_STRVAL_P(native)) : 0;
+            zval v;
+            if (kind == 0) {
+                ZVAL_COPY(&v, cell);
+            } else if (!cat_described_temporal(cell, kind, cat_declared_precision(dialect, Z_STRVAL_P(native)), &v)) {
+                zval_ptr_dtor(&out_row);
+                zval_ptr_dtor(&described);
+                zval_ptr_dtor(rows);
+                return false;
+            }
+            add_next_index_zval(&out_row, &v);
+        } ZEND_HASH_FOREACH_END();
+        add_next_index_zval(&described, &out_row);
+    } ZEND_HASH_FOREACH_END();
+    zval_ptr_dtor(rows);
+    ZVAL_COPY_VALUE(rows, &described);
     return true;
 }
 
@@ -2266,7 +2366,7 @@ static bool cat_lookup(zval *db, const char *dialect, zval *pdo, zval *metadata,
     ok = cat_convert_rows(&raw, &native_types, rows);
     zval_ptr_dtor(&raw);
     zval_ptr_dtor(&native_types);
-    return ok;
+    return ok && cat_described_rows(rows, metadata, dialect);
 }
 
 /* A cell equal in type and exact value to another (Catalog::sameRow of one cell). */
@@ -2512,7 +2612,7 @@ static bool cat_insert_rows(zval *db, const char *dialect, zval *pdo, zval *meta
     bool ok = cat_convert_rows(&raw, &types, rows);
     zval_ptr_dtor(&types);
     zval_ptr_dtor(&raw);
-    return ok;
+    return ok && cat_described_rows(rows, metadata, dialect);
 }
 
 /* The row selected by the MySQL key/default strategy after one insert. */

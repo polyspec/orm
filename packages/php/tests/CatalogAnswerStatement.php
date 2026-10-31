@@ -7,9 +7,10 @@ namespace Polyspec\Orm\Tests;
 use PDO;
 use PDOStatement;
 
-final class CatalogMysqlVisibilityStatement extends PDOStatement
+/** A statement of CatalogAnswerPdo: it fetches the values of each answered row in order; an INSERT affects one row. */
+final class CatalogAnswerStatement extends PDOStatement
 {
-    /** @var list<array<string, mixed>> */
+    /** @var list<array<mixed>> */
     private array $rows = [];
     /** @var list<string> */
     private array $names = [];
@@ -18,7 +19,7 @@ final class CatalogMysqlVisibilityStatement extends PDOStatement
     private int $index = 0;
     private int $affected = 0;
 
-    public function __construct(private readonly CatalogMysqlVisibilityPdo $pdo, private readonly string $query)
+    public function __construct(private readonly CatalogAnswerPdo $pdo, private readonly string $query)
     {
     }
 
@@ -48,8 +49,7 @@ final class CatalogMysqlVisibilityStatement extends PDOStatement
         if (!isset($this->rows[$this->index])) {
             return false;
         }
-        $row = $this->rows[$this->index++];
-        return array_values($row);
+        return array_values($this->rows[$this->index++]);
     }
 
     public function rowCount(): int

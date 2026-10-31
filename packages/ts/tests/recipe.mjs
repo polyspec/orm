@@ -1,17 +1,24 @@
 // The recipe helper of TypeScript (docs/spec/feature-coverage.md FCV-2 to FCV-4): the entry of each suite unit,
 // <recipe>-<database>.test.mjs, calls runRecipe with the recipe and the database, and each case of the recipe is one test
 // whose steps call the public API of @polyspec/orm that each op names. It has no command line and no output of its own.
+import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Kind, Value as JsonValue, parse as parseJson } from '@polyspec/ordered-json';
-import { StyledValue, blindIndex, decode, encode, hostDecode, hostEncode } from '../dist/index.js';
-import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
+import { Db, StyledValue, blindIndex, connectCatalog, dbspecManifest, decode, encode, hostDecode, hostEncode, parseDbspec, readDbspecFile } from '../dist/index.js';
+import { withCaseDatabase } from './case-database.mjs';
+import { nativeQuery } from './coverage_case.mjs';
+import { caseTest, COMPUTE, DATABASE } from '../../../tests/testcase.mts';
 
 // NONE is the database part of a recipe without a database (FCV-3).
 export const NONE = 'none';
 
-// runRecipe registers every case of the recipe at path, relative to the repository root, on database.
+// runRecipe registers every case of the recipe at path, relative to the repository root, on database. A database other than
+// none runs each case on a case database of its own (databaseRecipe), and the entry awaits the registration.
 export function runRecipe(path, database) {
-  if (database !== NONE) throw new Error(`recipe ${path}: database ${database} has no case database in this helper`);
+  if (database !== NONE) return databaseRecipe(path, database);
   const recipe = JSON.parse(readFileSync(path, 'utf8'));
   for (const recipeCase of recipe.cases) {
     caseTest(recipeCase.id, COMPUTE, () => {
@@ -189,4 +196,236 @@ function equal(got, want, ordered) {
     return want.object.every(([key, item]) => got.object.some(([gotKey, gotItem]) => gotKey === key && equal(gotItem, item, ordered)));
   }
   return got[kind] === want[kind];
+}
+
+// The database path (FCV-3 and FCV-4): each case runs on a case database of its own through the public catalog API.
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
+const DATABASES = new Set(['mysql', 'postgres', 'sqlite']);
+
+// databaseRecipe registers one test per case of the recipe at path on the database (FCV-3).
+async function databaseRecipe(path, database) {
+  if (!DATABASES.has(database)) throw new Error(`recipe ${path}: unknown database ${database}`);
+  const recipe = JSON.parse(await readFile(resolve(root, path), 'utf8'));
+  const name = path;
+  if (recipe.fixture === undefined) throw new Error(`recipe ${name}: no fixture, so it has no database`);
+  const schema = await fixtureSchema(resolve(root, recipe.fixture));
+  for (const recipeCase of recipe.cases) {
+    caseTest(`${name}/${recipeCase.id}/${database}`, DATABASE, ({ step }) =>
+      withCaseDatabase(database, step, caseDatabase => runCase({ name, recipe, recipeCase, database, schema, caseDatabase, step })));
+  }
+}
+
+/** The Schema of a dbspec-set.json: the parse and the manifest of its documents through the public dbspec API. */
+async function fixtureSchema(setPath) {
+  const set = JSON.parse(await readFile(setPath, 'utf8'));
+  const documents = [];
+  for (const document of set.documents) {
+    const path = resolve(dirname(setPath), document);
+    const read = await readDbspecFile(path);
+    if (read.text === null) throw new Error(`${path}: ${JSON.stringify(read.diagnostics)}`);
+    const parsed = parseDbspec(read.text, {});
+    if (parsed.document === null) throw new Error(`${path}: ${JSON.stringify(parsed.diagnostics)}`);
+    documents.push(parsed.document);
+  }
+  const { manifest, diagnostics } = dbspecManifest(documents);
+  if (manifest === null) throw new Error(`${setPath}: ${JSON.stringify(diagnostics)}`);
+  return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
+}
+
+async function runCase({ name, recipe, recipeCase, database, schema, caseDatabase, step }) {
+  const db = await Db.connect(caseDatabase.dsn);
+  try { await db.utils().schema().install(schema); } finally { await db.close(); }
+  step('schema installed');
+  const catalog = await connectCatalog(caseDatabase.dsn);
+  try {
+    const namespace = await catalog.currentNamespace();
+    const bound = new Map([['database', { text: caseDatabase.name }]]);
+    const context = { catalog, namespace, database, dsn: caseDatabase.dsn, bound };
+    for (const rows of [recipe.seed?.rows, recipeCase.seed?.rows]) {
+      for (const [table, values] of Object.entries(rows ?? {})) {
+        const metadata = await catalog.describeTable({ namespace, name: table });
+        for (const row of values) await catalog.insertRow(metadata, assignments(row, context));
+      }
+    }
+    step('seed rows inserted');
+    for (const [index, current] of recipeCase.steps.entries()) {
+      const where = `recipe ${name}, case ${recipeCase.id}, step ${index} (${current.op}), database ${database}`;
+      try {
+        await runStep(current, context);
+      } catch (error) {
+        throw new Error(`${where}: ${error.message}`, { cause: error });
+      }
+      step(`step ${index} ${current.op}`);
+    }
+  } finally {
+    await catalog.close();
+  }
+}
+
+// Each op maps to one call of the public API and returns the fields that its expect compares.
+const OPS = {
+  async 'catalog.current_namespace'(_, { catalog }) {
+    return { value: { text: await catalog.currentNamespace() } };
+  },
+  async 'catalog.describe_table'(s, { catalog, namespace }) {
+    const metadata = await catalog.describeTable({ namespace, name: s.table });
+    return { bind: metadata, columns: metadata.columns.map(c => c.name), primary_key: metadata.primaryKey, reliable_row_identity: metadata.reliableRowIdentity };
+  },
+  async 'catalog.table_page'(s, { catalog, namespace }) {
+    const page = await catalog.tablePage({ namespace, name: s.table }, s.limit, s.offset);
+    const indexes = s.columns.map(column => {
+      const at = page.columnIndex(column);
+      if (at < 0) throw new Error(`the page has no column ${column}`);
+      return at;
+    });
+    const types = page.result.columns.map(c => c.nativeType);
+    return { bind: page, columns: page.result.columns.map(c => c.name), order_by: page.orderBy, has_more: page.hasMore, rows: page.result.rows.map(row => indexes.map(at => plain(row[at], types[at]))) };
+  },
+  async 'catalog.read_only_query'(s, context) {
+    const result = await context.catalog.readOnlyQuery(sql(s.sql, context), [], limits(s));
+    return { rows: result.rows.map(row => row.map(cell => plain(cell, null))) };
+  },
+  async 'catalog.read_only_grid_query'(s, context) {
+    const result = await context.catalog.readOnlyGridQuery(sql(s.sql, context), [], limits(s));
+    return { columns: result.columns.map(c => c.name), rows: result.rows.map(row => row.map(grid)) };
+  },
+  async 'catalog.row_snapshot'(s, context) {
+    return { bind: context.catalog.rowSnapshotFromPage(stepArgument(s.page, context), s.index) };
+  },
+  async 'catalog.insert_row'(s, context) {
+    const metadata = stepArgument(s.metadata, context);
+    return mutation(metadata, await context.catalog.insertRow(metadata, assignments(s.values, context)));
+  },
+  async 'catalog.update_row'(s, context) {
+    const snapshot = stepArgument(s.snapshot, context);
+    return mutation(snapshot.metadata, await context.catalog.updateRow(snapshot, assignments(s.set, context)));
+  },
+  async 'catalog.delete_row'(s, context) {
+    return { value: { int: String(await context.catalog.deleteRow(stepArgument(s.snapshot, context))) } };
+  },
+  async 'sql.exec'(s, context) {
+    await nativeQuery(context.database, context.dsn, [sql(s.sql, context)]);
+    return {};
+  },
+};
+
+async function runStep(s, context) {
+  const op = OPS[s.op];
+  if (op === undefined) throw new Error(`OP_UNKNOWN ${s.op}`);
+  const expected = s.expect === undefined ? undefined : resolveRefs(s.expect[context.database], context);
+  let actual;
+  try {
+    actual = await op(s, context);
+  } catch (error) {
+    if (expected?.error === undefined || typeof error?.code !== 'string') throw error;
+    assert.equal(error.code, expected.error, `the error code (${error.message})`);
+    return;
+  }
+  if (s.as !== undefined) context.bound.set(s.as, actual.bind ?? actual.value);
+  if (expected === undefined) return;
+  if (expected.error !== undefined) throw new Error(`expected ${expected.error}, and the op succeeded`);
+  const compared = Object.fromEntries(Object.keys(expected).map(key => [key, actual[key]]));
+  assert.deepEqual(normalized(compared), normalized(expected));
+}
+
+/** A field that holds SQL or a database-decided value: the string itself, or the entry of the database. */
+function sql(field, { database }) {
+  return typeof field === 'string' ? field : field[database];
+}
+
+function limits(s) {
+  return { ...(s.max_rows === undefined ? {} : { maxRows: s.max_rows }), ...(s.max_bytes === undefined ? {} : { maxBytes: s.max_bytes }) };
+}
+
+/** A bound value of {"ref": "<name>"} or {"ref": "<name>.<path>"}. */
+function bound(ref, { bound: values }) {
+  const [head, ...path] = ref.split('.');
+  if (!values.has(head)) throw new Error(`no bound value ${head}`);
+  return path.reduce((value, key) => {
+    if (value === null || typeof value !== 'object' || !(key in value)) throw new Error(`bound value ${head} has no ${path.join('.')}`);
+    return value[key];
+  }, values.get(head));
+}
+
+function stepArgument(field, context) {
+  if (field !== null && typeof field === 'object' && 'ref' in field) return bound(field.ref, context);
+  return field;
+}
+
+function resolveRefs(value, context) {
+  if (Array.isArray(value)) return value.map(item => resolveRefs(item, context));
+  if (value === null || typeof value !== 'object') return value;
+  if (Object.keys(value).length === 1 && 'ref' in value) return bound(value.ref, context);
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, resolveRefs(item, context)]));
+}
+
+/** The assignments of an object of column names whose values are recipe wrappers or per-database objects. */
+function assignments(values, context) {
+  return Object.entries(values).map(([name, value]) => ({ name, value: native(databaseValue(stepArgument(value, context), context)) }));
+}
+
+function databaseValue(value, { database }) {
+  if (value !== null && typeof value === 'object' && 'mysql' in value && 'postgres' in value && 'sqlite' in value) return value[database];
+  return value;
+}
+
+/** The value of the TypeScript API for a recipe wrapper. */
+function native(wrapper) {
+  const [[kind, value]] = Object.entries(wrapper);
+  switch (kind) {
+    case 'int': {
+      const n = BigInt(value);
+      return n >= BigInt(Number.MIN_SAFE_INTEGER) && n <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(n) : n;
+    }
+    case 'text': case 'date': case 'time': case 'datetime': case 'decimal': return value;
+    case 'bytes_hex': return Uint8Array.from(Buffer.from(value, 'hex'));
+    case 'bool': return value;
+    case 'null': return null;
+    default: throw new Error(`unknown recipe wrapper ${kind}`);
+  }
+}
+
+/** The recipe wrapper of a plain value; a string takes the wrapper of the native type of its column when one is known. */
+function plain(value, nativeType) {
+  if (value === null) return { null: true };
+  if (typeof value === 'bigint' || (typeof value === 'number' && Number.isInteger(value))) return { int: String(value) };
+  if (typeof value === 'boolean') return { bool: value };
+  if (value instanceof Uint8Array) return { bytes_hex: Buffer.from(value).toString('hex') };
+  if (typeof value === 'string') return { [temporalKind(nativeType) ?? 'text']: value };
+  throw new Error(`no recipe wrapper for the plain value ${String(value)}`);
+}
+
+function temporalKind(nativeType) {
+  const type = (nativeType ?? '').toLowerCase();
+  if (/^(datetime|timestamp)/.test(type)) return 'datetime';
+  if (type.startsWith('time')) return 'time';
+  if (type.startsWith('date')) return 'date';
+  if (/^(decimal|numeric)/.test(type)) return 'decimal';
+  return null;
+}
+
+/** The recipe wrapper of a grid cell. */
+function grid(cell) {
+  switch (cell.kind) {
+    case 'null': return { null: true };
+    case 'integer': case 'unsigned': return { int: String(cell.value) };
+    case 'decimal': case 'text': case 'date': case 'time': case 'datetime': return { [cell.kind]: cell.value };
+    case 'boolean': return { bool: cell.value };
+    case 'binary': return { bytes_hex: Buffer.from(cell.value).toString('hex') };
+    default: throw new Error(`no recipe wrapper for the grid cell ${cell.kind}`);
+  }
+}
+
+/** The fields of a mutation result: its rows, each cell wrapped by the native type of its column in the metadata. */
+function mutation(metadata, result) {
+  const types = result.columns.map(column => metadata.columns.find(c => c.name === column)?.nativeType ?? null);
+  return { rows: result.rows.map(row => row.map((cell, at) => plain(cell, types[at]))) };
+}
+
+/** NULL compares by its nullness: an expect names the parameter type of NULL, and a result has none. */
+function normalized(value) {
+  if (Array.isArray(value)) return value.map(normalized);
+  if (value === null || typeof value !== 'object') return value;
+  if (Object.keys(value).length === 1 && 'null' in value) return { null: true };
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, normalized(item)]));
 }

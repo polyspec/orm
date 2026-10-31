@@ -5399,6 +5399,10 @@
     "exported": false,
     "signature": "private static function dateTimeText(string $text): string"
   },
+  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::declaredPrecision": {
+    "exported": false,
+    "signature": "private static function declaredPrecision(string $dialect, string $nativeType): int"
+  },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::deleteRow": {
     "exported": true,
     "signature": "public function deleteRow(Polyspec\\Orm\\CatalogRowSnapshot $original): int"
@@ -5410,6 +5414,14 @@
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::describeTable": {
     "exported": true,
     "signature": "public function describeTable(array $table): Polyspec\\Orm\\CatalogTableMetadata"
+  },
+  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::describedRows": {
+    "exported": false,
+    "signature": "private static function describedRows(array $raw, Polyspec\\Orm\\CatalogTableMetadata $metadata, string $dialect): array"
+  },
+  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::describedTemporal": {
+    "exported": false,
+    "signature": "private static function describedTemporal(string $value, string $kind, int $precision): string"
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::descriptorKeys": {
     "exported": false,
@@ -5589,7 +5601,7 @@
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::rowsForDescriptor": {
     "exported": false,
-    "signature": "private static function rowsForDescriptor(array $result, Polyspec\\Orm\\CatalogTableMetadata $descriptor): array"
+    "signature": "private static function rowsForDescriptor(array $result, Polyspec\\Orm\\CatalogTableMetadata $descriptor, string $dialect): array"
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::sameNames": {
     "exported": false,
@@ -5618,6 +5630,10 @@
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::tableRef": {
     "exported": false,
     "signature": "private static function tableRef(array $table): array"
+  },
+  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::temporalKind": {
+    "exported": false,
+    "signature": "private static function temporalKind(string $dialect, string $nativeType): ?string"
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::text": {
     "exported": false,

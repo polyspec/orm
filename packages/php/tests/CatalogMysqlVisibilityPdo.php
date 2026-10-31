@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-use PDO;
-use PDOStatement;
 use RuntimeException;
 
-final class CatalogMysqlVisibilityPdo extends PDO
+final class CatalogMysqlVisibilityPdo extends CatalogAnswerPdo
 {
     /** @var list<string> */
     public array $queries = [];
@@ -18,22 +16,6 @@ final class CatalogMysqlVisibilityPdo extends PDO
     {
     }
 
-    public function setAttribute(int $attribute, mixed $value): bool
-    {
-        return true;
-    }
-
-    public function exec(string $statement): int|false
-    {
-        return 0;
-    }
-
-    public function prepare(string $query, array $options = []): PDOStatement|false
-    {
-        return new CatalogMysqlVisibilityStatement($this, $query);
-    }
-
-    /** @return array{list<array<string, mixed>>, list<string>, list<string>} */
     public function answer(string $query): array
     {
         $this->queries[] = $query;

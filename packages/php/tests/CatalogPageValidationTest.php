@@ -25,6 +25,20 @@ final class CatalogPageValidationTest extends TestCase
         );
     }
 
+    // Requirements: INT-103, INT-117.
+    public function testDescribedPostgresTemporalCellsHaveTheirDeclaredPrecision(): void
+    {
+        CatalogPostgresTemporalCases::assertDeclaredPrecision(
+            static function (CatalogPostgresTemporalPdo $pdo): Catalog {
+                $db = new Db($pdo, 'postgres', new Config(), new \DateTimeZone('UTC'));
+                $catalog = (new \ReflectionClass(Catalog::class))->newInstanceWithoutConstructor();
+                (new \ReflectionProperty(Catalog::class, 'db'))->setValue($catalog, $db);
+                (new \ReflectionProperty(Catalog::class, 'dialect'))->setValue($catalog, 'postgres');
+                return $catalog;
+            },
+        );
+    }
+
     // Requirements: INT-121.
     public function testRejectsPreparedColumnAndDescriptorChanges(): void
     {

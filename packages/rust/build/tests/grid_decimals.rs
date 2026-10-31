@@ -57,7 +57,7 @@ async fn check() {
             if !catalog
                 .read_only_grid_query("SELECT 'NaN'::numeric", &[], QueryLimits::default())
                 .await
-                .is_err_and(|error| error.contains("Unsupported or invalid finite grid decimal: ") && error.contains("NaN"))
+                .is_err_and(|error| error.starts_with("CATALOG_VALUE:") && error.contains("NaN"))
             {
                 failures.push("nonfinite-numeric-cause")
             }

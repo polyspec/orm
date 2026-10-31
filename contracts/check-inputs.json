@@ -1206,6 +1206,23 @@
         "packages/rust/build/tests/unit/row_update_budget.rs"
       ]
     },
+    "catalog-value-rust-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "rust",
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/rust/Cargo.toml",
+        "packages/rust/Cargo.lock",
+        "packages/rust/build/Cargo.toml",
+        "packages/rust/build/src/catalog/mod.rs",
+        "packages/rust/build/src/tool_db.rs",
+        "packages/rust/build/tests/unit/catalog_value.rs"
+      ]
+    },
     "column-function-metadata-check": {
       "scope": "owner",
       "needs": [
@@ -1554,6 +1571,7 @@
         "packages/go/internal/recipe/recipe.go",
         "packages/php/tests/CodecRecipeTest.php",
         "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php",
         "packages/php-ext/tests/CodecRecipeTestExtensionTest.php",
         "packages/ts/tests/codec-none.test.mjs",
         "packages/ts/tests/recipe.mjs",
@@ -1561,6 +1579,102 @@
         "packages/python/tests/recipe.py",
         "packages/rust/tests/tests/codec_none.rs",
         "packages/rust/tests/src/recipe.rs"
+      ]
+    },
+    "catalog-connection-check/go": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/catalog_connection/**",
+        "packages/go/orm/recipe_catalog_connection_test.go",
+        "packages/go/internal/recipe/recipe.go",
+        "packages/go/internal/recipe/database.go",
+        "packages/go/orm/catalog*.go"
+      ]
+    },
+    "catalog-connection-check/rust": {
+      "scope": "owner",
+      "needs": [
+        "rust",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/catalog_connection/**",
+        "packages/rust/tests/tests/catalog_connection_mysql.rs",
+        "packages/rust/tests/tests/catalog_connection_postgres.rs",
+        "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+        "packages/rust/tests/src/recipe.rs",
+        "packages/rust/tests/Cargo.toml",
+        "packages/rust/build/src/catalog/**",
+        "packages/rust/build/src/tool_db.rs",
+        "packages/rust/build/src/tool_db/**"
+      ]
+    },
+    "catalog-connection-check/typescript": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/catalog_connection/**",
+        "packages/ts/tests/catalog_connection-mysql.test.mjs",
+        "packages/ts/tests/catalog_connection-postgres.test.mjs",
+        "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+        "packages/ts/tests/recipe.mjs",
+        "packages/ts/src/catalog.ts"
+      ]
+    },
+    "catalog-connection-check/python": {
+      "scope": "owner",
+      "needs": [
+        "python",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/catalog_connection/**",
+        "packages/python/tests/test_catalog_connection_mysql.py",
+        "packages/python/tests/test_catalog_connection_postgres.py",
+        "packages/python/tests/test_catalog_connection_sqlite.py",
+        "packages/python/tests/recipe.py",
+        "packages/python/src/polyspec/orm/catalog.py"
+      ]
+    },
+    "catalog-connection-check/php": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/catalog_connection/**",
+        "packages/php/tests/CatalogConnectionRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php",
+        "packages/php/src/Catalog.php",
+        "packages/php/tests/bootstrap.php"
+      ]
+    },
+    "catalog-connection-check/php-extension": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/catalog_connection/**",
+        "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/bootstrap.php",
+        "packages/php/tests/CatalogConnectionRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php",
+        "packages/php-ext/src/catalog_connection.c"
       ]
     },
     "php-codec-causes-check": {
@@ -3503,8 +3617,9 @@
         "packages/php-ext/**",
         "packages/php/tests/bootstrap.php",
         "packages/php/tests/CatalogPageValidationTest.php",
+        "packages/php/tests/CatalogAnswerPdo.php",
+        "packages/php/tests/CatalogAnswerStatement.php",
         "packages/php/tests/CatalogMysqlVisibilityPdo.php",
-        "packages/php/tests/CatalogMysqlVisibilityStatement.php",
         "packages/php/tests/CatalogMysqlVisibilityCases.php",
         "packages/php/tests/UninitializedRecordingPdo.php",
         "packages/php/tests/CatalogConnectionCoverageCases.php",
@@ -3514,7 +3629,9 @@
         "packages/php/tests/statement_events_run.php",
         "packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
         "packages/php-ext/tests/CatalogPageMutationPdo.php",
-        "packages/php-ext/tests/CatalogPageMutationStatement.php"
+        "packages/php-ext/tests/CatalogPageMutationStatement.php",
+        "packages/php/tests/CatalogPostgresTemporalCases.php",
+        "packages/php/tests/CatalogPostgresTemporalPdo.php"
       ]
     },
     "native-arginfo-php-extension-check": {

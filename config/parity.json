@@ -264,8 +264,9 @@
         "packages/php/tests/CallbackFailed.php",
         "packages/php/tests/CannedCatalogPdo.php",
         "packages/php/tests/CatalogConnectionCoverageCases.php",
+        "packages/php/tests/CatalogAnswerPdo.php",
+        "packages/php/tests/CatalogAnswerStatement.php",
         "packages/php/tests/CatalogMysqlVisibilityPdo.php",
-        "packages/php/tests/CatalogMysqlVisibilityStatement.php",
         "packages/php/tests/CatalogMysqlVisibilityCases.php",
         "packages/php/tests/CodecYamlProbe.php",
         "packages/php/tests/CollectionIdentityCases.php",
@@ -364,7 +365,10 @@
         "packages/php/tests/PostgresSessionSettings.php",
         "packages/php/tests/QueryCancellationDbCases.php",
         "packages/php/tests/AuthenticatedEncryptionFixtureCases.php",
-        "packages/php/tests/Recipe.php"
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php",
+        "packages/php/tests/CatalogPostgresTemporalPdo.php",
+        "packages/php/tests/CatalogPostgresTemporalCases.php"
       ],
       "symbols": {
         "extractor": "php",
@@ -1143,6 +1147,10 @@
         {
           "glob": "packages/rust/build/tests/unit/row_update_budget.rs",
           "reason": "test: tests the private row-snapshot update budget validator and ROW_UPDATE_LIMIT diagnostic; its owner is rust-duplicate-catalog-check, while shared update behavior remains covered by model_writes cases"
+        },
+        {
+          "glob": "packages/rust/build/tests/unit/catalog_value.rs",
+          "reason": "test: tests the private mapping of an unsupported tool cell to CATALOG_VALUE and the catalog codes of the tool errors; its owner is catalog-value-rust-check, while the shared behavior is covered by the catalog_connection recipe"
         }
       ]
     }
@@ -9606,6 +9614,156 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/codec_none.rs",
           "symbol": "codec_none"
+        }
+      ]
+    },
+    {
+      "id": "catalog_connection-mysql",
+      "kind": "suite",
+      "requirements": [
+        "INT-101",
+        "INT-103",
+        "INT-104",
+        "INT-109",
+        "INT-111",
+        "INT-113",
+        "INT-114",
+        "INT-115",
+        "INT-117",
+        "INT-123",
+        "INT-136",
+        "SCH-6a"
+      ],
+      "file": "contracts/fixtures/catalog_connection/catalog_connection.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_catalog_connection_test.go",
+          "symbol": "TestRecipeCatalogConnectionMysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_mysql.rs",
+          "symbol": "catalog_connection_mysql"
+        }
+      ]
+    },
+    {
+      "id": "catalog_connection-postgres",
+      "kind": "suite",
+      "requirements": [
+        "INT-101",
+        "INT-103",
+        "INT-104",
+        "INT-109",
+        "INT-111",
+        "INT-113",
+        "INT-114",
+        "INT-115",
+        "INT-117",
+        "INT-123",
+        "INT-136",
+        "SCH-6a"
+      ],
+      "file": "contracts/fixtures/catalog_connection/catalog_connection.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_catalog_connection_test.go",
+          "symbol": "TestRecipeCatalogConnectionPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_postgres.rs",
+          "symbol": "catalog_connection_postgres"
+        }
+      ]
+    },
+    {
+      "id": "catalog_connection-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "INT-101",
+        "INT-103",
+        "INT-104",
+        "INT-109",
+        "INT-111",
+        "INT-113",
+        "INT-114",
+        "INT-115",
+        "INT-117",
+        "INT-123",
+        "INT-136",
+        "SCH-6a"
+      ],
+      "file": "contracts/fixtures/catalog_connection/catalog_connection.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_catalog_connection_test.go",
+          "symbol": "TestRecipeCatalogConnectionSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "symbol": "catalog_connection_sqlite"
         }
       ]
     },

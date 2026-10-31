@@ -40,6 +40,16 @@ final class CatalogConnectionSurfaceTest extends TestCase
         );
     }
 
+    // Requirements: INT-103, INT-117.
+    public function testNativeDescribedPostgresTemporalCellsHaveTheirDeclaredPrecision(): void
+    {
+        CatalogPostgresTemporalCases::assertDeclaredPrecision(
+            static function (CatalogPostgresTemporalPdo $pdo): Catalog {
+                return self::catalogWith(new Db($pdo, 'postgres', new Config(), new DateTimeZone('UTC')), 'postgres');
+            },
+        );
+    }
+
     public function testNativeGridCellsPreserveDeclaredValues(): void
     {
         $values = [

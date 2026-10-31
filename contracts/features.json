@@ -8193,6 +8193,7 @@
           "inputs": [
             "packages/php/tests/CodecRecipeTest.php",
             "packages/php/tests/Recipe.php",
+            "packages/php/tests/RecipeCases.php",
             "tests/codec/codec.json"
           ]
         },

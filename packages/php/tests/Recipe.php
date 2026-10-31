@@ -12,8 +12,16 @@ use PHPUnit\Framework\Assert;
 use Polyspec\OrderedJson\Kind;
 use Polyspec\OrderedJson\Value as OrderedJson;
 use Polyspec\Orm\Bytes;
+use Polyspec\Orm\Catalog;
+use Polyspec\Orm\CatalogGridCell;
+use Polyspec\Orm\CatalogResult;
+use Polyspec\Orm\CatalogTableMetadata;
 use Polyspec\Orm\Codec;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Dbspec\Dbspec;
+use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
+use Polyspec\Orm\Schema;
 use Polyspec\Orm\StyledValue;
 
 final class Recipe
@@ -34,7 +42,8 @@ final class Recipe
     public static function run(string $path, array $case, string $database): void
     {
         if ($database !== self::NONE) {
-            Assert::fail("recipe $path: database $database has no case database in this helper");
+            self::runDatabase($path, $case, $database);
+            return;
         }
         $bound = [];
         foreach ($case['steps'] as $index => $step) {
@@ -300,5 +309,428 @@ final class Recipe
             return 'bytes(' . bin2hex($value->bytes) . ')';
         }
         return var_export($value, true);
+    }
+
+    // The database path (FCV-3 and FCV-4): each case runs on a case database of its own through the public catalog API.
+
+    /** The databases of a recipe with a fixture (FCV-3). */
+    private const DATABASES = ['mysql', 'postgres', 'sqlite'];
+
+    /** @var array<string, Schema> the Schema of each fixture set, built once per process */
+    private static array $schemas = [];
+
+    /** Runs one case of the recipe at path on a case database of database, which is removed when the case ends. */
+    private static function runDatabase(string $path, array $case, string $database): void
+    {
+        if (!in_array($database, self::DATABASES, true)) {
+            Assert::fail("recipe $path: unknown database $database");
+        }
+        $root = dirname(__DIR__, 3);
+        $recipe = json_decode(file_get_contents($root . '/' . $path), true, 512, JSON_THROW_ON_ERROR);
+        if (!isset($recipe['fixture'])) {
+            Assert::fail("recipe $path: no fixture, so it has no database");
+        }
+        $schema = self::$schemas[$recipe['fixture']] ??= self::fixtureSchema($root . '/' . $recipe['fixture']);
+        with_case_database(
+            $database,
+            static function (string $step): void {
+            },
+            static function (string $dsn, CaseDatabase $caseDatabase) use ($path, $recipe, $case, $database, $schema) {
+                self::runDatabaseCase($path, $recipe, $case, $database, $schema, $dsn, $caseDatabase->name);
+            }
+        );
+    }
+
+    /** The Schema of a dbspec-set.json: the parse and the manifest of its documents through the public dbspec API. */
+    private static function fixtureSchema(string $setPath): Schema
+    {
+        $set = json_decode(file_get_contents($setPath), true, 512, JSON_THROW_ON_ERROR);
+        $documents = [];
+        foreach ($set['documents'] as $name) {
+            $path = dirname($setPath) . '/' . $name;
+            $read = Dbspec::readFile($path);
+            if ($read->text === null) {
+                Assert::fail("$path: " . self::diagnostics($read->diagnostics));
+            }
+            $parsed = Dbspec::parse($read->text, []);
+            if ($parsed->document === null) {
+                Assert::fail("$path: " . self::diagnostics($parsed->diagnostics));
+            }
+            $documents[] = $parsed->document;
+        }
+        $result = Dbspec::manifest($documents);
+        if ($result->manifest === null) {
+            Assert::fail("$setPath: " . self::diagnostics($result->diagnostics));
+        }
+        return new Schema($result->manifest->manifestText, $result->manifest->manifestHash);
+    }
+
+    private static function diagnostics(array $diagnostics): string
+    {
+        return json_encode($diagnostics, JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR);
+    }
+
+    /**
+     * Installs the Schema on the case database, connects the catalog, binds `database` to the name of the case
+     * database, inserts the seed rows of the recipe and then of the case, runs the steps and closes the catalog.
+     */
+    private static function runDatabaseCase(
+        string $path,
+        array $recipe,
+        array $case,
+        string $database,
+        Schema $schema,
+        string $dsn,
+        string $name,
+    ): void {
+        $db = Orm::connect($dsn, new Config());
+        try {
+            $db->utils()->schema()->install($schema);
+        } finally {
+            $db->close();
+        }
+        $catalog = Catalog::connect($dsn);
+        try {
+            $namespace = $catalog->currentNamespace();
+            $context = [
+                'catalog' => $catalog,
+                'namespace' => $namespace,
+                'database' => $database,
+                'dsn' => $dsn,
+                'bound' => ['database' => ['text' => $name]],
+            ];
+            foreach ([$recipe['seed']['rows'] ?? [], $case['seed']['rows'] ?? []] as $rows) {
+                foreach ($rows as $table => $values) {
+                    $metadata = $catalog->describeTable(['namespace' => $namespace, 'name' => $table]);
+                    foreach ($values as $row) {
+                        $catalog->insertRow($metadata, self::assignments($row, $context));
+                    }
+                }
+            }
+            foreach ($case['steps'] as $index => $step) {
+                try {
+                    self::databaseStep($step, $context);
+                } catch (\Throwable $failure) {
+                    Assert::fail(
+                        "recipe $path, case {$case['id']}, step $index ({$step['op']}), database $database: "
+                        . get_class($failure) . ': ' . $failure->getMessage()
+                    );
+                }
+            }
+        } finally {
+            $catalog->close();
+        }
+    }
+
+    /**
+     * Runs one step and compares the keys that its expect names. A step whose expect is {"error": CODE} passes only
+     * when the call fails with that orm error code; `as` binds the bound object of the op or its value.
+     */
+    private static function databaseStep(array $step, array &$context): void
+    {
+        $expected = isset($step['expect'][$context['database']])
+            ? self::resolveRefs($step['expect'][$context['database']], $context)
+            : null;
+        try {
+            $actual = self::databaseOp($step, $context);
+        } catch (OrmException $error) {
+            if (!is_array($expected) || !array_key_exists('error', $expected)) {
+                throw $error;
+            }
+            Assert::assertSame($expected['error'], $error->code_, "the error code ({$error->getMessage()})");
+            return;
+        }
+        if (isset($step['as'])) {
+            $context['bound'][$step['as']] = array_key_exists('bind', $actual)
+                ? $actual['bind']
+                : ($actual['value'] ?? null);
+        }
+        if ($expected === null) {
+            return;
+        }
+        if (array_key_exists('error', $expected)) {
+            Assert::fail("expected {$expected['error']}, and the op succeeded");
+        }
+        $compared = [];
+        foreach (array_keys($expected) as $key) {
+            $compared[$key] = $actual[$key] ?? null;
+        }
+        Assert::assertSame(self::normalizedNull($expected), self::normalizedNull($compared));
+    }
+
+    /** Maps the op of a step to its one call of the public API and returns the fields that its expect compares. */
+    private static function databaseOp(array $s, array $context): array
+    {
+        $catalog = $context['catalog'];
+        $table = static fn (): array => ['namespace' => $context['namespace'], 'name' => $s['table']];
+        switch ($s['op']) {
+            case 'catalog.current_namespace':
+                return ['value' => ['text' => $catalog->currentNamespace()]];
+            case 'catalog.describe_table':
+                $metadata = $catalog->describeTable($table());
+                return [
+                    'bind' => $metadata,
+                    'columns' => array_map(static fn ($column): string => $column->name, $metadata->columns),
+                    'primary_key' => $metadata->primaryKey,
+                    'reliable_row_identity' => $metadata->reliableRowIdentity,
+                ];
+            case 'catalog.table_page':
+                $page = $catalog->tablePage($table(), $s['limit'], $s['offset']);
+                $indexes = array_map(static function (string $column) use ($page): int {
+                    $at = $page->columnIndex($column);
+                    if ($at < 0) {
+                        Assert::fail("the page has no column $column");
+                    }
+                    return $at;
+                }, $s['columns']);
+                $types = self::nativeTypes($page->metadata, $page->result->columns);
+                return [
+                    'bind' => $page,
+                    'columns' => $page->result->columns,
+                    'order_by' => $page->orderBy,
+                    'has_more' => $page->hasMore,
+                    'rows' => array_map(
+                        static fn (array $row): array => array_map(
+                            static fn (int $at): array => self::plainWrapper($row[$at], $types[$at]),
+                            $indexes
+                        ),
+                        $page->result->rows
+                    ),
+                ];
+            case 'catalog.read_only_query':
+                $result = $catalog->readOnlyQuery(
+                    self::sqlField($s['sql'], $context),
+                    [],
+                    $s['max_rows'] ?? 0,
+                    $s['max_bytes'] ?? 0
+                );
+                return ['rows' => array_map(
+                    static fn (array $row): array => array_map(
+                        static fn (mixed $cell): array => self::plainWrapper($cell, null),
+                        $row
+                    ),
+                    $result->rows
+                )];
+            case 'catalog.read_only_grid_query':
+                $result = $catalog->readOnlyGridQuery(
+                    self::sqlField($s['sql'], $context),
+                    [],
+                    $s['max_rows'] ?? 0,
+                    $s['max_bytes'] ?? 0
+                );
+                return [
+                    'columns' => $result->columns,
+                    'rows' => array_map(
+                        static fn (array $row): array => array_map(self::gridWrapper(...), $row),
+                        $result->rows
+                    ),
+                ];
+            case 'catalog.row_snapshot':
+                return ['bind' => $catalog->rowSnapshotFromPage(self::stepArgument($s['page'], $context), $s['index'])];
+            case 'catalog.insert_row':
+                $metadata = self::stepArgument($s['metadata'], $context);
+                return self::mutation(
+                    $metadata,
+                    $catalog->insertRow($metadata, self::assignments($s['values'], $context))
+                );
+            case 'catalog.update_row':
+                $snapshot = self::stepArgument($s['snapshot'], $context);
+                return self::mutation(
+                    $snapshot->metadata,
+                    $catalog->updateRow($snapshot, self::assignments($s['set'], $context))
+                );
+            case 'catalog.delete_row':
+                $deleted = $catalog->deleteRow(self::stepArgument($s['snapshot'], $context));
+                return ['value' => ['int' => (string) $deleted]];
+            case 'sql.exec':
+                // The native driver of PHP is PDO, opened on the case database.
+                $pdo = case_admin($context['dsn']);
+                $pdo->exec(self::sqlField($s['sql'], $context));
+                return [];
+        }
+        Assert::fail("OP_UNKNOWN {$s['op']}");
+    }
+
+    /** A field that holds SQL or a database-decided value: the string itself, or the entry of the database. */
+    private static function sqlField(string|array $field, array $context): string
+    {
+        return is_string($field) ? $field : $field[$context['database']];
+    }
+
+    /** A bound value of {"ref": "<name>"} or {"ref": "<name>.<path>"}. */
+    private static function boundValue(string $ref, array $context): mixed
+    {
+        $path = explode('.', $ref);
+        $head = array_shift($path);
+        if (!array_key_exists($head, $context['bound'])) {
+            Assert::fail("no bound value $head");
+        }
+        $value = $context['bound'][$head];
+        foreach ($path as $key) {
+            if (is_array($value) && array_key_exists($key, $value)) {
+                $value = $value[$key];
+            } elseif (is_object($value) && property_exists($value, $key)) {
+                $value = $value->$key;
+            } else {
+                Assert::fail("bound value $head has no " . implode('.', $path));
+            }
+        }
+        return $value;
+    }
+
+    private static function stepArgument(mixed $field, array $context): mixed
+    {
+        if (is_array($field) && array_key_exists('ref', $field)) {
+            return self::boundValue($field['ref'], $context);
+        }
+        return $field;
+    }
+
+    private static function resolveRefs(mixed $value, array $context): mixed
+    {
+        if (!is_array($value)) {
+            return $value;
+        }
+        if (count($value) === 1 && array_key_exists('ref', $value)) {
+            return self::boundValue($value['ref'], $context);
+        }
+        return array_map(static fn (mixed $item): mixed => self::resolveRefs($item, $context), $value);
+    }
+
+    /**
+     * The assignments of an object of column names whose values are recipe wrappers or per-database objects.
+     *
+     * @return array<string, mixed>
+     */
+    private static function assignments(array $values, array $context): array
+    {
+        $out = [];
+        foreach ($values as $name => $value) {
+            $argument = self::stepArgument($value, $context);
+            $out[(string) $name] = self::nativeValue(self::databaseValue($argument, $context));
+        }
+        return $out;
+    }
+
+    private static function databaseValue(mixed $value, array $context): mixed
+    {
+        if (
+            is_array($value) && array_key_exists('mysql', $value) && array_key_exists('postgres', $value)
+            && array_key_exists('sqlite', $value)
+        ) {
+            return $value[$context['database']];
+        }
+        return $value;
+    }
+
+    /** The value of the PHP catalog API for a recipe wrapper; the catalog binds bytes as a string. */
+    private static function nativeValue(array $w): mixed
+    {
+        $kind = array_key_first($w);
+        switch ($kind) {
+            case 'int':
+                $n = (int) $w['int'];
+                if ((string) $n !== $w['int']) {
+                    Assert::fail("the int wrapper {$w['int']} is outside the range of a PHP int");
+                }
+                return $n;
+            case 'text':
+            case 'date':
+            case 'time':
+            case 'datetime':
+            case 'decimal':
+                return $w[$kind];
+            case 'bytes_hex':
+                return hex2bin($w['bytes_hex']);
+            case 'bool':
+                return $w['bool'];
+            case 'null':
+                return null;
+        }
+        Assert::fail("unknown recipe wrapper $kind");
+    }
+
+    /** The recipe wrapper of a plain value; a string takes the wrapper of the native type of its column when one is known. */
+    private static function plainWrapper(mixed $value, ?string $nativeType): array
+    {
+        if ($value === null) {
+            return ['null' => true];
+        }
+        if (is_int($value)) {
+            return ['int' => (string) $value];
+        }
+        if (is_bool($value)) {
+            return ['bool' => $value];
+        }
+        if (is_string($value)) {
+            return [self::temporalKind($nativeType) ?? 'text' => $value];
+        }
+        Assert::fail('no recipe wrapper for the plain value ' . var_export($value, true));
+    }
+
+    private static function temporalKind(?string $nativeType): ?string
+    {
+        $type = strtolower($nativeType ?? '');
+        return match (true) {
+            preg_match('/^(datetime|timestamp)/', $type) === 1 => 'datetime',
+            preg_match('/^time/', $type) === 1 => 'time',
+            preg_match('/^date/', $type) === 1 => 'date',
+            preg_match('/^(decimal|numeric)/', $type) === 1 => 'decimal',
+            default => null,
+        };
+    }
+
+    /** The recipe wrapper of a grid cell. */
+    private static function gridWrapper(CatalogGridCell $cell): array
+    {
+        return match ($cell->kind) {
+            'null' => ['null' => true],
+            'integer', 'unsigned' => ['int' => (string) $cell->value],
+            'decimal', 'text', 'date', 'time', 'datetime' => [$cell->kind => $cell->value],
+            'boolean' => ['bool' => $cell->value],
+            'binary' => ['bytes_hex' => bin2hex($cell->value)],
+            default => Assert::fail("no recipe wrapper for the grid cell {$cell->kind}"),
+        };
+    }
+
+    /**
+     * The native type of each named column in the metadata, or null for a name that it has no column of.
+     *
+     * @param list<string> $names
+     * @return list<?string>
+     */
+    private static function nativeTypes(CatalogTableMetadata $metadata, array $names): array
+    {
+        $types = [];
+        foreach ($metadata->columns as $column) {
+            $types[$column->name] = $column->nativeType;
+        }
+        return array_map(static fn (string $name): ?string => $types[$name] ?? null, $names);
+    }
+
+    /** The fields of a mutation result: its rows, each cell wrapped by the native type of its column in the metadata. */
+    private static function mutation(CatalogTableMetadata $metadata, CatalogResult $result): array
+    {
+        $types = self::nativeTypes($metadata, $result->columns);
+        return ['rows' => array_map(
+            static fn (array $row): array => array_map(
+                static fn (mixed $cell, int $at): array => self::plainWrapper($cell, $types[$at]),
+                $row,
+                array_keys($row)
+            ),
+            $result->rows
+        )];
+    }
+
+    /** NULL compares by its nullness: an expect names the parameter type of NULL, and a result has none. */
+    private static function normalizedNull(mixed $value): mixed
+    {
+        if (!is_array($value)) {
+            return $value;
+        }
+        if (count($value) === 1 && array_key_exists('null', $value)) {
+            return ['null' => true];
+        }
+        return array_map(self::normalizedNull(...), $value);
     }
 }

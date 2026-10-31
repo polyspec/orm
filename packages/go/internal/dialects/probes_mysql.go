@@ -156,6 +156,7 @@ func mysqlProbes() []Probe {
 		}),
 		p("datetime.max_precision", "fractional seconds precision is at most 6 (1426)", func(e *Env) {
 			e.Fails("CREATE TABLE t (d datetime(7))", "1426")
+			e.Fails("CREATE TABLE u (t time(7))", "1426")
 		}),
 		p("datetime.default_precision_must_match", "DATETIME(6) DEFAULT CURRENT_TIMESTAMP without (6) is rejected (1067)", func(e *Env) {
 			e.Fails("CREATE TABLE t (d datetime(6) DEFAULT CURRENT_TIMESTAMP)", "1067")

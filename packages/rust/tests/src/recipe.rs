@@ -364,3 +364,517 @@ fn equal(got: &Value, want: &Value, ordered: bool) -> bool {
         _ => a == b,
     }
 }
+
+/// The database path (FCV-3 and FCV-4): each case runs on a case database of its own through the public catalog API.
+pub use database::database_trials;
+
+mod database {
+    use std::collections::{BTreeMap, HashMap};
+    use std::path::Path;
+    use std::sync::atomic::AtomicBool;
+    use std::sync::Arc;
+
+    use polyspec_orm::db::{parse_dsn, ConnectOptions};
+    use polyspec_orm::{dbspec, Config, Db, Schema};
+    use polyspec_orm_build::catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableMetadata, TablePage, TableRef};
+    use polyspec_orm_build::tool_db::{GridCell, GridQueryResult, ParamType, QueryLimits, Val, P};
+    use polyspec_orm_case_database::CaseDatabase;
+    use serde_json::{json, Value};
+
+    use super::hex_text;
+
+    /// The databases of a recipe with a fixture (FCV-3).
+    const DATABASES: [&str; 3] = ["mysql", "postgres", "sqlite"];
+
+    /// The publisher of the phases of a catalog mutation, as the catalog mutation methods take it.
+    type Publish = Arc<dyn Fn(MutationPhase) + Send + Sync>;
+    /// The permit of a catalog mutation, as the catalog mutation methods take it.
+    type Permit = Arc<dyn Fn() -> Result<(), String> + Send + Sync>;
+
+    /// A value that a step bound with `as`.
+    enum Bound {
+        /// A recipe wrapper: the case database name, a namespace or a count.
+        Json(Value),
+        Metadata(TableMetadata),
+        Page(TablePage),
+        Snapshot(RowSnapshot),
+    }
+
+    /// Why a step has no result: the error of the call, whose code an expect may name, or a fault of the step or the helper,
+    /// which has no code and always fails the case.
+    enum Failure {
+        Call(String),
+        Step(String),
+    }
+
+    /// The fields of a step result that its expect compares, and the value that `as` binds instead of `value`.
+    struct Output {
+        fields: Value,
+        bind: Option<Bound>,
+    }
+
+    impl Output {
+        fn fields(fields: Value) -> Output {
+            Output { fields, bind: None }
+        }
+    }
+
+    struct Context<'a> {
+        namespace: String,
+        database: &'a str,
+        dsn: String,
+        bound: HashMap<String, Bound>,
+    }
+
+    /// One trial for each case of the recipe at `path`, relative to the repository root, on `database` ("mysql",
+    /// "postgres" or "sqlite"), named `<entry>::<case id>`. Each case runs on a case database of its own.
+    pub fn database_trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testcase::Trial> {
+        assert!(DATABASES.contains(&database), "recipe {path}: unknown database {database}");
+        let root = polyspec_orm_testcase::manifest_dir().join("../../..");
+        let recipe = Arc::new(read_json(&root.join(path)));
+        let Some(fixture) = recipe["fixture"].as_str() else { panic!("recipe {path}: no fixture, so it has no database") };
+        let schema = Arc::new(fixture_schema(&root.join(fixture)));
+        let Some(cases) = recipe["cases"].as_array() else { panic!("recipe {path} has no cases") };
+        cases
+            .iter()
+            .map(|case| {
+                let (recipe, schema, case) = (recipe.clone(), schema.clone(), case.clone());
+                let (path, database) = (path.to_owned(), database.to_owned());
+                let id = case["id"].as_str().unwrap_or_default().to_owned();
+                polyspec_orm_testcase::async_trial(format!("{entry}::{id}"), polyspec_orm_testcase::DATABASE, move || async move {
+                    run_case(&path, &recipe, &case, &database, &schema).await;
+                })
+            })
+            .collect()
+    }
+
+    fn read_json(path: &Path) -> Value {
+        let text = match std::fs::read_to_string(path) {
+            Ok(text) => text,
+            Err(error) => panic!("{}: {error}", path.display()),
+        };
+        match serde_json::from_str(&text) {
+            Ok(value) => value,
+            Err(error) => panic!("{}: {error}", path.display()),
+        }
+    }
+
+    /// The Schema of a dbspec-set.json: the parse and the manifest of its documents through the public dbspec API.
+    fn fixture_schema(set_path: &Path) -> Schema {
+        let set = read_json(set_path);
+        let directory = set_path.parent().unwrap_or(Path::new("."));
+        let mut documents = Vec::new();
+        for document in set["documents"].as_array().into_iter().flatten() {
+            let path = directory.join(document.as_str().unwrap_or_default());
+            let text = match dbspec::read_file(&path) {
+                Ok(text) => text,
+                Err(error) => panic!("{}: {error:?}", path.display()),
+            };
+            match dbspec::parse(&text, &BTreeMap::new()) {
+                Ok(parsed) => documents.push(parsed.document),
+                Err(diagnostics) => panic!("{}: {diagnostics:?}", path.display()),
+            }
+        }
+        let references: Vec<&dbspec::Document> = documents.iter().collect();
+        let manifest = match dbspec::manifest(&references) {
+            Ok(manifest) => manifest,
+            Err(diagnostics) => panic!("{}: {diagnostics:?}", set_path.display()),
+        };
+        // Schema takes &'static str, so the three texts are leaked: one Schema per test process, built once by
+        // database_trials before the trials run.
+        let leak = |text: String| -> &'static str { Box::leak(text.into_boxed_str()) };
+        Schema::with_external(leak(manifest.manifest_text), leak(manifest.external_text), leak(manifest.manifest_hash))
+    }
+
+    /// Runs one case on a case database of its own and drops the database; a failure names the recipe, the case, the
+    /// index of the step and the database.
+    async fn run_case(path: &str, recipe: &Value, case: &Value, database: &str, schema: &Schema) {
+        let id = case["id"].as_str().unwrap_or_default();
+        let case_database = CaseDatabase::create(database).await;
+        let result = case_body(recipe, case, database, schema, &case_database).await;
+        case_database.drop().await;
+        if let Err(failure) = result {
+            panic!("recipe {path}, case {id}, {failure}");
+        }
+    }
+
+    async fn case_body(recipe: &Value, case: &Value, database: &str, schema: &Schema, case_database: &CaseDatabase) -> Result<(), String> {
+        let dsn = case_database.dsn().to_owned();
+        let db = Db::connect(&dsn, 1, Config::default()).await.map_err(|e| format!("database {database}: connect: {e}"))?;
+        let installed = db.utils().schema().install(schema).await;
+        db.close().await;
+        installed.map_err(|e| format!("database {database}: schema install: {e}"))?;
+        polyspec_orm_testcase::step("schema installed");
+        let mut catalog = CatalogConnection::connect(&dsn).await.map_err(|e| format!("database {database}: catalog connection: {e}"))?;
+        let result = run_steps(&mut catalog, recipe, case, database, dsn, case_database.name()).await;
+        catalog.close().await;
+        result
+    }
+
+    async fn run_steps(catalog: &mut CatalogConnection, recipe: &Value, case: &Value, database: &str, dsn: String, name: &str) -> Result<(), String> {
+        let namespace = catalog.current_namespace().await.map_err(|e| format!("database {database}: current namespace: {e}"))?;
+        let bound = HashMap::from([("database".to_owned(), Bound::Json(json!({ "text": name })))]);
+        let mut context = Context { namespace, database, dsn, bound };
+        for rows in [&recipe["seed"]["rows"], &case["seed"]["rows"]] {
+            for (table, values) in rows.as_object().into_iter().flatten() {
+                let seed = |e: String| format!("seed row of {table}, database {database}: {e}");
+                let reference = TableRef { namespace: context.namespace.clone(), name: table.clone() };
+                let metadata = catalog.describe_table(&reference).await.map_err(seed)?;
+                for row in values.as_array().into_iter().flatten() {
+                    let (cancellation, publish, permit) = mutation_hooks();
+                    catalog.insert_row(&metadata, &assignments(row, &context).map_err(seed)?, cancellation, publish, permit).await.map_err(seed)?;
+                }
+            }
+        }
+        polyspec_orm_testcase::step("seed rows inserted");
+        for (index, current) in case["steps"].as_array().into_iter().flatten().enumerate() {
+            let op = current["op"].as_str().unwrap_or_default();
+            run_step(catalog, current, &mut context).await.map_err(|failure| format!("step {index} ({op}), database {database}: {failure}"))?;
+            polyspec_orm_testcase::step(format_args!("step {index} {op}"));
+        }
+        Ok(())
+    }
+
+    /// A mutation that is never cancelled, whose phases are not observed and whose commit is permitted.
+    fn mutation_hooks() -> (Arc<AtomicBool>, Publish, Permit) {
+        (Arc::new(AtomicBool::new(false)), Arc::new(|_| {}), Arc::new(|| Ok(())))
+    }
+
+    async fn run_step(catalog: &mut CatalogConnection, step: &Value, context: &mut Context<'_>) -> Result<(), String> {
+        let expected = match step.get("expect") {
+            None => None,
+            Some(expect) => Some(resolve_refs(&expect[context.database], context)?),
+        };
+        let want_error = expected.as_ref().and_then(|e| e.get("error")).and_then(Value::as_str).map(str::to_owned);
+        let output = match call(catalog, step, context).await {
+            Ok(output) => output,
+            Err(Failure::Step(message)) => return Err(message),
+            Err(Failure::Call(message)) => {
+                let Some(want) = want_error else { return Err(format!("unexpected error {message}")) };
+                return match error_code(&message) {
+                    Some(code) if code == want.as_str() => Ok(()),
+                    Some(code) => Err(format!("error code {code} ({message}), want {want}")),
+                    None => Err(format!("error without a code ({message}), want {want}")),
+                };
+            }
+        };
+        if let Some(name) = step["as"].as_str() {
+            let value = output.bind.unwrap_or_else(|| Bound::Json(output.fields.get("value").cloned().unwrap_or(Value::Null)));
+            context.bound.insert(name.to_owned(), value);
+        }
+        let Some(expected) = expected else { return Ok(()) };
+        if let Some(want) = want_error {
+            return Err(format!("expected {want}, and the op succeeded"));
+        }
+        let Some(keys) = expected.as_object() else { return Err(format!("the expect {expected} is not an object")) };
+        let compared: serde_json::Map<String, Value> = keys.keys().map(|key| (key.clone(), output.fields.get(key).cloned().unwrap_or(Value::Null))).collect();
+        let (got, want) = (normalized(&Value::Object(compared)), normalized(&expected));
+        if got == want {
+            Ok(())
+        } else {
+            Err(format!("got {got}, want {want}"))
+        }
+    }
+
+    /// Maps the op of `step` to its call of the public API and returns the fields that its expect compares.
+    async fn call(catalog: &mut CatalogConnection, step: &Value, context: &Context<'_>) -> Result<Output, Failure> {
+        let fault = Failure::Step;
+        Ok(match step["op"].as_str().unwrap_or_default() {
+            "catalog.current_namespace" => {
+                let namespace = catalog.current_namespace().await.map_err(Failure::Call)?;
+                Output::fields(json!({ "value": { "text": namespace } }))
+            }
+            "catalog.describe_table" => {
+                let metadata = catalog.describe_table(&table(step, context).map_err(fault)?).await.map_err(Failure::Call)?;
+                let columns: Vec<&str> = metadata.columns.iter().map(|c| c.name.as_str()).collect();
+                let fields = json!({ "columns": columns, "primary_key": metadata.primary_key, "reliable_row_identity": metadata.reliable_row_identity });
+                Output { fields, bind: Some(Bound::Metadata(metadata)) }
+            }
+            "catalog.table_page" => {
+                let limit = step["limit"].as_u64().ok_or_else(|| fault("limit is not a count".into()))?;
+                let offset = step["offset"].as_u64().ok_or_else(|| fault("offset is not a count".into()))?;
+                let limit = usize::try_from(limit).map_err(|e| fault(e.to_string()))?;
+                let page = catalog.table_page(&table(step, context).map_err(fault)?, limit, offset).await.map_err(Failure::Call)?;
+                let mut indexes = Vec::new();
+                for column in step["columns"].as_array().into_iter().flatten() {
+                    let name = column.as_str().unwrap_or_default();
+                    let at = page.result.columns.iter().position(|c| c.name == name).ok_or_else(|| fault(format!("the page has no column {name}")))?;
+                    indexes.push(at);
+                }
+                let mut rows = Vec::new();
+                for row in &page.result.rows {
+                    let cells: Result<Vec<Value>, String> =
+                        indexes.iter().map(|&at| plain_cell(&row[at], Some(&page.result.columns[at].native_type))).collect();
+                    rows.push(Value::Array(cells.map_err(fault)?));
+                }
+                let columns: Vec<&str> = page.result.columns.iter().map(|c| c.name.as_str()).collect();
+                let fields = json!({ "columns": columns, "order_by": page.order_by, "has_more": page.has_more, "rows": rows });
+                Output { fields, bind: Some(Bound::Page(page)) }
+            }
+            "catalog.read_only_query" => {
+                let sql = sql_field(&step["sql"], context).map_err(fault)?;
+                let result = catalog.read_only_query(sql, &[], limits(step).map_err(fault)?).await.map_err(Failure::Call)?;
+                let rows: Vec<Vec<Value>> = result.rows.iter().map(|row| row.iter().map(plain_val).collect()).collect();
+                Output::fields(json!({ "rows": rows }))
+            }
+            "catalog.read_only_grid_query" => {
+                let sql = sql_field(&step["sql"], context).map_err(fault)?;
+                let result = catalog.read_only_grid_query(sql, &[], limits(step).map_err(fault)?).await.map_err(Failure::Call)?;
+                let columns: Vec<&str> = result.columns.iter().map(|c| c.name.as_str()).collect();
+                let rows: Result<Vec<Vec<Value>>, String> = result.rows.iter().map(|row| row.iter().map(grid_cell).collect()).collect();
+                Output::fields(json!({ "columns": columns, "rows": rows.map_err(fault)? }))
+            }
+            "catalog.row_snapshot" => {
+                let Bound::Page(page) = bound(&step["page"], context).map_err(fault)? else { return Err(fault("page is not a bound page".into())) };
+                let index = step["index"].as_u64().ok_or_else(|| fault("index is not a count".into()))?;
+                let index = usize::try_from(index).map_err(|e| fault(format!("index {index}: {e}")))?;
+                let snapshot = RowSnapshot::from_page(page, index).map_err(Failure::Call)?;
+                Output { fields: json!({}), bind: Some(Bound::Snapshot(snapshot)) }
+            }
+            "catalog.insert_row" => {
+                let Bound::Metadata(metadata) = bound(&step["metadata"], context).map_err(fault)? else {
+                    return Err(fault("metadata is not bound metadata".into()));
+                };
+                let values = assignments(&step["values"], context).map_err(fault)?;
+                let (cancellation, publish, permit) = mutation_hooks();
+                let result = catalog.insert_row(metadata, &values, cancellation, publish, permit).await.map_err(Failure::Call)?;
+                Output::fields(json!({ "rows": mutation(metadata, &result).map_err(fault)? }))
+            }
+            "catalog.update_row" => {
+                let snapshot = snapshot(&step["snapshot"], context).map_err(fault)?;
+                let set = assignments(&step["set"], context).map_err(fault)?;
+                let (cancellation, publish, permit) = mutation_hooks();
+                let result = catalog.update_row(snapshot, &set, cancellation, publish, permit).await.map_err(Failure::Call)?;
+                Output::fields(json!({ "rows": mutation(snapshot.metadata(), &result).map_err(fault)? }))
+            }
+            "catalog.delete_row" => {
+                let snapshot = snapshot(&step["snapshot"], context).map_err(fault)?;
+                let (cancellation, publish, permit) = mutation_hooks();
+                let deleted = catalog.delete_row(snapshot, cancellation, publish, permit).await.map_err(Failure::Call)?;
+                Output::fields(json!({ "value": { "int": deleted.to_string() } }))
+            }
+            "sql.exec" => {
+                let sql = sql_field(&step["sql"], context).map_err(fault)?;
+                native_exec(&context.dsn, sql).await.map_err(Failure::Call)?;
+                Output::fields(json!({}))
+            }
+            other => return Err(fault(format!("OP_UNKNOWN {other}"))),
+        })
+    }
+
+    /// The code of a catalog error, the text before its first colon when that text is a code: `CATALOG_LIMIT: ...`.
+    fn error_code(message: &str) -> Option<&str> {
+        let head = message.split(':').next().unwrap_or_default();
+        let mut characters = head.chars();
+        let first = characters.next()?;
+        (first.is_ascii_uppercase() && characters.all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_')).then_some(head)
+    }
+
+    fn table(step: &Value, context: &Context<'_>) -> Result<TableRef, String> {
+        let name = step["table"].as_str().ok_or("table is not a name")?;
+        Ok(TableRef { namespace: context.namespace.clone(), name: name.to_owned() })
+    }
+
+    fn snapshot<'a>(field: &Value, context: &'a Context<'_>) -> Result<&'a RowSnapshot, String> {
+        match bound(field, context)? {
+            Bound::Snapshot(snapshot) => Ok(snapshot),
+            _ => Err("snapshot is not a bound snapshot".into()),
+        }
+    }
+
+    /// A field that holds SQL or a database-decided value: the string itself, or the entry of the database.
+    fn sql_field<'a>(field: &'a Value, context: &Context<'_>) -> Result<&'a str, String> {
+        field.as_str().or_else(|| field[context.database].as_str()).ok_or_else(|| format!("{field} is no SQL for {}", context.database))
+    }
+
+    /// The limits of a read; an absent one is the default of the runtime, and a present one that is no count fails the step.
+    fn limits(step: &Value) -> Result<QueryLimits, String> {
+        let default = QueryLimits::default();
+        let count = |key: &str, otherwise: usize| match &step[key] {
+            Value::Null => Ok(otherwise),
+            value => {
+                let n = value.as_u64().ok_or_else(|| format!("{key} is not a count: {value}"))?;
+                usize::try_from(n).map_err(|e| format!("{key} {n}: {e}"))
+            }
+        };
+        Ok(QueryLimits { max_rows: count("max_rows", default.max_rows)?, max_bytes: count("max_bytes", default.max_bytes)? })
+    }
+
+    /// The value that `{"ref": "<name>"}` names; a ref with a path names a member of a bound recipe value.
+    fn bound<'a>(field: &Value, context: &'a Context<'_>) -> Result<&'a Bound, String> {
+        let reference = field["ref"].as_str().ok_or_else(|| format!("{field} is not a ref"))?;
+        if reference.contains('.') {
+            return Err(format!("ref {reference} names a member, and only a bound recipe value has members"));
+        }
+        context.bound.get(reference).ok_or_else(|| format!("no bound value {reference}"))
+    }
+
+    /// The recipe value that `{"ref": "<name>"}` or `{"ref": "<name>.<path>"}` names.
+    fn bound_value(reference: &str, context: &Context<'_>) -> Result<Value, String> {
+        let mut path = reference.split('.');
+        let head = path.next().unwrap_or_default();
+        let Some(Bound::Json(value)) = context.bound.get(head) else { return Err(format!("no bound recipe value {head}")) };
+        let mut value = value;
+        for key in path {
+            value = value.get(key).ok_or_else(|| format!("bound value {head} has no {reference}"))?;
+        }
+        Ok(value.clone())
+    }
+
+    /// A step argument: the bound value of a ref, or the field itself.
+    fn argument(field: &Value, context: &Context<'_>) -> Result<Value, String> {
+        match field["ref"].as_str() {
+            Some(reference) if field.as_object().is_some_and(|map| map.len() == 1) => bound_value(reference, context),
+            _ => Ok(field.clone()),
+        }
+    }
+
+    fn resolve_refs(value: &Value, context: &Context<'_>) -> Result<Value, String> {
+        Ok(match value {
+            Value::Array(items) => Value::Array(items.iter().map(|item| resolve_refs(item, context)).collect::<Result<_, _>>()?),
+            Value::Object(map) if map.len() == 1 && map.contains_key("ref") => {
+                bound_value(map["ref"].as_str().ok_or_else(|| format!("{value} is not a ref"))?, context)?
+            }
+            Value::Object(map) => Value::Object(map.iter().map(|(k, v)| Ok((k.clone(), resolve_refs(v, context)?))).collect::<Result<_, String>>()?),
+            other => other.clone(),
+        })
+    }
+
+    /// The assignments of an object of column names whose values are recipe wrappers or per-database objects.
+    fn assignments(values: &Value, context: &Context<'_>) -> Result<Vec<(String, P)>, String> {
+        let Some(map) = values.as_object() else { return Err(format!("{values} is not an object of columns")) };
+        map.iter().map(|(name, value)| Ok((name.clone(), native(&database_value(argument(value, context)?, context))?))).collect()
+    }
+
+    fn database_value(value: Value, context: &Context<'_>) -> Value {
+        match value.as_object() {
+            Some(map) if ["mysql", "postgres", "sqlite"].iter().all(|key| map.contains_key(*key)) => map[context.database].clone(),
+            _ => value,
+        }
+    }
+
+    /// The bound value of the Rust catalog API for a recipe wrapper.
+    fn native(wrapper: &Value) -> Result<P, String> {
+        let (kind, body) = super::kind(wrapper)?;
+        let text = || body.as_str().map(str::to_owned).ok_or_else(|| format!("{wrapper} has no text"));
+        Ok(match kind {
+            "int" => {
+                let digits = text()?;
+                match digits.parse::<i64>() {
+                    Ok(n) => P::I(n),
+                    Err(_) => P::Unsigned(digits.parse::<u64>().map_err(|e| format!("{wrapper}: {e}"))?),
+                }
+            }
+            "text" => P::S(text()?),
+            "date" => P::Date(text()?),
+            "time" => P::Time(text()?),
+            "datetime" => P::DateTime(text()?),
+            "decimal" => P::Decimal(text()?),
+            "bytes_hex" => P::Binary(super::hex_bytes(&text()?)?),
+            "bool" => P::Boolean(body.as_bool().ok_or_else(|| format!("{wrapper} is not a bool"))?),
+            "null" => P::Null(match text()?.as_str() {
+                "text" => ParamType::Text,
+                "i64" => ParamType::Integer,
+                "u64" => ParamType::Unsigned,
+                "decimal" => ParamType::Decimal,
+                "bool" => ParamType::Boolean,
+                "bytes" => ParamType::Binary,
+                "date" => ParamType::Date,
+                "time" => ParamType::Time,
+                "datetime" => ParamType::DateTime,
+                other => return Err(format!("the null type {other} has no parameter type")),
+            }),
+            other => return Err(format!("unknown recipe wrapper {other}")),
+        })
+    }
+
+    /// The recipe wrapper of a plain value of read_only_query, which carries no native type.
+    fn plain_val(value: &Val) -> Value {
+        match value {
+            Val::Null => json!({ "null": true }),
+            Val::Int(n) => json!({ "int": n.to_string() }),
+            Val::Text(text) => json!({ "text": text }),
+            Val::Bool(b) => json!({ "bool": b }),
+        }
+    }
+
+    /// The recipe wrapper of a page or mutation cell: a text cell takes the wrapper of the native type of its column when
+    /// that type is temporal or decimal, and every other cell maps by its kind.
+    fn plain_cell(cell: &GridCell, native_type: Option<&str>) -> Result<Value, String> {
+        match cell {
+            GridCell::Text(text) => Ok(json!({ temporal_kind(native_type).unwrap_or("text"): text })),
+            other => grid_cell(other),
+        }
+    }
+
+    fn temporal_kind(native_type: Option<&str>) -> Option<&'static str> {
+        let kind = native_type.unwrap_or_default().to_lowercase();
+        if kind.starts_with("datetime") || kind.starts_with("timestamp") {
+            Some("datetime")
+        } else if kind.starts_with("time") {
+            Some("time")
+        } else if kind.starts_with("date") {
+            Some("date")
+        } else if kind.starts_with("decimal") || kind.starts_with("numeric") {
+            Some("decimal")
+        } else {
+            None
+        }
+    }
+
+    /// The recipe wrapper of a grid cell.
+    fn grid_cell(cell: &GridCell) -> Result<Value, String> {
+        Ok(match cell {
+            GridCell::Null => json!({ "null": true }),
+            GridCell::Integer(n) => json!({ "int": n.to_string() }),
+            GridCell::Unsigned(n) => json!({ "int": n.to_string() }),
+            GridCell::Decimal(text) => json!({ "decimal": text }),
+            GridCell::Text(text) => json!({ "text": text }),
+            GridCell::Date(text) => json!({ "date": text }),
+            GridCell::Time(text) => json!({ "time": text }),
+            GridCell::DateTime(text) => json!({ "datetime": text }),
+            GridCell::Boolean(b) => json!({ "bool": b }),
+            GridCell::Binary(bytes) => json!({ "bytes_hex": hex_text(bytes) }),
+            other => return Err(format!("no recipe wrapper for the grid cell {other:?}")),
+        })
+    }
+
+    /// The rows of a mutation result, each cell wrapped by the native type of its column in the metadata.
+    fn mutation(metadata: &TableMetadata, result: &GridQueryResult) -> Result<Vec<Vec<Value>>, String> {
+        let types: Vec<Option<&str>> =
+            result.columns.iter().map(|column| metadata.columns.iter().find(|c| c.name == column.name).map(|c| c.native_type.as_str())).collect();
+        result.rows.iter().map(|row| row.iter().zip(&types).map(|(cell, native_type)| plain_cell(cell, *native_type)).collect()).collect()
+    }
+
+    /// NULL compares by its nullness: an expect names the parameter type of NULL, and a result has none.
+    fn normalized(value: &Value) -> Value {
+        match value {
+            Value::Array(items) => Value::Array(items.iter().map(normalized).collect()),
+            Value::Object(map) if map.len() == 1 && map.contains_key("null") => json!({ "null": true }),
+            Value::Object(map) => Value::Object(map.iter().map(|(k, v)| (k.clone(), normalized(v))).collect()),
+            other => other.clone(),
+        }
+    }
+
+    /// Runs DDL or DML through the native driver on one connection of its own.
+    async fn native_exec(dsn: &str, sql: &str) -> Result<(), String> {
+        use sqlx::ConnectOptions as _;
+        match parse_dsn(dsn).map_err(|e| e.to_string())?.options {
+            ConnectOptions::MySql(options) => exec_and_close(options.connect().await.map_err(|e| e.to_string())?, sql).await,
+            ConnectOptions::Postgres(options) => exec_and_close(options.connect().await.map_err(|e| e.to_string())?, sql).await,
+            ConnectOptions::Sqlite(options) => exec_and_close(options.connect().await.map_err(|e| e.to_string())?, sql).await,
+            ConnectOptions::Markdown(_) => Err("a markdown corpus has no native SQL driver".into()),
+        }
+    }
+
+    /// Runs sql on connection and closes it; a failed close fails the run before the result of sql.
+    async fn exec_and_close<C>(mut connection: C, sql: &str) -> Result<(), String>
+    where
+        C: sqlx::Connection,
+        for<'c> &'c mut C: sqlx::Executor<'c, Database = C::Database>,
+    {
+        let result = sqlx::raw_sql(sqlx::AssertSqlSafe(sql.to_owned())).execute(&mut connection).await.map_err(|e| e.to_string());
+        connection.close().await.map_err(|e| e.to_string())?;
+        result.map(|_| ())
+    }
+}

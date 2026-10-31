@@ -1,0 +1,42 @@
+<?php
+
+// The catalog connection recipe, contracts/fixtures/catalog_connection/catalog_connection.json, on each database
+// (docs/spec/feature-coverage.md FCV-3).
+// Requirements: INT-101, INT-103, INT-104, INT-109, INT-111, INT-113, INT-114, INT-115, INT-117, INT-123,
+// INT-136, SCH-6a.
+declare(strict_types=1);
+
+namespace Polyspec\Orm\Tests;
+
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Medium;
+use PHPUnit\Framework\TestCase;
+
+#[Medium]
+class CatalogConnectionRecipeTest extends TestCase
+{
+    use RecipeCases;
+
+    protected static function recipe(): string
+    {
+        return 'contracts/fixtures/catalog_connection/catalog_connection.json';
+    }
+
+    #[DataProvider('cases')]
+    public function testMysql(array $case): void
+    {
+        $this->runCase($case, 'mysql');
+    }
+
+    #[DataProvider('cases')]
+    public function testPostgres(array $case): void
+    {
+        $this->runCase($case, 'postgres');
+    }
+
+    #[DataProvider('cases')]
+    public function testSqlite(array $case): void
+    {
+        $this->runCase($case, 'sqlite');
+    }
+}

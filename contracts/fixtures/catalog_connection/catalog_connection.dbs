@@ -1,0 +1,41 @@
+dbspec 1 catalog_connection
+
+table author {
+  seq i64 identity
+  name varchar(191)
+  description text null
+  created_ts datetime(6) default now
+  is_close bool default false
+  read_count i32 default 0
+  display_start_dt datetime(6) null
+  start_dt datetime(6)
+  primary key (seq)
+}
+
+table user {
+  seq i64 identity
+  name varchar(191)
+  primary key (seq)
+}
+
+table composite_account {
+  tenant_id i64
+  account_id i64
+  name varchar(191)
+  primary key (tenant_id, account_id)
+}
+
+table bind_cell {
+  seq i64 identity
+  label varchar(8)
+  body text null
+  primary key (seq)
+}
+
+table temporal_cell {
+  seq i64 identity
+  d date
+  t time(3)
+  dt datetime(6)
+  primary key (seq)
+}

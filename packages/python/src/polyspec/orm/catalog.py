@@ -12,6 +12,7 @@ import os
 import re
 import stat
 import struct
+import uuid
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, time as datetime_time, timedelta, timezone
@@ -169,9 +170,15 @@ def _text(value) -> str:
 
 
 def _check_value(value):
-    """Checks the plain driver values accepted by a catalog row result."""
+    """Checks the plain driver values accepted by a catalog row result and returns the value of the result. A date and a
+    uuid, which the drivers return as objects, are the text forms of their dbspec types (DBS-121): YYYY-MM-DD and the
+    lower-case canonical uuid text."""
     if value is None or isinstance(value, (bool, int, str, bytes, datetime)):
         return value
+    if isinstance(value, date):
+        return value.isoformat()
+    if isinstance(value, uuid.UUID):
+        return str(value)
     if isinstance(value, datetime_time) and value.tzinfo is None:
         return value
     if isinstance(value, float):

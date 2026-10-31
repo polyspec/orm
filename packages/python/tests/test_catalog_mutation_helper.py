@@ -1,7 +1,9 @@
 import sqlite3
 import unittest
-from datetime import time, timedelta, timezone
+from datetime import date, time, timedelta, timezone
+from decimal import Decimal
 from types import SimpleNamespace
+from uuid import UUID
 
 from . import testcase
 from polyspec.orm import codes
@@ -124,6 +126,21 @@ class CatalogMutationHelperTest(unittest.TestCase):
         with self.assertRaises(OrmError) as snapshot:
             _cell_key(time(12, 34, 56, tzinfo=timezone.utc))
         self.assertEqual(snapshot.exception.code, codes.ROW_SNAPSHOT_INVALID)
+
+    def test_date_and_uuid_cells_read_as_their_dbspec_text(self):
+        # A date and a uuid read from a described table are the text forms of their dbspec types, which the cell key
+        # and the snapshot read as text.
+        self.assertEqual(_check_value(date(2024, 2, 29)), "2024-02-29")
+        self.assertEqual(_check_value(date(1, 1, 1)), "0001-01-01")
+        self.assertEqual(
+            _check_value(UUID("0F8FAD5B-D9CB-469F-A165-70867728950E")),
+            "0f8fad5b-d9cb-469f-a165-70867728950e",
+        )
+        self.assertEqual(_cell_key(_check_value(date(2024, 2, 29))), "s10:2024-02-29")
+        # A decimal cell arrives as text from the driver conversions of the catalog sessions; a Decimal object stays refused.
+        with self.assertRaises(OrmError) as decimal:
+            _check_value(Decimal("1.50"))
+        self.assertEqual(decimal.exception.code, codes.CATALOG_VALUE)
 
     def test_locks_and_validates_unchanged_original_row_before_mysql_safety(self):
         descriptor = metadata()

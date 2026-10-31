@@ -29,6 +29,10 @@ mod disposal_tests;
 #[path = "../../tests/unit/catalog_fixtures.rs"]
 mod test_fixtures;
 
+#[cfg(test)]
+#[path = "../../tests/unit/catalog_value.rs"]
+mod value_tests;
+
 pub struct CatalogConnection {
     connection: Conn,
     pool: Pool,
@@ -148,6 +152,9 @@ pub(super) fn catalog_query_error(error: sqlx::Error) -> String {
         let detail = inner.to_string();
         if let Some(detail) = detail.strip_prefix("TOOL_QUERY_LIMIT:") {
             return format!("{}:{detail}", polyspec_orm::codes::CATALOG_LIMIT);
+        }
+        if let Some(detail) = detail.strip_prefix("TOOL_QUERY_VALUE:") {
+            return format!("{}:{detail}", polyspec_orm::codes::CATALOG_VALUE);
         }
     }
     error.to_string()

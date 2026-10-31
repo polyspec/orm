@@ -38,8 +38,8 @@ pub struct GridQueryResult {
 
 pub(super) fn postgres_decimal(row: &sqlx::postgres::PgRow, index: usize) -> Result<GridCell, sqlx::Error> {
     use sqlx::Row;
-    let invalid = || sqlx::Error::Decode("Unsupported or invalid finite grid decimal".into());
-    let invalid_with = |error: &dyn std::fmt::Display| sqlx::Error::Decode(format!("Unsupported or invalid finite grid decimal: {error}").into());
+    let invalid = || super::unsupported_value("unsupported or invalid finite grid decimal");
+    let invalid_with = |error: &dyn std::fmt::Display| super::unsupported_value(format_args!("unsupported or invalid finite grid decimal: {error}"));
     let Some(decimal) = row.try_get::<Option<bigdecimal::BigDecimal>, _>(index).map_err(|error| invalid_with(&error))? else { return Ok(GridCell::Null) };
     let raw = row.try_get_raw(index)?;
     let decimal = if raw.format() == sqlx::postgres::PgValueFormat::Binary {

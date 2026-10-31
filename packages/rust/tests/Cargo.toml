@@ -41,6 +41,23 @@ name = "codec_none"
 path = "tests/codec_none.rs"
 harness = false
 
+# Each case of the catalog_connection recipe, contracts/fixtures/catalog_connection/catalog_connection.json, is the
+# trial catalog_connection_<database>::<case id> on a case database of its own (FCV-3).
+[[test]]
+name = "catalog_connection_mysql"
+path = "tests/catalog_connection_mysql.rs"
+harness = false
+
+[[test]]
+name = "catalog_connection_postgres"
+path = "tests/catalog_connection_postgres.rs"
+harness = false
+
+[[test]]
+name = "catalog_connection_sqlite"
+path = "tests/catalog_connection_sqlite.rs"
+harness = false
+
 [[test]]
 name = "markdown_conformance"
 path = "tests/markdown_conformance.rs"
@@ -55,6 +72,8 @@ polyspec-orm-testcase = { path = "../testcase" }
 polyspec-orm = { path = "../orm", features = ["test-faults"] }
 # The integration program's database case creates its own database and drops it when it ends.
 polyspec-orm-case-database = { path = "../case-database" }
+# The database path of the recipe helper connects the live catalog of orm-build to the case database.
+polyspec-orm-build = { path = "../build", features = ["live-db"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
 sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres", "sqlite"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }

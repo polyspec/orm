@@ -184,7 +184,7 @@ async fn check() {
                     .await
                     .expect("owned zone row");
             }
-            if !catalog.read_only_grid_query(&zoned, &[], QueryLimits::default()).await.is_err_and(|e| e.contains("Unsupported catalog cell type")) {
+            if !catalog.read_only_grid_query(&zoned, &[], QueryLimits::default()).await.is_err_and(|e| e.starts_with("CATALOG_VALUE:")) {
                 failures.push(format!("{dialect}: a time zone value was accepted"));
             }
             if dialect == "mysql" {

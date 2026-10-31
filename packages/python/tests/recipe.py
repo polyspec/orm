@@ -4,9 +4,13 @@
 # output of its own.
 import json
 import math
+import re
+import tempfile
 import unittest
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote, urlsplit
 
 from polyspec.ordered_json import (
     Kind,
@@ -21,8 +25,13 @@ from polyspec.orm.codec import (
     host_decode,
     host_encode,
 )
+from polyspec.orm import Db, OrmError, Schema, connect_catalog
+from polyspec.orm.dbspec import dbspec_manifest, parse_dbspec, read_dbspec_file
 from polyspec.orm.styled_value import StyledValue
 
+from . import testcase
+from .case_database import case_database
+from .coverage_case import native_query
 from .vector_case import VectorCase, vector_load_tests
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -45,9 +54,7 @@ class _Failed:
 def recipe_tests(path: str, database: str):
     """The load_tests protocol of an entry: one test for each case of the recipe at path, relative to the repository root."""
     if database != NONE:
-        raise ValueError(
-            f"recipe {path}: database {database} has no case database in this helper"
-        )
+        return _database_recipe_tests(path, database)
     recipe = json.loads((ROOT / path).read_text(encoding="utf-8"))
 
     def check(test: unittest.TestCase, case: dict) -> None:
@@ -287,3 +294,382 @@ def _equal(got: dict, want: dict, ordered: bool) -> bool:
             for wk, wv in want["object"]
         )
     return got[kind] == want[kind]
+
+
+# The database path (FCV-3 and FCV-4): each case runs on a case database of its own through the public catalog API.
+DATABASES = ("mysql", "postgres", "sqlite")
+
+
+class DatabaseRecipeCase(VectorCase):
+    """A case of a recipe on a database: it creates and drops a database and runs a bounded number of statements."""
+
+    deadline = testcase.DATABASE
+
+
+def _database_recipe_tests(path: str, database: str):
+    """The load_tests protocol of an entry of a recipe with a fixture: one test for each case on the database."""
+    if database not in DATABASES:
+        raise ValueError(f"recipe {path}: unknown database {database}")
+    recipe = json.loads((ROOT / path).read_text(encoding="utf-8"))
+    if "fixture" not in recipe:
+        raise ValueError(f"recipe {path}: no fixture, so it has no database")
+    schema = _fixture_schema(ROOT / recipe["fixture"])
+
+    def check(test: unittest.TestCase, case: dict) -> None:
+        with tempfile.TemporaryDirectory(prefix="orm_recipe_") as directory:
+            with case_database(database, directory, "orm_recipe") as dsn:
+                _run_case(path, recipe, case, database, schema, dsn)
+
+    return vector_load_tests(DatabaseRecipeCase, recipe["cases"], check)
+
+
+def _fixture_schema(set_path: Path) -> Schema:
+    """The Schema of a dbspec-set.json: the parse and the manifest of its documents through the public dbspec API."""
+    document_set = json.loads(set_path.read_text(encoding="utf-8"))
+    documents = []
+    for name in document_set["documents"]:
+        document_path = set_path.parent / name
+        text, diagnostics = read_dbspec_file(str(document_path))
+        if text is None:
+            raise ValueError(f"{document_path}: {diagnostics}")
+        document, _, diagnostics = parse_dbspec(text, {})
+        if document is None:
+            raise ValueError(f"{document_path}: {diagnostics}")
+        documents.append(document)
+    manifest, diagnostics = dbspec_manifest(documents)
+    if manifest is None:
+        raise ValueError(f"{set_path}: {diagnostics}")
+    return Schema(
+        manifest.manifest_text, manifest.manifest_hash, manifest.external_text
+    )
+
+
+def _database_name(dsn: str) -> str:
+    """The name of the case database: the path of a server DSN, the file name of a SQLite DSN without its suffix."""
+    name = unquote(urlsplit(dsn).path)
+    return Path(name).stem if dsn.startswith("sqlite:") else name.lstrip("/")
+
+
+def _run_case(
+    path: str, recipe: dict, case: dict, database: str, schema: Schema, dsn: str
+) -> None:
+    db = Db.connect(dsn)
+    try:
+        db.utils().schema().install(schema)
+    finally:
+        db.close()
+    testcase.step("schema installed")
+    catalog = connect_catalog(dsn)
+    try:
+        namespace = catalog.current_namespace()
+        context = {
+            "catalog": catalog,
+            "namespace": namespace,
+            "database": database,
+            "dsn": dsn,
+            "bound": {"database": {"text": _database_name(dsn)}},
+        }
+        for part, rows in (
+            ("recipe", recipe.get("seed", {}).get("rows")),
+            ("case", case.get("seed", {}).get("rows")),
+        ):
+            for table, values in (rows or {}).items():
+                for index, row in enumerate(values):
+                    try:
+                        metadata = catalog.describe_table(
+                            {"namespace": namespace, "name": table}
+                        )
+                        catalog.insert_row(metadata, _assignments(row, context))
+                    except Exception as error:
+                        raise AssertionError(
+                            f"recipe {path}, case {case['id']}, {part} seed row {index} of {table}, database {database}: "
+                            f"{error!r}"
+                        ) from error
+        testcase.step("seed rows inserted")
+        for index, step in enumerate(case["steps"]):
+            try:
+                _run_database_step(step, context)
+            except Exception as error:
+                raise AssertionError(
+                    f"recipe {path}, case {case['id']}, step {index} ({step['op']}), database {database}: {error}"
+                ) from error
+            testcase.step(f"step {index} {step['op']}")
+    finally:
+        catalog.close()
+
+
+def _op_current_namespace(_step: dict, context: dict) -> dict:
+    return {"value": {"text": context["catalog"].current_namespace()}}
+
+
+def _op_describe_table(step: dict, context: dict) -> dict:
+    metadata = context["catalog"].describe_table(
+        {"namespace": context["namespace"], "name": step["table"]}
+    )
+    return {
+        "bind": metadata,
+        "columns": [column.name for column in metadata.columns],
+        "primary_key": list(metadata.primary_key),
+        "reliable_row_identity": metadata.reliable_row_identity,
+    }
+
+
+def _op_table_page(step: dict, context: dict) -> dict:
+    page = context["catalog"].table_page(
+        {"namespace": context["namespace"], "name": step["table"]},
+        step["limit"],
+        step["offset"],
+    )
+    indexes = [page.column_index(column) for column in step["columns"]]
+    types = [column.native_type for column in page.result.columns]
+    return {
+        "bind": page,
+        "columns": [column.name for column in page.result.columns],
+        "order_by": list(page.order_by),
+        "has_more": page.has_more,
+        "rows": [
+            [_plain(row[at], types[at]) for at in indexes] for row in page.result.rows
+        ],
+    }
+
+
+def _op_read_only_query(step: dict, context: dict) -> dict:
+    result = context["catalog"].read_only_query(
+        _sql(step["sql"], context), (), *_limits(step)
+    )
+    return {"rows": [[_plain(cell, None) for cell in row] for row in result.rows]}
+
+
+def _op_read_only_grid_query(step: dict, context: dict) -> dict:
+    result = context["catalog"].read_only_grid_query(
+        _sql(step["sql"], context), (), *_limits(step)
+    )
+    return {
+        "columns": list(result.columns),
+        "rows": [[_grid(cell) for cell in row] for row in result.rows],
+    }
+
+
+def _op_row_snapshot(step: dict, context: dict) -> dict:
+    page = _step_argument(step["page"], context)
+    return {"bind": context["catalog"].row_snapshot_from_page(page, step["index"])}
+
+
+def _op_insert_row(step: dict, context: dict) -> dict:
+    metadata = _step_argument(step["metadata"], context)
+    result = context["catalog"].insert_row(
+        metadata, _assignments(step["values"], context)
+    )
+    return _mutation(metadata, result)
+
+
+def _op_update_row(step: dict, context: dict) -> dict:
+    snapshot = _step_argument(step["snapshot"], context)
+    result = context["catalog"].update_row(snapshot, _assignments(step["set"], context))
+    return _mutation(snapshot.metadata, result)
+
+
+def _op_delete_row(step: dict, context: dict) -> dict:
+    deleted = context["catalog"].delete_row(_step_argument(step["snapshot"], context))
+    return {"value": {"int": str(deleted)}}
+
+
+def _op_sql_exec(step: dict, context: dict) -> dict:
+    native_query(context["database"], context["dsn"], [_sql(step["sql"], context)])
+    return {}
+
+
+# Each op maps to one call of the public API and returns the fields that its expect compares.
+_DATABASE_OPS = {
+    "catalog.current_namespace": _op_current_namespace,
+    "catalog.describe_table": _op_describe_table,
+    "catalog.table_page": _op_table_page,
+    "catalog.read_only_query": _op_read_only_query,
+    "catalog.read_only_grid_query": _op_read_only_grid_query,
+    "catalog.row_snapshot": _op_row_snapshot,
+    "catalog.insert_row": _op_insert_row,
+    "catalog.update_row": _op_update_row,
+    "catalog.delete_row": _op_delete_row,
+    "sql.exec": _op_sql_exec,
+}
+
+
+def _run_database_step(step: dict, context: dict) -> None:
+    """Maps the op of step to its call and checks the result against the expect of the database. A step whose expect is
+    an error passes only when the call fails with that orm error code."""
+    op = _DATABASE_OPS.get(step["op"])
+    if op is None:
+        raise AssertionError(f"OP_UNKNOWN {step['op']}")
+    expected = (
+        None
+        if "expect" not in step
+        else _resolve_refs(step["expect"][context["database"]], context)
+    )
+    try:
+        actual = op(step, context)
+    except OrmError as error:
+        if expected is None or "error" not in expected:
+            raise
+        if error.code != expected["error"]:
+            raise AssertionError(
+                f"error code {error.code} ({error}), want {expected['error']}"
+            ) from error
+        return
+    if "as" in step:
+        context["bound"][step["as"]] = actual.get("bind", actual.get("value"))
+    if expected is None:
+        return
+    if "error" in expected:
+        raise AssertionError(
+            f"expected {expected['error']}, and the op succeeded with {actual}"
+        )
+    compared = {key: actual.get(key) for key in expected}
+    if _normalized(compared) != _normalized(expected):
+        raise AssertionError(f"got {compared}, want {expected}")
+
+
+def _sql(field, context: dict) -> str:
+    """A field that holds SQL or a database-decided value: the string itself, or the entry of the database."""
+    return field if isinstance(field, str) else field[context["database"]]
+
+
+def _limits(step: dict) -> tuple:
+    """max_rows and max_bytes of a query; an absent one is 0, which the runtime reads as its default."""
+    return step.get("max_rows", 0), step.get("max_bytes", 0)
+
+
+def _bound(ref: str, context: dict) -> Any:
+    """The bound value of {"ref": "<name>"} or {"ref": "<name>.<path>"}."""
+    head, *path = ref.split(".")
+    values = context["bound"]
+    if head not in values:
+        raise AssertionError(f"no bound value {head}")
+    value = values[head]
+    for key in path:
+        if isinstance(value, dict) and key in value:
+            value = value[key]
+        elif not isinstance(value, dict) and hasattr(value, key):
+            value = getattr(value, key)
+        else:
+            raise AssertionError(f"bound value {head} has no {'.'.join(path)}")
+    return value
+
+
+def _step_argument(field, context: dict) -> Any:
+    if isinstance(field, dict) and "ref" in field:
+        return _bound(field["ref"], context)
+    return field
+
+
+def _resolve_refs(value, context: dict) -> Any:
+    if isinstance(value, list):
+        return [_resolve_refs(item, context) for item in value]
+    if not isinstance(value, dict):
+        return value
+    if set(value) == {"ref"}:
+        return _bound(value["ref"], context)
+    return {key: _resolve_refs(item, context) for key, item in value.items()}
+
+
+def _assignments(values: dict, context: dict) -> list:
+    """The assignments of an object of column names whose values are recipe wrappers or per-database objects."""
+    return [
+        (name, _native(_database_value(_step_argument(value, context), context)))
+        for name, value in values.items()
+    ]
+
+
+def _database_value(value, context: dict) -> Any:
+    if isinstance(value, dict) and all(name in value for name in DATABASES):
+        return value[context["database"]]
+    return value
+
+
+def _native(wrapper: dict) -> Any:
+    """The value of the Python API for a recipe wrapper."""
+    ((kind, value),) = wrapper.items()
+    if kind == "int":
+        return int(value)
+    if kind in ("text", "date", "time", "datetime", "decimal"):
+        return value
+    if kind == "bytes_hex":
+        return bytes.fromhex(value)
+    if kind == "bool":
+        return value
+    if kind == "null":
+        return None
+    raise AssertionError(f"unknown recipe wrapper {kind}")
+
+
+def _temporal_kind(native_type: str | None) -> str | None:
+    """The wrapper kind of a column's native type: datetime, time, date, decimal or none."""
+    text = (native_type or "").lower()
+    if re.match(r"(datetime|timestamp)", text):
+        return "datetime"
+    if text.startswith("time"):
+        return "time"
+    if text.startswith("date"):
+        return "date"
+    if re.match(r"(decimal|numeric)", text):
+        return "decimal"
+    return None
+
+
+def _plain(value, native_type: str | None) -> dict:
+    """The recipe wrapper of a plain value; a string takes the wrapper of the native type of its column when one is known,
+    and a date, time or datetime cell is the dbspec text that the library returns."""
+    if value is None:
+        return {"null": True}
+    if isinstance(value, bool):
+        return {"bool": value}
+    if isinstance(value, int):
+        return {"int": str(value)}
+    if isinstance(value, (bytes, bytearray)):
+        return {"bytes_hex": bytes(value).hex()}
+    if isinstance(value, str):
+        return {_temporal_kind(native_type) or "text": value}
+    if isinstance(value, Decimal):
+        return {"decimal": format(value, "f")}
+    raise AssertionError(
+        f"no recipe wrapper for the plain value {value!r} of the native type {native_type}"
+    )
+
+
+def _grid(cell) -> dict:
+    """The recipe wrapper of a grid cell."""
+    if cell.kind == "null":
+        return {"null": True}
+    if cell.kind in ("integer", "unsigned"):
+        return {"int": str(cell.value)}
+    if cell.kind in ("decimal", "text", "date", "time", "datetime"):
+        return {cell.kind: cell.value}
+    if cell.kind == "boolean":
+        return {"bool": cell.value}
+    if cell.kind == "binary":
+        return {"bytes_hex": bytes(cell.value).hex()}
+    raise AssertionError(f"no recipe wrapper for the grid cell {cell.kind}")
+
+
+def _mutation(metadata, result) -> dict:
+    """The fields of a mutation result: its rows, each cell wrapped by the native type of its column in the metadata."""
+    types = [
+        next((c.native_type for c in metadata.columns if c.name == name), None)
+        for name in result.columns
+    ]
+    return {
+        "rows": [
+            [_plain(cell, types[at]) for at, cell in enumerate(row)]
+            for row in result.rows
+        ]
+    }
+
+
+def _normalized(value) -> Any:
+    """NULL compares by its nullness: an expect names the parameter type of NULL, and a result has none."""
+    if isinstance(value, list):
+        return [_normalized(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+    if set(value) == {"null"}:
+        return {"null": True}
+    return {key: _normalized(item) for key, item in value.items()}

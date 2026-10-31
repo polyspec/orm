@@ -85,7 +85,8 @@ caseTest('the recipe schema refuses each break of the format', COMPUTE, () => {
     ['a datetime outside the INT-103 form', change(database, ['cases', 0, 'seed', 'rows', 'audit_log', 0, 'stamp'], { datetime: '2024-02-29T01:02:03Z' })],
     ['an error code outside the code form', change(database, ['cases', 0, 'steps', decode, 'expect', 'mysql'], { error: 'codec decode' })],
     ['a ref outside the name form', change(database, ['cases', 0, 'steps', 4, 'raw'], { ref: '1decoded' })],
-    ['a fixture that is not a .dbs file', change(database, ['fixture'], 'contracts/fixtures/planner.json')],
+    ['a table page expect without its columns', change(database, ['cases', 0, 'steps', decode], { op: 'catalog.table_page', table: 'audit_log', limit: 1, offset: 0, columns: ['seq'], expect: Object.fromEntries(['mysql', 'postgres', 'sqlite'].map(db => [db, { order_by: ['seq'], has_more: false, rows: [] }])) })],
+    ['a fixture that is not a document set', change(database, ['fixture'], 'contracts/fixtures/audit.dbs')],
   ];
   for (const [name, recipe] of breaks) assert.notDeepEqual(refused(recipe, name), [], `the schema accepts ${name}`);
 });

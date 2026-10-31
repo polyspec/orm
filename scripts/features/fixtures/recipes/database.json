@@ -1,7 +1,7 @@
 {
   "$schema": "../../schema/recipe.schema.json",
   "requirements": ["COD-1"],
-  "fixture": "contracts/fixtures/audit.dbs",
+  "fixture": "contracts/fixtures/catalog_connection/dbspec-set.json",
   "seed": { "rows": { "audit_log": [{ "seq": { "int": "1" }, "label": { "text": "first" } }] } },
   "cases": [
     {

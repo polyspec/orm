@@ -89,6 +89,12 @@ fn decode_bytes(value: Option<Vec<u8>>) -> Result<Val, sqlx::Error> {
     value.map(String::from_utf8).transpose().map(|value| value.map_or(Val::Null, Val::Text)).map_err(|error| sqlx::Error::Decode(Box::new(error)))
 }
 
+/// A value of a type that a catalog cell cannot hold; the catalog reports it as CATALOG_VALUE (docs/spec/interfaces.md,
+/// Catalog grid query cells). The detail names the native type, never the value.
+pub(crate) fn unsupported_value(detail: impl std::fmt::Display) -> sqlx::Error {
+    sqlx::Error::Decode(format!("TOOL_QUERY_VALUE: {detail}").into())
+}
+
 fn decode_unsigned(value: Option<u64>) -> Result<Val, sqlx::Error> {
     value.map(i64::try_from).transpose().map(|value| value.map_or(Val::Null, Val::Int)).map_err(|error| sqlx::Error::Decode(Box::new(error)))
 }
@@ -137,7 +143,7 @@ macro_rules! cell_extra {
         } else if let Ok(v) = row.try_get::<Option<u8>, _>(i) {
             Ok(v.map_or(Val::Null, |n| Val::Int(i64::from(n))))
         } else {
-            Err(sqlx::Error::Decode("Unsupported catalog cell type".into()))
+            Err($crate::tool_db::unsupported_value(format_args!("unsupported catalog cell type {}", row.columns()[i].type_info().name())))
         }
     }};
 }
@@ -148,7 +154,7 @@ macro_rules! cell_pg_extra {
         if let Ok(v) = row.try_get::<Option<i8>, _>(i) {
             Ok(v.map_or(Val::Null, |n| Val::Text((n as u8 as char).to_string())))
         } else {
-            Err(sqlx::Error::Decode("Unsupported catalog cell type".into()))
+            Err($crate::tool_db::unsupported_value(format_args!("unsupported catalog cell type {}", row.columns()[i].type_info().name())))
         }
     }};
 }

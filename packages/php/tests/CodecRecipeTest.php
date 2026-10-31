@@ -14,18 +14,16 @@ use PHPUnit\Framework\TestCase;
 #[Small]
 class CodecRecipeTest extends TestCase
 {
-    private const RECIPE = 'tests/codec/codec.json';
+    use RecipeCases;
 
-    /** @return iterable<string, array{array<string, mixed>}> */
-    public static function cases(): iterable
+    protected static function recipe(): string
     {
-        return Recipe::cases(self::RECIPE);
+        return 'tests/codec/codec.json';
     }
 
     #[DataProvider('cases')]
     public function testNone(array $case): void
     {
-        $this->addToAssertionCount(1);
-        Recipe::run(self::RECIPE, $case, Recipe::NONE);
+        $this->runCase($case, Recipe::NONE);
     }
 }

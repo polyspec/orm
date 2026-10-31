@@ -1627,6 +1627,10 @@
     "exported": true,
     "signature": "pub fn s (v : \u0026 str) -\u003e P"
   },
+  "packages/rust/build/src/tool_db.rs::unsupported_value": {
+    "exported": false,
+    "signature": "pub (crate) fn unsupported_value (detail : impl std :: fmt :: Display) -\u003e sqlx :: Error"
+  },
   "packages/rust/build/src/tool_db.rs::validate_param_refs": {
     "exported": false,
     "signature": "pub (crate) fn validate_param_refs \u003c 'a \u003e (values : impl Iterator \u003c Item = \u0026 'a P \u003e , dialect : \u0026 str) -\u003e Result \u003c () , sqlx :: Error \u003e"

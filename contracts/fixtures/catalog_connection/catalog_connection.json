@@ -1,0 +1,2534 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "INT-101",
+    "INT-103",
+    "INT-104",
+    "INT-109",
+    "INT-111",
+    "INT-113",
+    "INT-114",
+    "INT-115",
+    "INT-117",
+    "INT-123",
+    "INT-136",
+    "SCH-6a"
+  ],
+  "fixture": "contracts/fixtures/catalog_connection/dbspec-set.json",
+  "seed": {
+    "rows": {
+      "author": [
+        {
+          "name": {
+            "text": "author-1"
+          },
+          "start_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          }
+        },
+        {
+          "name": {
+            "text": "author-2"
+          },
+          "start_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          }
+        },
+        {
+          "name": {
+            "text": "author-3"
+          },
+          "start_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          }
+        },
+        {
+          "name": {
+            "text": "author-4"
+          },
+          "start_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          }
+        }
+      ],
+      "user": [
+        {
+          "name": {
+            "text": "user-1"
+          }
+        },
+        {
+          "name": {
+            "text": "user-2"
+          }
+        },
+        {
+          "name": {
+            "text": "user-3"
+          }
+        },
+        {
+          "name": {
+            "text": "user-4"
+          }
+        },
+        {
+          "name": {
+            "text": "user-5"
+          }
+        }
+      ]
+    }
+  },
+  "cases": [
+    {
+      "id": "catalog_read",
+      "requirements": [
+        "SCH-6a",
+        "INT-103",
+        "INT-113",
+        "INT-114",
+        "INT-115"
+      ],
+      "steps": [
+        {
+          "op": "catalog.current_namespace",
+          "expect": {
+            "mysql": {
+              "value": {
+                "ref": "database"
+              }
+            },
+            "postgres": {
+              "value": {
+                "text": "public"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "text": "main"
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "author",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "name",
+                "description",
+                "created_ts",
+                "is_close",
+                "read_count",
+                "display_start_dt",
+                "start_dt"
+              ],
+              "primary_key": [
+                "seq"
+              ],
+              "reliable_row_identity": true
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "name",
+                "description",
+                "created_ts",
+                "is_close",
+                "read_count",
+                "display_start_dt",
+                "start_dt"
+              ],
+              "primary_key": [
+                "seq"
+              ],
+              "reliable_row_identity": true
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "name",
+                "description",
+                "created_ts",
+                "is_close",
+                "read_count",
+                "display_start_dt",
+                "start_dt"
+              ],
+              "primary_key": [
+                "seq"
+              ],
+              "reliable_row_identity": true
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "author",
+          "limit": 3,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "name",
+            "start_dt"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "name",
+                "description",
+                "created_ts",
+                "is_close",
+                "read_count",
+                "display_start_dt",
+                "start_dt"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "author-1"
+                  },
+                  {
+                    "datetime": "2026-06-01 00:00:00.000000"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "author-2"
+                  },
+                  {
+                    "datetime": "2026-06-01 00:00:00.000000"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "author-3"
+                  },
+                  {
+                    "datetime": "2026-06-01 00:00:00.000000"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "name",
+                "description",
+                "created_ts",
+                "is_close",
+                "read_count",
+                "display_start_dt",
+                "start_dt"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "author-1"
+                  },
+                  {
+                    "datetime": "2026-06-01 00:00:00.000000"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "author-2"
+                  },
+                  {
+                    "datetime": "2026-06-01 00:00:00.000000"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "author-3"
+                  },
+                  {
+                    "datetime": "2026-06-01 00:00:00.000000"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "name",
+                "description",
+                "created_ts",
+                "is_close",
+                "read_count",
+                "display_start_dt",
+                "start_dt"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "author-1"
+                  },
+                  {
+                    "datetime": "2026-06-01 00:00:00.000000"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "author-2"
+                  },
+                  {
+                    "datetime": "2026-06-01 00:00:00.000000"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "author-3"
+                  },
+                  {
+                    "datetime": "2026-06-01 00:00:00.000000"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "author",
+          "limit": 0,
+          "offset": 0,
+          "columns": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "TABLE_PAGE_INVALID"
+            },
+            "postgres": {
+              "error": "TABLE_PAGE_INVALID"
+            },
+            "sqlite": {
+              "error": "TABLE_PAGE_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "author",
+          "limit": 1001,
+          "offset": 0,
+          "columns": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "TABLE_PAGE_INVALID"
+            },
+            "postgres": {
+              "error": "TABLE_PAGE_INVALID"
+            },
+            "sqlite": {
+              "error": "TABLE_PAGE_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "author",
+          "limit": 1,
+          "offset": 1000001,
+          "columns": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "TABLE_PAGE_INVALID"
+            },
+            "postgres": {
+              "error": "TABLE_PAGE_INVALID"
+            },
+            "sqlite": {
+              "error": "TABLE_PAGE_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "author",
+          "limit": 1000,
+          "offset": 0,
+          "columns": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "name",
+                "description",
+                "created_ts",
+                "is_close",
+                "read_count",
+                "display_start_dt",
+                "start_dt"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  }
+                ],
+                [
+                  {
+                    "int": "4"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "name",
+                "description",
+                "created_ts",
+                "is_close",
+                "read_count",
+                "display_start_dt",
+                "start_dt"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  }
+                ],
+                [
+                  {
+                    "int": "4"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "name",
+                "description",
+                "created_ts",
+                "is_close",
+                "read_count",
+                "display_start_dt",
+                "start_dt"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  }
+                ],
+                [
+                  {
+                    "int": "4"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "author",
+          "limit": 1,
+          "offset": 1000000,
+          "columns": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "name",
+                "description",
+                "created_ts",
+                "is_close",
+                "read_count",
+                "display_start_dt",
+                "start_dt"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": []
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "name",
+                "description",
+                "created_ts",
+                "is_close",
+                "read_count",
+                "display_start_dt",
+                "start_dt"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": []
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "name",
+                "description",
+                "created_ts",
+                "is_close",
+                "read_count",
+                "display_start_dt",
+                "start_dt"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": []
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": {
+            "mysql": "SELECT COUNT(*) FROM `user`",
+            "postgres": "SELECT COUNT(*) FROM \"user\"",
+            "sqlite": "SELECT COUNT(*) FROM \"user\""
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "5"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "5"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "5"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT 'abc' AS value UNION ALL SELECT 'def'",
+          "max_rows": 1,
+          "max_bytes": 1024,
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_LIMIT"
+            },
+            "postgres": {
+              "error": "CATALOG_LIMIT"
+            },
+            "sqlite": {
+              "error": "CATALOG_LIMIT"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT 'abc' AS value",
+          "max_rows": 2,
+          "max_bytes": 2,
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_LIMIT"
+            },
+            "postgres": {
+              "error": "CATALOG_LIMIT"
+            },
+            "sqlite": {
+              "error": "CATALOG_LIMIT"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT 'abc' AS value",
+          "max_rows": 2,
+          "max_bytes": 3,
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "abc"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "abc"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "abc"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": {
+            "mysql": "SELECT CAST('ab' AS BINARY) AS value",
+            "postgres": "SELECT '\\x6162'::bytea AS value",
+            "sqlite": "SELECT X'6162' AS value"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "bytes_hex": "6162"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "bytes_hex": "6162"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "bytes_hex": "6162"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": {
+            "mysql": "SELECT CAST(1.50 AS DECIMAL(10,2)) AS value",
+            "postgres": "SELECT 1.50::numeric(10,2) AS value",
+            "sqlite": "SELECT '1.50' AS value"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "decimal": "1.50"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "decimal": "1.50"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "1.50"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT 9223372036854775807 AS big, -7 AS negative",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "9223372036854775807"
+                  },
+                  {
+                    "int": "-7"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "9223372036854775807"
+                  },
+                  {
+                    "int": "-7"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "9223372036854775807"
+                  },
+                  {
+                    "int": "-7"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": {
+            "mysql": "SELECT CAST('2024-02-29' AS DATE), CAST('12:34:56.5' AS TIME(1)), CAST('2024-02-29 01:02:03.5' AS DATETIME(1))",
+            "postgres": "SELECT '2024-02-29'::date, '12:34:56.5'::time(1), '2024-02-29 01:02:03.5'::timestamp(1)",
+            "sqlite": "SELECT '2024-02-29', '12:34:56.5', '2024-02-29 01:02:03.5'"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "date": "2024-02-29"
+                  },
+                  {
+                    "time": "12:34:56.500000"
+                  },
+                  {
+                    "datetime": "2024-02-29 01:02:03.500000"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "date": "2024-02-29"
+                  },
+                  {
+                    "time": "12:34:56.500000"
+                  },
+                  {
+                    "datetime": "2024-02-29 01:02:03.500000"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "2024-02-29"
+                  },
+                  {
+                    "text": "12:34:56.5"
+                  },
+                  {
+                    "text": "2024-02-29 01:02:03.5"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "declared_temporal_cells",
+      "requirements": [
+        "INT-103"
+      ],
+      "seed": {
+        "rows": {
+          "temporal_cell": [
+            {
+              "d": {
+                "date": "2024-02-29"
+              },
+              "t": {
+                "time": "12:34:56.500"
+              },
+              "dt": {
+                "datetime": "2024-02-29 01:02:03.500000"
+              }
+            }
+          ]
+        }
+      },
+      "steps": [
+        {
+          "op": "catalog.table_page",
+          "table": "temporal_cell",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "d",
+            "t",
+            "dt"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "d",
+                "t",
+                "dt"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "date": "2024-02-29"
+                  },
+                  {
+                    "time": "12:34:56.500"
+                  },
+                  {
+                    "datetime": "2024-02-29 01:02:03.500000"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "d",
+                "t",
+                "dt"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "date": "2024-02-29"
+                  },
+                  {
+                    "time": "12:34:56.500"
+                  },
+                  {
+                    "datetime": "2024-02-29 01:02:03.500000"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "d",
+                "t",
+                "dt"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "date": "2024-02-29"
+                  },
+                  {
+                    "time": "12:34:56.500"
+                  },
+                  {
+                    "datetime": "2024-02-29 01:02:03.500000"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "grid_declared_columns",
+      "requirements": [
+        "INT-103",
+        "SCH-6a"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "reason": "a declared column that holds another storage class, a TIMESTAMP, timestamptz or timetz column has no dbspec declaration",
+          "sql": {
+            "mysql": "CREATE TABLE grid_probe (seq BIGINT NOT NULL PRIMARY KEY, d DATE NULL, dt DATETIME(6) NULL, n BIGINT NULL, b VARBINARY(8) NULL, ts TIMESTAMP NULL)",
+            "postgres": "CREATE TABLE grid_probe (seq BIGINT NOT NULL PRIMARY KEY, d DATE NULL, dt TIMESTAMP(6) NULL, n BIGINT NULL, b BYTEA NULL, ts TIMESTAMPTZ NULL, tt TIMETZ NULL)",
+            "sqlite": "CREATE TABLE grid_probe (seq INTEGER PRIMARY KEY, d DATE, dt DATETIME, n DATETIME, b DATETIME, ts TIMESTAMP, tt TIMETZ)"
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the rows of the table that sql.exec created",
+          "sql": {
+            "mysql": "INSERT INTO grid_probe VALUES (1, '2026-10-22', '2026-10-22 01:02:03.5', 42, X'6162', '2026-10-22 01:02:03'), (2, NULL, NULL, NULL, NULL, NULL)",
+            "postgres": "INSERT INTO grid_probe VALUES (1, '2026-10-22', '2026-10-22 01:02:03.5', 42, '\\x6162'::bytea, '2026-10-22 01:02:03+00', '01:02:03+00'), (2, NULL, NULL, NULL, NULL, NULL, NULL)",
+            "sqlite": "INSERT INTO grid_probe VALUES (1, '2026-10-22', '2026-10-22 01:02:03.5', 42, X'6162', '2026-10-22 01:02:03', '01:02:03'), (2, NULL, 'abc', NULL, NULL, NULL, NULL)"
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT d, dt, n, b, d FROM grid_probe ORDER BY seq",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "d",
+                "dt",
+                "n",
+                "b",
+                "d"
+              ],
+              "rows": [
+                [
+                  {
+                    "date": "2026-10-22"
+                  },
+                  {
+                    "datetime": "2026-10-22 01:02:03.500000"
+                  },
+                  {
+                    "int": "42"
+                  },
+                  {
+                    "bytes_hex": "6162"
+                  },
+                  {
+                    "date": "2026-10-22"
+                  }
+                ],
+                [
+                  {
+                    "null": "date"
+                  },
+                  {
+                    "null": "datetime"
+                  },
+                  {
+                    "null": "i64"
+                  },
+                  {
+                    "null": "bytes"
+                  },
+                  {
+                    "null": "date"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "d",
+                "dt",
+                "n",
+                "b",
+                "d"
+              ],
+              "rows": [
+                [
+                  {
+                    "date": "2026-10-22"
+                  },
+                  {
+                    "datetime": "2026-10-22 01:02:03.500000"
+                  },
+                  {
+                    "int": "42"
+                  },
+                  {
+                    "bytes_hex": "6162"
+                  },
+                  {
+                    "date": "2026-10-22"
+                  }
+                ],
+                [
+                  {
+                    "null": "date"
+                  },
+                  {
+                    "null": "datetime"
+                  },
+                  {
+                    "null": "i64"
+                  },
+                  {
+                    "null": "bytes"
+                  },
+                  {
+                    "null": "date"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "d",
+                "dt",
+                "n",
+                "b",
+                "d"
+              ],
+              "rows": [
+                [
+                  {
+                    "text": "2026-10-22"
+                  },
+                  {
+                    "text": "2026-10-22 01:02:03.5"
+                  },
+                  {
+                    "int": "42"
+                  },
+                  {
+                    "bytes_hex": "6162"
+                  },
+                  {
+                    "text": "2026-10-22"
+                  }
+                ],
+                [
+                  {
+                    "null": "date"
+                  },
+                  {
+                    "text": "abc"
+                  },
+                  {
+                    "null": "i64"
+                  },
+                  {
+                    "null": "bytes"
+                  },
+                  {
+                    "null": "date"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT ts FROM grid_probe WHERE seq = 2",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "null": "datetime"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "null": "datetime"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "null": "datetime"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT ts FROM grid_probe WHERE seq = 1",
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_VALUE"
+            },
+            "postgres": {
+              "error": "CATALOG_VALUE"
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "2026-10-22 01:02:03"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": {
+            "mysql": "SELECT ts FROM grid_probe WHERE seq = 1",
+            "postgres": "SELECT tt FROM grid_probe WHERE seq = 1",
+            "sqlite": "SELECT tt FROM grid_probe WHERE seq = 1"
+          },
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_VALUE"
+            },
+            "postgres": {
+              "error": "CATALOG_VALUE"
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "01:02:03"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "read_statements",
+      "requirements": [
+        "INT-104",
+        "INT-136"
+      ],
+      "steps": [
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT ';' AS value /* ; */",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": ";"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": ";"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": ";"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "WITH values_cte AS (SELECT 1 AS value) SELECT value FROM values_cte",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "COMMIT",
+          "expect": {
+            "mysql": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "postgres": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "sqlite": {
+              "error": "QUERY_READ_ONLY"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "CALL missing_catalog_procedure()",
+          "expect": {
+            "mysql": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "postgres": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "sqlite": {
+              "error": "QUERY_READ_ONLY"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT 1 INTO catalog_forbidden",
+          "expect": {
+            "mysql": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "postgres": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "sqlite": {
+              "error": "QUERY_READ_ONLY"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT 1 FOR UPDATE",
+          "expect": {
+            "mysql": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "postgres": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "sqlite": {
+              "error": "QUERY_READ_ONLY"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT 1; SELECT 2",
+          "expect": {
+            "mysql": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "postgres": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "sqlite": {
+              "error": "QUERY_READ_ONLY"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": {
+            "mysql": "WITH changed AS (UPDATE `user` SET name=name WHERE seq=1 RETURNING seq) SELECT seq FROM changed",
+            "postgres": "WITH changed AS (UPDATE \"user\" SET name=name WHERE seq=1 RETURNING seq) SELECT seq FROM changed",
+            "sqlite": "WITH changed AS (UPDATE \"user\" SET name=name WHERE seq=1 RETURNING seq) SELECT seq FROM changed"
+          },
+          "expect": {
+            "mysql": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "postgres": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "sqlite": {
+              "error": "QUERY_READ_ONLY"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": {
+            "mysql": "UPDATE `user` SET name = name WHERE seq = 1",
+            "postgres": "UPDATE \"user\" SET name = name WHERE seq = 1",
+            "sqlite": "UPDATE \"user\" SET name = name WHERE seq = 1"
+          },
+          "expect": {
+            "mysql": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "postgres": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "sqlite": {
+              "error": "QUERY_READ_ONLY"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "catalog_read_budgets",
+      "requirements": [
+        "INT-115"
+      ],
+      "steps": [
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT 'alpha' AS value UNION ALL SELECT 'beta' AS value",
+          "max_rows": 2,
+          "max_bytes": 128,
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "alpha"
+                  }
+                ],
+                [
+                  {
+                    "text": "beta"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "alpha"
+                  }
+                ],
+                [
+                  {
+                    "text": "beta"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "alpha"
+                  }
+                ],
+                [
+                  {
+                    "text": "beta"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT 'alpha' AS value UNION ALL SELECT 'beta' AS value",
+          "max_rows": 1,
+          "max_bytes": 128,
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_LIMIT"
+            },
+            "postgres": {
+              "error": "CATALOG_LIMIT"
+            },
+            "sqlite": {
+              "error": "CATALOG_LIMIT"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT 'abc' AS value",
+          "max_rows": 2,
+          "max_bytes": 2,
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_LIMIT"
+            },
+            "postgres": {
+              "error": "CATALOG_LIMIT"
+            },
+            "sqlite": {
+              "error": "CATALOG_LIMIT"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT 'abc' AS value",
+          "max_rows": 2,
+          "max_bytes": 3,
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "abc"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "abc"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "abc"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT 1 AS value",
+          "max_rows": 1,
+          "max_bytes": 7,
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_LIMIT"
+            },
+            "postgres": {
+              "error": "CATALOG_LIMIT"
+            },
+            "sqlite": {
+              "error": "CATALOG_LIMIT"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT 1 AS value",
+          "max_rows": 1,
+          "max_bytes": 8,
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "temporal_default_precision",
+      "requirements": [
+        "INT-101",
+        "INT-103",
+        "INT-117"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "reason": "a column of the default temporal precision of the database has no dbspec declaration: dbspec always declares the precision",
+          "sql": {
+            "mysql": "CREATE TABLE precision_cell (id BIGINT NOT NULL PRIMARY KEY, t0 TIME NULL, dt0 DATETIME NULL, t3 TIME(3) NULL, dt3 DATETIME(3) NULL)",
+            "postgres": "CREATE TABLE precision_cell (id BIGINT NOT NULL PRIMARY KEY, t0 TIME WITHOUT TIME ZONE NULL, dt0 TIMESTAMP WITHOUT TIME ZONE NULL, t3 TIME(3) WITHOUT TIME ZONE NULL, dt3 TIMESTAMP(3) WITHOUT TIME ZONE NULL)",
+            "sqlite": "CREATE TABLE precision_cell (id INTEGER NOT NULL PRIMARY KEY, t0 TIME NOT NULL CHECK (length(\"t0\") = 8 AND \"t0\" IS time(\"t0\") AND \"t0\" < '24:00:00'), dt0 DATETIME NOT NULL CHECK (length(\"dt0\") = 19 AND \"dt0\" IS datetime(\"dt0\") AND substr(\"dt0\", 12, 2) < '24'), t3 TIME NOT NULL CHECK (length(\"t3\") = 12 AND substr(\"t3\", 1, 8) IS time(substr(\"t3\", 1, 8)) AND \"t3\" < '24:00:00' AND substr(\"t3\", 9, 1) = '.' AND substr(\"t3\", 10) GLOB '[0-9][0-9][0-9]'), dt3 DATETIME NOT NULL CHECK (length(\"dt3\") = 23 AND substr(\"dt3\", 1, 19) IS datetime(substr(\"dt3\", 1, 19)) AND substr(\"dt3\", 12, 2) < '24' AND substr(\"dt3\", 20, 1) = '.' AND substr(\"dt3\", 21) GLOB '[0-9][0-9][0-9]'))"
+          }
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "precision_cell",
+          "as": "precision",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "t0",
+                "dt0",
+                "t3",
+                "dt3"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true
+            },
+            "postgres": {
+              "columns": [
+                "id",
+                "t0",
+                "dt0",
+                "t3",
+                "dt3"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "t0",
+                "dt0",
+                "t3",
+                "dt3"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "precision"
+          },
+          "values": {
+            "id": {
+              "int": "1"
+            },
+            "t0": {
+              "mysql": {
+                "time": "12:34:56"
+              },
+              "postgres": {
+                "time": "12:34:56.123456"
+              },
+              "sqlite": {
+                "time": "12:34:56"
+              }
+            },
+            "dt0": {
+              "mysql": {
+                "datetime": "2026-01-02 03:04:05"
+              },
+              "postgres": {
+                "datetime": "2026-01-02 03:04:05.123456"
+              },
+              "sqlite": {
+                "datetime": "2026-01-02 03:04:05"
+              }
+            },
+            "t3": {
+              "time": "12:34:56.123"
+            },
+            "dt3": {
+              "datetime": "2026-01-02 03:04:05.123"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "time": "12:34:56"
+                  },
+                  {
+                    "datetime": "2026-01-02 03:04:05"
+                  },
+                  {
+                    "time": "12:34:56.123"
+                  },
+                  {
+                    "datetime": "2026-01-02 03:04:05.123"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "time": "12:34:56.123456"
+                  },
+                  {
+                    "datetime": "2026-01-02 03:04:05.123456"
+                  },
+                  {
+                    "time": "12:34:56.123"
+                  },
+                  {
+                    "datetime": "2026-01-02 03:04:05.123"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "time": "12:34:56"
+                  },
+                  {
+                    "datetime": "2026-01-02 03:04:05"
+                  },
+                  {
+                    "time": "12:34:56.123"
+                  },
+                  {
+                    "datetime": "2026-01-02 03:04:05.123"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "precision_cell",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "id",
+            "t0",
+            "dt0",
+            "t3",
+            "dt3"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "t0",
+                "dt0",
+                "t3",
+                "dt3"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "time": "12:34:56"
+                  },
+                  {
+                    "datetime": "2026-01-02 03:04:05"
+                  },
+                  {
+                    "time": "12:34:56.123"
+                  },
+                  {
+                    "datetime": "2026-01-02 03:04:05.123"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "id",
+                "t0",
+                "dt0",
+                "t3",
+                "dt3"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "time": "12:34:56.123456"
+                  },
+                  {
+                    "datetime": "2026-01-02 03:04:05.123456"
+                  },
+                  {
+                    "time": "12:34:56.123"
+                  },
+                  {
+                    "datetime": "2026-01-02 03:04:05.123"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "t0",
+                "dt0",
+                "t3",
+                "dt3"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "time": "12:34:56"
+                  },
+                  {
+                    "datetime": "2026-01-02 03:04:05"
+                  },
+                  {
+                    "time": "12:34:56.123"
+                  },
+                  {
+                    "datetime": "2026-01-02 03:04:05.123"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "grid_column_and_row_order",
+      "requirements": [
+        "SCH-6a"
+      ],
+      "steps": [
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT 1 AS seq, 'a' AS label UNION ALL SELECT 2, 'b' UNION ALL SELECT 3, 'c' UNION ALL SELECT 4, 'd' ORDER BY seq DESC",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "label"
+              ],
+              "rows": [
+                [
+                  {
+                    "int": "4"
+                  },
+                  {
+                    "text": "d"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "c"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "b"
+                  }
+                ],
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "a"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "label"
+              ],
+              "rows": [
+                [
+                  {
+                    "int": "4"
+                  },
+                  {
+                    "text": "d"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "c"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "b"
+                  }
+                ],
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "a"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "label"
+              ],
+              "rows": [
+                [
+                  {
+                    "int": "4"
+                  },
+                  {
+                    "text": "d"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "c"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "b"
+                  }
+                ],
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "a"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_mutation",
+      "requirements": [
+        "INT-109",
+        "INT-111",
+        "INT-123"
+      ],
+      "steps": [
+        {
+          "op": "catalog.describe_table",
+          "table": "composite_account",
+          "as": "account",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "primary_key": [
+                "tenant_id",
+                "account_id"
+              ],
+              "reliable_row_identity": true
+            },
+            "postgres": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "primary_key": [
+                "tenant_id",
+                "account_id"
+              ],
+              "reliable_row_identity": true
+            },
+            "sqlite": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "primary_key": [
+                "tenant_id",
+                "account_id"
+              ],
+              "reliable_row_identity": true
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "account"
+          },
+          "values": {
+            "tenant_id": {
+              "int": "990005"
+            },
+            "account_id": {
+              "int": "1"
+            },
+            "name": {
+              "text": "catalog"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "990005"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "catalog"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "990005"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "catalog"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "990005"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "catalog"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "composite_account",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "tenant_id",
+            "account_id",
+            "name"
+          ],
+          "as": "first",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "order_by": [
+                "tenant_id",
+                "account_id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "990005"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "catalog"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "order_by": [
+                "tenant_id",
+                "account_id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "990005"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "catalog"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "order_by": [
+                "tenant_id",
+                "account_id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "990005"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "catalog"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "first"
+          },
+          "index": 0,
+          "as": "original"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "original"
+          },
+          "set": {
+            "missing": {
+              "text": "x"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "ROW_UPDATE_INVALID"
+            },
+            "postgres": {
+              "error": "ROW_UPDATE_INVALID"
+            },
+            "sqlite": {
+              "error": "ROW_UPDATE_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "original"
+          },
+          "set": {
+            "name": {
+              "null": "text"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "ROW_UPDATE_INVALID"
+            },
+            "postgres": {
+              "error": "ROW_UPDATE_INVALID"
+            },
+            "sqlite": {
+              "error": "ROW_UPDATE_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "original"
+          },
+          "set": {
+            "name": {
+              "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "ROW_UPDATE_INVALID"
+            },
+            "postgres": {
+              "error": "ROW_UPDATE_INVALID"
+            },
+            "sqlite": {
+              "error": "ROW_UPDATE_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "original"
+          },
+          "set": {
+            "name": {
+              "text": "catalog-updated"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "990005"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "catalog-updated"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "990005"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "catalog-updated"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "990005"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "catalog-updated"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "original"
+          },
+          "set": {
+            "name": {
+              "text": "stale"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "ROW_CONFLICT"
+            },
+            "postgres": {
+              "error": "ROW_CONFLICT"
+            },
+            "sqlite": {
+              "error": "ROW_CONFLICT"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "composite_account",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "tenant_id",
+            "account_id",
+            "name"
+          ],
+          "as": "second",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "order_by": [
+                "tenant_id",
+                "account_id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "990005"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "catalog-updated"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "order_by": [
+                "tenant_id",
+                "account_id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "990005"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "catalog-updated"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "order_by": [
+                "tenant_id",
+                "account_id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "990005"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "catalog-updated"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "second"
+          },
+          "index": 0,
+          "as": "updated"
+        },
+        {
+          "op": "catalog.delete_row",
+          "snapshot": {
+            "ref": "updated"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "1"
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "composite_account",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "tenant_id",
+            "account_id",
+            "name"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "order_by": [
+                "tenant_id",
+                "account_id"
+              ],
+              "has_more": false,
+              "rows": []
+            },
+            "postgres": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "order_by": [
+                "tenant_id",
+                "account_id"
+              ],
+              "has_more": false,
+              "rows": []
+            },
+            "sqlite": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "order_by": [
+                "tenant_id",
+                "account_id"
+              ],
+              "has_more": false,
+              "rows": []
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

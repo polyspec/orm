@@ -281,7 +281,7 @@ final class Catalog
             if (!self::samePageDescriptor($this->describe($pdo, $ref), $metadata)) {
                 throw new OrmException(Code::TABLE_PAGE_METADATA_CHANGED, 'descriptor changed during read');
             }
-            $rows = self::convertRows($raw, self::nativeTypes($metadata));
+            $rows = self::describedRows($raw, $metadata, $this->dialect);
             $hasMore = count($rows) > $limit;
             if ($hasMore) {
                 $rows = array_slice($rows, 0, $limit);
@@ -523,7 +523,7 @@ final class Catalog
                     if (count($returned['rows']) !== 1) {
                         throw new OrmException(Code::ROW_WRITE_MISMATCH, 'expected one returned insert row');
                     }
-                    $returnedRows = self::rowsForDescriptor($returned, $descriptor);
+                    $returnedRows = self::rowsForDescriptor($returned, $descriptor, $this->dialect);
                     $keys = array_map(static fn (int $index): mixed => $returnedRows[0][$index], $keyIndexes);
                 } else {
                     $affected = $this->exec($pdo, $sql, $args);
@@ -536,7 +536,7 @@ final class Catalog
                     if ($hasGeneratedKeys) {
                         if ($mysqlLocatorSql !== null) {
                             $returned = $this->query($pdo, $mysqlLocatorSql, $mysqlLocatorArgs, 2, self::PAGE_BYTES);
-                            $returnedRows = self::rowsForDescriptor($returned, $descriptor);
+                            $returnedRows = self::rowsForDescriptor($returned, $descriptor, $this->dialect);
                             $returnedRow = self::verifyInsertedRow(
                                 $returnedRows,
                                 $changes,
@@ -597,7 +597,7 @@ final class Catalog
                                 2,
                                 self::PAGE_BYTES
                             );
-                            $returnedRows = self::rowsForDescriptor($returned, $descriptor);
+                            $returnedRows = self::rowsForDescriptor($returned, $descriptor, $this->dialect);
                             $returnedRow = self::verifyInsertedRow(
                                 $returnedRows,
                                 $changes,
@@ -1344,10 +1344,10 @@ final class Catalog
      * @param array{names: list<string>, types: list<string>, rows: list<list<mixed>>} $result
      * @return list<list<mixed>>
      */
-    private static function rowsForDescriptor(array $result, CatalogTableMetadata $descriptor): array
+    private static function rowsForDescriptor(array $result, CatalogTableMetadata $descriptor, string $dialect): array
     {
         self::sameNames($result['names'], $descriptor, Code::TABLE_PAGE_METADATA_CHANGED);
-        return self::convertRows($result, self::nativeTypes($descriptor));
+        return self::describedRows($result, $descriptor, $dialect);
     }
 
     /**
@@ -1663,6 +1663,82 @@ final class Catalog
         return $out;
     }
 
+    /**
+     * Converts the rows of a read of a described table: tablePage, the lookup by key and the rows of a write. Each cell
+     * takes the plain conversion of convertRows, and a MySQL or PostgreSQL date, time or timestamp cell is then its
+     * dbspec text with exactly the fraction digits of its column (docs/spec/interfaces.md INT-103 and INT-117).
+     *
+     * @param array{names: list<string>, types: list<string>, rows: list<list<mixed>>} $raw
+     * @return list<list<mixed>>
+     */
+    private static function describedRows(array $raw, CatalogTableMetadata $metadata, string $dialect): array
+    {
+        $rows = self::convertRows($raw, self::nativeTypes($metadata));
+        foreach ($metadata->columns as $i => $column) {
+            $kind = self::temporalKind($dialect, $column->nativeType);
+            if ($kind === null) {
+                continue;
+            }
+            $precision = self::declaredPrecision($dialect, $column->nativeType);
+            foreach ($rows as $r => $row) {
+                if (is_string($row[$i])) {
+                    $rows[$r][$i] = self::describedTemporal($row[$i], $kind, $precision);
+                }
+            }
+        }
+        return $rows;
+    }
+
+    /**
+     * The temporal kind of a native type of a described MySQL or PostgreSQL column: date, time or datetime, by the
+     * first word of the type. Every other type, and every SQLite type, has none.
+     */
+    private static function temporalKind(string $dialect, string $nativeType): ?string
+    {
+        $head = preg_split('/[( ]/', strtoupper($nativeType))[0];
+        return match (true) {
+            $dialect === 'sqlite' => null,
+            $head === 'DATE' => 'date',
+            $head === 'TIME' => 'time',
+            $dialect === 'mysql' && $head === 'DATETIME',
+            $dialect === 'postgres' && $head === 'TIMESTAMP' => 'datetime',
+            default => null,
+        };
+    }
+
+    /**
+     * The fraction digits of a described temporal column: the digits that its native type names, as in time(3) or
+     * timestamp(3) without time zone, and otherwise the default of the database, 0 on MySQL and 6 on PostgreSQL.
+     */
+    private static function declaredPrecision(string $dialect, string $nativeType): int
+    {
+        if (preg_match('/\((\d+)\)/', $nativeType, $match) === 1) {
+            return (int) $match[1];
+        }
+        return $dialect === 'postgres' ? 6 : 0;
+    }
+
+    /**
+     * A temporal value of a described column in its declared precision p: exactly p fraction digits, which drops the
+     * fraction when p is 0. A non-zero digit beyond p fails with GRID_TEMPORAL_PRECISION.
+     */
+    private static function describedTemporal(string $value, string $kind, int $precision): string
+    {
+        if ($kind === 'date') {
+            return self::dateText($value);
+        }
+        $text = $kind === 'time' ? self::timeText($value) : self::dateTimeText($value);
+        $dot = strrpos($text, '.');
+        $digits = substr($text, $dot + 1);
+        if (trim(substr($digits, $precision), '0') !== '') {
+            throw new OrmException(
+                Code::GRID_TEMPORAL_PRECISION,
+                "temporal value \"$value\" has more fraction digits than its precision $precision"
+            );
+        }
+        return $precision === 0 ? substr($text, 0, $dot) : substr($text, 0, $dot + 1 + $precision);
+    }
+
     private static function value(mixed $value, string $nativeType): mixed
     {
         if ($value === null || is_bool($value) || is_int($value) || is_float($value)) {
@@ -1959,7 +2035,7 @@ final class Catalog
             . ' WHERE ' . $this->keyPredicate($metadata) . ' LIMIT 2' . $suffix;
         $raw = $this->query($pdo, $sql, $keys, 2, self::PAGE_BYTES);
         self::sameNames($raw['names'], $metadata, Code::TABLE_PAGE_METADATA_CHANGED);
-        return self::convertRows($raw, self::nativeTypes($metadata));
+        return self::describedRows($raw, $metadata, $this->dialect);
     }
 
     /**

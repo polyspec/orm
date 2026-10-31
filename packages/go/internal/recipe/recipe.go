@@ -55,7 +55,8 @@ type result struct {
 func Run(t *testing.T, path, database string) {
 	t.Helper()
 	if database != None {
-		t.Fatalf("recipe %s: database %s has no case database in this helper", path, database)
+		runDatabase(t, path, database)
+		return
 	}
 	src, err := os.ReadFile(path)
 	if err != nil {
