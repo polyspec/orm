@@ -1,5 +1,3 @@
-//go:build markdown
-
 // The markdown conformance runs on a flowmark server, so it builds only with the tag markdown, which make
 // markdown-conformance-check/go passes with FLOWMARK; the test run of ./packages/go/... leaves it out.
 

@@ -2235,7 +2235,7 @@ ci-install-tools:
 endif
 markdown-conformance-check: markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/php-extension markdown-conformance-check/python markdown-conformance-check/rust markdown-conformance-check/typescript
 markdown-conformance-check/go:
-	FLOWMARK=$(FLOWMARK) $(GO_TEST) -tags markdown ./packages/go/markdownmodel -run '^TestMarkdownConformance$$' -count=1
+	FLOWMARK=$(FLOWMARK) $(GO_TEST) ./packages/go/markdownmodel -run '^TestMarkdownConformance$$' -count=1
 markdown-conformance-check/php: php-vendor-check php-models
 	FLOWMARK=$(FLOWMARK) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --stop-on-defect packages/php/tests/MarkdownConformanceTest.php
 markdown-conformance-check/php-extension: php-vendor-check php-models orm-install-php-extension-tools
@@ -2262,7 +2262,7 @@ decimal-physical-check: php-vendor-check lease-tool python-venv-check orm-instal
 	$(READ_TYPESCRIPT)
 	test -n "$(DECIMAL_ENV)" -a -f "$(DECIMAL_ENV)" || { echo 'DECIMAL_ENV names no decimal database of this run; run make run-databases TARGETS=feature-helper-check, whose helper decimal-physical runs $@' >&2; exit 1; }
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/decimal-physical -- $(CARGO_LEASED) cargo test --no-run --offline --locked --manifest-path packages/rust/Cargo.toml -p polyspec-orm-tests --test decimal_physical
-	$(RUN_LONG) go-build/decimal-physical -- $(PUBLISH) $(abspath .runtime/bin/decimalmodel.test) go test -c -o @OUT@ -tags decimalphysical ./packages/go/decimalmodel
+	$(RUN_LONG) go-build/decimal-physical -- $(PUBLISH) $(abspath .runtime/bin/decimalmodel.test) go test -c -o @OUT@ ./packages/go/decimalmodel
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
 	. $(DECIMAL_ENV) && ORM_PYTHON=$(PYTHON_VENV)/bin/python POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) $(NODE) scripts/decimal-physical-check.mts
 
@@ -2885,7 +2885,7 @@ bind-check/php: php-vendor-check php-models
 .PHONY: ir-answers-check ir-answers-check/go ir-answers-check/rust ir-answers-check/typescript ir-answers-check/python ir-answers-check/php ir-answers-check/php-extension
 ir-answers-check: ir-answers-check/go ir-answers-check/rust ir-answers-check/typescript ir-answers-check/python ir-answers-check/php ir-answers-check/php-extension
 ir-answers-check/go:
-	$(GO_TEST) -tags markdown ./packages/go/markdownmodel -run '^TestRecipeIRAnswersNone$$' -count=1
+	$(GO_TEST) ./packages/go/markdownmodel -run '^TestRecipeIRAnswersNone$$' -count=1
 ir-answers-check/rust: lease-tool
 	cd packages/rust && $(CARGO_TEST) ir-answers-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test ir_answers
 ir-answers-check/typescript: lease-tool orm-codes-typescript
@@ -3099,7 +3099,7 @@ rust-driver-check:
 # The PHP examples load the Composer autoloader; Python runs on the orm-install-python venv.
 example-check: php-vendor-check python-venv-check
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/examples --cwd packages/rust -- $(CARGO_COPY) debug/complex debug/demo -- $(CARGO_SIBLINGS) build --locked --offline -p polyspec-orm-tests --bin complex --bin demo
-	$(WITH_TEST_ENV) EXAMPLE_RUST_COMPLEX=$(RUN_TARGET)/debug/complex EXAMPLE_RUST_DEMO=$(RUN_TARGET)/debug/demo $(GO_TEST) -tags examples ./examples -run '^(TestExampleOutputsAreIdentical|TestExamplesRequireBenchDSN)$$' -count=1
+	$(WITH_TEST_ENV) EXAMPLE_RUST_COMPLEX=$(RUN_TARGET)/debug/complex EXAMPLE_RUST_DEMO=$(RUN_TARGET)/debug/demo $(GO_TEST) ./examples -run '^(TestExampleOutputsAreIdentical|TestExamplesRequireBenchDSN)$$' -count=1
 	rm -rf $(RUN_DIR)
 
 # timing-check runs the Go, Rust, PHP, and TypeScript tests that time their own computation, with the process group throttled to a part of the CPU,
