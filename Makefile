@@ -2952,13 +2952,14 @@ packages/php-ext/src/polyspec_orm_arginfo.h: packages/php-ext/src/polyspec_orm.s
 	$(NODE) scripts/php/php-ext-arginfo.mts
 .PHONY: php-ext-sources
 php-ext-sources: packages/php-ext/src/polyspec_orm_arginfo.h $(PHP_EXT_SQLITE_CANCEL)
-# php-ext-build is the one build of the PHP extension: it writes PHP_EXT_OUT with packages/php-ext/scripts/build.sh in PHP_EXT_MODE
-# (release or native-test) after php-ext-sources, which writes the sources that build.sh reads and refuses when stale or missing.
-# A recipe builds the extension with $(call php_ext_build,<output>,<mode>), which runs this target; make repo-check fails any other
+# php-ext-build is the one build of the PHP extension: it writes PHP_EXT_OUT in PHP_EXT_MODE (release or native-test) after php-ext-sources,
+# which writes the sources that build.sh reads and refuses when stale or missing. scripts/php/php-ext-build.mts builds each source and mode
+# once into var/php-ext/build/<key>/ under a holder lock, and copies that build to PHP_EXT_OUT, so the sites of one run do not compile it again
+# (B1-7). A recipe builds the extension with $(call php_ext_build,<output>,<mode>), which runs this target; make repo-check fails any other
 # call of build.sh.
 .PHONY: php-ext-build
 php-ext-build: php-ext-sources
-	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$(PHP_EXT_OUT)" $(PHP_EXT_MODE)
+	$(RUN_LONG) php-extension-build -- $(NODE) scripts/php/php-ext-build.mts "$(PHP_EXT_OUT)" "$(PHP_EXT_MODE)"
 php_ext_build = $(MAKE) --no-print-directory php-ext-build PHP_EXT_OUT=$(1) PHP_EXT_MODE=$(2)
 orm-install-php-extension-runtime:
 	$(MAKE) --no-print-directory orm-install-php
@@ -3408,6 +3409,7 @@ native-api-equivalence-check: php-vendor-check php-models orm-install-php-extens
 native-arginfo-php-extension-check: php-vendor-check php-models
 	@set -eu; \
 	$(NODE) --test scripts/php/php-ext-arginfo.test.mts; \
+	$(NODE) --test packages/php-ext/tests/build-cache.test.mts; \
 	run_dir="$(abspath .runtime/run)/native-arginfo-php-extension-check-$$PPID"; \
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \

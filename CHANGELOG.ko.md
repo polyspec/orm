@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a5efd3eb589b5d08840905e125e5f2c932a4d99bf6bf888258210fdfb6f682f8 -->
+<!-- source-sha256: d33148ae8dfac2d5a9296e8655a602c2a01d93d49bbc1e145b65ebcaa3572034 -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP 확장 site는 한 run 안에서 더 이상 확장을 다시 컴파일하지 않는다. `php-ext-build`은 소스와 모드마다 한 번만 `var/php-ext/build/<key>/`에 만들고, key는 소스, arginfo 헤더, PHP 버전, 모드, 컴파일러 설정, kit 빌더로 정하며, holder lock 아래에서 각 site에 복사한다 (CR4).
 - Rust runner의 compiler fixture는 중단된 run이 packages/rust/tests/examples에 stale source를 남기면 EEXIST로 실패했고 빈 디렉터리를 tree에 남겼다. 이제 script는 stale source를 덮어쓰고 끝에 scratch 디렉터리를 지운다 (CR25).
 - TypeScript와 Python runner는 공유 DDL vector의 behavior step을 MySQL, PostgreSQL, SQLite에서 실행하고, 서버 DSN이 빠지면 그 이름을 대며 실패한다. 전에는 rendered statement만 비교했다 (CR16-1-1).
 - CR21과 하위 행 (CR21-1) (CR21-2) (CR21-3) (CR21-4) (CR21-5) (CR21-6) (CR21-7)는 consumer를 위해 main의 T345로 옮겼고, 그 T345가 공개 statement runner를 들였다 (#CR21).
