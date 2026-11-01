@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 175385a3e3699777f78773031c6f14bdf0636da20d7500634b40b2ce79a7eefb -->
+<!-- source-sha256: cf6498fb28939a2b396b1f04803ec6ca8412f88b590f1ecbc78a1bbc8ec5ea91 -->
 # 변경 이력
 
 ## Unreleased
@@ -11,6 +11,7 @@
 - 문장 runner(INT-150)의 parity unit은 여섯 런타임 모두에서 `Utils.run`과 frame `run`을 이름으로 쓰고, 모든 데이터베이스에서 statement_runner 테스트를 바인딩한다 (T345-7).
 - Python 런타임은 `utils().run(fn)`을 public으로 만들어, 연결의 트랜잭션 frame으로 `fn`을 호출한다 (INT-150, T345-6).
 - orm-install-rust-crates는 kit가 cargo-downloads-fetch를 삭제했으므로 추적되는 각 Cargo.lock의 크레이트를 `cargo fetch --locked`로 직접 받는다. 그래서 `make install`은 더 이상 `No rule to make target`으로 멈추지 않는다 (T352).
+- AGENTS.md는 kit P25의 항목 상태를 적는다: 항목은 commit되고 unit test가 통과하면 `[v]`가 되어 push를 허락하며, push의 `ci.yml` run이 success로 끝나면 `[o]`가 된다. release는 conclusion이 success인 `ci.yml` run의 id를 받는다 (T309).
 - Rust 크레이트는 테스트 helper를 packages/rust/test-support로 공유하며, 어떤 크레이트도 다른 크레이트의 source를 `#[path]`로 include하지 않는다. 크레이트를 넘는 `#[path]`는 모두 삭제되고, repo test가 그런 `#[path]`를 실패로 판정한다 (T349).
 - 두 branch의 check-recipes 작업이 하나의 통합으로 main에 들어간다. 한국어 checklist는 영어 checklist의 모든 row를 가지고, 변경 이력은 그 commit들의 항목을 가지며, Makefile은 `rust-compiler-fixtures-check/unit`에서 node를 `$(NODE)`로 실행하고, `config/rebuild.json`은 `scripts/generate/once.mts`와 `scripts/php/php-ext-build.mts`를 분류한다 (CR26).
 - check runner는 실패한 target의 `::error` 줄을 출력하지 않아, GitHub Actions에서 실패는 작업이 끝나야 보였다. 이제 실패한 target은 끝날 때 `::error` 줄을 출력한다 (CR1).

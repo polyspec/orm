@@ -10,11 +10,12 @@ vendors; this file states only the rules of orm.
   as the push rule below allows.
   Enforced by: none, a judgement at review
 - Own: The 0.x workflow has no pull request, merge queue or ruleset. Work locally item by item: an item
-  becomes `[o]` when its unit tests pass on the committed tree. `main` receives one push, when no
-  item is `[~]` and the work of the push is complete; the CI of that push must succeed (the job
-  `ci-passed` of `.github/workflows/ci.yml`) before the version-bump commit and the tag.
-  Only the maintainer starts a release, by a dispatch of the release workflow with the id of that
-  CI run, which tags its commit; a pushed tag starts no run. A release asset keeps the file name its packer gives (P39), for example
+  becomes `[v]` when it is committed and its declared unit tests pass, which permits the push. `main`
+  receives one push, when no item is `[~]` and the work of the push is complete. The item becomes `[o]`
+  by `make item-state` after the run of `.github/workflows/ci.yml` for that push concludes with success,
+  before the version-bump commit and the tag. Only the maintainer starts a release, by a dispatch of the
+  release workflow with the id of a `ci.yml` run whose conclusion is success, which tags its commit; a
+  pushed tag starts no run. A release asset keeps the file name its packer gives (P39), for example
   `polyspec-orm-X.Y.Z.tgz` for `@polyspec/orm`; the Python wheel keeps its PEP 427 name,
   `polyspec_orm-X.Y.Z-py3-none-any.whl`.
   Enforced by: `make release-tag`

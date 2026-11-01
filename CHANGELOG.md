@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- AGENTS.md states the item states of kit P25: an item is `[v]` when it is committed and its unit tests pass, which permits the push, and `[o]` after the push run of `ci.yml` concludes with success; a release takes the id of a `ci.yml` run whose conclusion is success (T309).
 - The Rust crates share their test helpers through packages/rust/test-support, and no crate includes another crate's source by `#[path]`: the cross-crate `#[path]` attributes are removed, and a repo test fails on any of them (T349).
 - orm pins ordered-json at 0.0.20 in every ecosystem, and each lock is refreshed by its own package manager (T350).
 - orm pins kit 0.0.92, whose targets match the crate fetch of orm-install-rust-crates, and takes the principles it ships (T353).
