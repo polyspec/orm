@@ -14,6 +14,7 @@ pub(super) fn metadata(table: &str, value_column: &str) -> TableMetadata {
                 automatic_key: false,
                 default_expression: None,
                 expression_default: false,
+                check_precision: None,
             },
             TableColumnMetadata {
                 name: value_column.into(),
@@ -23,6 +24,7 @@ pub(super) fn metadata(table: &str, value_column: &str) -> TableMetadata {
                 automatic_key: false,
                 default_expression: None,
                 expression_default: false,
+                check_precision: None,
             },
         ],
         primary_key: vec!["id".into()],

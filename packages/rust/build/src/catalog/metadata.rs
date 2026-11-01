@@ -25,6 +25,9 @@ pub struct TableColumnMetadata {
     pub automatic_key: bool,
     pub default_expression: Option<String>,
     pub expression_default: bool,
+    /// On SQLite, the fraction digits that the dbspec CHECK of a TIME or DATETIME column fixes; None when no CHECK fixes them
+    /// and on the other dialects.
+    pub check_precision: Option<i64>,
 }
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct TableMetadata {
@@ -120,6 +123,7 @@ pub(super) async fn describe(connection: &mut Conn, dialect: &str, table: &Table
                 value => Some(text(value)?),
             },
             expression_default: row[7].bool().map_err(|e| e.to_string())?,
+            check_precision: None,
         };
         if columns.iter().any(|c: &TableColumnMetadata| c.name == column.name) {
             return Err("TABLE_METADATA_INVALID: duplicate column".into());
@@ -152,5 +156,10 @@ pub(super) async fn describe(connection: &mut Conn, dialect: &str, table: &Table
     let reliable_row_identity =
         matches!(kind, TableKind::Table | TableKind::Partitioned) && !keys.is_empty() && keys.iter().all(|key| !columns[key.1].nullable);
     let primary_key = keys.iter().map(|key| columns[key.1].name.clone()).collect();
-    Ok(TableMetadata { table: table.clone(), kind, columns, primary_key, reliable_row_identity })
+    let mut metadata = TableMetadata { table: table.clone(), kind, columns, primary_key, reliable_row_identity };
+    let checks = super::temporal::sqlite_check_precisions(connection, &metadata, dialect).await?;
+    for (column, check) in metadata.columns.iter_mut().zip(checks) {
+        column.check_precision = check.map(|precision| precision as i64);
+    }
+    Ok(metadata)
 }

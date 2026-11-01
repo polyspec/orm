@@ -190,7 +190,7 @@ fn check_clauses(table_sql: &str) -> Vec<&str> {
 }
 
 /// The CHECK precision of each SQLite TIME and DATETIME column of the table, read from the definition in sqlite_master.
-async fn sqlite_check_precisions(connection: &mut Conn, metadata: &TableMetadata, dialect: &str) -> Result<Vec<Option<usize>>, String> {
+pub(super) async fn sqlite_check_precisions(connection: &mut Conn, metadata: &TableMetadata, dialect: &str) -> Result<Vec<Option<usize>>, String> {
     let mut checks = vec![None; metadata.columns.len()];
     if dialect != "sqlite" || !metadata.columns.iter().any(|column| matches!(column.native_type.to_ascii_uppercase().as_str(), "TIME" | "DATETIME")) {
         return Ok(checks);

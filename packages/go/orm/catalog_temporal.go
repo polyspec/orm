@@ -67,10 +67,10 @@ func catalogTemporalKind(column CatalogColumn, dialect string) (kind string, pre
 			if strings.ToUpper(native) == "DATETIME" {
 				kind = "datetime"
 			}
-			if column.checkPrecision == nil {
+			if column.CheckPrecision == nil {
 				return kind, 0, false, true
 			}
-			return kind, *column.checkPrecision, true, true
+			return kind, *column.CheckPrecision, true, true
 		}
 	}
 	return "", 0, false, false
