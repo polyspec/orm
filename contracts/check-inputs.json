@@ -72,6 +72,21 @@
         "tests/**/*.mts"
       ]
     },
+    "typescript-build-unit-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules"
+      ],
+      "inputs": [
+        "scripts/typescript/**",
+        "scripts/json/**",
+        "tests/errors.mts",
+        "packages/ts/**",
+        "contracts/fixtures/**",
+        "examples/thin-slice/ts/**",
+        "Makefile"
+      ]
+    },
     "docs-check": {
       "scope": "owner",
       "needs": [

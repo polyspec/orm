@@ -10,21 +10,31 @@
 // of the generator's sources (tsconfig.bootstrap.json) writes it to dist.boot-<pid>, the generator writes the models from there, and the
 // temporary directory is deleted before the full compile.
 //
+// The build is keyed (B3-1): the record var/typescript/dist.key holds the key of the build that dist was published from. A build whose key is
+// the recorded one, with its generated models present, runs no compiler, so every make target that needs dist and runs this script
+// (through TSC_BUILD or npm's typescript:build) shares one build of the same sources. Its key is computed in buildKey; a build holds the
+// lock var/typescript/dist.lock while it checks, builds and publishes, so another caller waits and then reads the same key.
+//
 // Usage: node scripts/typescript/build.mts
 import { spawnSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdirSync, renameSync, rmSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { waitForHolderLock } from '@polyspec/kit/holder-lock';
 import { readPackage } from '../json/formats.mts';
 import { errorCode, errorMessage } from '../../tests/errors.mts';
 import { generatedModels, generatorArgs } from './models.mts';
 
 const client = fileURLToPath(new URL('../../packages/ts/', import.meta.url));
+const root = fileURLToPath(new URL('../../', import.meta.url));
 const dist = join(client, 'dist');
 const next = join(client, `dist.next-${process.pid}`);
 const old = join(client, `dist.old-${process.pid}`);
 const boot = join(client, `dist.boot-${process.pid}`);
+const record = join(root, 'var/typescript/dist.key');
+const lockFile = join(root, 'var/typescript/dist.lock');
 // tsc is the client's dependency typescript: Node finds it by package name from the client's package.json.
 let tsc: string;
 try {
@@ -46,6 +56,42 @@ function compile(config: string, outDir: string): number | null {
   const built = spawnSync(process.execPath, [tsc, '-p', join(client, config), '--outDir', outDir, '--tsBuildInfoFile', record], { stdio: 'inherit' });
   rmSync(record, { force: true });
   return built.status === 0 ? null : built.status ?? 1;
+}
+
+/**
+ * The key of the client's build: the SHA-256 of every tracked file that the build reads, each with its name, the generated entry of
+ * the client's codes (packages/ts/src/codes.ts, which orm-codes writes), and the manifests of node and typescript. The tracked files are
+ * the client and its tests, the build and model scripts, the fixtures that the models are generated from, and the thin-slice main that
+ * orm-gen scans.
+ */
+function buildKey(): string {
+  const listed = spawnSync('git', ['ls-files', '-z', '--', 'packages/ts', 'scripts/typescript', 'scripts/json', 'tests/errors.mts', 'contracts/fixtures', 'examples/thin-slice/ts'], { cwd: root, encoding: 'utf8' });
+  if (listed.status !== 0) throw new Error(`typescript build: git ls-files exited with ${listed.status ?? listed.signal}; run make install`);
+  const digest = createHash('sha256');
+  for (const file of listed.stdout.split('\0').filter(Boolean).sort()) {
+    digest.update(`file ${file}\0`);
+    digest.update(existsSync(join(root, file)) ? readFileSync(join(root, file)) : 'deleted');
+    digest.update('\0');
+  }
+  const codes = join(client, 'src/codes.ts');
+  digest.update(`codes ${existsSync(codes) ? readFileSync(codes) : 'missing'}\0`);
+  digest.update(`typescript manifest ${readFileSync(createRequire(join(client, 'package.json')).resolve('typescript/package.json'))}\0`);
+  digest.update(`node ${process.version}\0`);
+  return digest.digest('hex');
+}
+
+/** Whether dist was published from the build of `key`, and the generated models that the build writes are present. */
+function isCurrent(key: string): boolean {
+  return existsSync(dist) && existsSync(record) && readFileSync(record, 'utf8') === key && generatedModels.every(model => existsSync(join(client, model.out, 'models.ts')));
+}
+
+mkdirSync(dirname(lockFile), { recursive: true });
+const key = buildKey();
+const hold = waitForHolderLock(lockFile, { timeoutMs: Infinity, checkout: root, command: 'typescript build' });
+if (isCurrent(key)) {
+  hold.release();
+  console.log(`[typescript-build] dist is current for ${key.slice(0, 12)}; no compiler runs`);
+  process.exit(0);
 }
 
 rmSync(boot, { recursive: true, force: true });
@@ -82,3 +128,8 @@ for (const file of typeof bin === 'string' ? [bin] : Object.values(bin ?? {})) {
 if (existsSync(dist)) renameSync(dist, old);
 renameSync(next, dist);
 rmSync(old, { recursive: true, force: true });
+// The record is written after dist, by a rename of its own: a stop between the two leaves a record that no longer matches, so the next build runs.
+const recordNext = `${record}.next-${process.pid}`;
+writeFileSync(recordNext, key);
+renameSync(recordNext, record);
+hold.release();
