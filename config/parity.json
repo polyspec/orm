@@ -813,6 +813,10 @@
       "runner": "python",
       "internal": [
         {
+          "glob": "packages/python/tests/test_bind_messages_python_null_none.py",
+          "reason": "test: the native Python test of assign_null_into_not_null, the one case that only Python holds (FCV-2, DSL-29): the typed setters of the other runtimes take no null, so no suite unit binds it; the file runs tests/bind/messages-python-null.json through the recipe helper"
+        },
+        {
           "glob": "packages/python/tests/chain_answer.py",
           "reason": "harness: the chain runner and the answer listener of the markdown conformance chains that the ir.answer op of tests/ir/answers.json (FCV-4) runs; the cases are bound by the suite unit ir-answers, and the module holds no test of its own"
         },
@@ -1178,7 +1182,9 @@
     "tests/ir/*.json",
     "tests/events/*.json",
     "tests/markdown/*.json",
-    "tests/bind/messages.json"
+    "tests/bind/messages.json",
+    "tests/bind/messages-dynamic.json",
+    "tests/bind/messages-untyped-null.json"
   ],
   "comparators": [
     "tests/conformance",
@@ -32883,6 +32889,79 @@
           "symbol": "bind_messages"
         }
       ]
+    },
+    {
+      "id": "markdown-message-dynamic-vectors",
+      "kind": "suite",
+      "requirements": [
+        "PRT-67"
+      ],
+      "file": "tests/bind/messages-dynamic.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/BindMessagesDynamicRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\BindMessagesDynamicRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/BindMessagesDynamicRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\BindMessagesDynamicRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/bind_messages_dynamic.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_bind_messages_dynamic_none.py"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "model_writes",
+        "parts": [
+          "owner/php",
+          "owner/php-extension",
+          "owner/typescript",
+          "owner/python"
+        ]
+      }
+    },
+    {
+      "id": "markdown-message-untyped-null-vectors",
+      "kind": "suite",
+      "requirements": [
+        "PRT-67"
+      ],
+      "file": "tests/bind/messages-untyped-null.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/BindMessagesUntypedNullRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\BindMessagesUntypedNullRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/BindMessagesUntypedNullRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\BindMessagesUntypedNullRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_bind_messages_untyped_null_none.py"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "model_writes",
+        "parts": [
+          "owner/php",
+          "owner/php-extension",
+          "owner/python"
+        ]
+      }
     },
     {
       "id": "relation-model-output-under-relation-name",

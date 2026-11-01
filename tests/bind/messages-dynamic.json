@@ -1,0 +1,470 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "PRT-67"
+  ],
+  "cases": [
+    {
+      "id": "bind_i16_above",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i16_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "32768"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_i16_below",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i16_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "-32769"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_i32_above",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i32_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "2147483648"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_i64_fraction",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i64_value",
+          "operator": "eq",
+          "params": [
+            {
+              "float": "1.5"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_i64_text",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i64_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "5"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_i64_bool",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i64_value",
+          "operator": "eq",
+          "params": [
+            {
+              "bool": true
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_f64_text",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.f64_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "1.5"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_f64_bool",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.f64_value",
+          "operator": "eq",
+          "params": [
+            {
+              "bool": false
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_bool_integer",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.bool_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "1"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_decimal_number",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.decimal_value",
+          "operator": "eq",
+          "params": [
+            {
+              "float": "1.5"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_varchar_number",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.varchar_null_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "5"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_text_bool",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.text_value",
+          "operator": "eq",
+          "params": [
+            {
+              "bool": true
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_bytes_text",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.bytes_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "ab"
+            }
+          ],
+          "expect": {
+            "message": "YWI="
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_bytes_number",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.bytes_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "5"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_contains_null",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.text_value",
+          "operator": "like_contains",
+          "params": [
+            {
+              "nil": true
+            }
+          ],
+          "expect": {
+            "message": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_contains_number",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.text_value",
+          "operator": "like_contains",
+          "params": [
+            {
+              "int": "5"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_contains_bool",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.text_value",
+          "operator": "like_contains",
+          "params": [
+            {
+              "bool": true
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_uuid_number",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.uuid_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "5"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_date_number",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.date_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "20240102"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_time_number",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "36000"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime_bool",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "bool": true
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -2288,7 +2288,9 @@
         "ts-revision-delete-mismatch",
         "ts-styled-value-checks-setter",
         "ts-styled-value-checks-output",
-        "ts-styled-value-checks-encoding"
+        "ts-styled-value-checks-encoding",
+        "markdown-message-dynamic-vectors",
+        "markdown-message-untyped-null-vectors"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -2307,6 +2309,13 @@
         "contracts/fixtures/bench/bench.dbs"
       ],
       "tests": [
+        "packages/php/tests/BindMessagesDynamicRecipeTest.php",
+        "packages/php/tests/BindMessagesUntypedNullRecipeTest.php",
+        "packages/php-ext/tests/BindMessagesDynamicRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/BindMessagesUntypedNullRecipeTestExtensionTest.php",
+        "packages/ts/tests/bind_messages_dynamic.mjs",
+        "packages/python/tests/test_bind_messages_dynamic_none.py",
+        "packages/python/tests/test_bind_messages_untyped_null_none.py",
         "packages/go/model/model_test.go",
         "packages/go/model/assignment_test.go",
         "packages/go/generator/gen_go_scan_test.go",
@@ -2789,6 +2798,8 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
+              "packages/php/tests/BindMessagesDynamicRecipeTest.php",
+              "packages/php/tests/BindMessagesUntypedNullRecipeTest.php",
               "packages/php/tests/CoverageModelWritesTest.php"
             ],
             "inputs": [
@@ -2925,6 +2936,7 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
+              "packages/ts/tests/bind_messages_dynamic.mjs",
               "packages/ts/tests/coverage_model_writes.mjs"
             ],
             "inputs": [
@@ -2975,7 +2987,9 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_model_writes.py"
+              "packages/python/tests/test_bind_messages_dynamic_none.py",
+              "packages/python/tests/test_bind_messages_untyped_null_none.py",
+                    "packages/python/tests/coverage_model_writes.py"
             ],
             "inputs": [
               "contracts/fixtures/bench/bench.dbs"
@@ -3025,6 +3039,8 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
+              "packages/php-ext/tests/BindMessagesDynamicRecipeTestExtensionTest.php",
+              "packages/php-ext/tests/BindMessagesUntypedNullRecipeTestExtensionTest.php",
               "packages/php-ext/tests/CoverageModelWritesExtensionTest.php"
             ],
             "inputs": [
