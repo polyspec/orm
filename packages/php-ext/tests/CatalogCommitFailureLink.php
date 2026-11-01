@@ -23,6 +23,12 @@ final class CatalogCommitFailureLink extends \mysqli
         return new CatalogCommitFailureStatement();
     }
 
+    // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- mysqli dispatch requires this exact API method name.
+    public function query(string $query, int $resultmode = MYSQLI_STORE_RESULT): \mysqli_result|bool
+    {
+        return new CatalogCommitFailureResult();
+    }
+
     public function commit(int $flags = 0, ?string $name = null): bool
     {
         throw new \mysqli_sql_exception('grid commit failed');
