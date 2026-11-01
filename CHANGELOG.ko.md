@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e39b4ebcab20e4aa1bb7021c44edf260855ae388e7e8e0987717e4bc25ffa226 -->
+<!-- source-sha256: 78f11d4ce6771974d5358f508a62eeee810e9d4668a3ea882333c65bde8937ce -->
 # 변경 이력
 
 ## Unreleased
@@ -195,6 +195,7 @@
 - PostgreSQL과 SQLite hot path gate의 PHP와 확장 binding은 다른 PHP feature binding처럼 자기 command에서 --teamcity와 database별 환경으로 PHPUnit을 실행하고, feature-php-database는 제거됩니다. 이 target은 저장소 검사가 거부하는 vendor-php/bin/phpunit을 run-tests 밖에서 시작했습니다(T316).
 - PostgreSQL과 SQLite hot path gate의 PHP와 확장 binding은 다른 PHP feature binding처럼 자기 command에서 --teamcity와 database별 환경으로 PHPUnit을 실행하고, feature-php-database는 제거됩니다. 이 target은 저장소 검사가 거부하는 vendor-php/bin/phpunit을 run-tests 밖에서 시작했습니다. 확장 binding은 PerformanceGateCoverageCase가 요구하는 POLYSPEC_ORM_EXTENSION도 설정합니다(T316).
 - query가 있는 SQLite DSN이 path만으로 이름 지은 파일을 만든다는 client test를 여섯 runtime 모두에서 connection-sqlite-absolute-path(CFG-26)에 bind합니다. python에는 test_sqlite_dsn_requires_absolute_path 옆에 test_sqlite_file_name_is_the_path를 두고, php-extension은 상속한 DsnTestExtensionTest::testSqliteFileName을 bind하며, 각 test는 CFG-26을 명시합니다. go TestSQLiteFileNameIsThePath는 외부 service의 internal test로 선언되어 있었지만 그렇지 않습니다(T324).
+- orm은 kit K938-1이 요구하는 대로 npm을 mise.toml에서 가져옵니다. package.json은 packageManager 대신 devEngines.packageManager npm 12.2.0을 선언하고, mise.toml은 npm:npm 12.2.0을 lock과 sidecar와 함께 선언하며, CI bootstrap은 devEngines.packageManager.version을 읽고 checkout 밖에서 --prefix로 npm ci를 실행합니다. 이전에는 make worktree-setup이 orm의 package.json을 거부하고 worktree를 만들지 않았습니다(T336).
 - client-db-check와 client-pooler-check의 rust lane, case-database-check의 rust command는 libtest --ignored로 Rust integration program의 ignored section trial만 실행합니다. --include-ignored로 실행하면 feature-check의 변수 없이 실패하는 coverage_generated_model_connection도 실행되고 generated getter test가 한 번 더 실행되었습니다. build.rs와 coverage_model_generation_check는 bench model의 set과 scan 경로를 목록 하나(packages/rust/tests/bench_model.rs)에서 읽습니다. 이전에는 check가 scan 경로를 따로 복사해 두었고 그 복사본에 tests/integration_program이 없어서, 생성한 model에 program이 호출하는 chain method가 없었습니다(T334).
 - build.rs와 coverage_model_generation_check는 bench model의 set과 scan 경로를 목록 하나(packages/rust/tests/bench_model.rs)에서 읽습니다. 이전에는 check가 scan 경로를 따로 복사해 두었고 그 복사본에 tests/integration_program이 없어서, 생성한 model에 program이 호출하는 chain method가 없었습니다(T334).
 - TypeScript suite test 파일은 그 suite의 case만 둡니다. engine과 load-set test는 packages/ts/tests/engine_features.mjs로, DSN feature test는 packages/ts/tests/dsn_features.mjs로 옮기고, markdown-conformance의 orm-gen gen --check 전제는 파일의 before hook이 됩니다. connection/pool-invalid-options-refused와 중복인 dsn/pool-options는 지우고 그 새 입력 하나는 pool_bounds.mjs로 옮기며, dsn/invalid는 connection-dsn-utc와 connection-dsn-supported-parameters에 bind합니다. 이전에는 typescript에서 ir-validate, sqlite-paths, markdown-conformance의 parity 검사가 그런 test마다 suite에 없는 case로 보고했습니다(T319).
