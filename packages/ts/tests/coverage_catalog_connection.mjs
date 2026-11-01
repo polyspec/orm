@@ -4,8 +4,7 @@
 // Requirements: SCH-3, SCH-5, SCH-6, SCH-6a, INT-97, INT-101, INT-102, INT-103, INT-104, INT-109, INT-112, INT-113, INT-114, INT-115, INT-121, INT-123, INT-136, INT-117.
 import assert from 'node:assert/strict';
 import { randomInt } from 'node:crypto';
-import { within } from './deadline.mjs';
-import { nativeQuery, runCases } from './coverage_case.mjs';
+import { nativeQuery, runCases, within } from './coverage_case.mjs';
 import { BindCell, connect as connectModel, connectCatalog, decode } from '../dist/index.js';
 import { DatabaseSync } from 'node:sqlite';
 
@@ -257,7 +256,6 @@ async function mutationCase(item) {
       { name: 'name', value: 'catalog' },
     ]);
     assert.equal(inserted.rows.length, 1, `${driver}: inserted rows`);
-    const capturedPage = await catalog.tablePage(table, 1000, 0);
 
     const find = async (wantName) => {
       const page = await catalog.tablePage(table, 1000, 0);
@@ -271,7 +269,6 @@ async function mutationCase(item) {
     const original = await find('catalog');
     assert.deepEqual(original.metadata.primaryKey, ['tenant_id', 'account_id'], `${driver}: declared key order`);
     const originalCells = original.originalCells();
-    const originalRevision = original.revision;
     const updated = await catalog.updateRow(original, [{ name: 'name', value: 'catalog-updated' }]);
     assert.equal(updated.rows.length, 1, `${driver}: updated rows`);
     assert.deepEqual(original.originalCells(), originalCells, `${driver}: captured cells remain immutable`);
@@ -282,7 +279,6 @@ async function mutationCase(item) {
     await catalog.close();
   }
 }
-
 
 const codeIs = (code) => (error) => error?.code === code;
 
@@ -322,11 +318,7 @@ async function assertGridCells(driver, catalog) {
   const first = async (sql) => (await catalog.readOnlyGridQuery(sql, [])).rows[0];
   const rejects = (sql, code) => assert.rejects(catalog.readOnlyGridQuery(sql, []), codeIs(code), `${driver}: ${sql}`);
   const f64 = (bits) => ({ kind: 'float64', bits });
-  const f32 = (bits) => ({ kind: 'float32', bits });
-  const int = (value) => ({ kind: 'integer', value });
-  const nul = { kind: 'null' };
   const text = (value) => ({ kind: 'text', value });
-  const bytes = (...value) => ({ kind: 'binary', value: new Uint8Array(value) });
   const shared = [
   ];
   const dialect = {

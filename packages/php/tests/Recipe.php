@@ -592,7 +592,8 @@ final class Recipe
         $got = self::normalizedNull($compared);
         if ($want !== $got) {
             Assert::fail(
-                'want ' . json_encode($want, JSON_UNESCAPED_UNICODE) . ', got ' . json_encode($got, JSON_UNESCAPED_UNICODE)
+                'want ' . json_encode($want, JSON_UNESCAPED_UNICODE)
+                    . ', got ' . json_encode($got, JSON_UNESCAPED_UNICODE)
             );
         }
     }
@@ -915,7 +916,8 @@ final class Recipe
             return ['float' => json_encode($value, JSON_PRESERVE_ZERO_FRACTION)];
         }
         if (is_float($value)) {
-            // A float of a described column is compared by its IEEE bits: a real column is float32, any other is float64.
+            // A float of a described column is compared by its IEEE bits: a real column is float32, any other is
+            // float64.
             $real = preg_match('/^(real|float4|float\(|float$)/i', $nativeType ?? '') === 1;
             return $real
                 ? ['f32_bits' => unpack('V', pack('g', $value))[1]]

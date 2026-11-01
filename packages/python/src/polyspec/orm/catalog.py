@@ -5,11 +5,13 @@
 # page is not authorization for a row change: each change re-reads its row inside its own transaction.
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import math
 import os
 import re
+import sqlite3
 import stat
 import struct
 import uuid
@@ -95,6 +97,19 @@ _COLUMNS_SQL = {
     "postgres": "SELECT a.attname::text,format_type(a.atttypid,a.atttypmod),NOT a.attnotnull,(a.attgenerated<>'' OR a.attidentity='a'),COALESCE(k.ord,0),(a.attidentity<>''),pg_get_expr(d.adbin,d.adrelid),(d.adbin IS NOT NULL) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_attribute a ON a.attrelid=c.oid LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum LEFT JOIN pg_index i ON i.indrelid=c.oid AND i.indisprimary LEFT JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS k(attnum,ord) ON k.attnum=a.attnum WHERE n.nspname=$1 AND c.relname=$2 AND a.attnum>0 AND NOT a.attisdropped ORDER BY a.attnum",
     "sqlite": 'SELECT name,type,NOT "notnull",hidden<>0,pk,0,dflt_value,(dflt_value IS NOT NULL) FROM pragma_table_xinfo(?,?) ORDER BY cid',
 }
+
+
+def _driver_errors(dialect: str) -> tuple[type[BaseException], ...]:
+    """The error classes that the driver of a dialect raises, which a cleanup after a budget stop may fail with."""
+    if dialect == "sqlite":
+        return (sqlite3.Error,)
+    if dialect == "mysql":
+        import pymysql
+
+        return (pymysql.err.MySQLError,)
+    import psycopg
+
+    return (psycopg.Error,)
 
 
 def _error(code: str, message: str, cause=None) -> OrmError:
@@ -826,7 +841,9 @@ def _validate_inserted_locator_row(
             raise _error(codes.ROW_WRITE_MISMATCH, mismatch_message)
 
 
-def _check_write_precision(metadata: CatalogTableMetadata, changes: list, dialect: str) -> None:
+def _check_write_precision(
+    metadata: CatalogTableMetadata, changes: list, dialect: str
+) -> None:
     """Refuses a temporal value that names more fraction digits than the precision of its column, before any write. A SQLite
     column whose precision no CHECK fixes has nothing to refuse."""
     for index, value in changes:
@@ -1234,24 +1251,21 @@ class _Session:
         finally:
             if stopped:
                 # The budget error is the one reported: a cursor that the stop has ended may fail to close.
-                try:
+                with contextlib.suppress(*_driver_errors(self.dialect)):
                     cursor.close()
-                except Exception:
-                    pass
             else:
                 cursor.close()
         return _Raw(names, rows, affected, type_codes, unsigned, insert_id)
 
     def _stop_read(self, cursor, cursor_name) -> None:
         """Ends a read that a budget stopped on the server: MySQL kills the running statement by its thread id on a
-        connection of its own, and a PostgreSQL cursor is closed. A failure here is not reported: the budget error is."""
-        try:
+        connection of its own, and a PostgreSQL cursor is closed. A driver failure here is not reported: the budget error
+        is. Any other error is raised."""
+        with contextlib.suppress(*_driver_errors(self.dialect)):
             if self.dialect == "mysql":
                 self.wrapper.cancel_query()
             elif cursor_name is not None:
                 cursor.execute(f"CLOSE {cursor_name}")
-        except Exception:
-            pass
 
     def close(self) -> None:
         self.wrapper.close()
@@ -1719,7 +1733,9 @@ class CatalogConnection:
             # The server refused a write of the read session: the query is the one that fails, as a write fails before it runs.
             if error.code == codes.READ_ONLY:
                 raise _error(
-                    codes.QUERY_READ_ONLY, "the database rejected a read-only query", error
+                    codes.QUERY_READ_ONLY,
+                    "the database rejected a read-only query",
+                    error,
                 ) from error
             raise
 

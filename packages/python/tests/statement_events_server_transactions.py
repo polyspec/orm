@@ -8,6 +8,7 @@ import os
 import unittest
 
 from polyspec.orm.database import Db
+
 from . import statement_events, testcase
 from .case_database import case_database
 from .statement_events import STATE, VECTORS, EventRun

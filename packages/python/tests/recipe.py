@@ -415,7 +415,9 @@ def _database_recipe_tests(path: str, database: str):
             with case_database(database, directory, "orm_recipe") as dsn:
                 _run_case(path, recipe, case, database, schema, dsn)
 
-    cases = [case for case in recipe["cases"] if database in case.get("only", DATABASES)]
+    cases = [
+        case for case in recipe["cases"] if database in case.get("only", DATABASES)
+    ]
     return vector_load_tests(DatabaseRecipeCase, cases, check)
 
 

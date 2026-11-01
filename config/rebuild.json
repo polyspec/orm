@@ -362,6 +362,10 @@
       "kind": "policy",
       "reason": "the rule of this repository that a checklist item is not completed while one of its behavior adapters is unresolved; no ecosystem tool reads the checklist and the interface contracts"
     },
+    "scripts/generate/once.mts": {
+      "kind": "policy",
+      "reason": "the once rule of this repository (B3-2): a generator runs only when the key of its tracked inputs differs from its stamp, and a stamp is written only on success; no ecosystem tool keys a generator run by the tracked inputs of this repository"
+    },
     "scripts/php/mode-check.php": {
       "kind": "policy",
       "reason": "the rule of this repository that ORM_PHP_MODE agrees with whether the extension polyspec_orm is loaded, which the PHP test targets check before their tests"
