@@ -3871,12 +3871,11 @@
         }
       ],
       "parity": [
-        "statement-events",
         "statement-events-server-transactions",
         "coverage-statement-events-statement-events"
       ],
       "fixtures": [
-        "contracts/fixtures/statement_events.dbs",
+        "contracts/fixtures/statement_events/statement_events.dbs",
         "tests/events/vectors.json",
         "packages/ts/tests/statement-events-run.mjs",
         "packages/php/tests/statement_events_run.php",
@@ -3888,7 +3887,6 @@
       "tests": [
         "packages/go/orm/statement_events_test.go",
         "packages/go/orm/statement_events_export_test.go",
-        "packages/ts/tests/statement-events.mjs",
         "packages/ts/tests/statement_events_server_transactions.mjs",
         "packages/php/tests/StatementEventsTest.php",
         "packages/rust/orm/tests/statement_events.rs",
@@ -3903,7 +3901,19 @@
         "packages/python/tests/test_subscriber_error.py",
         "packages/python/tests/coverage_statement_events.py",
         "packages/php-ext/tests/StatementEventSurfaceTest.php",
-        "packages/php-ext/tests/StatementEventsTestExtensionTest.php"
+        "packages/php-ext/tests/StatementEventsTestExtensionTest.php",
+        "packages/ts/tests/statement_events-mysql.test.mjs",
+        "packages/ts/tests/statement_events-postgres.test.mjs",
+        "packages/ts/tests/statement_events-sqlite.test.mjs",
+        "packages/python/tests/test_statement_events_mysql.py",
+        "packages/python/tests/test_statement_events_postgres.py",
+        "packages/python/tests/test_statement_events_sqlite.py",
+        "packages/rust/tests/tests/statement_events_mysql.rs",
+        "packages/rust/tests/tests/statement_events_postgres.rs",
+        "packages/rust/tests/tests/statement_events_sqlite.rs",
+        "packages/go/orm/recipe_statement_events_test.go",
+        "packages/php/tests/StatementEventsRecipeTest.php",
+        "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php"
       ],
       "docs": [
         "docs/operations/usage.md",
@@ -3945,18 +3955,6 @@
           ]
         },
         {
-          "id": "statement-events-typescript",
-          "command": "node packages/ts/tests/statement-events.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/statement-events.mjs",
-            "packages/ts/tests/case-database.mjs",
-            "packages/ts/tests/statement-events-run.mjs",
-            "contracts/fixtures/statement_events.dbs",
-            "tests/events/vectors.json"
-          ]
-        },
-        {
           "id": "statement-events-server-transactions-typescript",
           "command": "node packages/ts/tests/statement_events_server_transactions.mjs",
           "shard": "other",
@@ -3964,7 +3962,7 @@
             "packages/ts/tests/statement_events_server_transactions.mjs",
             "packages/ts/tests/case-database.mjs",
             "packages/ts/tests/statement-events-run.mjs",
-            "contracts/fixtures/statement_events.dbs",
+            "contracts/fixtures/statement_events/statement_events.dbs",
             "tests/events/vectors.json"
           ]
         },
@@ -3976,7 +3974,7 @@
             "packages/php/tests/StatementEventsTest.php",
             "packages/php/tests/statement_events_run.php",
             "packages/php/tests/case_database.php",
-            "contracts/fixtures/statement_events.dbs",
+            "contracts/fixtures/statement_events/statement_events.dbs",
             "tests/events/vectors.json"
           ]
         },
@@ -3986,7 +3984,7 @@
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/tests/statement_events.rs",
-            "contracts/fixtures/statement_events.dbs",
+            "contracts/fixtures/statement_events/statement_events.dbs",
             "tests/events/vectors.json"
           ]
         },
@@ -4080,7 +4078,7 @@
               "packages/php/tests/statement_events_run.php",
               "packages/php/tests/StatementEventsCoverageCases.php",
               "packages/php/tests/case_database.php",
-              "contracts/fixtures/statement_events.dbs",
+              "contracts/fixtures/statement_events/statement_events.dbs",
               "tests/events/vectors.json"
             ],
             "commands": {
@@ -4134,7 +4132,7 @@
               "packages/php/tests/statement_events_run.php",
               "packages/php/tests/StatementEventsCoverageCases.php",
               "packages/php/tests/case_database.php",
-              "contracts/fixtures/statement_events.dbs",
+              "contracts/fixtures/statement_events/statement_events.dbs",
               "tests/events/vectors.json"
             ],
             "commands": {
@@ -4185,7 +4183,7 @@
               "packages/rust/orm/tests/statement_events.rs"
             ],
             "inputs": [
-              "contracts/fixtures/statement_events.dbs",
+              "contracts/fixtures/statement_events/statement_events.dbs",
               "tests/events/vectors.json"
             ],
             "commands": {
@@ -4238,7 +4236,7 @@
             "inputs": [
               "packages/ts/tests/case-database.mjs",
               "packages/ts/tests/statement-events-run.mjs",
-              "contracts/fixtures/statement_events.dbs",
+              "contracts/fixtures/statement_events/statement_events.dbs",
               "tests/events/vectors.json"
             ],
             "commands": {
@@ -4282,7 +4280,7 @@
             "inputs": [
               "packages/python/tests/case_database.py",
               "packages/python/tests/statement_events.py",
-              "contracts/fixtures/statement_events.dbs",
+              "contracts/fixtures/statement_events/statement_events.dbs",
               "tests/events/vectors.json"
             ],
             "commands": {

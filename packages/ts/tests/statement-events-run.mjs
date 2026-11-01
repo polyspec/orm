@@ -1,7 +1,7 @@
 // Runs the statement event cases of tests/events/vectors.json with the TypeScript client on MySQL, PostgreSQL,
 // and SQLite, and compares the recorded events with the expected events of the vector (docs/operations/usage.md
 // "Statement events"). For each case, the fixture
-// contracts/fixtures/statement_events.dbs is installed in a new case database (case-database.mjs), except for cases whose install is false, and then on a new connection
+// contracts/fixtures/statement_events/statement_events.dbs is installed in a new case database (case-database.mjs), except for cases whose install is false, and then on a new connection
 // a subscriber that records events is registered, and then the steps are run in order. Transaction numbers are numbered
 // again from 1 in order of first appearance within the case, and for a case whose compare is "tables", only events that point to a table are compared.
 // Checks that elapsed is 0 or more.

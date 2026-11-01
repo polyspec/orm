@@ -3,7 +3,7 @@
 // Statement events (docs/operations/usage.md "Statement events"), on SQLite, MySQL and
 // PostgreSQL. Every case of the shared vector tests/events/vectors.json runs
 // in a case database of its own (case_database.php) with the fixture
-// contracts/fixtures/statement_events.dbs installed unless the case says
+// contracts/fixtures/statement_events/statement_events.dbs installed unless the case says
 // install false. The case opens a new connection, registers one recording
 // subscriber, runs its steps and compares the recorded events with the
 // events the vector states for the database: sql, binds, kind, tables,
@@ -31,7 +31,7 @@ use Polyspec\Orm\StatementEvent;
 use Polyspec\Orm\Tests\StatementEventsCase\EventProbe;
 
 /**
- * The model of contracts/fixtures/statement_events.dbs is created once in a temporary directory of this process and
+ * The model of contracts/fixtures/statement_events/statement_events.dbs is created once in a temporary directory of this process and
  * autoloaded. The directory is removed when the process ends.
  */
 function statementEventsModels(): void
@@ -47,7 +47,7 @@ function statementEventsModels(): void
     register_shutdown_function(static function () use ($work): void {
         exec('rm -rf ' . escapeshellarg($work));
     });
-    $fixture = (string) file_get_contents("$root/contracts/fixtures/statement_events.dbs");
+    $fixture = (string) file_get_contents("$root/contracts/fixtures/statement_events/statement_events.dbs");
     generateModels(
         ['statement_events.dbs' => $fixture],
         "$work/source",

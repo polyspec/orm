@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -42,9 +43,10 @@ type seed struct {
 }
 
 type databaseCase struct {
-	ID    string            `json:"id"`
-	Seed  *seed             `json:"seed"`
-	Steps []json.RawMessage `json:"steps"`
+	ID      string            `json:"id"`
+	Install *bool             `json:"install"`
+	Seed    *seed             `json:"seed"`
+	Steps   []json.RawMessage `json:"steps"`
 }
 
 // databaseStep holds the fields of every database op (scripts/features/schema/recipe.schema.json).
@@ -81,6 +83,13 @@ type databaseStep struct {
 	Column      string          `json:"column"`
 	Operation   string          `json:"operation"`
 	Amount      json.RawMessage `json:"amount"`
+	// The event fields (FCV-4): the subscription ref or the bound row, the kind that a failing subscriber refuses, the
+	// compare mode of the captured events, and whether a transaction callback fails after its steps.
+	Ref     json.RawMessage `json:"ref"`
+	Row     json.RawMessage `json:"row"`
+	Fail    bool            `json:"fail"`
+	Kind    string          `json:"kind"`
+	Compare string          `json:"compare"`
 }
 
 // bound is what a step bound with `as`: the API value that a later argument takes, the fields of its result that a dotted
@@ -89,6 +98,7 @@ type bound struct {
 	api    any
 	fields map[string]any
 	value  any
+	row    *boundRow
 }
 
 // snapshotOf is a bound row snapshot with the metadata of the page it was taken from, which the Go snapshot keeps
@@ -102,6 +112,8 @@ type snapshotOf struct {
 type outcome struct {
 	api    any
 	fields map[string]any
+	// row records the path and connection of a bound row, when the step binds one (see boundRow).
+	row *boundRow
 }
 
 type databaseContext struct {
@@ -113,9 +125,8 @@ type databaseContext struct {
 	namespace string
 	database  string
 	dsn       string
+	schema    *orm.Schema
 	bound     map[string]bound
-	// schema is the schema of the fixture set that the case installed; model.connect registers it on its connection.
-	schema *orm.Schema
 	// closers close the connections that model.connect opened, when the case ends.
 	closers []func() error
 }
@@ -213,7 +224,8 @@ func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database
 		t.Fatalf("recipe %s case %s on %s: connect: %v", path, c.ID, database, err)
 	}
 	defer testcase.Close(t, db)
-	if schema != nil {
+	// A case with install: false gets no fixture here; its steps install it (FCV-4, schema.install).
+	if schema != nil && (c.Install == nil || *c.Install) {
 		for _, shared := range append(external, schema) {
 			if err := db.Utils().Schema().Install(shared); err != nil {
 				t.Fatalf("recipe %s case %s on %s: install: %v", path, c.ID, database, err)
@@ -316,6 +328,9 @@ func runDatabaseStep(s databaseStep, c *databaseContext) error {
 	result, err := databaseOp(s, c)
 	if err != nil {
 		code := orm.ErrorCode(err)
+		if errors.Is(err, errCallback) {
+			code = callbackCode
+		}
 		want, wantsError := expected["error"]
 		if !wantsError || code == "" {
 			return err
@@ -326,7 +341,7 @@ func runDatabaseStep(s databaseStep, c *databaseContext) error {
 		return nil
 	}
 	if s.As != "" {
-		c.bound[s.As] = bound{api: result.api, fields: result.fields, value: result.fields["value"]}
+		c.bound[s.As] = bound{api: result.api, fields: result.fields, value: result.fields["value"], row: result.row}
 	}
 	if expected == nil {
 		return nil
@@ -482,6 +497,16 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"int": strconv.FormatInt(deleted, 10)}}}, nil
 	case "schema.install":
+		if s.Connection != "" {
+			db, err := connectionOf(s, c)
+			if err != nil {
+				return outcome{}, err
+			}
+			if err := db.Utils().Schema().Install(c.schema); err != nil {
+				return outcome{}, err
+			}
+			return okOutcome(), nil
+		}
 		schema, err := schemaArgument(s.Schema, c)
 		if err != nil {
 			return outcome{}, err
@@ -542,7 +567,19 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		return outcome{fields: map[string]any{"count": count}}, nil
 	case "transaction":
-		err := c.db.Transaction(func() error { return runNested(s.Steps, c) })
+		db, err := connectionOf(s, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		err = db.Transaction(func() error {
+			if err := runNested(s.Steps, c); err != nil {
+				return err
+			}
+			if s.Fail {
+				return errCallback
+			}
+			return nil
+		}, orm.Retry(0))
 		if err != nil {
 			return outcome{}, err
 		}
@@ -575,7 +612,27 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 	if strings.HasPrefix(s.Op, "model.") {
 		return modelOp(s, c)
 	}
+	if out, handled, err := statementOp(s, c); handled {
+		return out, err
+	}
 	return outcome{}, fmt.Errorf("OP_UNKNOWN %s", s.Op)
+}
+
+// connectionOf is the connection that an op names with its connection field, or the case connection when the field is
+// empty (FCV-4).
+func connectionOf(s databaseStep, c *databaseContext) (*orm.DB, error) {
+	if s.Connection == "" {
+		return c.db, nil
+	}
+	b, ok := c.bound[s.Connection]
+	if !ok {
+		return nil, fmt.Errorf("connection %q is not bound", s.Connection)
+	}
+	db, ok := b.api.(*orm.DB)
+	if !ok {
+		return nil, fmt.Errorf("connection %q is a %T, not a connection", s.Connection, b.api)
+	}
+	return db, nil
 }
 
 // okOutcome is the value of an op that returns without error (FCV-4).
@@ -670,6 +727,10 @@ func databaseText(raw json.RawMessage, c *databaseContext) (string, error) {
 
 // refName is the name of a {"ref": ...} field, or "" for another field.
 func refName(raw json.RawMessage) string {
+	var name string
+	if json.Unmarshal(raw, &name) == nil {
+		return name
+	}
 	var ref struct {
 		Ref string `json:"ref"`
 	}

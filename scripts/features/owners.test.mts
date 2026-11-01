@@ -226,8 +226,8 @@ const t42 = [
   'packages/go/orm/statement_events_test.go', 'packages/go/orm/events.go',
   'packages/php/src/StatementEvent.php', 'packages/php/tests/StatementEventsTest.php',
   'packages/rust/orm/src/events.rs', 'packages/rust/orm/tests/statement_events.rs',
-  'packages/ts/src/events.ts', 'packages/ts/tests/statement-events.mjs',
-  'contracts/fixtures/statement_events.dbs',
+  'packages/ts/src/events.ts', 'packages/ts/tests/statement_events_server_transactions.mjs',
+  'contracts/fixtures/statement_events/statement_events.dbs',
 ];
 
 caseTest('a change across the four clients selects no full-suite target', 5000, async () => {
@@ -244,7 +244,7 @@ caseTest('a change across the four clients selects no full-suite target', 5000, 
   const owners = await selectOwners(manifest, root, t42);
   assert.deepEqual(ids(owners), ['statement_events', 'interface_contract']);
   assert.deepEqual(selected(owners.slice(0, 1)), [
-    'statement_events/statement-events-go', 'statement_events/statement-events-typescript', 'statement_events/statement-events-server-transactions-typescript', 'statement_events/statement-events-php', 'statement_events/statement-events-rust',
+    'statement_events/statement-events-go', 'statement_events/statement-events-server-transactions-typescript', 'statement_events/statement-events-php', 'statement_events/statement-events-rust',
     'statement_events/statement-events-python',
     'statement_events/coverage/owner/go', 'statement_events/coverage/owner/php', 'statement_events/coverage/owner/php-extension', 'statement_events/coverage/owner/rust', 'statement_events/coverage/owner/typescript',
     'statement_events/coverage/owner/python',

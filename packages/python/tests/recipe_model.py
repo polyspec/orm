@@ -2,6 +2,8 @@
 generated model that its model name names, through the connection that model.connect bound. A model or a column without
 an entry here fails the case by name, so no recipe passes on a call that the helper does not make."""
 
+from polyspec.orm import Db
+
 from .models import models
 
 # The keys that the generated models of the bench set read their encrypted columns with (the native model tests use them).
@@ -68,15 +70,21 @@ def model_ops(native, database_value, step_argument):
         )
 
     def model_connect(step, context):
-        db = models.connect(context["dsn"], **BENCH_KEYS)
+        # The case schema is registered on the connection, as the statement-event ops need it (FCV-4, model.connect).
+        options = dict(BENCH_KEYS)
+        if "pool_size" in step:
+            options["poolSize"] = step["pool_size"]
+        db = Db.connect_schema(context["dsn"], context["schema"], options)
         context.setdefault("closers", []).append(db.close)
         return {"bind": db}
 
     def model_create(step, context):
-        composite_set(
+        model = composite_set(
             connection(step["connection"], context), values_of(step["values"], context)
-        ).create()
-        return {}
+        )
+        model.create()
+        # With `as`, the created model is bound on the connection it was made on (FCV-4, model.create).
+        return {"bind": model} if "as" in step else {}
 
     def model_creates(step, context):
         db = connection(step["connection"], context)

@@ -12,6 +12,7 @@ namespace Polyspec\Orm\Tests;
 use PHPUnit\Framework\Assert;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
+use Polyspec\Orm\Orm;
 
 trait RecipeModel
 {
@@ -35,12 +36,20 @@ trait RecipeModel
     private static function modelOp(array $s, array $context): array
     {
         if ($s['op'] === 'model.connect') {
-            $db = \Polyspec\Orm\Tests\Model\connect(
+            // The case schema is registered on the connection, as the statement-event ops need it (FCV-4, model.connect).
+            $db = Orm::connectSchema(
                 $context['dsn'],
+                $context['schema'],
                 new Config(aesKey: self::BENCH_AES_KEY, blindIndexKey: self::BENCH_BLIND_INDEX_KEY),
             );
             self::$modelConnections[] = $db;
             return ['bind' => $db];
+        }
+        if (!isset($s['connection']) && isset($s['row'])) {
+            return self::rowOp($s, $context);
+        }
+        if (isset(self::TABLE_MODELS[$s['model'] ?? ''])) {
+            return self::tableModelOp($s, $context);
         }
         $db = $context['bound'][$s['connection']] ?? null;
         if (!$db instanceof Db) {

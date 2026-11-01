@@ -25,7 +25,7 @@ from polyspec.orm.codec import (
     host_decode,
     host_encode,
 )
-from polyspec.orm import Db, OrmError, Schema, connect_catalog
+from polyspec.orm import Db, Model, OrmError, Schema, connect_catalog, register_model
 from polyspec.orm.dbspec import (
     dbspec_manifest,
     parse_dbspec_set,
@@ -46,6 +46,11 @@ ROOT = Path(__file__).resolve().parents[3]
 
 # NONE is the database part of a recipe without a database (FCV-3).
 NONE = "none"
+
+
+class CallbackError(Exception):
+    """The error that a transaction callback returns after its steps when its step has fail (FCV-4). Its expect is
+    {"error": "CALLBACK"}, which is not an orm error code."""
 
 
 class RecipeCase(VectorCase):
@@ -473,18 +478,25 @@ def _run_case(
 ) -> None:
     db = Db.connect(dsn)
     try:
-        if schema is not None:
+        if schema is not None and case.get("install", True) is not False:
             for shared in [*install_first, schema]:
                 db.utils().schema().install(shared)
-        _run_case_on(path, recipe, case, database, dsn, db)
+        _run_case_on(path, recipe, case, database, schema, dsn, db)
     finally:
         db.close()
 
 
 def _run_case_on(
-    path: str, recipe: dict, case: dict, database: str, dsn: str, db: Db
+    path: str,
+    recipe: dict,
+    case: dict,
+    database: str,
+    schema: Schema | None,
+    dsn: str,
+    db: Db,
 ) -> None:
     catalog = connect_catalog(dsn)
+    closers: list = []
     try:
         namespace = catalog.current_namespace()
         context = {
@@ -492,10 +504,12 @@ def _run_case_on(
             "namespace": namespace,
             "database": database,
             "dsn": dsn,
+            "schema": schema,
+            "tables": {},
             "bound": {"database": {"text": _database_name(dsn)}},
             "db": db,
             "dir": (ROOT / path).parent,
-            "closers": [],
+            "closers": closers,
         }
         for part, rows in (
             ("recipe", recipe.get("seed", {}).get("rows")),
@@ -521,7 +535,7 @@ def _run_case_on(
                     f"recipe {path}, case {case['id']}, step {index} ({step['op']}), database {database}: {error}"
                 ) from error
     finally:
-        for close in context.get("closers", []):
+        for close in closers:
             close()
         catalog.close()
 
@@ -614,6 +628,181 @@ def _op_dsn_connect(step: dict, context: dict) -> dict:
         return {"value": {"text": db.driver}}
     finally:
         db.close()
+def _bound_value(field, context: dict) -> Any:
+    """The bound value that a field names: a plain name, or the {"ref": name} of an argument (FCV-4)."""
+    return _bound(field if isinstance(field, str) else field["ref"], context)
+
+
+def _connection_of(step: dict, context: dict) -> Any:
+    """The connection that an op names with its connection field, or the case connection when the field is absent."""
+    return context["db"] if "connection" not in step else _bound_value(step["connection"], context)
+
+
+TABLE_MODELS = {"EventProbe": "event_probe"}
+
+
+# The statement-event ops (FCV-4). A table of the fixture has no generated class here, so its model class is a Model
+# subclass whose entity the public register_model gives, as the generated class of the table does; a column is set
+# through the core that every generated setter calls (core.set_value).
+
+
+class _Subscription:
+    """A bound subscription: its stop function, and the recording of a recording subscriber (None for one that fails)."""
+
+    def __init__(self, stop, recording) -> None:
+        self.stop = stop
+        self.recording = recording
+
+
+class _Recording:
+    """The statement events of a recording subscriber in their order, and whether one has a negative elapsed time."""
+
+    def __init__(self) -> None:
+        self.events: list = []
+        self.negative = False
+
+    def receive(self, event) -> None:
+        if not (isinstance(event.elapsed, (int, float)) and event.elapsed >= 0):
+            self.negative = True
+        self.events.append(event)
+
+
+def _table_model(context: dict, table: str):
+    """The Model subclass of a table of the fixture, whose entity is the one that register_model gives the table."""
+    if "registered" not in context:
+        schema = context["schema"]
+        context["registered"] = register_model(
+            schema.manifest_text, schema.manifest_hash, schema.external_text
+        )
+    if table not in context["tables"]:
+        definition: dict = {}
+
+        class TableRow(Model):
+            @property
+            def entity_def(self):
+                return definition["entity"]
+
+        definition["entity"] = context["registered"].entity_of(table, TableRow)
+        context["tables"][table] = TableRow
+    return context["tables"][table]
+
+
+def _new_row(context: dict, db: Db, table: str) -> Model:
+    return _table_model(context, table)().connect(db)
+
+
+def _set_columns(row: Model, assignments: list) -> Model:
+    for name, value in assignments:
+        row.core.set_value(name, value)
+    return row
+
+
+def _table_model_create(step: dict, context: dict) -> dict:
+    db = _connection_of(step, context)
+    row = _new_row(context, db, TABLE_MODELS[step["model"]])
+    _set_columns(row, _assignments(step["values"], context)).create()
+    # With `as`, the created row is bound on the connection it was made on (FCV-4, model.create).
+    return {"bind": row} if "as" in step else {}
+
+
+def _table_model_get_by(step: dict, context: dict) -> dict:
+    if "key" in step:
+        raise AssertionError("model.get_by with key has no table-model path")
+    db = _connection_of(step, context)
+    where = _assignments(step["where"], context)
+    if len(where) != 1:
+        raise AssertionError("model.get_by names one column of the recipe")
+    name, value = where[0]
+    row = _new_row(context, db, TABLE_MODELS[step["model"]])
+    return {"bind": getattr(row, f"get_by_{name}")(value)}
+
+
+def _table_model_update(step: dict, context: dict) -> dict:
+    # A bound row carries the connection it was bound on, so the step names no connection.
+    row = _bound_value(step["row"], context)
+    _set_columns(row, _assignments(step["set"], context)).update()
+    return {}
+
+
+def _table_model_delete(step: dict, context: dict) -> dict:
+    _bound_value(step["row"], context).delete()
+    return {}
+
+
+def _table_model_count(step: dict, context: dict) -> dict:
+    db = _connection_of(step, context)
+    count = _new_row(context, db, TABLE_MODELS[step["model"]]).get_count()
+    return {"value": {"int": str(count)}}
+
+
+
+def _op_events_subscribe(step: dict, context: dict) -> dict:
+    recording = _Recording()
+    stop = _connection_of(step, context).subscribe(recording.receive)
+    return {"bind": _Subscription(stop, recording)}
+
+
+def _op_events_fail_subscriber(step: dict, context: dict) -> dict:
+    kind = step["kind"]
+
+    def refuse(event) -> None:
+        if event.kind == kind:
+            raise RuntimeError("subscriber refused the event")
+
+    stop = _connection_of(step, context).subscribe(refuse)
+    return {"bind": _Subscription(stop, None)}
+
+
+def _op_events_stop(step: dict, context: dict) -> dict:
+    """events.stop_failing and events.unsubscribe: the subscription of ref stops receiving events."""
+    _bound_value(step["ref"], context).stop()
+    return {}
+
+
+def _op_events_captured(step: dict, context: dict) -> dict:
+    subscription = _bound_value(step["ref"], context)
+    if subscription.recording is None:
+        raise AssertionError("the subscription of ref is not a recording subscriber")
+    if subscription.recording.negative:
+        raise AssertionError("an event has a negative elapsed time")
+    events = _captured_events(
+        subscription.recording.events, step.get("compare", ""), context
+    )
+    return {"value": {"array": events}}
+
+
+def _captured_events(events: list, compare: str, context: dict) -> list:
+    """The recipe wrappers of the events of a recording. The transactions are numbered from 1 in the order of their first
+    appearance among all the events; then compare "tables" keeps the events that name a table."""
+    numbers: dict = {}
+    out = []
+    for event in events:
+        value = _event_value(event, numbers)
+        if compare == "tables" and not event.tables:
+            continue
+        out.append(value)
+    return out
+
+
+def _event_value(event, numbers: dict) -> dict:
+    """The recipe object of one statement event: its sql, binds, kind, tables, transaction and error (FCV-4). The elapsed
+    time is not part of it."""
+    if event.transaction is None:
+        transaction: dict = {"null": True}
+    else:
+        number = numbers.setdefault(event.transaction, len(numbers) + 1)
+        transaction = {"int": str(number)}
+    failure = {"null": True} if event.error is None else {"text": event.error.code}
+    return {
+        "object": [
+            ["sql", {"text": event.sql}],
+            ["binds", {"array": [_plain(bind, None) for bind in event.binds]}],
+            ["kind", {"text": event.kind}],
+            ["tables", {"array": [{"text": name} for name in event.tables]}],
+            ["transaction", transaction],
+            ["error", failure],
+        ]
+    }
 
 
 # Each op maps to one call of the public API and returns the fields that its expect compares.
@@ -637,6 +826,11 @@ _DATABASE_OPS = {
     "catalog.update_row": _op_update_row,
     "catalog.delete_row": _op_delete_row,
     "sql.exec": _op_sql_exec,
+    "events.subscribe": _op_events_subscribe,
+    "events.fail_subscriber": _op_events_fail_subscriber,
+    "events.stop_failing": _op_events_stop,
+    "events.unsubscribe": _op_events_stop,
+    "events.captured": _op_events_captured,
 }
 
 
@@ -660,6 +854,11 @@ def _run_database_step(step: dict, context: dict) -> None:
             raise AssertionError(
                 f"error code {error.code} ({error}), want {expected['error']}"
             ) from error
+        return
+    except CallbackError:
+        # The step ends with its failed callback, so an enclosing transaction goes on, as the Go helper does (FCV-4).
+        if expected is None or expected.get("error") != "CALLBACK":
+            raise
         return
     if "as" in step:
         context["bound"][step["as"]] = actual.get("bind", actual.get("value"))
@@ -842,6 +1041,9 @@ def _schema_argument(arg: dict, context: dict) -> Schema:
 
 
 def _op_schema_install(step: dict, context: dict) -> dict:
+    if "connection" in step:
+        _connection_of(step, context).utils().schema().install(context["schema"])
+        return {"value": {"bool": True}}
     context["db"].utils().schema().install(_schema_argument(step["schema"], context))
     return {"value": {"bool": True}}
 
@@ -886,9 +1088,55 @@ def _op_transaction(step: dict, context: dict) -> dict:
     def run() -> None:
         for nested in step["steps"]:
             _run_database_step(nested, context)
+        if step.get("fail"):
+            raise CallbackError("the transaction callback failed")
 
-    context["db"].transaction(run)
+    _connection_of(step, context).transaction(run, {"retry": 0})
     return {"value": {"bool": True}}
 
 
 _MODEL_OPS = model_ops(_native, _database_value, _step_argument)
+_TABLE_OPS = {
+    "model.create": _table_model_create,
+    "model.get_by": _table_model_get_by,
+    "model.update": _table_model_update,
+    "model.delete": _table_model_delete,
+    "model.count": _table_model_count,
+}
+
+
+def _route(step: dict, context: dict) -> str:
+    """The path of a model step, "table" or "generated" (coordinator ruling on row routing).
+
+    A step with `row` names no model and no connection: it is routed by the bound row, which records the path that made it.
+    A row that no bound row holds fails by name. Any other step is routed by its model.
+    """
+    if "row" in step:
+        name = step["row"] if isinstance(step["row"], str) else step["row"]["ref"]
+        paths = context.get("row_paths", {})
+        if name not in paths:
+            raise AssertionError(f"{step['op']} names row {name}, which no bound row holds")
+        return paths[name]
+    return "table" if step.get("model") in TABLE_MODELS else "generated"
+
+
+def _dispatch_model_op(name: str):
+    generated, table = _MODEL_OPS[name], _TABLE_OPS[name]
+
+    def run(step: dict, context: dict) -> dict:
+        path = _route(step, context)
+        if path == "table":
+            result = table(step, context)
+        elif "row" in step:
+            raise AssertionError(f"{name} with row: the generated path binds no row")
+        else:
+            result = generated(step, context)
+        if "as" in step and "bind" in result:
+            context.setdefault("row_paths", {})[step["as"]] = path
+        return result
+
+    return run
+
+
+for _name in _TABLE_OPS:
+    _MODEL_OPS[_name] = _dispatch_model_op(_name)

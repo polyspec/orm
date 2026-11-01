@@ -368,6 +368,9 @@
         "packages/php/tests/StatementRunnerCases.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeCases.php",
+        "packages/php/tests/RecipeRecording.php",
+        "packages/php/tests/RecipeRow.php",
+        "packages/php/tests/RecipeSubscription.php",
         "packages/php/tests/RecipeModel.php",
         "packages/php/tests/CatalogPostgresTemporalPdo.php",
         "packages/php/tests/CatalogPostgresTemporalCases.php"
@@ -508,6 +511,18 @@
         {
           "glob": "packages/php/tests/SetReaderDiagnosticsTest.php",
           "reason": "test: injects synthetic stream-wrapper failures into the @internal SetReader diagnostics and cache; public readSet behavior is covered by dbspec-set-files"
+        },
+        {
+          "glob": "packages/php/tests/RecipeRecording.php",
+          "reason": "harness: a helper class of the statement events recipe (RecipeRow, RecipeRecording and RecipeSubscription) that the bootstrap requires; it holds no test, and the recipe cases are bound by the statement_events suite units"
+        },
+        {
+          "glob": "packages/php/tests/RecipeRow.php",
+          "reason": "harness: a helper class of the statement events recipe (RecipeRow, RecipeRecording and RecipeSubscription) that the bootstrap requires; it holds no test, and the recipe cases are bound by the statement_events suite units"
+        },
+        {
+          "glob": "packages/php/tests/RecipeSubscription.php",
+          "reason": "harness: a helper class of the statement events recipe (RecipeRow, RecipeRecording and RecipeSubscription) that the bootstrap requires; it holds no test, and the recipe cases are bound by the statement_events suite units"
         }
       ]
     },
@@ -595,7 +610,7 @@
         },
         {
           "glob": "packages/php-ext/tests/StatementEventSurfaceTest.php",
-          "reason": "harness: verifies the native extension registers the internal StatementEvent class; event construction and dispatch behavior are exercised by the shared statement-events cases"
+          "reason": "harness: verifies the native extension registers the internal StatementEvent class; event construction and dispatch behavior are exercised by the statement_events recipe cases"
         },
         {
           "glob": "packages/php-ext/tests/ChainNativeSurfaceTest.php",
@@ -901,6 +916,10 @@
         {
           "glob": "packages/python/tests/test_installed_differences.py",
           "reason": "test: tests the Python-only installed_differences helper with constructed parsed schemas and unsupported-object records; public database comparison and install errors are covered by the six-client add_tables_and_columns and install feature cases"
+        },
+        {
+          "glob": "packages/python/tests/statement_events.py",
+          "reason": "harness: the helper module of the statement events of tests/events/vectors.json (EventRun, run_case, VECTORS and setUpModule) that the coverage and server-transactions tests import; it holds no test of its own, and the cases run as the statement_events recipe units"
         }
       ],
       "roots": [
@@ -930,6 +949,7 @@
         "packages/python/tests/was_inserted_child.py",
         "packages/python/tests/coverage_performance_gate.py",
         "packages/python/tests/recipe.py",
+        "packages/python/tests/statement_events.py",
         "packages/python/tests/recipe_model.py"
       ],
       "command": "packages/python/.venv/bin/python",
@@ -4779,7 +4799,7 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/test_dsn_connection_sqlite.py",
-          "id": "test_dsn_connection"
+          "id": "dsn_connection"
         }
       ]
     },
@@ -9378,6 +9398,150 @@
       ]
     },
     {
+      "id": "statement_events-mysql",
+      "kind": "suite",
+      "requirements": [
+        "INT-55",
+        "INT-77",
+        "INT-91",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
+      ],
+      "file": "contracts/fixtures/statement_events/statement_events.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "symbol": "TestRecipeStatementEventsMysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementEventsRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\StatementEventsRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\StatementEventsRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement_events-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_events_mysql.rs",
+          "symbol": "statement_events_mysql"
+        }
+      ]
+    },
+    {
+      "id": "statement_events-postgres",
+      "kind": "suite",
+      "requirements": [
+        "INT-55",
+        "INT-77",
+        "INT-91",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
+      ],
+      "file": "contracts/fixtures/statement_events/statement_events.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "symbol": "TestRecipeStatementEventsPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementEventsRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\StatementEventsRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\StatementEventsRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement_events-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_events_postgres.rs",
+          "symbol": "statement_events_postgres"
+        }
+      ]
+    },
+    {
+      "id": "statement_events-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "INT-55",
+        "INT-77",
+        "INT-91",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
+      ],
+      "file": "contracts/fixtures/statement_events/statement_events.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "symbol": "TestRecipeStatementEventsSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementEventsRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\StatementEventsRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\StatementEventsRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement_events-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_events_sqlite.rs",
+          "symbol": "statement_events_sqlite"
+        }
+      ]
+    },
+    {
       "id": "model_writes-mysql",
       "kind": "suite",
       "requirements": [
@@ -9391,13 +9555,13 @@
         "DSL-106",
         "DSL-109",
         "DSL-110",
-        "PLN-26"
-      ,
+        "PLN-26",
         "FCV-8",
         "FCV-9",
         "FCV-10",
         "FCV-13",
-        "FCV-14"],
+        "FCV-14"
+      ],
       "file": "contracts/fixtures/model_writes/model_writes.json",
       "cases": "$.cases[*].id",
       "bindings": [
@@ -9445,13 +9609,13 @@
         "DSL-106",
         "DSL-109",
         "DSL-110",
-        "PLN-26"
-      ,
+        "PLN-26",
         "FCV-8",
         "FCV-9",
         "FCV-10",
         "FCV-13",
-        "FCV-14"],
+        "FCV-14"
+      ],
       "file": "contracts/fixtures/model_writes/model_writes.json",
       "cases": "$.cases[*].id",
       "bindings": [
@@ -9499,13 +9663,13 @@
         "DSL-106",
         "DSL-109",
         "DSL-110",
-        "PLN-26"
-      ,
+        "PLN-26",
         "FCV-8",
         "FCV-9",
         "FCV-10",
         "FCV-13",
-        "FCV-14"],
+        "FCV-14"
+      ],
       "file": "contracts/fixtures/model_writes/model_writes.json",
       "cases": "$.cases[*].id",
       "bindings": [
@@ -11669,48 +11833,6 @@
       ]
     },
     {
-      "id": "statement-events",
-      "kind": "suite",
-      "requirements": [
-        "INT-91",
-        "PLN-44",
-        "INT-77",
-        "INT-96"
-      ],
-      "file": "tests/events/vectors.json",
-      "cases": "$.cases[*].id",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/statement_events_test.go",
-          "symbol": "TestStatementEvents"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/StatementEventsTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\StatementEventsTest::testCase"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/StatementEventsTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\StatementEventsTestExtensionTest::testCase"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/statement_events.py"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/statement_events.rs",
-          "symbol": "statement_events"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/statement-events.mjs"
-        }
-      ]
-    },
-    {
       "id": "statement-events-server-transactions",
       "kind": "feature",
       "requirements": [
@@ -12729,7 +12851,7 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/test_sqlite.py",
-          "id": "SqliteEndToEndTest::test_write_cycle"
+          "id": "test_write_cycle"
         },
         {
           "implementation": "rust",
@@ -27789,43 +27911,123 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/statement_events.rs",
-          "id": "statement_events::model_statements"
+          "test": "packages/rust/tests/tests/statement_events_mysql.rs",
+          "id": "statement_events_mysql::model_statements"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/statement_events.rs",
-          "id": "statement_events::transaction_savepoint"
+          "test": "packages/rust/tests/tests/statement_events_postgres.rs",
+          "id": "statement_events_postgres::model_statements"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/statement_events.rs",
-          "id": "statement_events::transaction_rollback"
+          "test": "packages/rust/tests/tests/statement_events_sqlite.rs",
+          "id": "statement_events_sqlite::model_statements"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/statement_events.rs",
-          "id": "statement_events::savepoint_rollback"
+          "test": "packages/rust/tests/tests/statement_events_mysql.rs",
+          "id": "statement_events_mysql::transaction_savepoint"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/statement_events.rs",
-          "id": "statement_events::failed_statement"
+          "test": "packages/rust/tests/tests/statement_events_postgres.rs",
+          "id": "statement_events_postgres::transaction_savepoint"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/statement_events.rs",
-          "id": "statement_events::subscriber_error"
+          "test": "packages/rust/tests/tests/statement_events_sqlite.rs",
+          "id": "statement_events_sqlite::transaction_savepoint"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/statement_events.rs",
-          "id": "statement_events::unsubscribe"
+          "test": "packages/rust/tests/tests/statement_events_mysql.rs",
+          "id": "statement_events_mysql::transaction_rollback"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/statement_events.rs",
-          "id": "statement_events::install"
+          "test": "packages/rust/tests/tests/statement_events_postgres.rs",
+          "id": "statement_events_postgres::transaction_rollback"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_events_sqlite.rs",
+          "id": "statement_events_sqlite::transaction_rollback"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_events_mysql.rs",
+          "id": "statement_events_mysql::savepoint_rollback"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_events_postgres.rs",
+          "id": "statement_events_postgres::savepoint_rollback"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_events_sqlite.rs",
+          "id": "statement_events_sqlite::savepoint_rollback"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_events_mysql.rs",
+          "id": "statement_events_mysql::failed_statement"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_events_postgres.rs",
+          "id": "statement_events_postgres::failed_statement"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_events_sqlite.rs",
+          "id": "statement_events_sqlite::failed_statement"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_events_mysql.rs",
+          "id": "statement_events_mysql::subscriber_error"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_events_postgres.rs",
+          "id": "statement_events_postgres::subscriber_error"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_events_sqlite.rs",
+          "id": "statement_events_sqlite::subscriber_error"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_events_mysql.rs",
+          "id": "statement_events_mysql::unsubscribe"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_events_postgres.rs",
+          "id": "statement_events_postgres::unsubscribe"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_events_sqlite.rs",
+          "id": "statement_events_sqlite::unsubscribe"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_events_mysql.rs",
+          "id": "statement_events_mysql::install"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_events_postgres.rs",
+          "id": "statement_events_postgres::install"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_events_sqlite.rs",
+          "id": "statement_events_sqlite::install"
         },
         {
           "implementation": "typescript",
@@ -32533,39 +32735,79 @@
       ],
       "bindings": [
         {
-          "implementation": "go",
-          "test": "packages/go/orm/statement_events_test.go",
-          "id": "TestStatementEvents/subscriber_error"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/StatementEventsTest.php",
-          "id": "StatementEventsTest::testCase"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/StatementEventsTestExtensionTest.php",
-          "id": "StatementEventsTestExtensionTest::testCase"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/statement-events.mjs",
-          "id": "subscriber_error"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/statement_events.py",
-          "id": "subscriber_error"
-        },
-        {
           "implementation": "python",
           "test": "packages/python/tests/test_subscriber_error.py",
           "id": "test_an_orm_error_of_a_subscriber"
         },
         {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsMysql/subscriber_error"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement_events-mysql.test.mjs",
+          "id": "subscriber_error"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_mysql.py",
+          "id": "subscriber_error"
+        },
+        {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/statement_events.rs",
-          "id": "statement_events::subscriber_error"
+          "test": "packages/rust/tests/tests/statement_events_mysql.rs",
+          "id": "statement_events_mysql::subscriber_error"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsPostgres/subscriber_error"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_events_postgres.rs",
+          "id": "statement_events_postgres::subscriber_error"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsSqlite/subscriber_error"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_events_sqlite.rs",
+          "id": "statement_events_sqlite::subscriber_error"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementEventsRecipeTest.php",
+          "id": "StatementEventsRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+          "id": "StatementEventsRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementEventsRecipeTest.php",
+          "id": "StatementEventsRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+          "id": "StatementEventsRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementEventsRecipeTest.php",
+          "id": "StatementEventsRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+          "id": "StatementEventsRecipeTestExtensionTest::testSqlite"
         }
       ]
     },

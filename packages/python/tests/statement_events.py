@@ -1,29 +1,20 @@
-# statement-events: every case of tests/events/vectors.json runs with the Python client on SQLite, MySQL and PostgreSQL
-# and its recorded events equal the expected events of the dialect (docs/operations/usage.md "Statement events"), as
-# packages/ts/tests/statement-events-run.mjs and the other clients' tests do. Each case runs on a new case database
-# with the fixture installed (unless install is false), opens a new connection, registers one recording subscriber and
-# runs its steps in order; transaction numbers count from 1 in their order of appearance within the case, and a case
-# whose compare is "tables" compares only the events that name a table. MySQL and PostgreSQL need ORM_TEST_MYSQL_DSN and
-# ORM_TEST_POSTGRES_DSN, and a missing variable fails the case. Each case is a test named by its id; a case passes when
-# it agrees on every dialect.
+# Helpers of the statement events of tests/events/vectors.json for the Python client: the recipe
+# contracts/fixtures/statement_events/statement_events.json runs the cases (test_statement_events_<dialect>.py), and
+# the coverage and server_transactions tests use these helpers. MySQL and PostgreSQL need ORM_TEST_MYSQL_DSN and
+# ORM_TEST_POSTGRES_DSN, and a missing variable fails the test that uses them.
 import json
 import os
 import tempfile
-import unittest
 from pathlib import Path
 
 from polyspec.orm import OrmError
 from polyspec.orm.database import Db
-from . import testcase
-from .case_database import case_database
 from .test_sqlite import generate_document
-from .vector_case import VectorCase, vector_tests
 
 ROOT = Path(__file__).resolve().parents[3]
 VECTORS = json.loads(
     (ROOT / "tests" / "events" / "vectors.json").read_text(encoding="utf-8")
 )
-DIALECTS = ("mysql", "postgres", "sqlite")
 STATE = {}
 
 
@@ -174,37 +165,3 @@ def run_case(case: dict, dialect: str, dsn: str) -> list:
     finally:
         db.close()
     return problems
-
-
-def check_case(test: unittest.TestCase, case: dict) -> None:
-    """Runs the case on every dialect to its end, so one dialect's failure does not hide another's."""
-    failures = []
-    for dialect in DIALECTS:
-        try:
-            with case_database(dialect, STATE["directory"].name, "orm_events") as dsn:
-                failures += [
-                    f"{dialect}: {problem}" for problem in run_case(case, dialect, dsn)
-                ]
-        except Exception as error:  # noqa: BLE001 - the case reports every dialect's error
-            failures.append(f"{dialect}: {type(error).__name__}: {error}")
-    if failures:
-        test.fail("\n".join(failures))
-
-
-class Case(VectorCase):
-    """A case of tests/events/vectors.json."""
-
-    deadline = testcase.DATABASE
-
-
-def load_tests(
-    loader: unittest.TestLoader, tests: unittest.TestSuite, _pattern: object
-) -> unittest.TestSuite:
-    """One test for each case of the file, named by the case id."""
-    tests.addTests(vector_tests(Case, VECTORS["cases"], check_case))
-    return tests
-
-
-if __name__ == "__main__":
-    testcase.main()
-"""Requirements: INT-77, INT-96, PLN-44. This owner compares the SQL and bind output of each statement event."""

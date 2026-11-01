@@ -1705,6 +1705,99 @@
         "packages/rust/build/src/tool_db/**"
       ]
     },
+    "statement-events-check/rust": {
+      "scope": "owner",
+      "needs": [
+        "rust",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/statement_events/**",
+        "packages/rust/tests/tests/statement_events_mysql.rs",
+        "packages/rust/tests/tests/statement_events_postgres.rs",
+        "packages/rust/tests/tests/statement_events_sqlite.rs",
+        "packages/rust/tests/src/recipe.rs",
+        "packages/rust/tests/Cargo.toml",
+        "packages/rust/build/src/catalog/**",
+        "packages/rust/build/src/tool_db.rs",
+        "packages/rust/build/src/tool_db/**"
+      ]
+    },
+    "statement-events-check/go": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/statement_events/**",
+        "packages/go/orm/recipe_statement_events_test.go",
+        "packages/go/internal/recipe/recipe.go",
+        "packages/go/internal/recipe/database.go",
+        "packages/go/internal/recipe/statement.go",
+        "packages/go/orm/statement_events*.go"
+      ]
+    },
+    "statement-events-check/typescript": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/statement_events/**",
+        "packages/ts/tests/statement_events-mysql.test.mjs",
+        "packages/ts/tests/statement_events-postgres.test.mjs",
+        "packages/ts/tests/statement_events-sqlite.test.mjs",
+        "packages/ts/tests/recipe.mjs"
+      ]
+    },
+    "statement-events-check/python": {
+      "scope": "owner",
+      "needs": [
+        "python",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/statement_events/**",
+        "packages/python/tests/test_statement_events_mysql.py",
+        "packages/python/tests/test_statement_events_postgres.py",
+        "packages/python/tests/test_statement_events_sqlite.py",
+        "packages/python/tests/recipe.py"
+      ]
+    },
+    "statement-events-check/php": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/statement_events/**",
+        "packages/php/tests/StatementEventsRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php",
+        "packages/php/tests/bootstrap.php"
+      ]
+    },
+    "statement-events-check/php-extension": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/statement_events/**",
+        "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/bootstrap.php",
+        "packages/php/tests/StatementEventsRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php"
+      ]
+    },
     "catalog-connection-check/typescript": {
       "scope": "owner",
       "needs": [

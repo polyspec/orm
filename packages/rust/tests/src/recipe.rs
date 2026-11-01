@@ -391,10 +391,10 @@ mod database {
     use std::path::Path;
     use std::pin::Pin;
     use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-    use std::sync::Arc;
+    use std::sync::{Arc, Mutex};
 
     use polyspec_orm::db::{parse_dsn, ConnectOptions};
-    use polyspec_orm::{dbspec, Config, Db, Schema, StatementEvent, TransactionOnceError};
+    use polyspec_orm::{dbspec, Config, Db, Schema, StatementEvent, Subscription, TransactionOnceError};
     use polyspec_orm_build::catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableMetadata, TablePage, TableRef};
     use polyspec_orm_build::tool_db::{GridCell, GridQueryResult, ParamType, QueryLimits, Val, P};
     use polyspec_orm_case_database::CaseDatabase;
@@ -404,6 +404,10 @@ mod database {
 
     /// The databases of a recipe with a fixture (FCV-3).
     const DATABASES: [&str; 3] = ["mysql", "postgres", "sqlite"];
+    /// The message of the error that a transaction callback returns when its op has fail: true.
+    const CALLBACK_FAILED: &str = "statement events recipe callback failed";
+    /// The expect code of that callback error; it is not an orm error code.
+    const CALLBACK: &str = "CALLBACK";
 
     /// The publisher of the phases of a catalog mutation, as the catalog mutation methods take it.
     type Publish = Arc<dyn Fn(MutationPhase) + Send + Sync>;
@@ -442,7 +446,8 @@ mod database {
     pub type ModelFuture<'a> = Pin<Box<dyn Future<Output = Result<Value, String>> + Send + 'a>>;
 
     /// The generated models of a database case (FCV-4). model.connect opens the connection that its step names with `as`;
-    /// each model op calls the generated model that its step names, on the connection that its `connection` field names.
+    /// each model op calls the generated model that its step names, on the connection that its `connection` field names; a
+    /// model.update or model.delete with `row` (and no connection) runs on the connection of its bound row.
     /// The fields that a model op receives have their values resolved: a ref is its bound value, and a per-database object
     /// is its entry for the database. A trial binary implements it over the models of its fixture.
     pub trait ModelDispatcher: Send {
@@ -452,6 +457,10 @@ mod database {
         fn call<'a>(&'a mut self, op: &'a str, connection: &'a str, step: &'a Value) -> ModelFuture<'a>;
         /// Closes the connections that the case opened.
         fn close<'a>(&'a mut self) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>>;
+        /// The connection `name` that model.connect opened, for the events and transaction ops; none by default.
+        fn db(&self, _name: &str) -> Option<Db> {
+            None
+        }
     }
 
     /// The dispatcher of a recipe without model ops: each model op fails its step.
@@ -483,6 +492,11 @@ mod database {
         db: &'a Db,
         dir: &'a Path,
         models: Box<dyn ModelDispatcher>,
+        /// The fixture of the recipe with its external documents, which schema.install of a connection installs.
+        schemas: Option<&'a (Schema, Vec<Schema>)>,
+        /// The event subscriptions and the recordings of the events ops, by the names of `as`.
+        subscriptions: HashMap<String, Subscription>,
+        recordings: HashMap<String, Arc<Mutex<super::statement::Recorded>>>,
     }
 
     /// One trial for each case of the recipe at `path`, relative to the repository root, on `database` ("mysql",
@@ -618,30 +632,34 @@ mod database {
 
 #[expect(clippy::too_many_arguments, reason = "the case inputs are the recipe, the case, the database, the schema, the directory, the connection and the models, which each step reads")]
     async fn case_on(db: &Db, recipe: &Value, case: &Value, database: &str, schemas: Option<&(Schema, Vec<Schema>)>, dir: &Path, case_database: &CaseDatabase, models: fn() -> Box<dyn ModelDispatcher>) -> Result<(), String> {
-        if let Some((schema, install_first)) = schemas {
-            // The external documents are installed first: their tables must exist before the set installs (as the bench set does).
-            let mut installed = Ok(());
-            for each in install_first.iter().chain(std::iter::once(schema)) {
-                installed = db.utils().schema().install(each).await;
-                if installed.is_err() {
-                    break;
-                }
-            }
-            installed.map_err(|e| format!("database {database}: schema install: {e}"))?;
+        // A case with "install": false installs its fixture by its schema.install ops (FCV-9).
+        if let Some(fixture) = schemas.filter(|_| case["install"].as_bool() != Some(false)) {
+            install_fixture(db, fixture).await.map_err(|e| format!("database {database}: schema install: {e}"))?;
             polyspec_orm_testcase::step("schema installed");
         }
         let mut catalog = CatalogConnection::connect(case_database.dsn()).await.map_err(|e| format!("database {database}: catalog connection: {e}"))?;
-        let result = run_steps(&mut catalog, db, dir, recipe, case, database, case_database, models).await;
+        let result = run_steps(&mut catalog, db, dir, recipe, case, database, schemas, case_database, models).await;
         catalog.close().await;
         result
     }
 
 #[expect(clippy::too_many_arguments, reason = "the case inputs are the recipe, the case, the database, the schema, the directory, the connection and the models, which each step reads")]
-    async fn run_steps(catalog: &mut CatalogConnection, db: &Db, dir: &Path, recipe: &Value, case: &Value, database: &str, case_database: &CaseDatabase, models: fn() -> Box<dyn ModelDispatcher>) -> Result<(), String> {
+    async fn run_steps(catalog: &mut CatalogConnection, db: &Db, dir: &Path, recipe: &Value, case: &Value, database: &str, schemas: Option<&(Schema, Vec<Schema>)>, case_database: &CaseDatabase, models: fn() -> Box<dyn ModelDispatcher>) -> Result<(), String> {
         let namespace = catalog.current_namespace().await.map_err(|e| format!("database {database}: current namespace: {e}"))?;
         let bound = HashMap::from([("database".to_owned(), Bound::Json(json!({ "text": case_database.name() })))]);
         let dsn = case_database.dsn().to_owned();
-        let mut context = Context { namespace, database, dsn, bound, db, dir, models: models() };
+        let mut context = Context {
+            namespace,
+            database,
+            dsn,
+            bound,
+            db,
+            dir,
+            models: models(),
+            schemas,
+            subscriptions: HashMap::new(),
+            recordings: HashMap::new(),
+        };
         let outcome = seed_and_steps(catalog, recipe, case, &mut context).await;
         context.models.close().await;
         outcome
@@ -674,6 +692,27 @@ mod database {
     /// The value of an op that returns without error (FCV-4).
     fn ok_value() -> Value {
         json!({ "value": { "bool": true } })
+    }
+
+    /// The name that the `as` of a step binds.
+    fn bound_name(step: &Value) -> Result<String, String> {
+        step["as"].as_str().map(str::to_owned).ok_or_else(|| format!("{} binds no as", step["op"]))
+    }
+
+    /// The connection that the `connection` of a step names, as the dispatcher of the case holds it.
+    fn connection_db(step: &Value, context: &Context<'_>) -> Result<Db, String> {
+        let name = step["connection"].as_str().ok_or_else(|| format!("{} names no connection", step["op"]))?;
+        context.models.db(name).ok_or_else(|| format!("no bound connection {name}"))
+    }
+
+    /// The fixture of a recipe on `db`: its external documents first, whose tables must exist before the set installs
+    /// (as the bench set does), then the set.
+    async fn install_fixture(db: &Db, fixture: &(Schema, Vec<Schema>)) -> polyspec_orm::Result<()> {
+        let (schema, install_first) = fixture;
+        for each in install_first.iter().chain(std::iter::once(schema)) {
+            db.utils().schema().install(each).await?;
+        }
+        Ok(())
     }
 
     /// An ORM error of a schema or statement op: its message starts with its code, which an expect may name.
@@ -768,9 +807,20 @@ mod database {
     async fn call(catalog: &mut CatalogConnection, step: &Value, context: &mut Context<'_>) -> Result<Output, Failure> {
         let fault = Failure::Step;
         Ok(match step["op"].as_str().unwrap_or_default() {
+            // schema.install (FCV-4): {schema} installs the set of the step on the case database; {connection} installs the
+            // recipe fixture on that connection.
             "schema.install" => {
-                let schema = schema_argument(step, context).map_err(fault)?;
-                context.db.utils().schema().install(&schema).await.map_err(orm)?;
+                match step["connection"].as_str() {
+                    Some(name) => {
+                        let db = context.models.db(name).ok_or_else(|| fault(format!("no bound connection {name}")))?;
+                        let fixture = context.schemas.ok_or_else(|| fault("schema.install names a connection, and the recipe has no fixture".into()))?;
+                        install_fixture(&db, fixture).await.map_err(orm)?;
+                    }
+                    None => {
+                        let schema = schema_argument(step, context).map_err(fault)?;
+                        context.db.utils().schema().install(&schema).await.map_err(orm)?;
+                    }
+                }
                 Output::fields(ok_value())
             }
             "schema.register" => {
@@ -811,22 +861,75 @@ mod database {
                 outcome.map_err(fault)?;
                 Output::fields(json!({ "count": count.load(Ordering::SeqCst) }))
             }
+            // transaction (FCV-4): {connection?, steps, fail?}; the connection defaults to the case connection, and fail makes
+            // the callback return its own error after its steps, which the expect names as CALLBACK.
             "transaction" => {
+                let db = match step["connection"].as_str() {
+                    Some(_) => connection_db(step, context).map_err(fault)?,
+                    None => context.db.clone(),
+                };
                 let steps: Vec<Value> = step["steps"].as_array().cloned().unwrap_or_default();
-                let db = context.db;
+                let fail = step["fail"].as_bool().unwrap_or(false);
                 db.transaction_once(|| async move {
                     for nested in &steps {
                         Box::pin(run_step(catalog, nested, context)).await?;
+                    }
+                    if fail {
+                        return Err(CALLBACK_FAILED.to_owned());
                     }
                     Ok::<(), String>(())
                 })
                 .await
                 .map_err(|e| match e {
+                    TransactionOnceError::Callback(message) if message == CALLBACK_FAILED => Failure::Call(format!("{CALLBACK}: {message}")),
                     TransactionOnceError::Callback(message) => Failure::Step(message),
                     TransactionOnceError::Orm(error) => orm(error),
                     TransactionOnceError::Rollback { callback, rollback } => Failure::Step(format!("{callback}; rollback: {rollback}")),
                 })?;
                 Output::fields(ok_value())
+            }
+            // The events ops (FCV-4): a subscription on a connection, its recording, and the ops that stop or read them.
+            "events.subscribe" => {
+                let name = bound_name(step).map_err(fault)?;
+                let db = connection_db(step, context).map_err(fault)?;
+                let recorded = Arc::new(Mutex::new(super::statement::Recorded::default()));
+                let sink = Arc::clone(&recorded);
+                let subscription = db
+                    .subscribe(move |event: &StatementEvent<'_>| {
+                        super::statement::record(&sink, event);
+                        Ok(())
+                    })
+                    .map_err(orm)?;
+                context.recordings.insert(name.clone(), recorded);
+                context.subscriptions.insert(name, subscription);
+                Output::fields(json!({}))
+            }
+            "events.fail_subscriber" => {
+                let name = bound_name(step).map_err(fault)?;
+                let db = connection_db(step, context).map_err(fault)?;
+                let kind = step["kind"].as_str().ok_or_else(|| fault("events.fail_subscriber names no kind".into()))?.to_owned();
+                let subscription = db
+                    .subscribe(move |event: &StatementEvent<'_>| {
+                        if event.kind == kind {
+                            return Err("subscriber refused the event".into());
+                        }
+                        Ok(())
+                    })
+                    .map_err(orm)?;
+                context.subscriptions.insert(name, subscription);
+                Output::fields(json!({}))
+            }
+            "events.stop_failing" | "events.unsubscribe" => {
+                let name = step["ref"].as_str().ok_or_else(|| fault(format!("{} names no ref", step["op"])))?;
+                let subscription = context.subscriptions.remove(name).ok_or_else(|| fault(format!("{}: no subscription {name}", step["op"])))?;
+                subscription.unsubscribe();
+                Output::fields(json!({}))
+            }
+            "events.captured" => {
+                let name = step["ref"].as_str().ok_or_else(|| fault("events.captured names no ref".into()))?;
+                let recorded = context.recordings.get(name).cloned().ok_or_else(|| fault(format!("no recording {name}")))?;
+                let events = recorded.lock().unwrap().captured(step["compare"].as_str() == Some("tables"));
+                Output::fields(json!({ "value": { "array": events } }))
             }
             "catalog.current_namespace" => {
                 let namespace = catalog.current_namespace().await.map_err(Failure::Call)?;
@@ -932,7 +1035,12 @@ mod database {
             context.models.connect(name, &dsn, pool_size).await.map_err(Failure::Call)?;
             return Ok(Output::fields(json!({})));
         }
-        let connection = step["connection"].as_str().ok_or_else(|| Failure::Step(format!("{op} names no connection")))?;
+        // A step with `row` and no connection is routed by its bound row, which records the connection it was bound on.
+        let connection = match step["connection"].as_str() {
+            Some(name) => name,
+            None if step.get("row").is_some() => "",
+            None => return Err(Failure::Step(format!("{op} names no connection and no row"))),
+        };
         let resolved = resolve_model_step(step, context).map_err(Failure::Step)?;
         let fields = context.models.call(op, connection, &resolved).await.map_err(Failure::Call)?;
         Ok(Output::fields(fields))
@@ -1177,5 +1285,271 @@ mod database {
         let result = sqlx::raw_sql(sqlx::AssertSqlSafe(sql.to_owned())).execute(&mut connection).await.map_err(|e| e.to_string());
         connection.close().await.map_err(|e| e.to_string())?;
         result.map(|_| ())
+    }
+}
+/// The statement_events recipe (docs/spec/feature-coverage.md FCV-4): each case runs on a case database of its own, and
+/// each op calls the public polyspec_orm API that the op names (model.*, schema.install, transaction, events.*). The events
+/// ops and the schema and transaction ops are the arms of the one `call` dispatch; the EventProbe model ops are the
+/// dispatcher of each case, which opens the connections that model.connect names.
+pub use statement::statement_trials;
+
+mod statement {
+    use std::collections::{BTreeMap, HashMap};
+    use std::future::Future;
+    use std::pin::Pin;
+    use std::sync::Mutex;
+
+    use polyspec_orm::core::{Arg, ChainKey};
+    use polyspec_orm::{Config, Core, Db, Entity, Model, Param, Schema, StatementEvent, Val};
+    use serde_json::{json, Value};
+
+    use super::{database_trials_with_models, ModelDispatcher, ModelFuture};
+
+    /// The columns of the table event_probe of the fixture.
+    const COLUMNS: [&str; 2] = ["seq", "label"];
+    /// The key of the label column: the only `where` that the recipe names.
+    const BY_LABEL: &[ChainKey] = &[ChainKey { conn: "", op: "", column: "label", columns: &[], compare: "" }];
+
+    static STATEMENT_SCHEMA: Schema =
+        Schema::new(include_str!("../../../../contracts/fixtures/statement_events/statement_events.dbs"), "sha256:0f576f8672d1b7c7ad72fa90e88dfcbcfeb41d35efd02cc7afe3ce6765f8b207");
+    static EVENT_PROBE: Entity = Entity {
+        name: "event_probe",
+        schema: &STATEMENT_SCHEMA,
+        new: polyspec_orm::model::new_boxed::<EventProbe>,
+        collect: polyspec_orm::model::collect_boxed::<EventProbe>,
+    };
+
+    /// The row of event_probe: its core and the column values that were assigned.
+    #[derive(Clone)]
+    pub struct EventProbe {
+        core: Core,
+        values: BTreeMap<String, Val>,
+    }
+
+    impl Model for EventProbe {
+        fn entity() -> &'static Entity {
+            &EVENT_PROBE
+        }
+        fn core(&self) -> &Core {
+            &self.core
+        }
+        fn core_mut(&mut self) -> &mut Core {
+            &mut self.core
+        }
+        fn from_core(core: Core) -> Self {
+            EventProbe { core, values: BTreeMap::new() }
+        }
+        fn into_core(self) -> Core {
+            self.core
+        }
+        fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
+            if !COLUMNS.contains(&name) {
+                return Ok(false);
+            }
+            self.values.insert(name.to_owned(), v);
+            Ok(true)
+        }
+        fn value(&self, name: &str) -> Option<Val> {
+            self.values.get(name).cloned()
+        }
+    }
+
+    /// The events that a recording subscriber received: each with whether it names a table, and its wrapper.
+    #[derive(Default)]
+    pub(super) struct Recorded {
+        records: Vec<(bool, Value)>,
+        numbers: HashMap<u64, u64>,
+    }
+
+    impl Recorded {
+        /// The recorded events; with `tables_only`, the ones that name a table.
+        pub(super) fn captured(&self, tables_only: bool) -> Vec<Value> {
+            self.records.iter().filter(|(named, _)| !tables_only || *named).map(|(_, e)| e.clone()).collect()
+        }
+    }
+
+    /// The statement_events recipe trials of `database` (FCV-3, FCV-4).
+    pub fn statement_trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testcase::Trial> {
+        database_trials_with_models(entry, path, database, dispatcher)
+    }
+
+    /// The dispatcher of one case: its connections and the rows bound by `as`.
+    fn dispatcher() -> Box<dyn ModelDispatcher> {
+        Box::new(EventProbes::default())
+    }
+
+    /// The model ops of the statement recipe over the EventProbe model (FCV-4): model.connect opens a connection with the
+    /// statement schema, and each model op calls the model on the connection that its step names.
+    #[derive(Default)]
+    struct EventProbes {
+        connections: HashMap<String, Db>,
+        rows: HashMap<String, EventProbe>,
+    }
+
+    impl EventProbes {
+        fn connection(&self, name: &str) -> Result<Db, String> {
+            self.connections.get(name).cloned().ok_or_else(|| format!("no bound connection {name}"))
+        }
+
+        fn bound_row(&self, step: &Value) -> Result<EventProbe, String> {
+            let name = step["row"].as_str().ok_or_else(|| format!("{} names no row", step["op"]))?;
+            self.rows.get(name).cloned().ok_or_else(|| format!("no bound row {name}"))
+        }
+
+        async fn run(&mut self, op: &str, connection: &str, step: &Value) -> Result<Value, String> {
+            // model.update and model.delete with `row` run on the connection of the bound row, not on a named one.
+            if matches!(op, "model.update" | "model.delete") && step.get("row").is_some() {
+                let row = self.bound_row(step)?;
+                return if op == "model.update" {
+                    let mut row = row;
+                    set_values(&mut row, &step["set"])?;
+                    polyspec_orm::model::update(&mut row, false).await.map_err(|e| e.to_string())?;
+                    Ok(json!({}))
+                } else {
+                    polyspec_orm::model::delete(&row, false).await.map_err(|e| e.to_string())?;
+                    Ok(json!({}))
+                };
+            }
+            let db = self.connection(connection)?;
+            match op {
+                "model.create" => {
+                    let mut row = new_row(&db);
+                    set_values(&mut row, &step["values"])?;
+                    polyspec_orm::model::create(&mut row).await.map_err(|e| e.to_string())?;
+                    Ok(json!({}))
+                }
+                "model.get_by" => {
+                    // The statement cases name only the where form; the key form has no case here, so it fails by name.
+                    if step.get("key").is_some() {
+                        return Err("model.get_by key form is not served by the statement dispatcher: the statement cases use where only".into());
+                    }
+                    let filter = where_filter(&db, &step["where"])?;
+                    let row = polyspec_orm::model::get_core::<EventProbe>(&filter)
+                        .await
+                        .map_err(|e| e.to_string())?
+                        .ok_or_else(|| polyspec_orm::Error::NoRows.to_string())?;
+                    // A get_by without `as` only checks that the row exists; it binds nothing.
+                    if let Some(name) = step["as"].as_str() {
+                        self.rows.insert(name.to_owned(), row);
+                    }
+                    Ok(json!({}))
+                }
+                "model.update" | "model.delete" => Err(format!("{op} names no row: the statement cases bind updates and deletes by row")),
+                "model.count" => {
+                    let mut core = Core::new(&EVENT_PROBE);
+                    core.connect(&db);
+                    let n = polyspec_orm::model::get_count(&core).await.map_err(|e| e.to_string())?;
+                    Ok(json!({ "value": { "int": n.to_string() } }))
+                }
+                other => Err(format!("OP_UNKNOWN {other}: the statement recipe binds no such model op")),
+            }
+        }
+    }
+
+    impl ModelDispatcher for EventProbes {
+        fn connect<'a>(&'a mut self, name: &'a str, dsn: &'a str, pool_size: u32) -> ModelFuture<'a> {
+            Box::pin(async move {
+                let db = Db::connect_schema(dsn, &STATEMENT_SCHEMA, pool_size, Config::default()).await.map_err(|e| e.to_string())?;
+                self.connections.insert(name.to_owned(), db);
+                Ok(json!({}))
+            })
+        }
+
+        fn call<'a>(&'a mut self, op: &'a str, connection: &'a str, step: &'a Value) -> ModelFuture<'a> {
+            Box::pin(async move { self.run(op, connection, step).await })
+        }
+
+        fn db(&self, name: &str) -> Option<Db> {
+            self.connections.get(name).cloned()
+        }
+
+        fn close<'a>(&'a mut self) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>> {
+            Box::pin(async move {
+                for (_, db) in self.connections.drain() {
+                    db.close().await;
+                }
+            })
+        }
+    }
+
+    fn new_row(db: &Db) -> EventProbe {
+        let mut core = Core::new(&EVENT_PROBE);
+        core.connect(db);
+        EventProbe::from_core(core)
+    }
+
+    /// The filter of a `where` object: the label column, which the recipe names alone.
+    fn where_filter(db: &Db, field: &Value) -> Result<Core, String> {
+        let map = field.as_object().ok_or_else(|| format!("where {field} is not an object"))?;
+        let [(column, value)] = map.iter().collect::<Vec<_>>()[..] else { return Err("where names one column".into()) };
+        if column != "label" {
+            return Err(format!("where column {column} has no key in the recipe helper"));
+        }
+        let mut core = Core::new(&EVENT_PROBE);
+        core.connect(db);
+        Ok(core.by(BY_LABEL, vec![Arg::Value(polyspec_orm::args::Value::One(param(value)?))]))
+    }
+
+    /// Assigns each column of an object of wrappers to the row.
+    fn set_values(row: &mut EventProbe, values: &Value) -> Result<(), String> {
+        let map = values.as_object().ok_or_else(|| format!("{values} is not an object of columns"))?;
+        for (column, value) in map {
+            row.core_mut().set(column, param(value)?);
+        }
+        Ok(())
+    }
+
+    /// The bound value of a text, int, bool or null wrapper of the recipe.
+    fn param(wrapper: &Value) -> Result<Param, String> {
+        let map = wrapper.as_object().filter(|m| m.len() == 1).ok_or_else(|| format!("{wrapper} is no wrapper"))?;
+        let (kind, body) = map.iter().next().expect("one key");
+        Ok(match kind.as_str() {
+            "text" => Param::Str(body.as_str().unwrap_or_default().to_owned()),
+            "int" => Param::I64(body.as_str().unwrap_or_default().parse().map_err(|e| format!("int {body}: {e}"))?),
+            "bool" => Param::Bool(body.as_bool().ok_or_else(|| format!("bool {body}"))?),
+            "null" => Param::Null,
+            other => return Err(format!("a {other} wrapper is not a bound value")),
+        })
+    }
+
+    /// The recipe wrapper of a bind value of a statement event.
+    fn bind_wrapper(p: &Param) -> Value {
+        match p {
+            Param::Null => json!({ "null": "text" }),
+            Param::Str(text) => json!({ "text": text }),
+            Param::I64(n) => json!({ "int": n.to_string() }),
+            Param::Bool(b) => json!({ "bool": b }),
+            other => panic!("the statement recipe has no wrapper for the bind {other:?}"),
+        }
+    }
+
+    /// Records one event as the six fields of the recipe, with the transaction renumbered from 1 in order of first
+    /// appearance within the case.
+    pub(super) fn record(recorded: &Mutex<Recorded>, e: &StatementEvent<'_>) {
+        let mut guard = recorded.lock().unwrap();
+        let r = &mut *guard;
+        let transaction = e.transaction.map(|n| {
+            let next = r.numbers.len() as u64 + 1;
+            *r.numbers.entry(n).or_insert(next)
+        });
+        let binds: Vec<Value> = e.binds.iter().map(bind_wrapper).collect();
+        let tables: Vec<Value> = e.tables.iter().map(|t| json!({ "text": t })).collect();
+        let transaction = match transaction {
+            Some(n) => json!({ "int": n.to_string() }),
+            None => json!({ "null": "int" }),
+        };
+        let error = match e.error {
+            Some(error) => json!({ "text": error.code() }),
+            None => json!({ "null": "text" }),
+        };
+        let record = json!({ "object": [
+            ["sql", { "text": e.sql }],
+            ["binds", { "array": binds }],
+            ["kind", { "text": e.kind }],
+            ["tables", { "array": tables }],
+            ["transaction", transaction],
+            ["error", error],
+        ] });
+        r.records.push((!e.tables.is_empty(), record));
     }
 }

@@ -18,17 +18,25 @@ use Polyspec\Orm\CatalogResult;
 use Polyspec\Orm\CatalogTableMetadata;
 use Polyspec\Orm\Codec;
 use Polyspec\Orm\Config;
+use Polyspec\Orm\Db;
 use Polyspec\Orm\Dbspec\Dbspec;
+use Polyspec\Orm\Model;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
 use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Schema;
+use Polyspec\Orm\StatementEvent;
 use Polyspec\Orm\StyledValue;
 use Polyspec\Orm\Validator;
+use Polyspec\Orm\Registry;
+use RuntimeException;
 
 final class Recipe
 {
     use RecipeModel;
+
+    /** The table models of the statement-event fixture that have no generated class: each names its table (FCV-4). */
+    public const TABLE_MODELS = ['EventProbe' => 'event_probe'];
 
     /** The database part of a recipe without a database (FCV-3). */
     public const NONE = 'none';
@@ -530,7 +538,8 @@ final class Recipe
     ): void {
         $db = Orm::connect($dsn, new Config());
         try {
-            if ($schema !== null) {
+            // A case with install: false installs nothing before its steps; its steps install the schema themselves (FCV-4).
+            if ($schema !== null && ($case['install'] ?? true) !== false) {
                 foreach ([...$installFirst, $schema] as $shared) {
                     $db->utils()->schema()->install($shared);
                 }
@@ -545,6 +554,7 @@ final class Recipe
                     'dsn' => $dsn,
                     'bound' => ['database' => ['text' => $name]],
                     'db' => $db,
+                    'schema' => $schema,
                     'dir' => dirname(__DIR__, 3) . '/' . dirname($path),
                 ];
                 foreach ([$recipe['seed']['rows'] ?? [], $case['seed']['rows'] ?? []] as $rows) {
@@ -620,11 +630,20 @@ final class Recipe
             }
             Assert::assertSame($expected['error'], $error->code_, "the error code ({$error->getMessage()})");
             return;
+        } catch (CallbackFailed $failure) {
+            // The step ends with its failed callback, so an enclosing transaction goes on (FCV-4).
+            if (!is_array($expected) || ($expected['error'] ?? null) !== 'CALLBACK') {
+                throw $failure;
+            }
+            return;
         }
         if (isset($step['as'])) {
             $context['bound'][$step['as']] = array_key_exists('bind', $actual)
                 ? $actual['bind']
                 : ($actual['value'] ?? null);
+            if (isset($actual['row'])) {
+                $context['rows'][$step['as']] = $actual['row'];
+            }
         }
         if ($expected === null) {
             return;
@@ -646,6 +665,10 @@ final class Recipe
         $table = static fn (): array => ['namespace' => $context['namespace'], 'name' => $s['table']];
         switch ($s['op']) {
             case 'schema.install':
+                if (isset($s['connection'])) {
+                    self::connectionOf($s, $context)->utils()->schema()->install($context['schema']);
+                    return ['value' => ['bool' => true]];
+                }
                 $context['db']->utils()->schema()->install(self::schemaArgument($s['schema'], $context));
                 return ['value' => ['bool' => true]];
             case 'schema.register':
@@ -677,11 +700,17 @@ final class Recipe
                 }
                 return ['count' => $count];
             case 'transaction':
-                $context['db']->transaction(static function () use ($s, &$context): void {
-                    foreach ($s['steps'] as $nested) {
-                        self::databaseStep($nested, $context);
-                    }
-                });
+                self::connectionOf($s, $context)->transaction(
+                    function () use ($s, &$context): void {
+                        foreach ($s['steps'] as $nested) {
+                            self::databaseStep($nested, $context);
+                        }
+                        if ($s['fail'] ?? false) {
+                            throw new CallbackFailed('the transaction callback failed');
+                        }
+                    },
+                    retry: 0,
+                );
                 return ['value' => ['bool' => true]];
             case 'catalog.current_namespace':
                 return ['value' => ['text' => $catalog->currentNamespace()]];
@@ -761,6 +790,36 @@ final class Recipe
             case 'catalog.delete_row':
                 $deleted = $catalog->deleteRow(self::stepArgument($s['snapshot'], $context));
                 return ['value' => ['int' => (string) $deleted]];
+            case 'events.subscribe':
+                $recording = new RecipeRecording();
+                $stop = self::connectionOf($s, $context)->subscribe($recording->receive(...));
+                return ['bind' => new RecipeSubscription($stop, $recording)];
+            case 'events.fail_subscriber':
+                $kind = $s['kind'];
+                $stop = self::connectionOf($s, $context)->subscribe(
+                    static function (StatementEvent $e) use ($kind): void {
+                        if ($e->kind === $kind) {
+                            throw new RuntimeException('subscriber refused the event');
+                        }
+                    }
+                );
+                return ['bind' => new RecipeSubscription($stop, null)];
+            case 'events.stop_failing':
+            case 'events.unsubscribe':
+                (self::boundValue($s['ref'], $context)->stop)();
+                return [];
+            case 'events.captured':
+                $subscription = self::boundValue($s['ref'], $context);
+                if ($subscription->recording === null) {
+                    throw new RuntimeException('the subscription of ref is not a recording subscriber');
+                }
+                if ($subscription->recording->negative !== []) {
+                    throw new RuntimeException('an event has a negative elapsed time');
+                }
+                return ['value' => ['array' => self::capturedEvents(
+                    $subscription->recording->events,
+                    $s['compare'] ?? '',
+                )]];
             case 'sql.exec':
                 // The native driver of PHP is PDO, opened on the case database.
                 $pdo = case_admin($context['dsn']);
@@ -783,9 +842,146 @@ final class Recipe
     }
 
     /** A field that holds SQL or a database-decided value: the string itself, or the entry of the database. */
+    /** A new model of the table, connected to db, whose entity is the one that the fixture gives the table. */
+    private static function newRow(string $table, mixed $db, array $context): RecipeRow
+    {
+        RecipeRow::bindTable($table, $context['schema']);
+        return (new RecipeRow())->connect($db);
+    }
+
+    /** Writes each column of the assignments on the row, and returns the row. */
+    private static function setColumns(RecipeRow $row, array $assignments): RecipeRow
+    {
+        foreach ($assignments as $column => $value) {
+            $row->setColumn((string) $column, $value);
+        }
+        return $row;
+    }
+
+    /** The name of a column in the form of its generated methods: seq_no becomes SeqNo. */
+    private static function studly(string $column): string
+    {
+        return str_replace(' ', '', ucwords(str_replace('_', ' ', $column)));
+    }
+
+    /**
+     * The recipe objects of the events of a recording. The transactions are numbered from 1 in the order of their first
+     * appearance among all the events; then compare "tables" keeps the events that name a table.
+     */
+    private static function capturedEvents(array $events, string $compare): array
+    {
+        $numbers = [];
+        $out = [];
+        foreach ($events as $event) {
+            $value = self::eventValue($event, $numbers);
+            if ($compare === 'tables' && $event->tables === []) {
+                continue;
+            }
+            $out[] = $value;
+        }
+        return $out;
+    }
+
+    /** The recipe object of one statement event: its sql, binds, kind, tables, transaction and error (FCV-4). */
+    private static function eventValue(StatementEvent $event, array &$numbers): array
+    {
+        $transaction = ['null' => true];
+        if ($event->transaction !== null) {
+            $numbers[$event->transaction] ??= count($numbers) + 1;
+            $transaction = ['int' => (string) $numbers[$event->transaction]];
+        }
+        return ['object' => [
+            ['sql', ['text' => $event->sql]],
+            ['binds', ['array' => array_map(
+                static fn (mixed $bind): array => self::plainWrapper($bind, null),
+                $event->binds
+            )]],
+            ['kind', ['text' => $event->kind]],
+            ['tables', ['array' => array_map(static fn (string $name): array => ['text' => $name], $event->tables)]],
+            ['transaction', $transaction],
+            ['error', $event->error === null ? ['null' => true] : ['text' => $event->error->code_]],
+        ]];
+    }
+
     private static function sqlField(string|array $field, array $context): string
     {
         return is_string($field) ? $field : $field[$context['database']];
+    }
+
+    /** The connection that an op names, or the case connection when the op names none (FCV-4). */
+    private static function connectionOf(array $s, array $context): Db
+    {
+        if (!isset($s['connection'])) {
+            return $context['db'];
+        }
+        $db = $context['bound'][$s['connection']] ?? null;
+        if (!$db instanceof Db) {
+            Assert::fail("connection {$s['connection']} is not bound");
+        }
+        return $db;
+    }
+
+    /** A model op on a table model of the fixture: the entity that the fixture gives its table (FCV-4). */
+    private static function tableModelOp(array $s, array $context): array
+    {
+        $table = self::TABLE_MODELS[$s['model']];
+        switch ($s['op']) {
+            case 'model.create':
+                $row = self::newRow($table, self::connectionOf($s, $context), $context);
+                self::setColumns($row, self::assignments($s['values'], $context))->create();
+                // With `as`, the created row is bound with the record of the path and connection that made it.
+                return isset($s['as']) ? ['bind' => $row, 'row' => self::rowRecord($s, $context)] : [];
+            case 'model.get_by':
+                if (isset($s['key'])) {
+                    throw new RuntimeException('model.get_by with key has no table-model path');
+                }
+                $where = self::assignments($s['where'], $context);
+                if (count($where) !== 1) {
+                    throw new RuntimeException('model.get_by names one column of the recipe');
+                }
+                $column = (string) array_key_first($where);
+                $row = self::newRow($table, self::connectionOf($s, $context), $context);
+                return [
+                    'bind' => $row->{'getBy' . self::studly($column)}($where[$column]),
+                    'row' => self::rowRecord($s, $context),
+                ];
+            case 'model.update':
+                self::setColumns(self::boundValue($s['row'], $context), self::assignments($s['set'], $context))->update();
+                return [];
+            case 'model.delete':
+                self::boundValue($s['row'], $context)->delete();
+                return [];
+            case 'model.count':
+                $row = self::newRow($table, self::connectionOf($s, $context), $context);
+                return ['value' => ['int' => (string) $row->getCount()]];
+        }
+        Assert::fail("model op {$s['op']} has no table-model path");
+    }
+
+    /**
+     * The record of a bound row (coordinator ruling on row routing): the path that made it, its model and the connection
+     * it was made on. A model op of the {row} form runs on this path and connection.
+     */
+    private static function rowRecord(array $s, array $context): array
+    {
+        return ['path' => 'table', 'model' => $s['model'], 'db' => self::connectionOf($s, $context)];
+    }
+
+    /**
+     * A model op of the {row} form, which names no model and no connection: the bound row routes it, and a row that no
+     * bound row holds fails by its name.
+     */
+    private static function rowOp(array $s, array $context): array
+    {
+        $name = is_string($s['row']) ? $s['row'] : (string) ($s['row']['ref'] ?? '');
+        $record = $context['rows'][$name] ?? null;
+        if ($record === null) {
+            Assert::fail("{$s['op']} names row $name, which no bound row holds");
+        }
+        if ($record['path'] !== 'table') {
+            Assert::fail("{$s['op']}: row $name was bound by the {$record['path']} path, which has no row form");
+        }
+        return self::tableModelOp(['model' => $record['model']] + $s, $context);
     }
 
     /** A bound value of {"ref": "<name>"} or {"ref": "<name>.<path>"}. */

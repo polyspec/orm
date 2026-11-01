@@ -1,15 +1,12 @@
-//! Runs the cases of tests/events/vectors.json with this client on MySQL, PostgreSQL, and SQLite and
-//! compares the statement events (docs/operations/usage.md "Statement events"). For each case, its own case
-//! database has the fixture contracts/fixtures/statement_events.dbs installed (unless the case's install
-//! is false), registers one recording subscriber, then runs the steps in turn. The record
-//! holds sql, binds, kind, tables, and transaction (a number recounted from 1 in the order first seen within the case,
-//! null outside a transaction), and error (the code of the statement error, or null if none). compare
-//! "tables" compares only events that have tables. elapsed is a `Duration`, so it cannot be negative.
+//! Helpers of the statement events of tests/events/vectors.json for this client, and the server transactions and
+//! the coverage of the vector. The eight cases run as the recipe contracts/fixtures/statement_events/statement_events.json
+//! (statement_events_<database>, FCV-3). The record holds sql, binds, kind, tables, and transaction (a number recounted
+//! from 1 in the order first seen within the case, null outside a transaction), and error (the code of the statement
+//! error, or null if none). elapsed is a `Duration`, so it cannot be negative.
 //! Requirements: INT-77, INT-96, PLN-44.
 
 use polyspec_orm_test_support::model_row;
 
-use polyspec_orm_test_support::feature_database;
 use polyspec_orm_test_support::statement_record;
 
 use std::collections::HashMap;
@@ -24,7 +21,7 @@ use polyspec_orm_case_database::CaseDatabase;
 use serde_json::{json, Value};
 
 static EVENTS_SCHEMA: Schema =
-    Schema::new(include_str!("../../../../contracts/fixtures/statement_events.dbs"), "sha256:0f576f8672d1b7c7ad72fa90e88dfcbcfeb41d35efd02cc7afe3ce6765f8b207");
+    Schema::new(include_str!("../../../../contracts/fixtures/statement_events/statement_events.dbs"), "sha256:0f576f8672d1b7c7ad72fa90e88dfcbcfeb41d35efd02cc7afe3ce6765f8b207");
 static EVENT_PROBE: Entity = Entity {
     name: "event_probe",
     schema: &EVENTS_SCHEMA,
@@ -221,82 +218,6 @@ fn optional_env(name: &str) -> Option<String> {
     }
 }
 
-async fn run_case(driver: &'static str, case: &Value) {
-    let id = case["id"].as_str().expect("case id");
-    let database = CaseDatabase::create(driver).await;
-    let run = async {
-        let db = match Db::connect_schema(database.dsn(), &EVENTS_SCHEMA, 2, polyspec_orm::Config::default()).await {
-            Ok(db) => db,
-            Err(e) => panic!("{driver}: {id}: {e}"),
-        };
-        if case["install"].as_bool().unwrap_or(true) {
-            if let Err(e) = db.utils().schema().install(&EVENTS_SCHEMA).await {
-                panic!("{driver}: {id}: install: {e}");
-            }
-        }
-        let recorded = Arc::new(Mutex::new(Recorded::default()));
-        let recording = subscribe_recording(&db, &recorded);
-        let r = EventRun::new(driver, db.clone(), recorded, recording);
-        for s in case["steps"].as_array().expect("case steps") {
-            let outcome = r.checked(s).await;
-            assert_step_outcome(&outcome, s, driver);
-        }
-        let mut got = std::mem::take(&mut r.recorded.lock().unwrap().records);
-        if case["compare"].as_str() == Some("tables") {
-            got.retain(|e| e["tables"].as_array().is_some_and(|t| !t.is_empty()));
-        }
-        let want = case["events"][driver].as_array().cloned().unwrap_or_default();
-        assert!(
-            got == want,
-            "{driver}: {id} events\n got {}\nwant {}",
-            serde_json::to_string_pretty(&got).unwrap(),
-            serde_json::to_string_pretty(&want).unwrap()
-        );
-        db.close().await;
-    };
-    if tokio::time::timeout(CASE_DEADLINE, run).await.is_err() {
-        panic!("{driver}: {id}: timeout after {CASE_DEADLINE:?}");
-    }
-    database.drop().await;
-}
-
-async fn run_cases(driver: &'static str) {
-    let vector: Value = serde_json::from_str(VECTOR).expect("tests/events/vectors.json");
-    for case in vector["cases"].as_array().expect("vector cases") {
-        polyspec_orm_testcase::step(format_args!("{driver}: case {}", case["id"].as_str().unwrap_or_default()));
-        run_case(driver, case).await;
-    }
-}
-
-/// The cases of tests/events/vectors.json, one trial `statement_events::<case id>` per case, each run on MySQL,
-/// PostgreSQL and SQLite in a case database of its own.
-fn statement_events() -> Vec<polyspec_orm_testcase::Trial> {
-    let vector: Value = serde_json::from_str(VECTOR).expect("tests/events/vectors.json");
-    vector["cases"]
-        .as_array()
-        .expect("vector cases")
-        .iter()
-        .map(|case| {
-            let case = case.clone();
-            let id = case["id"].as_str().expect("case id").to_owned();
-            polyspec_orm_testcase::async_trial(format!("statement_events::{id}"), polyspec_orm_testcase::DATABASE, move || async move {
-                for driver in ["mysql", "postgres", "sqlite"] {
-                    polyspec_orm_testcase::step(format_args!("{driver}: case {id}"));
-                    run_case(driver, &case).await;
-                }
-            })
-        })
-        .collect()
-}
-
-/// statement_events coverage: on the database feature-check chose (ORM_FEATURE_DATABASE),
-/// runs every case of the vector, each in a new case database. The bench database is neither read nor written.
-/// It is an ignored trial, which feature-check runs with --include-ignored.
-// Requirements: INT-91.
-async fn coverage_statement_events() {
-    run_cases(feature_database::selected()).await;
-}
-
 /// Runs every entry of the vector's server_transactions on a case database of its database. The difference in the
 /// values that the probe returns counts the server transactions of one page run. With pool size 1, all statements
 /// run on one server connection. The probe and the setup are sent through sqlx on the same pool, so there are no
@@ -432,19 +353,17 @@ fn statement_events_server_transactions_named_once() {
 }
 
 fn main() {
-    let mut trials = statement_events();
-    trials.push(
-        polyspec_orm_testcase::async_trial("coverage_statement_events", polyspec_orm_testcase::DATABASE, coverage_statement_events).with_ignored_flag(true),
-    );
-    trials.push(polyspec_orm_testcase::async_trial(
-        "statement_events_server_transactions",
-        polyspec_orm_testcase::DATABASE,
-        statement_events_server_transactions,
-    ));
-    trials.push(polyspec_orm_testcase::trial(
-        "statement_events_server_transactions_named_once",
-        polyspec_orm_testcase::COMPUTE,
-        statement_events_server_transactions_named_once,
-    ));
+    let trials = vec![
+        polyspec_orm_testcase::async_trial(
+            "statement_events_server_transactions",
+            polyspec_orm_testcase::DATABASE,
+            statement_events_server_transactions,
+        ),
+        polyspec_orm_testcase::trial(
+            "statement_events_server_transactions_named_once",
+            polyspec_orm_testcase::COMPUTE,
+            statement_events_server_transactions_named_once,
+        ),
+    ];
     polyspec_orm_testcase::run_in_order(trials);
 }

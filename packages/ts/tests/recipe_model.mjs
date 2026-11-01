@@ -1,7 +1,7 @@
 // The generated-model ops of the recipe helper (docs/spec/feature-coverage.md FCV-4 model ops, FCV-14). Each op calls the
 // generated model that its model name names, through the connection that model.connect bound. A model or a column without
 // an entry here fails the case by name, so no recipe passes on a call that the helper does not make.
-import { Author, CompositeAccount, connect } from '../dist/index.js';
+import { Author, CompositeAccount, Db } from '../dist/index.js';
 
 // The keys that the generated models of the bench set read their encrypted columns with (the native model tests use them).
 const BENCH_KEYS = { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' };
@@ -47,7 +47,8 @@ export function modelOps({ native, databaseValue, stepArgument }) {
 
   return {
     async 'model.connect'(s, context) {
-      const db = await connect(context.dsn, BENCH_KEYS);
+      // The case schema is registered on the connection, as the statement-event ops need it (FCV-4, model.connect).
+      const db = await Db.connectSchema(context.dsn, context.schema, { poolSize: s.pool_size, ...BENCH_KEYS });
       context.closers.push(() => db.close());
       return { bind: db };
     },

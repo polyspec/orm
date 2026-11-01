@@ -1,20 +1,19 @@
 <?php
 
-// Statement events on SQLite, MySQL and PostgreSQL: every case of the shared
-// vector tests/events/vectors.json in a case database of its own
-// (statement_events_run.php), one data set per case id that runs the case on each
-// database in turn, and each entry of the vector's server_transactions on
-// its database. The test fails when ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN
-// is unset.
+// Statement events on SQLite, MySQL and PostgreSQL that the recipe
+// contracts/fixtures/statement_events/statement_events.json does not cover: the
+// unsubscribe memory check, and each entry of the vector's server_transactions on
+// its database (statement_events_run.php). The eight cases of tests/events/vectors.json
+// run as the recipe (statement_events-<database>). The test fails when
+// ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist
-// packages/php/tests/StatementEventsTest.php [--filter <method or data set>]
+// packages/php/tests/StatementEventsTest.php [--filter <method>]
 declare(strict_types=1);
 
 // Requirements: INT-77, INT-96, PLN-44.
 
 namespace Polyspec\Orm\Tests;
 
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
@@ -25,33 +24,6 @@ class StatementEventsTest extends TestCase
     public static function setUpBeforeClass(): void
     {
         statementEventsModels();
-    }
-
-    /** @return iterable<string, array{array<string, mixed>}> the cases of tests/events/vectors.json by id */
-    public static function cases(): iterable
-    {
-        foreach (statementEventsVector()['cases'] as $case) {
-            yield $case['id'] => [$case];
-        }
-    }
-
-    private static function runOn(string $driver, array $case): void
-    {
-        with_case_database($driver, static function (string $text): void {
-        }, static fn(string $dsn) => runCase($case, $driver, $dsn));
-    }
-
-    /**
-     * The case on SQLite, MySQL and PostgreSQL in turn, each in a case database of its own.
-     *
-     * @param array<string, mixed> $case
-     */
-    #[DataProvider('cases')]
-    public function testCase(array $case): void
-    {
-        foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
-            self::runOn($driver, $case);
-        }
     }
 
     /**

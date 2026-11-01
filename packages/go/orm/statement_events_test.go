@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
-	"path/filepath"
-	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -181,160 +179,6 @@ func (r *eventRun) checked(s eventStep) {
 	}
 }
 
-// runEventCases runs every case of the vector on the driver. If subtests are used, it runs each case
-// as a subtest; otherwise (coverage receives the result of only one test) it runs them in order.
-func runEventCases(t *testing.T, driver string, subtests bool) {
-	cases := eventCases(t)
-	recording := os.Getenv("ORM_EVENTS_RECORD") == "1"
-	recorded := map[string][]eventRecord{}
-	for _, c := range cases {
-		runOne := func(t *testing.T) { runEventCase(t, driver, c, recording, recorded) }
-		if subtests {
-			t.Run(c.ID, runOne)
-		} else {
-			runOne(t)
-		}
-	}
-	if recording {
-		recordEvents(t, driver, recorded)
-	}
-}
-
-// eventCases reads the cases of tests/events/vectors.json in file order.
-func eventCases(t *testing.T) []eventCase {
-	t.Helper()
-	raw, err := os.ReadFile(eventsVector)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var doc struct {
-		Cases []eventCase `json:"cases"`
-	}
-	if err := json.Unmarshal(raw, &doc); err != nil {
-		t.Fatal(err)
-	}
-	return doc.Cases
-}
-
-// TestStatementEvents runs every case of tests/events/vectors.json as a subtest named by its id,
-// and each case on MySQL, PostgreSQL and SQLite in a new case database of each, so the parity
-// check runs the suite under its case ids. It never records; the per-driver tests do.
-func TestStatementEvents(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	for _, c := range eventCases(t) {
-		t.Run(c.ID, func(t *testing.T) {
-			for _, driver := range []string{"mysql", "postgres", "sqlite"} {
-				t.Logf("driver %s", driver)
-				runEventCase(t, driver, c, false, nil)
-			}
-		})
-	}
-}
-
-// runEventCase runs case c on driver in a new case database and compares its events with the
-// vector, or keeps them in recorded when recording.
-func runEventCase(t *testing.T, driver string, c eventCase, recording bool, recorded map[string][]eventRecord) {
-	t.Helper()
-	s := fixtureSchema(t, "statement_events")
-	dsn := newDatabase(t, driver)
-	db := connectSchemaDB(t, dsn, s)
-	defer testcase.Close(t, db)
-	if c.Install == nil || *c.Install {
-		if err := db.Utils().Schema().Install(s); err != nil {
-			t.Fatal(err)
-		}
-	}
-	r := &eventRun{t: t, db: db, schema: s, ent: rowEntity("event_probe", s, "seq", "label"), numbers: map[int64]int64{}}
-	var err error
-	if r.stopRec, err = db.Subscribe(r.record); err != nil {
-		t.Fatal(err)
-	}
-	for _, s := range c.Steps {
-		r.checked(s)
-	}
-	got := r.records
-	if c.Compare == "tables" {
-		got = nil
-		for _, rec := range r.records {
-			if len(rec.Tables) > 0 {
-				got = append(got, rec)
-			}
-		}
-	}
-	if got == nil {
-		got = []eventRecord{}
-	}
-	if recording {
-		recorded[c.ID] = got
-		return
-	}
-	if want := c.Events[driver]; !reflect.DeepEqual(normalized(t, got), normalized(t, want)) {
-		gotJSON, err := json.MarshalIndent(got, "", "  ")
-		if err != nil {
-			t.Fatal(err)
-		}
-		wantJSON, err := json.MarshalIndent(want, "", "  ")
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Fatalf("%s events\n got %s\nwant %s", driver, gotJSON, wantJSON)
-	}
-}
-
-// normalized is the record read back as JSON. Numbers and empty lists in bind take the same form.
-func normalized(t testing.TB, records []eventRecord) any {
-	t.Helper()
-	raw, err := json.Marshal(records)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var out any
-	if err := json.Unmarshal(raw, &out); err != nil {
-		t.Fatal(err)
-	}
-	return out
-}
-
-// recordEvents writes the driver's expected events into each case of the vector.
-func recordEvents(t *testing.T, driver string, recorded map[string][]eventRecord) {
-	raw, err := os.ReadFile(eventsVector)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var doc map[string]any
-	if err := json.Unmarshal(raw, &doc); err != nil {
-		t.Fatal(err)
-	}
-	for _, c := range as[[]any](t, doc["cases"]) {
-		cm := as[map[string]any](t, c)
-		if events, ok := recorded[as[string](t, cm["id"])]; ok {
-			as[map[string]any](t, cm["events"])[driver] = events
-		}
-	}
-	out, err := json.MarshalIndent(doc, "", "  ")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Clean(eventsVector), append(out, '\n'), 0o644); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestStatementEventsMySQL(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	runEventCases(t, "mysql", true)
-}
-
-func TestStatementEventsPostgres(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	runEventCases(t, "postgres", true)
-}
-
-func TestStatementEventsSQLite(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	runEventCases(t, "sqlite", true)
-}
-
 // serverTransactions is one entry of the vector's server_transactions: the run on one database.
 type serverTransactions struct {
 	Database               string   `json:"database"`
@@ -438,7 +282,7 @@ func runServerTransactions(t *testing.T, cases []eventCase, spec serverTransacti
 	if onePerEvent == withPrepares {
 		t.Fatalf("go must be in exactly one of first_run_clients and first_run_prepare_clients")
 	}
-	s := fixtureSchema(t, "statement_events")
+	s := fixtureSchema(t, "statement_events/statement_events")
 	dsn := newDatabase(t, spec.Database)
 	setup, err := orm.ConnectSchema(dsn, s, orm.Config{})
 	if err != nil {

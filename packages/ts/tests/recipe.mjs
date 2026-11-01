@@ -10,11 +10,12 @@ import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { Db, OrmError, StyledValue, blindIndex, connectCatalog, dbspecManifest, decode, encode, hostDecode, hostEncode, parseDbspec, parseDbspecSet, readDbspecSet, registerModel } from '../dist/index.js';
+import { CORE, Db, OrmError, StyledValue, blindIndex, connectCatalog, dbspecManifest, decode, encode, hostDecode, hostEncode, parseDbspec, parseDbspecSet, readDbspecSet, registerModel } from '../dist/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { withCaseDatabase } from './case-database.mjs';
 import { modelOps } from './recipe_model.mjs';
+import { classesFromModel } from './registered_models.mjs';
 import { nativeQuery } from './coverage_case.mjs';
 import { conformanceCases, normalize } from './markdown_cases.mjs';
 import { listenMarkdownTestServer } from './markdown_test_listener.mjs';
@@ -270,23 +271,25 @@ const NONE_FIXTURE = 'none';
 async function runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step }) {
   const db = await Db.connect(caseDatabase.dsn);
   try {
-    if (schema !== undefined) {
+    // A case with install: false gets no fixture here; its steps install it (FCV-4, schema.install).
+    if (schema !== undefined && recipeCase.install !== false) {
       for (const shared of [...installFirst, schema]) await db.utils().schema().install(shared);
       step('schema installed');
     }
-    await runCaseOn({ name, recipe, recipeCase, database, caseDatabase, step, db });
+    await runCaseOn({ name, recipe, recipeCase, database, schema, caseDatabase, step, db });
   } finally {
     await db.close();
   }
 }
 
-async function runCaseOn({ name, recipe, recipeCase, database, caseDatabase, step, db }) {
+async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatabase, step, db }) {
   const closers = [];
   const catalog = await connectCatalog(caseDatabase.dsn);
   try {
     const namespace = await catalog.currentNamespace();
     const bound = new Map([['database', { text: caseDatabase.name }]]);
-    const context = { catalog, namespace, database, dsn: caseDatabase.dsn, bound, db, dir: dirname(resolve(root, name)), closers };
+    const classes = schema === undefined ? {} : classesFromModel(registerModel(schema.manifestText, schema.manifestHash, schema.externalText));
+    const context = { catalog, namespace, database, dsn: caseDatabase.dsn, bound, rowPaths: new Map(), db, schema, classes, dir: dirname(resolve(root, name)), closers };
     for (const rows of [recipe.seed?.rows, recipeCase.seed?.rows]) {
       for (const [table, values] of Object.entries(rows ?? {})) {
         const metadata = await catalog.describeTable({ namespace, name: table });
@@ -311,6 +314,73 @@ async function runCaseOn({ name, recipe, recipeCase, database, caseDatabase, ste
 
 // Each op maps to one call of the public API and returns the fields that its expect compares.
 const MODEL_OPS = modelOps({ native, databaseValue, stepArgument });
+
+/** The error that a failing transaction callback throws (FCV-4: expect CALLBACK). */
+const callbackError = new Error('the transaction callback failed');
+
+/** The model of table, connected to db, of the classes that the registered fixture declares. */
+function modelOf(table, db, { classes }) {
+  if (classes[table] === undefined) throw new Error(`the fixture declares no table ${table}`);
+  return new classes[table]().connect(db);
+}
+
+/** Records one statement event as a recipe object (FCV-4): transactions are numbered from 1 in order of appearance. */
+function recordEvent(subscription, event) {
+  if (!(typeof event.elapsed === 'number' && event.elapsed >= 0)) subscription.negative = true;
+  let transaction = null;
+  if (event.transaction !== null) {
+    if (!subscription.numbers.has(event.transaction)) subscription.numbers.set(event.transaction, subscription.numbers.size + 1);
+    transaction = subscription.numbers.get(event.transaction);
+  }
+  subscription.records.push({
+    sql: event.sql, binds: event.binds, kind: event.kind, tables: [...event.tables], transaction,
+    error: event.error === null ? null : event.error.code,
+  });
+}
+
+/** The recipe object of a recorded event, with the six fields of FCV-4 in order; the elapsed time is not compared. */
+function eventObject(record) {
+  return { object: [
+    ['sql', { text: record.sql }],
+    ['binds', { array: record.binds.map(bindWrapper) }],
+    ['kind', { text: record.kind }],
+    ['tables', { array: record.tables.map(name => ({ text: name })) }],
+    ['transaction', record.transaction === null ? { null: true } : { int: String(record.transaction) }],
+    ['error', record.error === null ? { null: true } : { text: record.error }],
+  ] };
+}
+
+/** The recipe wrapper of a bind value (the values of the statement_events fixture: text, int and null). */
+function bindWrapper(value) {
+  if (value === null) return { null: true };
+  if (typeof value === 'bigint' || (typeof value === 'number' && Number.isInteger(value))) return { int: String(value) };
+  if (typeof value === 'string') return { text: value };
+  if (typeof value === 'boolean') return { bool: value };
+  throw new Error(`no recipe wrapper for the bind ${JSON.stringify(value)}`);
+}
+
+// Each op maps to one call of the public API and returns the fields that its expect compares.
+const TABLE_MODELS = { EventProbe: 'event_probe' };
+
+/** The bound value that a field names: a plain name, or the {"ref": name} of an argument (FCV-4). */
+const refOf = (field, { bound: values }) => {
+  const name = typeof field === 'string' ? field : field.ref;
+  if (!values.has(name)) throw new Error(`no bound value ${name}`);
+  return values.get(name);
+};
+/** The connection that an op names, or the case connection when the op has none. */
+const connectionOf = (s, context) => (s.connection === undefined ? context.db : refOf(s.connection, context));
+/**
+ * The path of a model step, "table" or "generated" (coordinator ruling on row routing). A step with `row` names no model and
+ * no connection: it is routed by the bound row, which records the path that made it; a row that no bound row holds fails by
+ * name. Any other step is routed by its model.
+ */
+const routeOf = (s, context) => {
+  if (s.row === undefined) return TABLE_MODELS[s.model] === undefined ? 'generated' : 'table';
+  const name = typeof s.row === 'string' ? s.row : s.row.ref;
+  if (!context.rowPaths.has(name)) throw new Error(`${s.op} names row ${name}, which no bound row holds`);
+  return context.rowPaths.get(name);
+};
 
 const OPS = {
   // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
@@ -375,11 +445,16 @@ async function runStep(s, context) {
   try {
     actual = await op(s, context);
   } catch (error) {
-    if (expected?.error === undefined || typeof error?.code !== 'string') throw error;
-    assert.equal(error.code, expected.error, `the error code (${error.message})`);
+    const code = error === callbackError ? 'CALLBACK' : error?.code;
+    if (expected?.error === undefined || typeof code !== 'string') throw error;
+    assert.equal(code, expected.error, `the error code (${error.message})`);
     return;
   }
-  if (s.as !== undefined) context.bound.set(s.as, actual.bind ?? actual.value);
+  if (s.as !== undefined) {
+    context.bound.set(s.as, actual.bind ?? actual.value);
+    // A model op that binds a row records the path that made it, so that a later {row} step routes to it.
+    if (actual.bind !== undefined && s.op.startsWith('model.')) context.rowPaths.set(s.as, routeOf(s, context));
+  }
   if (expected === undefined) return;
   if (expected.error !== undefined) throw new Error(`expected ${expected.error}, and the op succeeded`);
   const compared = Object.fromEntries(Object.keys(expected).map(key => [key, actual[key]]));
@@ -607,6 +682,10 @@ async function runNested(steps, context) {
 
 Object.assign(OPS, {
   async 'schema.install'(s, context) {
+    if (s.connection !== undefined) {
+      await connectionOf(s, context).utils().schema().install(context.schema);
+      return okValue;
+    }
     await context.db.utils().schema().install(await schemaArgument(s.schema, context));
     return okValue;
   },
@@ -634,7 +713,85 @@ Object.assign(OPS, {
     return { count };
   },
   async transaction(s, context) {
-    await context.db.transaction(() => runNested(s.steps, context));
+    await connectionOf(s, context).transaction(async () => {
+      await runNested(s.steps, context);
+      if (s.fail) throw callbackError;
+    }, { retry: 0 });
     return okValue;
+  },
+});
+
+/** The table-model ops of the statement-event fixture (FCV-4 model ops on a table model, with no generated model). */
+const TABLE_OPS = {
+  async 'model.create'(s, context) {
+    const m = modelOf(TABLE_MODELS[s.model], connectionOf(s, context), context);
+    for (const a of assignments(s.values, context)) m[CORE].setValue(a.name, a.value);
+    await m.create();
+    return { bind: m };
+  },
+  async 'model.get_by'(s, context) {
+    if (s.key !== undefined) throw new Error('model.get_by with key has no table-model path');
+    const m = modelOf(TABLE_MODELS[s.model], connectionOf(s, context), context);
+    whereAll(m, assignments(s.where, context));
+    return { bind: await m.get() };
+  },
+  async 'model.update'(s, context) {
+    const row = refOf(s.row, context);
+    for (const a of assignments(s.set, context)) row[CORE].setValue(a.name, a.value);
+    await row.update();
+    return {};
+  },
+  async 'model.delete'(s, context) {
+    await refOf(s.row, context).delete();
+    return {};
+  },
+  async 'model.count'(s, context) {
+    const m = modelOf(TABLE_MODELS[s.model], connectionOf(s, context), context);
+    if (s.where !== undefined) whereAll(m, assignments(s.where, context));
+    return { value: { int: String(await m.getCount()) } };
+  },
+};
+
+/** Narrows a table-model chain by the equalities of where, joined by and in column order. */
+function whereAll(m, where) {
+  if (where.length === 0) return;
+  m[CORE].whereChain('', where.map((a, i) => ({ conn: i === 0 ? '' : 'and', op: '', column: a.name, columns: [], compare: '' })), where.map(a => a.value));
+}
+
+// The shared model op names dispatch on the model: a table model takes TABLE_OPS, every other model MODEL_OPS (FCV-4).
+for (const op of Object.keys(TABLE_OPS)) {
+  OPS[op] = async (s, context) => {
+    const path = routeOf(s, context);
+    if (path === 'table') return TABLE_OPS[op](s, context);
+    if (s.row !== undefined) throw new Error(`${op} with row: row ${s.row.ref ?? s.row} was bound by the generated path, which has no row form`);
+    return MODEL_OPS[op](s, context);
+  };
+}
+
+Object.assign(OPS, {
+  async 'events.subscribe'(s, context) {
+    const subscription = { records: [], numbers: new Map(), negative: false, stop: undefined };
+    subscription.stop = connectionOf(s, context).subscribe(event => recordEvent(subscription, event));
+    return { bind: subscription };
+  },
+  async 'events.fail_subscriber'(s, context) {
+    const stop = connectionOf(s, context).subscribe(event => {
+      if (event.kind === s.kind) throw new Error('subscriber refused the event');
+    });
+    return { bind: { stop } };
+  },
+  async 'events.stop_failing'(s, context) {
+    refOf(s.ref, context).stop();
+    return {};
+  },
+  async 'events.unsubscribe'(s, context) {
+    refOf(s.ref, context).stop();
+    return {};
+  },
+  async 'events.captured'(s, context) {
+    const subscription = refOf(s.ref, context);
+    if (subscription.negative) throw new Error('an event has a negative elapsed time');
+    const records = s.compare === 'tables' ? subscription.records.filter(r => r.tables.length > 0) : subscription.records;
+    return { value: { array: records.map(eventObject) } };
   },
 });
