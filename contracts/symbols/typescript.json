@@ -10627,6 +10627,858 @@
     "exported": false,
     "signature": "function writeRequest(c: Core, kind: 'insert' | 'update' | 'delete'): WriteRequest"
   },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots": {
+    "exported": true,
+    "signature": "class Slots"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.entity": {
+    "exported": true,
+    "signature": "EntityDef"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.seq": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnBoolValue": {
+    "exported": true,
+    "signature": "public addColumnBoolValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnBytesValue": {
+    "exported": true,
+    "signature": "public addColumnBytesValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnDateValue": {
+    "exported": true,
+    "signature": "public addColumnDateValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnDatetime0Value": {
+    "exported": true,
+    "signature": "public addColumnDatetime0Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnDatetime1Value": {
+    "exported": true,
+    "signature": "public addColumnDatetime1Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnDatetime2Value": {
+    "exported": true,
+    "signature": "public addColumnDatetime2Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnDatetime6Value": {
+    "exported": true,
+    "signature": "public addColumnDatetime6Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnDecimalValue": {
+    "exported": true,
+    "signature": "public addColumnDecimalValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnF64Value": {
+    "exported": true,
+    "signature": "public addColumnF64Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnI16Value": {
+    "exported": true,
+    "signature": "public addColumnI16Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnI32Value": {
+    "exported": true,
+    "signature": "public addColumnI32Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnI64Value": {
+    "exported": true,
+    "signature": "public addColumnI64Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnSeq": {
+    "exported": true,
+    "signature": "public addColumnSeq(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnTextValue": {
+    "exported": true,
+    "signature": "public addColumnTextValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnTime0Value": {
+    "exported": true,
+    "signature": "public addColumnTime0Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnTime1Value": {
+    "exported": true,
+    "signature": "public addColumnTime1Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnTime2Value": {
+    "exported": true,
+    "signature": "public addColumnTime2Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnTime3Value": {
+    "exported": true,
+    "signature": "public addColumnTime3Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnTime6Value": {
+    "exported": true,
+    "signature": "public addColumnTime6Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnUuidValue": {
+    "exported": true,
+    "signature": "public addColumnUuidValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnVarcharLongValue": {
+    "exported": true,
+    "signature": "public addColumnVarcharLongValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnVarcharNullValue": {
+    "exported": true,
+    "signature": "public addColumnVarcharNullValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnVarcharValue": {
+    "exported": true,
+    "signature": "public addColumnVarcharValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.avgDecimalValue": {
+    "exported": true,
+    "signature": "public avgDecimalValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.avgF64Value": {
+    "exported": true,
+    "signature": "public avgF64Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.avgI16Value": {
+    "exported": true,
+    "signature": "public avgI16Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.avgI32Value": {
+    "exported": true,
+    "signature": "public avgI32Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.avgI64Value": {
+    "exported": true,
+    "signature": "public avgI64Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.avgSeq": {
+    "exported": true,
+    "signature": "public avgSeq(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getBoolValue": {
+    "exported": true,
+    "signature": "public getBoolValue(): boolean"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getBytesValue": {
+    "exported": true,
+    "signature": "public getBytesValue(): Uint8Array"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getDateValue": {
+    "exported": true,
+    "signature": "public getDateValue(): string"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getDatetime0Value": {
+    "exported": true,
+    "signature": "public getDatetime0Value(): string"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getDatetime1Value": {
+    "exported": true,
+    "signature": "public getDatetime1Value(): string"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getDatetime2Value": {
+    "exported": true,
+    "signature": "public getDatetime2Value(): string"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getDatetime6Value": {
+    "exported": true,
+    "signature": "public getDatetime6Value(): string"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getDecimalValue": {
+    "exported": true,
+    "signature": "public getDecimalValue(): string"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getF64Value": {
+    "exported": true,
+    "signature": "public getF64Value(): number"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getI16Value": {
+    "exported": true,
+    "signature": "public getI16Value(): number"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getI32Value": {
+    "exported": true,
+    "signature": "public getI32Value(): number"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getI64Value": {
+    "exported": true,
+    "signature": "public getI64Value(): number"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getSeq": {
+    "exported": true,
+    "signature": "public getSeq(): number"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getTextValue": {
+    "exported": true,
+    "signature": "public getTextValue(): string"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getTime0Value": {
+    "exported": true,
+    "signature": "public getTime0Value(): string"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getTime1Value": {
+    "exported": true,
+    "signature": "public getTime1Value(): string"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getTime2Value": {
+    "exported": true,
+    "signature": "public getTime2Value(): string"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getTime3Value": {
+    "exported": true,
+    "signature": "public getTime3Value(): string"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getTime6Value": {
+    "exported": true,
+    "signature": "public getTime6Value(): string"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getUuidValue": {
+    "exported": true,
+    "signature": "public getUuidValue(): string"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getVarcharLongValue": {
+    "exported": true,
+    "signature": "public getVarcharLongValue(): string"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getVarcharNullValue": {
+    "exported": true,
+    "signature": "public getVarcharNullValue(): string | null"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getVarcharValue": {
+    "exported": true,
+    "signature": "public getVarcharValue(): string"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByBoolValue": {
+    "exported": true,
+    "signature": "public groupByBoolValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByBytesValue": {
+    "exported": true,
+    "signature": "public groupByBytesValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByDateValue": {
+    "exported": true,
+    "signature": "public groupByDateValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByDatetime0Value": {
+    "exported": true,
+    "signature": "public groupByDatetime0Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByDatetime1Value": {
+    "exported": true,
+    "signature": "public groupByDatetime1Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByDatetime2Value": {
+    "exported": true,
+    "signature": "public groupByDatetime2Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByDatetime6Value": {
+    "exported": true,
+    "signature": "public groupByDatetime6Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByDecimalValue": {
+    "exported": true,
+    "signature": "public groupByDecimalValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByF64Value": {
+    "exported": true,
+    "signature": "public groupByF64Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByI16Value": {
+    "exported": true,
+    "signature": "public groupByI16Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByI32Value": {
+    "exported": true,
+    "signature": "public groupByI32Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByI64Value": {
+    "exported": true,
+    "signature": "public groupByI64Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupBySeq": {
+    "exported": true,
+    "signature": "public groupBySeq(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByTextValue": {
+    "exported": true,
+    "signature": "public groupByTextValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByTime0Value": {
+    "exported": true,
+    "signature": "public groupByTime0Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByTime1Value": {
+    "exported": true,
+    "signature": "public groupByTime1Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByTime2Value": {
+    "exported": true,
+    "signature": "public groupByTime2Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByTime3Value": {
+    "exported": true,
+    "signature": "public groupByTime3Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByTime6Value": {
+    "exported": true,
+    "signature": "public groupByTime6Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByUuidValue": {
+    "exported": true,
+    "signature": "public groupByUuidValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByVarcharLongValue": {
+    "exported": true,
+    "signature": "public groupByVarcharLongValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByVarcharNullValue": {
+    "exported": true,
+    "signature": "public groupByVarcharNullValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByVarcharValue": {
+    "exported": true,
+    "signature": "public groupByVarcharValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameBoolValue": {
+    "exported": true,
+    "signature": "public keyNameBoolValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameBytesValue": {
+    "exported": true,
+    "signature": "public keyNameBytesValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameDateValue": {
+    "exported": true,
+    "signature": "public keyNameDateValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameDatetime0Value": {
+    "exported": true,
+    "signature": "public keyNameDatetime0Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameDatetime1Value": {
+    "exported": true,
+    "signature": "public keyNameDatetime1Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameDatetime2Value": {
+    "exported": true,
+    "signature": "public keyNameDatetime2Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameDatetime6Value": {
+    "exported": true,
+    "signature": "public keyNameDatetime6Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameDecimalValue": {
+    "exported": true,
+    "signature": "public keyNameDecimalValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameF64Value": {
+    "exported": true,
+    "signature": "public keyNameF64Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameI16Value": {
+    "exported": true,
+    "signature": "public keyNameI16Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameI32Value": {
+    "exported": true,
+    "signature": "public keyNameI32Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameI64Value": {
+    "exported": true,
+    "signature": "public keyNameI64Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameSeq": {
+    "exported": true,
+    "signature": "public keyNameSeq(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameTextValue": {
+    "exported": true,
+    "signature": "public keyNameTextValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameTime0Value": {
+    "exported": true,
+    "signature": "public keyNameTime0Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameTime1Value": {
+    "exported": true,
+    "signature": "public keyNameTime1Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameTime2Value": {
+    "exported": true,
+    "signature": "public keyNameTime2Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameTime3Value": {
+    "exported": true,
+    "signature": "public keyNameTime3Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameTime6Value": {
+    "exported": true,
+    "signature": "public keyNameTime6Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameUuidValue": {
+    "exported": true,
+    "signature": "public keyNameUuidValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameVarcharLongValue": {
+    "exported": true,
+    "signature": "public keyNameVarcharLongValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameVarcharNullValue": {
+    "exported": true,
+    "signature": "public keyNameVarcharNullValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameVarcharValue": {
+    "exported": true,
+    "signature": "public keyNameVarcharValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.minusDecimalValue": {
+    "exported": true,
+    "signature": "public minusDecimalValue(n: number): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.minusF64Value": {
+    "exported": true,
+    "signature": "public minusF64Value(n: number): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.minusI16Value": {
+    "exported": true,
+    "signature": "public minusI16Value(n: number): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.minusI32Value": {
+    "exported": true,
+    "signature": "public minusI32Value(n: number): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.minusI64Value": {
+    "exported": true,
+    "signature": "public minusI64Value(n: number): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.minusSeq": {
+    "exported": true,
+    "signature": "public minusSeq(n: number): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByBoolValueAsc": {
+    "exported": true,
+    "signature": "public orderByBoolValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByBoolValueDesc": {
+    "exported": true,
+    "signature": "public orderByBoolValueDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByBytesValueAsc": {
+    "exported": true,
+    "signature": "public orderByBytesValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByBytesValueDesc": {
+    "exported": true,
+    "signature": "public orderByBytesValueDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByDateValueAsc": {
+    "exported": true,
+    "signature": "public orderByDateValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByDateValueDesc": {
+    "exported": true,
+    "signature": "public orderByDateValueDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByDatetime0ValueAsc": {
+    "exported": true,
+    "signature": "public orderByDatetime0ValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByDatetime0ValueDesc": {
+    "exported": true,
+    "signature": "public orderByDatetime0ValueDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByDatetime1ValueAsc": {
+    "exported": true,
+    "signature": "public orderByDatetime1ValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByDatetime1ValueDesc": {
+    "exported": true,
+    "signature": "public orderByDatetime1ValueDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByDatetime2ValueAsc": {
+    "exported": true,
+    "signature": "public orderByDatetime2ValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByDatetime2ValueDesc": {
+    "exported": true,
+    "signature": "public orderByDatetime2ValueDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByDatetime6ValueAsc": {
+    "exported": true,
+    "signature": "public orderByDatetime6ValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByDatetime6ValueDesc": {
+    "exported": true,
+    "signature": "public orderByDatetime6ValueDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByDecimalValueAsc": {
+    "exported": true,
+    "signature": "public orderByDecimalValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByDecimalValueDesc": {
+    "exported": true,
+    "signature": "public orderByDecimalValueDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByF64ValueAsc": {
+    "exported": true,
+    "signature": "public orderByF64ValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByF64ValueDesc": {
+    "exported": true,
+    "signature": "public orderByF64ValueDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByI16ValueAsc": {
+    "exported": true,
+    "signature": "public orderByI16ValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByI16ValueDesc": {
+    "exported": true,
+    "signature": "public orderByI16ValueDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByI32ValueAsc": {
+    "exported": true,
+    "signature": "public orderByI32ValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByI32ValueDesc": {
+    "exported": true,
+    "signature": "public orderByI32ValueDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByI64ValueAsc": {
+    "exported": true,
+    "signature": "public orderByI64ValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByI64ValueDesc": {
+    "exported": true,
+    "signature": "public orderByI64ValueDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderBySeqAsc": {
+    "exported": true,
+    "signature": "public orderBySeqAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderBySeqDesc": {
+    "exported": true,
+    "signature": "public orderBySeqDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByTextValueAsc": {
+    "exported": true,
+    "signature": "public orderByTextValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByTextValueDesc": {
+    "exported": true,
+    "signature": "public orderByTextValueDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByTime0ValueAsc": {
+    "exported": true,
+    "signature": "public orderByTime0ValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByTime0ValueDesc": {
+    "exported": true,
+    "signature": "public orderByTime0ValueDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByTime1ValueAsc": {
+    "exported": true,
+    "signature": "public orderByTime1ValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByTime1ValueDesc": {
+    "exported": true,
+    "signature": "public orderByTime1ValueDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByTime2ValueAsc": {
+    "exported": true,
+    "signature": "public orderByTime2ValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByTime2ValueDesc": {
+    "exported": true,
+    "signature": "public orderByTime2ValueDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByTime3ValueAsc": {
+    "exported": true,
+    "signature": "public orderByTime3ValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByTime3ValueDesc": {
+    "exported": true,
+    "signature": "public orderByTime3ValueDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByTime6ValueAsc": {
+    "exported": true,
+    "signature": "public orderByTime6ValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByTime6ValueDesc": {
+    "exported": true,
+    "signature": "public orderByTime6ValueDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByUuidValueAsc": {
+    "exported": true,
+    "signature": "public orderByUuidValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByUuidValueDesc": {
+    "exported": true,
+    "signature": "public orderByUuidValueDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByVarcharLongValueAsc": {
+    "exported": true,
+    "signature": "public orderByVarcharLongValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByVarcharLongValueDesc": {
+    "exported": true,
+    "signature": "public orderByVarcharLongValueDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByVarcharNullValueAsc": {
+    "exported": true,
+    "signature": "public orderByVarcharNullValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByVarcharNullValueDesc": {
+    "exported": true,
+    "signature": "public orderByVarcharNullValueDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByVarcharValueAsc": {
+    "exported": true,
+    "signature": "public orderByVarcharValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByVarcharValueDesc": {
+    "exported": true,
+    "signature": "public orderByVarcharValueDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.plusDecimalValue": {
+    "exported": true,
+    "signature": "public plusDecimalValue(n: number): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.plusF64Value": {
+    "exported": true,
+    "signature": "public plusF64Value(n: number): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.plusI16Value": {
+    "exported": true,
+    "signature": "public plusI16Value(n: number): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.plusI32Value": {
+    "exported": true,
+    "signature": "public plusI32Value(n: number): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.plusI64Value": {
+    "exported": true,
+    "signature": "public plusI64Value(n: number): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.plusSeq": {
+    "exported": true,
+    "signature": "public plusSeq(n: number): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnBoolValue": {
+    "exported": true,
+    "signature": "public removeColumnBoolValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnBytesValue": {
+    "exported": true,
+    "signature": "public removeColumnBytesValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnDateValue": {
+    "exported": true,
+    "signature": "public removeColumnDateValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnDatetime0Value": {
+    "exported": true,
+    "signature": "public removeColumnDatetime0Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnDatetime1Value": {
+    "exported": true,
+    "signature": "public removeColumnDatetime1Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnDatetime2Value": {
+    "exported": true,
+    "signature": "public removeColumnDatetime2Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnDatetime6Value": {
+    "exported": true,
+    "signature": "public removeColumnDatetime6Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnDecimalValue": {
+    "exported": true,
+    "signature": "public removeColumnDecimalValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnF64Value": {
+    "exported": true,
+    "signature": "public removeColumnF64Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnI16Value": {
+    "exported": true,
+    "signature": "public removeColumnI16Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnI32Value": {
+    "exported": true,
+    "signature": "public removeColumnI32Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnI64Value": {
+    "exported": true,
+    "signature": "public removeColumnI64Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnSeq": {
+    "exported": true,
+    "signature": "public removeColumnSeq(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnTextValue": {
+    "exported": true,
+    "signature": "public removeColumnTextValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnTime0Value": {
+    "exported": true,
+    "signature": "public removeColumnTime0Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnTime1Value": {
+    "exported": true,
+    "signature": "public removeColumnTime1Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnTime2Value": {
+    "exported": true,
+    "signature": "public removeColumnTime2Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnTime3Value": {
+    "exported": true,
+    "signature": "public removeColumnTime3Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnTime6Value": {
+    "exported": true,
+    "signature": "public removeColumnTime6Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnUuidValue": {
+    "exported": true,
+    "signature": "public removeColumnUuidValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnVarcharLongValue": {
+    "exported": true,
+    "signature": "public removeColumnVarcharLongValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnVarcharNullValue": {
+    "exported": true,
+    "signature": "public removeColumnVarcharNullValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnVarcharValue": {
+    "exported": true,
+    "signature": "public removeColumnVarcharValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setBoolValue": {
+    "exported": true,
+    "signature": "public setBoolValue(value: boolean): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setBytesValue": {
+    "exported": true,
+    "signature": "public setBytesValue(value: Uint8Array): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setDateValue": {
+    "exported": true,
+    "signature": "public setDateValue(value: string): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setDatetime0Value": {
+    "exported": true,
+    "signature": "public setDatetime0Value(value: string): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setDatetime1Value": {
+    "exported": true,
+    "signature": "public setDatetime1Value(value: string): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setDatetime2Value": {
+    "exported": true,
+    "signature": "public setDatetime2Value(value: string): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setDatetime6Value": {
+    "exported": true,
+    "signature": "public setDatetime6Value(value: string): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setDecimalValue": {
+    "exported": true,
+    "signature": "public setDecimalValue(value: string): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setF64Value": {
+    "exported": true,
+    "signature": "public setF64Value(value: number): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setI16Value": {
+    "exported": true,
+    "signature": "public setI16Value(value: number): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setI32Value": {
+    "exported": true,
+    "signature": "public setI32Value(value: number): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setI64Value": {
+    "exported": true,
+    "signature": "public setI64Value(value: number): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setSeq": {
+    "exported": true,
+    "signature": "public setSeq(value: number): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setTextValue": {
+    "exported": true,
+    "signature": "public setTextValue(value: string): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setTime0Value": {
+    "exported": true,
+    "signature": "public setTime0Value(value: string): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setTime1Value": {
+    "exported": true,
+    "signature": "public setTime1Value(value: string): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setTime2Value": {
+    "exported": true,
+    "signature": "public setTime2Value(value: string): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setTime3Value": {
+    "exported": true,
+    "signature": "public setTime3Value(value: string): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setTime6Value": {
+    "exported": true,
+    "signature": "public setTime6Value(value: string): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setUuidValue": {
+    "exported": true,
+    "signature": "public setUuidValue(value: string): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setVarcharLongValue": {
+    "exported": true,
+    "signature": "public setVarcharLongValue(value: string): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setVarcharNullValue": {
+    "exported": true,
+    "signature": "public setVarcharNullValue(value: string | null): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setVarcharValue": {
+    "exported": true,
+    "signature": "public setVarcharValue(value: string): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.sumDecimalValue": {
+    "exported": true,
+    "signature": "public sumDecimalValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.sumF64Value": {
+    "exported": true,
+    "signature": "public sumF64Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.sumI16Value": {
+    "exported": true,
+    "signature": "public sumI16Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.sumI32Value": {
+    "exported": true,
+    "signature": "public sumI32Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.sumI64Value": {
+    "exported": true,
+    "signature": "public sumI64Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.sumSeq": {
+    "exported": true,
+    "signature": "public sumSeq(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::connect": {
+    "exported": true,
+    "signature": "export function connect(dsn: string, options: ConnectOptions = {}): Promise\u003cDb\u003e"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::modelEntity": {
+    "exported": false,
+    "signature": "function modelEntity(name: string): EntityDef['entity']"
+  },
   "packages/ts/src/models/complex_query/models.ts::OrderProductItem": {
     "exported": true,
     "signature": "class OrderProductItem"

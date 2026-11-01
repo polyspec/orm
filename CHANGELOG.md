@@ -47,6 +47,7 @@
 - The PHP render test checked the statements of tests/dbspec/ddl.json but not their behaviour steps. It now runs the steps on MySQL, PostgreSQL and SQLite, and fails naming the server DSN that is unset (CR16-1-3).
 - The PHP extension render test checked the statements of tests/dbspec/ddl.json but not their behaviour steps. Its make target now runs the steps on MySQL, PostgreSQL and SQLite with the extension, and fails naming the server DSN that is unset (CR16-1-4).
 - The Go runner of the DDL behaviour ran the steps of tests/dbspec/ddl.json on the three databases only in its internal package, so the client package had no test of them. A client test now runs the statements and steps through the client database driver, its make target dbspec-go-check/render-physical fails naming an unset server DSN, and parity binds it as the Go test of dbspec-render-physical (CR16-1-6).
+- The interface snapshot of the integrated check-recipes tree was stale, so the interface self-test failed on the go, php and typescript symbols. contracts/interfaces.json and the symbol snapshots of php and typescript are regenerated from the integrated tree (CR28).
 
 ## 0.0.21
 
