@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9831a32ecd8690ecf1cdad4f72ff234d8cd440633385fa7aa4d36bd350f41d15 -->
+<!-- source-sha256: 785d29e4c91a92e4c03284bf67d5a7e9d5f322eaf061a8f61c664a9241fffefe -->
 # 변경 이력
 
 ## Unreleased
 
+- Go model 생성은 `packages/go/models.txt`의 set을 scan으로 정한 순서로 생성한다. scan한 package가 다른 set의 출력을 import하는 set은 그 set 뒤에 생성되며, set 사이의 cycle은 이름을 밝히고 거부한다(`orm-gen sets`, T334-3-15-4g-1). 줄 순서는 더 이상 중요하지 않다. 이전에는 `bindmodel` set을 `markdownmodel` 뒤에 두면 실패했다. 수정.
 - `tests/bind/vectors.json`의 varchar, text, bytes bind case 중 `like_contains` 변환이 없는 17개는 message recipe `tests/bind/messages.json`의 case다. `eq`로 비교한 nil은 `IS NULL`이고 parameter를 바인드하지 않으므로(DSL-48) statement의 message는 빈 목록 `[]`이며, 스키마와 FCV가 이를 명시한다. not-null 컬럼에 대한 nil은 PHP와 Python에서 `CONFIG`다(DSL-49). Go, Rust, TypeScript는 이를 컴파일 시점에 거부하므로 제외한다. bytes 컬럼에 넣은 text의 message는 base64다(PRT-67) (T334-3-15-4f).
 - 생성된 model은 모든 column의 조건 메서드를 선언한다(DSL-154). Go, TypeScript, Rust 생성기는 key나 index의 column에만 이를 선언해 `text_value`, `bytes_value`, `varchar_long_value`에는 조건 메서드가 없었다. 이제 각 생성기가 모든 column에 대해 선언하며, PHP와 Python 생성기는 이미 그렇게 하고 있었다 (T334-3-15-4f-1). 수정.
 - decimal bind case(`tests/bind/vectors.json`의 decimal slot)는 message recipe `tests/bind/messages.json`의 case다: `decimal_value`의 `markdown.send` step 하나, decimal wrapper 하나와 expect. 수정: TypeScript와 Python recipe helper가 decimal 컬럼의 float wrapper를 text로 넘겨 float을 공개 filter에서 가리고 있었다. 이제 host 값으로 넘겨, 공개 decimal filter가 PHP와 같이 float을 CODEC_ENCODE로 거부한다. 제품 코드는 바뀌지 않았다. 기존 검사가 이미 거부하고 있었다 (T334-3-15-4e).
