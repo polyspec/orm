@@ -4,8 +4,7 @@
 mod or_panic;
 use or_panic::OrPanic;
 
-#[path = "../../tests/tests/common/schema_coverage_case.rs"]
-mod shared_case;
+use polyspec_orm_test_support::schema_coverage_case as shared_case;
 
 use polyspec_orm_schema::dbspec::{self, Dialect, Document};
 use serde_json::Value;

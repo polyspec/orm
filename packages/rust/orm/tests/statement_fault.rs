@@ -13,9 +13,6 @@
 //! feature `test-faults`, which the dev-dependency of this crate on itself enables
 //! for every test target (Cargo.toml), so `cargo test -p polyspec-orm --test statement_fault` runs the cases.
 
-#[macro_use]
-#[path = "common/model_row.rs"]
-mod model_row;
 #[path = "common/model_connect.rs"]
 mod model_connect;
 #[path = "common/rollback_probe.rs"]

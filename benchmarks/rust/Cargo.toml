@@ -29,6 +29,7 @@ sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "chrono"] }
 mysql_async = { version = "0.37.1", default-features = false, features = ["minimal-rust"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 polyspec-orm = { path = "../../packages/rust/orm" }
+polyspec-orm-test-support = { path = "../../packages/rust/test-support" }
 
 [profile.release]
 opt-level = 3

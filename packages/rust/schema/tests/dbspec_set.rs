@@ -17,8 +17,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
-#[path = "../../tests/tests/common/temp_directory.rs"]
-mod temp_directory;
+use polyspec_orm_test_support::temp_directory;
 
 const CASE_DEADLINE: Duration = Duration::from_secs(1);
 

@@ -2,8 +2,7 @@
 
 use std::{borrow::Cow, error::Error as StdError, fmt};
 
-#[path = "../../../tests/tests/common/temp_directory.rs"]
-mod temp_directory;
+use polyspec_orm_test_support::temp_directory;
 
 pub(crate) struct Scratch(std::path::PathBuf);
 

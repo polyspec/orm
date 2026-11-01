@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Rust crates share their test helpers through packages/rust/test-support, and no crate includes another crate's source by `#[path]`: the cross-crate `#[path]` attributes are removed, and a repo test fails on any of them (T349).
 - orm pins ordered-json at 0.0.20 in every ecosystem, and each lock is refreshed by its own package manager (T350).
 - orm pins kit 0.0.92, whose targets match the crate fetch of orm-install-rust-crates, and takes the principles it ships (T353).
 - contracts/check-inputs.json declared no dbspec-php-check/render, so make run-databases refused the target that runs the physical DDL cases and CI's database run did not cover them. The target is declared like its sibling dbspec-plan-php-check (CR55-1).

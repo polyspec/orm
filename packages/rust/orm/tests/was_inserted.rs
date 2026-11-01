@@ -2,9 +2,6 @@
 //! PostgreSQL. The model is the clock fixture (contracts/fixtures/clock.dbs). Each case runs in a case database of its own
 //! (polyspec-orm-case-database). The test fails when ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 
-#[macro_use]
-#[path = "common/model_row.rs"]
-mod model_row;
 #[path = "common/clock_test_support.rs"]
 mod clock_test_support;
 use clock_test_support::{connected, ClockEvent, OrPanic, CLOCK_SCHEMA};

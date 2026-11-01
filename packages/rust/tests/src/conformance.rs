@@ -18,8 +18,7 @@ use model::{
 use polyspec_orm::{AesKeyring, Collection, Db, Model, Null, Param};
 use serde_json::{json, Map, Value};
 
-#[path = "../tests/common/statement_record.rs"]
-mod statement_record;
+use polyspec_orm_test_support::statement_record;
 
 #[derive(Default)]
 struct Log {

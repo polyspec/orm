@@ -4,7 +4,7 @@ use polyspec_orm_testcase::OrPanic;
 
 use super::coverage_env::code;
 use super::coverage_env::{connect, run};
-use super::table_exists::table_exists;
+use polyspec_orm_test_support::table_exists::table_exists;
 
 const PARTIAL: &str = "dbspec 1 partial
 

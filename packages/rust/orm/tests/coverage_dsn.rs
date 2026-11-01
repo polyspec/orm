@@ -1,7 +1,6 @@
 use polyspec_orm::db::Pool;
 
-#[path = "common/feature_database.rs"]
-mod feature_database;
+use polyspec_orm_test_support::feature_database;
 
 // feature-check runs it by its exact name with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN, the database it started.
 #[tokio::test]

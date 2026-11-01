@@ -4,9 +4,7 @@ use super::coverage_env::{code, connect, run};
 use super::model::{Author, NoteReader, SharedNote, User};
 use polyspec_orm::{plan::Step, Core, Db, Entity, Model, Param, Schema};
 
-#[macro_use]
-#[path = "../../../orm/tests/common/model_row.rs"]
-mod model_row_support;
+use polyspec_orm_test_support::model_row;
 
 async fn execute_ddl(db: &Db, sql: String) {
     db.execute(&Step { sql, ..Step::default() }, &[]).await.unwrap();

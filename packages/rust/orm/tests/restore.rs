@@ -6,9 +6,6 @@
 #[path = "common/or_panic.rs"]
 mod or_panic;
 
-#[macro_use]
-#[path = "common/model_row.rs"]
-mod model_row;
 #[path = "common/model_connect.rs"]
 mod model_connect;
 #[path = "common/restore_rows.rs"]

@@ -25,6 +25,8 @@ serde_json = { version = "1", features = ["raw_value"] }
 # Reports the test case's start, result, elapsed time, and its own deadline.
 polyspec-orm-testcase = { path = "../testcase" }
 polyspec-orm-case-clock = { path = "../case-clock" }
+# The helpers that the test targets share: the temporary directory and the feature fixture cases.
+polyspec-orm-test-support = { path = "../test-support" }
 # The shared dbspec vectors are read against their JSON Schemas (tests/dbspec/schema); the schemas name no remote or file
 # reference, so the resolvers and TLS of the default features are left out.
 jsonschema = { version = "=0.58.6", default-features = false }

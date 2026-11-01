@@ -6,9 +6,7 @@ polyspec_orm::models!();
 use model::{Author, Service, ServiceMember, User};
 use serde::Serialize;
 
-#[path = "../../../packages/rust/tests/tests/common/bench_dsn.rs"]
-mod bench_dsn;
-use bench_dsn::dsn;
+use polyspec_orm_test_support::bench_dsn::dsn;
 
 /// Declares the members of the output document in the same order as the Go and PHP programs.
 #[derive(Serialize)]

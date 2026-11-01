@@ -14,8 +14,7 @@ use std::sync::{Arc, Mutex};
 use polyspec_orm::{Config, Db, StatementEvent, Subscription, Val};
 use polyspec_orm_case_database::CaseDatabase;
 
-#[path = "common/feature_database.rs"]
-mod feature_database;
+use polyspec_orm_test_support::feature_database;
 
 /// The kinds and SQL of the statement events of the connection, in order.
 type Log = Arc<Mutex<Vec<(String, String)>>>;

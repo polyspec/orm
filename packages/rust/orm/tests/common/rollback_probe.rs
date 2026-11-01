@@ -1,6 +1,7 @@
-//! The probe model of contracts/fixtures/rollback.dbs, which the replica and statement fault tests install. The
-//! including binary declares the model_row macro (common/model_row.rs) before this module.
+//! The probe model of contracts/fixtures/rollback.dbs, which the replica and statement fault tests install. This module
+//! imports the model_row macro of polyspec_orm_test_support.
 
+use polyspec_orm_test_support::model_row;
 use polyspec_orm::{Entity, Schema};
 
 pub static PROBE_SCHEMA: Schema =

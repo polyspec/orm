@@ -1,7 +1,4 @@
-#[path = "../../../packages/rust/tests/tests/common/bench_dsn.rs"]
-mod shared_bench_dsn;
-
-pub use shared_bench_dsn::dsn as bench_dsn;
+pub use polyspec_orm_test_support::bench_dsn::dsn as bench_dsn;
 
 /// Reads the required first argument and exits unless it meets the caller's minimum.
 pub fn iterations(program: &str, minimum: usize) -> usize {

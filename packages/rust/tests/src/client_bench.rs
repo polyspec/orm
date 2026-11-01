@@ -6,9 +6,7 @@ polyspec_orm::models!();
 
 use model::Author;
 
-#[path = "../tests/common/bench_stats.rs"]
-mod bench_stats;
-use bench_stats::stats;
+use polyspec_orm_test_support::bench_stats::stats;
 
 /// `ORM_BENCH_MYSQL_DSN` points to the seeded bench database; if it is missing or empty, that is an error.
 fn bench_dsn() -> Result<String, String> {

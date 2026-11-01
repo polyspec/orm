@@ -8,9 +8,6 @@
 //! direct server DSN because its raw SQLx connection sends a startup parameter that PgBouncer rejects.
 // Requirements: CFG-21, CFG-22, CFG-23, CFG-24, CFG-25.
 
-#[macro_use]
-#[path = "common/model_row.rs"]
-mod model_row;
 #[path = "common/model_connect.rs"]
 mod model_connect;
 #[path = "common/rollback_probe.rs"]

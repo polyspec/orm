@@ -9,12 +9,9 @@
 //! `cargo test -p polyspec-orm --test request_hook -- --exact <case>` runs a SQLite case; a coverage case needs the
 //! database of make feature-check, which runs it by its exact name.
 
-#[macro_use]
-#[path = "common/model_row.rs"]
-mod model_row;
+use polyspec_orm_test_support::model_row;
 
-#[path = "common/feature_database.rs"]
-mod feature_database;
+use polyspec_orm_test_support::feature_database;
 
 #[path = "common/or_panic.rs"]
 mod or_panic;

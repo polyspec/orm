@@ -2,9 +2,7 @@
 //! encrypts with `aes_keys[aes_version]`, and an `aes_key` that differs from
 //! that key is rejected.
 
-#[macro_use]
-#[path = "common/model_row.rs"]
-mod model_row;
+use polyspec_orm_test_support::model_row;
 
 #[path = "common/or_panic.rs"]
 mod or_panic;

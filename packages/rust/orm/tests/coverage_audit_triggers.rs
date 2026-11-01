@@ -7,13 +7,10 @@
 mod or_panic;
 use or_panic::OrPanic;
 
-#[macro_use]
-#[path = "common/model_row.rs"]
-mod model_row;
+use polyspec_orm_test_support::model_row;
 #[path = "common/audit_rows.rs"]
 mod audit_rows;
-#[path = "common/feature_database.rs"]
-mod feature_database;
+use polyspec_orm_test_support::feature_database;
 #[path = "common/model_connect.rs"]
 mod model_connect;
 #[path = "common/pool_exec.rs"]
@@ -24,15 +21,13 @@ mod restore_rows;
 mod result_code;
 #[path = "common/sql_text_rows.rs"]
 mod sql_text_rows;
-#[path = "../../tests/tests/common/table_exists.rs"]
-mod table_exists;
 
 use audit_rows::drop_tables;
 use polyspec_orm::db::Pool;
 use polyspec_orm::{Db, Entity, Model, Param, Schema};
 use sql_text_rows::text_rows;
 use std::time::Duration;
-use table_exists::table_exists;
+use polyspec_orm_test_support::table_exists::table_exists;
 
 /// The case deadline. It is wall-clock time, since it bounds what the database does.
 const DEADLINE: Duration = Duration::from_secs(300);

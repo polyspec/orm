@@ -85,6 +85,8 @@ polyspec-orm = { path = "../orm", features = ["test-faults"] }
 polyspec-orm-case-database = { path = "../case-database" }
 # The database path of the recipe helper connects the live catalog of orm-build to the case database.
 polyspec-orm-build = { path = "../build", features = ["live-db"] }
+# The binaries of the examples, the benchmark client and the integration program import the shared helpers from it.
+polyspec-orm-test-support = { path = "../test-support" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
 sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres", "sqlite"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }

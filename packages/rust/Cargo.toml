@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["case-clock", "case-database", "orm", "build", "schema", "testcase", "tests"]
+members = ["case-clock", "case-database", "orm", "build", "schema", "testcase", "test-support", "tests"]
 
 # The dependencies build without debug information: each feature set of a test build writes its own copy of every dependency into
 # target/debug/deps, and their line tables only scale those copies. The crates of this workspace keep the debug level of the dev

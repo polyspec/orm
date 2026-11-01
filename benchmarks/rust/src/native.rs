@@ -10,9 +10,7 @@ use std::time::Instant;
 mod bench_input;
 use bench_input::{bench_dsn, invalid_dsn, iterations};
 
-#[path = "../../../packages/rust/tests/tests/common/bench_stats.rs"]
-mod bench_stats;
-use bench_stats::stats;
+use polyspec_orm_test_support::bench_stats::stats;
 
 const COLS: &str = "`a`.`seq`, `a`.`name`, `a`.`created_ts`, `a`.`updated_ts`, `a`.`is_close`, `a`.`is_display`, `a`.`display_start_dt`, `a`.`display_end_dt`, `a`.`is_allday`, `a`.`target_club_reader_count`, `a`.`success_count`, `a`.`reader_count`, `a`.`read_count`, `a`.`photo_url`, `a`.`user_seq`, `a`.`service_seq`, `a`.`service_region_seq`, `a`.`service_member_seq`, `a`.`start_dt`, `a`.`end_dt`, `a`.`uuid`, `a`.`is_single_work`, `a`.`like_count`, `a`.`aes_hex_email`, `a`.`aes_hex_phone`";
 

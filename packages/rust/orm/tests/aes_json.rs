@@ -15,9 +15,6 @@ use polyspec_orm::{Db, Model, Param, Val};
 use polyspec_orm_case_database::CaseDatabase;
 use sqlx::Row;
 
-#[macro_use]
-#[path = "common/model_row.rs"]
-mod model_row;
 
 #[path = "common/secret_config.rs"]
 mod secret_config;

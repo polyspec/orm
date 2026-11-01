@@ -7,14 +7,10 @@
 //! "tables" compares only events that have tables. elapsed is a `Duration`, so it cannot be negative.
 //! Requirements: INT-77, INT-96, PLN-44.
 
-#[macro_use]
-#[path = "common/model_row.rs"]
-mod model_row;
+use polyspec_orm_test_support::model_row;
 
-#[path = "common/feature_database.rs"]
-mod feature_database;
-#[path = "../../tests/tests/common/statement_record.rs"]
-mod statement_record;
+use polyspec_orm_test_support::feature_database;
+use polyspec_orm_test_support::statement_record;
 
 use std::collections::HashMap;
 use std::future::Future;

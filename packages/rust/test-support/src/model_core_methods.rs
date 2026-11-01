@@ -1,5 +1,6 @@
 //! Shared core-access methods for the Rust ORM test models.
 
+#[macro_export]
 macro_rules! model_core_methods {
     ($entity:expr, $construct:expr) => {
         fn entity() -> &'static polyspec_orm::Entity {

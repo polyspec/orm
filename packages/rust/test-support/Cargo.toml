@@ -1,0 +1,19 @@
+[package]
+name = "polyspec-orm-test-support"
+version = "0.0.21"
+edition = "2021"
+rust-version = "1.99.0"
+publish = false
+description = "Test helpers that the Rust crates of polyspec-orm share: examples, benchmarks and test targets import them with use"
+
+# A crate depends on this one and imports a helper with `use`. No crate names another crate's source file by #[path], which
+# scripts/repo/check.test.mts checks.
+[dependencies]
+polyspec-orm = { path = "../orm" }
+polyspec-orm-testcase = { path = "../testcase" }
+polyspec-orm-case-clock = { path = "../case-clock" }
+sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres", "sqlite"] }
+serde_json = "1"
+
+[lints]
+workspace = true

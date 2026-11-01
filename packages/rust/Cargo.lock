@@ -1522,6 +1522,7 @@ dependencies = [
  "polyspec-orm-case-clock",
  "polyspec-orm-case-database",
  "polyspec-orm-schema",
+ "polyspec-orm-test-support",
  "polyspec-orm-testcase",
  "rand 0.10.2",
  "regex",
@@ -1585,6 +1586,7 @@ version = "0.0.21"
 dependencies = [
  "jsonschema",
  "polyspec-orm-case-clock",
+ "polyspec-orm-test-support",
  "polyspec-orm-testcase",
  "regex",
  "same-file",
@@ -1592,6 +1594,17 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "symlink",
+]
+
+[[package]]
+name = "polyspec-orm-test-support"
+version = "0.0.21"
+dependencies = [
+ "polyspec-orm",
+ "polyspec-orm-case-clock",
+ "polyspec-orm-testcase",
+ "serde_json",
+ "sqlx",
 ]
 
 [[package]]
@@ -1611,6 +1624,7 @@ dependencies = [
  "polyspec-orm",
  "polyspec-orm-build",
  "polyspec-orm-case-database",
+ "polyspec-orm-test-support",
  "polyspec-orm-testcase",
  "serde",
  "serde_json",

@@ -26,9 +26,7 @@ mod pool_scalar;
 use pool_exec::exec;
 use pool_scalar::scalar as pool_scalar;
 
-#[macro_use]
-#[path = "common/model_row.rs"]
-mod model_row;
+use polyspec_orm_test_support::model_row;
 
 use std::sync::Arc;
 

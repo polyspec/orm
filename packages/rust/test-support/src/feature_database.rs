@@ -16,7 +16,6 @@ pub fn selected_and_dsn() -> (&'static str, String) {
     (driver, dsn)
 }
 
-#[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses the DSN")]
 pub fn selected_dsn() -> (&'static str, String) {
     let (driver, dsn) = selected_and_dsn();
     assert!(!dsn.is_empty());

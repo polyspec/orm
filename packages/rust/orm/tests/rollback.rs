@@ -15,9 +15,7 @@
 //! That entry point is built with feature `test-faults`, which the dev-dependency of this crate on
 //! itself enables for every test target (Cargo.toml): `cargo test -p polyspec-orm --test rollback`.
 
-#[macro_use]
-#[path = "common/model_row.rs"]
-mod model_row;
+use polyspec_orm_test_support::model_row;
 #[path = "common/model_connect.rs"]
 mod model_connect;
 use model_connect::connected;

@@ -14,9 +14,7 @@ use polyspec_orm::db::Pool;
 use polyspec_orm::Param;
 use serde_json::json;
 
-#[path = "../../../packages/rust/tests/tests/common/bench_dsn.rs"]
-mod bench_dsn;
-use bench_dsn::dsn;
+use polyspec_orm_test_support::bench_dsn::dsn;
 
 const ITERATIONS: usize = 500;
 const AES_KEY: &str = "bench-salt";

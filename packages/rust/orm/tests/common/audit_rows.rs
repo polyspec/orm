@@ -2,6 +2,7 @@
 //! the helpers that work with those tables, and the audit record transaction case. audit.rs and coverage_audit_triggers.rs
 //! both use them.
 
+use polyspec_orm_test_support::model_row;
 use crate::or_panic::OrPanic;
 use crate::pool_exec;
 

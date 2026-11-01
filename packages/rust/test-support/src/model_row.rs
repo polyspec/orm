@@ -1,11 +1,9 @@
 //! The row of a test model: a struct with its core and its column values, and the `Model` impl that reads and writes
 //! the values by the column names of the entity (KSTD-5-46).
 
-#[macro_use]
-#[path = "model_core_methods.rs"]
-mod model_core_methods;
-
 /// Defines the row `$row` of the entity `$entity`, whose column names are the columns `$columns`, with its `Model` impl.
+/// The crate that calls it imports it with `use polyspec_orm_test_support::model_row;` and depends on `polyspec-orm`.
+#[macro_export]
 macro_rules! model_row {
     ($row:ident, $entity:ident, $columns:expr) => {
         #[derive(Clone)]
@@ -15,7 +13,7 @@ macro_rules! model_row {
         }
 
         impl polyspec_orm::Model for $row {
-            model_core_methods!(&$entity, |core| $row { core, values: std::collections::BTreeMap::new() });
+            $crate::model_core_methods!(&$entity, |core| $row { core, values: std::collections::BTreeMap::new() });
             fn assign(&mut self, name: &str, v: polyspec_orm::Val) -> polyspec_orm::Result<bool> {
                 if !$columns.contains(&name) {
                     return Ok(false);

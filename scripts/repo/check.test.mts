@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
@@ -432,6 +432,36 @@ caseTest('a rustc other than rust-toolchain.toml fails', COMPUTE, () => {
   assert.deepEqual(rustToolchainErrors('[toolchain]\nchannel = "stable"\ncomponents = ["clippy"]\n', makefile, {}, '1.98.1'), [
     'rust-toolchain.toml must declare one channel x.y.z under [toolchain]',
     'rust-toolchain.toml does not install rustfmt',
+  ]);
+});
+
+// A crate is the directory of the nearest Cargo.toml above a file ('.' above none). A #[path] whose target lies in another
+// crate couples two crates' sources, so the helpers they share belong in a crate of their own that each one depends on.
+const crateOf = (file: string, crates: Set<string>) => {
+  let dir = posix.dirname(file);
+  while (dir !== '.' && !crates.has(dir)) dir = posix.dirname(dir);
+  return dir;
+};
+const crossCrateErrors = (files: string[], read: (path: string) => string, crates: Set<string>) => files.flatMap(file =>
+  [...read(file).matchAll(/#\[path\s*=\s*"([^"]+)"\]/g)]
+    .map(([, target = '']) => ({ target, crosses: crateOf(posix.join(posix.dirname(file), target), crates) !== crateOf(file, crates) }))
+    .filter(({ crosses }) => crosses)
+    .map(({ target }) => `${file} names ${target} by #[path], a file of another crate`));
+
+caseTest('a Rust file names no file of another crate by #[path]', COMPUTE, () => {
+  const crates = new Set([...trackedAll].filter(file => file.endsWith('Cargo.toml')).map(file => posix.dirname(file)));
+  assert.deepEqual(crossCrateErrors(trackedFiles('*.rs'), text, crates), []);
+});
+
+caseTest('a #[path] into another crate fails the Rust crate check', COMPUTE, () => {
+  const crates = new Set(['packages/rust/a', 'packages/rust/b', 'packages/rust/tests']);
+  const sources: Record<string, string> = {
+    'packages/rust/a/tests/case.rs': '#[path = "../src/lib.rs"]\nmod own;\n#[path = "../../b/src/shared.rs"]\nmod shared;\n',
+    'examples/complex/rust/main.rs': '#[path = "../../../packages/rust/tests/tests/common/bench_dsn.rs"]\nmod bench_dsn;\n',
+  };
+  assert.deepEqual(crossCrateErrors(Object.keys(sources), source => sources[source] ?? '', crates), [
+    'packages/rust/a/tests/case.rs names ../../b/src/shared.rs by #[path], a file of another crate',
+    'examples/complex/rust/main.rs names ../../../packages/rust/tests/tests/common/bench_dsn.rs by #[path], a file of another crate',
   ]);
 });
 

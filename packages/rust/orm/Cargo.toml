@@ -55,6 +55,8 @@ libsqlite3-sys = { version = "0.37", default-features = false }
 polyspec-orm-case-clock = { path = "../case-clock" }
 # The database case creates its own database and deletes it when it ends.
 polyspec-orm-case-database = { path = "../case-database" }
+# The helpers that the test targets share: model rows, feature databases, table checks and statement records.
+polyspec-orm-test-support = { path = "../test-support" }
 # The registration test installs a logger that counts sqlx's statement log records. It is the version sqlx uses.
 log = "0.4"
 
