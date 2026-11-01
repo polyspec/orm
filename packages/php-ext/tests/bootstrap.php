@@ -91,6 +91,7 @@ require_once dirname(__DIR__, 2) . '/php/tests/GroupRowsTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/HostcodecTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/InsertPartsTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/IrAnswersTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/BindMessagesRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/MarkdownTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ModelMethodsTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ModelTest.php';

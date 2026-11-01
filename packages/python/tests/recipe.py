@@ -5,8 +5,13 @@
 import dataclasses
 import json
 import math
+import os
 import re
+import socket
 import tempfile
+import threading
+import time
+import types
 import unittest
 from decimal import Decimal
 from pathlib import Path
@@ -90,6 +95,9 @@ def recipe_tests(path: str, database: str):
                 if step["op"] == "ir.answer":
                     _answer(step, database)
                     continue
+                if step["op"] == "markdown.send":
+                    _send_in_process_zone(step)
+                    continue
                 _run(step, bound, database)
             except AssertionError as error:
                 raise AssertionError(
@@ -115,6 +123,172 @@ def _answer(step: dict, database: str) -> None:
         raise AssertionError(
             f"got {json.dumps(got)}, want {json.dumps(outcome['value'])}"
         )
+
+
+# The markdown.send steps (docs/spec/feature-coverage.md FCV-4): each runs one public call on a listener that answers connect with
+# {"ok": true} and records the first message after it, and answers that message with an error so the call ends.
+SEND_TOKEN = "0123456789abcdef0123456789abcdef"
+SEND_ERROR = b'{"error":{"code":"IR_INVALID","message":"recorded by the markdown.send listener"}}'
+# The typed filters of the bind fixture tests/bind/slots.dbs that a markdown.send statement may name, by column (DBS-121).
+SEND_FILTERS = frozenset(
+    [
+        "time0_value",
+        "time3_value",
+        "time6_value",
+        "datetime0_value",
+        "datetime3_value",
+        "datetime6_value",
+        "date_value",
+    ]
+)
+BIND_MODELS: dict = {}
+
+
+def _bind_models():
+    """The generated models of tests/bind/dbspec-set.json, loaded once from the directory that the environment variable
+    ORM_PYTHON_BIND_MODELS names, the way the Python conformance runner loads its models.py (make bind-message-check/python)."""
+    if "models" not in BIND_MODELS:
+        directory = os.environ.get("ORM_PYTHON_BIND_MODELS", "")
+        if not directory:
+            raise AssertionError(
+                "ORM_PYTHON_BIND_MODELS names no model directory; run make bind-message-check/python"
+            )
+        source = os.path.join(directory, "models.py")
+        module = types.ModuleType("bind_models")
+        module.__file__ = source
+        with open(source, encoding="utf-8") as file:
+            exec(compile(file.read(), source, "exec"), module.__dict__)
+        BIND_MODELS["models"] = module
+    return BIND_MODELS["models"]
+
+
+def _start_send_listener(received: list):
+    """A listener on a free loopback port that takes one connection: it answers the first line with {"ok": true}, appends the
+    second line to received, and answers every later line with SEND_ERROR."""
+    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(1)
+    listener.settimeout(10)
+
+    def serve():
+        try:
+            conn, _ = listener.accept()
+        except OSError:
+            return
+        conn.settimeout(10)
+        try:
+            with conn, conn.makefile("rb") as lines:
+                index = 0
+                while True:
+                    line = lines.readline()
+                    if not line:
+                        return
+                    if index == 0:
+                        reply = b'{"ok":true}'
+                    else:
+                        if index == 1:
+                            received.append(line.decode("utf-8").rstrip("\n"))
+                        reply = SEND_ERROR
+                    index += 1
+                    conn.sendall(reply + b"\n")
+        except OSError:
+            return
+
+    thread = threading.Thread(target=serve, daemon=True)
+    thread.start()
+    return listener, thread
+
+
+def _send_in_process_zone(step: dict) -> None:
+    """Runs one markdown.send step with the process default zone of its process_zone (an IANA zone), when it names one: the zone
+    is set in TZ and applied with time.tzset(), and the previous TZ is restored afterward, so no case keeps the zone."""
+    zone = step.get("process_zone")
+    if zone is None:
+        _send(step)
+        return
+    previous = os.environ.get("TZ")
+    os.environ["TZ"] = zone
+    time.tzset()
+    try:
+        _send(step)
+    finally:
+        if previous is None:
+            os.environ.pop("TZ", None)
+        else:
+            os.environ["TZ"] = previous
+        time.tzset()
+
+
+def _send(step: dict) -> None:
+    """Runs one markdown.send step and checks its expect, which is not per database: {"message": JSON} against the first
+    message the listener received (the whole message of a begin, the one parameter of a statement), or {"error": CODE} against
+    the code of the orm error that the call raises before it sends a message."""
+    received: list = []
+    listener, thread = _start_send_listener(received)
+    code = ""
+    db = None
+    try:
+        models = _bind_models()
+        db = models.connect(
+            f"markdown://127.0.0.1:{listener.getsockname()[1]}/conformance?token={SEND_TOKEN}"
+        )
+        try:
+            if "begin" in step:
+                db.transaction(
+                    lambda: None, {"readOnly": step["begin"].get("read_only") is True}
+                )
+            else:
+                _query_slot(models, db, step)
+        except OrmError as error:
+            code = error.code
+    finally:
+        if db is not None:
+            db.close()
+        listener.close()
+        thread.join(5)
+    expect = step["expect"]
+    if "error" in expect:
+        got = "" if received else code
+        if got != expect["error"]:
+            raise AssertionError(
+                f"the call returned error {got or 'none'}, want {expect['error']}"
+            )
+        return
+    if not received:
+        raise AssertionError(
+            f"the call returned error {code or 'none'} before a message, want {json.dumps(expect.get('message'))}"
+        )
+    got = _message_value(received[0])
+    if got != expect["message"]:
+        raise AssertionError(
+            f"message {json.dumps(got)}, want {json.dumps(expect['message'])} (message {received[0]})"
+        )
+
+
+def _query_slot(models, db, step: dict) -> None:
+    """Runs the generated typed filter of the slot column of step with the text of its wrapper; the filter takes the text form
+    of the value (DBS-121). A column or operator without a typed filter here is a defect of the recipe."""
+    if step["operator"] != "eq":
+        raise AssertionError(f"operator {step['operator']} has no typed filter in the Python cases")
+    table, _, name = step["column"].partition(".")
+    if table != "slots" or name not in SEND_FILTERS:
+        raise AssertionError(f"the column {step['column']} has no typed filter in the Python cases")
+    wrapper = step["params"][0]
+    if len(wrapper) != 1 or not isinstance(next(iter(wrapper.values())), str):
+        raise AssertionError(f"the parameter {json.dumps(wrapper)} is no text wrapper")
+    value = next(iter(wrapper.values()))
+    getattr(models.Slots().connect(db), f"gets_by_{name}")(value)
+
+
+def _message_value(text: str):
+    """The message that an expect compares: the whole message of a begin, or the one parameter of a statement."""
+    message = json.loads(text)
+    if message.get("op") == "begin":
+        return message
+    params = message.get("params")
+    if not isinstance(params, list) or len(params) != 1:
+        raise AssertionError(f"the statement message {text} holds no single parameter")
+    return params[0]
 
 
 def _validation_model(schema: Path):

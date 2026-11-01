@@ -261,107 +261,6 @@ class MarkdownTest extends TestCase
             ) !== 1, 'request message = ' . ($received[1] ?? 'none'));
     }
 
-    // Requirements: PRT-67.
-    public function testBindMessageVectors(): void
-    {
-        // Message case of tests/bind/vectors.json: the runtime value model JSON of an IR executor message parameter
-        // (docs/spec/protocol.md §5 "Parameters"). It is the same case as Go's TestBindMessageVectors.
-        $vectors = json_decode(
-            (string) file_get_contents(__DIR__ . '/../../../tests/bind/vectors.json'),
-            true,
-            flags: JSON_THROW_ON_ERROR
-        );
-        $server = start_markdown_test_server(['{"ok":true}']);
-        $db = Orm::connect($server[2], new Config());
-        self::assertFalse(
-            (new DateTimeImmutable("2000-01-01", $db->zone()))->format("P") !== $vectors["zone"],
-            "zone {$db->zone()->getName()}; want {$vectors['zone']}"
-        );
-        // The control cases: the begin control message of a transaction with and without readOnly (§5 Session).
-        self::assertNotEmpty($vectors['control'] ?? [], 'tests/bind/vectors.json has no control cases');
-        foreach ($vectors['control'] as $c) {
-            self::assertSame($c['json'], \Polyspec\Orm\Markdown::beginMessage($c['read_only']), "control/{$c['name']}");
-        }
-        $param = new \ReflectionMethod(\Polyspec\Orm\Markdown::class, 'param');
-        foreach ($vectors['message'] as $c) {
-            $got = null;
-            $e = markdown_error(static function () use ($param, $db, $c, &$got): void {
-                $got = $param->invoke(null, $db, 0, $c['value'], [['type' => $c['type'], 'column' => null]]);
-            });
-            if (isset($c['code'])) {
-                self::assertFalse(
-                    $e?->code_ !== $c['code'],
-                    "{$c['name']}: " . json_encode($got) . ' ' . ($e?->getMessage() ?? '') . "; want {$c['code']}"
-                );
-            } else {
-                self::assertFalse(
-                    $e !== null || $got !== $c['json'],
-                    "{$c['name']}: " . json_encode($got) . ' ' . ($e?->getMessage() ?? '') . "; want {$c['json']}"
-                );
-            }
-        }
-        $db->close();
-        markdown_test_server_received_messages($server);
-    }
-
-    // Requirements: PRT-67.
-    public function testPublicBindMessageVectors(): void
-    {
-        $vectors = json_decode(
-            (string) file_get_contents(__DIR__ . '/../../../tests/bind/vectors.json'),
-            true,
-            flags: JSON_THROW_ON_ERROR
-        );
-        $manifest = "dbspec 1 bind_message\n\ntable bind_message {\n"
-            . "  seq i64 identity\n  day date null\n  clock time(6) null\n  stamp datetime(6) null\n"
-            . "  primary key (seq)\n}\n";
-        $hash = 'sha256:' . hash('sha256', $manifest);
-        $valid = array_values(array_filter($vectors['message'], static fn(array $case): bool => !isset($case['code'])));
-        $server = start_markdown_test_server([
-            '{"ok":true}',
-            ...array_fill(0, count($valid), '{"rows":[]}'),
-        ]);
-        $db = Orm::connectSchema($server[2], new Schema($manifest, $hash), new Config());
-        self::assertSame('+00:00', $vectors['zone']);
-
-        $sent = [];
-        foreach ($vectors['message'] as $case) {
-            $column = match ($case['type']) {
-                'date' => 'day',
-                'time' => 'clock',
-                'datetime' => 'stamp',
-            };
-            $request = new Request('all', $hash);
-            $request->ir['entity'] = 'bind_message';
-            $request->ir['where'] = ['items' => [['pred' => [
-                'column' => $column,
-                'op' => 'eq',
-                'p' => $request->param($case['value']),
-            ]]]];
-
-            try {
-                Markdown::read($db, $request);
-                $error = null;
-            } catch (OrmException $caught) {
-                $error = $caught;
-            }
-            if (isset($case['code'])) {
-                self::assertSame($case['code'], $error?->code_, $case['name']);
-                continue;
-            }
-            self::assertNull($error, $case['name'] . ': ' . ($error?->getMessage() ?? ''));
-            $sent[] = $case;
-        }
-
-        $db->close();
-        $messages = markdown_test_server_received_messages($server);
-        self::assertCount(count($sent) + 1, $messages, 'invalid values must fail before sending a request');
-        foreach ($sent as $i => $case) {
-            $message = json_decode($messages[$i + 1], true, flags: JSON_THROW_ON_ERROR);
-            self::assertSame([$case['json']], $message['params'] ?? null, $case['name']);
-        }
-    }
-
     // Requirements: PRT-67, DIA-31.
     public function testBindVectors(): void
     {
@@ -521,24 +420,6 @@ class MarkdownTest extends TestCase
                 ($got = $usesOf($validator->paramUses($request))) !== $want,
                 "$name uses = " . json_encode($got) . "\nwant " . json_encode($want)
             );
-        }
-    }
-
-    // Requirements: PRT-67.
-    public function testBindOffsetlessDatetimeUsesTheConnectionZoneUnderDst(): void
-    {
-        // An offset-less datetime is a wall clock in the connection zone (docs/spec/protocol.md §5). The process
-        // date.timezone has daylight saving, and 2026-03-08 02:30 does not exist in America/New_York: the
-        // connection zone is UTC, so the value must bind unchanged whatever the process zone is.
-        $default = date_default_timezone_get();
-        date_default_timezone_set('America/New_York');
-        try {
-            $utc = new \DateTimeZone('UTC');
-            self::assertSame('2026-03-08 02:30:00.000000', Db::timeValue('2026-03-08 02:30:00', 'datetime', 6, $utc));
-            self::assertSame('2026-03-08 02:30:00.500000', Db::timeValue('2026-03-08T02:30:00.5', 'datetime', 6, $utc));
-            self::assertSame('2026-03-08', Db::timeValue('2026-03-08', 'date', 0, $utc));
-        } finally {
-            date_default_timezone_set($default);
         }
     }
 }

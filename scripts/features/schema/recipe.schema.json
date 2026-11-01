@@ -203,7 +203,7 @@
     "step": {
       "type": "object",
       "required": ["op"],
-      "properties": { "op": { "enum": ["model.connect", "codec.decode", "codec.encode", "codec.host_encode", "codec.host_decode", "codec.blind_index", "sql.exec", "ir.validate", "ir.answer", "catalog.current_namespace", "catalog.describe_table", "catalog.table_page", "catalog.read_only_query", "catalog.read_only_grid_query", "catalog.row_snapshot", "catalog.insert_row", "catalog.update_row", "catalog.delete_row", "catalog.connect", "catalog.close", "catalog.reconnect", "catalog.revision", "catalog.row_cells", "model.read_bind_cell"] } },
+      "properties": { "op": { "enum": ["model.connect", "codec.decode", "codec.encode", "codec.host_encode", "codec.host_decode", "codec.blind_index", "sql.exec", "ir.validate", "ir.answer", "catalog.current_namespace", "catalog.describe_table", "catalog.table_page", "catalog.read_only_query", "catalog.read_only_grid_query", "catalog.row_snapshot", "catalog.insert_row", "catalog.update_row", "catalog.delete_row", "catalog.connect", "catalog.close", "catalog.reconnect", "catalog.revision", "catalog.row_cells", "model.read_bind_cell", "markdown.send"] } },
       "oneOf": [
         { "$ref": "#/$defs/ops/model.connect" },
         { "$ref": "#/$defs/ops/codec.decode" },
@@ -211,7 +211,7 @@
         { "$ref": "#/$defs/ops/codec.host_encode" },
         { "$ref": "#/$defs/ops/codec.host_decode" },
         { "$ref": "#/$defs/ops/codec.blind_index" },
-        { "$ref": "#/$defs/ops/sql.exec" }, { "$ref": "#/$defs/ops/ir.validate" }, { "$ref": "#/$defs/ops/ir.answer" },
+        { "$ref": "#/$defs/ops/sql.exec" }, { "$ref": "#/$defs/ops/ir.validate" }, { "$ref": "#/$defs/ops/ir.answer" }, { "$ref": "#/$defs/ops/markdown.send" },
         { "$ref": "#/$defs/ops/catalog.current_namespace" },
         { "$ref": "#/$defs/ops/catalog.describe_table" },
         { "$ref": "#/$defs/ops/catalog.table_page" },
@@ -347,6 +347,24 @@
           "sql": { "$ref": "#/$defs/sql" },
           "reason": { "type": "string", "minLength": 1 },
           "only": { "$ref": "#/$defs/only" }
+        }
+      },
+      "markdown.send": {
+        "type": "object",
+        "required": ["op", "expect"],
+        "additionalProperties": false,
+        "oneOf": [{ "required": ["column", "operator", "params"], "properties": { "column": true, "operator": true, "params": true } }, { "required": ["begin"], "properties": { "begin": true } }],
+        "properties": {
+          "op": { "const": "markdown.send" },
+          "column": { "type": "string", "pattern": "^[a-z_][a-z0-9_]*\\.[a-z_][a-z0-9_]*$", "description": "A parameter slot of the bind fixture (tests/bind/slots.dbs): <table>.<column>. The statement reads that column with the operator and one parameter." },
+          "operator": { "enum": ["eq", "like_contains"], "description": "eq compares the column with the parameter; like_contains compares it with the pattern that contains the parameter (the transform of tests/bind/vectors.json)." },
+          "params": { "type": "array", "items": { "$ref": "#/$defs/value" }, "maxItems": 1, "description": "The one parameter of the statement, a recipe wrapper." },
+          "process_zone": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_+-]*(/[A-Za-z][A-Za-z0-9_+-]*)*$", "description": "An IANA zone name that is the process default zone while the case runs, restored after it. An offset-less datetime is a wall clock in the connection zone, not in this zone (docs/spec/protocol.md section 5)." },
+          "begin": { "type": "object", "required": ["read_only"], "additionalProperties": false, "properties": { "read_only": { "type": "boolean" } }, "description": "A transaction begin on the connection, sent in place of a statement." },
+          "expect": { "type": "object", "oneOf": [
+            { "required": ["message"], "additionalProperties": false, "properties": { "message": { "description": "The JSON that the listener receives first: the begin message of a begin, or the JSON of the parameter of a statement (runtime value model, docs/spec/protocol.md section 5)." } } },
+            { "required": ["error"], "additionalProperties": false, "properties": { "error": { "type": "string", "pattern": "^[A-Z_]+$", "description": "The code of the error that the public call returns before any message is sent." } } }
+          ] }
         }
       },
       "catalog.current_namespace": {

@@ -63,6 +63,21 @@ final class Recipe
                     self::answerStep($step);
                     continue;
                 }
+                if ($step['op'] === 'markdown.send') {
+                    if (array_key_exists('process_zone', $step)) {
+                        // The process zone holds while the step runs, so the public call sees it, and is restored after it.
+                        $saved = date_default_timezone_get();
+                        date_default_timezone_set($step['process_zone']);
+                        try {
+                            self::sendStep($step);
+                        } finally {
+                            date_default_timezone_set($saved);
+                        }
+                    } else {
+                        self::sendStep($step);
+                    }
+                    continue;
+                }
                 self::step($step, $bound, $database);
             } catch (\PHPUnit\Framework\AssertionFailedError $failure) {
                 Assert::fail(
@@ -142,6 +157,106 @@ final class Recipe
             $actual,
             'got ' . MarkdownConformanceTest::jsonText($actual) . ', want ' . MarkdownConformanceTest::jsonText($expect)
         );
+    }
+
+    /** The typed filters of the bind fixture tests/bind/slots.dbs that a markdown.send statement may name, by column (DBS-121). */
+    private const BIND_FILTERS = [
+        'slots.time0_value' => 'time0Value',
+        'slots.time3_value' => 'time3Value',
+        'slots.time6_value' => 'time6Value',
+        'slots.datetime0_value' => 'datetime0Value',
+        'slots.datetime3_value' => 'datetime3Value',
+        'slots.datetime6_value' => 'datetime6Value',
+        'slots.date_value' => 'dateValue',
+    ];
+
+    /** The answer of the markdown.send listener to the message it records, which ends the call. */
+    private const SEND_ERROR = '{"error":{"code":"IR_INVALID","message":"recorded by the markdown.send listener"}}';
+
+    /**
+     * Runs one markdown.send step (FCV-4) on a listener that answers connect with {"ok":true}, records the first message after
+     * it and answers that message with SEND_ERROR so the call ends. The expect is {"message": JSON}, compared with the whole
+     * message of a begin or the one parameter of a statement, or {"error": CODE}, compared with the code of the orm error that
+     * the call raises before it sends a message.
+     */
+    private static function sendStep(array $step): void
+    {
+        self::loadBindModels();
+        $server = start_markdown_test_server(['{"ok":true}', self::SEND_ERROR]);
+        $code = '';
+        $db = null;
+        try {
+            $db = \Polyspec\Orm\Tests\BindModel\connect($server[2], new Config());
+            if (array_key_exists('begin', $step)) {
+                $db->transaction(static fn(): null => null, '', $step['begin']['read_only'] === true);
+            } else {
+                self::sendQuery($step, $db);
+            }
+        } catch (OrmException $error) {
+            $code = $error->code_;
+        } finally {
+            $db?->close();
+            $received = markdown_test_server_received_messages($server);
+        }
+        // The first line is connect; the second is the first message after it.
+        $message = $received[1] ?? null;
+        $expect = $step['expect'];
+        if (isset($expect['error'])) {
+            Assert::assertSame($expect['error'], $message === null ? $code : '', 'the error code of the call');
+            return;
+        }
+        if ($message === null) {
+            Assert::fail("the call returned error $code before a message, want " . json_encode($expect['message']));
+        }
+        $got = self::messageValue($message);
+        if (is_array($expect['message'])) {
+            Assert::assertEqualsCanonicalizing($expect['message'], $got, "message $message");
+            return;
+        }
+        Assert::assertSame($expect['message'], $got, "message $message");
+    }
+
+    /** The message that an expect compares: the whole message of a begin, or the one parameter of a statement. */
+    private static function messageValue(string $text): mixed
+    {
+        $message = json_decode($text, true, 512, JSON_THROW_ON_ERROR);
+        if (($message['op'] ?? null) === 'begin') {
+            return $message;
+        }
+        $params = $message['params'] ?? null;
+        if (!is_array($params) || count($params) !== 1) {
+            Assert::fail("the statement message $text holds no single parameter");
+        }
+        return $params[0];
+    }
+
+    /** Runs the generated typed filter of the slot column of step with the text of its wrapper (DBS-121). */
+    private static function sendQuery(array $step, mixed $db): void
+    {
+        $column = $step['column'];
+        $method = self::BIND_FILTERS[$column] ?? Assert::fail("the column $column has no typed filter in the PHP cases");
+        if ($step['operator'] !== 'eq') {
+            Assert::fail("operator {$step['operator']} has no typed filter in the PHP cases");
+        }
+        $wrapper = $step['params'][0];
+        $value = is_array($wrapper) && count($wrapper) === 1 ? array_values($wrapper)[0] : null;
+        if (!is_string($value)) {
+            Assert::fail('the parameter ' . json_encode($wrapper) . ' is no text wrapper');
+        }
+        (new \Polyspec\Orm\Tests\BindModel\Slots())->connect($db)->{$method}($value)->gets();
+    }
+
+    /** Loads the generated models of tests/bind/dbspec-set.json, which make php-models writes, once. */
+    private static function loadBindModels(): void
+    {
+        static $loaded = false;
+        if ($loaded) {
+            return;
+        }
+        $directory = dirname(__DIR__) . '/bindmodel';
+        requireGeneratedClasses($directory);
+        require_once $directory . '/bootstrap.php';
+        $loaded = true;
     }
 
     /** Maps the op of step to its call and checks the result against the expect of database. */

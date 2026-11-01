@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e1165657e555ff1a498dee654f718c36e17ac82cdfba2ff376bd01d0058a359e -->
+<!-- source-sha256: 9c3fd4b770ee2129f65d265760ba4286a62cb4ae18111046540eb0188c1c05b4 -->
 # 변경 이력
 
 ## Unreleased
 
+- `tests/bind/vectors.json`의 markdown message와 control vector는 `markdown.send` step(`column`, `operator`, `params`, `begin`, `process_zone`, `expect`)으로 된 recipe `tests/bind/messages.json` 하나다. 여섯 recipe helper가 각자 공개 markdown 연결로 실행하고, listener가 처음 받은 message를 기록한다. 기존 native message test와 parity 바인딩은 지웠고, DST gap의 offset 없는 datetime case는 `process_zone` 아래에서 실행한다 (T334-3-15-3c).
 - checkPrecision은 여섯 runtime 모두에서 public이다(INT-117): SQLite CHECK precision을 채우는 Go CatalogColumn 필드와 Rust TableColumnMetadata 필드를 공개 이름으로 export하고, config/parity.json은 그것들을 catalog connection이 export하는 다른 public symbol과 함께 선언한다 (T334-3-3-2-9).
 - PostgreSQL describe는 생성 컬럼에 default를 보고하지 않는다: 생성 컬럼의 생성 식은 default가 있는 자리인 pg_attrdef에 보관되므로, 모든 runtime은 그 컬럼의 default 식을 읽지 않고 default 표지를 false로 본다(SCH-6a) (T334-3-3-2-8).
 - catalog_connection runner의 lint 및 중복 finding을 제자리에서 고쳤다: Go의 Close errcheck, TypeScript의 미사용 변수와 중복 helper, Python ruff finding, PHP phpcs finding과 빈 catch(catch는 오류를 처리하거나 다시 던진다), Rust의 도달 불가 grid arm과 공유 probe의 미사용 helper, PHP의 중복 fetchAll (T334-3-3-2-7).

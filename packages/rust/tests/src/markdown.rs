@@ -150,6 +150,55 @@ fn answer_on_thread(chain: &str, answer: &Value, answers: &Value) -> Value {
     got
 }
 
+/// The listener of one markdown.send step of the recipe helper: it accepts one connection, answers connect with
+/// {"ok": true}, records the first message after it, and answers that message and each later one with an error so that the
+/// call ends. `dsn` is the connection string of the connection to make; `first` yields the recorded message after the call.
+pub struct SendListener {
+    pub dsn: String,
+    first: std::sync::mpsc::Receiver<Value>,
+    thread: std::thread::JoinHandle<()>,
+}
+
+/// Starts the listener of one markdown.send step on a port of its own.
+pub fn send_listener() -> SendListener {
+    use std::io::Write;
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("a listener");
+    let port = listener.local_addr().expect("its address").port();
+    let (record, first) = std::sync::mpsc::channel();
+    let thread = std::thread::spawn(move || {
+        let Ok((conn, _)) = listener.accept() else { return };
+        let mut writer = conn.try_clone().expect("a second handle");
+        let mut lines = std::io::BufReader::new(conn).lines();
+        let mut connected = false;
+        let mut recorded = false;
+        while let Some(Ok(line)) = lines.next() {
+            let reply = if !std::mem::replace(&mut connected, true) {
+                json!({ "ok": true })
+            } else {
+                if !std::mem::replace(&mut recorded, true) {
+                    let _ = record.send(serde_json::from_str(&line).unwrap_or(Value::Null));
+                }
+                json!({ "error": { "code": "IR_INVALID", "message": "recorded by the markdown.send listener" } })
+            };
+            if writer.write_all(format!("{reply}\n").as_bytes()).is_err() {
+                return;
+            }
+        }
+    });
+    let token = "0123456789abcdef0123456789abcdef";
+    SendListener { dsn: format!("markdown://127.0.0.1:{port}/conformance?token={token}"), first, thread }
+}
+
+impl SendListener {
+    /// The first message the listener received, or none when the call sent no message. Call it after the call and the
+    /// connection have ended: the call returns only after the listener has answered, so a sent message is already recorded.
+    pub fn finish(self) -> Option<Value> {
+        let message = self.first.try_recv().ok();
+        let _ = self.thread.join();
+        message
+    }
+}
+
 /// Installs corpus/ as a new corpus, starts that server, and connects to it.
 pub async fn serve(bin: &Path, scratch: &Path) -> (Served, Server) {
     let corpus = "conformance".to_owned();

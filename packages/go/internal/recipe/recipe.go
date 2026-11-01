@@ -39,18 +39,30 @@ type recipeCase struct {
 }
 
 type step struct {
-	Op      string                     `json:"op"`
-	Styles  []string                   `json:"styles"`
-	Raw     json.RawMessage            `json:"raw"`
-	Value   json.RawMessage            `json:"value"`
-	Key     *string                    `json:"key"`
-	As      string                     `json:"as"`
-	Request json.RawMessage            `json:"request"`
-	Chain   string                     `json:"chain"`
-	Answer  json.RawMessage            `json:"answer"`
-	Answers map[string]json.RawMessage `json:"answers"`
-	Expect  map[string]json.RawMessage `json:"expect"`
+	Op          string                     `json:"op"`
+	Styles      []string                   `json:"styles"`
+	Raw         json.RawMessage            `json:"raw"`
+	Value       json.RawMessage            `json:"value"`
+	Key         *string                    `json:"key"`
+	As          string                     `json:"as"`
+	Request     json.RawMessage            `json:"request"`
+	Chain       string                     `json:"chain"`
+	Answer      json.RawMessage            `json:"answer"`
+	Answers     map[string]json.RawMessage `json:"answers"`
+	Column      string                     `json:"column"`
+	Operator    string                     `json:"operator"`
+	Params      []json.RawMessage          `json:"params"`
+	Begin       json.RawMessage            `json:"begin"`
+	Expect      map[string]json.RawMessage `json:"expect"`
+	ProcessZone string                     `json:"process_zone"`
 }
+
+// MarkdownSend runs one markdown.send step on a markdown connection to a listener that records the first message it receives,
+// and returns that message (the JSON of the message, or of the parameter of a statement) and the code of the error that the
+// public call returned before it sent one. A begin step passes begin, the statement passes column, operator and params.
+// A non-empty processZone is the IANA zone name that is the process default zone while the step runs.
+// It is supplied by the test package that owns the listener and the generated bind models, since they cannot be reached from here.
+type MarkdownSend func(t *testing.T, column, operator string, params []json.RawMessage, begin *bool, processZone string) (message json.RawMessage, code string)
 
 // IRAnswer runs the chain of one ir.answer step on a listener that answers with the answer, or with answers keyed by the op of
 // a control message or the kind of a request, and returns the result of the chain or its error. It is supplied by the test
@@ -61,7 +73,27 @@ type IRAnswer func(t *testing.T, chain string, answer json.RawMessage, answers m
 type Option func(*options)
 
 type options struct {
-	irAnswer IRAnswer
+	irAnswer     IRAnswer
+	markdownSend MarkdownSend
+	exclude      map[string]bool
+}
+
+// WithMarkdownSend supplies the function that runs each markdown.send step of a recipe without a database.
+func WithMarkdownSend(fn MarkdownSend) Option {
+	return func(o *options) { o.markdownSend = fn }
+}
+
+// WithExclude leaves the cases named by ids out of the run. A runtime excludes a case only when its public API cannot
+// observe the case, and config/parity.json records the reason of each exclusion.
+func WithExclude(ids ...string) Option {
+	return func(o *options) {
+		if o.exclude == nil {
+			o.exclude = map[string]bool{}
+		}
+		for _, id := range ids {
+			o.exclude[id] = true
+		}
+	}
 }
 
 // WithIRAnswer supplies the function that runs the chain of each ir.answer step of a recipe without a database.
@@ -106,6 +138,9 @@ func Run(t *testing.T, path, database string, opts ...Option) {
 		}
 	}
 	for _, c := range f.Cases {
+		if o.exclude[c.ID] {
+			continue
+		}
 		t.Run(c.ID, func(t *testing.T) {
 			bound := map[string]result{}
 			for index, raw := range c.Steps {
@@ -128,6 +163,9 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	}
 	if s.Op == "ir.answer" {
 		return checkAnswer(t, s, database, o.irAnswer)
+	}
+	if s.Op == "markdown.send" {
+		return checkSend(t, s, o.markdownSend)
 	}
 	var r result
 	switch s.Op {
@@ -807,6 +845,53 @@ func checkAnswer(t *testing.T, s step, database string, fn IRAnswer) error {
 	}
 	if !reflect.DeepEqual(actual, want) {
 		return fmt.Errorf("chain %s: got %s, want %s", s.Chain, body, outcome.Value)
+	}
+	return nil
+}
+
+// checkSend runs a markdown.send step and checks its expect: {"message": <json>} against the first message the listener received,
+// or {"error": <code>} against the code of the error the call returned before it sent a message. The expect is not per database.
+func checkSend(t *testing.T, s step, fn MarkdownSend) error {
+	if fn == nil {
+		return fmt.Errorf("markdown.send needs WithMarkdownSend")
+	}
+	var begin *bool
+	if s.Begin != nil {
+		var b struct {
+			ReadOnly bool `json:"read_only"`
+		}
+		if err := json.Unmarshal(s.Begin, &b); err != nil {
+			return err
+		}
+		begin = &b.ReadOnly
+	}
+	message, code := fn(t, s.Column, s.Operator, s.Params, begin, s.ProcessZone)
+	if raw, ok := s.Expect["error"]; ok {
+		var want string
+		if err := json.Unmarshal(raw, &want); err != nil {
+			return err
+		}
+		if code != want {
+			return fmt.Errorf("the call returned error %q, want %q (message %s)", code, want, message)
+		}
+		return nil
+	}
+	raw, ok := s.Expect["message"]
+	if !ok {
+		return fmt.Errorf("markdown.send expects a message or an error")
+	}
+	if code != "" {
+		return fmt.Errorf("the call returned error %s before a message", code)
+	}
+	var got, want any
+	if err := json.Unmarshal(message, &got); err != nil {
+		return fmt.Errorf("the message %s is not JSON: %w", message, err)
+	}
+	if err := json.Unmarshal(raw, &want); err != nil {
+		return err
+	}
+	if !reflect.DeepEqual(got, want) {
+		return fmt.Errorf("message %s, want %s", message, raw)
 	}
 	return nil
 }
