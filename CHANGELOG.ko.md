@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b6ebda70f7f42449ae4b8391e06746c8b6cd3af2c3ef36105e78418f4743cf2d -->
+<!-- source-sha256: e39b4ebcab20e4aa1bb7021c44edf260855ae388e7e8e0987717e4bc25ffa226 -->
 # 변경 이력
 
 ## Unreleased
@@ -28,8 +28,7 @@
 - packages/ts/dist를 실행만 하고 빌드하지 않는 일곱 make target(replica-check, session-state-check, native-error-cause-check/typescript-driver와 /typescript-markdown, page-cache-unit-check/typescript, generator-consumer-check/typescript, request-hook-relation-scope-check)은 typescript-build를 선행 조건으로 가지며, repo-check는 그것 없이 빌드 결과를 읽는 target을 거부한다 (T339-5).
 - 문장 runner(INT-150)의 parity unit은 여섯 런타임 모두에서 `Utils.run`과 frame `run`을 이름으로 쓰고, 모든 데이터베이스에서 statement_runner 테스트를 바인딩한다 (T345-7).
 - Python 런타임은 `utils().run(fn)`을 public으로 만들어, 연결의 트랜잭션 frame으로 `fn`을 호출한다 (INT-150, T345-6).
-- check-recipes의 target별 runtime과 database 셀(CR17부터 CR20까지)은 보류한다. kit의 CI 계획(config/ci.json targets.runtimes와 kit-ci-plan)과 중복되기 때문이다. 이미 커밋된 CR17-1 필드는 그대로 둔다 (CR17).
-- CHECK_TARGETS의 모든 target은 contracts/check-inputs.json에 runtime과 database를 선언한다. 둘 다 이름에서 먼저 읽으며, 검사기는 두 필드 중 하나가 없는 target을 거부한다. multi와 all은 CR18이 나누기 전까지의 과도기 값이다 (CR17-1).
+- check-recipes의 target별 runtime과 database 셀(CR17부터 CR20까지)은 보류한다. kit의 CI 계획(config/ci.json targets.runtimes와 kit-ci-plan)과 중복되기 때문이다. CR17-1(aaa576d45)은 반영되지 않았으며 CR17과 함께 보류한다 (CR17).
 - tests/dbspec/ddl.json의 DDL 동작 테스트는 Go runner만 데이터베이스에서 돌렸다. 이제 PHP, php-extension, TypeScript, Python, Rust runner도 MySQL, PostgreSQL, SQLite에서 동작 단계를 실행하고, DSN이 없으면 이름을 밝히며 실패한다 (CR16-1).
 - 중단된 실행이 남긴 compiler fixture case의 오래된 source 때문에 다음 실행이 EEXIST로 실패하고 디렉터리가 트리에 남았다. 이제 실행은 오래된 source를 덮어쓰고 끝에 임시 디렉터리를 지운다 (CR25).
 - 데이터베이스 기능이 실행 데이터베이스에서 recipe로 도는 방식을 spec이 밝힌다: docs/spec/feature-coverage.md의 FCV-8부터 FCV-14까지가 전환, `databases` need와 TEST_ENV로 받는 데이터베이스, 제외 없는 세 데이터베이스, DSN 누락 실패, 사례별 결과, seed 소유, 네이티브 테스트를 정한다 (T334-3-4-0).
