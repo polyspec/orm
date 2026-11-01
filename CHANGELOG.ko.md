@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 160b1affdad7b27d9ac35141fab5926bfa732e08ca7e039f655cfe0ab607700e -->
+<!-- source-sha256: 8177f8b7e84f6afee1ea9f111ceee5b1d02623b5e6fd1865ab5e17b4e8a5b4a4 -->
 # 변경 이력
 
 ## Unreleased
+
+## 0.0.21
 
 - packages/php-ext의 composer lock이 composer.json과 맞는다(T346-9).
 - mise 도구 pypi:vulture의 uv lock이 고정된 uv 0.13.0에 맞고, mise.lock의 digest가 그것을 가리킨다(T346-8).
