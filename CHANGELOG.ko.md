@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 48b2ce9d5722a0c32d6daa0752b762d98449cb71e275a9e0dece49aad11387ca -->
+<!-- source-sha256: 5a9a6d130adee096652ed8049952402d094ed71393ab5930e2d36766cb33d1dc -->
 # 변경 이력
 
 ## Unreleased
 
+- repo check 시험 "the Go model build regenerates models"은 Go model set을 순서대로 만든 뒤 make go-models가 실행하는 orm-gen sets 호출을 확인한다 (CR44).
 - Python recipe 시험의 chain 경로 case 필터를 ruff format이 쓰는 형태로 고쳤다 (CR43).
 - TypeScript client는 markdownParam을 더 이상 export하지 않는다. markdown.ts만 쓰며, knip이 unused export로 보고했다 (CR42).
 - 착륙한 recipe row의 interface snapshot을 다시 기록했다. Go, PHP extension, PHP, Rust, TypeScript symbol snapshot과 manifest hash가 tree를 따른다 (CR41).

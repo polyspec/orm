@@ -64,3 +64,4 @@
 | CR41 | chore: record the interface snapshot of the landed recipe rows again (#CR41) | contracts/interfaces.json, contracts/symbols/go.json, contracts/symbols/php-extension.json, contracts/symbols/php.json, contracts/symbols/rust.json, contracts/symbols/typescript.json | `make interface-check/self-test` | [v] |
 | CR42 | fix(ts): stop exporting markdownParam, which only markdown.ts uses; knip reports it as an unused export (#CR42) | packages/ts/src/markdown.ts | `make lint-ts` | [v] |
 | CR43 | fix(python): format the chain case filter of recipe.py that ruff format reports (#CR43) | packages/python/tests/recipe.py | `ruff format --check --config node_modules/@polyspec/kit/ruff.toml .` | [v] |
+| CR44 | fix(repo): the Go model build test asserts the sets generator that the -4g-1 pick runs, not the removed gen loop (#CR44) | scripts/repo/check.test.mts | `node --test scripts/repo/check.test.mts` | [v] |

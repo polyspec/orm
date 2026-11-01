@@ -86,9 +86,9 @@ caseTest('the Go model build regenerates models', COMPUTE, () => {
   const root = new URL('../..', import.meta.url).pathname;
   const result = spawnSync('make', ['-n', 'build-go'], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
   assert.equal(result.status, 0, result.stderr);
-  const generation = result.stdout.indexOf('go run ./cmd/orm-gen gen --lang go');
+  const generation = result.stdout.indexOf('go run ./cmd/orm-gen sets');
   assert.ok(generation >= 0, 'build-go does not run the Go model generator');
-  assert.match(result.stdout, /go run \.\/cmd\/orm-gen gen --lang go/);
+  assert.match(result.stdout, /go run \.\/cmd\/orm-gen sets/);
 });
 
 caseTest('the TypeScript runtime build generates models before compiling their consumers', COMPUTE, () => {

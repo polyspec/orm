@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The repo check test "the Go model build regenerates models" asserts the orm-gen sets call that make go-models runs since the Go model sets were ordered (CR44).
 - The Python recipe tests format the case filter of the chain path as ruff format writes it (CR43).
 - The TypeScript client no longer exports markdownParam, which only markdown.ts uses; knip reported it as an unused export (CR42).
 - The interface snapshot of the landed recipe rows is recorded again: the Go, PHP extension, PHP, Rust and TypeScript symbol snapshots and the manifest hashes follow the tree (CR41).
