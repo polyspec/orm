@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- orm takes ordered-json 0.0.18 (T346-6) in every ecosystem: the npm, Composer, Go, Python and Rust pins name its release assets and tag, and packaging.md names its 0.0.18 assets.
 - The Korean Task of T346-5 no longer names an expression that the writing-style rule forbids (T346-5-1).
 - orm requires the maintained fork `min-0-max/json-schema` at its branch `dev-polyspec-origin-2.6.0` in require-dev, in place of the upstream package opis/json-schema (S14) (T346-5).
 - orm takes kit 0.0.88 (T346-1): the pin names the release asset of kit 0.0.88 with its integrity, and the kit-sync copies are that release's, with the link, pipeline and manifest-path rules S11, S12 and P30 (K997, K998).

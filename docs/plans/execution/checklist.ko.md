@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: df45970aae263ecc0570e033a1d1606e4bd67f9a57d60877c1765b6b639f44df -->
+<!-- source-sha256: edb72b86cc3ead38dd30e91d7413c7e32807409c3cb528084b45cd8a761e5798 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1526,3 +1526,4 @@
 | T346-4 | orm의 AGENTS 규칙은 kit bootstrap을 설치된 package 경로로 가리키고 layout 검사를 make 대상으로 강제된다고 적으며, 낡은 문구가 없다(K992, K993) | AGENTS.md, AGENTS.ko.md, CHANGELOG.md, CHANGELOG.ko.md, docs/plans/execution/checklist.md, docs/plans/execution/checklist.ko.md | `make text-absent FILE=AGENTS.md TEXT=../kit/scripts/kit/kit-bootstrap.mk`; `make docs-check`; `make docs-rules-check`; `make rules-check` | [v] |
 | T346-5 | orm은 require-dev에서 PHP JSON Schema validator의 upstream package 대신, 상위 base를 담은 VCS branch의 fork package 명칭으로 요구한다(S14) | composer.json, composer.lock, CHANGELOG.md, CHANGELOG.ko.md, docs/plans/execution/checklist.md, docs/plans/execution/checklist.ko.md | `make text-absent FILE=composer.json TEXT=opis/json-schema`; `make release-coverage`; `make kit-check` | [v] |
 | T346-5-1 | T346-5의 한국어 Task가 한국어 문서의 writing-style 규칙(docs.writing-style)을 통과하며, 영어 Task는 바뀌지 않는다 | docs/plans/execution/checklist.md, docs/plans/execution/checklist.ko.md, CHANGELOG.md, CHANGELOG.ko.md | `make docs-rules-check`; `make docs-check` | [v] |
+| T346-6 | orm은 모든 생태계에서 released ordered-json package를 채택한다: npm, Composer, Go, Python, Rust의 pin이 그 release asset과 tag를 가리키고, lock은 각 도구로 갱신한다 | package.json, package-lock.json, packages/ts/package.json, composer.json, composer.lock, packages/php/composer.json, packages/go/go.mod, packages/go/go.sum, examples/go.mod, examples/go.sum, packages/python/pyproject.toml, packages/python/uv.lock, packages/rust/orm/Cargo.toml, packages/rust/Cargo.lock, benchmarks/rust/Cargo.lock, docs/operations/packaging.md, docs/operations/packaging.ko.md, CHANGELOG.md, CHANGELOG.ko.md, docs/plans/execution/checklist.md, docs/plans/execution/checklist.ko.md | `make kit-gates-static`; `make release-coverage`; `make go-vet-check`; `make comment-language-check`; `make docs-check` | [v] |
