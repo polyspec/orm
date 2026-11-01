@@ -2,9 +2,10 @@
 // <recipe>-<database>.test.mjs, calls runRecipe with the recipe and the database, and each case of the recipe is one test
 // whose steps call the public API of @polyspec/orm that each op names. It has no command line and no output of its own.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
@@ -255,10 +256,11 @@ async function runCase({ name, recipe, recipeCase, database, schema, caseDatabas
   try { await db.utils().schema().install(schema); } finally { await db.close(); }
   step('schema installed');
   const catalog = await connectCatalog(caseDatabase.dsn);
+  let context;
   try {
     const namespace = await catalog.currentNamespace();
     const bound = new Map([['database', { text: caseDatabase.name }]]);
-    const context = { catalog, namespace, database, dsn: caseDatabase.dsn, bound };
+    context = { catalog, namespace, database, dsn: caseDatabase.dsn, bound, closed: false };
     for (const rows of [recipe.seed?.rows, recipeCase.seed?.rows]) {
       for (const [table, values] of Object.entries(rows ?? {})) {
         const metadata = await catalog.describeTable({ namespace, name: table });
@@ -276,18 +278,60 @@ async function runCase({ name, recipe, recipeCase, database, schema, caseDatabas
       step(`step ${index} ${current.op}`);
     }
   } finally {
-    await catalog.close();
+    if (context === undefined) await catalog.close();
+    else if (!context.closed) await context.catalog.close();
   }
 }
 
 // Each op maps to one call of the public API and returns the fields that its expect compares.
 const OPS = {
+  async 'catalog.connect'(s) {
+    // A DSN of a SQLite file that the case does not create: the connection fails, and the file must not exist afterwards.
+    const directory = mkdtempSync(join(tmpdir(), 'orm-recipe-absent-'));
+    const path = join(directory, 'absent.sqlite');
+    try {
+      const connection = await connectCatalog(`sqlite://${path}`).then(
+        catalog => ({ catalog }),
+        error => ({ error }),
+      );
+      if (connection.catalog !== undefined) await connection.catalog.close();
+      return { error: connection.error?.code, file_created: existsSync(path) };
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  },
+  async 'catalog.close'(_, context) {
+    context.closed = true;
+    await context.catalog.close();
+    return {};
+  },
+  async 'catalog.reconnect'(_, context) {
+    context.catalog = await connectCatalog(context.dsn);
+    context.closed = false;
+    context.namespace = await context.catalog.currentNamespace();
+    return {};
+  },
+  async 'catalog.revision'(s, context) {
+    const snapshot = stepArgument(s.snapshot, context);
+    return { value: { text: snapshot.revision } };
+  },
   async 'catalog.current_namespace'(_, { catalog }) {
     return { value: { text: await catalog.currentNamespace() } };
   },
   async 'catalog.describe_table'(s, { catalog, namespace }) {
     const metadata = await catalog.describeTable({ namespace, name: s.table });
-    return { bind: metadata, columns: metadata.columns.map(c => c.name), primary_key: metadata.primaryKey, reliable_row_identity: metadata.reliableRowIdentity };
+    return {
+      bind: metadata,
+      namespace: { text: metadata.table.namespace },
+      columns: metadata.columns.map(c => c.name),
+      primary_key: metadata.primaryKey,
+      reliable_row_identity: metadata.reliableRowIdentity,
+      native_types: metadata.columns.map(c => c.nativeType),
+      nullable: metadata.columns.map(c => c.nullable),
+      generated: metadata.columns.map(c => c.generated),
+      automatic_keys: metadata.columns.map(c => c.automaticKey),
+      defaults: metadata.columns.map(c => c.defaultExpression !== null),
+    };
   },
   async 'catalog.table_page'(s, { catalog, namespace }) {
     const page = await catalog.tablePage({ namespace, name: s.table }, s.limit, s.offset);
@@ -300,7 +344,7 @@ const OPS = {
     return { bind: page, columns: page.result.columns.map(c => c.name), order_by: page.orderBy, has_more: page.hasMore, rows: page.result.rows.map(row => indexes.map(at => plain(row[at], types[at]))) };
   },
   async 'catalog.read_only_query'(s, context) {
-    const result = await context.catalog.readOnlyQuery(sql(s.sql, context), [], limits(s));
+    const result = await context.catalog.readOnlyQuery(sql(s.sql, context), (s.binds ?? []).map(bind => native(databaseValue(bind, context))), limits(s));
     return { rows: result.rows.map(row => row.map(cell => plain(cell, null))) };
   },
   async 'catalog.read_only_grid_query'(s, context) {
@@ -308,7 +352,9 @@ const OPS = {
     return { columns: result.columns.map(c => c.name), rows: result.rows.map(row => row.map(grid)) };
   },
   async 'catalog.row_snapshot'(s, context) {
-    return { bind: context.catalog.rowSnapshotFromPage(stepArgument(s.page, context), s.index) };
+    const page = s.page_with === undefined ? stepArgument(s.page, context) : { ...bound(s.page_with.page.ref, context), orderBy: s.page_with.order_by };
+    const snapshot = context.catalog.rowSnapshotFromPage(page, s.index);
+    return { bind: snapshot, keys: snapshot.keys().map(key => plain(key, null)), key_indexes: snapshot.keyIndexList() };
   },
   async 'catalog.insert_row'(s, context) {
     const metadata = stepArgument(s.metadata, context);
@@ -341,7 +387,7 @@ async function runStep(s, context) {
   }
   if (s.as !== undefined) context.bound.set(s.as, actual.bind ?? actual.value);
   if (expected === undefined) return;
-  if (expected.error !== undefined) throw new Error(`expected ${expected.error}, and the op succeeded`);
+  if (expected.error !== undefined && actual.error === undefined) throw new Error(`expected ${expected.error}, and the op succeeded`);
   const compared = Object.fromEntries(Object.keys(expected).map(key => [key, actual[key]]));
   assert.deepEqual(normalized(compared), normalized(expected));
 }
@@ -377,9 +423,13 @@ function resolveRefs(value, context) {
   return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, resolveRefs(item, context)]));
 }
 
-/** The assignments of an object of column names whose values are recipe wrappers or per-database objects. */
+/**
+ * The assignments of a step: a list of [name, value] pairs, so that a name may repeat or name no column, or the members of a seed
+ * row, an object of column names. Each value is a recipe wrapper or a per-database object.
+ */
 function assignments(values, context) {
-  return Object.entries(values).map(([name, value]) => ({ name, value: native(databaseValue(stepArgument(value, context), context)) }));
+  const pairs = Array.isArray(values) ? values : Object.entries(values);
+  return pairs.map(([name, value]) => ({ name, value: native(databaseValue(stepArgument(value, context), context)) }));
 }
 
 function databaseValue(value, { database }) {
@@ -426,7 +476,10 @@ function temporalKind(nativeType) {
 function grid(cell) {
   switch (cell.kind) {
     case 'null': return { null: true };
-    case 'integer': case 'unsigned': return { int: String(cell.value) };
+    case 'integer': return { int: String(cell.value) };
+    case 'unsigned': return { uint: String(cell.value) };
+    case 'float32': return { f32_bits: cell.bits };
+    case 'float64': return { f64_bits: String(cell.bits) };
     case 'decimal': case 'text': case 'date': case 'time': case 'datetime': return { [cell.kind]: cell.value };
     case 'boolean': return { bool: cell.value };
     case 'binary': return { bytes_hex: Buffer.from(cell.value).toString('hex') };

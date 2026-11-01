@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The TypeScript catalog_connection tests asserted the connect, describe, close, reconnect, revision, snapshot, bind and grid cell values that the shared recipe did not express: the recipe now holds them as cases, with the ops catalog.connect, catalog.close, catalog.reconnect and catalog.revision, the describe fields of native types, nullability, generated columns, automatic keys and defaults, the row_snapshot fields keys and key_indexes, the page_with input, assignments as lists of pairs, the read_only_query binds, and the float, unsigned and binary cell wrappers. The TypeScript runner runs them on MySQL, PostgreSQL and SQLite, and the native assertions they own are removed (T334-3-3-2-1).
 - orm no longer copies the capability table of flowmark: the table "Markdown IR executor" of dialects.md is replaced by a link to the pinned flowmark spec 60, and the markdown-table check that read a flowmark source checkout is removed (T347).
 - The check-recipes work of two branches lands on main as one integration: the Korean checklists hold every row of the English ones, the change logs hold the entries of those commits, the Makefile starts node through `$(NODE)` in `rust-compiler-fixtures-check/unit`, and `config/rebuild.json` classifies `scripts/generate/once.mts` and `scripts/php/php-ext-build.mts` (CR26).
 - The check runner printed no `::error` line for a failed target, so on GitHub Actions a failure was visible only when the job ended. A failed target now prints its `::error` line when it ends (CR1).
