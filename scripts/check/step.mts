@@ -79,9 +79,10 @@ export function signalGroup(group: number, signal: NodeJS.Signals): boolean {
 }
 
 // groupProcesses are the live processes (pid and command) of the process group. Processes that have already ended and are waiting to be reaped (Z) are excluded.
-export function groupProcesses(group: number): { pid: number; command: string }[] {
-  const listed = spawnSync('ps', ['-A', '-o', 'pid=,pgid=,stat=,command='], { encoding: 'utf8' });
-  if (listed.status !== 0) throw new Error(`ps exited with ${listed.status ?? listed.signal}: ${listed.stderr}`);
+// T351: the table is read with a 256 MiB buffer, the bound kit's processTable uses; a failure names its error code (ENOBUFS when the buffer overflows).
+export function groupProcesses(group: number, options: { maxBuffer?: number } = {}): { pid: number; command: string }[] {
+  const listed = spawnSync('ps', ['-A', '-o', 'pid=,pgid=,stat=,command='], { encoding: 'utf8', maxBuffer: options.maxBuffer ?? 256 * 1024 * 1024 });
+  if (listed.error || listed.status !== 0) throw new Error(`ps failed with ${(listed.error && errorCode(listed.error)) ?? listed.signal ?? `status ${listed.status}`}: ${listed.stderr}`);
   const found: { pid: number; command: string }[] = [];
   for (const line of listed.stdout.split('\n')) {
     const match = /^\s*(\d+)\s+(\d+)\s+(\S+)\s+(.*)$/.exec(line);
