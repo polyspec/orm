@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The per-target runtime and database cells of check-recipes (CR17 to CR20) are held: they would duplicate kit's CI plan (config/ci.json targets.runtimes and kit-ci-plan). The committed CR17-1 fields stay as they are (CR17).
+- Every target of CHECK_TARGETS declares its runtime and its database in contracts/check-inputs.json, read from its name first, and the checker refuses a target without either field; multi and all are transitional values until CR18 splits them (CR17-1).
 - The DDL behaviour tests of tests/dbspec/ddl.json ran only in the Go runner against a database; the PHP, php-extension, TypeScript, Python and Rust runners now run their behaviour steps on MySQL, PostgreSQL and SQLite, and each fails by name when a DSN is unset (CR16-1).
 - A leftover source of a compiler fixture case, from an interrupted run, made the next run fail with EEXIST and left its directory in the tree. The run now overwrites a stale source and removes its scratch directory at the end (CR25).
 - The Python and TypeScript generators write models.py and models.ts atomically: a file that already holds the text is left as it is, and a changed file is written to a temporary file of its directory and renamed over the old one, so a test that reads it during a generation never reads a partial file. The targets client-unit-check/orm-gen-python and client-unit-check/orm-gen-typescript test this (T341-2).
