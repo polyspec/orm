@@ -255,8 +255,9 @@ caseTest('the resource lines list the processes with the largest resident memory
 // T351: the process table is listed with a bounded output, so a large table never fails a step. An overflow names ENOBUFS, and a group
 // member with a command line longer than the buffer that the listing uses by default is still listed with its command.
 caseTest('the group listing names ENOBUFS when the process table overflows, and lists a long command of its group', PROCESS, async () => {
-  const padding = 'x'.repeat(400_000);
-  const child = spawn('sh', ['-c', 'sleep 30', 'sh', padding], { detached: true, stdio: 'ignore' });
+  // Linux refuses one argument longer than 128 KiB (MAX_ARG_STRLEN) with E2BIG, so the long command line is four arguments.
+  const padding = Array.from({ length: 4 }, () => 'x'.repeat(100_000));
+  const child = spawn('sh', ['-c', 'sleep 30', 'sh', ...padding], { detached: true, stdio: 'ignore' });
   try {
     const pid = child.pid;
     assert.ok(pid !== undefined, 'the group leader has a process id');
