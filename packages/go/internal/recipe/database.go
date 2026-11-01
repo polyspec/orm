@@ -52,6 +52,10 @@ type databaseStep struct {
 	Table    string                     `json:"table"`
 	Limit    int                        `json:"limit"`
 	Offset   int64                      `json:"offset"`
+	Model    string                     `json:"model"`
+	Group    []string                   `json:"group"`
+	Rows     json.RawMessage            `json:"rows"`
+	PoolSize int                        `json:"pool_size"`
 	Columns  []string                   `json:"columns"`
 	SQL      json.RawMessage            `json:"sql"`
 	MaxRows  int                        `json:"max_rows"`
@@ -95,6 +99,7 @@ type databaseContext struct {
 	database  string
 	dsn       string
 	bound     map[string]bound
+	model     *orm.DB // the connection of the last model.connect step, which the model ops use
 }
 
 // runDatabase runs every case of the recipe at path on database, each as a subtest on a case database of its own (FCV-3).
@@ -140,11 +145,31 @@ func fixtureSchema(setPath string) (*orm.Schema, error) {
 	}
 	var set struct {
 		Documents []string `json:"documents"`
+		External  []string `json:"external"`
 	}
 	if err := json.Unmarshal(src, &set); err != nil {
 		return nil, fmt.Errorf("%s: %w", setPath, err)
 	}
+	// An external document is read as the text that a use line of an owned document names, by its file name without .dbs.
+	external := map[string]string{}
+	for _, name := range set.External {
+		text, diagnostics, err := dbspec.ReadFile(filepath.Join(filepath.Dir(setPath), name))
+		if err != nil {
+			return nil, err
+		}
+		if len(diagnostics) > 0 {
+			return nil, fmt.Errorf("%s: %+v", name, diagnostics)
+		}
+		external[strings.TrimSuffix(filepath.Base(name), ".dbs")] = text
+	}
 	var documents []*dbspec.Document
+	for name, text := range external {
+		document, _, diagnostics := dbspec.Parse(text, map[string]string{})
+		if document == nil {
+			return nil, fmt.Errorf("%s: %+v", name, diagnostics)
+		}
+		documents = append(documents, document)
+	}
 	for _, name := range set.Documents {
 		path := filepath.Join(filepath.Dir(setPath), name)
 		text, diagnostics, err := dbspec.ReadFile(path)
@@ -154,7 +179,7 @@ func fixtureSchema(setPath string) (*orm.Schema, error) {
 		if len(diagnostics) > 0 {
 			return nil, fmt.Errorf("%s: %+v", path, diagnostics)
 		}
-		document, _, diagnostics := dbspec.Parse(text, map[string]string{})
+		document, _, diagnostics := dbspec.Parse(text, external)
 		if document == nil {
 			return nil, fmt.Errorf("%s: %+v", path, diagnostics)
 		}
@@ -198,6 +223,11 @@ func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database
 		t: t, ctx: ctx, catalog: catalog, namespace: namespace, database: database, dsn: dsn,
 		bound: map[string]bound{"database": {value: map[string]any{"text": name}}},
 	}
+	defer func() {
+		if state.model != nil {
+			testcase.Close(t, state.model)
+		}
+	}()
 	for _, s := range []*seed{f.Seed, c.Seed} {
 		if s == nil || len(s.Rows) == 0 {
 			continue
@@ -308,6 +338,10 @@ func runDatabaseStep(s databaseStep, c *databaseContext) error {
 // databaseOp calls the public API that the op names and returns the fields that its expect compares (FCV-4).
 func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 	switch s.Op {
+	case "model.connect":
+		return modelConnect(s, c)
+	case "model.creates", "model.query", "model.count":
+		return modelOp(s, c)
 	case "catalog.current_namespace":
 		namespace, err := c.catalog.CurrentNamespace(c.ctx)
 		if err != nil {

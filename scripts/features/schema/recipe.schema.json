@@ -185,9 +185,12 @@
     "step": {
       "type": "object",
       "required": ["op"],
-      "properties": { "op": { "enum": ["model.connect", "codec.decode", "codec.encode", "codec.host_encode", "codec.host_decode", "codec.blind_index", "sql.exec", "ir.validate", "ir.answer", "catalog.current_namespace", "catalog.describe_table", "catalog.table_page", "catalog.read_only_query", "catalog.read_only_grid_query", "catalog.row_snapshot", "catalog.insert_row", "catalog.update_row", "catalog.delete_row"] } },
+      "properties": { "op": { "enum": ["model.connect", "codec.decode", "codec.encode", "codec.host_encode", "codec.host_decode", "codec.blind_index", "sql.exec", "model.creates", "model.query", "model.count", "ir.validate", "ir.answer", "catalog.current_namespace", "catalog.describe_table", "catalog.table_page", "catalog.read_only_query", "catalog.read_only_grid_query", "catalog.row_snapshot", "catalog.insert_row", "catalog.update_row", "catalog.delete_row"] } },
       "oneOf": [
         { "$ref": "#/$defs/ops/model.connect" },
+        { "$ref": "#/$defs/ops/model.creates" },
+        { "$ref": "#/$defs/ops/model.query" },
+        { "$ref": "#/$defs/ops/model.count" },
         { "$ref": "#/$defs/ops/codec.decode" },
         { "$ref": "#/$defs/ops/codec.encode" },
         { "$ref": "#/$defs/ops/codec.host_encode" },
@@ -425,9 +428,66 @@
           "snapshot": { "$ref": "#/$defs/ref" },
           "expect": { "type": "object", "minProperties": 1, "additionalProperties": { "$ref": "#/$defs/outcomes/value" } }
         }
+      },
+      "model.creates": {
+        "type": "object",
+        "required": ["op", "model", "rows", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "model.creates" },
+          "model": { "type": "string", "minLength": 1 },
+          "rows": { "type": "array", "items": { "type": "object", "minProperties": 1, "additionalProperties": { "$ref": "#/$defs/argument" } } },
+          "as": { "$ref": "#/$defs/name" },
+          "expect": { "type": "object", "minProperties": 1, "additionalProperties": { "$ref": "#/$defs/outcomes/value" } }
+        }
+      },
+      "model.query": {
+        "type": "object",
+        "required": ["op", "model", "columns", "expect"],
+        "additionalProperties": false,
+        "dependentRequired": { "page": ["limit"], "limit": ["page"] },
+        "properties": {
+          "op": { "const": "model.query" },
+          "model": { "type": "string", "minLength": 1 },
+          "columns": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+          "page": { "type": "integer", "minimum": 1 },
+          "limit": { "type": "integer", "minimum": 1 },
+          "as": { "$ref": "#/$defs/name" },
+          "expect": { "type": "object", "minProperties": 1, "additionalProperties": { "oneOf": [{ "$ref": "#/$defs/outcomes/collection" }, { "$ref": "#/$defs/outcomes/page" }] } }
+        }
+      },
+      "model.count": {
+        "type": "object",
+        "required": ["op", "model", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "model.count" },
+          "model": { "type": "string", "minLength": 1 },
+          "group": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+          "as": { "$ref": "#/$defs/name" },
+          "expect": { "type": "object", "minProperties": 1, "additionalProperties": { "oneOf": [{ "$ref": "#/$defs/outcomes/value" }, { "$ref": "#/$defs/outcomes/groups" }] } }
+        }
       }
     },
     "outcomes": {
+      "collection": {
+        "oneOf": [
+          { "type": "object", "required": ["value"], "additionalProperties": false, "properties": { "value": { "type": "object", "required": ["keys", "rows"], "additionalProperties": false, "properties": { "keys": { "type": "array", "items": { "type": "array", "items": { "$ref": "#/$defs/argument" } } }, "rows": { "type": "array", "items": { "type": "array", "items": { "$ref": "#/$defs/argument" } } } } } } },
+          { "type": "object", "required": ["error"], "additionalProperties": false, "properties": { "error": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" } } }
+        ]
+      },
+      "modelPage": {
+        "oneOf": [
+          { "type": "object", "required": ["value"], "additionalProperties": false, "properties": { "value": { "type": "object", "required": ["page", "per_page", "total_count", "total_pages", "rows"], "additionalProperties": false, "properties": { "page": { "$ref": "#/$defs/argument" }, "per_page": { "$ref": "#/$defs/argument" }, "total_count": { "$ref": "#/$defs/argument" }, "total_pages": { "$ref": "#/$defs/argument" }, "rows": { "type": "array", "items": { "type": "array", "items": { "$ref": "#/$defs/argument" } } } } } } },
+          { "type": "object", "required": ["error"], "additionalProperties": false, "properties": { "error": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" } } }
+        ]
+      },
+      "groups": {
+        "oneOf": [
+          { "type": "object", "required": ["value"], "additionalProperties": false, "properties": { "value": { "type": "object", "required": ["groups"], "additionalProperties": false, "properties": { "groups": { "type": "array", "items": { "type": "object", "required": ["values", "row_count"], "additionalProperties": false, "properties": { "values": { "type": "array", "items": { "$ref": "#/$defs/argument" } }, "row_count": { "$ref": "#/$defs/argument" } } } } } } } },
+          { "type": "object", "required": ["error"], "additionalProperties": false, "properties": { "error": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" } } }
+        ]
+      },
       "value": {
         "oneOf": [
           { "type": "object", "required": ["value"], "additionalProperties": false, "properties": { "value": { "$ref": "#/$defs/argument" } } },

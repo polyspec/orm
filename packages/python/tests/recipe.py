@@ -32,6 +32,7 @@ from polyspec.orm.engine.validate import validate
 from polyspec.orm.styled_value import StyledValue
 
 from . import chain_answer, testcase
+from .models import models as bench
 from .case_database import case_database
 from .coverage_case import native_query
 from .markdown_conformance import same
@@ -420,12 +421,24 @@ def _fixture_schema(set_path: Path) -> Schema:
     """The Schema of a dbspec-set.json: the parse and the manifest of its documents through the public dbspec API."""
     document_set = json.loads(set_path.read_text(encoding="utf-8"))
     documents = []
+    # An external document is read as the text that a use line of an owned document names, by its file name without .dbs.
+    external = {}
+    for name in document_set.get("external", []):
+        external_path = set_path.parent / name
+        text, diagnostics = read_dbspec_file(str(external_path))
+        if text is None:
+            raise ValueError(f"{external_path}: {diagnostics}")
+        external[external_path.stem] = text
+        document, _, diagnostics = parse_dbspec(text, {})
+        if document is None:
+            raise ValueError(f"{external_path}: {diagnostics}")
+        documents.append(document)
     for name in document_set["documents"]:
         document_path = set_path.parent / name
         text, diagnostics = read_dbspec_file(str(document_path))
         if text is None:
             raise ValueError(f"{document_path}: {diagnostics}")
-        document, _, diagnostics = parse_dbspec(text, {})
+        document, _, diagnostics = parse_dbspec(text, external)
         if document is None:
             raise ValueError(f"{document_path}: {diagnostics}")
         documents.append(document)
@@ -452,15 +465,18 @@ def _run_case(
     finally:
         db.close()
     catalog = connect_catalog(dsn)
+    context = {"model": None}
     try:
         namespace = catalog.current_namespace()
-        context = {
-            "catalog": catalog,
-            "namespace": namespace,
-            "database": database,
-            "dsn": dsn,
-            "bound": {"database": {"text": _database_name(dsn)}},
-        }
+        context.update(
+            {
+                "catalog": catalog,
+                "namespace": namespace,
+                "database": database,
+                "dsn": dsn,
+                "bound": {"database": {"text": _database_name(dsn)}},
+            }
+        )
         for part, rows in (
             ("recipe", recipe.get("seed", {}).get("rows")),
             ("case", case.get("seed", {}).get("rows")),
@@ -485,6 +501,8 @@ def _run_case(
                     f"recipe {path}, case {case['id']}, step {index} ({step['op']}), database {database}: {error}"
                 ) from error
     finally:
+        if context["model"] is not None:
+            context["model"].close()
         catalog.close()
 
 
@@ -570,7 +588,154 @@ def _op_sql_exec(step: dict, context: dict) -> dict:
 
 
 # Each op maps to one call of the public API and returns the fields that its expect compares.
+# CREATES_BATCH is the batch of model.creates (INT-35), the same in every runtime of the recipe.
+CREATES_BATCH = 100
+
+
+class _ModelTable:
+    """One generated model of the fixture as the model ops use it: its constructor, its primary key, and the names of its
+    setters and of its groupings."""
+
+    def __init__(self, make, primary_key, setters, groups):
+        self.make = make
+        self.primary_key = primary_key
+        self.setters = setters
+        self.groups = groups
+
+
+_MODEL_TABLES = {
+    "account": _ModelTable(
+        lambda: bench.Account(),
+        ("seq",),
+        {"seq": "set_seq", "name": "set_name"},
+        {},
+    ),
+    "author": _ModelTable(
+        lambda: bench.Author(),
+        ("seq",),
+        {"seq": "set_seq", "name": "set_name"},
+        {},
+    ),
+    "composite_account": _ModelTable(
+        lambda: bench.CompositeAccount(),
+        ("tenant_id", "account_id"),
+        {
+            "tenant_id": "set_tenant_id",
+            "account_id": "set_account_id",
+            "name": "set_name",
+        },
+        {
+            "tenant_id": "group_by_tenant_id",
+            "account_id": "group_by_account_id",
+            "name": "group_by_name",
+        },
+    ),
+}
+
+
+def _model_table(name: str) -> _ModelTable:
+    if name not in _MODEL_TABLES:
+        raise AssertionError(f"MODEL_UNKNOWN {name}")
+    return _MODEL_TABLES[name]
+
+
+def _numeric(value):
+    """The value that a setter of a generated model takes: an integer, a text, a boolean or None."""
+    return value
+
+
+def _op_model_connect(step: dict, context: dict) -> dict:
+    db = bench.connect(context["dsn"], pool_size=step["pool_size"])
+    if context["model"] is not None:
+        context["model"].close()
+    context["model"] = db
+    return {"bind": db}
+
+
+def _op_model_creates(step: dict, context: dict) -> dict:
+    table = _model_table(step["model"])
+    models = []
+    for row in step["rows"]:
+        model = table.make()
+        for column, value in row.items():
+            getattr(model, table.setters[column])(
+                _numeric(_to_value(_database_value(value, context)))
+            )
+        models.append(model)
+    created = table.make().connect(context["model"]).creates(models, CREATES_BATCH)
+    return {"value": _plain(created, None)}
+
+
+def _op_model_query(step: dict, context: dict) -> dict:
+    table = _model_table(step["model"])
+    query = table.make().connect(context["model"])
+    if "page" not in step:
+        models = query.gets().values()
+        return {
+            "value": {
+                "keys": [_model_key(model, table) for model in models],
+                "rows": [_model_columns(model, step["columns"]) for model in models],
+            }
+        }
+    page = query.gets_page(step["page"], step["limit"])
+    return {
+        "value": {
+            "page": _plain(page["page"], None),
+            "per_page": _plain(page["perPage"], None),
+            "total_count": _plain(page["totalCount"], None),
+            "total_pages": _plain(page["totalPages"], None),
+            "rows": [
+                _model_columns(model, step["columns"])
+                for model in page["items"].values()
+            ],
+        }
+    }
+
+
+def _op_model_count(step: dict, context: dict) -> dict:
+    table = _model_table(step["model"])
+    query = table.make().connect(context["model"])
+    if "group" not in step:
+        return {"value": _plain(query.get_count(), None)}
+    for column in step["group"]:
+        getattr(query, table.groups[column])()
+    groups = query.gets_count().values()
+    return {
+        "value": {
+            "groups": [
+                {
+                    "values": [
+                        _plain(group.value(column), None) for column in step["group"]
+                    ],
+                    "row_count": _plain(group.count, None),
+                }
+                for group in groups
+            ]
+        }
+    }
+
+
+def _model_key(model, table: _ModelTable) -> list:
+    """The key of a model: the values of its primary key components in key order, as recipe wrappers."""
+    values = model.to_array()
+    return [_plain(values[column], None) for column in table.primary_key]
+
+
+def _model_columns(model, columns: list) -> list:
+    """The values of the columns of a model in order, as recipe wrappers."""
+    values = model.to_array()
+    return [_plain(values[column], None) for column in columns]
+
+
+_MODEL_OPS = {
+    "model.connect": _op_model_connect,
+    "model.creates": _op_model_creates,
+    "model.query": _op_model_query,
+    "model.count": _op_model_count,
+}
+
 _DATABASE_OPS = {
+    **_MODEL_OPS,
     "catalog.current_namespace": _op_current_namespace,
     "catalog.describe_table": _op_describe_table,
     "catalog.table_page": _op_table_page,

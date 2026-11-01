@@ -16,6 +16,7 @@ use Polyspec\Orm\Catalog;
 use Polyspec\Orm\CatalogGridCell;
 use Polyspec\Orm\CatalogResult;
 use Polyspec\Orm\CatalogTableMetadata;
+use Polyspec\Orm\Db;
 use Polyspec\Orm\Codec;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Dbspec\Dbspec;
@@ -469,13 +470,29 @@ final class Recipe
     {
         $set = json_decode(file_get_contents($setPath), true, 512, JSON_THROW_ON_ERROR);
         $documents = [];
+        // An external document is read as the text that a use line of an owned document names,
+        // by its file name without .dbs.
+        $external = [];
+        foreach ($set['external'] ?? [] as $name) {
+            $path = dirname($setPath) . '/' . $name;
+            $read = Dbspec::readFile($path);
+            if ($read->text === null) {
+                Assert::fail("$path: " . self::diagnostics($read->diagnostics));
+            }
+            $external[pathinfo($name, PATHINFO_FILENAME)] = $read->text;
+            $parsed = Dbspec::parse($read->text, []);
+            if ($parsed->document === null) {
+                Assert::fail("$path: " . self::diagnostics($parsed->diagnostics));
+            }
+            $documents[] = $parsed->document;
+        }
         foreach ($set['documents'] as $name) {
             $path = dirname($setPath) . '/' . $name;
             $read = Dbspec::readFile($path);
             if ($read->text === null) {
                 Assert::fail("$path: " . self::diagnostics($read->diagnostics));
             }
-            $parsed = Dbspec::parse($read->text, []);
+            $parsed = Dbspec::parse($read->text, $external);
             if ($parsed->document === null) {
                 Assert::fail("$path: " . self::diagnostics($parsed->diagnostics));
             }
@@ -541,6 +558,10 @@ final class Recipe
                 }
             }
         } finally {
+            if (self::$modelDb !== null) {
+                self::$modelDb->close();
+                self::$modelDb = null;
+            }
             $catalog->close();
         }
     }
@@ -579,6 +600,63 @@ final class Recipe
             $compared[$key] = $actual[$key] ?? null;
         }
         Assert::assertSame(self::normalizedNull($expected), self::normalizedNull($compared));
+    }
+
+    /** The connection of the last model.connect step of the case, which the model ops use (FCV-4). */
+    private static ?Db $modelDb = null;
+
+    /** CREATES_BATCH is the batch of model.creates (INT-35), the same in every runtime of the recipe. */
+    private const CREATES_BATCH = 100;
+
+    /** The generated model of a model op: its class, its primary key, its setters and its groupings (a plain switch). */
+    private static function modelTable(string $name): array
+    {
+        return match ($name) {
+            'account' => [
+                'class' => \Polyspec\Orm\Tests\Model\Account::class,
+                'primaryKey' => ['seq'],
+                'setters' => ['seq' => 'setSeq', 'name' => 'setName'],
+                'groups' => [],
+            ],
+            'author' => [
+                'class' => \Polyspec\Orm\Tests\Model\Author::class,
+                'primaryKey' => ['seq'],
+                'setters' => ['seq' => 'setSeq', 'name' => 'setName'],
+                'groups' => [],
+            ],
+            'composite_account' => [
+                'class' => \Polyspec\Orm\Tests\Model\CompositeAccount::class,
+                'primaryKey' => ['tenant_id', 'account_id'],
+                'setters' => ['tenant_id' => 'setTenantId', 'account_id' => 'setAccountId', 'name' => 'setName'],
+                'groups' => [
+                    'tenant_id' => 'groupByTenantId',
+                    'account_id' => 'groupByAccountId',
+                    'name' => 'groupByName',
+                ],
+            ],
+            default => throw new \InvalidArgumentException("MODEL_UNKNOWN $name"),
+        };
+    }
+
+    private static function model(): Db
+    {
+        if (self::$modelDb === null) {
+            throw new \LogicException('a model op before model.connect');
+        }
+        return self::$modelDb;
+    }
+
+    /** The key of a model: the values of its primary key components in key order, as recipe wrappers. */
+    private static function keyOf(object $model, array $table): array
+    {
+        return self::columnsOf($model, $table['primaryKey']);
+    }
+
+    /** The values of the columns of a model in order, as recipe wrappers. */
+    private static function columnsOf(object $model, array $columns): array
+    {
+        $values = $model->toArray();
+        return array_map(static fn (string $column): array => self::plainWrapper($values[$column], null), $columns);
     }
 
     /** Maps the op of a step to its one call of the public API and returns the fields that its expect compares. */
@@ -665,6 +743,74 @@ final class Recipe
             case 'catalog.delete_row':
                 $deleted = $catalog->deleteRow(self::stepArgument($s['snapshot'], $context));
                 return ['value' => ['int' => (string) $deleted]];
+            case 'model.connect':
+                if (self::$modelDb !== null) {
+                    self::$modelDb->close();
+                }
+                // The PHP client opens one connection per Db and keeps no pool, so pool_size is not passed (FCV-4).
+                self::$modelDb = \Polyspec\Orm\Tests\Model\connect($context["dsn"], new Config());
+                return ['bind' => self::$modelDb];
+            case 'model.creates':
+                $table = self::modelTable($s['model']);
+                $class = $table['class'];
+                $models = [];
+                foreach ($s['rows'] as $row) {
+                    $model = new $class();
+                    foreach ($row as $column => $value) {
+                        $setter = $table['setters'][$column];
+                        $model->$setter(self::nativeValue(self::databaseValue($value, $context)));
+                    }
+                    $models[] = $model;
+                }
+                $created = (new $class())->connect(self::model())->creates($models, self::CREATES_BATCH);
+                return ['value' => ['int' => (string) $created]];
+            case 'model.query':
+                $table = self::modelTable($s['model']);
+                $class = $table['class'];
+                $query = (new $class())->connect(self::model());
+                if (!array_key_exists('page', $s)) {
+                    $models = $query->gets()->all();
+                    return ['value' => [
+                        'keys' => array_map(static fn ($model): array => self::keyOf($model, $table), $models),
+                        'rows' => array_map(
+                            static fn ($model): array => self::columnsOf($model, $s['columns']),
+                            $models,
+                        ),
+                    ]];
+                }
+                $page = $query->getsPage($s['page'], $s['limit']);
+                return ['value' => [
+                    'page' => self::plainWrapper($page->page, null),
+                    'per_page' => self::plainWrapper($page->perPage, null),
+                    'total_count' => self::plainWrapper($page->totalCount, null),
+                    'total_pages' => self::plainWrapper($page->totalPages, null),
+                    'rows' => array_map(
+                        static fn ($model): array => self::columnsOf($model, $s['columns']),
+                        $page->items->all(),
+                    ),
+                ]];
+            case 'model.count':
+                $table = self::modelTable($s['model']);
+                $class = $table['class'];
+                $query = (new $class())->connect(self::model());
+                if (!array_key_exists('group', $s)) {
+                    return ['value' => self::plainWrapper($query->getCount(), null)];
+                }
+                foreach ($s['group'] as $column) {
+                    $method = $table['groups'][$column];
+                    $query->$method();
+                }
+                $groups = [];
+                foreach ($query->getsCount()->all() as $row) {
+                    $groups[] = [
+                        'values' => array_map(
+                            static fn ($column): array => self::plainWrapper($row->value($column), null),
+                            $s['group'],
+                        ),
+                        'row_count' => self::plainWrapper($row->count(), null),
+                    ];
+                }
+                return ['value' => ['groups' => $groups]];
             case 'sql.exec':
                 // The native driver of PHP is PDO, opened on the case database.
                 $pdo = case_admin($context['dsn']);

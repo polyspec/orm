@@ -64,6 +64,27 @@ name = "catalog_connection_sqlite"
 path = "tests/catalog_connection_sqlite.rs"
 harness = false
 
+# Each case of the collection recipe, tests/collection/collection.json, is the trial collection_mysql::<case id> on a case
+# database of its own (FCV-3); its model ops run on the generated bench models of the trial binary (FCV-4).
+[[test]]
+name = "collection_mysql"
+path = "tests/collection_mysql.rs"
+harness = false
+
+# Each case of the collection recipe, tests/collection/collection.json, is the trial collection_postgres::<case id> on a case
+# database of its own (FCV-3); its model ops run on the generated bench models of the trial binary (FCV-4).
+[[test]]
+name = "collection_postgres"
+path = "tests/collection_postgres.rs"
+harness = false
+
+# Each case of the collection recipe, tests/collection/collection.json, is the trial collection_sqlite::<case id> on a case
+# database of its own (FCV-3); its model ops run on the generated bench models of the trial binary (FCV-4).
+[[test]]
+name = "collection_sqlite"
+path = "tests/collection_sqlite.rs"
+harness = false
+
 [[test]]
 name = "codec_integer_beyond_i64_none"
 path = "tests/codec_integer_beyond_i64_none.rs"

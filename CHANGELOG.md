@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The collection recipe runs `collection-mysql`, `collection-postgres` and `collection-sqlite` in all six runtimes. The helpers gain the model ops `model.connect`, `model.creates`, `model.query` and `model.count`; the seven collection and group-row units keep their native tests, because each binds a requirement that no collection recipe case asserts (T334-3-20).
 - The coverage owners of `authenticated_encryption` hold only the test files that run an AES case; the codec test files of T334-3-14 and T334-3-14b stay on the feature tests list and their parity bindings, so the feature coverage run no longer refuses the owners with `invalid native test command` (T334-3-14b-3).
 - orm no longer copies the capability table of flowmark: the table "Markdown IR executor" of dialects.md is replaced by a link to the pinned flowmark spec 60, and the markdown-table check that read a flowmark source checkout is removed (T347).
 - The check-recipes work of two branches lands on main as one integration: the Korean checklists hold every row of the English ones, the change logs hold the entries of those commits, the Makefile starts node through `$(NODE)` in `rust-compiler-fixtures-check/unit`, and `config/rebuild.json` classifies `scripts/generate/once.mts` and `scripts/php/php-ext-build.mts` (CR26).

@@ -1590,6 +1590,43 @@
         "packages/rust/orm/src/codec.rs"
       ]
     },
+    "collection-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "python",
+        "node-modules",
+        "php-extension-tools",
+        "databases"
+      ],
+      "inputs": [
+        "tests/collection/**",
+        "contracts/fixtures/bench/**",
+        "packages/go/orm/recipe_collection_test.go",
+        "packages/go/internal/recipe/**",
+        "packages/php/tests/CollectionRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php-ext/tests/CollectionRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/bootstrap.php",
+        "packages/python/tests/test_collection_mysql.py",
+        "packages/python/tests/test_collection_postgres.py",
+        "packages/python/tests/test_collection_sqlite.py",
+        "packages/python/tests/recipe.py",
+        "packages/ts/tests/collection-mysql.test.mjs",
+        "packages/ts/tests/collection-postgres.test.mjs",
+        "packages/ts/tests/collection-sqlite.test.mjs",
+        "packages/ts/tests/recipe.mjs",
+        "packages/rust/tests/tests/collection_mysql.rs",
+        "packages/rust/tests/tests/collection_postgres.rs",
+        "packages/rust/tests/tests/collection_sqlite.rs",
+        "packages/rust/tests/tests/common/collection_models.rs",
+        "packages/rust/tests/src/recipe.rs",
+        "packages/rust/tests/Cargo.toml"
+      ]
+    },
     "catalog-connection-check/go": {
       "scope": "owner",
       "needs": [

@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { basename, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
@@ -12,6 +12,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { Db, OrmError, StyledValue, blindIndex, connectCatalog, dbspecManifest, decode, encode, hostDecode, hostEncode, parseDbspec, readDbspecFile, registerModel } from '../dist/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
+import { Account, Author, CompositeAccount, connect as connectBench } from '../dist/index.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { withCaseDatabase } from './case-database.mjs';
 import { nativeQuery } from './coverage_case.mjs';
@@ -237,11 +238,22 @@ async function databaseRecipe(path, database) {
 async function fixtureSchema(setPath) {
   const set = JSON.parse(await readFile(setPath, 'utf8'));
   const documents = [];
+  // An external document is read as the text that a use line of an owned document names, by its file name without .dbs.
+  const external = {};
+  for (const name of set.external ?? []) {
+    const path = resolve(dirname(setPath), name);
+    const read = await readDbspecFile(path);
+    if (read.text === null) throw new Error(`${path}: ${JSON.stringify(read.diagnostics)}`);
+    external[basename(name, '.dbs')] = read.text;
+    const parsed = parseDbspec(read.text, {});
+    if (parsed.document === null) throw new Error(`${path}: ${JSON.stringify(parsed.diagnostics)}`);
+    documents.push(parsed.document);
+  }
   for (const document of set.documents) {
     const path = resolve(dirname(setPath), document);
     const read = await readDbspecFile(path);
     if (read.text === null) throw new Error(`${path}: ${JSON.stringify(read.diagnostics)}`);
-    const parsed = parseDbspec(read.text, {});
+    const parsed = parseDbspec(read.text, external);
     if (parsed.document === null) throw new Error(`${path}: ${JSON.stringify(parsed.diagnostics)}`);
     documents.push(parsed.document);
   }
@@ -255,10 +267,11 @@ async function runCase({ name, recipe, recipeCase, database, schema, caseDatabas
   try { await db.utils().schema().install(schema); } finally { await db.close(); }
   step('schema installed');
   const catalog = await connectCatalog(caseDatabase.dsn);
+  let context;
   try {
     const namespace = await catalog.currentNamespace();
     const bound = new Map([['database', { text: caseDatabase.name }]]);
-    const context = { catalog, namespace, database, dsn: caseDatabase.dsn, bound };
+    context = { catalog, namespace, database, dsn: caseDatabase.dsn, bound, model: null };
     for (const rows of [recipe.seed?.rows, recipeCase.seed?.rows]) {
       for (const [table, values] of Object.entries(rows ?? {})) {
         const metadata = await catalog.describeTable({ namespace, name: table });
@@ -276,6 +289,7 @@ async function runCase({ name, recipe, recipeCase, database, schema, caseDatabas
       step(`step ${index} ${current.op}`);
     }
   } finally {
+    await context?.model?.close();
     await catalog.close();
   }
 }
@@ -321,11 +335,79 @@ const OPS = {
   async 'catalog.delete_row'(s, context) {
     return { value: { int: String(await context.catalog.deleteRow(stepArgument(s.snapshot, context))) } };
   },
+  async 'model.connect'(s, context) {
+    const db = await connectBench(context.dsn, { poolSize: s.pool_size });
+    if (context.model !== null) await context.model.close();
+    context.model = db;
+    return { bind: db };
+  },
+  async 'model.creates'(s, context) {
+    const table = modelNamed(s.model);
+    const models = s.rows.map(row => {
+      const model = table.make();
+      for (const [column, value] of Object.entries(row)) table.set[column](model, numeric(toValue(databaseValue(value, context))));
+      return model;
+    });
+    return { value: { int: String(await table.make().connect(context.model).creates(models, CREATES_BATCH)) } };
+  },
+  async 'model.query'(s, context) {
+    const table = modelNamed(s.model);
+    const query = table.make().connect(context.model);
+    if (s.page === undefined) {
+      const rows = (await query.gets()).values();
+      return { value: { keys: rows.map(row => keyOf(row, table)), rows: rows.map(row => columnsOf(row, s.columns)) } };
+    }
+    const page = await query.getsPage(s.page, s.limit);
+    return { value: { page: plain(BigInt(page.page), null), per_page: plain(BigInt(page.perPage), null), total_count: plain(BigInt(page.totalCount), null), total_pages: plain(BigInt(page.totalPages), null), rows: page.items.values().map(row => columnsOf(row, s.columns)) } };
+  },
+  async 'model.count'(s, context) {
+    const table = modelNamed(s.model);
+    const query = table.make().connect(context.model);
+    if (s.group === undefined) return { value: plain(BigInt(await query.getCount()), null) };
+    for (const column of s.group) table.group[column](query);
+    const groups = await query.getsCount();
+    return { value: { groups: groups.values().map(row => ({ values: s.group.map(column => plain(row.value(column), null)), row_count: plain(BigInt(row.count), null) })) } };
+  },
   async 'sql.exec'(s, context) {
     await nativeQuery(context.database, context.dsn, [sql(s.sql, context)]);
     return {};
   },
 };
+
+// CREATES_BATCH is the batch of model.creates (INT-35), the same in every runtime of the recipe.
+const CREATES_BATCH = 100;
+
+// MODELS maps the name of a generated model of the fixture to its constructor, its primary key, its setters and its groupings.
+const MODELS = {
+  account: { make: () => new Account(), primaryKey: ['seq'], set: { seq: (m, v) => m.setSeq(v), name: (m, v) => m.setName(v) }, group: {} },
+  author: { make: () => new Author(), primaryKey: ['seq'], set: { seq: (m, v) => m.setSeq(v), name: (m, v) => m.setName(v) }, group: {} },
+  composite_account: {
+    make: () => new CompositeAccount(),
+    primaryKey: ['tenant_id', 'account_id'],
+    set: { tenant_id: (m, v) => m.setTenantId(v), account_id: (m, v) => m.setAccountId(v), name: (m, v) => m.setName(v) },
+    group: { tenant_id: m => m.groupByTenantId(), account_id: m => m.groupByAccountId(), name: m => m.groupByName() },
+  },
+};
+
+function modelNamed(name) {
+  if (!Object.hasOwn(MODELS, name)) throw new Error(`MODEL_UNKNOWN ${name}`);
+  return MODELS[name];
+}
+
+/** The value of a setter or of a key: an integer as a number, the other values as they are. */
+function numeric(value) { return typeof value === 'bigint' ? Number(value) : value; }
+
+/** The key of a model: the values of its primary key components in key order, as recipe wrappers. */
+function keyOf(row, table) {
+  const values = row.toArray();
+  return table.primaryKey.map(column => plain(values[column], null));
+}
+
+/** The values of the columns of a model in order, as recipe wrappers. */
+function columnsOf(row, columns) {
+  const values = row.toArray();
+  return columns.map(column => plain(values[column], null));
+}
 
 async function runStep(s, context) {
   const op = OPS[s.op];

@@ -1,0 +1,765 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "INT-30",
+    "INT-31",
+    "INT-32",
+    "INT-33",
+    "INT-35",
+    "INT-81",
+    "INT-82",
+    "INT-84"
+  ],
+  "fixture": "contracts/fixtures/bench/dbspec-set.json",
+  "cases": [
+    {
+      "id": "count_gets_and_group_by_the_key",
+      "requirements": [
+        "INT-30",
+        "INT-31",
+        "INT-33",
+        "INT-81",
+        "INT-84"
+      ],
+      "seed": {
+        "rows": {
+          "composite_account": [
+            {
+              "tenant_id": {
+                "int": "1"
+              },
+              "account_id": {
+                "int": "1"
+              },
+              "name": {
+                "text": "a"
+              }
+            },
+            {
+              "tenant_id": {
+                "int": "1"
+              },
+              "account_id": {
+                "int": "2"
+              },
+              "name": {
+                "text": "b"
+              }
+            },
+            {
+              "tenant_id": {
+                "int": "2"
+              },
+              "account_id": {
+                "int": "1"
+              },
+              "name": {
+                "text": "c"
+              }
+            }
+          ]
+        }
+      },
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "model.count",
+          "model": "composite_account",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "3"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "3"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "3"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "model": "composite_account",
+          "columns": [
+            "tenant_id",
+            "account_id",
+            "name"
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "keys": [
+                  [
+                    {
+                      "int": "1"
+                    },
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    {
+                      "int": "1"
+                    },
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    {
+                      "int": "2"
+                    },
+                    {
+                      "int": "1"
+                    }
+                  ]
+                ],
+                "rows": [
+                  [
+                    {
+                      "int": "1"
+                    },
+                    {
+                      "int": "1"
+                    },
+                    {
+                      "text": "a"
+                    }
+                  ],
+                  [
+                    {
+                      "int": "1"
+                    },
+                    {
+                      "int": "2"
+                    },
+                    {
+                      "text": "b"
+                    }
+                  ],
+                  [
+                    {
+                      "int": "2"
+                    },
+                    {
+                      "int": "1"
+                    },
+                    {
+                      "text": "c"
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "keys": [
+                  [
+                    {
+                      "int": "1"
+                    },
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    {
+                      "int": "1"
+                    },
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    {
+                      "int": "2"
+                    },
+                    {
+                      "int": "1"
+                    }
+                  ]
+                ],
+                "rows": [
+                  [
+                    {
+                      "int": "1"
+                    },
+                    {
+                      "int": "1"
+                    },
+                    {
+                      "text": "a"
+                    }
+                  ],
+                  [
+                    {
+                      "int": "1"
+                    },
+                    {
+                      "int": "2"
+                    },
+                    {
+                      "text": "b"
+                    }
+                  ],
+                  [
+                    {
+                      "int": "2"
+                    },
+                    {
+                      "int": "1"
+                    },
+                    {
+                      "text": "c"
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "keys": [
+                  [
+                    {
+                      "int": "1"
+                    },
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    {
+                      "int": "1"
+                    },
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    {
+                      "int": "2"
+                    },
+                    {
+                      "int": "1"
+                    }
+                  ]
+                ],
+                "rows": [
+                  [
+                    {
+                      "int": "1"
+                    },
+                    {
+                      "int": "1"
+                    },
+                    {
+                      "text": "a"
+                    }
+                  ],
+                  [
+                    {
+                      "int": "1"
+                    },
+                    {
+                      "int": "2"
+                    },
+                    {
+                      "text": "b"
+                    }
+                  ],
+                  [
+                    {
+                      "int": "2"
+                    },
+                    {
+                      "int": "1"
+                    },
+                    {
+                      "text": "c"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "page_reads_the_requested_page",
+      "requirements": [
+        "INT-32"
+      ],
+      "seed": {
+        "rows": {
+          "composite_account": [
+            {
+              "tenant_id": {
+                "int": "1"
+              },
+              "account_id": {
+                "int": "1"
+              },
+              "name": {
+                "text": "a"
+              }
+            },
+            {
+              "tenant_id": {
+                "int": "1"
+              },
+              "account_id": {
+                "int": "2"
+              },
+              "name": {
+                "text": "b"
+              }
+            },
+            {
+              "tenant_id": {
+                "int": "2"
+              },
+              "account_id": {
+                "int": "1"
+              },
+              "name": {
+                "text": "c"
+              }
+            }
+          ]
+        }
+      },
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "model.query",
+          "model": "composite_account",
+          "columns": [
+            "tenant_id",
+            "account_id",
+            "name"
+          ],
+          "page": 2,
+          "limit": 2,
+          "expect": {
+            "mysql": {
+              "value": {
+                "page": {
+                  "int": "2"
+                },
+                "per_page": {
+                  "int": "2"
+                },
+                "total_count": {
+                  "int": "3"
+                },
+                "total_pages": {
+                  "int": "2"
+                },
+                "rows": [
+                  [
+                    {
+                      "int": "2"
+                    },
+                    {
+                      "int": "1"
+                    },
+                    {
+                      "text": "c"
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "page": {
+                  "int": "2"
+                },
+                "per_page": {
+                  "int": "2"
+                },
+                "total_count": {
+                  "int": "3"
+                },
+                "total_pages": {
+                  "int": "2"
+                },
+                "rows": [
+                  [
+                    {
+                      "int": "2"
+                    },
+                    {
+                      "int": "1"
+                    },
+                    {
+                      "text": "c"
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "page": {
+                  "int": "2"
+                },
+                "per_page": {
+                  "int": "2"
+                },
+                "total_count": {
+                  "int": "3"
+                },
+                "total_pages": {
+                  "int": "2"
+                },
+                "rows": [
+                  [
+                    {
+                      "int": "2"
+                    },
+                    {
+                      "int": "1"
+                    },
+                    {
+                      "text": "c"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "creates_inserts_rows_in_order",
+      "requirements": [
+        "INT-35",
+        "INT-30",
+        "INT-33"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "model.creates",
+          "model": "composite_account",
+          "rows": [
+            {
+              "tenant_id": {
+                "int": "3"
+              },
+              "account_id": {
+                "int": "1"
+              },
+              "name": {
+                "text": "x"
+              }
+            },
+            {
+              "tenant_id": {
+                "int": "3"
+              },
+              "account_id": {
+                "int": "2"
+              },
+              "name": {
+                "text": "y"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "2"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "model": "composite_account",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "2"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "model": "composite_account",
+          "group": [
+            "tenant_id"
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "groups": [
+                  {
+                    "values": [
+                      {
+                        "int": "3"
+                      }
+                    ],
+                    "row_count": {
+                      "int": "2"
+                    }
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "groups": [
+                  {
+                    "values": [
+                      {
+                        "int": "3"
+                      }
+                    ],
+                    "row_count": {
+                      "int": "2"
+                    }
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "groups": [
+                  {
+                    "values": [
+                      {
+                        "int": "3"
+                      }
+                    ],
+                    "row_count": {
+                      "int": "2"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "model": "composite_account",
+          "columns": [
+            "name"
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "keys": [
+                  [
+                    {
+                      "int": "3"
+                    },
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    {
+                      "int": "3"
+                    },
+                    {
+                      "int": "2"
+                    }
+                  ]
+                ],
+                "rows": [
+                  [
+                    {
+                      "text": "x"
+                    }
+                  ],
+                  [
+                    {
+                      "text": "y"
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "keys": [
+                  [
+                    {
+                      "int": "3"
+                    },
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    {
+                      "int": "3"
+                    },
+                    {
+                      "int": "2"
+                    }
+                  ]
+                ],
+                "rows": [
+                  [
+                    {
+                      "text": "x"
+                    }
+                  ],
+                  [
+                    {
+                      "text": "y"
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "keys": [
+                  [
+                    {
+                      "int": "3"
+                    },
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    {
+                      "int": "3"
+                    },
+                    {
+                      "int": "2"
+                    }
+                  ]
+                ],
+                "rows": [
+                  [
+                    {
+                      "text": "x"
+                    }
+                  ],
+                  [
+                    {
+                      "text": "y"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "empty_table_has_no_rows",
+      "requirements": [
+        "INT-30",
+        "INT-33",
+        "INT-81"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "model.count",
+          "model": "composite_account",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "0"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "0"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "0"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "model": "composite_account",
+          "columns": [
+            "tenant_id",
+            "account_id",
+            "name"
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "keys": [],
+                "rows": []
+              }
+            },
+            "postgres": {
+              "value": {
+                "keys": [],
+                "rows": []
+              }
+            },
+            "sqlite": {
+              "value": {
+                "keys": [],
+                "rows": []
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

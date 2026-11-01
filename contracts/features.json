@@ -1318,7 +1318,20 @@
         "packages/php-ext/tests/InsertPartsTestExtensionTest.php",
         "packages/php-ext/tests/ModelTestExtensionTest.php",
         "packages/rust/orm/src/value.rs",
-        "packages/php-ext/tests/InvalidDateReadNativeTest.php"
+        "packages/php-ext/tests/InvalidDateReadNativeTest.php",
+        "packages/go/orm/recipe_collection_test.go",
+        "packages/ts/tests/collection-mysql.test.mjs",
+        "packages/ts/tests/collection-postgres.test.mjs",
+        "packages/ts/tests/collection-sqlite.test.mjs",
+        "packages/python/tests/test_collection_mysql.py",
+        "packages/python/tests/test_collection_postgres.py",
+        "packages/python/tests/test_collection_sqlite.py",
+        "packages/php/tests/CollectionRecipeTest.php",
+        "packages/php-ext/tests/CollectionRecipeTestExtensionTest.php",
+        "packages/rust/tests/tests/collection_mysql.rs",
+        "packages/rust/tests/tests/collection_postgres.rs",
+        "packages/rust/tests/tests/collection_sqlite.rs",
+        "packages/rust/tests/tests/common/collection_models.rs"
       ],
       "docs": [
         "docs/spec/dsl.md",

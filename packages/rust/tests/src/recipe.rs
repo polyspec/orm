@@ -383,7 +383,7 @@ fn equal(got: &Value, want: &Value, ordered: bool) -> bool {
 }
 
 /// The database path (FCV-3 and FCV-4): each case runs on a case database of its own through the public catalog API.
-pub use database::database_trials;
+pub use database::{database_trials, database_trials_with, Count, Models, PageInfo, Query};
 
 mod database {
     use std::collections::{BTreeMap, HashMap};
@@ -398,7 +398,9 @@ mod database {
     use polyspec_orm_case_database::CaseDatabase;
     use serde_json::{json, Value};
 
-    use super::hex_text;
+    use std::future::Future;
+
+    use super::{from_val, hex_text};
 
     /// The databases of a recipe with a fixture (FCV-3).
     const DATABASES: [&str; 3] = ["mysql", "postgres", "sqlite"];
@@ -441,25 +443,95 @@ mod database {
         database: &'a str,
         dsn: String,
         bound: HashMap<String, Bound>,
+        /// The connection of model.connect, which the model ops of the case use; closed at the end of the case.
+        model: Option<Db>,
+    }
+
+    /// The model ops of a recipe (FCV-4) on the generated models of its fixture. The trial binary that includes the
+    /// generated models implements it, so the helper never includes generated code. Each method is the public call of
+    /// its op, on the connection that model.connect opened.
+    pub trait Models: Send + Sync + 'static {
+        /// model.connect: opens the connection with the generated package's connect, which registers its schema.
+        fn connect(&self, dsn: &str, pool_size: u32) -> impl Future<Output = polyspec_orm::Result<Db>> + Send;
+        /// model.creates: inserts the rows, each a list of (column, value), in batches; returns the inserted row count.
+        fn creates(&self, db: &Db, model: &str, rows: Vec<Vec<(String, polyspec_orm::Val)>>) -> impl Future<Output = polyspec_orm::Result<u64>> + Send;
+        /// model.query: gets when page is None, gets_page with (page, per_page) otherwise.
+        fn query(&self, db: &Db, model: &str, columns: &[String], page: Option<(u32, u32)>) -> impl Future<Output = polyspec_orm::Result<Query>> + Send;
+        /// model.count: get_count when group is empty, gets_count grouped by its columns otherwise.
+        fn count(&self, db: &Db, model: &str, group: &[String]) -> impl Future<Output = polyspec_orm::Result<Count>> + Send;
+    }
+
+    /// The rows of a model.query: the primary key values and the selected values of each model, in order, and the
+    /// totals of a page.
+    pub struct Query {
+        pub keys: Vec<Vec<polyspec_orm::Val>>,
+        pub rows: Vec<Vec<polyspec_orm::Val>>,
+        pub page: Option<PageInfo>,
+    }
+
+    /// The totals of a gets_page.
+    pub struct PageInfo {
+        pub page: i64,
+        pub per_page: i64,
+        pub total_count: i64,
+        pub total_pages: i64,
+    }
+
+    /// The result of a model.count: the row count, or the values and the row count of each group.
+    pub enum Count {
+        Total(i64),
+        Groups(Vec<(Vec<polyspec_orm::Val>, i64)>),
+    }
+
+    /// The dispatcher of a recipe without generated models: each model op fails with OP_UNKNOWN.
+    struct NoModels;
+
+    impl Models for NoModels {
+        async fn connect(&self, _dsn: &str, _pool_size: u32) -> polyspec_orm::Result<Db> {
+            Err(no_models("model.connect"))
+        }
+
+        async fn creates(&self, _db: &Db, _model: &str, _rows: Vec<Vec<(String, polyspec_orm::Val)>>) -> polyspec_orm::Result<u64> {
+            Err(no_models("model.creates"))
+        }
+
+        async fn query(&self, _db: &Db, _model: &str, _columns: &[String], _page: Option<(u32, u32)>) -> polyspec_orm::Result<Query> {
+            Err(no_models("model.query"))
+        }
+
+        async fn count(&self, _db: &Db, _model: &str, _group: &[String]) -> polyspec_orm::Result<Count> {
+            Err(no_models("model.count"))
+        }
+    }
+
+    fn no_models(op: &str) -> polyspec_orm::Error {
+        polyspec_orm::Error::Config(format!("OP_UNKNOWN {op}"))
     }
 
     /// One trial for each case of the recipe at `path`, relative to the repository root, on `database` ("mysql",
-    /// "postgres" or "sqlite"), named `<entry>::<case id>`. Each case runs on a case database of its own.
+    /// "postgres" or "sqlite"), named `<entry>::<case id>`. Each case runs on a case database of its own. Without
+    /// generated models, the model ops of the recipe fail with OP_UNKNOWN.
     pub fn database_trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testcase::Trial> {
+        database_trials_with(entry, path, database, NoModels)
+    }
+
+    /// As [`database_trials`], with the model ops run by `models`, the dispatcher of the trial binary.
+    pub fn database_trials_with<M: Models>(entry: &str, path: &str, database: &str, models: M) -> Vec<polyspec_orm_testcase::Trial> {
         assert!(DATABASES.contains(&database), "recipe {path}: unknown database {database}");
         let root = polyspec_orm_testcase::manifest_dir().join("../../..");
         let recipe = Arc::new(read_json(&root.join(path)));
         let Some(fixture) = recipe["fixture"].as_str() else { panic!("recipe {path}: no fixture, so it has no database") };
         let schema = Arc::new(fixture_schema(&root.join(fixture)));
+        let models = Arc::new(models);
         let Some(cases) = recipe["cases"].as_array() else { panic!("recipe {path} has no cases") };
         cases
             .iter()
             .map(|case| {
-                let (recipe, schema, case) = (recipe.clone(), schema.clone(), case.clone());
+                let (recipe, schema, models, case) = (recipe.clone(), schema.clone(), models.clone(), case.clone());
                 let (path, database) = (path.to_owned(), database.to_owned());
                 let id = case["id"].as_str().unwrap_or_default().to_owned();
                 polyspec_orm_testcase::async_trial(format!("{entry}::{id}"), polyspec_orm_testcase::DATABASE, move || async move {
-                    run_case(&path, &recipe, &case, &database, &schema).await;
+                    run_case(&path, &recipe, &case, &database, &schema, &*models).await;
                 })
             })
             .collect()
@@ -480,14 +552,31 @@ mod database {
     fn fixture_schema(set_path: &Path) -> Schema {
         let set = read_json(set_path);
         let directory = set_path.parent().unwrap_or(Path::new("."));
+        // An external document is read as the text that a use line of an owned document names, by its file name without .dbs.
+        let mut external = BTreeMap::new();
+        for name in set["external"].as_array().into_iter().flatten().filter_map(Value::as_str) {
+            let path = directory.join(name);
+            let text = match dbspec::read_file(&path) {
+                Ok(text) => text,
+                Err(error) => panic!("{}: {error:?}", path.display()),
+            };
+            let stem = Path::new(name).file_stem().and_then(|s| s.to_str()).unwrap_or_default().to_owned();
+            external.insert(stem, text);
+        }
         let mut documents = Vec::new();
+        for text in external.values() {
+            match dbspec::parse(text, &BTreeMap::new()) {
+                Ok(parsed) => documents.push(parsed.document),
+                Err(diagnostics) => panic!("external document: {diagnostics:?}"),
+            }
+        }
         for document in set["documents"].as_array().into_iter().flatten() {
             let path = directory.join(document.as_str().unwrap_or_default());
             let text = match dbspec::read_file(&path) {
                 Ok(text) => text,
                 Err(error) => panic!("{}: {error:?}", path.display()),
             };
-            match dbspec::parse(&text, &BTreeMap::new()) {
+            match dbspec::parse(&text, &external) {
                 Ok(parsed) => documents.push(parsed.document),
                 Err(diagnostics) => panic!("{}: {diagnostics:?}", path.display()),
             }
@@ -505,17 +594,17 @@ mod database {
 
     /// Runs one case on a case database of its own and drops the database; a failure names the recipe, the case, the
     /// index of the step and the database.
-    async fn run_case(path: &str, recipe: &Value, case: &Value, database: &str, schema: &Schema) {
+    async fn run_case<M: Models>(path: &str, recipe: &Value, case: &Value, database: &str, schema: &Schema, models: &M) {
         let id = case["id"].as_str().unwrap_or_default();
         let case_database = CaseDatabase::create(database).await;
-        let result = case_body(recipe, case, database, schema, &case_database).await;
+        let result = case_body(recipe, case, database, schema, &case_database, models).await;
         case_database.drop().await;
         if let Err(failure) = result {
             panic!("recipe {path}, case {id}, {failure}");
         }
     }
 
-    async fn case_body(recipe: &Value, case: &Value, database: &str, schema: &Schema, case_database: &CaseDatabase) -> Result<(), String> {
+    async fn case_body<M: Models>(recipe: &Value, case: &Value, database: &str, schema: &Schema, case_database: &CaseDatabase, models: &M) -> Result<(), String> {
         let dsn = case_database.dsn().to_owned();
         let db = Db::connect(&dsn, 1, Config::default()).await.map_err(|e| format!("database {database}: connect: {e}"))?;
         let installed = db.utils().schema().install(schema).await;
@@ -523,15 +612,15 @@ mod database {
         installed.map_err(|e| format!("database {database}: schema install: {e}"))?;
         polyspec_orm_testcase::step("schema installed");
         let mut catalog = CatalogConnection::connect(&dsn).await.map_err(|e| format!("database {database}: catalog connection: {e}"))?;
-        let result = run_steps(&mut catalog, recipe, case, database, dsn, case_database.name()).await;
+        let result = run_steps(&mut catalog, recipe, case, database, dsn, case_database.name(), models).await;
         catalog.close().await;
         result
     }
 
-    async fn run_steps(catalog: &mut CatalogConnection, recipe: &Value, case: &Value, database: &str, dsn: String, name: &str) -> Result<(), String> {
+    async fn run_steps<M: Models>(catalog: &mut CatalogConnection, recipe: &Value, case: &Value, database: &str, dsn: String, name: &str, models: &M) -> Result<(), String> {
         let namespace = catalog.current_namespace().await.map_err(|e| format!("database {database}: current namespace: {e}"))?;
         let bound = HashMap::from([("database".to_owned(), Bound::Json(json!({ "text": name })))]);
-        let mut context = Context { namespace, database, dsn, bound };
+        let mut context = Context { namespace, database, dsn, bound, model: None };
         for rows in [&recipe["seed"]["rows"], &case["seed"]["rows"]] {
             for (table, values) in rows.as_object().into_iter().flatten() {
                 let seed = |e: String| format!("seed row of {table}, database {database}: {e}");
@@ -544,9 +633,17 @@ mod database {
             }
         }
         polyspec_orm_testcase::step("seed rows inserted");
+        let result = run_recipe_steps(catalog, case, database, models, &mut context).await;
+        if let Some(db) = context.model.take() {
+            db.close().await;
+        }
+        result
+    }
+
+    async fn run_recipe_steps<M: Models>(catalog: &mut CatalogConnection, case: &Value, database: &str, models: &M, context: &mut Context<'_>) -> Result<(), String> {
         for (index, current) in case["steps"].as_array().into_iter().flatten().enumerate() {
             let op = current["op"].as_str().unwrap_or_default();
-            run_step(catalog, current, &mut context).await.map_err(|failure| format!("step {index} ({op}), database {database}: {failure}"))?;
+            run_step(catalog, current, context, models).await.map_err(|failure| format!("step {index} ({op}), database {database}: {failure}"))?;
             polyspec_orm_testcase::step(format_args!("step {index} {op}"));
         }
         Ok(())
@@ -557,13 +654,13 @@ mod database {
         (Arc::new(AtomicBool::new(false)), Arc::new(|_| {}), Arc::new(|| Ok(())))
     }
 
-    async fn run_step(catalog: &mut CatalogConnection, step: &Value, context: &mut Context<'_>) -> Result<(), String> {
+    async fn run_step<M: Models>(catalog: &mut CatalogConnection, step: &Value, context: &mut Context<'_>, models: &M) -> Result<(), String> {
         let expected = match step.get("expect") {
             None => None,
             Some(expect) => Some(resolve_refs(&expect[context.database], context)?),
         };
         let want_error = expected.as_ref().and_then(|e| e.get("error")).and_then(Value::as_str).map(str::to_owned);
-        let output = match call(catalog, step, context).await {
+        let output = match call(catalog, step, context, models).await {
             Ok(output) => output,
             Err(Failure::Step(message)) => return Err(message),
             Err(Failure::Call(message)) => {
@@ -593,10 +690,116 @@ mod database {
         }
     }
 
-    /// Maps the op of `step` to its call of the public API and returns the fields that its expect compares.
-    async fn call(catalog: &mut CatalogConnection, step: &Value, context: &Context<'_>) -> Result<Output, Failure> {
+    /// Runs one model op (FCV-4) through the dispatcher and returns the fields that its expect compares.
+    async fn model_call<M: Models>(models: &M, op: &str, step: &Value, context: &mut Context<'_>) -> Result<Output, Failure> {
         let fault = Failure::Step;
-        Ok(match step["op"].as_str().unwrap_or_default() {
+        if op == "model.connect" {
+            let pool_size = step["pool_size"].as_u64().and_then(|n| u32::try_from(n).ok()).ok_or_else(|| fault("pool_size is not a count".into()))?;
+            let db = models.connect(&context.dsn, pool_size).await.map_err(|e| Failure::Call(e.to_string()))?;
+            if let Some(previous) = context.model.replace(db) {
+                previous.close().await;
+            }
+            return Ok(Output::fields(json!({})));
+        }
+        let model = step["model"].as_str().ok_or_else(|| fault("model is not a name".into()))?;
+        let Some(db) = context.model.as_ref() else { return Err(fault(format!("{op} before model.connect"))) };
+        match op {
+            "model.creates" => {
+                let rows = step["rows"]
+                    .as_array()
+                    .ok_or_else(|| fault("rows is not a list".into()))?
+                    .iter()
+                    .map(model_row)
+                    .collect::<Result<Vec<_>, String>>()
+                    .map_err(fault)?;
+                let inserted = models.creates(db, model, rows).await.map_err(|e| Failure::Call(e.to_string()))?;
+                Ok(Output::fields(json!({ "value": { "int": inserted.to_string() } })))
+            }
+            "model.query" => {
+                let columns = string_list(&step["columns"]).map_err(fault)?;
+                let page = match step.get("page") {
+                    None => None,
+                    Some(page) => Some((count_of(page).map_err(fault)?, count_of(&step["limit"]).map_err(fault)?)),
+                };
+                let found = models.query(db, model, &columns, page).await.map_err(|e| Failure::Call(e.to_string()))?;
+                let rows = found.rows.iter().map(|row| wrap_all(row)).collect::<Result<Vec<_>, String>>().map_err(fault)?;
+                let fields = match found.page {
+                    None => {
+                        let keys = found.keys.iter().map(|key| wrap_all(key)).collect::<Result<Vec<_>, String>>().map_err(fault)?;
+                        json!({ "value": { "keys": keys, "rows": rows } })
+                    }
+                    Some(info) => json!({ "value": {
+                        "page": { "int": info.page.to_string() },
+                        "per_page": { "int": info.per_page.to_string() },
+                        "total_count": { "int": info.total_count.to_string() },
+                        "total_pages": { "int": info.total_pages.to_string() },
+                        "rows": rows,
+                    } }),
+                };
+                Ok(Output::fields(fields))
+            }
+            "model.count" => {
+                let group = match step.get("group") {
+                    None => Vec::new(),
+                    Some(group) => string_list(group).map_err(fault)?,
+                };
+                match models.count(db, model, &group).await.map_err(|e| Failure::Call(e.to_string()))? {
+                    Count::Total(n) => Ok(Output::fields(json!({ "value": { "int": n.to_string() } }))),
+                    Count::Groups(groups) => {
+                        let mut out = Vec::with_capacity(groups.len());
+                        for (values, row_count) in groups {
+                            out.push(json!({ "values": wrap_all(&values).map_err(fault)?, "row_count": { "int": row_count.to_string() } }));
+                        }
+                        Ok(Output::fields(json!({ "value": { "groups": out } })))
+                    }
+                }
+            }
+            other => Err(fault(format!("OP_UNKNOWN {other}"))),
+        }
+    }
+
+    /// The (column, value) pairs of one row of a model.creates step.
+    fn model_row(row: &Value) -> Result<Vec<(String, polyspec_orm::Val)>, String> {
+        let Some(map) = row.as_object() else { return Err("a row is not an object".to_owned()) };
+        map.iter().map(|(column, raw)| Ok((column.clone(), model_val(raw)?))).collect()
+    }
+
+    /// The model value of a recipe wrapper that a model.creates row sets.
+    fn model_val(raw: &Value) -> Result<polyspec_orm::Val, String> {
+        let (name, body) = super::kind(raw)?;
+        Ok(match name {
+            "null" => polyspec_orm::Val::Null,
+            "int" => polyspec_orm::Val::I64(body.as_str().unwrap_or_default().parse().map_err(|e| format!("int wrapper: {e}"))?),
+            "text" => polyspec_orm::Val::Str(body.as_str().unwrap_or_default().to_owned()),
+            "bool" => polyspec_orm::Val::Bool(body.as_bool().ok_or_else(|| "a bool wrapper holds no boolean".to_owned())?),
+            other => return Err(format!("a {other} wrapper is not a model value")),
+        })
+    }
+
+    /// The names of a column list of a step.
+    fn string_list(value: &Value) -> Result<Vec<String>, String> {
+        let Some(names) = value.as_array() else { return Err("a column list is not a list".to_owned()) };
+        names.iter().map(|name| name.as_str().map(str::to_owned).ok_or_else(|| "a column name is not text".to_owned())).collect()
+    }
+
+    /// A page or a limit of a step.
+    fn count_of(value: &Value) -> Result<u32, String> {
+        value.as_u64().and_then(|n| u32::try_from(n).ok()).ok_or_else(|| "a count is not a number".to_owned())
+    }
+
+    /// The recipe wrappers of the values of a model op.
+    fn wrap_all(values: &[polyspec_orm::Val]) -> Result<Vec<Value>, String> {
+        values.iter().map(from_val).collect()
+    }
+
+    /// Maps the op of `step` to its call of the public API and returns the fields that its expect compares.
+    async fn call<M: Models>(catalog: &mut CatalogConnection, step: &Value, context: &mut Context<'_>, models: &M) -> Result<Output, Failure> {
+        let op = step["op"].as_str().unwrap_or_default();
+        if op.starts_with("model.") {
+            return model_call(models, op, step, context).await;
+        }
+        let fault = Failure::Step;
+        Ok(match op {
             "catalog.current_namespace" => {
                 let namespace = catalog.current_namespace().await.map_err(Failure::Call)?;
                 Output::fields(json!({ "value": { "text": namespace } }))
