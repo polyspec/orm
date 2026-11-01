@@ -333,6 +333,13 @@ final class Recipe
                 return $int;
             case 'float':
                 return (float) $w['float'];
+            case 'f64':
+                // The three non-finite binary64 values; a cast would read NaN and Infinity as 0.
+                return match ($w['f64']) {
+                    'NaN' => NAN,
+                    'Infinity' => INF,
+                    '-Infinity' => -INF,
+                };
             case 'text':
                 return $w['text'];
             case 'bytes_hex':

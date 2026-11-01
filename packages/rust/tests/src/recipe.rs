@@ -194,6 +194,8 @@ fn param(raw: &Value, bound: &HashMap<String, Outcome>) -> Result<Param, String>
         ("bytes_hex", body) => Ok(Param::Bytes(hex_bytes(body.as_str().unwrap_or_default())?)),
         ("int", body) => body.as_str().unwrap_or_default().parse().map(Param::I64).map_err(|error| format!("int wrapper: {error}")),
         ("float", body) => body.as_str().unwrap_or_default().parse().map(Param::F64).map_err(|error| format!("float wrapper: {error}")),
+        // Rust parses NaN, Infinity and -Infinity, the three non-finite values of the f64 wrapper.
+        ("f64", body) => body.as_str().unwrap_or_default().parse().map(Param::F64).map_err(|error| format!("f64 wrapper: {error}")),
         ("bool", body) => body.as_bool().map(Param::Bool).ok_or_else(|| "a bool wrapper holds no boolean".to_owned()),
         (other, _) => Err(format!("a {other} wrapper is not a bound value")),
     }

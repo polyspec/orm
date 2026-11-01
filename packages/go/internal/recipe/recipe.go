@@ -512,6 +512,16 @@ func toGo(n node) (any, error) {
 		return strconv.ParseUint(n.text, 10, 64)
 	case "float":
 		return strconv.ParseFloat(n.text, 64)
+	case "f64":
+		switch n.text {
+		case "NaN":
+			return math.NaN(), nil
+		case "Infinity":
+			return math.Inf(1), nil
+		case "-Infinity":
+			return math.Inf(-1), nil
+		}
+		return nil, fmt.Errorf("an f64 wrapper is NaN, Infinity or -Infinity, not %q", n.text)
 	case "text":
 		return n.text, nil
 	case "bytes_hex":

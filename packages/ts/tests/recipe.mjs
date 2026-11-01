@@ -163,6 +163,8 @@ function toValue(w) {
   if ('bool' in w) return w.bool;
   if ('int' in w) return BigInt(w.int);
   if ('float' in w) return Number(w.float);
+  // Number reads NaN, Infinity and -Infinity, the three non-finite values of the f64 wrapper.
+  if ('f64' in w) return Number(w.f64);
   if ('text' in w) return w.text;
   if ('bytes_hex' in w) return Buffer.from(w.bytes_hex, 'hex');
   if ('array' in w) return w.array.map(toValue);

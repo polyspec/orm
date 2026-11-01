@@ -290,6 +290,9 @@ def _to_value(w: dict) -> Any:
         return int(w["int"])
     if "float" in w:
         return float(w["float"])
+    if "f64" in w:
+        # float reads NaN, Infinity and -Infinity, the three non-finite values of the f64 wrapper.
+        return float(w["f64"])
     if "text" in w:
         return w["text"]
     if "bytes_hex" in w:

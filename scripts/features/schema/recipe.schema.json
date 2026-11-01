@@ -105,6 +105,7 @@
         { "type": "object", "required": ["null"], "additionalProperties": false, "properties": { "null": { "type": "string", "minLength": 1 } } },
         { "type": "object", "required": ["nil"], "additionalProperties": false, "properties": { "nil": { "const": true } } },
         { "type": "object", "required": ["float"], "additionalProperties": false, "properties": { "float": { "type": "string", "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][+-]?[0-9]+)?$" } } },
+        { "type": "object", "required": ["f64"], "additionalProperties": false, "properties": { "f64": { "enum": ["NaN", "Infinity", "-Infinity"], "description": "A non-finite binary64 number (the bind vectors of tests/bind/vectors.json); a finite one is a float wrapper." } } },
         { "type": "object", "required": ["array"], "additionalProperties": false, "properties": { "array": { "type": "array", "items": { "$ref": "#/$defs/value" } } } },
         {
           "type": "object",
