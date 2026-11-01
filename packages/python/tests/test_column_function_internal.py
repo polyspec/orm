@@ -15,9 +15,7 @@ from .coverage_case import REPOSITORY_ROOT
 class ColumnFunctionMetadataTest(unittest.TestCase):
     def setUp(self):
         recipe = json.loads(
-            (REPOSITORY_ROOT / "tests/planner/compile.json").read_text(
-                encoding="utf-8"
-            )
+            (REPOSITORY_ROOT / "tests/planner/compile.json").read_text(encoding="utf-8")
         )
         self.step = next(
             case["steps"][0]
@@ -25,7 +23,9 @@ class ColumnFunctionMetadataTest(unittest.TestCase):
             if case["id"] == "planner_column_function_date"
         )
         schema = (REPOSITORY_ROOT / "tests/planner" / self.step["schema"]).resolve()
-        self.model = model_of_documents(parse_document_set([schema.read_text(encoding="utf-8")]))
+        self.model = model_of_documents(
+            parse_document_set([schema.read_text(encoding="utf-8")])
+        )
 
     def test_missing_post_validation_field_is_internal(self):
         request = dict(self.step["input"], manifest_hash=self.model.manifest_hash)

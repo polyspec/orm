@@ -1,10 +1,11 @@
-// plan_case.mjs holds the dbspec schema plan vectors (tests/dbspec/plans.json, docs/spec/plans.md) for the TypeScript
-// client: the helpers and one function per section of plans.json; each dbspec-plan-<section>.mjs calls one.
+// plan_case.mjs holds the dbspec schema plan vectors of the cases section of tests/dbspec/plans.json (docs/spec/plans.md) for
+// the TypeScript client: the helpers and planCases, which dbspec-plan-cases.mjs calls. The other sections are recipes
+// (tests/dbspec/plan-*.json), run by dbspec-plan-<section>.mjs through recipe.mjs.
 import { caseTest } from '../../../tests/testcase.mts';
 import { vectorRegistrar } from '../../../tests/vector-registrar.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { chainPlans, compareSchemas, diffPlan, effectText, emitPlan, parseDbspec, parsePlan, planSteps } from '../dist/dbspec/index.js';
+import { diffPlan, effectText, emitPlan, parseDbspec, parsePlan, planSteps } from '../dist/dbspec/index.js';
 
 export const root = new URL('../../../', import.meta.url);
 export const vectors = JSON.parse(readFileSync(new URL('tests/dbspec/plans.json', root), 'utf8'));
@@ -46,8 +47,7 @@ export function plan(lines) {
 }
 
 assert.equal(vectors.version, 1, 'plans.json version');
-assert(vectors.cases.length > 0 && vectors.invalid.length > 0 && vectors.chains.length > 0 && vectors.parse.length > 0 && vectors.comparisons.length > 0, 'plans.json cases');
-
+assert(vectors.cases.length > 0, 'plans.json cases');
 
 // planCases registers each case of its section as a top-level test named by its id.
 export function planCases() {
@@ -65,53 +65,6 @@ export function planCases() {
         assert.deepEqual(result.diagnostics, [], dialect);
         assert.deepEqual(result.steps.map(stepFields), c.steps[dialect], dialect);
       }
-    });
-  }
-}
-
-// invalidPlanCases registers each case of its section as a top-level test named by its id.
-export function invalidPlanCases() {
-  for (const c of vectors.invalid) {
-    vector(c.id, () => {
-      const from = source(c.source);
-      let { plan: p, diagnostics } = parsePlan(text(c.plan));
-      if (p !== null) diagnostics = diffPlan(from, p).diagnostics;
-      for (const d of diagnostics) assert.equal(d.rule, 'plan', d.message);
-      assert.deepEqual(diagnostics.map(d => d.message), c.errors);
-    });
-  }
-}
-
-// chainCases registers each case of its section as a top-level test named by its id.
-export function chainCases() {
-  for (const c of vectors.chains) {
-    vector(c.id, () => {
-      const result = chainPlans(c.plans.map(plan));
-      for (const d of result.diagnostics) assert.equal(d.rule, 'chain', d.message);
-      assert.deepEqual(result.diagnostics.map(d => d.message), c.errors ?? []);
-      assert.deepEqual(result.plans?.map(p => p.name) ?? null, c.order ?? null);
-    });
-  }
-}
-
-// parseCases registers each case of its section as a top-level test named by its id.
-export function parseCases() {
-  for (const c of vectors.parse) {
-    vector(c.id, () => {
-      const { diagnostics } = parsePlan(text(c.plan));
-      // A plan diagnostic is compared down to its message, and a target diagnostic down to its rule, line, and column.
-      assert.deepEqual(diagnostics.map(d => [d.rule, d.line, d.column, d.rule === 'plan' ? d.message : null]), c.errors);
-    });
-  }
-}
-
-// comparisonCases registers each case of its section as a top-level test named by its id.
-export function comparisonCases() {
-  for (const c of vectors.comparisons) {
-    vector(c.id, () => {
-      const result = compareSchemas(source(c.source), source(c.target));
-      assert.deepEqual((result.differences ?? []).map(d => [d.kind, d.table, d.name]), c.differences);
-      assert.deepEqual(result.diagnostics.map(d => [d.rule, d.line, d.column, d.message]), c.errors);
     });
   }
 }

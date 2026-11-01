@@ -13,12 +13,7 @@ import (
 
 // planVectors is tests/dbspec/plans.json (docs/spec/plans.md).
 type planVectors struct {
-	Cases   []planCase
-	Invalid []planInvalidCase
-	Chains  []planChainCase
-	Parse   []planParseCase
-	// Comparisons are the cases that compare two schemas without a plan (docs/spec/plans.md "Comparison").
-	Comparisons []comparisonCase
+	Cases []planCase
 }
 
 // If the Source of a planCase is nil, it is an empty schema.
@@ -29,35 +24,6 @@ type planCase struct {
 	Changes [][3]string
 	// Steps is an array of step objects per dialect (docs/spec/plans.md "Steps").
 	Steps map[string][]any
-}
-
-type planInvalidCase struct {
-	ID     string
-	Source []string
-	Plan   []string
-	Errors []string
-}
-
-// planChainCase has only one of Order and Errors.
-type planChainCase struct {
-	ID     string
-	Plans  [][]string
-	Order  []string
-	Errors []string
-}
-
-type planParseCase struct {
-	ID     string
-	Plan   []string
-	Errors [][]any
-}
-
-type comparisonCase struct {
-	ID          string
-	Source      []string
-	Target      []string
-	Differences [][3]string
-	Errors      [][]any
 }
 
 func loadPlanVectors(t *testing.T) planVectors {
@@ -92,71 +58,7 @@ func decodePlanVectors(r vectorReader, object map[string]any) (planVectors, erro
 	}); err != nil {
 		return v, err
 	}
-	if v.Invalid, err = vectorCases(r, object, "invalid", func(c map[string]any, location, id string) (planInvalidCase, error) {
-		p := planInvalidCase{ID: id}
-		var err error
-		if p.Source, p.Plan, err = r.sourceAndPlan(c, location); err != nil {
-			return p, err
-		}
-		p.Errors, err = r.linesField(c, location, "errors")
-		return p, err
-	}); err != nil {
-		return v, err
-	}
-	if v.Chains, err = vectorCases(r, object, "chains", func(c map[string]any, location, id string) (planChainCase, error) {
-		p := planChainCase{ID: id}
-		items, err := r.arrayField(c, location, "plans")
-		if err != nil {
-			return p, err
-		}
-		for i, item := range items {
-			lines, err := r.lines(item, fmt.Sprintf("%s[%d]", vectorAt(location, "plans"), i))
-			if err != nil {
-				return p, err
-			}
-			p.Plans = append(p.Plans, lines)
-		}
-		_, hasOrder := c["order"]
-		_, hasErrors := c["errors"]
-		switch {
-		case hasOrder == hasErrors:
-			return p, r.fail(location, "has neither or both of order and errors")
-		case hasOrder:
-			p.Order, err = r.linesField(c, location, "order")
-		default:
-			p.Errors, err = r.linesField(c, location, "errors")
-		}
-		return p, err
-	}); err != nil {
-		return v, err
-	}
-	if v.Parse, err = vectorCases(r, object, "parse", func(c map[string]any, location, id string) (planParseCase, error) {
-		p := planParseCase{ID: id}
-		var err error
-		if p.Plan, err = r.linesField(c, location, "plan"); err != nil {
-			return p, err
-		}
-		p.Errors, err = r.diagnostics(c, location, "errors", 4)
-		return p, err
-	}); err != nil {
-		return v, err
-	}
-	v.Comparisons, err = vectorCases(r, object, "comparisons", func(c map[string]any, location, id string) (comparisonCase, error) {
-		p := comparisonCase{ID: id}
-		var err error
-		if p.Source, err = r.linesField(c, location, "source"); err != nil {
-			return p, err
-		}
-		if p.Target, err = r.linesField(c, location, "target"); err != nil {
-			return p, err
-		}
-		if p.Differences, err = r.triples(c, location, "differences"); err != nil {
-			return p, err
-		}
-		p.Errors, err = r.diagnostics(c, location, "errors", 4)
-		return p, err
-	})
-	return v, err
+	return v, nil
 }
 
 // planSourceOf is the source schema of a plan case; if there is no source, it is an empty schema (nil).
@@ -173,18 +75,10 @@ func planSourceOf(lines []string) (*Document, error) {
 
 // Requirements: PLN-73, PLN-74, PLN-75, PLN-76, PLN-77, PLN-78, PLN-79, PLN-80, PLN-81, PLN-82, PLN-83.
 // TestPlanVectors checks whether the diff of every case and the statements of the three dialects equal the vector.
-// TestPlanInvalidVectors checks the diagnostics of the invalid cases.
 func TestPlanVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, c := range loadPlanVectors(t).Cases {
 		t.Run(c.ID, func(t *testing.T) { checkPlanCase(t, c) })
-	}
-}
-
-func TestPlanInvalidVectors(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	for _, c := range loadPlanVectors(t).Invalid {
-		t.Run(c.ID, func(t *testing.T) { checkPlanInvalid(t, c) })
 	}
 }
 
@@ -241,145 +135,6 @@ func checkPlanCase(t *testing.T, c planCase) {
 			}
 			return errors.Join(problems...)
 		})
-	})
-}
-
-func checkPlanInvalid(t *testing.T, c planInvalidCase) {
-	runTimed(t, c.ID, 5*time.Second, func() error {
-		return withPlanCase(c.Source, c.Plan, func(source *Document, p *Plan, diagnostics []Diagnostic) error {
-			if len(diagnostics) == 0 {
-				_, diagnostics = Diff(source, p)
-			}
-			var problems []error
-			var got []string
-			for _, d := range diagnostics {
-				if d.Rule != RulePlan {
-					problems = append(problems, fmt.Errorf("rule %s, want %s", d.Rule, RulePlan))
-				}
-				got = append(got, d.Message)
-			}
-			if !slices.Equal(got, c.Errors) {
-				problems = append(problems, fmt.Errorf("errors\nwant %q\ngot  %q", c.Errors, got))
-			}
-			return errors.Join(problems...)
-		})
-	})
-}
-
-// TestPlanChains checks whether the order or chain diagnostic of the chains case equals the vector.
-// It checks that.
-func TestPlanChains(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	v := loadPlanVectors(t)
-	if len(v.Chains) == 0 {
-		t.Fatal("tests/dbspec/plans.json has no chains")
-	}
-	for _, c := range v.Chains {
-		t.Run(c.ID, func(t *testing.T) { checkPlanChain(t, c) })
-	}
-}
-
-func checkPlanChain(t *testing.T, c planChainCase) {
-	runTimed(t, c.ID, 5*time.Second, func() error {
-		var plans []*Plan
-		for i, lines := range c.Plans {
-			p, diagnostics := ParsePlan(strings.Join(lines, "\n") + "\n")
-			if len(diagnostics) > 0 {
-				return fmt.Errorf("parse plan %d: %v", i, diagnostics)
-			}
-			plans = append(plans, p)
-		}
-		chain, diagnostics := Chain(plans)
-		var problems []error
-		var got []string
-		for _, d := range diagnostics {
-			if d.Rule != RuleChain {
-				problems = append(problems, fmt.Errorf("rule %s, want %s", d.Rule, RuleChain))
-			}
-			got = append(got, d.Message)
-		}
-		if !slices.Equal(got, c.Errors) {
-			problems = append(problems, fmt.Errorf("errors\nwant %q\ngot  %q", c.Errors, got))
-		}
-		var order []string
-		for _, p := range chain {
-			order = append(order, p.Name)
-		}
-		if !slices.Equal(order, c.Order) {
-			problems = append(problems, fmt.Errorf("order\nwant %q\ngot  %q", c.Order, order))
-		}
-		return errors.Join(problems...)
-	})
-}
-
-// TestPlanParseErrors checks that a parse case reports the plan diagnostic, down to its rule, line, column, and message,
-// and that a target diagnostic reports down to its rule, line, and column, the same as the vector.
-func TestPlanParseErrors(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	v := loadPlanVectors(t)
-	if len(v.Parse) == 0 {
-		t.Fatal("tests/dbspec/plans.json has no parse cases")
-	}
-	for _, c := range v.Parse {
-		t.Run(c.ID, func(t *testing.T) { checkPlanParse(t, c) })
-	}
-}
-
-func checkPlanParse(t *testing.T, c planParseCase) {
-	runTimed(t, c.ID, 5*time.Second, func() error {
-		_, diagnostics := ParsePlan(strings.Join(c.Plan, "\n") + "\n")
-		var got [][]any
-		for _, d := range diagnostics {
-			var message any
-			if d.Rule == RulePlan {
-				message = d.Message
-			}
-			got = append(got, []any{d.Rule, float64(d.Line), float64(d.Column), message})
-		}
-		return jsonEqual("errors", got, c.Errors)
-	})
-}
-
-// TestCompareSchemas checks whether the differences and diagnostics of the comparison case equal the vector.
-// It checks that.
-func TestCompareSchemas(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	v := loadPlanVectors(t)
-	if len(v.Comparisons) == 0 {
-		t.Fatal("tests/dbspec/plans.json has no comparisons")
-	}
-	for _, c := range v.Comparisons {
-		t.Run(c.ID, func(t *testing.T) { checkComparison(t, c) })
-	}
-}
-
-func checkComparison(t *testing.T, c comparisonCase) {
-	runTimed(t, c.ID, 5*time.Second, func() error {
-		source, _, diagnostics := Parse(strings.Join(c.Source, "\n")+"\n", nil)
-		if len(diagnostics) > 0 {
-			return fmt.Errorf("parse source: %v", diagnostics)
-		}
-		target, _, diagnostics := Parse(strings.Join(c.Target, "\n")+"\n", nil)
-		if len(diagnostics) > 0 {
-			return fmt.Errorf("parse target: %v", diagnostics)
-		}
-		differences, diagnostics := CompareSchemas(source, target)
-		got := [][3]string{}
-		for _, d := range differences {
-			got = append(got, [3]string{d.Kind, d.Table, d.Name})
-		}
-		var problems []error
-		if !slices.Equal(got, c.Differences) {
-			problems = append(problems, fmt.Errorf("differences\nwant %v\ngot  %v", c.Differences, got))
-		}
-		errs := [][]any{}
-		for _, d := range diagnostics {
-			errs = append(errs, []any{d.Rule, float64(d.Line), float64(d.Column), d.Message})
-		}
-		if err := jsonEqual("errors", errs, c.Errors); err != nil {
-			problems = append(problems, err)
-		}
-		return errors.Join(problems...)
 	})
 }
 

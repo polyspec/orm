@@ -21,6 +21,7 @@ import (
 
 	orderedjson "github.com/polyspec/ordered-json/packages/go"
 	"github.com/polyspec/orm/packages/go/engine"
+	"github.com/polyspec/orm/packages/go/engine/dbspec"
 	"github.com/polyspec/orm/packages/go/engine/ir"
 	"github.com/polyspec/orm/packages/go/engine/plan"
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
@@ -54,6 +55,11 @@ type step struct {
 	Expect  map[string]json.RawMessage `json:"expect"`
 	Schema  string                     `json:"schema"`
 	Input   json.RawMessage            `json:"input"`
+	Lines   []string                   `json:"lines"`
+	Plan    json.RawMessage            `json:"plan"`
+	Plans   []json.RawMessage          `json:"plans"`
+	Source  json.RawMessage            `json:"source"`
+	Target  json.RawMessage            `json:"target"`
 }
 
 // IRAnswer runs the chain of one ir.answer step on a listener that answers with the answer, or with answers keyed by the op of
@@ -79,6 +85,8 @@ type result struct {
 	decoded bool
 	cell    any // the cell or text of an encode, a host decode or a blind index
 	err     error
+	// dbspec is what a dbspec step bound: a *dbspec.Document (dbspec.parse) or a *dbspec.Plan (dbspec.parse_plan).
+	dbspec any
 }
 
 // Run runs every case of the recipe at path, relative to the test's package directory, on database. The options configure
@@ -129,6 +137,10 @@ func Run(t *testing.T, path, database string, opts ...Option) {
 func run(t *testing.T, s step, bound map[string]result, database string, model *runtimemodel.Model, o options, dir string) error {
 	if s.Op == "planner.compile" {
 		return checkPlanner(dir, s, database)
+	}
+	switch s.Op {
+	case "dbspec.parse", "dbspec.parse_plan", "dbspec.diff", "dbspec.chain", "dbspec.compare":
+		return dbspecStep(s, bound, database)
 	}
 	if s.Op == "ir.validate" {
 		return checkValidate(s.Expect[database], validate(model, s.Request))
@@ -892,7 +904,7 @@ func checkPlanner(dir string, s step, database string) error {
 				return err
 			}
 			if _, err := e.Compile(request); err == nil || orm.ErrorCode(err) != outcome.Error {
-				return fmt.Errorf("%s: compile = %v; want %s", dialect, err, outcome.Error)
+				return fmt.Errorf("%s: compile = %w; want %s", dialect, err, outcome.Error)
 			}
 		}
 		return nil
@@ -960,4 +972,201 @@ func plannerStatements(compiled plan.Plan) []plannerStatement {
 		got = append(got, plannerStatement{Role: step.Role, SQL: step.SQL, Slots: slots, Tables: step.Tables})
 	}
 	return got
+}
+
+// dbspecStep runs one dbspec op of a recipe without a database, through the public calls of engine/dbspec (FCV-4), and
+// compares what the call returned, as JSON, with the expect of database.
+func dbspecStep(s step, bound map[string]result, database string) error {
+	want, ok := s.Expect[database]
+	if !ok {
+		return fmt.Errorf("%s has no expect for %s", s.Op, database)
+	}
+	var got any
+	var err error
+	switch s.Op {
+	case "dbspec.parse", "dbspec.parse_plan":
+		got, err = dbspecParse(s, bound)
+	case "dbspec.diff":
+		got, err = dbspecDiff(s, bound)
+	case "dbspec.chain":
+		got, err = dbspecChain(s, bound)
+	case "dbspec.compare":
+		got, err = dbspecCompare(s, bound)
+	default:
+		return fmt.Errorf("OP_UNKNOWN %s", s.Op)
+	}
+	if err != nil {
+		return err
+	}
+	body, err := json.Marshal(got)
+	if err != nil {
+		return err
+	}
+	var actual, expected any
+	if err := json.Unmarshal(body, &actual); err != nil {
+		return err
+	}
+	if err := json.Unmarshal(want, &expected); err != nil {
+		return err
+	}
+	if !reflect.DeepEqual(actual, expected) {
+		return fmt.Errorf("%s: got %s, want %s", s.Op, body, want)
+	}
+	return nil
+}
+
+// dbspecParse runs dbspec.parse (Parse) or dbspec.parse_plan (ParsePlan) on the lines of s, binds the result to s.As, and
+// returns {diagnostics: rows} with the rows of the diagnostics (parseRows).
+func dbspecParse(s step, bound map[string]result) (any, error) {
+	text := strings.Join(s.Lines, "\n") + "\n"
+	var diagnostics []dbspec.Diagnostic
+	if s.Op == "dbspec.parse" {
+		doc, _, d := dbspec.Parse(text, nil)
+		diagnostics = d
+		if s.As != "" {
+			bound[s.As] = result{dbspec: doc}
+		}
+	} else {
+		p, d := dbspec.ParsePlan(text)
+		diagnostics = d
+		if s.As != "" {
+			bound[s.As] = result{dbspec: p}
+		}
+	}
+	return map[string]any{"diagnostics": parseRows(diagnostics, false)}, nil
+}
+
+// dbspecDiff runs dbspec.diff (Diff) and returns {changes: rows} or, with diagnostics, {messages: ...} of rule plan.
+func dbspecDiff(s step, bound map[string]result) (any, error) {
+	source, err := dbspecDocument(s.Source, bound)
+	if err != nil {
+		return nil, err
+	}
+	plan, err := dbspecPlan(s.Plan, bound)
+	if err != nil {
+		return nil, err
+	}
+	changes, diagnostics := dbspec.Diff(source, plan)
+	if len(diagnostics) > 0 {
+		messages, err := messagesOf(diagnostics, dbspec.RulePlan)
+		return map[string]any{"messages": messages}, err
+	}
+	rows := make([][]string, 0, len(changes))
+	for _, c := range changes {
+		rows = append(rows, []string{c.Kind, c.Table, c.Name})
+	}
+	return map[string]any{"changes": rows}, nil
+}
+
+// dbspecChain runs dbspec.chain (Chain) and returns {order: plan names} or, with diagnostics, {messages: ...} of rule chain.
+func dbspecChain(s step, bound map[string]result) (any, error) {
+	plans := make([]*dbspec.Plan, 0, len(s.Plans))
+	for _, raw := range s.Plans {
+		p, err := dbspecPlan(raw, bound)
+		if err != nil {
+			return nil, err
+		}
+		plans = append(plans, p)
+	}
+	chain, diagnostics := dbspec.Chain(plans)
+	if len(diagnostics) > 0 {
+		messages, err := messagesOf(diagnostics, dbspec.RuleChain)
+		return map[string]any{"messages": messages}, err
+	}
+	order := make([]string, 0, len(chain))
+	for _, p := range chain {
+		order = append(order, p.Name)
+	}
+	return map[string]any{"order": order}, nil
+}
+
+// dbspecCompare runs dbspec.compare (CompareSchemas) and returns {differences: rows, diagnostics: rows}, whose diagnostics
+// carry their message for every rule.
+func dbspecCompare(s step, bound map[string]result) (any, error) {
+	source, err := dbspecDocument(s.Source, bound)
+	if err != nil {
+		return nil, err
+	}
+	target, err := dbspecDocument(s.Target, bound)
+	if err != nil {
+		return nil, err
+	}
+	differences, diagnostics := dbspec.CompareSchemas(source, target)
+	rows := make([][]string, 0, len(differences))
+	for _, d := range differences {
+		rows = append(rows, []string{d.Kind, d.Table, d.Name})
+	}
+	return map[string]any{"differences": rows, "diagnostics": parseRows(diagnostics, true)}, nil
+}
+
+// parseRows are the diagnostics as [rule, line, column, message]: the message is that of rule plan only, unless all is set.
+func parseRows(diagnostics []dbspec.Diagnostic, all bool) [][]any {
+	rows := make([][]any, 0, len(diagnostics))
+	for _, d := range diagnostics {
+		var message any
+		if all || d.Rule == dbspec.RulePlan {
+			message = d.Message
+		}
+		rows = append(rows, []any{d.Rule, d.Line, d.Column, message})
+	}
+	return rows
+}
+
+// messagesOf returns the messages of diagnostics, each of rule, and fails on a diagnostic of another rule.
+func messagesOf(diagnostics []dbspec.Diagnostic, rule string) ([]string, error) {
+	messages := make([]string, 0, len(diagnostics))
+	for _, d := range diagnostics {
+		if d.Rule != rule {
+			return nil, fmt.Errorf("diagnostic of rule %s, want %s: %s", d.Rule, rule, d.Message)
+		}
+		messages = append(messages, d.Message)
+	}
+	return messages, nil
+}
+
+// dbspecRef is the bound result that a ref names.
+func dbspecRef(raw json.RawMessage, bound map[string]result) (any, error) {
+	var ref struct {
+		Ref *string `json:"ref"`
+	}
+	if err := json.Unmarshal(raw, &ref); err != nil {
+		return nil, err
+	}
+	if ref.Ref == nil {
+		return nil, fmt.Errorf("%s is not a ref", raw)
+	}
+	r, ok := bound[*ref.Ref]
+	if !ok {
+		return nil, fmt.Errorf("ref %s names no bound result", *ref.Ref)
+	}
+	return r.dbspec, nil
+}
+
+// dbspecDocument is the document that a source or target names; null is the empty schema (nil).
+func dbspecDocument(raw json.RawMessage, bound map[string]result) (*dbspec.Document, error) {
+	if string(raw) == "null" {
+		return nil, nil
+	}
+	value, err := dbspecRef(raw, bound)
+	if err != nil {
+		return nil, err
+	}
+	doc, ok := value.(*dbspec.Document)
+	if !ok {
+		return nil, fmt.Errorf("%s binds no document", raw)
+	}
+	return doc, nil
+}
+
+// dbspecPlan is the plan that a ref names.
+func dbspecPlan(raw json.RawMessage, bound map[string]result) (*dbspec.Plan, error) {
+	value, err := dbspecRef(raw, bound)
+	if err != nil {
+		return nil, err
+	}
+	p, ok := value.(*dbspec.Plan)
+	if !ok || p == nil {
+		return nil, fmt.Errorf("%s binds no plan", raw)
+	}
+	return p, nil
 }

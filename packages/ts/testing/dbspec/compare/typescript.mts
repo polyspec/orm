@@ -7,7 +7,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join as joinPath } from 'node:path';
 import { parseCases, type Cases } from '../../../../../tests/dbspec/cases.mts';
-import { readVectors, vectorProblems } from '../../../../../tests/dbspec/vectors.mts';
+import { readPlanRecipes, readVectors, vectorProblems, type RecipeFile, type RecipeStep } from '../../../../../tests/dbspec/vectors.mts';
 import { join, vectorInputs } from '../../../../../scripts/dbspec/syntax-vectors.mts';
 import { SchemaError } from '../../../../../scripts/json/schema.mts';
 import { errorMessage } from '../../../../../tests/errors.mts';
@@ -273,6 +273,45 @@ function planCase(header: string, c: { source: string[] | null; plan: string[] }
 }
 
 const plans = readVectors(plansPath, 'plans');
+// The validation sections of plans.json are the recipes beside it (tests/dbspec/plan-*.json). Each step names its schema text
+// or plan by a ref, which an earlier dbspec.parse or dbspec.parse_plan step of the same case binds; null is the empty schema.
+const recipes = readPlanRecipes(plansPath);
+type Lines = string[];
+
+// boundLines maps the as of each dbspec.parse or dbspec.parse_plan step of a case to its lines.
+function boundLines(steps: RecipeStep[]): Map<string, Lines> {
+  const bound = new Map<string, Lines>();
+  for (const s of steps) if ((s.op === 'dbspec.parse' || s.op === 'dbspec.parse_plan') && s.as !== undefined) bound.set(s.as, s.lines ?? []);
+  return bound;
+}
+
+// namedLines returns the lines that a ref names, or null for the empty schema of a null field.
+function namedLines(raw: { ref: string } | null | undefined, bound: Map<string, Lines>): Lines | null {
+  if (raw === null) return null;
+  if (raw === undefined) throw new Error('a recipe step names no schema or plan');
+  const lines = bound.get(raw.ref);
+  if (lines === undefined) throw new Error(`ref ${raw.ref} names no parsed schema or plan`);
+  return lines;
+}
+
+// requiredLines is namedLines for a field that must name lines.
+function requiredLines(raw: { ref: string } | null | undefined, bound: Map<string, Lines>): Lines {
+  const lines = namedLines(raw, bound);
+  if (lines === null) throw new Error('a recipe step names the empty schema where lines are needed');
+  return lines;
+}
+
+// recipeCases returns the steps of one op in each case of the recipe, with the bound lines of the case.
+function recipeCases<T>(recipe: RecipeFile, op: string, read: (step: RecipeStep, bound: Map<string, Lines>, id: string) => T): T[] {
+  return recipe.cases.flatMap(c => {
+    const bound = boundLines(c.steps);
+    return c.steps.filter(s => s.op === op).map(s => read(s, bound, c.id));
+  });
+}
+const recipeInvalid = recipeCases(recipes.invalid, 'dbspec.diff', (s, bound, id) => ({ id, source: namedLines(s.source, bound), plan: requiredLines(s.plan, bound) }));
+const recipeChains = recipeCases(recipes.chains, 'dbspec.chain', (s, bound, id) => ({ id, plans: (s.plans ?? []).map(r => requiredLines(r, bound)) }));
+const recipeParse = recipeCases(recipes.parse, 'dbspec.parse_plan', (s, _bound, id) => ({ id, plan: s.lines ?? [] }));
+const recipeComparisons = recipeCases(recipes.comparisons, 'dbspec.compare', (s, bound, id) => ({ id, source: requiredLines(s.source, bound), target: requiredLines(s.target, bound) }));
 for (const c of plans.cases) {
   const planned = planCase(`plans/cases/${c.id}`, c);
   if (planned === undefined) continue;
@@ -289,14 +328,14 @@ for (const c of plans.cases) {
     for (const s of result.steps ?? []) writeStep(s);
   }
 }
-for (const c of plans.invalid) {
+for (const c of recipeInvalid) {
   const planned = planCase(`plans/invalid/${c.id}`, c);
   if (planned === undefined) continue;
   const diff = diffPlan(planned.source, planned.plan);
   writePlanDiagnostics(diff.diagnostics);
   writeChanges(diff.changes ?? []);
 }
-for (const c of plans.chains) {
+for (const c of recipeChains) {
   out.push(`plans/chains/${c.id}`);
   const parsed = c.plans.map(lines => parsePlan(join(lines, false)));
   for (const p of parsed) writePlanDiagnostics(p.diagnostics);
@@ -306,13 +345,13 @@ for (const c of plans.chains) {
   writePlanDiagnostics(chain.diagnostics);
   for (const p of chain.plans ?? []) out.push(`| ${p.name}`);
 }
-for (const c of plans.parse) {
+for (const c of recipeParse) {
   out.push(`plans/parse/${c.id}`);
   const parsed = parsePlan(join(c.plan, false));
   if (parsed.plan === null) writePlanDiagnostics(parsed.diagnostics);
   else writeEmittedPlan(parsed.plan);
 }
-for (const c of plans.comparisons) {
+for (const c of recipeComparisons) {
   out.push(`plans/comparisons/${c.id}`);
   const source = parseDbspec(join(c.source, false), {});
   writePlanDiagnostics(source.diagnostics);

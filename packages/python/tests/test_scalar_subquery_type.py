@@ -24,7 +24,9 @@ def scalar_subquery_case():
         if case["id"] == "planner_scalar_column_subquery"
     )
     schema = (REPOSITORY_ROOT / "tests/planner" / case["schema"]).resolve()
-    return case, model_of_documents(parse_document_set([schema.read_text(encoding="utf-8")]))
+    return case, model_of_documents(
+        parse_document_set([schema.read_text(encoding="utf-8")])
+    )
 
 
 class ScalarSubqueryTypeTest(unittest.TestCase):

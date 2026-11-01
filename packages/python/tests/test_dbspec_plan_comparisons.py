@@ -1,25 +1,12 @@
-# The schema comparisons of tests/dbspec/plans.json: one test for each case of 'comparisons', named by the case id (dbspec_plans).
-# Run: python -m packages.python.tests.test_dbspec_plan_comparisons
-import unittest
+# The schema comparisons of the recipe tests/dbspec/plan-comparisons.json: one test for each case, named by the case id (FCV-3).
+# Requirements: PLN-45, PLN-46, PLN-47, PLN-48, PLN-49, PLN-50, PLN-51, PLN-52, PLN-53, PLN-54, PLN-55, PLN-56, PLN-57,
+# PLN-58, PLN-59, PLN-60, PLN-61, PLN-62, PLN-63, PLN-64, PLN-65, PLN-66, PLN-67, PLN-68, PLN-69, PLN-70, PLN-71,
+# PLN-72, PLN-84, PLN-85, PLN-86, PLN-87, PLN-88.
 
-from .dbspec_plans import CHECKS, section_cases
-from .vector_case import VectorCase, vector_tests
+from .recipe import NONE, recipe_tests
 from . import testcase
 
-
-class Case(VectorCase):
-    """A case of 'comparisons' of plans.json."""
-
-
-def load_tests(
-    loader: unittest.TestLoader, tests: unittest.TestSuite, _pattern: object
-) -> unittest.TestSuite:
-    """One test for each case of 'comparisons', named by the case id."""
-    tests.addTests(
-        vector_tests(Case, section_cases("comparisons"), CHECKS["comparisons"])
-    )
-    return tests
-
+load_tests = recipe_tests("tests/dbspec/plan-comparisons.json", NONE)
 
 if __name__ == "__main__":
     testcase.main()

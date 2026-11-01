@@ -981,6 +981,7 @@
         "packages/rust/orm/tests/common/audit_rows.rs",
         "packages/rust/orm/tests/common/dbspec_probe.rs",
         "packages/rust/orm/tests/common/restore_rows.rs",
+        "packages/rust/orm/tests/unit/dbspec_recipe.rs",
         "packages/rust/orm/tests/unit/ir_request.rs",
         "packages/rust/schema/tests/common/dbspec_cases.rs",
         "packages/rust/tests/build.rs",
@@ -11585,23 +11586,23 @@
         "PLN-87",
         "PLN-88"
       ],
-      "file": "tests/dbspec/plans.json",
-      "cases": "$.invalid[*].id",
+      "file": "tests/dbspec/plan-invalid.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/plan_test.go",
-          "symbol": "TestPlanInvalidVectors"
+          "test": "packages/go/orm/recipe_dbspec_plan_test.go",
+          "symbol": "TestRecipeDbspecPlanInvalid"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecPlanTest::testInvalid"
+          "test": "packages/php/tests/DbspecPlanInvalidTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecPlanInvalidTest::testNone"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecPlanTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecPlanTestExtensionTest::testInvalid"
+          "test": "packages/php-ext/tests/DbspecPlanInvalidTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecPlanInvalidTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
@@ -11613,8 +11614,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_plan.rs",
-          "symbol": "plan_vectors::invalid"
+          "test": "packages/rust/orm/tests/dbspec_plan_invalid.rs",
+          "symbol": "dbspec_plan_invalid_none"
         }
       ]
     },
@@ -11656,23 +11657,23 @@
         "PLN-87",
         "PLN-88"
       ],
-      "file": "tests/dbspec/plans.json",
-      "cases": "$.chains[*].id",
+      "file": "tests/dbspec/plan-chains.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/plan_test.go",
-          "symbol": "TestPlanChains"
+          "test": "packages/go/orm/recipe_dbspec_plan_test.go",
+          "symbol": "TestRecipeDbspecPlanChains"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecPlanTest::testChain"
+          "test": "packages/php/tests/DbspecPlanChainsTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecPlanChainsTest::testNone"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecPlanTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecPlanTestExtensionTest::testChain"
+          "test": "packages/php-ext/tests/DbspecPlanChainsTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecPlanChainsTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
@@ -11684,8 +11685,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_plan.rs",
-          "symbol": "plan_chains"
+          "test": "packages/rust/orm/tests/dbspec_plan_chains.rs",
+          "symbol": "dbspec_plan_chains_none"
         }
       ]
     },
@@ -11728,23 +11729,23 @@
         "PLN-88",
         "DBS-109"
       ],
-      "file": "tests/dbspec/plans.json",
-      "cases": "$.parse[*].id",
+      "file": "tests/dbspec/plan-parse.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/plan_test.go",
-          "symbol": "TestPlanParseErrors"
+          "test": "packages/go/orm/recipe_dbspec_plan_test.go",
+          "symbol": "TestRecipeDbspecPlanParse"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecPlanTest::testParse"
+          "test": "packages/php/tests/DbspecPlanParseTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecPlanParseTest::testNone"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecPlanTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecPlanTestExtensionTest::testParse"
+          "test": "packages/php-ext/tests/DbspecPlanParseTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecPlanParseTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
@@ -11756,8 +11757,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_plan.rs",
-          "symbol": "plan_parse_errors"
+          "test": "packages/rust/orm/tests/dbspec_plan_parse.rs",
+          "symbol": "dbspec_plan_parse_none"
         }
       ]
     },
@@ -11799,23 +11800,23 @@
         "PLN-87",
         "PLN-88"
       ],
-      "file": "tests/dbspec/plans.json",
-      "cases": "$.comparisons[*].id",
+      "file": "tests/dbspec/plan-comparisons.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/plan_test.go",
-          "symbol": "TestCompareSchemas"
+          "test": "packages/go/orm/recipe_dbspec_plan_test.go",
+          "symbol": "TestRecipeDbspecPlanComparisons"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecPlanTest::testComparison"
+          "test": "packages/php/tests/DbspecPlanComparisonsTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecPlanComparisonsTest::testNone"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecPlanTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecPlanTestExtensionTest::testComparison"
+          "test": "packages/php-ext/tests/DbspecPlanComparisonsTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecPlanComparisonsTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
@@ -11827,8 +11828,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_plan.rs",
-          "symbol": "plan_comparisons"
+          "test": "packages/rust/orm/tests/dbspec_plan_comparisons.rs",
+          "symbol": "dbspec_plan_comparisons_none"
         }
       ]
     },

@@ -319,7 +319,61 @@ def write_emitted_plan(plan):
     out.extend(f"| {line}" for line in emit_plan(plan).split("\n"))
 
 
+# read_recipe reads the cases of a recipe file beside the plans.json at plans_path; a file that does not parse is written to
+# stderr and ends with 1.
+def read_recipe(plans_path, name):
+    path = os.path.join(os.path.dirname(plans_path), name)
+    try:
+        return json.loads(read_text(path))["cases"]
+    except json.JSONDecodeError as error:
+        print(f"{path}: {error}", file=sys.stderr)
+        sys.exit(1)
+
+
+# bound_lines gives the lines of each step that binds its result with as, by the as name.
+def bound_lines(case):
+    return {s["as"]: s["lines"] for s in case["steps"] if "as" in s and "lines" in s}
+
+
+def invalid_inputs(case):
+    lines = bound_lines(case)
+    diff = next(s for s in case["steps"] if s["op"] == "dbspec.diff")
+    source = None if diff["source"] is None else lines[diff["source"]["ref"]]
+    return {"id": case["id"], "source": source, "plan": lines[diff["plan"]["ref"]]}
+
+
+def chain_inputs(case):
+    lines = bound_lines(case)
+    chain = next(s for s in case["steps"] if s["op"] == "dbspec.chain")
+    return {"id": case["id"], "plans": [lines[raw["ref"]] for raw in chain["plans"]]}
+
+
+def parse_inputs(case):
+    (step,) = case["steps"]
+    return {"id": case["id"], "plan": step["lines"]}
+
+
+def comparison_inputs(case):
+    lines = bound_lines(case)
+    compare = next(s for s in case["steps"] if s["op"] == "dbspec.compare")
+    return {
+        "id": case["id"],
+        "source": lines[compare["source"]["ref"]],
+        "target": lines[compare["target"]["ref"]],
+    }
+
+
 plans = read_vectors(plans_path, "plans")
+# The four validation sections are the recipes beside plans.json (tests/dbspec/plan-<section>.json), read here as the inputs
+# of the same checks: each recipe case gives the lines of its documents and plans, bound by the steps' as names.
+plans["invalid"] = [
+    invalid_inputs(c) for c in read_recipe(plans_path, "plan-invalid.json")
+]
+plans["chains"] = [chain_inputs(c) for c in read_recipe(plans_path, "plan-chains.json")]
+plans["parse"] = [parse_inputs(c) for c in read_recipe(plans_path, "plan-parse.json")]
+plans["comparisons"] = [
+    comparison_inputs(c) for c in read_recipe(plans_path, "plan-comparisons.json")
+]
 for c in plans["cases"]:
     out.append(f"plans/cases/{c['id']}")
     source = plan_source(c["source"])

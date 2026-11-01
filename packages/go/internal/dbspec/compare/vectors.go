@@ -1,7 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -127,11 +130,191 @@ func readDDL(path string) ([]hashCase, error) {
 	return file.Cases, err
 }
 
-// readPlans reads tests/dbspec/plans.json. A null source is the empty schema.
+// readPlans reads the cases of tests/dbspec/plans.json, and the validation sections from the four recipes beside it
+// (plan-invalid, plan-chains, plan-parse, and plan-comparisons .json). A null source is the empty schema.
 func readPlans(path string) (planVectors, error) {
 	var plans planVectors
-	_, err := readVectors(path, "plans", &plans)
+	if _, err := readVectors(path, "plans", &plans); err != nil {
+		return plans, err
+	}
+	dir := filepath.Dir(path)
+	var err error
+	if plans.Invalid, err = readInvalidRecipe(filepath.Join(dir, "plan-invalid.json")); err != nil {
+		return plans, err
+	}
+	if plans.Chains, err = readChainRecipe(filepath.Join(dir, "plan-chains.json")); err != nil {
+		return plans, err
+	}
+	if plans.Parse, err = readParseRecipe(filepath.Join(dir, "plan-parse.json")); err != nil {
+		return plans, err
+	}
+	plans.Comparisons, err = readComparisonRecipe(filepath.Join(dir, "plan-comparisons.json"))
 	return plans, err
+}
+
+// recipeFile is the part of a recipe (scripts/features/schema/recipe.schema.json) that readPlans reads: each case's steps.
+type recipeFile struct {
+	Cases []struct {
+		ID    string       `json:"id"`
+		Steps []recipeStep `json:"steps"`
+	} `json:"cases"`
+}
+
+// recipeStep is the part of a dbspec step that readPlans reads. A ref is {"ref": name}, and null is the empty schema.
+type recipeStep struct {
+	Op     string            `json:"op"`
+	Lines  []string          `json:"lines"`
+	As     string            `json:"as"`
+	Source json.RawMessage   `json:"source"`
+	Target json.RawMessage   `json:"target"`
+	Plan   json.RawMessage   `json:"plan"`
+	Plans  []json.RawMessage `json:"plans"`
+}
+
+func readRecipe(path string) (recipeFile, error) {
+	var file recipeFile
+	src, err := os.ReadFile(path)
+	if err != nil {
+		return file, err
+	}
+	if err := json.Unmarshal(src, &file); err != nil {
+		return file, fmt.Errorf("%s: %w", path, err)
+	}
+	return file, nil
+}
+
+// boundLines maps the as of each dbspec.parse or dbspec.parse_plan step of a case to its lines, as the recipe runner binds them.
+func boundLines(steps []recipeStep) map[string][]string {
+	bound := map[string][]string{}
+	for _, s := range steps {
+		if (s.Op == "dbspec.parse" || s.Op == "dbspec.parse_plan") && s.As != "" {
+			bound[s.As] = s.Lines
+		}
+	}
+	return bound
+}
+
+// refLines returns the lines that a ref names, or nil and false for null.
+func refLines(raw json.RawMessage, bound map[string][]string) ([]string, bool, error) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return nil, false, nil
+	}
+	var ref struct {
+		Ref string `json:"ref"`
+	}
+	if err := json.Unmarshal(raw, &ref); err != nil {
+		return nil, false, err
+	}
+	lines, ok := bound[ref.Ref]
+	if !ok {
+		return nil, false, fmt.Errorf("ref %s names no parsed schema or plan", ref.Ref)
+	}
+	return lines, true, nil
+}
+
+// readInvalidRecipe reads the cases of plan-invalid.json: the source and plan that each dbspec.diff step names.
+func readInvalidRecipe(path string) ([]planCase, error) {
+	file, err := readRecipe(path)
+	if err != nil {
+		return nil, err
+	}
+	cases := []planCase{}
+	for _, c := range file.Cases {
+		bound := boundLines(c.Steps)
+		for _, s := range c.Steps {
+			if s.Op != "dbspec.diff" {
+				continue
+			}
+			pc := planCase{ID: c.ID}
+			source, ok, err := refLines(s.Source, bound)
+			if err != nil {
+				return nil, fmt.Errorf("%s case %s: %w", path, c.ID, err)
+			}
+			if ok {
+				pc.Source = &source
+			}
+			plan, _, err := refLines(s.Plan, bound)
+			if err != nil {
+				return nil, fmt.Errorf("%s case %s: %w", path, c.ID, err)
+			}
+			pc.Plan = plan
+			cases = append(cases, pc)
+		}
+	}
+	return cases, nil
+}
+
+// readChainRecipe reads the cases of plan-chains.json: the plans that each dbspec.chain step names, in order.
+func readChainRecipe(path string) ([]chainCase, error) {
+	file, err := readRecipe(path)
+	if err != nil {
+		return nil, err
+	}
+	cases := []chainCase{}
+	for _, c := range file.Cases {
+		bound := boundLines(c.Steps)
+		for _, s := range c.Steps {
+			if s.Op != "dbspec.chain" {
+				continue
+			}
+			cc := chainCase{ID: c.ID, Plans: [][]string{}}
+			for _, raw := range s.Plans {
+				lines, _, err := refLines(raw, bound)
+				if err != nil {
+					return nil, fmt.Errorf("%s case %s: %w", path, c.ID, err)
+				}
+				cc.Plans = append(cc.Plans, lines)
+			}
+			cases = append(cases, cc)
+		}
+	}
+	return cases, nil
+}
+
+// readParseRecipe reads the cases of plan-parse.json: the lines of the dbspec.parse_plan step of each case.
+func readParseRecipe(path string) ([]parseCase, error) {
+	file, err := readRecipe(path)
+	if err != nil {
+		return nil, err
+	}
+	cases := []parseCase{}
+	for _, c := range file.Cases {
+		for _, s := range c.Steps {
+			if s.Op == "dbspec.parse_plan" {
+				cases = append(cases, parseCase{ID: c.ID, Plan: s.Lines})
+			}
+		}
+	}
+	return cases, nil
+}
+
+// readComparisonRecipe reads the cases of plan-comparisons.json: the source and target that each dbspec.compare step names.
+func readComparisonRecipe(path string) ([]comparisonCase, error) {
+	file, err := readRecipe(path)
+	if err != nil {
+		return nil, err
+	}
+	cases := []comparisonCase{}
+	for _, c := range file.Cases {
+		bound := boundLines(c.Steps)
+		for _, s := range c.Steps {
+			if s.Op != "dbspec.compare" {
+				continue
+			}
+			cc := comparisonCase{ID: c.ID}
+			source, _, err := refLines(s.Source, bound)
+			if err != nil {
+				return nil, fmt.Errorf("%s case %s: %w", path, c.ID, err)
+			}
+			target, _, err := refLines(s.Target, bound)
+			if err != nil {
+				return nil, fmt.Errorf("%s case %s: %w", path, c.ID, err)
+			}
+			cc.Source, cc.Target = source, target
+			cases = append(cases, cc)
+		}
+	}
+	return cases, nil
 }
 
 // readMermaid reads tests/dbspec/mermaid.json.

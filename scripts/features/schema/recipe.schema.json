@@ -86,7 +86,7 @@
       "required": ["id", "requirements", "steps"],
       "additionalProperties": false,
       "properties": {
-        "id": { "$ref": "#/$defs/name" },
+        "id": { "$ref": "#/$defs/caseId" },
         "requirements": { "$ref": "#/$defs/requirements" },
         "seed": { "$ref": "#/$defs/seed" },
         "install": { "type": "boolean", "description": "false: the helper installs no fixture before the steps, which install it with schema.install (statement_events)." },
@@ -121,6 +121,23 @@
           }
         }
       ]
+    },
+    "caseId": { "type": "string", "pattern": "^[a-z_][a-z0-9_-]*$", "description": "A case id: a name whose hyphens name the case of a plan vector (tests/dbspec/plan-*.json)." },
+    "dbspecRows": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "prefixItems": [{ "type": "string" }, { "type": ["integer", "null"] }, { "type": ["integer", "null"] }, { "type": ["string", "null"] }],
+        "minItems": 4,
+        "maxItems": 4
+      }
+    },
+    "dbspecChanges": { "type": "array", "items": { "type": "array", "prefixItems": [{ "type": "string" }, { "type": "string" }, { "type": "string" }], "minItems": 3, "maxItems": 3 } },
+    "dbspecExpect": {
+      "type": "object",
+      "required": ["none"],
+      "additionalProperties": false,
+      "properties": { "none": { "type": "object" } }
     },
     "ref": {
       "type": "object",
@@ -187,7 +204,7 @@
     "step": {
       "type": "object",
       "required": ["op"],
-      "properties": { "op": { "enum": ["dsn.connect", "model.connect", "codec.decode", "codec.encode", "codec.host_encode", "codec.host_decode", "codec.blind_index", "sql.exec", "ir.validate", "ir.answer", "catalog.current_namespace", "catalog.describe_table", "catalog.table_page", "catalog.read_only_query", "catalog.read_only_grid_query", "catalog.row_snapshot", "catalog.insert_row", "catalog.update_row", "catalog.delete_row", "schema.install", "schema.register", "schema.connect", "schema.add_tables_and_columns", "statements.count", "transaction", "model.create", "model.creates", "model.save", "model.duplicate_create", "model.update", "model.arithmetic", "model.delete", "model.count", "model.get_by", "model.query", "events.subscribe", "events.fail_subscriber", "events.stop_failing", "events.unsubscribe", "events.captured", "planner.compile"] } },
+      "properties": { "op": { "enum": ["dsn.connect", "model.connect", "codec.decode", "codec.encode", "codec.host_encode", "codec.host_decode", "codec.blind_index", "sql.exec", "ir.validate", "ir.answer", "catalog.current_namespace", "catalog.describe_table", "catalog.table_page", "catalog.read_only_query", "catalog.read_only_grid_query", "catalog.row_snapshot", "catalog.insert_row", "catalog.update_row", "catalog.delete_row", "schema.install", "schema.register", "schema.connect", "schema.add_tables_and_columns", "statements.count", "transaction", "model.create", "model.creates", "model.save", "model.duplicate_create", "model.update", "model.arithmetic", "model.delete", "model.count", "model.get_by", "model.query", "events.subscribe", "events.fail_subscriber", "events.stop_failing", "events.unsubscribe", "events.captured", "planner.compile", "dbspec.parse", "dbspec.parse_plan", "dbspec.diff", "dbspec.chain", "dbspec.compare"] } },
       "oneOf": [
         { "$ref": "#/$defs/ops/dsn.connect" },
         { "$ref": "#/$defs/ops/model.connect" },
@@ -196,7 +213,7 @@
         { "$ref": "#/$defs/ops/codec.host_encode" },
         { "$ref": "#/$defs/ops/codec.host_decode" },
         { "$ref": "#/$defs/ops/codec.blind_index" },
-        { "$ref": "#/$defs/ops/sql.exec" }, { "$ref": "#/$defs/ops/ir.validate" }, { "$ref": "#/$defs/ops/ir.answer" }, { "$ref": "#/$defs/ops/planner.compile" },
+        { "$ref": "#/$defs/ops/sql.exec" }, { "$ref": "#/$defs/ops/ir.validate" }, { "$ref": "#/$defs/ops/ir.answer" }, { "$ref": "#/$defs/ops/planner.compile" }, { "$ref": "#/$defs/ops/dbspec.parse" }, { "$ref": "#/$defs/ops/dbspec.parse_plan" }, { "$ref": "#/$defs/ops/dbspec.diff" }, { "$ref": "#/$defs/ops/dbspec.chain" }, { "$ref": "#/$defs/ops/dbspec.compare" },
         { "$ref": "#/$defs/ops/catalog.current_namespace" },
         { "$ref": "#/$defs/ops/catalog.describe_table" },
         { "$ref": "#/$defs/ops/catalog.table_page" },
@@ -352,6 +369,66 @@
               }
             }
           }
+        }
+      },
+      "dbspec.parse": {
+        "type": "object",
+        "required": ["op", "lines", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "dbspec.parse" },
+          "lines": { "type": "array", "items": { "type": "string" }, "description": "A schema text, one string per line (docs/spec/dbspec.md)." },
+          "as": { "$ref": "#/$defs/name" },
+          "expect": { "type": "object", "required": ["none"], "additionalProperties": false, "properties": { "none": { "type": "object", "required": ["diagnostics"], "additionalProperties": false, "properties": { "diagnostics": { "$ref": "#/$defs/dbspecRows" } } } } }
+        }
+      },
+      "dbspec.parse_plan": {
+        "type": "object",
+        "required": ["op", "lines", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "dbspec.parse_plan" },
+          "lines": { "type": "array", "items": { "type": "string" }, "description": "A plan text, one string per line (docs/spec/plans.md)." },
+          "as": { "$ref": "#/$defs/name" },
+          "expect": { "type": "object", "required": ["none"], "additionalProperties": false, "properties": { "none": { "type": "object", "required": ["diagnostics"], "additionalProperties": false, "properties": { "diagnostics": { "$ref": "#/$defs/dbspecRows" } } } } }
+        }
+      },
+      "dbspec.diff": {
+        "type": "object",
+        "required": ["op", "source", "plan", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "dbspec.diff" },
+          "source": { "oneOf": [{ "$ref": "#/$defs/ref" }, { "type": "null" }], "description": "The schema the plan changes; null is the empty schema." },
+          "plan": { "$ref": "#/$defs/ref" },
+          "expect": { "type": "object", "required": ["none"], "additionalProperties": false, "properties": { "none": { "oneOf": [
+            { "type": "object", "required": ["changes"], "additionalProperties": false, "properties": { "changes": { "$ref": "#/$defs/dbspecChanges" } } },
+            { "type": "object", "required": ["messages"], "additionalProperties": false, "properties": { "messages": { "type": "array", "items": { "type": "string" } } } }
+          ] } } }
+        }
+      },
+      "dbspec.chain": {
+        "type": "object",
+        "required": ["op", "plans", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "dbspec.chain" },
+          "plans": { "type": "array", "items": { "$ref": "#/$defs/ref" } },
+          "expect": { "type": "object", "required": ["none"], "additionalProperties": false, "properties": { "none": { "oneOf": [
+            { "type": "object", "required": ["order"], "additionalProperties": false, "properties": { "order": { "type": "array", "items": { "type": "string" } } } },
+            { "type": "object", "required": ["messages"], "additionalProperties": false, "properties": { "messages": { "type": "array", "items": { "type": "string" } } } }
+          ] } } }
+        }
+      },
+      "dbspec.compare": {
+        "type": "object",
+        "required": ["op", "source", "target", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "dbspec.compare" },
+          "source": { "$ref": "#/$defs/ref" },
+          "target": { "$ref": "#/$defs/ref" },
+          "expect": { "type": "object", "required": ["none"], "additionalProperties": false, "properties": { "none": { "type": "object", "required": ["differences", "diagnostics"], "additionalProperties": false, "properties": { "differences": { "$ref": "#/$defs/dbspecChanges" }, "diagnostics": { "$ref": "#/$defs/dbspecRows" } } } } }
         }
       },
       "ir.validate": {

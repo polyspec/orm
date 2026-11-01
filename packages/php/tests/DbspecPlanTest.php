@@ -4,21 +4,15 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-// The plan vectors of tests/dbspec/plans.json through Polyspec\Orm\Dbspec\Dbspec
-// (docs/spec/plans.md): every case's canonical emission, changes and steps of
-// three dialects, every invalid case's `plan` diagnostics, every chain
-// case's order or `chain` diagnostics, every parse case's diagnostics with
-// rule, line, column and the message of a `plan` diagnostic, every
-// comparison's differences or `compare` diagnostics, and the unknown dialect
-// rule.
+// The plan cases of tests/dbspec/plans.json through Polyspec\Orm\Dbspec\Dbspec (docs/spec/plans.md): every case's
+// canonical emission, changes and steps of three dialects, and the unknown dialect rule. The validation sections are
+// the recipes tests/dbspec/plan-{invalid,chains,parse,comparisons}.json, run by Recipe::run with no database.
 
 use InvalidArgumentException;
 use PDO;
 use RuntimeException;
 use Polyspec\Orm\Dbspec\Change;
 use Polyspec\Orm\Dbspec\Dbspec;
-use Polyspec\Orm\Dbspec\Diagnostic;
-use Polyspec\Orm\Dbspec\Difference;
 use Polyspec\Orm\Dbspec\Document;
 use Polyspec\Orm\Dbspec\Plan;
 use Polyspec\Orm\Dbspec\PlanStep;
@@ -80,17 +74,6 @@ function plan_of(string $id, array $lines): Plan
     return $result->plan ?? throw new RuntimeException(
         "$id: plan diagnostics " . plan_diagnostics($result->diagnostics)
     );
-}
-
-/** @param list<Diagnostic> $diagnostics @return list<string> */
-function plan_messages(string $id, string $rule, array $diagnostics): array
-{
-    $messages = [];
-    foreach ($diagnostics as $d) {
-        Assert::assertSame($rule, $d->rule, "$id: rule {$d->rule}, want $rule");
-        $messages[] = $d->message;
-    }
-    return $messages;
 }
 
 #[Small]
@@ -180,141 +163,6 @@ class DbspecPlanTest extends TestCase
                 );
             }
         }
-        cpuCaseEnd($id, $caseStarted);
-    }
-
-    public static function invalidCases(): iterable
-    {
-        foreach (plan_vectors()['invalid'] as $case) {
-            yield $case['id'] => [$case];
-        }
-    }
-
-    #[DataProvider('invalidCases')]
-    public function testInvalid(array $case): void
-    {
-        $caseStarted = cpuCaseBegin(PLAN_CASE_CPU_SECONDS);
-        $id = "plan/invalid/{$case['id']}";
-
-        $source = plan_source($id, $case['source'] ?? null);
-        $parsed = Dbspec::parsePlan(dbspec_plan_text($case['plan']));
-        $diagnostics = $parsed->plan === null ? $parsed
-            ->diagnostics : Dbspec::diff($source, $parsed->plan)
-            ->diagnostics;
-        $got = plan_messages($id, 'plan', $diagnostics);
-        Assert::assertSame(
-            $case['errors'],
-            $got,
-            "$id: errors\nwant " . json_encode($case['errors']) . "\ngot  " . json_encode($got)
-        );
-        // Refuses the step with the same diagnostic as the diff.
-        if ($parsed->plan !== null) {
-            $steps = Dbspec::planSteps($source, $parsed->plan, 'postgres');
-            Assert::assertFalse(
-                $steps->steps !== null || plan_messages($id, 'plan', $steps->diagnostics) !== $case['errors'],
-                "$id: planSteps does not report the diff diagnostics: " . plan_diagnostics($steps->diagnostics)
-            );
-        }
-        cpuCaseEnd($id, $caseStarted);
-    }
-
-    public static function chainsCases(): iterable
-    {
-        foreach (plan_vectors()['chains'] as $case) {
-            yield $case['id'] => [$case];
-        }
-    }
-
-    #[DataProvider('chainsCases')]
-    public function testChain(array $case): void
-    {
-        $caseStarted = cpuCaseBegin(PLAN_CASE_CPU_SECONDS);
-        $id = "plan/chain/{$case['id']}";
-
-        $plans = array_map(static fn(array $lines): Plan => plan_of($id, $lines), $case['plans']);
-        $chain = Dbspec::chain($plans);
-        $errors = plan_messages($id, 'chain', $chain->diagnostics);
-        Assert::assertSame(
-            ($case['errors'] ?? []),
-            $errors,
-            "$id: errors\nwant " . json_encode($case['errors'] ?? []) . "\ngot  " . json_encode($errors)
-        );
-        $order = array_map(static fn(Plan $p): string => $p->name, $chain->plans ?? []);
-        Assert::assertSame(
-            ($case['order'] ?? []),
-            $order,
-            "$id: order\nwant " . json_encode($case['order'] ?? []) . "\ngot  " . json_encode($order)
-        );
-        cpuCaseEnd($id, $caseStarted);
-    }
-
-    public static function parseCases(): iterable
-    {
-        foreach (plan_vectors()['parse'] as $case) {
-            yield $case['id'] => [$case];
-        }
-    }
-
-    #[DataProvider('parseCases')]
-    public function testParse(array $case): void
-    {
-        $caseStarted = cpuCaseBegin(PLAN_CASE_CPU_SECONDS);
-        $id = "plan/parse/{$case['id']}";
-
-        $parsed = Dbspec::parsePlan(dbspec_plan_text($case['plan']));
-        // Compares the plan diagnostic down to its message, and the target diagnostic down to its rule, line, and
-        // column.
-        $got = array_map(
-            static fn(Diagnostic $d): array => [
-                $d->rule,
-                $d->line,
-                $d->column,
-                $d->rule === 'plan' ? $d->message : null
-            ],
-            $parsed->diagnostics
-        );
-        Assert::assertSame(
-            $case['errors'],
-            $got,
-            "$id: errors\nwant " . json_encode($case['errors']) . "\ngot  " . json_encode($got)
-        );
-        cpuCaseEnd($id, $caseStarted);
-    }
-
-    public static function comparisonsCases(): iterable
-    {
-        foreach (plan_vectors()['comparisons'] as $case) {
-            yield $case['id'] => [$case];
-        }
-    }
-
-    #[DataProvider('comparisonsCases')]
-    public function testComparison(array $case): void
-    {
-        $caseStarted = cpuCaseBegin(PLAN_CASE_CPU_SECONDS);
-        $id = "plan/comparison/{$case['id']}";
-
-        $source = plan_source("$id/source", $case['source']);
-        $target = plan_source("$id/target", $case['target']);
-        $result = Dbspec::compareSchemas($source, $target);
-        $got = array_map(
-            static fn(Difference $d): array => [$d->kind, $d->table, $d->name],
-            $result->differences ?? []
-        );
-        Assert::assertSame(
-            $case['differences'],
-            $got,
-            "$id: differences\nwant " . json_encode($case['differences']) . "\ngot  " . json_encode($got)
-        );
-        $errors = array_map(
-            static fn(Diagnostic $d): array => [$d->rule, $d->line, $d->column, $d->message],
-            $result->diagnostics
-        );
-        Assert::assertSame(
-            $case['errors'],
-            $errors,
-            "$id: errors\nwant " . json_encode($case['errors']) . "\ngot  " . json_encode($errors)
-        );
         cpuCaseEnd($id, $caseStarted);
     }
 

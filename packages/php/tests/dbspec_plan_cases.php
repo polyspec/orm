@@ -5,7 +5,11 @@ declare(strict_types=1);
 // The one reader of tests/dbspec/plans.json for the PHP tests. DbspecPlanTest, DbspecPlanApplyTest, DbspecApplyTest and
 // DbspecApplyCleanupTest all take their plans from here; the file is opened once per process.
 
-/** The vectors of tests/dbspec/plans.json; every section must hold cases. */
+/**
+ * The vectors of tests/dbspec/plans.json: its cases section. The validation sections are recipes beside it
+ * (plan-invalid, plan-chains, plan-parse and plan-comparisons .json), run by the recipe helper, so they are not
+ * read here.
+ */
 function plan_vectors(): array
 {
     static $vectors = null;
@@ -18,16 +22,8 @@ function plan_vectors(): array
         512,
         JSON_THROW_ON_ERROR
     );
-    if (
-        $vectors['version'] !== 1 || ($vectors['cases'] ?? []) === [] || (
-        $vectors['invalid'] ?? []
-        ) === [] || ($vectors['chains'] ?? []) === [] || ($vectors['parse'] ?? []) === [] || (
-        $vectors['comparisons'] ?? []
-        ) === []
-    ) {
-        throw new RuntimeException(
-            'tests/dbspec/plans.json has no version 1 cases, invalid cases, chains, parse cases and comparisons'
-        );
+    if ($vectors['version'] !== 1 || ($vectors['cases'] ?? []) === []) {
+        throw new RuntimeException('tests/dbspec/plans.json has no version 1 cases');
     }
     return $vectors;
 }

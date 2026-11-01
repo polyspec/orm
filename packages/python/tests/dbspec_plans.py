@@ -1,12 +1,11 @@
-# Shared plan case (tests/dbspec/plans.json): checks that the plan grammar errors, the diff of source and target,
-# the steps of the three dialects, and the plan chain and schema comparison match the other clients.
+# Shared plan case (tests/dbspec/plans.json, section cases): checks that the diff of source and target and the steps of the
+# three dialects match the other clients. The plan grammar, chain and comparison cases are recipes (tests/dbspec/plan-*.json).
 # The database execution of the steps (before/after) is checked by conformance.
 import json
 import unittest
 from pathlib import Path
 from polyspec.orm.dbspec import parse_dbspec
-from polyspec.orm.dbspec.compare import compare_schemas
-from polyspec.orm.dbspec.plan import chain_plans, parse_plan
+from polyspec.orm.dbspec.plan import parse_plan
 from polyspec.orm.dbspec.plan_diff import diff_plan
 from polyspec.orm.dbspec.plan_steps import effect_text, plan_steps
 
@@ -25,10 +24,6 @@ def _source(case):
     document, _positions, diagnostics = parse_dbspec(_text(case["source"]), {})
     assert document is not None, (case["id"], diagnostics[:1])
     return document
-
-
-def _errors(diagnostics) -> list:
-    return [[d.rule, d.line, d.column, d.message] for d in diagnostics]
 
 
 def _plain_step(s: dict) -> dict:
@@ -74,66 +69,9 @@ def check_case(_test: unittest.TestCase, case: dict) -> None:
         )
 
 
-def check_invalid(_test: unittest.TestCase, case: dict) -> None:
-    source = _source(case)
-    result = parse_plan(_text(case["plan"]))
-    if result["plan"] is not None:
-        result = diff_plan(source, result["plan"])
-    # The errors of an invalid case hold only the message.
-    assert [d.message for d in result["diagnostics"]] == case["errors"], (
-        f"{case['id']}: diagnostics differ"
-    )
-
-
-def check_chain(_test: unittest.TestCase, case: dict) -> None:
-    plans = []
-    for text in case["plans"]:
-        result = parse_plan(_text(text))
-        assert result["plan"] is not None, (case["id"], result["diagnostics"][:1])
-        plans.append(result["plan"])
-    chained = chain_plans(plans)
-    assert [d.message for d in chained["diagnostics"]] == case.get("errors", []), (
-        f"{case['id']}: chain diagnostics differ"
-    )
-    if chained["plans"] is not None:
-        assert [p["name"] for p in chained["plans"]] == case["order"], (
-            f"{case['id']}: chain order differs"
-        )
-
-
-def check_parse(_test: unittest.TestCase, case: dict) -> None:
-    result = parse_plan(_text(case["plan"]))
-    assert result["plan"] is None, case["id"]
-    for want, got in zip(case["errors"], _errors(result["diagnostics"])):
-        # A case whose message is null compares only the position.
-        assert want[:3] == got[:3] and (want[3] is None or want[3] == got[3]), (
-            f"{case['id']}: parse diagnostics differ"
-        )
-    assert len(case["errors"]) == len(result["diagnostics"]), (
-        f"{case['id']}: parse diagnostic count differs"
-    )
-
-
-def check_comparison(_test: unittest.TestCase, case: dict) -> None:
-    source, _positions, _ = parse_dbspec(_text(case["source"]), {})
-    target, _positions, _ = parse_dbspec(_text(case["target"]), {})
-    result = compare_schemas(source, target)
-    assert _errors(result["diagnostics"]) == case.get("errors", []), (
-        f"{case['id']}: comparison diagnostics differ"
-    )
-    if result["differences"] is not None:
-        assert [[d["kind"], d["table"], d["name"]] for d in result["differences"]] == [
-            list(d) for d in case["differences"]
-        ], f"{case['id']}: differences differ"
-
-
-# The check of each section of plans.json; each section runs from its own module (test_dbspec_plan_<section>.py).
+# The check of each section of plans.json that the native tests keep: cases. The other sections are recipes (FCV-3).
 CHECKS = {
     "cases": check_case,
-    "invalid": check_invalid,
-    "chains": check_chain,
-    "parse": check_parse,
-    "comparisons": check_comparison,
 }
 
 

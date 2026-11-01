@@ -252,14 +252,15 @@ func writeDiagnostics(out *output, diagnostics []dbspec.Diagnostic) {
 	}
 }
 
-// planVectors is tests/dbspec/plans.json (docs/spec/plans.md).
+// planVectors is tests/dbspec/plans.json (docs/spec/plans.md), whose cases are read from the file, and whose four
+// validation sections are read from the recipes beside it (readPlans).
 type planVectors struct {
 	Cases   []planCase  `json:"cases"`
-	Invalid []planCase  `json:"invalid"`
-	Chains  []chainCase `json:"chains"`
-	Parse   []parseCase `json:"parse"`
+	Invalid []planCase  `json:"-"`
+	Chains  []chainCase `json:"-"`
+	Parse   []parseCase `json:"-"`
 	// Comparisons are the two schemas compared without a plan.
-	Comparisons []comparisonCase `json:"comparisons"`
+	Comparisons []comparisonCase `json:"-"`
 }
 
 type comparisonCase struct {

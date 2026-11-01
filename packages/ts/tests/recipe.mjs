@@ -10,7 +10,7 @@ import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { CORE, Db, OrmError, StyledValue, blindIndex, connectCatalog, dbspecManifest, decode, encode, hostDecode, hostEncode, parseDbspec, parseDbspecSet, readDbspecSet, registerModel } from '../dist/index.js';
+import { CORE, Db, OrmError, StyledValue, blindIndex, chainPlans, compareSchemas, connectCatalog, dbspecManifest, decode, diffPlan, encode, hostDecode, hostEncode, parseDbspec, parseDbspecSet, parsePlan, readDbspecFile, readDbspecSet, registerModel } from '../dist/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { Engine } from '../dist/index.js';
@@ -41,6 +41,7 @@ export function runRecipe(path, database) {
         try {
           if (step.op === 'ir.validate') checkValidate(step, requestText(literal, caseIndex, index), schema, database);
           else if (step.op === 'planner.compile') checkPlanner(step, dirname(path), database);
+          else if (dbspecOps.includes(step.op)) checkDbspec(step, bound, database);
           else if (step.op === 'ir.answer') await checkAnswer(step, database);
           else run(step, bound, database);
         } catch (error) {
@@ -637,6 +638,98 @@ function checkPlanner(step, recipeDir, database) {
   }
   const actual = JSON.parse(JSON.stringify(got));
   if (!isDeepStrictEqual(actual, outcome.value)) throw new Error(`planner.compile: got ${JSON.stringify(actual)}, want ${JSON.stringify(outcome.value)}`);
+}
+
+// dbspecOps are the ops of the schema and plan calls (FCV-4), which checkDbspec runs without a database.
+const dbspecOps = ['dbspec.parse', 'dbspec.parse_plan', 'dbspec.diff', 'dbspec.chain', 'dbspec.compare'];
+
+// checkDbspec runs one dbspec op through the public call that FCV-4 names, binds the result of its as for a later ref, and checks
+// what the call returned, as JSON, with the expect of database. A null source is the empty schema of diffPlan.
+function checkDbspec(step, bound, database) {
+  if (database !== NONE) throw new Error(`${step.op} runs without a database`);
+  const want = step.expect?.[database];
+  if (want === undefined) throw new Error(`${step.op} has no expect for ${database}`);
+  let got;
+  switch (step.op) {
+    case 'dbspec.parse':
+    case 'dbspec.parse_plan':
+      got = dbspecParse(step, bound);
+      break;
+    case 'dbspec.diff':
+      got = dbspecDiff(step, bound);
+      break;
+    case 'dbspec.chain':
+      got = dbspecChain(step, bound);
+      break;
+    case 'dbspec.compare':
+      got = dbspecCompare(step, bound);
+      break;
+  }
+  const actual = JSON.parse(JSON.stringify(got));
+  if (!isDeepStrictEqual(actual, want)) throw new Error(`${step.op}: got ${JSON.stringify(actual)}, want ${JSON.stringify(want)}`);
+}
+
+// dbspecParse runs parseDbspec (dbspec.parse) or parsePlan (dbspec.parse_plan) on the lines of step, and returns {diagnostics}.
+function dbspecParse(step, bound) {
+  const text = step.lines.join('\n') + '\n';
+  const result = step.op === 'dbspec.parse' ? parseDbspec(text, {}) : parsePlan(text);
+  const value = step.op === 'dbspec.parse' ? result.document : result.plan;
+  if (step.as !== undefined) bound.set(step.as, { dbspec: value });
+  return { diagnostics: parseRows(result.diagnostics, false) };
+}
+
+// dbspecDiff runs diffPlan and returns {changes} or, with diagnostics, {messages} of rule plan.
+function dbspecDiff(step, bound) {
+  const result = diffPlan(dbspecDocument(step.source, bound), dbspecPlan(step.plan, bound));
+  if (result.diagnostics.length > 0) return { messages: messagesOf(result.diagnostics, 'plan') };
+  return { changes: (result.changes ?? []).map(c => [c.kind, c.table, c.name]) };
+}
+
+// dbspecChain runs chainPlans and returns {order} with the plan names or, with diagnostics, {messages} of rule chain.
+function dbspecChain(step, bound) {
+  const result = chainPlans(step.plans.map(raw => dbspecPlan(raw, bound)));
+  if (result.diagnostics.length > 0) return { messages: messagesOf(result.diagnostics, 'chain') };
+  return { order: (result.plans ?? []).map(p => p.name) };
+}
+
+// dbspecCompare runs compareSchemas and returns {differences, diagnostics}, whose diagnostics carry their message for every rule.
+function dbspecCompare(step, bound) {
+  const result = compareSchemas(dbspecDocument(step.source, bound), dbspecDocument(step.target, bound));
+  return { differences: (result.differences ?? []).map(d => [d.kind, d.table, d.name]), diagnostics: parseRows(result.diagnostics, true) };
+}
+
+// parseRows are the diagnostics as [rule, line, column, message]: the message is that of rule plan only, unless all is set.
+function parseRows(diagnostics, all) {
+  return diagnostics.map(d => [d.rule, d.line, d.column, all || d.rule === 'plan' ? d.message : null]);
+}
+
+// messagesOf returns the messages of the diagnostics, and fails on a diagnostic of another rule than rule.
+function messagesOf(diagnostics, rule) {
+  for (const d of diagnostics) if (d.rule !== rule) throw new Error(`diagnostic of rule ${d.rule}, want ${rule}: ${d.message}`);
+  return diagnostics.map(d => d.message);
+}
+
+// dbspecValue is the result that the ref of raw binds by an earlier dbspec step, and fails when raw is no ref or names none.
+function dbspecValue(raw, bound) {
+  if (raw === undefined || raw === null || typeof raw.ref !== 'string') throw new Error(`${JSON.stringify(raw)} is not a ref`);
+  const result = bound.get(raw.ref);
+  if (result === undefined || !('dbspec' in result)) throw new Error(`ref ${raw.ref} names no bound result`);
+  return result.dbspec;
+}
+
+// dbspecDocument is the document that source or target names, or null for the empty schema when the field is null.
+function dbspecDocument(raw, bound) {
+  if (raw === null) return null;
+  const value = dbspecValue(raw, bound);
+  if (value === null) throw new Error(`${raw.ref} binds no document`);
+  return value;
+}
+
+// dbspecPlan is the plan that the ref of raw names.
+function dbspecPlan(raw, bound) {
+  const value = dbspecValue(raw, bound);
+  if (value === null) throw new Error(`${raw.ref} binds no plan`);
+  return value;
 }
 
 // startMarkdownTestServerWithKeyedAnswers is a listener that answers connect with {"ok":true} and every later message with the answer of answers keyed

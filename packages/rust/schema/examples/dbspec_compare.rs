@@ -293,7 +293,8 @@ fn read_ddl(path: &str) -> Result<Vec<HashCase>, String> {
     Ok(list(&open(path, "ddl")?["cases"]).iter().map(hash_case).collect())
 }
 
-/// Reads tests/dbspec/plans.json. source is null, meaning an empty schema, or a line array.
+/// Reads tests/dbspec/plans.json. source is null, meaning an empty schema, or a line array. Its validation sections are the
+/// recipes beside it (read_plan_recipes).
 fn read_plans(path: &str) -> Result<PlanVectors, String> {
     let v = open(path, "plans")?;
     let plan_case = |case: &Value| PlanCase {
@@ -301,16 +302,84 @@ fn read_plans(path: &str) -> Result<PlanVectors, String> {
         source: if case["source"].is_null() { None } else { Some(lines(&case["source"])) },
         plan: lines(&case["plan"]),
     };
+    let recipes = read_plan_recipes(path)?;
     Ok(PlanVectors {
         cases: list(&v["cases"]).iter().map(plan_case).collect(),
-        invalid: list(&v["invalid"]).iter().map(plan_case).collect(),
-        chains: list(&v["chains"]).iter().map(|case| ChainCase { id: string(&case["id"]), plans: list(&case["plans"]).iter().map(lines).collect() }).collect(),
-        parse: list(&v["parse"]).iter().map(|case| ParseCase { id: string(&case["id"]), plan: lines(&case["plan"]) }).collect(),
-        comparisons: list(&v["comparisons"])
-            .iter()
-            .map(|case| ComparisonCase { id: string(&case["id"]), source: lines(&case["source"]), target: lines(&case["target"]) })
-            .collect(),
+        invalid: recipes.invalid,
+        chains: recipes.chains,
+        parse: recipes.parse,
+        comparisons: recipes.comparisons,
     })
+}
+
+/// The validation sections of tests/dbspec/plans.json, read from the recipes plan-invalid, plan-chains, plan-parse and
+/// plan-comparisons .json beside it (FCV-3): each case's lines are those that its refs bind by an earlier parse step.
+struct PlanRecipes {
+    invalid: Vec<PlanCase>,
+    chains: Vec<ChainCase>,
+    parse: Vec<ParseCase>,
+    comparisons: Vec<ComparisonCase>,
+}
+
+/// The lines that the ref of raw binds, from the steps of one case; a ref that binds no lines fails the read.
+fn bound_lines(raw: &Value, bound: &BTreeMap<String, Vec<String>>) -> Result<Vec<String>, String> {
+    let name = raw["ref"].as_str().ok_or_else(|| format!("{raw} is not a ref"))?;
+    bound.get(name).cloned().ok_or_else(|| format!("ref {name} names no parsed schema or plan"))
+}
+
+/// One case of a recipe: its id, its steps, and the lines that each parse step binds by its as.
+type RecipeCase = (String, Vec<Value>, BTreeMap<String, Vec<String>>);
+
+/// The cases of one recipe.
+fn recipe_cases(dir: &Path, section: &str) -> Result<Vec<RecipeCase>, String> {
+    let path = dir.join(format!("plan-{section}.json"));
+    let shown = path.display().to_string();
+    let text = std::fs::read_to_string(&path).map_err(|e| format!("{shown}: {e}"))?;
+    let recipe: Value = serde_json::from_str(&text).map_err(|e| format!("{shown}: {e}"))?;
+    let mut out = Vec::new();
+    for case in list(&recipe["cases"]) {
+        let steps = list(&case["steps"]).clone();
+        let mut bound = BTreeMap::new();
+        for step in &steps {
+            let op = step["op"].as_str().unwrap_or_default();
+            if let (Some(name), "dbspec.parse" | "dbspec.parse_plan") = (step["as"].as_str(), op) {
+                bound.insert(name.to_owned(), step.get("lines").map_or_else(Vec::new, lines));
+            }
+        }
+        out.push((string(&case["id"]), steps, bound));
+    }
+    Ok(out)
+}
+
+fn read_plan_recipes(plans_path: &str) -> Result<PlanRecipes, String> {
+    let dir = Path::new(plans_path).parent().unwrap_or(Path::new("."));
+    let mut recipes = PlanRecipes { invalid: Vec::new(), chains: Vec::new(), parse: Vec::new(), comparisons: Vec::new() };
+    for (id, steps, bound) in recipe_cases(dir, "invalid")? {
+        for step in steps.iter().filter(|s| s["op"] == "dbspec.diff") {
+            let source = match step.get("source") {
+                Some(raw) if !raw.is_null() => Some(bound_lines(raw, &bound)?),
+                _ => None,
+            };
+            recipes.invalid.push(PlanCase { id: id.clone(), source, plan: bound_lines(&step["plan"], &bound)? });
+        }
+    }
+    for (id, steps, bound) in recipe_cases(dir, "chains")? {
+        for step in steps.iter().filter(|s| s["op"] == "dbspec.chain") {
+            let plans = list(&step["plans"]).iter().map(|raw| bound_lines(raw, &bound)).collect::<Result<_, _>>()?;
+            recipes.chains.push(ChainCase { id: id.clone(), plans });
+        }
+    }
+    for (id, steps, _) in recipe_cases(dir, "parse")? {
+        for step in steps.iter().filter(|s| s["op"] == "dbspec.parse_plan") {
+            recipes.parse.push(ParseCase { id: id.clone(), plan: lines(&step["lines"]) });
+        }
+    }
+    for (id, steps, bound) in recipe_cases(dir, "comparisons")? {
+        for step in steps.iter().filter(|s| s["op"] == "dbspec.compare") {
+            recipes.comparisons.push(ComparisonCase { id: id.clone(), source: bound_lines(&step["source"], &bound)?, target: bound_lines(&step["target"], &bound)? });
+        }
+    }
+    Ok(recipes)
 }
 
 /// Reads tests/dbspec/mermaid.json.

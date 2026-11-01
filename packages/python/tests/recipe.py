@@ -33,6 +33,9 @@ from polyspec.orm.dbspec import (
     read_dbspec_file,
     read_dbspec_set,
 )
+from polyspec.orm.dbspec.compare import compare_schemas
+from polyspec.orm.dbspec.plan import chain_plans, parse_plan
+from polyspec.orm.dbspec.plan_diff import diff_plan
 from polyspec.orm.engine import Engine, model_of_documents, parse_document_set
 from polyspec.orm.engine.validate import validate
 from polyspec.orm.styled_value import StyledValue
@@ -103,6 +106,9 @@ def recipe_tests(path: str, database: str):
                 if step["op"] == "planner.compile":
                     _plan(step, ROOT / Path(path).parent, database)
                     continue
+                if step["op"] in _DBSPEC_OPS:
+                    _dbspec(step, bound, database)
+                    continue
                 _run(step, bound, database)
             except AssertionError as error:
                 raise AssertionError(
@@ -171,7 +177,9 @@ def _plan(step: dict, recipe_dir: Path, database: str) -> None:
     if schema not in _plan_models:
         _plan_models[schema] = _validation_model(schema)
     model = _plan_models[schema]
-    request = dict(json.loads(json.dumps(step["input"])), manifest_hash=model.manifest_hash)
+    request = dict(
+        json.loads(json.dumps(step["input"])), manifest_hash=model.manifest_hash
+    )
     outcome = step["expect"].get(database)
     if outcome is None:
         raise AssertionError(f"planner.compile has no expect for {database}")
@@ -203,6 +211,107 @@ def _plan(step: dict, recipe_dir: Path, database: str) -> None:
         raise AssertionError(
             f"planner.compile: got {json.dumps(got)}, want {json.dumps(outcome['value'])}"
         )
+
+
+# The dbspec ops (FCV-4): each maps to one call of the public Python API that config/parity.json names for the dbspec
+# document and plan units. The schema text of parse ops is the joined lines with a final newline.
+_DBSPEC_OPS = (
+    "dbspec.parse",
+    "dbspec.parse_plan",
+    "dbspec.diff",
+    "dbspec.chain",
+    "dbspec.compare",
+)
+
+
+def _dbspec(step: dict, bound: dict, database: str) -> None:
+    """Runs one dbspec op through its public call and compares its result, as a JSON value, with the expect of database.
+    The parse ops bind their document or plan to as, for a later ref."""
+    op = step["op"]
+    if op in ("dbspec.parse", "dbspec.parse_plan"):
+        text = "\n".join(step["lines"]) + "\n"
+        if op == "dbspec.parse":
+            value, _positions, diagnostics = parse_dbspec(text, {})
+        else:
+            parsed = parse_plan(text)
+            value, diagnostics = parsed["plan"], parsed["diagnostics"]
+        if "as" in step:
+            bound[step["as"]] = value
+        got = {"diagnostics": _rows(diagnostics, False)}
+    elif op == "dbspec.diff":
+        result = diff_plan(
+            _dbspec_document(step["source"], bound),
+            _dbspec_value(step["plan"], bound, "plan"),
+        )
+        if result["diagnostics"]:
+            got = {"messages": _messages(result["diagnostics"], "plan")}
+        else:
+            got = {
+                "changes": [
+                    [c["kind"], c["table"], c["name"]] for c in result["changes"]
+                ]
+            }
+    elif op == "dbspec.chain":
+        plans = [_dbspec_value(raw, bound, "plan") for raw in step["plans"]]
+        result = chain_plans(plans)
+        if result["diagnostics"]:
+            got = {"messages": _messages(result["diagnostics"], "chain")}
+        else:
+            got = {"order": [plan["name"] for plan in result["plans"]]}
+    else:
+        result = compare_schemas(
+            _dbspec_document(step["source"], bound),
+            _dbspec_document(step["target"], bound),
+        )
+        got = {
+            "differences": [
+                [d["kind"], d["table"], d["name"]] for d in result["differences"] or []
+            ],
+            "diagnostics": _rows(result["diagnostics"], True),
+        }
+    expect = step["expect"].get(database)
+    if expect is None:
+        raise AssertionError(f"{op} has no expect for {database}")
+    if got != expect:
+        raise AssertionError(f"{op}: got {json.dumps(got)}, want {json.dumps(expect)}")
+
+
+def _dbspec_value(raw: dict, bound: dict, what: str) -> Any:
+    """The value that the ref of raw binds by an earlier dbspec step; it fails when raw is no ref, or names no value."""
+    if not isinstance(raw, dict) or "ref" not in raw:
+        raise AssertionError(f"{json.dumps(raw)} is not a ref")
+    value = bound.get(raw["ref"])
+    if value is None:
+        raise AssertionError(f"ref {raw['ref']} binds no {what}")
+    return value
+
+
+def _dbspec_document(raw: Any, bound: dict) -> Any:
+    """The document that a source or target names, or None for the empty schema when the field is null."""
+    return None if raw is None else _dbspec_value(raw, bound, "document")
+
+
+def _rows(diagnostics, every_message: bool) -> list:
+    """The diagnostics as [rule, line, column, message]: the message is that of rule plan only, unless every_message is set."""
+    return [
+        [
+            d.rule,
+            d.line,
+            d.column,
+            d.message if every_message or d.rule == "plan" else None,
+        ]
+        for d in diagnostics
+    ]
+
+
+def _messages(diagnostics, rule: str) -> list:
+    """The messages of the diagnostics; it fails on a diagnostic of a rule other than rule."""
+    for d in diagnostics:
+        if d.rule != rule:
+            raise AssertionError(
+                f"diagnostic of rule {d.rule}, want {rule}: {d.message}"
+            )
+    return [d.message for d in diagnostics]
 
 
 def _validate(step: dict, model: Any, database: str) -> None:

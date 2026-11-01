@@ -1,0 +1,1737 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "PLN-45",
+    "PLN-46",
+    "PLN-47",
+    "PLN-48",
+    "PLN-49",
+    "PLN-50",
+    "PLN-51",
+    "PLN-52",
+    "PLN-53",
+    "PLN-54",
+    "PLN-55",
+    "PLN-56",
+    "PLN-57",
+    "PLN-58",
+    "PLN-59",
+    "PLN-60",
+    "PLN-61",
+    "PLN-62",
+    "PLN-63",
+    "PLN-64",
+    "PLN-65",
+    "PLN-66",
+    "PLN-67",
+    "PLN-68",
+    "PLN-69",
+    "PLN-70",
+    "PLN-71",
+    "PLN-72",
+    "PLN-84",
+    "PLN-85",
+    "PLN-86",
+    "PLN-87",
+    "PLN-88"
+  ],
+  "cases": [
+    {
+      "id": "same-schema",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+            "}",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "source",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+            "}",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "target",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.compare",
+          "source": {
+            "ref": "source"
+          },
+          "target": {
+            "ref": "target"
+          },
+          "expect": {
+            "none": {
+              "differences": [],
+              "diagnostics": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "tables-from-empty",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema"
+          ],
+          "as": "source",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+            "}",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "target",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.compare",
+          "source": {
+            "ref": "source"
+          },
+          "target": {
+            "ref": "target"
+          },
+          "expect": {
+            "none": {
+              "differences": [
+                [
+                  "create_table",
+                  "orders",
+                  ""
+                ],
+                [
+                  "create_table",
+                  "users",
+                  ""
+                ]
+              ],
+              "diagnostics": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "tables-on-one-side",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table legacy {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "source",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+            "}",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "target",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.compare",
+          "source": {
+            "ref": "source"
+          },
+          "target": {
+            "ref": "target"
+          },
+          "expect": {
+            "none": {
+              "differences": [
+                [
+                  "drop_table",
+                  "legacy",
+                  ""
+                ],
+                [
+                  "create_table",
+                  "orders",
+                  ""
+                ]
+              ],
+              "diagnostics": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "columns",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table t {",
+            "  id i64 identity",
+            "  a i32",
+            "  b varchar(10)",
+            "  c i64",
+            "  d text null",
+            "  e i32 default 0",
+            "  gone i32",
+            "  primary key (id)",
+            "}"
+          ],
+          "as": "source",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table t {",
+            "  id i64 identity",
+            "  a i64",
+            "  b varchar(10) null",
+            "  c i32 null",
+            "  d i32 null",
+            "  e i32 default 1",
+            "  added i32 null",
+            "  primary key (id)",
+            "}"
+          ],
+          "as": "target",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.compare",
+          "source": {
+            "ref": "source"
+          },
+          "target": {
+            "ref": "target"
+          },
+          "expect": {
+            "none": {
+              "differences": [
+                [
+                  "drop_column",
+                  "t",
+                  "gone"
+                ],
+                [
+                  "add_column",
+                  "t",
+                  "added"
+                ],
+                [
+                  "alter_column",
+                  "t",
+                  "a"
+                ],
+                [
+                  "alter_column",
+                  "t",
+                  "b"
+                ],
+                [
+                  "alter_column",
+                  "t",
+                  "c"
+                ],
+                [
+                  "alter_column",
+                  "t",
+                  "e"
+                ],
+                [
+                  "change_column_type",
+                  "t",
+                  "c"
+                ],
+                [
+                  "change_column_type",
+                  "t",
+                  "d"
+                ]
+              ],
+              "diagnostics": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "identity-and-primary-key",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table k {",
+            "  id i64 identity",
+            "  code varchar(8)",
+            "  primary key (id)",
+            "}",
+            "",
+            "table p {",
+            "  a i32",
+            "  b i32",
+            "  primary key (a, b)",
+            "}"
+          ],
+          "as": "source",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table k {",
+            "  id i64",
+            "  code varchar(8)",
+            "  primary key (code)",
+            "}",
+            "",
+            "table p {",
+            "  a i32",
+            "  b i32",
+            "  primary key (b, a)",
+            "}"
+          ],
+          "as": "target",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.compare",
+          "source": {
+            "ref": "source"
+          },
+          "target": {
+            "ref": "target"
+          },
+          "expect": {
+            "none": {
+              "differences": [
+                [
+                  "change_column_identity",
+                  "k",
+                  "id"
+                ],
+                [
+                  "change_primary_key",
+                  "k",
+                  ""
+                ],
+                [
+                  "change_primary_key",
+                  "p",
+                  ""
+                ]
+              ],
+              "diagnostics": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "column-order",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table o1 {",
+            "  a i32",
+            "  b i32",
+            "  c i32",
+            "  primary key (a)",
+            "}",
+            "",
+            "table o2 {",
+            "  a i32",
+            "  b i32",
+            "  primary key (a)",
+            "}",
+            "",
+            "table o3 {",
+            "  a i32",
+            "  b i32",
+            "  c i32",
+            "  primary key (a)",
+            "}",
+            "",
+            "table o4 {",
+            "  a i32",
+            "  b i32",
+            "  primary key (a)",
+            "}"
+          ],
+          "as": "source",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table o1 {",
+            "  a i32",
+            "  c i32",
+            "  b i32",
+            "  primary key (a)",
+            "}",
+            "",
+            "table o2 {",
+            "  a i32",
+            "  x i32 null",
+            "  b i32",
+            "  primary key (a)",
+            "}",
+            "",
+            "table o3 {",
+            "  a i32",
+            "  c i32",
+            "  primary key (a)",
+            "}",
+            "",
+            "table o4 {",
+            "  a i32",
+            "  b i32",
+            "  x i32 null",
+            "  primary key (a)",
+            "}"
+          ],
+          "as": "target",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.compare",
+          "source": {
+            "ref": "source"
+          },
+          "target": {
+            "ref": "target"
+          },
+          "expect": {
+            "none": {
+              "differences": [
+                [
+                  "reorder_columns",
+                  "o1",
+                  ""
+                ],
+                [
+                  "add_column",
+                  "o2",
+                  "x"
+                ],
+                [
+                  "reorder_columns",
+                  "o2",
+                  ""
+                ],
+                [
+                  "drop_column",
+                  "o3",
+                  "b"
+                ],
+                [
+                  "add_column",
+                  "o4",
+                  "x"
+                ]
+              ],
+              "diagnostics": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "objects",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table c {",
+            "  id i64 identity",
+            "  p_id i64",
+            "  n i32",
+            "  code varchar(8)",
+            "  primary key (id)",
+            "  unique uq_c_code (code)",
+            "  index ix_c_n (n)",
+            "  index ix_c_p (p_id)",
+            "  foreign key fk_c_p (p_id) references p (id) on delete restrict on update restrict",
+            "  check ck_c_n (n >= 0)",
+            "  check ck_c_code (code <> '')",
+            "}",
+            "",
+            "table p {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}"
+          ],
+          "as": "source",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table c {",
+            "  id i64 identity",
+            "  p_id i64",
+            "  n i64",
+            "  code varchar(8)",
+            "  primary key (id)",
+            "  unique uq_c_code (code, n)",
+            "  unique uq_c_p (p_id)",
+            "  index ix_c_n (n desc)",
+            "  foreign key fk_c_p (p_id) references p (id) on delete cascade on update restrict",
+            "  check ck_c_n (n >= 0)",
+            "  check ck_c_code (code <> 'x')",
+            "}",
+            "",
+            "table p {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}"
+          ],
+          "as": "target",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.compare",
+          "source": {
+            "ref": "source"
+          },
+          "target": {
+            "ref": "target"
+          },
+          "expect": {
+            "none": {
+              "differences": [
+                [
+                  "alter_column",
+                  "c",
+                  "n"
+                ],
+                [
+                  "drop_unique",
+                  "c",
+                  "uq_c_code"
+                ],
+                [
+                  "add_unique",
+                  "c",
+                  "uq_c_code"
+                ],
+                [
+                  "add_unique",
+                  "c",
+                  "uq_c_p"
+                ],
+                [
+                  "drop_index",
+                  "c",
+                  "ix_c_n"
+                ],
+                [
+                  "drop_index",
+                  "c",
+                  "ix_c_p"
+                ],
+                [
+                  "add_index",
+                  "c",
+                  "ix_c_n"
+                ],
+                [
+                  "drop_foreign_key",
+                  "c",
+                  "fk_c_p"
+                ],
+                [
+                  "add_foreign_key",
+                  "c",
+                  "fk_c_p"
+                ],
+                [
+                  "drop_check",
+                  "c",
+                  "ck_c_code"
+                ],
+                [
+                  "add_check",
+                  "c",
+                  "ck_c_code"
+                ]
+              ],
+              "diagnostics": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "settings",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table audit {",
+            "  seq i64 identity",
+            "  actor varchar(64)",
+            "  primary key (seq)",
+            "}",
+            "",
+            "table frozen {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "  settings {",
+            "    immutable",
+            "  }",
+            "}",
+            "",
+            "table h1 {",
+            "  history_id i64 identity",
+            "  change varchar(8)",
+            "  previous_audit_seq i64 null",
+            "  id i64",
+            "  audit_seq i64",
+            "  primary key (history_id)",
+            "}",
+            "",
+            "table h2 {",
+            "  history_id i64 identity",
+            "  change varchar(8)",
+            "  previous_audit_seq i64 null",
+            "  id i64",
+            "  audit_seq i64",
+            "  primary key (history_id)",
+            "}",
+            "",
+            "table locked {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}",
+            "",
+            "table logged {",
+            "  id i64 identity",
+            "  audit_seq i64",
+            "  primary key (id)",
+            "}",
+            "",
+            "table moved {",
+            "  id i64 identity",
+            "  audit_seq i64",
+            "  primary key (id)",
+            "  index ix_moved_audit (audit_seq)",
+            "  foreign key fk_moved_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
+            "  settings {",
+            "    audit into h1 column audit_seq references audit action change previous previous_audit_seq",
+            "  }",
+            "}"
+          ],
+          "as": "source",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table audit {",
+            "  seq i64 identity",
+            "  actor varchar(64)",
+            "  primary key (seq)",
+            "}",
+            "",
+            "table frozen {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}",
+            "",
+            "table h1 {",
+            "  history_id i64 identity",
+            "  change varchar(8)",
+            "  previous_audit_seq i64 null",
+            "  id i64",
+            "  audit_seq i64",
+            "  primary key (history_id)",
+            "}",
+            "",
+            "table h2 {",
+            "  history_id i64 identity",
+            "  change varchar(8)",
+            "  previous_audit_seq i64 null",
+            "  id i64",
+            "  audit_seq i64",
+            "  primary key (history_id)",
+            "}",
+            "",
+            "table locked {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "  settings {",
+            "    immutable",
+            "  }",
+            "}",
+            "",
+            "table logged {",
+            "  id i64 identity",
+            "  audit_seq i64",
+            "  primary key (id)",
+            "  index ix_logged_audit (audit_seq)",
+            "  foreign key fk_logged_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
+            "  settings {",
+            "    audit into h2 column audit_seq references audit action change previous previous_audit_seq",
+            "  }",
+            "}",
+            "",
+            "table moved {",
+            "  id i64 identity",
+            "  audit_seq i64",
+            "  primary key (id)",
+            "  index ix_moved_audit (audit_seq)",
+            "  foreign key fk_moved_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
+            "  settings {",
+            "    audit into h2 column audit_seq references audit action change previous previous_audit_seq",
+            "  }",
+            "}"
+          ],
+          "as": "target",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.compare",
+          "source": {
+            "ref": "source"
+          },
+          "target": {
+            "ref": "target"
+          },
+          "expect": {
+            "none": {
+              "differences": [
+                [
+                  "drop_immutable",
+                  "frozen",
+                  ""
+                ],
+                [
+                  "add_immutable",
+                  "locked",
+                  ""
+                ],
+                [
+                  "add_index",
+                  "logged",
+                  "ix_logged_audit"
+                ],
+                [
+                  "add_foreign_key",
+                  "logged",
+                  "fk_logged_audit"
+                ],
+                [
+                  "add_audit",
+                  "logged",
+                  ""
+                ],
+                [
+                  "drop_audit",
+                  "moved",
+                  ""
+                ],
+                [
+                  "add_audit",
+                  "moved",
+                  ""
+                ]
+              ],
+              "diagnostics": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "source-not-schema-text",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 shop",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "source",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "target",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.compare",
+          "source": {
+            "ref": "source"
+          },
+          "target": {
+            "ref": "target"
+          },
+          "expect": {
+            "none": {
+              "differences": [],
+              "diagnostics": [
+                [
+                  "compare",
+                  1,
+                  1,
+                  "the source is not a schema text: one document named schema in canonical form with its tables in name order and only the immutable and audit settings"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "target-not-schema-text",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "source",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "  settings {",
+            "    entity user",
+            "  }",
+            "}"
+          ],
+          "as": "target",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.compare",
+          "source": {
+            "ref": "source"
+          },
+          "target": {
+            "ref": "target"
+          },
+          "expect": {
+            "none": {
+              "differences": [],
+              "diagnostics": [
+                [
+                  "compare",
+                  1,
+                  1,
+                  "the target is not a schema text: one document named schema in canonical form with its tables in name order and only the immutable and audit settings"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "both-not-schema-text",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "# users of the shop",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "source",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 shop",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "target",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.compare",
+          "source": {
+            "ref": "source"
+          },
+          "target": {
+            "ref": "target"
+          },
+          "expect": {
+            "none": {
+              "differences": [],
+              "diagnostics": [
+                [
+                  "compare",
+                  1,
+                  1,
+                  "the source is not a schema text: one document named schema in canonical form with its tables in name order and only the immutable and audit settings"
+                ],
+                [
+                  "compare",
+                  1,
+                  1,
+                  "the target is not a schema text: one document named schema in canonical form with its tables in name order and only the immutable and audit settings"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "audit-recorded-columns",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table audit {",
+            "  seq i64 identity",
+            "  actor varchar(64)",
+            "  primary key (seq)",
+            "}",
+            "",
+            "table card {",
+            "  seq i64 identity",
+            "  title varchar(191)",
+            "  secret text null",
+            "  audit_seq i64",
+            "  deleted_at datetime(6) null",
+            "  primary key (seq)",
+            "  index ix_card_audit (audit_seq)",
+            "  foreign key fk_card_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
+            "  settings {",
+            "    audit into card_history column audit_seq references audit action change previous previous_audit_seq exclude (secret)",
+            "  }",
+            "}",
+            "",
+            "table card_history {",
+            "  history_id i64 identity",
+            "  change varchar(8)",
+            "  previous_audit_seq i64 null",
+            "  seq i64",
+            "  title varchar(191)",
+            "  audit_seq i64",
+            "  deleted_at datetime(6) null",
+            "  primary key (history_id)",
+            "  index ix_card_history_row (seq)",
+            "}",
+            "",
+            "table tag {",
+            "  id i64 identity",
+            "  label varchar(64)",
+            "  color varchar(16) null",
+            "  audit_seq i64",
+            "  primary key (id)",
+            "  index ix_tag_audit (audit_seq)",
+            "  foreign key fk_tag_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
+            "  settings {",
+            "    audit into tag_history column audit_seq references audit action change previous previous_audit_seq exclude (id, color)",
+            "  }",
+            "}",
+            "",
+            "table tag_history {",
+            "  history_id i64 identity",
+            "  change varchar(8)",
+            "  previous_audit_seq i64 null",
+            "  label varchar(64)",
+            "  audit_seq i64",
+            "  primary key (history_id)",
+            "}"
+          ],
+          "as": "source",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table audit {",
+            "  seq i64 identity",
+            "  actor varchar(64)",
+            "  primary key (seq)",
+            "}",
+            "",
+            "table card {",
+            "  seq i64 identity",
+            "  title varchar(191)",
+            "  secret text null",
+            "  audit_seq i64",
+            "  deleted_at datetime(6) null",
+            "  note text null",
+            "  primary key (seq)",
+            "  index ix_card_audit (audit_seq)",
+            "  foreign key fk_card_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
+            "  settings {",
+            "    audit into card_history column audit_seq references audit action change previous previous_audit_seq exclude (secret, note)",
+            "  }",
+            "}",
+            "",
+            "table card_history {",
+            "  history_id i64 identity",
+            "  change varchar(8)",
+            "  previous_audit_seq i64 null",
+            "  seq i64",
+            "  title varchar(191)",
+            "  audit_seq i64",
+            "  deleted_at datetime(6) null",
+            "  primary key (history_id)",
+            "  index ix_card_history_row (seq)",
+            "}",
+            "",
+            "table tag {",
+            "  id i64 identity",
+            "  label varchar(64)",
+            "  color varchar(16) null",
+            "  audit_seq i64",
+            "  primary key (id)",
+            "  index ix_tag_audit (audit_seq)",
+            "  foreign key fk_tag_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
+            "  settings {",
+            "    audit into tag_history column audit_seq references audit action change previous previous_audit_seq exclude (id)",
+            "  }",
+            "}",
+            "",
+            "table tag_history {",
+            "  history_id i64 identity",
+            "  change varchar(8)",
+            "  previous_audit_seq i64 null",
+            "  label varchar(64)",
+            "  audit_seq i64",
+            "  color varchar(16) null",
+            "  primary key (history_id)",
+            "}"
+          ],
+          "as": "target",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.compare",
+          "source": {
+            "ref": "source"
+          },
+          "target": {
+            "ref": "target"
+          },
+          "expect": {
+            "none": {
+              "differences": [
+                [
+                  "add_column",
+                  "card",
+                  "note"
+                ],
+                [
+                  "drop_audit",
+                  "tag",
+                  ""
+                ],
+                [
+                  "add_audit",
+                  "tag",
+                  ""
+                ],
+                [
+                  "add_column",
+                  "tag_history",
+                  "color"
+                ]
+              ],
+              "diagnostics": []
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

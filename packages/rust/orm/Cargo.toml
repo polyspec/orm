@@ -88,6 +88,26 @@ path = "tests/planner.rs"
 harness = false
 
 [[test]]
+name = "dbspec_plan_invalid"
+path = "tests/dbspec_plan_invalid.rs"
+harness = false
+
+[[test]]
+name = "dbspec_plan_chains"
+path = "tests/dbspec_plan_chains.rs"
+harness = false
+
+[[test]]
+name = "dbspec_plan_parse"
+path = "tests/dbspec_plan_parse.rs"
+harness = false
+
+[[test]]
+name = "dbspec_plan_comparisons"
+path = "tests/dbspec_plan_comparisons.rs"
+harness = false
+
+[[test]]
 name = "dbspec_introspect"
 path = "tests/dbspec_introspect.rs"
 harness = false

@@ -8,7 +8,6 @@ import unittest
 from polyspec.orm.engine import model_of_documents, parse_document_set
 from polyspec.orm.engine.params import param_uses
 from polyspec.orm.engine.validate import validate
-from polyspec.orm.errors import OrmError
 from .coverage_case import REPOSITORY_ROOT, run_cases
 from .vector_case import VectorCase, vector_tests
 

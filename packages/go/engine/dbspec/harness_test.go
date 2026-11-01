@@ -82,10 +82,6 @@ func failingCaseNames(t *testing.T) []string {
 		m.Invalid[0].ID,
 		m.RoundTrip[0].ID,
 		p.Cases[0].ID,
-		p.Invalid[0].ID,
-		p.Chains[0].ID,
-		p.Parse[0].ID,
-		p.Comparisons[1].ID,
 	}
 }
 

@@ -21,6 +21,7 @@ export { Model, Collection } from './model.js';
 export { GroupRow, GroupRows } from './group_rows.js';
 export {
   chainPlans,
+  compareSchemas,
   dbspecManifest,
   diffPlan,
   emitDbspec,

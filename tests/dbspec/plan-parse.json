@@ -1,0 +1,921 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "PLN-45",
+    "PLN-46",
+    "PLN-47",
+    "PLN-48",
+    "PLN-49",
+    "PLN-50",
+    "PLN-51",
+    "PLN-52",
+    "PLN-53",
+    "PLN-54",
+    "PLN-55",
+    "PLN-56",
+    "PLN-57",
+    "PLN-58",
+    "PLN-59",
+    "PLN-60",
+    "PLN-61",
+    "PLN-62",
+    "PLN-63",
+    "PLN-64",
+    "PLN-65",
+    "PLN-66",
+    "PLN-67",
+    "PLN-68",
+    "PLN-69",
+    "PLN-70",
+    "PLN-71",
+    "PLN-72",
+    "PLN-84",
+    "PLN-85",
+    "PLN-86",
+    "PLN-87",
+    "PLN-88",
+    "DBS-109"
+  ],
+  "cases": [
+    {
+      "id": "bad-header",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88",
+        "DBS-109"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 2 x",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table t {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                [
+                  "plan",
+                  1,
+                  1,
+                  "the first line is exactly `dbplan 1 <name>`"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "reserved-name",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88",
+        "DBS-109"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 table",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table t {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                [
+                  "plan",
+                  1,
+                  1,
+                  "the first line is exactly `dbplan 1 <name>`"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "name-too-long",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88",
+        "DBS-109"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table t {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                [
+                  "plan",
+                  1,
+                  1,
+                  "the first line is exactly `dbplan 1 <name>`"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "bad-from",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88",
+        "DBS-109"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 p",
+            "from sha256:abc",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table t {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                [
+                  "plan",
+                  2,
+                  1,
+                  "the second line is `from empty` or `from <schemaHash>`"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "unknown-header-line",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88",
+        "DBS-109"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 p",
+            "from empty",
+            "drop table t",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table t {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                [
+                  "plan",
+                  3,
+                  1,
+                  "a header line is `rename table`, `rename column`, `allow drop table` or `allow drop column`"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "repeated-line",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88",
+        "DBS-109"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 p",
+            "from empty",
+            "allow drop table x",
+            "allow drop table x",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table t {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                [
+                  "plan",
+                  4,
+                  1,
+                  "line 3 repeats this line"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "two-renames-to-one-name",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88",
+        "DBS-109"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 p",
+            "from empty",
+            "rename table a c",
+            "rename table b c",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table t {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                [
+                  "plan",
+                  4,
+                  1,
+                  "line 3 renames another table to c"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "rename-name-too-long",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88",
+        "DBS-109"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 p",
+            "from empty",
+            "rename table a aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table t {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                [
+                  "plan",
+                  3,
+                  1,
+                  "name \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\" is reserved or longer than 63 bytes"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "no-target",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88",
+        "DBS-109"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 p",
+            "from empty"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                [
+                  "plan",
+                  3,
+                  1,
+                  "a blank line and the target schema text follow the header"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "target-not-canonical",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88",
+        "DBS-109"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 p",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table t {",
+            "  id  i64 identity",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                [
+                  "plan",
+                  4,
+                  1,
+                  "the target is not a schema text: one document named schema in canonical form with its tables in name order and only the immutable and audit settings"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "target-wrong-name",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88",
+        "DBS-109"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 p",
+            "from empty",
+            "",
+            "dbspec 1 other",
+            "",
+            "table t {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                [
+                  "plan",
+                  4,
+                  1,
+                  "the target is not a schema text: one document named schema in canonical form with its tables in name order and only the immutable and audit settings"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "target-diagnostic-located",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88",
+        "DBS-109"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 p",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table t {",
+            "  id i64 identity",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                [
+                  "key",
+                  6,
+                  7,
+                  null
+                ],
+                [
+                  "column",
+                  7,
+                  10,
+                  null
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "target-uses-external-document",
+      "requirements": [
+        "PLN-45",
+        "PLN-46",
+        "PLN-47",
+        "PLN-48",
+        "PLN-49",
+        "PLN-50",
+        "PLN-51",
+        "PLN-52",
+        "PLN-53",
+        "PLN-54",
+        "PLN-55",
+        "PLN-56",
+        "PLN-57",
+        "PLN-58",
+        "PLN-59",
+        "PLN-60",
+        "PLN-61",
+        "PLN-62",
+        "PLN-63",
+        "PLN-64",
+        "PLN-65",
+        "PLN-66",
+        "PLN-67",
+        "PLN-68",
+        "PLN-69",
+        "PLN-70",
+        "PLN-71",
+        "PLN-72",
+        "PLN-84",
+        "PLN-85",
+        "PLN-86",
+        "PLN-87",
+        "PLN-88",
+        "DBS-109"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 x",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "use core { users }",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                [
+                  "plan",
+                  6,
+                  1,
+                  "a plan targets a whole database, and its target uses the external document core: install a set that uses external documents with install or addTablesAndColumns"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

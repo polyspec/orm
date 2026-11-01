@@ -19,17 +19,21 @@ use Polyspec\Orm\CatalogTableMetadata;
 use Polyspec\Orm\Codec;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
+use Polyspec\Orm\Dbspec\Change;
 use Polyspec\Orm\Dbspec\Dbspec;
-use Polyspec\Orm\Model;
+use Polyspec\Orm\Dbspec\Diagnostic;
+use Polyspec\Orm\Dbspec\Difference;
+use Polyspec\Orm\Dbspec\Plan;
 use Polyspec\Orm\Engine;
+use Polyspec\Orm\Model;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
+use Polyspec\Orm\Registry;
 use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Schema;
 use Polyspec\Orm\StatementEvent;
 use Polyspec\Orm\StyledValue;
 use Polyspec\Orm\Validator;
-use Polyspec\Orm\Registry;
 use RuntimeException;
 
 final class Recipe
@@ -71,6 +75,10 @@ final class Recipe
                 }
                 if ($step['op'] === 'planner.compile') {
                     self::planStep($step, $path, $database);
+                    continue;
+                }
+                if (str_starts_with($step['op'], 'dbspec.')) {
+                    self::dbspecStep($step, $bound, $database);
                     continue;
                 }
                 self::step($step, $bound, $database);
@@ -115,9 +123,10 @@ final class Recipe
     }
 
     /**
-     * Compiles the request of a planner.compile step with the Engine of each dialect, against the manifest of the schema
-     * that the step names relative to the recipe file, and checks the plans with the expect of database: {value: {mysql,
-     * postgres, sqlite}} with the statements of each dialect, or {error: CODE}, which every dialect must reject with.
+     * Compiles the request of a planner.compile step with the Engine of each dialect, against the manifest of the
+     * schema that the step names relative to the recipe file, and checks the plans with the expect of database:
+     * {value: {mysql, postgres, sqlite}} with the statements of each dialect, or {error: CODE}, which every dialect
+     * must reject with.
      */
     private static function planStep(array $step, string $path, string $database): void
     {
@@ -180,6 +189,102 @@ final class Recipe
         }
         $out['type'] = $type;
         return $out;
+    }
+
+    /**
+     * Runs one dbspec op through its public call (FCV-4) and compares its result with the expect of database, as a
+     * JSON value: the diagnostics as [rule, line, column, message], the message kept for rule plan (for every rule in
+     * compare), or the messages of the diagnostics of one rule. A parse op binds its document or plan to as, for a
+     * later ref; a null source of diff is the empty schema.
+     *
+     * @param array<string, mixed> $step
+     * @param array<string, mixed> $bound
+     */
+    private static function dbspecStep(array $step, array &$bound, string $database): void
+    {
+        $op = $step['op'];
+        $expect = $step['expect'][$database] ?? Assert::fail("$op has no expect for $database");
+        if ($op === 'dbspec.parse') {
+            $result = Dbspec::parse(self::dbspecText($step['lines']), []);
+            if (isset($step['as'])) {
+                $bound[$step['as']] = $result->document;
+            }
+            $got = ['diagnostics' => self::dbspecRows($result->diagnostics, false)];
+        } elseif ($op === 'dbspec.parse_plan') {
+            $result = Dbspec::parsePlan(self::dbspecText($step['lines']));
+            if (isset($step['as'])) {
+                $bound[$step['as']] = $result->plan;
+            }
+            $got = ['diagnostics' => self::dbspecRows($result->diagnostics, false)];
+        } elseif ($op === 'dbspec.diff') {
+            $source = ($step['source'] ?? null) === null ? null : self::dbspecBound($step['source'], $bound);
+            $result = Dbspec::diff($source, self::dbspecBound($step['plan'], $bound));
+            $got = $result->diagnostics === []
+                ? ['changes' => array_map(
+                    static fn(Change $c): array => [$c->kind, $c->table, $c->name],
+                    $result->changes ?? []
+                )]
+                : ['messages' => self::dbspecMessages($result->diagnostics, 'plan')];
+        } elseif ($op === 'dbspec.chain') {
+            $plans = array_map(static fn(mixed $raw): mixed => self::dbspecBound($raw, $bound), $step['plans']);
+            $result = Dbspec::chain($plans);
+            $got = $result->diagnostics === []
+                ? ['order' => array_map(static fn(Plan $p): string => $p->name, $result->plans ?? [])]
+                : ['messages' => self::dbspecMessages($result->diagnostics, 'chain')];
+        } elseif ($op === 'dbspec.compare') {
+            $result = Dbspec::compareSchemas(
+                self::dbspecBound($step['source'], $bound),
+                self::dbspecBound($step['target'], $bound)
+            );
+            $got = [
+                'differences' => array_map(
+                    static fn(Difference $d): array => [$d->kind, $d->table, $d->name],
+                    $result->differences ?? []
+                ),
+                'diagnostics' => self::dbspecRows($result->diagnostics, true),
+            ];
+        } else {
+            Assert::fail("OP_UNKNOWN $op");
+        }
+        Assert::assertSame(self::sortedKeys($expect), self::sortedKeys($got), "$op: result differs from the expect");
+    }
+
+    /** The text of lines, each ended by LF, as a dbspec or plan text (Parse and ParsePlan of the lines + "\n"). */
+    private static function dbspecText(array $lines): string
+    {
+        return implode("\n", $lines) . "\n";
+    }
+
+    /** The value that the ref of raw binds by an earlier dbspec step; a ref that binds no value fails the case. */
+    private static function dbspecBound(mixed $raw, array $bound): mixed
+    {
+        if (!is_array($raw) || !array_key_exists('ref', $raw)) {
+            Assert::fail(json_encode($raw) . ' is not a ref');
+        }
+        return $bound[$raw['ref']] ?? Assert::fail("ref {$raw['ref']} binds no value");
+    }
+
+    /** @param list<Diagnostic> $diagnostics @return list<array{string, int, int, ?string}> */
+    private static function dbspecRows(array $diagnostics, bool $everyMessage): array
+    {
+        return array_map(
+            static fn(Diagnostic $d): array => [
+                $d->rule,
+                $d->line,
+                $d->column,
+                $everyMessage || $d->rule === 'plan' ? $d->message : null,
+            ],
+            $diagnostics
+        );
+    }
+
+    /** The messages of the diagnostics; a diagnostic of a rule other than rule fails the case. @param list<Diagnostic> $diagnostics @return list<string> */
+    private static function dbspecMessages(array $diagnostics, string $rule): array
+    {
+        return array_map(static function (Diagnostic $d) use ($rule): string {
+            Assert::assertSame($rule, $d->rule, "diagnostic of rule {$d->rule}, want $rule: {$d->message}");
+            return $d->message;
+        }, $diagnostics);
     }
 
     /** The value with the keys of every object sorted, so that two plans compare as their fixture writes them. */

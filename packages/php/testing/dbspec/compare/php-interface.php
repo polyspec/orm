@@ -502,12 +502,87 @@ function dbspec_emitted_plan(string $dbspec, object $plan): void
 }
 
 /**
- * With $dbspec, writes the case, invalid, chain, parse and comparison of tests/dbspec/plans.json in this order. The
- * vector file is checked for its shape before output.
+ * The validation sections of plans.json as the compare reads them: the recipes beside plansPath (plan-invalid,
+ * plan-chains, plan-parse and plan-comparisons .json) give the lines of each case in the shape of the section that
+ * each replaces. A ref that binds no lines fails the run.
+ *
+ * @return array{invalid: list<array{id: string, source: ?list<string>, plan: list<string>}>,
+ *     chains: list<array{id: string, plans: list<list<string>>}>, parse: list<array{id: string, plan: list<string>}>,
+ *     comparisons: list<array{id: string, source: list<string>, target: list<string>}>}
+ */
+function dbspec_plan_recipes(string $plansPath): array
+{
+    $dir = dirname($plansPath);
+    $recipes = [];
+    foreach (['invalid', 'chains', 'parse', 'comparisons'] as $section) {
+        $recipes[$section] = json_decode(
+            dbspec_read_input("$dir/plan-$section.json"),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+    }
+    $named = static function (mixed $raw, array $bound): ?array {
+        if ($raw === null) {
+            return null;
+        }
+        return $bound[$raw['ref']] ?? throw new RuntimeException("ref {$raw['ref']} names no parsed schema or plan");
+    };
+    $required = static function (mixed $raw, array $bound) use ($named): array {
+        return $named($raw, $bound)
+            ?? throw new RuntimeException('a recipe step names the empty schema where lines are needed');
+    };
+    $cases = static function (array $recipe, string $op, callable $read) use ($named): array {
+        $out = [];
+        foreach ($recipe['cases'] as $case) {
+            $bound = [];
+            foreach ($case['steps'] as $step) {
+                if (($step['op'] === 'dbspec.parse' || $step['op'] === 'dbspec.parse_plan') && isset($step['as'])) {
+                    $bound[$step['as']] = $step['lines'] ?? [];
+                }
+            }
+            foreach ($case['steps'] as $step) {
+                if ($step['op'] === $op) {
+                    $out[] = $read($step, $bound, $case['id']);
+                }
+            }
+        }
+        return $out;
+    };
+    return [
+        'invalid' => $cases($recipes['invalid'], 'dbspec.diff', static fn(array $s, array $b, string $id): array => [
+            'id' => $id,
+            'source' => $named($s['source'] ?? null, $b),
+            'plan' => $required($s['plan'], $b),
+        ]),
+        'chains' => $cases($recipes['chains'], 'dbspec.chain', static fn(array $s, array $b, string $id): array => [
+            'id' => $id,
+            'plans' => array_map(static fn(mixed $raw): array => $required($raw, $b), $s['plans'] ?? []),
+        ]),
+        'parse' => $cases($recipes['parse'], 'dbspec.parse_plan', static fn(array $s, array $b, string $id): array => [
+            'id' => $id,
+            'plan' => $s['lines'] ?? [],
+        ]),
+        'comparisons' => $cases(
+            $recipes['comparisons'],
+            'dbspec.compare',
+            static fn(array $s, array $b, string $id): array => [
+                'id' => $id,
+                'source' => $required($s['source'], $b),
+                'target' => $required($s['target'], $b),
+            ]
+        ),
+    ];
+}
+
+/**
+ * With $dbspec, writes the case, invalid, chain, parse and comparison of tests/dbspec/plans.json in this order: the
+ * cases section of the file, and the other four from the recipes beside it (dbspec_plan_recipes). The vector file is
+ * checked for its shape before output.
  */
 function dbspec_write_plans(string $dbspec, string $plansPath): void
 {
-    $plans = dbspec_read_vectors($plansPath, 'plans');
+    $plans = dbspec_read_vectors($plansPath, 'plans') + dbspec_plan_recipes($plansPath);
     foreach ($plans['cases'] as $case) {
         echo "plans/cases/{$case['id']}\n";
         $input = dbspec_case_plan($dbspec, $case);

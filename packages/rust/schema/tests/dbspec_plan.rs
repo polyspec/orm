@@ -1,11 +1,8 @@
 //! The cases of tests/dbspec/plans.json through the plan functions of
 //! `polyspec_orm_schema::dbspec` (docs/spec/plans.md): every case diffs to its changes,
-//! writes its steps for MySQL, PostgreSQL and SQLite and emits its plan
-//! text again; every invalid case reports its `plan` diagnostics; every chain
-//! case orders its plans or reports its `chain` diagnostics; every parse case
-//! reports its diagnostics with rule, line, column and the message of a `plan`
-//! diagnostic; every comparison lists its differences or `compare`
-//! diagnostics.
+//! writes its steps for MySQL, PostgreSQL and SQLite and emits its plan text again. The
+//! validation sections are the recipes tests/dbspec/plan-*.json, run by the recipe helper
+//! of polyspec_orm (FCV-3).
 
 #[path = "common/or_panic.rs"]
 mod or_panic;
@@ -16,7 +13,7 @@ mod vector_file;
 use vector_file::{lines, vectors};
 
 use polyspec_orm_case_clock::CaseClock;
-use polyspec_orm_schema::dbspec::{self, chain, compare_schemas, diff, emit_plan, parse_plan, plan_steps, Dialect, Document, Plan, PlanStep};
+use polyspec_orm_schema::dbspec::{self, diff, emit_plan, parse_plan, plan_steps, Dialect, Document, PlanStep};
 use polyspec_orm_testcase::Trial;
 use serde_json::Value;
 
@@ -91,21 +88,13 @@ fn run(id: &str, body: impl FnOnce() -> Result<(), String>) {
 fn plan_vectors() -> Vec<Trial> {
     let vectors = vectors("plans");
     let cases = vectors["cases"].as_array().expect("cases");
-    let invalid = vectors["invalid"].as_array().expect("invalid");
-    assert!(!cases.is_empty() && !invalid.is_empty(), "tests/dbspec/plans.json has {} cases and {} invalid cases", cases.len(), invalid.len());
+    assert!(!cases.is_empty(), "tests/dbspec/plans.json has no cases");
     let mut trials = Vec::new();
     for case in cases {
         let name = case["id"].as_str().expect("id").to_owned();
         let case = case.clone();
         trials.push(polyspec_orm_testcase::trial(format!("plan_vectors::cases::{name}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || {
             plan_vectors_cases(&case)
-        }));
-    }
-    for case in invalid {
-        let name = case["id"].as_str().expect("id").to_owned();
-        let case = case.clone();
-        trials.push(polyspec_orm_testcase::trial(format!("plan_vectors::invalid::{name}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || {
-            plan_vectors_invalid(&case)
         }));
     }
     trials
@@ -139,145 +128,6 @@ fn plan_vectors_cases(case: &Value) {
     });
 }
 
-fn plan_vectors_invalid(case: &Value) {
-    let id = format!("invalid/{}", case["id"].as_str().expect("id"));
-    run(&id, || {
-        let source = source(&id, &case["source"]);
-        let diagnostics = match parse_plan(&lines(&case["plan"])) {
-            Err(diagnostics) => diagnostics,
-            Ok(plan) => match diff(source.as_ref(), &plan) {
-                Err(diagnostics) => diagnostics,
-                Ok(changes) => return Err(format!("diff succeeded with {changes:?}")),
-            },
-        };
-        if let Some(d) = diagnostics.iter().find(|d| d.rule != "plan") {
-            return Err(format!("rule {}, want plan", d.rule));
-        }
-        let got: Vec<String> = diagnostics.into_iter().map(|d| d.message).collect();
-        let want = strings(&case["errors"]);
-        if got != want {
-            return Err(format!("errors\nwant {want:?}\ngot  {got:?}"));
-        }
-        Ok(())
-    });
-}
-
-fn plan_chains() -> Vec<Trial> {
-    let vectors = vectors("plans");
-    let chains = vectors["chains"].as_array().expect("chains");
-    assert!(!chains.is_empty(), "tests/dbspec/plans.json has no chains");
-    let mut trials = Vec::new();
-    for case in chains {
-        let name = case["id"].as_str().expect("id").to_owned();
-        let case = case.clone();
-        trials.push(polyspec_orm_testcase::trial(format!("plan_chains::{name}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || {
-            plan_chains_chains(&case)
-        }));
-    }
-    trials
-}
-
-fn plan_chains_chains(case: &Value) {
-    let id = format!("chain/{}", case["id"].as_str().expect("id"));
-    run(&id, || {
-        let plans: Vec<Plan> =
-            case["plans"].as_array().expect("plans").iter().map(|p| parse_plan(&lines(p)).map_err(|e| format!("parse: {e:?}"))).collect::<Result<_, _>>()?;
-        let (order, errors): (Vec<String>, Vec<String>) = match chain(&plans) {
-            Ok(ordered) => (ordered.iter().map(|p| p.name().to_owned()).collect(), Vec::new()),
-            Err(diagnostics) => {
-                if let Some(d) = diagnostics.iter().find(|d| d.rule != "chain") {
-                    return Err(format!("rule {}, want chain", d.rule));
-                }
-                (Vec::new(), diagnostics.into_iter().map(|d| d.message).collect())
-            }
-        };
-        let want_order = if case["order"].is_null() { Vec::new() } else { strings(&case["order"]) };
-        let want_errors = if case["errors"].is_null() { Vec::new() } else { strings(&case["errors"]) };
-        if order != want_order || errors != want_errors {
-            return Err(format!("want order {want_order:?} errors {want_errors:?}\ngot  order {order:?} errors {errors:?}"));
-        }
-        Ok(())
-    });
-}
-
-fn plan_parse_errors() -> Vec<Trial> {
-    let vectors = vectors("plans");
-    let parse = vectors["parse"].as_array().expect("parse");
-    assert!(!parse.is_empty(), "tests/dbspec/plans.json has no parse cases");
-    let mut trials = Vec::new();
-    for case in parse {
-        let name = case["id"].as_str().expect("id").to_owned();
-        let case = case.clone();
-        trials.push(polyspec_orm_testcase::trial(format!("plan_parse_errors::{name}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || {
-            plan_parse_errors_parse(&case)
-        }));
-    }
-    trials
-}
-
-fn plan_parse_errors_parse(case: &Value) {
-    let id = format!("parse/{}", case["id"].as_str().expect("id"));
-    run(&id, || {
-        let diagnostics = parse_plan(&lines(&case["plan"])).err().unwrap_or_default();
-        // Plan diagnostics are compared down to the message; target diagnostics are compared down to the rule, line, and column.
-        let got = Value::from(
-            diagnostics
-                .into_iter()
-                .map(|d| {
-                    let message = if d.rule == "plan" { Value::from(d.message) } else { Value::Null };
-                    Value::from(vec![Value::from(d.rule), Value::from(d.line), Value::from(d.column), message])
-                })
-                .collect::<Vec<_>>(),
-        );
-        if got != case["errors"] {
-            return Err(format!("errors\nwant {}\ngot  {got}", case["errors"]));
-        }
-        Ok(())
-    });
-}
-
-fn plan_comparisons() -> Vec<Trial> {
-    let vectors = vectors("plans");
-    let comparisons = vectors["comparisons"].as_array().expect("comparisons");
-    assert!(!comparisons.is_empty(), "tests/dbspec/plans.json has no comparisons");
-    let mut trials = Vec::new();
-    for case in comparisons {
-        let name = case["id"].as_str().expect("id").to_owned();
-        let case = case.clone();
-        trials.push(polyspec_orm_testcase::trial(format!("plan_comparisons::{name}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || {
-            plan_comparisons_comparisons(&case)
-        }));
-    }
-    trials
-}
-
-fn plan_comparisons_comparisons(case: &Value) {
-    let id = format!("comparison/{}", case["id"].as_str().expect("id"));
-    run(&id, || {
-        let from = source(&id, &case["source"]).ok_or("the source is null")?;
-        let to = source(&id, &case["target"]).ok_or("the target is null")?;
-        let (differences, errors) = match compare_schemas(&from, &to) {
-            Ok(differences) => (differences.into_iter().map(|d| Value::from(vec![d.kind, d.table, d.name])).collect(), Vec::new()),
-            Err(diagnostics) => (
-                Vec::new(),
-                diagnostics
-                    .into_iter()
-                    .map(|d| Value::from(vec![Value::from(d.rule), Value::from(d.line), Value::from(d.column), Value::from(d.message)]))
-                    .collect(),
-            ),
-        };
-        let (differences, errors) = (Value::from(differences), Value::from(errors));
-        if differences != case["differences"] || errors != case["errors"] {
-            return Err(format!("want differences {} errors {}\ngot  differences {differences} errors {errors}", case["differences"], case["errors"]));
-        }
-        Ok(())
-    });
-}
-
 fn main() {
-    let mut trials = plan_vectors();
-    trials.extend(plan_chains());
-    trials.extend(plan_parse_errors());
-    trials.extend(plan_comparisons());
-    polyspec_orm_testcase::run(trials);
+    polyspec_orm_testcase::run(plan_vectors());
 }

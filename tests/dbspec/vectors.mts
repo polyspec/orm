@@ -1,6 +1,9 @@
 // vectors.mts reads the shared dbspec vector files against their schemas (schema/): tests/dbspec/ddl.json, plans.json,
 // mermaid.json and syntax.json. A runner reads a file that a make target names; a file that cannot be read, is not
 // JSON or that its schema refuses is written to stderr, "<path>: <reason>" per line, and the runner ends with 1.
+// The validation sections of plans.json are recipes beside it (plan-invalid, plan-chains, plan-parse and plan-comparisons .json);
+// readVectors checks that each exists and parses, and readPlanRecipes reads them.
+import { dirname, join } from 'node:path';
 import { errorMessage } from '../errors.mts';
 import { JsonError, parseJson, SchemaError, type SchemaIssue } from '../../scripts/json/schema.mts';
 import { readInput } from './input.mts';
@@ -14,21 +17,24 @@ type DdlVectors = {
   version: 1; note: string;
   cases: { id: string; documents: Record<string, Lines>; statements: Record<'mysql' | 'postgres' | 'sqlite', Lines>; behavior: Behavior[] }[];
 };
+/** A step of a recipe (scripts/features/schema/recipe.schema.json); a ref is {ref: name} and null is the empty schema. */
+export type RecipeStep = {
+  op: string; as?: string; lines?: Lines; source?: { ref: string } | null; target?: { ref: string } | null; plan?: { ref: string };
+  plans?: { ref: string }[]; expect?: Record<string, unknown>;
+};
+/** A recipe file. */
+export type RecipeFile = { requirements: string[]; cases: { id: string; steps: RecipeStep[] }[] };
+/** The validation sections of plans.json, each a recipe beside it. */
+export type PlanRecipes = { invalid: RecipeFile; chains: RecipeFile; parse: RecipeFile; comparisons: RecipeFile };
 /** A step of a plan in one dialect. */
 type PlanStep = {
   statement: string; effect: string; rollback?: string; irreversible?: string; finalize?: true; restore?: string; restore_if?: string;
   rollback_restore?: string; null_checks?: [string, string, string | null][];
 };
-/** An error of a plan, a chain or a comparison: rule, line, column and message (null when the message is not compared). */
-type PlanError = [string, number, number, string | null];
-/** tests/dbspec/plans.json. */
+/** tests/dbspec/plans.json: its cases section (the other sections are the recipes of readPlanRecipes). */
 type PlanVectors = {
   version: 1; note: string;
   cases: { id: string; source: Lines | null; plan: Lines; changes: Lines[]; steps: Record<'mysql' | 'postgres' | 'sqlite', PlanStep[]>; before: Behavior[]; after: Behavior[] }[];
-  invalid: { id: string; source: Lines; plan: Lines; errors: Lines }[];
-  chains: ({ id: string; plans: Lines[] } & ({ order: Lines } | { errors: Lines }))[];
-  parse: { id: string; plan: Lines; errors: PlanError[] }[];
-  comparisons: { id: string; source: Lines; target: Lines; differences: [string, string, string][]; errors: PlanError[] }[];
 };
 /** tests/dbspec/mermaid.json. */
 type MermaidVectors = {
@@ -76,15 +82,44 @@ export function vectorProblems(path: string, error: SchemaError): string[] {
   return error.issues.map(issue => `${path}: ${problem(issue)}`);
 }
 
+/** refuse writes why the file at path cannot be read as a vector file or a recipe, and ends with 1. */
+function refuse(path: string, error: unknown): never {
+  if (error instanceof SchemaError) for (const line of vectorProblems(path, error)) console.error(line);
+  else if (error instanceof JsonError) console.error(error.message);
+  else console.error(`${path}: ${errorMessage(error)}`);
+  process.exit(1);
+}
+
+/** readRecipe reads the recipe at path against the recipe schema; any failure is written to stderr and ends with 1. */
+function readRecipe(path: string): RecipeFile {
+  const text = readInput(path);
+  try {
+    return parseJson<RecipeFile>(text, new URL('../../scripts/features/schema/recipe.schema.json', import.meta.url).pathname, path);
+  } catch (error) {
+    refuse(path, error);
+  }
+}
+
+/** readPlanRecipes reads the four recipes of the validation sections beside the plans.json at plansPath; a failure ends with 1. */
+export function readPlanRecipes(plansPath: string): PlanRecipes {
+  const beside = (section: string) => join(dirname(plansPath), `plan-${section}.json`);
+  return {
+    invalid: readRecipe(beside('invalid')),
+    chains: readRecipe(beside('chains')),
+    parse: readRecipe(beside('parse')),
+    comparisons: readRecipe(beside('comparisons')),
+  };
+}
+
 /** readVectors reads the vector file at path against the schema `kind`; any failure is written to stderr and ends with 1. */
 export function readVectors<K extends keyof Vectors>(path: string, kind: K): Vectors[K] {
   const text = readInput(path);
+  let vectors: Vectors[K];
   try {
-    return parseJson<Vectors[K]>(text, new URL(`./schema/${kind}.schema.json`, import.meta.url).pathname, path);
+    vectors = parseJson<Vectors[K]>(text, new URL(`./schema/${kind}.schema.json`, import.meta.url).pathname, path);
   } catch (error) {
-    if (error instanceof SchemaError) for (const line of vectorProblems(path, error)) console.error(line);
-    else if (error instanceof JsonError) console.error(error.message);
-    else console.error(`${path}: ${errorMessage(error)}`);
-    process.exit(1);
+    refuse(path, error);
   }
+  if (kind === 'plans') readPlanRecipes(path);
+  return vectors;
 }

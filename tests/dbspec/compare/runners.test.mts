@@ -23,6 +23,9 @@ const files = ['cases', 'ddl', 'plans', 'mermaid', 'syntax'];
 const vectors = Object.fromEntries(files.map(name => [name, readFileSync(join(root, `tests/dbspec/${name}.json`), 'utf8')]));
 const directory = mkdtempSync(join(tmpdir(), 'dbspec-compare-runners-'));
 after(() => rmSync(directory, { recursive: true, force: true }));
+// The runners read the validation sections of a plans file from the recipes beside it, so the altered plans files of this
+// directory have the recipes beside them too.
+for (const section of ['invalid', 'chains', 'parse', 'comparisons']) writeFileSync(join(directory, `plan-${section}.json`), readFileSync(join(root, `tests/dbspec/plan-${section}.json`), 'utf8'));
 
 // The shared cases name the main document of each case and the sets cases with external documents or a manifest; the
 // mutations that need them read them from the cases.
@@ -76,13 +79,7 @@ const mutations: Mutation[] = [
   { file: 'cases', location: 'positions[0].positions[0].extra', problem: 'is not a known field', edit: ['set', '/positions/0/positions/0/extra', 1] },
   { file: 'ddl', location: 'cases', problem: 'is missing', edit: ['delete', '/cases'] },
   { file: 'ddl', location: 'cases[0].id', problem: 'is missing', edit: ['delete', '/cases/0/id'] },
-  { file: 'plans', location: 'chains', problem: 'is missing', edit: ['delete', '/chains'] },
   { file: 'plans', location: 'cases[0].source', problem: 'is missing', edit: ['delete', '/cases/0/source'] },
-  { file: 'plans', location: 'invalid[0].plan', problem: 'is not an array', edit: ['set', '/invalid/0/plan', 'dbplan 1 a'] },
-  { file: 'plans', location: 'chains[0].plans[0]', problem: 'is not an array', edit: ['set', '/chains/0/plans/0', null] },
-  { file: 'plans', location: 'parse[0].id', problem: 'is missing', edit: ['delete', '/parse/0/id'] },
-  { file: 'plans', location: 'comparisons', problem: 'is missing', edit: ['delete', '/comparisons'] },
-  { file: 'plans', location: 'comparisons[0].target', problem: 'is not an array', edit: ['set', '/comparisons/0/target', 'dbspec 1 schema'] },
   { file: 'mermaid', location: 'round_trip', problem: 'is missing', edit: ['delete', '/round_trip'] },
   { file: 'mermaid', location: 'export[0].documents', problem: 'is missing', edit: ['delete', '/export/0/documents'] },
   { file: 'mermaid', location: 'import[0].mermaid', problem: 'is missing', edit: ['delete', '/import/0/mermaid'] },
@@ -146,6 +143,9 @@ caseTest('the unchanged vectors run in every runner', TIMEOUT, async () => {
   }
 });
 
+// The validation sections of plans.json (invalid, chains, parse and comparisons) are recipes beside it now, and their shape is
+// the recipe schema's (scripts/features/schema/recipe.schema.json), which no runner reads; the plans mutations above cover the
+// cases section that plans.json still holds.
 // The runner rejects invalid vectors in the vector files it reads (reads in runners.mts).
 mutations.forEach((mutation, index) => {
   const { path, location, inputs } = inputsWith(index, mutation);
