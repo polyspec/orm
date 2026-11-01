@@ -117,6 +117,12 @@ func queryColumn(t *testing.T, db *orm.DB, column string, value json.RawMessage)
 	case "slots.time0_value":
 		_, err := bindmodel.Slots().Connect(db).GetsByTime0Value(text(t, value))
 		return err
+	case "slots.time1_value":
+		_, err := bindmodel.Slots().Connect(db).Time1Value(text(t, value)).Gets()
+		return err
+	case "slots.time2_value":
+		_, err := bindmodel.Slots().Connect(db).Time2Value(text(t, value)).Gets()
+		return err
 	case "slots.time3_value":
 		_, err := bindmodel.Slots().Connect(db).GetsByTime3Value(text(t, value))
 		return err
@@ -125,6 +131,12 @@ func queryColumn(t *testing.T, db *orm.DB, column string, value json.RawMessage)
 		return err
 	case "slots.datetime0_value":
 		_, err := bindmodel.Slots().Connect(db).GetsByDatetime0Value(text(t, value))
+		return err
+	case "slots.datetime1_value":
+		_, err := bindmodel.Slots().Connect(db).Datetime1Value(text(t, value)).Gets()
+		return err
+	case "slots.datetime2_value":
+		_, err := bindmodel.Slots().Connect(db).Datetime2Value(text(t, value)).Gets()
 		return err
 	case "slots.datetime3_value":
 		_, err := bindmodel.Slots().Connect(db).GetsByDatetime3Value(text(t, value))
@@ -156,6 +168,9 @@ func queryColumn(t *testing.T, db *orm.DB, column string, value json.RawMessage)
 		return err
 	case "slots.bytes_value":
 		_, err := bindmodel.Slots().Connect(db).BytesValue(bytesHex(t, value)).Gets()
+		return err
+	case "slots.uuid_value":
+		_, err := bindmodel.Slots().Connect(db).UuidValue(text(t, value)).Gets()
 		return err
 	case "slots.i16_value":
 		_, err := bindmodel.Slots().Connect(db).I16Value(integer[int16](t, value, 16)).Gets()

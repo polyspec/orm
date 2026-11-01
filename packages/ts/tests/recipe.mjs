@@ -643,10 +643,15 @@ async function queryColumn(step, db) {
     case 'slots.varchar_null_value': return slots.varcharNullValue(hostValue(step.params[0])).gets();
     case 'slots.varchar_long_value': return slots.varcharLongValue(hostValue(step.params[0])).gets();
     case 'slots.text_value': return slots.textValue(hostValue(step.params[0])).gets();
+    case 'slots.uuid_value': return slots.uuidValue(hostValue(step.params[0])).gets();
     case 'slots.bytes_value': return slots.bytesValue(hostValue(step.params[0])).gets();
   }
-  const value = wrapperText(step.params[0]);
+  const value = temporalValue(step.params[0]);
   switch (step.column) {
+    case 'slots.time1_value': return slots.time1Value(value).gets();
+    case 'slots.time2_value': return slots.time2Value(value).gets();
+    case 'slots.datetime1_value': return slots.datetime1Value(value).gets();
+    case 'slots.datetime2_value': return slots.datetime2Value(value).gets();
     case 'slots.time0_value': return slots.getsByTime0Value(value);
     case 'slots.time3_value': return slots.getsByTime3Value(value);
     case 'slots.time6_value': return slots.getsByTime6Value(value);
@@ -667,11 +672,12 @@ function hostValue(wrapper) {
   return native(wrapper);
 }
 
-// wrapperText is the text of a wrapper of one string key, such as {"time": "10:00:00"} or {"text": "2024-01-02T03:04:05.5"}.
-function wrapperText(wrapper) {
+// temporalValue is the text of a temporal wrapper of one string key; any other wrapper is its host value, which the public path
+// refuses with its code (CODEC_ENCODE, PRT-67), so a bool wrapper of a datetime column reaches it.
+function temporalValue(wrapper) {
   const keys = Object.keys(wrapper);
-  if (keys.length !== 1 || typeof wrapper[keys[0]] !== 'string') throw new Error(`the parameter ${JSON.stringify(wrapper)} is no text wrapper`);
-  return wrapper[keys[0]];
+  if (keys.length === 1 && typeof wrapper[keys[0]] === 'string') return wrapper[keys[0]];
+  return hostValue(wrapper);
 }
 
 // startMarkdownSendListener answers connect with {"ok":true}, records the first message after it in received, and answers that message

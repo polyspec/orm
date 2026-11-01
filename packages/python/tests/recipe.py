@@ -144,7 +144,12 @@ SEND_FILTERS = frozenset(
         "varchar_long_value",
         "text_value",
         "bytes_value",
+        "uuid_value",
         "time0_value",
+        "time1_value",
+        "time2_value",
+        "datetime1_value",
+        "datetime2_value",
         "time3_value",
         "time6_value",
         "datetime0_value",
@@ -164,7 +169,9 @@ INTEGER_FILTERS = frozenset(["i16_value", "i32_value", "i64_value"])
 # The columns of SEND_FILTERS whose typed filter takes the host value of the wrapper (a float, a bool, an int or a decimal
 # text), not its text: the integer columns, the float and bool columns, and the decimal column, whose float wrapper must reach
 # the filter as a float so that the public path refuses it with CODEC_ENCODE.
-HOST_FILTERS = INTEGER_FILTERS | frozenset(["f64_value", "bool_value", "decimal_value"])
+HOST_FILTERS = INTEGER_FILTERS | frozenset(
+    ["f64_value", "bool_value", "decimal_value", "uuid_value"]
+)
 BIND_MODELS: dict = {}
 
 

@@ -1446,6 +1446,858 @@
         "go": "the typed public API refuses this host value at compile time",
         "rust": "the typed public API refuses this host value at compile time"
       }
+    },
+    {
+      "id": "bind_uuid",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.uuid_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "123e4567-e89b-12d3-a456-426614174000"
+            }
+          ],
+          "expect": {
+            "message": "123e4567-e89b-12d3-a456-426614174000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_uuid_upper",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.uuid_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "123E4567-E89B-12D3-A456-426614174000"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_uuid_braces",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.uuid_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "{123e4567-e89b-12d3-a456-426614174000}"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_uuid_no_hyphens",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.uuid_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "123e4567e89b12d3a456426614174000"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_uuid_number",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.uuid_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "5"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ],
+      "exclude": {
+        "go": "the typed public API refuses this host value at compile time",
+        "rust": "the typed public API refuses this host value at compile time"
+      }
+    },
+    {
+      "id": "bind_date",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.date_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "2024-01-02"
+            }
+          ],
+          "expect": {
+            "message": "2024-01-02"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_date_first",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.date_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "0001-01-01"
+            }
+          ],
+          "expect": {
+            "message": "0001-01-01"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_date_last",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.date_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "9999-12-31"
+            }
+          ],
+          "expect": {
+            "message": "9999-12-31"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_date_year_zero",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.date_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "0000-12-31"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_date_not_a_day",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.date_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "2024-02-30"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_date_number",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.date_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "20240102"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ],
+      "exclude": {
+        "go": "the typed public API refuses this host value at compile time",
+        "rust": "the typed public API refuses this host value at compile time"
+      }
+    },
+    {
+      "id": "bind_time_p0",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "10:00:00"
+            }
+          ],
+          "expect": {
+            "message": "10:00:00.000000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_time_p0_zero_past_p",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "10:00:00.000"
+            }
+          ],
+          "expect": {
+            "message": "10:00:00.000000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_time_p0_digit_past_p",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "10:00:00.5"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_time_p1",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time1_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "10:00:00.5"
+            }
+          ],
+          "expect": {
+            "message": "10:00:00.500000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_time_p1_zero_past_p",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time1_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "10:00:00.500000"
+            }
+          ],
+          "expect": {
+            "message": "10:00:00.500000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_time_p1_digit_past_p",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time1_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "10:00:00.51"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_time_p2",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time2_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "10:00:00.12"
+            }
+          ],
+          "expect": {
+            "message": "10:00:00.120000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_time_p2_zero_past_p",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time2_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "10:00:00.120000"
+            }
+          ],
+          "expect": {
+            "message": "10:00:00.120000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_time_p2_digit_past_p",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time2_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "10:00:00.123"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_time_p3",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time3_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "10:00:00.123"
+            }
+          ],
+          "expect": {
+            "message": "10:00:00.123000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_time_p3_digit_past_p",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time3_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "10:00:00.1234"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_time_hour_24",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "24:00:00"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_time_number",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "36000"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ],
+      "exclude": {
+        "go": "the typed public API refuses this host value at compile time",
+        "rust": "the typed public API refuses this host value at compile time"
+      }
+    },
+    {
+      "id": "bind_datetime_p0",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "2024-01-02 03:04:05"
+            }
+          ],
+          "expect": {
+            "message": "2024-01-02 03:04:05.000000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime_p0_zero_past_p",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "2024-01-02 03:04:05.000000"
+            }
+          ],
+          "expect": {
+            "message": "2024-01-02 03:04:05.000000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime_p0_digit_past_p",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "2024-01-02 03:04:05.5"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime_p1",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime1_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "2024-01-02 03:04:05.5"
+            }
+          ],
+          "expect": {
+            "message": "2024-01-02 03:04:05.500000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime_p1_zero_past_p",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime1_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "2024-01-02 03:04:05.500000"
+            }
+          ],
+          "expect": {
+            "message": "2024-01-02 03:04:05.500000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime_p1_digit_past_p",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime1_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "2024-01-02 03:04:05.51"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime_p2",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime2_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "2024-01-02 03:04:05.12"
+            }
+          ],
+          "expect": {
+            "message": "2024-01-02 03:04:05.120000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime_p2_zero_past_p",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime2_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "2024-01-02 03:04:05.120000"
+            }
+          ],
+          "expect": {
+            "message": "2024-01-02 03:04:05.120000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime_p2_digit_past_p",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime2_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "2024-01-02 03:04:05.123"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime_last",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime6_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "9999-12-31 23:59:59.999999"
+            }
+          ],
+          "expect": {
+            "message": "9999-12-31 23:59:59.999999"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime_first",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "0001-01-01 00:00:00"
+            }
+          ],
+          "expect": {
+            "message": "0001-01-01 00:00:00.000000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime_before_first",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "0001-01-01 00:00:00+09:00"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime_year_zero",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "0000-06-01 00:00:00"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime_bool",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "bool": true
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ],
+      "exclude": {
+        "go": "the typed public API refuses this host value at compile time",
+        "rust": "the typed public API refuses this host value at compile time"
+      }
     }
   ]
 }

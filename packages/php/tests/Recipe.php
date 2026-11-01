@@ -194,7 +194,12 @@ final class Recipe
     /** The typed filters of the bind fixture tests/bind/slots.dbs that a markdown.send statement may name, by column
      * (DBS-121). */
     private const BIND_FILTERS = [
+        'slots.uuid_value' => 'uuidValue',
         'slots.time0_value' => 'time0Value',
+        'slots.time1_value' => 'time1Value',
+        'slots.time2_value' => 'time2Value',
+        'slots.datetime1_value' => 'datetime1Value',
+        'slots.datetime2_value' => 'datetime2Value',
         'slots.time3_value' => 'time3Value',
         'slots.time6_value' => 'time6Value',
         'slots.datetime0_value' => 'datetime0Value',
