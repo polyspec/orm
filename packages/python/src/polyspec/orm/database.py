@@ -1249,11 +1249,15 @@ class TxFrame:
         tables=(),
         faultable: bool = True,
     ):
-        """Runs a statement and records its event; kind is the statement's
-        kind. faultable=False marks a transaction control statement that does not consume
-        a statement fault."""
+        """Runs one statement of kind kind (default "utility") touching the tables list (empty when none),
+        records one statement event (INT-77) and returns the statement result with its rows. The frame
+        passes the active transaction and never opens one. A statement that is not text is CONFIG; other
+        errors are the database error code of the statement. faultable=False marks a transaction control
+        statement that does not consume a statement fault."""
         if self.connection is None:
             raise OrmError(codes.CONFIG, "transaction already finished")
+        if not isinstance(sql, str):
+            raise OrmError(codes.CONFIG, "a statement must be text")
         values = values if values is not None else []
 
         def send():

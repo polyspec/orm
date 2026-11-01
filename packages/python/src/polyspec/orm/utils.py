@@ -61,6 +61,12 @@ class Utils:
         """The connection statistics of the connection, as Db.stats reports them."""
         return self.db.stats()
 
+    def run(self, fn):
+        """The statement runner (INT-150): calls fn with the transaction frame of the connection. It joins the
+        active transaction, or opens one and ends it without retry when none is active. The frame's run(sql,
+        values, kind, binds, tables) runs one statement and records its event; it never opens a transaction."""
+        return self._run(lambda: fn(_frame_of(self.db)))
+
     def _run(self, body):
         """Runs body in the active transaction of the connection, or in a new one when none is active."""
         if _frame_of(self.db) is not None:
