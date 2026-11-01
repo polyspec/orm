@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- A leftover source of a compiler fixture case, from an interrupted run, made the next run fail with EEXIST and left its directory in the tree. The run now overwrites a stale source and removes its scratch directory at the end (CR25).
 - The Python and TypeScript generators write models.py and models.ts atomically: a file that already holds the text is left as it is, and a changed file is written to a temporary file of its directory and renamed over the old one, so a test that reads it during a generation never reads a partial file. The targets client-unit-check/orm-gen-python and client-unit-check/orm-gen-typescript test this (T341-2).
 - The sixty make targets that run PHPUnit with packages/php/phpunit.xml.dist have php-models among their prerequisites, since its bootstrap requires the generated models that php-vendor-check does not write, and repo-check refuses such a reader without it (T341-1).
 - The seven make targets that run the compiled TypeScript client without building it (replica-check, session-state-check, native-error-cause-check/typescript-driver and /typescript-markdown, page-cache-unit-check/typescript, generator-consumer-check/typescript, request-hook-relation-scope-check) have typescript-build as a prerequisite, and repo-check refuses a target that reads the build output without it (T339-5).
