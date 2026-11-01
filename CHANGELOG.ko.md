@@ -18,6 +18,8 @@
 - TypeScript는 다음 규칙에서 다른 runtime과 같은 입력을 거부한다: host stage는 값을 종류대로 bind하며 number, bigint, bool을 거부한다(COD-1). ip zone과 IPv4-mapped 형식은 COD-38을 따른다. 첫 위치가 아닌 value stage나 모르는 style은 CODEC_UNSUPPORTED를 돌려준다(COD-35). 빈 stage 목록의 write는 CODEC_ENCODE다(COD-14). 짝 없는 surrogate를 json column에 쓰는 소비자는 이제 CODEC_ENCODE를 받으며, limepie payload 쓰기가 소비자 중 유일한 json writer다.
 - codec 규칙 COD-65부터 COD-67까지가 docs/spec/codec.md에 들어간다: `serialize`의 실수는 `4.0`을 `d:4;`로, PHP 실수 표기로 쓴다(COD-65). `yaml`은 소수부가 없는 실수를 `2.0`으로 쓰고, c-printable 밖의 문자와 byte order mark를 큰따옴표로 감싸 escape하며, 읽을 때 그런 문자를 거부한다(COD-66). `serialize`의 array key가 i64 정수이면 정수 key로 쓴다(COD-67).
 
+- `authenticated_encryption`의 coverage owner는 AES case를 실행하는 테스트 파일만 가진다. T334-3-14와 T334-3-14b의 codec 테스트 파일은 parity unit으로 바인딩되어 feature의 tests에 남으며, 그래서 feature coverage 실행이 모든 runtime에서 `invalid native test command`로 owner를 거부하지 않는다(T334-3-14b-3).
+
 ## 0.0.20
 
 - orm은 kit 0.0.86를 채택한다(T344). config/release.json은 package마다 product와 runtime을 선언하며, 이는 kit 0.0.86의 release schema가 요구한다(P39): asset label은 `<vendor>-<product>-<runtime>-<version>`이고, release asset은 packer가 붙인 파일 이름을 유지한다(`@polyspec/orm`은 `polyspec-orm-npm-X.Y.Z.tgz`가 아니라 `polyspec-orm-X.Y.Z.tgz`). make kit-sync가 P39를 PRINCIPLES.md와 PRINCIPLES.ko.md에 썼다. orm은 모든 생태계의 ordered-json pin(npm, Composer, Go, Python, Rust)을 0.0.15로 옮기며, packaging.md는 그 release의 asset `polyspec-ordered-json-0.0.15.tgz`와 Composer, wheel 이름을 적는다.
