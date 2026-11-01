@@ -1,6 +1,6 @@
 // Compile temporary consumers of the real generated Rust model with the existing Rust package manifest and lock file.
 import { spawn } from 'node:child_process';
-import { mkdir, rm, rmdir, writeFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isolatedEnvironment } from '../../tests/environment.mts';
@@ -159,25 +159,21 @@ function assertResult(fixture: Fixture, result: Awaited<ReturnType<typeof check>
   console.log(`compiler-fixture: ${fixture.id} passed (${code}, ${diagnostic})`);
 }
 
-let madeExamplesDirectory = false;
+// The run holds the exclusive lease of the Rust test runner, so examples is this script's own scratch directory: a
+// leftover of an interrupted run is overwritten, and the directory is removed at the end whether it existed or not.
 try {
-  try { await mkdir(examples); madeExamplesDirectory = true; } catch (error) {
-    if (!isNodeError(error) || error.code !== 'EEXIST') throw error;
-  }
+  await mkdir(examples, { recursive: true });
   for (const fixture of selectedFixtures) {
     const source = join(examples, `${fixture.id}.rs`);
     console.log(`compiler-fixture: running ${fixture.id}`);
     try {
-      await writeFile(source, fixture.source, { flag: 'wx' });
+      await writeFile(source, fixture.source);
       assertResult(fixture, await check(fixture.id, source));
     } finally {
       await rm(source, { force: true });
     }
   }
 } finally {
-  if (madeExamplesDirectory) await rmdir(examples);
+  await rm(examples, { recursive: true, force: true });
 }
 
-function isNodeError(error: unknown): error is NodeJS.ErrnoException {
-  return error instanceof Error && 'code' in error && typeof error.code === 'string';
-}
