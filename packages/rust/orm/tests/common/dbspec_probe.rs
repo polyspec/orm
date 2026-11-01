@@ -7,7 +7,7 @@ use polyspec_orm::db::{parse_dsn, ConnectOptions};
 use polyspec_orm::dbspec::{introspect, ApplyConnection, CatalogQuerier, IntrospectError};
 use polyspec_orm_schema::dbspec::{CatalogValue, Dialect, Introspection};
 use serde_json::Value;
-use sqlx::{AssertSqlSafe, Connection, MySqlConnection, PgConnection, SqlSafeStr, SqliteConnection};
+use sqlx::{AssertSqlSafe, Connection, MySqlConnection, PgConnection, Row, SqlSafeStr, SqliteConnection};
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -102,6 +102,26 @@ impl Conn {
             Conn::Sqlite(c) => sqlx::raw_sql(sql).execute(c).await.map(drop),
         };
         result.map_err(|e| format!("{statement}: {e}"))
+    }
+
+    /// The first value of the first row of a query, as text. MySQL and PostgreSQL send the value in the text
+    /// protocol of the query (raw_sql is the simple query protocol); SQLite gives a typed value, which sqlx reads
+    /// as text through sqlite3_value_text. A query with no row, and a NULL value, are errors: no vector expects
+    /// either, and a NULL must never compare equal to a want.
+    pub async fn text_value(&mut self, query: &str) -> Result<String, String> {
+        macro_rules! first {
+            ($connection:expr) => {{
+                let sql = AssertSqlSafe(query.to_owned()).into_sql_str();
+                let row =
+                    sqlx::raw_sql(sql).fetch_optional($connection).await.map_err(|e| format!("{query}: {e}"))?.ok_or_else(|| format!("{query}: no row"))?;
+                row.try_get_unchecked::<Option<String>, usize>(0).map_err(|e| format!("{query}: {e}"))?.ok_or_else(|| format!("{query}: NULL value"))?
+            }};
+        }
+        Ok(match self {
+            Conn::MySql(c) => first!(c),
+            Conn::Postgres(c) => first!(c),
+            Conn::Sqlite(c) => first!(c),
+        })
     }
 
     pub async fn exec_all(&mut self, statements: &[String]) -> Result<(), String> {

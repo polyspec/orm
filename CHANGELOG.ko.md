@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9a7c5f5958839d5ae6796fd90c6a635675a5d85d5f08ffba3cb50185bc4b223d -->
+<!-- source-sha256: c8225e3686ec992202e69fbfde17ffa3c0cd8e16298f83b4823c28491c966f34 -->
 # 변경 이력
 
 ## Unreleased
 
+- Rust runner는 공유 DDL vector의 behavior step을 MySQL, PostgreSQL, SQLite에서 실행하고, 서버 DSN이 빠지면 그 이름을 대며 실패한다. 전에는 rendered statement만 만들었다 (CR16-1-2).
 - recipe schema에 비유한 binary64 wrapper `{"f64": "NaN" | "Infinity" | "-Infinity"}`를 더했고, 여섯 recipe helper가 각각 그 수의 host 값으로 바꾼다. 유한한 수는 `float` wrapper를 그대로 쓴다 (T334-3-15-3b).
 - bind vector의 slot 픽스처 `tests/bind/slots.dbs`와 그 set `tests/bind/dbspec-set.json`은 `tests/bind/vectors.json`의 parameter slot마다 컬럼 하나를 가진 테이블 하나를 둔다. 모델은 모델을 쓰는 make 대상이 생성한다(Go와 PHP는 모델 목록, TypeScript는 빌드, Python은 `bind-python-models`, Rust는 tests crate의 build script). `make bind-models-check`가 이를 검사한다 (T334-3-15-3a).
 - 읽기 answer 사례 `contracts/fixtures/ir_answers.json`은 `tests/ir/answers.json`으로 옮겨져, 여섯 runtime 모두 데이터베이스 없이 실행하는 `ir.answer` op(FCV-4)의 recipe가 된다. 각 사례는 markdown chain을 answer를 돌려주는 listener 위에서 실행한다. 대체되는 native answer test는 제거되고, parity unit ir-answers는 여섯 recipe entry에 묶인다 (#T334-3-15-2).
