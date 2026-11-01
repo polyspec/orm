@@ -77,19 +77,10 @@ jobs:
         with:
           node-version-file: mise.toml
           package-manager-cache: false
-      # Bootstrap the declared npm and package lock with the runner's Node;
-      # Make can read its Kit include only after this installs @polyspec/kit.
-      - name: bootstrap the installed kit package
+      # The bootstrap of kit (K992): .github/actions/kit-bootstrap installs the locked kit package and the packages.
+      - uses: ./.github/actions/kit-bootstrap
         id: kit-bootstrap
         if: ${{ !cancelled() }}
-        run: |
-          if [ "$(node -p 'require("./package.json").name')" != '@polyspec/kit' ]; then
-            # npm 11 of the runner refuses to run in a folder whose devEngines names npm 12.2.0 (EBADDEVENGINES), so the npm of
-            # devEngines runs outside the checkout with --prefix (K938-1).
-            root="$PWD"
-            version="$(node -p 'require("./package.json").devEngines.packageManager.version')"
-            (cd "${RUNNER_TEMP:?RUNNER_TEMP is not set; run this step in a workflow of GitHub Actions, whose runner sets it}" && npm_config_cache="$root/var/bootstrap/npm-cache" npm exec --yes --package="npm@$version" -- npm --prefix "$root" ci --ignore-scripts --allow-remote=root)
-          fi
       - name: npm of devEngines
         id: npm
         if: ${{ !cancelled() }}
@@ -267,19 +258,10 @@ jobs:
         with:
           node-version-file: mise.toml
           package-manager-cache: false
-      # Bootstrap the declared npm and package lock with the runner's Node;
-      # Make can read its Kit include only after this installs @polyspec/kit.
-      - name: bootstrap the installed kit package
+      # The bootstrap of kit (K992): .github/actions/kit-bootstrap installs the locked kit package and the packages.
+      - uses: ./.github/actions/kit-bootstrap
         id: kit-bootstrap
         if: ${{ !cancelled() }}
-        run: |
-          if [ "$(node -p 'require("./package.json").name')" != '@polyspec/kit' ]; then
-            # npm 11 of the runner refuses to run in a folder whose devEngines names npm 12.2.0 (EBADDEVENGINES), so the npm of
-            # devEngines runs outside the checkout with --prefix (K938-1).
-            root="$PWD"
-            version="$(node -p 'require("./package.json").devEngines.packageManager.version')"
-            (cd "${RUNNER_TEMP:?RUNNER_TEMP is not set; run this step in a workflow of GitHub Actions, whose runner sets it}" && npm_config_cache="$root/var/bootstrap/npm-cache" npm exec --yes --package="npm@$version" -- npm --prefix "$root" ci --ignore-scripts --allow-remote=root)
-          fi
       - name: npm of devEngines
         id: npm
         if: ${{ !cancelled() }}
@@ -323,17 +305,10 @@ jobs:
         with:
           node-version-file: mise.toml
           package-manager-cache: false
-      - name: bootstrap the installed kit package
+      # The bootstrap of kit (K992): .github/actions/kit-bootstrap installs the locked kit package and the packages.
+      - uses: ./.github/actions/kit-bootstrap
         id: kit-bootstrap
         if: ${{ !cancelled() }}
-        run: |
-          if [ "$(node -p 'require("./package.json").name')" != '@polyspec/kit' ]; then
-            # npm 11 of the runner refuses to run in a folder whose devEngines names npm 12.2.0 (EBADDEVENGINES), so the npm of
-            # devEngines runs outside the checkout with --prefix (K938-1).
-            root="$PWD"
-            version="$(node -p 'require("./package.json").devEngines.packageManager.version')"
-            (cd "${RUNNER_TEMP:?RUNNER_TEMP is not set; run this step in a workflow of GitHub Actions, whose runner sets it}" && npm_config_cache="$root/var/bootstrap/npm-cache" npm exec --yes --package="npm@$version" -- npm --prefix "$root" ci --ignore-scripts --allow-remote=root)
-          fi
       - name: npm of devEngines
         id: npm
         if: ${{ !cancelled() }}
@@ -371,17 +346,10 @@ jobs:
         with:
           node-version-file: mise.toml
           package-manager-cache: false
-      - name: bootstrap the installed kit package
+      # The bootstrap of kit (K992): .github/actions/kit-bootstrap installs the locked kit package and the packages.
+      - uses: ./.github/actions/kit-bootstrap
         id: kit-bootstrap
         if: ${{ !cancelled() }}
-        run: |
-          if [ "$(node -p 'require("./package.json").name')" != '@polyspec/kit' ]; then
-            # npm 11 of the runner refuses to run in a folder whose devEngines names npm 12.2.0 (EBADDEVENGINES), so the npm of
-            # devEngines runs outside the checkout with --prefix (K938-1).
-            root="$PWD"
-            version="$(node -p 'require("./package.json").devEngines.packageManager.version')"
-            (cd "${RUNNER_TEMP:?RUNNER_TEMP is not set; run this step in a workflow of GitHub Actions, whose runner sets it}" && npm_config_cache="$root/var/bootstrap/npm-cache" npm exec --yes --package="npm@$version" -- npm --prefix "$root" ci --ignore-scripts --allow-remote=root)
-          fi
       - name: npm of devEngines
         id: npm
         if: ${{ !cancelled() }}

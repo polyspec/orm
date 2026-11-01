@@ -1,0 +1,36 @@
+# The one bootstrap of every CI job of a repository (K992): kit-sync vendors it as .github/actions/kit-bootstrap/action.yml,
+# and ci-pipeline.yml, release.yml and the jobs of the repository's own workflows run it after their checkout with
+# `uses: ./.github/actions/kit-bootstrap`, so no workflow carries a copy of these steps that a kit release leaves behind. The
+# parity, runtime and release jobs set PHP up before it; the shared job of ci-pipeline sets it up after, so a repository whose
+# INSTALL_PACKAGES_EXTRA needs PHP declares that in its own job.
+name: kit bootstrap
+description: Sets up the Node.js of mise.toml, installs the locked kit package, then the npm of var/tools and the packages of package-lock.json.
+runs:
+  using: composite
+  steps:
+    # actions/setup-node v7.1.0: the Node.js of mise.toml starts the bootstrap, which installs that release into var/tools with
+    # mise (K171); the tools of @polyspec/kit then run the node of var/tools. The pinned npm of var/tools installs the packages,
+    # so the cache of setup-node is off.
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+      with:
+        node-version-file: mise.toml
+        package-manager-cache: false
+    # Consumers install their locked kit package before Make reads its bootstrap; kit runs its own sources.
+    - name: bootstrap the installed kit package
+      shell: bash
+      run: |
+        if [ "$(node -p 'require("./package.json").name')" != '@polyspec/kit' ]; then
+          # npm 11 of the runner refuses to run in a folder whose devEngines names npm 12.2.0 (EBADDEVENGINES), so the npm of
+          # devEngines runs outside the checkout with --prefix (K938-1).
+          root="$PWD"
+          version="$(node -p 'require("./package.json").devEngines.packageManager.version')"
+          (cd "${RUNNER_TEMP:?RUNNER_TEMP is not set}" && npm_config_cache="$root/var/bootstrap/npm-cache" npm exec --yes --package="npm@$version" -- npm --prefix "$root" ci --ignore-scripts --allow-remote=root)
+        fi
+    # The bootstrap order of a repository (K71-2): the mise, node and npm of mise.toml first, then the packages of
+    # package-lock.json with it.
+    - name: install npm
+      shell: bash
+      run: make install-tools TOOLS=npm
+    - name: install packages
+      shell: bash
+      run: make install-packages

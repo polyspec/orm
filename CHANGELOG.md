@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- orm takes kit 0.0.87 (T346). Every CI job of .github/workflows bootstraps kit through the shared local action `.github/actions/kit-bootstrap` that kit-sync provides (K992), in place of the inline copy of the bootstrap that each job carried: ci.yml had four and docs-pages.yml one. The action sets up the Node.js of mise.toml, installs the locked kit package, then the npm of var/tools and the packages of package-lock.json. ci-pipeline.yml and release.yml take the same action from kit-sync.
 - The interfaces spec states the public statement runner in every runtime (INT-150): `utils().run(fn)` and the frame call `run(kind, tables, sql, params)` in TypeScript order, with a parity unit that binds it on every database (T345).
 - The TypeScript runtime makes `utils().run(fn)` public in its declarations, and `TxFrame.run` returns the rows of its statement (T345-1).
 - The Go runtime exports `Utils.Run` and the transaction frame whose `Run(kind, tables, sql, params)` returns the rows (T345-2).

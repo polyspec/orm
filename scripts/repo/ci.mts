@@ -678,19 +678,10 @@ export function chainedCommandErrors(features: { features?: { id: string; verifi
   return errors;
 }
 
-// CI_RUN_EXCEPTIONS are the steps that may run a command that is not a make target: the bootstrap installs Kit before the first make
-// command can read its Makefile, and summary writes the run's record after make orm-check.
-const KIT_BOOTSTRAP_COMMAND = `if [ "$(node -p 'require("./package.json").name')" != '@polyspec/kit' ]; then
-  # npm 11 of the runner refuses to run in a folder whose devEngines names npm 12.2.0 (EBADDEVENGINES), so the npm of
-  # devEngines runs outside the checkout with --prefix (K938-1).
-  root="$PWD"
-  version="$(node -p 'require("./package.json").devEngines.packageManager.version')"
-  (cd "\${RUNNER_TEMP:?RUNNER_TEMP is not set; run this step in a workflow of GitHub Actions, whose runner sets it}" && npm_config_cache="$root/var/bootstrap/npm-cache" npm exec --yes --package="npm@$version" -- npm --prefix "$root" ci --ignore-scripts --allow-remote=root)
-fi
-`;
+// CI_RUN_EXCEPTIONS are the steps that may run a command that is not a make target: summary writes the run's record after make orm-check.
 export const CI_RUN_EXCEPTIONS: Record<string, Record<string, string>> = {
-  '.github/workflows/ci.yml': { 'bootstrap the installed kit package': KIT_BOOTSTRAP_COMMAND, summary: 'node scripts/check/summary.mts' },
-  '.github/workflows/docs-pages.yml': { 'bootstrap the installed kit package': KIT_BOOTSTRAP_COMMAND },
+  '.github/workflows/ci.yml': { summary: 'node scripts/check/summary.mts' },
+  '.github/workflows/docs-pages.yml': {},
 };
 
 // ciMakeErrors returns one error for each place where a workflow step runs a command that is not a make target. Every step
@@ -759,7 +750,7 @@ export const CI_PASSED_STEP: Record<string, unknown> = { name: 'every job passed
 export const CI_PASSED_STEPS: Record<string, unknown>[] = [
   { uses: 'actions/checkout@v5' },
   { uses: 'actions/setup-node@v7', with: { 'node-version-file': 'mise.toml', 'package-manager-cache': false } },
-  { name: 'bootstrap the installed kit package', id: 'kit-bootstrap', if: NOT_CANCELLED, run: KIT_BOOTSTRAP_COMMAND },
+  { uses: './.github/actions/kit-bootstrap', id: 'kit-bootstrap', if: NOT_CANCELLED },
   // These steps install the pinned npm and the packages before make ci-passed runs.
   { name: 'npm of devEngines', id: 'npm', if: NOT_CANCELLED, run: 'make install-tools TOOLS=npm' },
   CI_PASSED_STEP,

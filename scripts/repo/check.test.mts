@@ -1904,17 +1904,10 @@ caseTest('every CI step runs a make target', COMPUTE, () => {
   assert.deepEqual(ciMakeErrors({ '.github/workflows/docs-pages.yml': workflow('node scripts/check/summary.mts') }), [
     '.github/workflows/docs-pages.yml step "summary" runs node scripts/check/summary.mts; run it through a make target',
   ]);
-  const bootstrap = CI_RUN_EXCEPTIONS['.github/workflows/ci.yml']?.['bootstrap the installed kit package'] ?? '';
-  const bootstrapWorkflow = (command: string) => `jobs:\n  test:\n    steps:\n      - uses: actions/checkout@v5\n      - name: bootstrap the installed kit package\n        run: |\n${command.split('\n').map(line => `          ${line}`).join('\n')}\n`;
-  assert.deepEqual(ciMakeErrors({ '.github/workflows/ci.yml': bootstrapWorkflow(bootstrap) }), []);
-  // A changed bootstrap loses its exception, so each command of the step that is not make is an error, as in a workflow with no
-  // exception for it.
-  const unexcepted = ciMakeErrors({ '.github/workflows/other.yml': bootstrapWorkflow(bootstrap) }).length;
-  assert.ok(unexcepted > 0);
-  const changedBootstrap = ciMakeErrors({ '.github/workflows/ci.yml': bootstrapWorkflow(bootstrap.replace('--ignore-scripts', '')) });
-  assert.equal(changedBootstrap.length, unexcepted);
-  for (const error of changedBootstrap)
-    assert.match(error, /step "bootstrap the installed kit package" runs .*; run it through a make target/);
+  // The bootstrap of kit is the shared action .github/actions/kit-bootstrap (K992), so no workflow carries an inline bootstrap step
+  // that needs an exception.
+  assert.equal(CI_RUN_EXCEPTIONS['.github/workflows/ci.yml']?.['bootstrap the installed kit package'], undefined);
+  assert.equal(CI_RUN_EXCEPTIONS['.github/workflows/docs-pages.yml']?.['bootstrap the installed kit package'], undefined);
   const root = new URL('../..', import.meta.url).pathname;
   const directory = join(root, '.github/workflows');
   // orm's own workflows; Kit-owned workflows are checked by Kit's layout target (KSTD-5-24).
