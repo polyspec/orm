@@ -630,6 +630,8 @@ async function queryColumn(step, db) {
     case 'slots.i16_value': return slots.getsByI16Value(hostValue(step.params[0]));
     case 'slots.i32_value': return slots.getsByI32Value(hostValue(step.params[0]));
     case 'slots.i64_value': return slots.getsByI64Value(hostValue(step.params[0]));
+    case 'slots.f64_value': return slots.f64Value(hostValue(step.params[0])).gets();
+    case 'slots.bool_value': return slots.boolValue(hostValue(step.params[0])).gets();
   }
   const value = wrapperText(step.params[0]);
   switch (step.column) {
@@ -644,11 +646,12 @@ async function queryColumn(step, db) {
   throw new Error(`the column ${step.column} has no typed filter in the TypeScript cases`);
 }
 
-// hostValue is the value that the TypeScript API takes for a wrapper of an integer column: an int by native (a number, or a bigint
-// beyond the safe range), a float as its number, and text or bool as they are, so that the public path refuses the wrong kind.
+// hostValue is the value that the TypeScript API takes for a wrapper of a numeric or bool column: an int by native (a number, or a bigint
+// beyond the safe range), a float or an f64 as its number (NaN, Infinity and -Infinity included), and text or bool as they are, so
+// that the public path refuses the wrong kind.
 function hostValue(wrapper) {
   const keys = Object.keys(wrapper);
-  if (keys.length === 1 && keys[0] === 'float') return Number(wrapper.float);
+  if (keys.length === 1 && (keys[0] === 'float' || keys[0] === 'f64')) return Number(wrapper[keys[0]]);
   return native(wrapper);
 }
 

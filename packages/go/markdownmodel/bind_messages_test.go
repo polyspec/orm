@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net"
 	"strconv"
 	"testing"
@@ -129,6 +130,12 @@ func queryColumn(t *testing.T, db *orm.DB, column string, value json.RawMessage)
 	case "slots.i64_value":
 		_, err := bindmodel.Slots().Connect(db).I64Value(integer[int64](t, value, 64)).Gets()
 		return err
+	case "slots.f64_value":
+		_, err := bindmodel.Slots().Connect(db).F64Value(float(t, value)).Gets()
+		return err
+	case "slots.bool_value":
+		_, err := bindmodel.Slots().Connect(db).BoolValue(boolean(t, value)).Gets()
+		return err
 	}
 	t.Fatalf("the column %s has no typed filter in the Go cases", column)
 	return nil
@@ -164,6 +171,62 @@ func integer[T int16 | int32 | int64](t *testing.T, value json.RawMessage, bits 
 		t.Fatalf("the parameter %s is outside the host type: %v", value, err)
 	}
 	return T(n)
+}
+
+// wrapper is the key and the raw value of a one-key wrapper of a typed parameter, such as {"float": "1.5"}.
+func wrapper(t *testing.T, value json.RawMessage) (string, json.RawMessage) {
+	t.Helper()
+	var w map[string]json.RawMessage
+	if err := json.Unmarshal(value, &w); err != nil || len(w) != 1 {
+		t.Fatalf("the parameter %s is no one-key wrapper", value)
+	}
+	for k, v := range w {
+		return k, v
+	}
+	return "", nil
+}
+
+// float is the host value of a float, int or f64 wrapper for the float64 host type. The text of a float or int wrapper is
+// parsed as a decimal number, an integer being a valid float; the f64 wrapper names NaN and the infinities. A text that does
+// not parse fails the test.
+func float(t *testing.T, value json.RawMessage) float64 {
+	t.Helper()
+	key, raw := wrapper(t, value)
+	var s string
+	if err := json.Unmarshal(raw, &s); err != nil {
+		t.Fatalf("the parameter %s holds no text: %v", value, err)
+	}
+	switch key {
+	case "float", "int":
+		f, err := strconv.ParseFloat(s, 64)
+		if err != nil {
+			t.Fatalf("the parameter %s is no float: %v", value, err)
+		}
+		return f
+	case "f64":
+		switch s {
+		case "NaN":
+			return math.NaN()
+		case "Infinity":
+			return math.Inf(1)
+		case "-Infinity":
+			return math.Inf(-1)
+		}
+		t.Fatalf("the parameter %s names no f64 value", value)
+	}
+	t.Fatalf("the parameter %s is no float wrapper", value)
+	return 0
+}
+
+// boolean is the host value of a bool wrapper.
+func boolean(t *testing.T, value json.RawMessage) bool {
+	t.Helper()
+	key, raw := wrapper(t, value)
+	var b bool
+	if key != "bool" || json.Unmarshal(raw, &b) != nil {
+		t.Fatalf("the parameter %s is no bool wrapper", value)
+	}
+	return b
 }
 
 // startMarkdownSendListener serves the one connection of a markdown.send step: it answers connect with {"ok": true}, sends the first
