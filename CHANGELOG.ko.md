@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2573de7ba7ee2971c7544d913b25a86e1cad927f98c996faa7c61693af768d24 -->
+<!-- source-sha256: cd1eb29a47ca105a127e71ccba706f32ff19a657a04b5651dc4920939255af1f -->
 # 변경 이력
 
 ## Unreleased
 
+- T346-5의 한국어 Task에서 writing-style 규칙이 금지한 표현을 고쳤다(T346-5-1).
 - orm은 require-dev에서 upstream package opis/json-schema 대신 maintained fork `min-0-max/json-schema`를 branch `dev-polyspec-origin-2.6.0`으로 요구한다(S14)(T346-5).
 - orm은 kit 0.0.88을 채택한다(T346-1). package pin은 그 release asset과 integrity를 가리키며, kit-sync 사본은 link, 파이프라인, 매니페스트 경로 규칙 S11, S12, P30(K997, K998)을 담은 그 release의 것이다.
 - orm은 모든 CI job에서 kit을 공유 action `.github/actions/kit-bootstrap`으로만 bootstrap한다(T346-2). ci.yml과 docs-pages.yml에서 `make install-tools TOOLS=npm`을 실행하던 인라인 step을 제거했다.

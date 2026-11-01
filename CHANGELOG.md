@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Korean Task of T346-5 no longer names an expression that the writing-style rule forbids (T346-5-1).
 - orm requires the maintained fork `min-0-max/json-schema` at its branch `dev-polyspec-origin-2.6.0` in require-dev, in place of the upstream package opis/json-schema (S14) (T346-5).
 - orm takes kit 0.0.88 (T346-1): the pin names the release asset of kit 0.0.88 with its integrity, and the kit-sync copies are that release's, with the link, pipeline and manifest-path rules S11, S12 and P30 (K997, K998).
 - orm bootstraps kit only through the shared action `.github/actions/kit-bootstrap` in every CI job (T346-2): the inline steps that ran `make install-tools TOOLS=npm` are removed from ci.yml and docs-pages.yml.

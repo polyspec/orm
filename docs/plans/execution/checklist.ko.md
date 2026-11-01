@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: b65939456adfba724ebe89b86dbe791245cb8dcc6dc4016124ddef79256928a4 -->
+<!-- source-sha256: df45970aae263ecc0570e033a1d1606e4bd67f9a57d60877c1765b6b639f44df -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1524,4 +1524,5 @@
 | T346-2 | ci.yml과 docs-pages.yml의 모든 CI job은 kit 부트스트랩을 공유 action .github/actions/kit-bootstrap으로만 수행하며, make install-tools TOOLS=npm을 실행하는 인라인 step을 포함하지 않는다(K992, K996) | .github/workflows/ci.yml, .github/workflows/docs-pages.yml, scripts/check/ci-setup.mts, scripts/repo/ci.mts, CHANGELOG.md, CHANGELOG.ko.md, docs/plans/execution/checklist.md, docs/plans/execution/checklist.ko.md | `make repo-check/unit`; `make runner-check`; `make scripts-typecheck`; `make comment-language-check` | [v] |
 | T346-3 | ci.yml의 kit 외 모든 job은 kit job 다음에 실행되어, kit의 검사를 한 번 실행하는 한 파이프라인을 이룬다(S12, K998) | .github/workflows/ci.yml, scripts/repo/check.test.mts, CHANGELOG.md, CHANGELOG.ko.md, docs/plans/execution/checklist.md, docs/plans/execution/checklist.ko.md | `make kit-check`; `make repo-check/unit`; `make scripts-typecheck`; `make lint-ts`; `make duplication-check`; `make comment-language-check`; `make docs-site-check` | [v] |
 | T346-4 | orm의 AGENTS 규칙은 kit bootstrap을 설치된 package 경로로 가리키고 layout 검사를 make 대상으로 강제된다고 적으며, 낡은 문구가 없다(K992, K993) | AGENTS.md, AGENTS.ko.md, CHANGELOG.md, CHANGELOG.ko.md, docs/plans/execution/checklist.md, docs/plans/execution/checklist.ko.md | `make text-absent FILE=AGENTS.md TEXT=../kit/scripts/kit/kit-bootstrap.mk`; `make docs-check`; `make docs-rules-check`; `make rules-check` | [v] |
-| T346-5 | orm은 require-dev에서 PHP JSON Schema validator의 upstream package 대신, 상위 base를 담은 VCS branch의 fork package 이름으로 요구한다(S14) | composer.json, composer.lock, CHANGELOG.md, CHANGELOG.ko.md, docs/plans/execution/checklist.md, docs/plans/execution/checklist.ko.md | `make text-absent FILE=composer.json TEXT=opis/json-schema`; `make release-coverage`; `make kit-check` | [v] |
+| T346-5 | orm은 require-dev에서 PHP JSON Schema validator의 upstream package 대신, 상위 base를 담은 VCS branch의 fork package 명칭으로 요구한다(S14) | composer.json, composer.lock, CHANGELOG.md, CHANGELOG.ko.md, docs/plans/execution/checklist.md, docs/plans/execution/checklist.ko.md | `make text-absent FILE=composer.json TEXT=opis/json-schema`; `make release-coverage`; `make kit-check` | [v] |
+| T346-5-1 | T346-5의 한국어 Task가 한국어 문서의 writing-style 규칙(docs.writing-style)을 통과하며, 영어 Task는 바뀌지 않는다 | docs/plans/execution/checklist.md, docs/plans/execution/checklist.ko.md, CHANGELOG.md, CHANGELOG.ko.md | `make docs-rules-check`; `make docs-check` | [v] |
