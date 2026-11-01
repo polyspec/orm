@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0ab256c520112a7642d7d6bfc54a9db7791344edc18c117c0796884e19562fe1 -->
+<!-- source-sha256: 281560be0dbc2e8a6ca2885b25af647dbb925ea3fcad5df48416dc3ca135bcff -->
 # 변경 이력
 
 ## Unreleased
@@ -50,6 +50,7 @@
 - Go runner의 DDL behavior는 tests/dbspec/ddl.json의 step을 세 database에서 internal package 안에서만 실행해서, client package에는 이를 확인하는 시험이 없었다. 이제 client 시험이 statement와 step을 client의 database driver로 실행하고, make target dbspec-go-check/render-physical은 서버 DSN이 빠지면 그 이름을 대며 실패하며, parity가 이 시험을 dbspec-render-physical의 Go 시험으로 binding한다 (CR16-1-6).
 - 통합된 check-recipes tree의 interface snapshot이 오래되어, go, php, typescript의 symbol에서 interface self-test가 실패했다. contracts/interfaces.json과 php, typescript의 symbol snapshot을 통합된 tree에서 다시 생성했다 (CR28).
 - Go client의 DDL behavior 시험과 같은 vector의 외부 oracle이 tests/dbspec/ddl.json을 각자의 decode와 version 검사로 읽어 duplication check의 clone이 되었다. 둘 다 이제 공용 loader internal/dbspec/ddlcases로 읽는다 (CR29).
+- catalog recipe row의 API surface가 선언되지 않았다. Go의 CatalogRowSnapshot 접근자 Keys, KeyIndexes, CapturedCells와 PHP 속성 CatalogColumn::$checkPrecision이다. catalog API unit이 이들을 INT-108과 INT-117 아래 선언한다 (CR30).
 
 ## 0.0.21
 

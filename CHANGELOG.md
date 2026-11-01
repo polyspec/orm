@@ -49,6 +49,7 @@
 - The Go runner of the DDL behaviour ran the steps of tests/dbspec/ddl.json on the three databases only in its internal package, so the client package had no test of them. A client test now runs the statements and steps through the client database driver, its make target dbspec-go-check/render-physical fails naming an unset server DSN, and parity binds it as the Go test of dbspec-render-physical (CR16-1-6).
 - The interface snapshot of the integrated check-recipes tree was stale, so the interface self-test failed on the go, php and typescript symbols. contracts/interfaces.json and the symbol snapshots of php and typescript are regenerated from the integrated tree (CR28).
 - The Go client test of the DDL behaviour and the external oracle of the same vectors each decoded tests/dbspec/ddl.json with their own copy of the decode and the version check, a clone of the duplication check. Both now read it through the shared loader internal/dbspec/ddlcases (CR29).
+- The API surface of the catalog recipe rows was not declared: the Go accessors Keys, KeyIndexes and CapturedCells of CatalogRowSnapshot, and the PHP property CatalogColumn::$checkPrecision. The catalog API unit now declares them under INT-108 and INT-117 (CR30).
 
 ## 0.0.21
 
