@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 3fa2934c5c505acebd13ba7e8051199e37b335f17608255d7247aa1027945908 -->
+<!-- source-sha256: 2cdcc1738d46a091daf4752af1339b5bdeb37176037486e92839497b1819f7ef -->
 # 변경 이력
 
 ## Unreleased
@@ -26,6 +26,7 @@
 - Python과 TypeScript generator는 models.py와 models.ts를 원자적으로 쓴다. 내용이 이미 같은 파일은 그대로 두고, 바뀐 파일은 같은 디렉터리의 임시 파일에 쓴 뒤 기존 파일 위로 이름을 바꾸므로, 생성 중에 읽는 테스트가 부분 파일을 읽지 않는다. client-unit-check/orm-gen-python과 client-unit-check/orm-gen-typescript target이 이를 검사한다 (T341-2).
 - packages/php/phpunit.xml.dist로 PHPUnit을 실행하는 make target 예순 개는 php-models를 선행 조건으로 가진다. 부트스트랩이 생성된 모델을 요구하는데 php-vendor-check는 그것을 쓰지 않기 때문이며, repo-check는 그것 없이 이 target을 거부한다 (T341-1).
 - packages/ts/dist를 실행만 하고 빌드하지 않는 일곱 make target(replica-check, session-state-check, native-error-cause-check/typescript-driver와 /typescript-markdown, page-cache-unit-check/typescript, generator-consumer-check/typescript, request-hook-relation-scope-check)은 typescript-build를 선행 조건으로 가지며, repo-check는 그것 없이 빌드 결과를 읽는 target을 거부한다 (T339-5).
+- 문장 runner(INT-150)의 parity unit은 여섯 런타임 모두에서 `Utils.run`과 frame `run`을 이름으로 쓰고, 모든 데이터베이스에서 statement_runner 테스트를 바인딩한다 (T345-7).
 - Python 런타임은 `utils().run(fn)`을 public으로 만들어, 연결의 트랜잭션 frame으로 `fn`을 호출한다 (INT-150, T345-6).
 - 두 branch의 check-recipes 작업이 하나의 통합으로 main에 들어간다. 한국어 checklist는 영어 checklist의 모든 row를 가지고, 변경 이력은 그 commit들의 항목을 가지며, Makefile은 `rust-compiler-fixtures-check/unit`에서 node를 `$(NODE)`로 실행하고, `config/rebuild.json`은 `scripts/generate/once.mts`와 `scripts/php/php-ext-build.mts`를 분류한다 (CR26).
 - check runner는 실패한 target의 `::error` 줄을 출력하지 않아, GitHub Actions에서 실패는 작업이 끝나야 보였다. 이제 실패한 target은 끝날 때 `::error` 줄을 출력한다 (CR1).
