@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The TypeScript client no longer exports markdownParam, which only markdown.ts uses; knip reported it as an unused export (CR42).
 - The interface snapshot of the landed recipe rows is recorded again: the Go, PHP extension, PHP, Rust and TypeScript symbol snapshots and the manifest hashes follow the tree (CR41).
 - The plan and spec words that the docs rules of kit 0.0.92 refuse are reworded in the Task and Deliverables cells of the check-recipes, execution and kit-standard rows and in docs/spec/schema.ko.md, with the same meaning in both languages (CR40).
 - The contains cases of `tests/bind/vectors.json` (`like_contains`, five cases) are cases of the message recipe `tests/bind/messages.json` in all six runtimes (T334-3-15-4g). The message of a contains step is the request value (PRT-66, PRT-67): the escaping and wrapping is the SQL-side transform (PRT-32), so the expected message is the value. The Go and Rust contains cases exclude the null case, since the typed method takes no null. The bind message test moved to `packages/go/bindmessages`, so the markdown set does not import the bind set output.

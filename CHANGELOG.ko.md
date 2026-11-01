@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 6c80fa7a5afccc528764d6aaa4de383152d3dd770dbc5300fe17645c2b1e5c46 -->
+<!-- source-sha256: 13b0acfa7807d65e047e69288687709229ba532ebeb624888456ab81579a87c0 -->
 # 변경 이력
 
 ## Unreleased
 
+- TypeScript client는 markdownParam을 더 이상 export하지 않는다. markdown.ts만 쓰며, knip이 unused export로 보고했다 (CR42).
 - 착륙한 recipe row의 interface snapshot을 다시 기록했다. Go, PHP extension, PHP, Rust, TypeScript symbol snapshot과 manifest hash가 tree를 따른다 (CR41).
 - kit 0.0.92 docs rules가 거부하는 계획과 spec의 단어를 check-recipes, execution, kit-standard 행의 Task와 Deliverables 칸과 docs/spec/schema.ko.md에서 두 언어의 뜻을 같게 바꾼다 (CR40).
 - `tests/bind/vectors.json`의 contains case(`like_contains`, 다섯 개)가 여섯 runtime 모두에서 message recipe `tests/bind/messages.json`의 case로 실행된다(T334-3-15-4g). contains step의 message는 요청 값이다(PRT-66, PRT-67). 이스케이프와 감싸기는 SQL 쪽 transform(PRT-32)이므로 기대 message는 값 그대로다. Go와 Rust의 contains case는 typed 메서드가 null을 받지 않아 null case를 제외한다. bind message test는 `packages/go/bindmessages`로 옮겨 markdown set이 bind set의 출력을 import하지 않는다.

@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-check-recipes -->
-<!-- source-sha256: 7e0ef8ea9d9dc83fcc73296d3f9ee568229488f27201ee9b0c3be4fd17582c8b -->
+<!-- source-sha256: d4469f175c662ca106c973217c2658d78ef6acdd9909375e211572c839f8e19a -->
 # 병렬 check runner와 모든 공통 동작의 recipe 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -63,3 +63,4 @@
 | CR39 | parity gate는 그 binding이 읽는 native 산출물만 build한다. parity-bindings-php-extension-check는 ORM_PARITY_PHP_EXTENSION이 가리키는 extension을 build하는 parity-prepare-php-extension에 의존하고, parity-bindings-rust-check는 ORM_PROGRAM_CONFORMANCE가 가리키는 conformance program을 build하는 parity-prepare-rust에 의존한다. parity-check는 둘 다 쓰므로 parity-prepare를 유지한다. parity-api-check와 go, typescript, python, php binding은 둘 다 build하지 않는다. KSTD-5-94가 binding을 implementation별 job으로 나눈 뒤로는 모든 gate가 둘 다 build했다. | Makefile, scripts/check/parity-context.test.mts, scripts/repo/check.test.mts, CHANGELOG.md, CHANGELOG.ko.md, docs/plans/check-recipes/checklist.md, docs/plans/check-recipes/checklist.ko.md | `node --test scripts/check/parity-context.test.mts` `make repo-check` `make docs-check` | [v] |
 | CR40 | docs: kit 0.0.92 docs rules가 거부하는 계획과 spec의 단어를, 나열한 row의 Task와 Deliverables 칸과 docs/spec/schema.ko.md에서 두 언어의 뜻을 같게 바꾼다. CR32와 CR34도 바꾼다 (#CR40) | docs/plans/check-recipes/checklist.md, docs/plans/check-recipes/checklist.ko.md, docs/plans/execution/checklist.ko.md, docs/plans/kit-standard/checklist.md, docs/plans/kit-standard/checklist.ko.md, docs/spec/schema.ko.md | `make docs-rules-check` | [v] |
 | CR41 | chore: 착륙한 recipe row의 interface snapshot을 다시 기록한다 (#CR41) | contracts/interfaces.json, contracts/symbols/go.json, contracts/symbols/php-extension.json, contracts/symbols/php.json, contracts/symbols/rust.json, contracts/symbols/typescript.json | `make interface-check/self-test` | [v] |
+| CR42 | fix(ts): markdownParam은 markdown.ts만 쓰므로 export를 뗀다. knip이 unused export로 보고한다 (#CR42) | packages/ts/src/markdown.ts | `make lint-ts` | [v] |
