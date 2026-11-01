@@ -94,6 +94,7 @@ Key   = [Operator] Column
   - **DSL-152** orm-gen이 scan 중 parse하지 못하는 source file은 모든 generator에서 error다: parse되지 않은 file은 그 호출을 숨기므로, generation은 멈추고 아무것도 쓰지 않으며, error는 file과 parser의 position(line, parser가 주면 column)과 message를 명시한다. 어떤 generator도 그 file을 건너뛰거나 warning으로만 보고하지 않는다.
   - **DSL-153** 숫자가 뒤따르지 않는 `$`는 자리표시자가 아니라 글자다. 그래서 parent 슬롯 확장은 그것을 그대로 쓴다. 번호를 붙이는 것은 `$n`뿐이며(DIA-2, DIA-19), literal이나 식별자 안의 `$`에는 번호가 붙지 않는다. 그런 `$`가 있는 statement는 `$`를 바꾸지 않은 같은 글자로 확장된다.
   - **DSL-154** **선언된 query 메서드.** 생성된 model class는 chain 메서드를 스키마의 이름을 기준으로 선언한다: 각 column의 조건 메서드, 두 개 이상 column으로 된 key prefix마다의 tuple 메서드, 정렬 메서드(`orderBy<Col>Asc`), `addColumn<Name>` 메서드, `plus<Col>` 메서드, 각 index의 `forceIndex<Name>` 메서드. 선언된 메서드는 모두 model 자신을 돌려주도록 타입이 정해진다(Python은 `typing.Self`). 그래서 타입 검사기는 chain을 model로 읽는다.
+  - **DSL-157** `github.com/polyspec/orm/packages/go` generator는 Go로 models 파일의 set들을 각 scan이 필요로 하는 순서로 생성한다: 스캔한 package가 다른 set의 generated model을 import하는 set은 그 set 다음에 생성되며, 두 set 사이의 순환은 두 set 이름을 모두 밝히는 오류로 거부한다.
 
 ### 2.3 값 형태
 

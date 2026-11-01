@@ -93,6 +93,7 @@ Key   = [Operator] Column
   - **DSL-152** A source file that orm-gen cannot parse while it scans is an error in every generator: an unparsed file would hide its calls, so the generation stops and writes nothing, and the error names the file with the parser's position (its line, and its column where the parser gives one) and message. No generator skips the file or reports it only as a warning.
   - **DSL-153** A `$` that is not followed by a digit is text, not a placeholder, so the parent-slot expansion writes it as it is: only `$n` is renumbered (DIA-2, DIA-19), and a `$` in a literal or an identifier never gets a number. A statement that holds such a `$` expands to the same text with the `$` unchanged.
   - **DSL-154** **Declared query methods.** A generated model class declares the chain methods of its schema under their names: the condition method of each column, the tuple method of each key prefix of two or more columns, the order methods (`orderBy<Col>Asc`), the `addColumn<Name>` methods, the `plus<Col>` methods and the `forceIndex<Name>` method of each index. Each declared method is typed to return the model itself (`typing.Self` in Python), so a type checker reads a chain as the model.
+  - **DSL-157** The `github.com/polyspec/orm/packages/go` generator, in Go, generates the sets of a models file in the order that their scans need: a set whose scanned packages import the generated models of another set is generated after that set, and a cycle between two sets is refused with an error that names both sets.
 
 ### 2.3 Value shapes
 
