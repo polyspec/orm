@@ -146,6 +146,7 @@ SEND_FILTERS = frozenset(
         "datetime3_value",
         "datetime6_value",
         "date_value",
+        "decimal_value",
         "i16_value",
         "i32_value",
         "i64_value",
@@ -155,9 +156,10 @@ SEND_FILTERS = frozenset(
 )
 # The integer columns of SEND_FILTERS: their typed filter takes the host value of the wrapper, an int, and not its text.
 INTEGER_FILTERS = frozenset(["i16_value", "i32_value", "i64_value"])
-# The columns of SEND_FILTERS whose typed filter takes the host value of the wrapper (a float, a bool or an int), not its text:
-# the integer columns and the float and bool columns.
-HOST_FILTERS = INTEGER_FILTERS | frozenset(["f64_value", "bool_value"])
+# The columns of SEND_FILTERS whose typed filter takes the host value of the wrapper (a float, a bool, an int or a decimal
+# text), not its text: the integer columns, the float and bool columns, and the decimal column, whose float wrapper must reach
+# the filter as a float so that the public path refuses it with CODEC_ENCODE.
+HOST_FILTERS = INTEGER_FILTERS | frozenset(["f64_value", "bool_value", "decimal_value"])
 BIND_MODELS: dict = {}
 
 
@@ -308,7 +310,7 @@ def _query_slot(models, db, step: dict) -> None:
             value = int(value)
         elif kind in ("float", "f64"):
             value = float(value)
-        elif kind not in ("text", "bool"):
+        elif kind not in ("text", "bool", "decimal"):
             raise AssertionError(
                 f"the parameter {json.dumps(wrapper)} is no host value of the Python API"
             )

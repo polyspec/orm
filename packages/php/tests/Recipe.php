@@ -201,6 +201,7 @@ final class Recipe
         'slots.datetime3_value' => 'datetime3Value',
         'slots.datetime6_value' => 'datetime6Value',
         'slots.date_value' => 'dateValue',
+        'slots.decimal_value' => 'decimalValue',
         'slots.i16_value' => 'i16Value',
         'slots.i32_value' => 'i32Value',
         'slots.i64_value' => 'i64Value',
@@ -290,10 +291,11 @@ final class Recipe
         if (!is_array($wrapper) || count($wrapper) !== 1) {
             Assert::fail('the parameter ' . json_encode($wrapper) . ' is no single-member wrapper');
         }
-        // A time, datetime or date wrapper is the text the typed string filter takes; the others go through the common
-        // value model.
+        // A time, datetime, date or decimal wrapper is the text the typed string filter takes; the others go through
+        // the common value model.
         $kind = array_key_first($wrapper);
-        $value = in_array($kind, ['time', 'datetime', 'date'], true) ? $wrapper[$kind] : self::toValue($wrapper);
+        $textual = in_array($kind, ['time', 'datetime', 'date', 'decimal'], true);
+        $value = $textual ? $wrapper[$kind] : self::toValue($wrapper);
         (new \Polyspec\Orm\Tests\BindModel\Slots())->connect($db)->{$method}($value)->gets();
     }
 

@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9557fc365b240675196ad863ae3d6024a71e66f13eba6dce432f2224ba8f23a4 -->
+<!-- source-sha256: a8c1f710240215b3d970aaee9838ae5d0c71be1509de047a0a64111fccec2af4 -->
 # 변경 이력
 
 ## Unreleased
 
+- message recipe 행의 파일에 남은 lint 지적을 같은 파일에서 고쳤다 (Go errorlint와 Close, Rust Option::map, PHP, Python과 recipe helper 형식). PHP, Python, TypeScript gate와 Rust kit link에 남은 지적은 이 branch가 바꾸지 않은 파일에 있으며 CR34가 고친다 (T334-3-15-4d).
+- decimal bind case(`tests/bind/vectors.json`의 decimal slot)는 message recipe `tests/bind/messages.json`의 case다: `decimal_value`의 `markdown.send` step 하나, decimal wrapper 하나와 expect. 수정: TypeScript와 Python recipe helper가 decimal 컬럼의 float wrapper를 text로 넘겨 float을 공개 filter에서 가리고 있었다. 이제 host 값으로 넘겨, 공개 decimal filter가 PHP와 같이 float을 CODEC_ENCODE로 거부한다. 제품 코드는 바뀌지 않았다. 기존 검사가 이미 거부하고 있었다 (T334-3-15-4e).
 - message recipe 행의 파일에 남은 lint 지적을 제자리에서 고쳤다 (Go errorlint와 Close, Rust Option::map, PHP, Python과 recipe helper 형식). PHP, Python, TypeScript gate와 Rust kit link에 남은 지적은 이 branch가 바꾸지 않은 파일에 있으며 CR34가 고친다 (T334-3-15-4d).
 - `tests/bind/vectors.json`의 부동소수와 bool bind case(f64, bool slot)는 message recipe `tests/bind/messages.json`의 case다. 비유한 f64는 공개 호출이 CODEC_ENCODE로 거부한다. f64 slot의 text 또는 bool 값은 타입 없는 공개 경로가 거부하며, go와 rust에서는 타입 있는 API 이유로 제외한다. Rust의 message 비교는 정수에 대해 정확하여 1만큼 다른 i64는 실패한다 (T334-3-15-4c).
 - `tests/bind/vectors.json`의 정수 bind case(i16, i32, i64 slot)는 message recipe `tests/bind/messages.json`의 case다. 각 case는 slot 컬럼의 `markdown.send` step 하나, parameter wrapper 하나와 expect(bound 값 또는 오류 code)를 갖는다. 여섯 runtime이 공개 filter로 실행하며, 타입 있는 공개 API가 거부하는 값은 go와 rust에서 "타입 있는 공개 API가 이 host 값을 컴파일 시점에 거부한다"는 이유로 제외한다 (T334-3-15-4b).
@@ -29,6 +31,11 @@
 - statement event 벡터의 server-transaction 검사는 MySQL과 PostgreSQL만 이름을 적었고 SQLite에는 항목도 사유도 없었다. 이제 SQLite를 사유와 함께 제외로 명시하며, 모든 runtime의 시험이 각 database가 한 번씩만 이름 붙었는지 확인한다 (CR16-2).
 - 인터페이스 명세는 모든 runtime의 public statement runner를 정한다(INT-150): `utils().run(fn)`과 frame 호출 `run(kind, tables, sql, params)`이며, frame 호출의 판정은 CR21이다. runtime들은 뒤따르는 CR21 행에서 구현한다 (CR21).
 - recipe schema에 비유한 binary64 wrapper `{"f64": "NaN" | "Infinity" | "-Infinity"}`를 더했고, 여섯 recipe helper가 각각 그 수의 host 값으로 바꾼다. 유한한 수는 `float` wrapper를 그대로 쓴다 (T334-3-15-3b).
+- recipe schema에 비유한 binary64 wrapper `{"f64": "NaN" | "Infinity" | "-Infinity"}`를 더했고, 여섯 recipe helper가 각각 그 수의 host 값으로 바꾼다. 유한한 수는 `float` wrapper를 그대로 쓴다 (T334-3-15-3b).
+- `tests/bind/vectors.json`의 markdown message와 control vector는 `markdown.send` step(`column`, `operator`, `params`, `begin`, `process_zone`, `expect`)으로 된 recipe `tests/bind/messages.json` 하나다. 여섯 recipe helper가 각자 공개 markdown 연결로 실행하고, listener가 처음 받은 message를 기록한다. 기존 native message test와 parity 바인딩은 지웠고, DST gap의 offset 없는 datetime case는 `process_zone` 아래에서 실행한다 (T334-3-15-3c).
+- recipe case는 `exclude`에 그 case를 돌리지 않는 runtime과 이유를 적을 수 있다. 제외된 runtime은 `EXCLUDED <case id> <runtime>: <reason>` 줄 하나를 출력하고 case를 목록에서 뺀다. 그래서 통과도 skip도 아니다. 모든 runtime을 제외하는 case는 schema가 거부한다. recipe schema의 데이터베이스 없는 expectation은 `markdown.send` step을 면제하고, `tests/bind/messages.json`은 검증되는 suite 파일이다 (T334-3-15-4a).
+- `tests/bind/vectors.json`의 정수 bind case(i16, i32, i64 slot)는 message recipe `tests/bind/messages.json`의 case다. 각 case는 slot 컬럼의 `markdown.send` step 하나, parameter wrapper 하나와 expect(bound 값 또는 오류 code)를 갖는다. 여섯 runtime이 공개 filter로 실행하며, 타입 있는 공개 API가 거부하는 값은 go와 rust에서 "타입 있는 공개 API가 이 host 값을 컴파일 시점에 거부한다"는 이유로 제외한다 (T334-3-15-4b).
+- `tests/bind/vectors.json`의 부동소수와 bool bind case(f64, bool slot)는 message recipe `tests/bind/messages.json`의 case다. 비유한 f64는 공개 호출이 CODEC_ENCODE로 거부한다. f64 slot의 text 또는 bool 값은 타입 없는 공개 경로가 거부하며, go와 rust에서는 타입 있는 API 이유로 제외한다. Rust의 message 비교는 정수에 대해 정확하여 1만큼 다른 i64는 실패한다 (T334-3-15-4c).
 - bind vector의 slot 픽스처 `tests/bind/slots.dbs`와 그 set `tests/bind/dbspec-set.json`은 `tests/bind/vectors.json`의 parameter slot마다 컬럼 하나를 가진 테이블 하나를 둔다. 모델은 모델을 쓰는 make 대상이 생성한다(Go와 PHP는 모델 목록, TypeScript는 빌드, Python은 `bind-python-models`, Rust는 tests crate의 build script). `make bind-models-check`가 이를 검사한다 (T334-3-15-3a).
 - 읽기 answer 사례 `contracts/fixtures/ir_answers.json`은 `tests/ir/answers.json`으로 옮겨져, 여섯 runtime 모두 데이터베이스 없이 실행하는 `ir.answer` op(FCV-4)의 recipe가 된다. 각 사례는 markdown chain을 answer를 돌려주는 listener 위에서 실행한다. 대체되는 native answer test는 제거되고, parity unit ir-answers는 여섯 recipe entry에 묶인다 (#T334-3-15-2).
 - 요청 검증 사례 `tests/ir/validate.json`은 recipe(`ir.validate` op, FCV-4)가 되어 여섯 runtime 모두 데이터베이스 없이 실행한다. Go, TypeScript, PHP, PHP extension, Python, Rust의 native vector test는 제거되고, parity unit ir-validate는 여섯 recipe entry에 묶인다 (#T334-3-15-1).
@@ -123,6 +130,24 @@
 
 ## 0.0.19
 
+- 인터페이스 명세는 모든 runtime의 public statement runner를 정한다(INT-150): `utils().run(fn)`과 frame 호출 `run(kind, tables, sql, params)`이며, frame 호출의 판정은 CR21이다. runtime들은 뒤따르는 CR21 행에서 구현한다 (CR21).
+- statement event 벡터의 server-transaction 검사는 MySQL과 PostgreSQL만 이름을 적었고 SQLite에는 항목도 사유도 없었다. 이제 SQLite를 사유와 함께 제외로 명시하며, 모든 runtime의 시험이 각 database가 한 번씩만 이름 붙었는지 확인한다 (CR16-2).
+- owner 검사는 변경된 Python test마다 python-check를 골랐고, 그 recipe는 kit이 CI 밖에서 거부하는 선택 없는 discovery를 실행했다. php-extension coverage는 make 밖에서 실행되어 POLYSPEC_ORM_EXTENSION이 설정되지 않았다. 이제 변경된 test는 자신의 명령을 고른다: python-check는 test가 아닌 Python 원본을 맡고, interface test는 모듈을 이름으로 지정하며, php-extension coverage는 먼저 make로 extension을 빌드한다 (CR24).
+- publish-output은 명령이 끝나자마자 출력 파일을 확인했고, 복사가 파일을 만들기 전에 검사했으므로 빠른 명령이 "wrote no"로 실패했다. 부하가 걸린 병렬 실행에서 640회 중 2회 실패했다(CR3 owner 검사의 phpstan owner). 이제 검사 전에 복사가 끝나기를 기다린다 (CR22).
+- recipe 시험은 JSON 값을 타입으로 캐스트했고 lint-ts가 이를 거부한다. 이제 shape를 확인해 좁힌다 (CR13).
+- complex-query context 검사는 파싱한 check input을 타입으로 캐스트했고 lint-ts가 이를 거부한다. 이제 type guard로 읽는다 (CR7).
+- workflow cache 검사에는 빈 loop가 있었고 step 값을 String()으로 읽었는데, lint-ts가 이를 거부한다. 이제 문자열인 값만 읽는다 (CR8).
+- docs build test는 build에 test process의 환경을 그대로 주었고 non-null assertion을 썼는데, repo-check와 lint-ts가 이를 거부한다. 이제 build를 isolatedEnvironment로 실행하며, process group id를 단언하지 않고 확인한다 (CR11).
+- lease를 잡는 recipe(WITH_TEST_ENV, check-run, run-databases)는 make를 재귀로 호출했고, GNU make는 make -n 아래에서도 그것을 실행하므로 check-run의 dry run이 검사 전체를 돌렸다. 이제 이 recipe들은 lease program이 없거나 tests/lease의 어떤 source보다 오래된 때에만 shell 단계로 그것을 빌드한다 (CR11).
+- arginfo header는 같은 파일에서 복사됐으므로, 중단된 복사는 이전 header를 불완전하게 남겼고 PHP extension 빌드는 그것을 읽었다. 이제 header는 임시 파일에 쓰인 뒤 이전 header 위로 이름이 바뀌므로, 중단된 쓰기는 이전 header를 온전하게 남긴다 (CR3).
+- 모든 kit parity job은 target 중 어느 것도 읽지 않는 complex-query fixture 데이터베이스 18개를 만들었다. 이제 context는 target의 check input이나 recipe가 필요로 할 때만 그것을 만든다 (CR7).
+- Go, PHP, Python model과 orm-codes 파일은 입력이 바뀌지 않았는데도 그것이 필요한 target마다 다시 생성됐다 (한 CI run에서 generator 호출 1451회). 이제 generator는 추적되는 입력의 key가 바뀔 때만 실행되며, 그 stamp는 출력 옆에 원자적으로 기록된다 (CR6).
+- CI job들은 lock file이 바뀌지 않았는데도 npm, composer, uv, Go, mise.toml 패키지를 매 실행마다 다시 설치했다. 이제 각 job은 설치 전에 npm, Go module, composer, uv, tool 캐시를 그 lock file의 hash로 키를 잡아 복원한다 (CR8).
+- 한 CI run에서 일부 target이 두 job에서 실행됐다: static group, docs job, editor job이 docs-verify-idempotent, docs-site-check, dbspec-vscode-check를 각각 실행했고, docs-check는 kit job과 docs job에서 모두 실행됐다. 이제 각 target은 한 job에서만 실행되며, 두 CI job이 같은 target을 실행하면 repo check의 case가 실패한다 (CR9).
+- lease 도구가 필요한 target마다 도구를 다시 빌드해서, 한 job의 여러 target이 같은 프로그램의 빌드를 반복했다. 이제 lease 프로그램은 그 source의 file target이어서 한 번 빌드되고, 이후에는 최신으로 확인된다 (CR11). docs 빌드 test(CR2)도 node:test로 case를 직접 선언했는데 repo 규칙이 이를 금지하므로, 이제 caseTest를 쓴다.
+- recipe 스키마는 fixture가 없는 recipe에 데이터베이스 op(`sql.exec`, `model.connect`)를 받아들여, 그런 동작이 세 데이터베이스 없이 실행될 수 있었다. 이제 그 op를 거부한다 (CR13).
+- docs 빌드는 게시된 폴더에 직접 사이트를 렌더링해서, 중단된 빌드는 사이트의 절반을 남겼다. 이제 임시 폴더에 렌더링한 뒤 이름 바꾸기 한 번으로 게시한다 (CR2).
+- check runner는 실패한 target의 `::error` 줄을 출력하지 않아, GitHub Actions에서 실패는 작업이 끝나야 보였다. 이제 실패한 target은 끝날 때 `::error` 줄을 출력한다 (CR1).
 - make docs-rules-check와 make makefile-pinned-node-recipes-check가 test (static)에서 실패했다 (T339-20). T339 row 둘이 문체 규칙이 금지하는 표현을 썼고, GroupRows PHP extension test는 T339-9가 단일 build 경로로 바꾼 build.sh 호출을 여전히 기대했다. 이제 row의 문장을 고쳤고, test는 $(call php_ext_build,...)를 기대하며 그 호출의 module과 mode를 읽는다.
 - make example-check가 ModuleNotFoundError: No module named 'packages'로 실패했다: T339-14가 Python thin-slice 예제의 models import를 packages.python.tests.models.models로 바꿨는데, test는 그 예제를 examples에서 script로 실행했다 (T339-19). 이제 test와 README는 orm의 모든 Python test처럼 checkout의 root에서 module packages.python.examples.thin_slice.main으로 실행한다.
 - Python conformance와 model-generation test가 FileNotFoundError로 실패했다: 그중 셋이 옛 models 경로 packages/python/src/polyspec/orm/models를 path 조각으로 조립했고 T339-14의 검색은 그것을 찾지 못했다(T339-18). 이제 packages/python/tests/models를 읽는다.
