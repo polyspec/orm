@@ -406,7 +406,9 @@ def _refuse_null(schema: Entity, column: str) -> None:
     """Refuses NULL assigned to a non-null column at the codec, before the engine validator (PRT-67, CODEC_ENCODE)."""
     field = field_of(schema, column)
     if field is not None and not field.nullable:
-        raise OrmError(codes.CODEC_ENCODE, f"{column} assigns NULL to a non-null column")
+        raise OrmError(
+            codes.CODEC_ENCODE, f"{column} assigns NULL to a non-null column"
+        )
 
 
 def _assign(r: dict, schema: Entity, s: SetSpec) -> dict:
