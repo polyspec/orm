@@ -9583,6 +9583,9 @@
         "COD-38",
         "COD-39",
         "COD-40",
+        "COD-65",
+        "COD-66",
+        "COD-67",
         "PLN-15"
       ],
       "file": "tests/codec/codec.json",
@@ -43633,45 +43636,6 @@
           "owner/python"
         ]
       }
-    },
-    {
-      "id": "codec-ordered-json-value-stages",
-      "kind": "feature",
-      "requirements": [
-        "COD-16"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/codec_test.go",
-          "id": "TestOrderedJSONValueIsWrittenByAFirstOrderedJSONStage"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CodecOrderedJsonTextTest.php",
-          "id": "CodecOrderedJsonTextTest::testOrderedJsonValueIsWrittenByAFirstOrderedJsonStage"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CodecOrderedJsonTextExtensionTest.php",
-          "id": "CodecOrderedJsonTextExtensionTest::testOrderedJsonValueIsWrittenByAFirstOrderedJsonStage"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/codec-errors.test.mjs",
-          "id": "codec/ordered-json-value-stages"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_codec_ordered_json_text.py",
-          "id": "test_ordered_json_value_is_written_by_a_first_ordered_json_stage"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/codec.rs",
-          "id": "codec::tests::ordered_json_value_is_written_by_a_first_ordered_json_stage"
-        }
-      ]
     },
     {
       "id": "codec-ordered-json-text-is-unicode",

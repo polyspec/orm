@@ -1915,6 +1915,7 @@
         "COD-28",
         "COD-34",
         "COD-40",
+        "COD-65",
         "PLN-15"
       ],
       "steps": [
@@ -13278,7 +13279,8 @@
       "requirements": [
         "COD-13",
         "COD-16",
-        "COD-29"
+        "COD-29",
+        "COD-66"
       ],
       "steps": [
         {
@@ -13693,7 +13695,8 @@
       "id": "yaml_writes_what_it_reads",
       "requirements": [
         "COD-13",
-        "COD-29"
+        "COD-29",
+        "COD-66"
       ],
       "steps": [
         {
@@ -14802,7 +14805,8 @@
     {
       "id": "serialize_keys_and_floats",
       "requirements": [
-        "COD-28"
+        "COD-28",
+        "COD-67"
       ],
       "steps": [
         {
@@ -15856,7 +15860,8 @@
         "COD-3",
         "COD-10",
         "COD-16",
-        "COD-40"
+        "COD-40",
+        "COD-65"
       ],
       "steps": [
         {
