@@ -49,7 +49,11 @@ func markdownSend(t *testing.T, column, operator string, params []json.RawMessag
 	if err != nil {
 		t.Fatalf("connect: %v", err)
 	}
-	t.Cleanup(func() { _ = db.Close() })
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close: %v", err)
+		}
+	})
 	var callErr error
 	if begin != nil {
 		var opts []orm.TransactionOption
