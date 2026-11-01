@@ -383,7 +383,7 @@ identity와 SQLite 숨김 컬럼도 포함하며 완전한 컬럼 쓰기 권한 
 타입 없는 SQLite 컬럼은 타입을 만들어내지 않고 빈 네이티브 타입을 유지한다.
 
 이름은 NUL 없는 UTF-8 1..1024바이트이며 카탈로그 결과마다 2048행·4 MiB로
-제한한다. 미지원 관계 종류·SQLite namespace는 명시적으로 실패한다. 이 descriptor는
+제한한다. 미지원 관계 종류·SQLite namespace는 명시적으로 실패한다. 지원하지 않는 방언을 이름하는 DSN은 `CONFIG`로 실패하며 파일을 만들지 않는다. 이 descriptor는
 완전한 물리 스키마 임포트나 원자적 스키마 revision이 아니며 변경은 자신의
 실행 범위에서 메타데이터를 다시 검증해야 한다.
 
@@ -517,10 +517,10 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 - **INT-98** 타입이 정해진 읽기가 선언된 타입으로 나타낼 수 없는 데이터베이스 셀은 `CODEC_DECODE`로 실패한다. 예: 부호 있는 64비트 범위를 넘는 MySQL `UNSIGNED` 값을 부호 있는 정수로 읽는 경우, 정수 2를 불리언으로 읽는 경우, PostgreSQL `NaN`을 유한한 float으로 읽는 경우, SQLite 텍스트를 정수로 읽는 경우.
 - **INT-99** 타입이 정해진 읽기는 모든 데이터베이스에서 같은 표현으로 각 열을 선언된 타입으로 돌려준다. 16비트 정수는 정수로, uuid는 텍스트로, `time(3)`은 소수 3자리의 텍스트로, date는 날짜로 돌려준다. 삽입이 생략한 열은 모든 데이터베이스에서 데이터베이스 기본값을 가진다.
 - **INT-100** Rust 네이티브 모델 생성: 같은 문서 집합의 모델을 두 번 생성하면 같은 모델, manifest, 외부 텍스트가 나온다. 같은 문서로 crate가 빌드한 모델은, 빌드의 경로를 생성의 경로로 바꾸면 생성된 모델과 같다.
-- **INT-101** precision 없이 선언된 `time`·`datetime` 열은 방언의 기본 정밀도를 가진다: MySQL은 0, PostgreSQL은 6. MySQL은 6을 넘는 정밀도를 거부하며(DIA-54), PostgreSQL은 선언된 정밀도를 선언대로 읽는다.
+- **INT-101** precision 없이 선언된 `time`·`datetime` 열은 방언의 기본 정밀도를 가진다: MySQL은 0, PostgreSQL은 6. MySQL은 6을 넘는 정밀도를 거부하며(DIA-54), PostgreSQL은 선언된 정밀도를 선언대로 읽는다. 선언된 정밀도보다 많은 소수 자릿수를 가진 `time`·`datetime` 값을 쓰는 typed 카탈로그 쓰기는 문을 실행하기 전에 `CODEC_ENCODE`로 실패한다.
 - **INT-102** 그리드 부동소수 셀은 값의 네이티브 IEEE-754 비트를 가진다(`Float32(u32)`, `Float64(u64)`). 음의 0과 비유한 값을 보존하며 JSON 숫자 강제 변환을 하지 않는다. MySQL unsigned 값은 부호 없는 64비트 범위 전체를 보존하는 `Unsigned(u64)` 셀이다.
-- **INT-103** 시간 그리드 셀은 값의 dbspec 텍스트 형식을 가진다: `Date`는 `YYYY-MM-DD`, `Time`은 `HH:MM:SS`, `DateTime`은 UTC의 `YYYY-MM-DD HH:MM:SS`이며 각각 소수 자릿수를 갖는다. 기술된 테이블의 읽기는 열이 선언한 정밀도 p를 정확히 쓴다. 선언이 없는 읽기 전용 그리드 조회는 여섯 자리를 쓰며, SQLite에서는 저장된 텍스트와 각 값의 저장 클래스를 그대로 둔다. MySQL `TIMESTAMP`와 PostgreSQL `timestamptz`, `timetz`는 미지원이며 `CATALOG_VALUE`로 실패하고, 그 NULL은 null 셀이다. 00:00:00부터 23:59:59.999999 밖의 시각, 0001-01-01부터 9999-12-31 밖의 날짜, PostgreSQL infinity는 실패하며, 기술된 테이블의 SQLite 텍스트가 dbspec 형식이 아니면 `GRID_TEMPORAL_VALUE`로 실패한다.
-- **INT-104** 읽기 전용 그리드 조회와 일반 읽기 전용 조회는 모든 데이터베이스에서 데이터베이스가 강제하는 읽기 전용 범위 안에서 실행되며, 일반 읽기 전용 조회의 쓰는 문은 `QUERY_READ_ONLY`로 실패한다.
+- **INT-103** 시간 그리드 셀은 값의 dbspec 텍스트 형식을 가진다: `Date`는 `YYYY-MM-DD`, `Time`은 `HH:MM:SS`, `DateTime`은 UTC의 `YYYY-MM-DD HH:MM:SS`이며 각각 소수 자릿수를 갖는다. 기술된 테이블의 읽기는 열이 선언한 정밀도 p를 정확히 쓴다. 선언이 없는 읽기 전용 그리드 조회는 여섯 자리를 쓰며, SQLite에서는 저장된 텍스트와 각 값의 저장 클래스를 그대로 둔다. MySQL `TIMESTAMP`와 PostgreSQL `timestamptz`, `timetz`는 미지원이며 `CATALOG_VALUE`로 실패하고, 그 NULL은 null 셀이다. 00:00:00부터 23:59:59.999999 밖의 시각, 0001-01-01부터 9999-12-31 밖의 날짜, PostgreSQL infinity는 `GRID_TEMPORAL_VALUE`로 실패하며, 기술된 테이블의 SQLite 텍스트가 dbspec 형식이 아니면 `GRID_TEMPORAL_VALUE`로 실패한다.
+- **INT-104** 읽기 전용 그리드 조회와 일반 읽기 전용 조회는 모든 데이터베이스에서 데이터베이스가 강제하는 읽기 전용 범위 안에서 실행되며, 일반 읽기 전용 조회의 쓰는 문은 `QUERY_READ_ONLY`로 실패하며, 데이터베이스의 읽기 전용 범위가 거부하는 쓰기, 예컨대 쓰는 루틴을 그리드 조회에서 호출하는 것도 `QUERY_READ_ONLY`로 실패한다.
 - **INT-105** `polyspec-orm-build`의 커밋 허가(permit)는 거부된 네이티브 insert, update, delete를 롤백한다. 커밋 성공이 되는 일은 없다.
 - **INT-106** 네이티브 update는 새 트랜잭션에서 원본 행을 키로 잠그고, descriptor와 원본 행을 비교하며, 커밋 전에 기록 후 값이 정확한지 검증한다. 검증이 실패하거나 커밋 전에 취소되면 롤백한다. InnoDB가 아닌 MySQL 테이블과 트리거가 있는 MySQL 테이블은 거부된다.
 - **INT-107** 행 기준(baseline)은 정확한 타입 값을 비교한다: 부동소수 비트, decimal scale, 이진 바이트, 생성 열의 원본 값. 이 중 하나라도 다르면 충돌이다.
