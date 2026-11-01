@@ -3774,6 +3774,30 @@
       ]
     },
     {
+      "id": "dbspec-render-physical",
+      "kind": "feature",
+      "requirements": [
+        "DIA-113"
+      ],
+      "bindings": [
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-render-physical.mjs",
+          "id": "types-and-defaults"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/dbspec_render_physical.py",
+          "id": "types-and-defaults"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/dbspec_render_physical.rs",
+          "id": "render_physical"
+        }
+      ]
+    },
+    {
       "id": "ts-dbspec-plan",
       "kind": "feature",
       "requirements": [

@@ -1,6 +1,6 @@
 // dbspec rendered statements, physical run (tests/dbspec/ddl.json "behavior" steps): every case with
 // behavior steps applies its rendered statements to a fresh MySQL database, PostgreSQL schema and SQLite
-// file, then runs the steps of the vector. Requirement: B2-6 (check-recipes CR16-1).
+// file, then runs the steps of the vector. Requirement: DIA-113 (check-recipes CR16-1).
 //
 // Usage: ORM_TEST_MYSQL_SERVER_DSN=... ORM_TEST_POSTGRES_SERVER_DSN=... node --test packages/ts/tests/dbspec-render-physical.mjs
 // Each DSN is required; the run fails naming the variable that is unset.

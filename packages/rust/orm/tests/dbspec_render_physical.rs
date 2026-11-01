@@ -2,7 +2,7 @@
 //! behavior steps is rendered for MySQL, PostgreSQL and SQLite, applied to an empty database of that dialect,
 //! and its steps run: a statement that must succeed or, with `fails`, must fail, and a query whose first value
 //! equals `want`. A test fails when ORM_TEST_MYSQL_SERVER_DSN or ORM_TEST_POSTGRES_SERVER_DSN is unset.
-//! Requirement: B2-6 (check-recipes CR16-1-2).
+//! Requirement: DIA-113 (check-recipes CR16-1-2).
 
 #[path = "common/or_panic.rs"]
 mod or_panic;
@@ -45,7 +45,7 @@ fn behavior_cases() -> Vec<(String, BTreeMap<String, String>, Vec<Value>)> {
         .collect()
 }
 
-// Requirement: B2-6.
+// Requirement: DIA-113.
 async fn render_physical() {
     let mut servers = Servers::open("render").await;
     let cases = behavior_cases();
