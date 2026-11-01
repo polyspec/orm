@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 281560be0dbc2e8a6ca2885b25af647dbb925ea3fcad5df48416dc3ca135bcff -->
+<!-- source-sha256: ae246f85e611f0f2cb7106216aae133c58644c61130fe100cc4c76e3b1497270 -->
 # 변경 이력
 
 ## Unreleased
@@ -39,18 +39,14 @@
 - bind vector의 slot 픽스처 `tests/bind/slots.dbs`와 그 set `tests/bind/dbspec-set.json`은 `tests/bind/vectors.json`의 parameter slot마다 컬럼 하나를 가진 테이블 하나를 둔다. 모델은 모델을 쓰는 make 대상이 생성한다(Go와 PHP는 모델 목록, TypeScript는 빌드, Python은 `bind-python-models`, Rust는 tests crate의 build script). `make bind-models-check`가 이를 검사한다 (T334-3-15-3a).
 - recipe schema에 비유한 binary64 wrapper `{"f64": "NaN" | "Infinity" | "-Infinity"}`를 더했고, 여섯 recipe helper가 각각 그 수의 host 값으로 바꾼다. 유한한 수는 `float` wrapper를 그대로 쓴다 (T334-3-15-3b).
 - Rust runner는 공유 DDL vector의 behavior step을 MySQL, PostgreSQL, SQLite에서 실행하고, 서버 DSN이 빠지면 그 이름을 대며 실패한다. 전에는 rendered statement만 만들었다 (CR16-1-2).
-- TypeScript의 catalog_connection 시험은 connect, describe, close, reconnect, revision, snapshot, bind와 grid cell 값을 확인했으나 공유 recipe가 그것을 표현하지 못했다. 이제 recipe가 그것을 case로 가지며, catalog.connect, catalog.close, catalog.reconnect, catalog.revision op, describe의 native type, nullable, generated, automatic key, default field, row_snapshot의 keys와 key_indexes field, page_with 입력, 쌍의 목록인 assignment, read_only_query의 binds, float, unsigned, binary cell wrapper를 가진다. TypeScript runner는 MySQL, PostgreSQL, SQLite에서 그것을 실행하고, 그것이 소유하는 native assertion은 제거되었다(T334-3-3-2-1).
-- TypeScript의 catalog_connection 시험은 5000행 교차 결합의 stream 예산, byte 예산, float4 비트, temporal 정밀도와 SQLite temporal 규칙, grid 거부, 지원하지 않는 DSN, MySQL SYSTEM VIEW, 캡처된 셀과 null·빈 텍스트 읽기를 여전히 native로 단언했다. 이제 recipe가 이들을 case로 가지며, op catalog.row_cells와 model.read_bind_cell, field only·row_count·columns·kind·columns_present로 표현한다. 선언된 정밀도를 넘는 쓰기는 문을 실행하기 전에 CODEC_ENCODE로 실패하고, 읽기 범위가 쓰는 루틴을 거부하면 QUERY_READ_ONLY로 실패하며, TypeScript catalog는 드라이버의 읽기 전용 거부를 그 code로 옮긴다(T334-3-3-2-1).
 - TypeScript, Python, Rust의 physical DDL behavior 시험이 config/parity.json에 binding이 없어 parity-declarations-check가 binding 없는 test로 보고했다. 이 시험들을 DIA-113을 인용하는 feature unit dbspec-render-physical로 선언하고, 각 시험이 그 요구사항을 이름으로 적는다 (CR16-1-5).
-- 공유 catalog_connection recipe의 Go runner가 MySQL, PostgreSQL, SQLite에서 recipe의 모든 op와 필드를 실행한다. 행 snapshot은 이제 명세가 적은 키, 키 위치, 캡처된 셀을 내보내고, 읽기 예산은 결과의 나머지를 읽지 않고 질의를 멈춘다. 드라이버의 읽기 전용 거부는 QUERY_READ_ONLY, 하루 밖의 시간은 GRID_TEMPORAL_VALUE이며, MySQL YEAR는 grid 셀이 없고, 선언한 정밀도를 넘는 시간은 어떤 문장보다 먼저 CODEC_ENCODE로 실패한다 (T334-3-3-2-2).
-- 공유 catalog_connection recipe의 PHP runner가 MySQL, PostgreSQL, SQLite에서 recipe의 모든 op와 필드를 실행한다. catalog의 updateRow와 insertRow는 map과 함께 `[이름, 값]` 쌍의 목록으로 값을 받으므로, 반복된 열이 catalog에 도달해 쓰기 전에 ROW_UPDATE_INVALID 또는 ROW_INSERT_INVALID로 거부된다(INT-111). MySQL 읽기 예산은 서버 질의의 connection id로 질의를 KILL하여 멈추고, PostgreSQL 읽기는 cursor로 스트림하므로 예산에서 멈출 때 결과의 나머지를 읽지 않는다(T334-3-3-2-3).
 - duplication check가 공용 test 코드의 clone 세 개를 찾았다. PgsqlStatementAdapter와 CatalogAnswerStatement의 PHP fetchAll은 trait FetchesAllRows가 되었고, Rust dbspec test의 parse_set은 probe 모듈 tests/common/dbspec_probe.rs에 있으며, TypeScript의 within helper는 둘이 함께 쓰는 tests/deadline.mjs에 있다 (CR27).
 - PHP render test는 tests/dbspec/ddl.json의 statement만 확인하고 behavior step은 확인하지 않았다. 이제 그 step을 MySQL, PostgreSQL, SQLite에서 실행하며, 서버 DSN이 빠지면 그 이름을 대며 실패한다 (CR16-1-3).
 - php-extension render test는 tests/dbspec/ddl.json의 statement만 확인하고 behavior step은 확인하지 않았다. 이제 그 make target이 extension으로 step을 MySQL, PostgreSQL, SQLite에서 실행하며, 서버 DSN이 빠지면 그 이름을 대며 실패한다 (CR16-1-4).
 - Go runner의 DDL behavior는 tests/dbspec/ddl.json의 step을 세 database에서 internal package 안에서만 실행해서, client package에는 이를 확인하는 시험이 없었다. 이제 client 시험이 statement와 step을 client의 database driver로 실행하고, make target dbspec-go-check/render-physical은 서버 DSN이 빠지면 그 이름을 대며 실패하며, parity가 이 시험을 dbspec-render-physical의 Go 시험으로 binding한다 (CR16-1-6).
 - 통합된 check-recipes tree의 interface snapshot이 오래되어, go, php, typescript의 symbol에서 interface self-test가 실패했다. contracts/interfaces.json과 php, typescript의 symbol snapshot을 통합된 tree에서 다시 생성했다 (CR28).
 - Go client의 DDL behavior 시험과 같은 vector의 외부 oracle이 tests/dbspec/ddl.json을 각자의 decode와 version 검사로 읽어 duplication check의 clone이 되었다. 둘 다 이제 공용 loader internal/dbspec/ddlcases로 읽는다 (CR29).
-- catalog recipe row의 API surface가 선언되지 않았다. Go의 CatalogRowSnapshot 접근자 Keys, KeyIndexes, CapturedCells와 PHP 속성 CatalogColumn::$checkPrecision이다. catalog API unit이 이들을 INT-108과 INT-117 아래 선언한다 (CR30).
+- 통합에는 TypeScript와 PHP helper만 구현한 catalog recipe op가 있어서, Go, Python, Rust, PHP extension의 catalog-connection-check가 실패했다. 그 catalog 행과 parity 선언은 되돌려 다른 runtime과 함께 들어오게 하고, 그 행만 쓰던 TypeScript deadline helper는 지운다. (CR33)
 
 ## 0.0.21
 

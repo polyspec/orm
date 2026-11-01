@@ -189,21 +189,12 @@ func catalogRead[T any](ctx context.Context, c *CatalogConnection, fn func(s *ca
 	}
 	value, err := fn(s)
 	if err != nil {
-		return zero, refusedRead(s.end(err))
+		return zero, s.end(err)
 	}
 	if err := s.end(nil); err != nil {
 		return zero, err
 	}
 	return value, nil
-}
-
-// refusedRead maps a write that the database's read-only scope refuses to QUERY_READ_ONLY (INT-104), such as a routine that
-// writes, as the TypeScript client does.
-func refusedRead(err error) error {
-	if ErrorCode(err) == "READ_ONLY" {
-		return catalogErr(catalogCodeReadOnly, "%v", err)
-	}
-	return err
 }
 
 // catalogWrite runs fn in a writable transaction. A failed fn rolls back. A commit that the database rejects rolls back
@@ -279,21 +270,11 @@ type catalogRaw struct {
 
 // queryRaw reads a bounded result. It fails when the result has more than maxRows rows or more than maxBytes of values.
 func (s *catalogSession) queryRaw(query string, args []any, maxRows int, maxBytes int) (raw catalogRaw, err error) {
-	// The query has its own context: a budget that ends the read cancels it, so that closing the rows does not read the rest
-	// of a result the server still streams (a cross join of the bench table would otherwise run to its end).
-	qctx, cancel := context.WithCancel(s.ctx)
-	defer cancel()
-	rows, err := s.conn.QueryContext(qctx, query, args...)
+	rows, err := s.conn.QueryContext(s.ctx, query, args...)
 	if err != nil {
 		return catalogRaw{}, mapDriverErrContext(err, s.ctx)
 	}
-	stopped := false
 	defer func() {
-		if stopped {
-			cancel()
-			rows.Close()
-			return
-		}
 		if closeErr := rows.Close(); closeErr != nil {
 			raw, err = catalogRaw{}, errors.Join(err, mapDriverErrContext(closeErr, s.ctx))
 		}
@@ -313,7 +294,6 @@ func (s *catalogSession) queryRaw(query string, args []any, maxRows int, maxByte
 	budget := 0
 	for rows.Next() {
 		if len(raw.rows) == maxRows {
-			stopped = true
 			return catalogRaw{}, catalogErr("CATALOG_LIMIT", "result has more than %d rows", maxRows)
 		}
 		values := make([]any, len(names))
@@ -328,7 +308,6 @@ func (s *catalogSession) queryRaw(query string, args []any, maxRows int, maxByte
 			budget += catalogSize(value)
 		}
 		if budget > maxBytes {
-			stopped = true
 			return catalogRaw{}, catalogErr("CATALOG_LIMIT", "result has more than %d bytes of values", maxBytes)
 		}
 		raw.rows = append(raw.rows, values)

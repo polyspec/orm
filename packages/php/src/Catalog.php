@@ -172,64 +172,44 @@ final class Catalog
     {
         $this->assertOpen();
         if ($this->gridLink === null) {
-            $this->gridLink = $this->openMysqli();
+            $target = $this->mysqlTarget
+                ?? throw new OrmException(Code::CONFIG, 'the catalog connection has no MySQL target');
+            try {
+                $link = mysqli_init();
+                if (!$link instanceof \mysqli) {
+                    throw new OrmException(Code::DRIVER, 'cannot initialize the MySQL grid connection');
+                }
+                $flags = 0;
+                if ($target['sslCa'] !== null) {
+                    if (!$link->ssl_set(null, null, $target['sslCa'], null, null)) {
+                        throw new OrmException(Code::CONFIG, 'cannot set the MySQL grid connection CA');
+                    }
+                    if (!$link->options(MYSQLI_OPT_SSL_VERIFY_SERVER_CERT, true)) {
+                        throw new OrmException(Code::CONFIG, 'cannot verify the MySQL grid server certificate');
+                    }
+                    $flags = MYSQLI_CLIENT_SSL;
+                }
+                if (
+                    !$link->real_connect(
+                        $target['host'] ?? 'localhost',
+                        $target['user'],
+                        $target['password'],
+                        $target['database'],
+                        (int) $target['port'],
+                        $target['socket'] ?? null,
+                        $flags
+                    )
+                ) {
+                    throw new \mysqli_sql_exception($link->connect_error ?? 'MySQL grid connection failed');
+                }
+                $link->set_charset('utf8mb4');
+                $link->query("SET time_zone = '+00:00'");
+            } catch (\mysqli_sql_exception $e) {
+                throw OrmException::fromMysqli($e);
+            }
+            $this->gridLink = $link;
         }
         return $this->gridLink;
-    }
-
-    /** Opens one MySQL connection with the target of the DSN, the TLS settings included and the UTC session. */
-    private function openMysqli(): \mysqli
-    {
-        $target = $this->mysqlTarget
-            ?? throw new OrmException(Code::CONFIG, 'the catalog connection has no MySQL target');
-        try {
-            $link = mysqli_init();
-            if (!$link instanceof \mysqli) {
-                throw new OrmException(Code::DRIVER, 'cannot initialize the MySQL grid connection');
-            }
-            $flags = 0;
-            if ($target['sslCa'] !== null) {
-                if (!$link->ssl_set(null, null, $target['sslCa'], null, null)) {
-                    throw new OrmException(Code::CONFIG, 'cannot set the MySQL grid connection CA');
-                }
-                if (!$link->options(MYSQLI_OPT_SSL_VERIFY_SERVER_CERT, true)) {
-                    throw new OrmException(Code::CONFIG, 'cannot verify the MySQL grid server certificate');
-                }
-                $flags = MYSQLI_CLIENT_SSL;
-            }
-            if (
-                !$link->real_connect(
-                    $target['host'] ?? 'localhost',
-                    $target['user'],
-                    $target['password'],
-                    $target['database'],
-                    (int) $target['port'],
-                    $target['socket'] ?? null,
-                    $flags
-                )
-            ) {
-                throw new \mysqli_sql_exception($link->connect_error ?? 'MySQL grid connection failed');
-            }
-            $link->set_charset('utf8mb4');
-            $link->query("SET time_zone = '+00:00'");
-        } catch (\mysqli_sql_exception $e) {
-            throw OrmException::fromMysqli($e);
-        }
-        return $link;
-    }
-
-    /**
-     * Stops the statement that a budget ended on the server: KILL QUERY on a second connection, so that the
-     * budgeted connection stays usable. The catalog is not poisoned, unlike a Cancellation signal.
-     */
-    private function killQuery(int $connectionId): void
-    {
-        $killer = $this->openMysqli();
-        try {
-            $killer->query('KILL QUERY ' . $connectionId);
-        } finally {
-            $killer->close();
-        }
     }
 
 
@@ -239,7 +219,6 @@ final class Catalog
      */
     public function currentNamespace(): string
     {
-        $this->assertOpen();
         if ($this->dialect === 'sqlite') {
             return 'main';
         }
@@ -419,14 +398,10 @@ final class Catalog
      * commits. Every supplied value must read back exactly. A supported database-owned key may be omitted when the
      * database returns its generated row in the same transaction.
      *
-     * The values are a list of [name, value] pairs, or a map of column name => value. A repeated name in the list is
-     * refused with ROW_INSERT_INVALID before any write (INT-111).
-     *
-     * @param list<array{string, mixed}>|array<string, mixed> $values
+     * @param array<string, mixed> $values column name => value
      */
     public function insertRow(CatalogTableMetadata $declared, array $values): CatalogResult
     {
-        self::checkWritePrecision($this->dialect, $declared, $values);
         $keyIndexes = self::descriptorKeys($declared);
         $changes = self::changes($declared, $values, Code::ROW_INSERT_INVALID);
         $provided = [];
@@ -659,14 +634,10 @@ final class Catalog
      * it, compares it with the snapshot and then writes. After the write it re-reads the row by its resulting keys and
      * requires every ordinary column to hold the value that was written. A failed check rolls back.
      *
-     * The values are a list of [name, value] pairs, or a map of column name => value. A repeated name in the list is
-     * refused with ROW_UPDATE_INVALID before any write (INT-111).
-     *
-     * @param list<array{string, mixed}>|array<string, mixed> $values
+     * @param array<string, mixed> $values column name => value
      */
     public function updateRow(CatalogRowSnapshot $original, array $values): CatalogResult
     {
-        self::checkWritePrecision($this->dialect, $original->metadata, $values);
         self::validSnapshot($original);
         $changes = self::changes($original->metadata, $values, Code::ROW_UPDATE_INVALID);
         $updated = $original->cells;
@@ -823,14 +794,8 @@ final class Catalog
     /** @param list<mixed> $args */
     private function mysqlGridRun(\mysqli $link, string $sql, array $args, int $maxRows, int $maxBytes): CatalogResult
     {
-        // A query without parameters reads its rows as the server sends them (MYSQLI_USE_RESULT), so a budget stops it
-        // before the rest of a result is read. A query with parameters is a prepared statement, which buffers its result.
-        $connectionId = $link->thread_id;
-        if ($args === []) {
-            $link->real_query($sql);
-            $result = $link->use_result();
-        } else {
-            $statement = $link->prepare($sql);
+        $statement = $link->prepare($sql);
+        if ($args !== []) {
             $types = '';
             foreach ($args as $arg) {
                 $types .= match (true) {
@@ -840,58 +805,28 @@ final class Catalog
                 };
             }
             $statement->bind_param($types, ...$args);
-            $statement->execute();
-            $result = $statement->get_result();
         }
-        if ($result === false || $result === null) {
+        $statement->execute();
+        $result = $statement->get_result();
+        if ($result === false) {
             throw new OrmException(Code::DRIVER, 'the grid query returned no result set');
         }
         $fields = $result->fetch_fields();
         $names = array_map(static fn (object $field): string => $field->name, $fields);
-        try {
-            $rows = $this->boundedRows(
-                static fn (): array|false => $result->fetch_row() ?? false,
-                $maxRows,
-                $maxBytes,
-                static function (array $row) use ($fields): array {
-                    $cells = [];
-                    foreach ($row as $i => $value) {
-                        $cells[] = self::mysqlGridCell($value, $fields[$i]);
-                    }
-                    return $cells;
-                },
-                // mysqli returns numbers as text; a number costs 8 bytes, as a value of any other driver does.
-                static fn (array $row): array => array_map(
-                    static fn (mixed $value, int $i): int => is_string($value) && !self::numericField($fields[$i])
-                        ? strlen($value)
-                        : 8,
-                    $row,
-                    array_keys($row)
-                )
-            );
-        } catch (\Throwable $stop) {
-            if ($stop instanceof OrmException && $stop->code_ === Code::CATALOG_LIMIT) {
-                // The server ends the stopped query; the interrupted result is freed, and its error is the expected end.
-                $this->killQuery($connectionId);
+        $rows = $this->boundedRows(
+            static fn (): array|false => $result->fetch_row() ?? false,
+            $maxRows,
+            $maxBytes,
+            static function (array $row) use ($fields): array {
+                $cells = [];
+                foreach ($row as $i => $value) {
+                    $cells[] = self::mysqlGridCell($value, $fields[$i]);
+                }
+                return $cells;
             }
-            // A failed row leaves the result unread; freeing it returns the link to the transaction that ends it.
-            try {
-                $result->free();
-            } catch (\mysqli_sql_exception) {
-            }
-            throw $stop;
-        }
+        );
         $result->free();
         return new CatalogResult($names, $rows);
-    }
-
-    /** Whether a MySQL field holds an integer or a float, which mysqli returns as text. */
-    private static function numericField(object $field): bool
-    {
-        return in_array((int) $field->type, [
-            MYSQLI_TYPE_TINY, MYSQLI_TYPE_SHORT, MYSQLI_TYPE_LONG, MYSQLI_TYPE_LONGLONG, MYSQLI_TYPE_INT24,
-            MYSQLI_TYPE_FLOAT, MYSQLI_TYPE_DOUBLE,
-        ], true);
     }
 
     /** The grid cell of one MySQL value, by the type, the UNSIGNED flag and the charset of its field (mysqli). */
@@ -914,10 +849,9 @@ final class Catalog
             MYSQLI_TYPE_SHORT,
             MYSQLI_TYPE_LONG,
             MYSQLI_TYPE_LONGLONG,
-            MYSQLI_TYPE_INT24
+            MYSQLI_TYPE_INT24,
+            MYSQLI_TYPE_YEAR
                 => self::integerCell($value, $unsigned),
-            // A MySQL YEAR has no grid cell (Go's rule for the YEAR native type, also an expression's YEAR()).
-            MYSQLI_TYPE_YEAR => throw self::refused('MySQL YEAR has no grid cell'),
             default => $binary ? new CatalogGridCell('binary', self::bytes($value))
                 : new CatalogGridCell('text', self::utf8Text($value)),
         };
@@ -943,9 +877,6 @@ final class Catalog
     private function gridQuery(\PDO $pdo, string $sql, array $args, int $maxRows, int $maxBytes): array
     {
         try {
-            if ($this->dialect === 'postgres' && $args === []) {
-                return $this->cursorGrid($pdo, $sql, $maxRows, $maxBytes);
-            }
             $st = $this->prepareQuery($pdo, $sql, $args);
             $names = [];
             $columns = [];
@@ -1207,10 +1138,7 @@ final class Catalog
             preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $text, $m) !== 1 || (int) $m[1] < 1
             || !checkdate((int) $m[2], (int) $m[3], (int) $m[1])
         ) {
-            throw new OrmException(
-                Code::GRID_TEMPORAL_VALUE,
-                "unsupported grid value: date \"$text\" is outside 0001-01-01 to 9999-12-31 or is not a date"
-            );
+            throw self::refused("date \"$text\" is outside 0001-01-01 to 9999-12-31 or is not a date");
         }
         return $text;
     }
@@ -1218,22 +1146,11 @@ final class Catalog
     /** A dbspec time, HH:MM:SS.ffffff: a time of day from 00:00:00 to 23:59:59.999999. */
     private static function timeText(string $text): string
     {
-        // A negative time, such as the MySQL CAST of -01:00:00, is outside the day, not a malformed value.
-        if (preg_match('/^-\d/', $text) === 1) {
-            throw new OrmException(
-                Code::GRID_TEMPORAL_VALUE,
-                'unsupported grid value: time outside 00:00:00 to 23:59:59.999999'
-            );
-        }
         if (preg_match('/^(\d{2,3}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?$/', $text, $m) !== 1) {
-            throw new OrmException(Code::GRID_TEMPORAL_VALUE, "unsupported grid value: time \"$text\" is not a time of day");
+            throw self::refused("time \"$text\" is not a time of day");
         }
         if ((int) $m[1] > 23 || (int) $m[2] > 59 || (int) $m[3] > 59) {
-            // A time outside its day is a temporal value the grid refuses (docs/spec/errors.yaml), not a refused type.
-            throw new OrmException(
-                Code::GRID_TEMPORAL_VALUE,
-                'unsupported grid value: time outside 00:00:00 to 23:59:59.999999'
-            );
+            throw self::refused('time outside 00:00:00 to 23:59:59.999999');
         }
         return sprintf('%02d:%02d:%02d.%s', (int) $m[1], (int) $m[2], (int) $m[3], str_pad($m[4] ?? '', 6, '0'));
     }
@@ -1243,8 +1160,7 @@ final class Catalog
     {
         $space = strpos($text, ' ');
         if ($space === false) {
-            // PostgreSQL infinity has no date and time: the grid refuses it as a temporal value.
-            throw new OrmException(Code::GRID_TEMPORAL_VALUE, "unsupported grid value: datetime \"$text\" has no date and time");
+            throw self::refused("datetime \"$text\" has no date and time");
         }
         return self::dateText(substr($text, 0, $space)) . ' ' . self::timeText(substr($text, $space + 1));
     }
@@ -1374,8 +1290,7 @@ final class Catalog
         \Closure $fetch,
         int $maxRows,
         int $maxBytes,
-        ?\Closure $transform = null,
-        ?\Closure $sizes = null
+        ?\Closure $transform = null
     ): array {
         $rows = [];
         $budget = 0;
@@ -1383,12 +1298,9 @@ final class Catalog
             if (count($rows) === $maxRows) {
                 throw new OrmException(Code::CATALOG_LIMIT, "result has more than $maxRows rows");
             }
-            // $sizes gives the bytes of each value of a row whose values the driver returns as text (MySQL numbers).
-            $cellSizes = $sizes !== null ? $sizes($row) : array_map(
-                static fn (mixed $value): int => is_string($value) ? strlen($value) : 8,
-                $row
-            );
-            $budget += array_sum($cellSizes);
+            foreach ($row as $value) {
+                $budget += is_string($value) ? strlen($value) : 8;
+            }
             if ($budget > $maxBytes) {
                 throw new OrmException(Code::CATALOG_LIMIT, "result has more than $maxBytes bytes of values");
             }
@@ -1397,69 +1309,11 @@ final class Catalog
         return $rows;
     }
 
-    /**
-     * The MySQL buffering attribute: PHP 8.5 names it on Pdo\Mysql and deprecates the PDO constant.
-     */
-    private static function bufferedQueryAttribute(): int
+    /** @param list<mixed> $args */
+    private function prepareQuery(\PDO $pdo, string $sql, array $args): \PDOStatement
     {
-        return class_exists(\Pdo\Mysql::class)
-            ? \Pdo\Mysql::ATTR_USE_BUFFERED_QUERY
-            : \PDO::MYSQL_ATTR_USE_BUFFERED_QUERY;
-    }
-
-    /**
-     * @param list<mixed> $args
-     * @param bool $streamed reads the rows as they are fetched: MySQL buffers a result by default, which would read a
-     *                       whole result before a row or byte budget can stop it
-     */
-    private function prepareQuery(\PDO $pdo, string $sql, array $args, bool $streamed = false): \PDOStatement
-    {
-        // The driver reads the buffering mode when it executes, so a streamed read sets it on the connection first.
-        $unbuffered = $streamed && $this->dialect === 'mysql';
-        if ($unbuffered) {
-            $pdo->setAttribute(self::bufferedQueryAttribute(), false);
-        }
-        try {
-            // PDO binds only the ? and :name placeholders, so a PostgreSQL $n is rewritten to ? and the parameters are
-            // ordered by the placeholders in the order they occur (a repeated $n binds its value again).
-            if ($this->dialect === 'postgres' && preg_match('/\$\d+/', $sql) === 1) {
-                $ordered = [];
-                $sql = preg_replace_callback(
-                    '/\$(\d+)/',
-                    static function (array $m) use ($args, &$ordered): string {
-                        $at = (int) $m[1] - 1;
-                        if (!array_key_exists($at, $args)) {
-                            throw new OrmException(Code::DRIVER, "placeholder \${$m[1]} has no parameter");
-                        }
-                        $ordered[] = $args[$at];
-                        return '?';
-                    },
-                    $sql
-                );
-                $args = $ordered;
-            }
-            $statement = $pdo->prepare($sql);
-            // Each parameter keeps its PHP type where the driver binds it: execute() would bind every value as a string,
-            // and an integer would come back as text. PostgreSQL's execute() binds its parameters as text, which its
-            // casts in the statement read.
-            if ($this->dialect === 'postgres') {
-                $statement->execute($args);
-                return $statement;
-            }
-            foreach ($args as $at => $arg) {
-                $statement->bindValue($at + 1, $arg, match (true) {
-                    is_int($arg) => \PDO::PARAM_INT,
-                    is_bool($arg) => \PDO::PARAM_BOOL,
-                    $arg === null => \PDO::PARAM_NULL,
-                    default => \PDO::PARAM_STR,
-                });
-            }
-            $statement->execute();
-        } finally {
-            if ($unbuffered) {
-                $pdo->setAttribute(self::bufferedQueryAttribute(), true);
-            }
-        }
+        $statement = $pdo->prepare($sql);
+        $statement->execute($args);
         return $statement;
     }
 
@@ -1505,169 +1359,22 @@ final class Catalog
     private function query(\PDO $pdo, string $sql, array $args, int $maxRows, int $maxBytes): array
     {
         try {
-            if ($this->dialect === 'postgres' && $args === []) {
-                return $this->cursorQuery($pdo, $sql, $maxRows, $maxBytes);
+            $st = $this->prepareQuery($pdo, $sql, $args);
+            $names = [];
+            $types = [];
+            for ($i = 0, $n = $st->columnCount(); $i < $n; $i++) {
+                $meta = $st->getColumnMeta($i);
+                $names[] = (string) ($meta['name'] ?? '');
+                $types[] = strtoupper((string) ($meta['native_type'] ?? ''));
             }
-            // A MySQL budget stop kills the server query by its connection id, which is read before the query runs.
-            $connectionId = null;
-            if ($this->dialect === 'mysql') {
-                $idStatement = $pdo->prepare('SELECT CONNECTION_ID()');
-                $idStatement->execute();
-                $idRow = $idStatement->fetch(\PDO::FETCH_NUM);
-                $id = is_array($idRow) ? $idRow[0] : null;
-                $connectionId = is_numeric($id) ? (int) $id : null;
-            }
-            $st = $this->prepareQuery($pdo, $sql, $args, true);
-            try {
-                $names = [];
-                $types = [];
-                for ($i = 0, $n = $st->columnCount(); $i < $n; $i++) {
-                    $meta = $st->getColumnMeta($i);
-                    $names[] = (string) ($meta['name'] ?? '');
-                    $types[] = strtoupper((string) ($meta['native_type'] ?? ''));
-                }
-                $rows = $this->boundedRows(
-                    static fn (): array|false => $st->fetch(\PDO::FETCH_NUM),
-                    $maxRows,
-                    $maxBytes
-                );
-            } catch (OrmException $stop) {
-                $stopped = $connectionId !== null && $stop->code_ === Code::CATALOG_LIMIT;
-                if ($stopped) {
-                    $this->killQuery($connectionId);
-                }
-                throw $stop;
-            } finally {
-                // A budget that stops the read leaves the rest of the result unread. The killed query ends its cursor
-                // with an interrupted error, which is the expected end of a stop, so only a failure without a stop is raised.
-                try {
-                    $st->closeCursor();
-                } catch (\PDOException $cursorError) {
-                    if (empty($stopped)) {
-                        throw $cursorError;
-                    }
-                }
-            }
+            $rows = $this->boundedRows(
+                static fn (): array|false => $st->fetch(\PDO::FETCH_NUM),
+                $maxRows,
+                $maxBytes
+            );
             return ['names' => $names, 'types' => $types, 'rows' => $rows];
         } catch (\PDOException $e) {
             throw $this->db->driverError($e);
-        }
-    }
-
-    /**
-     * Reads a PostgreSQL result without parameters through a cursor, in chunks of 256 rows. PDO's PostgreSQL driver
-     * would buffer the whole result before a budget can stop it; a stopped read leaves the rest of the cursor unread,
-     * and the cursor ends with the transaction.
-     *
-     * @return array{names: list<string>, types: list<string>, rows: list<list<mixed>>}
-     */
-    private function cursorQuery(\PDO $pdo, string $sql, int $maxRows, int $maxBytes): array
-    {
-        $names = [];
-        $types = [];
-        $rows = $this->cursorRead(
-            $pdo,
-            $sql,
-            $maxRows,
-            $maxBytes,
-            static function (\PDOStatement $first) use (&$names, &$types): void {
-                for ($i = 0, $n = $first->columnCount(); $i < $n; $i++) {
-                    $meta = $first->getColumnMeta($i);
-                    $names[] = (string) ($meta['name'] ?? '');
-                    $types[] = strtoupper((string) ($meta['native_type'] ?? ''));
-                }
-            },
-            null
-        );
-        return ['names' => $names, 'types' => $types, 'rows' => $rows];
-    }
-
-    /** The PostgreSQL grid query without parameters, read through a cursor. */
-    private function cursorGrid(\PDO $pdo, string $sql, int $maxRows, int $maxBytes): array
-    {
-        $names = [];
-        $natives = [];
-        $rows = $this->cursorRead(
-            $pdo,
-            $sql,
-            $maxRows,
-            $maxBytes,
-            static function (\PDOStatement $first) use (&$names, &$natives): void {
-                for ($i = 0, $n = $first->columnCount(); $i < $n; $i++) {
-                    $meta = $first->getColumnMeta($i) ?: [];
-                    $names[] = (string) ($meta['name'] ?? '');
-                    $natives[] = strtoupper((string) ($meta['native_type'] ?? ''));
-                }
-            },
-            static function (\PDOStatement $st, array $row) use (&$natives): array {
-                $cells = [];
-                foreach ($row as $i => $value) {
-                    $cells[] = self::gridCell($value, 'postgres', $natives[$i], false, false);
-                }
-                return $cells;
-            }
-        );
-        return ['names' => $names, 'rows' => $rows];
-    }
-
-    /**
-     * Reads the rows of one statement through a cursor in chunks of 256 rows. $begin gets the first chunk's statement
-     * once, for the column metadata; $cells, when given, maps each row with the statement of its chunk. A budget stop
-     * ends the read after its chunk, and the transaction ends the cursor.
-     *
-     * @param \Closure(\PDOStatement): void $begin
-     * @param (\Closure(\PDOStatement, list<mixed>): list<mixed>)|null $cells
-     * @return list<list<mixed>>
-     */
-    private function cursorRead(
-        \PDO $pdo,
-        string $sql,
-        int $maxRows,
-        int $maxBytes,
-        \Closure $begin,
-        ?\Closure $cells,
-    ): array {
-        $cursor = 'orm_read_' . bin2hex(random_bytes(6));
-        $pdo->exec("DECLARE $cursor NO SCROLL CURSOR FOR $sql");
-        $chunk = [];
-        $ended = false;
-        $described = false;
-        $current = null;
-        try {
-            return $this->boundedRows(
-                function () use ($pdo, $cursor, $begin, &$chunk, &$ended, &$described, &$current): array|false {
-                    if ($chunk === []) {
-                        if ($ended) {
-                            return false;
-                        }
-                        $current = $pdo->prepare("FETCH FORWARD 256 FROM $cursor");
-                        $current->execute();
-                        if (!$described) {
-                            $begin($current);
-                            $described = true;
-                        }
-                        $chunk = $current->fetchAll(\PDO::FETCH_NUM);
-                        if (count($chunk) < 256) {
-                            $ended = true;
-                        }
-                        if ($chunk === []) {
-                            return false;
-                        }
-                    }
-                    return array_shift($chunk);
-                },
-                $maxRows,
-                $maxBytes,
-                $cells === null ? null : function (array $row) use ($cells, &$current): array {
-                    return $cells($current, $row);
-                }
-            );
-        } finally {
-            // After a stop or a failed transaction the cursor may already be gone; the transaction ends it either way.
-            try {
-                $pdo->exec("CLOSE $cursor");
-            } catch (\PDOException) {
-            }
         }
     }
 
@@ -1766,38 +1473,6 @@ final class Catalog
                     $old->defaultExpression,
                     $old->expressionDefault
                 );
-            }
-        }
-
-        // On SQLite the declared precision of a TIME or DATETIME column is read from its dbspec CHECK (Go's checkPrecision).
-        if ($this->dialect === 'sqlite' && $kind === 'table') {
-            $definition = $this->query(
-                $pdo,
-                "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
-                [$ref['name']],
-                1,
-                self::METADATA_BYTES
-            );
-            $tableSql = $definition['rows'][0][0] ?? null;
-            if (is_string($tableSql)) {
-                foreach ($columns as $i => $column) {
-                    if (!in_array(strtoupper($column->nativeType), ['TIME', 'DATETIME'], true)) {
-                        continue;
-                    }
-                    $precision = self::checkPrecision($tableSql, $column->name);
-                    if ($precision !== null) {
-                        $columns[$i] = new CatalogColumn(
-                            $column->name,
-                            $column->nativeType,
-                            $column->nullable,
-                            $column->generated,
-                            $column->automaticKey,
-                            $column->defaultExpression,
-                            $column->expressionDefault,
-                            $precision,
-                        );
-                    }
-                }
             }
         }
 
@@ -2000,19 +1675,6 @@ final class Catalog
     {
         $rows = self::convertRows($raw, self::nativeTypes($metadata));
         foreach ($metadata->columns as $i => $column) {
-            if ($dialect === 'sqlite' && in_array(strtoupper($column->nativeType), ['TIME', 'DATETIME'], true)) {
-                $kind = strtoupper($column->nativeType) === 'TIME' ? 'time' : 'datetime';
-                foreach ($rows as $r => $row) {
-                    if (!is_string($row[$i])) {
-                        continue;
-                    }
-                    // A CHECK fixes the precision of the value; without one the column has precision 0 (Go's rule), so
-                    // a non-zero fraction digit is refused as GRID_TEMPORAL_PRECISION.
-                    $precision = $column->checkPrecision ?? 0;
-                    $rows[$r][$i] = self::describedTemporal($row[$i], $kind, $precision);
-                }
-                continue;
-            }
             $kind = self::temporalKind($dialect, $column->nativeType);
             if ($kind === null) {
                 continue;
@@ -2048,103 +1710,6 @@ final class Catalog
      * The fraction digits of a described temporal column: the digits that its native type names, as in time(3) or
      * timestamp(3) without time zone, and otherwise the default of the database, 0 on MySQL and 6 on PostgreSQL.
      */
-    /**
-     * The fraction digits that the CHECK of a SQLite column fixes, as Go reads them: a GLOB of n [0-9] classes is n
-     * digits, and a whole-temporal IS time( or IS datetime( check is zero digits. Null when no CHECK names the column.
-     */
-    private static function checkPrecision(string $tableSql, string $column): ?int
-    {
-        $quoted = '"' . str_replace('"', '""', $column) . '"';
-        foreach (self::checkClauses($tableSql) as $clause) {
-            if (!str_contains($clause, $quoted)) {
-                continue;
-            }
-            if (preg_match("/GLOB '((?:\\[0-9\\])*)'/", $clause, $glob) === 1) {
-                return intdiv(strlen($glob[1]), strlen('[0-9]'));
-            }
-            if (preg_match('/IS (time|datetime)\(/', $clause) === 1) {
-                return 0;
-            }
-        }
-        return null;
-    }
-
-    /** The text inside each CHECK ( ... ) of a table definition, balanced over its parentheses. */
-    private static function checkClauses(string $tableSql): array
-    {
-        $clauses = [];
-        if (preg_match_all('/CHECK\s*\(/i', $tableSql, $matches, PREG_OFFSET_CAPTURE) === false) {
-            return $clauses;
-        }
-        foreach ($matches[0] as [$opening, $offset]) {
-            $start = $offset + strlen($opening);
-            $depth = 1;
-            $i = $start;
-            while ($i < strlen($tableSql) && $depth > 0) {
-                if ($tableSql[$i] === '(') {
-                    $depth++;
-                } elseif ($tableSql[$i] === ')') {
-                    $depth--;
-                }
-                $i++;
-            }
-            if ($depth === 0) {
-                $clauses[] = substr($tableSql, $start, $i - 1 - $start);
-            }
-        }
-        return $clauses;
-    }
-
-    /**
-     * A write of a temporal value with a non-zero digit beyond the declared precision of its column fails with
-     * CODEC_ENCODE before any statement runs (docs/spec/errors.yaml). On SQLite the precision is the CHECK of the column.
-     */
-    private static function checkWritePrecision(string $dialect, CatalogTableMetadata $metadata, array $values): void
-    {
-        if (array_is_list($values)) {
-            // The list form names each value by its pair; a name that repeats is refused later, by changes().
-            $map = [];
-            foreach ($values as $pair) {
-                if (is_array($pair) && count($pair) === 2 && is_string($pair[0] ?? null)) {
-                    $map[$pair[0]] = $pair[1];
-                }
-            }
-            $values = $map;
-        }
-        foreach ($metadata->columns as $column) {
-            $value = $values[$column->name] ?? null;
-            if (!is_string($value)) {
-                continue;
-            }
-            $temporal = $dialect === 'sqlite'
-                ? in_array(strtoupper($column->nativeType), ['TIME', 'DATETIME'], true)
-                : self::temporalKind($dialect, $column->nativeType) !== null;
-            if (!$temporal) {
-                continue;
-            }
-            $dot = strpos($value, '.');
-            if ($dot === false) {
-                continue;
-            }
-            if ($dialect === 'sqlite') {
-                // A SQLite column with no CHECK fixes no precision, so it has no write to refuse.
-                if ($column->checkPrecision === null) {
-                    continue;
-                }
-                $precision = $column->checkPrecision;
-            } else {
-                $precision = self::declaredPrecision($dialect, $column->nativeType);
-            }
-            $digits = substr($value, $dot + 1);
-            if (strlen($digits) > $precision && trim(substr($digits, $precision), '0') !== '') {
-                throw new OrmException(
-                    Code::CODEC_ENCODE,
-                    "temporal value \"$value\" has more fraction digits than its precision $precision"
-                );
-            }
-        }
-    }
-
     private static function declaredPrecision(string $dialect, string $nativeType): int
     {
         if (preg_match('/\((\d+)\)/', $nativeType, $match) === 1) {
@@ -2174,20 +1739,9 @@ final class Catalog
         return $precision === 0 ? substr($text, 0, $dot) : substr($text, 0, $dot + 1 + $precision);
     }
 
-    /** A single-precision column holds float32: its value is the float32 nearest to the driver's decimal. */
-    private static function storedFloat(float $value, string $nativeType): float
-    {
-        return in_array(strtoupper($nativeType), ['REAL', 'FLOAT', 'FLOAT4'], true)
-            ? unpack('g', pack('g', $value))[1]
-            : $value;
-    }
-
     private static function value(mixed $value, string $nativeType): mixed
     {
-        if (is_float($value)) {
-            return self::storedFloat($value, $nativeType);
-        }
-        if ($value === null || is_bool($value) || is_int($value)) {
+        if ($value === null || is_bool($value) || is_int($value) || is_float($value)) {
             return $value;
         }
         if (!is_string($value)) {
@@ -2199,7 +1753,7 @@ final class Catalog
                 ? (int) $value
                 : throw new OrmException(Code::CATALOG_VALUE, "integer of native type \"$nativeType\""),
             'float' => is_numeric($value)
-                ? self::storedFloat((float) $value, $nativeType)
+                ? (float) $value
                 : throw new OrmException(Code::CATALOG_VALUE, "float of native type \"$nativeType\""),
             default => self::isUtf8($value)
                 ? $value
@@ -2263,26 +1817,9 @@ final class Catalog
         if ($values === [] || count($values) > count($metadata->columns)) {
             throw new OrmException($code, 'invalid column assignments');
         }
-        // A list of [name, value] pairs may repeat a name (the form of Go, TypeScript and Python); a map has distinct names.
         $normalized = [];
-        if (array_is_list($values)) {
-            foreach ($values as $pair) {
-                if (!is_array($pair) || count($pair) !== 2 || !is_string($pair[0] ?? null)) {
-                    throw new OrmException($code, 'an assignment is a [name, value] pair');
-                }
-                $normalized[] = [$pair[0], self::param($pair[1])];
-            }
-        } else {
-            foreach ($values as $name => $value) {
-                $normalized[] = [(string) $name, self::param($value)];
-            }
-        }
-        $named = [];
-        foreach ($normalized as [$name]) {
-            if (isset($named[$name])) {
-                throw new OrmException($code, "duplicate column \"$name\"");
-            }
-            $named[$name] = true;
+        foreach ($values as $name => $value) {
+            $normalized[] = [(string) $name, self::param($value)];
         }
         $changes = [];
         foreach ($normalized as [$name, $value]) {

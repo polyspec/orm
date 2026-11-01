@@ -13,26 +13,12 @@ use RuntimeException;
  */
 final class CatalogPostgresTemporalPdo extends CatalogAnswerPdo
 {
-    /** The select of the open cursor, until its first fetch. */
-    private ?string $cursorSelect = null;
-    /** @var array{list<string>, list<string>}|null the names and types of the fetched select */
-    private ?array $fetchedNames = null;
-
     /**
      * @param list<array{string, string}> $columns the name and native type of each column after the key id
      * @param list<mixed> $cells the cells of the one row after its key
      */
     public function __construct(private readonly array $columns, private readonly array $cells)
     {
-    }
-
-    public function exec(string $statement): int|false
-    {
-        // The cursor statements of a streamed read run through exec; transaction statements have no answer.
-        if (str_starts_with($statement, 'DECLARE ') || str_starts_with($statement, 'CLOSE ')) {
-            $this->answer($statement);
-        }
-        return 0;
     }
 
     public function answer(string $query): array
@@ -50,27 +36,6 @@ final class CatalogPostgresTemporalPdo extends CatalogAnswerPdo
                 ['attname', 'format_type', 'nullable', 'generated', 'ord', 'automatic', 'expr', 'has_default'],
                 ['text', 'text', 'bool', 'bool', 'int8', 'bool', 'text', 'bool'],
             ];
-        }
-        if (str_starts_with($query, 'DECLARE ')) {
-            // A streamed read declares its cursor over the select; the select is answered when the cursor is fetched.
-            $this->cursorSelect = substr($query, (int) strpos($query, ' FOR ') + 5);
-            return [[], [], []];
-        }
-        if (str_starts_with($query, 'FETCH FORWARD ')) {
-            // The first fetch returns the whole select; a later fetch reads past its end and returns no rows.
-            if ($this->cursorSelect !== null) {
-                [$rows, $names, $types] = $this->answer($this->cursorSelect);
-                $this->cursorSelect = null;
-                $this->fetchedNames = [$names, $types];
-                return [$rows, $names, $types];
-            }
-            if ($this->fetchedNames === null) {
-                throw new RuntimeException("unexpected catalog query: $query");
-            }
-            return [[], $this->fetchedNames[0], $this->fetchedNames[1]];
-        }
-        if (str_starts_with($query, 'CLOSE ')) {
-            return [[], [], []];
         }
         if (str_starts_with($query, 'SELECT "id",') && str_contains($query, ' FROM "public"."temporal_probe"')) {
             $names = array_merge(['id'], array_column($this->columns, 0));

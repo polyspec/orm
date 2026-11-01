@@ -15,7 +15,6 @@ use Polyspec\Orm\Bytes;
 use Polyspec\Orm\Catalog;
 use Polyspec\Orm\CatalogGridCell;
 use Polyspec\Orm\CatalogResult;
-use Polyspec\Orm\CatalogTablePage;
 use Polyspec\Orm\CatalogTableMetadata;
 use Polyspec\Orm\Codec;
 use Polyspec\Orm\Config;
@@ -44,10 +43,6 @@ final class Recipe
     /** Runs the steps of one case on database. */
     public static function run(string $path, array $case, string $database): void
     {
-        // A case with `only` runs on the databases that it names, and no other.
-        if (isset($case['only']) && !in_array($database, $case['only'], true)) {
-            return;
-        }
         if ($database !== self::NONE) {
             self::runDatabase($path, $case, $database);
             return;
@@ -518,28 +513,24 @@ final class Recipe
             $db->close();
         }
         $catalog = Catalog::connect($dsn);
-        $context = [
-            'catalog' => $catalog,
-            'namespace' => '',
-            'database' => $database,
-            'dsn' => $dsn,
-            'bound' => ['database' => ['text' => $name]],
-        ];
         try {
-            $context['namespace'] = $catalog->currentNamespace();
+            $namespace = $catalog->currentNamespace();
+            $context = [
+                'catalog' => $catalog,
+                'namespace' => $namespace,
+                'database' => $database,
+                'dsn' => $dsn,
+                'bound' => ['database' => ['text' => $name]],
+            ];
             foreach ([$recipe['seed']['rows'] ?? [], $case['seed']['rows'] ?? []] as $rows) {
                 foreach ($rows as $table => $values) {
-                    $metadata = $catalog->describeTable(['namespace' => $context['namespace'], 'name' => $table]);
+                    $metadata = $catalog->describeTable(['namespace' => $namespace, 'name' => $table]);
                     foreach ($values as $row) {
-                        $catalog->insertRow($metadata, self::mapAssignments($row, $context));
+                        $catalog->insertRow($metadata, self::assignments($row, $context));
                     }
                 }
             }
             foreach ($case['steps'] as $index => $step) {
-                // A step with `only` runs on the databases that it names, and no other.
-                if (isset($step['only']) && !in_array($database, $step['only'], true)) {
-                    continue;
-                }
                 try {
                     self::databaseStep($step, $context);
                 } catch (\Throwable $failure) {
@@ -550,8 +541,7 @@ final class Recipe
                 }
             }
         } finally {
-            // The case may have reconnected, so the catalog that is open now is the one of the context.
-            $context['catalog']->close();
+            $catalog->close();
         }
     }
 
@@ -588,60 +578,22 @@ final class Recipe
         foreach (array_keys($expected) as $key) {
             $compared[$key] = $actual[$key] ?? null;
         }
-        $want = self::normalizedNull($expected);
-        $got = self::normalizedNull($compared);
-        if ($want !== $got) {
-            Assert::fail(
-                'want ' . json_encode($want, JSON_UNESCAPED_UNICODE) . ', got ' . json_encode($got, JSON_UNESCAPED_UNICODE)
-            );
-        }
+        Assert::assertSame(self::normalizedNull($expected), self::normalizedNull($compared));
     }
 
     /** Maps the op of a step to its one call of the public API and returns the fields that its expect compares. */
-    private static function databaseOp(array $s, array &$context): array
+    private static function databaseOp(array $s, array $context): array
     {
         $catalog = $context['catalog'];
-        // A step names its own namespace when it has one (a MySQL system view is in information_schema).
-        $namespace = is_string($s['namespace'] ?? null) ? $s['namespace'] : $context['namespace'];
-        $table = static fn (): array => ['namespace' => $namespace, 'name' => $s['table']];
+        $table = static fn (): array => ['namespace' => $context['namespace'], 'name' => $s['table']];
         switch ($s['op']) {
-            case 'catalog.connect':
-                return self::connectOp($s, $context);
-            case 'catalog.close':
-                $catalog->close();
-                return [];
-            case 'catalog.reconnect':
-                $reconnected = Catalog::connect($context['dsn']);
-                $context['namespace'] = $reconnected->currentNamespace();
-                $context['catalog'] = $reconnected;
-                return [];
             case 'catalog.current_namespace':
                 return ['value' => ['text' => $catalog->currentNamespace()]];
-            case 'catalog.revision':
-                $snapshot = self::stepArgument($s['snapshot'], $context);
-                return ['value' => ['text' => $snapshot->revision()]];
-            case 'catalog.row_cells':
-                $snapshot = self::stepArgument($s['snapshot'], $context);
-                $types = array_map(static fn ($column): ?string => $column->nativeType, $snapshot->metadata->columns);
-                return ['cells' => array_map(
-                    static fn (mixed $cell, int $at): array => self::plainWrapper($cell, $types[$at]),
-                    $snapshot->cells,
-                    array_keys($snapshot->cells)
-                )];
             case 'catalog.describe_table':
                 $metadata = $catalog->describeTable($table());
-                $columns = $metadata->columns;
                 return [
                     'bind' => $metadata,
-                    'namespace' => ['text' => $metadata->table['namespace']],
-                    'kind' => $metadata->kind,
-                    'columns' => array_map(static fn ($column): string => $column->name, $columns),
-                    'columns_present' => $columns !== [],
-                    'native_types' => array_map(static fn ($column): string => $column->nativeType, $columns),
-                    'nullable' => array_map(static fn ($column): bool => $column->nullable, $columns),
-                    'generated' => array_map(static fn ($column): bool => $column->generated, $columns),
-                    'automatic_keys' => array_map(static fn ($column): bool => $column->automaticKey, $columns),
-                    'defaults' => array_map(static fn ($column): bool => $column->defaultExpression !== null, $columns),
+                    'columns' => array_map(static fn ($column): string => $column->name, $metadata->columns),
                     'primary_key' => $metadata->primaryKey,
                     'reliable_row_identity' => $metadata->reliableRowIdentity,
                 ];
@@ -671,11 +623,11 @@ final class Recipe
             case 'catalog.read_only_query':
                 $result = $catalog->readOnlyQuery(
                     self::sqlField($s['sql'], $context),
-                    array_map(self::nativeValue(...), $s['binds'] ?? []),
+                    [],
                     $s['max_rows'] ?? 0,
                     $s['max_bytes'] ?? 0
                 );
-                return ['columns' => $result->columns, 'row_count' => count($result->rows), 'rows' => array_map(
+                return ['rows' => array_map(
                     static fn (array $row): array => array_map(
                         static fn (mixed $cell): array => self::plainWrapper($cell, null),
                         $row
@@ -697,28 +649,7 @@ final class Recipe
                     ),
                 ];
             case 'catalog.row_snapshot':
-                // page_with names the page and the order_by it replaces; the snapshot checks the replaced order.
-                $page = self::stepArgument($s['page_with']['page'] ?? $s['page'], $context);
-                if (isset($s['page_with']['order_by'])) {
-                    $page = new CatalogTablePage(
-                        $page->metadata,
-                        $page->result,
-                        $page->limit,
-                        $page->offset,
-                        $s['page_with']['order_by'],
-                        $page->hasMore,
-                    );
-                }
-                $snapshot = $catalog->rowSnapshotFromPage($page, $s['index']);
-                $types = array_map(static fn ($column): ?string => $column->nativeType, $snapshot->metadata->columns);
-                return [
-                    'bind' => $snapshot,
-                    'key_indexes' => $snapshot->keyIndexes,
-                    'keys' => array_map(
-                        static fn (int $at): array => self::plainWrapper($snapshot->cells[$at], $types[$at]),
-                        $snapshot->keyIndexes
-                    ),
-                ];
+                return ['bind' => $catalog->rowSnapshotFromPage(self::stepArgument($s['page'], $context), $s['index'])];
             case 'catalog.insert_row':
                 $metadata = self::stepArgument($s['metadata'], $context);
                 return self::mutation(
@@ -734,19 +665,6 @@ final class Recipe
             case 'catalog.delete_row':
                 $deleted = $catalog->deleteRow(self::stepArgument($s['snapshot'], $context));
                 return ['value' => ['int' => (string) $deleted]];
-            case 'model.read_bind_cell':
-                // The generated model reads the body of the bind_cell row through the model connection, which keeps a
-                // SQL NULL distinct from an empty text.
-                $db = \Polyspec\Orm\Tests\Model\connect(
-                    $context['dsn'],
-                    new Config(aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index')
-                );
-                try {
-                    $body = (new \Polyspec\Orm\Tests\Model\BindCell())($db)->seq($s['seq'])->get()->getBody();
-                } finally {
-                    $db->close();
-                }
-                return ['value' => $body === null ? ['null' => 'text'] : ['text' => $body]];
             case 'sql.exec':
                 // The native driver of PHP is PDO, opened on the case database.
                 $pdo = case_admin($context['dsn']);
@@ -754,31 +672,6 @@ final class Recipe
                 return [];
         }
         Assert::fail("OP_UNKNOWN {$s['op']}");
-    }
-
-    /**
-     * Connects the DSN of the op. An unsupported URL or an absent SQLite file fails with CONFIG, and the expect may
-     * name file_created: the file is created by no failing connection.
-     */
-    private static function connectOp(array $s, array &$context): array
-    {
-        $expected = $s['expect'][$context['database']] ?? [];
-        $dsn = $s['dsn'];
-        if (isset($dsn['url'])) {
-            $target = $dsn['url'];
-        } else {
-            $path = sys_get_temp_dir() . '/recipe-absent-' . bin2hex(random_bytes(8)) . '.sqlite';
-            $target = 'sqlite://' . $path;
-        }
-        try {
-            Catalog::connect($target)->close();
-        } catch (OrmException $error) {
-            if (isset($path) && array_key_exists('file_created', $expected)) {
-                Assert::assertSame($expected['file_created'], file_exists($path), 'file_created');
-            }
-            throw $error;
-        }
-        return [];
     }
 
     /** A field that holds SQL or a database-decided value: the string itself, or the entry of the database. */
@@ -832,22 +725,7 @@ final class Recipe
      *
      * @return array<string, mixed>
      */
-    /**
-     * The assignments of a step: the list of [column, value] pairs that the catalog takes, so that a repeated column
-     * reaches the catalog, each value a wrapper or a reference.
-     */
-    private static function assignments(array $pairs, array $context): array
-    {
-        $out = [];
-        foreach ($pairs as [$name, $value]) {
-            $argument = self::stepArgument($value, $context);
-            $out[] = [(string) $name, self::nativeValue(self::databaseValue($argument, $context))];
-        }
-        return $out;
-    }
-
-    /** The assignments of a seed row: a map of column to wrapper. */
-    private static function mapAssignments(array $values, array $context): array
+    private static function assignments(array $values, array $context): array
     {
         $out = [];
         foreach ($values as $name => $value) {
@@ -910,17 +788,6 @@ final class Recipe
         if (is_string($value)) {
             return [self::temporalKind($nativeType) ?? 'text' => $value];
         }
-        if (is_float($value) && $nativeType === null) {
-            // A plain value with no column type is compared by its shortest round-trip decimal.
-            return ['float' => json_encode($value, JSON_PRESERVE_ZERO_FRACTION)];
-        }
-        if (is_float($value)) {
-            // A float of a described column is compared by its IEEE bits: a real column is float32, any other is float64.
-            $real = preg_match('/^(real|float4|float\(|float$)/i', $nativeType ?? '') === 1;
-            return $real
-                ? ['f32_bits' => unpack('V', pack('g', $value))[1]]
-                : ['f64_bits' => self::unsignedDecimal(bin2hex(pack('E', $value)))];
-        }
         Assert::fail('no recipe wrapper for the plain value ' . var_export($value, true));
     }
 
@@ -941,23 +808,12 @@ final class Recipe
     {
         return match ($cell->kind) {
             'null' => ['null' => true],
-            'integer' => ['int' => (string) $cell->value],
-            // An unsigned value may exceed the range of a PHP int, so it is compared as its decimal digits.
-            'unsigned' => ['uint' => (string) $cell->value],
+            'integer', 'unsigned' => ['int' => (string) $cell->value],
             'decimal', 'text', 'date', 'time', 'datetime' => [$cell->kind => $cell->value],
             'boolean' => ['bool' => $cell->value],
             'binary' => ['bytes_hex' => bin2hex($cell->value)],
-            // The grid cell holds the IEEE bits as hexadecimal; the recipe compares them as unsigned decimal.
-            'float32' => ['f32_bits' => (int) hexdec($cell->value)],
-            'float64' => ['f64_bits' => self::unsignedDecimal($cell->value)],
             default => Assert::fail("no recipe wrapper for the grid cell {$cell->kind}"),
         };
-    }
-
-    /** The unsigned decimal of hexadecimal bits of up to 64 bits, exact over the whole range. */
-    private static function unsignedDecimal(string $hex): string
-    {
-        return sprintf('%u', unpack('J', hex2bin(str_pad($hex, 16, '0', STR_PAD_LEFT)))[1]);
     }
 
     /**

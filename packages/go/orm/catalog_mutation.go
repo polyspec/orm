@@ -87,14 +87,6 @@ func catalogChanges(metadata CatalogTableMetadata, values []CatalogAssignment, c
 		if err := catalogTemporalWriteValue(column, normalized[i], dialect, code); err != nil {
 			return nil, err
 		}
-		// A write beyond the declared time precision fails before any statement with CODEC_ENCODE (errors.yaml).
-		if text, isText := normalized[i].(string); isText {
-			if _, precision, _, temporal := catalogTemporalKind(column, dialect); temporal {
-				if digits := catalogFractionDigits(text); digits > precision {
-					return nil, catalogErr(CodeCodecEncode, "%s holds %d fraction digits; its declared precision is %d", column.Name, digits, precision)
-				}
-			}
-		}
 		if normalized[i] == nil && !column.Nullable {
 			return nil, catalogErr(code, "NULL in non-null column %q", column.Name)
 		}
@@ -555,13 +547,4 @@ func (s *catalogSession) mysqlSafety(metadata CatalogTableMetadata) error {
 		return unsupported("MySQL triggers require effect verification")
 	}
 	return nil
-}
-
-// catalogFractionDigits counts the digits after the decimal point of a temporal text, or 0 when it has none.
-func catalogFractionDigits(text string) int {
-	dot := strings.LastIndexByte(text, '.')
-	if dot < 0 {
-		return 0
-	}
-	return len(text) - dot - 1
 }

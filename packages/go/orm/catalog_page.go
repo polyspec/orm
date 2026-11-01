@@ -119,21 +119,6 @@ type CatalogRowSnapshot struct {
 // Revision is the SHA-256 revision of the descriptor and the cells of the snapshot, in lowercase hexadecimal.
 func (r CatalogRowSnapshot) Revision() string { return r.revision }
 
-// Keys returns the primary-key cells of the snapshot in constraint order.
-func (r CatalogRowSnapshot) Keys() []any {
-	keys := make([]any, len(r.keyIndexes))
-	for i, at := range r.keyIndexes {
-		keys[i] = r.cells[at]
-	}
-	return keys
-}
-
-// KeyIndexes returns the position of each primary-key cell among the columns of the snapshot, in constraint order.
-func (r CatalogRowSnapshot) KeyIndexes() []int { return slices.Clone(r.keyIndexes) }
-
-// CapturedCells returns the original cells of the snapshot in physical column order, which the revision covers.
-func (r CatalogRowSnapshot) CapturedCells() []any { return slices.Clone(r.cells) }
-
 // CatalogSnapshotFromPage captures the row at index of a page. The table must have a reliable row identity, and the page
 // must be a page of that table as TablePage reads it.
 func CatalogSnapshotFromPage(page CatalogTablePage, index int) (CatalogRowSnapshot, error) {

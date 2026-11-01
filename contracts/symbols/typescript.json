@@ -537,7 +537,7 @@
   },
   "packages/ts/src/catalog.ts::checkChanges": {
     "exported": false,
-    "signature": "function checkChanges(metadata: CatalogTableMetadata, values: readonly CatalogAssignment[], code: string, dialect: string): Array\u003c{ index: number; value: DriverValue; }\u003e"
+    "signature": "function checkChanges(metadata: CatalogTableMetadata, values: readonly CatalogAssignment[], code: string): Array\u003c{ index: number; value: DriverValue; }\u003e"
   },
   "packages/ts/src/catalog.ts::checkClauses": {
     "exported": false,
@@ -586,10 +586,6 @@
   "packages/ts/src/catalog.ts::declaredPrecision": {
     "exported": false,
     "signature": "function declaredPrecision(dialect: DriverName, type: string): number"
-  },
-  "packages/ts/src/catalog.ts::declaredTemporalPrecision": {
-    "exported": false,
-    "signature": "function declaredTemporalPrecision(column: CatalogColumn, dialect: string): number | null"
   },
   "packages/ts/src/catalog.ts::describedCell": {
     "exported": false,
@@ -694,10 +690,6 @@
   "packages/ts/src/catalog.ts::quoteList": {
     "exported": false,
     "signature": "function quoteList(names: readonly string[], dialect: DriverName): string"
-  },
-  "packages/ts/src/catalog.ts::refusedWrite": {
-    "exported": false,
-    "signature": "function refusedWrite(error: unknown): never"
   },
   "packages/ts/src/catalog.ts::revisionOf": {
     "exported": false,

@@ -35,17 +35,6 @@ const CODE_PAGE_CHANGED = 'TABLE_PAGE_METADATA_CHANGED';
 const CODE_SNAPSHOT = 'ROW_SNAPSHOT_INVALID';
 const CODE_SNAPSHOT_LIMIT = 'ROW_SNAPSHOT_LIMIT';
 const CODE_INSERT_INVALID = 'ROW_INSERT_INVALID';
-const CODE_ENCODE = 'CODEC_ENCODE';
-// The driver code of a write that the server refuses in a read-only scope (codes.ts READ_ONLY).
-const DRIVER_READ_ONLY = 'READ_ONLY';
-
-/** A write that the database's read-only scope refuses, such as a routine that writes, fails with QUERY_READ_ONLY (INT-104). */
-function refusedWrite(error: unknown): never {
-  if (typeof error === 'object' && error !== null && (error as { code?: unknown }).code === DRIVER_READ_ONLY) {
-    throw err(CODE_READ_ONLY, (error as Error).message);
-  }
-  throw error;
-}
 const CODE_UPDATE_INVALID = 'ROW_UPDATE_INVALID';
 const CODE_UPDATE_LIMIT = 'ROW_UPDATE_LIMIT';
 const CODE_CONFLICT = 'ROW_CONFLICT';
@@ -735,17 +724,7 @@ function revisionOf(metadata: CatalogTableMetadata, cells: readonly unknown[]): 
 }
 
 /** Checks named assignments against a descriptor, in the order given. */
-/** The fraction digits a time or datetime column of the dialect holds (INT-101): its declared precision, the dialect default, or the SQLite CHECK; null for every other column. */
-function declaredTemporalPrecision(column: CatalogColumn, dialect: string): number | null {
-  const base = column.nativeType.trim().toLowerCase();
-  if (!/^(time|datetime|timestamp)\b/.test(base)) return null;
-  const declared = /\((\d+)\)/.exec(base);
-  if (declared !== null) return Number(declared[1]);
-  if (dialect === 'sqlite') return column.checkPrecision;
-  return dialect === 'postgres' ? 6 : 0;
-}
-
-function checkChanges(metadata: CatalogTableMetadata, values: readonly CatalogAssignment[], code: string, dialect: string): Array<{ index: number; value: DriverValue }> {
+function checkChanges(metadata: CatalogTableMetadata, values: readonly CatalogAssignment[], code: string): Array<{ index: number; value: DriverValue }> {
   if (values.length === 0 || values.length > metadata.columns.length) throw err(code, 'invalid column assignments');
   const params = checkParams(values.map(assignment => assignment.value), CODE_PARAM);
   const seen = new Set<string>();
@@ -758,12 +737,6 @@ function checkChanges(metadata: CatalogTableMetadata, values: readonly CatalogAs
     const value = params[position] ?? null;
     if (value === null && !column.nullable) throw err(code, `NULL in non-null column "${column.name}"`);
     if (exceedsDeclaredCapacity(column, value)) throw err(code, `value exceeds the declared capacity of column "${column.name}"`);
-    if (typeof value === 'string') {
-      // A write beyond the declared precision fails before any statement, with CODEC_ENCODE (errors.yaml).
-      const precision = declaredTemporalPrecision(column, dialect);
-      const digits = /\.(\d+)$/.exec(value)?.[1]?.length ?? 0;
-      if (precision !== null && digits > precision) throw err(CODE_ENCODE, `${column.name} holds ${digits} fraction digits; its declared precision is ${precision}`);
-    }
     seen.add(column.name);
     return { index, value };
   });
@@ -1320,7 +1293,7 @@ export class CatalogConnection {
     return this.read(async session => {
       const { columns, rows } = await session.plainRows(query, params, maxRows, maxBytes);
       return { columns: columns.map(column => column.name), rows };
-    }).catch(refusedWrite);
+    });
   }
 
   /** Runs one read query and returns typed grid cells (the Rust grid rules): each cell is typed by its column's native type. */
@@ -1335,7 +1308,7 @@ export class CatalogConnection {
         columns: raw.columns.map(column => ({ name: column.name, nativeType: column.type })),
         rows: raw.rows,
       };
-    }).catch(refusedWrite);
+    });
   }
 
   /** Checks the statement and the limits of a read; a zero limit takes its default. */
@@ -1372,7 +1345,7 @@ export class CatalogConnection {
   /** Inserts one row with explicit or database-generated primary-key values and returns the stored row before it commits. */
   public async insertRow(declared: CatalogTableMetadata, values: readonly CatalogAssignment[]): Promise<CatalogMutationResult> {
     const keyIndexes = descriptorKeys(declared);
-    const changes = checkChanges(declared, values, CODE_INSERT_INVALID, this.dialect);
+    const changes = checkChanges(declared, values, CODE_INSERT_INVALID);
     const provided = new Map(changes.map(change => [change.index, change.value] as const));
     const omittedKeys = keyIndexes.filter(index => {
       const column = declared.columns[index];
@@ -1501,7 +1474,7 @@ export class CatalogConnection {
   /** Updates the row of an original snapshot. Inside the transaction it locks the row by its original keys, compares it with the snapshot and writes; then it re-reads the row and requires the written values. */
   public async updateRow(original: CatalogRowSnapshot, values: readonly CatalogAssignment[]): Promise<CatalogMutationResult> {
     original.valid();
-    const changes = checkChanges(original.metadata, values, CODE_UPDATE_INVALID, this.dialect);
+    const changes = checkChanges(original.metadata, values, CODE_UPDATE_INVALID);
     const updated = [...original.originalCells()];
     for (const change of changes) updated[change.index] = change.value;
     try { checkCells(original.metadata, updated); } catch (error) {

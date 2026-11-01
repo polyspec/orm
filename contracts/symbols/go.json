@@ -17543,10 +17543,6 @@
     "exported": false,
     "signature": "func[T any](ctx context.Context, c *CatalogConnection, fn func(s *catalogSession) (T, error)) (T, error)"
   },
-  "packages/go/orm/catalog.go::refusedRead": {
-    "exported": false,
-    "signature": "func(err error) error"
-  },
   "packages/go/orm/catalog_grid.go::CatalogConnection.ReadOnlyGridQuery": {
     "exported": true,
     "signature": "receiver=*CatalogConnection func(ctx context.Context, query string, params []any, limits CatalogQueryLimits) (CatalogGridResult, error)"
@@ -17606,10 +17602,6 @@
   "packages/go/orm/catalog_grid.go::catalogGridSQLite": {
     "exported": false,
     "signature": "func(value any, refuse func(string, ...any) (CatalogGridCell, error), cell func(CatalogGridKind, any) (CatalogGridCell, error)) (CatalogGridCell, error)"
-  },
-  "packages/go/orm/catalog_grid.go::catalogGridTemporalRefusal": {
-    "exported": false,
-    "signature": "func(err error) (CatalogGridCell, error)"
   },
   "packages/go/orm/catalog_grid.go::catalogGridTextName": {
     "exported": false,
@@ -17875,10 +17867,6 @@
     "exported": false,
     "signature": "func(nativeType string, value any) bool"
   },
-  "packages/go/orm/catalog_mutation.go::catalogFractionDigits": {
-    "exported": false,
-    "signature": "func(text string) int"
-  },
   "packages/go/orm/catalog_mutation.go::catalogKeyPredicate": {
     "exported": false,
     "signature": "func(metadata CatalogTableMetadata, dialect string, start int) string"
@@ -17934,18 +17922,6 @@
   "packages/go/orm/catalog_page.go::CatalogRowSnapshot#field.revision": {
     "exported": false,
     "signature": "string"
-  },
-  "packages/go/orm/catalog_page.go::CatalogRowSnapshot.CapturedCells": {
-    "exported": true,
-    "signature": "receiver=CatalogRowSnapshot func() []any"
-  },
-  "packages/go/orm/catalog_page.go::CatalogRowSnapshot.KeyIndexes": {
-    "exported": true,
-    "signature": "receiver=CatalogRowSnapshot func() []int"
-  },
-  "packages/go/orm/catalog_page.go::CatalogRowSnapshot.Keys": {
-    "exported": true,
-    "signature": "receiver=CatalogRowSnapshot func() []any"
   },
   "packages/go/orm/catalog_page.go::CatalogRowSnapshot.Revision": {
     "exported": true,
