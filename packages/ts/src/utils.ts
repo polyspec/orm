@@ -129,9 +129,9 @@ export class Utils {
   }
 
   /**
-   * Runs fn in the active transaction of the connection, or in a new one without retry.
-   *
-   * @internal
+   * Calls fn with a transaction frame of the connection: the active transaction when one is open, which fn joins, or a new
+   * transaction that this call opens and ends without retry (INT-150). The frame's run(kind, tables, sql, params) runs one
+   * statement and returns its result with its rows.
    */
   public async run<T>(fn: (frame: TxFrame) => Promise<T>): Promise<T> {
     const frame = activeFor(this.db);

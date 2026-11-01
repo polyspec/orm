@@ -1,4 +1,4 @@
-// Runs the TypeScript model, dbspec runtime, schema set, add columns, clock, driver error and rollback integration tests on
+// Runs the TypeScript model, dbspec runtime, schema set, add columns, statement runner, clock, driver error and rollback integration tests on
 // SQLite, MySQL and PostgreSQL, the SQLite locking test and the MySQL TLS test; ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN
 // name test databases, and ORM_TEST_MYSQL_TLS_* the TLS server of make orm-test-servers. The tests do not read one another's
 // results, so a failed test does not stop the next, and the script lists every failed test at the end.
@@ -18,6 +18,7 @@ const TESTS: Command[] = [
   node('packages/ts/tests/install_changed_database.mjs'),
   node('packages/ts/tests/dbspec-set-decimal.mjs'),
   node('packages/ts/tests/add-tables-and-columns.mjs'),
+  node('packages/ts/tests/statement-runner.mjs'),
   node('packages/ts/tests/clock.mjs'),
   node('packages/ts/tests/driver-error.mjs'),
   node('--conditions=orm-test', 'packages/ts/tests/rollback.mjs'),

@@ -199,8 +199,9 @@ export class TxFrame {
   }
 
   /**
-   * On a transaction connection, sends a transaction control statement and publishes its event. A test statement
-   * fault is not consumed.
+   * Runs one statement of kind `kind` that touches `tables` (empty when none) and publishes its statement event (INT-77). It
+   * runs in this transaction and never opens one. Transaction control statements (COMMIT, ROLLBACK, savepoints) use it too,
+   * and a test statement fault is not consumed by them. Returns the statement result with its rows (INT-150).
    */
   public run(kind: StatementKind, tables: readonly string[], sql: string, params: readonly DriverValue[] = []): Promise<DriverResult> {
     return this.session.control(sql, params, this.db.statementDone(kind, tables, this.number, params));
