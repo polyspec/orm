@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 20f022d9e4f0d8da5f53ff330cd85b9f9086587bb4550805648e4bb32e2b9ccb -->
+<!-- source-sha256: 4f7b33132376591b72121739dc37d60443555e2f16e3acf9a562b2a268aeba98 -->
 # 변경 이력
 
 ## Unreleased
 
+- constraints_and_relations 데이터베이스 기능의 constraint_errors와 external_relation case는 mysql, postgres, sqlite의 recipe contracts/fixtures/constraints_and_relations/constraints_and_relations.json이며, 여섯 runtime의 helper가 실행한다. 외래 키 위반 삭제는 user 행을 바꾸지 않고, CHECK와 unique 위반은 CONSTRAINT와 DUPLICATE_KEY로 실패하며, NoteReader 관계는 SharedNote 행을 읽으므로 이 확인들은 native test에서 빠진다. native test에는 immutable_write가 남는다. 이는 driver 오류 사슬로 확인하며 runtime에 따라 다르고(catalog는 MySQL에서 trigger가 걸린 table을 설계상 거부한다, ROW_MUTATION_UNSUPPORTED), soft_delete_restore는 audited transaction과 생성된 restore entity가 필요하므로 통합 branch에서 audit_triggers가 전환할 때까지 native로 남는다. 복합 키 행도 native로 남는다 (T334-3-4)
 - model_queries 데이터베이스 기능은 mysql, postgres, sqlite의 recipe contracts/fixtures/model_queries/model_queries.json이며, 여섯 runtime의 helper가 실행한다. 각 coverage test가 확인하던 개수, 없는 key, 정렬된 limit은 그 recipe의 case이므로 기능의 native test에서 빠지고, native test는 FCV-4 op로 표현되지 않는 집계, page 총계, 관계, join, 열 제거, group rows, 수집 identity 동작을 계속 확인한다 (T334-3-4).
 - CFG-1, CFG-2, CFG-11, CFG-17, CFG-19, CFG-26의 거부되는 DSN case(UTC가 아닌 timezone, 알 수 없는 scheme, database 이름 없음, 상대 SQLite 경로, VERIFY_IDENTITY와 함께 쓰인 주소 host, 잘못된 SQLite 경로 percent 인코딩)는 하나의 recipe, contracts/fixtures/dsn_reject/dsn_reject.json이 되었고, 모든 runtime이 새 op dsn.connect(FCV-4)로 database 없이 실행한다 (T334-3-23).
 - recipe schema가 model_writes fixture의 model.get_by step을 거부했다. 두 형식 모두 FCV-4가 model.get_by에 주는 rows outcome 대신 일반 expect를 받았다. 이제 두 형식 모두 rows outcome을 받는다 (T334-3-4-9).

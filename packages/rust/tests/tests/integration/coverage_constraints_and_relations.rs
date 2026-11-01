@@ -1,7 +1,6 @@
-//! constraints_and_relations: a database constraint violation becomes an error code of its kind,
-//! and changes nothing.
-use super::coverage_env::{code, connect, run};
-use super::model::{Author, NoteReader, SharedNote, User};
+//! The immutable write of the constraints_and_relations coverage; the constraint errors and the external relation are cases
+//! of the recipe contracts/fixtures/constraints_and_relations/constraints_and_relations.json (FCV-3, FCV-4).
+use super::coverage_env::{connect, run};
 use polyspec_orm::{plan::Step, Core, Db, Entity, Model, Param, Schema};
 
 use polyspec_orm_test_support::model_row;
@@ -54,50 +53,6 @@ fn refused_row(db: &Db) -> CoverageRefusedRow {
     let mut core = Core::new(&REFUSED_ROW);
     core.connect(db);
     CoverageRefusedRow::from_core(core)
-}
-
-#[tokio::test]
-// CFG-33: a violated foreign key, check or unique key is reported as FOREIGN_KEY, CONSTRAINT or DUPLICATE_KEY, and no row changes.
-async fn coverage_constraint_errors() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    run("constraint_errors", async {
-        let db = connect().await;
-        let user = User::new().connect(&db).get_by_seq(1).await.unwrap().expect("a row");
-        let author = Author::new().connect(&db).add_all_columns().get_by_seq(1).await.unwrap().expect("a row");
-        let (user_before, author_before) = (user.to_array().unwrap(), author.to_array().unwrap());
-        assert_eq!(code(user.delete(false).await), polyspec_orm::codes::FOREIGN_KEY, "delete a user that authors reference");
-        let mut negative = author.clone().set_like_count(-1);
-        assert_eq!(code(negative.update(false).await), polyspec_orm::codes::CONSTRAINT, "like_count violates ck_author_counts");
-        let other = Author::new().connect(&db).get_by_seq(2).await.unwrap().expect("a row");
-        let uuid = other.get_uuid().unwrap().expect("author 2 has a uuid").to_owned();
-        let mut duplicate = author.set_uuid(uuid);
-        assert_eq!(code(duplicate.update(false).await), polyspec_orm::codes::DUPLICATE_KEY, "uuid of author 2");
-        assert_eq!(User::new().connect(&db).get_by_seq(1).await.unwrap().expect("a row").to_array().unwrap(), user_before, "user 1 changed");
-        assert_eq!(
-            Author::new().connect(&db).add_all_columns().get_by_seq(1).await.unwrap().expect("a row").to_array().unwrap(),
-            author_before,
-            "author 1 changed"
-        );
-        db.close().await;
-    })
-    .await;
-}
-
-#[tokio::test]
-async fn coverage_external_relation() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    run("external_relation", async {
-        let db = connect().await;
-        let rows = NoteReader::new().connect(&db).relation(SharedNote::new().match_shared_note_seq_with_seq()).order_by_seq_asc().gets().await.unwrap();
-        let mut got = Vec::new();
-        for row in rows.models() {
-            let note = row.get_shared_note_model().unwrap().expect("external shared_note relation");
-            got.push(format!("{}:{}", row.get_seq().unwrap(), note.get_title().unwrap()));
-        }
-        assert_eq!(got, ["1:note-1", "2:note-1", "3:note-3"], "external relation values");
-        db.close().await;
-    })
-    .await;
 }
 
 #[tokio::test]

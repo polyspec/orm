@@ -7,48 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"slices"
 	"testing"
 
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
-	"github.com/polyspec/orm/packages/go/model"
 	"github.com/polyspec/orm/packages/go/orm"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
-
-// TestCoverageConstraintErrors checks that a foreign key, check, and unique violation against a seed row
-// yield FOREIGN_KEY, CONSTRAINT, and DUPLICATE_KEY respectively, and
-// that no row changes.
-// CFG-33: database constraints map to stable error codes and leave rejected rows unchanged.
-func TestCoverageConstraintErrors(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	db, _, _ := connectFeature(t)
-	user := must(model.User().Connect(db).Seq(1).Get())
-	if err := user.Delete(); orm.ErrorCode(err) != orm.CodeForeignKey {
-		t.Fatalf("delete of a referenced user = %v, want FOREIGN_KEY", err)
-	}
-	if got := readColumn(t, must(model.User().Connect(db).Seq(1).Get()).GetName); got != "user-1" {
-		t.Fatalf("user 1 name = %q after the rejected delete", got)
-	}
-
-	first := must(model.Author().Connect(db).GetBySeq(1))
-	second := must(model.Author().Connect(db).GetBySeq(2))
-	likes, uuid := readColumn(t, first.GetLikeCount), readColumn(t, first.GetUuid)
-	if uuid == nil || readColumn(t, second.GetUuid) == nil || *uuid == *readColumn(t, second.GetUuid) {
-		t.Fatalf("seed uuids of author 1 and 2 are not distinct values: %v %v", uuid, readColumn(t, second.GetUuid))
-	}
-	if _, err := must(model.Author().Connect(db).GetBySeq(1)).SetLikeCount(-1).Update(); orm.ErrorCode(err) != orm.CodeConstraint {
-		t.Fatalf("negative like_count = %v, want CONSTRAINT", err)
-	}
-	if _, err := must(model.Author().Connect(db).GetBySeq(1)).SetUuid(readColumn(t, second.GetUuid)).Update(); orm.ErrorCode(err) != orm.CodeDuplicateKey {
-		t.Fatalf("duplicate uuid = %v, want DUPLICATE_KEY", err)
-	}
-	after := must(model.Author().Connect(db).GetBySeq(1))
-	if readColumn(t, after.GetLikeCount) != likes || readColumn(t, after.GetUuid) == nil || *readColumn(t, after.GetUuid) != *uuid ||
-		!readColumn(t, after.GetUpdatedTs).Equal(readColumn(t, first.GetUpdatedTs)) {
-		t.Fatalf("author 1 changed: like_count %d uuid %v updated_ts %v", readColumn(t, after.GetLikeCount), readColumn(t, after.GetUuid), readColumn(t, after.GetUpdatedTs))
-	}
-}
 
 type refusedRowModel struct {
 	core   *orm.Core
@@ -108,25 +72,10 @@ func refusedRowEntity(schema *orm.Schema) *orm.Entity {
 	return e
 }
 
-// TestCoverageExternalRelation follows note_reader to shared_note, a table from an external document.
-func TestCoverageExternalRelation(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	db, _, _ := connectFeature(t)
-	rows := must(model.NoteReader().Connect(db).
-		Relation(model.SharedNote().MatchSharedNoteSeqWithSeq()).
-		OrderBySeqAsc().Gets())
-	var got []string
-	for _, row := range rows.Slice() {
-		note := must(row.GetSharedNoteModel())
-		got = append(got, fmt.Sprintf("%d:%s", readColumn(t, row.GetSeq), readColumn(t, note.GetTitle)))
-	}
-	if want := []string{"1:note-1", "2:note-1", "3:note-3"}; !slices.Equal(got, want) {
-		t.Fatalf("external shared_note relation = %q, want %q", got, want)
-	}
-}
-
 // TestCoverageImmutableWrite verifies that a native trigger refusal preserves the row and its driver cause.
 // DBS-84: renderer-installed immutable write triggers reject updates without changing stored rows.
+// FCV-2: immutability is asserted through the driver error chain (errors.Unwrap and its equivalents), which is
+// runtime-specific; the catalog write refuses triggered tables on MySQL by design (ROW_MUTATION_UNSUPPORTED).
 func TestCoverageImmutableWrite(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, driver, dsn := connectFeature(t)

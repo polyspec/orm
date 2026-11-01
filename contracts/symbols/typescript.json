@@ -20891,10 +20891,6 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::User#field.getBySeq": {
-    "exported": true,
-    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cthis | null\u003e"
-  },
   "packages/ts/src/models/models.ts::User#field.getMembers": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"

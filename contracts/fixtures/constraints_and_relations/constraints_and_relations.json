@@ -1,0 +1,654 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "CFG-33",
+    "INT-87",
+    "FCV-8",
+    "FCV-9",
+    "FCV-10",
+    "FCV-11",
+    "FCV-12",
+    "FCV-13",
+    "FCV-14"
+  ],
+  "fixture": "contracts/fixtures/bench/dbspec-set.json",
+  "seed": {
+    "rows": {
+      "user": [
+        {
+          "name": {
+            "text": "user-1"
+          }
+        },
+        {
+          "name": {
+            "text": "user-2"
+          }
+        }
+      ],
+      "service": [
+        {
+          "name": {
+            "text": "service-1"
+          }
+        },
+        {
+          "name": {
+            "text": "service-2"
+          }
+        }
+      ],
+      "service_region": [
+        {
+          "service_seq": {
+            "int": "1"
+          },
+          "name": {
+            "text": "region-1"
+          }
+        },
+        {
+          "service_seq": {
+            "int": "2"
+          },
+          "name": {
+            "text": "region-2"
+          }
+        }
+      ],
+      "service_member": [
+        {
+          "service_seq": {
+            "int": "1"
+          },
+          "user_seq": {
+            "int": "1"
+          }
+        },
+        {
+          "service_seq": {
+            "int": "2"
+          },
+          "user_seq": {
+            "int": "2"
+          }
+        },
+        {
+          "service_seq": {
+            "int": "1"
+          },
+          "user_seq": {
+            "int": "2"
+          }
+        }
+      ],
+      "author": [
+        {
+          "name": {
+            "text": "author-1"
+          },
+          "start_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "end_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "user_seq": {
+            "int": "1"
+          },
+          "service_seq": {
+            "int": "1"
+          },
+          "service_region_seq": {
+            "int": "1"
+          },
+          "service_member_seq": {
+            "int": "1"
+          },
+          "read_count": {
+            "int": "10"
+          },
+          "uuid": {
+            "text": "uuid-author-1"
+          },
+          "like_count": {
+            "int": "5"
+          }
+        },
+        {
+          "name": {
+            "text": "author-2"
+          },
+          "start_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "end_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "user_seq": {
+            "int": "1"
+          },
+          "service_seq": {
+            "int": "1"
+          },
+          "service_region_seq": {
+            "int": "1"
+          },
+          "service_member_seq": {
+            "int": "1"
+          },
+          "read_count": {
+            "int": "20"
+          },
+          "uuid": {
+            "text": "uuid-author-2"
+          },
+          "like_count": {
+            "int": "0"
+          }
+        },
+        {
+          "name": {
+            "text": "author-3"
+          },
+          "start_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "end_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "user_seq": {
+            "int": "2"
+          },
+          "service_seq": {
+            "int": "2"
+          },
+          "service_region_seq": {
+            "int": "2"
+          },
+          "service_member_seq": {
+            "int": "2"
+          },
+          "read_count": {
+            "int": "30"
+          },
+          "uuid": {
+            "text": "uuid-author-3"
+          },
+          "like_count": {
+            "int": "0"
+          }
+        },
+        {
+          "name": {
+            "text": "author-4"
+          },
+          "start_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "end_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "user_seq": {
+            "int": "1"
+          },
+          "service_seq": {
+            "int": "1"
+          },
+          "service_region_seq": {
+            "int": "1"
+          },
+          "service_member_seq": {
+            "int": "3"
+          },
+          "read_count": {
+            "int": "40"
+          },
+          "uuid": {
+            "text": "uuid-author-4"
+          },
+          "like_count": {
+            "int": "0"
+          }
+        },
+        {
+          "name": {
+            "text": "author-5"
+          },
+          "start_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "end_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "user_seq": {
+            "int": "2"
+          },
+          "service_seq": {
+            "int": "2"
+          },
+          "service_region_seq": {
+            "int": "2"
+          },
+          "service_member_seq": {
+            "int": "2"
+          },
+          "read_count": {
+            "int": "50"
+          },
+          "uuid": {
+            "text": "uuid-author-5"
+          },
+          "like_count": {
+            "int": "0"
+          }
+        }
+      ],
+      "shared_note": [
+        {
+          "seq": {
+            "int": "1"
+          },
+          "title": {
+            "text": "note-1"
+          }
+        },
+        {
+          "seq": {
+            "int": "2"
+          },
+          "title": {
+            "text": "note-2"
+          }
+        },
+        {
+          "seq": {
+            "int": "3"
+          },
+          "title": {
+            "text": "note-3"
+          }
+        }
+      ],
+      "note_reader": [
+        {
+          "seq": {
+            "int": "1"
+          },
+          "shared_note_seq": {
+            "int": "1"
+          }
+        },
+        {
+          "seq": {
+            "int": "2"
+          },
+          "shared_note_seq": {
+            "int": "1"
+          }
+        },
+        {
+          "seq": {
+            "int": "3"
+          },
+          "shared_note_seq": {
+            "int": "3"
+          }
+        }
+      ]
+    }
+  },
+  "cases": [
+    {
+      "id": "constraint_errors",
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 2,
+          "as": "db"
+        },
+        {
+          "op": "model.delete",
+          "connection": "db",
+          "model": "User",
+          "where": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "FOREIGN_KEY"
+            },
+            "postgres": {
+              "error": "FOREIGN_KEY"
+            },
+            "sqlite": {
+              "error": "FOREIGN_KEY"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "user",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "name"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "user-1"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "user-2"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "user-1"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "user-2"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "user-1"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "user-2"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "model.update",
+          "connection": "db",
+          "model": "Author",
+          "key": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "set": {
+            "like_count": {
+              "int": "-1"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONSTRAINT"
+            },
+            "postgres": {
+              "error": "CONSTRAINT"
+            },
+            "sqlite": {
+              "error": "CONSTRAINT"
+            }
+          }
+        },
+        {
+          "op": "model.update",
+          "connection": "db",
+          "model": "Author",
+          "key": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "set": {
+            "uuid": {
+              "text": "uuid-author-2"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "DUPLICATE_KEY"
+            },
+            "postgres": {
+              "error": "DUPLICATE_KEY"
+            },
+            "sqlite": {
+              "error": "DUPLICATE_KEY"
+            }
+          }
+        },
+        {
+          "op": "model.get_by",
+          "connection": "db",
+          "model": "Author",
+          "key": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "columns": [
+            "like_count",
+            "uuid"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "5"
+                  },
+                  {
+                    "text": "uuid-author-1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "5"
+                  },
+                  {
+                    "text": "uuid-author-1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "5"
+                  },
+                  {
+                    "text": "uuid-author-1"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "external_relation",
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 2,
+          "as": "db"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "NoteReader",
+          "where": {},
+          "order": [
+            "seq"
+          ],
+          "columns": [
+            "seq"
+          ],
+          "relation": {
+            "model": "SharedNote",
+            "match": [
+              [
+                "shared_note_seq",
+                "seq"
+              ]
+            ],
+            "columns": [
+              "title"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "note-1"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "note-1"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "note-3"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "note-1"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "note-1"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "note-3"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "note-1"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "note-1"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "note-3"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

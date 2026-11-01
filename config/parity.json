@@ -1031,7 +1031,8 @@
         "packages/rust/tests/tests/common/or_panic.rs",
         "packages/rust/tests/tests/common/rollback_probe.rs",
         "packages/rust/tests/tests/model_writes/dispatch.rs",
-        "packages/rust/tests/src/model_queries_dispatch.rs"
+        "packages/rust/tests/src/model_queries_dispatch.rs",
+        "packages/rust/tests/src/constraints_and_relations_dispatch.rs"
       ],
       "symbols": {
         "extractor": "rust",
@@ -27811,66 +27812,13 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_constraints_and_relations_test.go",
-          "id": "TestCoverageConstraintErrors",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageConstraintErrors",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "go",
           "test": "packages/go/orm/driver_error_test.go",
           "id": "TestMapMySQLErrClassifiesCheckConstraint"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
-          "id": "CoverageConstraintsAndRelationsTest::testConstraintErrors"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
-          "id": "CoverageConstraintsAndRelationsExtensionTest::testConstraintErrors"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_constraints_and_relations.mjs",
-          "id": "constraint_errors"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_constraints_and_relations.py",
-          "id": "test_constraint_errors"
         },
         {
           "implementation": "python",
           "test": "packages/python/tests/test_driver_errors.py",
           "id": "test_a_duplicate_unique_key_is_duplicate_key"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
-          "id": "coverage_constraints_and_relations::coverage_constraint_errors",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_constraints_and_relations::coverage_constraint_errors"
-          ]
         },
         {
           "implementation": "rust",
@@ -27886,6 +27834,21 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/refusal.rs",
           "id": "check_refused_postgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConstraintsAndRelationsRecipeTest.php",
+          "id": "ConstraintsAndRelationsRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConstraintsAndRelationsRecipeTestExtensionTest.php",
+          "id": "ConstraintsAndRelationsRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/constraints_and_relations-mysql.test.mjs",
+          "id": "constraint_errors"
         }
       ]
     },
@@ -44073,6 +44036,147 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/model_queries_sqlite.rs",
           "symbol": "model_queries_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "constraints_and_relations-mysql",
+      "kind": "suite",
+      "requirements": [
+        "CFG-33",
+        "INT-87",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
+      ],
+      "file": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_constraints_and_relations_test.go",
+          "symbol": "TestRecipeConstraintsAndRelationsMysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConstraintsAndRelationsRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ConstraintsAndRelationsRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConstraintsAndRelationsRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ConstraintsAndRelationsRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/constraints_and_relations-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_constraints_and_relations_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/constraints_and_relations_mysql.rs",
+          "symbol": "constraints_and_relations_mysql"
+        }
+      ]
+    },
+    {
+      "id": "constraints_and_relations-postgres",
+      "kind": "suite",
+      "requirements": [
+        "CFG-33",
+        "INT-87",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
+      ],
+      "file": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_constraints_and_relations_test.go",
+          "symbol": "TestRecipeConstraintsAndRelationsPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConstraintsAndRelationsRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ConstraintsAndRelationsRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConstraintsAndRelationsRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ConstraintsAndRelationsRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/constraints_and_relations-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_constraints_and_relations_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/constraints_and_relations_postgres.rs",
+          "symbol": "constraints_and_relations_postgres"
+        }
+      ]
+    },
+    {
+      "id": "constraints_and_relations-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "CFG-33",
+        "INT-87",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
+      ],
+      "file": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_constraints_and_relations_test.go",
+          "symbol": "TestRecipeConstraintsAndRelationsSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConstraintsAndRelationsRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ConstraintsAndRelationsRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConstraintsAndRelationsRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ConstraintsAndRelationsRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/constraints_and_relations-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_constraints_and_relations_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/constraints_and_relations_sqlite.rs",
+          "symbol": "constraints_and_relations_sqlite"
         }
       ]
     }

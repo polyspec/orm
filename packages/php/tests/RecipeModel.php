@@ -41,6 +41,8 @@ trait RecipeModel
         'service_region_seq' => ['addColumnServiceRegionSeq', 'getServiceRegionSeq'],
         'service_member_seq' => ['addColumnServiceMemberSeq', 'getServiceMemberSeq'],
         'read_count' => ['addColumnReadCount', 'getReadCount'],
+        'like_count' => ['addColumnLikeCount', 'getLikeCount'],
+        'uuid' => ['addColumnUuid', 'getUuid'],
     ];
 
     /** The Author orders that a recipe may name, by column: a name is ascending, and a name with a leading "-" is descending (FCV-4). */
@@ -84,6 +86,8 @@ trait RecipeModel
         return match ($s['model']) {
             'CompositeAccount' => self::compositeAccountOp($s, $context, $db),
             'Author' => self::authorOp($s, $context, $db),
+            'User' => self::userOp($s, $context, $db),
+            'NoteReader' => self::noteReaderOp($s, $context, $db),
             default => Assert::fail("model {$s['model']} has no recipe entry"),
         };
     }
@@ -299,6 +303,23 @@ trait RecipeModel
                 $where = isset($s['where']) ? $s['where'] : $s['key'];
                 $row = self::authorChain($db, self::modelValues($where, $context), $s['columns'])->get();
                 return ['rows' => $row === null ? [] : [self::authorCells($row, $s['columns'])]];
+            case 'model.update':
+                // The row of key, its set columns changed, then one update of the row.
+                $row = self::authorChain($db, self::modelValues($s['key'], $context), [])->get();
+                if ($row === null) {
+                    Assert::fail('Author update: the key names no row');
+                }
+                foreach (self::modelValues($s['set'], $context) as $column => $value) {
+                    if ($column === 'like_count' && is_int($value)) {
+                        $row->setLikeCount($value);
+                    } elseif ($column === 'uuid' && is_string($value)) {
+                        $row->setUuid($value);
+                    } else {
+                        Assert::fail("Author column $column has no recipe update");
+                    }
+                }
+                $row->update();
+                return [];
             case 'model.arithmetic':
                 if ($s['column'] !== 'read_count') {
                     Assert::fail("Author column {$s['column']} has no recipe arithmetic");
@@ -318,5 +339,51 @@ trait RecipeModel
                 return [];
         }
         Assert::fail("OP_UNKNOWN {$s['op']}");
+    }
+
+    /** Runs model.delete of s on the User model: the rows of where (seq only), each deleted with the collection. */
+    private static function userOp(array $s, array $context, Db $db): array
+    {
+        if ($s['op'] !== 'model.delete') {
+            Assert::fail("op {$s['op']} has no User entry");
+        }
+        $where = self::modelValues($s['where'], $context);
+        if (array_keys($where) !== ['seq'] || !is_int($where['seq'])) {
+            Assert::fail('User delete: the recipe condition is seq only');
+        }
+        (new \Polyspec\Orm\Tests\Model\User())($db)->seq($where['seq'])->gets()->delete();
+        return [];
+    }
+
+    /**
+     * Runs model.query of s on the NoteReader model with its relation to the external SharedNote model: each row of
+     * NoteReader in seq order with the title of its SharedNote row, which a row whose relation is missing leaves out.
+     */
+    private static function noteReaderOp(array $s, array $context, Db $db): array
+    {
+        $relation = $s['relation'] ?? null;
+        if ($s['op'] !== 'model.query' || !is_array($relation)) {
+            Assert::fail("op {$s['op']} has no NoteReader entry");
+        }
+        if (
+            ($relation['model'] ?? null) !== 'SharedNote'
+            || ($relation['match'] ?? null) !== [['shared_note_seq', 'seq']]
+            || $s['columns'] !== ['seq']
+            || ($relation['columns'] ?? null) !== ['title']
+        ) {
+            Assert::fail('NoteReader relation has no recipe entry');
+        }
+        $rows = [];
+        $query = (new \Polyspec\Orm\Tests\Model\NoteReader())($db)
+            ->relation((new \Polyspec\Orm\Tests\Model\SharedNote())->matchSharedNoteSeqWithSeq())
+            ->orderBySeqAsc();
+        foreach ($query->gets() as $row) {
+            $note = $row->getSharedNoteModel();
+            if ($note === null) {
+                continue;
+            }
+            $rows[] = [self::modelWrapper($row->toArray()['seq']), self::modelWrapper($note->toArray()['title'])];
+        }
+        return ['rows' => $rows];
     }
 }

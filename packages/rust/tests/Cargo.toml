@@ -123,6 +123,27 @@ name = "model_queries_sqlite"
 path = "tests/model_queries_sqlite.rs"
 harness = false
 
+# Each case of the constraints_and_relations recipe, contracts/fixtures/constraints_and_relations/constraints_and_relations.json, is
+# the trial constraints_and_relations_mysql::<case id> on a case database of its own (FCV-3, FCV-4).
+[[test]]
+name = "constraints_and_relations_mysql"
+path = "tests/constraints_and_relations_mysql.rs"
+harness = false
+
+# Each case of the constraints_and_relations recipe, contracts/fixtures/constraints_and_relations/constraints_and_relations.json, is
+# the trial constraints_and_relations_postgres::<case id> on a case database of its own (FCV-3, FCV-4).
+[[test]]
+name = "constraints_and_relations_postgres"
+path = "tests/constraints_and_relations_postgres.rs"
+harness = false
+
+# Each case of the constraints_and_relations recipe, contracts/fixtures/constraints_and_relations/constraints_and_relations.json, is
+# the trial constraints_and_relations_sqlite::<case id> on a case database of its own (FCV-3, FCV-4).
+[[test]]
+name = "constraints_and_relations_sqlite"
+path = "tests/constraints_and_relations_sqlite.rs"
+harness = false
+
 [[test]]
 name = "codec_integer_beyond_i64_none"
 path = "tests/codec_integer_beyond_i64_none.rs"

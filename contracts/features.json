@@ -9186,7 +9186,10 @@
         "client-query-relation",
         "coverage-composite-keys-composite-key-rows",
         "coverage-constraints-and-relations-immutable-write",
-        "coverage-constraints-and-relations-constraint-errors"
+        "coverage-constraints-and-relations-constraint-errors",
+        "constraints_and_relations-mysql",
+        "constraints_and_relations-postgres",
+        "constraints_and_relations-sqlite"
       ],
       "fixtures": [
         "contracts/fixtures/bench/bench.dbs",
@@ -9195,7 +9198,8 @@
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
-        "packages/python/tests/coverage_case.py"
+        "packages/python/tests/coverage_case.py",
+        "contracts/fixtures/constraints_and_relations/constraints_and_relations.json"
       ],
       "tests": [
         "packages/go/engine/planner/soft_delete_test.go",

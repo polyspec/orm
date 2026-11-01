@@ -7,6 +7,7 @@ package recipe
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 
@@ -56,6 +57,10 @@ func modelOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return compositeAccountOp(s, c, db)
 	case "Author":
 		return authorOp(s, c, db)
+	case "User":
+		return userOp(s, c, db)
+	case "NoteReader":
+		return noteReaderOp(s, c, db)
 	}
 	if table, ok := tableModels[s.Model]; ok {
 		return tableModelOp(s, c, db, table)
@@ -395,6 +400,8 @@ var authorColumns = map[string]func(*model.AuthorModel) *model.AuthorModel{
 	"service_region_seq": (*model.AuthorModel).AddColumnServiceRegionSeq,
 	"service_member_seq": (*model.AuthorModel).AddColumnServiceMemberSeq,
 	"read_count":         (*model.AuthorModel).AddColumnReadCount,
+	"like_count":         (*model.AuthorModel).AddColumnLikeCount,
+	"uuid":               (*model.AuthorModel).AddColumnUuid,
 }
 
 // authorOrders is the table of the Author orders that a recipe may name, by column name: a name is ascending, and a name
@@ -565,6 +572,44 @@ func authorOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, error) {
 			rows = append(rows, rowCells(row, s.Columns))
 		}
 		return outcome{fields: map[string]any{"rows": rows}}, nil
+	case "model.update":
+		key, err := modelValues(s.Key, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		set, err := modelValues(s.Set, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		m, err := authorChain(db, key, nil)
+		if err != nil {
+			return outcome{}, err
+		}
+		row, err := m.Get()
+		if err != nil {
+			return outcome{}, err
+		}
+		if row == nil {
+			return outcome{}, fmt.Errorf("Author update: the key names no row")
+		}
+		for _, column := range sortedColumns(set) {
+			switch v := set[column].(type) {
+			case int64:
+				if column != "like_count" {
+					return outcome{}, fmt.Errorf("Author column %s has no recipe update", column)
+				}
+				row.SetLikeCount(int32(v))
+			case string:
+				if column != "uuid" {
+					return outcome{}, fmt.Errorf("Author column %s has no recipe update", column)
+				}
+				row.SetUuid(&v)
+			default:
+				return outcome{}, fmt.Errorf("Author column %s: unsupported update value", column)
+			}
+		}
+		_, err = row.Update()
+		return outcome{fields: map[string]any{}}, err
 	case "model.arithmetic":
 		m, err := filterOf(s.Key)
 		if err != nil {
@@ -601,4 +646,75 @@ func authorOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, error) {
 		return outcome{fields: map[string]any{}}, err
 	}
 	return outcome{}, fmt.Errorf("OP_UNKNOWN %s", s.Op)
+}
+
+// userOp runs one model op of s on the User model; only model.delete names it (the referenced-user case).
+func userOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, error) {
+	where, err := modelValues(s.Where, c)
+	if err != nil {
+		return outcome{}, err
+	}
+	if s.Op != "model.delete" {
+		return outcome{}, fmt.Errorf("op %s has no User entry", s.Op)
+	}
+	m := model.User().Connect(db)
+	for i, column := range sortedColumns(where) {
+		n, ok := where[column].(int64)
+		if column != "seq" || !ok {
+			return outcome{}, fmt.Errorf("User column %s has no recipe condition", column)
+		}
+		if i > 0 {
+			m = m.And()
+		}
+		m = m.Seq(n)
+	}
+	rows, err := m.Gets()
+	if err != nil {
+		return outcome{}, err
+	}
+	for _, row := range rows.Slice() {
+		if err := row.Delete(); err != nil {
+			return outcome{}, err
+		}
+	}
+	return outcome{fields: map[string]any{}}, nil
+}
+
+// noteReaderOp runs model.query on the NoteReader model with its relation to the external SharedNote model.
+func noteReaderOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, error) {
+	if s.Op != "model.query" || s.Relation == nil {
+		return outcome{}, fmt.Errorf("op %s has no NoteReader entry", s.Op)
+	}
+	var relation struct {
+		Model   string     `json:"model"`
+		Match   [][]string `json:"match"`
+		Columns []string   `json:"columns"`
+	}
+	if err := json.Unmarshal(s.Relation, &relation); err != nil {
+		return outcome{}, err
+	}
+	if relation.Model != "SharedNote" || !slices.Equal(relation.Match[0], []string{"shared_note_seq", "seq"}) || len(relation.Match) != 1 {
+		return outcome{}, fmt.Errorf("NoteReader relation %v has no recipe entry", relation.Match)
+	}
+	if len(s.Columns) != 1 || s.Columns[0] != "seq" || len(relation.Columns) != 1 || relation.Columns[0] != "title" {
+		return outcome{}, fmt.Errorf("NoteReader columns %v with relation %v have no recipe entry", s.Columns, relation.Columns)
+	}
+	m := model.NoteReader().Connect(db).Relation(model.SharedNote().MatchSharedNoteSeqWithSeq()).OrderBySeqAsc()
+	collection, err := m.Gets()
+	if err != nil {
+		return outcome{}, err
+	}
+	rows := []any{}
+	for _, row := range collection.Slice() {
+		parent := row.ToArray()
+		child, err := row.GetSharedNoteModel()
+		if err != nil {
+			return outcome{}, err
+		}
+		if child == nil {
+			continue
+		}
+		rows = append(rows, []any{wrapperOf(parent["seq"]), wrapperOf(child.ToArray()["title"])})
+	}
+	return outcome{fields: map[string]any{"rows": rows}}, nil
 }

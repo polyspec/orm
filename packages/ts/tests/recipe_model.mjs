@@ -1,7 +1,7 @@
 // The generated-model ops of the recipe helper (docs/spec/feature-coverage.md FCV-4 model ops, FCV-14). Each op calls the
 // generated model that its model name names, through the connection that model.connect bound. A model or a column without
 // an entry here fails the case by name, so no recipe passes on a call that the helper does not make.
-import { Author, CompositeAccount, Db } from '../dist/index.js';
+import { Author, CompositeAccount, Db, NoteReader, SharedNote, User } from '../dist/index.js';
 
 // The keys that the generated models of the bench set read their encrypted columns with (the native model tests use them).
 const BENCH_KEYS = { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' };
@@ -26,6 +26,8 @@ const COLUMNS = {
   service_region_seq: ['addColumnServiceRegionSeq', 'getServiceRegionSeq'],
   service_member_seq: ['addColumnServiceMemberSeq', 'getServiceMemberSeq'],
   read_count: ['addColumnReadCount', 'getReadCount'],
+  like_count: ['addColumnLikeCount', 'getLikeCount'],
+  uuid: ['addColumnUuid', 'getUuid'],
 };
 
 // The Author orders that a recipe may name, ascending, by column.
@@ -99,6 +101,9 @@ export function modelOps({ native, databaseValue, stepArgument }) {
     return model;
   };
 
+  const isMatch = match => Array.isArray(match) && match.length === 1 && match[0].length === 2 && match[0][0] === 'shared_note_seq' && match[0][1] === 'seq';
+  const isTitle = columns => Array.isArray(columns) && columns.length === 1 && columns[0] === 'title';
+  const isSeq = columns => Array.isArray(columns) && columns.length === 1 && columns[0] === 'seq';
   // rowCells is the recipe wrappers of the named columns of one row, in the order of columns.
   const cells = (row, columns) => columns.map(column => wrap(row[COLUMNS[column][1]]()));
 
@@ -130,6 +135,20 @@ export function modelOps({ native, databaseValue, stepArgument }) {
     },
     async 'model.update'(s, context) {
       const db = connection(s.connection, context);
+      if (s.model === 'Author') {
+        // The row of key, its set columns changed, then one update of the row (Update).
+        const row = await chain(db, objectValues(s.key, context), []).get();
+        if (row === null) throw new Error('Author update: the key names no row');
+        const set = objectValues(s.set, context);
+        for (const column of columnsOf(set)) {
+          const value = set[column];
+          if (column === 'like_count' && (typeof value === 'number' || typeof value === 'bigint')) row.setLikeCount(Number(value));
+          else if (column === 'uuid' && typeof value === 'string') row.setUuid(value);
+          else throw new Error(`Author column ${column} has no recipe update`);
+        }
+        await row.update();
+        return {};
+      }
       const row = await compositeKey(db, objectValues(s.key, context));
       if (row === null) throw new Error('model.update: the key names no row');
       for (const column of columnsOf(objectValues(s.set, context))) {
@@ -141,6 +160,16 @@ export function modelOps({ native, databaseValue, stepArgument }) {
     },
     async 'model.delete'(s, context) {
       const db = connection(s.connection, context);
+      if (s.model === 'User') {
+        // The User rows of where, which is the seq only (the referenced-user case of constraint_errors).
+        const where = objectValues(s.where, context);
+        const columns = columnsOf(where);
+        if (columns.length !== 1 || columns[0] !== 'seq' || (typeof where.seq !== 'number' && typeof where.seq !== 'bigint')) {
+          throw new Error('User delete: the recipe condition is seq only');
+        }
+        await (await new User().connect(db).seq(where.seq).gets()).delete();
+        return {};
+      }
       await (await compositeFilter(db, objectValues(s.where, context)).gets()).delete();
       return {};
     },
@@ -166,6 +195,24 @@ export function modelOps({ native, databaseValue, stepArgument }) {
     },
     async 'model.query'(s, context) {
       const db = connection(s.connection, context);
+      if (s.model === 'NoteReader') {
+        // The rows of NoteReader in seq order, each with the title of its SharedNote row; a reader without a note
+        // contributes no row (FCV-4 relation).
+        const relation = s.relation;
+        if (relation === undefined) throw new Error('NoteReader model.query needs its relation');
+        if (relation.model !== 'SharedNote' || !isMatch(relation.match) || !isTitle(relation.columns)) {
+          throw new Error(`NoteReader relation ${JSON.stringify(relation)} has no recipe entry`);
+        }
+        if (!isSeq(s.columns) || !isSeq(s.order) || Object.keys(s.where ?? {}).length > 0) throw new Error('NoteReader query has no recipe entry for this shape');
+        const collection = await new NoteReader().connect(db).relation(new SharedNote().matchSharedNoteSeqWithSeq()).orderBySeqAsc().gets();
+        const rows = [];
+        for (const row of collection.values()) {
+          const child = row.getSharedNoteModel();
+          if (child === undefined || child === null) continue;
+          rows.push([wrap(row.getSeq()), wrap(child.getTitle())]);
+        }
+        return { rows };
+      }
       if (s.model === 'Author') {
         const model = chain(db, objectValues(s.where, context), s.columns);
         for (const column of s.order ?? []) {

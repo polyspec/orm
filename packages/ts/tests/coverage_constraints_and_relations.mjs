@@ -1,47 +1,14 @@
-// constraints_and_relations coverage: each foreign key, check, and unique violation that the database rejects
-// is reported as FOREIGN_KEY, CONSTRAINT, or DUPLICATE_KEY, and no row changes.
+// constraints_and_relations coverage: an immutable table refuses an update, and the refusal changes no row. The foreign key,
+// check, unique and relation cases run from contracts/fixtures/constraints_and_relations (constraints-and-relations-check).
 import assert from 'node:assert/strict';
-import { CORE, Author, NoteReader, OrmError, SharedNote, User, connect } from '../dist/index.js';
-import { errorCode, nativeQuery, runCases, tableExists } from './coverage_case.mjs';
+import { CORE, OrmError, connect } from '../dist/index.js';
+import { nativeQuery, runCases, tableExists } from './coverage_case.mjs';
 import { loadDatabaseCaseFixture } from './database-case-fixture.mjs';
 import { schemaOf } from './schema_of.mjs';
 
 const refusal = await loadDatabaseCaseFixture('refusal.dbs', 'refused_row');
 
 await runCases('coverage_constraints_and_relations.mjs', {
-  // CFG-33: a violated foreign key, check or unique key is reported as FOREIGN_KEY, CONSTRAINT or DUPLICATE_KEY, and no row changes.
-  async constraint_errors({ driver, dsn }) {
-    const db = await connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
-    try {
-      assert.equal(db.driver, driver);
-      const snapshot = async () => {
-        const first = await new Author().connect(db).addAllColumns().getBySeq(1);
-        const user = await new User().connect(db).getBySeq(1);
-        return { author: first.toJSONText(), user: user.toJSONText() };
-      };
-      const before = await snapshot();
-      const second = await new Author().connect(db).getBySeq(2);
-      assert.equal(typeof second.getUuid(), 'string', 'author 2 has a uuid');
-
-      const user = await new User().connect(db).getBySeq(1);
-      assert.equal(await errorCode(user.delete()), 'FOREIGN_KEY', 'delete of a referenced user');
-      assert.equal(await errorCode(new Author().connect(db).setSeq(1).setLikeCount(-1).update()), 'CONSTRAINT', 'ck_author_counts');
-      assert.equal(await errorCode(new Author().connect(db).setSeq(1).setUuid(second.getUuid()).update()), 'DUPLICATE_KEY', 'uq_author_uuid');
-      assert.deepEqual(await snapshot(), before, 'the rejected writes changed nothing');
-    } finally { await db.close(); }
-  },
-  async external_relation({ driver, dsn }) {
-    const db = await connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
-    try {
-      assert.equal(db.driver, driver);
-      const rows = await new NoteReader().connect(db)
-        .relation(new SharedNote().matchSharedNoteSeqWithSeq())
-        .orderBySeqAsc()
-        .gets();
-      const got = rows.values().map(row => `${row.getSeq()}:${row.getSharedNoteModel()?.getTitle()}`);
-      assert.deepEqual(got, ['1:note-1', '2:note-1', '3:note-3'], 'relation reads the external shared_note document');
-    } finally { await db.close(); }
-  },
   async immutable_write({ driver, dsn }) {
     // Requirements: DBS-84.
     assert.equal(await tableExists(driver, dsn, 'refused_row'), false, 'refusal table is absent before the case');

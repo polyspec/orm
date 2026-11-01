@@ -4,16 +4,11 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-// constraints_and_relations feature coverage: deleting a referenced row, a check violation,
-// and unique duplicates fail with FOREIGN_KEY, CONSTRAINT, and DUPLICATE_KEY respectively, and no row
-// is changed.
+// constraints_and_relations feature coverage: the constraint errors and the external relation are covered by the
+// constraints and relations recipe (ConstraintsAndRelationsRecipeTest); the immutable write remains here.
 // CFG-33: database constraints map to stable error codes and leave rejected rows unchanged.
 
 
-use Polyspec\Orm\Tests\Model\Author;
-use Polyspec\Orm\Tests\Model\NoteReader;
-use Polyspec\Orm\Tests\Model\SharedNote;
-use Polyspec\Orm\Tests\Model\User;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\OrmException;
 use Polyspec\Orm\RuntimeModel;
@@ -44,72 +39,6 @@ class CoverageConstraintsAndRelationsTest extends TestCase
             'Polyspec\\Orm\\Tests\\CoverageConstraints\\Refusal'
         );
         $generated = true;
-    }
-
-    public function testConstraintErrors(): void
-    {
-        foreach (coverageItemsOf(__FILE__) as $item) {
-            selectCoverageItem($item);
-            [, $dsn] = coverageItem();
-            $db = coverageConnect($dsn);
-            try {
-                $before = (new Author())($db)->getBySeq(1)->toArray();
-                $code = coverageCode(fn() => (new User())($db)->setSeq(1)->delete());
-                Assert::assertTrue(
-                    $code === Code::FOREIGN_KEY,
-                    "delete of a referenced user is $code, want FOREIGN_KEY"
-                );
-                Assert::assertTrue(
-                    (new User())($db)->getBySeq(1)->getName() === 'user-1',
-                    'the referenced user changed'
-                );
-                $code = coverageCode(fn() => (new Author())($db)->setSeq(1)->setLikeCount(-1)->update());
-                Assert::assertTrue($code === Code::CONSTRAINT, "a negative like_count is $code, want CONSTRAINT");
-                $uuid = (new Author())($db)->getBySeq(2)->getUuid();
-                Assert::assertTrue(is_string($uuid) && $uuid !== '', 'author 2 has no uuid');
-                $code = coverageCode(fn() => (new Author())($db)->setSeq(1)->setUuid($uuid)->update());
-                Assert::assertTrue($code === Code::DUPLICATE_KEY, "a duplicate uuid is $code, want DUPLICATE_KEY");
-                $after = (new Author())($db)->getBySeq(1)->toArray();
-                Assert::assertTrue($after === $before, 'author 1 changed: ' . json_encode($after));
-            } finally {
-                $db->close();
-            }
-        }
-    }
-
-    public function testExternalRelation(): void
-    {
-        coverageAssertEntryClassesAreInternal();
-        if (getenv('ORM_PHP_MODE') === 'extension') {
-            Assert::assertTrue(
-                (new \ReflectionClass(\Polyspec\Orm\Model::class))->isInternal(),
-                'relation queries use the native extension Model class'
-            );
-        }
-        foreach (coverageItemsOf(__FILE__) as $item) {
-            selectCoverageItem($item);
-            [, $dsn] = coverageItem();
-            $db = coverageConnect($dsn);
-            try {
-                $got = [];
-                $rows = (new NoteReader())($db)
-                    ->relation((new SharedNote())->matchSharedNoteSeqWithSeq())
-                    ->orderBySeqAsc()
-                    ->gets();
-                foreach ($rows as $row) {
-                    $note = $row->getSharedNoteModel();
-                    Assert::assertInstanceOf(SharedNote::class, $note);
-                    $got[] = $row->getSeq() . ':' . $note->getTitle();
-                }
-                Assert::assertSame(
-                    ['1:note-1', '2:note-1', '3:note-3'],
-                    $got,
-                    'relation reads the external shared_note document'
-                );
-            } finally {
-                $db->close();
-            }
-        }
     }
 
     // DBS-84: renderer-installed immutable write triggers reject updates without changing stored rows.

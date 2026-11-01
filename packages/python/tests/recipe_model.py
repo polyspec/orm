@@ -28,6 +28,8 @@ COLUMNS = {
     "service_region_seq": ("add_column_service_region_seq", "get_service_region_seq"),
     "service_member_seq": ("add_column_service_member_seq", "get_service_member_seq"),
     "read_count": ("add_column_read_count", "get_read_count"),
+    "like_count": ("add_column_like_count", "get_like_count"),
+    "uuid": ("add_column_uuid", "get_uuid"),
 }
 
 # The Author orders that a recipe may name, by column: a name is ascending, and a name with a leading "-" is descending (FCV-4).
@@ -171,6 +173,20 @@ def model_ops(native, database_value, step_argument):
 
     def model_update(step, context):
         db = connection(step["connection"], context)
+        if step["model"] == "Author":
+            # The row of key, its set columns changed, then one update of the row (Update).
+            row = chain(db, values_of(step["key"], context), []).get()
+            if row is None:
+                raise AssertionError("Author update: the key names no row")
+            for column, value in sorted(values_of(step["set"], context).items()):
+                if column == "like_count" and isinstance(value, int) and not isinstance(value, bool):
+                    row.set_like_count(value)
+                elif column == "uuid" and isinstance(value, str):
+                    row.set_uuid(value)
+                else:
+                    raise AssertionError(f"Author column {column} has no recipe update")
+            row.update()
+            return {}
         row = composite_key(db, values_of(step["key"], context))
         if row is None:
             raise AssertionError("model.update: the key names no row")
@@ -185,6 +201,13 @@ def model_ops(native, database_value, step_argument):
 
     def model_delete(step, context):
         db = connection(step["connection"], context)
+        if step["model"] == "User":
+            # The User rows of where, which is the seq only (the referenced-user case of constraint_errors).
+            where = values_of(step["where"], context)
+            if sorted(where) != ["seq"] or not isinstance(where["seq"], int) or isinstance(where["seq"], bool):
+                raise AssertionError("User delete: the recipe condition is seq only")
+            models.User().connect(db).seq(where["seq"]).gets().delete()
+            return {}
         composite_filter(db, values_of(step["where"], context)).gets().delete()
         return {}
 
@@ -216,8 +239,38 @@ def model_ops(native, database_value, step_argument):
             return {"rows": []}
         return {"rows": [[_column_wrap(row, column) for column in step["columns"]]]}
 
+    def note_reader_query(db, step):
+        """model.query on NoteReader with its relation to the external SharedNote: each row is the seq of a reader and the
+        title of its shared note, and a reader without a note contributes no row (FCV-4)."""
+        relation = step.get("relation")
+        if relation is None:
+            raise AssertionError("NoteReader model.query needs its relation")
+        if (
+            relation["model"] != "SharedNote"
+            or relation["match"] != [["shared_note_seq", "seq"]]
+            or relation["columns"] != ["title"]
+        ):
+            raise AssertionError(f"NoteReader relation {relation} has no recipe entry")
+        if step["columns"] != ["seq"] or step["order"] != ["seq"] or step["where"]:
+            raise AssertionError("NoteReader query has no recipe entry for this shape")
+        m = (
+            models.NoteReader()
+            .connect(db)
+            .relation(models.SharedNote().match_shared_note_seq_with_seq())
+            .order_by_seq_asc()
+        )
+        rows = []
+        for row in m.gets().values():
+            child = row.get_shared_note_model()
+            if child is None:
+                continue
+            rows.append([_wrap(row.to_array()["seq"]), _wrap(child.to_array()["title"])])
+        return {"rows": rows}
+
     def model_query(step, context):
         db = connection(step["connection"], context)
+        if step["model"] == "NoteReader":
+            return note_reader_query(db, step)
         if step["model"] == "Author":
             model = chain(db, values_of(step.get("where"), context), step["columns"])
             for column in step.get("order", []):
