@@ -2932,8 +2932,10 @@ deps-rust: orm-install-rust
 orm-install-rust-toolchain:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" rustup toolchain install
 	PATH="$(HOME)/.cargo/bin:$(PATH)" rustc --version
+# RUST_CRATE_MANIFESTS lists the workspace manifests of the tracked Cargo.lock files; cargo fetch --locked downloads each workspace's crates.
+RUST_CRATE_MANIFESTS = benchmarks/rust/Cargo.toml packages/rust/Cargo.toml packages/rust/testing/interfaces/Cargo.toml
 orm-install-rust-crates:
-	$(MAKE) --no-print-directory cargo-downloads-fetch
+	$(ONLINE) sh -c 'set -e; for m in $(RUST_CRATE_MANIFESTS); do PATH="$(HOME)/.cargo/bin:$(PATH)" cargo +$(PHYSICAL_RUST_TOOLCHAIN) fetch --locked --manifest-path "$$m"; done'
 # GO_MODELS_FILE declares the entries of the Go models that orm-gen generates (P34: generated output is never tracked): one orm-gen
 # argument line per package, read by go-models and go-model-check (packages/go/models.txt). go-models writes them, and it is the last
 # step of orm-install-go, after the modules are downloaded, so every Go check finds them. go-model-check runs orm-gen gen --check

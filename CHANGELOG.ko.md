@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ee923cbe65d5e347bcaa96e09a284cbbf9723c5c2175885db67ec38c8d34e614 -->
+<!-- source-sha256: ae1f1687562df2c49a90af24f05c4f3287c7f3d74863b68f69479b2b65e46d5c -->
 # 변경 이력
 
 ## Unreleased
 
+- orm-install-rust-crates는 kit가 cargo-downloads-fetch를 삭제했으므로 추적되는 각 Cargo.lock의 크레이트를 `cargo fetch --locked`로 직접 받는다. 그래서 `make install`은 더 이상 `No rule to make target`으로 멈추지 않는다 (T352).
 - 두 branch의 check-recipes 작업이 하나의 통합으로 main에 들어간다. 한국어 checklist는 영어 checklist의 모든 row를 가지고, 변경 이력은 그 commit들의 항목을 가지며, Makefile은 `rust-compiler-fixtures-check/unit`에서 node를 `$(NODE)`로 실행하고, `config/rebuild.json`은 `scripts/generate/once.mts`와 `scripts/php/php-ext-build.mts`를 분류한다 (CR26).
 - check runner는 실패한 target의 `::error` 줄을 출력하지 않아, GitHub Actions에서 실패는 작업이 끝나야 보였다. 이제 실패한 target은 끝날 때 `::error` 줄을 출력한다 (CR1).
 - docs 빌드는 게시된 폴더에 직접 사이트를 렌더링해서, 중단된 빌드는 사이트의 절반을 남겼다. 이제 임시 폴더에 렌더링한 뒤 이름 바꾸기 한 번으로 게시한다 (CR2).
