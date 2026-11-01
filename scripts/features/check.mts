@@ -1,5 +1,6 @@
 import { readFile, stat } from 'node:fs/promises';
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { runCommand, typescriptLease, typescriptLeaseProgram, type TypeScriptLease } from './typescript-lease.mts';
 import { resolve } from 'node:path';
 import { COMPUTE, runGroup, sections, stepLines, type Step } from '../../tests/testcase.mts';
 import { errorCode, errorMessage } from '../../tests/errors.mts';
@@ -40,14 +41,14 @@ const selection = parseSelection(process.argv);
 
 // execute reports the command's output lines as steps while it runs. The runner that the command runs for each case
 // reports the start, result, elapsed time, and deadline.
-const execute = (command: string, cwd: string, step: Step) => new Promise<{ code: number; output?: string }>((resolveRun) => {
-  const child = spawn('/bin/sh', ['-c', command], { cwd, env: process.env });
+// A command that reads or builds the TypeScript build output runs under its lease (typescript-lease.mts), so it never overlaps a build.
+const execute = async (command: string, cwd: string, step: Step, mode?: TypeScriptLease) => {
   const lines = stepLines(step);
-  child.stdout.on('data', (chunk: Buffer) => lines.write(String(chunk)));
-  child.stderr.on('data', (chunk: Buffer) => lines.write(String(chunk)));
-  child.on('error', error => resolveRun({ code: 1, output: error.message }));
-  child.on('close', code => { lines.flush(); resolveRun({ code: code ?? 1 }); });
-});
+  const lease = mode ? { ...typescriptLeaseProgram(process.env), mode } : undefined;
+  const result = await runCommand(command, cwd, process.env, lease, text => lines.write(text));
+  lines.flush();
+  return result;
+};
 
 function readManifest(): FeatureManifest {
   try {
@@ -196,7 +197,7 @@ if (runVerification && errors.length === 0) {
         if (!(await previous.done)) throw new Error(`${previous.name} failed`);
         return;
       }
-      const result = await execute(check.command, resolve(root, check.cwd ?? '.'), step);
+      const result = await execute(check.command, resolve(root, check.cwd ?? '.'), step, typescriptLease(check));
       if (result.code !== 0) throw new Error(`command exited ${result.code}${result.output ? `: ${result.output}` : ''}`);
     });
     if (settle) settle(passed);

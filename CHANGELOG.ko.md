@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e34f2a921cdeee78a80ad55d34e6271f92af899939ba80b237e358ec5ba1a84a -->
+<!-- source-sha256: 911aa2f3c21374a2869285a80dcc8fcaeabfd8acce8f345d8a9b5e9527aa2c88 -->
 # 변경 이력
 
 ## Unreleased
 
+- TypeScript build output을 읽는 verification command는 READ_TYPESCRIPT의 공유 lease를 잡고, 빌드하는 command는 배타 lease를 잡아, make feature-verify-other에서 reader가 build와 겹치지 않는다(T346-7).
 - orm은 모든 생태계에서 ordered-json 0.0.18을 채택한다(T346-6). npm, Composer, Go, Python, Rust의 pin이 그 release asset과 tag를 가리키며, packaging.md는 0.0.18 asset을 적는다.
 - T346-5의 한국어 Task에서 writing-style 규칙이 금지한 표현을 고쳤다(T346-5-1).
 - orm은 require-dev에서 upstream package opis/json-schema 대신 maintained fork `min-0-max/json-schema`를 branch `dev-polyspec-origin-2.6.0`으로 요구한다(S14)(T346-5).

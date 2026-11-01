@@ -1446,8 +1446,8 @@ feature-unit-check/coverage:
 	$(RUN_TESTS) node -- scripts/features/coverage.test.mts scripts/features/languages.test.mts scripts/features/performance-reference.test.mts scripts/features/recipes.test.mts
 feature-unit-check/owners:
 	$(RUN_TESTS) node -- scripts/features/owners.test.mts scripts/features/manifest.test.mts
-feature-unit-check/select:
-	$(RUN_TESTS) node -- scripts/features/select.test.mts
+feature-unit-check/select: lease-tool
+	$(RUN_TESTS) node -- scripts/features/select.test.mts scripts/features/typescript-lease.test.mts
 
 # feature-go-unit runs one native Go test of a feature for one database, as a parity binding names it: the make variables
 # FEATURE_DATABASE, FEATURE_DSN_ENV, FEATURE_TEST and FEATURE_PACKAGE are passed by config/parity.json. The binding runs from
