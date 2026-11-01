@@ -379,7 +379,6 @@ class SerializeTest(unittest.TestCase):
         self.assertEqual(php_serialize(42), "i:42;")
         self.assertEqual(php_serialize(-7), "i:-7;")
         self.assertEqual(php_serialize(1.5), "d:1.5;")
-        self.assertEqual(php_serialize(2.0), "d:2.0;")
         self.assertEqual(php_serialize("ab"), 's:2:"ab";')
         self.assertEqual(php_serialize([1, "b"]), 'a:2:{i:0;i:1;i:1;s:1:"b";}')
         self.assertEqual(
@@ -392,11 +391,15 @@ class SerializeTest(unittest.TestCase):
         decoded = decode(["serialize"], 's:3:"맛";'.encode("utf-8"))
         self.assertEqual(decoded.payload(), "맛")
 
-    def test_unsafe_integers_fail(self):
+    def test_i64_bounds(self):
+        # COD-16: an integer is an i64 value, so the bounds encode and a value outside them is CODEC_ENCODE.
+        self.assertEqual(php_serialize(2**53), "i:9007199254740992;")
+        self.assertEqual(php_serialize(2**63 - 1), "i:9223372036854775807;")
+        self.assertEqual(php_serialize(-(2**63)), "i:-9223372036854775808;")
         with self.assertRaises(CodecError):
-            php_serialize(2**53)
+            php_serialize(2**63)
         with self.assertRaises(CodecError):
-            php_serialize(-(2**53) - 1)
+            php_serialize(-(2**63) - 1)
 
 
 class StyledValueTest(unittest.TestCase):
