@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 512e526005f8a4860b1e1a9ca8ff06553383ee4776d111832116b64b59e8106c -->
+<!-- source-sha256: ec23e679a8e1d419e821c9c583f1a0997600e1aac7245c67eaf5b5efb5b80a11 -->
 # 변경 이력
 
 ## Unreleased
 
+- 요청 검증 사례 `tests/ir/validate.json`은 recipe(`ir.validate` op, FCV-4)가 되어 여섯 runtime 모두 데이터베이스 없이 실행한다. Go, TypeScript, PHP, PHP extension, Python, Rust의 native vector test는 제거되고, parity unit ir-validate는 여섯 recipe entry에 묶인다 (#T334-3-15-1).
 - PHP 확장 한 번 빌드 검사(CR4)는 spec requirement가 아닌 build 시스템 시험이라, parity 선언 검사가 requirement를 요구하지 않는 scripts의 harness 루트인 scripts/php/php-ext-build-cache.test.mts로 packages/php-ext/tests에서 옮긴다 (#CR4-1).
 - 네 client 변경이 전체 suite target을 고르지 않는다는 owner test의 기대 목록에 CR5가 선언한 typescript-build-unit-check를 넣는다. TypeScript client build(packages/ts/**)가 이 target을 고른다 (#CR5-1).
 - Makefile 빌드 산출물을 제자리에 쓰는 PHP client generator 실행은 저장소 검사가 거부한다. `php-models`는 각 models 디렉터리를 `<dir>.tmp`에 생성한 뒤 rename으로 바꿔, 중단된 실행이 이전 디렉터리를 온전히 남긴다 (CR12).

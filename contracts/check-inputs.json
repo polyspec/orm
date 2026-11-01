@@ -3904,18 +3904,32 @@
         "contracts/fixtures/bench/dbspec-set.json"
       ]
     },
-    "dbspec-php-extension-check/ir": {
+    "ir-validate-check": {
       "scope": "owner",
       "needs": [
+        "go",
+        "rust",
         "php",
         "composer",
+        "python",
+        "node-modules",
         "php-extension-tools"
       ],
       "inputs": [
-        "packages/php-ext/tests/ValidatorNativeTest.php",
-        "packages/php/tests/EngineTest.php",
         "tests/ir/validate.json",
-        "contracts/fixtures/bench/bench.dbs"
+        "scripts/features/schema/recipe.schema.json",
+        "packages/go/engine/ir/recipe_validate_test.go",
+        "packages/go/internal/recipe/recipe.go",
+        "packages/php/tests/IrValidateRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php",
+        "packages/php-ext/tests/IrValidateRecipeTestExtensionTest.php",
+        "packages/ts/tests/engine.mjs",
+        "packages/ts/tests/recipe.mjs",
+        "packages/python/tests/test_ir_validate_none.py",
+        "packages/python/tests/recipe.py",
+        "packages/rust/orm/tests/ir_validate.rs",
+        "packages/rust/orm/tests/unit/ir_request.rs"
       ]
     },
     "dbspec-stress-rust-check": {

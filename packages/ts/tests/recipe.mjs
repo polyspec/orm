@@ -6,8 +6,9 @@ import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Kind, Value as JsonValue, parse as parseJson } from '@polyspec/ordered-json';
-import { Db, StyledValue, blindIndex, connectCatalog, dbspecManifest, decode, encode, hostDecode, hostEncode, parseDbspec, readDbspecFile } from '../dist/index.js';
+import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
+import { Db, StyledValue, blindIndex, connectCatalog, dbspecManifest, decode, encode, hostDecode, hostEncode, parseDbspec, readDbspecFile, registerModel } from '../dist/index.js';
+import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { withCaseDatabase } from './case-database.mjs';
 import { nativeQuery } from './coverage_case.mjs';
 import { caseTest, COMPUTE, DATABASE } from '../../../tests/testcase.mts';
@@ -19,13 +20,18 @@ export const NONE = 'none';
 // none runs each case on a case database of its own (databaseRecipe), and the entry awaits the registration.
 export function runRecipe(path, database) {
   if (database !== NONE) return databaseRecipe(path, database);
-  const recipe = JSON.parse(readFileSync(path, 'utf8'));
-  for (const recipeCase of recipe.cases) {
+  const text = readFileSync(path, 'utf8');
+  const recipe = JSON.parse(text);
+  const literal = parseJson(text);
+  // An ir.validate step checks its request against the schema of the recipe, which the recipe names relative to its own file.
+  const schema = recipe.schema === undefined ? undefined : validationModel(resolve(root, dirname(path), recipe.schema));
+  for (const [caseIndex, recipeCase] of recipe.cases.entries()) {
     caseTest(recipeCase.id, COMPUTE, () => {
       const bound = new Map();
       recipeCase.steps.forEach((step, index) => {
         try {
-          run(step, bound, database);
+          if (step.op === 'ir.validate') checkValidate(step, requestText(literal, caseIndex, index), schema, database);
+          else run(step, bound, database);
         } catch (error) {
           throw new Error(`recipe ${path} case ${recipeCase.id} step ${index} (${step.op}) on ${database}: ${error.message}`, { cause: error });
         }
@@ -431,4 +437,37 @@ function normalized(value) {
   if (value === null || typeof value !== 'object') return value;
   if (Object.keys(value).length === 1 && 'null' in value) return { null: true };
   return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, normalized(item)]));
+}
+
+// validationModel registers the schema manifest that the ir.validate steps check their requests against.
+function validationModel(schemaPath) {
+  const validated = dbspecManifest([parseDbspec(readFileSync(schemaPath, 'utf8'), {}).document]).manifest;
+  return { model: registerModel(validated.manifestText, validated.manifestHash), hash: validated.manifestHash };
+}
+
+// requestText is the request of the step as its ordered-json text, so a number keeps its literal (0.0 is not 0).
+function requestText(literal, caseIndex, stepIndex) {
+  return stringifyJson(literal.get('cases').items[caseIndex].get('steps').items[stepIndex].get('request'));
+}
+
+// checkValidate gives the request of an ir.validate step to the validator, with the manifest_hash of its schema added, and checks
+// the outcome of the expect of database: {value: {bool: true}} for an accepted request, {error: CODE} for a request that fails with CODE.
+function checkValidate(step, text, schema, database) {
+  if (schema === undefined) throw new Error('ir.validate needs the schema key of the recipe');
+  let got = null;
+  try {
+    const request = decodeRequest(text);
+    if ('manifest_hash' in request) throw new Error('request already holds manifest_hash');
+    validate(schema.model, { ...request, manifest_hash: schema.hash });
+  } catch (error) {
+    got = error.code ?? String(error);
+  }
+  const outcome = step.expect[database];
+  if (outcome === undefined) throw new Error(`ir.validate has no expect for ${database}`);
+  if (outcome.error !== undefined) {
+    if (got !== outcome.error) throw new Error(`got ${got ?? 'valid'}, want ${outcome.error}`);
+    return;
+  }
+  if (JSON.stringify(outcome.value) !== '{"bool":true}') throw new Error(`ir.validate expects {bool true} or an error, got ${JSON.stringify(outcome.value)}`);
+  if (got !== null) throw new Error(`got ${got}, want valid`);
 }

@@ -12,12 +12,15 @@ import (
 	"math"
 	"math/big"
 	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
 	"testing"
 
 	orderedjson "github.com/polyspec/ordered-json/packages/go"
+	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 	"github.com/polyspec/orm/packages/go/orm"
 )
 
@@ -25,7 +28,8 @@ import (
 const None = "none"
 
 type file struct {
-	Cases []recipeCase `json:"cases"`
+	Schema string       `json:"schema"`
+	Cases  []recipeCase `json:"cases"`
 }
 
 type recipeCase struct {
@@ -34,13 +38,14 @@ type recipeCase struct {
 }
 
 type step struct {
-	Op     string                     `json:"op"`
-	Styles []string                   `json:"styles"`
-	Raw    json.RawMessage            `json:"raw"`
-	Value  json.RawMessage            `json:"value"`
-	Key    *string                    `json:"key"`
-	As     string                     `json:"as"`
-	Expect map[string]json.RawMessage `json:"expect"`
+	Op      string                     `json:"op"`
+	Styles  []string                   `json:"styles"`
+	Raw     json.RawMessage            `json:"raw"`
+	Value   json.RawMessage            `json:"value"`
+	Key     *string                    `json:"key"`
+	As      string                     `json:"as"`
+	Request json.RawMessage            `json:"request"`
+	Expect  map[string]json.RawMessage `json:"expect"`
 }
 
 // result is what a step produced: the decoded value of a decode, the cell of an encode, or the error of either.
@@ -66,6 +71,14 @@ func Run(t *testing.T, path, database string) {
 	if err := json.Unmarshal(src, &f); err != nil {
 		t.Fatalf("recipe %s: %v", path, err)
 	}
+	// A recipe with an ir.validate step names the schema manifest of its requests, relative to the recipe file (tests/ir/validate.json).
+	var model *runtimemodel.Model
+	if f.Schema != "" {
+		model, err = runtimemodel.LoadFiles(filepath.Join(filepath.Dir(path), f.Schema))
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 	for _, c := range f.Cases {
 		t.Run(c.ID, func(t *testing.T) {
 			bound := map[string]result{}
@@ -74,7 +87,7 @@ func Run(t *testing.T, path, database string) {
 				if err := json.Unmarshal(raw, &s); err != nil {
 					t.Fatalf("recipe %s case %s step %d on %s: %v", path, c.ID, index, database, err)
 				}
-				if err := run(s, bound, database); err != nil {
+				if err := run(s, bound, database, model); err != nil {
 					t.Fatalf("recipe %s case %s step %d (%s) on %s: %v", path, c.ID, index, s.Op, database, err)
 				}
 			}
@@ -83,7 +96,10 @@ func Run(t *testing.T, path, database string) {
 }
 
 // run maps the op of s to its call and checks the result against the expect of database.
-func run(s step, bound map[string]result, database string) error {
+func run(s step, bound map[string]result, database string, model *runtimemodel.Model) error {
+	if s.Op == "ir.validate" {
+		return checkValidate(s.Expect[database], validate(model, s.Request))
+	}
 	var r result
 	switch s.Op {
 	case "codec.decode":
@@ -658,4 +674,55 @@ func sameFloat(a, b string) bool {
 	x, errA := strconv.ParseFloat(a, 64)
 	y, errB := strconv.ParseFloat(b, 64)
 	return errA == nil && errB == nil && (x == y || math.IsNaN(x) && math.IsNaN(y))
+}
+
+// validate passes a request of an ir.validate step to the validator of the protocol, with the manifest_hash of the schema
+// added (the request holds none), as the native vector test did. Its literal numbers are kept as their JSON text.
+func validate(m *runtimemodel.Model, raw json.RawMessage) error {
+	if m == nil {
+		return fmt.Errorf("ir.validate needs the schema key of the recipe")
+	}
+	var request map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &request); err != nil {
+		return err
+	}
+	if _, ok := request["manifest_hash"]; ok {
+		return fmt.Errorf("request already holds manifest_hash")
+	}
+	hash, err := json.Marshal(m.ManifestHash)
+	if err != nil {
+		return err
+	}
+	request["manifest_hash"] = hash
+	body, err := json.Marshal(request)
+	if err != nil {
+		return err
+	}
+	_, err = ir.Decode(m, body)
+	return err
+}
+
+// checkValidate compares the error of validate with the outcome of an expect: {value: bool true} for an accepted request,
+// {error: CODE} for a request that fails with CODE (the error text starts with CODE and a colon).
+func checkValidate(raw json.RawMessage, err error) error {
+	var outcome struct {
+		Value json.RawMessage `json:"value"`
+		Error string          `json:"error"`
+	}
+	if e := json.Unmarshal(raw, &outcome); e != nil {
+		return e
+	}
+	if outcome.Error != "" {
+		if err == nil || !strings.HasPrefix(err.Error(), outcome.Error+":") {
+			return fmt.Errorf("got %v, want %s", err, outcome.Error)
+		}
+		return nil
+	}
+	if string(outcome.Value) != `{"bool":true}` {
+		return fmt.Errorf("ir.validate expects {bool true} or an error, got %s", outcome.Value)
+	}
+	if err != nil {
+		return fmt.Errorf("unexpected error %w", err)
+	}
+	return nil
 }

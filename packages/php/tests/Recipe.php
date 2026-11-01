@@ -21,8 +21,10 @@ use Polyspec\Orm\Config;
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
+use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Schema;
 use Polyspec\Orm\StyledValue;
+use Polyspec\Orm\Validator;
 
 final class Recipe
 {
@@ -48,6 +50,10 @@ final class Recipe
         $bound = [];
         foreach ($case['steps'] as $index => $step) {
             try {
+                if ($step['op'] === 'ir.validate') {
+                    self::validateStep($step, $path, $database);
+                    continue;
+                }
                 self::step($step, $bound, $database);
             } catch (\PHPUnit\Framework\AssertionFailedError $failure) {
                 Assert::fail(
@@ -55,6 +61,38 @@ final class Recipe
                 );
             }
         }
+    }
+
+    /**
+     * Gives the request of an ir.validate step to the validator, with the manifest_hash of the schema that the recipe names
+     * (relative to the recipe file) added, and checks the outcome of the expect of database: {value: {bool: true}} for an accepted
+     * request, {error: CODE} for a request that fails with CODE.
+     */
+    private static function validateStep(array $step, string $path, string $database): void
+    {
+        $outcome = $step['expect'][$database] ?? Assert::fail("ir.validate has no expect for $database");
+        $root = dirname(__DIR__, 3);
+        $recipe = json_decode(file_get_contents($root . '/' . $path), true, 512, JSON_THROW_ON_ERROR);
+        $schema = realpath(dirname($root . '/' . $path) . '/' . $recipe['schema']);
+        if ($schema === false) {
+            Assert::fail("ir.validate: the schema of $path is missing");
+        }
+        if (array_key_exists('manifest_hash', $step['request'])) {
+            Assert::fail('request already holds manifest_hash');
+        }
+        $model = RuntimeModel::build(RuntimeModel::files([$schema]));
+        $got = 'no error';
+        try {
+            (new Validator($model))->validate($step['request'] + ['manifest_hash' => $model->manifestHash]);
+        } catch (OrmException $error) {
+            $got = $error->code_;
+        }
+        if (isset($outcome['error'])) {
+            Assert::assertSame($outcome['error'], $got);
+            return;
+        }
+        Assert::assertSame(['bool' => true], $outcome['value'] ?? null, 'ir.validate expects {bool true} or an error');
+        Assert::assertSame('no error', $got);
     }
 
     /** Maps the op of step to its call and checks the result against the expect of database. */

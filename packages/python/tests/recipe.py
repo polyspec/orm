@@ -27,6 +27,8 @@ from polyspec.orm.codec import (
 )
 from polyspec.orm import Db, OrmError, Schema, connect_catalog
 from polyspec.orm.dbspec import dbspec_manifest, parse_dbspec, read_dbspec_file
+from polyspec.orm.engine import model_of_documents, parse_document_set
+from polyspec.orm.engine.validate import validate
 from polyspec.orm.styled_value import StyledValue
 
 from . import testcase
@@ -56,11 +58,18 @@ def recipe_tests(path: str, database: str):
     if database != NONE:
         return _database_recipe_tests(path, database)
     recipe = json.loads((ROOT / path).read_text(encoding="utf-8"))
+    # An ir.validate step checks its request against the schema of the recipe, which the recipe names relative to its own file.
+    model = (
+        _validation_model(ROOT / Path(path).parent / recipe["schema"]) if "schema" in recipe else None
+    )
 
     def check(test: unittest.TestCase, case: dict) -> None:
         bound: dict[str, Any] = {}
         for index, step in enumerate(case["steps"]):
             try:
+                if step["op"] == "ir.validate":
+                    _validate(step, model, database)
+                    continue
                 _run(step, bound, database)
             except AssertionError as error:
                 raise AssertionError(
@@ -68,6 +77,36 @@ def recipe_tests(path: str, database: str):
                 ) from error
 
     return vector_load_tests(RecipeCase, recipe["cases"], check)
+
+
+def _validation_model(schema: Path):
+    """The model of the schema manifest that the ir.validate steps check their requests against."""
+    return model_of_documents(parse_document_set([schema.read_text(encoding="utf-8")]))
+
+
+def _validate(step: dict, model: Any, database: str) -> None:
+    """Gives the request of an ir.validate step to the validator, with the manifest_hash of the schema added, and checks the
+    outcome of the expect of database: {value: {bool: true}} for an accepted request, {error: CODE} for a request that fails with CODE."""
+    if model is None:
+        raise AssertionError("ir.validate needs the schema key of the recipe")
+    outcome = step["expect"].get(database)
+    if outcome is None:
+        raise AssertionError(f"ir.validate has no expect for {database}")
+    if "manifest_hash" in step["request"]:
+        raise AssertionError("request already holds manifest_hash")
+    got = None
+    try:
+        validate(model, dict(step["request"], manifest_hash=model.manifest_hash))
+    except OrmError as error:
+        got = error.code
+    if "error" in outcome:
+        if got != outcome["error"]:
+            raise AssertionError(f"got {got}, want {outcome['error']}")
+        return
+    if outcome.get("value") != {"bool": True}:
+        raise AssertionError(f"ir.validate expects {{bool true}} or an error, got {outcome.get('value')}")
+    if got is not None:
+        raise AssertionError(f"got {got}, want valid")
 
 
 def _run(step: dict, bound: dict, database: str) -> None:

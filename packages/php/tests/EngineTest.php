@@ -7,15 +7,12 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-use RuntimeException;
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Engine;
 use Polyspec\Orm\OrmException;
 use Polyspec\Orm\RuntimeModel;
-use Polyspec\Orm\Validator;
 
 /** The AES version column is selected once, as an ordinary visible column, when all columns are requested. */
 function assertAllColumnsSelectAesVersionOnce(string $root): void
@@ -616,41 +613,9 @@ final class EngineTest extends TestCase
         }
     }
 
-    /** @return iterable<string, array{array<string, mixed>}> for each case in tests/ir/validate.json */
-    public static function validateCases(): iterable
-    {
-        $file = json_decode(
-            (string) file_get_contents(dirname(__DIR__, 3) . '/tests/ir/validate.json'),
-            true,
-            512,
-            JSON_THROW_ON_ERROR
-        );
-        if ($file['schema'] !== 'contracts/fixtures/bench/bench.dbs' || $file['cases'] === []) {
-            throw new RuntimeException('validate.json names contracts/fixtures/bench/bench.dbs and has cases');
-        }
-        foreach ($file['cases'] as $case) {
-            yield $case['name'] => [$case];
-        }
-    }
-
     // Requirements: DIA-33.
     public function testAllColumnsSelectAesVersionOnce(): void
     {
         assertAllColumnsSelectAesVersionOnce(dirname(__DIR__, 3));
-    }
-
-    // Requirements: INT-24, PRT-22.
-    // Shared validation cases (tests/ir/validate.json): each request gets the schema's manifest_hash added and is given
-    // only to the validator, and checks whether it is accepted or fails with the expected error code.
-    /** @param array<string, mixed> $case */
-    #[DataProvider('validateCases')]
-    public function testValidate(array $case): void
-    {
-        $model = RuntimeModel::build(
-            RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/bench/bench.dbs'])
-        );
-        $validator = new Validator($model);
-        $got = self::code(fn() => $validator->validate($case['request'] + ['manifest_hash' => $model->manifestHash]));
-        self::assertSame(!empty($case['valid']) ? 'no error' : $case['error'], $got);
     }
 }

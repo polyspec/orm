@@ -10,7 +10,8 @@
     "requirements": { "$ref": "#/$defs/requirements" },
     "fixture": { "type": "string", "pattern": "(^|/)dbspec-set\\.json$" },
     "seed": { "$ref": "#/$defs/seed" },
-    "cases": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/case" } }
+    "cases": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/case" } },
+    "schema": { "type": "string", "pattern": "\\.dbs$", "description": "The schema manifest that the ir.validate steps check their requests against, relative to the recipe file." }
   },
   "if": { "type": "object", "required": ["fixture"], "properties": { "fixture": true } },
   "then": { "$ref": "#/$defs/expectations/databases" },
@@ -183,7 +184,7 @@
     "step": {
       "type": "object",
       "required": ["op"],
-      "properties": { "op": { "enum": ["model.connect", "codec.decode", "codec.encode", "codec.host_encode", "codec.host_decode", "codec.blind_index", "sql.exec", "catalog.current_namespace", "catalog.describe_table", "catalog.table_page", "catalog.read_only_query", "catalog.read_only_grid_query", "catalog.row_snapshot", "catalog.insert_row", "catalog.update_row", "catalog.delete_row"] } },
+      "properties": { "op": { "enum": ["model.connect", "codec.decode", "codec.encode", "codec.host_encode", "codec.host_decode", "codec.blind_index", "sql.exec", "ir.validate", "catalog.current_namespace", "catalog.describe_table", "catalog.table_page", "catalog.read_only_query", "catalog.read_only_grid_query", "catalog.row_snapshot", "catalog.insert_row", "catalog.update_row", "catalog.delete_row"] } },
       "oneOf": [
         { "$ref": "#/$defs/ops/model.connect" },
         { "$ref": "#/$defs/ops/codec.decode" },
@@ -191,7 +192,7 @@
         { "$ref": "#/$defs/ops/codec.host_encode" },
         { "$ref": "#/$defs/ops/codec.host_decode" },
         { "$ref": "#/$defs/ops/codec.blind_index" },
-        { "$ref": "#/$defs/ops/sql.exec" },
+        { "$ref": "#/$defs/ops/sql.exec" }, { "$ref": "#/$defs/ops/ir.validate" },
         { "$ref": "#/$defs/ops/catalog.current_namespace" },
         { "$ref": "#/$defs/ops/catalog.describe_table" },
         { "$ref": "#/$defs/ops/catalog.table_page" },
@@ -274,6 +275,16 @@
           "op": { "const": "codec.blind_index" },
           "value": { "$ref": "#/$defs/argument" },
           "key": { "type": "string" },
+          "expect": { "$ref": "#/$defs/expect" }
+        }
+      },
+      "ir.validate": {
+        "type": "object",
+        "required": ["op", "request", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "ir.validate" },
+          "request": { "type": "object", "description": "A request of the protocol (docs/spec/protocol.md) without manifest_hash; the step adds the hash of the schema named by the schema key of the recipe." },
           "expect": { "$ref": "#/$defs/expect" }
         }
       },

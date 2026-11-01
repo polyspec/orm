@@ -2,17 +2,18 @@
 # Focused validation assertions that are not cases in tests/ir/validate.json. Keep them in a separate
 # module so the shared-vector runner reports only the fixture's case IDs.
 import unittest
+from pathlib import Path
 
 from polyspec.orm.engine import model_of_documents, parse_document_set
 from polyspec.orm.engine.validate import validate
 from polyspec.orm.errors import OrmError
 
 from . import testcase
-from .test_ir_validate import FILE, ROOT
+ROOT = Path(__file__).resolve().parents[3]
 
 
 def validation_model():
-    return model_of_documents(parse_document_set([(ROOT / FILE["schema"]).read_text()]))
+    return model_of_documents(parse_document_set([(ROOT / "contracts" / "fixtures" / "bench" / "bench.dbs").read_text()]))
 
 
 class ManifestHashTest(unittest.TestCase):
@@ -33,22 +34,6 @@ class ManifestHashTest(unittest.TestCase):
         with self.assertRaises(OrmError) as raised:
             validate(model, request)
         self.assertEqual(raised.exception.code, "SCHEMA_HASH_MISMATCH")
-
-
-class LimitParamsSubqueryInvalidTest(unittest.TestCase):
-    deadline = testcase.COMPUTE
-
-    def test_limit_params_subquery_invalid_returns_ir_invalid(self):
-        case = next(
-            case
-            for case in FILE["cases"]
-            if case["name"] == "limit-params-subquery-invalid"
-        )
-        model = validation_model()
-        request = dict(case["request"], manifest_hash=model.manifest_hash)
-        with self.assertRaises(OrmError) as raised:
-            validate(model, request)
-        self.assertEqual(raised.exception.code, "IR_INVALID")
 
 
 if __name__ == "__main__":
