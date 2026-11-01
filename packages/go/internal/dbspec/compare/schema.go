@@ -49,6 +49,25 @@ func (r vectorReader) fail(location, problem string) error {
 
 // readVectors reads the vector file at path, checks it against the schema `name` and decodes it into value.
 func readVectors(path, name string, value any) (vectorReader, error) {
+	directory, err := schemaDirectory()
+	if err != nil {
+		return vectorReader{path: path}, err
+	}
+	return readAgainst(path, filepath.Join(directory, name+".schema.json"), value)
+}
+
+// readRecipe reads a recipe file at path (tests/dbspec/mermaid.json), checks it against the recipe schema
+// (scripts/features/schema/recipe.schema.json) and decodes it into value.
+func readRecipe(path string, value any) (vectorReader, error) {
+	root, err := os.Getwd()
+	if err != nil {
+		return vectorReader{path: path}, err
+	}
+	return readAgainst(path, filepath.Join(root, "scripts", "features", "schema", "recipe.schema.json"), value)
+}
+
+// readAgainst reads the file at path, checks it against the JSON Schema at schemaFile and decodes it into value.
+func readAgainst(path, schemaFile string, value any) (vectorReader, error) {
 	r := vectorReader{path: path}
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -60,11 +79,7 @@ func readVectors(path, name string, value any) (vectorReader, error) {
 	}
 	compiler := jsonschema.NewCompiler()
 	compiler.DefaultDraft(jsonschema.Draft2020)
-	directory, err := schemaDirectory()
-	if err != nil {
-		return r, err
-	}
-	schema, err := compiler.Compile(filepath.Join(directory, name+".schema.json"))
+	schema, err := compiler.Compile(schemaFile)
 	if err != nil {
 		return r, err
 	}

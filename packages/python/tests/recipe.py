@@ -26,7 +26,13 @@ from polyspec.orm.codec import (
     host_encode,
 )
 from polyspec.orm import Db, OrmError, Schema, connect_catalog
-from polyspec.orm.dbspec import dbspec_manifest, parse_dbspec, read_dbspec_file
+from polyspec.orm.dbspec import (
+    dbspec_manifest,
+    emit_dbspec,
+    parse_dbspec,
+    read_dbspec_file,
+)
+from polyspec.orm.dbspec.mermaid import export_mermaid, import_mermaid
 from polyspec.orm.engine import model_of_documents, parse_document_set
 from polyspec.orm.engine.validate import validate
 from polyspec.orm.styled_value import StyledValue
@@ -77,6 +83,8 @@ def recipe_tests(path: str, database: str):
         if "schema" in recipe
         else None
     )
+    # The path and skeleton_of fields of a dbspec step are relative to the recipe file (FCV-4).
+    directory = ROOT / Path(path).parent
 
     def check(test: unittest.TestCase, case: dict) -> None:
         bound: dict[str, Any] = {}
@@ -87,6 +95,9 @@ def recipe_tests(path: str, database: str):
                     continue
                 if step["op"] == "ir.answer":
                     _answer(step, database)
+                    continue
+                if step["op"].startswith("dbspec."):
+                    _mermaid(step, bound, database, directory)
                     continue
                 _run(step, bound, database)
             except AssertionError as error:
@@ -100,6 +111,120 @@ def recipe_tests(path: str, database: str):
     return vector_load_tests(
         ChainRecipeCase if has_chain else RecipeCase, recipe["cases"], check
     )
+
+
+def _mermaid(step: dict, bound: dict, database: str, directory: Path) -> None:
+    """Runs the dbspec.export_mermaid or dbspec.import_mermaid op of step (FCV-4) on the public Mermaid calls (DBS-169), binds
+    its plain result when the step has as, and checks the keys that the expect of database names with the result, as JSON values."""
+    if step["op"] == "dbspec.export_mermaid":
+        got = _export_step(step, directory)
+    elif step["op"] == "dbspec.import_mermaid":
+        got = _import_step(step, bound, directory)
+    else:
+        raise AssertionError(f"OP_UNKNOWN {step['op']}")
+    if "as" in step:
+        bound[step["as"]] = got
+    expect = step.get("expect", {}).get(database)
+    if expect is None:
+        raise AssertionError(f"{step['op']} has no expect for {database}")
+    actual = json.loads(json.dumps(got))
+    for key, want in expect["value"].items():
+        if key not in actual:
+            raise AssertionError(f"the result has no {key}: {json.dumps(actual)}")
+        if actual[key] != want:
+            raise AssertionError(
+                f"{key}: got {json.dumps(actual[key])}, want {json.dumps(want)}"
+            )
+
+
+def _export_step(step: dict, directory: Path) -> dict:
+    """The plain result of an export: the Mermaid text and the dropped objects as [kind, table, name]."""
+    source = step.get("document")
+    if "path" in step:
+        text, diagnostics = read_dbspec_file(str(directory / step["path"]))
+        if diagnostics:
+            raise AssertionError(f"read {step['path']}: {_diagnostics(diagnostics)}")
+        source = text
+    document, _positions, diagnostics = parse_dbspec(source, step.get("documents", {}))
+    if diagnostics:
+        raise AssertionError(f"parse: {_diagnostics(diagnostics)}")
+    result = export_mermaid(document)
+    return {"mermaid": result["mermaid"], "dropped": _drops(result["dropped"])}
+
+
+def _import_step(step: dict, bound: dict, directory: Path) -> dict:
+    """The plain result of an import: the emitted document and its dropped objects; {errors: [[rule, line, column]]} for a
+    diagnostic; with skeleton_of, whether the tables, columns, keys and foreign keys match those of the file (MER-13)."""
+    raw = step["mermaid"]
+    text = raw if isinstance(raw, str) else _plain_text(raw, bound)
+    imported = import_mermaid(text, step["name"])
+    if imported["diagnostics"]:
+        return {"errors": [[d.rule, d.line, d.column] for d in imported["diagnostics"]]}
+    if "skeleton_of" not in step:
+        return {
+            "document": emit_dbspec(imported["document"]),
+            "dropped": _drops(imported["dropped"]),
+        }
+    text_read, diagnostics = read_dbspec_file(str(directory / step["skeleton_of"]))
+    if diagnostics:
+        raise AssertionError(f"read {step['skeleton_of']}: {_diagnostics(diagnostics)}")
+    original, _positions, diagnostics = parse_dbspec(text_read, {})
+    if diagnostics:
+        raise AssertionError(
+            f"parse {step['skeleton_of']}: {_diagnostics(diagnostics)}"
+        )
+    return {
+        "dropped": _drops(imported["dropped"]),
+        "same_skeleton": _skeleton(original) == _skeleton(imported["document"]),
+    }
+
+
+def _plain_text(raw: dict, bound: dict) -> str:
+    """The text of a dotted ref, {ref: "<name>.<field>"}, of a bound plain result."""
+    name, _, field = str(raw.get("ref", "")).partition(".")
+    result = bound.get(name)
+    if not isinstance(result, dict):
+        raise AssertionError(f"ref {raw.get('ref')} names no bound plain result")
+    value = result.get(field)
+    if not isinstance(value, str):
+        raise AssertionError(f"ref {raw.get('ref')} is not a text")
+    return value
+
+
+def _drops(dropped: list) -> list:
+    return [[u["kind"], u["table"], u["name"]] for u in dropped]
+
+
+def _diagnostics(diagnostics: list) -> str:
+    return ", ".join(f"{d.rule} {d.line} {d.column}" for d in diagnostics)
+
+
+def _skeleton(document: Any) -> list:
+    """The tables, columns, primary keys and foreign keys that Mermaid carries, in table-name order; foreign key actions
+    are left out, since Mermaid does not carry them (the same as the TypeScript helper)."""
+    out = []
+    for t in sorted(document.tables, key=lambda t: t.name):
+        out.append(f"table {t.name}")
+        for c in t.columns:
+            kind = (c.type.kind, c.type.precision, c.type.scale, c.type.length)
+            dflt = (
+                "-"
+                if c.default is None
+                else "now"
+                if c.default.kind == "now"
+                else c.default.text
+            )
+            out.append(
+                f"column {c.name} {kind} null={c.nullable} "
+                f"identity={c.identity} default={dflt}"
+            )
+        out.append(f"primary key {', '.join(t.primary_key.columns)}")
+        for f in sorted(t.foreign_keys, key=lambda f: f.name):
+            out.append(
+                f"foreign key {f.name} ({', '.join(f.columns)}) "
+                f"references {f.table} ({', '.join(f.references)})"
+            )
+    return out
 
 
 def _answer(step: dict, database: str) -> None:

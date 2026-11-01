@@ -185,7 +185,7 @@
     "step": {
       "type": "object",
       "required": ["op"],
-      "properties": { "op": { "enum": ["model.connect", "codec.decode", "codec.encode", "codec.host_encode", "codec.host_decode", "codec.blind_index", "sql.exec", "ir.validate", "ir.answer", "catalog.current_namespace", "catalog.describe_table", "catalog.table_page", "catalog.read_only_query", "catalog.read_only_grid_query", "catalog.row_snapshot", "catalog.insert_row", "catalog.update_row", "catalog.delete_row"] } },
+      "properties": { "op": { "enum": ["model.connect", "codec.decode", "codec.encode", "codec.host_encode", "codec.host_decode", "codec.blind_index", "sql.exec", "ir.validate", "ir.answer", "catalog.current_namespace", "catalog.describe_table", "catalog.table_page", "catalog.read_only_query", "catalog.read_only_grid_query", "catalog.row_snapshot", "catalog.insert_row", "catalog.update_row", "catalog.delete_row", "dbspec.export_mermaid", "dbspec.import_mermaid"] } },
       "oneOf": [
         { "$ref": "#/$defs/ops/model.connect" },
         { "$ref": "#/$defs/ops/codec.decode" },
@@ -202,7 +202,9 @@
         { "$ref": "#/$defs/ops/catalog.row_snapshot" },
         { "$ref": "#/$defs/ops/catalog.insert_row" },
         { "$ref": "#/$defs/ops/catalog.update_row" },
-        { "$ref": "#/$defs/ops/catalog.delete_row" }
+        { "$ref": "#/$defs/ops/catalog.delete_row" },
+        { "$ref": "#/$defs/ops/dbspec.export_mermaid" },
+        { "$ref": "#/$defs/ops/dbspec.import_mermaid" }
       ]
     },
     "ops": {
@@ -313,6 +315,145 @@
             }
           }
         }
+      },
+      "dbspec.export_mermaid": {
+          "type": "object",
+          "required": [
+            "op",
+            "expect"
+          ],
+          "oneOf": [
+            {
+              "required": [
+                "document"
+              ],
+              "properties": {
+                "document": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "dbspec.export_mermaid"
+            },
+            "document": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A dbspec document with LF line ends (docs/spec/mermaid.md)."
+            },
+            "path": {
+              "type": "string",
+              "pattern": "\\.dbs$",
+              "description": "A .dbs file, relative to the recipe file."
+            },
+            "documents": {
+              "type": "object",
+              "propertyNames": {
+                "$ref": "#/$defs/name"
+              },
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "The other documents of the set, by name, that the document uses."
+            },
+            "as": {
+              "$ref": "#/$defs/name"
+            },
+            "expect": {
+              "type": "object",
+              "required": [
+                "none"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "none": {
+                  "type": "object",
+                  "required": [
+                    "value"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "object",
+                      "description": "A subset of {mermaid: <text>, dropped: [[kind, table, name], ...]}, plain JSON; the keys it names are compared."
+                    }
+                  }
+                }
+              }
+            }
+          }
+      },
+      "dbspec.import_mermaid": {
+          "type": "object",
+          "required": [
+            "op",
+            "mermaid",
+            "name",
+            "expect"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "dbspec.import_mermaid"
+            },
+            "mermaid": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "$ref": "#/$defs/ref"
+                }
+              ],
+              "description": "The Mermaid text, or a ref to the mermaid of an export."
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The name of the imported document."
+            },
+            "skeleton_of": {
+              "type": "string",
+              "pattern": "\\.dbs$",
+              "description": "A .dbs file, relative to the recipe file, whose tables, columns, primary keys and foreign keys the import must return."
+            },
+            "expect": {
+              "type": "object",
+              "required": [
+                "none"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "none": {
+                  "type": "object",
+                  "required": [
+                    "value"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "type": "object",
+                      "description": "A subset of {document, dropped, same_skeleton} or {errors}, plain JSON; the keys it names are compared."
+                    }
+                  }
+                }
+              }
+            }
+          }
       },
       "sql.exec": {
         "type": "object",

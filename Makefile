@@ -884,8 +884,8 @@ dbspec-stress-bench/rust: dbspec-stress-bench/prepare
 .PHONY: dbspec-rust-check/documents dbspec-rust-check/set dbspec-rust-check/apply-cleanup dbspec-rust-check/unicode dbspec-rust-check/show-create dbspec-rust-check/render-physical
 dbspec-rust-check: dbspec-rust-check/documents dbspec-rust-check/set dbspec-rust-check/apply-cleanup dbspec-rust-check/unicode dbspec-rust-check/show-create dbspec-rust-check/render-physical
 dbspec-rust-check/documents:
-	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_analyze --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
-	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_analyze --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
+	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_analyze --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid_none -- --nocapture
+	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_analyze --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid_none -- --nocapture
 # dbspec-rust-check/set runs every file tree case of tests/dbspec/set-files.json through the set reader
 # dbspec::read_set, every case of tests/dbspec/set-parse.json through dbspec::parse_set, and its unit cases of the normal form, the nested JSON and the schema value.
 dbspec-rust-check/set: dbspec-rust-check/set/vectors dbspec-rust-check/set/unit
@@ -973,8 +973,8 @@ dbspec-php-check/plan: php-vendor-check
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecPlanTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecPlanTest.php
 dbspec-php-check/mermaid: php-vendor-check
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecMermaidTest.php
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecMermaidTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecMermaidRecipeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecMermaidRecipeTest.php
 dbspec-php-check/apply-cleanup: php-vendor-check
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecApplyCleanupTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecApplyCleanupTest.php
@@ -1243,10 +1243,9 @@ dbspec-php-extension-check/analyze: php-vendor-check dbspec-php-extension-check/
 dbspec-php-extension-check/plan: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecPlanTest.php
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecPlanTest.php
-# dbspec-php-extension-check/mermaid runs DbspecMermaidTest with the extension: the Mermaid vectors.
+# dbspec-php-extension-check/mermaid runs DbspecMermaidRecipeExtensionTest with the extension: the Mermaid recipe.
 dbspec-php-extension-check/mermaid: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecMermaidTest.php
-	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecMermaidTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecMermaidRecipeExtensionTest.php
 # dbspec-php-extension-check/apply-cleanup runs DbspecApplyCleanupTest with the extension: the cleanup errors of apply after a failing PDO.
 dbspec-php-extension-check/apply-cleanup: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecApplyCleanupTest.php
@@ -2544,7 +2543,7 @@ ts-min-check: lease-tool orm-codes-typescript
 dbspec-ts-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	$(NODE) --test packages/ts/tests/browser-entry.mjs packages/ts/tests/dbspec.mjs packages/ts/tests/dbspec-canonical.mjs packages/ts/tests/dbspec-normalize.mjs packages/ts/tests/dbspec-positions.mjs packages/ts/tests/dbspec-invalid.mjs packages/ts/tests/dbspec-files.mjs packages/ts/tests/dbspec-hashes.mjs packages/ts/tests/dbspec-sets.mjs packages/ts/tests/dbspec-set.mjs packages/ts/tests/dbspec-set-edges.mjs packages/ts/tests/dbspec-set-parse.mjs packages/ts/tests/dbspec-analyze.mjs packages/ts/tests/dbspec-syntax.mjs packages/ts/tests/syntax-vectors.mjs packages/ts/tests/dbspec-rules.mjs packages/ts/tests/dbspec-render.mjs packages/ts/tests/dbspec-render-dialect.mjs packages/ts/tests/dbspec-plan.mjs packages/ts/tests/dbspec-plan-cases.mjs packages/ts/tests/dbspec-plan-invalid.mjs packages/ts/tests/dbspec-plan-chains.mjs packages/ts/tests/dbspec-plan-parse.mjs packages/ts/tests/dbspec-plan-comparisons.mjs packages/ts/tests/dbspec-mermaid-export.mjs packages/ts/tests/dbspec-mermaid-import.mjs packages/ts/tests/dbspec-mermaid-invalid.mjs packages/ts/tests/dbspec-mermaid-round-trip.mjs packages/ts/tests/dbspec-apply-cleanup.mjs packages/ts/tests/dbspec-unicode.mjs packages/ts/tests/dbspec-show-create.mjs packages/ts/tests/dbspec-show-create-introspect.mjs
+	$(NODE) --test packages/ts/tests/browser-entry.mjs packages/ts/tests/dbspec.mjs packages/ts/tests/dbspec-canonical.mjs packages/ts/tests/dbspec-normalize.mjs packages/ts/tests/dbspec-positions.mjs packages/ts/tests/dbspec-invalid.mjs packages/ts/tests/dbspec-files.mjs packages/ts/tests/dbspec-hashes.mjs packages/ts/tests/dbspec-sets.mjs packages/ts/tests/dbspec-set.mjs packages/ts/tests/dbspec-set-edges.mjs packages/ts/tests/dbspec-set-parse.mjs packages/ts/tests/dbspec-analyze.mjs packages/ts/tests/dbspec-syntax.mjs packages/ts/tests/syntax-vectors.mjs packages/ts/tests/dbspec-rules.mjs packages/ts/tests/dbspec-render.mjs packages/ts/tests/dbspec-render-dialect.mjs packages/ts/tests/dbspec-plan.mjs packages/ts/tests/dbspec-plan-cases.mjs packages/ts/tests/dbspec-plan-invalid.mjs packages/ts/tests/dbspec-plan-chains.mjs packages/ts/tests/dbspec-plan-parse.mjs packages/ts/tests/dbspec-plan-comparisons.mjs packages/ts/tests/dbspec-mermaid-none.test.mjs packages/ts/tests/dbspec-apply-cleanup.mjs packages/ts/tests/dbspec-unicode.mjs packages/ts/tests/dbspec-show-create.mjs packages/ts/tests/dbspec-show-create-introspect.mjs
 	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/dbspec-render-physical.mjs
 
 # dbspec-language-check builds the TypeScript client and @polyspec/dbspec-language, and checks that the language service's module graph does not reach

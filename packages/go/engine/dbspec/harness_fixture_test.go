@@ -3,7 +3,6 @@
 package dbspec
 
 import (
-	"slices"
 	"testing"
 
 	"github.com/polyspec/orm/packages/go/testcase"
@@ -14,16 +13,7 @@ import (
 // to the child go test that runs it.
 func TestFailingCaseFixture(t *testing.T) {
 	testcase.Start(t, testcase.Process)
-	m := loadMermaidVectors(t)
 	p := loadPlanVectors(t)
-	export := m.Export[0]
-	export.Mermaid = append(slices.Clone(export.Mermaid), "%% wrong")
-	imported := m.Import[0]
-	imported.Document = append(slices.Clone(imported.Document), "wrong")
-	invalid := m.Invalid[0]
-	invalid.Errors = nil
-	roundTrip := m.RoundTrip[0]
-	roundTrip.Dropped = nil
 	planCase := p.Cases[0]
 	planCase.Changes = nil
 	planInvalid := p.Invalid[0]
@@ -35,10 +25,6 @@ func TestFailingCaseFixture(t *testing.T) {
 	// The first comparison has no differences, so the second case, which has differences, is emptied.
 	comparison := p.Comparisons[1]
 	comparison.Differences = nil
-	t.Run("export", func(t *testing.T) { checkMermaidExport(t, export) })
-	t.Run("import", func(t *testing.T) { checkMermaidImport(t, imported) })
-	t.Run("invalid", func(t *testing.T) { checkMermaidInvalid(t, invalid) })
-	t.Run("round_trip", func(t *testing.T) { checkMermaidRoundTrip(t, roundTrip) })
 	t.Run("plan", func(t *testing.T) { checkPlanCase(t, planCase) })
 	t.Run("plan_invalid", func(t *testing.T) { checkPlanInvalid(t, planInvalid) })
 	t.Run("chain", func(t *testing.T) { checkPlanChain(t, chain) })

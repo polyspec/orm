@@ -7,9 +7,11 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -422,31 +424,6 @@ func writePlans(out *output, v planVectors) {
 	}
 }
 
-// mermaidVectors is tests/dbspec/mermaid.json (docs/spec/mermaid.md).
-type mermaidVectors struct {
-	Export    []exportCase    `json:"export"`
-	Import    []importCase    `json:"import"`
-	Invalid   []importCase    `json:"invalid"`
-	RoundTrip []roundTripCase `json:"round_trip"`
-}
-
-type exportCase struct {
-	ID        string              `json:"id"`
-	Document  []string            `json:"document"`
-	Documents map[string][]string `json:"documents"`
-}
-
-type importCase struct {
-	ID      string   `json:"id"`
-	Mermaid []string `json:"mermaid"`
-	Name    string   `json:"name"`
-}
-
-type roundTripCase struct {
-	ID   string `json:"id"`
-	Path string `json:"path"`
-}
-
 // writeDropped prints what export or import dropped as "= kind<TAB>table<TAB>name".
 // The reason is not compared.
 func writeDropped(out *output, dropped []dbspec.Unsupported) {
@@ -455,76 +432,188 @@ func writeDropped(out *output, dropped []dbspec.Unsupported) {
 	}
 }
 
-// writeExport prints the Mermaid text of the document and the missing objects.
-func writeExport(out *output, d *dbspec.Document) string {
+const (
+	opExportMermaid = "dbspec.export_mermaid"
+	opImportMermaid = "dbspec.import_mermaid"
+)
+
+// mermaidCategory is the category a case prints under: round_trip when it exports a file or imports a skeleton of one,
+// export when it exports, invalid when its import expects errors, and import otherwise.
+func mermaidCategory(c mermaidCase) string {
+	export, invalid := false, false
+	for _, s := range c.Steps {
+		switch s.Op {
+		case opExportMermaid:
+			if s.Path != "" {
+				return "round_trip"
+			}
+			export = true
+		case opImportMermaid:
+			if s.SkeletonOf != "" {
+				return "round_trip"
+			}
+			if _, ok := s.Expect.None.Value["errors"]; ok {
+				invalid = true
+			}
+		}
+	}
+	switch {
+	case export:
+		return "export"
+	case invalid:
+		return "invalid"
+	default:
+		return "import"
+	}
+}
+
+// writeMermaid prints every case of the recipe under its category (mermaidCategory), then the output of each of its steps.
+// dir is the directory of the recipe file, which path and skeleton_of are relative to.
+func writeMermaid(out *output, v mermaidRecipe, dir string) error {
+	for _, c := range v.Cases {
+		category := mermaidCategory(c)
+		out.printf("mermaid/%s/%s\n", category, c.ID)
+		texts := map[string]string{}
+	steps:
+		for _, s := range c.Steps {
+			switch s.Op {
+			case opExportMermaid:
+				text, ok, err := writeMermaidExport(out, s, dir)
+				if err != nil {
+					return err
+				}
+				if !ok {
+					break steps
+				}
+				if s.As != "" {
+					texts[s.As] = text
+				}
+			case opImportMermaid:
+				if category == "round_trip" {
+					out.printf("mermaid/round_trip/%s/import\n", c.ID)
+				}
+				if err := writeMermaidImport(out, s, texts, dir); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// writeMermaidExport prints the Mermaid text of an export step and the missing objects, and returns the text. A document
+// with diagnostics writes them and reports false.
+func writeMermaidExport(out *output, s mermaidStep, dir string) (string, bool, error) {
+	source := s.Document
+	if s.Path != "" {
+		text, diagnostics, err := dbspec.ReadFile(filepath.Join(dir, s.Path))
+		if err != nil {
+			return "", false, err
+		}
+		if len(diagnostics) > 0 {
+			writeDiagnostics(out, diagnostics)
+			return "", false, nil
+		}
+		source = text
+	}
+	d, _, diagnostics := dbspec.Parse(source, s.Documents)
+	if len(diagnostics) > 0 {
+		writeDiagnostics(out, diagnostics)
+		return "", false, nil
+	}
 	text, dropped := dbspec.ExportMermaid(d)
 	for _, line := range strings.Split(text, "\n") {
 		out.printf("| %s\n", line)
 	}
 	writeDropped(out, dropped)
-	return text
+	return text, true, nil
 }
 
-// writeImport prints the document emitted by import and the missing objects, or the diagnostic.
-func writeImport(out *output, text, name string) {
-	if name == "" {
-		name = "imported"
+// writeMermaidImport prints an import step: the emitted document and the missing objects, or the diagnostics; with
+// skeleton_of, whether the skeleton of the imported document is that of the file, and the missing objects.
+func writeMermaidImport(out *output, s mermaidStep, texts map[string]string, dir string) error {
+	text, err := mermaidText(s.Mermaid, texts)
+	if err != nil {
+		return err
 	}
-	d, dropped, diagnostics := dbspec.ImportMermaid(text, name)
+	d, dropped, diagnostics := dbspec.ImportMermaid(text, s.Name)
 	if len(diagnostics) > 0 {
-		writeDiagnostics(out, diagnostics)
-		return
+		for _, g := range diagnostics {
+			out.printf("! %s %d %d\n", g.Rule, g.Line, g.Column)
+		}
+		return nil
 	}
-	for _, line := range strings.Split(dbspec.Emit(d), "\n") {
-		out.printf("| %s\n", line)
+	if s.SkeletonOf == "" {
+		for _, line := range strings.Split(dbspec.Emit(d), "\n") {
+			out.printf("| %s\n", line)
+		}
+		writeDropped(out, dropped)
+		return nil
 	}
+	source, diagnostics, err := dbspec.ReadFile(filepath.Join(dir, s.SkeletonOf))
+	if err != nil {
+		return err
+	}
+	if len(diagnostics) > 0 {
+		return fmt.Errorf("read %s: %v", s.SkeletonOf, diagnostics)
+	}
+	original, _, diagnostics := dbspec.Parse(source, nil)
+	if len(diagnostics) > 0 {
+		return fmt.Errorf("parse %s: %v", s.SkeletonOf, diagnostics)
+	}
+	out.printf("| same_skeleton\t%t\n", slices.Equal(mermaidSkeleton(original), mermaidSkeleton(d)))
 	writeDropped(out, dropped)
+	return nil
 }
 
-// writeMermaid prints every export case, the import and invalid cases, and the round-trip cases. round
-// trip case is the document's export, then "<case>/import" and the import of that export.
-func writeMermaid(out *output, v mermaidVectors) error {
-	for _, c := range v.Export {
-		out.printf("mermaid/export/%s\n", c.ID)
-		set := map[string]string{}
-		for name, lines := range c.Documents {
-			set[name] = join(lines, false, false)
-		}
-		d, _, diagnostics := dbspec.Parse(join(c.Document, false, false), set)
-		if len(diagnostics) > 0 {
-			writeDiagnostics(out, diagnostics)
-			continue
-		}
-		writeExport(out, d)
+// mermaidText is the Mermaid text of an import: a plain text, or {"ref": "<step>.mermaid"} naming the text that the
+// export step with as "<step>" bound.
+func mermaidText(raw json.RawMessage, texts map[string]string) (string, error) {
+	var text string
+	if err := json.Unmarshal(raw, &text); err == nil {
+		return text, nil
 	}
-	for _, c := range v.Import {
-		out.printf("mermaid/import/%s\n", c.ID)
-		writeImport(out, join(c.Mermaid, false, false), c.Name)
+	var ref struct {
+		Ref string `json:"ref"`
 	}
-	for _, c := range v.Invalid {
-		out.printf("mermaid/invalid/%s\n", c.ID)
-		writeImport(out, join(c.Mermaid, false, false), c.Name)
+	if err := json.Unmarshal(raw, &ref); err != nil {
+		return "", fmt.Errorf("mermaid is neither a text nor a ref: %s", raw)
 	}
-	for _, c := range v.RoundTrip {
-		out.printf("mermaid/round_trip/%s\n", c.ID)
-		source, diagnostics, err := dbspec.ReadFile(c.Path)
-		if err != nil {
-			return err
-		}
-		if len(diagnostics) > 0 {
-			writeDiagnostics(out, diagnostics)
-			continue
-		}
-		d, _, diagnostics := dbspec.Parse(source, nil)
-		if len(diagnostics) > 0 {
-			writeDiagnostics(out, diagnostics)
-			continue
-		}
-		text := writeExport(out, d)
-		out.printf("mermaid/round_trip/%s/import\n", c.ID)
-		writeImport(out, text, "imported")
+	name, field, ok := strings.Cut(ref.Ref, ".")
+	text, bound := texts[name]
+	if !ok || field != "mermaid" || !bound {
+		return "", fmt.Errorf("mermaid ref %s is not a bound export", ref.Ref)
 	}
-	return nil
+	return text, nil
+}
+
+// mermaidSkeleton writes the tables, columns, primary keys and foreign keys that Mermaid carries, in table-name order; foreign key
+// actions are left out, since Mermaid does not carry them. It is the same as the skeleton of the Go recipe helper
+// (packages/go/internal/recipe/mermaid.go), which this runner cannot import.
+func mermaidSkeleton(d *dbspec.Document) []string {
+	tables := slices.Clone(d.Tables)
+	slices.SortFunc(tables, func(a, b dbspec.Table) int { return strings.Compare(a.Name, b.Name) })
+	var out []string
+	for _, t := range tables {
+		out = append(out, "table "+t.Name)
+		for _, c := range t.Columns {
+			dflt := "-"
+			if c.Default != nil {
+				dflt = c.Default.Literal
+				if c.Default.Now {
+					dflt = "now"
+				}
+			}
+			out = append(out, fmt.Sprintf("column %s %s null=%t identity=%t default=%s", c.Name, c.Type, c.Null, c.Identity, dflt))
+		}
+		out = append(out, "primary key "+strings.Join(t.PrimaryKey.Columns, ", "))
+		fks := slices.Clone(t.ForeignKeys)
+		slices.SortFunc(fks, func(a, b dbspec.ForeignKey) int { return strings.Compare(a.Name, b.Name) })
+		for _, f := range fks {
+			out = append(out, "foreign key "+f.Name+" ("+strings.Join(f.Columns, ", ")+") references "+f.Table+" ("+strings.Join(f.References, ", ")+")")
+		}
+	}
+	return out
 }
 
 // writeFile reads a files case twice: once with path given to dbspec.ReadFile as "files/<id>",
@@ -621,7 +710,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	if err := writeMermaid(out, mermaid); err != nil {
+	if err := writeMermaid(out, mermaid, filepath.Dir(os.Args[5])); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

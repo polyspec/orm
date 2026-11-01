@@ -3,13 +3,16 @@
 //! runner, and each case of the recipe is the trial `<recipe>_<database>::<case id>`, whose steps call the public API of
 //! `polyspec_orm` that each op names. It has no command line and no output of its own.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
+use std::path::Path;
 
 use crate::markdown;
 use polyspec_orm::codec;
 use polyspec_orm::ordered_json::{self, Kind};
 use polyspec_orm::{Param, StyledValue, Val};
-use serde_json::{Map, Number, Value};
+use polyspec_orm_schema::dbspec::model::{DefaultValue, Document, Name};
+use polyspec_orm_schema::dbspec::{self, export_mermaid, import_mermaid, Unsupported};
+use serde_json::{json, Map, Number, Value};
 
 /// The database part of a recipe without a database (FCV-3).
 pub const NONE: &str = "none";
@@ -23,6 +26,9 @@ enum Produced {
     Read(Val),
     /// The cell an encode, a host encode or a blind index wrote.
     Written(Param),
+    /// The plain JSON result of a dbspec op (FCV-4): the mermaid and the dropped objects of an export, or the document,
+    /// the dropped objects, the errors or the skeleton check of an import.
+    Plain(Value),
 }
 
 /// One trial for each case of the recipe at `path`, relative to the repository root, on `database`, named
@@ -30,6 +36,8 @@ enum Produced {
 pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testcase::Trial> {
     assert_eq!(database, NONE, "recipe {path}: database {database} has no case database in this helper");
     let root = polyspec_orm_testcase::manifest_dir().join("../../..");
+    // The paths of the dbspec ops are relative to the recipe file (FCV-4).
+    let dir = root.join(path).parent().map(Path::to_path_buf).unwrap_or_default();
     let text = match std::fs::read_to_string(root.join(path)) {
         Ok(text) => text,
         Err(error) => panic!("recipe {path}: {error}"),
@@ -43,13 +51,13 @@ pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testc
         .iter()
         .map(|case| {
             let case = case.clone();
-            let (path, database) = (path.to_owned(), database.to_owned());
+            let (path, database, dir) = (path.to_owned(), database.to_owned(), dir.clone());
             let id = case["id"].as_str().unwrap_or_default().to_owned();
             polyspec_orm_testcase::trial(format!("{entry}::{id}"), polyspec_orm_testcase::COMPUTE, move || {
                 let mut bound = HashMap::new();
                 let steps = case["steps"].as_array().cloned().unwrap_or_default();
                 for (index, step) in steps.iter().enumerate() {
-                    if let Err(failure) = run(step, &mut bound, &database) {
+                    if let Err(failure) = run(step, &mut bound, &database, &dir) {
                         panic!("recipe {path} case {id} step {index} ({}) on {database}: {failure}", step["op"]);
                     }
                 }
@@ -59,7 +67,7 @@ pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testc
 }
 
 /// Maps the op of `step` to its call and checks the result against the expect of `database`.
-fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str) -> Result<(), String> {
+fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: &Path) -> Result<(), String> {
     if step["op"] == "ir.answer" {
         // The chain runs on a listener that answers with the step's answer (or answers), and its value is compared as JSON (FCV-3).
         let got = markdown::answer(step["chain"].as_str().unwrap_or_default(), &step["answer"], &step["answers"]);
@@ -69,6 +77,9 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str) -> Re
     let styles: Vec<String> = step["styles"].as_array().map(|s| s.iter().filter_map(|x| x.as_str().map(str::to_owned)).collect()).unwrap_or_default();
     let key = step["key"].as_str().unwrap_or_default();
     let op = step["op"].as_str().unwrap_or_default();
+    if op.starts_with("dbspec.") {
+        return mermaid(op, step, bound, database, dir);
+    }
     let failed = |error: polyspec_orm::Error| (error.code().to_owned(), error.to_string());
     let outcome: Outcome = match op {
         "codec.decode" => codec::decode(&styles, &cell(&step["raw"], bound)?).map(Produced::Read).map_err(failed),
@@ -98,6 +109,7 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str) -> Re
     match outcome {
         Err((_, message)) => Err(format!("unexpected error {message}")),
         Ok(Produced::Written(written)) => compare_cell(want, &written),
+        Ok(Produced::Plain(_)) => Err("a codec step produced a dbspec result".to_owned()),
         Ok(Produced::Read(Val::Null)) if want.get("null").is_some() => Ok(()),
         Ok(Produced::Read(read)) if op == "codec.host_decode" => compare_cell(want, &read_param(read)),
         Ok(Produced::Read(read)) => {
@@ -110,6 +122,118 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str) -> Re
             }
         }
     }
+}
+
+/// Runs a dbspec.export_mermaid or dbspec.import_mermaid op (FCV-4) on the public Mermaid calls (DBS-169), binds its plain JSON
+/// result to `as`, and checks the keys that the expect value of `database` names, as a subset.
+fn mermaid(op: &str, step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: &Path) -> Result<(), String> {
+    let want = &step["expect"][database]["value"];
+    let got = match op {
+        "dbspec.export_mermaid" => export(step, dir)?,
+        "dbspec.import_mermaid" => import(step, bound, dir)?,
+        other => return Err(format!("OP_UNKNOWN {other}")),
+    };
+    if let Some(name) = step["as"].as_str() {
+        bound.insert(name.to_owned(), Ok(Produced::Plain(got.clone())));
+    }
+    let Some(subset) = want.as_object() else { return Err(format!("{op} has no expect value for {database}: {want}")) };
+    for (key, value) in subset {
+        match got.get(key) {
+            Some(actual) if actual == value => {}
+            Some(actual) => return Err(format!("{key}: got {actual}, want {value}")),
+            None => return Err(format!("the result has no {key}: {got}")),
+        }
+    }
+    Ok(())
+}
+
+/// The export op: the Mermaid text and the dropped objects of a document, read from `path` or given as `document`, with the
+/// documents of its set.
+fn export(step: &Value, dir: &Path) -> Result<Value, String> {
+    let source = match step["path"].as_str() {
+        Some(path) => read(dir, path)?,
+        None => step["document"].as_str().unwrap_or_default().to_owned(),
+    };
+    let documents: BTreeMap<String, String> =
+        step["documents"].as_object().into_iter().flatten().map(|(name, text)| (name.clone(), text.as_str().unwrap_or_default().to_owned())).collect();
+    let document = parse_document(&source, &documents)?;
+    let (text, dropped) = export_mermaid(&document);
+    Ok(json!({"mermaid": text, "dropped": drops(&dropped)}))
+}
+
+/// The import op: the document and the dropped objects of a Mermaid text, or its errors; with `skeleton_of`, whether the
+/// tables, columns, primary keys and foreign keys equal those of the file (MER-13).
+fn import(step: &Value, bound: &HashMap<String, Outcome>, dir: &Path) -> Result<Value, String> {
+    let text = mermaid_text(&step["mermaid"], bound)?;
+    let name = step["name"].as_str().unwrap_or_default();
+    let (document, dropped) = match import_mermaid(&text, name) {
+        Ok(imported) => imported,
+        Err(diagnostics) => {
+            let errors: Vec<Value> = diagnostics.iter().map(|d| json!([d.rule, d.line, d.column])).collect();
+            return Ok(json!({"errors": errors}));
+        }
+    };
+    let Some(skeleton_of) = step["skeleton_of"].as_str() else {
+        return Ok(json!({"document": dbspec::emit(&document), "dropped": drops(&dropped)}));
+    };
+    let original = parse_document(&read(dir, skeleton_of)?, &BTreeMap::new())?;
+    Ok(json!({"dropped": drops(&dropped), "same_skeleton": skeleton(&original) == skeleton(&document)}))
+}
+
+/// The text of a file that a dbspec op names, relative to the recipe file.
+fn read(dir: &Path, path: &str) -> Result<String, String> {
+    dbspec::read_file(&dir.join(path)).map_err(|e| format!("{path}: {e}"))
+}
+
+fn parse_document(text: &str, documents: &BTreeMap<String, String>) -> Result<Document, String> {
+    dbspec::parse(text, documents).map(|parsed| parsed.document).map_err(|e| format!("document: {e:?}"))
+}
+
+/// The Mermaid text of an import: a text, or a dotted ref to a field of a dbspec result, such as {"ref": "e.mermaid"}.
+fn mermaid_text(raw: &Value, bound: &HashMap<String, Outcome>) -> Result<String, String> {
+    if let Some(text) = raw.as_str() {
+        return Ok(text.to_owned());
+    }
+    let Some(name) = raw["ref"].as_str() else { return Err(format!("mermaid is a text or a ref: {raw}")) };
+    let Some((result, field)) = name.split_once('.') else { return Err(format!("ref {name} names no field")) };
+    match reference(result, bound)? {
+        Produced::Plain(value) => value[field].as_str().map(str::to_owned).ok_or_else(|| format!("ref {name} names no text")),
+        _ => Err(format!("ref {name} names no dbspec result")),
+    }
+}
+
+/// The `[kind, table, name]` list of the dropped objects.
+fn drops(dropped: &[Unsupported]) -> Value {
+    Value::Array(dropped.iter().map(|u| json!([u.kind, u.table, u.name])).collect())
+}
+
+/// The tables, columns, primary keys and foreign keys that Mermaid carries, in table name order, written as lines. Foreign key
+/// actions are left out, since Mermaid does not carry them.
+fn skeleton(document: &Document) -> Vec<String> {
+    let names = |list: &[Name]| list.iter().map(|n| n.text.as_str()).collect::<Vec<_>>().join(", ");
+    let mut tables: Vec<_> = document.tables.iter().collect();
+    tables.sort_by(|a, b| a.name.text.cmp(&b.name.text));
+    let mut out = Vec::new();
+    for t in tables {
+        out.push(format!("table {}", t.name.text));
+        for c in &t.columns {
+            let default = match &c.default {
+                None => "-".to_owned(),
+                Some(DefaultValue::Now) => "now".to_owned(),
+                Some(DefaultValue::Literal(text)) => text.clone(),
+            };
+            out.push(format!("column {} {:?} null={} identity={} default={default}", c.name.text, c.ty, c.nullable, c.identity.is_some()));
+        }
+        for p in &t.primary {
+            out.push(format!("primary key {}", names(&p.columns)));
+        }
+        let mut keys: Vec<_> = t.foreign_keys.iter().collect();
+        keys.sort_by(|a, b| a.name.text.cmp(&b.name.text));
+        for f in keys {
+            out.push(format!("foreign key {} ({}) references {} ({})", f.name.text, names(&f.columns), f.table.text, names(&f.references)));
+        }
+    }
+    out
 }
 
 /// The cell form of a value a host decode read.
@@ -170,6 +294,7 @@ fn cell(raw: &Value, bound: &HashMap<String, Outcome>) -> Result<Val, String> {
             Produced::Written(Param::Bytes(bytes)) => Val::Bytes(bytes.clone()),
             Produced::Read(read) => read.clone(),
             Produced::Written(other) => return Err(format!("ref {name} is the cell {other:?}")),
+            Produced::Plain(_) => return Err(format!("ref {name} is a dbspec result, not a cell")),
         });
     }
     match kind(raw)? {
@@ -186,6 +311,7 @@ fn param(raw: &Value, bound: &HashMap<String, Outcome>) -> Result<Param, String>
         return match reference(name, bound)? {
             Produced::Written(written) => Ok(written.clone()),
             Produced::Read(read) => Ok(read_param(read.clone())),
+            Produced::Plain(_) => Err(format!("ref {name} is a dbspec result, not a bound value")),
         };
     }
     match kind(raw)? {

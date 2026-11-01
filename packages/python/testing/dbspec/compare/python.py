@@ -398,58 +398,138 @@ def write_dropped(dropped):
         out.append(f"= {u['kind']}\t{u['table']}\t{u['name']}")
 
 
-# write_export prints the document's Mermaid text and the missing objects, and returns the Mermaid text.
-def write_export(document):
+# write_lines prints each line of a Mermaid text or of an emitted document with "| ".
+def write_lines(text):
+    out.extend(f"| {line}" for line in text.split("\n"))
+
+
+# mermaid_read reads the dbspec file at path; a file that cannot be read is written to stderr and ends with 1.
+def mermaid_read(path):
+    try:
+        return read_dbspec_file(path)
+    except OSError as error:
+        print(f"{path}: {error}", file=sys.stderr)
+        sys.exit(1)
+
+
+# mermaid_skeleton is the tables, columns, primary keys and foreign keys that Mermaid carries, in table-name order; foreign
+# key actions are left out since Mermaid does not carry them (the same as the skeleton of the TypeScript compare runner).
+def mermaid_skeleton(document):
+    out_lines = []
+    for t in sorted(document.tables, key=lambda t: t.name):
+        out_lines.append(f"table {t.name}")
+        for c in t.columns:
+            kind = (c.type.kind, c.type.precision, c.type.scale, c.type.length)
+            dflt = (
+                "-"
+                if c.default is None
+                else "now"
+                if c.default.kind == "now"
+                else c.default.text
+            )
+            out_lines.append(
+                f"column {c.name} {kind} null={c.nullable} "
+                f"identity={c.identity} default={dflt}"
+            )
+        out_lines.append(f"primary key {', '.join(t.primary_key.columns)}")
+        for f in sorted(t.foreign_keys, key=lambda f: f.name):
+            out_lines.append(
+                f"foreign key {f.name} ({', '.join(f.columns)}) "
+                f"references {f.table} ({', '.join(f.references)})"
+            )
+    return out_lines
+
+
+# export_step runs a dbspec.export_mermaid step: its document is the text of the step, or the file at path relative to the
+# recipe. It prints the Mermaid text and the missing objects, and returns the result, or None after the diagnostics.
+def export_step(step, base):
+    source = step.get("document")
+    if "path" in step:
+        source, diagnostics = mermaid_read(os.path.join(base, step["path"]))
+        if source is None:
+            write_plan_diagnostics(diagnostics)
+            return None
+    document, _positions, diagnostics = parse_dbspec(source, step.get("documents", {}))
+    if document is None:
+        write_plan_diagnostics(diagnostics)
+        return None
     result = export_mermaid(document)
-    out.extend(f"| {line}" for line in result["mermaid"].split("\n"))
+    write_lines(result["mermaid"])
     write_dropped(result["dropped"])
-    return result["mermaid"]
+    return result
 
 
-# write_import prints the document emitted by import and the missing objects, or the diagnostic.
-def write_import(text, name="imported"):
-    result = import_mermaid(text, name)
-    if result["document"] is None:
+# import_step runs a dbspec.import_mermaid step. Its text is the step's text or a dotted ref to a bound export. It prints the
+# emitted document and the missing objects; with skeleton_of it prints whether the skeleton matches the file instead. A
+# diagnostic is printed as its line and the step returns None.
+def import_step(step, bound, base):
+    raw = step["mermaid"]
+    if isinstance(raw, str):
+        text = raw
+    else:
+        name, _, field = raw["ref"].partition(".")
+        text = bound[name][field]
+    result = import_mermaid(text, step["name"])
+    if result["diagnostics"]:
         write_plan_diagnostics(result["diagnostics"])
-        return
-    out.extend(f"| {line}" for line in emit_dbspec(result["document"]).split("\n"))
+        return None
+    if "skeleton_of" not in step:
+        write_lines(emit_dbspec(result["document"]))
+        write_dropped(result["dropped"])
+        return result
+    original_text, diagnostics = mermaid_read(os.path.join(base, step["skeleton_of"]))
+    if original_text is None:
+        write_plan_diagnostics(diagnostics)
+        return None
+    original, _positions, diagnostics = parse_dbspec(original_text, {})
+    if original is None:
+        write_plan_diagnostics(diagnostics)
+        return None
+    same = mermaid_skeleton(original) == mermaid_skeleton(result["document"])
+    out.append(f"| same_skeleton\t{'true' if same else 'false'}")
     write_dropped(result["dropped"])
+    return result
+
+
+# mermaid_case writes one case of the recipe under its category: round_trip when a step exports a path or imports with
+# skeleton_of (step 2 gets its own /import line), export when the first step exports, invalid when an import expects
+# errors, and import otherwise.
+def mermaid_case(c, base):
+    steps = c["steps"]
+
+    def expects_errors(step):
+        return "errors" in step.get("expect", {}).get("none", {}).get("value", {})
+
+    if any(s["op"] == "dbspec.export_mermaid" and "path" in s for s in steps) or any(
+        "skeleton_of" in s for s in steps
+    ):
+        category = "round_trip"
+    elif steps[0]["op"] == "dbspec.export_mermaid":
+        category = "export"
+    elif any(expects_errors(s) for s in steps):
+        category = "invalid"
+    else:
+        category = "import"
+    out.append(f"mermaid/{category}/{c['id']}")
+    bound = {}
+    for index, step in enumerate(steps):
+        if category == "round_trip" and index > 0:
+            out.append(f"mermaid/round_trip/{c['id']}/import")
+        if step["op"] == "dbspec.export_mermaid":
+            result = export_step(step, base)
+        else:
+            result = import_step(step, bound, base)
+        if result is None:
+            return
+        if "as" in step:
+            bound[step["as"]] = result
 
 
 mermaid = read_vectors(mermaid_path, "mermaid")
-for c in mermaid["export"]:
-    out.append(f"mermaid/export/{c['id']}")
-    docs = {name: join(ls, False, False) for name, ls in c["documents"].items()}
-    document, _positions, diagnostics = parse_dbspec(
-        join(c["document"], False, False), docs
-    )
-    if document is None:
-        write_plan_diagnostics(diagnostics)
-    else:
-        write_export(document)
+mermaid_base = os.path.dirname(os.path.abspath(mermaid_path))
+for c in mermaid["cases"]:
+    mermaid_case(c, mermaid_base)
 
-for kind in ["import", "invalid"]:
-    for c in mermaid[kind]:
-        out.append(f"mermaid/{kind}/{c['id']}")
-        write_import(join(c["mermaid"], False, False), c.get("name", "imported"))
-
-for c in mermaid["round_trip"]:
-    out.append(f"mermaid/round_trip/{c['id']}")
-    try:
-        text, diagnostics = read_dbspec_file(c["path"])
-    except OSError as error:
-        print(f"{c['path']}: {error}", file=sys.stderr)
-        sys.exit(1)
-    if text is None:
-        write_plan_diagnostics(diagnostics)
-        continue
-    document, _positions, diagnostics = parse_dbspec(text, {})
-    if document is None:
-        write_plan_diagnostics(diagnostics)
-        continue
-    exported = write_export(document)
-    out.append(f"mermaid/round_trip/{c['id']}/import")
-    write_import(exported)
 
 # The declaration positions of the main document of each positions case, as "| kind<TAB>line<TAB>column<TAB>path..."
 # lines, or its diagnostics.

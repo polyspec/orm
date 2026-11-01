@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -134,9 +135,37 @@ func readPlans(path string) (planVectors, error) {
 	return plans, err
 }
 
-// readMermaid reads tests/dbspec/mermaid.json.
-func readMermaid(path string) (mermaidVectors, error) {
-	var mermaid mermaidVectors
-	_, err := readVectors(path, "mermaid", &mermaid)
-	return mermaid, err
+// mermaidRecipe is tests/dbspec/mermaid.json, a recipe of the dbspec.export_mermaid and dbspec.import_mermaid ops
+// (docs/spec/feature-coverage.md, FCV-4). The recipe schema has checked every field before it decodes one.
+type mermaidRecipe struct {
+	Cases []mermaidCase `json:"cases"`
+}
+
+type mermaidCase struct {
+	ID    string        `json:"id"`
+	Steps []mermaidStep `json:"steps"`
+}
+
+// mermaidStep holds the fields that the two Mermaid ops read; a field that the op does not use is left empty.
+type mermaidStep struct {
+	Op         string            `json:"op"`
+	Document   string            `json:"document"`
+	Documents  map[string]string `json:"documents"`
+	Path       string            `json:"path"`
+	As         string            `json:"as"`
+	Mermaid    json.RawMessage   `json:"mermaid"`
+	Name       string            `json:"name"`
+	SkeletonOf string            `json:"skeleton_of"`
+	Expect     struct {
+		None struct {
+			Value map[string]json.RawMessage `json:"value"`
+		} `json:"none"`
+	} `json:"expect"`
+}
+
+// readMermaid reads tests/dbspec/mermaid.json against the recipe schema.
+func readMermaid(path string) (mermaidRecipe, error) {
+	var recipe mermaidRecipe
+	_, err := readRecipe(path, &recipe)
+	return recipe, err
 }

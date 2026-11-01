@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 6b422b8d06b1ee05e146dba0ceb5b974d9e4df791346dcb9eed5398d5cd9d39d -->
+<!-- source-sha256: 7809cc8cc748061d35f875fb9872d7675db1f713d9f0e4aed01dacc70cc9a1ae -->
 # 변경 이력
 
 ## Unreleased
 
+- dbspec Mermaid vector(tests/dbspec/mermaid.json)를 recipe 하나로 바꾸었다. 각 runtime은 recipe helper로 그 recipe를 entry 하나에서 실행하고, compare runner도 그것을 읽으며, 네이티브 vector 테스트는 제거했다 (T334-3-21).
 - orm은 kit 0.0.92를 고정한다. 그 target은 orm-install-rust-crates의 crate 받기와 맞고, 그 kit이 담은 원칙 사본을 받는다 (T353).
 - contracts/check-inputs.json에 dbspec-php-check/render가 선언되어 있지 않아 make run-databases가 물리 DDL 케이스를 실행하는 target을 거부했고, CI의 데이터베이스 실행이 그 케이스를 다루지 못했다. 형제 target dbspec-plan-php-check와 같은 형태로 선언했다 (CR55-1).
 - check runner는 프로세스 표를 256 MiB buffer로 읽고, 실패한 목록은 오류 코드를 밝힌다. 그래서 큰 표가 단계를 SIGTERM으로 실패시키지 않는다 (T351).

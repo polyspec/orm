@@ -69,6 +69,12 @@ name = "codec_integer_beyond_i64_none"
 path = "tests/codec_integer_beyond_i64_none.rs"
 harness = false
 
+# Each case of the mermaid recipe, tests/dbspec/mermaid.json, is the trial dbspec_mermaid_none::<case id> (FCV-3).
+[[test]]
+name = "dbspec_mermaid_none"
+path = "tests/dbspec_mermaid_none.rs"
+harness = false
+
 [[test]]
 name = "markdown_conformance"
 path = "tests/markdown_conformance.rs"
@@ -85,6 +91,8 @@ polyspec-orm = { path = "../orm", features = ["test-faults"] }
 polyspec-orm-case-database = { path = "../case-database" }
 # The database path of the recipe helper connects the live catalog of orm-build to the case database.
 polyspec-orm-build = { path = "../build", features = ["live-db"] }
+# The dbspec ops of the recipe helper call the Mermaid functions of the schema crate (DBS-169).
+polyspec-orm-schema = { path = "../schema" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
 sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres", "sqlite"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }

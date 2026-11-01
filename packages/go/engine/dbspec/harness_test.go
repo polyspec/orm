@@ -74,13 +74,8 @@ const failingCaseFixture = "dbspecfixture"
 // failingCaseNames is the name of the case that TestFailingCaseFixture runs with a wrong expected value.
 func failingCaseNames(t *testing.T) []string {
 	t.Helper()
-	m := loadMermaidVectors(t)
 	p := loadPlanVectors(t)
 	return []string{
-		m.Export[0].ID,
-		m.Import[0].ID,
-		m.Invalid[0].ID,
-		m.RoundTrip[0].ID,
 		p.Cases[0].ID,
 		p.Invalid[0].ID,
 		p.Chains[0].ID,

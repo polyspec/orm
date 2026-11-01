@@ -24,6 +24,8 @@
   - `catalog.update_row {snapshot, set}`은 묶인 snapshot의 행을 `set`의 값으로 바꾼다(`update_row`). expect는 `{"rows": [[<value>, ...], ...]}` 또는 `{"error": ...}`이다.
   - `catalog.delete_row {snapshot}`은 묶인 snapshot의 행을 지운다(`delete_row`). expect는 지운 행 수인 `{"value": {"int": ...}}` 또는 `{"error": ...}`이다.
   - `sql.exec {sql, reason}`은 `.dbs`가 선언할 수 없는 DDL, 예를 들어 generated column(DBS-42)이나 dbspec 밖의 native type을 runtime의 native driver로 실행한다. `reason`은 fixture가 그것을 선언할 수 없는 이유를 적고, 그 step은 `expect`가 없다.
+  - `dbspec.export_mermaid {document | path, documents, as, expect}`는 docs/spec/mermaid.md의 export를 실행한다. DBS-169가 이름 붙인 공개 호출(여섯 runtime의 `ExportMermaid`, `Dbspec::exportMermaid`, `export_mermaid`, `exportMermaid`)이며, 대상은 `document`의 문서, 또는 recipe 기준 상대 경로 `path`의 `.dbs` 파일이다. `documents`(이름별 set의 다른 문서)와 함께 parse한다. expect는 `{"value": <부분집합>}`이고, 부분집합은 `{"mermaid": <text>, "dropped": [[<kind>, <table>, <name>], ...]}`의 키 중 이름 붙인 것이며, 값은 `ir.answer`처럼 plain JSON이고 이름 붙인 키만 비교한다. `as`는 결과를 묶고, `<name>.mermaid` ref는 그 text를 읽는다(MER-1 ~ MER-6).
+  - `dbspec.import_mermaid {mermaid, name, skeleton_of, expect}`는 같은 공개 호출(DBS-169)의 import를 `mermaid` 텍스트, 또는 export의 text를 가리키는 ref에 대해, `name`이라는 문서로 실행한다. 진단이 없으면 결과는 `{"document": <text>, "dropped": [...]}`이며 text는 emit된 문서다. `skeleton_of`(recipe 기준 상대 경로의 `.dbs` 파일)가 있으면 `{"dropped": [...], "same_skeleton": <bool>}`이고, bool은 import의 table, column, primary key, foreign key가 그 파일과 같을 때 true다(MER-13). 진단이 있으면 `{"errors": [[<rule>, <line>, <column>], ...]}`이다(MER-7). expect는 이 키들의 `{"value": <부분집합>}`이며 JSON 값으로 비교한다.
 
   Rust의 mutation은 cancellation flag, phase publisher, commit permit도 받는다. Rust helper는 설정되지 않은 flag, 아무것도 남기지 않는 publisher, 허용하는 permit을 넘긴다. 각 runtime의 helper는 호출이 돌려준 값을 비교하기 전에 recipe wrapper로 바꾼다.
 

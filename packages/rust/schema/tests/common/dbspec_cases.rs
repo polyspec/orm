@@ -78,8 +78,8 @@ fn schema_text(kind: &str) -> Result<&'static str, String> {
         "cases" => Ok(include_str!("../../../../../tests/dbspec/schema/cases.schema.json")),
         "ddl" => Ok(include_str!("../../../../../tests/dbspec/schema/ddl.schema.json")),
         "plans" => Ok(include_str!("../../../../../tests/dbspec/schema/plans.schema.json")),
-        "mermaid" => Ok(include_str!("../../../../../tests/dbspec/schema/mermaid.schema.json")),
         "syntax" => Ok(include_str!("../../../../../tests/dbspec/schema/syntax.schema.json")),
+        "mermaid" => Ok(include_str!("../../../../../scripts/features/schema/recipe.schema.json")),
         other => Err(format!("tests/dbspec/schema has no schema {other}")),
     }
 }

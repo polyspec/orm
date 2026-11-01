@@ -48,11 +48,6 @@ path = "tests/dbspec_manifest.rs"
 harness = false
 
 [[test]]
-name = "dbspec_mermaid"
-path = "tests/dbspec_mermaid.rs"
-harness = false
-
-[[test]]
 name = "dbspec_plan"
 path = "tests/dbspec_plan.rs"
 harness = false

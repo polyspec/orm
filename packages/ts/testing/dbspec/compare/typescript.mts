@@ -5,9 +5,10 @@
 // Usage: node packages/ts/testing/dbspec/compare/typescript.mts <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
 // (after the TypeScript build)
 import { readFileSync } from 'node:fs';
-import { dirname, join as joinPath } from 'node:path';
+import { dirname, join as joinPath, resolve as resolvePath } from 'node:path';
 import { parseCases, type Cases } from '../../../../../tests/dbspec/cases.mts';
 import { readVectors, vectorProblems } from '../../../../../tests/dbspec/vectors.mts';
+import type { MermaidCase } from '../../../../../tests/dbspec/vectors.mts';
 import { join, vectorInputs } from '../../../../../scripts/dbspec/syntax-vectors.mts';
 import { SchemaError } from '../../../../../scripts/json/schema.mts';
 import { errorMessage } from '../../../../../tests/errors.mts';
@@ -337,55 +338,97 @@ function writeExport(document: DbspecDocument): string {
   return mermaid;
 }
 
-// writeImport prints the document emitted by the import and the missing objects, or the diagnostic.
-function writeImport(text: string, name = 'imported') {
-  const result = importMermaid(text, name);
-  if (result.document === null) {
-    writePlanDiagnostics(result.diagnostics);
-    return;
+// skeleton writes the tables, columns, primary keys and foreign keys that Mermaid carries, in table-name order; foreign key
+// actions are left out, since Mermaid does not carry them.
+function skeleton(document: DbspecDocument): string[] {
+  const byName = (a: { name: string }, b: { name: string }) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+  const lines: string[] = [];
+  for (const t of [...document.tables].sort(byName)) {
+    lines.push(`table ${t.name}`);
+    for (const c of t.columns) {
+      const dflt = c.default === null ? '-' : c.default.kind === 'now' ? 'now' : c.default.text;
+      lines.push(`column ${c.name} ${JSON.stringify(c.type)} null=${c.nullable} identity=${c.identity} default=${dflt}`);
+    }
+    lines.push(`primary key ${t.primaryKey.columns.join(', ')}`);
+    for (const f of [...t.foreignKeys].sort(byName)) {
+      lines.push(`foreign key ${f.name} (${f.columns.join(', ')}) references ${f.table} (${f.references.join(', ')})`);
+    }
   }
-  for (const line of emitDbspec(result.document).split('\n')) out.push(`| ${line}`);
-  writeDropped(result.dropped);
+  return lines;
 }
 
-const mermaid = readVectors(mermaidPath, 'mermaid');
-for (const c of mermaid.export) {
-  out.push(`mermaid/export/${c.id}`);
-  const set = Object.fromEntries(Object.entries(c.documents).map(([name, lines]) => [name, join(lines, false)]));
-  const parsed = parseDbspec(join(c.document, false), set);
-  if (parsed.document === null) writePlanDiagnostics(parsed.diagnostics);
-  else writeExport(parsed.document);
-}
-for (const c of mermaid.import) {
-  out.push(`mermaid/import/${c.id}`);
-  writeImport(join(c.mermaid, false));
-}
-for (const c of mermaid.invalid) {
-  out.push(`mermaid/invalid/${c.id}`);
-  writeImport(join(c.mermaid, false), c.name ?? 'imported');
-}
-for (const c of mermaid.round_trip) {
-  out.push(`mermaid/round_trip/${c.id}`);
-  let read: DbspecReadResult;
+// readMermaidFile reads a .dbs file of the recipe; a file that cannot be read is written to stderr, "<path>: <reason>", and ends
+// with 1, as the other vector inputs are refused.
+function readMermaidFile(path: string): DbspecReadResult {
   try {
-    read = readDbspecFile(c.path);
+    return readDbspecFile(path);
   } catch (error) {
-    console.error(`${c.path}: ${errorMessage(error)}`);
+    console.error(`${path}: ${errorMessage(error)}`);
     process.exit(1);
   }
-  if (read.text === null) {
-    writePlanDiagnostics(read.diagnostics);
-    continue;
-  }
-  const parsed = parseDbspec(read.text, {});
-  if (parsed.document === null) {
-    writePlanDiagnostics(parsed.diagnostics);
-    continue;
-  }
-  const text = writeExport(parsed.document);
-  out.push(`mermaid/round_trip/${c.id}/import`);
-  writeImport(text);
 }
+
+// mermaidCase prints one case of tests/dbspec/mermaid.json: its category and id, then the output of each step, in order. An
+// export prints its Mermaid text and the missing objects; an import prints the emitted document and the missing objects, or its
+// diagnostics; an import with skeleton_of prints whether the skeleton of its document is that of the file. A step with as binds
+// its Mermaid text, which a ref of a later import reads.
+function mermaidCase(c: MermaidCase): void {
+  const roundTrip = c.steps.some(step => step.skeleton_of !== undefined);
+  const texts = new Map<string, string>();
+  for (const step of c.steps) {
+    if (step.op === 'dbspec.export_mermaid') {
+      out.push(`mermaid/${roundTrip ? 'round_trip' : 'export'}/${c.id}`);
+      let source = step.document ?? '';
+      if (step.path !== undefined) {
+        const read = readMermaidFile(resolvePath(mermaidDir, step.path));
+        if (read.text === null) {
+          writePlanDiagnostics(read.diagnostics);
+          return;
+        }
+        source = read.text;
+      }
+      const parsed = parseDbspec(source, step.documents ?? {});
+      if (parsed.document === null) {
+        writePlanDiagnostics(parsed.diagnostics);
+        return;
+      }
+      const mermaid = writeExport(parsed.document);
+      if (step.as !== undefined) texts.set(step.as, mermaid);
+      continue;
+    }
+    const text = typeof step.mermaid === 'string' ? step.mermaid : texts.get(step.mermaid?.ref.split('.')[0] ?? '') ?? '';
+    const result = importMermaid(text, step.name ?? '');
+    if (result.document === null) {
+      out.push(`mermaid/invalid/${c.id}`);
+      writePlanDiagnostics(result.diagnostics);
+      continue;
+    }
+    if (step.skeleton_of !== undefined) {
+      out.push(`mermaid/round_trip/${c.id}/import`);
+      const read = readMermaidFile(resolvePath(mermaidDir, step.skeleton_of));
+      if (read.text === null) {
+        writePlanDiagnostics(read.diagnostics);
+        return;
+      }
+      const original = parseDbspec(read.text, {});
+      if (original.document === null) {
+        writePlanDiagnostics(original.diagnostics);
+        return;
+      }
+      const same = JSON.stringify(skeleton(original.document)) === JSON.stringify(skeleton(result.document));
+      out.push(`| same_skeleton\t${same}`);
+      writeDropped(result.dropped);
+      continue;
+    }
+    out.push(`mermaid/import/${c.id}`);
+    for (const line of emitDbspec(result.document).split('\n')) out.push(`| ${line}`);
+    writeDropped(result.dropped);
+  }
+}
+
+// The Mermaid recipe (tests/dbspec/mermaid.json): its paths are relative to its own directory.
+const mermaidDir = dirname(mermaidPath);
+for (const c of readVectors(mermaidPath, 'mermaid').cases) mermaidCase(c);
 // The declaration positions of the main document of each positions case, as "| kind<TAB>line<TAB>column<TAB>path..."
 // lines, or its diagnostics.
 for (const c of shared.positions) {

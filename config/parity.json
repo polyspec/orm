@@ -398,7 +398,7 @@
         },
         {
           "glob": "packages/php/tests/DbspecMermaidErrorBoundaryTest.php",
-          "reason": "test: injects an unexpected exception into the private Mermaid catalog builder and verifies the same exception object escapes; the public invalid-name diagnostic is covered by dbspec-mermaid-invalid"
+          "reason": "test: injects an unexpected exception into the private Mermaid catalog builder and verifies the same exception object escapes; the public invalid-name diagnostic is covered by dbspec-mermaid"
         },
         {
           "glob": "packages/php/tests/FuncSourceAdapterTest.php",
@@ -574,7 +574,7 @@
         },
         {
           "glob": "packages/php-ext/tests/MermaidErrorBoundaryTest.php",
-          "reason": "test: exercises the private Mermaid test hook for a coded catalog-build exception and an unexpected Throwable; public invalid-name diagnostics are covered by dbspec-mermaid-invalid"
+          "reason": "test: exercises the private Mermaid test hook for a coded catalog-build exception and an unexpected Throwable; public invalid-name diagnostics are covered by dbspec-mermaid"
         },
         {
           "glob": "packages/php-ext/tests/ArginfoBuildTest.php",
@@ -638,7 +638,6 @@
         "packages/ts/tests/dbspec_case.mjs",
         "packages/ts/tests/introspect_case.mjs",
         "packages/ts/tests/markdown_cases.mjs",
-        "packages/ts/tests/mermaid_case.mjs",
         "packages/ts/tests/plan_case.mjs",
         "packages/ts/tests/request_hook_run.mjs",
         "packages/ts/tests/restore_case.mjs",
@@ -676,7 +675,7 @@
         },
         {
           "glob": "packages/ts/tests/dbspec-mermaid-errors.mjs",
-          "reason": "test: injects an unexpected error into the private Mermaid catalog builder and verifies the same error object escapes; the public invalid-name diagnostic is covered by dbspec-mermaid-invalid"
+          "reason": "test: injects an unexpected error into the private Mermaid catalog builder and verifies the same error object escapes; the public invalid-name diagnostic is covered by dbspec-mermaid"
         },
         {
           "glob": "packages/ts/tests/mysql-test-options.test.mjs",
@@ -822,7 +821,7 @@
         },
         {
           "glob": "packages/python/tests/mermaid_error_boundary.py",
-          "reason": "test: injects an unexpected exception into the private Mermaid catalog builder and verifies the same exception object escapes; the public invalid-name diagnostic is covered by dbspec-mermaid-invalid"
+          "reason": "test: injects an unexpected exception into the private Mermaid catalog builder and verifies the same exception object escapes; the public invalid-name diagnostic is covered by dbspec-mermaid"
         },
         {
           "glob": "packages/python/tests/test_no_path_change.py",
@@ -917,7 +916,6 @@
         "packages/python/tests/dbspec_apply_runner.py",
         "packages/python/tests/dbspec_cases_reader.py",
         "packages/python/tests/dbspec_introspect_runner.py",
-        "packages/python/tests/dbspec_mermaid.py",
         "packages/python/tests/dbspec_plans.py",
         "packages/python/tests/dbspec_vectors_reader.py",
         "packages/python/tests/testcase.py",
@@ -11377,7 +11375,7 @@
       ]
     },
     {
-      "id": "dbspec-mermaid-export",
+      "id": "dbspec-mermaid",
       "kind": "suite",
       "requirements": [
         "MER-1",
@@ -11385,45 +11383,7 @@
         "MER-3",
         "MER-4",
         "MER-5",
-        "MER-6"
-      ],
-      "file": "tests/dbspec/mermaid.json",
-      "cases": "$.export[*].id",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/dbspec/mermaid_test.go",
-          "symbol": "TestMermaidExportVectors"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecMermaidTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecMermaidTest::testExport"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecMermaidTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecMermaidTestExtensionTest::testExport"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-mermaid-export.mjs"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_mermaid_export.py"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_mermaid.rs",
-          "symbol": "mermaid_vectors::export"
-        }
-      ]
-    },
-    {
-      "id": "dbspec-mermaid-import",
-      "kind": "suite",
-      "requirements": [
+        "MER-6",
         "MER-7",
         "MER-8",
         "MER-9",
@@ -11433,113 +11393,35 @@
         "MER-13"
       ],
       "file": "tests/dbspec/mermaid.json",
-      "cases": "$.import[*].id",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/mermaid_test.go",
-          "symbol": "TestMermaidImportVectors"
+          "test": "packages/go/engine/dbspec/recipe_mermaid_test.go",
+          "symbol": "TestRecipeMermaidNone"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecMermaidTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecMermaidTest::testImport"
+          "test": "packages/php/tests/DbspecMermaidRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecMermaidRecipeTest::testNone"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecMermaidTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecMermaidTestExtensionTest::testImport"
+          "test": "packages/php-ext/tests/DbspecMermaidRecipeExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecMermaidRecipeExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-mermaid-import.mjs"
+          "test": "packages/ts/tests/dbspec-mermaid-none.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_mermaid_import.py"
+          "test": "packages/python/tests/test_dbspec_mermaid_none.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_mermaid.rs",
-          "symbol": "mermaid_vectors::import"
-        }
-      ]
-    },
-    {
-      "id": "dbspec-mermaid-invalid",
-      "kind": "suite",
-      "requirements": [
-        "MER-7"
-      ],
-      "file": "tests/dbspec/mermaid.json",
-      "cases": "$.invalid[*].id",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/dbspec/mermaid_test.go",
-          "symbol": "TestMermaidInvalidVectors"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecMermaidTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecMermaidTest::testInvalid"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecMermaidTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecMermaidTestExtensionTest::testInvalid"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-mermaid-invalid.mjs"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_mermaid_invalid.py"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_mermaid.rs",
-          "symbol": "mermaid_vectors::invalid"
-        }
-      ]
-    },
-    {
-      "id": "dbspec-mermaid-round-trip",
-      "kind": "suite",
-      "requirements": [
-        "MER-13"
-      ],
-      "file": "tests/dbspec/mermaid.json",
-      "cases": "$.round_trip[*].id",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/dbspec/mermaid_test.go",
-          "symbol": "TestMermaidRoundTripVectors"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecMermaidTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecMermaidTest::testRoundTrip"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecMermaidTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecMermaidTestExtensionTest::testRoundTrip"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-mermaid-round-trip.mjs"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_mermaid_round_trip.py"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_mermaid.rs",
-          "symbol": "mermaid_vectors::round_trip"
+          "test": "packages/rust/tests/tests/dbspec_mermaid_none.rs",
+          "symbol": "dbspec_mermaid_none"
         }
       ]
     },

@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The dbspec Mermaid vectors (tests/dbspec/mermaid.json) are one recipe: each runtime runs it through its recipe helper in one entry, the compare runners read it, and the native vector tests are removed (T334-3-21).
 - orm pins kit 0.0.92, whose targets match the crate fetch of orm-install-rust-crates, and takes the principles it ships (T353).
 - contracts/check-inputs.json declared no dbspec-php-check/render, so make run-databases refused the target that runs the physical DDL cases and CI's database run did not cover them. The target is declared like its sibling dbspec-plan-php-check (CR55-1).
 - The check runner reads the process table with a 256 MiB buffer and names the error code of a failed listing, so a large table no longer fails a step with SIGTERM (T351).

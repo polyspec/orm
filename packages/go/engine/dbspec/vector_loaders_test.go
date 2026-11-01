@@ -19,10 +19,9 @@ func vectorCaseOf(object map[string]any, key string, index int) map[string]any {
 func TestVectorLoadersRejectMalformedVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	decoders := map[string]func(vectorReader, map[string]any) error{
-		"plans.json":   func(r vectorReader, o map[string]any) error { _, err := decodePlanVectors(r, o); return err },
-		"mermaid.json": func(r vectorReader, o map[string]any) error { _, err := decodeMermaidVectors(r, o); return err },
-		"cases.json":   func(r vectorReader, o map[string]any) error { _, err := decodeCaseVectors(r, o); return err },
-		"ddl.json":     func(r vectorReader, o map[string]any) error { _, err := decodeDDLVectors(r, o); return err },
+		"plans.json": func(r vectorReader, o map[string]any) error { _, err := decodePlanVectors(r, o); return err },
+		"cases.json": func(r vectorReader, o map[string]any) error { _, err := decodeCaseVectors(r, o); return err },
+		"ddl.json":   func(r vectorReader, o map[string]any) error { _, err := decodeDDLVectors(r, o); return err },
 	}
 	mutations := []struct {
 		file, location, problem string
@@ -44,11 +43,6 @@ func TestVectorLoadersRejectMalformedVectors(t *testing.T) {
 		{"plans.json", "comparisons[1].differences[0]", "does not have 3 strings", func(o map[string]any) {
 			asFixture[[]any](vectorCaseOf(o, "comparisons", 1)["differences"])[0] = []any{"create_table", "orders"}
 		}},
-		{"mermaid.json", "export[0].dropped", "is missing", func(o map[string]any) { delete(vectorCaseOf(o, "export", 0), "dropped") }},
-		{"mermaid.json", "invalid[0].errors[0]", "does not have 3 items", func(o map[string]any) {
-			asFixture[[]any](vectorCaseOf(o, "invalid", 0)["errors"])[0] = []any{"mermaid", 1.0}
-		}},
-		{"mermaid.json", "round_trip[0].path", "is not a string", func(o map[string]any) { vectorCaseOf(o, "round_trip", 0)["path"] = 1.0 }},
 		{"cases.json", "normalize[0].canonical", "is missing", func(o map[string]any) { delete(vectorCaseOf(o, "normalize", 0), "canonical") }},
 		{"cases.json", "invalid[0].errors[0].rule", "is missing", func(o map[string]any) {
 			delete(asFixture[map[string]any](asFixture[[]any](vectorCaseOf(o, "invalid", 0)["errors"])[0]), "rule")

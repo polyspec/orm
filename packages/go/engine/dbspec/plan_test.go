@@ -1,6 +1,7 @@
 package dbspec
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -447,4 +448,20 @@ func withPlanCase(source, plan []string, fn func(source *Document, p *Plan, diag
 		return err
 	}
 	return fn(doc, p, diagnostics)
+}
+
+// jsonEqual checks whether the JSON forms of got and want are equal.
+func jsonEqual(what string, got, want any) error {
+	gj, err := json.Marshal(got)
+	if err != nil {
+		return fmt.Errorf("%s: %w", what, err)
+	}
+	wj, err := json.Marshal(want)
+	if err != nil {
+		return fmt.Errorf("%s: %w", what, err)
+	}
+	if string(gj) != string(wj) {
+		return fmt.Errorf("%s\nwant %s\ngot  %s", what, wj, gj)
+	}
+	return nil
 }

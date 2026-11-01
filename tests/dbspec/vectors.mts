@@ -30,14 +30,15 @@ type PlanVectors = {
   parse: { id: string; plan: Lines; errors: PlanError[] }[];
   comparisons: { id: string; source: Lines; target: Lines; differences: [string, string, string][]; errors: PlanError[] }[];
 };
-/** tests/dbspec/mermaid.json. */
-type MermaidVectors = {
-  version: 1; note: string;
-  export: { id: string; document: Lines; documents: Record<string, Lines>; mermaid: Lines; dropped: [string, string, string][] }[];
-  import: { id: string; mermaid: Lines; document: Lines; dropped: [string, string, string][] }[];
-  invalid: { id: string; name?: string; mermaid: Lines; errors: [string, number, number][] }[];
-  round_trip: { id: string; path: string; imported: [string, string, string][]; dropped: [string, string, string][] }[];
+/** A step of tests/dbspec/mermaid.json (the recipe of the Mermaid ops, FCV-4): the fields its op reads. */
+type MermaidStep = {
+  op: string; document?: string; path?: string; documents?: Record<string, string>; as?: string; mermaid?: string | { ref: string };
+  name?: string; skeleton_of?: string; expect?: Record<string, { value: Record<string, unknown> }>;
 };
+/** A case of tests/dbspec/mermaid.json. */
+export type MermaidCase = { id: string; requirements: string[]; steps: MermaidStep[] };
+/** tests/dbspec/mermaid.json: the recipe of the Mermaid cases, checked against the recipe schema. */
+type MermaidVectors = { requirements: string[]; cases: MermaidCase[] };
 /** tests/dbspec/syntax.json. */
 type SyntaxVectors = { version: 1; note: string; cases: { id: string; tokens: [number, number, number, string][] }[] };
 
@@ -80,7 +81,9 @@ export function vectorProblems(path: string, error: SchemaError): string[] {
 export function readVectors<K extends keyof Vectors>(path: string, kind: K): Vectors[K] {
   const text = readInput(path);
   try {
-    return parseJson<Vectors[K]>(text, new URL(`./schema/${kind}.schema.json`, import.meta.url).pathname, path);
+    // The Mermaid vectors are a recipe, so they are checked against the recipe schema of the features (FCV-2).
+    const schema = kind === 'mermaid' ? new URL('../../scripts/features/schema/recipe.schema.json', import.meta.url) : new URL(`./schema/${kind}.schema.json`, import.meta.url);
+    return parseJson<Vectors[K]>(text, schema.pathname, path);
   } catch (error) {
     if (error instanceof SchemaError) for (const line of vectorProblems(path, error)) console.error(line);
     else if (error instanceof JsonError) console.error(error.message);

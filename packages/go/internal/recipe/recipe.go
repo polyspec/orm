@@ -50,6 +50,14 @@ type step struct {
 	Answer  json.RawMessage            `json:"answer"`
 	Answers map[string]json.RawMessage `json:"answers"`
 	Expect  map[string]json.RawMessage `json:"expect"`
+
+	// The fields of the dbspec.export_mermaid and dbspec.import_mermaid ops (FCV-4).
+	Document   string            `json:"document"`
+	Path       string            `json:"path"`
+	Documents  map[string]string `json:"documents"`
+	Name       string            `json:"name"`
+	Mermaid    json.RawMessage   `json:"mermaid"`
+	SkeletonOf string            `json:"skeleton_of"`
 }
 
 // IRAnswer runs the chain of one ir.answer step on a listener that answers with the answer, or with answers keyed by the op of
@@ -113,7 +121,7 @@ func Run(t *testing.T, path, database string, opts ...Option) {
 				if err := json.Unmarshal(raw, &s); err != nil {
 					t.Fatalf("recipe %s case %s step %d on %s: %v", path, c.ID, index, database, err)
 				}
-				if err := run(t, s, bound, database, model, o); err != nil {
+				if err := run(t, s, bound, database, model, o, filepath.Dir(path)); err != nil {
 					t.Fatalf("recipe %s case %s step %d (%s) on %s: %v", path, c.ID, index, s.Op, database, err)
 				}
 			}
@@ -122,7 +130,21 @@ func Run(t *testing.T, path, database string, opts ...Option) {
 }
 
 // run maps the op of s to its call and checks the result against the expect of database.
-func run(t *testing.T, s step, bound map[string]result, database string, model *runtimemodel.Model, o options) error {
+func run(t *testing.T, s step, bound map[string]result, database string, model *runtimemodel.Model, o options, dir string) error {
+	if strings.HasPrefix(s.Op, "dbspec.") {
+		got, err := mermaidStep(s, bound, dir)
+		if err != nil {
+			return err
+		}
+		if s.As != "" {
+			bound[s.As] = result{cell: got}
+		}
+		expect, ok := s.Expect[database]
+		if !ok {
+			return fmt.Errorf("%s has no expect for %s", s.Op, database)
+		}
+		return checkMermaid(expect, got)
+	}
 	if s.Op == "ir.validate" {
 		return checkValidate(s.Expect[database], validate(model, s.Request))
 	}
@@ -395,12 +417,25 @@ func reference(raw json.RawMessage, bound map[string]result) (any, bool, error) 
 	if ref.Ref == nil {
 		return nil, false, nil
 	}
-	r, ok := bound[*ref.Ref]
+	name, field, dotted := strings.Cut(*ref.Ref, ".")
+	r, ok := bound[name]
 	if !ok {
 		return nil, true, fmt.Errorf("ref %s names no bound result", *ref.Ref)
 	}
 	if r.err != nil {
 		return nil, true, fmt.Errorf("ref %s names a failed step: %w", *ref.Ref, r.err)
+	}
+	if dotted {
+		// A dotted ref reads a field of the plain result of a step, such as the mermaid of an export (FCV-4).
+		m, ok := r.cell.(map[string]any)
+		if !ok {
+			return nil, true, fmt.Errorf("ref %s: the result of %s has no fields", *ref.Ref, name)
+		}
+		v, ok := m[field]
+		if !ok {
+			return nil, true, fmt.Errorf("ref %s names no field", *ref.Ref)
+		}
+		return v, true, nil
 	}
 	if r.decoded {
 		return r.styled, true, nil

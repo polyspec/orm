@@ -11,6 +11,7 @@ import { createInterface } from 'node:readline';
 import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { Db, OrmError, StyledValue, blindIndex, connectCatalog, dbspecManifest, decode, encode, hostDecode, hostEncode, parseDbspec, readDbspecFile, registerModel } from '../dist/index.js';
+import { emitDbspec, exportMermaid, importMermaid } from '../dist/dbspec/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { withCaseDatabase } from './case-database.mjs';
@@ -31,6 +32,7 @@ export function runRecipe(path, database) {
   const literal = parseJson(text);
   // An ir.validate step checks its request against the schema of the recipe, which the recipe names relative to its own file.
   const schema = recipe.schema === undefined ? undefined : validationModel(resolve(root, dirname(path), recipe.schema));
+  const dir = resolve(root, dirname(path));
   for (const [caseIndex, recipeCase] of recipe.cases.entries()) {
     caseTest(recipeCase.id, COMPUTE, async () => {
       const bound = new Map();
@@ -38,7 +40,7 @@ export function runRecipe(path, database) {
         try {
           if (step.op === 'ir.validate') checkValidate(step, requestText(literal, caseIndex, index), schema, database);
           else if (step.op === 'ir.answer') await checkAnswer(step, database);
-          else run(step, bound, database);
+          else run(step, bound, database, dir);
         } catch (error) {
           throw new Error(`recipe ${path} case ${recipeCase.id} step ${index} (${step.op}) on ${database}: ${error.message}`, { cause: error });
         }
@@ -48,7 +50,11 @@ export function runRecipe(path, database) {
 }
 
 // run maps the op of step to its call and checks the result against the expect of database.
-function run(step, bound, database) {
+function run(step, bound, database, dir) {
+  if (step.op.startsWith('dbspec.')) {
+    checkMermaid(step, mermaidStep(step, bound, dir), database);
+    return;
+  }
   const result = { decoded: false };
   const attempt = call => {
     try {
@@ -98,6 +104,88 @@ function run(step, bound, database) {
   const got = fromValue(result.value.payload());
   if (!equal(got, expect.value, step.styles.includes('ordered_json'))) {
     throw new Error(`decoded ${JSON.stringify(got)}, want ${JSON.stringify(expect.value)}`);
+  }
+}
+
+// mermaidStep runs the dbspec.export_mermaid or dbspec.import_mermaid op of step (FCV-4) on the public Mermaid calls (DBS-169)
+// and returns its plain JSON result, as the Go helper does (packages/go/internal/recipe/mermaid.go). dir is the directory of the
+// recipe, which the path and skeleton_of fields are relative to. A step with as binds the result, so a ref reads its fields.
+function mermaidStep(step, bound, dir) {
+  const got = step.op === 'dbspec.export_mermaid' ? exportStep(step, dir) : importStep(step, bound, dir);
+  if (step.as !== undefined) bound.set(step.as, { decoded: false, value: got });
+  return got;
+}
+
+function exportStep(step, dir) {
+  let source = step.document;
+  if (step.path !== undefined) {
+    const read = readDbspecFile(resolve(dir, step.path));
+    if (read.diagnostics.length > 0) throw new Error(`read ${step.path}: ${JSON.stringify(read.diagnostics)}`);
+    source = read.text;
+  }
+  const parsed = parseDbspec(source, step.documents ?? {});
+  if (parsed.diagnostics.length > 0) throw new Error(`parse: ${JSON.stringify(parsed.diagnostics)}`);
+  const { mermaid, dropped } = exportMermaid(parsed.document);
+  return { mermaid, dropped: dropsOf(dropped) };
+}
+
+function importStep(step, bound, dir) {
+  const text = typeof step.mermaid === 'string' ? step.mermaid : mermaidReference(step.mermaid, bound);
+  const imported = importMermaid(text, step.name);
+  if (imported.diagnostics.length > 0) {
+    return { errors: imported.diagnostics.map(d => [d.rule, d.line, d.column]) };
+  }
+  if (step.skeleton_of === undefined) {
+    return { document: emitDbspec(imported.document), dropped: dropsOf(imported.dropped) };
+  }
+  const read = readDbspecFile(resolve(dir, step.skeleton_of));
+  if (read.diagnostics.length > 0) throw new Error(`read ${step.skeleton_of}: ${JSON.stringify(read.diagnostics)}`);
+  const original = parseDbspec(read.text, {});
+  if (original.diagnostics.length > 0) throw new Error(`parse ${step.skeleton_of}: ${JSON.stringify(original.diagnostics)}`);
+  const same = isDeepStrictEqual(mermaidSkeleton(original.document), mermaidSkeleton(imported.document));
+  return { dropped: dropsOf(imported.dropped), same_skeleton: same };
+}
+
+// mermaidReference reads the text of a ref, {ref: "<name>.<field>"}, of a bound plain result.
+function mermaidReference(raw, bound) {
+  const [name, field] = String(raw.ref ?? '').split('.');
+  if (!bound.has(name)) throw new Error(`ref ${raw.ref} names no bound result`);
+  const value = bound.get(name).value?.[field];
+  if (typeof value !== 'string') throw new Error(`ref ${raw.ref} is not a text`);
+  return value;
+}
+
+function dropsOf(dropped) {
+  return dropped.map(u => [u.kind, u.table, u.name]);
+}
+
+// mermaidSkeleton writes the tables, columns, primary keys and foreign keys that Mermaid carries, in table-name order; foreign
+// key actions are left out, since Mermaid does not carry them.
+function mermaidSkeleton(document) {
+  const byName = (a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+  const out = [];
+  for (const t of [...document.tables].sort(byName)) {
+    out.push(`table ${t.name}`);
+    for (const c of t.columns) {
+      const dflt = c.default === null ? '-' : c.default.kind === 'now' ? 'now' : c.default.text;
+      out.push(`column ${c.name} ${JSON.stringify(c.type)} null=${c.nullable} identity=${c.identity} default=${dflt}`);
+    }
+    out.push(`primary key ${t.primaryKey.columns.join(', ')}`);
+    for (const f of [...t.foreignKeys].sort(byName)) {
+      out.push(`foreign key ${f.name} (${f.columns.join(', ')}) references ${f.table} (${f.references.join(', ')})`);
+    }
+  }
+  return out;
+}
+
+// checkMermaid compares the keys of the expect of database that step names with the plain result, as JSON values.
+function checkMermaid(step, got, database) {
+  const expect = step.expect?.[database];
+  if (expect === undefined) throw new Error(`${step.op} has no expect for ${database}`);
+  const actual = JSON.parse(JSON.stringify(got));
+  for (const [key, want] of Object.entries(expect.value)) {
+    if (!(key in actual)) throw new Error(`the result has no ${key}: ${JSON.stringify(actual)}`);
+    if (!isDeepStrictEqual(actual[key], want)) throw new Error(`${key}: got ${JSON.stringify(actual[key])}, want ${JSON.stringify(want)}`);
   }
 }
 

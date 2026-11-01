@@ -6,7 +6,7 @@ declare(strict_types=1);
 // functions take a Dbspec class (Polyspec\Orm\Dbspec\Dbspec or the extension's Polyspec\Orm\Dbspec\Native\Dbspec) and
 // write in the line format of tests/dbspec/compare/check.mts: dbspec_write_interface writes the shared cases, stress
 // documents, file reads, manifest and statement vectors, dbspec_write_plans writes the plan vectors, and
-// dbspec_write_mermaid writes the Mermaid vectors. The two classes have the same methods and result shape.
+// dbspec_write_mermaid writes the Mermaid recipe. The two classes have the same methods and result shape.
 
 /** Writes the location and problem of a vector file to stderr and exits with 1. */
 function dbspec_vector_fail(string $path, string $location, string $problem): never
@@ -621,59 +621,110 @@ function dbspec_export(string $dbspec, object $document): string
     return $result->text;
 }
 
-/** Writes the emitted document of the import and the missing objects, or the diagnostics. */
-function dbspec_import(string $dbspec, string $text, string $name = 'imported'): void
-{
-    $result = $dbspec::importMermaid($text, $name);
-    if ($result->document === null) {
-        dbspec_plan_diagnostics($result->diagnostics);
-        return;
-    }
-    foreach (explode("\n", $dbspec::emit($result->document)) as $line) {
-        echo "| $line\n";
-    }
-    dbspec_dropped($result->dropped);
-}
-
-/** With $dbspec, writes the export, import, invalid and round trip cases of tests/dbspec/mermaid.json in this order. */
+/**
+ * With $dbspec, writes the cases of tests/dbspec/mermaid.json (the recipe, FCV-4) in case order, the same way as the
+ * TypeScript runner. Paths are relative to the directory of the recipe file.
+ */
 function dbspec_write_mermaid(string $dbspec, string $mermaidPath): void
 {
-    $mermaid = dbspec_read_vectors($mermaidPath, 'mermaid');
-    foreach ($mermaid['export'] as $case) {
-        echo "mermaid/export/{$case['id']}\n";
-        $set = array_map(static fn(array $lines): string => dbspec_join($lines, false, false), $case['documents']);
-        $parsed = $dbspec::parse(dbspec_join($case['document'], false, false), $set);
-        if ($parsed->document === null) {
-            dbspec_plan_diagnostics($parsed->diagnostics);
+    $recipe = dbspec_read_vectors($mermaidPath, 'mermaid');
+    foreach ($recipe['cases'] as $case) {
+        dbspec_mermaid_case($dbspec, $case, dirname($mermaidPath));
+    }
+}
+
+/**
+ * Writes one case of the recipe: its category and id, then the output of each step, in order. An export prints its
+ * Mermaid text and the missing objects; an import prints the emitted document and the missing objects, or its
+ * diagnostics; an import with skeleton_of prints whether the skeleton of its document is that of the file. A step with
+ * as binds its Mermaid text, which a ref of a later import reads.
+ */
+function dbspec_mermaid_case(string $dbspec, array $case, string $dir): void
+{
+    $roundTrip = array_filter($case['steps'], static fn(array $step): bool => isset($step['skeleton_of'])) !== [];
+    $texts = [];
+    foreach ($case['steps'] as $step) {
+        if ($step['op'] === 'dbspec.export_mermaid') {
+            echo 'mermaid/' . ($roundTrip ? 'round_trip' : 'export') . "/{$case['id']}\n";
+            $source = $step['document'] ?? '';
+            if (isset($step['path'])) {
+                $read = $dbspec::readFile("$dir/{$step['path']}");
+                if ($read->text === null) {
+                    dbspec_plan_diagnostics($read->diagnostics);
+                    return;
+                }
+                $source = $read->text;
+            }
+            $parsed = $dbspec::parse($source, $step['documents'] ?? []);
+            if ($parsed->document === null) {
+                dbspec_plan_diagnostics($parsed->diagnostics);
+                return;
+            }
+            $text = dbspec_export($dbspec, $parsed->document);
+            if (isset($step['as'])) {
+                $texts[$step['as']] = $text;
+            }
             continue;
         }
-        dbspec_export($dbspec, $parsed->document);
-    }
-    foreach (['import', 'invalid'] as $kind) {
-        foreach ($mermaid[$kind] as $case) {
-            echo "mermaid/$kind/{$case['id']}\n";
-            dbspec_import($dbspec, dbspec_join($case['mermaid'], false, false), $case['name'] ?? 'imported');
-        }
-    }
-    foreach ($mermaid['round_trip'] as $case) {
-        echo "mermaid/round_trip/{$case['id']}\n";
-        try {
-            $read = $dbspec::readFile($case['path']);
-        } catch (RuntimeException $e) {
-            fwrite(STDERR, $e->getMessage() . "\n");
-            exit(1);
-        }
-        if ($read->text === null) {
-            dbspec_plan_diagnostics($read->diagnostics);
+        $ref = is_string($step['mermaid']) ? null : explode('.', $step['mermaid']['ref'], 2)[0];
+        $text = $ref === null ? $step['mermaid'] : ($texts[$ref] ?? '');
+        $result = $dbspec::importMermaid($text, $step['name'] ?? '');
+        if ($result->document === null) {
+            echo "mermaid/invalid/{$case['id']}\n";
+            dbspec_plan_diagnostics($result->diagnostics);
             continue;
         }
-        $parsed = $dbspec::parse($read->text, []);
-        if ($parsed->document === null) {
-            dbspec_plan_diagnostics($parsed->diagnostics);
+        if (isset($step['skeleton_of'])) {
+            echo "mermaid/round_trip/{$case['id']}/import\n";
+            $read = $dbspec::readFile("$dir/{$step['skeleton_of']}");
+            if ($read->text === null) {
+                dbspec_plan_diagnostics($read->diagnostics);
+                return;
+            }
+            $original = $dbspec::parse($read->text, []);
+            if ($original->document === null) {
+                dbspec_plan_diagnostics($original->diagnostics);
+                return;
+            }
+            $same = dbspec_mermaid_skeleton($original->document) === dbspec_mermaid_skeleton($result->document);
+            echo "| same_skeleton\t" . ($same ? 'true' : 'false') . "\n";
+            dbspec_dropped($result->dropped);
             continue;
         }
-        $text = dbspec_export($dbspec, $parsed->document);
-        echo "mermaid/round_trip/{$case['id']}/import\n";
-        dbspec_import($dbspec, $text);
+        echo "mermaid/import/{$case['id']}\n";
+        foreach (explode("\n", $dbspec::emit($result->document)) as $line) {
+            echo "| $line\n";
+        }
+        dbspec_dropped($result->dropped);
     }
+}
+
+/**
+ * Writes the tables, columns, primary keys and foreign keys that Mermaid carries, as lines in table
+ * name order; foreign key actions are left out, since Mermaid does not carry them.
+ *
+ * @return list<string>
+ */
+function dbspec_mermaid_skeleton(object $document): array
+{
+    $byName = static fn(object $a, object $b): int => strcmp($a->name, $b->name);
+    $tables = $document->tables;
+    usort($tables, $byName);
+    $lines = [];
+    foreach ($tables as $t) {
+        $lines[] = "table {$t->name}";
+        foreach ($t->columns as $c) {
+            $dflt = $c->default ?? '-';
+            $lines[] = "column {$c->name} {$c->type->text()} null=" . ($c->nullable ? 'true' : 'false')
+                . ' identity=' . ($c->identity ? 'true' : 'false') . " default=$dflt";
+        }
+        $lines[] = 'primary key ' . implode(', ', $t->primaryKey->columns);
+        $foreignKeys = $t->foreignKeys;
+        usort($foreignKeys, $byName);
+        foreach ($foreignKeys as $f) {
+            $lines[] = "foreign key {$f->name} (" . implode(', ', $f->columns) . ") references {$f->table} ("
+                . implode(', ', $f->referencedColumns) . ')';
+        }
+    }
+    return $lines;
 }
