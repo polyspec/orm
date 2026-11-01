@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-check-recipes -->
-<!-- source-sha256: b59dad3c4fb671b3ae3210ea470c12cca6aa068b078f42f78e8abc0ecad58154 -->
+<!-- source-sha256: d8c6670f2dab7d57319400c1289874fea822e59710e6228352d42ed43303af71 -->
 # 병렬 check runner와 모든 공통 동작의 recipe 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -66,3 +66,4 @@
 | CR42 | fix(ts): markdownParam은 markdown.ts만 쓰므로 export를 뗀다. knip이 unused export로 보고한다 (#CR42) | packages/ts/src/markdown.ts | `make lint-ts` | [v] |
 | CR43 | fix(python): ruff format이 보고하는 recipe.py의 chain case 필터 줄을 고친다 (#CR43) | packages/python/tests/recipe.py | `ruff format --check --config node_modules/@polyspec/kit/ruff.toml .` | [v] |
 | CR44 | fix(repo): Go model build 시험이 -4g-1 pick이 실행하는 sets generator를 확인하도록 고친다. 제거된 gen 반복문이 아니다 (#CR44) | scripts/repo/check.test.mts | `node --test scripts/repo/check.test.mts` | [v] |
+| CR45 | fix(duplication): generator 시험 설정을 공유하고 probe의 중복 parse_set을 뺀다 (#CR45) | packages/go/generator/gen_go_sets_test.go, packages/rust/orm/tests/common/dbspec_probe.rs | `make duplication-check` | [v] |

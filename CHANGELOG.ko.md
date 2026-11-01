@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5a9a6d130adee096652ed8049952402d094ed71393ab5930e2d36766cb33d1dc -->
+<!-- source-sha256: a8dabac2716c6ecae9b488b08140b74172a8488d1886700ab4ad743ccc343db4 -->
 # 변경 이력
 
 ## Unreleased
 
+- duplication 검사가 generator의 GenerateSets 시험 설정 두 벌을 더 이상 보고하지 않으며, Rust orm 시험 probe는 parse_set을 한 번만 정의한다 (CR45).
 - repo check 시험 "the Go model build regenerates models"은 Go model set을 순서대로 만든 뒤 make go-models가 실행하는 orm-gen sets 호출을 확인한다 (CR44).
 - Python recipe 시험의 chain 경로 case 필터를 ruff format이 쓰는 형태로 고쳤다 (CR43).
 - TypeScript client는 markdownParam을 더 이상 export하지 않는다. markdown.ts만 쓰며, knip이 unused export로 보고했다 (CR42).
