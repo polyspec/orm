@@ -1,0 +1,447 @@
+package recipe
+
+// The generated-model path (FCV-4 model ops, FCV-14). Each op calls the generated model that its model name names, through
+// the connection that model.connect bound. A model or a column without an entry in this file fails the case by name, so no
+// recipe passes on a call that the helper does not make.
+
+import (
+	"encoding/json"
+	"fmt"
+	"sort"
+	"strconv"
+
+	"github.com/polyspec/orm/packages/go/model"
+	"github.com/polyspec/orm/packages/go/orm"
+)
+
+// The keys that the generated models of the bench set read their encrypted columns with (the native model tests use the
+// same keys).
+const (
+	benchAESKey        = "bench-salt"
+	benchBlindIndexKey = "bench-blind-index"
+)
+
+// sortedColumns is the columns of an assignment object in name order, so that every row of a batch sets its columns in
+// the same order (CONFIG otherwise) and a filter chain joins its conditions in one order.
+func sortedColumns(values map[string]any) []string {
+	names := make([]string, 0, len(values))
+	for name := range values {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// modelOp runs one model op of s. model.connect opens the connection and binds it with as; every other op uses the
+// connection that its connection name names.
+func modelOp(s databaseStep, c *databaseContext) (outcome, error) {
+	if s.Op == "model.connect" {
+		db, err := orm.ConnectSchema(c.dsn, c.schema, orm.Config{PoolSize: s.PoolSize, AESKey: benchAESKey, BlindIndexKey: benchBlindIndexKey})
+		if err != nil {
+			return outcome{}, err
+		}
+		c.closers = append(c.closers, func() error { return db.Close() })
+		return outcome{api: db, fields: map[string]any{}}, nil
+	}
+	bound, ok := c.bound[s.Connection]
+	db, isDB := bound.api.(*orm.DB)
+	if !ok || !isDB {
+		return outcome{}, fmt.Errorf("model op %s: connection %q is not bound by model.connect", s.Op, s.Connection)
+	}
+	switch s.Model {
+	case "CompositeAccount":
+		return compositeAccountOp(s, c, db)
+	case "Author":
+		return authorOp(s, c, db)
+	}
+	return outcome{}, fmt.Errorf("model %s has no recipe entry", s.Model)
+}
+
+// modelValues reads an object of assignments of a model op into native values.
+func modelValues(raw []byte, c *databaseContext) (map[string]any, error) {
+	out := map[string]any{}
+	if len(raw) == 0 {
+		return out, nil
+	}
+	var entries map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &entries); err != nil {
+		return nil, err
+	}
+	for column, value := range entries {
+		v, err := assignmentValue(value, c)
+		if err != nil {
+			return nil, fmt.Errorf("column %s: %w", column, err)
+		}
+		out[column] = v
+	}
+	return out, nil
+}
+
+// wrapperOf is the recipe wrapper of a native value that a model getter returns.
+func wrapperOf(v any) any {
+	switch x := v.(type) {
+	case int64:
+		return map[string]any{"int": strconv.FormatInt(x, 10)}
+	case int32:
+		return map[string]any{"int": strconv.FormatInt(int64(x), 10)}
+	case string:
+		return map[string]any{"text": x}
+	}
+	return map[string]any{"text": fmt.Sprint(v)}
+}
+
+// int64Of is a native int64 from a value of a recipe int wrapper.
+func int64Of(v any, column string) (int64, error) {
+	if n, ok := v.(int64); ok {
+		return n, nil
+	}
+	return 0, fmt.Errorf("column %s: want an int wrapper, got %T", column, v)
+}
+
+// int32Of is a native int32 from a value of a recipe int wrapper.
+func int32Of(v any, column string) (int32, error) {
+	n, err := int64Of(v, column)
+	if err != nil {
+		return 0, err
+	}
+	return int32(n), nil
+}
+
+// stringOf is a native string from a value of a recipe text wrapper.
+func stringOf(v any, column string) (string, error) {
+	if s, ok := v.(string); ok {
+		return s, nil
+	}
+	return "", fmt.Errorf("column %s: want a text wrapper, got %T", column, v)
+}
+
+// compositeAccount is a CompositeAccount model set from the values of a model op.
+func compositeAccount(db *orm.DB, values map[string]any) (*model.CompositeAccountModel, error) {
+	m := model.CompositeAccount().Connect(db)
+	for _, column := range sortedColumns(values) {
+		v := values[column]
+		var err error
+		switch column {
+		case "tenant_id":
+			var n int64
+			n, err = int64Of(v, column)
+			m.SetTenantId(n)
+		case "account_id":
+			var n int64
+			n, err = int64Of(v, column)
+			m.SetAccountId(n)
+		case "name":
+			var s string
+			s, err = stringOf(v, column)
+			m.SetName(s)
+		default:
+			return nil, fmt.Errorf("CompositeAccount column %s has no recipe setter", column)
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	return m, nil
+}
+
+// compositeAccountFilter narrows a CompositeAccount chain by the equalities of a model op.
+func compositeAccountFilter(m *model.CompositeAccountModel, where map[string]any) (*model.CompositeAccountModel, error) {
+	for i, column := range sortedColumns(where) {
+		v := where[column]
+		if i > 0 {
+			m = m.And()
+		}
+		switch column {
+		case "tenant_id":
+			n, err := int64Of(v, column)
+			if err != nil {
+				return nil, err
+			}
+			m = m.TenantId(n)
+		case "account_id":
+			n, err := int64Of(v, column)
+			if err != nil {
+				return nil, err
+			}
+			m = m.AccountId(n)
+		default:
+			// The generator makes an equality filter for the key columns only, so a text column has no filter here.
+			return nil, fmt.Errorf("CompositeAccount column %s has no recipe filter", column)
+		}
+	}
+	return m, nil
+}
+
+// compositeAccountOp runs a model op on the CompositeAccount model.
+func compositeAccountOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, error) {
+	switch s.Op {
+	case "model.create", "model.save":
+		values, err := modelValues(s.Values, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		m, err := compositeAccount(db, values)
+		if err != nil {
+			return outcome{}, err
+		}
+		if s.Op == "model.save" {
+			_, err = m.Save()
+		} else {
+			_, err = m.Create()
+		}
+		return outcome{api: m, fields: map[string]any{}}, err
+	case "model.duplicate_create":
+		values, err := modelValues(s.Values, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		duplication, err := modelValues(s.Duplication, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		m, err := compositeAccount(db, values)
+		if err != nil {
+			return outcome{}, err
+		}
+		d, err := compositeAccount(db, duplication)
+		if err != nil {
+			return outcome{}, err
+		}
+		_, err = m.Duplication(d).Create()
+		return outcome{fields: map[string]any{}}, err
+	case "model.creates":
+		var raw []json.RawMessage
+		if err := json.Unmarshal(s.Rows, &raw); err != nil {
+			return outcome{}, err
+		}
+		rows := make([]*model.CompositeAccountModel, 0, len(raw))
+		for _, row := range raw {
+			values, err := modelValues(row, c)
+			if err != nil {
+				return outcome{}, err
+			}
+			m, err := compositeAccount(db, values)
+			if err != nil {
+				return outcome{}, err
+			}
+			rows = append(rows, m)
+		}
+		n, err := model.CompositeAccount().Connect(db).Creates(rows, s.Batch)
+		return outcome{fields: map[string]any{"value": map[string]any{"int": strconv.FormatInt(n, 10)}}}, err
+	case "model.update":
+		key, err := modelValues(s.Key, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		set, err := modelValues(s.Set, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		rows, err := compositeAccountRows(db, key)
+		if err != nil {
+			return outcome{}, err
+		}
+		for column, v := range set {
+			if column != "name" {
+				return outcome{}, fmt.Errorf("CompositeAccount column %s has no recipe update", column)
+			}
+			name, err := stringOf(v, column)
+			if err != nil {
+				return outcome{}, err
+			}
+			rows[0].SetName(name)
+		}
+		_, err = rows[0].Update()
+		return outcome{fields: map[string]any{}}, err
+	case "model.delete":
+		where, err := modelValues(s.Where, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		m, err := compositeAccountFilter(model.CompositeAccount().Connect(db), where)
+		if err != nil {
+			return outcome{}, err
+		}
+		rows, err := m.Gets()
+		if err != nil {
+			return outcome{}, err
+		}
+		for _, row := range rows.Slice() {
+			if err := row.Delete(); err != nil {
+				return outcome{}, err
+			}
+		}
+		return outcome{fields: map[string]any{}}, nil
+	case "model.count":
+		where, err := modelValues(s.Where, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		m, err := compositeAccountFilter(model.CompositeAccount().Connect(db), where)
+		if err != nil {
+			return outcome{}, err
+		}
+		n, err := m.GetCount()
+		return outcome{fields: map[string]any{"value": map[string]any{"int": strconv.FormatInt(n, 10)}}}, err
+	case "model.get_by", "model.query":
+		where := s.Key
+		if s.Op == "model.query" {
+			where = s.Where
+		}
+		filter, err := modelValues(where, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		m, err := compositeAccountFilter(model.CompositeAccount().Connect(db), filter)
+		if err != nil {
+			return outcome{}, err
+		}
+		rows, err := m.Gets()
+		if err != nil {
+			return outcome{}, err
+		}
+		var out [][]any
+		for _, row := range rows.Slice() {
+			var cells []any
+			for _, column := range s.Columns {
+				var v any
+				var err error
+				switch column {
+				case "name":
+					v, err = row.GetName()
+				default:
+					return outcome{}, fmt.Errorf("CompositeAccount column %s has no recipe getter", column)
+				}
+				if err != nil {
+					return outcome{}, err
+				}
+				cells = append(cells, wrapperOf(v))
+			}
+			out = append(out, cells)
+		}
+		return outcome{fields: map[string]any{"rows": out}}, nil
+	}
+	return outcome{}, fmt.Errorf("OP_UNKNOWN %s", s.Op)
+}
+
+// compositeAccountRows loads the CompositeAccount rows that the key names; an update needs the one row it names.
+func compositeAccountRows(db *orm.DB, key map[string]any) ([]*model.CompositeAccountModel, error) {
+	m, err := compositeAccountFilter(model.CompositeAccount().Connect(db), key)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := m.Gets()
+	if err != nil {
+		return nil, err
+	}
+	if len(rows.Slice()) != 1 {
+		return nil, fmt.Errorf("key names %d rows, want one", len(rows.Slice()))
+	}
+	return rows.Slice(), nil
+}
+
+// authorOp runs a model op on the Author model: the seeded read counter that the arithmetic op changes, and its reads.
+func authorOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, error) {
+	filterOf := func(raw []byte) (*model.AuthorModel, error) {
+		filter, err := modelValues(raw, c)
+		if err != nil {
+			return nil, err
+		}
+		m := model.Author().Connect(db)
+		for i, column := range sortedColumns(filter) {
+			v := filter[column]
+			if i > 0 {
+				m = m.And()
+			}
+			switch column {
+			case "seq":
+				n, err := int64Of(v, column)
+				if err != nil {
+					return nil, err
+				}
+				m = m.Seq(n)
+			case "name":
+				t, err := stringOf(v, column)
+				if err != nil {
+					return nil, err
+				}
+				m = m.Name(t)
+			default:
+				return nil, fmt.Errorf("Author column %s has no recipe filter", column)
+			}
+		}
+		return m, nil
+	}
+	switch s.Op {
+	case "model.get_by", "model.query":
+		raw := s.Key
+		if s.Op == "model.query" {
+			raw = s.Where
+		}
+		m, err := filterOf(raw)
+		if err != nil {
+			return outcome{}, err
+		}
+		rows, err := m.Gets()
+		if err != nil {
+			return outcome{}, err
+		}
+		var out [][]any
+		for _, row := range rows.Slice() {
+			var cells []any
+			for _, column := range s.Columns {
+				var v any
+				var err error
+				switch column {
+				case "read_count":
+					v, err = row.GetReadCount()
+				case "name":
+					v, err = row.GetName()
+				default:
+					return outcome{}, fmt.Errorf("Author column %s has no recipe getter", column)
+				}
+				if err != nil {
+					return outcome{}, err
+				}
+				cells = append(cells, wrapperOf(v))
+			}
+			out = append(out, cells)
+		}
+		return outcome{fields: map[string]any{"rows": out}}, nil
+	case "model.arithmetic":
+		m, err := filterOf(s.Key)
+		if err != nil {
+			return outcome{}, err
+		}
+		rows, err := m.Gets()
+		if err != nil {
+			return outcome{}, err
+		}
+		if len(rows.Slice()) != 1 {
+			return outcome{}, fmt.Errorf("arithmetic key names %d rows, want one", len(rows.Slice()))
+		}
+		row := rows.Slice()[0]
+		if s.Column != "read_count" {
+			return outcome{}, fmt.Errorf("Author column %s has no recipe arithmetic", s.Column)
+		}
+		value, err := assignmentValue(s.Amount, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		amount, err := int32Of(value, s.Column)
+		if err != nil {
+			return outcome{}, err
+		}
+		switch s.Operation {
+		case "plus":
+			row.PlusReadCount(amount)
+		case "minus":
+			row.MinusReadCount(amount)
+		default:
+			return outcome{}, fmt.Errorf("unknown arithmetic operation %q", s.Operation)
+		}
+		_, err = row.Update()
+		return outcome{fields: map[string]any{}}, err
+	}
+	return outcome{}, fmt.Errorf("OP_UNKNOWN %s", s.Op)
+}

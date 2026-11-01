@@ -2296,19 +2296,21 @@
       ],
       "parity": [
         "coverage-model-write-cycle",
+        "php-extension-native-write-layer",
         "model-codec-columns",
         "model-ip-input-rejects-whitespace",
         "model-new-output-name-rejects-stored-column",
         "coverage-model-create-parts",
-        "coverage-model-write-arithmetic-attributes",
-        "coverage-model-save-key-dispatch",
         "ts-revision-update-match",
         "ts-revision-update-mismatch",
         "ts-revision-delete-match",
         "ts-revision-delete-mismatch",
         "ts-styled-value-checks-setter",
         "ts-styled-value-checks-output",
-        "ts-styled-value-checks-encoding"
+        "ts-styled-value-checks-encoding",
+        "model_writes-mysql",
+        "model_writes-postgres",
+        "model_writes-sqlite"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -2324,7 +2326,8 @@
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
         "packages/python/tests/coverage_case.py",
-        "contracts/fixtures/bench/bench.dbs"
+        "contracts/fixtures/bench/bench.dbs",
+        "contracts/fixtures/model_writes/model_writes.json"
       ],
       "tests": [
         "packages/go/model/model_test.go",
@@ -2358,7 +2361,6 @@
         "packages/go/model/styled_state_test.go",
         "packages/go/orm/model_host_input_test.go",
         "packages/go/orm/exec_decode_test.go",
-        "packages/go/orm/model_update_state_test.go",
         "packages/php/tests/StyledValueTest.php",
         "packages/rust/orm/tests/decimal_model.rs",
         "packages/go/model/coverage_model_writes_test.go",
@@ -2390,7 +2392,6 @@
         "packages/ts/tests/revision.mjs",
         "packages/python/tests/test_revision.py",
         "packages/rust/orm/tests/revision.rs",
-        "packages/ts/tests/save-key-errors.test.mjs",
         "packages/php-ext/tests/ModelWriteSurfaceTest.php",
         "packages/rust/orm/tests/unit/time_precision.rs",
         "packages/php-ext/tests/DecimalModelDbNativeTest.php",
@@ -2398,7 +2399,19 @@
         "packages/php-ext/tests/ClockTestExtensionTest.php",
         "packages/php-ext/tests/DecimalModelTestExtensionTest.php",
         "packages/php-ext/tests/ModelTestExtensionTest.php",
-        "packages/php-ext/tests/RevisionTestExtensionTest.php"
+        "packages/php-ext/tests/RevisionTestExtensionTest.php",
+        "packages/go/orm/recipe_model_writes_test.go",
+        "packages/php/tests/ModelWritesRecipeTest.php",
+        "packages/php-ext/tests/ModelWritesRecipeTestExtensionTest.php",
+        "packages/ts/tests/model_writes-mysql.test.mjs",
+        "packages/python/tests/test_model_writes_mysql.py",
+        "packages/rust/tests/tests/model_writes_mysql.rs",
+        "packages/ts/tests/model_writes-postgres.test.mjs",
+        "packages/python/tests/test_model_writes_postgres.py",
+        "packages/rust/tests/tests/model_writes_postgres.rs",
+        "packages/ts/tests/model_writes-sqlite.test.mjs",
+        "packages/python/tests/test_model_writes_sqlite.py",
+        "packages/rust/tests/tests/model_writes_sqlite.rs"
       ],
       "docs": [
         "docs/spec/dsl.md",
@@ -2419,7 +2432,6 @@
           "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestUnloadedUpdateKeepsAssignedValuesSelectedAndKeyed$' -count=1",
           "shard": "other",
           "inputs": [
-            "packages/go/orm/model_update_state_test.go"
           ]
         },
         {
@@ -2733,9 +2745,7 @@
         "kind": "database",
         "cases": [
           "model_write_cycle",
-          "create_parts",
-          "model_write_arithmetic_attributes",
-          "save_key_dispatch"
+          "create_parts"
         ],
         "owners": {
           "go": {
@@ -2753,15 +2763,11 @@
                   "test": "packages/go/model/coverage_model_writes_test.go",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts",
-                    "model_write_arithmetic_attributes",
-                    "save_key_dispatch"
+                    "create_parts"
                   ],
                   "symbols": {
                     "model_write_cycle": "TestCoverageModelWriteCycle",
-                    "create_parts": "TestCoverageModelCreateParts",
-                    "model_write_arithmetic_attributes": "TestCoverageModelArithmeticAttributes",
-                    "save_key_dispatch": "TestCoverageModelSaveKeyDispatch"
+                    "create_parts": "TestCoverageModelCreateParts"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2772,15 +2778,11 @@
                   "test": "packages/go/model/coverage_model_writes_test.go",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts",
-                    "model_write_arithmetic_attributes",
-                    "save_key_dispatch"
+                    "create_parts"
                   ],
                   "symbols": {
                     "model_write_cycle": "TestCoverageModelWriteCycle",
-                    "create_parts": "TestCoverageModelCreateParts",
-                    "model_write_arithmetic_attributes": "TestCoverageModelArithmeticAttributes",
-                    "save_key_dispatch": "TestCoverageModelSaveKeyDispatch"
+                    "create_parts": "TestCoverageModelCreateParts"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2791,15 +2793,11 @@
                   "test": "packages/go/model/coverage_model_writes_test.go",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts",
-                    "model_write_arithmetic_attributes",
-                    "save_key_dispatch"
+                    "create_parts"
                   ],
                   "symbols": {
                     "model_write_cycle": "TestCoverageModelWriteCycle",
-                    "create_parts": "TestCoverageModelCreateParts",
-                    "model_write_arithmetic_attributes": "TestCoverageModelArithmeticAttributes",
-                    "save_key_dispatch": "TestCoverageModelSaveKeyDispatch"
+                    "create_parts": "TestCoverageModelCreateParts"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -2821,15 +2819,11 @@
                   "test": "packages/php/tests/CoverageModelWritesTest.php",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts",
-                    "model_write_arithmetic_attributes",
-                    "save_key_dispatch"
+                    "create_parts"
                   ],
                   "symbols": {
                     "model_write_cycle": "testModelWriteCycle",
-                    "create_parts": "testCreateParts",
-                    "model_write_arithmetic_attributes": "testModelWriteArithmeticAttributes",
-                    "save_key_dispatch": "testSaveKeyDispatch"
+                    "create_parts": "testCreateParts"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2840,15 +2834,11 @@
                   "test": "packages/php/tests/CoverageModelWritesTest.php",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts",
-                    "model_write_arithmetic_attributes",
-                    "save_key_dispatch"
+                    "create_parts"
                   ],
                   "symbols": {
                     "model_write_cycle": "testModelWriteCycle",
-                    "create_parts": "testCreateParts",
-                    "model_write_arithmetic_attributes": "testModelWriteArithmeticAttributes",
-                    "save_key_dispatch": "testSaveKeyDispatch"
+                    "create_parts": "testCreateParts"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2859,15 +2849,11 @@
                   "test": "packages/php/tests/CoverageModelWritesTest.php",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts",
-                    "model_write_arithmetic_attributes",
-                    "save_key_dispatch"
+                    "create_parts"
                   ],
                   "symbols": {
                     "model_write_cycle": "testModelWriteCycle",
-                    "create_parts": "testCreateParts",
-                    "model_write_arithmetic_attributes": "testModelWriteArithmeticAttributes",
-                    "save_key_dispatch": "testSaveKeyDispatch"
+                    "create_parts": "testCreateParts"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -2889,15 +2875,11 @@
                   "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts",
-                    "model_write_arithmetic_attributes",
-                    "save_key_dispatch"
+                    "create_parts"
                   ],
                   "symbols": {
                     "model_write_cycle": "coverage_model_writes::coverage_model_write_cycle",
-                    "create_parts": "coverage_model_writes::coverage_model_create_parts",
-                    "model_write_arithmetic_attributes": "coverage_model_writes::coverage_model_write_arithmetic_attributes",
-                    "save_key_dispatch": "coverage_model_writes::coverage_model_save_key_dispatch"
+                    "create_parts": "coverage_model_writes::coverage_model_create_parts"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2908,15 +2890,11 @@
                   "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts",
-                    "model_write_arithmetic_attributes",
-                    "save_key_dispatch"
+                    "create_parts"
                   ],
                   "symbols": {
                     "model_write_cycle": "coverage_model_writes::coverage_model_write_cycle",
-                    "create_parts": "coverage_model_writes::coverage_model_create_parts",
-                    "model_write_arithmetic_attributes": "coverage_model_writes::coverage_model_write_arithmetic_attributes",
-                    "save_key_dispatch": "coverage_model_writes::coverage_model_save_key_dispatch"
+                    "create_parts": "coverage_model_writes::coverage_model_create_parts"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2927,15 +2905,11 @@
                   "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts",
-                    "model_write_arithmetic_attributes",
-                    "save_key_dispatch"
+                    "create_parts"
                   ],
                   "symbols": {
                     "model_write_cycle": "coverage_model_writes::coverage_model_write_cycle",
-                    "create_parts": "coverage_model_writes::coverage_model_create_parts",
-                    "model_write_arithmetic_attributes": "coverage_model_writes::coverage_model_write_arithmetic_attributes",
-                    "save_key_dispatch": "coverage_model_writes::coverage_model_save_key_dispatch"
+                    "create_parts": "coverage_model_writes::coverage_model_create_parts"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -2957,9 +2931,7 @@
                   "test": "packages/ts/tests/coverage_model_writes.mjs",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts",
-                    "model_write_arithmetic_attributes",
-                    "save_key_dispatch"
+                    "create_parts"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2970,9 +2942,7 @@
                   "test": "packages/ts/tests/coverage_model_writes.mjs",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts",
-                    "model_write_arithmetic_attributes",
-                    "save_key_dispatch"
+                    "create_parts"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2983,9 +2953,7 @@
                   "test": "packages/ts/tests/coverage_model_writes.mjs",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts",
-                    "model_write_arithmetic_attributes",
-                    "save_key_dispatch"
+                    "create_parts"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -3007,9 +2975,7 @@
                   "test": "packages/python/tests/coverage_model_writes.py",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts",
-                    "model_write_arithmetic_attributes",
-                    "save_key_dispatch"
+                    "create_parts"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -3020,9 +2986,7 @@
                   "test": "packages/python/tests/coverage_model_writes.py",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts",
-                    "model_write_arithmetic_attributes",
-                    "save_key_dispatch"
+                    "create_parts"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -3033,9 +2997,7 @@
                   "test": "packages/python/tests/coverage_model_writes.py",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts",
-                    "model_write_arithmetic_attributes",
-                    "save_key_dispatch"
+                    "create_parts"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -3057,15 +3019,11 @@
                   "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts",
-                    "model_write_arithmetic_attributes",
-                    "save_key_dispatch"
+                    "create_parts"
                   ],
                   "symbols": {
                     "model_write_cycle": "testModelWriteCycle",
-                    "create_parts": "testCreateParts",
-                    "model_write_arithmetic_attributes": "testModelWriteArithmeticAttributes",
-                    "save_key_dispatch": "testSaveKeyDispatch"
+                    "create_parts": "testCreateParts"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -3076,15 +3034,11 @@
                   "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts",
-                    "model_write_arithmetic_attributes",
-                    "save_key_dispatch"
+                    "create_parts"
                   ],
                   "symbols": {
                     "model_write_cycle": "testModelWriteCycle",
-                    "create_parts": "testCreateParts",
-                    "model_write_arithmetic_attributes": "testModelWriteArithmeticAttributes",
-                    "save_key_dispatch": "testSaveKeyDispatch"
+                    "create_parts": "testCreateParts"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -3095,15 +3049,11 @@
                   "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts",
-                    "model_write_arithmetic_attributes",
-                    "save_key_dispatch"
+                    "create_parts"
                   ],
                   "symbols": {
                     "model_write_cycle": "testModelWriteCycle",
-                    "create_parts": "testCreateParts",
-                    "model_write_arithmetic_attributes": "testModelWriteArithmeticAttributes",
-                    "save_key_dispatch": "testSaveKeyDispatch"
+                    "create_parts": "testCreateParts"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }

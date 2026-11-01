@@ -26,6 +26,18 @@
   - `sql.exec {sql, reason}`은 `.dbs`가 선언할 수 없는 DDL, 예를 들어 generated column(DBS-42)이나 dbspec 밖의 native type을 runtime의 native driver로 실행한다. `reason`은 fixture가 그것을 선언할 수 없는 이유를 적고, 그 step은 `expect`가 없다.
   - `dsn.connect {dsn}`은 case database의 DSN(`"case"`)이나 step의 DSN 문자열을 공개 API의 `Connect`(Go `orm.Connect`, PHP `Orm::connect`, TypeScript `Db.connect`, Python `Db.connect`, Rust `Db::connect`, 여섯 runtime 모두 공개)로 연다. expect는 `{"value": {"text": <driver>}}` 또는 `{"error": <code>}`이며, 연결은 닫는다.
 
+  model op는 `model.connect`가 묶는 `connection`을 받고 fixture set의 생성된 model 호출 하나를 이름 기준으로 지정한다. helper는 model을 fixture의 생성된 model(`packages/go`의 `models.txt` 항목과 다른 runtime의 생성된 test model)에서 이름 기준으로 찾으므로 op는 model 코드를 담지 않는다. 각 model op는 `connection`과 `model`을 받으며, `model`은 생성기가 쓰는 model 이름, 예를 들어 `CompositeAccount`다:
+  - `model.create {connection, model, values}`는 `values`(열 이름과 값의 객체)로 만든 model에 `Create`를 호출한다. `as`는 만든 model을 묶고, expect는 `{"error": <code>}` 또는 없음이다.
+  - `model.creates {connection, model, rows, batch}`는 `rows`의 행을 batch 크기 `batch`로 `Creates`에 넘긴다. expect는 `{"value": {"int": <count>}}` 또는 `{"error": <code>}`다.
+  - `model.save {connection, model, values}`는 `values`로 만든 model에 `Save`를 호출하며, key에 따라 INSERT 또는 UPDATE를 고른다(DSL-109). expect는 `{"error": <code>}` 또는 없음이다.
+  - `model.duplicate_create {connection, model, values, duplication}`는 `duplication`(열 이름과 값의 객체)의 `Duplication` 대입으로 `Create`를 호출한다. expect는 `{"error": <code>}` 또는 없음이다.
+  - `model.update {connection, model, key, set}`는 key 열이 `key`인 행을 읽고 `set`을 적용한 뒤 `Update`를 호출한다. expect는 `{"error": <code>}` 또는 없음이다.
+  - `model.arithmetic {connection, model, key, column, operation, amount}`는 `key`의 행을 읽고 `column`에 `operation`(`plus` 또는 `minus`, PLN-26)을 `amount`만큼 적용한 뒤 `Update`를 호출한다. expect는 `{"error": <code>}` 또는 없음이다.
+  - `model.delete {connection, model, where}`는 열이 `where`와 같은 행을 읽고 각 행에 `Delete`를 호출한다. expect는 `{"error": <code>}` 또는 없음이다.
+  - `model.count {connection, model, where}`는 `where`의 같음 조건으로 `GetCount`를 호출한다. expect는 `{"value": {"int": <count>}}`다.
+  - `model.get_by {connection, model, key, columns}`는 key 열의 조회 `GetBy`를 호출하고 `columns`를 읽는다. expect는 `{"rows": [[<value>, ...], ...]}`이며 행은 0개 또는 1개다.
+  - `model.query {connection, model, where, order, columns}`는 `where`의 같음 조건으로 `Gets`를 호출하고, `order`의 열을 오름차순으로 정렬해 `columns`를 읽는다. expect는 `{"rows": [[<value>, ...], ...]}`다.
+
   Rust의 mutation은 cancellation flag, phase publisher, commit permit도 받는다. Rust helper는 설정되지 않은 flag, 아무것도 남기지 않는 publisher, 허용하는 permit을 넘긴다. 각 runtime의 helper는 호출이 돌려준 값을 비교하기 전에 recipe wrapper로 바꾼다.
 
   - `schema.install {schema}`, `schema.register {schema}`, `schema.connect {schema}`는 case database에서 schema 값의 `utils().schema().install`, `utils().schema().register`와 connect를 호출한다(Go `Install`, `Register`, `ConnectSchema`; API unit `client-schema-utils-install`, `client-schema-utils-register`, `client-db-connectschema`). `schema.add_tables_and_columns {schema}`는 `addTablesAndColumns`를 호출한다(`client-schema-utils-add-tables-and-columns`). expect는 `{"value": {"array": [<name>, ...]}}`로, 만들어진 table과 그다음 추가된 `table.column` 이름이다. `schema` 인자는 `{"documents": [<file>, ...], "external": [<file>, ...], "manifest_replace": {"from": <text>, "to": <text>}}`이다. file 이름은 recipe에 상대적이고, `external`은 그 set이 쓰는 다른 set의 document 이름이며, `manifest_replace`는 만들어진 schema의 manifest text를 바꾸되 hash는 그대로 두어 text가 그 hash와 맞지 않게 한다. 세 op의 expect는 오류 없이 돌아온 호출에는 `{"value": {"bool": true}}`, 아니면 `{"error": <code>}`이다.

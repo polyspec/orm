@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: cccbdc14f721156c5df318b8a00a627b8ae38d7ad2da1affeb4b718cd71f30ba -->
+<!-- source-sha256: b6ebda70f7f42449ae4b8391e06746c8b6cd3af2c3ef36105e78418f4743cf2d -->
 # 변경 이력
 
 ## Unreleased
@@ -34,6 +34,7 @@
 - 중단된 실행이 남긴 compiler fixture case의 오래된 source 때문에 다음 실행이 EEXIST로 실패하고 디렉터리가 트리에 남았다. 이제 실행은 오래된 source를 덮어쓰고 끝에 임시 디렉터리를 지운다 (CR25).
 - 데이터베이스 기능이 실행 데이터베이스에서 recipe로 도는 방식을 spec이 밝힌다: docs/spec/feature-coverage.md의 FCV-8부터 FCV-14까지가 전환, `databases` need와 TEST_ENV로 받는 데이터베이스, 제외 없는 세 데이터베이스, DSN 누락 실패, 사례별 결과, seed 소유, 네이티브 테스트를 정한다 (T334-3-4-0).
 - FCV-4의 `dsn.connect` op가 DSN 연결 recipe `contracts/fixtures/dsn_connection/dsn_connection.json`을 여섯 runtime과 세 데이터베이스에서 실행한다. 네이티브 DSN coverage 시험은 제거되고, parity unit이 여섯 recipe 항목을 묶는다 (T334-3-4).
+- model_writes recipe인 contracts/fixtures/model_writes/model_writes.json은 여섯 사례를 여섯 runtime에서 MySQL, PostgreSQL, SQLite로 실행한다(T334-3-4). config/parity.json은 model_writes-<database> unit을 묶는다. recipe가 다루는 손으로 쓴 save-key, arithmetic, CRUD write cycle과 round-trip 시험은 제거한다. write cycle은 ordered JSON과 codec 단언(COD-11, COD-12, COD-15, COD-38, DIA-26)을 유지하고, create_parts 네이티브 시험은 StatementEvent의 batch 단언 때문에 남긴다. PHP extension의 native write layer는 INT-151로 명세하고 여덟 시험에 묶는다(T334-3-4).
 - 두 branch의 check-recipes 작업이 하나의 통합으로 main에 들어간다. 한국어 checklist는 영어 checklist의 모든 row를 가지고, 변경 이력은 그 commit들의 항목을 가지며, Makefile은 `rust-compiler-fixtures-check/unit`에서 node를 `$(NODE)`로 실행하고, `config/rebuild.json`은 `scripts/generate/once.mts`와 `scripts/php/php-ext-build.mts`를 분류한다 (CR26).
 - check runner는 실패한 target의 `::error` 줄을 출력하지 않아, GitHub Actions에서 실패는 작업이 끝나야 보였다. 이제 실패한 target은 끝날 때 `::error` 줄을 출력한다 (CR1).
 - docs 빌드는 게시된 폴더에 직접 사이트를 렌더링해서, 중단된 빌드는 사이트의 절반을 남겼다. 이제 임시 폴더에 렌더링한 뒤 이름 바꾸기 한 번으로 게시한다 (CR2).

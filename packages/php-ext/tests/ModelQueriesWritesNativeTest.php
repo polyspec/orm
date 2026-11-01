@@ -63,47 +63,6 @@ final class ModelQueriesWritesNativeTest extends TestCase
         }
     }
 
-    // Requirements: DSL-58, DSL-60, DSL-105, DSL-110.
-    public function testNativeModelWritesRoundTripThroughSqliteMemory(): void
-    {
-        self::assertTrue((new ReflectionMethod(Model::class, 'create'))->isInternal());
-        self::assertTrue((new ReflectionMethod(Model::class, 'update'))->isInternal());
-        self::assertTrue((new ReflectionMethod(Model::class, 'delete'))->isInternal());
-
-        $path = tempnam(sys_get_temp_dir(), 'orm-model-write-native-');
-        self::assertNotFalse($path);
-        $db = \Polyspec\Orm\Tests\Model\connect('sqlite://' . $path, new Config());
-        try {
-            \Polyspec\Orm\Tests\installBench($db);
-            (new CompositeAccount())->connect($db)
-                ->setTenantId(734002)
-                ->setAccountId(1)
-                ->setName('created')
-                ->create();
-
-            (new CompositeAccount())->connect($db)
-                ->getByTenantIdAndAccountId(734002, 1)
-                ->setName('updated')
-                ->update();
-            (new CompositeAccount())->connect($db)
-                ->setTenantId(734002)
-                ->setAccountId(1)
-                ->setName('ignored')
-                ->duplication((new CompositeAccount())->setName('upserted'))
-                ->create();
-
-            $row = (new CompositeAccount())->connect($db)->getByTenantIdAndAccountId(734002, 1);
-            self::assertSame('upserted', $row?->getName());
-            self::assertSame(1, (new CompositeAccount())->connect($db)->tenantId(734002)->getCount());
-
-            (new CompositeAccount())->connect($db)->tenantId(734002)->gets()->delete();
-            self::assertSame(0, (new CompositeAccount())->connect($db)->tenantId(734002)->getCount());
-        } finally {
-            $db->close();
-            unlink($path);
-        }
-    }
-
     // Requirements: DSL-116.
     public function testNewOutputNameRejectsAStoredColumnOnTheNativeModel(): void
     {

@@ -28,6 +28,8 @@ use Polyspec\Orm\Validator;
 
 final class Recipe
 {
+    use RecipeModel;
+
     /** The database part of a recipe without a database (FCV-3). */
     public const NONE = 'none';
 
@@ -439,7 +441,7 @@ final class Recipe
     /** The databases of a recipe with a fixture (FCV-3). */
     private const DATABASES = ['mysql', 'postgres', 'sqlite'];
 
-    /** @var array<string, Schema> the Schema of each fixture set, built once per process */
+    /** @var array<string, array{0: Schema, 1: list<Schema>}> the Schema and the external Schemas of each fixture set, built once per process */
     private static array $schemas = [];
 
     /** Runs one case of the recipe at path on a case database of database, which is removed when the case ends. */
@@ -454,41 +456,57 @@ final class Recipe
             Assert::fail("recipe $path: no fixture, so it has no database");
         }
         // A fixture of none runs every case on an empty case database; the helper never infers it (FCV-3).
-        $schema = $recipe['fixture'] === 'none'
-            ? null
+        [$schema, $installFirst] = $recipe['fixture'] === 'none'
+            ? [null, []]
             : (self::$schemas[$recipe['fixture']] ??= self::fixtureSchema($root . '/' . $recipe['fixture']));
+        $caseArgs = [$path, $recipe, $case, $database, $schema, $installFirst];
         with_case_database(
             $database,
             static function (string $step): void {
             },
-            static function (string $dsn, CaseDatabase $caseDatabase) use ($path, $recipe, $case, $database, $schema) {
-                self::runDatabaseCase($path, $recipe, $case, $database, $schema, $dsn, $caseDatabase->name);
+            static function (string $dsn, CaseDatabase $caseDatabase) use ($caseArgs) {
+                self::runDatabaseCase(...array_merge($caseArgs, [$dsn, $caseDatabase->name]));
             }
         );
     }
 
-    /** The Schema of a dbspec-set.json: the parse and the manifest of its documents through the public dbspec API. */
-    private static function fixtureSchema(string $setPath): Schema
+    /**
+     * The Schema of a dbspec-set.json through the public dbspec API (docs/spec/dbspec.md "External documents"): the
+     * owned documents parsed with the external ones of the set, and the manifest of the owned documents with the
+     * external text.
+     * Each external document is also a schema of its own, which a case installs first, as the bench set does.
+     *
+     * @return array{0: Schema, 1: list<Schema>}
+     */
+    private static function fixtureSchema(string $setPath): array
     {
-        $set = json_decode(file_get_contents($setPath), true, 512, JSON_THROW_ON_ERROR);
-        $documents = [];
-        foreach ($set['documents'] as $name) {
-            $path = dirname($setPath) . '/' . $name;
-            $read = Dbspec::readFile($path);
-            if ($read->text === null) {
-                Assert::fail("$path: " . self::diagnostics($read->diagnostics));
-            }
-            $parsed = Dbspec::parse($read->text, []);
-            if ($parsed->document === null) {
-                Assert::fail("$path: " . self::diagnostics($parsed->diagnostics));
-            }
-            $documents[] = $parsed->document;
+        $set = Dbspec::readSet($setPath);
+        if ($set->documents === null) {
+            Assert::fail("$setPath: " . self::diagnostics($set->errors));
         }
-        $result = Dbspec::manifest($documents);
-        if ($result->manifest === null) {
-            Assert::fail("$setPath: " . self::diagnostics($result->diagnostics));
+        $owned = array_map(static fn ($file): string => $file->bytes, $set->documents);
+        $external = array_map(static fn ($file): string => $file->bytes, $set->external);
+        $manifestOf = static function (array $owners, array $externals) use ($setPath): object {
+            $documents = [];
+            foreach (Dbspec::parseSet($owners, $externals) as $parsed) {
+                if ($parsed->document === null || $parsed->diagnostics !== []) {
+                    Assert::fail("$setPath: {$parsed->name}: " . self::diagnostics($parsed->diagnostics));
+                }
+                $documents[] = $parsed->document;
+            }
+            $result = Dbspec::manifest($documents);
+            if ($result->manifest === null) {
+                Assert::fail("$setPath: " . self::diagnostics($result->diagnostics));
+            }
+            return $result->manifest;
+        };
+        $manifest = $manifestOf($owned, $external);
+        $installFirst = [];
+        foreach ($external as $text) {
+            $shared = $manifestOf([$text], []);
+            $installFirst[] = new Schema($shared->manifestText, $shared->manifestHash);
         }
-        return new Schema($result->manifest->manifestText, $result->manifest->manifestHash);
+        return [new Schema($manifest->manifestText, $manifest->manifestHash, $manifest->externalText), $installFirst];
     }
 
     private static function diagnostics(array $diagnostics): string
@@ -506,13 +524,16 @@ final class Recipe
         array $case,
         string $database,
         ?Schema $schema,
+        array $installFirst,
         string $dsn,
         string $name,
     ): void {
         $db = Orm::connect($dsn, new Config());
         try {
             if ($schema !== null) {
-                $db->utils()->schema()->install($schema);
+                foreach ([...$installFirst, $schema] as $shared) {
+                    $db->utils()->schema()->install($shared);
+                }
             }
             $catalog = Catalog::connect($dsn);
             try {
@@ -545,6 +566,7 @@ final class Recipe
                     }
                 }
             } finally {
+                self::closeModelConnections();
                 $catalog->close();
             }
         } finally {
@@ -753,6 +775,9 @@ final class Recipe
                 } finally {
                     $db->close();
                 }
+        }
+        if (str_starts_with($s['op'], 'model.')) {
+            return self::modelOp($s, $context);
         }
         Assert::fail("OP_UNKNOWN {$s['op']}");
     }

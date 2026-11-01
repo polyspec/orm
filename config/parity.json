@@ -368,6 +368,7 @@
         "packages/php/tests/StatementRunnerCases.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeCases.php",
+        "packages/php/tests/RecipeModel.php",
         "packages/php/tests/CatalogPostgresTemporalPdo.php",
         "packages/php/tests/CatalogPostgresTemporalCases.php"
       ],
@@ -656,7 +657,8 @@
         "packages/ts/tests/schema_of.mjs",
         "packages/ts/tests/generator_scan.mjs",
         "packages/ts/tests/markdown-read-db.mjs",
-        "packages/ts/tests/recipe.mjs"
+        "packages/ts/tests/recipe.mjs",
+        "packages/ts/tests/recipe_model.mjs"
       ],
       "args": [
         "--conditions=orm-test"
@@ -927,7 +929,8 @@
         "packages/python/tests/server_database.py",
         "packages/python/tests/was_inserted_child.py",
         "packages/python/tests/coverage_performance_gate.py",
-        "packages/python/tests/recipe.py"
+        "packages/python/tests/recipe.py",
+        "packages/python/tests/recipe_model.py"
       ],
       "command": "packages/python/.venv/bin/python",
       "env": [],
@@ -977,13 +980,10 @@
         "packages/rust/orm/tests/common/clock_event.rs",
         "packages/rust/orm/tests/common/dbspec_apply_support.rs",
         "packages/rust/orm/tests/common/external_schema.rs",
-        "packages/rust/test-support/src/feature_database.rs",
         "packages/rust/orm/tests/common/fixed_plan_time.rs",
         "packages/rust/orm/tests/common/json_trials.rs",
         "packages/rust/orm/tests/common/map_rows.rs",
         "packages/rust/orm/tests/common/model_connect.rs",
-        "packages/rust/test-support/src/model_core_methods.rs",
-        "packages/rust/test-support/src/model_row.rs",
         "packages/rust/orm/tests/common/or_panic.rs",
         "packages/rust/orm/tests/common/pool_exec.rs",
         "packages/rust/orm/tests/common/pool_scalar.rs",
@@ -998,13 +998,7 @@
         "packages/rust/schema/tests/common/dbspec_values.rs",
         "packages/rust/schema/tests/common/or_panic.rs",
         "packages/rust/schema/tests/common/vector_file.rs",
-        "packages/rust/test-support/src/bench_dsn.rs",
-        "packages/rust/test-support/src/bench_stats.rs",
         "packages/rust/tests/tests/common/result_code.rs",
-        "packages/rust/test-support/src/schema_coverage_case.rs",
-        "packages/rust/test-support/src/statement_record.rs",
-        "packages/rust/test-support/src/table_exists.rs",
-        "packages/rust/test-support/src/temp_directory.rs",
         "packages/rust/orm/tests/common/clock_test_support.rs",
         "packages/rust/schema/tests/common/json_lines.rs",
         "packages/rust/tests/tests/common/temp_sqlite.rs",
@@ -1013,9 +1007,9 @@
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/tests/common/model_connect.rs",
         "packages/rust/tests/tests/common/model_core_methods.rs",
-        "packages/rust/tests/tests/common/model_row.rs",
         "packages/rust/tests/tests/common/or_panic.rs",
-        "packages/rust/tests/tests/common/rollback_probe.rs"
+        "packages/rust/tests/tests/common/rollback_probe.rs",
+        "packages/rust/tests/tests/model_writes/dispatch.rs"
       ],
       "symbols": {
         "extractor": "rust",
@@ -5143,17 +5137,11 @@
       "id": "coverage-model-write-cycle",
       "kind": "feature",
       "requirements": [
-        "DSL-56",
-        "DSL-57",
-        "DSL-58",
-        "DSL-60",
-        "DSL-103",
-        "DSL-104",
-        "DSL-105",
-        "DSL-106",
-        "DSL-110",
-        "DIA-26",
-        "COD-15"
+        "COD-11",
+        "COD-12",
+        "COD-15",
+        "COD-38",
+        "DIA-26"
       ],
       "bindings": [
         {
@@ -5275,292 +5263,6 @@
             "FEATURE_DATABASE=sqlite",
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_model_writes::coverage_model_write_cycle"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "model-get-by-count-upsert-collection-delete",
-      "kind": "feature",
-      "requirements": [
-        "DSL-58",
-        "DSL-60",
-        "DSL-105",
-        "DSL-110"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_model_writes_test.go",
-          "id": "TestCoverageModelWriteCycle",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageModelWriteCycle",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageModelWritesTest.php",
-          "id": "CoverageModelWritesTest::testModelWriteCycle"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
-          "id": "CoverageModelWritesExtensionTest::testModelWriteCycle"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
-          "id": "ModelQueriesWritesNativeTest::testNativeModelWritesRoundTripThroughSqliteMemory"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_model_writes.mjs",
-          "id": "model_write_cycle"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_model_writes.py",
-          "id": "test_model_write_cycle"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
-          "id": "coverage_model_writes::coverage_model_write_cycle",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_model_writes::coverage_model_write_cycle"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "model-update-applies-changed-fields-and-targets-primary-key",
-      "kind": "feature",
-      "requirements": [
-        "DSL-106"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_model_writes_test.go",
-          "id": "TestCoverageModelWriteCycle",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageModelWriteCycle",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageModelWritesTest.php",
-          "id": "CoverageModelWritesTest::testModelWriteCycle"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
-          "id": "CoverageModelWritesExtensionTest::testModelWriteCycle"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelWriteSurfaceTest.php",
-          "id": "ModelWriteSurfaceTest::testNativeUpdateSendsChangedFieldsAndPrimaryKeyToRequestHook"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_model_writes.mjs",
-          "id": "model_write_cycle"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_model_writes.py",
-          "id": "test_model_write_cycle"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
-          "id": "coverage_model_writes::coverage_model_write_cycle",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_model_writes::coverage_model_write_cycle"
-          ]
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_sqlite.py",
-          "id": "test_write_cycle"
-        }
-      ]
-    },
-    {
-      "id": "coverage-model-save-key-dispatch",
-      "kind": "feature",
-      "requirements": [
-        "DSL-109"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_model_writes_test.go",
-          "id": "TestCoverageModelSaveKeyDispatch",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageModelSaveKeyDispatch",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/model_update_state_test.go",
-          "id": "TestUnloadedUpdateKeepsAssignedValuesSelectedAndKeyed"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageModelWritesTest.php",
-          "id": "CoverageModelWritesTest::testSaveKeyDispatch"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
-          "id": "CoverageModelWritesExtensionTest::testSaveKeyDispatch"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_model_writes.mjs",
-          "id": "save_key_dispatch"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/save-key-errors.test.mjs",
-          "id": "save creates when the primary key is missing"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/save-key-errors.test.mjs",
-          "id": "save updates an explicitly assigned zero key"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/save-key-errors.test.mjs",
-          "id": "save updates a loaded row by its original key"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_model_writes.py",
-          "id": "test_save_key_dispatch"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
-          "id": "coverage_model_writes::coverage_model_save_key_dispatch",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_model_writes::coverage_model_save_key_dispatch"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "coverage-model-write-arithmetic-attributes",
-      "kind": "feature",
-      "requirements": [
-        "PLN-26"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_model_writes_test.go",
-          "id": "TestCoverageModelArithmeticAttributes",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageModelArithmeticAttributes",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageModelWritesTest.php",
-          "id": "CoverageModelWritesTest::testModelWriteArithmeticAttributes"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
-          "id": "CoverageModelWritesExtensionTest::testModelWriteArithmeticAttributes"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_model_writes.mjs",
-          "id": "model_write_arithmetic_attributes"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_model_writes.py",
-          "id": "test_model_write_arithmetic_attributes"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
-          "id": "coverage_model_writes::coverage_model_write_arithmetic_attributes",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_model_writes::coverage_model_write_arithmetic_attributes"
           ]
         }
       ]
@@ -9676,6 +9378,168 @@
       ]
     },
     {
+      "id": "model_writes-mysql",
+      "kind": "suite",
+      "requirements": [
+        "DSL-56",
+        "DSL-57",
+        "DSL-58",
+        "DSL-60",
+        "DSL-103",
+        "DSL-104",
+        "DSL-105",
+        "DSL-106",
+        "DSL-109",
+        "DSL-110",
+        "PLN-26"
+      ,
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-13",
+        "FCV-14"],
+      "file": "contracts/fixtures/model_writes/model_writes.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_model_writes_test.go",
+          "symbol": "TestRecipeModelWritesMysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelWritesRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ModelWritesRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelWritesRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ModelWritesRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model_writes-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_writes_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/model_writes_mysql.rs",
+          "symbol": "model_writes_mysql"
+        }
+      ]
+    },
+    {
+      "id": "model_writes-postgres",
+      "kind": "suite",
+      "requirements": [
+        "DSL-56",
+        "DSL-57",
+        "DSL-58",
+        "DSL-60",
+        "DSL-103",
+        "DSL-104",
+        "DSL-105",
+        "DSL-106",
+        "DSL-109",
+        "DSL-110",
+        "PLN-26"
+      ,
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-13",
+        "FCV-14"],
+      "file": "contracts/fixtures/model_writes/model_writes.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_model_writes_test.go",
+          "symbol": "TestRecipeModelWritesPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelWritesRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ModelWritesRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelWritesRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ModelWritesRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model_writes-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_writes_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/model_writes_postgres.rs",
+          "symbol": "model_writes_postgres"
+        }
+      ]
+    },
+    {
+      "id": "model_writes-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "DSL-56",
+        "DSL-57",
+        "DSL-58",
+        "DSL-60",
+        "DSL-103",
+        "DSL-104",
+        "DSL-105",
+        "DSL-106",
+        "DSL-109",
+        "DSL-110",
+        "PLN-26"
+      ,
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-13",
+        "FCV-14"],
+      "file": "contracts/fixtures/model_writes/model_writes.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_model_writes_test.go",
+          "symbol": "TestRecipeModelWritesSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelWritesRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ModelWritesRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelWritesRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ModelWritesRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model_writes-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_writes_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/model_writes_sqlite.rs",
+          "symbol": "model_writes_sqlite"
+        }
+      ]
+    },
+    {
       "id": "codec-json-yaml-malformed-decode",
       "kind": "feature",
       "requirements": [
@@ -12781,6 +12645,60 @@
       ]
     },
     {
+      "id": "php-extension-native-write-layer",
+      "kind": "feature",
+      "requirements": [
+        "INT-151"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelWriteSurfaceTest.php",
+          "id": "ModelWriteSurfaceTest::testNativeKeyValuesReadsTheModelMetadata"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelWriteSurfaceTest.php",
+          "id": "ModelWriteSurfaceTest::testNativeUpdateClearsAnIncompleteKeyBeforeThrowingConfig"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelWriteSurfaceTest.php",
+          "id": "ModelWriteSurfaceTest::testNativeMarkdownWriteReturnsFirstKeyOrNullWhenNoKeysWereAnswered"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelWriteSurfaceTest.php",
+          "id": "ModelWriteSurfaceTest::testNativeWriteHelpersAreInternalAndCallbacksOwnStandardPrivateState"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelWriteSurfaceTest.php",
+          "id": "ModelWriteSurfaceTest::testNullableValuesDoNotCoerceIntoNonNullableWriteScalars"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelWriteSurfaceTest.php",
+          "id": "ModelWriteSurfaceTest::testTransactionalWriteCallbacksPreserveMissingConnectionError"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelWriteSurfaceTest.php",
+          "id": "ModelWriteSurfaceTest::testBuildAndWriteRequestRejectNullableKinds"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelWriteSurfaceTest.php",
+          "id": "ModelWriteSurfaceTest::testAesExpansionKeepsTheModelSetsArrayUnchanged"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "model_writes",
+        "part": "owner/php-extension"
+      }
+    },
+    {
       "id": "model-writes-core",
       "kind": "feature",
       "requirements": [
@@ -12810,8 +12728,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_model_writes.py",
-          "id": "test_model_write_cycle"
+          "test": "packages/python/tests/test_sqlite.py",
+          "id": "SqliteEndToEndTest::test_write_cycle"
         },
         {
           "implementation": "rust",
@@ -37701,7 +37619,6 @@
             "@polyspec/orm!Account#getModule:member",
             "@polyspec/orm!Account#getName:member(1)",
             "@polyspec/orm!Account#getOwner:member",
-            "@polyspec/orm!Account#getReadCount:member",
             "@polyspec/orm!Account#getReadTotal:member",
             "@polyspec/orm!Account#getRecord:member",
             "@polyspec/orm!Account#getSeq:member(1)",
@@ -37726,7 +37643,6 @@
             "@polyspec/orm!AccountProject#getName:member",
             "@polyspec/orm!AccountProject#getOwner:member",
             "@polyspec/orm!AccountProject#getProjectSeq:member(1)",
-            "@polyspec/orm!AccountProject#getReadCount:member",
             "@polyspec/orm!AccountProject#getReadTotal:member",
             "@polyspec/orm!AccountProject#getRecord:member",
             "@polyspec/orm!AccountProject#getSeq:member",
@@ -37748,7 +37664,6 @@
             "@polyspec/orm!AuditRecord#getModule:member",
             "@polyspec/orm!AuditRecord#getName:member",
             "@polyspec/orm!AuditRecord#getOwner:member",
-            "@polyspec/orm!AuditRecord#getReadCount:member",
             "@polyspec/orm!AuditRecord#getReadTotal:member",
             "@polyspec/orm!AuditRecord#getRecord:member",
             "@polyspec/orm!AuditRecord#getRequestId:member(1)",
@@ -37773,7 +37688,6 @@
             "@polyspec/orm!AuditedNote#getModule:member",
             "@polyspec/orm!AuditedNote#getName:member",
             "@polyspec/orm!AuditedNote#getOwner:member",
-            "@polyspec/orm!AuditedNote#getReadCount:member",
             "@polyspec/orm!AuditedNote#getReadTotal:member",
             "@polyspec/orm!AuditedNote#getRecord:member",
             "@polyspec/orm!AuditedNote#getSeq:member(1)",
@@ -37801,7 +37715,6 @@
             "@polyspec/orm!AuditedNoteHistory#getName:member",
             "@polyspec/orm!AuditedNoteHistory#getOwner:member",
             "@polyspec/orm!AuditedNoteHistory#getPreviousAuditSeq:member(1)",
-            "@polyspec/orm!AuditedNoteHistory#getReadCount:member",
             "@polyspec/orm!AuditedNoteHistory#getReadTotal:member",
             "@polyspec/orm!AuditedNoteHistory#getRecord:member",
             "@polyspec/orm!AuditedNoteHistory#getSeq:member(1)",
@@ -37985,7 +37898,6 @@
             "@polyspec/orm!BindCell#getModule:member",
             "@polyspec/orm!BindCell#getName:member",
             "@polyspec/orm!BindCell#getOwner:member",
-            "@polyspec/orm!BindCell#getReadCount:member",
             "@polyspec/orm!BindCell#getReadTotal:member",
             "@polyspec/orm!BindCell#getRecord:member",
             "@polyspec/orm!BindCell#getSeq:member(1)",
@@ -38013,7 +37925,6 @@
             "@polyspec/orm!ClockCell#getModule:member",
             "@polyspec/orm!ClockCell#getName:member",
             "@polyspec/orm!ClockCell#getOwner:member",
-            "@polyspec/orm!ClockCell#getReadCount:member",
             "@polyspec/orm!ClockCell#getReadTotal:member",
             "@polyspec/orm!ClockCell#getRecord:member",
             "@polyspec/orm!ClockCell#getSeq:member(1)",
@@ -38042,7 +37953,6 @@
             "@polyspec/orm!CompositeAccount#getModule:member",
             "@polyspec/orm!CompositeAccount#getName:member(1)",
             "@polyspec/orm!CompositeAccount#getOwner:member",
-            "@polyspec/orm!CompositeAccount#getReadCount:member",
             "@polyspec/orm!CompositeAccount#getReadTotal:member",
             "@polyspec/orm!CompositeAccount#getRecord:member",
             "@polyspec/orm!CompositeAccount#getSeq:member",
@@ -38068,7 +37978,6 @@
             "@polyspec/orm!CompositeMembership#getModule:member",
             "@polyspec/orm!CompositeMembership#getName:member",
             "@polyspec/orm!CompositeMembership#getOwner:member",
-            "@polyspec/orm!CompositeMembership#getReadCount:member",
             "@polyspec/orm!CompositeMembership#getReadTotal:member",
             "@polyspec/orm!CompositeMembership#getRecord:member",
             "@polyspec/orm!CompositeMembership#getRole:member(1)",
@@ -38098,7 +38007,6 @@
             "@polyspec/orm!DayCell#getModule:member",
             "@polyspec/orm!DayCell#getName:member",
             "@polyspec/orm!DayCell#getOwner:member",
-            "@polyspec/orm!DayCell#getReadCount:member",
             "@polyspec/orm!DayCell#getReadTotal:member",
             "@polyspec/orm!DayCell#getRecord:member",
             "@polyspec/orm!DayCell#getSeq:member(1)",
@@ -38123,7 +38031,6 @@
             "@polyspec/orm!HexCell#getModule:member",
             "@polyspec/orm!HexCell#getName:member",
             "@polyspec/orm!HexCell#getOwner:member",
-            "@polyspec/orm!HexCell#getReadCount:member",
             "@polyspec/orm!HexCell#getReadTotal:member",
             "@polyspec/orm!HexCell#getRecord:member",
             "@polyspec/orm!HexCell#getSeq:member(1)",
@@ -38148,7 +38055,6 @@
             "@polyspec/orm!IpHexCell#getModule:member",
             "@polyspec/orm!IpHexCell#getName:member",
             "@polyspec/orm!IpHexCell#getOwner:member",
-            "@polyspec/orm!IpHexCell#getReadCount:member",
             "@polyspec/orm!IpHexCell#getReadTotal:member",
             "@polyspec/orm!IpHexCell#getRecord:member",
             "@polyspec/orm!IpHexCell#getSeq:member(1)",
@@ -38169,7 +38075,6 @@
             "@polyspec/orm!NoteReader#getModule:member",
             "@polyspec/orm!NoteReader#getName:member",
             "@polyspec/orm!NoteReader#getOwner:member",
-            "@polyspec/orm!NoteReader#getReadCount:member",
             "@polyspec/orm!NoteReader#getReadTotal:member",
             "@polyspec/orm!NoteReader#getRecord:member",
             "@polyspec/orm!NoteReader#getSeq:member(1)",
@@ -38192,7 +38097,6 @@
             "@polyspec/orm!Project#getModule:member",
             "@polyspec/orm!Project#getName:member(1)",
             "@polyspec/orm!Project#getOwner:member",
-            "@polyspec/orm!Project#getReadCount:member",
             "@polyspec/orm!Project#getReadTotal:member",
             "@polyspec/orm!Project#getRecord:member",
             "@polyspec/orm!Project#getSeq:member(1)",
@@ -38213,7 +38117,6 @@
             "@polyspec/orm!Service#getModule:member",
             "@polyspec/orm!Service#getName:member(1)",
             "@polyspec/orm!Service#getOwner:member",
-            "@polyspec/orm!Service#getReadCount:member",
             "@polyspec/orm!Service#getReadTotal:member",
             "@polyspec/orm!Service#getRecord:member",
             "@polyspec/orm!Service#getSeq:member(1)",
@@ -38243,7 +38146,6 @@
             "@polyspec/orm!ServiceMember#getModule:member",
             "@polyspec/orm!ServiceMember#getName:member",
             "@polyspec/orm!ServiceMember#getOwner:member",
-            "@polyspec/orm!ServiceMember#getReadCount:member",
             "@polyspec/orm!ServiceMember#getReadTotal:member",
             "@polyspec/orm!ServiceMember#getRecord:member",
             "@polyspec/orm!ServiceMember#getSeq:member(1)",
@@ -38273,7 +38175,6 @@
             "@polyspec/orm!ServiceRegion#getModule:member",
             "@polyspec/orm!ServiceRegion#getName:member(1)",
             "@polyspec/orm!ServiceRegion#getOwner:member",
-            "@polyspec/orm!ServiceRegion#getReadCount:member",
             "@polyspec/orm!ServiceRegion#getReadTotal:member",
             "@polyspec/orm!ServiceRegion#getRecord:member",
             "@polyspec/orm!ServiceRegion#getSeq:member(1)",
@@ -38299,7 +38200,6 @@
             "@polyspec/orm!SharedNote#getModule:member",
             "@polyspec/orm!SharedNote#getName:member",
             "@polyspec/orm!SharedNote#getOwner:member",
-            "@polyspec/orm!SharedNote#getReadCount:member",
             "@polyspec/orm!SharedNote#getReadTotal:member",
             "@polyspec/orm!SharedNote#getRecord:member",
             "@polyspec/orm!SharedNote#getSeq:member(1)",
@@ -38326,7 +38226,6 @@
             "@polyspec/orm!SoftLink#getModule:member",
             "@polyspec/orm!SoftLink#getName:member",
             "@polyspec/orm!SoftLink#getOwner:member",
-            "@polyspec/orm!SoftLink#getReadCount:member",
             "@polyspec/orm!SoftLink#getReadTotal:member",
             "@polyspec/orm!SoftLink#getRecord:member",
             "@polyspec/orm!SoftLink#getSeq:member(1)",
@@ -38351,7 +38250,6 @@
             "@polyspec/orm!SoftRecord#getModule:member",
             "@polyspec/orm!SoftRecord#getName:member(1)",
             "@polyspec/orm!SoftRecord#getOwner:member",
-            "@polyspec/orm!SoftRecord#getReadCount:member",
             "@polyspec/orm!SoftRecord#getReadTotal:member",
             "@polyspec/orm!SoftRecord#getRecord:member",
             "@polyspec/orm!SoftRecord#getSeq:member(1)",
@@ -38374,7 +38272,6 @@
             "@polyspec/orm!Task#getModule:member",
             "@polyspec/orm!Task#getName:member",
             "@polyspec/orm!Task#getOwner:member",
-            "@polyspec/orm!Task#getReadCount:member",
             "@polyspec/orm!Task#getReadTotal:member",
             "@polyspec/orm!Task#getRecord:member",
             "@polyspec/orm!Task#getSeq:member(1)",
@@ -38402,7 +38299,6 @@
             "@polyspec/orm!TimeCell#getModule:member",
             "@polyspec/orm!TimeCell#getName:member",
             "@polyspec/orm!TimeCell#getOwner:member",
-            "@polyspec/orm!TimeCell#getReadCount:member",
             "@polyspec/orm!TimeCell#getReadTotal:member",
             "@polyspec/orm!TimeCell#getRecord:member",
             "@polyspec/orm!TimeCell#getSeq:member(1)",
@@ -38427,7 +38323,6 @@
             "@polyspec/orm!UpsertCell#getModule:member",
             "@polyspec/orm!UpsertCell#getName:member",
             "@polyspec/orm!UpsertCell#getOwner:member",
-            "@polyspec/orm!UpsertCell#getReadCount:member",
             "@polyspec/orm!UpsertCell#getReadTotal:member",
             "@polyspec/orm!UpsertCell#getRecord:member",
             "@polyspec/orm!UpsertCell#getSeq:member(1)",
@@ -38452,7 +38347,6 @@
             "@polyspec/orm!User#getModule:member",
             "@polyspec/orm!User#getName:member(1)",
             "@polyspec/orm!User#getOwner:member",
-            "@polyspec/orm!User#getReadCount:member",
             "@polyspec/orm!User#getReadTotal:member",
             "@polyspec/orm!User#getRecord:member",
             "@polyspec/orm!User#getSeq:member(1)",
@@ -38477,7 +38371,6 @@
             "@polyspec/orm!UuidCell#getModule:member",
             "@polyspec/orm!UuidCell#getName:member",
             "@polyspec/orm!UuidCell#getOwner:member",
-            "@polyspec/orm!UuidCell#getReadCount:member",
             "@polyspec/orm!UuidCell#getReadTotal:member",
             "@polyspec/orm!UuidCell#getRecord:member",
             "@polyspec/orm!UuidCell#getSeq:member(1)",

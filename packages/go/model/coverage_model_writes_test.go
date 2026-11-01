@@ -10,60 +10,20 @@ import (
 	"testing"
 
 	orderedjson "github.com/polyspec/ordered-json/packages/go"
-	"github.com/polyspec/orm/packages/go/engine/ir"
 	"github.com/polyspec/orm/packages/go/model"
 	"github.com/polyspec/orm/packages/go/orm"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// writeTenant is the tenant_id of composite_account that this case writes.
+// writeTenant is the tenant_id of composite_account that create_parts writes.
 const writeTenant = 990002
 
-// TestCoverageModelWriteCycle creates rows with the generated CompositeAccount model,
-// creates several rows, updates them, upserts with duplication, counts, and deletes.
-// Deleting all the rows written returns the database to its initial state.
-// Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110, DIA-26, COD-11, COD-12, COD-15, COD-38.
+// TestCoverageModelWriteCycle checks the ordered JSON text and the codec columns of a write. The model_writes
+// recipe asserts the CRUD behaviour of a write, so it is not tested here again.
+// Requirements: COD-11, COD-12, COD-15, COD-38, DIA-26.
 func TestCoverageModelWriteCycle(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, _, _ := connectFeature(t)
-	account := func() *model.CompositeAccountModel { return model.CompositeAccount().Connect(db) }
-	if n := must(account().TenantId(writeTenant).GetCount()); n != 0 {
-		t.Fatalf("composite_account already has %d rows of tenant %d", n, writeTenant)
-	}
-	t.Cleanup(func() { removeTenantAccounts(t, db, writeTenant) })
-
-	created := must(account().SetTenantId(writeTenant).SetAccountId(1).SetName("created").Create())
-	if readColumn(t, created.GetTenantId) != writeTenant || readColumn(t, created.GetAccountId) != 1 || readColumn(t, created.GetName) != "created" {
-		t.Fatalf("created row = %d %d %q", readColumn(t, created.GetTenantId), readColumn(t, created.GetAccountId), readColumn(t, created.GetName))
-	}
-	many := []*model.CompositeAccountModel{
-		model.CompositeAccount().SetTenantId(writeTenant).SetAccountId(2).SetName("many-2"),
-		model.CompositeAccount().SetTenantId(writeTenant).SetAccountId(3).SetName("many-3"),
-		model.CompositeAccount().SetTenantId(writeTenant).SetAccountId(4).SetName("many-4"),
-	}
-	if n := must(account().Creates(many, 2)); n != 3 {
-		t.Fatalf("creates inserted %d rows, want 3", n)
-	}
-	for id, name := range map[int64]string{2: "many-2", 3: "many-3", 4: "many-4"} {
-		if got := readColumn(t, must(account().GetByTenantIdAndAccountId(writeTenant, id)).GetName); got != name {
-			t.Fatalf("account %d name = %q, want %q", id, got, name)
-		}
-	}
-
-	row := must(account().GetByTenantIdAndAccountId(writeTenant, 1))
-	must(row.SetName("updated").Update())
-	if got := readColumn(t, must(account().GetByTenantIdAndAccountId(writeTenant, 1)).GetName); got != "updated" {
-		t.Fatalf("updated name = %q, want updated", got)
-	}
-
-	must(account().SetTenantId(writeTenant).SetAccountId(1).SetName("ignored").
-		Duplication(model.CompositeAccount().SetName("upserted")).Create())
-	if got := readColumn(t, must(account().GetByTenantIdAndAccountId(writeTenant, 1)).GetName); got != "upserted" {
-		t.Fatalf("upserted name = %q, want upserted", got)
-	}
-	if n := must(account().TenantId(writeTenant).GetCount()); n != 4 {
-		t.Fatalf("tenant %d count = %d, want 4", writeTenant, n)
-	}
 
 	const jsonText = `{"b":1,"a":[],"c":{},"n":1.50}`
 	rollback := errors.New("rollback ordered JSON text probe")
@@ -164,19 +124,6 @@ func TestCoverageModelWriteCycle(t *testing.T) {
 		t.Fatalf("codec columns transaction = %v, want rollback sentinel", err)
 	}
 
-	rows := must(account().TenantId(writeTenant).Gets())
-	if rows.Len() != 4 {
-		t.Fatalf("tenant %d rows = %d, want 4", writeTenant, rows.Len())
-	}
-	if err := rows.Delete(); err != nil {
-		t.Fatal(err)
-	}
-	if got, err := account().GetByTenantIdAndAccountId(writeTenant, 1); got != nil || err != nil {
-		t.Fatalf("get after delete = %v, %v; want nil, nil", got, err)
-	}
-	if n := must(account().TenantId(writeTenant).GetCount()); n != 0 {
-		t.Fatalf("tenant %d count after delete = %d, want 0", writeTenant, n)
-	}
 }
 
 func loadSeedAuthor(db *orm.DB, missingMessage string) (*model.AuthorModel, error) {
@@ -202,181 +149,6 @@ func updateAndReloadAuthor(row *model.AuthorModel, db *orm.DB, missingMessage st
 		return nil, errors.New(missingMessage)
 	}
 	return stored, nil
-}
-
-// TestCoverageModelSaveKeyDispatch checks Save's insert/update choice for missing, zero, and loaded keys.
-// Requirements: DSL-109.
-func TestCoverageModelSaveKeyDispatch(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	db, _, _ := connectFeature(t)
-	var writes []string
-	sentinel := errors.New("DSL-109 request hook stopped the write")
-	hooked := db.WithRequestHook(func(request *ir.Request, _ func(any) int, _ []any) error {
-		if request.Kind == orm.KindInsert || request.Kind == orm.KindUpdate {
-			writes = append(writes, request.Kind)
-			return sentinel
-		}
-		return nil
-	})
-	assertRejected := func(err error) {
-		t.Helper()
-		if !errors.Is(err, sentinel) {
-			t.Fatalf("Save error = %v, want request-hook sentinel", err)
-		}
-	}
-	if _, err := model.Account().Connect(hooked).SetName("missing").Save(); err != nil {
-		assertRejected(err)
-	} else {
-		t.Fatal("missing-key Save reached execution")
-	}
-	if !slices.Equal(writes, []string{orm.KindInsert}) {
-		t.Fatalf("missing-key Save requests = %v, want insert", writes)
-	}
-
-	writes = nil
-	if _, err := model.Account().Connect(hooked).SetSeq(0).SetName("zero").Save(); err != nil {
-		assertRejected(err)
-	} else {
-		t.Fatal("zero-key Save reached execution")
-	}
-	if !slices.Equal(writes, []string{orm.KindUpdate}) {
-		t.Fatalf("zero-key Save requests = %v, want update", writes)
-	}
-
-	writes = nil
-	loaded := must(model.Author().Connect(hooked).RemoveAllColumns().AddColumnSeq().AddColumnReadCount().GetBySeq(1))
-	if loaded == nil {
-		t.Fatal("seed author 1 is missing")
-	}
-	if _, err := loaded.SetReadCount(readColumn(t, loaded.GetReadCount)).Save(); err != nil {
-		assertRejected(err)
-	} else {
-		t.Fatal("loaded-key Save reached execution")
-	}
-	if !slices.Equal(writes, []string{orm.KindUpdate}) {
-		t.Fatalf("loaded-key Save requests = %v, want update", writes)
-	}
-}
-
-// TestCoverageModelArithmeticAttributes checks bound arithmetic on seeded Author.read_count, cleared assignments, and transaction rollback of row state.
-// Requirements: PLN-26.
-func TestCoverageModelArithmeticAttributes(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	db, _, _ := connectFeature(t)
-	author := func() *model.AuthorModel { return model.Author().Connect(db) }
-	before := must(author().AddAllColumns().GetBySeq(1))
-	beforeReadCount := readColumn(t, before.GetReadCount)
-	beforeUpdatedTs := readColumn(t, before.GetUpdatedTs)
-	if beforeReadCount != 1 {
-		t.Fatalf("seed author 1 read_count = %d, want 1", beforeReadCount)
-	}
-	boom := errors.New("PLN-26 rollback sentinel")
-	recorder := testcase.NewEventRecorder[orm.StatementEvent]()
-	err := db.Transaction(func() error {
-		loaded, err := author().AddAllColumns().GetBySeq(1)
-		if err != nil {
-			return err
-		}
-		if loaded == nil {
-			return errors.New("seed author 1 is missing")
-		}
-		if _, err := loaded.SetReadCount(1).Update(); err != nil {
-			return err
-		}
-		unsubscribe, err := db.Subscribe(recorder.Record)
-		if err != nil {
-			return err
-		}
-		defer unsubscribe()
-		loaded, err = author().AddAllColumns().GetBySeq(1)
-		if err != nil {
-			return err
-		}
-		if loaded == nil {
-			return errors.New("seed author 1 disappeared after setting read_count")
-		}
-		if _, err := loaded.PlusReadCount(7).Update(); err != nil {
-			return err
-		}
-		updated, err := author().AddAllColumns().GetBySeq(1)
-		if err != nil {
-			return err
-		}
-		if updated == nil {
-			return errors.New("seed author 1 disappeared after plus")
-		}
-		plusValue, err := updated.GetReadCount()
-		if err != nil {
-			return err
-		}
-		if plusValue != 8 {
-			return fmt.Errorf("read_count after plus = %d, want 8", plusValue)
-		}
-		if _, err := loaded.Update(); err != nil {
-			return err
-		}
-		updates := 0
-		foundPlus := false
-		for _, event := range recorder.Events() {
-			if event.Kind != orm.KindUpdate || !slices.Contains(event.Tables, "author") {
-				continue
-			}
-			updates++
-			for _, bind := range event.Binds {
-				foundPlus = foundPlus || fmt.Sprint(bind) == "7"
-			}
-		}
-		if updates != 1 {
-			return fmt.Errorf("author updates after repeating a completed write = %d, want 1", updates)
-		}
-		if !foundPlus {
-			return fmt.Errorf("plus amount 7 is absent from update binds: %#v", recorder.Events())
-		}
-		current, err := author().AddAllColumns().GetBySeq(1)
-		if err != nil {
-			return err
-		}
-		if current == nil {
-			return errors.New("seed author 1 disappeared before minus")
-		}
-		if _, err := current.MinusReadCount(9).Update(); err != nil {
-			return err
-		}
-		updated, err = author().AddAllColumns().GetBySeq(1)
-		if err != nil {
-			return err
-		}
-		if updated == nil {
-			return errors.New("seed author 1 disappeared after minus")
-		}
-		minusValue, err := updated.GetReadCount()
-		if err != nil {
-			return err
-		}
-		if minusValue != 0 {
-			return fmt.Errorf("read_count after minus = %d, want zero clamp", minusValue)
-		}
-		foundMinus := false
-		for _, event := range recorder.Events() {
-			for _, bind := range event.Binds {
-				foundMinus = foundMinus || fmt.Sprint(bind) == "9"
-			}
-		}
-		if !foundMinus {
-			return fmt.Errorf("minus amount 9 is absent from update binds: %#v", recorder.Events())
-		}
-		return boom
-	}, orm.Retry(0))
-	if !errors.Is(err, boom) {
-		t.Fatalf("transaction error = %v, want the sentinel", err)
-	}
-	after := must(author().AddAllColumns().GetBySeq(1))
-	if got := readColumn(t, after.GetReadCount); got != beforeReadCount {
-		t.Fatalf("read_count after rollback = %d, want %d", got, beforeReadCount)
-	}
-	if got := readColumn(t, after.GetUpdatedTs); fmt.Sprint(got) != fmt.Sprint(beforeUpdatedTs) {
-		t.Fatalf("updated_ts after rollback = %v, want %v", got, beforeUpdatedTs)
-	}
 }
 
 // TestCoverageModelCreateParts checks that multi-row creates refuse an invalid batch before writing, preserve row order

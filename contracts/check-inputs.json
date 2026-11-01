@@ -832,17 +832,6 @@
         "databases"
       ]
     },
-    "ts-save-key-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "node-modules"
-      ],
-      "inputs": [
-        "packages/ts/src/model.ts",
-        "packages/ts/tests/save-key-errors.test.mjs"
-      ]
-    },
     "ts-aes-auth-check": {
       "scope": "owner",
       "needs": [

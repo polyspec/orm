@@ -26,7 +26,11 @@ from polyspec.orm.codec import (
     host_encode,
 )
 from polyspec.orm import Db, OrmError, Schema, connect_catalog
-from polyspec.orm.dbspec import dbspec_manifest, parse_dbspec, read_dbspec_file
+from polyspec.orm.dbspec import (
+    dbspec_manifest,
+    parse_dbspec_set,
+    read_dbspec_set,
+)
 from polyspec.orm.engine import model_of_documents, parse_document_set
 from polyspec.orm.engine.validate import validate
 from polyspec.orm.styled_value import StyledValue
@@ -34,6 +38,7 @@ from polyspec.orm.styled_value import StyledValue
 from . import chain_answer, testcase
 from .case_database import case_database
 from .coverage_case import native_query
+from .recipe_model import model_ops
 from .markdown_conformance import same
 from .vector_case import VectorCase, vector_load_tests
 
@@ -407,37 +412,48 @@ def _database_recipe_tests(path: str, database: str):
     if "fixture" not in recipe:
         raise ValueError(f"recipe {path}: no fixture, so it has no database")
     # A fixture of none runs every case on an empty case database; the helper never infers it (FCV-3).
-    schema = (
-        None if recipe["fixture"] == NONE else _fixture_schema(ROOT / recipe["fixture"])
+    schema, install_first = (
+        (None, []) if recipe["fixture"] == NONE else _fixture_schema(ROOT / recipe["fixture"])
     )
 
     def check(test: unittest.TestCase, case: dict) -> None:
         with tempfile.TemporaryDirectory(prefix="orm_recipe_") as directory:
             with case_database(database, directory, "orm_recipe") as dsn:
-                _run_case(path, recipe, case, database, schema, dsn)
+                _run_case(path, recipe, case, database, schema, dsn, install_first)
 
     return vector_load_tests(DatabaseRecipeCase, recipe["cases"], check)
 
 
-def _fixture_schema(set_path: Path) -> Schema:
-    """The Schema of a dbspec-set.json: the parse and the manifest of its documents through the public dbspec API."""
-    document_set = json.loads(set_path.read_text(encoding="utf-8"))
-    documents = []
-    for name in document_set["documents"]:
-        document_path = set_path.parent / name
-        text, diagnostics = read_dbspec_file(str(document_path))
-        if text is None:
-            raise ValueError(f"{document_path}: {diagnostics}")
-        document, _, diagnostics = parse_dbspec(text, {})
-        if document is None:
-            raise ValueError(f"{document_path}: {diagnostics}")
-        documents.append(document)
-    manifest, diagnostics = dbspec_manifest(documents)
-    if manifest is None:
-        raise ValueError(f"{set_path}: {diagnostics}")
-    return Schema(
+def _fixture_schema(set_path: Path):
+    """The Schema of a dbspec-set.json through the public dbspec API (docs/spec/dbspec.md "External documents"): the owned
+    documents parsed with the external ones of the set, and the manifest of the owned documents with the external text.
+    Each external document is also a schema of its own, which a case installs first, as the bench set does."""
+    document_set, errors = read_dbspec_set(str(set_path))
+    if document_set is None:
+        raise ValueError(f"{set_path}: {errors}")
+    owned = [file.data.decode("utf-8") for file in document_set.documents]
+    external = [file.data.decode("utf-8") for file in document_set.external]
+
+    def manifest_of(owners, externals):
+        documents = []
+        for parsed in parse_dbspec_set(owners, externals):
+            if parsed.document is None or parsed.diagnostics:
+                raise ValueError(f"{set_path}: {parsed.name}: {parsed.diagnostics}")
+            documents.append(parsed.document)
+        manifest, diagnostics = dbspec_manifest(documents)
+        if manifest is None:
+            raise ValueError(f"{set_path}: {diagnostics}")
+        return manifest
+
+    manifest = manifest_of(owned, external)
+    install_first = []
+    for text in external:
+        shared = manifest_of([text], [])
+        install_first.append(Schema(shared.manifest_text, shared.manifest_hash))
+    schema = Schema(
         manifest.manifest_text, manifest.manifest_hash, manifest.external_text
     )
+    return schema, install_first
 
 
 def _database_name(dsn: str) -> str:
@@ -447,12 +463,19 @@ def _database_name(dsn: str) -> str:
 
 
 def _run_case(
-    path: str, recipe: dict, case: dict, database: str, schema: Schema | None, dsn: str
+    path: str,
+    recipe: dict,
+    case: dict,
+    database: str,
+    schema: Schema | None,
+    dsn: str,
+    install_first: list,
 ) -> None:
     db = Db.connect(dsn)
     try:
         if schema is not None:
-            db.utils().schema().install(schema)
+            for shared in [*install_first, schema]:
+                db.utils().schema().install(shared)
         _run_case_on(path, recipe, case, database, dsn, db)
     finally:
         db.close()
@@ -472,6 +495,7 @@ def _run_case_on(
             "bound": {"database": {"text": _database_name(dsn)}},
             "db": db,
             "dir": (ROOT / path).parent,
+            "closers": [],
         }
         for part, rows in (
             ("recipe", recipe.get("seed", {}).get("rows")),
@@ -497,6 +521,8 @@ def _run_case_on(
                     f"recipe {path}, case {case['id']}, step {index} ({step['op']}), database {database}: {error}"
                 ) from error
     finally:
+        for close in context.get("closers", []):
+            close()
         catalog.close()
 
 
@@ -617,7 +643,7 @@ _DATABASE_OPS = {
 def _run_database_step(step: dict, context: dict) -> None:
     """Maps the op of step to its call and checks the result against the expect of the database. A step whose expect is
     an error passes only when the call fails with that orm error code."""
-    op = _DATABASE_OPS.get(step["op"])
+    op = _DATABASE_OPS.get(step["op"]) or _MODEL_OPS.get(step["op"])
     if op is None:
         raise AssertionError(f"OP_UNKNOWN {step['op']}")
     expected = (
@@ -863,3 +889,6 @@ def _op_transaction(step: dict, context: dict) -> dict:
 
     context["db"].transaction(run)
     return {"value": {"bool": True}}
+
+
+_MODEL_OPS = model_ops(_native, _database_value, _step_argument)

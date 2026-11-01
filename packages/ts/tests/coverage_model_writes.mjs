@@ -1,7 +1,7 @@
-// model_writes coverage uses CompositeAccount for CRUD and seeded Author.read_count for arithmetic.
-// The arithmetic case rolls back its updates to preserve the seeded row and identity sequence.
+// model_writes coverage: create_parts runs the batch behaviour of CompositeAccount natively, and model_write_cycle
+// checks the ordered JSON text and the codec columns, which the model_writes recipe does not assert.
 import assert from 'node:assert/strict';
-import { Account, Author, CompositeAccount, StyledValue, connect } from '../dist/index.js';
+import { Author, CompositeAccount, StyledValue, connect } from '../dist/index.js';
 import { parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { errorCode, runCases, withCleanup } from './coverage_case.mjs';
 
@@ -59,35 +59,11 @@ await runCases('coverage_model_writes.mjs', {
       }
     }
   },
-  // Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110, DIA-26, COD-11, COD-12, COD-15, COD-38.
+  // Requirements: COD-11, COD-12, COD-15, COD-38, DIA-26.
   async model_write_cycle({ driver, dsn }) {
     const db = await connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
     try {
       assert.equal(db.driver, driver);
-      const account = () => new CompositeAccount().connect(db);
-      assert.equal(await account().tenantId(tenant).getCount(), 0, `no composite_account row of tenant ${tenant} before the case`);
-      await withCleanup(async () => {
-        const created = await account().setTenantId(tenant).setAccountId(1).setName('created').create();
-        assert.equal(created.getName(), 'created');
-        const inserted = await account().creates([2, 3, 4].map(id =>
-          new CompositeAccount().setTenantId(tenant).setAccountId(id).setName(`many-${id}`)), 3);
-        assert.equal(inserted, 3, 'rows inserted by creates');
-        await (await account().getByTenantIdAndAccountId(tenant, 1)).setName('updated').update();
-        assert.equal((await account().getByTenantIdAndAccountId(tenant, 1)).getName(), 'updated', 'updated name');
-        await account().setTenantId(tenant).setAccountId(1).setName('ignored')
-          .duplication(new CompositeAccount().setName('upserted')).create();
-        assert.equal((await account().getByTenantIdAndAccountId(tenant, 1)).getName(), 'upserted', 'duplication assignment');
-        assert.equal(await account().tenantId(tenant).getCount(), 4, 'rows of the tenant');
-        const names = (await account().tenantId(tenant).orderByAccountIdAsc().gets()).values().map(a => a.getName());
-        assert.deepEqual(names, ['upserted', 'many-2', 'many-3', 'many-4'], 'names of the tenant rows');
-        await (await account().tenantId(tenant).gets()).delete();
-        assert.equal(await account().getByTenantIdAndAccountId(tenant, 1), null, 'deleted row');
-        assert.equal(await account().tenantId(tenant).getCount(), 0, 'every row of the tenant deleted');
-      }, async () => {
-        // Even a failed run leaves no rows written by this case.
-        await (await account().tenantId(tenant).gets()).delete();
-      });
-
       const text = '{"b":1,"a":[],"c":{},"n":1.50}';
       const rollback = new Error('rollback ordered JSON text probe');
       try {
@@ -133,84 +109,5 @@ await runCases('coverage_model_writes.mjs', {
       }
       assert.equal(codecCaught, codecRollback, 'codec column probe rolls back its row update');
     } finally { await db.close(); }
-  },
-  // Requirements: DSL-109.
-  async save_key_dispatch({ driver, dsn }) {
-    const db = await connect(dsn);
-    const writes = [];
-    const sentinel = new Error('DSL-109 request hook stopped the write');
-    const hooked = db.withRequestHook(request => {
-      if (request.kind === 'insert' || request.kind === 'update') {
-        writes.push(request.kind);
-        throw sentinel;
-      }
-      return request;
-    });
-    const rejectedByHook = async promise => assert.rejects(promise, error => error === sentinel);
-    try {
-      assert.equal(db.driver, driver);
-      await rejectedByHook(new Account().connect(hooked).setName('missing').save());
-      assert.deepEqual(writes, ['insert'], 'missing key dispatches INSERT before execution');
-
-      writes.length = 0;
-      await rejectedByHook(new Account().connect(hooked).setSeq(0).setName('zero').save());
-      assert.deepEqual(writes, ['update'], 'explicit zero dispatches UPDATE before execution');
-
-      writes.length = 0;
-      const loaded = await new Author().connect(hooked).removeAllColumns().addColumnSeq().addColumnReadCount().getBySeq(1);
-      assert.ok(loaded, 'seeded author row loads through the hooked handle');
-      await rejectedByHook(loaded.setReadCount(loaded.getReadCount()).save());
-      assert.deepEqual(writes, ['update'], 'loaded original key dispatches UPDATE before execution');
-    } finally {
-      await db.close();
-    }
-  },
-  // Requirements: PLN-26.
-  async model_write_arithmetic_attributes({ driver, dsn }) {
-    const db = await connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
-    const author = () => new Author().connect(db);
-    let unsubscribe = null;
-    try {
-      assert.equal(db.driver, driver);
-      const before = await author().addAllColumns().getBySeq(1);
-      assert.ok(before, 'seed author 1 exists');
-      const beforeReadCount = before.getReadCount();
-      const beforeUpdatedTs = before.getUpdatedTs();
-      assert.equal(beforeReadCount, 1, 'seed author 1 read_count');
-      const boom = new Error('PLN-26 rollback sentinel');
-      const events = [];
-      let caught = null;
-      try {
-        await db.transaction(async () => {
-          let loaded = await author().addAllColumns().getBySeq(1);
-          assert.ok(loaded, 'seed author 1 is readable in the transaction');
-          await loaded.setReadCount(1).update();
-          unsubscribe = db.subscribe(event => {
-            if (event.kind === 'update' && event.tables.includes('author')) events.push(event);
-          });
-          loaded = await author().addAllColumns().getBySeq(1);
-          await loaded.plusReadCount(7).update();
-          assert.equal((await author().addAllColumns().getBySeq(1)).getReadCount(), 8, 'plus updates the non-key column');
-          assert.ok(events.some(event => event.binds.includes(7)), 'plus amount is bound');
-          await loaded.update();
-          assert.equal(events.length, 1, 'a write clears the pending arithmetic change');
-          const current = await author().addAllColumns().getBySeq(1);
-          await current.minusReadCount(9).update();
-          const afterMinus = await author().addAllColumns().getBySeq(1);
-          assert.equal(afterMinus.getReadCount(), 0, 'minus clamps at zero');
-          assert.ok(events.some(event => event.binds.includes(9)), 'minus amount is bound');
-          throw boom;
-        }, { retry: 0 });
-      } catch (error) {
-        caught = error;
-      }
-      assert.strictEqual(caught, boom, 'transaction returns the rollback sentinel');
-      const after = await author().addAllColumns().getBySeq(1);
-      assert.equal(after.getReadCount(), beforeReadCount, 'rollback restores read_count');
-      assert.deepEqual(after.getUpdatedTs(), beforeUpdatedTs, 'rollback restores updated_ts');
-    } finally {
-      if (unsubscribe) unsubscribe();
-      await db.close();
-    }
   },
 }, 300_000);

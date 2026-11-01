@@ -68,6 +68,19 @@ type databaseStep struct {
 	Expect   map[string]json.RawMessage `json:"expect"`
 	Schema   json.RawMessage            `json:"schema"`
 	Steps    []json.RawMessage          `json:"steps"`
+	// The model op fields (FCV-4): the connection name, the model name, the pool size, and the arguments of the model ops.
+	Connection  string          `json:"connection"`
+	Model       string          `json:"model"`
+	PoolSize    int             `json:"pool_size"`
+	Key         json.RawMessage `json:"key"`
+	Where       json.RawMessage `json:"where"`
+	Duplication json.RawMessage `json:"duplication"`
+	Rows        json.RawMessage `json:"rows"`
+	Batch       int             `json:"batch"`
+	Order       []string        `json:"order"`
+	Column      string          `json:"column"`
+	Operation   string          `json:"operation"`
+	Amount      json.RawMessage `json:"amount"`
 }
 
 // bound is what a step bound with `as`: the API value that a later argument takes, the fields of its result that a dotted
@@ -101,6 +114,10 @@ type databaseContext struct {
 	database  string
 	dsn       string
 	bound     map[string]bound
+	// schema is the schema of the fixture set that the case installed; model.connect registers it on its connection.
+	schema *orm.Schema
+	// closers close the connections that model.connect opened, when the case ends.
+	closers []func() error
 }
 
 // runDatabase runs every case of the recipe at path on database, each as a subtest on a case database of its own (FCV-3).
@@ -122,13 +139,14 @@ func runDatabase(t *testing.T, path, database string) {
 	}
 	// A fixture of "none" runs every case on an empty case database (FCV-3); the helper never infers it.
 	var schema *orm.Schema
+	var external []*orm.Schema
 	if f.Fixture != "none" {
 		relative, ok := strings.CutSuffix(f.Schema, schemaPath)
 		if !ok {
 			t.Fatalf("recipe %s: $schema %s does not name %s", path, f.Schema, schemaPath)
 		}
 		root := filepath.Join(filepath.Dir(path), relative)
-		schema, err = fixtureSchema(filepath.Join(root, f.Fixture))
+		schema, external, err = fixtureSchema(filepath.Join(root, f.Fixture))
 		if err != nil {
 			t.Fatalf("recipe %s: %v", path, err)
 		}
@@ -136,48 +154,57 @@ func runDatabase(t *testing.T, path, database string) {
 	for _, c := range f.Cases {
 		t.Run(c.ID, func(t *testing.T) {
 			testcase.Start(t, testcase.Database)
-			runCase(t, path, f, c, database, schema)
+			runCase(t, path, f, c, database, schema, external)
 		})
 	}
 }
 
-// fixtureSchema is the Schema of a dbspec-set.json: the parse and the manifest of its documents through the public
-// dbspec API.
-func fixtureSchema(setPath string) (*orm.Schema, error) {
-	src, err := os.ReadFile(setPath)
+// fixtureSchema is the Schema of a dbspec-set.json through the public dbspec API (docs/spec/dbspec.md "External
+// documents"): the owned documents parsed with the external ones of the set, and the manifest of the owned documents
+// with the external text. Each external document is also a schema of its own, which a case installs first, as the
+// bench set does (benchset.Install), since its tables must exist before the set installs.
+func fixtureSchema(setPath string) (*orm.Schema, []*orm.Schema, error) {
+	set, errs := dbspec.ReadSet(setPath)
+	if len(errs) > 0 {
+		return nil, nil, fmt.Errorf("%s: %+v", setPath, errs)
+	}
+	var owned, external []string
+	for _, file := range set.Documents {
+		owned = append(owned, string(file.Bytes))
+	}
+	for _, file := range set.External {
+		external = append(external, string(file.Bytes))
+	}
+	manifestOf := func(texts, externals []string) (*dbspec.Manifest, error) {
+		var documents []*dbspec.Document
+		for _, parsed := range dbspec.ParseSet(texts, externals) {
+			if parsed.Document == nil || len(parsed.Diagnostics) > 0 {
+				return nil, fmt.Errorf("%s: %s: %+v", setPath, parsed.Name, parsed.Diagnostics)
+			}
+			documents = append(documents, parsed.Document)
+		}
+		manifest, diagnostics := dbspec.ManifestOf(documents)
+		if manifest == nil {
+			return nil, fmt.Errorf("%s: %+v", setPath, diagnostics)
+		}
+		return manifest, nil
+	}
+	manifest, err := manifestOf(owned, external)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	var set struct {
-		Documents []string `json:"documents"`
-	}
-	if err := json.Unmarshal(src, &set); err != nil {
-		return nil, fmt.Errorf("%s: %w", setPath, err)
-	}
-	var documents []*dbspec.Document
-	for _, name := range set.Documents {
-		path := filepath.Join(filepath.Dir(setPath), name)
-		text, diagnostics, err := dbspec.ReadFile(path)
+	var installFirst []*orm.Schema
+	for _, text := range external {
+		shared, err := manifestOf([]string{text}, nil)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		if len(diagnostics) > 0 {
-			return nil, fmt.Errorf("%s: %+v", path, diagnostics)
-		}
-		document, _, diagnostics := dbspec.Parse(text, map[string]string{})
-		if document == nil {
-			return nil, fmt.Errorf("%s: %+v", path, diagnostics)
-		}
-		documents = append(documents, document)
+		installFirst = append(installFirst, &orm.Schema{Hash: shared.ManifestHash, Text: shared.ManifestText})
 	}
-	manifest, diagnostics := dbspec.ManifestOf(documents)
-	if manifest == nil {
-		return nil, fmt.Errorf("%s: %+v", setPath, diagnostics)
-	}
-	return &orm.Schema{Hash: manifest.ManifestHash, Text: manifest.ManifestText, External: manifest.ExternalText}, nil
+	return &orm.Schema{Hash: manifest.ManifestHash, Text: manifest.ManifestText, External: manifest.ExternalText}, installFirst, nil
 }
 
-func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database string, schema *orm.Schema) {
+func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database string, schema *orm.Schema, external []*orm.Schema) {
 	step := testcase.Of(t)
 	ctx := step.Context()
 	dsn := testdb.New(t, database)
@@ -187,8 +214,10 @@ func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database
 	}
 	defer testcase.Close(t, db)
 	if schema != nil {
-		if err := db.Utils().Schema().Install(schema); err != nil {
-			t.Fatalf("recipe %s case %s on %s: install: %v", path, c.ID, database, err)
+		for _, shared := range append(external, schema) {
+			if err := db.Utils().Schema().Install(shared); err != nil {
+				t.Fatalf("recipe %s case %s on %s: install: %v", path, c.ID, database, err)
+			}
 		}
 		step.Step("schema installed")
 	}
@@ -206,9 +235,16 @@ func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database
 		name = strings.TrimSuffix(filepath.Base(strings.TrimPrefix(dsn, "sqlite://")), ".sqlite")
 	}
 	state := &databaseContext{
-		t: t, ctx: ctx, db: db, dir: filepath.Dir(path), catalog: catalog, namespace: namespace, database: database, dsn: dsn,
+		t: t, ctx: ctx, db: db, dir: filepath.Dir(path), catalog: catalog, namespace: namespace, database: database, dsn: dsn, schema: schema,
 		bound: map[string]bound{"database": {value: map[string]any{"text": name}}},
 	}
+	defer func() {
+		for _, closeConnection := range state.closers {
+			if err := closeConnection(); err != nil {
+				t.Errorf("recipe %s case %s: close connection: %v", path, c.ID, err)
+			}
+		}
+	}()
 	for _, s := range []*seed{f.Seed, c.Seed} {
 		if s == nil || len(s.Rows) == 0 {
 			continue
@@ -535,6 +571,9 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		driver := db.Driver()
 		testcase.Close(c.t, db)
 		return outcome{fields: map[string]any{"value": map[string]any{"text": driver}}}, nil
+	}
+	if strings.HasPrefix(s.Op, "model.") {
+		return modelOp(s, c)
 	}
 	return outcome{}, fmt.Errorf("OP_UNKNOWN %s", s.Op)
 }

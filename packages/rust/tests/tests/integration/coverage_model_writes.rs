@@ -1,7 +1,7 @@
-//! model_writes: runs create, creates, update, duplication,
-//! create, and delete on CompositeAccount; arithmetic coverage rolls back updates to seeded Author.read_count.
+//! model_writes: create_parts runs the batch behaviour of CompositeAccount natively, and model_write_cycle checks
+//! the ordered JSON text and the codec columns, which the model_writes recipe does not assert.
 use super::coverage_env::{code, connect, run};
-use super::model::{Account, Author, CompositeAccount};
+use super::model::{Author, CompositeAccount};
 use std::sync::{Arc, Mutex};
 
 const TENANT: i64 = 990002;
@@ -63,33 +63,11 @@ async fn coverage_model_create_parts() {
 }
 
 #[tokio::test]
-// Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110, DIA-26, COD-11, COD-12, COD-15, COD-38.
+// Requirements: COD-11, COD-12, COD-15, COD-38, DIA-26.
 async fn coverage_model_write_cycle() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("model_write_cycle", async {
         let db = connect().await;
-        let account = || CompositeAccount::new().connect(&db);
-        assert_eq!(account().tenant_id(TENANT).get_count().await.unwrap(), 0, "a composite_account row of tenant {TENANT} already exists");
-        let created = account().set_tenant_id(TENANT).set_account_id(1).set_name("created").create().await.unwrap();
-        assert_eq!(created.get_name().unwrap(), "created", "created row");
-        let many = vec![
-            CompositeAccount::new().set_tenant_id(TENANT).set_account_id(2).set_name("many-2"),
-            CompositeAccount::new().set_tenant_id(TENANT).set_account_id(3).set_name("many-3"),
-            CompositeAccount::new().set_tenant_id(TENANT).set_account_id(4).set_name("many-4"),
-        ];
-        assert_eq!(account().creates(many, 3).await.unwrap(), 3, "creates");
-        let mut row = account().get_by_tenant_id_and_account_id(TENANT, 1).await.unwrap().expect("a row").set_name("updated");
-        row.update(false).await.unwrap();
-        assert_eq!(account().get_by_tenant_id_and_account_id(TENANT, 1).await.unwrap().expect("a row").get_name().unwrap(), "updated", "update");
-        account().set_tenant_id(TENANT).set_account_id(1).set_name("ignored").duplication(CompositeAccount::new().set_name("upserted")).create().await.unwrap();
-        assert_eq!(account().get_by_tenant_id_and_account_id(TENANT, 1).await.unwrap().expect("a row").get_name().unwrap(), "upserted", "duplication");
-        assert_eq!(account().tenant_id(TENANT).get_count().await.unwrap(), 4, "rows of tenant {TENANT}");
-        let rows = account().tenant_id(TENANT).gets().await.unwrap();
-        assert_eq!(rows.len(), 4, "rows to delete");
-        rows.delete(false).await.unwrap();
-        assert!(account().get_by_tenant_id_and_account_id(TENANT, 1).await.unwrap().is_none(), "deleted row");
-        assert_eq!(account().tenant_id(TENANT).get_count().await.unwrap(), 0, "rows left");
-
         let text = r#"{"b":1,"a":[],"c":{},"n":1.50}"#;
         let rollback: polyspec_orm::Result<()> = db
             .transaction(async || {
@@ -132,114 +110,6 @@ async fn coverage_model_write_cycle() {
             .retry(0)
             .await;
         assert!(matches!(codec_rollback, Err(polyspec_orm::Error::Config(message)) if message == "rollback codec columns probe"));
-        db.close().await;
-    })
-    .await;
-}
-
-#[tokio::test]
-// Requirements: DSL-109.
-async fn coverage_model_save_key_dispatch() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    run("save_key_dispatch", async {
-        let db = connect().await;
-        let writes = Arc::new(Mutex::new(Vec::<String>::new()));
-        let sink = writes.clone();
-        let hooked = db.with_request_hook(move |request: &mut polyspec_orm::ir::Request, _| {
-            if request.kind == "insert" || request.kind == "update" {
-                sink.lock().unwrap().push(request.kind.clone());
-                return Err(polyspec_orm::Error::Config("DSL-109 request hook stopped the write".into()));
-            }
-            Ok(())
-        });
-
-        let mut missing = Account::new().connect(&hooked).set_name("missing");
-        assert!(matches!(missing.save().await, Err(polyspec_orm::Error::Config(message)) if message == "DSL-109 request hook stopped the write"));
-        assert_eq!(writes.lock().unwrap().as_slice(), &["insert".to_owned()], "missing key Save selects INSERT");
-
-        writes.lock().unwrap().clear();
-        let mut zero = Account::new().connect(&hooked).set_seq(0).set_name("zero");
-        assert!(matches!(zero.save().await, Err(polyspec_orm::Error::Config(message)) if message == "DSL-109 request hook stopped the write"));
-        assert_eq!(writes.lock().unwrap().as_slice(), &["update".to_owned()], "explicit zero Save selects UPDATE");
-
-        writes.lock().unwrap().clear();
-        let mut loaded =
-            Author::new().connect(&hooked).remove_all_columns().add_column_seq().add_column_read_count().get_by_seq(1).await.unwrap().expect("seed author 1");
-        let read_count = loaded.get_read_count().unwrap();
-        loaded = loaded.set_read_count(read_count);
-        assert!(matches!(loaded.save().await, Err(polyspec_orm::Error::Config(message)) if message == "DSL-109 request hook stopped the write"));
-        assert_eq!(writes.lock().unwrap().as_slice(), &["update".to_owned()], "loaded original key Save selects UPDATE");
-
-        db.close().await;
-    })
-    .await;
-}
-
-#[tokio::test]
-// Requirements: PLN-26.
-async fn coverage_model_write_arithmetic_attributes() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    run("model_write_arithmetic_attributes", async {
-        let db = connect().await;
-        let author = || Author::new().connect(&db);
-        let before = author().add_all_columns().get_by_seq(1).await.unwrap().expect("seed author 1");
-        let before_read_count = before.get_read_count().unwrap();
-        let before_updated_ts = before.get_updated_ts().unwrap();
-        assert_eq!(before_read_count, 1, "seed author 1 read_count");
-        let events = Arc::new(Mutex::new(Vec::<Vec<polyspec_orm::Param>>::new()));
-        let sink = events.clone();
-        let result: polyspec_orm::Result<()> = db
-            .transaction(async || {
-                let mut loaded = author().add_all_columns().get_by_seq(1).await?.ok_or(polyspec_orm::Error::NoRows)?;
-                loaded = loaded.set_read_count(1);
-                loaded.update(false).await?;
-                let event_sink = sink.clone();
-                let subscription = db.subscribe(move |event: &polyspec_orm::StatementEvent<'_>| {
-                    if event.kind == polyspec_orm::events::KIND_UPDATE && event.tables.iter().any(|table| table == "author") {
-                        event_sink.lock().unwrap().push(event.binds.to_vec());
-                    }
-                    Ok(())
-                })?;
-                let checks: polyspec_orm::Result<()> = async {
-                    let mut loaded = author().add_all_columns().get_by_seq(1).await?.ok_or(polyspec_orm::Error::NoRows)?;
-                    loaded = loaded.plus_read_count(7);
-                    loaded.update(false).await?;
-                    let after_plus = author().add_all_columns().get_by_seq(1).await?.ok_or(polyspec_orm::Error::NoRows)?;
-                    if after_plus.get_read_count()? != 8 {
-                        return Err(polyspec_orm::Error::Config("plus did not set read_count to 8".into()));
-                    }
-                    if !sink.lock().unwrap().iter().any(|binds| binds.contains(&polyspec_orm::Param::I64(7))) {
-                        return Err(polyspec_orm::Error::Config("plus amount 7 is absent from update binds".into()));
-                    }
-                    loaded.update(false).await?;
-                    if sink.lock().unwrap().len() != 1 {
-                        return Err(polyspec_orm::Error::Config("repeated update emitted another statement".into()));
-                    }
-                    let mut current = author().add_all_columns().get_by_seq(1).await?.ok_or(polyspec_orm::Error::NoRows)?;
-                    current = current.minus_read_count(9);
-                    current.update(false).await?;
-                    let after_minus = author().add_all_columns().get_by_seq(1).await?.ok_or(polyspec_orm::Error::NoRows)?;
-                    if after_minus.get_read_count()? != 0 {
-                        return Err(polyspec_orm::Error::Config("minus amount 9 did not clamp read_count at zero".into()));
-                    }
-                    if !sink.lock().unwrap().iter().any(|binds| binds.contains(&polyspec_orm::Param::I64(9))) {
-                        return Err(polyspec_orm::Error::Config("minus amount 9 is absent from update binds".into()));
-                    }
-                    Ok(())
-                }
-                .await;
-                subscription.unsubscribe();
-                checks?;
-                Err(polyspec_orm::Error::Config("PLN-26 rollback sentinel".into()))
-            })
-            .await;
-        assert!(
-            matches!(&result, Err(polyspec_orm::Error::Config(message)) if message == "PLN-26 rollback sentinel"),
-            "transaction must return the rollback sentinel: {result:?}"
-        );
-        let after = author().add_all_columns().get_by_seq(1).await.unwrap().expect("seed author 1 after rollback");
-        assert_eq!(after.get_read_count().unwrap(), before_read_count, "rollback restores read_count");
-        assert_eq!(after.get_updated_ts().unwrap(), before_updated_ts, "rollback restores updated_ts");
         db.close().await;
     })
     .await;

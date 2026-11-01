@@ -47,6 +47,7 @@ final class ModelWriteSurfaceTest extends TestCase
         };
     }
 
+    // Requirements: INT-151.
     public function testNativeKeyValuesReadsTheModelMetadata(): void
     {
         $model = new class extends Model {
@@ -62,6 +63,7 @@ final class ModelWriteSurfaceTest extends TestCase
         self::assertSame(['id' => 42], $keyValues->invoke($model));
     }
 
+    // Requirements: INT-151.
     public function testNativeUpdateClearsAnIncompleteKeyBeforeThrowingConfig(): void
     {
         $db = new \Polyspec\Orm\Db(
@@ -89,51 +91,7 @@ final class ModelWriteSurfaceTest extends TestCase
         }
     }
 
-    // Requirements: DSL-106.
-    public function testNativeUpdateSendsChangedFieldsAndPrimaryKeyToRequestHook(): void
-    {
-        $sentinel = new \RuntimeException('DSL-106 request hook stopped the update');
-        $seen = null;
-        $db = (new \Polyspec\Orm\Db(
-            new \PDO('sqlite::memory:'),
-            'sqlite',
-            new Config(),
-            new \DateTimeZone('UTC')
-        ))->withRequestHook(static function (Request $request) use (&$seen, $sentinel): void {
-            $seen = $request;
-            throw $sentinel;
-        });
-        try {
-            $failure = null;
-            try {
-                (new \Polyspec\Orm\Tests\Model\CompositeAccount())($db)
-                    ->setTenantId(12)
-                    ->setAccountId(34)
-                    ->setName('changed')
-                    ->update();
-            } catch (\Throwable $caught) {
-                $failure = $caught;
-            }
-
-            self::assertSame($sentinel, $failure, 'the hook stops before SQL execution');
-            self::assertInstanceOf(Request::class, $seen);
-            self::assertSame('update', $seen->ir['kind']);
-            self::assertSame('composite_account', $seen->ir['entity']);
-            self::assertSame([['column' => 'name', 'p' => 0]], $seen->ir['set']);
-            self::assertSame(
-                [
-                    ['pred' => ['column' => 'tenant_id', 'op' => 'eq', 'p' => 1]],
-                    ['pred' => ['column' => 'account_id', 'op' => 'eq', 'p' => 2, 'conn' => 'and']],
-                ],
-                $seen->ir['where']['items']
-            );
-            self::assertSame(['changed', 12, 34], $seen->params);
-            self::assertSame(3, $seen->shape()['n_params']);
-        } finally {
-            $db->close();
-        }
-    }
-
+    // Requirements: INT-151.
     public function testNativeMarkdownWriteReturnsFirstKeyOrNullWhenNoKeysWereAnswered(): void
     {
         $manifestHash = \Polyspec\Orm\Tests\MarkdownModel\People::meta()['manifest_hash'];
@@ -170,6 +128,7 @@ final class ModelWriteSurfaceTest extends TestCase
         }
     }
 
+    // Requirements: INT-151.
     public function testNativeWriteHelpersAreInternalAndCallbacksOwnStandardPrivateState(): void
     {
         $model = new \ReflectionClass(Model::class);
@@ -273,6 +232,7 @@ final class ModelWriteSurfaceTest extends TestCase
         self::assertNull($weakModel->get());
     }
 
+    // Requirements: INT-151.
     public function testNullableValuesDoNotCoerceIntoNonNullableWriteScalars(): void
     {
         $model = self::callbackFixture();
@@ -293,6 +253,7 @@ final class ModelWriteSurfaceTest extends TestCase
         }
     }
 
+    // Requirements: INT-151.
     public function testTransactionalWriteCallbacksPreserveMissingConnectionError(): void
     {
         $model = self::callbackFixture();
@@ -315,6 +276,7 @@ final class ModelWriteSurfaceTest extends TestCase
         }
     }
 
+    // Requirements: INT-151.
     public function testBuildAndWriteRequestRejectNullableKinds(): void
     {
         $model = self::callbackFixture();
@@ -335,6 +297,7 @@ final class ModelWriteSurfaceTest extends TestCase
         }
     }
 
+    // Requirements: INT-151.
     public function testAesExpansionKeepsTheModelSetsArrayUnchanged(): void
     {
         $model = self::aesFixture();

@@ -383,11 +383,13 @@ fn equal(got: &Value, want: &Value, ordered: bool) -> bool {
 }
 
 /// The database path (FCV-3 and FCV-4): each case runs on a case database of its own through the public catalog API.
-pub use database::database_trials;
+pub use database::{database_trials, database_trials_with_models, ModelDispatcher, ModelFuture};
 
 mod database {
-    use std::collections::{BTreeMap, HashMap};
+    use std::collections::HashMap;
+    use std::future::Future;
     use std::path::Path;
+    use std::pin::Pin;
     use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
     use std::sync::Arc;
 
@@ -396,7 +398,7 @@ mod database {
     use polyspec_orm_build::catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableMetadata, TablePage, TableRef};
     use polyspec_orm_build::tool_db::{GridCell, GridQueryResult, ParamType, QueryLimits, Val, P};
     use polyspec_orm_case_database::CaseDatabase;
-    use serde_json::{json, Value};
+    use serde_json::{json, Map, Value};
 
     use super::hex_text;
 
@@ -436,6 +438,43 @@ mod database {
         }
     }
 
+    /// The boxed future of a model op or of model.connect: its fields, or the error text, which begins with its code (FCV-4).
+    pub type ModelFuture<'a> = Pin<Box<dyn Future<Output = Result<Value, String>> + Send + 'a>>;
+
+    /// The generated models of a database case (FCV-4). model.connect opens the connection that its step names with `as`;
+    /// each model op calls the generated model that its step names, on the connection that its `connection` field names.
+    /// The fields that a model op receives have their values resolved: a ref is its bound value, and a per-database object
+    /// is its entry for the database. A trial binary implements it over the models of its fixture.
+    pub trait ModelDispatcher: Send {
+        /// model.connect: opens the connection `name` on `dsn` with `pool_size` connections.
+        fn connect<'a>(&'a mut self, name: &'a str, dsn: &'a str, pool_size: u32) -> ModelFuture<'a>;
+        /// A model op `op` on `connection`, with the resolved fields of its step.
+        fn call<'a>(&'a mut self, op: &'a str, connection: &'a str, step: &'a Value) -> ModelFuture<'a>;
+        /// Closes the connections that the case opened.
+        fn close<'a>(&'a mut self) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>>;
+    }
+
+    /// The dispatcher of a recipe without model ops: each model op fails its step.
+    struct NoModels;
+
+    impl ModelDispatcher for NoModels {
+        fn connect<'a>(&'a mut self, _name: &'a str, _dsn: &'a str, _pool_size: u32) -> ModelFuture<'a> {
+            Box::pin(async { Err("model.connect: this recipe binds no generated models".to_owned()) })
+        }
+
+        fn call<'a>(&'a mut self, op: &'a str, _connection: &'a str, _step: &'a Value) -> ModelFuture<'a> {
+            Box::pin(async move { Err(format!("OP_UNKNOWN {op}: this recipe binds no generated models")) })
+        }
+
+        fn close<'a>(&'a mut self) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>> {
+            Box::pin(async {})
+        }
+    }
+
+    fn no_models() -> Box<dyn ModelDispatcher> {
+        Box::new(NoModels)
+    }
+
     struct Context<'a> {
         namespace: String,
         database: &'a str,
@@ -443,122 +482,190 @@ mod database {
         bound: HashMap<String, Bound>,
         db: &'a Db,
         dir: &'a Path,
+        models: Box<dyn ModelDispatcher>,
     }
 
     /// One trial for each case of the recipe at `path`, relative to the repository root, on `database` ("mysql",
-    /// "postgres" or "sqlite"), named `<entry>::<case id>`. Each case runs on a case database of its own.
+    /// "postgres" or "sqlite"), named `<entry>::<case id>`. Each case runs on a case database of its own. A recipe with
+    /// model ops uses database_trials_with_models.
     pub fn database_trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testcase::Trial> {
+        database_trials_with_models(entry, path, database, no_models)
+    }
+
+    /// database_trials with the generated models of the trial binary: model.connect opens connections, and the model ops
+    /// call the models through the dispatcher that `models` builds for each case (FCV-4).
+    pub fn database_trials_with_models(entry: &str, path: &str, database: &str, models: fn() -> Box<dyn ModelDispatcher>) -> Vec<polyspec_orm_testcase::Trial> {
         assert!(DATABASES.contains(&database), "recipe {path}: unknown database {database}");
         let root = polyspec_orm_testcase::manifest_dir().join("../../..");
-        let recipe = Arc::new(read_json(&root.join(path)));
+        let (mut recipe, ordered) = read_recipe(&root.join(path));
+        // serde_json sorts the keys of an object, so the order of the seed tables comes from the document (seed_order).
+        recipe["seed_order"] = json!(seed_order(member(&ordered, "seed")));
+        let recipe = Arc::new(recipe);
         let Some(fixture) = recipe["fixture"].as_str() else { panic!("recipe {path}: no fixture, so it has no database") };
         // A fixture of none runs every case on an empty case database; the helper never infers it (FCV-3).
         let schema = if fixture == "none" { None } else { Some(Arc::new(fixture_schema(&root.join(fixture)))) };
         let dir = Arc::new(root.join(path).parent().map(Path::to_path_buf).unwrap_or_default());
         let Some(cases) = recipe["cases"].as_array() else { panic!("recipe {path} has no cases") };
+        let ordered_cases: Vec<Value> =
+            member(&ordered, "cases").and_then(|cases| cases.items()).unwrap_or_default().iter().map(|case| json!(seed_order(member(case, "seed")))).collect();
         cases
             .iter()
-            .map(|case| {
-                let (recipe, schema, dir, case) = (recipe.clone(), schema.clone(), dir.clone(), case.clone());
+            .enumerate()
+            .map(|(index, case)| {
+                let (recipe, schema, dir, models) = (recipe.clone(), schema.clone(), dir.clone(), models);
+                let mut case = case.clone();
+                case["seed_order"] = ordered_cases[index].clone();
                 let (path, database) = (path.to_owned(), database.to_owned());
                 let id = case["id"].as_str().unwrap_or_default().to_owned();
                 polyspec_orm_testcase::async_trial(format!("{entry}::{id}"), polyspec_orm_testcase::DATABASE, move || async move {
-                    run_case(&path, &recipe, &case, &database, schema.as_deref(), &dir).await;
+                    run_case(&path, &recipe, &case, &database, schema.as_deref(), &dir, models).await;
                 })
             })
             .collect()
     }
 
-    fn read_json(path: &Path) -> Value {
+    /// The recipe as serde values, and the same text as ordered JSON, whose objects keep the order of the document.
+    fn read_recipe(path: &Path) -> (Value, polyspec_orm::ordered_json::Value) {
         let text = match std::fs::read_to_string(path) {
             Ok(text) => text,
             Err(error) => panic!("{}: {error}", path.display()),
         };
-        match serde_json::from_str(&text) {
+        let value = match serde_json::from_str(&text) {
             Ok(value) => value,
+            Err(error) => panic!("{}: {error}", path.display()),
+        };
+        match polyspec_orm::ordered_json::parse(&text) {
+            Ok(ordered) => (value, ordered),
             Err(error) => panic!("{}: {error}", path.display()),
         }
     }
 
-    /// The Schema of a dbspec-set.json: the parse and the manifest of its documents through the public dbspec API.
-    fn fixture_schema(set_path: &Path) -> Schema {
-        let set = read_json(set_path);
-        let directory = set_path.parent().unwrap_or(Path::new("."));
-        let mut documents = Vec::new();
-        for document in set["documents"].as_array().into_iter().flatten() {
-            let path = directory.join(document.as_str().unwrap_or_default());
-            let text = match dbspec::read_file(&path) {
-                Ok(text) => text,
-                Err(error) => panic!("{}: {error:?}", path.display()),
-            };
-            match dbspec::parse(&text, &BTreeMap::new()) {
-                Ok(parsed) => documents.push(parsed.document),
-                Err(diagnostics) => panic!("{}: {diagnostics:?}", path.display()),
-            }
-        }
-        let references: Vec<&dbspec::Document> = documents.iter().collect();
-        let manifest = match dbspec::manifest(&references) {
-            Ok(manifest) => manifest,
-            Err(diagnostics) => panic!("{}: {diagnostics:?}", set_path.display()),
+    /// The member of an ordered JSON object whose key is `name`.
+    fn member<'a>(object: &'a polyspec_orm::ordered_json::Value, name: &str) -> Option<&'a polyspec_orm::ordered_json::Value> {
+        object.members()?.iter().find(|(key, _)| key.string_value().is_ok_and(|bytes| bytes == name.as_bytes())).map(|(_, value)| value)
+    }
+
+    /// The table names of the `rows` of a seed object, in the order the document writes them.
+    fn seed_order(seed: Option<&polyspec_orm::ordered_json::Value>) -> Vec<String> {
+        let Some(rows) = seed.and_then(|seed| member(seed, "rows")).and_then(|rows| rows.members()) else { return Vec::new() };
+        rows.iter().map(|(key, _)| String::from_utf8(key.string_value().unwrap_or_default()).unwrap_or_default()).collect()
+    }
+
+    /// The Schema of a dbspec-set.json through the public dbspec API (docs/spec/dbspec.md "External documents"): the
+    /// owned documents parsed with the external ones of the set, and the manifest of the owned documents with the external
+    /// text. Each external document is also a schema of its own, which a case installs first, as the bench set does.
+    fn fixture_schema(set_path: &Path) -> (Schema, Vec<Schema>) {
+        let set = match dbspec::read_set(set_path) {
+            Ok(set) => set,
+            Err(errors) => panic!("{}: {errors:?}", set_path.display()),
         };
-        // Schema takes &'static str, so the three texts are leaked: one Schema per test process, built once by
-        // database_trials before the trials run.
+        let text = |file: &dbspec::SetFile| match dbspec::read_bytes(&file.path.display().to_string(), file.bytes.clone()) {
+            Ok(text) => text,
+            Err(diagnostics) => panic!("{}: {diagnostics:?}", file.path.display()),
+        };
+        let owned: Vec<String> = set.documents.iter().map(text).collect();
+        let external: Vec<String> = set.external.iter().map(text).collect();
+        let manifest_of = |owners: &[String], externals: &[String]| {
+            let owners: Vec<&str> = owners.iter().map(String::as_str).collect();
+            let externals: Vec<&str> = externals.iter().map(String::as_str).collect();
+            let mut documents = Vec::new();
+            for parsed in dbspec::parse_set(&owners, &externals) {
+                match parsed.document {
+                    Some(document) if parsed.diagnostics.is_empty() => documents.push(document),
+                    _ => panic!("{}: {:?}: {:?}", set_path.display(), parsed.name, parsed.diagnostics),
+                }
+            }
+            let references: Vec<&dbspec::Document> = documents.iter().collect();
+            match dbspec::manifest(&references) {
+                Ok(manifest) => manifest,
+                Err(diagnostics) => panic!("{}: {diagnostics:?}", set_path.display()),
+            }
+        };
+        // Schema takes &'static str, so the texts are leaked: one Schema per test process, built once by database_trials
+        // before the trials run.
         let leak = |text: String| -> &'static str { Box::leak(text.into_boxed_str()) };
-        Schema::with_external(leak(manifest.manifest_text), leak(manifest.external_text), leak(manifest.manifest_hash))
+        let manifest = manifest_of(&owned, &external);
+        let manifest = Schema::with_external(leak(manifest.manifest_text), leak(manifest.external_text), leak(manifest.manifest_hash));
+        let install_first = external
+            .iter()
+            .map(|each| {
+                let shared = manifest_of(std::slice::from_ref(each), &[]);
+                Schema::new(leak(shared.manifest_text), leak(shared.manifest_hash))
+            })
+            .collect();
+        (manifest, install_first)
     }
 
     /// Runs one case on a case database of its own and drops the database; a failure names the recipe, the case, the
     /// index of the step and the database.
-    async fn run_case(path: &str, recipe: &Value, case: &Value, database: &str, schema: Option<&Schema>, dir: &Path) {
+    async fn run_case(path: &str, recipe: &Value, case: &Value, database: &str, schemas: Option<&(Schema, Vec<Schema>)>, dir: &Path, models: fn() -> Box<dyn ModelDispatcher>) {
         let id = case["id"].as_str().unwrap_or_default();
         let case_database = CaseDatabase::create(database).await;
-        let result = case_body(recipe, case, database, schema, dir, &case_database).await;
+        let result = case_body(recipe, case, database, schemas, dir, &case_database, models).await;
         case_database.drop().await;
         if let Err(failure) = result {
             panic!("recipe {path}, case {id}, {failure}");
         }
     }
 
-    async fn case_body(recipe: &Value, case: &Value, database: &str, schema: Option<&Schema>, dir: &Path, case_database: &CaseDatabase) -> Result<(), String> {
+    async fn case_body(recipe: &Value, case: &Value, database: &str, schemas: Option<&(Schema, Vec<Schema>)>, dir: &Path, case_database: &CaseDatabase, models: fn() -> Box<dyn ModelDispatcher>) -> Result<(), String> {
         let dsn = case_database.dsn().to_owned();
         let db = Db::connect(&dsn, 1, Config::default()).await.map_err(|e| format!("database {database}: connect: {e}"))?;
-        let result = case_on(&db, recipe, case, database, schema, dir, case_database).await;
+        let result = case_on(&db, recipe, case, database, schemas, dir, case_database, models).await;
         db.close().await;
         result
     }
 
-    async fn case_on(db: &Db, recipe: &Value, case: &Value, database: &str, schema: Option<&Schema>, dir: &Path, case_database: &CaseDatabase) -> Result<(), String> {
-        if let Some(schema) = schema {
-            let installed = db.utils().schema().install(schema).await;
+#[expect(clippy::too_many_arguments, reason = "the case inputs are the recipe, the case, the database, the schema, the directory, the connection and the models, which each step reads")]
+    async fn case_on(db: &Db, recipe: &Value, case: &Value, database: &str, schemas: Option<&(Schema, Vec<Schema>)>, dir: &Path, case_database: &CaseDatabase, models: fn() -> Box<dyn ModelDispatcher>) -> Result<(), String> {
+        if let Some((schema, install_first)) = schemas {
+            // The external documents are installed first: their tables must exist before the set installs (as the bench set does).
+            let mut installed = Ok(());
+            for each in install_first.iter().chain(std::iter::once(schema)) {
+                installed = db.utils().schema().install(each).await;
+                if installed.is_err() {
+                    break;
+                }
+            }
             installed.map_err(|e| format!("database {database}: schema install: {e}"))?;
             polyspec_orm_testcase::step("schema installed");
         }
         let mut catalog = CatalogConnection::connect(case_database.dsn()).await.map_err(|e| format!("database {database}: catalog connection: {e}"))?;
-        let result = run_steps(&mut catalog, db, dir, recipe, case, database, case_database).await;
+        let result = run_steps(&mut catalog, db, dir, recipe, case, database, case_database, models).await;
         catalog.close().await;
         result
     }
 
-    async fn run_steps(catalog: &mut CatalogConnection, db: &Db, dir: &Path, recipe: &Value, case: &Value, database: &str, case_database: &CaseDatabase) -> Result<(), String> {
+#[expect(clippy::too_many_arguments, reason = "the case inputs are the recipe, the case, the database, the schema, the directory, the connection and the models, which each step reads")]
+    async fn run_steps(catalog: &mut CatalogConnection, db: &Db, dir: &Path, recipe: &Value, case: &Value, database: &str, case_database: &CaseDatabase, models: fn() -> Box<dyn ModelDispatcher>) -> Result<(), String> {
         let namespace = catalog.current_namespace().await.map_err(|e| format!("database {database}: current namespace: {e}"))?;
         let bound = HashMap::from([("database".to_owned(), Bound::Json(json!({ "text": case_database.name() })))]);
         let dsn = case_database.dsn().to_owned();
-        let mut context = Context { namespace, database, dsn, bound, db, dir };
-        for rows in [&recipe["seed"]["rows"], &case["seed"]["rows"]] {
-            for (table, values) in rows.as_object().into_iter().flatten() {
+        let mut context = Context { namespace, database, dsn, bound, db, dir, models: models() };
+        let outcome = seed_and_steps(catalog, recipe, case, &mut context).await;
+        context.models.close().await;
+        outcome
+    }
+
+    /// The seed rows of the recipe and then of the case, and the steps of the case in their order.
+    async fn seed_and_steps(catalog: &mut CatalogConnection, recipe: &Value, case: &Value, context: &mut Context<'_>) -> Result<(), String> {
+        let database = context.database;
+        for (rows, order) in [(&recipe["seed"]["rows"], &recipe["seed_order"]), (&case["seed"]["rows"], &case["seed_order"])] {
+            for table in order.as_array().into_iter().flatten().filter_map(Value::as_str) {
+                let Some(values) = rows.get(table) else { continue };
                 let seed = |e: String| format!("seed row of {table}, database {database}: {e}");
-                let reference = TableRef { namespace: context.namespace.clone(), name: table.clone() };
+                let reference = TableRef { namespace: context.namespace.clone(), name: table.to_owned() };
                 let metadata = catalog.describe_table(&reference).await.map_err(seed)?;
                 for row in values.as_array().into_iter().flatten() {
                     let (cancellation, publish, permit) = mutation_hooks();
-                    catalog.insert_row(&metadata, &assignments(row, &context).map_err(seed)?, cancellation, publish, permit).await.map_err(seed)?;
+                    catalog.insert_row(&metadata, &assignments(row, context).map_err(seed)?, cancellation, publish, permit).await.map_err(seed)?;
                 }
             }
         }
         polyspec_orm_testcase::step("seed rows inserted");
         for (index, current) in case["steps"].as_array().into_iter().flatten().enumerate() {
             let op = current["op"].as_str().unwrap_or_default();
-            run_step(catalog, current, &mut context).await.map_err(|failure| format!("step {index} ({op}), database {database}: {failure}"))?;
+            run_step(catalog, current, context).await.map_err(|failure| format!("step {index} ({op}), database {database}: {failure}"))?;
             polyspec_orm_testcase::step(format_args!("step {index} {op}"));
         }
         Ok(())
@@ -625,7 +732,9 @@ mod database {
             Some(expect) => Some(resolve_refs(&expect[context.database], context)?),
         };
         let want_error = expected.as_ref().and_then(|e| e.get("error")).and_then(Value::as_str).map(str::to_owned);
-        let output = match call(catalog, step, context).await {
+        let dispatched =
+            if step["op"].as_str().is_some_and(|op| op.starts_with("model.")) { model_call(step, context).await } else { call(catalog, step, context).await };
+        let output = match dispatched {
             Ok(output) => output,
             Err(Failure::Step(message)) => return Err(message),
             Err(Failure::Call(message)) => {
@@ -810,6 +919,48 @@ mod database {
             }
             other => return Err(fault(format!("OP_UNKNOWN {other}"))),
         })
+    }
+
+    /// A model op or model.connect (FCV-4): model.connect opens the connection named by `as`; a model op resolves its fields
+    /// and calls the dispatcher, whose fields the expect of the step compares as the fields of a catalog call.
+    async fn model_call(step: &Value, context: &mut Context<'_>) -> Result<Output, Failure> {
+        let op = step["op"].as_str().unwrap_or_default();
+        if op == "model.connect" {
+            let name = step["as"].as_str().ok_or_else(|| Failure::Step("model.connect names no as".into()))?;
+            let pool_size = step["pool_size"].as_u64().and_then(|n| u32::try_from(n).ok()).ok_or_else(|| Failure::Step("pool_size is not a count".into()))?;
+            let dsn = context.dsn.clone();
+            context.models.connect(name, &dsn, pool_size).await.map_err(Failure::Call)?;
+            return Ok(Output::fields(json!({})));
+        }
+        let connection = step["connection"].as_str().ok_or_else(|| Failure::Step(format!("{op} names no connection")))?;
+        let resolved = resolve_model_step(step, context).map_err(Failure::Step)?;
+        let fields = context.models.call(op, connection, &resolved).await.map_err(Failure::Call)?;
+        Ok(Output::fields(fields))
+    }
+
+    /// The fields of a model op with its values resolved, as a catalog op resolves its arguments.
+    fn resolve_model_step(step: &Value, context: &Context<'_>) -> Result<Value, String> {
+        let mut resolved = step.clone();
+        for key in ["values", "where", "key", "set", "duplication"] {
+            if step.get(key).is_some() {
+                resolved[key] = resolve_map(&step[key], context)?;
+            }
+        }
+        if let Some(rows) = step["rows"].as_array() {
+            resolved["rows"] = Value::Array(rows.iter().map(|row| resolve_map(row, context)).collect::<Result<_, _>>()?);
+        }
+        if step.get("amount").is_some() {
+            resolved["amount"] = database_value(argument(&step["amount"], context)?, context);
+        }
+        Ok(resolved)
+    }
+
+    /// An object of columns whose values are resolved; see resolve_model_step.
+    fn resolve_map(object: &Value, context: &Context<'_>) -> Result<Value, String> {
+        let Some(map) = object.as_object() else { return Err(format!("{object} is not an object of columns")) };
+        let resolved: Map<String, Value> =
+            map.iter().map(|(name, value)| Ok((name.clone(), database_value(argument(value, context)?, context)))).collect::<Result<_, String>>()?;
+        Ok(Value::Object(resolved))
     }
 
     /// The code of a catalog error, the text before its first colon when that text is a code: `CATALOG_LIMIT: ...`.

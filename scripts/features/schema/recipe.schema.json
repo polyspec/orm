@@ -59,6 +59,7 @@
       "items": { "type": "string", "pattern": "^[A-Z]+-[0-9]+[a-z]?$" }
     },
     "name": { "type": "string", "pattern": "^[a-z_][a-z0-9_]*$" },
+    "model": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$", "description": "The model name as the generator spells it, such as CompositeAccount (FCV-4)." },
     "seed": {
       "type": "object",
       "required": ["rows"],
@@ -185,7 +186,7 @@
     "step": {
       "type": "object",
       "required": ["op"],
-      "properties": { "op": { "enum": ["dsn.connect", "model.connect", "codec.decode", "codec.encode", "codec.host_encode", "codec.host_decode", "codec.blind_index", "sql.exec", "ir.validate", "ir.answer", "catalog.current_namespace", "catalog.describe_table", "catalog.table_page", "catalog.read_only_query", "catalog.read_only_grid_query", "catalog.row_snapshot", "catalog.insert_row", "catalog.update_row", "catalog.delete_row", "schema.install", "schema.register", "schema.connect", "schema.add_tables_and_columns", "statements.count", "transaction"] } },
+      "properties": { "op": { "enum": ["dsn.connect", "model.connect", "codec.decode", "codec.encode", "codec.host_encode", "codec.host_decode", "codec.blind_index", "sql.exec", "ir.validate", "ir.answer", "catalog.current_namespace", "catalog.describe_table", "catalog.table_page", "catalog.read_only_query", "catalog.read_only_grid_query", "catalog.row_snapshot", "catalog.insert_row", "catalog.update_row", "catalog.delete_row", "schema.install", "schema.register", "schema.connect", "schema.add_tables_and_columns", "statements.count", "transaction", "model.create", "model.creates", "model.save", "model.duplicate_create", "model.update", "model.arithmetic", "model.delete", "model.count", "model.get_by", "model.query"] } },
       "oneOf": [
         { "$ref": "#/$defs/ops/dsn.connect" },
         { "$ref": "#/$defs/ops/model.connect" },
@@ -209,7 +210,17 @@
         { "$ref": "#/$defs/ops/schema.connect" },
         { "$ref": "#/$defs/ops/schema.add_tables_and_columns" },
         { "$ref": "#/$defs/ops/statements.count" },
-        { "$ref": "#/$defs/ops/transaction" }
+        { "$ref": "#/$defs/ops/transaction" },
+        { "$ref": "#/$defs/ops/model.create" },
+        { "$ref": "#/$defs/ops/model.creates" },
+        { "$ref": "#/$defs/ops/model.save" },
+        { "$ref": "#/$defs/ops/model.duplicate_create" },
+        { "$ref": "#/$defs/ops/model.update" },
+        { "$ref": "#/$defs/ops/model.arithmetic" },
+        { "$ref": "#/$defs/ops/model.delete" },
+        { "$ref": "#/$defs/ops/model.count" },
+        { "$ref": "#/$defs/ops/model.get_by" },
+        { "$ref": "#/$defs/ops/model.query" }
       ]
     },
     "stepList": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/step" } },
@@ -459,7 +470,17 @@
           "snapshot": { "$ref": "#/$defs/ref" },
           "expect": { "type": "object", "minProperties": 1, "additionalProperties": { "$ref": "#/$defs/outcomes/value" } }
         }
-      }
+      },
+      "model.create": {"type": "object", "required": ["op", "connection", "model", "values"], "additionalProperties": false, "properties": {"op": {"const": "model.create"}, "connection": {"$ref": "#/$defs/name"}, "model": {"$ref": "#/$defs/model"}, "values": {"$ref": "#/$defs/assignments"}, "as": {"$ref": "#/$defs/name"}, "expect": {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/outcomes/error"}}}},
+      "model.creates": {"type": "object", "required": ["op", "connection", "model", "rows", "batch", "expect"], "additionalProperties": false, "properties": {"op": {"const": "model.creates"}, "connection": {"$ref": "#/$defs/name"}, "model": {"$ref": "#/$defs/model"}, "rows": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/assignments"}}, "batch": {"type": "integer", "minimum": 0}, "expect": {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/outcomes/value"}}}},
+      "model.save": {"type": "object", "required": ["op", "connection", "model", "values"], "additionalProperties": false, "properties": {"op": {"const": "model.save"}, "connection": {"$ref": "#/$defs/name"}, "model": {"$ref": "#/$defs/model"}, "values": {"$ref": "#/$defs/assignments"}, "expect": {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/outcomes/error"}}}},
+      "model.duplicate_create": {"type": "object", "required": ["op", "connection", "model", "values", "duplication"], "additionalProperties": false, "properties": {"op": {"const": "model.duplicate_create"}, "connection": {"$ref": "#/$defs/name"}, "model": {"$ref": "#/$defs/model"}, "values": {"$ref": "#/$defs/assignments"}, "duplication": {"$ref": "#/$defs/assignments"}, "expect": {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/outcomes/error"}}}},
+      "model.update": {"type": "object", "required": ["op", "connection", "model", "key", "set"], "additionalProperties": false, "properties": {"op": {"const": "model.update"}, "connection": {"$ref": "#/$defs/name"}, "model": {"$ref": "#/$defs/model"}, "key": {"$ref": "#/$defs/assignments"}, "set": {"$ref": "#/$defs/assignments"}, "expect": {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/outcomes/error"}}}},
+      "model.arithmetic": {"type": "object", "required": ["op", "connection", "model", "key", "column", "operation", "amount"], "additionalProperties": false, "properties": {"op": {"const": "model.arithmetic"}, "connection": {"$ref": "#/$defs/name"}, "model": {"$ref": "#/$defs/model"}, "key": {"$ref": "#/$defs/assignments"}, "column": {"$ref": "#/$defs/name"}, "operation": {"enum": ["plus", "minus"]}, "amount": {"$ref": "#/$defs/value"}, "expect": {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/outcomes/error"}}}},
+      "model.delete": {"type": "object", "required": ["op", "connection", "model", "where"], "additionalProperties": false, "properties": {"op": {"const": "model.delete"}, "connection": {"$ref": "#/$defs/name"}, "model": {"$ref": "#/$defs/model"}, "where": {"type": "object", "propertyNames": {"$ref": "#/$defs/name"}, "additionalProperties": {"$ref": "#/$defs/argument"}}, "expect": {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/outcomes/error"}}}},
+      "model.count": {"type": "object", "required": ["op", "connection", "model", "where", "expect"], "additionalProperties": false, "properties": {"op": {"const": "model.count"}, "connection": {"$ref": "#/$defs/name"}, "model": {"$ref": "#/$defs/model"}, "where": {"type": "object", "propertyNames": {"$ref": "#/$defs/name"}, "additionalProperties": {"$ref": "#/$defs/argument"}}, "expect": {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/outcomes/value"}}}},
+      "model.get_by": {"type": "object", "required": ["op", "connection", "model", "key", "columns", "expect"], "additionalProperties": false, "properties": {"op": {"const": "model.get_by"}, "connection": {"$ref": "#/$defs/name"}, "model": {"$ref": "#/$defs/model"}, "key": {"$ref": "#/$defs/assignments"}, "columns": {"type": "array", "items": {"$ref": "#/$defs/name"}}, "expect": {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/outcomes/rows"}}}},
+      "model.query": {"type": "object", "required": ["op", "connection", "model", "where", "order", "columns", "expect"], "additionalProperties": false, "properties": {"op": {"const": "model.query"}, "connection": {"$ref": "#/$defs/name"}, "model": {"$ref": "#/$defs/model"}, "where": {"type": "object", "propertyNames": {"$ref": "#/$defs/name"}, "additionalProperties": {"$ref": "#/$defs/argument"}}, "order": {"type": "array", "items": {"$ref": "#/$defs/name"}}, "columns": {"type": "array", "items": {"$ref": "#/$defs/name"}}, "expect": {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/outcomes/rows"}}}}
     },
     "outcomes": {
       "count": {
@@ -468,6 +489,7 @@
           { "type": "object", "required": ["error"], "additionalProperties": false, "properties": { "error": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" } } }
         ]
       },
+      "error": { "type": "object", "required": ["error"], "additionalProperties": false, "properties": { "error": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" } } },
       "value": {
         "oneOf": [
           { "type": "object", "required": ["value"], "additionalProperties": false, "properties": { "value": { "$ref": "#/$defs/argument" } } },

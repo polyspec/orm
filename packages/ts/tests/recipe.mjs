@@ -10,10 +10,11 @@ import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { Db, OrmError, StyledValue, blindIndex, connectCatalog, dbspecManifest, decode, encode, hostDecode, hostEncode, parseDbspec, parseDbspecSet, readDbspecFile, registerModel } from '../dist/index.js';
+import { Db, OrmError, StyledValue, blindIndex, connectCatalog, dbspecManifest, decode, encode, hostDecode, hostEncode, parseDbspec, parseDbspecSet, readDbspecSet, registerModel } from '../dist/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { withCaseDatabase } from './case-database.mjs';
+import { modelOps } from './recipe_model.mjs';
 import { nativeQuery } from './coverage_case.mjs';
 import { conformanceCases, normalize } from './markdown_cases.mjs';
 import { listenMarkdownTestServer } from './markdown_test_listener.mjs';
@@ -227,37 +228,50 @@ async function databaseRecipe(path, database) {
   const name = path;
   if (recipe.fixture === undefined) throw new Error(`recipe ${name}: no fixture, so it has no database`);
   // A fixture of none runs every case on an empty case database; the helper never infers it (FCV-3).
-  const schema = recipe.fixture === NONE_FIXTURE ? undefined : await fixtureSchema(resolve(root, recipe.fixture));
+  const { schema, installFirst } = recipe.fixture === NONE_FIXTURE
+    ? { schema: undefined, installFirst: [] }
+    : await fixtureSchema(resolve(root, recipe.fixture));
   for (const recipeCase of recipe.cases) {
     caseTest(recipeCase.id, DATABASE, ({ step }) =>
-      withCaseDatabase(database, step, caseDatabase => runCase({ name, recipe, recipeCase, database, schema, caseDatabase, step })));
+      withCaseDatabase(database, step, caseDatabase => runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step })));
   }
 }
 
-/** The Schema of a dbspec-set.json: the parse and the manifest of its documents through the public dbspec API. */
+/**
+ * The Schema of a dbspec-set.json through the public dbspec API (docs/spec/dbspec.md "External documents"): the owned
+ * documents parsed with the external ones of the set, and the manifest of the owned documents with the external text.
+ * Each external document is also a schema of its own, which a case installs first, as the bench set does.
+ */
 async function fixtureSchema(setPath) {
-  const set = JSON.parse(await readFile(setPath, 'utf8'));
-  const documents = [];
-  for (const document of set.documents) {
-    const path = resolve(dirname(setPath), document);
-    const read = await readDbspecFile(path);
-    if (read.text === null) throw new Error(`${path}: ${JSON.stringify(read.diagnostics)}`);
-    const parsed = parseDbspec(read.text, {});
-    if (parsed.document === null) throw new Error(`${path}: ${JSON.stringify(parsed.diagnostics)}`);
-    documents.push(parsed.document);
-  }
-  const { manifest, diagnostics } = dbspecManifest(documents);
-  if (manifest === null) throw new Error(`${setPath}: ${JSON.stringify(diagnostics)}`);
-  return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
+  const set = readDbspecSet(setPath);
+  if (set.documents === null) throw new Error(`${setPath}: ${JSON.stringify(set.errors)}`);
+  const text = file => new TextDecoder('utf-8', { fatal: true }).decode(file.bytes);
+  const owned = set.documents.map(text);
+  const external = set.external.map(text);
+  const manifestOf = (owners, externals) => {
+    const documents = parseDbspecSet(owners, externals).map(parsed => {
+      if (parsed.document === null || parsed.diagnostics.length > 0) throw new Error(`${setPath}: ${parsed.name}: ${JSON.stringify(parsed.diagnostics)}`);
+      return parsed.document;
+    });
+    const { manifest, diagnostics } = dbspecManifest(documents);
+    if (manifest === null) throw new Error(`${setPath}: ${JSON.stringify(diagnostics)}`);
+    return manifest;
+  };
+  const manifest = manifestOf(owned, external);
+  const installFirst = external.map(each => {
+    const shared = manifestOf([each], []);
+    return { manifestText: shared.manifestText, manifestHash: shared.manifestHash };
+  });
+  return { schema: { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash, externalText: manifest.externalText }, installFirst };
 }
 
 const NONE_FIXTURE = 'none';
 
-async function runCase({ name, recipe, recipeCase, database, schema, caseDatabase, step }) {
+async function runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step }) {
   const db = await Db.connect(caseDatabase.dsn);
   try {
     if (schema !== undefined) {
-      await db.utils().schema().install(schema);
+      for (const shared of [...installFirst, schema]) await db.utils().schema().install(shared);
       step('schema installed');
     }
     await runCaseOn({ name, recipe, recipeCase, database, caseDatabase, step, db });
@@ -267,11 +281,12 @@ async function runCase({ name, recipe, recipeCase, database, schema, caseDatabas
 }
 
 async function runCaseOn({ name, recipe, recipeCase, database, caseDatabase, step, db }) {
+  const closers = [];
   const catalog = await connectCatalog(caseDatabase.dsn);
   try {
     const namespace = await catalog.currentNamespace();
     const bound = new Map([['database', { text: caseDatabase.name }]]);
-    const context = { catalog, namespace, database, dsn: caseDatabase.dsn, bound, db, dir: dirname(resolve(root, name)) };
+    const context = { catalog, namespace, database, dsn: caseDatabase.dsn, bound, db, dir: dirname(resolve(root, name)), closers };
     for (const rows of [recipe.seed?.rows, recipeCase.seed?.rows]) {
       for (const [table, values] of Object.entries(rows ?? {})) {
         const metadata = await catalog.describeTable({ namespace, name: table });
@@ -289,11 +304,14 @@ async function runCaseOn({ name, recipe, recipeCase, database, caseDatabase, ste
       step(`step ${index} ${current.op}`);
     }
   } finally {
+    for (const close of closers) await close();
     await catalog.close();
   }
 }
 
 // Each op maps to one call of the public API and returns the fields that its expect compares.
+const MODEL_OPS = modelOps({ native, databaseValue, stepArgument });
+
 const OPS = {
   // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
   async 'dsn.connect'(s, context) {
@@ -350,7 +368,7 @@ const OPS = {
 };
 
 async function runStep(s, context) {
-  const op = OPS[s.op];
+  const op = OPS[s.op] ?? MODEL_OPS[s.op];
   if (op === undefined) throw new Error(`OP_UNKNOWN ${s.op}`);
   const expected = s.expect === undefined ? undefined : resolveRefs(s.expect[context.database], context);
   let actual;

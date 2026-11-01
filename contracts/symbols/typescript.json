@@ -14431,10 +14431,6 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::Account#field.getReadCount": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::Account#field.getReadTotal": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -14596,10 +14592,6 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::AccountProject#field.getOwner": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::AccountProject#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -14787,10 +14779,6 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::AuditRecord#field.getReadCount": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::AuditRecord#field.getReadTotal": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -14948,10 +14936,6 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::AuditedNote#field.getOwner": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::AuditedNote#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -15164,10 +15148,6 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getOwner": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -17243,10 +17223,6 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::BindCell#field.getReadCount": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::BindCell#field.getReadTotal": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -17476,10 +17452,6 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::ClockCell#field.getOwner": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::ClockCell#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -17751,10 +17723,6 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::CompositeAccount#field.getReadCount": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::CompositeAccount#field.getReadTotal": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -17968,10 +17936,6 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::CompositeMembership#field.getOwner": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::CompositeMembership#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -18192,10 +18156,6 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::DayCell#field.getOwner": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::DayCell#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -18427,10 +18387,6 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::HexCell#field.getReadCount": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::HexCell#field.getReadTotal": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -18623,10 +18579,6 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::IpHexCell#field.getReadCount": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::IpHexCell#field.getReadTotal": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -18780,10 +18732,6 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::NoteReader#field.getOwner": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::NoteReader#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -18963,10 +18911,6 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::Project#field.getReadCount": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::Project#field.getReadTotal": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -19120,10 +19064,6 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::Service#field.getOwner": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::Service#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -19316,10 +19256,6 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::ServiceMember#field.getOwner": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::ServiceMember#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -19571,10 +19507,6 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::ServiceRegion#field.getReadCount": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::ServiceRegion#field.getReadTotal": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -19795,10 +19727,6 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::SharedNote#field.getReadCount": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::SharedNote#field.getReadTotal": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -19960,10 +19888,6 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::SoftLink#field.getOwner": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::SoftLink#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -20195,10 +20119,6 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::SoftRecord#field.getReadCount": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::SoftRecord#field.getReadTotal": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -20388,10 +20308,6 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::Task#field.getOwner": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::Task#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -20591,10 +20507,6 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::TimeCell#field.getReadCount": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::TimeCell#field.getReadTotal": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -20788,10 +20700,6 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::UpsertCell#field.getOwner": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::UpsertCell#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -20999,10 +20907,6 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::User#field.getReadCount": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::User#field.getReadTotal": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -21168,10 +21072,6 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::UuidCell#field.getOwner": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::UuidCell#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
