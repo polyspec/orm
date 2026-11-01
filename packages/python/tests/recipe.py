@@ -781,11 +781,10 @@ def _op_model_query(step: dict, context: dict) -> dict:
         parents = list(page["items"])
         total = page["totalCount"]
     else:
-        parents = list(parent.gets().values())
+        # limit is the public limit of the statement (FCV-4), so a limit on a split IN list fails with IR_INVALID.
         if limit > 0:
-            parents = parents[
-                min(offset, len(parents)) : min(offset + limit, len(parents))
-            ]
+            parent.core.set_limit(offset, limit)
+        parents = list(parent.gets().values())
     rows = []
     for row in parents:
         own = _project(row, step["columns"])
@@ -1073,7 +1072,25 @@ def _native(wrapper: dict) -> Any:
         return value
     if kind == "null":
         return None
+    # An array is a list of values (an IN list of where); a sequence item adds its integers in place (FCV-4).
+    if kind == "array":
+        return [
+            item
+            for element in value
+            for item in (
+                _sequence_values(element["sequence"])
+                if "sequence" in element
+                else [_native(element)]
+            )
+        ]
+    if kind == "sequence":
+        return _sequence_values(value)
     raise AssertionError(f"unknown recipe wrapper {kind}")
+
+
+def _sequence_values(sequence: dict) -> list:
+    """The integer values from, from + 1, ... of a {"sequence": {"from", "count"}} wrapper (FCV-4)."""
+    return [int(sequence["from"]) + index for index in range(int(sequence["count"]))]
 
 
 def _temporal_kind(native_type: str | None) -> str | None:

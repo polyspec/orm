@@ -13,7 +13,6 @@ mod coverage_env;
 mod coverage_group_rows_db;
 mod coverage_model_queries;
 mod coverage_model_writes;
-mod coverage_parameter_chunking;
 mod coverage_schema_install;
 mod coverage_transactions;
 mod result_chains;

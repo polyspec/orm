@@ -903,12 +903,13 @@ final class Recipe
                 $parents[] = $row;
             }
         } else {
+            // limit is the public limit of the statement (FCV-4), so a limit on a split IN list fails with IR_INVALID.
+            if ($limit > 0) {
+                $parent->limit($offset, $limit);
+            }
             $parents = [];
             foreach ($parent->gets() as $row) {
                 $parents[] = $row;
-            }
-            if ($limit > 0) {
-                $parents = array_slice($parents, $offset, $limit);
             }
         }
         $rows = [];
@@ -1143,8 +1144,27 @@ final class Recipe
                 return $w['bool'];
             case 'null':
                 return null;
+            // An array is a list of values (an IN list of where); a sequence item adds its integers in place (FCV-4).
+            case 'array':
+                $list = [];
+                foreach ($w['array'] as $item) {
+                    if (array_key_first($item) === 'sequence') {
+                        array_push($list, ...self::sequenceValues($item['sequence']));
+                    } else {
+                        $list[] = self::nativeValue($item);
+                    }
+                }
+                return $list;
+            case 'sequence':
+                return self::sequenceValues($w['sequence']);
         }
         Assert::fail("unknown recipe wrapper $kind");
+    }
+
+    /** The integer values from, from + 1, ... of a {"sequence": {"from", "count"}} wrapper (FCV-4). */
+    private static function sequenceValues(array $sequence): array
+    {
+        return array_map(static fn(int $index): int => $sequence['from'] + $index, range(0, $sequence['count'] - 1));
     }
 
     /** The recipe wrapper of a plain value; a string takes the wrapper of the native type of its column when one is known. */

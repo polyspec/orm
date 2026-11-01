@@ -27683,72 +27683,143 @@
       ]
     },
     {
-      "id": "coverage-parameter-chunking-root-in-chunking",
-      "kind": "feature",
+      "id": "parameter_chunking-mysql",
+      "kind": "suite",
       "requirements": [
-        "PRT-76",
-        "PLN-44"
+        "PLN-44",
+        "PRT-76"
       ],
+      "file": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_parameter_chunking_test.go",
-          "id": "TestCoverageRootInChunking",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRootInChunking",
-            "FEATURE_PACKAGE=./model"
-          ]
+          "test": "packages/go/orm/recipe_parameter_chunking_test.go",
+          "symbol": "TestRecipeParameterChunkingMysql"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageParameterChunkingTest.php",
-          "id": "CoverageParameterChunkingTest::testRootInChunking"
+          "test": "packages/php/tests/ParameterChunkingMysqlTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ParameterChunkingMysqlTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageParameterChunkingExtensionTest.php",
-          "id": "CoverageParameterChunkingExtensionTest::test_root_in_chunking"
+          "test": "packages/php-ext/tests/ParameterChunkingMysqlRecipeExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ParameterChunkingMysqlRecipeExtensionTest::testMysql"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_parameter_chunking.mjs",
-          "id": "root_in_chunking"
+          "test": "packages/ts/tests/parameter_chunking-mysql.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_parameter_chunking.py",
-          "id": "test_root_in_chunking"
+          "test": "packages/python/tests/test_parameter_chunking_mysql.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_parameter_chunking.rs",
-          "id": "coverage_parameter_chunking::coverage_root_in_chunking",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_parameter_chunking::coverage_root_in_chunking"
-          ]
+          "test": "packages/rust/tests/tests/parameter_chunking_mysql.rs",
+          "symbol": "parameter_chunking_mysql"
+        }
+      ]
+    },
+    {
+      "id": "parameter_chunking-postgres",
+      "kind": "suite",
+      "requirements": [
+        "PLN-44",
+        "PRT-76"
+      ],
+      "file": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_parameter_chunking_test.go",
+          "symbol": "TestRecipeParameterChunkingPostgres"
         },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ParameterChunkingPostgresTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ParameterChunkingPostgresTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ParameterChunkingPostgresRecipeExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ParameterChunkingPostgresRecipeExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/parameter_chunking-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_parameter_chunking_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/parameter_chunking_postgres.rs",
+          "symbol": "parameter_chunking_postgres"
+        }
+      ]
+    },
+    {
+      "id": "parameter_chunking-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "PLN-44",
+        "PRT-76"
+      ],
+      "file": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_parameter_chunking_test.go",
+          "symbol": "TestRecipeParameterChunkingSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ParameterChunkingSqliteTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ParameterChunkingSqliteTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ParameterChunkingSqliteRecipeExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ParameterChunkingSqliteRecipeExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/parameter_chunking-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_parameter_chunking_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/parameter_chunking_sqlite.rs",
+          "symbol": "parameter_chunking_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "coverage-parameter-chunking-native",
+      "kind": "feature",
+      "requirements": [
+        "PRT-80"
+      ],
+      "bindings": [
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/ParameterChunkingNativeTest.php",
           "id": "ParameterChunkingNativeTest::test_root_in_chunks_use_native_model_queries_and_reject_unmergeable_pages"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "parameter_chunking",
+        "part": "owner/php-extension"
+      }
     },
     {
       "id": "complex-query-product-search",

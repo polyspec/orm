@@ -407,15 +407,15 @@ func (c *databaseContext) query(s databaseStep) (outcome, error) {
 		total = page.TotalCount
 		parents = page.Items.Slice()
 	} else {
+		// limit is the public Limit of the statement (FCV-4), so a limit on a split IN list fails with IR_INVALID.
+		if s.Limit > 0 {
+			core.Limit(int(s.Offset), s.Limit)
+		}
 		rows, err := orm.Gets[*row](core)
 		if err != nil {
 			return outcome{}, err
 		}
 		parents = rows.Slice()
-		if s.Limit > 0 {
-			end := min(int(s.Offset)+s.Limit, len(parents))
-			parents = parents[min(int(s.Offset), len(parents)):end]
-		}
 	}
 	out := []any{}
 	for _, p := range parents {

@@ -1,0 +1,7 @@
+dbspec 1 parameter_chunking
+
+table chunk_author {
+  seq i64
+  name varchar(32)
+  primary key (seq)
+}

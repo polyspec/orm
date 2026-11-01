@@ -394,8 +394,9 @@ const OPS = {
       parents = page.items.values();
       total = page.totalCount;
     } else {
+      // limit is the public limit of the statement (FCV-4), so a limit on a split IN list fails with IR_INVALID.
+      if (s.limit > 0) parent[CORE].setLimit(offset, s.limit);
       parents = (await parent.gets()).values();
-      if (s.limit > 0) parents = parents.slice(Math.min(offset, parents.length), Math.min(offset + s.limit, parents.length));
     }
     const rows = [];
     for (const row of parents) {
@@ -667,8 +668,16 @@ function native(wrapper) {
     case 'bytes_hex': return Uint8Array.from(Buffer.from(value, 'hex'));
     case 'bool': return value;
     case 'null': return null;
+    // An array is a list of values (an IN list of where); a sequence item adds its integers in place (FCV-4).
+    case 'array': return value.flatMap(item => ('sequence' in item ? sequenceValues(item.sequence) : [native(item)]));
+    case 'sequence': return sequenceValues(value);
     default: throw new Error(`unknown recipe wrapper ${kind}`);
   }
+}
+
+/** The integer values from, from + 1, ... of a {"sequence": {"from", "count"}} wrapper (FCV-4). */
+function sequenceValues({ from, count }) {
+  return Array.from({ length: count }, (_, index) => native({ int: String(from + index) }));
 }
 
 /** The recipe wrapper of a plain value; a string takes the wrapper of the native type of its column when one is known. */

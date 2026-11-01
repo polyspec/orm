@@ -1,0 +1,116 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "PLN-44",
+    "PRT-76"
+  ],
+  "fixture": "contracts/fixtures/parameter_chunking/dbspec-set.json",
+  "cases": [
+    {
+      "id": "root_in_chunking",
+      "requirements": [
+        "PLN-44",
+        "PRT-76"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "INSERT INTO chunk_author (seq, name) WITH d AS (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) SELECT s.v, CONCAT('author-', s.v) FROM (SELECT a.n + 10 * b.n + 100 * c.n + 1000 * e.n + 10000 * f.n + 1 AS v FROM d a, d b, d c, d e, d f) s WHERE s.v <= 70000",
+            "postgres": "INSERT INTO chunk_author (seq, name) SELECT g, 'author-' || g FROM generate_series(1, 70000) AS g",
+            "sqlite": "WITH RECURSIVE g(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM g WHERE i < 70000) INSERT INTO chunk_author (seq, name) SELECT i, 'author-' || i FROM g"
+          },
+          "reason": "seeds the author rows 1 to 70000 with set-based SQL in each database, so the IN list can count them"
+        },
+        {
+          "op": "model.count",
+          "model": "chunk_author",
+          "where": {
+            "seq": {
+              "array": [
+                {
+                  "sequence": {
+                    "from": 1,
+                    "count": 70000
+                  }
+                },
+                {
+                  "sequence": {
+                    "from": 1,
+                    "count": 200
+                  }
+                },
+                {
+                  "sequence": {
+                    "from": 200001,
+                    "count": 100
+                  }
+                }
+              ]
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "70000"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "70000"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "70000"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "model": "chunk_author",
+          "columns": [
+            "seq"
+          ],
+          "where": {
+            "seq": {
+              "array": [
+                {
+                  "sequence": {
+                    "from": 1,
+                    "count": 70000
+                  }
+                },
+                {
+                  "sequence": {
+                    "from": 1,
+                    "count": 200
+                  }
+                },
+                {
+                  "sequence": {
+                    "from": 200001,
+                    "count": 100
+                  }
+                }
+              ]
+            }
+          },
+          "limit": 10,
+          "expect": {
+            "mysql": {
+              "error": "IR_INVALID"
+            },
+            "postgres": {
+              "error": "IR_INVALID"
+            },
+            "sqlite": {
+              "error": "IR_INVALID"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

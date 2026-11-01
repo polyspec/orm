@@ -8564,9 +8564,13 @@
         }
       ],
       "parity": [
-        "coverage-parameter-chunking-root-in-chunking"
+        "parameter_chunking-mysql",
+        "parameter_chunking-postgres",
+        "parameter_chunking-sqlite",
+        "coverage-parameter-chunking-native"
       ],
       "fixtures": [
+        "contracts/fixtures/parameter_chunking/parameter_chunking.dbs",
         "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/integration/coverage_env.rs",
@@ -8581,22 +8585,32 @@
         "packages/php/tests/ParentSlotPaddingTest.php",
         "packages/php/tests/ModelTest.php",
         "packages/ts/tests/model.mjs",
-        "packages/go/model/coverage_parameter_chunking_test.go",
-        "packages/php/tests/CoverageParameterChunkingTest.php",
-        "packages/rust/tests/tests/integration/coverage_parameter_chunking.rs",
-        "packages/ts/tests/coverage_parameter_chunking.mjs",
         "packages/rust/tests/tests/integration/result_chains.rs",
         "packages/rust/tests/build.rs",
         "packages/rust/tests/bench_model.rs",
         "packages/rust/tests/nonnull.dbs",
-        "packages/python/tests/coverage_parameter_chunking.py",
-        "packages/php-ext/tests/CoverageParameterChunkingExtensionTest.php",
         "packages/php-ext/tests/ParameterChunkingNativeTest.php",
         "packages/rust/build/tests/unit/assignment_budget.rs",
         "packages/rust/build/tests/unit/insert_values.rs",
         "packages/rust/build/tests/unit/row_update_budget.rs",
         "packages/rust/orm/src/driver/tests.rs",
-        "packages/php-ext/tests/ModelTestExtensionTest.php"
+        "packages/php-ext/tests/ModelTestExtensionTest.php",
+        "packages/go/orm/recipe_parameter_chunking_test.go",
+        "packages/ts/tests/parameter_chunking-mysql.test.mjs",
+        "packages/python/tests/test_parameter_chunking_mysql.py",
+        "packages/rust/tests/tests/parameter_chunking_mysql.rs",
+        "packages/php/tests/ParameterChunkingMysqlTest.php",
+        "packages/php-ext/tests/ParameterChunkingMysqlRecipeExtensionTest.php",
+        "packages/ts/tests/parameter_chunking-postgres.test.mjs",
+        "packages/python/tests/test_parameter_chunking_postgres.py",
+        "packages/rust/tests/tests/parameter_chunking_postgres.rs",
+        "packages/php/tests/ParameterChunkingPostgresTest.php",
+        "packages/php-ext/tests/ParameterChunkingPostgresRecipeExtensionTest.php",
+        "packages/ts/tests/parameter_chunking-sqlite.test.mjs",
+        "packages/python/tests/test_parameter_chunking_sqlite.py",
+        "packages/rust/tests/tests/parameter_chunking_sqlite.rs",
+        "packages/php/tests/ParameterChunkingSqliteTest.php",
+        "packages/php-ext/tests/ParameterChunkingSqliteRecipeExtensionTest.php"
       ],
       "docs": [
         "docs/spec/protocol.md",
@@ -8665,23 +8679,23 @@
         ],
         "owners": {
           "go": {
-            "part": "packages/go/model",
+            "part": "packages/go/orm",
             "tests": [
-              "packages/go/model/coverage_parameter_chunking_test.go"
+              "packages/go/orm/recipe_parameter_chunking_test.go"
             ],
             "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "contracts/fixtures/parameter_chunking/parameter_chunking.dbs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_parameter_chunking_test.go",
+                  "test": "packages/go/orm/recipe_parameter_chunking_test.go",
                   "cases": [
                     "root_in_chunking"
                   ],
                   "symbols": {
-                    "root_in_chunking": "TestCoverageRootInChunking"
+                    "root_in_chunking": "TestRecipeParameterChunkingMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -8689,12 +8703,12 @@
               "postgres": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_parameter_chunking_test.go",
+                  "test": "packages/go/orm/recipe_parameter_chunking_test.go",
                   "cases": [
                     "root_in_chunking"
                   ],
                   "symbols": {
-                    "root_in_chunking": "TestCoverageRootInChunking"
+                    "root_in_chunking": "TestRecipeParameterChunkingPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -8702,62 +8716,12 @@
               "sqlite": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_parameter_chunking_test.go",
+                  "test": "packages/go/orm/recipe_parameter_chunking_test.go",
                   "cases": [
                     "root_in_chunking"
                   ],
                   "symbols": {
-                    "root_in_chunking": "TestCoverageRootInChunking"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
-                }
-              ]
-            }
-          },
-          "php": {
-            "part": "packages/php/tests",
-            "tests": [
-              "packages/php/tests/CoverageParameterChunkingTest.php"
-            ],
-            "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
-            ],
-            "commands": {
-              "mysql": [
-                {
-                  "runner": "php",
-                  "test": "packages/php/tests/CoverageParameterChunkingTest.php",
-                  "cases": [
-                    "root_in_chunking"
-                  ],
-                  "symbols": {
-                    "root_in_chunking": "testRootInChunking"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
-                }
-              ],
-              "postgres": [
-                {
-                  "runner": "php",
-                  "test": "packages/php/tests/CoverageParameterChunkingTest.php",
-                  "cases": [
-                    "root_in_chunking"
-                  ],
-                  "symbols": {
-                    "root_in_chunking": "testRootInChunking"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
-                }
-              ],
-              "sqlite": [
-                {
-                  "runner": "php",
-                  "test": "packages/php/tests/CoverageParameterChunkingTest.php",
-                  "cases": [
-                    "root_in_chunking"
-                  ],
-                  "symbols": {
-                    "root_in_chunking": "testRootInChunking"
+                    "root_in_chunking": "TestRecipeParameterChunkingSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -8767,21 +8731,23 @@
           "rust": {
             "part": "packages/rust/tests",
             "tests": [
-              "packages/rust/tests/tests/integration/coverage_parameter_chunking.rs"
+              "packages/rust/tests/tests/parameter_chunking_mysql.rs",
+              "packages/rust/tests/tests/parameter_chunking_postgres.rs",
+              "packages/rust/tests/tests/parameter_chunking_sqlite.rs"
             ],
             "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "contracts/fixtures/parameter_chunking/parameter_chunking.dbs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration/coverage_parameter_chunking.rs",
+                  "test": "packages/rust/tests/tests/parameter_chunking_mysql.rs",
                   "cases": [
                     "root_in_chunking"
                   ],
                   "symbols": {
-                    "root_in_chunking": "coverage_parameter_chunking::coverage_root_in_chunking"
+                    "root_in_chunking": "parameter_chunking_mysql::root_in_chunking"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -8789,12 +8755,12 @@
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration/coverage_parameter_chunking.rs",
+                  "test": "packages/rust/tests/tests/parameter_chunking_postgres.rs",
                   "cases": [
                     "root_in_chunking"
                   ],
                   "symbols": {
-                    "root_in_chunking": "coverage_parameter_chunking::coverage_root_in_chunking"
+                    "root_in_chunking": "parameter_chunking_postgres::root_in_chunking"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -8802,12 +8768,12 @@
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration/coverage_parameter_chunking.rs",
+                  "test": "packages/rust/tests/tests/parameter_chunking_sqlite.rs",
                   "cases": [
                     "root_in_chunking"
                   ],
                   "symbols": {
-                    "root_in_chunking": "coverage_parameter_chunking::coverage_root_in_chunking"
+                    "root_in_chunking": "parameter_chunking_sqlite::root_in_chunking"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -8817,16 +8783,18 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
-              "packages/ts/tests/coverage_parameter_chunking.mjs"
+              "packages/ts/tests/parameter_chunking-mysql.test.mjs",
+              "packages/ts/tests/parameter_chunking-postgres.test.mjs",
+              "packages/ts/tests/parameter_chunking-sqlite.test.mjs"
             ],
             "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "contracts/fixtures/parameter_chunking/parameter_chunking.dbs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_parameter_chunking.mjs",
+                  "test": "packages/ts/tests/parameter_chunking-mysql.test.mjs",
                   "cases": [
                     "root_in_chunking"
                   ],
@@ -8836,7 +8804,7 @@
               "postgres": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_parameter_chunking.mjs",
+                  "test": "packages/ts/tests/parameter_chunking-postgres.test.mjs",
                   "cases": [
                     "root_in_chunking"
                   ],
@@ -8846,7 +8814,7 @@
               "sqlite": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_parameter_chunking.mjs",
+                  "test": "packages/ts/tests/parameter_chunking-sqlite.test.mjs",
                   "cases": [
                     "root_in_chunking"
                   ],
@@ -8858,16 +8826,18 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_parameter_chunking.py"
+              "packages/python/tests/test_parameter_chunking_mysql.py",
+              "packages/python/tests/test_parameter_chunking_postgres.py",
+              "packages/python/tests/test_parameter_chunking_sqlite.py"
             ],
             "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "contracts/fixtures/parameter_chunking/parameter_chunking.dbs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_parameter_chunking.py",
+                  "test": "packages/python/tests/test_parameter_chunking_mysql.py",
                   "cases": [
                     "root_in_chunking"
                   ],
@@ -8877,7 +8847,7 @@
               "postgres": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_parameter_chunking.py",
+                  "test": "packages/python/tests/test_parameter_chunking_postgres.py",
                   "cases": [
                     "root_in_chunking"
                   ],
@@ -8887,7 +8857,7 @@
               "sqlite": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_parameter_chunking.py",
+                  "test": "packages/python/tests/test_parameter_chunking_sqlite.py",
                   "cases": [
                     "root_in_chunking"
                   ],
@@ -8896,42 +8866,140 @@
               ]
             }
           },
-          "php-extension": {
-            "part": "packages/php-ext/tests",
+          "php": {
+            "part": "packages/php/tests",
             "tests": [
-              "packages/php-ext/tests/CoverageParameterChunkingExtensionTest.php"
+              "packages/php/tests/ParameterChunkingMysqlTest.php",
+              "packages/php/tests/ParameterChunkingPostgresTest.php",
+              "packages/php/tests/ParameterChunkingSqliteTest.php"
             ],
             "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "contracts/fixtures/parameter_chunking/parameter_chunking.dbs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageParameterChunkingExtensionTest.php",
+                  "test": "packages/php/tests/ParameterChunkingMysqlTest.php",
                   "cases": [
                     "root_in_chunking"
                   ],
+                  "symbols": {
+                    "root_in_chunking": "testMysql"
+                  },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageParameterChunkingExtensionTest.php",
+                  "test": "packages/php/tests/ParameterChunkingPostgresTest.php",
                   "cases": [
                     "root_in_chunking"
                   ],
+                  "symbols": {
+                    "root_in_chunking": "testPostgres"
+                  },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageParameterChunkingExtensionTest.php",
+                  "test": "packages/php/tests/ParameterChunkingSqliteTest.php",
                   "cases": [
                     "root_in_chunking"
                   ],
+                  "symbols": {
+                    "root_in_chunking": "testSqlite"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "php-extension": {
+            "part": "packages/php-ext/tests",
+            "tests": [
+              "packages/php-ext/tests/ParameterChunkingMysqlRecipeExtensionTest.php",
+              "packages/php-ext/tests/ParameterChunkingPostgresRecipeExtensionTest.php",
+              "packages/php-ext/tests/ParameterChunkingSqliteRecipeExtensionTest.php",
+              "packages/php-ext/tests/ParameterChunkingNativeTest.php"
+            ],
+            "inputs": [
+              "contracts/fixtures/parameter_chunking/parameter_chunking.dbs",
+              "contracts/fixtures/bench/bench.dbs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/ParameterChunkingMysqlRecipeExtensionTest.php",
+                  "cases": [
+                    "root_in_chunking"
+                  ],
+                  "symbols": {
+                    "root_in_chunking": "testMysql"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/ParameterChunkingNativeTest.php",
+                  "cases": [
+                    "root_in_chunking"
+                  ],
+                  "symbols": {
+                    "root_in_chunking": "test_root_in_chunks_use_native_model_queries_and_reject_unmergeable_pages"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/ParameterChunkingPostgresRecipeExtensionTest.php",
+                  "cases": [
+                    "root_in_chunking"
+                  ],
+                  "symbols": {
+                    "root_in_chunking": "testPostgres"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/ParameterChunkingNativeTest.php",
+                  "cases": [
+                    "root_in_chunking"
+                  ],
+                  "symbols": {
+                    "root_in_chunking": "test_root_in_chunks_use_native_model_queries_and_reject_unmergeable_pages"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/ParameterChunkingSqliteRecipeExtensionTest.php",
+                  "cases": [
+                    "root_in_chunking"
+                  ],
+                  "symbols": {
+                    "root_in_chunking": "testSqlite"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/ParameterChunkingNativeTest.php",
+                  "cases": [
+                    "root_in_chunking"
+                  ],
+                  "symbols": {
+                    "root_in_chunking": "test_root_in_chunks_use_native_model_queries_and_reject_unmergeable_pages"
+                  },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]

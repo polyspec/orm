@@ -1045,10 +1045,10 @@ mod database {
     }
 
     /// The equalities of a where object, ANDed.
-    fn equal_where(core: &mut Core, pairs: &[(String, Param)]) {
+    fn equal_where(core: &mut Core, pairs: &[(String, ArgValue)]) {
         for (i, (column, value)) in pairs.iter().enumerate() {
             let key = ChainKey { column: leaked(column), ..ChainKey::EMPTY };
-            core.chain(if i == 0 { "" } else { "and" }, &[key], vec![Arg::Value(ArgValue::One(value.clone()))]);
+            core.chain(if i == 0 { "" } else { "and" }, &[key], vec![Arg::Value(value.clone())]);
         }
     }
 
@@ -1075,6 +1075,47 @@ mod database {
             .collect::<Result<Vec<_>, Failure>>()?;
         out.sort_by(|a, b| a.0.cmp(&b.0));
         Ok(out)
+    }
+
+    /// The where values of an object, sorted by column name: one parameter, or a list for an array or a sequence (FCV-4).
+    fn where_pairs(raw: &Value) -> Result<Vec<(String, ArgValue)>, Failure> {
+        let Some(map) = raw.as_object() else { return Ok(Vec::new()) };
+        let mut out = map
+            .iter()
+            .map(|(column, wrapper)| -> Result<(String, ArgValue), Failure> {
+                let value = if wrapper.get("array").is_some() || wrapper.get("sequence").is_some() {
+                    ArgValue::List(list_params(wrapper)?)
+                } else {
+                    ArgValue::One(request_param(wrapper)?)
+                };
+                Ok((column.clone(), value))
+            })
+            .collect::<Result<Vec<_>, Failure>>()?;
+        out.sort_by(|a, b| a.0.cmp(&b.0));
+        Ok(out)
+    }
+
+    /// The parameters of an array or a sequence wrapper; an array item that is a sequence adds its integers in place (FCV-4).
+    fn list_params(wrapper: &Value) -> Result<Vec<Param>, Failure> {
+        if let Some(sequence) = wrapper.get("sequence") {
+            return sequence_params(sequence);
+        }
+        let items = wrapper["array"].as_array().ok_or_else(|| Failure::Step(format!("{wrapper} is no array")))?;
+        let mut out = Vec::new();
+        for item in items {
+            match item.get("sequence") {
+                Some(sequence) => out.extend(sequence_params(sequence)?),
+                None => out.push(request_param(item)?),
+            }
+        }
+        Ok(out)
+    }
+
+    /// The integers from, from + 1, ... of a {"sequence": {"from", "count"}} wrapper (FCV-4).
+    fn sequence_params(sequence: &Value) -> Result<Vec<Param>, Failure> {
+        let from = sequence["from"].as_i64().ok_or_else(|| Failure::Step(format!("{sequence} has no from")))?;
+        let count = sequence["count"].as_i64().ok_or_else(|| Failure::Step(format!("{sequence} has no count")))?;
+        Ok((0..count).map(|i| Param::I64(from + i)).collect())
     }
 
     /// The names of a JSON array of strings.
@@ -1134,7 +1175,7 @@ mod database {
     /// The rows of a where object that a write or a read selects, loaded with their state.
     async fn loaded(context: &mut Context<'_>, step: &Value) -> Result<Vec<RecipeRow>, Failure> {
         let name = model_name(step)?;
-        let where_pairs = pairs(&step["where"])?;
+        let where_pairs = where_pairs(&step["where"])?;
         let core = model_core(&mut context.requests, context.schema, name, step_connection(step))?;
         let mut row = RecipeRow::from_core(core);
         equal_where(row.core_mut(), &where_pairs);
@@ -1374,7 +1415,7 @@ mod database {
             }
             "model.query" => query(step, context).await,
             "model.count" => {
-                let where_pairs = pairs(&step["where"])?;
+                let where_pairs = where_pairs(&step["where"])?;
                 let core = model_core(&mut context.requests, schema, model_name(step)?, step_connection(step))?;
                 let mut row = RecipeRow::from_core(core);
                 equal_where(row.core_mut(), &where_pairs);
@@ -1412,7 +1453,7 @@ mod database {
     async fn query(step: &Value, context: &mut Context<'_>) -> Result<Output, Failure> {
         let schema = context.schema;
         let on = step_connection(step);
-        let where_pairs = pairs(&step["where"])?;
+        let where_pairs = where_pairs(&step["where"])?;
         let mut core = model_core(&mut context.requests, schema, model_name(step)?, on)?;
         equal_where(&mut core, &where_pairs);
         for column in names(&step["order"]) {
@@ -1442,12 +1483,12 @@ mod database {
             let found = gets_page(&root, page, per_page).await.map_err(orm)?;
             (found.items.models().cloned().collect::<Vec<_>>(), Some(found.total_count))
         } else {
-            let found = gets(&root).await.map_err(orm)?;
-            let mut parents: Vec<RecipeRow> = found.models().cloned().collect();
+            // limit is the public limit of the statement (FCV-4), so a limit on a split IN list fails with IR_INVALID.
             if limit > 0 {
-                parents = parents.into_iter().skip(offset).take(limit).collect();
+                root.core_mut().limit(u32::try_from(offset).map_err(|e| Failure::Step(e.to_string()))?, u32::try_from(limit).map_err(|e| Failure::Step(e.to_string()))?);
             }
-            (parents, None)
+            let found = gets(&root).await.map_err(orm)?;
+            (found.models().cloned().collect::<Vec<RecipeRow>>(), None)
         };
         let columns = names(&step["columns"]);
         let mut rows = Vec::new();
