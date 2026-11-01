@@ -71,6 +71,15 @@ class _Failed:
         self.error = error
 
 
+def _runnable(case: dict) -> bool:
+    """Whether python runs the case: a case that its exclude names for python is left out, after one line EXCLUDED <case id> python: <reason>."""
+    reason = case.get("exclude", {}).get("python")
+    if reason is None:
+        return True
+    print(f"EXCLUDED {case['id']} python: {reason}", flush=True)
+    return False
+
+
 def recipe_tests(path: str, database: str):
     """The load_tests protocol of an entry: one test for each case of the recipe at path, relative to the repository root."""
     if database != NONE:
@@ -105,9 +114,8 @@ def recipe_tests(path: str, database: str):
     has_chain = any(
         step["op"] == "ir.answer" for case in recipe["cases"] for step in case["steps"]
     )
-    return vector_load_tests(
-        ChainRecipeCase if has_chain else RecipeCase, recipe["cases"], check
-    )
+    cases = [case for case in recipe["cases"] if _runnable(case)]
+    return vector_load_tests(ChainRecipeCase if has_chain else RecipeCase, cases, check)
 
 
 def _answer(step: dict, database: str) -> None:
@@ -587,7 +595,8 @@ def _database_recipe_tests(path: str, database: str):
             with case_database(database, directory, "orm_recipe") as dsn:
                 _run_case(path, recipe, case, database, schema, dsn)
 
-    return vector_load_tests(DatabaseRecipeCase, recipe["cases"], check)
+    cases = [case for case in recipe["cases"] if _runnable(case)]
+    return vector_load_tests(DatabaseRecipeCase, cases, check)
 
 
 def _fixture_schema(set_path: Path) -> Schema:

@@ -23,6 +23,16 @@ import { caseTest, COMPUTE, DATABASE } from '../../../tests/testcase.mts';
 // NONE is the database part of a recipe without a database (FCV-3).
 export const NONE = 'none';
 
+// registerRecipeCase registers one case of a recipe with node:test. A case whose exclude names typescript is not registered at all:
+// the runner prints `EXCLUDED <case id> typescript: <reason>` once and returns, so no test is run or reported for it (a skip is not a verification).
+function registerRecipeCase(recipeCase, deadline, body) {
+  const exclude = recipeCase.exclude ?? {};
+  if (!('typescript' in exclude)) return caseTest(recipeCase.id, deadline, body);
+  const reason = exclude.typescript;
+  if (typeof reason !== 'string' || reason === '') throw new Error(`case ${recipeCase.id}: exclude typescript needs a reason`);
+  console.log(`EXCLUDED ${recipeCase.id} typescript: ${reason}`);
+}
+
 // runRecipe registers every case of the recipe at path, relative to the repository root, on database. A database other than
 // none runs each case on a case database of its own (databaseRecipe), and the entry awaits the registration.
 export function runRecipe(path, database) {
@@ -33,7 +43,7 @@ export function runRecipe(path, database) {
   // An ir.validate step checks its request against the schema of the recipe, which the recipe names relative to its own file.
   const schema = recipe.schema === undefined ? undefined : validationModel(resolve(root, dirname(path), recipe.schema));
   for (const [caseIndex, recipeCase] of recipe.cases.entries()) {
-    caseTest(recipeCase.id, COMPUTE, async () => {
+    registerRecipeCase(recipeCase, COMPUTE, async () => {
       const bound = new Map();
       for (const [index, step] of recipeCase.steps.entries()) {
         try {
@@ -230,7 +240,7 @@ async function databaseRecipe(path, database) {
   if (recipe.fixture === undefined) throw new Error(`recipe ${name}: no fixture, so it has no database`);
   const schema = await fixtureSchema(resolve(root, recipe.fixture));
   for (const recipeCase of recipe.cases) {
-    caseTest(recipeCase.id, DATABASE, ({ step }) =>
+    registerRecipeCase(recipeCase, DATABASE, ({ step }) =>
       withCaseDatabase(database, step, caseDatabase => runCase({ name, recipe, recipeCase, database, schema, caseDatabase, step })));
   }
 }

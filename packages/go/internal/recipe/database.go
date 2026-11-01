@@ -41,9 +41,10 @@ type seed struct {
 }
 
 type databaseCase struct {
-	ID    string            `json:"id"`
-	Seed  *seed             `json:"seed"`
-	Steps []json.RawMessage `json:"steps"`
+	ID      string            `json:"id"`
+	Seed    *seed             `json:"seed"`
+	Steps   []json.RawMessage `json:"steps"`
+	Exclude map[string]string `json:"exclude"`
 }
 
 // databaseStep holds the fields of every database op (scripts/features/schema/recipe.schema.json).
@@ -124,6 +125,10 @@ func runDatabase(t *testing.T, path, database string) {
 		t.Fatalf("recipe %s: %v", path, err)
 	}
 	for _, c := range f.Cases {
+		if reason, ok := c.Exclude["go"]; ok {
+			fmt.Printf("EXCLUDED %s go: %s\n", c.ID, reason)
+			continue
+		}
 		t.Run(c.ID, func(t *testing.T) {
 			testcase.Start(t, testcase.Database)
 			runCase(t, path, f, c, database, schema)
