@@ -4,6 +4,7 @@
 // Requirements: SCH-3, SCH-5, SCH-6, SCH-6a, INT-97, INT-101, INT-102, INT-103, INT-104, INT-109, INT-112, INT-113, INT-114, INT-115, INT-121, INT-123, INT-136, INT-117.
 import assert from 'node:assert/strict';
 import { randomInt } from 'node:crypto';
+import { within } from './deadline.mjs';
 import { nativeQuery, runCases } from './coverage_case.mjs';
 import { BindCell, connect as connectModel, connectCatalog, decode } from '../dist/index.js';
 import { DatabaseSync } from 'node:sqlite';
@@ -282,15 +283,6 @@ async function mutationCase(item) {
   }
 }
 
-
-// Every case that streams a large result runs under a deadline: a read that did not stop at its budget would never finish.
-function within(promise, ms, label) {
-  let timer;
-  const deadline = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`${label}: no result within ${ms} ms`)), ms);
-  });
-  return Promise.race([promise, deadline]).finally(() => clearTimeout(timer));
-}
 
 const codeIs = (code) => (error) => error?.code === code;
 

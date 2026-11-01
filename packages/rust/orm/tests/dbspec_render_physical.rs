@@ -11,21 +11,10 @@ use or_panic::OrPanic;
 #[path = "common/dbspec_probe.rs"]
 mod dbspec_probe;
 
-use dbspec_probe::{connection_rules, lines, run_probe, Servers, DIALECTS};
+use dbspec_probe::{connection_rules, lines, parse_set, run_probe, Servers, DIALECTS};
 use polyspec_orm_schema::dbspec::{self, Document};
 use serde_json::Value;
 use std::collections::BTreeMap;
-
-/// Parses all documents of a set. Each document receives the rest as its document set.
-fn parse_set(id: &str, documents: &BTreeMap<String, String>) -> Vec<Document> {
-    documents
-        .iter()
-        .map(|(name, text)| {
-            let set: BTreeMap<String, String> = documents.iter().filter(|(other, _)| *other != name).map(|(o, t)| (o.clone(), t.clone())).collect();
-            dbspec::parse(text, &set).map(|parsed| parsed.document).or_panic(|e| format!("{id}/{name}: {e:?}"))
-        })
-        .collect()
-}
 
 /// The cases of tests/dbspec/ddl.json that have behavior steps, with their documents and steps.
 fn behavior_cases() -> Vec<(String, BTreeMap<String, String>, Vec<Value>)> {

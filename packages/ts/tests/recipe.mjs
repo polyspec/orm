@@ -15,6 +15,7 @@ import { BindCell, Db, OrmError, StyledValue, blindIndex, connect as connectMode
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { withCaseDatabase } from './case-database.mjs';
+import { within } from './deadline.mjs';
 import { nativeQuery } from './coverage_case.mjs';
 import { conformanceCases, normalize } from './markdown_cases.mjs';
 import { listenMarkdownTestServer } from './markdown_test_listener.mjs';
@@ -399,13 +400,6 @@ const OPS = {
 // OP_DEADLINE_MS bounds one op: a read that did not stop at its budget (the cross join of the user table) fails instead of running on.
 const OP_DEADLINE_MS = 20000;
 
-function within(promise, ms, label) {
-  let timer;
-  const deadline = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`${label}: no result within ${ms} ms`)), ms);
-  });
-  return Promise.race([promise, deadline]).finally(() => clearTimeout(timer));
-}
 
 async function runStep(s, context) {
   const op = OPS[s.op];

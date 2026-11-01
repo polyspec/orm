@@ -18,7 +18,7 @@ mod json_trials;
 #[path = "common/dbspec_probe.rs"]
 mod dbspec_probe;
 
-use dbspec_probe::{connection_rules, lines, repository, run_probe, strings, Servers, DIALECTS};
+use dbspec_probe::{connection_rules, lines, parse_set, repository, run_probe, strings, Servers, DIALECTS};
 use polyspec_orm_schema::dbspec::{self, Document};
 use polyspec_orm_testcase::Trial;
 use serde_json::Value;
@@ -78,17 +78,6 @@ fn round_trip_sets() -> Vec<RoundTripSet> {
         }
     }
     out
-}
-
-/// Parses all documents of the set in name order. Each document receives the rest as its document set.
-fn parse_set(id: &str, documents: &BTreeMap<String, String>) -> Vec<Document> {
-    documents
-        .iter()
-        .map(|(name, text)| {
-            let set: BTreeMap<String, String> = documents.iter().filter(|(other, _)| *other != name).map(|(o, t)| (o.clone(), t.clone())).collect();
-            dbspec::parse(text, &set).map(|parsed| parsed.document).or_panic(|e| format!("{id}/{name}: {e:?}"))
-        })
-        .collect()
 }
 
 /// The schema text of the introspected document, which holds all tables of the set in name order. Of the set's

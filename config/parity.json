@@ -622,6 +622,7 @@
         "packages/ts/tests/case-database.mjs",
         "packages/ts/tests/assertions.mjs",
         "packages/ts/tests/capture-error.mjs",
+        "packages/ts/tests/deadline.mjs",
         "packages/ts/tests/check-state.mjs",
         "packages/ts/tests/audit-history-rows.mjs",
         "packages/ts/tests/conditional-entry.mjs",

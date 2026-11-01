@@ -5,9 +5,10 @@
 
 use polyspec_orm::db::{parse_dsn, ConnectOptions};
 use polyspec_orm::dbspec::{introspect, ApplyConnection, CatalogQuerier, IntrospectError};
-use polyspec_orm_schema::dbspec::{CatalogValue, Dialect, Introspection};
+use polyspec_orm_schema::dbspec::{self, CatalogValue, Dialect, Document, Introspection};
 use serde_json::Value;
 use sqlx::{AssertSqlSafe, Connection, MySqlConnection, PgConnection, Row, SqlSafeStr, SqliteConnection};
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -18,6 +19,19 @@ const PROBE_DEADLINE: Duration = Duration::from_secs(60);
 
 /// Statements every client runs on a new connection: MySQL and PostgreSQL use UTC,
 /// and SQLite turns on foreign keys (docs/spec/dbspec.md "Types", docs/spec/dialects.md "Foreign keys").
+/// Parses all documents of a set in name order. Each document receives the rest of the set as its document set. Shared by
+/// the dbspec tests that parse a set: each test crate compiles this module, so the item is allowed unused.
+#[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
+pub fn parse_set(id: &str, documents: &BTreeMap<String, String>) -> Vec<Document> {
+    documents
+        .iter()
+        .map(|(name, text)| {
+            let set: BTreeMap<String, String> = documents.iter().filter(|(other, _)| *other != name).map(|(o, t)| (o.clone(), t.clone())).collect();
+            dbspec::parse(text, &set).map(|parsed| parsed.document).unwrap_or_else(|e| panic!("{id}/{name}: {e:?}"))
+        })
+        .collect()
+}
+
 pub fn connection_rules(db: &str) -> &'static [&'static str] {
     match db {
         "mysql" => &["SET time_zone = '+00:00'"],

@@ -16,6 +16,8 @@ use PgSql\Result;
  */
 final class PgsqlStatementAdapter extends PDOStatement
 {
+    use FetchesAllRows;
+
     private array $bindings = [];
     private array $bindingTypes = [];
     private array $boundRefs = [];
@@ -156,15 +158,6 @@ final class PgsqlStatementAdapter extends PDOStatement
             PDO::FETCH_OBJ => (object) $assoc,
             default => throw new PDOException("unsupported fetch mode $mode"),
         };
-    }
-
-    public function fetchAll(int $mode = PDO::FETCH_DEFAULT, mixed ...$args): array
-    {
-        $rows = [];
-        while (($row = $this->fetch($mode)) !== false) {
-            $rows[] = $row;
-        }
-        return $rows;
     }
 
     public function fetchColumn(int $column = 0): mixed
