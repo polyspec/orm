@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a8c1f710240215b3d970aaee9838ae5d0c71be1509de047a0a64111fccec2af4 -->
+<!-- source-sha256: e1824b35ab9dc940226a8402c05aa33474065780c34052eedecebe2dafb07aeb -->
 # 변경 이력
 
 ## Unreleased
 
+- 생성된 model은 모든 column의 조건 메서드를 선언한다(DSL-154). Go, TypeScript, Rust 생성기는 key나 index의 column에만 이를 선언해 `text_value`, `bytes_value`, `varchar_long_value`에는 조건 메서드가 없었다. 이제 각 생성기가 모든 column에 대해 선언하며, PHP와 Python 생성기는 이미 그렇게 하고 있었다 (T334-3-15-4f-1). 수정.
 - message recipe 행의 파일에 남은 lint 지적을 같은 파일에서 고쳤다 (Go errorlint와 Close, Rust Option::map, PHP, Python과 recipe helper 형식). PHP, Python, TypeScript gate와 Rust kit link에 남은 지적은 이 branch가 바꾸지 않은 파일에 있으며 CR34가 고친다 (T334-3-15-4d).
 - decimal bind case(`tests/bind/vectors.json`의 decimal slot)는 message recipe `tests/bind/messages.json`의 case다: `decimal_value`의 `markdown.send` step 하나, decimal wrapper 하나와 expect. 수정: TypeScript와 Python recipe helper가 decimal 컬럼의 float wrapper를 text로 넘겨 float을 공개 filter에서 가리고 있었다. 이제 host 값으로 넘겨, 공개 decimal filter가 PHP와 같이 float을 CODEC_ENCODE로 거부한다. 제품 코드는 바뀌지 않았다. 기존 검사가 이미 거부하고 있었다 (T334-3-15-4e).
 - message recipe 행의 파일에 남은 lint 지적을 제자리에서 고쳤다 (Go errorlint와 Close, Rust Option::map, PHP, Python과 recipe helper 형식). PHP, Python, TypeScript gate와 Rust kit link에 남은 지적은 이 branch가 바꾸지 않은 파일에 있으며 CR34가 고친다 (T334-3-15-4d).
@@ -36,6 +37,8 @@
 - recipe case는 `exclude`에 그 case를 돌리지 않는 runtime과 이유를 적을 수 있다. 제외된 runtime은 `EXCLUDED <case id> <runtime>: <reason>` 줄 하나를 출력하고 case를 목록에서 뺀다. 그래서 통과도 skip도 아니다. 모든 runtime을 제외하는 case는 schema가 거부한다. recipe schema의 데이터베이스 없는 expectation은 `markdown.send` step을 면제하고, `tests/bind/messages.json`은 검증되는 suite 파일이다 (T334-3-15-4a).
 - `tests/bind/vectors.json`의 정수 bind case(i16, i32, i64 slot)는 message recipe `tests/bind/messages.json`의 case다. 각 case는 slot 컬럼의 `markdown.send` step 하나, parameter wrapper 하나와 expect(bound 값 또는 오류 code)를 갖는다. 여섯 runtime이 공개 filter로 실행하며, 타입 있는 공개 API가 거부하는 값은 go와 rust에서 "타입 있는 공개 API가 이 host 값을 컴파일 시점에 거부한다"는 이유로 제외한다 (T334-3-15-4b).
 - `tests/bind/vectors.json`의 부동소수와 bool bind case(f64, bool slot)는 message recipe `tests/bind/messages.json`의 case다. 비유한 f64는 공개 호출이 CODEC_ENCODE로 거부한다. f64 slot의 text 또는 bool 값은 타입 없는 공개 경로가 거부하며, go와 rust에서는 타입 있는 API 이유로 제외한다. Rust의 message 비교는 정수에 대해 정확하여 1만큼 다른 i64는 실패한다 (T334-3-15-4c).
+- message recipe 행의 파일에 남은 lint 지적을 같은 파일에서 고쳤다 (Go errorlint와 Close, Rust Option::map, PHP, Python과 recipe helper 형식). PHP, Python, TypeScript gate와 Rust kit link에 남은 지적은 이 branch가 바꾸지 않은 파일에 있으며 CR34가 고친다 (T334-3-15-4d).
+- decimal bind case(`tests/bind/vectors.json`의 decimal slot)는 message recipe `tests/bind/messages.json`의 case다: `decimal_value`의 `markdown.send` step 하나, decimal wrapper 하나와 expect. 수정: TypeScript와 Python recipe helper가 decimal 컬럼의 float wrapper를 text로 넘겨 float을 공개 filter에서 가리고 있었다. 이제 host 값으로 넘겨, 공개 decimal filter가 PHP와 같이 float을 CODEC_ENCODE로 거부한다. 제품 코드는 바뀌지 않았다. 기존 검사가 이미 거부하고 있었다 (T334-3-15-4e).
 - bind vector의 slot 픽스처 `tests/bind/slots.dbs`와 그 set `tests/bind/dbspec-set.json`은 `tests/bind/vectors.json`의 parameter slot마다 컬럼 하나를 가진 테이블 하나를 둔다. 모델은 모델을 쓰는 make 대상이 생성한다(Go와 PHP는 모델 목록, TypeScript는 빌드, Python은 `bind-python-models`, Rust는 tests crate의 build script). `make bind-models-check`가 이를 검사한다 (T334-3-15-3a).
 - 읽기 answer 사례 `contracts/fixtures/ir_answers.json`은 `tests/ir/answers.json`으로 옮겨져, 여섯 runtime 모두 데이터베이스 없이 실행하는 `ir.answer` op(FCV-4)의 recipe가 된다. 각 사례는 markdown chain을 answer를 돌려주는 listener 위에서 실행한다. 대체되는 native answer test는 제거되고, parity unit ir-answers는 여섯 recipe entry에 묶인다 (#T334-3-15-2).
 - 요청 검증 사례 `tests/ir/validate.json`은 recipe(`ir.validate` op, FCV-4)가 되어 여섯 runtime 모두 데이터베이스 없이 실행한다. Go, TypeScript, PHP, PHP extension, Python, Rust의 native vector test는 제거되고, parity unit ir-validate는 여섯 recipe entry에 묶인다 (#T334-3-15-1).
