@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ef7f0a21fafc8796d45ae8622d9b8eb4d94ecc426f716d56ff80f2d8bd8e5614 -->
+<!-- source-sha256: 085cc4a2fe400bdab0c52ba6ddee26cf00cb3d899e8fc8d6ed3a2a39f0ee946e -->
 # 변경 이력
 
 ## Unreleased
@@ -57,6 +57,7 @@
 - check recipes의 Task row가 docs 규칙이 영어에서 금지하는 단어를 써서 test (static)의 docs-rules-check가 실패했다. CR39 Task는 두 언어 모두 parity 검사로 고쳤다 (CR50).
 - answer chain의 Rust test helper가 형식에 맞지 않아 test (static)에서 clients, bench, interfaces의 rust-fmt-check가 실패했다. 이제 고정된 toolchain으로 그 파일을 형식에 맞췄다 (CR51).
 - GroupRows PHP extension test가 이전 php-ext-build 형식의 build를 가짜로 만들어서 module을 찾지 못했고, test (static)의 makefile-pinned-node-recipes-check가 실패했다. 이제 가짜는 build를 한 번만 하도록 바꾼 리팩터링(CR4)이 php-ext-build에 준 형식을 따른다 (CR52).
+- dbspec PHP extension aggregate의 공유 module 테스트가 T334-3-15-1이 지운 child를 기대해서, test (static)의 makefile-pinned-node-recipes-check가 실패했다. 테스트는 요청 검증이 ir-validate-check로 옮겨진 것을 따른다 (CR53).
 
 ## 0.0.21
 

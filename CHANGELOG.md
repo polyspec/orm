@@ -56,6 +56,7 @@
 - A Task row of the check recipes used a word that the docs rule forbids in English, so docs-rules-check failed in test (static). The Task of CR39 now says parity check in both languages (CR50).
 - The Rust test helper of the answer chain was not formatted, so rust-fmt-check failed for the clients, bench and interfaces programs in test (static). The file is now formatted with the pinned toolchain (CR51).
 - The GroupRows PHP extension test faked the build of the older php-ext-build form, so its module was not found and makefile-pinned-node-recipes-check failed in test (static). The fake now follows the form that the build-once refactor (CR4) gave php-ext-build (CR52).
+- The shared-module test of the dbspec PHP extension aggregate asserted a child that T334-3-15-1 had removed, so makefile-pinned-node-recipes-check failed in test (static). The test now follows the move of request validation to ir-validate-check (CR53).
 
 ## 0.0.21
 

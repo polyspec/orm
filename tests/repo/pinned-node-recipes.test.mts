@@ -135,8 +135,7 @@ caseTest('the dbspec PHP extension aggregate owns the shared module until every 
   assert.match(aggregate, /trap 'rm -rf "\$\$run_dir"' EXIT/);
   assert.match(aggregate, /\$\(MAKE\).* -k RUN_DIR="\$\$run_dir" DBSPEC_PHP_EXTENSION_SHARED_RUN=1/);
   assert.match(makefile, /^dbspec-php-extension-check\/analyze: DBSPEC_PHP_EXTENSION_CHILD_RUN_DIR = .*dbspec-php-extension-check-analyze-\$\$PPID$/m);
-  assert.match(makefile, /^dbspec-php-extension-check\/ir: DBSPEC_PHP_EXTENSION_CHILD_RUN_DIR = .*dbspec-php-extension-check-ir-\$\$PPID$/m);
-  assert.equal((makefile.match(/if \[ -z '\$\(DBSPEC_PHP_EXTENSION_SHARED_RUN\)' \]; then trap 'rm -rf "\$\$run_dir"' EXIT; fi;/g) ?? []).length, 2);
+  assert.equal((makefile.match(/if \[ -z '\$\(DBSPEC_PHP_EXTENSION_SHARED_RUN\)' \]; then trap 'rm -rf "\$\$run_dir"' EXIT; fi;/g) ?? []).length, 1);
   const declarationCommands = makefile.split('\n').filter(line => line.includes('DeclarationsTest.php'));
   assert.ok(declarationCommands.length > 0, 'no DeclarationsTest owner command is registered');
   for (const command of declarationCommands) {
