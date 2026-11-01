@@ -22,6 +22,9 @@ final class CatalogMysqlVisibilityPdo extends CatalogAnswerPdo
         if ($query === 'SELECT CAST(@@GLOBAL.partial_revokes AS SIGNED)') {
             return [[['value' => $this->partialRevokes]], ['value'], ['LONGLONG']];
         }
+        if ($query === 'SELECT CONNECTION_ID()') {
+            return [[['id' => 7]], ['id'], ['LONGLONG']];
+        }
         if ($query === 'SELECT CURRENT_USER()') {
             return [[['value' => 'orm@localhost']], ['value'], ['VAR_STRING']];
         }

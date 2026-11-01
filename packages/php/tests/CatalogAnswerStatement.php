@@ -6,10 +6,13 @@ namespace Polyspec\Orm\Tests;
 
 use PDO;
 use PDOStatement;
+use Polyspec\Orm\Internal\FetchesAllRows;
 
 /** A statement of CatalogAnswerPdo: it fetches the values of each answered row in order; an INSERT affects one row. */
 final class CatalogAnswerStatement extends PDOStatement
 {
+    use FetchesAllRows;
+
     /** @var list<array<mixed>> */
     private array $rows = [];
     /** @var list<string> */
@@ -50,6 +53,18 @@ final class CatalogAnswerStatement extends PDOStatement
             return false;
         }
         return array_values($this->rows[$this->index++]);
+    }
+
+    /** The answers are canned, so a bound value changes nothing: the statement only records that it was bound. */
+    public function bindValue(int|string $param, mixed $value, int $type = PDO::PARAM_STR): bool
+    {
+        return true;
+    }
+
+    public function closeCursor(): bool
+    {
+        $this->rows = [];
+        return true;
     }
 
     public function rowCount(): int

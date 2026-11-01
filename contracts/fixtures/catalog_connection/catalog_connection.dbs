@@ -29,6 +29,7 @@ table bind_cell {
   seq i64 identity
   label varchar(8)
   body text null
+  token uuid null
   primary key (seq)
 }
 
