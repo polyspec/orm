@@ -2533,6 +2533,20 @@
         "packages/php/tests/SetReaderDiagnosticsTest.php"
       ]
     },
+    "dbspec-php-check/render": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "databases"
+      ],
+      "inputs": [
+        "packages/php/tests/DbspecRenderTest.php",
+        "packages/php/tests/DbspecTimedCases.php",
+        "packages/php/tests/dbspec_cases.php",
+        "tests/dbspec/ddl.json"
+      ]
+    },
     "dbspec-apply-php-check": {
       "scope": "owner",
       "needs": [
