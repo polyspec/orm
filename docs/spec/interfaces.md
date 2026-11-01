@@ -451,7 +451,10 @@ signature differs from a declared bind type; no codec guessing is permitted.
 
 Before writing, the snapshot update validator checks named assignments and must
 reject duplicates, unknown names, generated columns, invalid NULLs and oversized
-values. After writing under the same lock, compare exact requested values and
+values. A client that takes the named changes as a list of `[name, value]` pairs
+(Go, TypeScript, Python, and PHP when given a list) can receive a repeated name,
+which is refused with `ROW_UPDATE_INVALID` (`ROW_INSERT_INVALID` on insert) before
+any write; the PHP map form can hold only distinct names. After writing under the same lock, compare exact requested values and
 untouched ordinary columns; generated columns may be recomputed. A coercion or
 unrequested ordinary-column change requires rollback, never success. Pure
 verification alone is not transactional execution or mutation authorization.
