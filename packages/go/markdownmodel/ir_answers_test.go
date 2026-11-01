@@ -49,11 +49,18 @@ func TestRecipeIRAnswersNone(t *testing.T) {
 	}))
 }
 
+// listenMarkdownTestServer and serveMarkdownTestConnection are the names that every markdown test server of the client owners
+// uses (KSTD-2-11, scripts/features/manifest.test.mts); they are the helpers of markdowntest.
+var (
+	listenMarkdownTestServer    = markdowntest.ListenMarkdownTestServer
+	serveMarkdownTestConnection = markdowntest.ServeMarkdownTestConnection
+)
+
 // startMarkdownTestServerWithAnswer is the DSN of a listener that writes {"ok": true} for the connect of one connection and, for the next message, the answer.
 func startMarkdownTestServerWithAnswer(t *testing.T, answer string) string {
 	t.Helper()
-	ln := markdowntest.ListenMarkdownTestServer(t)
-	markdowntest.ServeMarkdownTestConnection(t, ln, func(conn net.Conn) error {
+	ln := listenMarkdownTestServer(t)
+	serveMarkdownTestConnection(t, ln, func(conn net.Conn) error {
 		r := bufio.NewReader(conn)
 		for _, line := range []string{`{"ok":true}`, answer} {
 			if _, err := r.ReadString('\n'); err != nil {
@@ -73,8 +80,8 @@ func startMarkdownTestServerWithAnswer(t *testing.T, answer string) string {
 // kind of the request. A message with no answer gets IR_INVALID.
 func startMarkdownTestServerWithKeyedAnswers(t *testing.T, answers map[string]json.RawMessage) string {
 	t.Helper()
-	ln := markdowntest.ListenMarkdownTestServer(t)
-	markdowntest.ServeMarkdownTestConnection(t, ln, func(conn net.Conn) error {
+	ln := listenMarkdownTestServer(t)
+	serveMarkdownTestConnection(t, ln, func(conn net.Conn) error {
 		r := bufio.NewReader(conn)
 		for first := true; ; first = false {
 			line, err := r.ReadString('\n')
