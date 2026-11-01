@@ -11,7 +11,7 @@ use crate::model::{val_param, Model};
 use crate::plan::{BindSlot, Step};
 use crate::row::read_row;
 use crate::schema::Schema;
-use crate::tx::{active_for, transaction_conflict, TxShared};
+use crate::tx::{active_for, transaction_conflict, TxFrame, TxShared};
 use crate::value::{Param, Val};
 use crate::{codes, Error, Result};
 use polyspec_orm_schema::dbspec::{self, Document};
@@ -124,7 +124,7 @@ impl<'a> Utils<'a> {
     }
 
     /// Runs f in the active transaction of the connection, or in a new one.
-    async fn run<T>(&self, f: impl AsyncFn(&Executor) -> Result<T>) -> Result<T> {
+    async fn run_executor<T>(&self, f: impl AsyncFn(&Executor) -> Result<T>) -> Result<T> {
         if let Some(t) = active_for(self.db) {
             return f(&Executor::Tx(t)).await;
         }
@@ -134,6 +134,17 @@ impl<'a> Utils<'a> {
             f(&Executor::Tx(t)).await
         })
         .retry(0)
+        .await
+    }
+
+    /// Calls `f` with a transaction frame of the connection (INT-150). If a transaction of the connection is active, `f` joins
+    /// it; otherwise this call opens a transaction, ends it as `transaction` does, and does not retry. The frame's `run` runs
+    /// one statement in that transaction and never opens one.
+    pub async fn run<T>(&self, f: impl AsyncFn(&TxFrame) -> Result<T>) -> Result<T> {
+        self.run_executor(async |ex: &Executor| {
+            let Executor::Tx(t) = ex else { return Err(Error::internal("the statement runner has no transaction")) };
+            f(&TxFrame::new(Arc::clone(t))).await
+        })
         .await
     }
 
@@ -286,7 +297,7 @@ impl SchemaUtils<'_> {
             }
             _ => {
                 self.u
-                    .run(async |ex: &Executor| {
+                    .run_executor(async |ex: &Executor| {
                         let Executor::Tx(t) = ex else { return Err(Error::internal("schema install outside a transaction")) };
                         let on = Observed { db, transaction: Some(t.number) };
                         let mut guard = t.enter()?;
@@ -324,7 +335,7 @@ impl SchemaUtils<'_> {
         match db.pool() {
             crate::db::Pool::Postgres(_) => {
                 self.u
-                    .run(async |ex: &Executor| {
+                    .run_executor(async |ex: &Executor| {
                         let Executor::Tx(t) = ex else { return Err(Error::internal("add columns outside a transaction")) };
                         let on = Observed { db, transaction: Some(t.number) };
                         let mut guard = t.enter()?;
@@ -455,7 +466,7 @@ impl PrivilegeUtils<'_> {
         let role = Self::role(role)?;
         let tables = [table.to_owned()];
         self.u
-            .run(async |ex: &Executor| {
+            .run_executor(async |ex: &Executor| {
                 self.u.exec(ex, KIND_UTILITY, &tables, format!("GRANT USAGE ON SCHEMA {schema} TO {role}"), &[], &[]).await?;
                 self.u.exec(ex, KIND_UTILITY, &tables, format!("GRANT SELECT, INSERT, UPDATE, DELETE ON {qualified} TO {role}"), &[], &[]).await?;
                 Ok(())
@@ -473,7 +484,7 @@ impl PrivilegeUtils<'_> {
             return Err(Error::Config(format!("unsupported table privilege {privilege:?}")));
         }
         self.u
-            .run(async |ex: &Executor| {
+            .run_executor(async |ex: &Executor| {
                 self.u.exec(ex, KIND_UTILITY, &tables, format!("REVOKE {privilege} ON {qualified} FROM {role}"), &[], &[]).await?;
                 Ok(())
             })
@@ -638,7 +649,7 @@ impl AesUtils<'_> {
         update_types.extend(spec.key_types.iter().copied());
         update_types.push(spec.version_type);
         self.u
-            .run(async |ex: &Executor| {
+            .run_executor(async |ex: &Executor| {
                 let mut rotated = 0;
                 loop {
                     let batch = self.u.query(ex, KIND_UTILITY, tables, select.clone(), &[Param::I64(keyring.current as i64)], &[spec.version_type]).await?;

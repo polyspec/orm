@@ -14,8 +14,9 @@ use crate::db::{Db, Executor, Pool};
 use crate::driver::{CancellableConnection, MySqlOwnedTx, TxInner};
 use crate::events::{self, Sent, KIND_BEGIN, KIND_COMMIT, KIND_RELEASE, KIND_ROLLBACK, KIND_ROLLBACK_TO, KIND_SAVEPOINT, KIND_UTILITY};
 use crate::markdown::{begin_message, MdControl, MdPool};
+use crate::row::read_row;
 use crate::schema::Schema;
-use crate::value::Param;
+use crate::value::{Param, Val};
 use crate::{codes, Error, Result};
 
 /// One active transaction.
@@ -287,6 +288,47 @@ pub(crate) fn resolve(conn: &Option<Db>) -> Result<Executor> {
             None => Executor::Db(db.clone()),
         }),
         None => frames().pop().map(Executor::Tx).ok_or_else(|| Error::Config("the model has no connection; use connect or run it inside a transaction".into())),
+    }
+}
+
+/// The transaction frame that `Utils::run` passes to its callback (INT-150). It holds the transaction of the connection and
+/// never opens one.
+pub struct TxFrame {
+    tx: Arc<TxShared>,
+}
+
+/// The bind type of a parameter: the type its bind slot checks (bind_check).
+fn bind_type(p: &Param) -> &'static str {
+    match p {
+        Param::Null | Param::Str(_) => "text",
+        Param::Bool(_) => "bool",
+        Param::I64(_) => "i64",
+        Param::F64(_) => "f64",
+        Param::Bytes(_) => "bytes",
+        Param::DateTime(_) => "datetime",
+        Param::Date(_) => "date",
+    }
+}
+
+impl TxFrame {
+    pub(crate) fn new(tx: Arc<TxShared>) -> Self {
+        Self { tx }
+    }
+
+    /// Runs one statement of kind `kind` that touches `tables` (empty when none), with `params` bound in order, and records one
+    /// statement event (INT-77). It runs in this frame's transaction and returns the statement result with its rows.
+    pub async fn run(&self, kind: &str, tables: &[&str], sql: &str, params: &[Param]) -> Result<Vec<Vec<Val>>> {
+        let tables: Vec<String> = tables.iter().map(|t| (*t).to_owned()).collect();
+        let types: Vec<&str> = params.iter().map(bind_type).collect();
+        let mut st = crate::utils::step(sql.to_owned(), &types);
+        for (slot, p) in st.bind_slots.iter_mut().zip(params) {
+            if matches!(p, Param::DateTime(_)) {
+                slot.precision = 6;
+            }
+        }
+        let rows = Executor::Tx(Arc::clone(&self.tx)).query_as(Some(kind), Some(&tables), &st, params, Vec::new()).await?;
+        let zone = self.tx.db.inner.zone;
+        rows.iter().map(|r| read_row(r, r.len(), zone)).collect()
     }
 }
 
