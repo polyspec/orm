@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- PostgreSQL describe는 생성 컬럼에 default를 보고하지 않는다: 생성 컬럼의 생성 식은 default가 있는 자리인 pg_attrdef에 보관되므로, 모든 runtime은 그 컬럼의 default 식을 읽지 않고 default 표지를 false로 본다(SCH-6a) (T334-3-3-2-8).
 - catalog_connection runner의 lint 및 중복 finding을 제자리에서 고쳤다: Go의 Close errcheck, TypeScript의 미사용 변수와 중복 helper, Python ruff finding, PHP phpcs finding과 빈 catch(catch는 오류를 처리하거나 다시 던진다), Rust의 도달 불가 grid arm과 공유 probe의 미사용 helper, PHP의 중복 fetchAll (T334-3-3-2-7).
 - 공유 catalog_connection recipe의 Rust runner가 MySQL, PostgreSQL, SQLite에서 recipe의 모든 op와 필드를 실행한다. PostgreSQL 문장의 UNION ALL 피연산자 또는 + 항이 200개 이상이면 CATALOG_LIMIT로 거부된다(INT-136). 음수 행 또는 바이트 수는 질의 실행 전에 QUERY_LIMIT_INVALID로 거부된다. PostgreSQL real은 float32 값으로 읽고, MySQL YEAR() grid 값은 CATALOG_VALUE로 거부된다(T334-3-3-2-6).
 - 공유 catalog_connection recipe의 Python runner가 MySQL, PostgreSQL, SQLite에서 recipe의 모든 op와 필드를 실행한다. 예산이 있는 읽기는 행을 스트림한다. MySQL 결과는 버퍼 없이 읽고, 예산 중단은 실행 중인 질의를 thread id로 KILL한다. 인자가 없는 PostgreSQL 읽기는 cursor이며 중단이 이를 닫아, 중단이 질의 전체를 기다리지 않는다(이전에는 catalog_read_budgets가 2분 deadline에서 멈췄다). PostgreSQL real은 float32 값으로 읽고, MySQL YEAR() grid 값과 PostgreSQL infinity는 각 코드로 거부된다. 시간 열의 정밀도보다 많은 소수 자릿수를 쓰는 쓰기는 질의 실행 전에 CODEC_ENCODE로 거부된다(T334-3-3-2-5).

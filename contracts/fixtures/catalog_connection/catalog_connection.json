@@ -3970,6 +3970,12 @@
                 false,
                 false,
                 false
+              ],
+              "defaults": [
+                false,
+                false,
+                false,
+                false
               ]
             },
             "postgres": {
@@ -4010,6 +4016,12 @@
                 false,
                 false,
                 false
+              ],
+              "defaults": [
+                false,
+                false,
+                false,
+                false
               ]
             },
             "sqlite": {
@@ -4046,6 +4058,12 @@
                 true
               ],
               "automatic_keys": [
+                false,
+                false,
+                false,
+                false
+              ],
+              "defaults": [
                 false,
                 false,
                 false,
