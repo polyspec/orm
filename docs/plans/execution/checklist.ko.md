@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: fa4135bed42f525e2309a8c5c24f633bc8178ec07ead1541e19f9dfa94fc5bfe -->
+<!-- source-sha256: 3287a065d649c93c7a1aa1d624a93d6342ecc6f26ea9f8841448e94c7c178143 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1531,4 +1531,5 @@
 | T346-7-1 | feature check의 TypeScript lease 도구 scripts/features/typescript-lease.mts를 config/rebuild.json이 policy로 선언하여, make rebuild-check가 이를 받아들인다 | config/rebuild.json, CHANGELOG.md, CHANGELOG.ko.md, docs/plans/execution/checklist.md, docs/plans/execution/checklist.ko.md | `make rebuild-check` | [v] |
 | T346-8 | mise 도구 pypi:vulture의 uv lock이 고정된 uv 0.13.0에 맞아, 그 폴더에서 uv lock --check가 통과하고 mise.lock의 digest는 그 lock의 digest다 | .mise/locks/pypi-vulture/2.16/uv.lock, mise.lock, CHANGELOG.md, CHANGELOG.ko.md, docs/plans/execution/checklist.md, docs/plans/execution/checklist.ko.md | `cd .mise/locks/pypi-vulture/2.16 && uv lock --check` | [v] |
 | T346-9 | packages/php-ext의 composer lock이 composer.json과 맞아, publish 검사를 빼고 composer validate가 통과한다 | packages/php-ext/composer.lock, CHANGELOG.md, CHANGELOG.ko.md, docs/plans/execution/checklist.md, docs/plans/execution/checklist.ko.md | `cd packages/php-ext && composer validate --no-check-publish` | [v] |
+| T346-10 | client-statement-runner는 statement runner의 Rust 기호를 Transaction처럼, parity가 Rust에서 읽는 경로에 선언한다. frame은 polyspec_orm::TxFrame과 polyspec_orm::tx::TxFrame에, method는 polyspec_orm::tx::TxFrame::run과 polyspec_orm::utils::Utils::run에 선언한다. T345-11은 crate root re-export 경로만 선언했고, 이제 kit / parity-api가 통과한다. | config/parity.json, CHANGELOG.md, CHANGELOG.ko.md, docs/plans/execution/checklist.md, docs/plans/execution/checklist.ko.md | Red: CI 41295441570 on c2f5cd6b5, kit / parity-api, three R11 undeclared-public lines of rust. Green: `make parity-declarations-check` and `make docs-check` exit 0, and CI runs kit / parity-api. | [v] |
 | T347 | orm은 flowmark의 grammar를 선언된 interface로 읽는다. 설치된 release asset이나 Go module에 담긴 spec을 go list -m -json으로 읽으며, markdown table 검사는 flowmark source checkout을 읽지 않는다(K1002, S5, P14) | Makefile, scripts/docs/flowmark-source.mts, config/rebuild.json, docs/plans/execution/checklist.md, docs/plans/execution/checklist.ko.md, CHANGELOG.md, CHANGELOG.ko.md | `make kit-check` | [ ] |
