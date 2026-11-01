@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-check-recipes -->
-<!-- source-sha256: a49e5404fdabc5edfeac14316d8a8d678299a9f52e16214c2504456055bd12a7 -->
+<!-- source-sha256: 46ec816431497cfb974a076b28c6449fd1651c39cd9e7c5980851be2e8103537 -->
 # 병렬 check runner와 모든 공통 동작의 recipe 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -28,3 +28,4 @@
 | CR20 | B1-2, -j를 얻는 target마다 한 행. Red: `make -k -j 2 <fixture-target>`이 실패한다. reader가 writer가 끝나기 전에 읽는다 | the Makefile targets that gain -j and their parts | `make -k -j 2 <target>`, for the target that the row names once it names one | [ ] |
 | CR21 | 공개 statement runner가 공개 API인지 판정하고, 명세를 그 판정에 맞춘다. docs/spec/interfaces.md와 그 한국어 쌍이 먼저 공개 statement runner가 공개 API인지, 그리고 그 시그니처, 종류, 표, 트랜잭션, 결과와 오류를 선언한다. 공개라면 여섯 runtime(Go, PHP, PHP 확장, TypeScript, Python, Rust)이 하나의 parity 단위로 그 한 형태를 노출하며, 그 Red는 빌드된 TypeScript dist에 대한 소비자 형태의 tsc 테스트다. 오늘 TypeScript의 Utils.run은 @internal이지만 PHP의 Db::run과 Python의 run은 공개이기 때문이다. 공개가 아니라면 PHP와 Python의 공개 노출을 제거한다. | docs/spec/interfaces.md, docs/spec/interfaces.ko.md, and the code of the branch that the spec chooses | `make docs-check` | [ ] |
 | CR22 | B3-8 publish-output 경쟁. stdout 경로가 자식 종료 직후 출력 파일을 확인해, 쓰기 스트림이 파일을 만들기 전에 검사하므로 빠른 명령이 "wrote no"로 실패한다. 재현: 부하가 걸린 상태에서 `printf`의 병렬 실행 640회 중 2회(CR3 owner 검사의 collection-get-phpstan-check). Red: `node --test scripts/publish-output.test.mts`가 병렬 publish를 실행해 실패가 없어야 함을 확인한다 | scripts/publish-output.mts, scripts/publish-output.test.mts (new) | `node --test scripts/publish-output.test.mts`; `make collection-get-phpstan-check` | [v] |
+| CR24 | B3-10 변경된 test 파일의 owner 검사. packages/python/tests 아래 파일이 바뀌면 python-check가 선택되는데, 그 recipe(Makefile:799)는 선택 없는 discovery를 실행하고 kit은 CI 밖에서 이를 거부한다. packages/php/tests 파일이 바뀌면 statement_events의 php-extension owner가 선택되는데, 이들은 make 밖에서 실행되어 POLYSPEC_ORM_EXTENSION이 없어 실패한다(owners/statement_events/coverage). CR16-2의 owner 검사에서 발견했다(CR16-2-owner3.log). Red: 변경된 Python test 파일과 PHP test 파일에 owner 검사를 실행하면 위 두 owner가 그 원인으로 실패한다. | contracts/features.json (the statement_events owners), Makefile (python-unit-check), scripts/features (the owner mapping) | `make feature-owner-check PATHS="packages/python/tests/statement_events_server_transactions.py packages/php/tests/StatementEventsTest.php"` passes | [v] |

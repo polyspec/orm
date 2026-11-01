@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7c1506aa0b777fad29166e4523c76e4dff67fda055b12d2166697557b6256dac -->
+<!-- source-sha256: 6d4c96b8fe8ae288fa1b7f846db638610a496bf2bb3e79b4750a13a994a4df9b -->
 # 변경 이력
 
 ## Unreleased
 
+- owner 검사는 변경된 Python test마다 python-check를 골랐고, 그 recipe는 kit이 CI 밖에서 거부하는 선택 없는 discovery를 실행했다. php-extension coverage는 make 밖에서 실행되어 POLYSPEC_ORM_EXTENSION이 설정되지 않았다. 이제 변경된 test는 자신의 명령을 고른다: python-check는 test가 아닌 Python 원본을 맡고, interface test는 모듈을 이름으로 지정하며, php-extension coverage는 먼저 make로 extension을 빌드한다 (CR24).
 - publish-output은 명령이 끝나자마자 출력 파일을 확인했고, 복사가 파일을 만들기 전에 검사했으므로 빠른 명령이 "wrote no"로 실패했다. 부하가 걸린 병렬 실행에서 640회 중 2회 실패했다(CR3 owner 검사의 phpstan owner). 이제 검사 전에 복사가 끝나기를 기다린다 (CR22).
 - recipe 시험은 JSON 값을 타입으로 캐스트했고 lint-ts가 이를 거부한다. 이제 shape를 확인해 좁힌다 (CR13).
 - complex-query context 검사는 파싱한 check input을 타입으로 캐스트했고 lint-ts가 이를 거부한다. 이제 type guard로 읽는다 (CR7).

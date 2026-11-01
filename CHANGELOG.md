@@ -51,6 +51,7 @@
 
 ## 0.0.19
 
+- The owner check ran python-check for a touched Python test, whose recipe runs an unselected discovery that kit refuses outside CI, and ran the php-extension coverage outside make, where POLYSPEC_ORM_EXTENSION was unset. A touched test now selects its own command: python-check owns the Python sources, not the tests; the interface tests name their modules; the php-extension coverage builds the extension through make first (CR24).
 - publish-output checked the output file of a command's standard output as soon as the command exited, before the copy had created it, so a fast command failed with "wrote no": under parallel load 2 of 640 runs failed, in the phpstan owner of the CR3 owner check. The check now waits for the copy to finish (CR22).
 - The recipe test cast its JSON values to types, which lint-ts refuses. It narrows them with checks of shape (CR13).
 - The complex-query context check cast the parsed check inputs to a type, which lint-ts refuses. It reads them through type guards (CR7).

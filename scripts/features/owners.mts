@@ -17,7 +17,7 @@
 import { spawn, spawnSync, execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { errorCode } from '../../tests/errors.mts';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -40,7 +40,7 @@ type Verification = { id: string; command: string; inputs?: string[] };
 /** A coverage part of a feature: its tests, inputs and the native commands of each database with the DSN variable they read. */
 type PartDeclaration = { tests?: string[]; inputs?: string[]; commands?: Record<string, { dsn_env?: string }[]> };
 /** A feature of contracts/features.json as owner-check reads it. */
-export type OwnersFeature = { id: string; verification?: Verification[]; coverage?: { owners?: Record<string, PartDeclaration>; dependents?: (PartDeclaration & { id: string })[] } };
+export type OwnersFeature = { id: string; verification?: Verification[]; coverage?: { owners?: Record<string, PartDeclaration>; dependents?: (PartDeclaration & { id: string; language?: string })[] } };
 /** A helper of contracts/features.json. */
 export type Helper = { id: string; command: string; paths: string[]; tests?: string[] };
 /** contracts/features.json as owner-check reads it. */
@@ -325,8 +325,27 @@ function make(root: string, target: string, { step }: { step: Step }): Promise<v
 }
 
 // execute runs a node command as one step and sends its output lines as steps. The deadline applies to each case within the command.
-function execute(root: string, args: string[], { step }: { step: Step }, label: string): Promise<void> {
-  return runStep(process.execPath, args, { cwd: root, env: process.env, step, label });
+function execute(root: string, args: string[], { step }: { step: Step }, label: string, env: NodeJS.ProcessEnv = process.env): Promise<void> {
+  return runStep(process.execPath, args, { cwd: root, env, step, label });
+}
+
+// isPhpExtensionPart tells whether a selected coverage part runs on a PHP that loads the extension: an owner of the php-extension language, or a
+// dependent whose language is php-extension.
+export function isPhpExtensionPart(feature: OwnersFeature, part: string): boolean {
+  if (part === 'owner/php-extension') return true;
+  const dependent = (feature.coverage?.dependents ?? []).find(item => `dependent/${item.id}` === part);
+  return dependent?.language === 'php-extension';
+}
+
+// buildPhpExtension builds the PHP extension with the make recipe of feature-coverage/php-extension/<database> (its prerequisites, then
+// php-ext-build in release mode) into a directory of this run. The coverage step reads the module from POLYSPEC_ORM_EXTENSION, which only
+// that step receives: the other steps keep their environment.
+async function buildPhpExtension(root: string, directory: string, context: { step: Step }): Promise<string> {
+  const library = resolve(directory, 'php-extension', 'polyspec_orm.so');
+  mkdirSync(resolve(directory, 'php-extension'), { recursive: true });
+  await child(root, 'make', ['-s', 'php-vendor-check', 'php-models', 'orm-install-php-extension-tools', 'orm-codes'], context);
+  await child(root, 'make', ['-s', 'php-ext-build', `PHP_EXT_OUT=${library}`, 'PHP_EXT_MODE=release'], context);
+  return library;
 }
 
 // usesTestEnv reports whether one Makefile target reads the server environment (WITH_TEST_ENV).
@@ -452,14 +471,32 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     for (const { helper } of helpers) {
       if (!(await runGroup(`owners/helper/${helper.id}`, context => execute(root, ['scripts/features/check.mts', '--run', '--helper', helper.id], context, `owners/helper/${helper.id}`)))) failed++;
     }
+    // The php-extension coverage parts need the built module (POLYSPEC_ORM_EXTENSION), built here by make once for this run.
+    const extensionDirectory = resolve(root, '.runtime/run', `owners-php-extension-${process.pid}`);
+    const needsExtension = owners.some(({ feature, parts }) => parts.some(({ part }) => isPhpExtensionPart(feature, part)));
+    let extension: string | undefined;
+    if (needsExtension) {
+      const built = await runGroup('owners/php-extension/build', context => buildPhpExtension(root, extensionDirectory, context).then(library => { extension = library; }));
+      if (!built) failed++;
+    }
     for (const { feature, commands, parts } of owners) {
-      const steps: [string, string[]][] = [];
-      if (commands.length) steps.push(['verification', ['scripts/features/check.mts', '--run', '--feature', feature.id, ...commands.flatMap(({ id }) => ['--command', id])]]);
-      if (parts.length) steps.push(['coverage', ['scripts/features/coverage.mts', '--feature', feature.id, ...parts.flatMap(({ part }) => ['--part', part])]]);
-      for (const [kind, command] of steps) {
-        if (!(await runGroup(`owners/${feature.id}/${kind}`, context => execute(root, command, context, `owners/${feature.id}/${kind}`)))) failed++;
+      const steps: [string, string[], NodeJS.ProcessEnv][] = [];
+      if (commands.length) steps.push(['verification', ['scripts/features/check.mts', '--run', '--feature', feature.id, ...commands.flatMap(({ id }) => ['--command', id])], process.env]);
+      if (parts.length) {
+        const phpExtension = parts.some(({ part }) => isPhpExtensionPart(feature, part));
+        steps.push(['coverage', ['scripts/features/coverage.mts', '--feature', feature.id, ...parts.flatMap(({ part }) => ['--part', part])],
+          phpExtension ? { ...process.env, POLYSPEC_ORM_EXTENSION: extension } : process.env]);
+      }
+      for (const [kind, command, env] of steps) {
+        if (kind === 'coverage' && env.POLYSPEC_ORM_EXTENSION === undefined && parts.some(({ part }) => isPhpExtensionPart(feature, part))) {
+          console.log(`owners: ${feature.id}/coverage: the php-extension module is not built`);
+          failed++;
+          continue;
+        }
+        if (!(await runGroup(`owners/${feature.id}/${kind}`, context => execute(root, command, context, `owners/${feature.id}/${kind}`, env)))) failed++;
       }
     }
+    rmSync(extensionDirectory, { recursive: true, force: true });
     const made = databases;
     if (made && !(await runGroup('owners/databases/drop', context =>
       script(root, ['scripts/check/databases.mts', 'drop', made.servers, made.directory, made.name], context)))) failed++;

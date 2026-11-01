@@ -358,3 +358,24 @@ caseTest('every tracked file selects a behaviour test or declares its scope', 30
   assert.deepEqual(untestedPaths(tracked, { owners, helpers, targets, paths: declarations.paths, exists: () => true }), []);
   assert.deepEqual(pathScopeErrors(declarations.paths, tracked), []);
 });
+
+// A touched Python test selects only its own owner: no make target that runs the discovery of every Python test (python-check) is selected by a
+// file under packages/python/tests, since kit refuses that discovery outside CI. Each such file has an owner of its own (CR24).
+caseTest('a touched Python test selects no discovery target', 5000, () => {
+  const declared = readCheckInputs(root).targets;
+  const tests = execFileSync('git', ['ls-files', 'packages/python/tests'], { cwd: root, encoding: 'utf8' }).split('\n').filter(path => path.endsWith('.py'));
+  assert.ok(tests.length > 0, 'the Python tests are tracked');
+  for (const test of tests) {
+    const targets = selectTargets(declared, [test]).map(({ target }) => target);
+    assert.equal(targets.includes('python-check'), false, `${test} selects python-check, which runs the discovery of every Python test`);
+  }
+});
+
+// A selected php-extension coverage part runs on the built extension, so owners builds it before that step (CR24).
+caseTest('a php-extension coverage part is the one that needs the built extension', 5000, () => {
+  const feature = manifest.features.find(item => item.id === 'statement_events');
+  assert.ok(feature, 'the statement_events feature is in the manifest');
+  assert.equal(ownerSelection.isPhpExtensionPart(feature, 'owner/php-extension'), true);
+  assert.equal(ownerSelection.isPhpExtensionPart(feature, 'owner/php'), false);
+  assert.equal(ownerSelection.isPhpExtensionPart(feature, 'owner/python'), false);
+});
