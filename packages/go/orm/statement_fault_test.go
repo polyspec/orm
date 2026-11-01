@@ -77,23 +77,16 @@ func requireStatementFault(t *testing.T, err error, f statementFaultFixture) {
 // carrying the fixture's error. The error must be attached to the event when the statement ends.
 func requireStatementEvent(t *testing.T, db *orm.DB, f statementFaultFixture, run func()) {
 	t.Helper()
-	var events []orm.StatementEvent
-	unsubscribe, err := db.Subscribe(func(e orm.StatementEvent) error {
-		events = append(events, e)
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	events, unsubscribe := subscribeStatementEvents(t, db)
 	defer unsubscribe()
 	run()
-	for _, e := range events {
+	for _, e := range *events {
 		var coded *orm.Error
 		if errors.As(e.Err, &coded) && coded.Code == f.Code && coded.Msg == f.Message {
 			return
 		}
 	}
-	t.Fatalf("no statement event carries %s %q; %d events", f.Code, f.Message, len(events))
+	t.Fatalf("no statement event carries %s %q; %d events", f.Code, f.Message, len(*events))
 }
 
 // requireRows checks that the model's row count is want.

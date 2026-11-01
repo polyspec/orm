@@ -9,6 +9,7 @@ import (
 	"maps"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/polyspec/orm/packages/go/engine/dbspec"
 	"github.com/polyspec/orm/packages/go/engine/ir"
@@ -52,6 +53,58 @@ func (u *Utils) run(fn func(t *txConn) error) error {
 		}
 		return fn(inner)
 	}, Retry(0))
+}
+
+// Run calls fn with the transaction frame of the connection. It opens a transaction when none is
+// active, and joins the active transaction otherwise; a transaction it opens ends as Transaction
+// ends, without retry.
+func (u *Utils) Run(fn func(f *TxFrame) error) error {
+	return u.run(func(t *txConn) error { return fn(&TxFrame{t: t}) })
+}
+
+// TxFrame is the transaction frame that Utils.Run passes to its function. It never opens a transaction.
+type TxFrame struct{ t *txConn }
+
+// StatementResult is the result of one statement: the rows that the database returned, in order.
+type StatementResult struct {
+	Rows [][]any
+}
+
+// Run runs one statement of kind kind that touches the tables (none when tables is empty) on the
+// transaction of the frame, records one statement event, and returns the statement result with
+// its rows. params are the bound values and may be omitted.
+func (f *TxFrame) Run(kind string, tables []string, sqlText string, params ...any) (StatementResult, error) {
+	r := f.t.run()
+	start := time.Now()
+	if err := r.fault(kind); err != nil {
+		return StatementResult{}, r.d.statementDone(kind, tables, r.tx, sqlText, params, start, err)
+	}
+	rs, err := r.q.QueryContext(f.t.ctx, sqlText, params...)
+	if err != nil {
+		return StatementResult{}, r.d.statementDone(kind, tables, r.tx, sqlText, params, start, mapDriverErrContext(err, f.t.ctx))
+	}
+	var out StatementResult
+	cols, err := rs.Columns()
+	if err == nil {
+		for rs.Next() {
+			row := make([]any, len(cols))
+			dest := make([]any, len(cols))
+			for i := range row {
+				dest[i] = &row[i]
+			}
+			if err = rs.Scan(dest...); err != nil {
+				break
+			}
+			out.Rows = append(out.Rows, row)
+		}
+	}
+	if err == nil {
+		err = rs.Err()
+	}
+	if closeErr := rs.Close(); err == nil {
+		err = closeErr
+	}
+	return out, r.d.statementDone(kind, tables, r.tx, sqlText, params, start, mapDriverErrContext(err, f.t.ctx))
 }
 
 // read executes fn with a runner on the active transaction or the connection.
