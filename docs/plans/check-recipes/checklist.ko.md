@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-check-recipes -->
-<!-- source-sha256: aefb7ef54ab194409ff15042177e781117e0640a049dadb3808fa4dff9d66141 -->
+<!-- source-sha256: d5b3d9b097eef0d33adc9d6b298d5d5b24afbbe4b21e6006248de4e8fa54e049 -->
 # 병렬 check runner와 모든 공통 동작의 recipe 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -68,3 +68,4 @@
 | CR44 | fix(repo): Go model build 시험이 -4g-1 pick이 실행하는 sets generator를 확인하도록 고친다. 제거된 gen 반복문이 아니다 (#CR44) | scripts/repo/check.test.mts | `node --test scripts/repo/check.test.mts` | [v] |
 | CR45 | fix(duplication): generator 시험 설정을 공유하고 probe의 중복 parse_set을 뺀다 (#CR45) | packages/go/generator/gen_go_sets_test.go, packages/rust/orm/tests/common/dbspec_probe.rs | `make duplication-check` | [v] |
 | CR46 | fix(parity): markdown message unit가 옮긴 Go 시험을 가리키고, Go 테스트 루트에 그 package를 넣고, DSL-157이 set 순서 시험에 연결되며, column condition unit이 생성 model의 condition 멤버를 선언한다 (#CR46) | config/parity.json, docs/spec/dsl.md, docs/spec/dsl.ko.md, packages/go/generator/gen_go_sets_test.go | `node node_modules/@polyspec/kit/scripts/kit/parity.mts --phase api` | [v] |
+| CR47 | fix(php-ext): stub의 insertRow PHPDoc이 arginfo 생성기가 읽는 형식으로 parameter type을 적는다 (#CR47) | packages/php-ext/src/polyspec_orm.stub.php | `make bind-message-check` | [v] |
