@@ -393,12 +393,14 @@ mod database {
 
     use polyspec_orm::db::{parse_dsn, ConnectOptions};
     use polyspec_orm::{dbspec, Config, Db, Schema};
-    use polyspec_orm_build::catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableMetadata, TablePage, TableRef};
-    use polyspec_orm_build::tool_db::{GridCell, GridQueryResult, ParamType, QueryLimits, Val, P};
+    use polyspec_orm_build::catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableKind, TableMetadata, TablePage, TableRef};
+    use polyspec_orm_build::tool_db::{GridCell, GridQueryResult, ParamType, Val, P};
     use polyspec_orm_case_database::CaseDatabase;
     use serde_json::{json, Value};
 
     use super::hex_text;
+
+    polyspec_orm::models!();
 
     /// The databases of a recipe with a fixture (FCV-3).
     const DATABASES: [&str; 3] = ["mysql", "postgres", "sqlite"];
@@ -454,6 +456,7 @@ mod database {
         let Some(cases) = recipe["cases"].as_array() else { panic!("recipe {path} has no cases") };
         cases
             .iter()
+            .filter(|case| case["only"].as_array().is_none_or(|only| only.iter().any(|name| name.as_str() == Some(database))))
             .map(|case| {
                 let (recipe, schema, case) = (recipe.clone(), schema.clone(), case.clone());
                 let (path, database) = (path.to_owned(), database.to_owned());
@@ -522,30 +525,38 @@ mod database {
         db.close().await;
         installed.map_err(|e| format!("database {database}: schema install: {e}"))?;
         polyspec_orm_testcase::step("schema installed");
-        let mut catalog = CatalogConnection::connect(&dsn).await.map_err(|e| format!("database {database}: catalog connection: {e}"))?;
+        let mut catalog = Some(CatalogConnection::connect(&dsn).await.map_err(|e| format!("database {database}: catalog connection: {e}"))?);
         let result = run_steps(&mut catalog, recipe, case, database, dsn, case_database.name()).await;
-        catalog.close().await;
+        if let Some(open) = catalog {
+            open.close().await;
+        }
         result
     }
 
-    async fn run_steps(catalog: &mut CatalogConnection, recipe: &Value, case: &Value, database: &str, dsn: String, name: &str) -> Result<(), String> {
-        let namespace = catalog.current_namespace().await.map_err(|e| format!("database {database}: current namespace: {e}"))?;
+    async fn run_steps(catalog: &mut Option<CatalogConnection>, recipe: &Value, case: &Value, database: &str, dsn: String, name: &str) -> Result<(), String> {
+        let open = catalog.as_mut().ok_or("the catalog connection is not open")?;
+        let namespace = open.current_namespace().await.map_err(|e| format!("database {database}: current namespace: {e}"))?;
         let bound = HashMap::from([("database".to_owned(), Bound::Json(json!({ "text": name })))]);
         let mut context = Context { namespace, database, dsn, bound };
         for rows in [&recipe["seed"]["rows"], &case["seed"]["rows"]] {
             for (table, values) in rows.as_object().into_iter().flatten() {
                 let seed = |e: String| format!("seed row of {table}, database {database}: {e}");
                 let reference = TableRef { namespace: context.namespace.clone(), name: table.clone() };
-                let metadata = catalog.describe_table(&reference).await.map_err(seed)?;
+                let metadata = open.describe_table(&reference).await.map_err(seed)?;
                 for row in values.as_array().into_iter().flatten() {
                     let (cancellation, publish, permit) = mutation_hooks();
-                    catalog.insert_row(&metadata, &assignments(row, &context).map_err(seed)?, cancellation, publish, permit).await.map_err(seed)?;
+                    open.insert_row(&metadata, &assignments(row, &context).map_err(seed)?, cancellation, publish, permit).await.map_err(seed)?;
                 }
             }
         }
+        // The seed rows are written; the steps reach the catalog through the option, so the seed's borrow ends here.
         polyspec_orm_testcase::step("seed rows inserted");
         for (index, current) in case["steps"].as_array().into_iter().flatten().enumerate() {
             let op = current["op"].as_str().unwrap_or_default();
+            // A step with an only is skipped on the databases that its list does not name.
+            if current["only"].as_array().is_some_and(|only| !only.iter().any(|name| name.as_str() == Some(database))) {
+                continue;
+            }
             run_step(catalog, current, &mut context).await.map_err(|failure| format!("step {index} ({op}), database {database}: {failure}"))?;
             polyspec_orm_testcase::step(format_args!("step {index} {op}"));
         }
@@ -557,7 +568,7 @@ mod database {
         (Arc::new(AtomicBool::new(false)), Arc::new(|_| {}), Arc::new(|| Ok(())))
     }
 
-    async fn run_step(catalog: &mut CatalogConnection, step: &Value, context: &mut Context<'_>) -> Result<(), String> {
+    async fn run_step(catalog: &mut Option<CatalogConnection>, step: &Value, context: &mut Context<'_>) -> Result<(), String> {
         let expected = match step.get("expect") {
             None => None,
             Some(expect) => Some(resolve_refs(&expect[context.database], context)?),
@@ -593,25 +604,116 @@ mod database {
         }
     }
 
+    /// The open catalog connection of a case, or the CATALOG_CLOSED error of a step after catalog.close.
+    fn live(catalog: &mut Option<CatalogConnection>) -> Result<&mut CatalogConnection, Failure> {
+        catalog.as_mut().ok_or_else(|| Failure::Call("CATALOG_CLOSED: the catalog connection is closed".into()))
+    }
+
+    /// A DSN that the catalog refuses fails with its code. A SQLite file that the case does not create is refused, and the
+    /// connect does not create it.
+    async fn connect_check(dsn: &Value) -> Result<(), Failure> {
+        if let Some(url) = dsn["url"].as_str() {
+            let connection = CatalogConnection::connect(url).await.map_err(Failure::Call)?;
+            connection.close().await;
+            return Ok(());
+        }
+        let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or_default();
+        let directory = std::env::temp_dir().join(format!("orm_recipe_absent_{}_{nanos}", std::process::id()));
+        std::fs::create_dir_all(&directory).map_err(|e| Failure::Step(e.to_string()))?;
+        let path = directory.join("absent.sqlite");
+        let outcome = CatalogConnection::connect(&format!("sqlite://{}", path.display())).await;
+        let created = path.exists();
+        let _ = std::fs::remove_dir_all(&directory);
+        if created {
+            return Err(Failure::Step("the connect created the SQLite file".into()));
+        }
+        match outcome {
+            Ok(connection) => {
+                connection.close().await;
+                Err(Failure::Step("the connect to an absent SQLite file succeeded".into()))
+            }
+            Err(message) => Err(Failure::Call(message)),
+        }
+    }
+
+    /// The bench model reads the bind_cell row by its key, with the keys of the bench set: its body is SQL NULL or the text.
+    async fn read_bind_cell(dsn: &str, seq: i64) -> Result<Value, String> {
+        let config = polyspec_orm::Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), ..Default::default() };
+        let db = model::connect(dsn, 1, config).await.map_err(|e| e.to_string())?;
+        let body = match model::BindCell::new().connect(&db).seq(seq).get().await {
+            Ok(Some(row)) => row.get_body().map(|body| body.map(str::to_owned)).map_err(|e| e.to_string()),
+            Ok(None) => Err(format!("the bind_cell row {seq} is not selected")),
+            Err(error) => Err(error.to_string()),
+        };
+        db.close().await;
+        Ok(match body? {
+            None => json!({ "null": true }),
+            Some(text) => json!({ "text": text }),
+        })
+    }
+
+    /// The recipe name of a table kind, as the expect of a describe names it.
+    fn kind_name(kind: TableKind) -> &'static str {
+        match kind {
+            TableKind::Table => "table",
+            TableKind::Partitioned => "partitioned",
+            TableKind::View => "view",
+            TableKind::MaterializedView => "materialized_view",
+            TableKind::Foreign => "foreign",
+            TableKind::Virtual => "virtual",
+            TableKind::Shadow => "shadow",
+        }
+    }
+
     /// Maps the op of `step` to its call of the public API and returns the fields that its expect compares.
-    async fn call(catalog: &mut CatalogConnection, step: &Value, context: &Context<'_>) -> Result<Output, Failure> {
+    async fn call(catalog: &mut Option<CatalogConnection>, step: &Value, context: &mut Context<'_>) -> Result<Output, Failure> {
         let fault = Failure::Step;
         Ok(match step["op"].as_str().unwrap_or_default() {
+            "catalog.connect" => {
+                connect_check(&step["dsn"]).await?;
+                Output::fields(json!({}))
+            }
+            "catalog.close" => {
+                live(catalog)?;
+                if let Some(open) = catalog.take() {
+                    open.close().await;
+                }
+                Output::fields(json!({}))
+            }
+            "catalog.reconnect" => {
+                let mut fresh = CatalogConnection::connect(&context.dsn).await.map_err(Failure::Call)?;
+                context.namespace = fresh.current_namespace().await.map_err(Failure::Call)?;
+                *catalog = Some(fresh);
+                Output::fields(json!({}))
+            }
             "catalog.current_namespace" => {
-                let namespace = catalog.current_namespace().await.map_err(Failure::Call)?;
+                let namespace = live(catalog)?.current_namespace().await.map_err(Failure::Call)?;
                 Output::fields(json!({ "value": { "text": namespace } }))
             }
             "catalog.describe_table" => {
-                let metadata = catalog.describe_table(&table(step, context).map_err(fault)?).await.map_err(Failure::Call)?;
-                let columns: Vec<&str> = metadata.columns.iter().map(|c| c.name.as_str()).collect();
-                let fields = json!({ "columns": columns, "primary_key": metadata.primary_key, "reliable_row_identity": metadata.reliable_row_identity });
+                let reference = table(step, context).map_err(fault)?;
+                let metadata = live(catalog)?.describe_table(&reference).await.map_err(Failure::Call)?;
+                let columns = &metadata.columns;
+                let fields = json!({
+                    "kind": kind_name(metadata.kind),
+                    "columns_present": !columns.is_empty(),
+                    "namespace": { "text": metadata.table.namespace },
+                    "columns": columns.iter().map(|c| c.name.as_str()).collect::<Vec<_>>(),
+                    "primary_key": metadata.primary_key,
+                    "reliable_row_identity": metadata.reliable_row_identity,
+                    "native_types": columns.iter().map(|c| c.native_type.as_str()).collect::<Vec<_>>(),
+                    "nullable": columns.iter().map(|c| c.nullable).collect::<Vec<_>>(),
+                    "generated": columns.iter().map(|c| c.generated).collect::<Vec<_>>(),
+                    "automatic_keys": columns.iter().map(|c| c.automatic_key).collect::<Vec<_>>(),
+                    "defaults": columns.iter().map(|c| c.default_expression.is_some()).collect::<Vec<_>>(),
+                });
                 Output { fields, bind: Some(Bound::Metadata(metadata)) }
             }
             "catalog.table_page" => {
                 let limit = step["limit"].as_u64().ok_or_else(|| fault("limit is not a count".into()))?;
                 let offset = step["offset"].as_u64().ok_or_else(|| fault("offset is not a count".into()))?;
                 let limit = usize::try_from(limit).map_err(|e| fault(e.to_string()))?;
-                let page = catalog.table_page(&table(step, context).map_err(fault)?, limit, offset).await.map_err(Failure::Call)?;
+                let page = live(catalog)?.table_page(&table(step, context).map_err(fault)?, limit, offset).await.map_err(Failure::Call)?;
                 let mut indexes = Vec::new();
                 for column in step["columns"].as_array().into_iter().flatten() {
                     let name = column.as_str().unwrap_or_default();
@@ -630,23 +732,60 @@ mod database {
             }
             "catalog.read_only_query" => {
                 let sql = sql_field(&step["sql"], context).map_err(fault)?;
-                let result = catalog.read_only_query(sql, &[], limits(step).map_err(fault)?).await.map_err(Failure::Call)?;
+                let binds = binds(step, context).map_err(fault)?;
+                let (max_rows, max_bytes) = limits(step)?;
+                let result = live(catalog)?.read_only_query_counted(sql, &binds, max_rows, max_bytes).await.map_err(Failure::Call)?;
+                let columns: Vec<&str> = result.columns.iter().map(|c| c.name.as_str()).collect();
                 let rows: Vec<Vec<Value>> = result.rows.iter().map(|row| row.iter().map(plain_val).collect()).collect();
-                Output::fields(json!({ "rows": rows }))
+                Output::fields(json!({ "columns": columns, "rows": rows, "row_count": result.rows.len() }))
             }
             "catalog.read_only_grid_query" => {
                 let sql = sql_field(&step["sql"], context).map_err(fault)?;
-                let result = catalog.read_only_grid_query(sql, &[], limits(step).map_err(fault)?).await.map_err(Failure::Call)?;
+                let binds = binds(step, context).map_err(fault)?;
+                let (max_rows, max_bytes) = limits(step)?;
+                let result = live(catalog)?.read_only_grid_query_counted(sql, &binds, max_rows, max_bytes).await.map_err(Failure::Call)?;
                 let columns: Vec<&str> = result.columns.iter().map(|c| c.name.as_str()).collect();
                 let rows: Result<Vec<Vec<Value>>, String> = result.rows.iter().map(|row| row.iter().map(grid_cell).collect()).collect();
                 Output::fields(json!({ "columns": columns, "rows": rows.map_err(fault)? }))
             }
             "catalog.row_snapshot" => {
-                let Bound::Page(page) = bound(&step["page"], context).map_err(fault)? else { return Err(fault("page is not a bound page".into())) };
                 let index = step["index"].as_u64().ok_or_else(|| fault("index is not a count".into()))?;
                 let index = usize::try_from(index).map_err(|e| fault(format!("index {index}: {e}")))?;
+                let reordered: Option<TablePage> = match step.get("page_with") {
+                    Some(with) => {
+                        let Bound::Page(page) = bound(&with["page"], context).map_err(fault)? else { return Err(fault("page is not a bound page".into())) };
+                        let mut page = page.clone();
+                        page.order_by = strings(&with["order_by"]).map_err(fault)?;
+                        Some(page)
+                    }
+                    None => None,
+                };
+                let page = match &reordered {
+                    Some(page) => page,
+                    None => match bound(&step["page"], context).map_err(fault)? {
+                        Bound::Page(page) => page,
+                        _ => return Err(fault("page is not a bound page".into())),
+                    },
+                };
                 let snapshot = RowSnapshot::from_page(page, index).map_err(Failure::Call)?;
-                Output { fields: json!({}), bind: Some(Bound::Snapshot(snapshot)) }
+                let keys: Vec<Value> = snapshot.key().map(|(_, cell)| grid_cell(cell)).collect::<Result<_, String>>().map_err(fault)?;
+                let key_indexes = snapshot.key_indexes().to_vec();
+                Output { fields: json!({ "keys": keys, "key_indexes": key_indexes }), bind: Some(Bound::Snapshot(snapshot)) }
+            }
+            "catalog.revision" => {
+                let snapshot = snapshot(&step["snapshot"], context).map_err(fault)?;
+                Output::fields(json!({ "value": { "text": snapshot.revision() } }))
+            }
+            "catalog.row_cells" => {
+                let snapshot = snapshot(&step["snapshot"], context).map_err(fault)?;
+                let cells: Result<Vec<Value>, String> =
+                    snapshot.cells().iter().zip(&snapshot.metadata().columns).map(|(cell, column)| plain_cell(cell, Some(&column.native_type))).collect();
+                Output::fields(json!({ "cells": cells.map_err(fault)? }))
+            }
+            "model.read_bind_cell" => {
+                let seq = step["seq"].as_i64().ok_or_else(|| fault("seq is not an integer".into()))?;
+                let value = read_bind_cell(&context.dsn, seq).await.map_err(Failure::Call)?;
+                Output::fields(json!({ "value": value }))
             }
             "catalog.insert_row" => {
                 let Bound::Metadata(metadata) = bound(&step["metadata"], context).map_err(fault)? else {
@@ -654,20 +793,20 @@ mod database {
                 };
                 let values = assignments(&step["values"], context).map_err(fault)?;
                 let (cancellation, publish, permit) = mutation_hooks();
-                let result = catalog.insert_row(metadata, &values, cancellation, publish, permit).await.map_err(Failure::Call)?;
+                let result = live(catalog)?.insert_row(metadata, &values, cancellation, publish, permit).await.map_err(Failure::Call)?;
                 Output::fields(json!({ "rows": mutation(metadata, &result).map_err(fault)? }))
             }
             "catalog.update_row" => {
                 let snapshot = snapshot(&step["snapshot"], context).map_err(fault)?;
                 let set = assignments(&step["set"], context).map_err(fault)?;
                 let (cancellation, publish, permit) = mutation_hooks();
-                let result = catalog.update_row(snapshot, &set, cancellation, publish, permit).await.map_err(Failure::Call)?;
+                let result = live(catalog)?.update_row(snapshot, &set, cancellation, publish, permit).await.map_err(Failure::Call)?;
                 Output::fields(json!({ "rows": mutation(snapshot.metadata(), &result).map_err(fault)? }))
             }
             "catalog.delete_row" => {
                 let snapshot = snapshot(&step["snapshot"], context).map_err(fault)?;
                 let (cancellation, publish, permit) = mutation_hooks();
-                let deleted = catalog.delete_row(snapshot, cancellation, publish, permit).await.map_err(Failure::Call)?;
+                let deleted = live(catalog)?.delete_row(snapshot, cancellation, publish, permit).await.map_err(Failure::Call)?;
                 Output::fields(json!({ "value": { "int": deleted.to_string() } }))
             }
             "sql.exec" => {
@@ -687,9 +826,11 @@ mod database {
         (first.is_ascii_uppercase() && characters.all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_')).then_some(head)
     }
 
+    /// The table of a step, in the namespace of the step when it names one, and in the current namespace otherwise.
     fn table(step: &Value, context: &Context<'_>) -> Result<TableRef, String> {
         let name = step["table"].as_str().ok_or("table is not a name")?;
-        Ok(TableRef { namespace: context.namespace.clone(), name: name.to_owned() })
+        let namespace = step["namespace"].as_str().unwrap_or(&context.namespace);
+        Ok(TableRef { namespace: namespace.to_owned(), name: name.to_owned() })
     }
 
     fn snapshot<'a>(field: &Value, context: &'a Context<'_>) -> Result<&'a RowSnapshot, String> {
@@ -704,17 +845,13 @@ mod database {
         field.as_str().or_else(|| field[context.database].as_str()).ok_or_else(|| format!("{field} is no SQL for {}", context.database))
     }
 
-    /// The limits of a read; an absent one is the default of the runtime, and a present one that is no count fails the step.
-    fn limits(step: &Value) -> Result<QueryLimits, String> {
-        let default = QueryLimits::default();
-        let count = |key: &str, otherwise: usize| match &step[key] {
-            Value::Null => Ok(otherwise),
-            value => {
-                let n = value.as_u64().ok_or_else(|| format!("{key} is not a count: {value}"))?;
-                usize::try_from(n).map_err(|e| format!("{key} {n}: {e}"))
-            }
+    /// The counts of a read's limits, as the step gives them: an absent count is None, and the catalog checks the values.
+    fn limits(step: &Value) -> Result<(Option<i64>, Option<i64>), Failure> {
+        let count = |key: &str| match &step[key] {
+            Value::Null => Ok(None),
+            value => value.as_i64().map(Some).ok_or_else(|| Failure::Step(format!("{key} is not an integer: {value}"))),
         };
-        Ok(QueryLimits { max_rows: count("max_rows", default.max_rows)?, max_bytes: count("max_bytes", default.max_bytes)? })
+        Ok((count("max_rows")?, count("max_bytes")?))
     }
 
     /// The value that `{"ref": "<name>"}` names; a ref with a path names a member of a bound recipe value.
@@ -757,10 +894,31 @@ mod database {
         })
     }
 
-    /// The assignments of an object of column names whose values are recipe wrappers or per-database objects.
+    /// The assignments of a list of [name, value] pairs, or of an object of column names, whose values are recipe wrappers or
+    /// per-database objects. A repeated name is refused by the library.
     fn assignments(values: &Value, context: &Context<'_>) -> Result<Vec<(String, P)>, String> {
-        let Some(map) = values.as_object() else { return Err(format!("{values} is not an object of columns")) };
-        map.iter().map(|(name, value)| Ok((name.clone(), native(&database_value(argument(value, context)?, context))?))).collect()
+        let pairs: Vec<(String, &Value)> = match values {
+            Value::Object(map) => map.iter().map(|(name, value)| (name.clone(), value)).collect(),
+            Value::Array(items) => items
+                .iter()
+                .map(|pair| match pair.as_array().map(Vec::as_slice) {
+                    Some([name, value]) => Ok((name.as_str().ok_or_else(|| format!("{pair} has no column name"))?.to_owned(), value)),
+                    _ => Err(format!("{pair} is not a [name, value] pair")),
+                })
+                .collect::<Result<_, String>>()?,
+            other => return Err(format!("{other} is not a list of pairs or an object of columns")),
+        };
+        pairs.into_iter().map(|(name, value)| Ok((name, native(&database_value(argument(value, context)?, context))?))).collect()
+    }
+
+    /// The bound parameters of a read, as native values.
+    fn binds(step: &Value, context: &Context<'_>) -> Result<Vec<P>, String> {
+        step["binds"].as_array().into_iter().flatten().map(|value| native(&database_value(argument(value, context)?, context))).collect()
+    }
+
+    /// The names of a list of strings.
+    fn strings(list: &Value) -> Result<Vec<String>, String> {
+        list.as_array().into_iter().flatten().map(|item| item.as_str().map(str::to_owned).ok_or_else(|| format!("{item} is not a name"))).collect()
     }
 
     fn database_value(value: Value, context: &Context<'_>) -> Value {
@@ -775,6 +933,7 @@ mod database {
         let (kind, body) = super::kind(wrapper)?;
         let text = || body.as_str().map(str::to_owned).ok_or_else(|| format!("{wrapper} has no text"));
         Ok(match kind {
+            "uint" => P::Unsigned(text()?.parse::<u64>().map_err(|e| format!("{wrapper}: {e}"))?),
             "int" => {
                 let digits = text()?;
                 match digits.parse::<i64>() {
@@ -810,6 +969,7 @@ mod database {
         match value {
             Val::Null => json!({ "null": true }),
             Val::Int(n) => json!({ "int": n.to_string() }),
+            Val::Float(f) => json!({ "float": f.to_string() }),
             Val::Text(text) => json!({ "text": text }),
             Val::Bool(b) => json!({ "bool": b }),
         }
@@ -844,7 +1004,9 @@ mod database {
         Ok(match cell {
             GridCell::Null => json!({ "null": true }),
             GridCell::Integer(n) => json!({ "int": n.to_string() }),
-            GridCell::Unsigned(n) => json!({ "int": n.to_string() }),
+            GridCell::Unsigned(n) => json!({ "uint": n.to_string() }),
+            GridCell::Float32(bits) => json!({ "f32_bits": bits }),
+            GridCell::Float64(bits) => json!({ "f64_bits": bits.to_string() }),
             GridCell::Decimal(text) => json!({ "decimal": text }),
             GridCell::Text(text) => json!({ "text": text }),
             GridCell::Date(text) => json!({ "date": text }),

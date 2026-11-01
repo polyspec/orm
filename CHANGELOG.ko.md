@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 8b7ebacc043eb8ff541b65896c0d0b0f28190c259e37f0e1328669776f394945 -->
+<!-- source-sha256: 52635745900d7f76e2994f52de551256e5d571486c5f74d5495a123654f4068d -->
 # 변경 이력
 
 ## Unreleased
 
+- 공유 catalog_connection recipe의 Rust runner가 MySQL, PostgreSQL, SQLite에서 recipe의 모든 op와 필드를 실행한다. PostgreSQL 문장의 UNION ALL 피연산자 또는 + 항이 200개 이상이면 CATALOG_LIMIT로 거부된다(INT-136). 음수 행 또는 바이트 수는 질의 실행 전에 QUERY_LIMIT_INVALID로 거부된다. PostgreSQL real은 float32 값으로 읽고, MySQL YEAR() grid 값은 CATALOG_VALUE로 거부된다(T334-3-3-2-6).
 - 공유 catalog_connection recipe의 Python runner가 MySQL, PostgreSQL, SQLite에서 recipe의 모든 op와 필드를 실행한다. 예산이 있는 읽기는 행을 스트림한다. MySQL 결과는 버퍼 없이 읽고, 예산 중단은 실행 중인 질의를 thread id로 KILL한다. 인자가 없는 PostgreSQL 읽기는 cursor이며 중단이 이를 닫아, 중단이 질의 전체를 기다리지 않는다(이전에는 catalog_read_budgets가 2분 deadline에서 멈췄다). PostgreSQL real은 float32 값으로 읽고, MySQL YEAR() grid 값과 PostgreSQL infinity는 각 코드로 거부된다. 시간 열의 정밀도보다 많은 소수 자릿수를 쓰는 쓰기는 질의 실행 전에 CODEC_ENCODE로 거부된다(T334-3-3-2-5).
 - 공유 catalog_connection recipe의 PHP extension runner가 MySQL, PostgreSQL, SQLite에서 recipe의 모든 op와 필드를 실행한다. catalog 읽기는 MySQL 결과를 버퍼 없이 스트림하며, 예산 중단은 자체 연결로 thread id의 질의를 KILL한다. 인자가 없는 PostgreSQL 읽기는 cursor로 진행한다. 쓰기의 반복된 열은 쓰기 전에 ROW_UPDATE_INVALID 또는 ROW_INSERT_INVALID로 거부된다(INT-111). 시간 열의 정밀도보다 많은 소수 자릿수를 쓰면 CODEC_ENCODE로 거부되며, SQLite의 CHECK가 TIME 또는 DATETIME 열의 정밀도를 정한다(T334-3-3-2-4).
 - 공유 catalog_connection recipe의 PHP runner가 MySQL, PostgreSQL, SQLite에서 recipe의 모든 op와 필드를 실행한다. catalog의 updateRow와 insertRow는 map과 함께 `[이름, 값]` 쌍의 목록으로 값을 받으므로, 반복된 열이 catalog에 도달해 쓰기 전에 ROW_UPDATE_INVALID 또는 ROW_INSERT_INVALID로 거부된다(INT-111). MySQL 읽기 예산은 서버 질의의 connection id로 질의를 KILL하여 멈추고, PostgreSQL 읽기는 cursor로 스트림하므로 예산에서 멈출 때 결과의 나머지를 읽지 않는다(T334-3-3-2-3).

@@ -50,9 +50,9 @@ impl CatalogConnection {
                 Pool::Postgres(sqlx::postgres::PgPoolOptions::new().max_connections(4).connect_with(options).await.map_err(|e| e.to_string())?)
             }
             ConnectOptions::Sqlite(options) => {
-                let metadata = std::fs::symlink_metadata(options.get_filename()).map_err(|e| format!("CATALOG_SQLITE_FILE: {e}"))?;
+                let metadata = std::fs::symlink_metadata(options.get_filename()).map_err(|e| format!("CONFIG: CATALOG_SQLITE_FILE: {e}"))?;
                 if !metadata.is_file() {
-                    return Err("CATALOG_SQLITE_FILE: expected an existing regular file".into());
+                    return Err("CONFIG: CATALOG_SQLITE_FILE: expected an existing regular file".into());
                 }
                 Pool::Sqlite(
                     sqlx::sqlite::SqlitePoolOptions::new()
@@ -81,7 +81,7 @@ impl CatalogConnection {
     /// Reads one bounded table page; this does not authorize row mutations.
     pub async fn table_page(&mut self, table: &TableRef, limit: usize, offset: u64) -> Result<TablePage, String> {
         page::validate_request(table, limit, offset)?;
-        let mut connection = self.read_only_connection("SELECT 1").await?;
+        let (mut connection, _) = self.read_only_connection("SELECT 1").await?;
         let result = page::read(&mut connection, &self.dialect, table, limit, offset).await;
         finish_read_only(&mut connection, result).await
     }
@@ -96,9 +96,22 @@ impl CatalogConnection {
         params: &[crate::tool_db::P],
         limits: crate::tool_db::QueryLimits,
     ) -> Result<crate::tool_db::QueryResult, String> {
-        let mut connection = self.read_only_connection(sql).await?;
+        let (mut connection, thread) = self.read_only_connection(sql).await?;
         let result = connection.query_result_values_bounded(sql, params, limits).await.map_err(catalog_query_error);
+        self.stop_limited_read(thread, &result).await;
         finish_read_only(&mut connection, result).await
+    }
+    /// A read_only_query whose limits are the counts that a caller gives: an absent count is the default, and a negative count
+    /// is refused with QUERY_LIMIT_INVALID before the query runs.
+    pub async fn read_only_query_counted(
+        &mut self,
+        sql: &str,
+        params: &[crate::tool_db::P],
+        max_rows: Option<i64>,
+        max_bytes: Option<i64>,
+    ) -> Result<crate::tool_db::QueryResult, String> {
+        let limits = read_limits(max_rows, max_bytes)?;
+        self.read_only_query(sql, params, limits).await
     }
     /// Read-only typed grid values preserve binary cells without text coercion.
     pub async fn read_only_grid_query(
@@ -107,11 +120,24 @@ impl CatalogConnection {
         params: &[crate::tool_db::P],
         limits: crate::tool_db::QueryLimits,
     ) -> Result<crate::tool_db::GridQueryResult, String> {
-        let mut connection = self.read_only_connection(sql).await?;
+        let (mut connection, thread) = self.read_only_connection(sql).await?;
         let result = connection.grid_query_values_bounded(sql, params, limits).await.map_err(catalog_query_error);
+        self.stop_limited_read(thread, &result).await;
         finish_read_only(&mut connection, result).await
     }
-    async fn read_only_connection(&self, sql: &str) -> Result<Conn, String> {
+    /// A read_only_grid_query whose limits are the counts that a caller gives, refused as read_only_query_counted refuses them.
+    pub async fn read_only_grid_query_counted(
+        &mut self,
+        sql: &str,
+        params: &[crate::tool_db::P],
+        max_rows: Option<i64>,
+        max_bytes: Option<i64>,
+    ) -> Result<crate::tool_db::GridQueryResult, String> {
+        let limits = read_limits(max_rows, max_bytes)?;
+        self.read_only_grid_query(sql, params, limits).await
+    }
+    /// The read-only connection of a read, and on MySQL the thread id that a budget stop kills the read by.
+    async fn read_only_connection(&self, sql: &str) -> Result<(Conn, Option<u64>), String> {
         read_only::validate(sql, &self.dialect).map_err(|error| error.to_string())?;
         let mut connection = Conn::acquire(&self.pool).await.map_err(|error| error.to_string())?;
         connection.discard_on_drop();
@@ -124,7 +150,28 @@ impl CatalogConnection {
             _ => "BEGIN",
         };
         connection.exec(begin, &[]).await.map_err(|error| error.to_string())?;
-        Ok(connection)
+        let thread = if matches!(connection, Conn::MySql(_)) {
+            let rows = connection.query("SELECT CONNECTION_ID()", &[]).await.map_err(|error| error.to_string())?;
+            match rows.as_slice() {
+                [row] if row.len() == 1 => Some(row[0].int().map_err(|error| error.to_string())? as u64),
+                _ => return Err("MySQL CONNECTION_ID of the read is not one value".into()),
+            }
+        } else {
+            None
+        };
+        Ok((connection, thread))
+    }
+    /// Ends a read that a budget stopped on the server. MySQL kills the running statement by its thread id on a connection of its
+    /// own, so the rollback that follows does not wait for the rest of the result. A PostgreSQL cursor ends with the rollback, and
+    /// a SQLite read stops with its handle. A failure here is not reported: the budget error is.
+    async fn stop_limited_read<T>(&self, thread: Option<u64>, result: &Result<T, String>) {
+        let (Some(thread), Err(error)) = (thread, result) else { return };
+        if !error.starts_with(polyspec_orm::codes::CATALOG_LIMIT) {
+            return;
+        }
+        if let Ok(mut killer) = Conn::acquire(&self.pool).await {
+            let _ = killer.exec(&format!("KILL QUERY {thread}"), &[]).await;
+        }
     }
     pub async fn close(self) {
         let Self { connection, pool, .. } = self;
@@ -147,6 +194,18 @@ async fn finish_read_only<T>(connection: &mut Conn, result: Result<T, String>) -
     }
 }
 
+/// The limits of a read from the counts a caller gives. An absent count is the default of the runtime, and a negative count is
+/// refused with QUERY_LIMIT_INVALID; the limits are checked here, before any query runs.
+fn read_limits(max_rows: Option<i64>, max_bytes: Option<i64>) -> Result<crate::tool_db::QueryLimits, String> {
+    let default = crate::tool_db::QueryLimits::default();
+    let count = |value: Option<i64>, otherwise: usize| match value {
+        None => Ok(otherwise),
+        Some(n) if n < 0 => Err(format!("{}: limits must not be negative", polyspec_orm::codes::QUERY_LIMIT_INVALID)),
+        Some(n) => Ok(usize::try_from(n).unwrap_or(usize::MAX)),
+    };
+    Ok(crate::tool_db::QueryLimits { max_rows: count(max_rows, default.max_rows)?, max_bytes: count(max_bytes, default.max_bytes)? })
+}
+
 pub(super) fn catalog_query_error(error: sqlx::Error) -> String {
     if let sqlx::Error::Decode(inner) = &error {
         let detail = inner.to_string();
@@ -156,6 +215,14 @@ pub(super) fn catalog_query_error(error: sqlx::Error) -> String {
         if let Some(detail) = detail.strip_prefix("TOOL_QUERY_VALUE:") {
             return format!("{}:{detail}", polyspec_orm::codes::CATALOG_VALUE);
         }
+        if let Some(detail) = detail.strip_prefix("TOOL_QUERY_TEMPORAL:") {
+            return format!("{}:{detail}", polyspec_orm::codes::GRID_TEMPORAL_VALUE);
+        }
     }
-    error.to_string()
+    let text = error.to_string();
+    // A write that the read-only server refuses is the query that fails, as the write of a read query is refused before it runs.
+    if polyspec_orm::Error::from(error).code() == polyspec_orm::codes::READ_ONLY {
+        return format!("{}: the database rejected a read-only query", polyspec_orm::codes::QUERY_READ_ONLY);
+    }
+    text
 }

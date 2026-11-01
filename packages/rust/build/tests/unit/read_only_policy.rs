@@ -29,8 +29,13 @@ fn policy_validates_nested_read_shapes_and_rejects_writes() {
             assert!(validate(sql, dialect).is_err(), "{dialect}:{sql}");
         }
     }
-    assert!(validate(&std::iter::repeat_n("SELECT 1", 200).collect::<Vec<_>>().join(" UNION ALL "), "postgres").is_err());
-    assert!(validate(&format!("SELECT {}", std::iter::repeat_n("1", 200).collect::<Vec<_>>().join("+")), "postgres").is_err());
+    // INT-136: PostgreSQL refuses 200 UNION ALL operands or 200 + terms with CATALOG_LIMIT, before the query runs.
+    let union = std::iter::repeat_n("SELECT 1", 200).collect::<Vec<_>>().join(" UNION ALL ");
+    let error = validate(&union, "postgres").expect_err("200 UNION ALL operands must fail");
+    assert!(error.to_string().starts_with("CATALOG_LIMIT:"), "{error}");
+    let plus = format!("SELECT {}", std::iter::repeat_n("1", 200).collect::<Vec<_>>().join("+"));
+    let error = validate(&plus, "postgres").expect_err("200 + terms must fail");
+    assert!(error.to_string().starts_with("CATALOG_LIMIT:"), "{error}");
 }
 
 #[test]

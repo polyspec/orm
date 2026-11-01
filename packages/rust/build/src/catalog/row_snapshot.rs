@@ -141,6 +141,10 @@ impl RowSnapshot {
     pub fn metadata(&self) -> &TableMetadata {
         &self.metadata
     }
+    /// The positions of the key columns in the row, in the order of the primary key.
+    pub fn key_indexes(&self) -> &[usize] {
+        &self.key_indexes
+    }
     pub fn cells(&self) -> &[GridCell] {
         &self.cells
     }
