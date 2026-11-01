@@ -2196,10 +2196,14 @@ parity-bench-env-check:
 flowmark-check:
 	test -x $(FLOWMARK) || { echo "flowmark-check: $(FLOWMARK) is missing; run make orm-install-flowmark, which builds the version pinned in tests/markdown/flowmark.version"; exit 1; }
 
-# Every provider parity phase has the same fixtures, preparation and runtime paths as the original full parity target. The API
-# phase keeps this setup contract too, so switching parityMode cannot make setup failures disappear from the CI result.
+# Every provider parity phase has the same fixtures and runtime paths as the original full parity target. A phase builds only
+# the native outputs its bindings load: the php-extension bindings load the extension (ORM_PARITY_PHP_EXTENSION) and the rust
+# bindings the conformance program (ORM_PROGRAM_CONFORMANCE); the API phase and the other implementations load neither, so
+# their jobs build neither. parity-check runs every binding, so it prepares both (parity-prepare).
 PARITY_GATE_TARGETS = parity-check parity-api-check $(KIT_PARITY_BINDING_TARGETS)
-$(PARITY_GATE_TARGETS): parity-prepare parity-bench-env-check flowmark-check interface-check
+$(PARITY_GATE_TARGETS): parity-bench-env-check flowmark-check interface-check
+parity-bindings-php-extension-check: parity-prepare-php-extension
+parity-bindings-rust-check: parity-prepare-rust
 $(PARITY_GATE_TARGETS): export FLOWMARK := $(FLOWMARK)
 $(PARITY_GATE_TARGETS): export ORM_PARITY_PHP_EXTENSION = $(PARITY_RUN_DIR)/polyspec_orm.so
 $(PARITY_GATE_TARGETS): export ORM_PARITY_PHP_EXTENSION_NATIVE_TEST = $(PARITY_NATIVE_TEST_EXTENSION)

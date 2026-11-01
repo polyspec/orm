@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5d10cbe58e224db6286c949478d1a0f3c223136e96fe48cae6d5f314ab6ab5d6 -->
+<!-- source-sha256: d303f9f4c703b280e1f4db36d870dd788425cd771bc8d49f1b9c81da68061a9f -->
 # 변경 이력
 
 ## Unreleased
@@ -53,6 +53,7 @@
 - kit parity job은 complex-query 데이터베이스 없이 parity-bench-env-check를 실행했다. CR7 이후 parity context가 대상을 하나도 넘기지 않았고(PARITY_CONTEXT_TARGETS가 비어 있었다), complexQueryNeeded가 parity-check가 선언한 need complex-query를 읽지 않았다. 이제 context는 parity 대상을 넘기고, 대상이 그 need를 선언하면 complex-query fixture를 만든다 (CR37).
 - 통합 트리의 Go, PHP, TypeScript, Python runtime lint gate가 실패했다. Go errorlint 지적 하나와 쓰지 않는 Go 별칭 하나, 120자를 넘는 PHP 줄 13곳, TypeScript 스크립트 두 곳의 any 값과 template literal, ruff check와 format이 거부한 Python 시험 다섯 개가 있었다. 각각 원인에서 고쳤고 noqa는 추가하지 않았다 (CR34).
 - orm은 flowmark의 capability 표를 더 이상 복사하지 않는다. dialects.md의 "Markdown IR executor" 표는 고정된 flowmark spec 60의 링크로 바뀌었고, flowmark source checkout을 읽던 markdown-table 검사는 지웠다 (T347).
+- 모든 parity job이 PHP extension과 Rust conformance program을 build해서, python, go, typescript, php, API job도 둘 다 읽지 않는 binding을 위해 PHP-Parser를 내려받고 두 산출물을 compile했다. 이제 parity gate는 그 binding이 읽는 것만 build한다. php-extension은 extension을, rust는 program을, 전체 parity-check는 둘 다 build한다. (CR39)
 
 ## 0.0.21
 

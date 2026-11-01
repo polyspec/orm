@@ -52,6 +52,7 @@
 - The interface snapshot of the integrated tree was stale: the go and typescript symbol hashes recorded in contracts/interfaces.json differed from the tree, and the php snapshot listed four private Catalog methods that packages/php/src/Catalog.php no longer declares, so make interface-check/self-test failed. The documented record run regenerates the snapshots and the manifest hashes (CR35).
 - The kit parity jobs ran parity-bench-env-check without the complex-query databases: since CR7 the parity context named no target (PARITY_CONTEXT_TARGETS was empty), and complexQueryNeeded did not read the need complex-query that parity-check declares. The context now names the parity gates, and a context whose target declares the need gets the complex-query fixtures (CR37).
 - The runtime lint gates of Go, PHP, TypeScript and Python failed on the integrated tree: a Go errorlint finding and an unused Go alias, 13 PHP lines over 120 characters, an unsafe any and a template literal in two TypeScript scripts, and five Python tests that ruff check and ruff format refused. Each is fixed at its source, and no noqa is added (CR34).
+- Every parity job built the PHP extension and the Rust conformance program, so the python, go, typescript, php and API jobs fetched PHP-Parser and compiled both for bindings that load neither. A parity gate now builds only what its bindings load: the extension for php-extension, the program for rust, and both for the full parity-check. (CR39)
 
 ## 0.0.21
 

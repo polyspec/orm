@@ -710,7 +710,8 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   assert.equal((matrixWorkflow.match(/id: go-lease-modules/g) ?? []).length, 1, 'every group installs the shared runner dependency in its own job');
   assert.match(workflow, /id: go-lease-modules\n        if: \$\{\{ !cancelled\(\) \}\}\n        run: make orm-install-go-lease/);
   assert.match(workflow, /id: go-modules\n        if: \$\{\{ !cancelled\(\) && steps\.group-needs\.outputs\.go == 'true' \}\}\n        run: make orm-install-go/);
-  assert.doesNotMatch(makefile, /^parity-(?:api|bindings-[a-z-]+)-check:/m,
+  // A phase target may gain prerequisites here (CR39 names the native outputs of one implementation), but never a recipe.
+  assert.doesNotMatch(makefile, /^parity-(?:api|bindings-[a-z-]+)-check:.*\n\t/m,
     'the canonical Kit parity target owns phase execution; the ORM Makefile only supplies its prerequisites');
   assert.match(makefile, /^parity-check: parity-prepare$/m, 'the default full Kit parity target remains available');
   assert.ok(workflow.includes('        run: make check-run GROUP=${{ matrix.group }}\n'), 'ci.yml runs make check-run for the group of its matrix');
