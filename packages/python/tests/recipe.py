@@ -295,11 +295,31 @@ def _query_slot(models, db, step: dict) -> None:
     wrapper an int, a float wrapper a float, an f64 wrapper its non-finite float (NaN, Infinity, -Infinity), so the Python public
     path refuses it with the code the expect names. A text or bool wrapper reaches the filter unchanged, so the filter refuses it
     itself. A column or operator without a typed filter here is a defect of the recipe."""
+    table, _, name = step["column"].partition(".")
+    if step["operator"] == "like_contains":
+        # The contains condition of the text column is the lk operator of the generated model, a dynamic attribute (DSL-29).
+        # The wrapper's value goes unchanged, and a nil wrapper is the SQL NULL that the contains condition binds.
+        if table != "slots" or name != "text_value":
+            raise AssertionError(
+                f"the column {step['column']} has no contains filter in the Python cases"
+            )
+        wrapper = step["params"][0]
+        if list(wrapper) == ["nil"]:
+            value = None
+        else:
+            # The host value of the wrapper, as the eq filters take it: an int or a float is its number, so a number
+            # reaches the text slot and is CODEC_ENCODE, and text or bool reaches it unchanged.
+            ((kind, value),) = wrapper.items()
+            if kind == "int":
+                value = int(value)
+            elif kind in ("float", "f64"):
+                value = float(value)
+        getattr(models.Slots().connect(db), "lk_text_value")(value).gets()
+        return
     if step["operator"] != "eq":
         raise AssertionError(
             f"operator {step['operator']} has no typed filter in the Python cases"
         )
-    table, _, name = step["column"].partition(".")
     if table != "slots" or name not in SEND_FILTERS:
         raise AssertionError(
             f"the column {step['column']} has no typed filter in the Python cases"

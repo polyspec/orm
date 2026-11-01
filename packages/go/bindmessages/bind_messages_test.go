@@ -1,6 +1,6 @@
 //go:build markdown
 
-package markdownmodel_test
+package bindmessages_test
 
 import (
 	"bufio"
@@ -16,6 +16,7 @@ import (
 
 	"github.com/polyspec/orm/packages/go/bindmodel"
 	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/packages/go/internal/markdowntest"
 	"github.com/polyspec/orm/packages/go/internal/recipe"
 	"github.com/polyspec/orm/packages/go/orm"
 	"github.com/polyspec/orm/packages/go/testcase"
@@ -63,10 +64,14 @@ func markdownSend(t *testing.T, column, operator string, params []json.RawMessag
 		}
 		callErr = db.Transaction(func() error { return nil }, opts...)
 	} else {
-		if operator != "eq" {
+		switch operator {
+		case "eq":
+			callErr = queryColumn(t, db, column, params[0])
+		case "like_contains":
+			callErr = likeColumn(t, db, column, params[0])
+		default:
 			t.Fatalf("operator %s has no typed filter in the Go cases", operator)
 		}
-		callErr = queryColumn(t, db, column, params[0])
 	}
 	select {
 	case msg := <-first:
@@ -169,6 +174,20 @@ func queryColumn(t *testing.T, db *orm.DB, column string, value json.RawMessage)
 		return err
 	}
 	t.Fatalf("the column %s has no typed filter in the Go cases", column)
+	return nil
+}
+
+// likeColumn runs the contains condition of the slot column with the host value of the wrapper: the generated Lk method of the
+// column, which the markdown transform of the planner turns into the pattern that contains the text (PRT-67). The typed Lk method
+// takes no null, so a nil wrapper is excluded from the Go cases (bind_contains_null).
+func likeColumn(t *testing.T, db *orm.DB, column string, value json.RawMessage) error {
+	t.Helper()
+	switch column {
+	case "slots.text_value":
+		_, err := bindmodel.Slots().Connect(db).LkTextValue(text(t, value)).Gets()
+		return err
+	}
+	t.Fatalf("the column %s has no contains filter in the Go cases", column)
 	return nil
 }
 
@@ -288,13 +307,13 @@ func boolean(t *testing.T, value json.RawMessage) bool {
 // message after it to first, and answers that message with an error so the call ends. Later messages get the same error.
 func startMarkdownSendListener(t *testing.T, first chan<- json.RawMessage) string {
 	t.Helper()
-	ln := listenMarkdownTestServer(t)
-	serveMarkdownTestConnection(t, ln, func(conn net.Conn) error {
+	ln := markdowntest.ListenMarkdownTestServer(t)
+	markdowntest.ServeMarkdownTestConnection(t, ln, func(conn net.Conn) error {
 		r := bufio.NewReader(conn)
 		for index := 0; ; index++ {
 			line, err := r.ReadString('\n')
 			if err != nil {
-				return clientEnded(err)
+				return markdowntest.ClientEnded(err)
 			}
 			reply := `{"ok":true}`
 			if index > 0 {
@@ -304,7 +323,7 @@ func startMarkdownSendListener(t *testing.T, first chan<- json.RawMessage) strin
 				reply = `{"error":{"code":"IR_INVALID","message":"recorded by the markdown.send listener"}}`
 			}
 			if _, err := conn.Write([]byte(reply + "\n")); err != nil {
-				return clientEnded(err)
+				return markdowntest.ClientEnded(err)
 			}
 		}
 	})

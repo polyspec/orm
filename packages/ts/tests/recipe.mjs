@@ -626,8 +626,12 @@ function messageValue(text) {
 // wrapper of another kind reaches the public path and is refused there (CODEC_ENCODE). A column or operator without a typed filter
 // here is a defect of the recipe.
 async function queryColumn(step, db) {
-  if (step.operator !== 'eq') throw new Error(`operator ${step.operator} has no typed filter in the TypeScript cases`);
   const slots = new Slots().connect(db);
+  if (step.operator === 'like_contains') {
+    if (step.column !== 'slots.text_value') throw new Error(`the column ${step.column} has no contains filter in the TypeScript cases`);
+    return slots.lkTextValue(hostValue(step.params[0])).gets();
+  }
+  if (step.operator !== 'eq') throw new Error(`operator ${step.operator} has no typed filter in the TypeScript cases`);
   switch (step.column) {
     case 'slots.i16_value': return slots.getsByI16Value(hostValue(step.params[0]));
     case 'slots.i32_value': return slots.getsByI32Value(hostValue(step.params[0]));

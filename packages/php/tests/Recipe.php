@@ -291,9 +291,17 @@ final class Recipe
     private static function sendQuery(array $step, mixed $db): void
     {
         $column = $step['column'];
-        $method = self::BIND_FILTERS[$column]
-            ?? Assert::fail("the column $column has no typed filter in the PHP cases");
-        if ($step['operator'] !== 'eq') {
+        if ($step['operator'] === 'like_contains') {
+            // The contains condition of the text column is the lk operator of the generated model, which __call
+            // dispatches (DSL-29).
+            if ($column !== 'slots.text_value') {
+                Assert::fail("the column $column has no contains filter in the PHP cases");
+            }
+            $method = 'lkTextValue';
+        } elseif ($step['operator'] === 'eq') {
+            $method = self::BIND_FILTERS[$column]
+                ?? Assert::fail("the column $column has no typed filter in the PHP cases");
+        } else {
             Assert::fail("operator {$step['operator']} has no typed filter in the PHP cases");
         }
         $wrapper = $step['params'][0];
