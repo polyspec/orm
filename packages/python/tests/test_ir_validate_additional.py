@@ -9,11 +9,16 @@ from polyspec.orm.engine.validate import validate
 from polyspec.orm.errors import OrmError
 
 from . import testcase
+
 ROOT = Path(__file__).resolve().parents[3]
 
 
 def validation_model():
-    return model_of_documents(parse_document_set([(ROOT / "contracts" / "fixtures" / "bench" / "bench.dbs").read_text()]))
+    return model_of_documents(
+        parse_document_set(
+            [(ROOT / "contracts" / "fixtures" / "bench" / "bench.dbs").read_text()]
+        )
+    )
 
 
 class ManifestHashTest(unittest.TestCase):

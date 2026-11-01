@@ -74,8 +74,8 @@ function buildKey(): string {
     digest.update('\0');
   }
   const codes = join(client, 'src/codes.ts');
-  digest.update(`codes ${existsSync(codes) ? readFileSync(codes) : 'missing'}\0`);
-  digest.update(`typescript manifest ${readFileSync(createRequire(join(client, 'package.json')).resolve('typescript/package.json'))}\0`);
+  digest.update(`codes ${existsSync(codes) ? readFileSync(codes).toString('utf8') : 'missing'}\0`);
+  digest.update(`typescript manifest ${readFileSync(createRequire(join(client, 'package.json')).resolve('typescript/package.json')).toString('utf8')}\0`);
   digest.update(`node ${process.version}\0`);
   return digest.digest('hex');
 }

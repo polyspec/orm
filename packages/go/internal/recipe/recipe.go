@@ -753,7 +753,7 @@ func checkValidate(raw json.RawMessage, err error) error {
 	}
 	if outcome.Error != "" {
 		if err == nil || !strings.HasPrefix(err.Error(), outcome.Error+":") {
-			return fmt.Errorf("got %v, want %s", err, outcome.Error)
+			return fmt.Errorf("got %w, want %s", err, outcome.Error)
 		}
 		return nil
 	}

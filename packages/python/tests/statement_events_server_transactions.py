@@ -121,9 +121,16 @@ class ServerTransactionsTest(unittest.TestCase):
         excluded = VECTORS["server_transactions_excluded"]
         self.assertEqual(len(named), len(set(named)), "an entry names a database twice")
         self.assertEqual(set(named) | set(excluded), {"mysql", "postgres", "sqlite"})
-        self.assertEqual(set(named) & set(excluded), set(), "a database is both an entry and excluded")
+        self.assertEqual(
+            set(named) & set(excluded),
+            set(),
+            "a database is both an entry and excluded",
+        )
         for database, exclusion in excluded.items():
-            self.assertTrue(exclusion["reason"].strip(), f"the exclusion of {database} states no reason")
+            self.assertTrue(
+                exclusion["reason"].strip(),
+                f"the exclusion of {database} states no reason",
+            )
 
 
 if __name__ == "__main__":

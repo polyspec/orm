@@ -7,8 +7,8 @@ namespace Polyspec\Orm\Internal;
 use PDO;
 
 /**
- * The fetchAll of a PDOStatement subclass that answers its rows through fetch(): the rows are read in order until fetch()
- * returns false. Shared by PgsqlStatementAdapter and the test statement CatalogAnswerStatement.
+ * The fetchAll of a PDOStatement subclass that answers its rows through fetch(): the rows are read in order until
+ * fetch() returns false. Shared by PgsqlStatementAdapter and the test statement CatalogAnswerStatement.
  *
  * @internal
  */

@@ -111,20 +111,28 @@ class StatementEventsTest extends TestCase
         }
     }
 
-    // Requirements: INT-149. Every database of the statement events is named once: by an entry, or by an excluded database
-    // with its reason. SQLite is excluded (CR16-2).
+    // Requirements: INT-149. Every database of the statement events is named once: by an entry, or by an excluded
+    // database with its reason. SQLite is excluded (CR16-2).
     public function testServerTransactionsNamedOnce(): void
     {
         $vector = statementEventsVector();
         $named = array_column($vector['server_transactions'], 'database');
         $excluded = $vector['server_transactions_excluded'] ?? [];
         $this->assertSame(array_values(array_unique($named)), $named, 'an entry names a database twice');
-        $this->assertSame([], array_values(array_intersect($named, array_keys($excluded))), 'a database is both an entry and excluded');
+        $this->assertSame(
+            [],
+            array_values(array_intersect($named, array_keys($excluded))),
+            'a database is both an entry and excluded'
+        );
         $all = array_values(array_unique([...$named, ...array_keys($excluded)]));
         sort($all);
         $this->assertSame(['mysql', 'postgres', 'sqlite'], $all);
         foreach ($excluded as $database => $exclusion) {
-            $this->assertNotSame('', trim((string) ($exclusion['reason'] ?? '')), "the exclusion of $database states no reason");
+            $this->assertNotSame(
+                '',
+                trim((string) ($exclusion['reason'] ?? '')),
+                "the exclusion of $database states no reason"
+            );
         }
     }
 }

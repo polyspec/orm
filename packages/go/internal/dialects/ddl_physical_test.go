@@ -14,11 +14,8 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// ddlVectors and ddlStep are the vectors of tests/dbspec/ddl.json, read by the shared loader of the dbspec packages.
-type (
-	ddlVectors = ddlcases.Vectors
-	ddlStep    = ddlcases.Step
-)
+// ddlStep is one step of the behavior vectors of tests/dbspec/ddl.json, read by the shared loader of the dbspec packages.
+type ddlStep = ddlcases.Step
 
 // connectionRules are the statements every client runs on a new connection:
 // UTC on MySQL and PostgreSQL and foreign keys on SQLite (docs/spec/dbspec.md

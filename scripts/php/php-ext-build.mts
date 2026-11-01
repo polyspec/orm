@@ -37,7 +37,11 @@ function tracked(paths: readonly string[]): string[] {
 
 function kitVersion(): string {
   const manifest = createRequire(path.join(root, 'package.json')).resolve('@polyspec/kit/package.json');
-  return JSON.parse(readFileSync(manifest, 'utf8')).version;
+  const parsed: unknown = JSON.parse(readFileSync(manifest, 'utf8'));
+  if (typeof parsed !== 'object' || parsed === null || !('version' in parsed) || typeof parsed.version !== 'string') {
+    throw new Error(`${manifest} has no string version`);
+  }
+  return parsed.version;
 }
 
 /** The key of the build: a digest of every input named above, each file with its name, so a renamed file changes the key. */

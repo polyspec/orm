@@ -6,9 +6,13 @@
 # Each DSN is required; the run fails naming the variable that is unset.
 import json
 import os
+import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
+
+import psycopg
+import pymysql
 
 from .dbspec_ddl import parse_set
 from .dbspec_introspect import CONNECTION_RULES, case_database
@@ -19,6 +23,8 @@ from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
 DIALECTS = ("mysql", "postgres", "sqlite")
+# The errors that the DB-API drivers of the three dialects raise for a statement that the database refuses.
+REFUSED = (pymysql.MySQLError, psycopg.Error, sqlite3.Error)
 DATA = json.loads((ROOT / "tests" / "dbspec" / "ddl.json").read_text())
 DSNS = {
     "mysql": os.environ.get("ORM_TEST_MYSQL_SERVER_DSN"),
@@ -27,23 +33,32 @@ DSNS = {
 TEMP = {}
 
 
+def refused(db, sql: str) -> bool:
+    """Whether the database refuses sql with the error of its driver."""
+    try:
+        db.execute(sql)
+    except REFUSED:
+        return True
+    return False
+
+
 def run_steps(db, dialect: str, steps: list) -> None:
     for step in steps:
         if "dialects" in step and dialect not in step["dialects"]:
             continue
         if "sql" in step:
             if step.get("fails"):
-                try:
-                    db.execute(step["sql"])
-                except Exception:
-                    continue
-                raise AssertionError(f"{dialect}: {step['sql']} must fail")
+                if not refused(db, step["sql"]):
+                    raise AssertionError(f"{dialect}: {step['sql']} must fail")
+                continue
             db.execute(step["sql"])
             continue
         rows = db.execute(step["query"])["rows"]
         got = str(rows[0][0])
         if got != step["want"]:
-            raise AssertionError(f"{dialect}: {step['query']}: want {step['want']!r}, got {got!r}")
+            raise AssertionError(
+                f"{dialect}: {step['query']}: want {step['want']!r}, got {got!r}"
+            )
 
 
 def check_physical(test: unittest.TestCase, case: dict) -> None:
@@ -51,7 +66,9 @@ def check_physical(test: unittest.TestCase, case: dict) -> None:
     for dialect in DIALECTS:
         statements = render_dbspec(documents, dialect)["statements"]
         name = f"render_py_{os.getpid()}_{case['id'].replace('-', '_')}"
-        with case_database(dialect, name, DSNS.get(dialect), TEMP["dir"].name) as connection:
+        with case_database(
+            dialect, name, DSNS.get(dialect), TEMP["dir"].name
+        ) as connection:
             db = Adapter(connection)
             for sql in [*CONNECTION_RULES[dialect], *statements]:
                 db.execute(sql)
@@ -63,9 +80,14 @@ class Case(VectorCase):
 
 
 def setUpModule():
-    for name, dialect in (("ORM_TEST_MYSQL_SERVER_DSN", "mysql"), ("ORM_TEST_POSTGRES_SERVER_DSN", "postgres")):
+    for name, dialect in (
+        ("ORM_TEST_MYSQL_SERVER_DSN", "mysql"),
+        ("ORM_TEST_POSTGRES_SERVER_DSN", "postgres"),
+    ):
         if not DSNS[dialect]:
-            raise SystemExit(f"{name} is required for the physical run of the rendered statements; pass TEST_ENV")
+            raise SystemExit(
+                f"{name} is required for the physical run of the rendered statements; pass TEST_ENV"
+            )
     TEMP["dir"] = tempfile.TemporaryDirectory()
 
 

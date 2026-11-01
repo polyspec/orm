@@ -68,9 +68,9 @@ final class Recipe
     }
 
     /**
-     * Gives the request of an ir.validate step to the validator, with the manifest_hash of the schema that the recipe names
-     * (relative to the recipe file) added, and checks the outcome of the expect of database: {value: {bool: true}} for an accepted
-     * request, {error: CODE} for a request that fails with CODE.
+     * Gives the request of an ir.validate step to the validator, with the manifest_hash of the schema that the recipe
+     * names (relative to the recipe file) added, and checks the outcome of the expect of database: {value: {bool:
+     * true}} for an accepted request, {error: CODE} for a request that fails with CODE.
      */
     private static function validateStep(array $step, string $path, string $database): void
     {
@@ -100,11 +100,11 @@ final class Recipe
     }
 
     /**
-     * Runs the chain of an ir.answer step (a case of MarkdownConformanceTest::conformanceCases) on a connection whose listener
-     * answers connect with {"ok":true} and then the one request with answer. A step with answers instead gets the keyed
-     * listener (--keyed), which answers each control message by its op and each request by its request.kind. The normalized
-     * result of the chain must equal the normalized expect.none.value. An OrmException of the chain is the result {error: CODE};
-     * any other exception fails the case.
+     * Runs the chain of an ir.answer step (a case of MarkdownConformanceTest::conformanceCases) on a connection whose
+     * listener answers connect with {"ok":true} and then the one request with answer. A step with answers instead
+     * gets the keyed listener (--keyed), which answers each control message by its op and each request by its
+     * request.kind. The normalized result of the chain must equal the normalized expect.none.value. An OrmException
+     * of the chain is the result {error: CODE}; any other exception fails the case.
      */
     private static function answerStep(array $step): void
     {

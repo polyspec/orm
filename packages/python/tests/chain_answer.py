@@ -130,9 +130,13 @@ def run_chain(name: str, step: dict) -> Any:
     if run is None:
         raise AssertionError(f"chain {name} is no markdown conformance case")
     if "answers" in step:
-        listener, thread = start_markdown_test_server_with_keyed_answers(step["answers"])
+        listener, thread = start_markdown_test_server_with_keyed_answers(
+            step["answers"]
+        )
     else:
-        listener, thread = start_markdown_test_server_with_answer(json.dumps(step["answer"]))
+        listener, thread = start_markdown_test_server_with_answer(
+            json.dumps(step["answer"])
+        )
     port = listener.getsockname()[1]
     s = Served(STATE["models"], STATE["workdir"], str(port), TOKEN)
     s.db = STATE["models"].connect(s.dsn("conformance", TOKEN))

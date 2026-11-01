@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 31682ddd9a63b7191c733963ed5d2ca606921712b6ad29f63ef0868aaa4995c0 -->
+<!-- source-sha256: 160cdafa407d88a87fcfd56f36d03a0ecad750895ac792d4c1a1148fd7143a54 -->
 # 변경 이력
 
 ## Unreleased
@@ -51,6 +51,7 @@
 - 통합의 변경 기록에 0.0.21 절 아래 통합이 넣은 항목 18개가 있어 목록 항목이 한국어 기록의 35개가 아니라 53개였고, docs.translation-shape가 실패했다. 0.0.21 절은 커밋 874946330의 본문으로 복원했고, 어느 Unreleased 절에도 없던 CR25 항목은 Unreleased로 옮겼다 (CR36).
 - 통합 트리의 인터페이스 스냅샷이 오래되어 있었다. contracts/interfaces.json에 기록된 go와 typescript 심볼 해시가 트리와 달랐고, php 스냅샷은 packages/php/src/Catalog.php가 더 이상 선언하지 않는 private 메서드 네 개를 담고 있어서 make interface-check/self-test가 실패했다. 문서화된 기록 실행이 스냅샷과 매니페스트 해시를 다시 쓴다 (CR35).
 - kit parity job은 complex-query 데이터베이스 없이 parity-bench-env-check를 실행했다. CR7 이후 parity context가 대상을 하나도 넘기지 않았고(PARITY_CONTEXT_TARGETS가 비어 있었다), complexQueryNeeded가 parity-check가 선언한 need complex-query를 읽지 않았다. 이제 context는 parity 대상을 넘기고, 대상이 그 need를 선언하면 complex-query fixture를 만든다 (CR37).
+- 통합 트리의 Go, PHP, TypeScript, Python runtime lint gate가 실패했다. Go errorlint 지적 하나와 쓰지 않는 Go 별칭 하나, 120자를 넘는 PHP 줄 13곳, TypeScript 스크립트 두 곳의 any 값과 template literal, ruff check와 format이 거부한 Python 시험 다섯 개가 있었다. 각각 원인에서 고쳤고 noqa는 추가하지 않았다 (CR34).
 
 ## 0.0.21
 

@@ -73,7 +73,9 @@ def recipe_tests(path: str, database: str):
     recipe = json.loads((ROOT / path).read_text(encoding="utf-8"))
     # An ir.validate step checks its request against the schema of the recipe, which the recipe names relative to its own file.
     model = (
-        _validation_model(ROOT / Path(path).parent / recipe["schema"]) if "schema" in recipe else None
+        _validation_model(ROOT / Path(path).parent / recipe["schema"])
+        if "schema" in recipe
+        else None
     )
 
     def check(test: unittest.TestCase, case: dict) -> None:
@@ -92,8 +94,12 @@ def recipe_tests(path: str, database: str):
                     f"recipe {path} case {case['id']} step {index} ({step['op']}) on {database}: {error}"
                 ) from error
 
-    has_chain = any(step["op"] == "ir.answer" for case in recipe["cases"] for step in case["steps"])
-    return vector_load_tests(ChainRecipeCase if has_chain else RecipeCase, recipe["cases"], check)
+    has_chain = any(
+        step["op"] == "ir.answer" for case in recipe["cases"] for step in case["steps"]
+    )
+    return vector_load_tests(
+        ChainRecipeCase if has_chain else RecipeCase, recipe["cases"], check
+    )
 
 
 def _answer(step: dict, database: str) -> None:
@@ -104,7 +110,9 @@ def _answer(step: dict, database: str) -> None:
         raise AssertionError(f"ir.answer has no value expect for {database}")
     got = chain_answer.run_chain(step["chain"], step)
     if not same(got, outcome["value"]):
-        raise AssertionError(f"got {json.dumps(got)}, want {json.dumps(outcome['value'])}")
+        raise AssertionError(
+            f"got {json.dumps(got)}, want {json.dumps(outcome['value'])}"
+        )
 
 
 def _validation_model(schema: Path):
@@ -132,7 +140,9 @@ def _validate(step: dict, model: Any, database: str) -> None:
             raise AssertionError(f"got {got}, want {outcome['error']}")
         return
     if outcome.get("value") != {"bool": True}:
-        raise AssertionError(f"ir.validate expects {{bool true}} or an error, got {outcome.get('value')}")
+        raise AssertionError(
+            f"ir.validate expects {{bool true}} or an error, got {outcome.get('value')}"
+        )
     if got is not None:
         raise AssertionError(f"got {got}, want valid")
 
