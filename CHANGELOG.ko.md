@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a2a0722873daa67f71d56b9bfb8465623d54fc96585d473cfa245f53bb1cf36e -->
+<!-- source-sha256: cf6c1b0ba05dc196ba83dc92a96e4966ff76fabf6006c496b83b8e699ef6ff28 -->
 # 변경 이력
 
 ## Unreleased
 
+- ci.yml의 kit 외 모든 job은 `needs: kit`으로 kit job을 따른다(S12)(T346-3).
 - orm은 모든 CI job에서 kit을 공유 action `.github/actions/kit-bootstrap`으로만 bootstrap한다(T346-2). ci.yml과 docs-pages.yml에서 `make install-tools TOOLS=npm`을 실행하던 인라인 step을 제거했다.
 - orm은 kit 0.0.88을 채택한다(T346-1). package pin은 그 release asset과 integrity를 가리키며, kit-sync 사본은 link, 파이프라인, 매니페스트 경로 규칙 S11, S12, P30(K997, K998)을 담은 그 release의 것이다.
 - orm은 ordered-json 0.0.17을 모든 생태계에서 채택한다(T346). npm, Composer, Go, Python, Rust의 pin이 그 release asset과 tag를 가리키며, packaging.md는 그 release의 asset `polyspec-ordered-json-0.0.17.tgz`와 Composer zip, wheel 이름을 적는다.

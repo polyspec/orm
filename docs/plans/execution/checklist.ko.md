@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 73cbd794a88d19ab1ed93ebd26322264f88a75bcd9f53fe375e00752abc278c4 -->
+<!-- source-sha256: 3a93bba9fb84f3d6b4430409d577a4a5c7ac0c3444b4a47597473631d53da79b -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1522,3 +1522,4 @@
 | T346 | orm은 kit-sync가 제공하는 local action .github/actions/kit-bootstrap을 CI의 bootstrap으로 쓰는 kit release를 채택한다. .github/workflows의 모든 CI job은 job마다 두던 인라인 bootstrap 복사본 대신 그 action으로 kit을 bootstrap하며, kit 패키지는 그 release의 asset과 integrity로 고정한다 (P42, K980) | package.json, package-lock.json, .github/workflows/ci.yml, .github/workflows/docs-pages.yml, .github/actions/kit-bootstrap/action.yml, PRINCIPLES.md, PRINCIPLES.ko.md, CHANGELOG.md, CHANGELOG.ko.md | `make kit-check`; `make docs-check`; `make docs-rules-check`; `make repo-check` | [v] |
 | T346-1 | orm은 링크, 파이프라인, 매니페스트 경로 규칙(S11, S12, P30과 K997, K998)을 판정하는 kit 릴리스를 고정하고, kit.copies의 모든 사본이 고정된 패키지의 바이트와 같게 한다 | package.json, package-lock.json, PRINCIPLES.md, PRINCIPLES.ko.md, CHANGELOG.md, CHANGELOG.ko.md, docs/plans/execution/checklist.md, docs/plans/execution/checklist.ko.md | `make docs-check` | [v] |
 | T346-2 | ci.yml과 docs-pages.yml의 모든 CI job은 kit 부트스트랩을 공유 action .github/actions/kit-bootstrap으로만 수행하며, make install-tools TOOLS=npm을 실행하는 인라인 step을 포함하지 않는다(K992, K996) | .github/workflows/ci.yml, .github/workflows/docs-pages.yml, scripts/check/ci-setup.mts, scripts/repo/ci.mts, CHANGELOG.md, CHANGELOG.ko.md, docs/plans/execution/checklist.md, docs/plans/execution/checklist.ko.md | `make repo-check/unit`; `make runner-check`; `make scripts-typecheck`; `make comment-language-check` | [v] |
+| T346-3 | ci.yml의 kit 외 모든 job은 kit job 다음에 실행되어, kit의 검사를 한 번 실행하는 한 파이프라인을 이룬다(S12, K998) | .github/workflows/ci.yml, scripts/repo/check.test.mts, CHANGELOG.md, CHANGELOG.ko.md, docs/plans/execution/checklist.md, docs/plans/execution/checklist.ko.md | `make kit-check`; `make repo-check/unit`; `make scripts-typecheck`; `make lint-ts`; `make duplication-check`; `make comment-language-check`; `make docs-site-check` | [v] |

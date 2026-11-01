@@ -640,8 +640,8 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   assert.ok(typeof jobs === 'object' && jobs !== null && !Array.isArray(jobs) && 'test' in jobs, 'the CI test matrix exists');
   const testJob = jobs.test;
   assert.ok(typeof testJob === 'object' && testJob !== null && !Array.isArray(testJob), 'the test job has a mapping');
-  assert.equal('needs' in testJob ? testJob.needs : undefined, undefined,
-    'runtime and comparison matrix jobs install their own dependencies without waiting for another job');
+  assert.equal('needs' in testJob ? testJob.needs : undefined, 'kit',
+    'runtime and comparison matrix jobs follow the job kit with needs: kit (S12) and install their own dependencies');
   assert.match(workflow, /- name: tools of mise\.toml\n        id: go\n        if: \$\{\{ !cancelled\(\) \}\}\n        env:\n          CI_GROUP_PHP: \$\{\{ steps\.group-needs\.outputs\.php \}\}\n          CI_GROUP_PYTHON: \$\{\{ steps\.group-needs\.outputs\.python \}\}\n        run: make ci-install-tools GROUP=\$\{\{ matrix\.group \}\}/,
     'CI passes the group setup needs to one Make target, not inline shell logic');
   const installTools = (group: string, php: string, python: string) => {

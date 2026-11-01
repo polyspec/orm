@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Every job of .github/workflows/ci.yml other than kit follows the job kit with `needs: kit` (S12) (T346-3).
 - orm bootstraps kit only through the shared action `.github/actions/kit-bootstrap` in every CI job (T346-2): the inline steps that ran `make install-tools TOOLS=npm` are removed from ci.yml and docs-pages.yml.
 - orm takes kit 0.0.88 (T346-1): the pin names the release asset of kit 0.0.88 with its integrity, and the kit-sync copies are that release's, with the link, pipeline and manifest-path rules S11, S12 and P30 (K997, K998).
 - orm takes ordered-json 0.0.17 (T346) in every ecosystem: the npm, Composer, Go, Python and Rust pins name its release assets and tag, and packaging.md names its assets `polyspec-ordered-json-0.0.17.tgz` and the Composer zip and wheel of that release.

@@ -40,6 +40,7 @@ jobs:
       contents: read
 
   test:
+    needs: kit
     # .github/runner declares the runner of every job; make repo-check
     # requires it.
     runs-on: ubuntu-26.04-arm
@@ -238,6 +239,7 @@ jobs:
           if-no-files-found: error
 
   docs:
+    needs: kit
     runs-on: ubuntu-26.04-arm
     env:
       VITEPRESS_BASE: /orm/
@@ -287,6 +289,7 @@ jobs:
   # vscode.provideDocumentSemanticTokens inside the VS Code that make orm-install-vscode installs (kit's installer, at the
   # minimum release of packages/dbspec-vscode). VS Code needs a display, so the test runs on a virtual X server.
   editor:
+    needs: kit
     runs-on: ubuntu-26.04-arm
     steps:
       - uses: actions/checkout@v5
