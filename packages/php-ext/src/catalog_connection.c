@@ -61,6 +61,43 @@ static bool cat_try_exec(zval *pdo, const char *sql)
     return ok;
 }
 
+static bool cat_call_n(zval *obj, const char *name, zval *ret, uint32_t argc, zval *argv);
+
+/* Executes a prepared statement with its arguments. A PHP bool is bound as a bool (DIA-29): the execute of an array binds a
+ * false as the empty string, which MySQL and SQLite refuse for a boolean column. So when an argument is a bool, every
+ * argument is bound by its type, as the PHP client does: a bool with PDO::PARAM_BOOL, null with PDO::PARAM_NULL and the
+ * others with PDO::PARAM_STR. Without a bool the arguments go to execute as before. */
+static bool cat_execute(zval *st, zval *args, zval *ret)
+{
+    zval *v;
+    bool has_bool = false;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(args), v) {
+        if (Z_TYPE_P(v) == IS_TRUE || Z_TYPE_P(v) == IS_FALSE) has_bool = true;
+    } ZEND_HASH_FOREACH_END();
+    if (!has_bool) {
+        return pdo_call(st, "execute", ret, 1, args, NULL);
+    }
+    zend_long index = 0;
+    bool ok = true;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(args), v) {
+        zval bind[3];
+        ZVAL_LONG(&bind[0], ++index);
+        ZVAL_COPY(&bind[1], v);
+        if (Z_TYPE_P(v) == IS_TRUE || Z_TYPE_P(v) == IS_FALSE) {
+            ZVAL_LONG(&bind[2], 5); /* PDO::PARAM_BOOL */
+        } else {
+            ZVAL_LONG(&bind[2], Z_TYPE_P(v) == IS_NULL ? 0 : 2); /* PDO::PARAM_NULL, PDO::PARAM_STR */
+        }
+        zval r;
+        ok = cat_call_n(st, "bindValue", &r, 3, bind);
+        zval_ptr_dtor(&bind[1]);
+        if (!ok) break;
+        zval_ptr_dtor(&r);
+    } ZEND_HASH_FOREACH_END();
+    if (!ok) return false;
+    return pdo_call(st, "execute", ret, 0, NULL, NULL);
+}
+
 /* A bounded result as the PHP client's query(): the names, the native type names (upper case) and the rows, all arrays the
  * caller releases. It fails with CATALOG_LIMIT when the rows or the bytes of values are over the budget. */
 static bool cat_query(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zend_long max_bytes,
@@ -74,7 +111,7 @@ static bool cat_query(zval *db, zval *pdo, const char *sql, zval *args, zend_lon
     bool ok = pdo_call(pdo, "prepare", &st, 1, &q, NULL);
     zval_ptr_dtor(&q);
     if (!ok) goto driver;
-    ok = pdo_call(&st, "execute", &r, 1, args, NULL);
+    ok = cat_execute(&st, args, &r);
     if (!ok) goto driver_st;
     zval_ptr_dtor(&r);
     zval count;
@@ -350,7 +387,7 @@ static bool cat_exec(zval *db, zval *pdo, const char *sql, zval *args, zend_long
         array_init(&empty);
         args = &empty;
     }
-    ok = pdo_call(&st, "execute", &ok_ret, 1, args, NULL);
+    ok = cat_execute(&st, args, &ok_ret);
     if (!ok) {
         cat_driver_error(db);
         zval_ptr_dtor(&st);
@@ -1284,6 +1321,28 @@ static bool cat_described_temporal(zval *value, char kind, zend_long precision, 
  * date, time or timestamp cell becomes its dbspec text with exactly the fraction digits of its column. On failure the
  * rows are released, as cat_convert_rows releases its output.
  */
+/* A boolean column by its native type: tinyint(1) on MySQL, boolean on PostgreSQL and SQLite (DIA-29). */
+static bool cat_is_bool_column(const char *dialect, const char *native)
+{
+    const char *want = strcmp(dialect, "mysql") == 0 ? "tinyint(1)" : "boolean";
+    return strcasecmp(native, want) == 0;
+}
+
+/* A value of a boolean column as a bool: an integer 0 or 1 becomes false or true, null and bools stay; any other value fails. */
+static bool cat_described_bool(zval *cell, zval *out)
+{
+    if (Z_TYPE_P(cell) == IS_NULL || Z_TYPE_P(cell) == IS_TRUE || Z_TYPE_P(cell) == IS_FALSE) {
+        ZVAL_COPY(out, cell);
+        return true;
+    }
+    if (Z_TYPE_P(cell) == IS_LONG && (Z_LVAL_P(cell) == 0 || Z_LVAL_P(cell) == 1)) {
+        ZVAL_BOOL(out, Z_LVAL_P(cell) == 1);
+        return true;
+    }
+    db_throw_orm("CATALOG_VALUE", "a boolean column holds a value that is not a boolean");
+    return false;
+}
+
 static bool cat_described_rows(zval *rows, zval *metadata, const char *dialect)
 {
     zval rv_cols, *columns = catalog_prop(metadata, "columns", &rv_cols);
@@ -1301,7 +1360,15 @@ static bool cat_described_rows(zval *rows, zval *metadata, const char *dialect)
             char kind = native != NULL && Z_TYPE_P(native) == IS_STRING && Z_TYPE_P(cell) == IS_STRING
                 ? cat_temporal_kind(dialect, Z_STRVAL_P(native)) : 0;
             zval v;
-            if (kind == 0) {
+            if (native != NULL && Z_TYPE_P(native) == IS_STRING && cat_is_bool_column(dialect, Z_STRVAL_P(native))) {
+                /* A boolean column is read as a bool by its column type (DIA-29). */
+                if (!cat_described_bool(cell, &v)) {
+                    zval_ptr_dtor(&out_row);
+                    zval_ptr_dtor(&described);
+                    zval_ptr_dtor(rows);
+                    return false;
+                }
+            } else if (kind == 0) {
                 ZVAL_COPY(&v, cell);
             } else if (!cat_described_temporal(cell, kind, cat_declared_precision(dialect, Z_STRVAL_P(native)), &v)) {
                 zval_ptr_dtor(&out_row);

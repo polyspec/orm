@@ -1313,7 +1313,21 @@ final class Catalog
     private function prepareQuery(\PDO $pdo, string $sql, array $args): \PDOStatement
     {
         $statement = $pdo->prepare($sql);
-        $statement->execute($args);
+        // The execute of an array binds a PHP false as the empty string, which MySQL and SQLite refuse for a boolean column.
+        // So when an argument is a bool, every argument is bound by its type: a bool as a bool (DIA-29), which PDO sends as
+        // the boolean of the driver, and the others as text or NULL, as execute binds them.
+        if (!in_array(true, array_map(is_bool(...), $args), true)) {
+            $statement->execute($args);
+            return $statement;
+        }
+        foreach ($args as $i => $arg) {
+            if (is_bool($arg)) {
+                $statement->bindValue($i + 1, $arg, \PDO::PARAM_BOOL);
+            } else {
+                $statement->bindValue($i + 1, $arg, $arg === null ? \PDO::PARAM_NULL : \PDO::PARAM_STR);
+            }
+        }
+        $statement->execute();
         return $statement;
     }
 
@@ -1675,6 +1689,13 @@ final class Catalog
     {
         $rows = self::convertRows($raw, self::nativeTypes($metadata));
         foreach ($metadata->columns as $i => $column) {
+            if (self::isBooleanColumn($dialect, $column->nativeType)) {
+                // A boolean column is read as a bool by its column type (DIA-29).
+                foreach ($rows as $r => $row) {
+                    $rows[$r][$i] = self::describedBoolean($row[$i], $column->name);
+                }
+                continue;
+            }
             $kind = self::temporalKind($dialect, $column->nativeType);
             if ($kind === null) {
                 continue;
@@ -1687,6 +1708,25 @@ final class Catalog
             }
         }
         return $rows;
+    }
+
+    /** A boolean column by its native type: tinyint(1) on MySQL, boolean on PostgreSQL and SQLite (DIA-29). */
+    private static function isBooleanColumn(string $dialect, string $nativeType): bool
+    {
+        $native = strtolower(trim($nativeType));
+        return $dialect === 'mysql' ? $native === 'tinyint(1)' : $native === 'boolean';
+    }
+
+    /** A value of a boolean column as a bool: an integer 0 or 1 becomes false or true; any other value fails. */
+    private static function describedBoolean(mixed $value, string $column): mixed
+    {
+        if ($value === null || is_bool($value)) {
+            return $value;
+        }
+        if ($value === 0 || $value === 1) {
+            return $value === 1;
+        }
+        throw new OrmException(Code::CATALOG_VALUE, "column \"$column\" holds a value that is not a boolean");
     }
 
     /**

@@ -485,11 +485,28 @@ function gridCell(value: unknown, column: DriverColumn, dialect: DriverName): Ca
 function describedValue(value: unknown, column: DriverColumn, described: CatalogColumn | undefined, dialect: DriverName): CatalogValue {
   const plain = plainValue(value, column);
   if (described === undefined) return plain;
+  const boolean = describedBoolean(plain, described, dialect);
+  if (boolean !== undefined) return boolean;
   if (dialect === 'sqlite') return sqliteTemporal(plain, described);
   if (typeof plain !== 'string') return plain;
   const kind = temporalKind(dialect, described.nativeType);
   if (kind === undefined) return plain;
   return describedTemporal(plain, kind, declaredPrecision(dialect, described.nativeType));
+}
+
+/**
+ * A boolean column read as a bool by its column type (DIA-29): a MySQL tinyint(1) and a SQLite BOOLEAN arrive as the
+ * integer 0 or 1, a PostgreSQL boolean already as a bool. Any other value of such a column fails; any other column
+ * returns undefined.
+ */
+function describedBoolean(plain: CatalogValue, described: CatalogColumn, dialect: DriverName): boolean | undefined | null {
+  const native = described.nativeType.trim().toLowerCase();
+  const isBoolean = dialect === 'mysql' ? native === 'tinyint(1)' : native === 'boolean';
+  if (!isBoolean) return undefined;
+  if (plain === null) return null;
+  if (typeof plain === 'boolean') return plain;
+  if (plain === 0 || plain === 1) return plain === 1;
+  throw err(CODE_VALUE, `${described.name} holds ${String(plain)}, not a boolean`);
 }
 
 /** A cell of a described table with its size in the read budget. */

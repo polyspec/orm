@@ -205,10 +205,35 @@ func catalogConvertDescribed(raw catalogRaw, metadata CatalogTableMetadata, dial
 			if err != nil {
 				return nil, err
 			}
+			value, err = catalogDescribedBool(value, column, dialect)
+			if err != nil {
+				return nil, err
+			}
 			row[i] = value
 		}
 	}
 	return rows, nil
+}
+
+// catalogDescribedBool reads a boolean column as a bool by its column type (DIA-29): a MySQL tinyint(1) and a SQLite
+// BOOLEAN come back from the driver as the integer 0 or 1, and a PostgreSQL boolean already as a bool. Any other value of
+// such a column fails.
+func catalogDescribedBool(value any, column CatalogColumn, dialect string) (any, error) {
+	native := strings.TrimSpace(column.NativeType)
+	isBool := (dialect == "mysql" && strings.EqualFold(native, "tinyint(1)")) ||
+		(dialect != "mysql" && strings.EqualFold(native, "boolean"))
+	if !isBool || value == nil {
+		return value, nil
+	}
+	switch v := value.(type) {
+	case bool:
+		return v, nil
+	case int64:
+		if v == 0 || v == 1 {
+			return v == 1, nil
+		}
+	}
+	return nil, catalogErr(catalogCodeValue, "column %q holds %v, not a boolean", column.Name, value)
 }
 
 // catalogSelectList is the select list of a read of a described table, in physical order. The SQLite driver parses the

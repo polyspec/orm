@@ -5415,6 +5415,10 @@
     "exported": true,
     "signature": "public function describeTable(array $table): Polyspec\\Orm\\CatalogTableMetadata"
   },
+  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::describedBoolean": {
+    "exported": false,
+    "signature": "private static function describedBoolean(mixed $value, string $column): mixed"
+  },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::describedRows": {
     "exported": false,
     "signature": "private static function describedRows(array $raw, Polyspec\\Orm\\CatalogTableMetadata $metadata, string $dialect): array"
@@ -5482,6 +5486,10 @@
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::integerCell": {
     "exported": false,
     "signature": "private static function integerCell(mixed $value, bool $unsigned): Polyspec\\Orm\\CatalogGridCell"
+  },
+  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::isBooleanColumn": {
+    "exported": false,
+    "signature": "private static function isBooleanColumn(string $dialect, string $nativeType): bool"
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::isDigit": {
     "exported": false,

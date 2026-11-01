@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The catalog read returned the driver's integer for a boolean column, so a bool written to a MySQL `tinyint(1)` or SQLite `BOOLEAN` column failed its write check (ROW_WRITE_MISMATCH), and the PHP catalog bound a PHP false as the empty string, which MySQL and SQLite refuse. Every runtime now reads a boolean column as a bool by its column type, and PHP and the PHP extension bind a bool as a bool (DIA-29) (T334-3-11-1).
 - The 13 cases of tests/dbspec/plans.json run as the recipe tests/dbspec/plan-cases.json through the ops dbspec.parse, dbspec.parse_plan, dbspec.emit_plan, dbspec.diff and dbspec.plan_steps in the six runtimes, in place of the native plan tests; the before and after physical records moved to tests/dbspec/plans-physical.json, keyed by case id (T334-3-16-2-2).
 - The four validation suites of tests/dbspec/plans.json (invalid, chains, parse, comparisons) run as four recipes of the T334-3-2 format in the six runtimes, through the ops dbspec.parse, dbspec.parse_plan, dbspec.diff, dbspec.chain and dbspec.compare, in place of the native plan tests; the compare tools read the recipes beside plans.json (T334-3-16-2-1).
 - The planner compile cases (86) run as the recipe tests/planner/compile.json through the op `planner.compile` in the six runtimes, in place of the native compile tests; the five param_uses cases stay in contracts/fixtures/planner.json (T334-3-16-1).

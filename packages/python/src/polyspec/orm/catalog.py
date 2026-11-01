@@ -321,6 +321,19 @@ def _described_text(text: str, kind: str, column: CatalogColumn) -> tuple:
     return f"{_described_date(match.group(1), column)} {clock}", digits
 
 
+def _described_boolean(value, column: CatalogColumn, dialect: str):
+    """A boolean column read as a bool by its column type (DIA-29): a MySQL tinyint(1) and a SQLite BOOLEAN arrive as the
+    integer 0 or 1, a PostgreSQL boolean already as a bool. Any other value of such a column fails; any other column keeps
+    its value."""
+    native = column.native_type.strip().lower()
+    is_boolean = native == "tinyint(1)" if dialect == "mysql" else native == "boolean"
+    if not is_boolean or value is None or isinstance(value, bool):
+        return value
+    if isinstance(value, int) and value in (0, 1):
+        return value == 1
+    raise _error(codes.CATALOG_VALUE, f"column {column.name!r} holds {value!r}, not a boolean")
+
+
 def _described_temporal(value, column: CatalogColumn, dialect: str):
     """The catalog value of one driver value of a described column: the dbspec text of a date, time or datetime column
     with exactly its declared precision, and every other value as it is. A value outside the dbspec form fails with
@@ -1115,8 +1128,12 @@ class _Session:
                         if grid
                         else [
                             _check_value(
-                                _described_temporal(
-                                    value, described.columns[index], self.dialect
+                                _described_boolean(
+                                    _described_temporal(
+                                        value, described.columns[index], self.dialect
+                                    ),
+                                    described.columns[index],
+                                    self.dialect,
                                 )
                             )
                             for index, value in enumerate(row)

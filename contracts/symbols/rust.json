@@ -575,6 +575,10 @@
     "exported": false,
     "signature": " fn fraction (text : \u0026 str , p : usize , column : \u0026 str) -\u003e Result \u003c String , String \u003e"
   },
+  "packages/rust/build/src/catalog/temporal.rs::is_boolean": {
+    "exported": false,
+    "signature": " fn is_boolean (native_type : \u0026 str , dialect : \u0026 str) -\u003e bool"
+  },
   "packages/rust/build/src/catalog/temporal.rs::precision": {
     "exported": false,
     "signature": " fn precision (native_type : \u0026 str , dialect : \u0026 str) -\u003e Result \u003c usize , String \u003e"

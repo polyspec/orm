@@ -33,6 +33,15 @@ fn fraction(text: &str, p: usize, column: &str) -> Result<String, String> {
     Ok(if p == 0 { whole.to_owned() } else { format!("{whole}.{}", &digits[..p]) })
 }
 
+/// A boolean column by its native type: tinyint(1) on MySQL, boolean on PostgreSQL and SQLite (DIA-29).
+fn is_boolean(native_type: &str, dialect: &str) -> bool {
+    if dialect == "mysql" {
+        native_type.eq_ignore_ascii_case("tinyint(1)")
+    } else {
+        native_type.eq_ignore_ascii_case("boolean")
+    }
+}
+
 /// The dbspec kind of SQLite's declared `DATE`, `TIME`, `DATETIME` columns. SQLite has no temporal storage
 /// class, and the renderer CHECK enforces the text form and p-digit fractions.
 fn sqlite_kind(native_type: &str) -> Option<&'static str> {
@@ -49,6 +58,18 @@ fn sqlite_kind(native_type: &str) -> Option<&'static str> {
 pub(super) fn declared_precision(metadata: &TableMetadata, dialect: &str, result: &mut GridQueryResult) -> Result<(), String> {
     for row in &mut result.rows {
         for (cell, column) in row.iter_mut().zip(&metadata.columns) {
+            if is_boolean(&column.native_type, dialect) {
+                // A boolean column is read as a bool by its column type (DIA-29): the integer 0 or 1 of a MySQL tinyint(1) or a
+                // SQLite BOOLEAN becomes a bool; any other value fails.
+                let value = match *cell {
+                    GridCell::Null => GridCell::Null,
+                    GridCell::Boolean(flag) => GridCell::Boolean(flag),
+                    GridCell::Integer(n) if n == 0 || n == 1 => GridCell::Boolean(n == 1),
+                    _ => return Err(format!("CATALOG_VALUE: {} holds a value that is not a boolean", column.name)),
+                };
+                *cell = value;
+                continue;
+            }
             if dialect == "sqlite" {
                 let Some(kind) = sqlite_kind(&column.native_type) else { continue };
                 *cell = match cell {

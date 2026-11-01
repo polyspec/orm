@@ -18063,6 +18063,10 @@
     "exported": false,
     "signature": "func(raw catalogRaw, metadata CatalogTableMetadata, dialect string) ([][]any, error)"
   },
+  "packages/go/orm/catalog_temporal.go::catalogDescribedBool": {
+    "exported": false,
+    "signature": "func(value any, column CatalogColumn, dialect string) (any, error)"
+  },
   "packages/go/orm/catalog_temporal.go::catalogDescribedFraction": {
     "exported": false,
     "signature": "func(text, kind string) (int, error)"

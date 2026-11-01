@@ -587,6 +587,10 @@
     "exported": false,
     "signature": "function declaredPrecision(dialect: DriverName, type: string): number"
   },
+  "packages/ts/src/catalog.ts::describedBoolean": {
+    "exported": false,
+    "signature": "function describedBoolean(plain: CatalogValue, described: CatalogColumn, dialect: DriverName): boolean | undefined | null"
+  },
   "packages/ts/src/catalog.ts::describedCell": {
     "exported": false,
     "signature": "function describedCell(value: unknown, column: DriverColumn, described: CatalogColumn | undefined, dialect: DriverName): { cell: CatalogValue; size: number; }"
