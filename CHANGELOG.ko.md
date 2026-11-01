@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 6b002a54dc6bf346280f1ff303a22662bca98ecbc26aad6b425053d0c829e5fd -->
+<!-- source-sha256: 30644cda9d94c0946034aa7725d1d48abebac3a1043ce9513e134ffb7841d8a1 -->
 # 변경 이력
 
 ## Unreleased
 
+- mise 도구 pypi:vulture의 uv lock이 고정된 uv 0.13.0에 맞고, mise.lock의 digest가 그것을 가리킨다(T346-8).
 - config/rebuild.json이 feature check의 TypeScript lease 도구 scripts/features/typescript-lease.mts를 policy로 선언하여, make rebuild-check가 이를 받아들인다(T346-7-1).
 - TypeScript build output을 읽는 verification command는 READ_TYPESCRIPT의 공유 lease를 잡고, 빌드하는 command는 배타 lease를 잡아, make feature-verify-other에서 reader가 build와 겹치지 않는다(T346-7).
 - orm은 모든 생태계에서 ordered-json 0.0.18을 채택한다(T346-6). npm, Composer, Go, Python, Rust의 pin이 그 release asset과 tag를 가리키며, packaging.md는 0.0.18 asset을 적는다.

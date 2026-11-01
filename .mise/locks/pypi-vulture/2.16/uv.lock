@@ -2,9 +2,6 @@ version = 1
 revision = 5
 requires-python = ">=3.9"
 
-[options]
-exclude-newer = "2026-10-14T04:24:40.608074Z"
-
 [[package]]
 name = "mise-pypi-tool-environment"
 version = "0.0.0"
@@ -19,7 +16,7 @@ requires-dist = [{ name = "vulture", specifier = "==2.16" }]
 [[package]]
 name = "tomli"
 version = "2.5.0"
-source = { registry = "https://pypi.org/simple/" }
+source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/b0/78/9ad63712633ed3ab5cc1a648d863d7e7da371e9425e209555a0fe711b695/tomli-2.5.0.tar.gz", hash = "sha256:264507556cd8b8c8e7c6ee037cdf443a463f03f4c958e57195e3d369711b8ff6", size = 17662, upload-time = "2026-10-07T12:23:37.892Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/22/a6/ab99b60ee52acd949684febabc3005d0045d0f66bebd9cdebd67372d26dd/tomli-2.5.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:c4dc1c1781f2f716de763d1e9a7b34c6a894e167e291c7c5d16c72f7a9538545", size = 163901, upload-time = "2026-10-07T12:22:15.601Z" },
@@ -91,7 +88,7 @@ wheels = [
 [[package]]
 name = "vulture"
 version = "2.16"
-source = { registry = "https://pypi.org/simple/" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "tomli", marker = "python_full_version < '3.11'" },
 ]
