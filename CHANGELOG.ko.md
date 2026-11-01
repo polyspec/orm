@@ -2,6 +2,7 @@
 <!-- source-sha256: 8d4f7cb33d413401e9f44119827a104b202b6a6a645e8e1cb96a4f918bb33709 -->
 # 변경 이력
 
+- repo check 시험 "the Go model build regenerates models"은 Go model set을 순서대로 만든 뒤 make go-models가 실행하는 orm-gen sets 호출을 확인한다 (CR44).
 ## Unreleased
 
 - php-ext 메모리 검사는 AES stress 그룹의 test 클래스 14개를 stress 테스트, root_in_chunking과 함께 한 프로세스에서 128M memory_limit 안에 실행하며, 확장이 호출 사이에 메모리를 남기면 실패한다 (T334-3-4-7).
