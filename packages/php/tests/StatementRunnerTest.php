@@ -24,6 +24,19 @@ use RuntimeException;
 
 trait StatementRunnerCases
 {
+    /** Runs the statement runner cases on a new case database of each coverage item of the test file. */
+    private static function coverStatementRunner(string $testFile): void
+    {
+        foreach (coverageItemsOf($testFile) as $item) {
+            selectCoverageItem($item);
+            [$driver] = coverageItem();
+            with_case_database($driver, static function (string $step): void {
+            }, static fn(string $dsn) => self::runOutsideAndInside($dsn));
+            with_case_database($driver, static function (string $step): void {
+            }, static fn(string $dsn) => self::nonTextStatementFailsWithConfig($dsn));
+        }
+    }
+
     /** The first column of the first row of a statement result, as an int. */
     private static function firstNumber(array $rows): int
     {

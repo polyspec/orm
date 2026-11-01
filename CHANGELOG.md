@@ -18,6 +18,7 @@
 - The codec rules COD-65 to COD-67 are now in docs/spec/codec.md: a float under `serialize` writes `d:4;` for `4.0` and the PHP float notation (COD-65); `yaml` writes `2.0` for a float with no fraction, double-quotes and escapes a character outside c-printable and a byte order mark, and refuses such a character on a read (COD-66); a `serialize` array key that is an i64 integer writes as an integer key (COD-67).
 - The coverage owners of `authenticated_encryption` hold only the test files that run an AES case: the codec test files of T334-3-14 and T334-3-14b are bound by their parity units and stay in the feature tests, so the feature coverage run no longer refuses the owner with `invalid native test command` in any runtime (T334-3-14b-3).
 - The feature `statement_runner` has its coverage block of kind database, as the other database features have: one owner per runtime with a command for SQLite, MySQL and PostgreSQL, bound in the parity unit `coverage-statement-runner-statement-runner`, so the feature coverage run checks the statement runner in every runtime and database, and the feature is `implemented`, which the divergence check accepts (T345-9).
+- The coverage owners of `statement_runner` share their helpers instead of copying them: the Go owner reads the selected database through `featureDatabase`, and the PHP and PHP-extension owners call `coverStatementRunner` of `StatementRunnerCases`, so the duplication check of the shared gates passes (T345-10).
 
 ## 0.0.20
 

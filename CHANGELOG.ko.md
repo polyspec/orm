@@ -19,6 +19,7 @@
 - codec 규칙 COD-65부터 COD-67까지가 docs/spec/codec.md에 들어간다: `serialize`의 실수는 `4.0`을 `d:4;`로, PHP 실수 표기로 쓴다(COD-65). `yaml`은 소수부가 없는 실수를 `2.0`으로 쓰고, c-printable 밖의 문자와 byte order mark를 큰따옴표로 감싸 escape하며, 읽을 때 그런 문자를 거부한다(COD-66). `serialize`의 array key가 i64 정수이면 정수 key로 쓴다(COD-67).
 - `authenticated_encryption`의 coverage owner는 AES case를 실행하는 테스트 파일만 가진다. T334-3-14와 T334-3-14b의 codec 테스트 파일은 parity unit으로 바인딩되어 feature의 tests에 남으며, 그래서 feature coverage 실행이 모든 runtime에서 `invalid native test command`로 owner를 거부하지 않는다(T334-3-14b-3).
 - feature `statement_runner`는 다른 database feature와 같이 kind database coverage 블록을 가진다. runtime마다 owner 하나와 SQLite, MySQL, PostgreSQL 명령을 두고 parity unit `coverage-statement-runner-statement-runner`에 바인딩하므로, feature coverage 실행이 모든 runtime과 database에서 statement runner를 검사한다. feature는 `implemented`이고 divergence check가 이를 받아들인다(T345-9).
+- `statement_runner`의 coverage owner는 helper를 복사하지 않고 공유한다. Go owner는 선택된 database를 `featureDatabase`로 읽고, PHP와 PHP extension owner는 `StatementRunnerCases`의 `coverStatementRunner`를 부르므로 공통 gate의 duplication check가 통과한다 (T345-10).
 
 ## 0.0.20
 

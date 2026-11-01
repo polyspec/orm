@@ -19,13 +19,6 @@ final class CoverageStatementRunnerTest extends TestCase
 
     public function testStatementRunner(): void
     {
-        foreach (coverageItemsOf(__FILE__) as $item) {
-            selectCoverageItem($item);
-            [$driver] = coverageItem();
-            with_case_database($driver, static function (string $step): void {
-            }, static fn(string $dsn) => self::runOutsideAndInside($dsn));
-            with_case_database($driver, static function (string $step): void {
-            }, static fn(string $dsn) => self::nonTextStatementFailsWithConfig($dsn));
-        }
+        self::coverStatementRunner(__FILE__);
     }
 }
