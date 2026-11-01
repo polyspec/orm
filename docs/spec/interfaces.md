@@ -520,6 +520,11 @@ The descriptor is not a complete physical schema revision and cannot detect ABA.
 Prepared native types may be data-dependent; compare projection names and the
 native descriptor, not prepared type names as schema revisions.
 
+A captured row snapshot exposes three accessors. `keys` returns the primary-key cells in
+constraint order. `key indexes` returns the position of each key cell among the columns
+in physical order, and `captured cells` returns every original cell in physical order,
+which the revision covers.
+
 ### Catalog table pages
 
 `table_page(table, limit, offset)` reads one explicit

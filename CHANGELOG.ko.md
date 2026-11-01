@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1804c852ae417b7bfd984150126a1156530b8689e1e9c07aa150d4946aae3e54 -->
+<!-- source-sha256: ce141b545b45bf14c6ed88dfefc3fa0d777fc75615e9bb7c7dda567a45010d52 -->
 # 변경 이력
 
 ## Unreleased
 
+- 공유 catalog_connection recipe의 Go runner가 MySQL, PostgreSQL, SQLite에서 recipe의 모든 op와 필드를 실행한다. 행 snapshot은 이제 명세가 적은 키, 키 위치, 캡처된 셀을 내보내고, 읽기 예산은 결과의 나머지를 읽지 않고 질의를 멈춘다. 드라이버의 읽기 전용 거부는 QUERY_READ_ONLY, 하루 밖의 시간은 GRID_TEMPORAL_VALUE이며, MySQL YEAR는 grid 셀이 없고, 선언한 정밀도를 넘는 시간은 어떤 문장보다 먼저 CODEC_ENCODE로 실패한다 (T334-3-3-2-2).
 - TypeScript, Python, Rust의 physical DDL behavior 시험이 config/parity.json에 binding이 없어 parity-declarations-check가 binding 없는 test로 보고했다. 이 시험들을 DIA-113을 인용하는 feature unit dbspec-render-physical로 선언하고, 각 시험이 그 요구사항을 이름으로 적는다 (CR16-1-5).
 - TypeScript의 catalog_connection 시험은 5000행 교차 결합의 stream 예산, byte 예산, float4 비트, temporal 정밀도와 SQLite temporal 규칙, grid 거부, 지원하지 않는 DSN, MySQL SYSTEM VIEW, 캡처된 셀과 null·빈 텍스트 읽기를 여전히 native로 단언했다. 이제 recipe가 이들을 case로 가지며, op catalog.row_cells와 model.read_bind_cell, field only·row_count·columns·kind·columns_present로 표현한다. 선언된 정밀도를 넘는 쓰기는 문을 실행하기 전에 CODEC_ENCODE로 실패하고, 읽기 범위가 쓰는 루틴을 거부하면 QUERY_READ_ONLY로 실패하며, TypeScript catalog는 드라이버의 읽기 전용 거부를 그 code로 옮긴다(T334-3-3-2-1).
 - TypeScript의 catalog_connection 시험은 connect, describe, close, reconnect, revision, snapshot, bind와 grid cell 값을 확인했으나 공유 recipe가 그것을 표현하지 못했다. 이제 recipe가 그것을 case로 가지며, catalog.connect, catalog.close, catalog.reconnect, catalog.revision op, describe의 native type, nullable, generated, automatic key, default field, row_snapshot의 keys와 key_indexes field, page_with 입력, 쌍의 목록인 assignment, read_only_query의 binds, float, unsigned, binary cell wrapper를 가진다. TypeScript runner는 MySQL, PostgreSQL, SQLite에서 그것을 실행하고, 그것이 소유하는 native assertion은 제거되었다(T334-3-3-2-1).
