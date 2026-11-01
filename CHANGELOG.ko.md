@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 911aa2f3c21374a2869285a80dcc8fcaeabfd8acce8f345d8a9b5e9527aa2c88 -->
+<!-- source-sha256: 6b002a54dc6bf346280f1ff303a22662bca98ecbc26aad6b425053d0c829e5fd -->
 # 변경 이력
 
 ## Unreleased
 
+- config/rebuild.json이 feature check의 TypeScript lease 도구 scripts/features/typescript-lease.mts를 policy로 선언하여, make rebuild-check가 이를 받아들인다(T346-7-1).
 - TypeScript build output을 읽는 verification command는 READ_TYPESCRIPT의 공유 lease를 잡고, 빌드하는 command는 배타 lease를 잡아, make feature-verify-other에서 reader가 build와 겹치지 않는다(T346-7).
 - orm은 모든 생태계에서 ordered-json 0.0.18을 채택한다(T346-6). npm, Composer, Go, Python, Rust의 pin이 그 release asset과 tag를 가리키며, packaging.md는 0.0.18 asset을 적는다.
 - T346-5의 한국어 Task에서 writing-style 규칙이 금지한 표현을 고쳤다(T346-5-1).

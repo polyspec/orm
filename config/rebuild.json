@@ -206,6 +206,10 @@
       "kind": "policy",
       "reason": "selects the verify commands and helper checks of contracts/features.json, the manifest of this repository"
     },
+    "scripts/features/typescript-lease.mts": {
+      "kind": "policy",
+      "reason": "decides and runs the TypeScript lease of each verify command of contracts/features.json, so a reader never overlaps a build of the TypeScript output"
+    },
     "scripts/free-ports.mts": {
       "kind": "ecosystem",
       "tool": "node:net listening on port 0, which the operating system answers with a free port"
