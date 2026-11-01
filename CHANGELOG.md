@@ -51,6 +51,7 @@
 
 ## 0.0.19
 
+- The interfaces spec states the public statement runner (INT-150) in every runtime: `utils().run(fn)` and the frame call `run(kind, tables, sql, params)`, with the frame-call ruling of CR21. The runtimes implement it in the CR21 rows that follow (CR21).
 - The statement event vector named MySQL and PostgreSQL for the server-transaction check and gave SQLite neither an entry nor a reason. It now states SQLite as excluded with its reason, and every runtime's test checks that each database is named once (CR16-2).
 - The owner check ran python-check for a touched Python test, whose recipe runs an unselected discovery that kit refuses outside CI, and ran the php-extension coverage outside make, where POLYSPEC_ORM_EXTENSION was unset. A touched test now selects its own command: python-check owns the Python sources, not the tests; the interface tests name their modules; the php-extension coverage builds the extension through make first (CR24).
 - publish-output checked the output file of a command's standard output as soon as the command exited, before the copy had created it, so a fast command failed with "wrote no": under parallel load 2 of 640 runs failed, in the phpstan owner of the CR3 owner check. The check now waits for the copy to finish (CR22).
