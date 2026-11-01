@@ -1,9 +1,13 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d0b21c153e9f22dfc1d2b5b26da1e204b90a04b96b10ddaa5a0fecd3fc6007f5 -->
+<!-- source-sha256: 2573de7ba7ee2971c7544d913b25a86e1cad927f98c996faa7c61693af768d24 -->
 # 변경 이력
 
 ## Unreleased
 
+- orm은 require-dev에서 upstream package opis/json-schema 대신 maintained fork `min-0-max/json-schema`를 branch `dev-polyspec-origin-2.6.0`으로 요구한다(S14)(T346-5).
+- orm은 kit 0.0.88을 채택한다(T346-1). package pin은 그 release asset과 integrity를 가리키며, kit-sync 사본은 link, 파이프라인, 매니페스트 경로 규칙 S11, S12, P30(K997, K998)을 담은 그 release의 것이다.
+- orm은 모든 CI job에서 kit을 공유 action `.github/actions/kit-bootstrap`으로만 bootstrap한다(T346-2). ci.yml과 docs-pages.yml에서 `make install-tools TOOLS=npm`을 실행하던 인라인 step을 제거했다.
+- ci.yml의 kit 외 모든 job은 `needs: kit`으로 kit job을 따른다(S12)(T346-3).
 - AGENTS.md는 kit bootstrap을 설치된 package 경로 `node_modules/@polyspec/kit/scripts/kit/kit-bootstrap.mk`로 가리키고, layout 검사를 `make layout-check`로 강제된다고 적는다(T346-4).
 - ci.yml의 kit 외 모든 job은 `needs: kit`으로 kit job을 따른다(S12)(T346-3).
 - orm은 모든 CI job에서 kit을 공유 action `.github/actions/kit-bootstrap`으로만 bootstrap한다(T346-2). ci.yml과 docs-pages.yml에서 `make install-tools TOOLS=npm`을 실행하던 인라인 step을 제거했다.

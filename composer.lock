@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "c02146cb72e5a86531b26070435b5357",
+    "content-hash": "096596475cf477f1f6ae4f009955be6b",
     "packages": [
         {
             "name": "nikic/php-parser",
@@ -301,6 +301,77 @@
     ],
     "packages-dev": [
         {
+            "name": "min-0-max/json-schema",
+            "version": "dev-polyspec-origin-2.6.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/min-0-max/json-schema",
+                "reference": "5978fa780990500c5d85e08464b7d7a7391f93d0"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/min-0-max/json-schema/zipball/5978fa780990500c5d85e08464b7d7a7391f93d0",
+                "reference": "5978fa780990500c5d85e08464b7d7a7391f93d0",
+                "shasum": ""
+            },
+            "require": {
+                "ext-json": "*",
+                "opis/string": "^2.1",
+                "opis/uri": "^1.0",
+                "php": "^7.4 || ^8.0"
+            },
+            "require-dev": {
+                "ext-bcmath": "*",
+                "ext-intl": "*",
+                "phpunit/phpunit": "^9.0"
+            },
+            "default-branch": true,
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "2.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Opis\\JsonSchema\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Opis\\JsonSchema\\Test\\": "tests/"
+                }
+            },
+            "scripts": {
+                "tests": [
+                    "./vendor/bin/phpunit --verbose --color"
+                ]
+            },
+            "license": [
+                "Apache-2.0"
+            ],
+            "authors": [
+                {
+                    "name": "Sorin Sarca",
+                    "email": "sarca_sorin@hotmail.com"
+                },
+                {
+                    "name": "Marius Sarca",
+                    "email": "marius.sarca@gmail.com"
+                }
+            ],
+            "description": "Json Schema Validator for PHP",
+            "homepage": "https://opis.io/json-schema",
+            "keywords": [
+                "json",
+                "json-schema",
+                "schema",
+                "validation",
+                "validator"
+            ],
+            "time": "2026-11-01T06:28:48+00:00"
+        },
+        {
             "name": "myclabs/deep-copy",
             "version": "1.14.0",
             "source": {
@@ -359,76 +430,6 @@
                 }
             ],
             "time": "2026-08-11T10:17:44+00:00"
-        },
-        {
-            "name": "opis/json-schema",
-            "version": "v2.6.0-p1",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/min-0-max/json-schema",
-                "reference": "d810833cd43de0ec2c367db6e812e12bf4440e47"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/min-0-max/json-schema/zipball/d810833cd43de0ec2c367db6e812e12bf4440e47",
-                "reference": "d810833cd43de0ec2c367db6e812e12bf4440e47",
-                "shasum": ""
-            },
-            "require": {
-                "ext-json": "*",
-                "opis/string": "^2.1",
-                "opis/uri": "^1.0",
-                "php": "^7.4 || ^8.0"
-            },
-            "require-dev": {
-                "ext-bcmath": "*",
-                "ext-intl": "*",
-                "phpunit/phpunit": "^9.0"
-            },
-            "type": "library",
-            "extra": {
-                "branch-alias": {
-                    "dev-master": "2.x-dev"
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Opis\\JsonSchema\\": "src/"
-                }
-            },
-            "autoload-dev": {
-                "psr-4": {
-                    "Opis\\JsonSchema\\Test\\": "tests/"
-                }
-            },
-            "scripts": {
-                "tests": [
-                    "./vendor/bin/phpunit --verbose --color"
-                ]
-            },
-            "license": [
-                "Apache-2.0"
-            ],
-            "authors": [
-                {
-                    "name": "Sorin Sarca",
-                    "email": "sarca_sorin@hotmail.com"
-                },
-                {
-                    "name": "Marius Sarca",
-                    "email": "marius.sarca@gmail.com"
-                }
-            ],
-            "description": "Json Schema Validator for PHP",
-            "homepage": "https://opis.io/json-schema",
-            "keywords": [
-                "json",
-                "json-schema",
-                "schema",
-                "validation",
-                "validator"
-            ],
-            "time": "2026-10-15T02:57:09+00:00"
         },
         {
             "name": "opis/string",
@@ -2423,7 +2424,9 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {},
+    "stability-flags": {
+        "min-0-max/json-schema": 20
+    },
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
