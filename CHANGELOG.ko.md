@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 30644cda9d94c0946034aa7725d1d48abebac3a1043ce9513e134ffb7841d8a1 -->
+<!-- source-sha256: 160b1affdad7b27d9ac35141fab5926bfa732e08ca7e039f655cfe0ab607700e -->
 # 변경 이력
 
 ## Unreleased
 
+- packages/php-ext의 composer lock이 composer.json과 맞는다(T346-9).
 - mise 도구 pypi:vulture의 uv lock이 고정된 uv 0.13.0에 맞고, mise.lock의 digest가 그것을 가리킨다(T346-8).
 - config/rebuild.json이 feature check의 TypeScript lease 도구 scripts/features/typescript-lease.mts를 policy로 선언하여, make rebuild-check가 이를 받아들인다(T346-7-1).
 - TypeScript build output을 읽는 verification command는 READ_TYPESCRIPT의 공유 lease를 잡고, 빌드하는 command는 배타 lease를 잡아, make feature-verify-other에서 reader가 build와 겹치지 않는다(T346-7).

@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 17bea100ce0e095017d79b1415954ca68789a62109dbd7bacb83d4457b838e29 -->
+<!-- source-sha256: fa4135bed42f525e2309a8c5c24f633bc8178ec07ead1541e19f9dfa94fc5bfe -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1530,4 +1530,5 @@
 | T346-7 | TypeScript build output을 읽는 verification command는 공유 lease를 잡고, 그것을 빌드하는 command는 배타 lease를 잡아서, reader가 build와 겹치지 않는다(feature_verify_other) | Makefile, scripts/features/check.mts, scripts/features/typescript-lease.mts, scripts/features/typescript-lease.test.mts, CHANGELOG.md, CHANGELOG.ko.md, docs/plans/execution/checklist.md, docs/plans/execution/checklist.ko.md | `make feature-unit-check`; `make repo-check/unit`; `make runner-check`; `make lint-ts`; `make scripts-typecheck`; `make duplication-check`; `make comment-language-check` | [v] |
 | T346-7-1 | feature check의 TypeScript lease 도구 scripts/features/typescript-lease.mts를 config/rebuild.json이 policy로 선언하여, make rebuild-check가 이를 받아들인다 | config/rebuild.json, CHANGELOG.md, CHANGELOG.ko.md, docs/plans/execution/checklist.md, docs/plans/execution/checklist.ko.md | `make rebuild-check` | [v] |
 | T346-8 | mise 도구 pypi:vulture의 uv lock이 고정된 uv 0.13.0에 맞아, 그 폴더에서 uv lock --check가 통과하고 mise.lock의 digest가 그 lock을 가리킨다 | .mise/locks/pypi-vulture/2.16/uv.lock, mise.lock, CHANGELOG.md, CHANGELOG.ko.md, docs/plans/execution/checklist.md, docs/plans/execution/checklist.ko.md | `cd .mise/locks/pypi-vulture/2.16 && uv lock --check` | [v] |
+| T346-9 | packages/php-ext의 composer lock이 composer.json과 맞아, publish 검사를 빼고 composer validate가 통과한다 | packages/php-ext/composer.lock, CHANGELOG.md, CHANGELOG.ko.md, docs/plans/execution/checklist.md, docs/plans/execution/checklist.ko.md | `cd packages/php-ext && composer validate --no-check-publish` | [v] |
 | T347 | orm은 flowmark의 grammar를 선언된 interface로 읽는다. 설치된 release asset이나 Go module에 담긴 spec을 go list -m -json으로 읽으며, markdown table 검사는 flowmark source checkout을 읽지 않는다(K1002, S5, P14) | Makefile, scripts/docs/flowmark-source.mts, config/rebuild.json, docs/plans/execution/checklist.md, docs/plans/execution/checklist.ko.md, CHANGELOG.md, CHANGELOG.ko.md | `make kit-check` | [ ] |

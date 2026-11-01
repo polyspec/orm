@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The composer lock of packages/php-ext is current with its composer.json (T346-9).
 - The pypi:vulture uv lock of the mise tools is current with the pinned uv 0.13.0, and the digest of mise.lock names it (T346-8).
 - The feature check declares its TypeScript lease tool, scripts/features/typescript-lease.mts, as a policy in config/rebuild.json, so make rebuild-check accepts it (T346-7-1).
 - A verification command that reads the TypeScript build output holds the shared lease of READ_TYPESCRIPT, and a command that builds it holds the exclusive lease, so a reader never overlaps a build in make feature-verify-other (T346-7).
