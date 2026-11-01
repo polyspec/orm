@@ -283,3 +283,93 @@ func TestCoverageTransactionSavepoint(t *testing.T) {
 		t.Fatalf("retry=0 attempts = %d, error = %v", attempts, retryErr)
 	}
 }
+
+// setAccountName writes name to the composite_account row (transactionTenant, account) through db.
+func setAccountName(db *orm.DB, account int64, name string) error {
+	row, err := model.CompositeAccount().Connect(db).GetByTenantIdAndAccountId(transactionTenant, account)
+	if err != nil {
+		return err
+	}
+	if row == nil {
+		return fmt.Errorf("composite_account (%d, %d) is missing", transactionTenant, account)
+	}
+	_, err = row.SetName(name).Update()
+	return err
+}
+
+// TestCoverageTransactionDeadlockRetry runs PLN-24 on the driver. Two connections lock two rows in opposite order, and
+// each flow holds its first row before either takes its second, so the database aborts one flow with its deadlock error.
+// The ORM maps that driver error to DEADLOCK and retries the transaction, and both transactions commit.
+func TestCoverageTransactionDeadlockRetry(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	db, _, _ := connectFeature(t)
+	other, _, _ := connectFeature(t)
+	requireNoTransactionRows(t, db)
+	for _, account := range []int64{7, 8} {
+		if _, err := model.CompositeAccount().Connect(db).SetTenantId(transactionTenant).SetAccountId(account).SetName("seed").Create(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	type outcome struct {
+		attempts int
+		victim   error
+		err      error
+	}
+	var held sync.WaitGroup
+	held.Add(2)
+	outcomes := make(chan outcome, 2)
+	flow := func(conn *orm.DB, first, second int64) {
+		name := fmt.Sprintf("flow-%d", first)
+		attempts := 0
+		var victim error
+		err := conn.Transaction(func() error {
+			attempts++
+			if attempts == 1 {
+				firstErr := setAccountName(conn, first, name)
+				held.Done()
+				held.Wait()
+				if firstErr != nil {
+					return firstErr
+				}
+			} else if err := setAccountName(conn, first, name); err != nil {
+				return err
+			}
+			err := setAccountName(conn, second, name)
+			if err != nil && attempts == 1 {
+				victim = err
+			}
+			return err
+		}, orm.Isolation(orm.ReadCommitted), orm.Retry(3))
+		outcomes <- outcome{attempts: attempts, victim: victim, err: err}
+	}
+	go flow(db, 7, 8)
+	go flow(other, 8, 7)
+	results := []outcome{<-outcomes, <-outcomes}
+	victims := 0
+	attempts := 0
+	for _, result := range results {
+		if result.err != nil {
+			t.Fatalf("flow did not commit after retry: attempts = %d, error = %v", result.attempts, result.err)
+		}
+		attempts += result.attempts
+		if result.victim != nil {
+			victims++
+			if code := orm.ErrorCode(result.victim); code != orm.CodeDeadlock {
+				t.Fatalf("first attempt of the deadlocked flow = %s, want DEADLOCK: %v", code, result.victim)
+			}
+		}
+	}
+	if victims != 1 || attempts != 3 {
+		t.Fatalf("deadlocked flows = %d and attempts = %d, want one deadlocked flow retried, 3 attempts in total", victims, attempts)
+	}
+	seven := readColumn(t, must(model.CompositeAccount().Connect(db).GetByTenantIdAndAccountId(transactionTenant, 7)).GetName)
+	eight := readColumn(t, must(model.CompositeAccount().Connect(db).GetByTenantIdAndAccountId(transactionTenant, 8)).GetName)
+	for _, account := range []int64{7, 8} {
+		if err := must(model.CompositeAccount().Connect(db).GetByTenantIdAndAccountId(transactionTenant, account)).Delete(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if seven != eight || (seven != "flow-7" && seven != "flow-8") {
+		t.Fatalf("committed rows are (%q, %q), want both written by one committed flow", seven, eight)
+	}
+}

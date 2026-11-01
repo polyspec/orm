@@ -14166,6 +14166,59 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_transactions::coverage_transaction_savepoint"
           ]
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_transactions_test.go",
+          "id": "TestCoverageTransactionDeadlockRetry",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=mysql",
+            "FEATURE_DSN_ENV=BENCH_MYSQL_DSN",
+            "FEATURE_TEST=TestCoverageTransactionDeadlockRetry",
+            "FEATURE_PACKAGE=./model"
+          ]
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
+          "id": "coverage_transactions::coverage_transaction_deadlock_retry",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test integration",
+            "FEATURE_DATABASE=mysql",
+            "FEATURE_DSN_ENV=BENCH_MYSQL_DSN",
+            "FEATURE_TEST=coverage_transactions::coverage_transaction_deadlock_retry"
+          ]
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_transactions.mjs",
+          "id": "transaction_deadlock_retry"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_transactions.py",
+          "id": "test_transaction_deadlock_retry",
+          "command": [
+            "env",
+            "ORM_FEATURE_DATABASE=mysql",
+            "ORM_FEATURE_DSN=${BENCH_MYSQL_DSN}",
+            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
+            "-m",
+            "unittest",
+            "-v",
+            "tests.coverage_transactions.CoverageTest.test_transaction_deadlock_retry"
+          ]
         }
       ]
     },

@@ -6,7 +6,6 @@ import threading
 
 from polyspec.orm import codes
 from polyspec.orm.errors import OrmError
-from .models import models
 
 from .coverage_case import (
     CoverageCase,
@@ -16,6 +15,7 @@ from .coverage_case import (
     run_on_empty_tenant,
     with_cleanup,
 )
+from .models import models
 
 TENANT = 990003
 
@@ -480,6 +480,102 @@ def handle_abandoned_query(item):
     with_tenant(item, body)
 
 
+def set_account_name(conn, account_id, name):
+    """Writes name to the composite_account row (TENANT, account_id) through conn."""
+    row = (
+        models.CompositeAccount()
+        .connect(conn)
+        .get_by_tenant_id_and_account_id(TENANT, account_id)
+    )
+    row.set_name(name).update()
+
+
+def transaction_deadlock_retry(item):
+    """PLN-24 on the driver: two connections lock two rows in opposite order. Each flow holds its first row before
+    either takes its second, so the database aborts one flow with its deadlock error; the ORM retries that flow and both
+    transactions commit."""
+
+    def body(db):
+        other = models.connect(item[1])
+        try:
+            for account_id in (7, 8):
+                models.CompositeAccount().connect(db).set_tenant_id(
+                    TENANT
+                ).set_account_id(account_id).set_name("seed").create()
+            held = threading.Barrier(2)
+            outcomes = {}
+
+            def flow(conn, first, second):
+                name = f"flow-{first}"
+                state = {"attempts": 0, "victim": None, "error": None}
+
+                def callback():
+                    state["attempts"] += 1
+                    first_attempt = state["attempts"] == 1
+                    try:
+                        set_account_name(conn, first, name)
+                    finally:
+                        if first_attempt:
+                            held.wait()
+                    try:
+                        set_account_name(conn, second, name)
+                    except OrmError as error:
+                        if first_attempt:
+                            state["victim"] = error.code
+                        raise
+
+                try:
+                    conn.transaction(
+                        callback, {"isolation": "read_committed", "retry": 3}
+                    )
+                except OrmError as error:
+                    state["error"] = error
+                outcomes[first] = state
+
+            threads = [
+                threading.Thread(target=flow, args=(db, 7, 8)),
+                threading.Thread(target=flow, args=(other, 8, 7)),
+            ]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+            victims = 0
+            attempts = 0
+            for state in outcomes.values():
+                expect_equal(state["error"], None, "flow commits after retry")
+                attempts += state["attempts"]
+                if state["victim"] is not None:
+                    victims += 1
+                    expect_equal(
+                        state["victim"],
+                        codes.DEADLOCK,
+                        "first attempt of the deadlocked flow",
+                    )
+            expect_equal((victims, attempts), (1, 3), "one retried flow and 3 attempts")
+            seven = (
+                models.CompositeAccount()
+                .connect(db)
+                .get_by_tenant_id_and_account_id(TENANT, 7)
+                .get_name()
+            )
+            eight = (
+                models.CompositeAccount()
+                .connect(db)
+                .get_by_tenant_id_and_account_id(TENANT, 8)
+                .get_name()
+            )
+            expect_equal(
+                seven == eight and seven in ("flow-7", "flow-8"),
+                True,
+                "both rows were written by one committed flow",
+            )
+        finally:
+            other.close()
+
+    with_tenant(item, body)
+
+
 class CoverageTest(CoverageCase):
     # Requirements: DSL-118, INT-45, INT-67, PLN-13, PLN-16, PLN-20, PLN-44.
     def test_transaction_rollback(self):
@@ -488,6 +584,10 @@ class CoverageTest(CoverageCase):
     # Requirements: DSL-119, DSL-123, DSL-125, DSL-126, INT-40, INT-41, INT-42, INT-43, INT-45, INT-46, INT-47, INT-48, PLN-17, PLN-21, PLN-24, PLN-44.
     def test_transaction_savepoint(self):
         self.each_item("transaction_savepoint", transaction_savepoint)
+
+    # Requirements: PLN-24.
+    def test_transaction_deadlock_retry(self):
+        self.each_item("transaction_deadlock_retry", transaction_deadlock_retry)
 
     # Requirements: CFG-9, INT-67.
     def test_handle_abandoned_query(self):
