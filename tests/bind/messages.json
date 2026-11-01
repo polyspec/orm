@@ -339,6 +339,272 @@
           }
         }
       ]
+    },
+    {
+      "id": "bind_i16_max",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i16_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "32767"
+            }
+          ],
+          "expect": {
+            "message": 32767
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_i16_min",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i16_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "-32768"
+            }
+          ],
+          "expect": {
+            "message": -32768
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_i16_above",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i16_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "32768"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ],
+      "exclude": {
+        "go": "the typed public API refuses this host value at compile time",
+        "rust": "the typed public API refuses this host value at compile time"
+      }
+    },
+    {
+      "id": "bind_i16_below",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i16_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "-32769"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ],
+      "exclude": {
+        "go": "the typed public API refuses this host value at compile time",
+        "rust": "the typed public API refuses this host value at compile time"
+      }
+    },
+    {
+      "id": "bind_i32_max",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i32_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "2147483647"
+            }
+          ],
+          "expect": {
+            "message": 2147483647
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_i32_above",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i32_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "2147483648"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ],
+      "exclude": {
+        "go": "the typed public API refuses this host value at compile time",
+        "rust": "the typed public API refuses this host value at compile time"
+      }
+    },
+    {
+      "id": "bind_i64_max",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i64_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "9223372036854775807"
+            }
+          ],
+          "expect": {
+            "message": 9223372036854775807
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_i64_min",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i64_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "-9223372036854775808"
+            }
+          ],
+          "expect": {
+            "message": -9223372036854775808
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_i64_fraction",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i64_value",
+          "operator": "eq",
+          "params": [
+            {
+              "float": "1.5"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ],
+      "exclude": {
+        "go": "the typed public API refuses this host value at compile time",
+        "rust": "the typed public API refuses this host value at compile time"
+      }
+    },
+    {
+      "id": "bind_i64_text",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i64_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "5"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ],
+      "exclude": {
+        "go": "the typed public API refuses this host value at compile time",
+        "rust": "the typed public API refuses this host value at compile time"
+      }
+    },
+    {
+      "id": "bind_i64_bool",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i64_value",
+          "operator": "eq",
+          "params": [
+            {
+              "bool": true
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ],
+      "exclude": {
+        "go": "the typed public API refuses this host value at compile time",
+        "rust": "the typed public API refuses this host value at compile time"
+      }
     }
   ]
 }

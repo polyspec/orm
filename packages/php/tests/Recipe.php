@@ -200,6 +200,9 @@ final class Recipe
         'slots.datetime3_value' => 'datetime3Value',
         'slots.datetime6_value' => 'datetime6Value',
         'slots.date_value' => 'dateValue',
+        'slots.i16_value' => 'i16Value',
+        'slots.i32_value' => 'i32Value',
+        'slots.i64_value' => 'i64Value',
     ];
 
     /** The answer of the markdown.send listener to the message it records, which ends the call. */
@@ -262,7 +265,11 @@ final class Recipe
         return $params[0];
     }
 
-    /** Runs the generated typed filter of the slot column of step with the text of its wrapper (DBS-121). */
+    /**
+     * Runs the generated typed filter of the slot column of step with the PHP value of its wrapper (DBS-121). A text wrapper
+     * gives its text, an int wrapper its PHP int; a float, text or bool wrapper on an integer column gives the value the
+     * untyped PHP path receives, so the public call refuses it with CODEC_ENCODE.
+     */
     private static function sendQuery(array $step, mixed $db): void
     {
         $column = $step['column'];
@@ -271,10 +278,12 @@ final class Recipe
             Assert::fail("operator {$step['operator']} has no typed filter in the PHP cases");
         }
         $wrapper = $step['params'][0];
-        $value = is_array($wrapper) && count($wrapper) === 1 ? array_values($wrapper)[0] : null;
-        if (!is_string($value)) {
-            Assert::fail('the parameter ' . json_encode($wrapper) . ' is no text wrapper');
+        if (!is_array($wrapper) || count($wrapper) !== 1) {
+            Assert::fail('the parameter ' . json_encode($wrapper) . ' is no single-member wrapper');
         }
+        // A time, datetime or date wrapper is the text the typed string filter takes; the others go through the common value model.
+        $kind = array_key_first($wrapper);
+        $value = in_array($kind, ['time', 'datetime', 'date'], true) ? $wrapper[$kind] : self::toValue($wrapper);
         (new \Polyspec\Orm\Tests\BindModel\Slots())->connect($db)->{$method}($value)->gets();
     }
 

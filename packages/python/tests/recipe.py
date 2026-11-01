@@ -149,8 +149,13 @@ SEND_FILTERS = frozenset(
         "datetime3_value",
         "datetime6_value",
         "date_value",
+        "i16_value",
+        "i32_value",
+        "i64_value",
     ]
 )
+# The integer columns of SEND_FILTERS: their typed filter takes the host value of the wrapper, an int, and not its text.
+INTEGER_FILTERS = frozenset(["i16_value", "i32_value", "i64_value"])
 BIND_MODELS: dict = {}
 
 
@@ -276,14 +281,28 @@ def _send(step: dict) -> None:
 
 
 def _query_slot(models, db, step: dict) -> None:
-    """Runs the generated typed filter of the slot column of step with the text of its wrapper; the filter takes the text form
-    of the value (DBS-121). A column or operator without a typed filter here is a defect of the recipe."""
+    """Runs the generated typed filter of the slot column of step. A temporal column's filter takes the text of its wrapper, the
+    text form of the value (DBS-121); an integer column's filter takes the host value of its wrapper, and a wrapper kind that
+    the Python public path takes unchanged reaches the filter as it is, so the filter refuses it itself. A column or operator
+    without a typed filter here is a defect of the recipe."""
     if step["operator"] != "eq":
         raise AssertionError(f"operator {step['operator']} has no typed filter in the Python cases")
     table, _, name = step["column"].partition(".")
     if table != "slots" or name not in SEND_FILTERS:
         raise AssertionError(f"the column {step['column']} has no typed filter in the Python cases")
     wrapper = step["params"][0]
+    if name in INTEGER_FILTERS:
+        if len(wrapper) != 1:
+            raise AssertionError(f"the parameter {json.dumps(wrapper)} is no single wrapper")
+        ((kind, value),) = wrapper.items()
+        if kind == "int":
+            value = int(value)
+        elif kind == "float":
+            value = float(value)
+        elif kind not in ("text", "bool"):
+            raise AssertionError(f"the parameter {json.dumps(wrapper)} is no host value of the Python API")
+        getattr(models.Slots().connect(db), f"gets_by_{name}")(value)
+        return
     if len(wrapper) != 1 or not isinstance(next(iter(wrapper.values())), str):
         raise AssertionError(f"the parameter {json.dumps(wrapper)} is no text wrapper")
     value = next(iter(wrapper.values()))

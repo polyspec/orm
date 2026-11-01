@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
 	"testing"
 	"time"
 
@@ -119,6 +120,15 @@ func queryColumn(t *testing.T, db *orm.DB, column string, value json.RawMessage)
 	case "slots.date_value":
 		_, err := bindmodel.Slots().Connect(db).GetsByDateValue(text(t, value))
 		return err
+	case "slots.i16_value":
+		_, err := bindmodel.Slots().Connect(db).I16Value(integer[int16](t, value, 16)).Gets()
+		return err
+	case "slots.i32_value":
+		_, err := bindmodel.Slots().Connect(db).I32Value(integer[int32](t, value, 32)).Gets()
+		return err
+	case "slots.i64_value":
+		_, err := bindmodel.Slots().Connect(db).I64Value(integer[int64](t, value, 64)).Gets()
+		return err
 	}
 	t.Fatalf("the column %s has no typed filter in the Go cases", column)
 	return nil
@@ -135,6 +145,25 @@ func text(t *testing.T, value json.RawMessage) string {
 		return v
 	}
 	return ""
+}
+
+// integer is the host value of an int wrapper for a host type of the given bit size. A text that the host type cannot hold
+// is a failure here: the recipe excludes such cases for go, because the typed API refuses them at compile time.
+func integer[T int16 | int32 | int64](t *testing.T, value json.RawMessage, bits int) T {
+	t.Helper()
+	var w map[string]string
+	if err := json.Unmarshal(value, &w); err != nil || len(w) != 1 {
+		t.Fatalf("the parameter %s is no int wrapper", value)
+	}
+	s, ok := w["int"]
+	if !ok {
+		t.Fatalf("the parameter %s is no int wrapper", value)
+	}
+	n, err := strconv.ParseInt(s, 10, bits)
+	if err != nil {
+		t.Fatalf("the parameter %s is outside the host type: %v", value, err)
+	}
+	return T(n)
 }
 
 // startMarkdownSendListener serves the one connection of a markdown.send step: it answers connect with {"ok": true}, sends the first

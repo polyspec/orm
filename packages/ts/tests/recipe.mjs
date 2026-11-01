@@ -41,6 +41,8 @@ export function runRecipe(path, database) {
   const text = readFileSync(path, 'utf8');
   const recipe = JSON.parse(text);
   const literal = parseJson(text);
+  // The recipe as wrappers, so that an expect's integers are compared by their digits (not by a JavaScript number).
+  const wrapped = fromJson(literal);
   // An ir.validate step checks its request against the schema of the recipe, which the recipe names relative to its own file.
   const schema = recipe.schema === undefined ? undefined : validationModel(resolve(root, dirname(path), recipe.schema));
   for (const [caseIndex, recipeCase] of recipe.cases.entries()) {
@@ -50,7 +52,7 @@ export function runRecipe(path, database) {
         try {
           if (step.op === 'ir.validate') checkValidate(step, requestText(literal, caseIndex, index), schema, database);
           else if (step.op === 'ir.answer') await checkAnswer(step, database);
-          else if (step.op === 'markdown.send') await withProcessZone(step.process_zone, () => checkSend(step));
+          else if (step.op === 'markdown.send') await withProcessZone(step.process_zone, () => checkSend(step, member(member(member(wrapped, 'cases').array[caseIndex], 'steps').array[index], 'expect')));
           else run(step, bound, database);
         } catch (error) {
           throw new Error(`recipe ${path} case ${recipeCase.id} step ${index} (${step.op}) on ${database}: ${error.message}`, { cause: error });
@@ -659,7 +661,7 @@ async function withProcessZone(zone, work) {
 // checkSend runs a markdown.send step: a transaction begin, or the typed filter of a slot column with the value of its wrapper, on a
 // listener that records the first message it receives. The expect is not per database: {message: json} is compared with the message
 // (messageValue) and {error: code} with the OrmError code of a call that sent no message (FCV-4).
-async function checkSend(step) {
+async function checkSend(step, wrappedExpect) {
   const received = [];
   const server = await startMarkdownSendListener(received);
   let db;
@@ -685,23 +687,38 @@ async function checkSend(step) {
   }
   if (step.expect.message === undefined) throw new Error('markdown.send expects a message or an error');
   if (got.code !== undefined) throw new Error(`the call returned error ${got.code} before a message`);
-  if (!isDeepStrictEqual(got.message, step.expect.message)) throw new Error(`message ${JSON.stringify(got.message)}, want ${JSON.stringify(step.expect.message)}`);
+  const want = member(wrappedExpect, 'message');
+  if (!equal(got.message, want, false)) throw new Error(`message ${JSON.stringify(got.message)}, want ${JSON.stringify(want)}`);
 }
 
-// messageValue is the message that an expect compares: the whole message of a begin, or the one parameter of a statement.
+// member is the value of the member name of an object wrapper (fromJson), or undefined when there is none.
+function member(wrapper, name) {
+  return wrapper?.object?.find(([key]) => key === name)?.[1];
+}
+
+// messageValue is the message that an expect compares, as a wrapper: the whole message of a begin, or the one parameter of a statement.
+// The message is read with its number text, so an integer is compared by its digits.
 function messageValue(text) {
-  const message = JSON.parse(text);
-  if (message.op === 'begin') return message;
-  if (!Array.isArray(message.params) || message.params.length !== 1) throw new Error(`the statement message ${text} holds no single parameter`);
-  return message.params[0];
+  const message = fromJson(parseJson(text));
+  if (member(message, 'op')?.text === 'begin') return message;
+  const params = member(message, 'params');
+  if (params?.array?.length !== 1) throw new Error(`the statement message ${text} holds no single parameter`);
+  return params.array[0];
 }
 
-// queryColumn runs the generated typed filter of the slot column of step with the text of its wrapper; the filter takes the text form
-// of the value (DBS-121). A column or operator without a typed filter here is a defect of the recipe.
+// queryColumn runs the generated typed filter of the slot column of step with the value of its wrapper. The time, datetime and date
+// filters take the text form of the value (DBS-121); the integer filters take the host value, which TypeScript does not type, so a
+// wrapper of another kind reaches the public path and is refused there (CODEC_ENCODE). A column or operator without a typed filter
+// here is a defect of the recipe.
 async function queryColumn(step, db) {
   if (step.operator !== 'eq') throw new Error(`operator ${step.operator} has no typed filter in the TypeScript cases`);
-  const value = wrapperText(step.params[0]);
   const slots = new Slots().connect(db);
+  switch (step.column) {
+    case 'slots.i16_value': return slots.getsByI16Value(hostValue(step.params[0]));
+    case 'slots.i32_value': return slots.getsByI32Value(hostValue(step.params[0]));
+    case 'slots.i64_value': return slots.getsByI64Value(hostValue(step.params[0]));
+  }
+  const value = wrapperText(step.params[0]);
   switch (step.column) {
     case 'slots.time0_value': return slots.getsByTime0Value(value);
     case 'slots.time3_value': return slots.getsByTime3Value(value);
@@ -712,6 +729,14 @@ async function queryColumn(step, db) {
     case 'slots.date_value': return slots.getsByDateValue(value);
   }
   throw new Error(`the column ${step.column} has no typed filter in the TypeScript cases`);
+}
+
+// hostValue is the value that the TypeScript API takes for a wrapper of an integer column: an int by native (a number, or a bigint
+// beyond the safe range), a float as its number, and text or bool as they are, so that the public path refuses the wrong kind.
+function hostValue(wrapper) {
+  const keys = Object.keys(wrapper);
+  if (keys.length === 1 && keys[0] === 'float') return Number(wrapper.float);
+  return native(wrapper);
 }
 
 // wrapperText is the text of a wrapper of one string key, such as {"time": "10:00:00"} or {"text": "2024-01-02T03:04:05.5"}.

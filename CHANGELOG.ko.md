@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ff9243da6bc47db3d04826e5364b49fd4f531e7319fb62ecb1df17cbd9fea015 -->
+<!-- source-sha256: 97501feba3de6420f36fbefe794f8efefd4d3f0902c41fca32d94c573a4eb04e -->
 # 변경 이력
 
 ## Unreleased
 
+- `tests/bind/vectors.json`의 정수 bind case(i16, i32, i64 slot)는 message recipe `tests/bind/messages.json`의 case다. 각 case는 slot 컬럼의 `markdown.send` step 하나, parameter wrapper 하나와 expect(bound 값 또는 오류 code)를 갖는다. 여섯 runtime이 공개 filter로 실행하며, 타입 있는 공개 API가 거부하는 값은 go와 rust에서 "타입 있는 공개 API가 이 host 값을 컴파일 시점에 거부한다"는 이유로 제외한다 (T334-3-15-4b).
 - recipe case는 `exclude`에 그 case를 돌리지 않는 runtime과 이유를 적을 수 있다. 제외된 runtime은 `EXCLUDED <case id> <runtime>: <reason>` 줄 하나를 출력하고 case를 목록에서 뺀다. 그래서 통과도 skip도 아니다. 모든 runtime을 제외하는 case는 schema가 거부한다. recipe schema의 데이터베이스 없는 expectation은 `markdown.send` step을 면제하고, `tests/bind/messages.json`은 검증되는 suite 파일이다 (T334-3-15-4a).
 - `tests/bind/vectors.json`의 markdown message와 control vector는 `markdown.send` step(`column`, `operator`, `params`, `begin`, `process_zone`, `expect`)으로 된 recipe `tests/bind/messages.json` 하나다. 여섯 recipe helper가 각자 공개 markdown 연결로 실행하고, listener가 처음 받은 message를 기록한다. 기존 native message test와 parity 바인딩은 지웠고, DST gap의 offset 없는 datetime case는 `process_zone` 아래에서 실행한다 (T334-3-15-3c).
 - checkPrecision은 여섯 runtime 모두에서 public이다(INT-117): SQLite CHECK precision을 채우는 Go CatalogColumn 필드와 Rust TableColumnMetadata 필드를 공개 이름으로 export하고, config/parity.json은 그것들을 catalog connection이 export하는 다른 public symbol과 함께 선언한다 (T334-3-3-2-9).
