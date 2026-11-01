@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 62d1918ccee70663adda744d06c71f8675b0117fe1fdafa5afc4c487da13928d -->
+<!-- source-sha256: 74f4419f18ad1be2d2b7ee08638cfa1d87793ce478bc920bd0924525002e58ad -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -18,9 +18,10 @@ orm 자신의 규칙만 적는다.
   `polyspec_orm-X.Y.Z-py3-none-any.whl`을 유지한다.
   Enforced by: `make release-tag`
 - Own: 공유 도구는 npm package `@polyspec/kit`이며, `package.json`의 devDependency로 그 release의 asset과 integrity에
-  고정한다. bootstrap source는 형제 Kit checkout에 있다. Makefile은 `../kit/scripts/kit/kit-bootstrap.mk`를 include하며,
-  이 파일은 package가 생기기 전에 고정한 npm을 설치한 뒤 `package-lock.json`을 설치한다. 새 checkout에는 형제 Kit
-  checkout과 빌드된 `dist`가 필요하고, CI는 `make install` 전에 형제 checkout을 빌드한다(K565, K614). Kit의
+  고정한다. bootstrap source는 설치된 package다. Makefile은 `node_modules/@polyspec/kit/scripts/kit/kit-bootstrap.mk`를
+  include하며, 이 파일은 `package-lock.json`의 `npm ci`가 package와 함께 설치한다. CI는 `.github/actions/kit-bootstrap`으로
+  설치하고(K992), `make install-tools TOOLS=npm`이 packages 전에 고정한 npm을 설치한다(K938). 개발 checkout은 package를
+  kit checkout에 link하므로 형제 checkout 경로는 필요 없다(K761). Kit의
   `kit.copies`는 alint가 이 저장소 안에서 읽어야 하는 설정 파일이며, `make kit-sync`가 사본을 쓰고 `make kit-check`가
   비교한다. bootstrap source는 이 저장소의 사본이 아니다. 이 저장소는 `config/*.json`과 자체 product
   code(`scripts/check`, `scripts/features`, `scripts/repo`, client, database server 검사)에서만 다른 저장소와 다르다.
@@ -36,7 +37,7 @@ orm 자신의 규칙만 적는다.
   `procevent`, 그리고 `internal/testdb`를 가진다. `tests/`의 Go runner, physical test, 도구 program은 module
   `github.com/polyspec/orm/tests`(`tests/go.mod`)이고, example은 `github.com/polyspec/orm/examples`(`examples/go.mod`)이며,
   root의 `go.work`가 셋을 묶으므로 replace directive 없이 checkout의 `packages/go`를 쓴다.
-  Enforced by: none, `make layout-check`는 발견 사항을 고칠 때까지 손으로 실행한다
+  Enforced by: `make layout-check`
 - Own: dbspec의 editor package는 `packages/dbspec-language`(language service와 `dbspec-fmt` 명령),
   `packages/dbspec-lsp`(language server), `packages/dbspec-codemirror`(CodeMirror extension),
   `packages/dbspec-vscode`(VS Code extension)다. 앞의 셋은 client와 함께 npm archive

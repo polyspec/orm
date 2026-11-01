@@ -19,10 +19,11 @@ vendors; this file states only the rules of orm.
   `polyspec_orm-X.Y.Z-py3-none-any.whl`.
   Enforced by: `make release-tag`
 - Own: The shared tools are the npm package `@polyspec/kit`, a devDependency of `package.json` pinned to
-  the asset of its release with its integrity. The bootstrap source is in the sibling Kit checkout:
-  the Makefile includes `../kit/scripts/kit/kit-bootstrap.mk`, which installs the pinned npm before
-  the package exists and then installs `package-lock.json`. A fresh checkout needs the sibling Kit
-  checkout and its built `dist`; CI builds that sibling before `make install` (K565, K614). Kit's
+  the asset of its release with its integrity. The bootstrap source is the installed package: the Makefile
+  includes `node_modules/@polyspec/kit/scripts/kit/kit-bootstrap.mk`, which `npm ci` of `package-lock.json`
+  installs with the package. CI installs it through `.github/actions/kit-bootstrap` (K992), and
+  `make install-tools TOOLS=npm` installs the pinned npm before the packages (K938). A development checkout
+  links the package to its kit checkout, so no sibling checkout path is needed (K761). Kit's
   `kit.copies` are the configuration files that alint must read inside this repository; `make kit-sync`
   writes those copies and `make kit-check` compares them. Bootstrap sources are not copies here.
   This repository differs from the other repositories only in `config/*.json`
@@ -43,7 +44,7 @@ vendors; this file states only the rules of orm.
   are the module `github.com/polyspec/orm/tests` (`tests/go.mod`), the examples are
   `github.com/polyspec/orm/examples` (`examples/go.mod`), and the root `go.work` joins the three,
   so they resolve `packages/go` from the checkout with no replace directive.
-  Enforced by: none, the layout check (`make layout-check`) is run by hand until its findings are fixed
+  Enforced by: `make layout-check`
 - Own: The editor packages of dbspec are `packages/dbspec-language` (the language service and the `dbspec-fmt`
   command), `packages/dbspec-lsp` (the language server), `packages/dbspec-codemirror` (the CodeMirror
   extension) and `packages/dbspec-vscode` (the VS Code extension). The first three are released as the
