@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 02bf02c105efa5a1b553a6b8b081c1b69c48e31bfaee12afe4cbf141c3ce00b2 -->
+<!-- source-sha256: 0dd3f39d3802f9a9f5e926a6e79389535aefe08cd2bc7c10ff2406b87e003e68 -->
 # 변경 이력
 
 ## Unreleased
 
+- `authenticated_encryption`의 coverage owner는 AES case를 실행하는 테스트 파일만 가진다. T334-3-14와 T334-3-14b의 codec 테스트 파일은 feature tests 목록과 parity 바인딩에 남으며, 그래서 feature coverage 실행이 `invalid native test command`로 owner를 거부하지 않는다 (T334-3-14b-3).
 - 두 branch의 check-recipes 작업이 하나의 통합으로 main에 들어간다. 한국어 checklist는 영어 checklist의 모든 row를 가지고, 변경 이력은 그 commit들의 항목을 가지며, Makefile은 `rust-compiler-fixtures-check/unit`에서 node를 `$(NODE)`로 실행하고, `config/rebuild.json`은 `scripts/generate/once.mts`와 `scripts/php/php-ext-build.mts`를 분류한다 (CR26).
 - check runner는 실패한 target의 `::error` 줄을 출력하지 않아, GitHub Actions에서 실패는 작업이 끝나야 보였다. 이제 실패한 target은 끝날 때 `::error` 줄을 출력한다 (CR1).
 - docs 빌드는 게시된 폴더에 직접 사이트를 렌더링해서, 중단된 빌드는 사이트의 절반을 남겼다. 이제 임시 폴더에 렌더링한 뒤 이름 바꾸기 한 번으로 게시한다 (CR2).

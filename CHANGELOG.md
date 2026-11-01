@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The coverage owners of `authenticated_encryption` hold only the test files that run an AES case; the codec test files of T334-3-14 and T334-3-14b stay on the feature tests list and their parity bindings, so the feature coverage run no longer refuses the owners with `invalid native test command` (T334-3-14b-3).
 - orm no longer copies the capability table of flowmark: the table "Markdown IR executor" of dialects.md is replaced by a link to the pinned flowmark spec 60, and the markdown-table check that read a flowmark source checkout is removed (T347).
 - The check-recipes work of two branches lands on main as one integration: the Korean checklists hold every row of the English ones, the change logs hold the entries of those commits, the Makefile starts node through `$(NODE)` in `rust-compiler-fixtures-check/unit`, and `config/rebuild.json` classifies `scripts/generate/once.mts` and `scripts/php/php-ext-build.mts` (CR26).
 - The check runner printed no `::error` line for a failed target, so on GitHub Actions a failure was visible only when the job ended. A failed target now prints its `::error` line when it ends (CR1).
