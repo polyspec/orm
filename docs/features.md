@@ -26,7 +26,7 @@ The executable source is the repository feature manifest. Read the manifest, the
 | request_hook | Request hook | implemented | go, php, php-extension, typescript, python, rust |
 | complex_query | Complex product search | implemented | go, php, php-extension, typescript, python, rust |
 | model_query_duplicate_relation | Duplicate relation result names | implemented | go, php, php-extension, typescript, python, rust |
-| statement_runner | Statement runner | partial | go, php, php-extension, typescript, python, rust |
+| statement_runner | Statement runner | implemented | go, php, php-extension, typescript, python, rust |
 
 ## Current behavior
 

@@ -7,10 +7,10 @@
 // ORM_TEST_POSTGRES_DSN is missing.
 //
 // Usage: node packages/ts/tests/statement-runner.mjs [case ...] (after npm run typescript:build)
-import { Db } from '../dist/index.js';
 import { withCaseDatabase } from './case-database.mjs';
 import { registerDatabaseCases } from './database-case-tests.mjs';
 import { createFailureCheck } from './check-state.mjs';
+import { runStatementRunner } from './statement-runner-run.mjs';
 
 // CASE_DEADLINE_MS is the deadline of one case: it connects, runs a statement outside and inside a transaction, and disconnects.
 const CASE_DEADLINE_MS = 60_000;
@@ -18,30 +18,13 @@ let failures = 0;
 let current = '';
 const check = createFailureCheck(() => current, () => { failures++; });
 
-/** The first column of the first row of a statement result, as a number. @param {{ rows: unknown[][] }} result */
-const firstNumber = result => Number(result.rows[0]?.[0]);
-
 /**
- * Runs SELECT 1 through the runner outside a transaction, where it opens one, and inside a transaction, where it joins it.
+ * Runs the statement runner case of runStatementRunner on the database of dsn.
  * @param {string} driver
  * @param {string} dsn
  */
 async function statementRunner(driver, dsn) {
-  const db = await Db.connect(dsn);
-  try {
-    const outside = await db.utils().run(async frame => frame.run('utility', [], 'SELECT 1'));
-    check(firstNumber(outside) === 1, `${driver}: utils().run outside a transaction did not return 1 as its first column`);
-
-    /** @type {{ rows: unknown[][] } | null} */
-    let inside = null;
-    await db.transaction(async () => {
-      inside = await db.utils().run(async frame => frame.run('utility', [], 'SELECT 1'));
-    }, { retry: 0 });
-    const got = /** @type {{ rows: unknown[][] } | null} */ (inside);
-    check(got !== null && firstNumber(got) === 1, `${driver}: utils().run inside a transaction did not return 1 as its first column`);
-  } finally {
-    await db.close();
-  }
+  await runStatementRunner(driver, dsn, check);
 }
 
 // Requirements: INT-150.

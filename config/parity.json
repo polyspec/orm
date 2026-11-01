@@ -642,6 +642,7 @@
         "packages/ts/tests/request_hook_run.mjs",
         "packages/ts/tests/restore_case.mjs",
         "packages/ts/tests/statement-events-run.mjs",
+        "packages/ts/tests/statement-runner-run.mjs",
         "packages/ts/tests/coverage_performance_report.mjs",
         "packages/ts/tests/complex-query-support.mjs",
         "packages/ts/tests/was-inserted-child.mjs",
@@ -43807,6 +43808,45 @@
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/statement-runner.mjs",
+          "id": "statement_runner"
+        }
+      ]
+    },
+    {
+      "id": "coverage-statement-runner-statement-runner",
+      "kind": "feature",
+      "requirements": [
+        "INT-150"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_statement_runner_test.go",
+          "id": "TestCoverageStatementRunner"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageStatementRunnerTest.php",
+          "id": "CoverageStatementRunnerTest::testStatementRunner"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageStatementRunnerExtensionTest.php",
+          "id": "CoverageStatementRunnerExtensionTest::testStatementRunner"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_statement_runner.py",
+          "id": "test_statement_runner"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/statement_runner.rs",
+          "id": "coverage_statement_runner"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_statement_runner.mjs",
           "id": "statement_runner"
         }
       ]

@@ -1,5 +1,5 @@
 <!-- doc-id: features -->
-<!-- source-sha256: 8c7c7354764bb200588d89de449d1d6e99dcb708ff33fea3b021d087eda61018 -->
+<!-- source-sha256: 2e0da258ea8fc4eca04d42fd63fde6b57bb40ddb4cea63bf5cb51e7f02c2c995 -->
 # 기능 정의
 
 실행 기준은 저장소의 기능 manifest이다. 먼저 manifest의 `source.read_order` 경로를 읽고 선택한 기능의 모든 참조 경로를 읽는다. 각 항목은 input, output, 상태 전이, 오류, parity unit, fixture, test, paired document, 실제 검증 명령을 정의한다.
@@ -27,7 +27,7 @@
 | request_hook | Request hook | implemented | go, php, php-extension, typescript, python, rust |
 | complex_query | 복합 상품 검색 | implemented | go, php, php-extension, typescript, python, rust |
 | model_query_duplicate_relation | 중복된 relation 결과 이름 | implemented | go, php, php-extension, typescript, python, rust |
-| statement_runner | 문 실행기 | partial | go, php, php-extension, typescript, python, rust |
+| statement_runner | 문 실행기 | implemented | go, php, php-extension, typescript, python, rust |
 
 ## 현재 동작
 
