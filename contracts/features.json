@@ -8083,7 +8083,9 @@
         "aes-rotation-row-without-aes-column",
         "aes-rotation-status-operation",
         "aes-json-column",
-        "codec-integer-beyond-i64"
+        "codec-integer-beyond-i64",
+        "codec-bytes-value",
+        "codec-ordered-json-text-is-unicode"
       ],
       "fixtures": [
         "tests/codec/codec.json",
@@ -8148,9 +8150,16 @@
         "packages/python/tests/test_codec_none.py",
         "packages/rust/tests/tests/codec_none.rs",
         "packages/rust/orm/tests/styled_column_states.rs",
-        "packages/ts/tests/codec-integer-beyond-i64.test.mjs",
-        "packages/python/tests/test_codec_integer_beyond_i64.py",
-        "packages/rust/tests/tests/codec_integer_beyond_i64.rs"
+        "packages/ts/tests/codec-integer-beyond-i64-none.test.mjs",
+        "packages/python/tests/test_codec_integer_beyond_i64_none.py",
+        "packages/rust/tests/tests/codec_integer_beyond_i64_none.rs",
+        "packages/php/tests/CodecBytesValueRecipeTest.php",
+        "packages/php-ext/tests/CodecBytesValueRecipeExtensionTest.php",
+        "packages/ts/tests/codec-bytes-value-none.test.mjs",
+        "packages/python/tests/test_codec_bytes_value_none.py",
+        "packages/php/tests/CodecOrderedJsonTextTest.php",
+        "packages/php-ext/tests/CodecOrderedJsonTextExtensionTest.php",
+        "packages/python/tests/test_codec_ordered_json_text.py"
       ],
       "docs": [
         "docs/spec/codec.md",
@@ -8338,7 +8347,8 @@
             "part": "packages/go/orm",
             "tests": [
               "packages/go/orm/coverage_authenticated_encryption_test.go",
-              "packages/go/orm/recipe_codec_test.go"
+              "packages/go/orm/recipe_codec_test.go",
+              "packages/go/orm/codec_test.go"
             ],
             "inputs": [
               "contracts/fixtures/authenticated_encryption.json"
@@ -8369,7 +8379,9 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoverageAuthenticatedEncryptionTest.php"
+              "packages/php/tests/CoverageAuthenticatedEncryptionTest.php",
+              "packages/php/tests/CodecBytesValueRecipeTest.php",
+              "packages/php/tests/CodecOrderedJsonTextTest.php"
             ],
             "inputs": [
               "contracts/fixtures/authenticated_encryption.json",
@@ -8402,7 +8414,7 @@
             "part": "packages/rust",
             "tests": [
               "packages/rust/orm/tests/coverage_authenticated_encryption.rs",
-              "packages/rust/tests/tests/codec_integer_beyond_i64.rs"
+              "packages/rust/tests/tests/codec_integer_beyond_i64_none.rs"
             ],
             "inputs": [
               "contracts/fixtures/authenticated_encryption.json"
@@ -8434,7 +8446,9 @@
             "part": "packages/ts/tests",
             "tests": [
               "packages/ts/tests/coverage_authenticated_encryption.mjs",
-              "packages/ts/tests/codec-integer-beyond-i64.test.mjs"
+              "packages/ts/tests/codec-integer-beyond-i64-none.test.mjs",
+              "packages/ts/tests/codec-bytes-value-none.test.mjs",
+              "packages/ts/tests/codec-errors.test.mjs"
             ],
             "inputs": [
               "contracts/fixtures/authenticated_encryption.json"
@@ -8459,7 +8473,9 @@
             "part": "packages/python/tests",
             "tests": [
               "packages/python/tests/coverage_authenticated_encryption.py",
-              "packages/python/tests/test_codec_integer_beyond_i64.py"
+              "packages/python/tests/test_codec_integer_beyond_i64_none.py",
+              "packages/python/tests/test_codec_bytes_value_none.py",
+              "packages/python/tests/test_codec_ordered_json_text.py"
             ],
             "inputs": [
               "contracts/fixtures/authenticated_encryption.json"
@@ -8483,7 +8499,9 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php"
+              "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
+              "packages/php-ext/tests/CodecBytesValueRecipeExtensionTest.php",
+              "packages/php-ext/tests/CodecOrderedJsonTextExtensionTest.php"
             ],
             "inputs": [
               "contracts/fixtures/authenticated_encryption.json",

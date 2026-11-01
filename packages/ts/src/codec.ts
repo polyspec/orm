@@ -14,11 +14,11 @@ export type EncodedValue = string | Uint8Array | null;
 /** The value of a column with an ordered_json stage: an ordered-json value. */
 export type { JsonValue };
 
-/** The bytes of a plaintext: bytes as given, a scalar as the UTF-8 of its text; any other value is a CODEC_ENCODE error. */
+/** The bytes of a plaintext: bytes as given and a string as its UTF-8; a value of another kind is CODEC_ENCODE (COD-1). */
 function plainBytes(value: unknown): Buffer {
-  if (Buffer.isBuffer(value) || value instanceof Uint8Array) return Buffer.from(value);
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'bigint' || typeof value === 'boolean') return Buffer.from(String(value));
-  throw new CodecError(codes.CODEC_ENCODE, `a ${typeof value} value has no plaintext`);
+  if (value instanceof Uint8Array) return Buffer.from(value);
+  if (typeof value === 'string') return Buffer.from(value);
+  throw new CodecError(codes.CODEC_ENCODE, `host input must be text or bytes, got a ${typeof value}`);
 }
 
 /** Returns the stable lowercase HMAC-SHA256 index for plaintext. */
@@ -30,6 +30,10 @@ export function blindIndex(value: unknown, key: string): string | null {
 }
 
 export function hostEncode(value: unknown, styles: readonly string[], aesKey: string): string | Uint8Array | null {
+  if (styles.length === 0) throw new CodecError(codes.CODEC_ENCODE, 'host style list is empty');
+  for (const style of styles) {
+    if (style !== 'aes' && style !== 'hex' && style !== 'ip') throw new CodecError(codes.CODEC_UNSUPPORTED, `host style ${style}`);
+  }
   if (value === null) return null;
   let current: Buffer<ArrayBufferLike> = plainBytes(value);
   let textResult = false;
@@ -100,9 +104,10 @@ function aesV2Key(key: string): Buffer {
 
 
 function packIp(value: string): Buffer {
-  // The exact text only: white space around the address is CODEC_ENCODE (docs/spec/codec.md).
+  // The exact text only: white space around the address, and a zone (%eth0), which isIP accepts, is CODEC_ENCODE
+  // (docs/spec/codec.md COD-38).
   const source = value;
-  const version = isIP(source);
+  const version = source.includes('%') ? 0 : isIP(source);
   if (version === 4) return Buffer.from(source.split('.').map(Number));
   if (version !== 6) throw new CodecError(codes.CODEC_ENCODE, `ip: ${JSON.stringify(source)} is not an address`);
   const halves = source.split('::');
@@ -119,7 +124,6 @@ function packIp(value: string): Buffer {
   const groups=halves.length===2?[...left,...Array.from({ length: 8-left.length-right.length }, () => 0),...right]:left;
   if(groups.length!==8)throw new CodecError(codes.CODEC_ENCODE,`ip: ${JSON.stringify(source)} is not an address`);
   const out=Buffer.alloc(16);groups.forEach((group,index)=>out.writeUInt16BE(group,index*2));
-  if(out.subarray(0,12).equals(Buffer.from([0,0,0,0,0,0,0,0,0,0,255,255])))return out.subarray(12);
   return out;
 }
 
@@ -129,6 +133,8 @@ function unpackIp(value: Buffer): string {
   const groups=Array.from({length:8},(_,index)=>value.readUInt16BE(index*2));
   let bestStart=-1,bestLength=0;
   for(let index=0;index<groups.length;){if(groups[index]!==0){index++;continue;}let end=index;while(end<groups.length&&groups[end]===0)end++;if(end-index>bestLength&&end-index>=2){bestStart=index;bestLength=end-index;}index=end;}
+  // An IPv4-mapped address is ::ffff: and its dotted decimal (RFC 5952, section 5), as MySQL INET6_NTOA writes it.
+  if(value.subarray(0,12).equals(Buffer.from([0,0,0,0,0,0,0,0,0,0,255,255])))return `::ffff:${[...value.subarray(12)].join('.')}`;
   if(bestStart<0)return groups.map(group=>group.toString(16)).join(':');
   const left=groups.slice(0,bestStart).map(group=>group.toString(16)).join(':');
   const right=groups.slice(bestStart+bestLength).map(group=>group.toString(16)).join(':');
@@ -178,16 +184,38 @@ function decodeBase64(value: Uint8Array): Uint8Array {
 }
 
 /**
+ * Refuses a style that no stage names and a value stage outside the first position, before any value or cell is read
+ * (docs/spec/codec.md COD-35).
+ */
+function checkStyles(styles: readonly string[]): void {
+  for (const [index, style] of styles.entries()) {
+    switch (style) {
+      case 'gz':
+      case 'base64':
+        break;
+      case 'serialize':
+      case 'yaml':
+      case 'ordered_json':
+        if (index !== 0) throw new CodecError(codes.CODEC_UNSUPPORTED, `${style} must be the first style`);
+        break;
+      default:
+        throw new CodecError(codes.CODEC_UNSUPPORTED, `style ${style}`);
+    }
+  }
+}
+
+/**
  * Decodes a stored cell with the column's codec stages in reverse write
  * order. The ordered_json stage returns the ordered-json value, which keeps
  * the member order, the number text, and an empty object apart from an empty
  * array; without a value stage the value is the text of the bytes.
  */
 export function decode(styles: readonly string[], raw: string | Uint8Array | null): StyledValue<CodecValue | JsonValue | string> {
+  checkStyles(styles);
   if (raw === null) return StyledValue.sqlNull();
-  // An empty cell is CODEC_DECODE, except under a last base64 stage, whose encoder writes an empty cell for empty
-  // bytes (docs/spec/codec.md, Stage lists).
-  if (raw.length === 0 && styles.at(-1) !== 'base64') throw new CodecError(codes.CODEC_DECODE, 'styled cell is empty');
+  // An empty cell is CODEC_DECODE, except under a last base64 stage and under no stage, whose encoders write an empty
+  // cell for empty text (docs/spec/codec.md COD-14).
+  if (raw.length === 0 && styles.length > 0 && styles.at(-1) !== 'base64') throw new CodecError(codes.CODEC_DECODE, 'styled cell is empty');
   let current = bytes(raw);
   let value: CodecValue | JsonValue | undefined;
   for (let index = styles.length - 1; index >= 0; index--) {
@@ -242,21 +270,21 @@ export function encode(styles: readonly string[], state: StyledValue<CodecValue 
  * @internal
  */
 export function encodeStyled(styles: readonly string[], state: StyledValue<unknown>): EncodedValue {
+  checkStyles(styles);
   if (state.kind === 'sql-null') return null;
   let current = new Uint8Array();
   const transformed = state.payload();
-  if (styles[0] === 'gz' || styles[0] === 'base64') {
-    if (typeof transformed !== 'string') throw new CodecError(codes.CODEC_ENCODE, `a first ${styles[0]} stage takes a string value`);
+  if (styles.length === 0 || styles[0] === 'gz' || styles[0] === 'base64') {
+    const stage = styles.length === 0 ? 'an empty stage list' : `a first ${styles[0]} stage`;
+    if (typeof transformed !== 'string') throw new CodecError(codes.CODEC_ENCODE, `${stage} takes a string value`);
     current = utf8.encode(transformed);
   }
   for (const [index, style] of styles.entries()) {
     switch (style) {
       case 'serialize':
-        if (index !== 0) throw new CodecError(codes.CODEC_UNSUPPORTED, 'serialize must be the first encoding style');
         current = utf8.encode(phpSerialize(commonValue(transformed, 'serialize')));
         break;
       case 'yaml':
-        if (index !== 0) throw new CodecError(codes.CODEC_UNSUPPORTED, 'yaml must be the first style');
         try {
           current = utf8.encode(yamlText(validateCodecValue(commonValue(transformed, 'yaml'), 'yaml encode')));
         } catch (error) {
@@ -264,7 +292,6 @@ export function encodeStyled(styles: readonly string[], state: StyledValue<unkno
         }
         break;
       case 'ordered_json':
-        if (index !== 0) throw new CodecError(codes.CODEC_UNSUPPORTED, 'ordered_json must be the first stage');
         current = utf8.encode(transformed instanceof JsonValue ? orderedJsonStringify(transformed) : orderedJsonStringify(orderedJsonValue(transformed)));
         break;
       case 'base64':
@@ -336,13 +363,23 @@ function orderedJsonValue(value: unknown): JsonValue {
   }
 }
 
+/** A JSON string: a text that is not a sequence of Unicode scalar values, such as a lone surrogate, is no JSON text (RFC
+ * 8259, 8.1), so it is CODEC_ENCODE (COD-14), where JSON.stringify would write it as an escape. */
+// A surrogate code point that is not one half of a pair, read by code point (the u flag).
+const LONE_SURROGATE = /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/u;
+
+function jsonString(text: string): string {
+  if (LONE_SURROGATE.test(text)) throw new CodecError(codes.CODEC_ENCODE, 'json: the text is not a sequence of Unicode scalar values');
+  return JSON.stringify(text);
+}
+
 function jsonText(value: unknown, depth: number): string {
   if (depth > 256) throw new CodecError(codes.CODEC_ENCODE, 'json: value nesting exceeds 256 levels');
   if (value instanceof JsonValue) return orderedJsonStringify(value);
   if (value === null) return 'null';
   switch (typeof value) {
     case 'boolean': return value ? 'true' : 'false';
-    case 'string': return JSON.stringify(value);
+    case 'string': return jsonString(value);
     case 'number':
       if (!Number.isFinite(value)) throw new CodecError(codes.CODEC_ENCODE, `json: non-finite number ${value}`);
       return JSON.stringify(value);
@@ -364,7 +401,7 @@ function jsonText(value: unknown, depth: number): string {
   const members: string[] = [];
   for (const [key, item] of Object.entries(value)) {
     if (item === undefined) throw new CodecError(codes.CODEC_ENCODE, `json: member ${JSON.stringify(key)} is undefined`);
-    members.push(`${JSON.stringify(key)}:${jsonText(item, depth + 1)}`);
+    members.push(`${jsonString(key)}:${jsonText(item, depth + 1)}`);
   }
   return `{${members.join(',')}}`;
 }

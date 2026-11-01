@@ -22,6 +22,7 @@ fn err(code: &str, msg: impl Into<String>) -> Error {
 /// Stored cell → decoded value, or `Val::Null` for SQL NULL. The `ordered_json`
 /// stage returns `Val::Ordered`; the other stages return `Val::Json`.
 pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
+    check_styles(styles.iter().map(String::as_str))?;
     let mut cur: Vec<u8> = match raw {
         Val::Null => return Ok(Val::Null),
         // a driver-parsed JSON cell: only a bare json style applies
@@ -55,29 +56,42 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
             other => return Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
         }
     }
-    // Without a value stage (a list that starts with gz or base64) the value is the text of the bytes.
+    // Without a value stage (no stage, or a list that starts with gz or base64) the value is the text of the bytes.
     Ok(match value {
         Some(value) => value,
-        None => match String::from_utf8(cur) {
-            Ok(text) => Val::Str(text),
-            Err(_) if !styles.is_empty() => return Err(err(CODEC_DECODE, "decoded text is not valid UTF-8")),
-            Err(error) => Val::Bytes(error.into_bytes()),
-        },
+        None => Val::Str(String::from_utf8(cur).map_err(|e| err(CODEC_DECODE, format!("decoded text is not valid UTF-8: {e}")))?),
     })
 }
 
-/// A first `gz` or `base64` stage takes bytes, so the value is a string and the stage encodes its UTF-8 text.
+/// Refuses a style that no stage names and a value stage outside the first position, before any value or cell is read
+/// (docs/spec/codec.md COD-35).
+fn check_styles<'a>(styles: impl IntoIterator<Item = &'a str>) -> Result<()> {
+    for (i, st) in styles.into_iter().enumerate() {
+        match st {
+            "gz" | "base64" => {}
+            "ordered_json" | "serialize" | "yaml" if i == 0 => {}
+            "ordered_json" | "serialize" | "yaml" => return Err(err(CODEC_UNSUPPORTED, format!("{st} must be the first style"))),
+            other => return Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
+        }
+    }
+    Ok(())
+}
+
+/// A first `gz` or `base64` stage takes bytes, so the value is a string and the stage encodes its UTF-8 text; an empty stage
+/// list writes that text as it is.
 fn takes_text(stage: Option<&str>) -> bool {
-    matches!(stage, Some("gz" | "base64"))
+    matches!(stage, None | Some("gz" | "base64"))
 }
 
 /// An ordered-json value → stored representation. The first stage is
 /// `ordered_json` and writes the compact text of the value, including JSON null.
 pub fn encode_ordered(styles: &[&str], v: StyledValue<&strict_json::Value>) -> Result<Param> {
+    check_styles(styles.iter().copied())?;
     let StyledValue::Value(v) = v else { return Ok(Param::Null) };
     match styles.first() {
         Some(&"ordered_json") => finish(&styles[1..], v.compact().into_bytes()),
-        _ => Err(err(CODEC_UNSUPPORTED, format!("an ordered-json value needs the first style ordered_json, not {styles:?}"))),
+        // An ordered-json value is written by a first ordered_json stage only (COD-16).
+        _ => Err(err(CODEC_ENCODE, format!("an ordered-json value is written by a first ordered_json stage only, not {styles:?}"))),
     }
 }
 
@@ -122,36 +136,29 @@ fn encode_binary_stage(style: &str, cur: &mut Vec<u8>) -> Result<BinaryStage> {
 
 /// Value → stored representation as a bind parameter (`Str`, or `Bytes` for gz).
 pub fn encode(styles: &[&str], v: StyledValue<&Value>) -> Result<Param> {
+    check_styles(styles.iter().copied())?;
     let StyledValue::Value(v) = v else { return Ok(Param::Null) };
     let mut cur: Vec<u8> = Vec::new();
     let value = v.clone();
     if takes_text(styles.first().copied()) {
         let Value::String(text) = &value else {
-            return Err(err(CODEC_ENCODE, format!("a first {} stage takes a string value", styles[0])));
+            let stage = styles.first().map_or("an empty stage list".to_owned(), |st| format!("a first {st} stage"));
+            return Err(err(CODEC_ENCODE, format!("{stage} takes a string value")));
         };
         cur = text.clone().into_bytes();
     }
-    for (i, st) in styles.iter().enumerate() {
+    for st in styles {
         match *st {
             "serialize" => {
-                if i != 0 {
-                    return Err(err(CODEC_UNSUPPORTED, "serialize must be the first encoding style"));
-                }
                 let mut s = String::new();
                 number_check(&value, "serialize")?;
                 php_serialize(&mut s, &value)?;
                 cur = s.into_bytes();
             }
             "yaml" => {
-                if i != 0 {
-                    return Err(err(CODEC_UNSUPPORTED, "yaml must be the first style"));
-                }
                 cur = yaml_encode(&value)?;
             }
             "ordered_json" => {
-                if i != 0 {
-                    return Err(err(CODEC_UNSUPPORTED, "ordered_json must be the first style"));
-                }
                 let raw = serde_json::to_vec(&value).map_err(|e| err(CODEC_ENCODE, format!("json: {e}")))?;
                 let parsed = strict_json::parse_bytes(&raw).map_err(|e| err(CODEC_ENCODE, format!("json: {e}")))?;
                 cur = strict_json::stringify(&parsed).into_bytes();
@@ -608,7 +615,7 @@ pub fn blind_index(v: &Param, key: &str) -> Result<String> {
         Param::Null => return Ok(String::new()),
         Param::Str(s) => s.as_bytes().to_vec(),
         Param::Bytes(b) => b.clone(),
-        other => format!("{other:?}").into_bytes(),
+        other => return Err(err(CODEC_ENCODE, format!("blind index input must be text or bytes, got {other:?}"))),
     };
     let mut mac = <Hmac<Sha256> as Mac>::new_from_slice(key.as_bytes()).map_err(|error| Error::Config(format!("invalid blind_index key: {error}")))?;
     mac.update(&plain);
@@ -699,15 +706,18 @@ fn unpack_ip(b: &[u8]) -> Result<String> {
 /// Applies the host stages of a bound value in write order (`bind_slots[].host_styles`).
 /// The result binds as text after `hex`, as bytes otherwise; NULL stays NULL.
 pub fn host_encode(v: &Param, styles: &[String], aes_key: &str) -> Result<Param> {
+    if styles.is_empty() {
+        return Err(err(CODEC_ENCODE, "host style list is empty"));
+    }
+    if let Some(other) = styles.iter().find(|st| !is_host(st)) {
+        return Err(err(CODEC_UNSUPPORTED, format!("host style {other}")));
+    }
     let mut cur: Vec<u8> = match v {
         Param::Null => return Ok(Param::Null),
         Param::Str(s) => s.as_bytes().to_vec(),
         Param::Bytes(b) => b.clone(),
-        Param::Bool(b) => b.to_string().into_bytes(),
-        Param::I64(x) => x.to_string().into_bytes(),
-        Param::F64(x) => x.to_string().into_bytes(),
-        Param::DateTime(t) => t.format("%Y-%m-%d %H:%M:%S%.6f").to_string().into_bytes(),
-        Param::Date(d) => d.to_string().into_bytes(),
+        // A host stage takes text or bytes only (COD-1).
+        other => return Err(err(CODEC_ENCODE, format!("host input must be text or bytes, got {other:?}"))),
     };
     for st in styles {
         cur = match st.as_str() {
@@ -773,16 +783,6 @@ mod tests {
         assert_eq!(php_int_key("-0"), None);
     }
 
-    /// An empty stage list returns the cell as Rust holds it, bytes as bytes and empty text as empty text (COD-31); the other
-    /// clients read a cell as text, so the codec recipe does not hold these.
-    #[test]
-    // The test of COD-31 (docs/spec).
-    fn empty_stage_list_returns_the_cell() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        assert_eq!(decode(&[], &Val::Bytes(vec![0xff])).unwrap(), Val::Bytes(vec![0xff]));
-        assert_eq!(decode(&[], &Val::Str(String::new())).unwrap(), Val::Str(String::new()));
-    }
-
     #[test]
     fn malformed_serialize_preserves_parser_cause_message() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -828,37 +828,6 @@ mod tests {
         *encrypted.last_mut().expect("AES envelope has ciphertext") ^= 1;
         let error = aes_decrypt(&encrypted, "key").expect_err("tampered AES authentication tag must fail");
         assert!(error.to_string().contains("aes: authentication failed: "), "{error}");
-    }
-
-    /// The values that the codec recipe holds once T334-3-14b lands: the i64 bounds and an integral float beyond 2^53, which the
-    /// TypeScript and Python codecs refuse today, and the non-printable characters of YAML 1.2, which only Rust refuses today.
-    #[test]
-    // The test of COD-13, COD-16, COD-29 (docs/spec).
-    fn yaml_values_of_t334_3_14b() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let yaml = vec!["yaml".to_string()];
-        assert_eq!(decode(&yaml, &Val::Str("-9223372036854775808\n".into())).unwrap(), Val::Json(serde_json::json!(i64::MIN)));
-        for text in ["a: x\u{7}y\n", "a: \"x\u{9f}\"\n", "a: \u{feff}x\n"] {
-            assert_eq!(decode(&yaml, &Val::Str(text.into())).unwrap_err().code(), CODEC_DECODE, "{text:?}");
-        }
-        for value in [serde_json::json!(1e25), serde_json::json!(i64::MIN), serde_json::json!(i64::MAX)] {
-            let Param::Str(text) = encode(&["yaml"], StyledValue::Value(&value)).unwrap() else { panic!("{value}: yaml writes text") };
-            match decode(&yaml, &Val::Str(text.clone())).unwrap() {
-                Val::Json(got) => assert!(got == value && format!("{got:?}") == format!("{value:?}"), "{value}: wrote {text:?}, read {got}"),
-                other => panic!("{value}: read {other:?}"),
-            }
-        }
-        // serde_json holds u64, which the common value model (i64) does not; the other clients cannot pass it.
-        assert_eq!(encode(&["yaml"], StyledValue::Value(&serde_json::json!(u64::MAX))).unwrap_err().code(), CODEC_ENCODE);
-    }
-
-    /// An ordered-json value is the input of an `ordered_json` stage only (COD-16); the codec recipe passes a plain value to
-    /// serialize, so this Rust input type stays here.
-    #[test]
-    // The test of COD-16 (docs/spec).
-    fn serialize_refuses_an_ordered_json_value() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        assert_eq!(encode_ordered(&["serialize"], StyledValue::Value(&strict_json::parse("{}").unwrap())).unwrap_err().code(), CODEC_UNSUPPORTED);
     }
 
     #[test]

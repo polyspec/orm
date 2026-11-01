@@ -1,6 +1,7 @@
 {
   "$schema": "../../scripts/features/schema/recipe.schema.json",
   "requirements": [
+    "COD-1",
     "COD-3",
     "COD-4",
     "COD-5",
@@ -12248,6 +12249,140 @@
               }
             }
           }
+        },
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "ip"
+          ],
+          "value": {
+            "text": "::ffff:10.0.5.9"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "00000000000000000000ffff0a000509"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.host_decode",
+          "styles": [
+            "ip"
+          ],
+          "raw": {
+            "bytes_hex": "00000000000000000000ffff0a000509"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "value": {
+                "text": "::ffff:10.0.5.9"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "ip"
+          ],
+          "value": {
+            "text": "2001:DB8:0:0:0:0:0:1"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "20010db8000000000000000000000001"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.host_decode",
+          "styles": [
+            "ip"
+          ],
+          "raw": {
+            "bytes_hex": "20010db8000000000000000000000001"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "value": {
+                "text": "2001:db8::1"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.host_decode",
+          "styles": [
+            "ip"
+          ],
+          "raw": {
+            "bytes_hex": "20010db8000000000001000000000001"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "value": {
+                "text": "2001:db8::1:0:0:1"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.host_decode",
+          "styles": [
+            "ip"
+          ],
+          "raw": {
+            "bytes_hex": "20010db8000000010000000000000001"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "value": {
+                "text": "2001:db8:0:1::1"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.host_decode",
+          "styles": [
+            "ip"
+          ],
+          "raw": {
+            "bytes_hex": "00000000000000000000000000000000"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "value": {
+                "text": "::"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "ip"
+          ],
+          "value": {
+            "text": "fe80::1%eth0"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
         }
       ]
     },
@@ -14754,6 +14889,96 @@
               "error": "CODEC_UNSUPPORTED"
             }
           }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "yaml",
+            "serialize"
+          ],
+          "value": {
+            "object": []
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "gz",
+            "serialize"
+          ],
+          "value": {
+            "object": []
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "base64",
+            "ordered_json"
+          ],
+          "value": {
+            "object": []
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize",
+            "ordered_json"
+          ],
+          "value": {
+            "object": []
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml",
+            "serialize"
+          ],
+          "raw": {
+            "text": "a"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "gz",
+            "ordered_json"
+          ],
+          "raw": {
+            "text": "a"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_UNSUPPORTED"
+            }
+          }
         }
       ]
     },
@@ -15823,6 +16048,781 @@
               "value": {
                 "bytes_hex": "643a312e30452b32353b"
               }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "host_values_by_kind",
+      "requirements": [
+        "COD-1",
+        "COD-4"
+      ],
+      "steps": [
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "hex"
+          ],
+          "value": {
+            "text": "ab"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "value": {
+                "text": "6162"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "hex"
+          ],
+          "value": {
+            "bytes_hex": "00ff"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "value": {
+                "text": "00FF"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "hex"
+          ],
+          "value": {
+            "int": "5"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        },
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "hex"
+          ],
+          "value": {
+            "float": "1.5"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        },
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "hex"
+          ],
+          "value": {
+            "bool": true
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        },
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "ip"
+          ],
+          "value": {
+            "int": "167772160"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        },
+        {
+          "op": "codec.blind_index",
+          "value": {
+            "int": "5"
+          },
+          "key": "blind-key",
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        },
+        {
+          "op": "codec.blind_index",
+          "value": {
+            "bool": true
+          },
+          "key": "blind-key",
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "yaml_merge_key_is_a_key",
+      "requirements": [
+        "COD-29"
+      ],
+      "steps": [
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "<<: 1\n"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "object": [
+                  [
+                    "<<",
+                    {
+                      "int": "1"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "a: 1\n<<: {b: 2}\n"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "object": [
+                  [
+                    "a",
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    "<<",
+                    {
+                      "object": [
+                        [
+                          "b",
+                          {
+                            "int": "2"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "yaml"
+          ],
+          "value": {
+            "object": [
+              [
+                "<<",
+                {
+                  "int": "1"
+                }
+              ]
+            ]
+          },
+          "as": "merge"
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "ref": "merge"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "object": [
+                  [
+                    "<<",
+                    {
+                      "int": "1"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "ordered_json_text_is_utf8",
+      "requirements": [
+        "COD-14"
+      ],
+      "steps": [
+        {
+          "op": "codec.decode",
+          "styles": [
+            "ordered_json"
+          ],
+          "raw": {
+            "bytes_hex": "22ff22"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "ordered_json"
+          ],
+          "raw": {
+            "bytes_hex": "22eda08022"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "ordered_json",
+            "base64"
+          ],
+          "raw": {
+            "text": "Iv8i"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "host_stage_errors",
+      "requirements": [
+        "COD-5",
+        "COD-37"
+      ],
+      "steps": [
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "hex"
+          ],
+          "value": {
+            "null": "text"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "value": {
+                "null": "text"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.host_decode",
+          "styles": [
+            "hex"
+          ],
+          "raw": {
+            "null": "text"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "value": {
+                "null": "text"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.host_decode",
+          "styles": [
+            "aes",
+            "hex"
+          ],
+          "raw": {
+            "null": "text"
+          },
+          "key": "key-v1",
+          "expect": {
+            "none": {
+              "value": {
+                "null": "text"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.host_decode",
+          "styles": [
+            "hex"
+          ],
+          "raw": {
+            "text": "zz"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE"
+            }
+          }
+        },
+        {
+          "op": "codec.host_decode",
+          "styles": [
+            "aes"
+          ],
+          "raw": {
+            "bytes_hex": "4f524d2d41455332"
+          },
+          "key": "key-v1",
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE"
+            }
+          }
+        },
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "text": "a"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "error": "CODEC_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "codec.host_decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "a"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "error": "CODEC_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "codec.host_encode",
+          "styles": [],
+          "value": {
+            "text": "a"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "empty_stage_list",
+      "requirements": [
+        "COD-14",
+        "COD-31",
+        "COD-37"
+      ],
+      "steps": [
+        {
+          "op": "codec.decode",
+          "styles": [],
+          "raw": {
+            "text": "x"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "text": "x"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [],
+          "raw": {
+            "text": ""
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "text": ""
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [],
+          "raw": {
+            "bytes_hex": "6869"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "text": "hi"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [],
+          "raw": {
+            "bytes_hex": "ff"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [],
+          "value": {
+            "text": "x"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "text": "x"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [],
+          "value": {
+            "text": ""
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "text": ""
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [],
+          "value": {
+            "int": "1"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [],
+          "value": {
+            "null": "text"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "null": "text"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "ordered_json_value_stages",
+      "requirements": [
+        "COD-16"
+      ],
+      "steps": [
+        {
+          "op": "codec.encode",
+          "styles": [
+            "ordered_json"
+          ],
+          "value": {
+            "ordered_json": {
+              "object": [
+                [
+                  "b",
+                  {
+                    "int": "1"
+                  }
+                ],
+                [
+                  "a",
+                  {
+                    "float": "2.50"
+                  }
+                ]
+              ]
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "7b2262223a312c2261223a322e35307d"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "ordered_json",
+            "gz"
+          ],
+          "value": {
+            "ordered_json": {
+              "object": [
+                [
+                  "b",
+                  {
+                    "int": "1"
+                  }
+                ],
+                [
+                  "a",
+                  {
+                    "float": "2.50"
+                  }
+                ]
+              ]
+            }
+          },
+          "as": "packed"
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "ordered_json",
+            "gz"
+          ],
+          "raw": {
+            "ref": "packed"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "object": [
+                  [
+                    "b",
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    "a",
+                    {
+                      "float": "2.50"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "ordered_json": {
+              "object": [
+                [
+                  "b",
+                  {
+                    "int": "1"
+                  }
+                ],
+                [
+                  "a",
+                  {
+                    "float": "2.50"
+                  }
+                ]
+              ]
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "yaml"
+          ],
+          "value": {
+            "ordered_json": {
+              "object": [
+                [
+                  "b",
+                  {
+                    "int": "1"
+                  }
+                ],
+                [
+                  "a",
+                  {
+                    "float": "2.50"
+                  }
+                ]
+              ]
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "gz"
+          ],
+          "value": {
+            "ordered_json": {
+              "object": [
+                [
+                  "b",
+                  {
+                    "int": "1"
+                  }
+                ],
+                [
+                  "a",
+                  {
+                    "float": "2.50"
+                  }
+                ]
+              ]
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "base64"
+          ],
+          "value": {
+            "ordered_json": {
+              "object": [
+                [
+                  "b",
+                  {
+                    "int": "1"
+                  }
+                ],
+                [
+                  "a",
+                  {
+                    "float": "2.50"
+                  }
+                ]
+              ]
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [],
+          "value": {
+            "ordered_json": {
+              "object": [
+                [
+                  "b",
+                  {
+                    "int": "1"
+                  }
+                ],
+                [
+                  "a",
+                  {
+                    "float": "2.50"
+                  }
+                ]
+              ]
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
             }
           }
         }

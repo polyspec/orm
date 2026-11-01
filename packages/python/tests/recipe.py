@@ -94,9 +94,9 @@ def _run(step: dict, bound: dict, database: str) -> None:
             result = blind_index(_argument(step["value"], bound), step.get("key", ""))
         else:
             raise AssertionError(f"OP_UNKNOWN {op}")
-    except (
-        CodecError
-    ) as error:  # the error of the call, which the expect names by its code
+    # The error of the call, which the expect names by its code: the codec raises CodecError, and StyledValue, which
+    # checks the value an encode takes, raises OrmError.
+    except (CodecError, OrmError) as error:
         result = _Failed(error)
     if "as" in step:
         bound[step["as"]] = result
@@ -161,6 +161,15 @@ def _argument(raw: dict, bound: dict) -> Any:
     return _to_value(raw)
 
 
+def _holds_bytes(raw: dict) -> bool:
+    """Whether the recipe value is bytes or a list or a map that holds bytes at any depth."""
+    return (
+        "bytes_hex" in raw
+        or any(_holds_bytes(item) for item in raw.get("array", []))
+        or any(_holds_bytes(item) for _, item in raw.get("object", []))
+    )
+
+
 def _styled_argument(raw: dict, styles: list, bound: dict) -> StyledValue:
     """The styled value an encode takes: SQL NULL for null, an ordered-json value for an ordered_json stage, so that its
     member order and number text are those of the recipe, and the common value model otherwise."""
@@ -169,7 +178,11 @@ def _styled_argument(raw: dict, styles: list, bound: dict) -> StyledValue:
         return value if isinstance(value, StyledValue) else StyledValue.value(value)
     if "null" in raw:
         return StyledValue.sql_null()
-    if "ordered_json" in styles:
+    # An ordered_json wrapper is the ordered-json value of its value, whatever the stages (FCV-4).
+    if "ordered_json" in raw:
+        return StyledValue.value(ordered_json_parse(_json_text(raw["ordered_json"])))
+    # Bytes have no JSON text, so a value that holds bytes reaches an ordered_json stage as the value it is (COD-63).
+    if "ordered_json" in styles and not _holds_bytes(raw):
         return StyledValue.value(ordered_json_parse(_json_text(raw)))
     return StyledValue.value(_to_value(raw))
 

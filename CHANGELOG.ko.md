@@ -1,8 +1,14 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: cc5d9d059a17482c4e92382e91ee6355232e58fb0c460b2c748f977b7354b0d3 -->
+<!-- source-sha256: 9c77374b6092747e9e7cc927a812a92743065bcf2309892784fc52d24893579f -->
 # 변경 이력
 
 ## Unreleased
+
+- TypeScript codec API가 파괴적으로 바뀐다(T334-3-14b). codec 값 모델의 모든 정수는 bigint이고 모든 실수는 number다. Python이 정수를 i64 범위로 검사한 int로 갖고 Go, PHP, Rust가 자기 정수 형으로 갖는 것과 같다: `codec.encode`는 정수를 bigint(`2n`, `2`가 아니라)로 받고, `codec.decode`는 전에 실패하던 2^53를 넘는 정수를 포함해 모든 정수를 bigint로 돌려주며, 정수 값 실수는 serialize에서 다른 모든 클라이언트처럼 `d:N;`로 쓴다(TypeScript의 COD-3 예외를 지웠다). 이유: TypeScript는 다른 runtime이 쓰는 올바른 i64 데이터를 거부했고(`codec_integers_of_i64`, `CODEC_DECODE: serialize: bad or unsafe int`), 정수 값 실수를 다른 runtime이 `d:4;`로 쓰는 자리에 `i:4;`로 썼다(`serialize_integral_float`). 그래서 실수를 왕복하면 타입이 바뀌었다. 2^53를 넘을 때만 bigint로 하면 앞의 것만 고치고 뒤의 것은 고치지 못한다. 정수의 number 경로는 제거한다. 소비자: 정수 column 값은 `BigInt(n)`으로 쓰고, 읽은 정수는 bigint로 비교하며, 값이 안전한 정수로 알려진 경우에만 `Number(...)`를 쓴다.
+  - 소비자: fsm, flowmark, hyper, template, crudui는 @polyspec/orm에서 `decode`, `encode`, `hostDecode`, `hostEncode`, `blindIndex`, `CodecValue`, `CodecError`, `EncodedValue`를 하나도 import하지 않으며, codec style 접두사(`serialize_`, `gz_`, `yaml_`, `base64_`)를 가진 column이 없어 바뀌는 것이 없다. limepie hyper node의 생성 model은 `CodecValue`를 `setPayload(value: StyledValue<JsonValue | CodecValue>)`에서만 import하며, `CodecValue`에 `bigint`를 넓히면 그 setter 입력이 넓어질 뿐 깨지지 않는다. 그 `payload`는 json column이고 serialize, yaml, gz, base64 column이 없어 바뀌는 것이 없다.
+- `ordered_json`은 짝 없는 surrogate 같은 Unicode scalar 값의 열이 아닌 text를 CODEC_ENCODE로 거부한다(COD-64, RFC 8259, 8.1). TypeScript는 전에 `JSON.stringify`로 escape했고, Go는 code가 아닌 오류를 돌려주었다. PHP, PHP 확장, Python은 전에도 거부했으므로 바뀌지 않는다.
+- TypeScript는 다음 규칙에서 다른 runtime과 같은 입력을 거부한다: host stage는 값을 종류대로 bind하며 number, bigint, bool을 거부한다(COD-1). ip zone과 IPv4-mapped 형식은 COD-38을 따른다. 첫 위치가 아닌 value stage나 모르는 style은 CODEC_UNSUPPORTED를 돌려준다(COD-35). 빈 stage 목록의 write는 CODEC_ENCODE다(COD-14). 짝 없는 surrogate를 json column에 쓰는 소비자는 이제 CODEC_ENCODE를 받으며, limepie payload 쓰기가 소비자 중 유일한 json writer다.
+- codec 규칙 COD-65부터 COD-67까지가 docs/spec/codec.md에 들어간다: `serialize`의 실수는 `4.0`을 `d:4;`로, PHP 실수 표기로 쓴다(COD-65). `yaml`은 소수부가 없는 실수를 `2.0`으로 쓰고, c-printable 밖의 문자와 byte order mark를 큰따옴표로 감싸 escape하며, 읽을 때 그런 문자를 거부한다(COD-66). `serialize`의 array key가 i64 정수이면 정수 key로 쓴다(COD-67).
 
 ## 0.0.20
 

@@ -2680,25 +2680,33 @@ go-vet-check/orm:
 	$(RUN_LONG) go-build/orm-vet -- $(PUBLISH) $(ORM_VET) go build -o @OUT@ ./tests/analyzers/orm-vet
 	$(RUN_LONG) go-vet/orm -- go vet -vettool=$(ORM_VET) $(GO_PACKAGES)
 
-# codec-check runs the codec recipe tests/codec/codec.json without a database in the six clients (docs/spec/feature-coverage.md
-# FCV-3): each part runs its client's entry, so one that fails names its client while the others still run (make -k).
+# codec-check runs the codec recipes of tests/codec without a database in the clients that bind them (docs/spec/feature-coverage.md
+# FCV-3), and the test of each client that writes an ordered-json value, which no recipe value is (COD-16; the TypeScript one is
+# in ts-codec-errors-check): each part runs its client's entries, so one that fails names its client while the others still
+# run (make -k).
 .PHONY: codec-check codec-check/go codec-check/rust codec-check/typescript codec-check/python codec-check/php codec-check/php-extension
 codec-check: codec-check/go codec-check/rust codec-check/typescript codec-check/python codec-check/php codec-check/php-extension
 codec-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_none
-	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_integer_beyond_i64
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_integer_beyond_i64_none
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_bytes_value_none
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_ordered_json_text
 codec-check/go:
-	$(GO_TEST) ./packages/go/orm -run '^(TestRecipeCodecNone|TestRecipeCodecIntegerBeyondI64)$$' -count=1
+	$(GO_TEST) ./packages/go/orm -run '^(TestRecipeCodecNone|TestRecipeCodecIntegerBeyondI64None|TestRecipeCodecBytesValueNone|TestOrderedJSONRefusesATextThatIsNotUnicode)$$' -count=1
 codec-check/rust: lease-tool
-	cd packages/rust && $(CARGO_TEST) codec-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test codec_none --test codec_integer_beyond_i64
+	cd packages/rust && $(CARGO_TEST) codec-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test codec_none --test codec_integer_beyond_i64_none
 codec-check/typescript: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	$(NODE) --test packages/ts/tests/codec-none.test.mjs packages/ts/tests/codec-integer-beyond-i64.test.mjs
+	$(NODE) --test packages/ts/tests/codec-none.test.mjs packages/ts/tests/codec-integer-beyond-i64-none.test.mjs packages/ts/tests/codec-bytes-value-none.test.mjs
 codec-check/php: php-vendor-check
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecRecipeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecBytesValueRecipeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecOrderedJsonTextTest.php
 codec-check/php-extension: php-vendor-check build-php-ext
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CodecRecipeTestExtensionTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CodecBytesValueRecipeExtensionTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CodecOrderedJsonTextExtensionTest.php
 
 # catalog-connection-check runs the recipe contracts/fixtures/catalog_connection/catalog_connection.json on the three databases
 # in the six clients (docs/spec/feature-coverage.md FCV-3): each part runs its client's three entries on the servers of TEST_ENV,

@@ -234,8 +234,8 @@ static bool orm_failf_previous(const char *code, zend_object *previous, const ch
     return orm_fail_previous(code, msg, previous);
 }
 
-/* A YAML step failed: an expected delegated PHP exception or the codec's own validation message. */
-static bool yaml_fail(const char *code, zend_string *err)
+/* A value stage failed: an expected delegated PHP exception or the codec's own validation message, prefixed by the stage. */
+static bool stage_fail(const char *stage, const char *code, zend_string *err)
 {
     zend_string *msg = err;
     zend_object *previous = NULL;
@@ -253,8 +253,8 @@ static bool yaml_fail(const char *code, zend_string *err)
         msg = exception_message(previous);
     }
     bool r = previous != NULL
-        ? orm_failf_previous(code, previous, "yaml: %s", msg != NULL ? ZSTR_VAL(msg) : "unknown error")
-        : orm_failf(code, "yaml: %s", msg != NULL ? ZSTR_VAL(msg) : "unknown error");
+        ? orm_failf_previous(code, previous, "%s: %s", stage, msg != NULL ? ZSTR_VAL(msg) : "unknown error")
+        : orm_failf(code, "%s: %s", stage, msg != NULL ? ZSTR_VAL(msg) : "unknown error");
     str_free(msg);
     return r;
 }
@@ -389,10 +389,10 @@ static bool valid_utf8(const unsigned char *s, size_t n)
     return true;
 }
 
-/* ---- YAML: the value model and the node model of purr, and Symfony's dump ---- */
+/* ---- YAML: the value model and the node model of purr, and its Dumper ---- */
 
-/* validateYamlValue: the error message of a value that YAML cannot hold, or true. */
-static bool yaml_validate(zval *v, zend_string **err)
+/* validateCommonValue: the error message of a value outside the common value model (COD-16), or true. */
+static bool common_value(zval *v, zend_string **err)
 {
     if (Z_TYPE_P(v) == IS_DOUBLE && !isfinite(Z_DVAL_P(v))) {
         err_set(err, "non-finite numbers are not supported");
@@ -402,7 +402,7 @@ static bool yaml_validate(zval *v, zend_string **err)
         zval *item;
         ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(v), item)
         {
-            if (!yaml_validate(item, err)) {
+            if (!common_value(item, err)) {
                 return false;
             }
         }
@@ -617,18 +617,8 @@ static bool yaml_node(zval *node, zval *schema, zval *out, zend_string **err)
         zval *entry;
         ZEND_HASH_FOREACH_VAL(Z_ARRVAL(entries), entry)
         {
-            zval merge, keynode, key, valnode, val;
-            if (!call_method(entry, "isMerge", &merge, 0, NULL)) {
-                goto fail;
-            }
-            if (Z_TYPE(merge) == IS_TRUE) {
-                if (!call_method(entry, "getKey", &keynode, 0, NULL) || !node_line(&keynode, &line)) {
-                    goto fail;
-                }
-                zval_ptr_dtor(&keynode);
-                *err = line_message("merge keys are not supported at line " ZEND_LONG_FMT, line);
-                goto fail;
-            }
+            /* << is an ordinary key: YAML 1.2 has no merge key (COD-29). */
+            zval keynode, key, valnode, val;
             if (!call_method(entry, "getKey", &keynode, 0, NULL)) {
                 goto fail;
             }
@@ -928,7 +918,7 @@ static bool yaml_node_of(zval *v, zval *out)
 /* The YAML text of a common value, as Codec.php writes it: the Dumper of purrphp/yaml writes its node, then a line break. */
 static bool yaml_dump(zval *value, zval *out, zend_string **err)
 {
-    if (!yaml_validate(value, err)) {
+    if (!common_value(value, err)) {
         return false;
     }
     zval root, document, dumper, text;
@@ -1081,7 +1071,8 @@ static bool json_text(zval *v, smart_str *out)
 /* packIp: the packed address of the exact text s, or false (the caller gives the error). */
 static bool ip_pack(zend_string *s, zend_string **packed)
 {
-    if (memchr(ZSTR_VAL(s), '\0', ZSTR_LEN(s)) != NULL) {
+    /* A NUL byte, and a zone (%eth0), which inet_pton accepts, are no part of an address (COD-38). */
+    if (memchr(ZSTR_VAL(s), '\0', ZSTR_LEN(s)) != NULL || memchr(ZSTR_VAL(s), '%', ZSTR_LEN(s)) != NULL) {
         return false;
     }
     unsigned char buf[16];
@@ -1090,12 +1081,8 @@ static bool ip_pack(zend_string *s, zend_string **packed)
         return true;
     }
     if (inet_pton(AF_INET6, ZSTR_VAL(s), buf) == 1) {
-        static const unsigned char mapped[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff};
-        if (memcmp(buf, mapped, 12) == 0) {
-            *packed = zend_string_init((char *)buf + 12, 4, 0);
-        } else {
-            *packed = zend_string_init((char *)buf, 16, 0);
-        }
+        /* 16 bytes, an IPv4-mapped address included, as MySQL INET6_ATON packs it (COD-38). */
+        *packed = zend_string_init((char *)buf, 16, 0);
         return true;
     }
     return false;
@@ -1219,8 +1206,56 @@ static bool serialized_refusal(const char *s, size_t len)
     return true;
 }
 
+/* checkStyles of Codec.php: a style that no stage names, and a value stage outside the first position, are refused before
+ * any value or cell is read (COD-35). */
+static bool check_styles(HashTable *styles)
+{
+    zend_long n = zend_hash_num_elements(styles);
+    for (zend_long i = 0; i < n; i++) {
+        zend_string *st = style_at(styles, i);
+        bool ok = true;
+        if (streq(st, "serialize") || streq(st, "yaml") || streq(st, "ordered_json")) {
+            if (i != 0) {
+                ok = orm_failf("CODEC_UNSUPPORTED", "%s must be the first style", ZSTR_VAL(st));
+            }
+        } else if (!streq(st, "gz") && !streq(st, "base64")) {
+            ok = orm_failf("CODEC_UNSUPPORTED", "style %s", st != NULL ? ZSTR_VAL(st) : "");
+        }
+        str_free(st);
+        if (!ok) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/* plainBytes of Codec.php: Bytes as given and a string as its bytes; a value of another kind is CODEC_ENCODE (COD-1). */
+static bool plain_bytes(zval *v, const char *what, zend_string **out)
+{
+    bool yes;
+    IS_A(v, "Polyspec\\Orm\\Bytes", yes);
+    if (yes) {
+        zval rv;
+        *out = zval_get_string(read_prop(v, "bytes", &rv));
+        return true;
+    }
+    if (Z_TYPE_P(v) == IS_STRING) {
+        *out = zend_string_copy(Z_STR_P(v));
+        return true;
+    }
+    zval type;
+    if (call_fn("get_debug_type", &type, 1, v)) {
+        orm_failf("CODEC_ENCODE", "%s input must be text or bytes, got %s", what, Z_STRVAL(type));
+        zval_ptr_dtor(&type);
+    }
+    return false;
+}
+
 static bool decode_stages(HashTable *styles, zval *raw, zval *ret)
 {
+    if (!check_styles(styles)) {
+        return false;
+    }
     zend_long n = zend_hash_num_elements(styles);
     zval cur;
     if (!codec_copy_or_read_stream(raw, &cur)) return false;
@@ -1229,8 +1264,8 @@ static bool decode_stages(HashTable *styles, zval *raw, zval *ret)
         return call_static("Polyspec\\Orm\\StyledValue", "sqlNull", ret, 0, NULL);
     }
     zend_string *last = n > 0 ? style_at(styles, n - 1) : NULL;
-    /* An empty cell is CODEC_DECODE, except under a last base64 stage (docs/spec/codec.md, Stage lists). */
-    if (Z_TYPE(cur) == IS_STRING && Z_STRLEN(cur) == 0 && !streq(last, "base64")) {
+    /* An empty cell is CODEC_DECODE, except under a last base64 stage and under no stage (docs/spec/codec.md COD-14). */
+    if (Z_TYPE(cur) == IS_STRING && Z_STRLEN(cur) == 0 && n > 0 && !streq(last, "base64")) {
         str_free(last);
         zval_ptr_dtor(&cur);
         return orm_fail("CODEC_DECODE", zend_string_init(ZEND_STRL("styled cell is empty"), 0));
@@ -1319,10 +1354,10 @@ static bool decode_stages(HashTable *styles, zval *raw, zval *ret)
                 ok = false;
             } else if (!yaml_decode_text(Z_STR(cur), &value, &err)) {
                 ok = EG(exception) == NULL || yaml_decode_exception_expected()
-                    ? yaml_fail("CODEC_DECODE", err) : false;
-            } else if (!yaml_validate(&value, &err)) {
+                    ? stage_fail("yaml", "CODEC_DECODE", err) : false;
+            } else if (!common_value(&value, &err)) {
                 zval_ptr_dtor(&value);
-                ok = yaml_fail("CODEC_DECODE", err);
+                ok = stage_fail("yaml", "CODEC_DECODE", err);
             } else {
                 zval_ptr_dtor(&cur);
                 ZVAL_COPY_VALUE(&cur, &value);
@@ -1359,9 +1394,9 @@ static bool decode_stages(HashTable *styles, zval *raw, zval *ret)
     }
     zval_ptr_dtor(&original);
 
-    /* Without a value stage (a list that starts with gz or base64) the value is the text of the bytes. */
+    /* Without a value stage (no stage, or a list that starts with gz or base64) the value is the text of the bytes. */
     zend_string *first = style_at(styles, 0);
-    if ((streq(first, "gz") || streq(first, "base64"))) {
+    if (first == NULL || streq(first, "gz") || streq(first, "base64")) {
         if (!need_string(&cur, "preg_match")) {
             str_free(first);
             str_free(last);
@@ -1398,6 +1433,9 @@ bool codec_encode(HashTable *styles, zval *styled, zval *ret)
         zend_argument_type_error(2, "must be of type Polyspec\\Orm\\StyledValue, %s given", zend_zval_type_name(styled));
         return false;
     }
+    if (!check_styles(styles)) {
+        return false;
+    }
     zval rv;
     zval *kind = read_prop(styled, "kind", &rv);
     if (Z_TYPE_P(kind) == IS_STRING && zend_string_equals_literal(Z_STR_P(kind), "sql-null")) {
@@ -1411,12 +1449,14 @@ bool codec_encode(HashTable *styles, zval *styled, zval *ret)
 
     zend_long n = zend_hash_num_elements(styles);
     zend_string *first = style_at(styles, 0);
-    if ((streq(first, "gz") || streq(first, "base64")) && Z_TYPE(value) != IS_STRING) {
+    /* A first gz or base64 stage encodes the string, and an empty stage list writes it as it is. */
+    if ((first == NULL || streq(first, "gz") || streq(first, "base64")) && Z_TYPE(value) != IS_STRING) {
         zval type;
         bool named = call_fn("get_debug_type", &type, 1, &value);
         if (named) {
             /* "{$styles[0]}: the value is <type>, not a string" */
-            orm_failf("CODEC_ENCODE", "%s: the value is %s, not a string", ZSTR_VAL(first), Z_STRVAL(type));
+            orm_failf("CODEC_ENCODE", "%s: the value is %s, not a string", first != NULL ? ZSTR_VAL(first) : "an empty stage list",
+                Z_STRVAL(type));
             zval_ptr_dtor(&type);
         }
         str_free(first);
@@ -1424,6 +1464,10 @@ bool codec_encode(HashTable *styles, zval *styled, zval *ret)
         return false;
     }
     str_free(first);
+    if (n == 0) {
+        ZVAL_COPY_VALUE(ret, &value);
+        return true;
+    }
 
     zval cur;
     ZVAL_COPY(&cur, &value);
@@ -1431,25 +1475,24 @@ bool codec_encode(HashTable *styles, zval *styled, zval *ret)
         zend_string *st = style_at(styles, i);
         bool ok = true;
         if (streq(st, "serialize")) {
+            /* serialize writes any PHP value, a Bytes or an ordered-json object among them; the stage writes the common value
+             * model only (COD-16, COD-63). */
+            zend_string *err = NULL;
             zval s;
-            ok = call_fn("serialize", &s, 1, &value);
-            if (ok) {
+            if (!common_value(&value, &err)) {
+                ok = stage_fail("serialize", "CODEC_ENCODE", err);
+            } else if ((ok = call_fn("serialize", &s, 1, &value))) {
                 zval_ptr_dtor(&cur);
                 ZVAL_COPY_VALUE(&cur, &s);
             }
         } else if (streq(st, "yaml")) {
-            if (i != 0) {
-                ok = orm_fail("CODEC_UNSUPPORTED", zend_string_init(ZEND_STRL("yaml must be the first style"), 0));
+            zend_string *err = NULL;
+            zval s;
+            if (!yaml_dump(&value, &s, &err)) {
+                ok = EG(exception) == NULL || yaml_encode_exception_expected() ? stage_fail("yaml", "CODEC_ENCODE", err) : false;
             } else {
-                zend_string *err = NULL;
-                zval s;
-                if (!yaml_dump(&value, &s, &err)) {
-                    ok = EG(exception) == NULL || yaml_encode_exception_expected()
-                        ? yaml_fail("CODEC_ENCODE", err) : false;
-                } else {
-                    zval_ptr_dtor(&cur);
-                    ZVAL_COPY_VALUE(&cur, &s);
-                }
+                zval_ptr_dtor(&cur);
+                ZVAL_COPY_VALUE(&cur, &s);
             }
         } else if (streq(st, "ordered_json")) {
             smart_str buf = {0};
@@ -1532,22 +1575,28 @@ static zend_string *hex_encode_upper(zend_string *in);
 bool codec_host_encode(zval *v, HashTable *styles, zend_string *aes_key, zval *ret)
 {
     ZVAL_UNDEF(ret);
+    zend_long n = zend_hash_num_elements(styles);
+    if (n == 0) {
+        return orm_fail("CODEC_ENCODE", zend_string_init(ZEND_STRL("host style list is empty"), 0));
+    }
+    for (zend_long i = 0; i < n; i++) {
+        zend_string *st = style_at(styles, i);
+        bool host = streq(st, "aes") || streq(st, "hex") || streq(st, "ip");
+        bool ok = host || orm_failf("CODEC_UNSUPPORTED", "host style %s", st != NULL ? ZSTR_VAL(st) : "");
+        str_free(st);
+        if (!ok) {
+            return false;
+        }
+    }
     if (Z_TYPE_P(v) == IS_NULL) {
         ZVAL_NULL(ret);
         return true;
     }
     zend_string *cur;
-    bool yes;
-    zval rv;
-    IS_A(v, "Polyspec\\Orm\\Bytes", yes);
-    if (yes) {
-        zval *b = read_prop(v, "bytes", &rv);
-        cur = zval_get_string(b);
-    } else {
-        cur = zval_get_string(v);
+    if (!plain_bytes(v, "host", &cur)) {
+        return false;
     }
 
-    zend_long n = zend_hash_num_elements(styles);
     for (zend_long i = 0; i < n; i++) {
         zend_string *st = style_at(styles, i);
         if (streq(st, "ip")) {
@@ -1801,14 +1850,9 @@ bool codec_blind_index(zval *v, zend_string *key, zval *ret)
     if (ZSTR_LEN(key) == 0) {
         return orm_fail("CONFIG", zend_string_init(ZEND_STRL("secret blind_index not configured"), 0));
     }
-    bool yes;
-    IS_A(v, "Polyspec\\Orm\\Bytes", yes);
     zend_string *plain;
-    if (yes) {
-        zval rv;
-        plain = zval_get_string(read_prop(v, "bytes", &rv));
-    } else {
-        plain = zval_get_string(v);
+    if (!plain_bytes(v, "blind index", &plain)) {
+        return false;
     }
     zval a[3];
     ZVAL_STRING(&a[0], "sha256");

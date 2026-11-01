@@ -232,6 +232,24 @@ type member struct {
 	value node
 }
 
+// holdsBytes is whether the value is bytes or a list or a map that holds bytes at any depth.
+func holdsBytes(n node) bool {
+	if n.kind == "bytes_hex" {
+		return true
+	}
+	for _, item := range n.items {
+		if holdsBytes(item) {
+			return true
+		}
+	}
+	for _, m := range n.members {
+		if holdsBytes(m.value) {
+			return true
+		}
+	}
+	return false
+}
+
 func (n node) String() string {
 	switch n.kind {
 	case "array":
@@ -346,6 +364,19 @@ func reference(raw json.RawMessage, bound map[string]result) (any, bool, error) 
 }
 
 // styledArgument is the styled value an encode takes: SQL NULL for null, an ordered-json value for an ordered_json stage,
+// orderedValue is the ordered-json value of a recipe value, with the member order and the number text of the recipe.
+func orderedValue(n node) (orm.StyledValue, error) {
+	text, err := jsonText(n)
+	if err != nil {
+		return orm.StyledValue{}, err
+	}
+	v, err := orderedjson.Parse(text)
+	if err != nil {
+		return orm.StyledValue{}, err
+	}
+	return orm.Value(v), nil
+}
+
 // so that its member order and number text are those of the recipe, and the common value model otherwise.
 func styledArgument(raw json.RawMessage, styles []string, bound map[string]result) (orm.StyledValue, error) {
 	if ref, ok, err := reference(raw, bound); ok || err != nil {
@@ -357,6 +388,15 @@ func styledArgument(raw json.RawMessage, styles []string, bound map[string]resul
 		}
 		return orm.Value(ref), nil
 	}
+	// An ordered_json wrapper is the ordered-json value of its value, whatever the stages (FCV-4).
+	var probe map[string]json.RawMessage
+	if json.Unmarshal(raw, &probe) == nil && len(probe) == 1 && probe["ordered_json"] != nil {
+		inner, err := wrapper(probe["ordered_json"])
+		if err != nil {
+			return orm.StyledValue{}, err
+		}
+		return orderedValue(inner)
+	}
 	n, err := wrapper(raw)
 	if err != nil {
 		return orm.StyledValue{}, err
@@ -364,16 +404,9 @@ func styledArgument(raw json.RawMessage, styles []string, bound map[string]resul
 	if n.kind == "null" {
 		return orm.SqlNull(), nil
 	}
-	if slices.Contains(styles, "ordered_json") {
-		text, err := jsonText(n)
-		if err != nil {
-			return orm.StyledValue{}, err
-		}
-		v, err := orderedjson.Parse(text)
-		if err != nil {
-			return orm.StyledValue{}, err
-		}
-		return orm.Value(v), nil
+	// Bytes have no JSON text, so a value that holds bytes reaches an ordered_json stage as the value it is (COD-63).
+	if slices.Contains(styles, "ordered_json") && !holdsBytes(n) {
+		return orderedValue(n)
 	}
 	v, err := toGo(n)
 	if err != nil {

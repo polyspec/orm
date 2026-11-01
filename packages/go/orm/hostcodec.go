@@ -12,7 +12,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"net"
+	"net/netip"
 	"strings"
 	"sync"
 )
@@ -115,26 +115,25 @@ func BlindIndex(v any, key string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-// packIP is INET6_ATON: 4 bytes for IPv4, 16 for IPv6.
+// packIP is MySQL INET6_ATON: 4 bytes for an IPv4 address and 16 for an IPv6 address, an IPv4-mapped address (::ffff:a.b.c.d)
+// included (docs/spec/codec.md COD-38).
 func packIP(s string) ([]byte, error) {
-	// The exact text only: white space around the address is CODEC_ENCODE (docs/spec/codec.md).
-	ip := net.ParseIP(s)
-	if ip == nil {
+	// The exact text only: white space around the address, and a zone, is CODEC_ENCODE (docs/spec/codec.md).
+	ip, err := netip.ParseAddr(s)
+	if err != nil || ip.Zone() != "" {
 		return nil, codecErr(CodeCodecEncode, "ip: %q is not an address", s)
 	}
-	if v4 := ip.To4(); v4 != nil {
-		return []byte(v4), nil
-	}
-	return []byte(ip.To16()), nil
+	return ip.AsSlice(), nil
 }
 
-// unpackIP is INET6_NTOA.
+// unpackIP is the text of a packed address: dotted decimal for 4 bytes, the RFC 5952 text for 16, which writes an
+// IPv4-mapped address as ::ffff:a.b.c.d (section 5), as MySQL INET6_NTOA does.
 func unpackIP(b []byte) (string, error) {
-	switch len(b) {
-	case 4, 16:
-		return net.IP(b).String(), nil
+	ip, ok := netip.AddrFromSlice(b)
+	if !ok {
+		return "", codecErr(CodeCodecDecode, "ip: %d packed bytes", len(b))
 	}
-	return "", codecErr(CodeCodecDecode, "ip: %d packed bytes", len(b))
+	return ip.String(), nil
 }
 
 // HostEncode applies the executor-side stages of a bound value in write order.

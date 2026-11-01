@@ -42,21 +42,51 @@ final class Codec
         if ($key === '') {
             throw new OrmException(Code::CONFIG, 'secret blind_index not configured');
         }
-        $plain = $v instanceof Bytes ? $v->bytes : (is_string($v) ? $v : (string) $v);
-        return hash_hmac('sha256', $plain, $key);
+        return hash_hmac('sha256', self::plainBytes($v, 'blind index'), $key);
+    }
+
+    /** The bytes of a plaintext: Bytes as given and a string as its bytes; another kind is CODEC_ENCODE (COD-1). */
+    private static function plainBytes(mixed $v, string $what): string
+    {
+        if ($v instanceof Bytes) {
+            return $v->bytes;
+        }
+        if (!is_string($v)) {
+            throw new OrmException(Code::CODEC_ENCODE, "$what input must be text or bytes, got " . get_debug_type($v));
+        }
+        return $v;
+    }
+
+    /**
+     * Refuses a style that no stage names and a value stage outside the first position, before any value or cell is
+     * read (docs/spec/codec.md COD-35).
+     * @param list<string> $styles
+     */
+    private static function checkStyles(array $styles): void
+    {
+        foreach ($styles as $i => $st) {
+            if (in_array($st, ['serialize', 'yaml', 'ordered_json'], true)) {
+                if ($i !== 0) {
+                    throw new OrmException(Code::CODEC_UNSUPPORTED, "$st must be the first style");
+                }
+            } elseif ($st !== 'gz' && $st !== 'base64') {
+                throw new OrmException(Code::CODEC_UNSUPPORTED, "style $st");
+            }
+        }
     }
     /** @param list<string> $styles */
     public static function decode(array $styles, mixed $raw): StyledValue
     {
+        self::checkStyles($styles);
         if (is_resource($raw)) {
             $raw = stream_get_contents($raw); // pdo_pgsql hands bytea columns over as streams
         }
         if ($raw === null) {
             return StyledValue::sqlNull();
         }
-        // An empty cell is CODEC_DECODE, except under a last base64 stage, whose encoder writes an empty cell for
-        // empty bytes (docs/spec/codec.md, Stage lists).
-        if ($raw === '' && end($styles) !== 'base64') {
+        // An empty cell is CODEC_DECODE, except under a last base64 stage and under no stage, whose encoders write an
+        // empty cell for empty text (docs/spec/codec.md COD-14).
+        if ($raw === '' && $styles !== [] && end($styles) !== 'base64') {
             throw new OrmException(Code::CODEC_DECODE, 'styled cell is empty');
         }
         if (!is_string($raw)) {
@@ -102,7 +132,7 @@ final class Codec
                 case 'yaml':
                     try {
                         $v = self::yamlDecode($v);
-                        self::validateYamlValue($v);
+                        self::validateCommonValue($v);
                     } catch (ParseException | ReferenceException | \InvalidArgumentException $e) {
                         throw new OrmException(Code::CODEC_DECODE, 'yaml: ' . $e->getMessage(), $e);
                     }
@@ -119,8 +149,8 @@ final class Codec
                     throw new OrmException(Code::CODEC_UNSUPPORTED, "style {$styles[$i]}");
             }
         }
-        // Without a value stage (a list that starts with gz or base64) the value is the text of the bytes.
-        if (in_array($styles[0] ?? null, ['gz', 'base64'], true) && preg_match('//u', $v) !== 1) {
+        // Without a value stage (no stage, or a list that starts with gz or base64) the value is the text of the bytes.
+        if (in_array($styles[0] ?? null, [null, 'gz', 'base64'], true) && preg_match('//u', $v) !== 1) {
             throw new OrmException(Code::CODEC_DECODE, 'decoded text is not valid UTF-8');
         }
         return StyledValue::value($v);
@@ -134,26 +164,35 @@ final class Codec
      */
     public static function encode(array $styles, StyledValue $v): string|Bytes|null
     {
+        self::checkStyles($styles);
         if ($v->kind === 'sql-null') {
             return null;
         }
         $value = $v->payload();
         $cur = $value;
-        if (in_array($styles[0], ['gz', 'base64'], true) && !is_string($value)) {
-            throw new OrmException(Code::CODEC_ENCODE, "{$styles[0]}: the value is " . get_debug_type($value)
-                . ', not a string');
+        // A first gz or base64 stage encodes the string, and an empty stage list writes it as it is.
+        if (in_array($styles[0] ?? null, [null, 'gz', 'base64'], true) && !is_string($value)) {
+            throw new OrmException(Code::CODEC_ENCODE, ($styles[0] ?? 'an empty stage list') . ': the value is '
+                . get_debug_type($value) . ', not a string');
         }
-        foreach ($styles as $i => $st) {
+        if ($styles === []) {
+            return $value;
+        }
+        foreach ($styles as $st) {
             switch ($st) {
                 case 'serialize':
+                    // serialize writes any PHP value, a Bytes or an ordered-json object among them; the stage
+                    // writes the common value model only (COD-16, COD-63).
+                    try {
+                        self::validateCommonValue($value);
+                    } catch (\InvalidArgumentException $e) {
+                        throw new OrmException(Code::CODEC_ENCODE, 'serialize: ' . $e->getMessage(), $e);
+                    }
                     $cur = serialize($value);
                     break;
                 case 'yaml':
-                    if ($i !== 0) {
-                        throw new OrmException(Code::CODEC_UNSUPPORTED, 'yaml must be the first style');
-                    }
                     try {
-                        self::validateYamlValue($value);
+                        self::validateCommonValue($value);
                         $cur = (new Dumper())->dumpDocument(new Document(self::yamlNodeOf($value))) . "\n";
                     } catch (\InvalidArgumentException $e) {
                         throw new OrmException(Code::CODEC_ENCODE, 'yaml: ' . $e->getMessage(), $e);
@@ -220,7 +259,8 @@ final class Codec
     /**
      * Reads one YAML 1.2 document with purrphp/yaml and resolves its plain scalars by the library's
      * core schema. The codec's own rules (docs/spec/codec.md, yaml) apply on the node model: one document,
-     * no aliases, anchors, explicit tags or merge keys, no duplicate keys, string or integral keys.
+     * no aliases, anchors or explicit tags, no duplicate keys, string or integral keys; << is an ordinary key, since
+     * YAML 1.2 has no merge key (COD-29), so the node model is read without the library's merge (ValueBuilder).
      * A text without a document (empty or only comments) is not a YAML value and is refused.
      */
     private static function yamlDecode(string $text): mixed
@@ -312,11 +352,6 @@ final class Codec
         if ($node instanceof MappingNode) {
             $out = [];
             foreach ($node->getEntries() as $entry) {
-                if ($entry->isMerge()) {
-                    throw new \InvalidArgumentException(
-                        "merge keys are not supported at line {$entry->getKey()->getLine()}"
-                    );
-                }
                 $key = self::yamlNode($entry->getKey(), $schema);
                 if (!is_string($key) && !is_int($key)) {
                     throw new \InvalidArgumentException(
@@ -380,7 +415,7 @@ final class Codec
         };
     }
 
-    private static function validateYamlValue(mixed $value): void
+    private static function validateCommonValue(mixed $value): void
     {
         if (is_float($value) && !is_finite($value)) {
             throw new \InvalidArgumentException('non-finite numbers are not supported');
@@ -392,7 +427,7 @@ final class Codec
             return;
         }
         foreach ($value as $item) {
-            self::validateYamlValue($item);
+            self::validateCommonValue($item);
         }
     }
 
@@ -421,10 +456,18 @@ final class Codec
      */
     public static function hostEncode(mixed $v, array $styles, string $aesKey): string|Bytes|null
     {
+        if ($styles === []) {
+            throw new OrmException(Code::CODEC_ENCODE, 'host style list is empty');
+        }
+        foreach ($styles as $st) {
+            if (!in_array($st, ['aes', 'hex', 'ip'], true)) {
+                throw new OrmException(Code::CODEC_UNSUPPORTED, "host style $st");
+            }
+        }
         if ($v === null) {
             return null;
         }
-        $cur = $v instanceof Bytes ? $v->bytes : (is_string($v) ? $v : (string) $v);
+        $cur = self::plainBytes($v, 'host');
         foreach ($styles as $st) {
             switch ($st) {
                 case 'aes':
@@ -521,23 +564,21 @@ final class Codec
         return $cur;
     }
 
-    /** INET6_ATON: 4 bytes for IPv4 (an IPv4-mapped IPv6 address included), 16 for IPv6. */
+    /** INET6_ATON: 4 bytes for IPv4 and 16 for IPv6, an IPv4-mapped address included (COD-38). */
     private static function packIp(string $s): string
     {
         // The exact text only: white space around the address is CODEC_ENCODE (docs/spec/codec.md).
-        // inet_pton throws a ValueError on a NUL byte, which is not an address either.
+        // inet_pton throws a ValueError on a NUL byte, which is not an address either, and accepts a zone (%eth0),
+        // which is no part of one (COD-38).
         // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- a text that is no address returns false, reported as CODEC_ENCODE below
-        $b = str_contains($s, "\0") ? false : @inet_pton($s);
+        $b = str_contains($s, "\0") || str_contains($s, '%') ? false : @inet_pton($s);
         if ($b === false) {
             throw new OrmException(Code::CODEC_ENCODE, "ip: \"$s\" is not an address");
-        }
-        if (strlen($b) === 16 && substr($b, 0, 12) === "\0\0\0\0\0\0\0\0\0\0\xff\xff") {
-            return substr($b, 12);
         }
         return $b;
     }
 
-    /** INET6_NTOA. */
+    /** INET6_NTOA: the RFC 5952 text, an IPv4-mapped address as ::ffff:a.b.c.d (section 5). */
     private static function unpackIp(string $b): string
     {
         $n = strlen($b);

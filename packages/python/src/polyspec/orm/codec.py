@@ -56,13 +56,15 @@ class CodecError(Exception):
 
 
 def _as_bytes(value) -> bytes:
+    # The plaintext of a host stage: bytes as given and a str as its UTF-8; a value of another kind is CODEC_ENCODE (COD-1).
     if isinstance(value, (bytes, bytearray, memoryview)):
         return bytes(value)
-    if isinstance(value, bool):
-        return b"true" if value else b"false"
     if isinstance(value, str):
         return value.encode("utf-8")
-    return str(value).encode("utf-8")
+    raise CodecError(
+        codes.CODEC_ENCODE,
+        f"host input must be text or bytes, got {type(value).__name__}",
+    )
 
 
 def blind_index(value, key: str):
@@ -86,51 +88,31 @@ def _quoted(text: str) -> str:
 
 
 def _pack_ip(value: str) -> bytes:
-    # The exact text only: white space around the address is CODEC_ENCODE (docs/spec/codec.md).
-    source = value
+    # MySQL INET6_ATON: 4 bytes for an IPv4 address and 16 for an IPv6 address, an IPv4-mapped address included (COD-38).
+    # The exact text only: white space around the address, and a zone, is CODEC_ENCODE (docs/spec/codec.md).
     try:
-        address = ipaddress.ip_address(source)
+        address = ipaddress.ip_address(value)
     except ValueError:
-        raise CodecError(
-            codes.CODEC_ENCODE, f"ip: {_quoted(source)} is not an address"
-        ) from None
-    if isinstance(address, ipaddress.IPv4Address):
-        return address.packed
-    # A v4-mapped address (::ffff:a.b.c.d) is written as 4 bytes.
-    if address.ipv4_mapped is not None:
-        return address.ipv4_mapped.packed
+        address = None
+    if address is None or getattr(address, "scope_id", None) is not None:
+        raise CodecError(codes.CODEC_ENCODE, f"ip: {_quoted(value)} is not an address")
     return address.packed
 
 
 def _unpack_ip(value: bytes) -> str:
-    if len(value) == 4:
-        return ".".join(str(byte) for byte in value)
-    if len(value) != 16:
+    # The RFC 5952 text, which writes an IPv4-mapped address as ::ffff:a.b.c.d (section 5), as MySQL INET6_NTOA does.
+    if len(value) not in (4, 16):
         raise CodecError(codes.CODEC_DECODE, f"ip: byte length {len(value)}")
-    groups = [
-        int.from_bytes(value[index * 2 : index * 2 + 2], "big") for index in range(8)
-    ]
-    best_start, best_length = -1, 0
-    index = 0
-    while index < len(groups):
-        if groups[index] != 0:
-            index += 1
-            continue
-        end = index
-        while end < len(groups) and groups[end] == 0:
-            end += 1
-        if end - index > best_length and end - index >= 2:
-            best_start, best_length = index, end - index
-        index = end
-    if best_start < 0:
-        return ":".join(f"{group:x}" for group in groups)
-    left = ":".join(f"{group:x}" for group in groups[:best_start])
-    right = ":".join(f"{group:x}" for group in groups[best_start + best_length :])
-    return f"{left}::{right}"
+    return str(ipaddress.ip_address(value))
 
 
 def host_encode(value, styles, aes_key: str):
     """Encodes the value into its host storage form (aes, hex, ip). None maps to None."""
+    if not styles:
+        raise CodecError(codes.CODEC_ENCODE, "host style list is empty")
+    for style in styles:
+        if style not in ("aes", "hex", "ip"):
+            raise CodecError(codes.CODEC_UNSUPPORTED, f"host style {style}")
     if value is None:
         return None
     current = _as_bytes(value)
@@ -643,15 +625,29 @@ def _yaml_dump(value) -> str:
     return out.getvalue()
 
 
+def _check_styles(styles):
+    # A style that no stage names, and a value stage outside the first position, are refused before any value or cell
+    # is read (docs/spec/codec.md COD-35).
+    for index, style in enumerate(styles):
+        if style in ("serialize", "yaml", "ordered_json"):
+            if index != 0:
+                raise CodecError(
+                    codes.CODEC_UNSUPPORTED, f"{style} must be the first style"
+                )
+        elif style not in ("gz", "base64"):
+            raise CodecError(codes.CODEC_UNSUPPORTED, f"style {style}")
+
+
 def decode(styles, raw):
     """Reverses a stored cell through the codec stages in reverse order. The result of the ordered_json stage
     is an ordered-json value (keeping member order and number literals); if there is no value stage,
     it is the text of the bytes."""
+    _check_styles(styles)
     if raw is None:
         return StyledValue.sql_null()
-    # An empty cell is CODEC_DECODE, except under a last base64 stage, whose encoder writes an empty
-    # cell for empty bytes (docs/spec/codec.md, Stage lists).
-    if len(raw) == 0 and (not styles or styles[-1] != "base64"):
+    # An empty cell is CODEC_DECODE, except under a last base64 stage and under no stage, whose encoders write an
+    # empty cell for empty text (docs/spec/codec.md COD-14).
+    if len(raw) == 0 and styles and styles[-1] != "base64":
         raise CodecError(codes.CODEC_DECODE, "styled cell is empty")
     if isinstance(raw, memoryview):
         current = bytes(raw)
@@ -695,37 +691,24 @@ def decode(styles, raw):
 def encode(styles, state: StyledValue):
     """Encodes a value through the codec stages in write order. The ordered_json stage
     takes an ordered-json or plain value. If the first stage is gz or base64, the value is text."""
+    _check_styles(styles)
     if state.kind == "sql-null":
         return None
     current = b""
     transformed = state.payload()
-    if styles and styles[0] in ("gz", "base64"):
+    if not styles or styles[0] in ("gz", "base64"):
         if not isinstance(transformed, str):
-            raise CodecError(
-                codes.CODEC_ENCODE, f"a first {styles[0]} stage takes a string value"
-            )
+            stage = f"a first {styles[0]} stage" if styles else "an empty stage list"
+            raise CodecError(codes.CODEC_ENCODE, f"{stage} takes a string value")
         current = transformed.encode("utf-8")
     for index, style in enumerate(styles):
         if style == "serialize":
-            if index != 0:
-                raise CodecError(
-                    codes.CODEC_UNSUPPORTED,
-                    "serialize must be the first encoding style",
-                )
             current = php_serialize(_common_value(transformed, "serialize")).encode(
                 "utf-8"
             )
         elif style == "yaml":
-            if index != 0:
-                raise CodecError(
-                    codes.CODEC_UNSUPPORTED, "yaml must be the first style"
-                )
             current = _yaml_dump(_common_value(transformed, "yaml")).encode("utf-8")
         elif style == "ordered_json":
-            if index != 0:
-                raise CodecError(
-                    codes.CODEC_UNSUPPORTED, "ordered_json must be the first stage"
-                )
             if isinstance(transformed, OrderedJson):
                 current = ordered_json_stringify(transformed).encode("utf-8")
             else:

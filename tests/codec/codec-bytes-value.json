@@ -1,0 +1,161 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "COD-63"
+  ],
+  "cases": [
+    {
+      "id": "bytes_under_value_stages",
+      "requirements": [
+        "COD-63"
+      ],
+      "steps": [
+        {
+          "op": "codec.encode",
+          "styles": [
+            "ordered_json"
+          ],
+          "value": {
+            "bytes_hex": "00ff"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "ordered_json"
+          ],
+          "value": {
+            "array": [
+              {
+                "int": "1"
+              },
+              {
+                "bytes_hex": "00ff"
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "bytes_hex": "00ff"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "yaml"
+          ],
+          "value": {
+            "bytes_hex": "00ff"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "array": [
+              {
+                "int": "1"
+              },
+              {
+                "bytes_hex": "00ff"
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "yaml"
+          ],
+          "value": {
+            "object": [
+              [
+                "a",
+                {
+                  "bytes_hex": "00ff"
+                }
+              ]
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "gz"
+          ],
+          "value": {
+            "bytes_hex": "00ff"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "base64"
+          ],
+          "value": {
+            "bytes_hex": "00ff"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [],
+          "value": {
+            "bytes_hex": "00ff"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

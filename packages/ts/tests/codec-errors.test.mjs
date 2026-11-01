@@ -86,3 +86,13 @@ caseTest('codec/javascript-inputs', COMPUTE, () => {
   assert(error instanceof CodecError);
   assert.equal(error.code, 'CODEC_ENCODE');
 });
+
+// A text that is not a sequence of Unicode scalar values, such as a lone surrogate, is no JSON text (RFC 8259, 8.1), so an
+// ordered_json stage returns CODEC_ENCODE for it; a recipe text is a JSON string, which holds Unicode only, so each client
+// tests this.
+// Requirements: COD-64 (docs/spec).
+caseTest('codec/ordered-json-text-is-unicode', COMPUTE, () => {
+  const error = thrown(() => encode(['ordered_json'], StyledValue.value('\ud800')));
+  assert(error instanceof CodecError);
+  assert.equal(error.code, 'CODEC_ENCODE');
+});

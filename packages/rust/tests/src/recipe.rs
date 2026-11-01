@@ -173,7 +173,7 @@ fn cell(raw: &Value, bound: &HashMap<String, Outcome>) -> Result<Val, String> {
     }
 }
 
-/// A bound value of a host encode or a blind index: text, bytes, an integer or SQL NULL.
+/// A bound value of a host encode or a blind index: text, bytes, an integer, a float, a bool or SQL NULL.
 fn param(raw: &Value, bound: &HashMap<String, Outcome>) -> Result<Param, String> {
     if let Some(name) = raw["ref"].as_str() {
         return match reference(name, bound)? {
@@ -185,6 +185,9 @@ fn param(raw: &Value, bound: &HashMap<String, Outcome>) -> Result<Param, String>
         ("null", _) => Ok(Param::Null),
         ("text", body) => Ok(Param::Str(body.as_str().unwrap_or_default().to_owned())),
         ("bytes_hex", body) => Ok(Param::Bytes(hex_bytes(body.as_str().unwrap_or_default())?)),
+        ("int", body) => body.as_str().unwrap_or_default().parse().map(Param::I64).map_err(|error| format!("int wrapper: {error}")),
+        ("float", body) => body.as_str().unwrap_or_default().parse().map(Param::F64).map_err(|error| format!("float wrapper: {error}")),
+        ("bool", body) => body.as_bool().map(Param::Bool).ok_or_else(|| "a bool wrapper holds no boolean".to_owned()),
         (other, _) => Err(format!("a {other} wrapper is not a bound value")),
     }
 }
@@ -204,6 +207,11 @@ fn encode(styles: &[String], raw: &Value, bound: &HashMap<String, Outcome>) -> R
     }
     if raw.get("null").is_some() {
         return Ok(codec::encode(&stages, StyledValue::SqlNull));
+    }
+    // An ordered_json wrapper is the ordered-json value of its value, whatever the stages (FCV-4).
+    if let Some(inner) = raw.get("ordered_json") {
+        let value = ordered_json::parse(&json_text(inner)?).map_err(|e| e.to_string())?;
+        return Ok(codec::encode_ordered(&stages, StyledValue::Value(&value)));
     }
     if styles.iter().any(|s| s == "ordered_json") {
         let value = ordered_json::parse(&json_text(raw)?).map_err(|e| e.to_string())?;

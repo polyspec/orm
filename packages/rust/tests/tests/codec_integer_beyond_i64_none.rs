@@ -4,5 +4,5 @@
 use polyspec_orm_tests::recipe;
 
 fn main() {
-    polyspec_orm_testcase::run(recipe::trials("codec_integer_beyond_i64", "tests/codec/codec-integer-beyond-i64.json", recipe::NONE));
+    polyspec_orm_testcase::run(recipe::trials("codec_integer_beyond_i64_none", "tests/codec/codec-integer-beyond-i64.json", recipe::NONE));
 }

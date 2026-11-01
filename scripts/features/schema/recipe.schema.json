@@ -101,6 +101,13 @@
         }
       ]
     },
+    "encodeArgument": {
+      "description": "The value of codec.encode: an argument, or an ordered_json wrapper, the ordered-json value of its value whatever the stages (FCV-4).",
+      "oneOf": [
+        { "$ref": "#/$defs/argument" },
+        { "type": "object", "required": ["ordered_json"], "additionalProperties": false, "properties": { "ordered_json": { "$ref": "#/$defs/value" } } }
+      ]
+    },
     "sql": {
       "oneOf": [
         { "type": "string", "minLength": 1 },
@@ -191,7 +198,7 @@
         "properties": {
           "op": { "const": "codec.encode" },
           "styles": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-          "value": { "$ref": "#/$defs/argument" },
+          "value": { "$ref": "#/$defs/encodeArgument" },
           "as": { "$ref": "#/$defs/name" },
           "expect": { "$ref": "#/$defs/expect" }
         },

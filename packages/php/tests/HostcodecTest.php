@@ -86,7 +86,12 @@ class HostcodecTest extends TestCase
         self::assertSame('2001:db8::1', Codec::hostDecode($ip6->bytes, ['ip'], ''), 'ipv6 round trip');
         $mapped = Codec::hostEncode('::ffff:10.1.2.3', ['ip'], '');
         self::assertInstanceOf(Bytes::class, $mapped);
-        self::assertSame("\x0a\x01\x02\x03", $mapped->bytes, 'IPv4-mapped IPv6 packs to 4 bytes like INET6_ATON');
+        self::assertSame(
+            str_repeat("\x00", 10) . "\xff\xff\x0a\x01\x02\x03",
+            $mapped->bytes,
+            'IPv4-mapped IPv6 packs to its 16 bytes like INET6_ATON'
+        );
+        self::assertSame('::ffff:10.1.2.3', Codec::hostDecode($mapped->bytes, ['ip'], ''), 'IPv4-mapped round trip');
         self::assertSame(
             '1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8',
             Codec::blindIndex('member@example.test', 'blind-key'),

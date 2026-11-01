@@ -114,6 +114,9 @@ function reference(name, bound) {
   return result.value;
 }
 
+// holdsBytes is whether the recipe value is bytes or a list or a map that holds bytes at any depth.
+const holdsBytes = raw => 'bytes_hex' in raw || (raw.array ?? []).some(holdsBytes) || (raw.object ?? []).some(([, item]) => holdsBytes(item));
+
 // styledArgument is the styled value an encode takes: SQL NULL for null, an ordered-json value for an ordered_json stage,
 // so that its member order and number text are those of the recipe, and the common value model otherwise.
 function styledArgument(raw, styles, bound) {
@@ -122,7 +125,10 @@ function styledArgument(raw, styles, bound) {
     return value instanceof StyledValue ? value : StyledValue.value(value);
   }
   if ('null' in raw) return StyledValue.sqlNull();
-  if (styles.includes('ordered_json')) return StyledValue.value(parseJson(jsonText(raw)));
+  // An ordered_json wrapper is the ordered-json value of its value, whatever the stages (FCV-4).
+  if ('ordered_json' in raw) return StyledValue.value(parseJson(jsonText(raw.ordered_json)));
+  // Bytes have no JSON text, so a value that holds bytes reaches an ordered_json stage as the value it is (COD-63).
+  if (styles.includes('ordered_json') && !holdsBytes(raw)) return StyledValue.value(parseJson(jsonText(raw)));
   return StyledValue.value(toValue(raw));
 }
 

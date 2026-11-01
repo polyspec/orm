@@ -337,7 +337,7 @@
         "packages/php/tests/dbspec_verify_errors_case.php",
         "packages/php/tests/deadlock_child.php",
         "packages/php/tests/extension_run_guard.php",
-        "packages/php/tests/fixtures/CodecProbeYaml.php",
+        "packages/php/tests/fixtures/CodecProbeDumper.php",
         "packages/php/tests/fixtures/CodecProbeYamlStream.php",
         "packages/php/tests/generated_classes.php",
         "packages/php/tests/generated_fixture.php",
@@ -9558,6 +9558,7 @@
       "id": "codec",
       "kind": "suite",
       "requirements": [
+        "COD-1",
         "COD-3",
         "COD-4",
         "COD-5",
@@ -43587,6 +43588,174 @@
           "id": "test_python_dialect_hooks_keep_their_native_forms"
         }
       ]
+    },
+    {
+      "id": "codec-bytes-value",
+      "kind": "suite",
+      "requirements": [
+        "COD-63"
+      ],
+      "file": "tests/codec/codec-bytes-value.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_codec_test.go",
+          "symbol": "TestRecipeCodecBytesValueNone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CodecBytesValueRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\CodecBytesValueRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CodecBytesValueRecipeExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CodecBytesValueRecipeExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/codec-bytes-value-none.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_codec_bytes_value_none.py"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "authenticated_encryption",
+        "parts": [
+          "owner/go",
+          "owner/php",
+          "owner/php-extension",
+          "owner/typescript",
+          "owner/python"
+        ]
+      }
+    },
+    {
+      "id": "codec-ordered-json-value-stages",
+      "kind": "feature",
+      "requirements": [
+        "COD-16"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/codec_test.go",
+          "id": "TestOrderedJSONValueIsWrittenByAFirstOrderedJSONStage"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CodecOrderedJsonTextTest.php",
+          "id": "CodecOrderedJsonTextTest::testOrderedJsonValueIsWrittenByAFirstOrderedJsonStage"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CodecOrderedJsonTextExtensionTest.php",
+          "id": "CodecOrderedJsonTextExtensionTest::testOrderedJsonValueIsWrittenByAFirstOrderedJsonStage"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/codec-errors.test.mjs",
+          "id": "codec/ordered-json-value-stages"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_codec_ordered_json_text.py",
+          "id": "test_ordered_json_value_is_written_by_a_first_ordered_json_stage"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/codec.rs",
+          "id": "codec::tests::ordered_json_value_is_written_by_a_first_ordered_json_stage"
+        }
+      ]
+    },
+    {
+      "id": "codec-ordered-json-text-is-unicode",
+      "kind": "feature",
+      "requirements": [
+        "COD-64"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/codec_test.go",
+          "id": "TestOrderedJSONRefusesATextThatIsNotUnicode"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CodecOrderedJsonTextTest.php",
+          "id": "CodecOrderedJsonTextTest::testOrderedJsonRefusesATextThatIsNotUnicode"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CodecOrderedJsonTextExtensionTest.php",
+          "id": "CodecOrderedJsonTextExtensionTest::testOrderedJsonRefusesATextThatIsNotUnicode"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/codec-errors.test.mjs",
+          "id": "codec/ordered-json-text-is-unicode"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_codec_ordered_json_text.py",
+          "id": "test_ordered_json_refuses_a_text_that_is_not_unicode"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "authenticated_encryption",
+        "parts": [
+          "owner/go",
+          "owner/php",
+          "owner/php-extension",
+          "owner/typescript",
+          "owner/python"
+        ]
+      }
+    },
+    {
+      "id": "codec-integer-beyond-i64",
+      "kind": "suite",
+      "requirements": [
+        "COD-62"
+      ],
+      "file": "tests/codec/codec-integer-beyond-i64.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_codec_test.go",
+          "symbol": "TestRecipeCodecIntegerBeyondI64None"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/codec-integer-beyond-i64-none.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_codec_integer_beyond_i64_none.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/codec_integer_beyond_i64_none.rs",
+          "symbol": "codec_integer_beyond_i64_none"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "authenticated_encryption",
+        "parts": [
+          "owner/go",
+          "owner/rust",
+          "owner/typescript",
+          "owner/python"
+        ]
+      }
     }
   ],
   "errors": {

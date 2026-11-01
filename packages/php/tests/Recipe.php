@@ -166,6 +166,29 @@ final class Recipe
     }
 
     /**
+     * Whether the recipe value is bytes or a list or a map that holds bytes at any depth.
+     *
+     * @param array<string, mixed> $raw
+     */
+    private static function holdsBytes(array $raw): bool
+    {
+        if (array_key_exists('bytes_hex', $raw)) {
+            return true;
+        }
+        foreach ($raw['array'] ?? [] as $item) {
+            if (self::holdsBytes($item)) {
+                return true;
+            }
+        }
+        foreach ($raw['object'] ?? [] as [, $item]) {
+            if (self::holdsBytes($item)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * The styled value an encode takes: SQL NULL for null, an ordered-json value for an ordered_json stage, so that its
      * member order and number text are those of the recipe, and the common value model otherwise.
      */
@@ -178,7 +201,12 @@ final class Recipe
         if (array_key_exists('null', $raw)) {
             return StyledValue::sqlNull();
         }
-        if (in_array('ordered_json', $styles, true)) {
+        // An ordered_json wrapper is the ordered-json value of its value, whatever the stages (FCV-4).
+        if (array_key_exists('ordered_json', $raw)) {
+            return StyledValue::value(OrderedJson::parse(self::jsonText($raw['ordered_json'])));
+        }
+        // Bytes have no JSON text, so a value that holds bytes reaches an ordered_json stage as the value it is (COD-63).
+        if (in_array('ordered_json', $styles, true) && !self::holdsBytes($raw)) {
             return StyledValue::value(OrderedJson::parse(self::jsonText($raw)));
         }
         return StyledValue::value(self::toValue($raw));

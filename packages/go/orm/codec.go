@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"compress/zlib"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -28,10 +29,16 @@ func codecErr(code, format string, a ...any) error {
 	return &ir.Error{Code: code, Msg: fmt.Sprintf(format, a...)}
 }
 
+// checkCodecStyles refuses a style that no stage names and a value stage outside the first position, before any value or
+// cell is read (docs/spec/codec.md COD-35).
 func checkCodecStyles(styles []string) error {
-	for _, style := range styles {
+	for i, style := range styles {
 		switch style {
-		case "gz", "base64", "serialize", "yaml", "ordered_json":
+		case "gz", "base64":
+		case "serialize", "yaml", "ordered_json":
+			if i != 0 {
+				return codecErr(CodeCodecUnsupported, "%s must be the first style", style)
+			}
 		default:
 			return codecErr(CodeCodecUnsupported, "style %s", style)
 		}
@@ -56,9 +63,9 @@ func Decode(styles []string, raw any) (StyledValue, error) {
 	default:
 		return StyledValue{}, codecErr(CodeCodecDecode, "cell is %T, not bytes", raw)
 	}
-	// An empty cell is CODEC_DECODE, except under a last base64 stage, whose encoder writes an empty cell
-	// for empty bytes (docs/spec/codec.md, Stage lists).
-	if len(b) == 0 && (len(styles) == 0 || styles[len(styles)-1] != "base64") {
+	// An empty cell is CODEC_DECODE, except under a last base64 stage and under no stage, whose encoders write an empty cell
+	// for empty text (docs/spec/codec.md COD-14).
+	if len(b) == 0 && len(styles) > 0 && styles[len(styles)-1] != "base64" {
 		return StyledValue{}, codecErr(CodeCodecDecode, "styled cell is empty")
 	}
 	var v any = b
@@ -132,23 +139,24 @@ func Encode(styles []string, v StyledValue) (any, error) {
 	if v.kind != 2 {
 		return nil, codecErr(CodeCodecEncode, "styled value is unset")
 	}
+	value := v.value
+	if len(styles) == 0 {
+		cur, err := firstStageText("an empty stage list", value)
+		return string(cur), err
+	}
 	var cur []byte
 	var err error
-	value := v.value
 	for i, st := range styles {
 		switch st {
 		case "serialize":
-			if i != 0 {
-				return nil, codecErr(CodeCodecUnsupported, "serialize must be the first encoding style")
-			}
 			var sb strings.Builder
 			if err := phpSerialize(&sb, value); err != nil {
 				return nil, err
 			}
 			cur = []byte(sb.String())
 		case "yaml":
-			if i != 0 {
-				return nil, codecErr(CodeCodecUnsupported, "yaml must be the first style")
+			if err := commonValue(value); err != nil {
+				return nil, err
 			}
 			var doc goyaml.Node
 			err := doc.Encode(yamlFloats(value))
@@ -163,11 +171,13 @@ func Encode(styles []string, v StyledValue) (any, error) {
 				return nil, codecErr(CodeCodecEncode, "yaml: encoded value is outside the common value model: %v", err)
 			}
 		case "ordered_json":
-			if i != 0 {
-				return nil, codecErr(CodeCodecUnsupported, "json must be the first style")
-			}
 			ordered, err := orderedJSONValue(value)
 			if err != nil {
+				// The ordered-json library returns its own errors, such as a text that is not UTF-8 (COD-14).
+				var coded *ir.Error
+				if !errors.As(err, &coded) {
+					return nil, codecErr(CodeCodecEncode, "json: %v", err)
+				}
 				return nil, err
 			}
 			raw, err := ordered.Compact()
@@ -177,14 +187,14 @@ func Encode(styles []string, v StyledValue) (any, error) {
 			cur = []byte(raw)
 		case "base64":
 			if i == 0 {
-				if cur, err = firstStageText(st, value); err != nil {
+				if cur, err = firstStageText(st+" as the first stage", value); err != nil {
 					return nil, err
 				}
 			}
 			cur = []byte(base64.StdEncoding.EncodeToString(cur))
 		case "gz":
 			if i == 0 {
-				if cur, err = firstStageText(st, value); err != nil {
+				if cur, err = firstStageText(st+" as the first stage", value); err != nil {
 					return nil, err
 				}
 			}
@@ -207,12 +217,12 @@ func Encode(styles []string, v StyledValue) (any, error) {
 	return string(cur), nil
 }
 
-// firstStageText is the value that the first stage, gz or base64, encodes. That stage
-// receives bytes, so the value must be a string.
+// firstStageText is the value that the first stage, gz or base64, encodes, and that an empty stage list writes as it is.
+// Those receive bytes, so the value must be a string.
 func firstStageText(stage string, value any) ([]byte, error) {
 	s, ok := value.(string)
 	if !ok {
-		return nil, codecErr(CodeCodecEncode, "%s as the first stage encodes a string value, got %T", stage, value)
+		return nil, codecErr(CodeCodecEncode, "%s encodes a string value, got %T", stage, value)
 	}
 	return []byte(s), nil
 }
@@ -232,7 +242,14 @@ func NormalizeStyled(styles []string, nullable bool, v StyledValue) (StyledValue
 
 // yamlQuoteBreaks double-quotes each string scalar, a key or a value, that holds U+0085, U+2028 or U+2029 (COD-29): yaml.v3
 // escapes them there, and elsewhere counts them as line breaks, as YAML 1.1 does, and pads the text after one.
+//
+// It also writes the string << as a double-quoted string: yaml.v3 tags it !!merge, the merge key of YAML 1.1, which YAML 1.2
+// does not have (COD-29).
 func yamlQuoteBreaks(node *goyaml.Node) {
+	if node.Kind == goyaml.ScalarNode && node.Tag == "!!merge" {
+		node.Tag = "!!str"
+		node.Style = goyaml.DoubleQuotedStyle
+	}
 	if node.Kind == goyaml.ScalarNode && node.Tag == "!!str" && strings.ContainsAny(node.Value, "\u0085\u2028\u2029") {
 		node.Style = goyaml.DoubleQuotedStyle
 	}
@@ -485,6 +502,29 @@ func yamlMapKey(node ast.Node) (string, error) {
 }
 
 // ---- PHP serialize format ----
+
+// commonValue refuses a value outside the common value model of COD-16 before a yaml stage writes it, as phpSerialize
+// refuses it while it writes: yaml.v3 writes bytes and other Go values in forms of its own (COD-63).
+func commonValue(v any) error {
+	switch x := v.(type) {
+	case nil, bool, int, int32, int64, float64, string:
+	case []any:
+		for _, item := range x {
+			if err := commonValue(item); err != nil {
+				return err
+			}
+		}
+	case map[string]any:
+		for _, item := range x {
+			if err := commonValue(item); err != nil {
+				return err
+			}
+		}
+	default:
+		return codecErr(CodeCodecEncode, "yaml: a %T is not a value", v)
+	}
+	return nil
+}
 
 func phpSerialize(sb *strings.Builder, v any) error {
 	switch x := v.(type) {

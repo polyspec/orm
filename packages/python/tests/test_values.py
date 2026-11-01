@@ -335,11 +335,11 @@ class HostCodecTest(unittest.TestCase):
             self.assertIsInstance(packed, bytes)
             self.assertEqual(host_decode(packed, ["ip"], ""), address)
 
-    def test_mapped_ipv6_writes_four_bytes(self):
-        # A v4 mapped address is stored in 4 bytes and comes back in v4 form.
+    def test_mapped_ipv6_writes_sixteen_bytes(self):
+        # A v4 mapped address is stored in its 16 bytes, as INET6_ATON packs it, and reads back in its RFC 5952 form (COD-38).
         packed = host_encode("::ffff:192.168.0.1", ["ip"], "")
-        self.assertEqual(packed, bytes([192, 168, 0, 1]))
-        self.assertEqual(host_decode(packed, ["ip"], ""), "192.168.0.1")
+        self.assertEqual(packed, bytes(10) + bytes([0xFF, 0xFF, 192, 168, 0, 1]))
+        self.assertEqual(host_decode(packed, ["ip"], ""), "::ffff:192.168.0.1")
 
     def test_ip_rejects_a_non_address(self):
         for address in ("not-an-address", "10. 0.0.1"):
