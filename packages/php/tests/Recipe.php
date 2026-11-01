@@ -19,8 +19,11 @@ use Polyspec\Orm\CatalogTableMetadata;
 use Polyspec\Orm\Codec;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Dbspec\Dbspec;
+use Polyspec\Orm\Db;
+use Polyspec\Orm\Model;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
+use Polyspec\Orm\Request;
 use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Schema;
 use Polyspec\Orm\StyledValue;
@@ -442,6 +445,9 @@ final class Recipe
     /** @var array<string, Schema> the Schema of each fixture set, built once per process */
     private static array $schemas = [];
 
+    /** @var array<string, string> the namespace of the models generated from each fixture set, by its md5 */
+    private static array $modelNamespaces = [];
+
     /** Runs one case of the recipe at path on a case database of database, which is removed when the case ends. */
     private static function runDatabase(string $path, array $case, string $database): void
     {
@@ -513,14 +519,20 @@ final class Recipe
             $db->close();
         }
         $catalog = Catalog::connect($dsn);
+        $context = ['connections' => []];
         try {
             $namespace = $catalog->currentNamespace();
-            $context = [
+            $base = Orm::connectSchema($dsn, $schema, new Config());
+            $context['connections'][] = $base;
+            $context += [
                 'catalog' => $catalog,
                 'namespace' => $namespace,
                 'database' => $database,
                 'dsn' => $dsn,
+                'schema' => $schema,
+                'fixture' => dirname(__DIR__, 3) . '/' . $recipe['fixture'],
                 'bound' => ['database' => ['text' => $name]],
+                'request' => ['base' => $base, 'conn' => $base, 'records' => [], 'inTx' => false],
             ];
             foreach ([$recipe['seed']['rows'] ?? [], $case['seed']['rows'] ?? []] as $rows) {
                 foreach ($rows as $table => $values) {
@@ -541,6 +553,9 @@ final class Recipe
                 }
             }
         } finally {
+            foreach ($context['connections'] as $connection) {
+                $connection->close();
+            }
             $catalog->close();
         }
     }
@@ -582,7 +597,7 @@ final class Recipe
     }
 
     /** Maps the op of a step to its one call of the public API and returns the fields that its expect compares. */
-    private static function databaseOp(array $s, array $context): array
+    private static function databaseOp(array $s, array &$context): array
     {
         $catalog = $context['catalog'];
         $table = static fn (): array => ['namespace' => $context['namespace'], 'name' => $s['table']];
@@ -665,6 +680,77 @@ final class Recipe
             case 'catalog.delete_row':
                 $deleted = $catalog->deleteRow(self::stepArgument($s['snapshot'], $context));
                 return ['value' => ['int' => (string) $deleted]];
+            case 'model.connect':
+                // A second connection of the case, bound to its name as: the schema registered, no pool.
+                if (!isset($s['as']) || ($s['pool_size'] ?? 0) !== 0) {
+                    Assert::fail('model.connect of a second connection needs as and no pool_size');
+                }
+                $connection = Orm::connectSchema($context['dsn'], $context['schema'], new Config());
+                $context['connections'][] = $connection;
+                return ['bind' => $connection];
+            case 'hook.install':
+                // Replaces the hook of the default connection (FCV-4): the handle derives from the case connection.
+                $context['request']['records'] = [];
+                $context['request']['conn'] = $context['request']['base']->withRequestHook(
+                    self::hookFor($s['hooks'], $context)
+                );
+                return [];
+            case 'hook.records':
+                $counts = [];
+                $list = [];
+                foreach ($context['request']['records'] as $record) {
+                    $counts[$record['entity']] = ($counts[$record['entity']] ?? 0) + 1;
+                    $list[] = ['object' => [
+                        ['kind', ['text' => $record['kind']]],
+                        ['entity', ['text' => $record['entity']]],
+                    ]];
+                }
+                return ['value' => ['array' => $list], 'counts' => $counts];
+            case 'transaction':
+                $context['request']['conn']->transaction(function () use (&$context, $s): void {
+                    $context['request']['inTx'] = true;
+                    try {
+                        foreach ($s['steps'] as $sub) {
+                            self::databaseStep($sub, $context);
+                        }
+                    } finally {
+                        $context['request']['inTx'] = false;
+                    }
+                });
+                return [];
+            case 'model.create':
+                self::setValues(self::newModel($context, $s), $s['values'] ?? [], $context)->create();
+                return [];
+            case 'model.creates':
+                $all = self::newModel($context, $s);
+                $models = [];
+                foreach ($s['rows'] as $row) {
+                    $models[] = self::setValues(self::newModel($context, $s), $row, $context);
+                }
+                return ['value' => ['int' => (string) $all->creates($models, $s['batch'])]];
+            case 'model.duplicate_create':
+                $row = self::setValues(self::newModel($context, $s), $s['values'] ?? [], $context);
+                $row->duplication(self::setValues(self::newModel($context, $s, ''), $s['duplicate'] ?? [], $context));
+                $row->create();
+                return [];
+            case 'model.query':
+                return self::queryOp($s, $context);
+            case 'model.count':
+                $count = self::whereOf(self::newModel($context, $s), $s['where'] ?? [], $context)->getCount();
+                return ['value' => ['int' => (string) $count]];
+            case 'model.update':
+                foreach (self::loadedRows($s, $context) as $row) {
+                    self::setValues($row, $s['set'] ?? [], $context)->update();
+                }
+                return [];
+            case 'model.delete':
+                foreach (self::loadedRows($s, $context) as $row) {
+                    $row->delete();
+                }
+                return [];
+            case 'model.restore':
+                self::setValues(self::newModel($context, $s), $s['values'] ?? [], $context)->restore();
+                return [];
             case 'sql.exec':
                 // The native driver of PHP is PDO, opened on the case database.
                 $pdo = case_admin($context['dsn']);
@@ -678,6 +764,294 @@ final class Recipe
     private static function sqlField(string|array $field, array $context): string
     {
         return is_string($field) ? $field : $field[$context['database']];
+    }
+
+    /** The request ops of FCV-4 (T334-3-4): the same semantics as the Go core (packages/go/internal/recipe/requests.go). */
+    private const READS = ['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate'];
+
+    /** The model class of the table of a step, from the models that the fixture generates (FCV-4). */
+    private static function modelClass(array $context, string $table): string
+    {
+        $class = self::modelNamespace($context['fixture']) . '\\' . self::pascal($table);
+        if (!class_exists($class)) {
+            Assert::fail("the schema has no table $table");
+        }
+        return $class;
+    }
+
+    /** The namespace of the models generated from a fixture set, generated once per process. */
+    private static function modelNamespace(string $setPath): string
+    {
+        $key = md5($setPath);
+        if (isset(self::$modelNamespaces[$key])) {
+            return self::$modelNamespaces[$key];
+        }
+        $set = json_decode(file_get_contents($setPath), true, 512, JSON_THROW_ON_ERROR);
+        $documents = [];
+        foreach ($set['documents'] as $name) {
+            $documents[$name] = (string) file_get_contents(dirname($setPath) . '/' . $name);
+        }
+        $work = sys_get_temp_dir() . '/orm-php-recipe-models-' . getmypid() . '-' . $key;
+        is_dir($work) || mkdir($work, 0o700, true);
+        register_shutdown_function(static function () use ($work): void {
+            exec('rm -rf ' . escapeshellarg($work));
+        });
+        $namespace = 'Polyspec\\Orm\\Tests\\RecipeModels\\F' . substr($key, 0, 12);
+        generateModels($documents, "$work/source", "$work/models", $namespace);
+        requireGeneratedClasses("$work/models");
+        require_once "$work/models/bootstrap.php";
+        return self::$modelNamespaces[$key] = $namespace;
+    }
+
+    /** The PascalCase name of a table or column: hook_item is HookItem. */
+    private static function pascal(string $name): string
+    {
+        return implode('', array_map(ucfirst(...), explode('_', $name)));
+    }
+
+    /**
+     * A model of the table of the step, connected to the connection that the step names (connection, or the default
+     * connection of the case when it names none), or left unconnected in a transaction.
+     */
+    private static function newModel(array $context, array $s, ?string $on = null): Model
+    {
+        $class = self::modelClass($context, $s['model']);
+        $model = new $class();
+        if (!$context['request']['inTx']) {
+            $model->connect(self::connectionOf($context, $on ?? ($s['connection'] ?? '')));
+        }
+        return $model;
+    }
+
+    /** The default connection of the case when on is empty, or the connection that a model.connect step bound to on. */
+    private static function connectionOf(array $context, string $on): Db
+    {
+        if ($on === '') {
+            return $context['request']['conn'];
+        }
+        $db = $context['bound'][$on] ?? null;
+        if (!$db instanceof Db) {
+            Assert::fail("connection $on is not connected by a model.connect step");
+        }
+        return $db;
+    }
+
+    /** Sets the columns of an object of recipe wrappers on the model. */
+    private static function setValues(Model $model, array $raw, array $context): Model
+    {
+        foreach (self::assignments($raw, $context) as $name => $value) {
+            $set = 'set' . self::pascal((string) $name);
+            $model->$set($value);
+        }
+        return $model;
+    }
+
+    /** Adds the equalities of the where object to the model, ANDed. */
+    private static function whereOf(Model $model, array $raw, array $context): Model
+    {
+        $first = true;
+        foreach (self::assignments($raw, $context) as $name => $value) {
+            $method = ($first ? '' : 'and') . self::pascal((string) $name);
+            $model->$method($value);
+            $first = false;
+        }
+        return $model;
+    }
+
+    /** The rows that the where of a step loads, read through the connection of the step. */
+    private static function loadedRows(array $s, array $context): array
+    {
+        $rows = [];
+        foreach (self::whereOf(self::newModel($context, $s), $s['where'] ?? [], $context)->gets() as $row) {
+            $rows[] = $row;
+        }
+        return $rows;
+    }
+
+    /** A model.query step: the rows of the parent, each with the columns of its relation child when one is named. */
+    private static function queryOp(array $s, array $context): array
+    {
+        $parent = self::whereOf(self::newModel($context, $s), $s['where'] ?? [], $context);
+        foreach ($s['order'] ?? [] as $column) {
+            $order = 'orderBy' . self::pascal($column) . 'Asc';
+            $parent->$order();
+        }
+        $rel = $s['relation'] ?? null;
+        if ($rel !== null) {
+            $child = self::newModel($context, ['model' => $rel['model'], 'connection' => $s['connection'] ?? '']);
+            foreach ($rel['match'] as [$left, $right]) {
+                $match = 'match' . self::pascal($left) . 'With' . self::pascal($right);
+                $child->$match();
+            }
+            if ($rel['many']) {
+                $parent->relations($child);
+            } else {
+                $parent->relation($child);
+            }
+        }
+        $offset = $s['offset'] ?? 0;
+        $limit = $s['limit'] ?? 0;
+        $paged = ($s['page'] ?? false) === true;
+        $page = null;
+        if ($paged) {
+            if (!($limit > 0)) {
+                Assert::fail('a paged model.query needs limit above 0');
+            }
+            $page = $parent->getsPage(intdiv($offset, $limit) + 1, $limit);
+            $parents = [];
+            foreach ($page->items as $row) {
+                $parents[] = $row;
+            }
+        } else {
+            $parents = [];
+            foreach ($parent->gets() as $row) {
+                $parents[] = $row;
+            }
+            if ($limit > 0) {
+                $parents = array_slice($parents, $offset, $limit);
+            }
+        }
+        $rows = [];
+        foreach ($parents as $row) {
+            $own = self::project($row, $s['columns']);
+            if ($rel === null) {
+                $rows[] = $own;
+                continue;
+            }
+            foreach (self::relatedRows($row, $rel) as $childRow) {
+                $rows[] = [...$own, ...self::project($childRow, $rel['columns'])];
+            }
+        }
+        return $paged ? ['rows' => $rows, 'total' => $page->totalCount] : ['rows' => $rows];
+    }
+
+    /** The child rows that the relation of a parent read attached: each child of a many relation, or the one child. */
+    private static function relatedRows(Model $parent, array $rel): array
+    {
+        $name = self::pascal($rel['model']);
+        if ($rel['many']) {
+            $get = 'get' . $name . 'Models';
+            $out = [];
+            foreach ($parent->$get() as $child) {
+                $out[] = $child;
+            }
+            return $out;
+        }
+        $get = 'get' . $name . 'Model';
+        $child = $parent->$get();
+        return $child === null ? [] : [$child];
+    }
+
+    /** The cells of the columns of a loaded model, each with the recipe wrapper of its value (FCV-4). */
+    private static function project(Model $model, array $columns): array
+    {
+        $values = $model->toArray();
+        return array_map(static function (string $column) use ($values): array {
+            if (!array_key_exists($column, $values)) {
+                Assert::fail("the row has no column $column");
+            }
+            return self::cellOf($values[$column]);
+        }, $columns);
+    }
+
+    /** The recipe wrapper of a value read by a request op. */
+    private static function cellOf(mixed $value): array
+    {
+        if (is_string($value)) {
+            return ['text' => $value];
+        }
+        if (is_int($value)) {
+            return ['int' => (string) $value];
+        }
+        Assert::fail('a read value of type ' . get_debug_type($value) . ' has no recipe wrapper in a request op');
+    }
+
+    /**
+     * The hook of the default connection: runs the actions in order on each request whose kind they name (FCV-4). The
+     * records of the record actions are kept in the request state of the case.
+     *
+     * @param list<array<string, mixed>> $hooks
+     */
+    private static function hookFor(array $hooks, array &$context): \Closure
+    {
+        $actions = array_map(static fn (array $a): array => [
+            'action' => $a['action'],
+            'kinds' => $a['kinds'],
+            'column' => $a['column'] ?? '',
+            'value' => array_key_exists('value', $a) ? self::nativeValue($a['value']) : null,
+            'nested' => ($a['nested'] ?? false) === true,
+            'code' => $a['error'] ?? '',
+        ], $hooks);
+        return static function (Request $r) use (&$context, $actions): void {
+            foreach ($actions as $a) {
+                if (!self::kindMatches($a['kinds'], $r->ir['kind'])) {
+                    continue;
+                }
+                switch ($a['action']) {
+                    case 'scope':
+                        if ($a['nested']) {
+                            self::scopeTree($r->ir, $a['column'], $a['value'], $r);
+                        } else {
+                            self::andWhere($r->ir, self::equalPred($r, $a['column'], $a['value']));
+                        }
+                        break;
+                    case 'assign':
+                        $r->ir['set'][] = ['column' => $a['column'], 'p' => $r->param($a['value'])];
+                        foreach (array_keys($r->ir['rows'] ?? []) as $i) {
+                            $r->ir['rows'][$i][] = $r->param($a['value']);
+                        }
+                        break;
+                    case 'record':
+                        $context['request']['records'][] = [
+                            'kind' => $r->ir['kind'],
+                            'entity' => $r->ir['entity'] ?? '',
+                        ];
+                        break;
+                    case 'fail':
+                        throw new OrmException($a['code'], "request hook refused {$r->ir['kind']}");
+                    default:
+                        Assert::fail("hook action {$a['action']} is unknown");
+                }
+            }
+        };
+    }
+
+    /** Whether a kind list (or one of the names reads, reads+restore, every) holds kind. */
+    private static function kindMatches(mixed $kinds, string $kind): bool
+    {
+        if (is_string($kinds)) {
+            return match ($kinds) {
+                'every' => true,
+                'reads' => in_array($kind, self::READS, true),
+                'reads+restore' => in_array($kind, self::READS, true) || $kind === 'restore',
+                default => false,
+            };
+        }
+        return is_array($kinds) && in_array($kind, $kinds, true);
+    }
+
+    private static function equalPred(Request $r, string $column, mixed $value): array
+    {
+        return ['column' => $column, 'op' => 'eq', 'p' => $r->param($value)];
+    }
+
+    /** Adds pred to the where of query with and; an existing where is wrapped in one group item. */
+    private static function andWhere(array &$query, array $pred): void
+    {
+        if (!isset($query['where']) || $query['where']['items'] === []) {
+            $query['where'] = ['items' => [['pred' => $pred]]];
+            return;
+        }
+        $query['where'] = ['items' => [['group' => $query['where']], ['pred' => ['conn' => 'and'] + $pred]]];
+    }
+
+    /** Adds column = value to the where of query and of each of its relation queries, nested ones included. */
+    private static function scopeTree(array &$query, string $column, mixed $value, Request $r): void
+    {
+        self::andWhere($query, self::equalPred($r, $column, $value));
+        foreach (array_keys($query['relations'] ?? []) as $i) {
+            self::scopeTree($query['relations'][$i]['query'], $column, $value, $r);
+        }
     }
 
     /** A bound value of {"ref": "<name>"} or {"ref": "<name>.<path>"}. */

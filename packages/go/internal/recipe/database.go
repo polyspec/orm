@@ -64,6 +64,19 @@ type databaseStep struct {
 	Set      json.RawMessage            `json:"set"`
 	As       string                     `json:"as"`
 	Expect   map[string]json.RawMessage `json:"expect"`
+	// The request ops (requests.go): the model, its where, order, relation and page, the rows and batch of a creates,
+	// the duplicate of a duplicate create, the hooks of hook.install and the steps of a transaction.
+	Model      string            `json:"model"`
+	Connection string            `json:"connection"`
+	Where      json.RawMessage   `json:"where"`
+	Order      []string          `json:"order"`
+	Relation   *relationSpec     `json:"relation"`
+	Rows       []json.RawMessage `json:"rows"`
+	Batch      int               `json:"batch"`
+	Duplicate  json.RawMessage   `json:"duplicate"`
+	Hooks      []json.RawMessage `json:"hooks"`
+	Steps      []json.RawMessage `json:"steps"`
+	PoolSize   int               `json:"pool_size"`
 }
 
 // bound is what a step bound with `as`: the API value that a later argument takes, the fields of its result that a dotted
@@ -95,6 +108,8 @@ type databaseContext struct {
 	database  string
 	dsn       string
 	bound     map[string]bound
+	requestState
+	closers []func() error
 }
 
 // runDatabase runs every case of the recipe at path on database, each as a subtest on a case database of its own (FCV-3).
@@ -179,7 +194,7 @@ func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database
 		testcase.Close(t, db)
 		t.Fatalf("recipe %s case %s on %s: install: %v", path, c.ID, database, err)
 	}
-	testcase.Close(t, db)
+	defer testcase.Close(t, db)
 	step.Step("schema installed")
 	catalog, err := orm.ConnectCatalog(dsn)
 	if err != nil {
@@ -196,8 +211,16 @@ func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database
 	}
 	state := &databaseContext{
 		t: t, ctx: ctx, catalog: catalog, namespace: namespace, database: database, dsn: dsn,
-		bound: map[string]bound{"database": {value: map[string]any{"text": name}}},
+		bound:        map[string]bound{"database": {value: map[string]any{"text": name}}},
+		requestState: requestState{base: db, conn: db, named: map[string]*orm.DB{}, schema: schema, entities: map[string]*orm.Entity{}},
 	}
+	defer func() {
+		for _, closeFn := range state.closers {
+			if err := closeFn(); err != nil {
+				t.Error(err)
+			}
+		}
+	}()
 	for _, s := range []*seed{f.Seed, c.Seed} {
 		if s == nil || len(s.Rows) == 0 {
 			continue
@@ -446,7 +469,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		return outcome{fields: map[string]any{}}, nil
 	}
-	return outcome{}, fmt.Errorf("OP_UNKNOWN %s", s.Op)
+	return requestOp(s, c)
 }
 
 func indexOf(names []string, name string) int {

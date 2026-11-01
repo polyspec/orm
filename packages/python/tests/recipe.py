@@ -25,7 +25,9 @@ from polyspec.orm.codec import (
     host_decode,
     host_encode,
 )
-from polyspec.orm import Db, OrmError, Schema, connect_catalog
+from polyspec.orm import Db, Model, OrmError, Schema, connect_catalog
+from polyspec.orm.model import RegisteredModel, register_model
+from polyspec.orm.names import ChainKey
 from polyspec.orm.dbspec import dbspec_manifest, parse_dbspec, read_dbspec_file
 from polyspec.orm.engine import model_of_documents, parse_document_set
 from polyspec.orm.engine.validate import validate
@@ -452,7 +454,9 @@ def _run_case(
     finally:
         db.close()
     catalog = connect_catalog(dsn)
+    request = RequestState(dsn, schema)
     try:
+        request.start()
         namespace = catalog.current_namespace()
         context = {
             "catalog": catalog,
@@ -460,6 +464,7 @@ def _run_case(
             "database": database,
             "dsn": dsn,
             "bound": {"database": {"text": _database_name(dsn)}},
+            "request": request,
         }
         for part, rows in (
             ("recipe", recipe.get("seed", {}).get("rows")),
@@ -485,6 +490,7 @@ def _run_case(
                     f"recipe {path}, case {case['id']}, step {index} ({step['op']}), database {database}: {error}"
                 ) from error
     finally:
+        request.close()
         catalog.close()
 
 
@@ -569,6 +575,373 @@ def _op_sql_exec(step: dict, context: dict) -> dict:
     return {}
 
 
+# The request ops of FCV-4 (T334-3-4): the model ops, the request hook and the transaction. Each calls the public API of
+# polyspec.orm: the hook.install actions are the declarative form of the request hook that Db.with_request_hook takes.
+# They follow packages/go/internal/recipe/requests.go and packages/ts/tests/recipe.mjs.
+
+# The kinds of a read of the hook.install actions named reads and reads+restore (FCV-4).
+READ_KINDS = ("one", "all", "count", "group_count", "sum", "avg", "paginate")
+
+
+class RequestState:
+    """The request state of a case: the connection of the case (the hooked handle after hook.install), the named
+    connections, the records of the record action, and the model classes of the tables."""
+
+    def __init__(self, dsn: str, schema: Schema) -> None:
+        self.dsn = dsn
+        self.schema = schema
+        self.base: Db | None = None
+        self.conn: Db | None = None
+        self.runtime: RegisteredModel | None = None
+        self.named: dict[str, Db] = {}
+        self.models: dict[str, type] = {}
+        self.records: list[dict] = []
+        self.in_tx = False
+
+    def start(self) -> None:
+        self.base = Db.connect_schema(self.dsn, self.schema)
+        self.conn = self.base
+        self.runtime = register_model(
+            self.schema.manifest_text,
+            self.schema.manifest_hash,
+            self.schema.external_text,
+        )
+
+    def close(self) -> None:
+        for db in [*self.named.values(), self.base]:
+            if db is not None:
+                db.close()
+
+
+def _model_class(request: RequestState, name: str) -> type:
+    """The model class of a table of the case, with the entity of the registered schema (FCV-4)."""
+    if name not in request.models:
+        if request.runtime.entities.get(name) is None:
+            raise AssertionError(f"the schema has no table {name}")
+
+        class Generated(Model):
+            @property
+            def entity_def(self):
+                return request.runtime.entity_of(name, Generated)
+
+        request.models[name] = Generated
+    return request.models[name]
+
+
+def _connection_of(request: RequestState, on: str) -> Db:
+    """The connection that a step names with connection, or the default connection of the case (the hooked handle
+    after hook.install)."""
+    if not on:
+        return request.conn
+    if on not in request.named:
+        raise AssertionError(
+            f"connection {on} is not connected by a model.connect step"
+        )
+    return request.named[on]
+
+
+def _new_model(request: RequestState, name: str, on: str) -> Model:
+    """A model of the table, connected to the connection of the step, or left unconnected in a transaction (the Go core)."""
+    model = _model_class(request, name)()
+    if not request.in_tx:
+        model.connect(_connection_of(request, on))
+    return model
+
+
+def _set_values(model: Model, raw: dict | None, context: dict) -> Model:
+    """Sets the columns of an object of recipe wrappers on the model."""
+    for name, value in _assignments(raw or {}, context):
+        model.core.set_value(name, value)
+    return model
+
+
+def _where_of(model: Model, raw: dict | None, context: dict) -> Model:
+    """Adds the equalities of the where object to the model, ANDed."""
+    for name, value in _assignments(raw or {}, context):
+        core = model.core
+        connector = "and" if core.where.items else ""
+        core.where_chain(connector, [ChainKey(column=name)], (value,))
+    return model
+
+
+def _loaded_rows(step: dict, context: dict) -> list:
+    """The rows that the where of a step loads, read through the connection of the step."""
+    request = context["request"]
+    model = _where_of(
+        _new_model(request, step["model"], step.get("connection", "")),
+        step.get("where"),
+        context,
+    )
+    return list(model.gets().values())
+
+
+def _request_cell(value) -> dict:
+    """The recipe wrapper of a value that a read returns: text and integer values have a wrapper (FCV-4)."""
+    if isinstance(value, str):
+        return {"text": value}
+    if isinstance(value, int) and not isinstance(value, bool):
+        return {"int": str(value)}
+    raise AssertionError(
+        f"a read value {value!r} of type {type(value).__name__} has no recipe wrapper in a request op"
+    )
+
+
+def _project(model: Model, columns: list) -> list:
+    """The cells of the columns of a loaded model."""
+    values = model.to_array()
+    out = []
+    for column in columns:
+        if column not in values:
+            raise AssertionError(f"the row has no column {column}")
+        out.append(_request_cell(values[column]))
+    return out
+
+
+def _related_rows(parent: Model, rel: dict) -> list:
+    """The child rows that the relation of a parent read attached: each child of a many relation, or the one child of a
+    single relation."""
+    if rel["many"]:
+        return list(getattr(parent, f"get_{rel['model']}_models")().values())
+    child = getattr(parent, f"get_{rel['model']}_model")()
+    return [] if child is None else [child]
+
+
+def _op_model_connect(step: dict, context: dict) -> dict:
+    request = context["request"]
+    if "as" not in step or step.get("pool_size", 0) != 0:
+        raise AssertionError(
+            "model.connect of a second connection needs as and no pool_size"
+        )
+    request.named[step["as"]] = Db.connect_schema(request.dsn, request.schema)
+    return {}
+
+
+def _op_model_create(step: dict, context: dict) -> dict:
+    request = context["request"]
+    _set_values(
+        _new_model(request, step["model"], step.get("connection", "")),
+        step.get("values"),
+        context,
+    ).create()
+    return {}
+
+
+def _op_model_creates(step: dict, context: dict) -> dict:
+    request = context["request"]
+    on = step.get("connection", "")
+    everything = _new_model(request, step["model"], on)
+    models = [
+        _set_values(_new_model(request, step["model"], on), row, context)
+        for row in step["rows"]
+    ]
+    return {"value": {"int": str(everything.creates(models, step["batch"]))}}
+
+
+def _op_model_duplicate_create(step: dict, context: dict) -> dict:
+    request = context["request"]
+    row = _set_values(
+        _new_model(request, step["model"], step.get("connection", "")),
+        step.get("values"),
+        context,
+    )
+    row.duplication(
+        _set_values(
+            _new_model(request, step["model"], ""), step.get("duplicate"), context
+        )
+    )
+    row.create()
+    return {}
+
+
+def _op_model_query(step: dict, context: dict) -> dict:
+    request = context["request"]
+    on = step.get("connection", "")
+    parent = _where_of(
+        _new_model(request, step["model"], on), step.get("where"), context
+    )
+    for column in step.get("order") or []:
+        parent.core.order_by(column, False, [])
+    rel = step.get("relation")
+    if rel is not None:
+        child = _new_model(request, rel["model"], on)
+        for left, right in rel["match"]:
+            getattr(child, f"match_{left}_with_{right}")()
+        if rel["many"]:
+            parent.relations(child)
+        else:
+            parent.relation(child)
+    offset = step.get("offset", 0)
+    limit = step.get("limit", 0)
+    paged = step.get("page") is True
+    total = None
+    if paged:
+        if not limit > 0:
+            raise AssertionError("a paged model.query needs limit above 0")
+        page = parent.gets_page(offset // limit + 1, limit)
+        parents = list(page["items"])
+        total = page["totalCount"]
+    else:
+        parents = list(parent.gets().values())
+        if limit > 0:
+            parents = parents[
+                min(offset, len(parents)) : min(offset + limit, len(parents))
+            ]
+    rows = []
+    for row in parents:
+        own = _project(row, step["columns"])
+        if rel is None:
+            rows.append(own)
+            continue
+        for child in _related_rows(row, rel):
+            rows.append(own + _project(child, rel["columns"]))
+    return {"rows": rows, "total": total} if paged else {"rows": rows}
+
+
+def _op_model_count(step: dict, context: dict) -> dict:
+    request = context["request"]
+    model = _where_of(
+        _new_model(request, step["model"], step.get("connection", "")),
+        step.get("where"),
+        context,
+    )
+    return {"value": {"int": str(model.get_count())}}
+
+
+def _op_model_update(step: dict, context: dict) -> dict:
+    for row in _loaded_rows(step, context):
+        _set_values(row, step.get("set"), context).update()
+    return {}
+
+
+def _op_model_delete(step: dict, context: dict) -> dict:
+    for row in _loaded_rows(step, context):
+        row.delete()
+    return {}
+
+
+def _op_model_restore(step: dict, context: dict) -> dict:
+    request = context["request"]
+    _set_values(
+        _new_model(request, step["model"], step.get("connection", "")),
+        step.get("values"),
+        context,
+    ).restore()
+    return {}
+
+
+def _kind_matches(kinds, kind: str) -> bool:
+    """Whether a kind list (or one of the names reads, reads+restore, every) holds kind."""
+    if isinstance(kinds, str):
+        if kinds == "every":
+            return True
+        if kinds == "reads":
+            return kind in READ_KINDS
+        if kinds == "reads+restore":
+            return kind in READ_KINDS or kind == "restore"
+        return False
+    return isinstance(kinds, list) and kind in kinds
+
+
+def _equal_pred(add_param, column: str, value) -> dict:
+    return {"column": column, "op": "eq", "p": add_param(value)}
+
+
+def _and_where(query: dict, pred: dict) -> None:
+    """Adds pred to the where of query with and; an existing where is wrapped in one group item."""
+    where = query.get("where")
+    if not where or not where.get("items"):
+        query["where"] = {"items": [{"pred": pred}]}
+        return
+    query["where"] = {"items": [{"group": where}, {"pred": {**pred, "conn": "and"}}]}
+
+
+def _scope_tree(query: dict, column: str, value, add_param) -> None:
+    """Adds column = value to the where of query and of each of its relation queries, nested ones included."""
+    _and_where(query, _equal_pred(add_param, column, value))
+    for relation in query.get("relations") or []:
+        _scope_tree(relation["query"], column, value, add_param)
+
+
+def _install_hook(request: RequestState, hooks: list) -> None:
+    """Installs the hook of the default connection with the actions in order, replacing the hook of the previous install (FCV-4)."""
+    actions = [
+        {
+            "action": h["action"],
+            "kinds": h["kinds"],
+            "column": h.get("column", ""),
+            "value": _native(h["value"]) if "value" in h else None,
+            "nested": h.get("nested") is True,
+            "code": h.get("error", ""),
+        }
+        for h in hooks
+    ]
+    request.records = []
+
+    def hook(query: dict, add_param, params) -> dict:
+        for a in actions:
+            if not _kind_matches(a["kinds"], query["kind"]):
+                continue
+            action = a["action"]
+            if action == "scope":
+                if a["nested"]:
+                    _scope_tree(query, a["column"], a["value"], add_param)
+                else:
+                    _and_where(query, _equal_pred(add_param, a["column"], a["value"]))
+            elif action == "assign":
+                p = add_param(a["value"])
+                query.setdefault("set", []).append({"column": a["column"], "p": p})
+                for row in query.get("rows") or []:
+                    row.append(add_param(a["value"]))
+            elif action == "record":
+                request.records.append(
+                    {"kind": query["kind"], "entity": query["entity"]}
+                )
+            elif action == "fail":
+                raise OrmError(a["code"], f"request hook refused {query['kind']}")
+            else:
+                raise AssertionError(f"hook action {action} is unknown")
+        return query
+
+    request.conn = request.base.with_request_hook(hook)
+
+
+def _op_hook_install(step: dict, context: dict) -> dict:
+    _install_hook(context["request"], step["hooks"])
+    return {}
+
+
+def _op_hook_records(_step: dict, context: dict) -> dict:
+    records = context["request"].records
+    counts: dict[str, int] = {}
+    for record in records:
+        counts[record["entity"]] = counts.get(record["entity"], 0) + 1
+    listed = [
+        {
+            "object": [
+                ["kind", {"text": record["kind"]}],
+                ["entity", {"text": record["entity"]}],
+            ]
+        }
+        for record in records
+    ]
+    return {"value": {"array": listed}, "counts": counts}
+
+
+def _op_transaction(step: dict, context: dict) -> dict:
+    request = context["request"]
+
+    def run() -> None:
+        request.in_tx = True
+        try:
+            for sub in step["steps"]:
+                _run_database_step(sub, context)
+        finally:
+            request.in_tx = False
+
+    request.conn.transaction(run)
+    return {}
+
+
 # Each op maps to one call of the public API and returns the fields that its expect compares.
 _DATABASE_OPS = {
     "catalog.current_namespace": _op_current_namespace,
@@ -581,6 +954,18 @@ _DATABASE_OPS = {
     "catalog.update_row": _op_update_row,
     "catalog.delete_row": _op_delete_row,
     "sql.exec": _op_sql_exec,
+    "model.connect": _op_model_connect,
+    "hook.install": _op_hook_install,
+    "hook.records": _op_hook_records,
+    "transaction": _op_transaction,
+    "model.create": _op_model_create,
+    "model.creates": _op_model_creates,
+    "model.duplicate_create": _op_model_duplicate_create,
+    "model.query": _op_model_query,
+    "model.count": _op_model_count,
+    "model.update": _op_model_update,
+    "model.delete": _op_model_delete,
+    "model.restore": _op_model_restore,
 }
 
 

@@ -11,14 +11,8 @@ from .test_request_hook import RequestHookTest
 CASES = (
     "without_hook",
     "read_filter",
-    "same_handle_child_hook_once",
     "relation_scope",
-    "insert_assign",
-    "upsert_scope",
-    "loaded_row_writes",
     "invalid_param",
-    "restore_key",
-    "restore_condition",
     "restore_no_key",
     "restore_rewritten_key",
     "restore_hook_set_key",
@@ -57,44 +51,13 @@ class CoverageTest(CoverageCase):
     def test_read_filter(self):
         self.each_item("read_filter", lambda item: run_case("read_filter", item))
 
-    # Requirements: INT-78, PRT-2.
-    def test_same_handle_child_hook_once(self):
-        self.each_item(
-            "same_handle_child_hook_once",
-            lambda item: run_case("same_handle_child_hook_once", item),
-        )
-
     # Requirements: INT-78.
     def test_relation_scope(self):
         self.each_item("relation_scope", lambda item: run_case("relation_scope", item))
 
-    # Requirements: PRT-4, PRT-5, PRT-41.
-    def test_insert_assign(self):
-        self.each_item("insert_assign", lambda item: run_case("insert_assign", item))
-
-    # Requirements: INT-78, PRT-4, PRT-6.
-    def test_upsert_scope(self):
-        self.each_item("upsert_scope", lambda item: run_case("upsert_scope", item))
-
-    # Requirements: CFG-21, INT-36, INT-37, PLN-16.
-    def test_loaded_row_writes(self):
-        self.each_item(
-            "loaded_row_writes", lambda item: run_case("loaded_row_writes", item)
-        )
-
     # Requirements: PRT-65.
     def test_invalid_param(self):
         self.each_item("invalid_param", lambda item: run_case("invalid_param", item))
-
-    # Requirements: DIA-161.
-    def test_restore_key(self):
-        self.each_item("restore_key", lambda item: run_case("restore_key", item))
-
-    # Requirements: DIA-161, INT-38.
-    def test_restore_condition(self):
-        self.each_item(
-            "restore_condition", lambda item: run_case("restore_condition", item)
-        )
 
     # Requirements: DIA-161.
     def test_restore_no_key(self):

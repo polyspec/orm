@@ -5729,145 +5729,6 @@
       ]
     },
     {
-      "id": "coverage-request-hook-insert-assign",
-      "kind": "feature",
-      "requirements": [
-        "PRT-4",
-        "PRT-5",
-        "PRT-41"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookInsertAssign",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookInsertAssign",
-            "FEATURE_PACKAGE=./orm"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testInsertAssign"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::testInsertAssign"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_request_hook.mjs",
-          "id": "insert_assign"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_insert_assign"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "coverage_request_hook_insert_assign",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--test request_hook",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_request_hook_insert_assign"
-          ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/request_hook.mjs",
-          "id": "request-hook/insert_assign"
-        }
-      ]
-    },
-    {
-      "id": "coverage-request-hook-loaded-row-writes",
-      "kind": "feature",
-      "requirements": [
-        "CFG-21",
-        "INT-36",
-        "INT-37",
-        "PLN-16"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookLoadedRowWrites",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookLoadedRowWrites",
-            "FEATURE_PACKAGE=./orm"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testLoadedRowWrites"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::testLoadedRowWrites"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_request_hook.mjs",
-          "id": "loaded_row_writes"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_loaded_row_writes"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "coverage_request_hook_loaded_row_writes",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--test request_hook",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_request_hook_loaded_row_writes"
-          ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/request_hook.mjs",
-          "id": "request-hook/loaded_row_writes"
-        }
-      ]
-    },
-    {
       "id": "coverage-request-hook-invalid-param",
       "kind": "feature",
       "requirements": [
@@ -5931,141 +5792,6 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/request_hook.mjs",
           "id": "request-hook/invalid_param"
-        }
-      ]
-    },
-    {
-      "id": "coverage-request-hook-restore-key",
-      "kind": "feature",
-      "requirements": [
-        "DIA-161"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookRestoreKey",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookRestoreKey",
-            "FEATURE_PACKAGE=./orm"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testRestoreKey"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::testRestoreKey"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_request_hook.mjs",
-          "id": "restore_key"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_restore_key"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "coverage_request_hook_restore_key",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--test request_hook",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_request_hook_restore_key"
-          ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/request_hook.mjs",
-          "id": "request-hook/restore_key"
-        }
-      ]
-    },
-    {
-      "id": "coverage-request-hook-restore-condition",
-      "kind": "feature",
-      "requirements": [
-        "DIA-161",
-        "INT-38"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookRestoreCondition",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookRestoreCondition",
-            "FEATURE_PACKAGE=./orm"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testRestoreCondition"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::testRestoreCondition"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_request_hook.mjs",
-          "id": "restore_condition"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_restore_condition"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "coverage_request_hook_restore_condition",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--test request_hook",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_request_hook_restore_condition"
-          ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/request_hook.mjs",
-          "id": "request-hook/restore_condition"
         }
       ]
     },
@@ -6338,74 +6064,6 @@
       ]
     },
     {
-      "id": "coverage-request-hook-same-handle-child-hook-once",
-      "kind": "feature",
-      "requirements": [
-        "INT-78",
-        "PRT-2"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookSameHandleChildHookOnce",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookSameHandleChildHookOnce",
-            "FEATURE_PACKAGE=./orm"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testSameHandleChildHookOnce"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::testSameHandleChildHookOnce"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_request_hook.mjs",
-          "id": "same_handle_child_hook_once"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_same_handle_child_hook_once"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "coverage_request_hook_same_handle_child_hook_once",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--test request_hook",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_request_hook_same_handle_child_hook_once"
-          ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/request_hook.mjs",
-          "id": "request-hook/same_handle_child_hook_once"
-        }
-      ]
-    },
-    {
       "id": "coverage-request-hook-relation-scope",
       "kind": "feature",
       "requirements": [
@@ -6473,71 +6131,173 @@
       ]
     },
     {
-      "id": "coverage-request-hook-upsert-scope",
-      "kind": "feature",
+      "id": "request_hook-mysql",
+      "kind": "suite",
       "requirements": [
         "INT-78",
+        "PRT-2",
         "PRT-4",
-        "PRT-6"
+        "PRT-5",
+        "PRT-6",
+        "PRT-41",
+        "CFG-21",
+        "INT-36",
+        "INT-37",
+        "PLN-16",
+        "DIA-161",
+        "INT-38",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
       ],
+      "file": "contracts/fixtures/request_hook/request_hook.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookUpsertScope",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookUpsertScope",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "test": "packages/go/orm/recipe_request_hook_test.go",
+          "symbol": "TestRecipeRequestHookMysql"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testUpsertScope"
+          "test": "packages/php/tests/RequestHookMysqlRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\RequestHookMysqlRecipeTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::testUpsertScope"
+          "test": "packages/php-ext/tests/RequestHookMysqlRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\RequestHookMysqlRecipeTestExtensionTest::testMysql"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_request_hook.mjs",
-          "id": "upsert_scope"
+          "test": "packages/ts/tests/request_hook-mysql.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_upsert_scope"
+          "test": "packages/python/tests/test_request_hook_mysql.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "coverage_request_hook_upsert_scope",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--test request_hook",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_request_hook_upsert_scope"
-          ]
+          "test": "packages/rust/tests/tests/request_hook_mysql.rs",
+          "symbol": "request_hook_mysql"
+        }
+      ]
+    },
+    {
+      "id": "request_hook-postgres",
+      "kind": "suite",
+      "requirements": [
+        "INT-78",
+        "PRT-2",
+        "PRT-4",
+        "PRT-5",
+        "PRT-6",
+        "PRT-41",
+        "CFG-21",
+        "INT-36",
+        "INT-37",
+        "PLN-16",
+        "DIA-161",
+        "INT-38",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
+      ],
+      "file": "contracts/fixtures/request_hook/request_hook.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_request_hook_test.go",
+          "symbol": "TestRecipeRequestHookPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RequestHookPostgresRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\RequestHookPostgresRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RequestHookPostgresRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\RequestHookPostgresRecipeTestExtensionTest::testPostgres"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/request_hook.mjs",
-          "id": "request-hook/upsert_scope"
+          "test": "packages/ts/tests/request_hook-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_request_hook_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/request_hook_postgres.rs",
+          "symbol": "request_hook_postgres"
+        }
+      ]
+    },
+    {
+      "id": "request_hook-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "INT-78",
+        "PRT-2",
+        "PRT-4",
+        "PRT-5",
+        "PRT-6",
+        "PRT-41",
+        "CFG-21",
+        "INT-36",
+        "INT-37",
+        "PLN-16",
+        "DIA-161",
+        "INT-38",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
+      ],
+      "file": "contracts/fixtures/request_hook/request_hook.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_request_hook_test.go",
+          "symbol": "TestRecipeRequestHookSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RequestHookSqliteRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\RequestHookSqliteRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\RequestHookSqliteRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/request_hook-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_request_hook_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
+          "symbol": "request_hook_sqlite"
         }
       ]
     },

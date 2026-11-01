@@ -14,7 +14,7 @@ import (
 	"github.com/polyspec/orm/packages/go/orm"
 )
 
-// A shared case for the request hook (docs/operations/usage.md "Request hook"). It installs contracts/fixtures/request_hook.dbs in a SQLite
+// A shared case for the request hook (docs/operations/usage.md "Request hook"). It installs contracts/fixtures/request_hook/request_hook.dbs in a SQLite
 // temp file and checks hook_item(id identity, part, label) and the soft delete table hook_entry(unique key part,
 // label). The hook receives the request just before it is planned, and the client does not know what the hook does.
 
@@ -22,7 +22,7 @@ import (
 // is closed when the test ends. Creating and dropping the database is up to the caller.
 func hookFixture(t *testing.T, dsn string) (*orm.DB, *orm.Entity, *orm.Entity) {
 	t.Helper()
-	s := fixtureSchema(t, "request_hook")
+	s := fixtureSchema(t, "request_hook/request_hook")
 	db := connectSchemaDB(t, dsn, s)
 	t.Cleanup(func() {
 		if err := db.Close(); err != nil {
@@ -198,43 +198,18 @@ var requestHookCases = []struct {
 	run func(t *testing.T, db *orm.DB, e, entry *orm.Entity)
 }{
 	{"without_hook", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
+		// The recipe checks the rows and counts of the connection; this checks the Root of the hooked handle, which a step cannot observe.
 		seedHookItems(t, e, db)
-		if n := len(hookRows(t, e, db)); n != 3 {
-			t.Fatalf("connection reads %d rows, want 3", n)
-		}
 		hooked := db.WithRequestHook(partFilter("a"))
 		if hooked.Root() != db {
 			t.Fatal("the hooked handle's Root is not the connection")
 		}
-		if n := len(hookRows(t, e, db)); n != 3 {
-			t.Fatalf("connection after a hooked handle reads %d rows, want 3", n)
-		}
-		if n := hookCount(t, e, db); n != 3 {
-			t.Fatalf("connection counts %d, want 3", n)
-		}
 	}},
 
 	{"read_filter", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
+		// The recipe checks the rows of the hooked reads; this checks that the planned getQuery binds the hook's value, which a step cannot observe.
 		seedHookItems(t, e, db)
 		hooked := db.WithRequestHook(partFilter("a"))
-		rows := hookRows(t, e, hooked)
-		if len(rows) != 2 || rows[0]["part"] != "a" || rows[1]["part"] != "a" {
-			t.Fatalf("hooked read = %v, want the two rows of part a", rows)
-		}
-		if n := hookCount(t, e, hooked); n != 2 {
-			t.Fatalf("hooked count = %d, want 2", n)
-		}
-		page, err := orm.GetsPage[*keywordRow](hookItem(e, hooked, nil), 1, 10)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if page.TotalCount != 2 || page.Items.Len() != 2 {
-			t.Fatalf("hooked page total %d items %d, want 2 and 2", page.TotalCount, page.Items.Len())
-		}
-		// A hook with another value uses the same plan and filters by its own value.
-		if n := len(hookRows(t, e, db.WithRequestHook(partFilter("b")))); n != 1 {
-			t.Fatalf("hook with b reads %d rows, want 1", n)
-		}
 		st, err := hookItem(e, hooked, nil).GetQuery()
 		if err != nil {
 			t.Fatal(err)
@@ -244,31 +219,9 @@ var requestHookCases = []struct {
 		}
 	}},
 
-	{"same_handle_child_hook_once", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
-		seedHookItems(t, e, db)
-		if _, err := hookEntry(entry, db, map[string]any{"part": "a", "label": "parent"}).Create(); err != nil {
-			t.Fatal(err)
-		}
-		calls := map[string]int{}
-		hooked := db.WithRequestHook(func(r *ir.Request, _ func(any) int, _ []any) error {
-			if r.Kind == "all" {
-				calls[r.Entity]++
-			}
-			return nil
-		})
-		parent := hookEntry(entry, hooked, nil)
-		child := hookItem(e, hooked, nil)
-		child.Match("part", "part")
-		parent.Relation(true, child.Self())
-		if _, err := orm.Gets[*keywordRow](parent); err != nil {
-			t.Fatal(err)
-		}
-		if calls["hook_entry"] != 1 || calls["hook_item"] != 1 || len(calls) != 2 {
-			t.Fatalf("same-handle relation hooks = %v, want one root and one child request", calls)
-		}
-	}},
-
 	{"relation_scope", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
+		// The recipe checks the scoped relation with the child read on the hooked connection; this checks the second child
+		// handle, the unhooked connection's child, which a step cannot observe.
 		seedHookItems(t, e, db)
 		if _, err := hookItem(e, db, map[string]any{"part": "b", "label": "a1"}).Create(); err != nil {
 			t.Fatal(err)
@@ -278,12 +231,10 @@ var requestHookCases = []struct {
 				t.Fatal(err)
 			}
 		}
-		read := func(handle *orm.DB, many bool, child *orm.Core, label string) []*keywordRow {
+		read := func(handle *orm.DB, many bool, child *orm.Core) []*keywordRow {
 			t.Helper()
 			parent := hookEntry(entry, handle, nil)
-			if label != "" {
-				parent.Where("", []orm.ChainKey{{Column: "label"}}, label)
-			}
+			parent.Where("", []orm.ChainKey{{Column: "label"}}, "a1")
 			child.Match("label", "label")
 			parent.Relation(many, child.Self())
 			rows, err := orm.Gets[*keywordRow](parent)
@@ -308,23 +259,18 @@ var requestHookCases = []struct {
 			}
 			return c.Slice()
 		}
-		if got := parts(children(read(db, true, hookItem(e, nil, nil), "a1")[0])); !slices.Equal(got, []string{"a/a1", "b/a1"}) {
-			t.Fatalf("without the scope the parent a1 matches %v, want the items a1 of both parts", got)
-		}
 		scoped := db.WithRequestHook(serviceScope("a"))
-		for _, child := range []func() *orm.Core{func() *orm.Core { return hookItem(e, scoped, nil) }, func() *orm.Core { return hookItem(e, nil, nil) }} {
-			many := read(scoped, true, child(), "")
-			if len(many) != 1 || many[0].vals["label"] != "a1" || !slices.Equal(parts(children(many[0])), []string{"a/a1"}) {
-				t.Fatalf("relations() under the scope of part a reads %d parents, want the parent a1 with the item a/a1", len(many))
-			}
-			one := read(scoped, false, child(), "")
-			if len(one) != 1 || one[0].vals["label"] != "a1" {
-				t.Fatalf("relation() under the scope of part a reads %d parents, want the parent a1", len(one))
-			}
-			attached, err := orm.RelatedAs[*keywordRow](one[0].m, "hook_item_model")
-			if err != nil || attached == nil || attached.vals["part"] != "a" {
-				t.Fatalf("relation() under the scope of part a attaches %v (%v), want the item of part a", attached, err)
-			}
+		many := read(scoped, true, hookItem(e, nil, nil))
+		if len(many) != 1 || many[0].vals["label"] != "a1" || !slices.Equal(parts(children(many[0])), []string{"a/a1"}) {
+			t.Fatalf("relations() under the scope of part a reads %d parents, want the parent a1 with the item a/a1", len(many))
+		}
+		one := read(scoped, false, hookItem(e, nil, nil))
+		if len(one) != 1 || one[0].vals["label"] != "a1" {
+			t.Fatalf("relation() under the scope of part a reads %d parents, want the parent a1", len(one))
+		}
+		attached, err := orm.RelatedAs[*keywordRow](one[0].m, "hook_item_model")
+		if err != nil || attached == nil || attached.vals["part"] != "a" {
+			t.Fatalf("relation() under the scope of part a attaches %v (%v), want the item of part a", attached, err)
 		}
 	}},
 
@@ -357,133 +303,6 @@ var requestHookCases = []struct {
 		}
 	}},
 
-	{"insert_assign", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
-		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int, params []any) error {
-			if r.Kind != "insert" {
-				return nil
-			}
-			p := addParam("h")
-			r.Set = append(r.Set, ir.Assign{Column: "part", P: &p})
-			for i := range r.Rows {
-				r.Rows[i] = append(r.Rows[i], addParam("h"))
-			}
-			return nil
-		})
-		if _, err := hookItem(e, hooked, map[string]any{"label": "single"}).Create(); err != nil {
-			t.Fatal(err)
-		}
-		bulk := []*keywordRow{}
-		for _, label := range []string{"bulk1", "bulk2"} {
-			bulk = append(bulk, as[*keywordRow](t, hookItem(e, nil, map[string]any{"label": label}).Self()))
-		}
-		if n, err := orm.Creates(hookItem(e, hooked, nil), bulk, 2); err != nil || n != 2 {
-			t.Fatalf("bulk create = %d, %v; want 2 rows", n, err)
-		}
-		rows := hookRows(t, e, db)
-		if len(rows) != 3 {
-			t.Fatalf("connection reads %d rows, want 3", len(rows))
-		}
-		for _, row := range rows {
-			if row["part"] != "h" {
-				t.Fatalf("row %v has no part h", row)
-			}
-		}
-	}},
-
-	{"loaded_row_writes", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
-		seedHookItems(t, e, db)
-		var kinds []string
-		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int, params []any) error {
-			kinds = append(kinds, r.Kind)
-			if r.Kind == "update" || r.Kind == "delete" {
-				andWhere(&r.Query, partIs(addParam, "none"))
-			}
-			return nil
-		})
-		read := hookItem(e, hooked, nil)
-		read.Where("", []orm.ChainKey{{Column: "label"}}, "a1")
-		row, err := read.Get()
-		if err != nil {
-			t.Fatal(err)
-		}
-		row.Orm_().Set("label", "changed")
-		if err := row.Orm_().Update(nil); err != nil {
-			t.Fatal(err)
-		}
-		if !slices.Contains(kinds, "update") {
-			t.Fatalf("hook saw %v, want an update", kinds)
-		}
-		for _, r := range hookRows(t, e, db) {
-			if r["label"] == "changed" {
-				t.Fatal("the update outside the hook predicate changed the row")
-			}
-		}
-		if err := row.Orm_().Delete(nil); err != nil {
-			t.Fatal(err)
-		}
-		if !slices.Contains(kinds, "delete") {
-			t.Fatalf("hook saw %v, want a delete", kinds)
-		}
-		if n := hookCount(t, e, db); n != 3 {
-			t.Fatalf("connection counts %d after the hooked delete, want 3", n)
-		}
-		// A connection-less model in a transaction started from a hooked handle passes through that hook.
-		kinds = nil
-		if err := hooked.Transaction(func() error {
-			_, err := orm.Gets[*keywordRow](hookItem(e, nil, nil))
-			return err
-		}); err != nil {
-			t.Fatal(err)
-		}
-		if !slices.Equal(kinds, []string{"all"}) {
-			t.Fatalf("hook saw %v in the transaction, want [all]", kinds)
-		}
-	}},
-
-	{"upsert_scope", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
-		// The hook sets scope_col on the insert, and the conflict key (scope_col, name) of the upsert is checked after the hook.
-		// The caller sets only name, and the update sets hits: the first call inserts and the second updates the row.
-		upsert := rowEntity("hook_upsert", fixtureSchema(t, "request_hook"), "id", "scope_col", "name", "hits")
-		upsertRow := func(conn *orm.DB, values map[string]any) *orm.Core {
-			c := orm.NewCore(upsert)
-			upsert.New(c)
-			if conn != nil {
-				c.Connect(conn)
-			}
-			for _, column := range []string{"name", "hits"} {
-				if v, ok := values[column]; ok {
-					c.Set(column, v)
-				}
-			}
-			return c
-		}
-		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int, params []any) error {
-			if r.Kind == "insert" {
-				p := addParam("a")
-				r.Set = append(r.Set, ir.Assign{Column: "scope_col", P: &p})
-			}
-			return nil
-		})
-		for call := 1; call <= 2; call++ {
-			c := upsertRow(hooked, map[string]any{"name": "k"})
-			c.Duplication(upsertRow(nil, map[string]any{"hits": int64(7)}).Self())
-			if _, err := c.Create(); err != nil {
-				t.Fatalf("upsert call %d = %v, want the row inserted or updated", call, err)
-			}
-		}
-		rows, err := orm.Gets[*keywordRow](upsertRow(db, nil))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if rows.Len() != 1 {
-			t.Fatalf("connection reads %d rows, want 1", rows.Len())
-		}
-		vals := rows.Slice()[0].vals
-		if vals["scope_col"] != "a" || vals["name"] != "k" || fmt.Sprint(vals["hits"]) != "7" {
-			t.Fatalf("stored row = %v, want scope_col a, name k and hits 7", vals)
-		}
-	}},
-
 	{"invalid_param", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
 		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int, params []any) error {
 			p := r.NParams + 5
@@ -508,42 +327,6 @@ var requestHookCases = []struct {
 		_, err = hookItem(e, db.WithRequestHook(func(*ir.Request, func(any) int, []any) error { return failing }), nil).GetCount()
 		if !errors.Is(err, failing) || statements != 0 {
 			t.Fatalf("count with a failing hook = %v after %d statements, want the hook error and none", err, statements)
-		}
-	}},
-
-	{"restore_key", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
-		ids := seedDeletedEntries(t, entry, db)
-		// The set names label, the hook's condition names part: together they cover the unique key.
-		row, err := hookEntry(entry, db.WithRequestHook(partScope("a")), map[string]any{"label": "x", "note": "n1"}).Restore()
-		if err != nil {
-			t.Fatal(err)
-		}
-		vals := as[*keywordRow](t, row).vals
-		if vals["id"] != ids["ax"] || vals["part"] != "a" || vals["label"] != "x" || vals["note"] != "n1" {
-			t.Fatalf("restore returned %v, want (a, x) with note n1", vals)
-		}
-		rows := entryRows(t, entry, db)
-		if len(rows) != 1 || rows[0]["id"] != ids["ax"] || rows[0]["note"] != "n1" {
-			t.Fatalf("connection reads %v, want only (a, x) with note n1", rows)
-		}
-	}},
-
-	{"restore_condition", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
-		ids := seedDeletedEntries(t, entry, db)
-		// The set names the primary key; the hook's condition part = b excludes the row of part a.
-		_, err := hookEntry(entry, db.WithRequestHook(partScope("b")), map[string]any{"id": ids["ay"], "note": "n2"}).Restore()
-		if orm.ErrorCode(err) != orm.CodeNoRows {
-			t.Fatalf("restore outside the hook condition = %v, want NO_ROWS", err)
-		}
-		if rows := entryRows(t, entry, db); len(rows) != 0 {
-			t.Fatalf("connection reads %v after the restore outside the hook condition, want no row", rows)
-		}
-		row, err := hookEntry(entry, db.WithRequestHook(partScope("a")), map[string]any{"id": ids["ay"], "note": "n2"}).Restore()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if vals := as[*keywordRow](t, row).vals; vals["id"] != ids["ay"] || vals["label"] != "y" || vals["note"] != "n2" {
-			t.Fatalf("restore returned %v, want (a, y) with note n2", vals)
 		}
 	}},
 

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 02bf02c105efa5a1b553a6b8b081c1b69c48e31bfaee12afe4cbf141c3ce00b2 -->
+<!-- source-sha256: 3639534ec8c443d5a414431d2ab5b1ca5cd6e66bfc93f8be3cdf07bac4472d22 -->
 # 변경 이력
 
 ## Unreleased
 
+- 명세는 데이터베이스 feature가 run database에서 recipe로 실행되는 방법을 정한다: FCV-8부터 FCV-14까지가 전환, `databases` need와 TEST_ENV, 세 데이터베이스(제외 없음), 실패 사례를 정한다 (FCV-8~FCV-14).
 - 두 branch의 check-recipes 작업이 하나의 통합으로 main에 들어간다. 한국어 checklist는 영어 checklist의 모든 row를 가지고, 변경 이력은 그 commit들의 항목을 가지며, Makefile은 `rust-compiler-fixtures-check/unit`에서 node를 `$(NODE)`로 실행하고, `config/rebuild.json`은 `scripts/generate/once.mts`와 `scripts/php/php-ext-build.mts`를 분류한다 (CR26).
 - check runner는 실패한 target의 `::error` 줄을 출력하지 않아, GitHub Actions에서 실패는 작업이 끝나야 보였다. 이제 실패한 target은 끝날 때 `::error` 줄을 출력한다 (CR1).
 - docs 빌드는 게시된 폴더에 직접 사이트를 렌더링해서, 중단된 빌드는 사이트의 절반을 남겼다. 이제 임시 폴더에 렌더링한 뒤 이름 바꾸기 한 번으로 게시한다 (CR2).
@@ -59,6 +60,7 @@
 - GroupRows PHP extension test가 이전 php-ext-build 형식의 build를 가짜로 만들어서 module을 찾지 못했고, test (static)의 makefile-pinned-node-recipes-check가 실패했다. 이제 가짜는 build를 한 번만 하도록 바꾼 리팩터링(CR4)이 php-ext-build에 준 형식을 따른다 (CR52).
 - dbspec PHP extension aggregate의 공유 module 테스트가 T334-3-15-1이 지운 child를 기대해서, test (static)의 makefile-pinned-node-recipes-check가 실패했다. 테스트는 요청 검증이 ir-validate-check로 옮겨진 것을 따른다 (CR53).
 - 물리 DDL 동작과 IR 검증 recipe의 test 파일 여섯 개가 어떤 feature에도 속하지 않아 features 검사가 여섯 CI job에서 실패했다. 물리 DDL test는 이제 schema_definition에, IR 검증 test는 planner에 속한다 (CR54).
+- 데이터베이스 feature는 자기 commit에서 recipe가 된다: request_hook의 사례 11개를 여섯 client에서 MySQL, PostgreSQL, SQLite로 `make request-hook-check/<client>`를 통해 실행하고 config/parity.json에 묶었다. 손으로 쓴 변환 대상 시험은 제거했고, step이 관찰할 수 없는 하위 검사 네 개는 native로 남겼다 (T334-3-4).
 
 ## 0.0.21
 

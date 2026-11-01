@@ -1590,6 +1590,100 @@
         "packages/rust/orm/src/codec.rs"
       ]
     },
+    "request-hook-check/rust": {
+      "scope": "owner",
+      "needs": [
+        "rust",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/request_hook/**",
+        "packages/rust/tests/tests/request_hook_mysql.rs",
+        "packages/rust/tests/tests/request_hook_postgres.rs",
+        "packages/rust/tests/tests/request_hook_sqlite.rs",
+        "packages/rust/tests/src/recipe.rs",
+        "packages/rust/tests/Cargo.toml",
+        "packages/rust/orm/src/db.rs",
+        "packages/rust/orm/src/model.rs",
+        "packages/rust/orm/src/core.rs"
+      ]
+    },
+    "request-hook-check/typescript": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/request_hook/**",
+        "packages/ts/tests/request_hook-mysql.test.mjs",
+        "packages/ts/tests/request_hook-postgres.test.mjs",
+        "packages/ts/tests/request_hook-sqlite.test.mjs",
+        "packages/ts/tests/recipe.mjs",
+        "packages/ts/src/database.ts",
+        "packages/ts/src/model.ts"
+      ]
+    },
+    "request-hook-check/python": {
+      "scope": "owner",
+      "needs": [
+        "python",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/request_hook/**",
+        "packages/python/tests/test_request_hook_mysql.py",
+        "packages/python/tests/test_request_hook_postgres.py",
+        "packages/python/tests/test_request_hook_sqlite.py",
+        "packages/python/tests/recipe.py",
+        "packages/python/src/polyspec/orm/database.py",
+        "packages/python/src/polyspec/orm/model.py"
+      ]
+    },
+    "request-hook-check/php": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/request_hook/**",
+        "packages/php/tests/RequestHookMysqlRecipeTest.php",
+        "packages/php/tests/RequestHookPostgresRecipeTest.php",
+        "packages/php/tests/RequestHookSqliteRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php",
+        "packages/php/tests/generated_classes.php",
+        "packages/php/tests/bootstrap.php",
+        "packages/php/src/Db.php",
+        "packages/php/src/Model.php"
+      ]
+    },
+    "request-hook-check/php-extension": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/request_hook/**",
+        "packages/php-ext/tests/RequestHookMysqlRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/RequestHookPostgresRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/bootstrap.php",
+        "packages/php/tests/RequestHookMysqlRecipeTest.php",
+        "packages/php/tests/RequestHookPostgresRecipeTest.php",
+        "packages/php/tests/RequestHookSqliteRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php",
+        "packages/php/tests/request_hook_cases.php",
+        "packages/php-ext/src/db.c",
+        "packages/php-ext/src/model_read.c"
+      ]
+    },
     "catalog-connection-check/go": {
       "scope": "owner",
       "needs": [
@@ -3541,16 +3635,6 @@
         "packages/php-ext/src/polyspec_orm.stub.php"
       ]
     },
-    "request-hook-rust-check": {
-      "scope": "owner",
-      "needs": [
-        "rust"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/rust/orm/tests/request_hook.rs"
-      ]
-    },
     "rust-causes-check": {
       "scope": "owner",
       "needs": [
@@ -3790,7 +3874,7 @@
         "packages/php/tests/restore_case.php",
         "packages/php/tests/case_database.php",
         "packages/php/tests/coverage_cases.php",
-        "contracts/fixtures/request_hook.dbs",
+        "contracts/fixtures/request_hook/request_hook.dbs",
         "contracts/fixtures/audit.dbs",
         "contracts/fixtures/audit_columns.dbs",
         "contracts/fixtures/restore.dbs"
@@ -4373,6 +4457,20 @@
         "packages/go/models.txt",
         "packages/php/models.txt",
         "packages/rust/tests/build.rs"
+      ]
+    },
+    "request-hook-check/go": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/request_hook/**",
+        "packages/go/orm/recipe_request_hook_test.go",
+        "packages/go/internal/recipe/recipe.go",
+        "packages/go/internal/recipe/database.go",
+        "packages/go/internal/recipe/requests.go"
       ]
     }
   },

@@ -24,6 +24,23 @@
   - `catalog.update_row {snapshot, set}`은 묶인 snapshot의 행을 `set`의 값으로 바꾼다(`update_row`). expect는 `{"rows": [[<value>, ...], ...]}` 또는 `{"error": ...}`이다.
   - `catalog.delete_row {snapshot}`은 묶인 snapshot의 행을 지운다(`delete_row`). expect는 지운 행 수인 `{"value": {"int": ...}}` 또는 `{"error": ...}`이다.
   - `sql.exec {sql, reason}`은 `.dbs`가 선언할 수 없는 DDL, 예를 들어 generated column(DBS-42)이나 dbspec 밖의 native type을 runtime의 native driver로 실행한다. `reason`은 fixture가 그것을 선언할 수 없는 이유를 적고, 그 step은 `expect`가 없다.
+  - `hook.install {hooks}`는 사례 연결(step에 `connection`이 없을 때 쓰는 기본 연결)에 request hook 하나를 설치한다. Go는 `db.WithRequestHook`이고 각 runtime은 그 공개 대응 호출이다(API unit `client-db-with-request-hook`). 나중의 `hook.install`은 hook을 바꾸고 기록을 비우며, 그 step은 `expect`가 없다. `hooks`는 아래 action의 목록이고, 연결의 모든 요청마다 순서대로 실행한다:
+    - `{"action": "scope", "kinds": K, "column": C, "value": V, "nested": B}`는 종류가 K에 있는 읽기 또는 restore 요청의 where에 `C = V`를 AND로 덧붙인다. V는 parameter로 바인딩한다. `nested: true`이면 그 요청의 모든 relation query에도 덧붙인다.
+    - `{"action": "assign", "kinds": K, "column": C, "value": V}`는 일치하는 insert(단일과 묶음 모두)의 Set에 `C = V`를 덧붙인다. V는 parameter로 바인딩한다.
+    - `{"action": "record", "kinds": K}`는 일치하는 요청마다 `{"kind": <kind>, "entity": <model>}`을 기록한다.
+    - `{"action": "fail", "kinds": K, "error": CODE}`는 일치하는 요청을 오류 코드 CODE로 실패시킨다.
+    K는 요청 종류의 목록(`one`, `all`, `count`, `group_count`, `sum`, `avg`, `paginate`, `insert`, `update`, `delete`, `restore`)이거나 이름 `reads`(앞의 일곱), `reads+restore`(같은 것과 `restore`), `every` 중 하나이다. hook은 요청의 바인딩된 parameter 값을 읽지 않는다. 그것이 필요한 사례는 native다(FCV-2).
+  - `hook.records {}`는 field가 없다. expect는 실행된 순서대로 `kind`와 `entity`를 가진 객체의 `{"value": [<record>, ...]}`, 또는 entity별 기록 수 `{"counts": {<entity>: <정수>}}`이다.
+  - `transaction {steps}`는 기본 연결의 한 transaction 안에서 steps를 순서대로 실행하므로 그 step들이 hook을 거친다. 실패한 step은 transaction을 되돌리고 op는 그 오류로 실패한다(API unit `client-db-transaction`). expect는 없거나 `{"error": <code>}`이다.
+  - `model.connect {as}`에 `pool_size`가 없으면 사례의 두 번째 연결을 연다. 이 연결에는 hook이 설치되지 않는다(사례의 unhooked 연결). step은 `"connection": <as>`로 이름을 지정한다. `connection`이 없는 step은 기본 연결을 쓴다.
+  - `model.create {model, values}`는 값(열 이름과 값의 객체)으로 모델의 행 하나를 만든다(API unit `client-model-terminal-write`). expect는 없거나 `{"error": <code>}`이다.
+  - `model.creates {model, rows, batch}`는 rows(열 값의 객체 목록)와 배치 크기 `batch`로 `Creates`를 호출한다(API unit `coverage-model-create-parts`). expect는 `{"value": {"int": <개수>}}` 또는 `{"error": <code>}`이다.
+  - `model.duplicate_create {model, values, duplicate}`는 values와 중복 키 갱신 `duplicate`(열 값의 객체)로 `Create`를 호출한다(`Duplication`의 upsert, API unit `model-get-by-count-upsert-collection-delete`). expect는 없거나 `{"error": <code>}`이다.
+  - `model.query {model, where, order, relation, columns, limit, offset, page}`는 `where`의 등치(객체, AND)로 `Gets`를 호출하고, `order`의 열로 오름차순 정렬하며, `columns`를 읽는다. `limit`과 `offset`은 `limit`이 0보다 크면 `offset`개 행을 건너뛰고 `limit`개만 읽는다(API unit `client-query-base`). `page: true`이면 이 값으로 `GetsPage`를 호출하고 `{"rows": [...], "total": <정수>}`를 반환한다. expect는 `order` 순서의 `{"rows": [[<value>, ...], ...]}`, 또는 page 형식, 또는 `{"error": <code>}`이다. `relation`이 있으면 `{"model": <자식 모델>, "match": [[<부모 열>, <자식 열>], ...], "many": <bool>, "columns": [...]}`이고, match 등치로 자식 행을 읽는다(API unit `client-query-relation`). 결과의 각 행은 부모의 `columns`에 이어 자식의 `columns`이다. `many`가 true이면 부모마다 자식 각각에 대해 한 행을, false이면 부모마다 첫 자식에 대해 한 행을 순서대로 만든다. 두 형식 모두 자식이 없는 부모는 행을 내지 않는다.
+  - `model.count {model, where}`는 `where`의 등치로 `GetCount`를 호출한다. expect는 `{"value": {"int": <개수>}}` 또는 `{"error": <code>}`이다(API unit `client-model-terminal-read`).
+  - `model.update {model, where, set}`는 열이 `where`와 같은 행(적재된 행, API unit `client-model-terminal-write`)을 읽고 각 행에 `set`의 열을 설정한 뒤 `Update`를 호출한다. expect는 없거나 `{"error": <code>}`이다.
+  - `model.delete {model, where}`는 열이 `where`와 같은 행을 읽고 각각에 `Delete`를 호출한다(API unit `client-model-terminal-write`). expect는 없거나 `{"error": <code>}`이다.
+  - `model.restore {model, values}`는 `values`로 만든 모델 집합에 `Restore`를 호출하여, 키가 지정하는 soft delete된 행을 복원한다(API unit `restore-soft-deleted-row`). expect는 없거나 `{"error": <code>}`이다.
 
   Rust의 mutation은 cancellation flag, phase publisher, commit permit도 받는다. Rust helper는 설정되지 않은 flag, 아무것도 남기지 않는 publisher, 허용하는 permit을 넘긴다. 각 runtime의 helper는 호출이 돌려준 값을 비교하기 전에 recipe wrapper로 바꾼다.
 

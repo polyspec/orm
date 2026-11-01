@@ -51,15 +51,6 @@ class CoverageRequestHookTest extends TestCase
         }
     }
 
-    // Requirements: INT-78, PRT-2.
-    public function testSameHandleChildHookOnce(): void
-    {
-        foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
-            selectCoverageItem($item);
-            self::runCase('same_handle_child_hook_once');
-        }
-    }
-
     // Requirements: INT-78.
     public function testRelationScope(): void
     {
@@ -69,57 +60,12 @@ class CoverageRequestHookTest extends TestCase
         }
     }
 
-    // Requirements: PRT-4, PRT-5, PRT-41.
-    public function testInsertAssign(): void
-    {
-        foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
-            selectCoverageItem($item);
-            self::runCase('insert_assign');
-        }
-    }
-
-    // Requirements: INT-78, PRT-4, PRT-6.
-    public function testUpsertScope(): void
-    {
-        foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
-            selectCoverageItem($item);
-            self::runCase('upsert_scope');
-        }
-    }
-
-    // Requirements: CFG-21, INT-36, INT-37, PLN-16.
-    public function testLoadedRowWrites(): void
-    {
-        foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
-            selectCoverageItem($item);
-            self::runCase('loaded_row_writes');
-        }
-    }
-
     // Requirements: PRT-65.
     public function testInvalidParam(): void
     {
         foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
             selectCoverageItem($item);
             self::runCase('invalid_param');
-        }
-    }
-
-    // Requirements: DIA-161.
-    public function testRestoreKey(): void
-    {
-        foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
-            selectCoverageItem($item);
-            self::runCase('restore_key');
-        }
-    }
-
-    // Requirements: DIA-161, INT-38.
-    public function testRestoreCondition(): void
-    {
-        foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
-            selectCoverageItem($item);
-            self::runCase('restore_condition');
         }
     }
 

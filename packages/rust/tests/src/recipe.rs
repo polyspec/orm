@@ -389,14 +389,18 @@ mod database {
     use std::collections::{BTreeMap, HashMap};
     use std::path::Path;
     use std::sync::atomic::AtomicBool;
-    use std::sync::Arc;
+    use std::sync::{Arc, Mutex};
 
     use polyspec_orm::db::{parse_dsn, ConnectOptions};
-    use polyspec_orm::{dbspec, Config, Db, Schema};
+    use polyspec_orm::args::Value as ArgValue;
+    use polyspec_orm::core::{Arg, ChainKey};
+    use polyspec_orm::ir::{Assign, Group, Item, Pred, Query, Request};
+    use polyspec_orm::model::{create, creates, delete, gets, gets_page, get_count, restore, update};
+    use polyspec_orm::{dbspec, Config, Core, Db, Entity, Error as OrmError, Model, Param, RequestParams, Schema, TransactionOnceError, Val as OrmVal};
     use polyspec_orm_build::catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableMetadata, TablePage, TableRef};
     use polyspec_orm_build::tool_db::{GridCell, GridQueryResult, ParamType, QueryLimits, Val, P};
     use polyspec_orm_case_database::CaseDatabase;
-    use serde_json::{json, Value};
+    use serde_json::{json, Map, Value};
 
     use super::hex_text;
 
@@ -441,6 +445,8 @@ mod database {
         database: &'a str,
         dsn: String,
         bound: HashMap<String, Bound>,
+        schema: &'static Schema,
+        requests: Requests,
     }
 
     /// One trial for each case of the recipe at `path`, relative to the repository root, on `database` ("mysql",
@@ -450,16 +456,16 @@ mod database {
         let root = polyspec_orm_testcase::manifest_dir().join("../../..");
         let recipe = Arc::new(read_json(&root.join(path)));
         let Some(fixture) = recipe["fixture"].as_str() else { panic!("recipe {path}: no fixture, so it has no database") };
-        let schema = Arc::new(fixture_schema(&root.join(fixture)));
+        let schema: &'static Schema = Box::leak(Box::new(fixture_schema(&root.join(fixture))));
         let Some(cases) = recipe["cases"].as_array() else { panic!("recipe {path} has no cases") };
         cases
             .iter()
             .map(|case| {
-                let (recipe, schema, case) = (recipe.clone(), schema.clone(), case.clone());
+                let (recipe, case) = (recipe.clone(), case.clone());
                 let (path, database) = (path.to_owned(), database.to_owned());
                 let id = case["id"].as_str().unwrap_or_default().to_owned();
                 polyspec_orm_testcase::async_trial(format!("{entry}::{id}"), polyspec_orm_testcase::DATABASE, move || async move {
-                    run_case(&path, &recipe, &case, &database, &schema).await;
+                    run_case(&path, &recipe, &case, &database, schema).await;
                 })
             })
             .collect()
@@ -505,7 +511,7 @@ mod database {
 
     /// Runs one case on a case database of its own and drops the database; a failure names the recipe, the case, the
     /// index of the step and the database.
-    async fn run_case(path: &str, recipe: &Value, case: &Value, database: &str, schema: &Schema) {
+    async fn run_case(path: &str, recipe: &Value, case: &Value, database: &str, schema: &'static Schema) {
         let id = case["id"].as_str().unwrap_or_default();
         let case_database = CaseDatabase::create(database).await;
         let result = case_body(recipe, case, database, schema, &case_database).await;
@@ -515,7 +521,7 @@ mod database {
         }
     }
 
-    async fn case_body(recipe: &Value, case: &Value, database: &str, schema: &Schema, case_database: &CaseDatabase) -> Result<(), String> {
+    async fn case_body(recipe: &Value, case: &Value, database: &str, schema: &'static Schema, case_database: &CaseDatabase) -> Result<(), String> {
         let dsn = case_database.dsn().to_owned();
         let db = Db::connect(&dsn, 1, Config::default()).await.map_err(|e| format!("database {database}: connect: {e}"))?;
         let installed = db.utils().schema().install(schema).await;
@@ -523,15 +529,22 @@ mod database {
         installed.map_err(|e| format!("database {database}: schema install: {e}"))?;
         polyspec_orm_testcase::step("schema installed");
         let mut catalog = CatalogConnection::connect(&dsn).await.map_err(|e| format!("database {database}: catalog connection: {e}"))?;
-        let result = run_steps(&mut catalog, recipe, case, database, dsn, case_database.name()).await;
+        let result = run_steps(&mut catalog, recipe, case, database, dsn, case_database.name(), schema).await;
         catalog.close().await;
         result
     }
 
-    async fn run_steps(catalog: &mut CatalogConnection, recipe: &Value, case: &Value, database: &str, dsn: String, name: &str) -> Result<(), String> {
+    async fn run_steps(catalog: &mut CatalogConnection, recipe: &Value, case: &Value, database: &str, dsn: String, name: &str, schema: &'static Schema) -> Result<(), String> {
         let namespace = catalog.current_namespace().await.map_err(|e| format!("database {database}: current namespace: {e}"))?;
         let bound = HashMap::from([("database".to_owned(), Bound::Json(json!({ "text": name })))]);
-        let mut context = Context { namespace, database, dsn, bound };
+        let mut context = Context { namespace, database, dsn, bound, schema, requests: Requests::default() };
+        let result = run_context(catalog, recipe, case, &mut context).await;
+        context.requests.close().await;
+        result
+    }
+
+    async fn run_context(catalog: &mut CatalogConnection, recipe: &Value, case: &Value, context: &mut Context<'_>) -> Result<(), String> {
+        let database = context.database;
         for rows in [&recipe["seed"]["rows"], &case["seed"]["rows"]] {
             for (table, values) in rows.as_object().into_iter().flatten() {
                 let seed = |e: String| format!("seed row of {table}, database {database}: {e}");
@@ -539,14 +552,14 @@ mod database {
                 let metadata = catalog.describe_table(&reference).await.map_err(seed)?;
                 for row in values.as_array().into_iter().flatten() {
                     let (cancellation, publish, permit) = mutation_hooks();
-                    catalog.insert_row(&metadata, &assignments(row, &context).map_err(seed)?, cancellation, publish, permit).await.map_err(seed)?;
+                    catalog.insert_row(&metadata, &assignments(row, context).map_err(seed)?, cancellation, publish, permit).await.map_err(seed)?;
                 }
             }
         }
         polyspec_orm_testcase::step("seed rows inserted");
         for (index, current) in case["steps"].as_array().into_iter().flatten().enumerate() {
             let op = current["op"].as_str().unwrap_or_default();
-            run_step(catalog, current, &mut context).await.map_err(|failure| format!("step {index} ({op}), database {database}: {failure}"))?;
+            run_step(catalog, current, context).await.map_err(|failure| format!("step {index} ({op}), database {database}: {failure}"))?;
             polyspec_orm_testcase::step(format_args!("step {index} {op}"));
         }
         Ok(())
@@ -594,7 +607,7 @@ mod database {
     }
 
     /// Maps the op of `step` to its call of the public API and returns the fields that its expect compares.
-    async fn call(catalog: &mut CatalogConnection, step: &Value, context: &Context<'_>) -> Result<Output, Failure> {
+    async fn call(catalog: &mut CatalogConnection, step: &Value, context: &mut Context<'_>) -> Result<Output, Failure> {
         let fault = Failure::Step;
         Ok(match step["op"].as_str().unwrap_or_default() {
             "catalog.current_namespace" => {
@@ -675,6 +688,7 @@ mod database {
                 native_exec(&context.dsn, sql).await.map_err(Failure::Call)?;
                 Output::fields(json!({}))
             }
+            op if REQUEST_OPS.contains(&op) => request_op(step, context).await?,
             other => return Err(fault(format!("OP_UNKNOWN {other}"))),
         })
     }
@@ -893,5 +907,567 @@ mod database {
         let result = sqlx::raw_sql(sqlx::AssertSqlSafe(sql.to_owned())).execute(&mut connection).await.map_err(|e| e.to_string());
         connection.close().await.map_err(|e| e.to_string())?;
         result.map(|_| ())
+    }
+
+    // ---- The request ops (docs/spec/feature-coverage.md FCV-4): the model ops, the request hook and the transaction. The Go
+    // reference is packages/go/internal/recipe/requests.go; each op calls the public API of polyspec_orm.
+
+    /// The ops that the request helper runs.
+    const REQUEST_OPS: [&str; 12] = [
+        "model.connect",
+        "hook.install",
+        "hook.records",
+        "transaction",
+        "model.create",
+        "model.creates",
+        "model.duplicate_create",
+        "model.query",
+        "model.count",
+        "model.update",
+        "model.delete",
+        "model.restore",
+    ];
+
+    /// The kinds of the read requests (the hook kinds reads and reads+restore).
+    const READS: [&str; 7] = ["one", "all", "count", "group_count", "sum", "avg", "paginate"];
+
+    /// A request that a record action of the installed hook saw: its kind and its table (hook.records).
+    type Record = (String, String);
+
+    /// The request state of a case: the unhooked connection, the default connection with the installed hook, the named
+    /// connections of model.connect, the entities of the tables and the records of the hook.
+    #[derive(Default)]
+    struct Requests {
+        base: Option<Db>,
+        hooked: Option<Db>,
+        named: HashMap<String, Db>,
+        entities: HashMap<String, &'static Entity>,
+        records: Arc<Mutex<Vec<Record>>>,
+        in_tx: bool,
+    }
+
+    impl Requests {
+        fn default_db(&self) -> Result<&Db, Failure> {
+            self.hooked.as_ref().or(self.base.as_ref()).ok_or_else(|| Failure::Step("the default connection is not open".into()))
+        }
+
+        fn connection(&self, on: &str) -> Result<&Db, Failure> {
+            if on.is_empty() {
+                return self.default_db();
+            }
+            self.named.get(on).ok_or_else(|| Failure::Step(format!("connection {on} is not connected by a model.connect step")))
+        }
+
+        async fn close(&self) {
+            for db in self.named.values() {
+                db.close().await;
+            }
+            if let Some(base) = &self.base {
+                base.close().await;
+            }
+        }
+    }
+
+    /// The row of a recipe model. One type serves every table: the entity of its core names the table.
+    #[derive(Clone)]
+    struct RecipeRow {
+        core: Core,
+        values: BTreeMap<String, OrmVal>,
+    }
+
+    impl Model for RecipeRow {
+        fn entity() -> &'static Entity {
+            unreachable!("a recipe row has one entity per table, which its core names")
+        }
+        fn core(&self) -> &Core {
+            &self.core
+        }
+        fn core_mut(&mut self) -> &mut Core {
+            &mut self.core
+        }
+        fn from_core(core: Core) -> Self {
+            RecipeRow { core, values: BTreeMap::new() }
+        }
+        fn into_core(self) -> Core {
+            self.core
+        }
+        fn assign(&mut self, name: &str, value: OrmVal) -> polyspec_orm::Result<bool> {
+            self.values.insert(name.to_owned(), value);
+            Ok(true)
+        }
+        fn value(&self, name: &str) -> Option<OrmVal> {
+            self.values.get(name).cloned()
+        }
+    }
+
+    /// A failure of the orm call, named by its code: the message starts with the code, as the error check reads it.
+    fn orm(error: OrmError) -> Failure {
+        Failure::Call(format!("{}: {error}", error.code()))
+    }
+
+    /// A string that lives as long as the process, for the names that polyspec_orm takes as 'static.
+    fn leaked(text: &str) -> &'static str {
+        Box::leak(text.to_owned().into_boxed_str())
+    }
+
+    /// The entity of table name, leaked once per process and cached per case.
+    fn entity_of(requests: &mut Requests, schema: &'static Schema, name: &str) -> &'static Entity {
+        if let Some(&entity) = requests.entities.get(name) {
+            return entity;
+        }
+        let entity: &'static Entity = Box::leak(Box::new(Entity {
+            name: leaked(name),
+            schema,
+            new: polyspec_orm::model::new_boxed::<RecipeRow>,
+            collect: polyspec_orm::model::collect_boxed::<RecipeRow>,
+        }));
+        requests.entities.insert(name.to_owned(), entity);
+        entity
+    }
+
+    /// The core of a model of table name, connected to the connection of on unless the model runs in the transaction.
+    fn model_core(requests: &mut Requests, schema: &'static Schema, name: &str, on: &str) -> Result<Core, Failure> {
+        let entity = entity_of(requests, schema, name);
+        let mut core = Core::new(entity);
+        if !requests.in_tx {
+            core.connect(requests.connection(on)?);
+        }
+        Ok(core)
+    }
+
+    /// A model of core with the values set.
+    fn row_with(core: Core, values: &[(String, Param)]) -> RecipeRow {
+        let mut row = RecipeRow::from_core(core);
+        for (column, value) in values {
+            row.core_mut().set(column, value.clone());
+        }
+        row
+    }
+
+    /// The equalities of a where object, ANDed.
+    fn equal_where(core: &mut Core, pairs: &[(String, Param)]) {
+        for (i, (column, value)) in pairs.iter().enumerate() {
+            let key = ChainKey { column: leaked(column), ..ChainKey::EMPTY };
+            core.chain(if i == 0 { "" } else { "and" }, &[key], vec![Arg::Value(ArgValue::One(value.clone()))]);
+        }
+    }
+
+    /// The recipe value of a column: the wrapper of its kind, as the step's values are written.
+    fn request_param(wrapper: &Value) -> Result<Param, Failure> {
+        let (kind, body) = super::kind(wrapper).map_err(Failure::Step)?;
+        Ok(match kind {
+            "text" => Param::Str(body.as_str().ok_or_else(|| Failure::Step(format!("{wrapper} has no text")))?.to_owned()),
+            "int" => Param::I64(
+                body.as_str().and_then(|digits| digits.parse().ok()).ok_or_else(|| Failure::Step(format!("{wrapper} is no integer")))?,
+            ),
+            "bool" => Param::Bool(body.as_bool().ok_or_else(|| Failure::Step(format!("{wrapper} is not a bool")))?),
+            "null" => Param::Null,
+            other => return Err(Failure::Step(format!("a request op has no parameter of the wrapper {other}"))),
+        })
+    }
+
+    /// The column values of an object, sorted by column name.
+    fn pairs(raw: &Value) -> Result<Vec<(String, Param)>, Failure> {
+        let Some(map) = raw.as_object() else { return Ok(Vec::new()) };
+        let mut out = map
+            .iter()
+            .map(|(column, wrapper)| -> Result<(String, Param), Failure> { Ok((column.clone(), request_param(wrapper)?)) })
+            .collect::<Result<Vec<_>, Failure>>()?;
+        out.sort_by(|a, b| a.0.cmp(&b.0));
+        Ok(out)
+    }
+
+    /// The names of a JSON array of strings.
+    fn names(raw: &Value) -> Vec<String> {
+        raw.as_array().into_iter().flatten().filter_map(|v| v.as_str().map(str::to_owned)).collect()
+    }
+
+    /// The recipe wrapper of a column value that a read returns.
+    fn cell_of(row: &RecipeRow, column: &str) -> Result<Value, Failure> {
+        let value = row.value(column).ok_or_else(|| Failure::Step(format!("the row has no column {column}")))?;
+        Ok(match value {
+            OrmVal::Str(text) => json!({ "text": text }),
+            OrmVal::I64(n) => json!({ "int": n.to_string() }),
+            OrmVal::Bool(b) => json!({ "bool": b }),
+            OrmVal::Null => json!({ "null": true }),
+            _ => return Err(Failure::Step(format!("the value of {column} has no recipe wrapper in a request op"))),
+        })
+    }
+
+    /// The cells of the columns of a row.
+    fn project(row: &RecipeRow, columns: &[String]) -> Result<Vec<Value>, Failure> {
+        columns.iter().map(|column| cell_of(row, column)).collect()
+    }
+
+    /// A relation of a model.query (FCV-4): the child model, its match pairs, whether it is many, and its columns.
+    struct RelationSpec {
+        model: String,
+        matches: Vec<(String, String)>,
+        many: bool,
+        columns: Vec<String>,
+    }
+
+    fn relation_spec(raw: &Value) -> Result<RelationSpec, Failure> {
+        let model = raw["model"].as_str().ok_or_else(|| Failure::Step("relation model is not a name".into()))?.to_owned();
+        let mut matches = Vec::new();
+        for pair in raw["match"].as_array().into_iter().flatten() {
+            match (pair[0].as_str(), pair[1].as_str()) {
+                (Some(left), Some(right)) => matches.push((left.to_owned(), right.to_owned())),
+                _ => return Err(Failure::Step(format!("relation match {pair} is not a pair of names"))),
+            }
+        }
+        Ok(RelationSpec { model, matches, many: raw["many"].as_bool().unwrap_or(false), columns: names(&raw["columns"]) })
+    }
+
+    /// The child rows that a relation read attached to a parent: each child of a many relation, or the one child.
+    fn related<'a>(parent: &'a RecipeRow, relation: &RelationSpec) -> Result<Vec<&'a RecipeRow>, Failure> {
+        if relation.many {
+            let children = parent.core().related_many::<RecipeRow>(&format!("{}_models", relation.model)).map_err(orm)?;
+            let children = children.ok_or_else(|| Failure::Step(format!("the children of {} were not loaded", relation.model)))?;
+            Ok(children.models().collect())
+        } else {
+            let child = parent.core().related_one::<RecipeRow>(&format!("{}_model", relation.model)).map_err(orm)?;
+            Ok(child.into_iter().collect())
+        }
+    }
+
+    /// The rows of a where object that a write or a read selects, loaded with their state.
+    async fn loaded(context: &mut Context<'_>, step: &Value) -> Result<Vec<RecipeRow>, Failure> {
+        let name = model_name(step)?;
+        let where_pairs = pairs(&step["where"])?;
+        let core = model_core(&mut context.requests, context.schema, name, step_connection(step))?;
+        let mut row = RecipeRow::from_core(core);
+        equal_where(row.core_mut(), &where_pairs);
+        let found = gets(&row).await.map_err(orm)?;
+        Ok(found.models().cloned().collect())
+    }
+
+    fn model_name(step: &Value) -> Result<&str, Failure> {
+        step["model"].as_str().ok_or_else(|| Failure::Step("model is not a name".into()))
+    }
+
+    fn step_connection(step: &Value) -> &str {
+        step["connection"].as_str().unwrap_or_default()
+    }
+
+    /// The default connection, with a base connection opened on the first request op of the case.
+    async fn ensure_base(context: &mut Context<'_>) -> Result<(), Failure> {
+        if context.requests.base.is_none() {
+            let db = Db::connect_schema(&context.dsn, context.schema, 2, Config::default()).await.map_err(orm)?;
+            context.requests.base = Some(db);
+        }
+        Ok(())
+    }
+
+    /// One hook action of hook.install, with its values converted once.
+    #[derive(Clone)]
+    struct HookAction {
+        action: String,
+        kinds: Value,
+        column: String,
+        value: Option<Param>,
+        nested: bool,
+        code: String,
+    }
+
+    fn hook_actions(raw: &Value) -> Result<Vec<HookAction>, Failure> {
+        let mut out = Vec::new();
+        for hook in raw.as_array().into_iter().flatten() {
+            let action = hook["action"].as_str().unwrap_or_default().to_owned();
+            let value = match &hook["value"] {
+                Value::Null => None,
+                wrapper => Some(request_param(wrapper)?),
+            };
+            if matches!(action.as_str(), "scope" | "assign") && (value.is_none() || hook["column"].as_str().is_none()) {
+                return Err(Failure::Step(format!("hook action {action} needs a column and a value")));
+            }
+            out.push(HookAction {
+                action,
+                kinds: hook["kinds"].clone(),
+                column: hook["column"].as_str().unwrap_or_default().to_owned(),
+                value,
+                nested: hook["nested"].as_bool().unwrap_or(false),
+                code: hook["error"].as_str().unwrap_or_default().to_owned(),
+            });
+        }
+        Ok(out)
+    }
+
+    /// Whether a hook action's kinds (a name, a list of kinds, or one of the names reads, reads+restore and every) hold kind.
+    fn kind_matches(kinds: &Value, kind: &str) -> bool {
+        match kinds {
+            Value::String(name) => match name.as_str() {
+                "every" => true,
+                "reads" => READS.contains(&kind),
+                "reads+restore" => READS.contains(&kind) || kind == "restore",
+                _ => false,
+            },
+            Value::Array(items) => items.iter().any(|item| item.as_str() == Some(kind)),
+            _ => false,
+        }
+    }
+
+    /// AND-s a predicate into the root where of a query.
+    fn and_where(query: &mut Query, mut pred: Pred) {
+        match query.where_.take() {
+            None => query.where_ = Some(Group { items: vec![Item::Pred { pred: Box::new(pred) }], ..Default::default() }),
+            Some(existing) => {
+                pred.conn = "and".into();
+                query.where_ = Some(Group { items: vec![Item::Group { group: existing }, Item::Pred { pred: Box::new(pred) }], ..Default::default() });
+            }
+        }
+    }
+
+    fn equal_pred(column: &str, p: usize) -> Pred {
+        Pred { column: column.into(), op: "eq".into(), p: Some(p), ..Default::default() }
+    }
+
+    /// Scopes the where of a query and of each of its relation queries, nested ones included.
+    fn scope_tree(query: &mut Query, column: &str, value: &Param, params: &mut RequestParams) {
+        let p = params.add(value.clone());
+        and_where(query, equal_pred(column, p));
+        for relation in &mut query.relations {
+            scope_tree(&mut relation.query, column, value, params);
+        }
+    }
+
+    /// Runs the actions of the installed hook on one request, in order.
+    fn run_hook(actions: &[HookAction], records: &Mutex<Vec<Record>>, request: &mut Request, params: &mut RequestParams) -> polyspec_orm::Result<()> {
+        for action in actions {
+            if !kind_matches(&action.kinds, &request.kind) {
+                continue;
+            }
+            match action.action.as_str() {
+                "scope" => {
+                    let value = action.value.clone().unwrap_or(Param::Null);
+                    if action.nested {
+                        scope_tree(&mut request.query, &action.column, &value, params);
+                    } else {
+                        let p = params.add(value);
+                        and_where(&mut request.query, equal_pred(&action.column, p));
+                    }
+                }
+                "assign" => {
+                    let value = action.value.clone().unwrap_or(Param::Null);
+                    let p = params.add(value.clone());
+                    request.set.push(Assign { column: action.column.clone(), p: Some(p), ..Default::default() });
+                    for row in &mut request.rows {
+                        let q = params.add(value.clone());
+                        row.push(q);
+                    }
+                }
+                "record" => records.lock().expect("the records").push((request.kind.clone(), request.query.entity.clone())),
+                "fail" => return Err(OrmError::Engine { code: action.code.clone(), msg: format!("request hook refused {}", request.kind) }),
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+
+    /// Runs a request op of FCV-4 and returns its outcome, or its failure.
+    async fn request_op(step: &Value, context: &mut Context<'_>) -> Result<Output, Failure> {
+        ensure_base(context).await?;
+        if step["op"].as_str() == Some("transaction") {
+            return transaction(step, context).await;
+        }
+        plain_op(step, context).await
+    }
+
+    /// The steps of a transaction run on the default connection; a model in it has no connection of its own, so it uses the
+    /// transaction. A failed step keeps its own failure.
+    async fn transaction(step: &Value, context: &mut Context<'_>) -> Result<Output, Failure> {
+        let steps: Vec<Value> = step["steps"].as_array().cloned().unwrap_or_default();
+        let db = context.requests.default_db()?.clone();
+        let mut failure: Option<Failure> = None;
+        let slot = &mut failure;
+        let inner: &mut Context<'_> = &mut *context;
+        let result = db
+            .transaction_once(move || async move {
+                inner.requests.in_tx = true;
+                for sub in &steps {
+                    if let Err(error) = plain_op(sub, inner).await {
+                        *slot = Some(error);
+                        return Err(OrmError::Engine { code: "STEP".into(), msg: "a transaction step failed".into() });
+                    }
+                }
+                Ok(())
+            })
+            .await;
+        context.requests.in_tx = false;
+        match (result, failure) {
+            (Ok(()), _) => Ok(Output::fields(json!({}))),
+            (Err(_), Some(failure)) => Err(failure),
+            (Err(TransactionOnceError::Orm(error)), None) => Err(orm(error)),
+            (Err(other), None) => Err(Failure::Call(other.to_string())),
+        }
+    }
+
+    /// The model ops, the connect, the hook and the records (not the transaction, which runs them).
+    async fn plain_op(step: &Value, context: &mut Context<'_>) -> Result<Output, Failure> {
+        let schema = context.schema;
+        let op = step["op"].as_str().unwrap_or_default();
+        match op {
+            "model.connect" => {
+                let alias = step["as"].as_str().filter(|alias| !alias.is_empty());
+                let alias = alias.ok_or_else(|| Failure::Step("model.connect of a second connection needs as".into()))?;
+                if step.get("pool_size").is_some() {
+                    return Err(Failure::Step("model.connect of a second connection takes no pool_size".into()));
+                }
+                let db = Db::connect_schema(&context.dsn, schema, 2, Config::default()).await.map_err(orm)?;
+                context.requests.named.insert(alias.to_owned(), db);
+                Ok(Output::fields(json!({})))
+            }
+            "hook.install" => {
+                let actions = hook_actions(&step["hooks"])?;
+                let base = context.requests.base.as_ref().ok_or_else(|| Failure::Step("the base connection is not open".into()))?;
+                let records = context.requests.records.clone();
+                records.lock().expect("the records").clear();
+                context.requests.hooked = Some(base.with_request_hook(move |request: &mut Request, params: &mut RequestParams| {
+                    run_hook(&actions, &records, request, params)
+                }));
+                Ok(Output::fields(json!({})))
+            }
+            "hook.records" => {
+                let records = context.requests.records.lock().expect("the records").clone();
+                let mut counts = Map::new();
+                let mut list = Vec::new();
+                for (kind, entity) in &records {
+                    list.push(json!({ "object": [["kind", { "text": kind }], ["entity", { "text": entity }]] }));
+                    let n = counts.get(entity).and_then(Value::as_u64).unwrap_or(0) + 1;
+                    counts.insert(entity.clone(), json!(n));
+                }
+                Ok(Output::fields(json!({ "value": { "array": list }, "counts": counts })))
+            }
+            "model.create" => {
+                let values = pairs(&step["values"])?;
+                let core = model_core(&mut context.requests, schema, model_name(step)?, step_connection(step))?;
+                let mut row = row_with(core, &values);
+                create(&mut row).await.map_err(orm)?;
+                Ok(Output::fields(json!({})))
+            }
+            "model.creates" => {
+                let name = model_name(step)?;
+                let on = step_connection(step);
+                let mut all_core = Core::new(entity_of(&mut context.requests, schema, name));
+                all_core.connect(context.requests.connection(on)?);
+                let all = RecipeRow::from_core(all_core);
+                let mut rows = Vec::new();
+                for raw in step["rows"].as_array().into_iter().flatten() {
+                    let values = pairs(raw)?;
+                    let core = model_core(&mut context.requests, schema, name, on)?;
+                    rows.push(row_with(core, &values));
+                }
+                let batch = usize::try_from(step["batch"].as_u64().unwrap_or(0)).map_err(|e| Failure::Step(e.to_string()))?;
+                let n = creates(&all, rows, batch).await.map_err(orm)?;
+                Ok(Output::fields(json!({ "value": { "int": n.to_string() } })))
+            }
+            "model.duplicate_create" => {
+                let name = model_name(step)?;
+                let values = pairs(&step["values"])?;
+                let duplicate = pairs(&step["duplicate"])?;
+                let core = model_core(&mut context.requests, schema, name, step_connection(step))?;
+                let other = model_core(&mut context.requests, schema, name, "")?;
+                let mut row = row_with(core, &values);
+                row.core_mut().duplication(row_with(other, &duplicate).into_core());
+                create(&mut row).await.map_err(orm)?;
+                Ok(Output::fields(json!({})))
+            }
+            "model.query" => query(step, context).await,
+            "model.count" => {
+                let where_pairs = pairs(&step["where"])?;
+                let core = model_core(&mut context.requests, schema, model_name(step)?, step_connection(step))?;
+                let mut row = RecipeRow::from_core(core);
+                equal_where(row.core_mut(), &where_pairs);
+                let n = get_count(row.core()).await.map_err(orm)?;
+                Ok(Output::fields(json!({ "value": { "int": n.to_string() } })))
+            }
+            "model.update" => {
+                let set = pairs(&step["set"])?;
+                for mut row in loaded(context, step).await? {
+                    for (column, value) in &set {
+                        row.core_mut().set(column, value.clone());
+                    }
+                    update(&mut row, false).await.map_err(orm)?;
+                }
+                Ok(Output::fields(json!({})))
+            }
+            "model.delete" => {
+                for row in loaded(context, step).await? {
+                    delete(&row, false).await.map_err(orm)?;
+                }
+                Ok(Output::fields(json!({})))
+            }
+            "model.restore" => {
+                let values = pairs(&step["values"])?;
+                let core = model_core(&mut context.requests, schema, model_name(step)?, step_connection(step))?;
+                let row = row_with(core, &values);
+                restore(&row).await.map_err(orm)?;
+                Ok(Output::fields(json!({})))
+            }
+            other => Err(Failure::Step(format!("OP_UNKNOWN {other}"))),
+        }
+    }
+
+    /// A model.query: the rows of the model, and with a relation the parent and child columns of each pair.
+    async fn query(step: &Value, context: &mut Context<'_>) -> Result<Output, Failure> {
+        let schema = context.schema;
+        let on = step_connection(step);
+        let where_pairs = pairs(&step["where"])?;
+        let mut core = model_core(&mut context.requests, schema, model_name(step)?, on)?;
+        equal_where(&mut core, &where_pairs);
+        for column in names(&step["order"]) {
+            core.order_by(&column, false, None);
+        }
+        let relation = match &step["relation"] {
+            Value::Null => None,
+            raw => Some(relation_spec(raw)?),
+        };
+        let mut root = RecipeRow::from_core(core);
+        if let Some(spec) = &relation {
+            let mut child = model_core(&mut context.requests, schema, &spec.model, on)?;
+            for (left, right) in &spec.matches {
+                child.add_match(leaked(left), leaked(right));
+            }
+            root.core_mut().relation(spec.many, child);
+        }
+        let limit = usize::try_from(step["limit"].as_u64().unwrap_or(0)).map_err(|e| Failure::Step(e.to_string()))?;
+        let offset = usize::try_from(step["offset"].as_u64().unwrap_or(0)).map_err(|e| Failure::Step(e.to_string()))?;
+        let paged = step["page"].as_bool() == Some(true);
+        let (parents, total) = if paged {
+            if limit == 0 {
+                return Err(Failure::Step("a paged model.query needs limit above 0".into()));
+            }
+            let page = u32::try_from(offset / limit + 1).map_err(|e| Failure::Step(e.to_string()))?;
+            let per_page = u32::try_from(limit).map_err(|e| Failure::Step(e.to_string()))?;
+            let found = gets_page(&root, page, per_page).await.map_err(orm)?;
+            (found.items.models().cloned().collect::<Vec<_>>(), Some(found.total_count))
+        } else {
+            let found = gets(&root).await.map_err(orm)?;
+            let mut parents: Vec<RecipeRow> = found.models().cloned().collect();
+            if limit > 0 {
+                parents = parents.into_iter().skip(offset).take(limit).collect();
+            }
+            (parents, None)
+        };
+        let columns = names(&step["columns"]);
+        let mut rows = Vec::new();
+        for parent in &parents {
+            let own = project(parent, &columns)?;
+            match &relation {
+                None => rows.push(Value::Array(own)),
+                Some(spec) => {
+                    for child in related(parent, spec)? {
+                        let mut row = own.clone();
+                        row.extend(project(child, &spec.columns)?);
+                        rows.push(Value::Array(row));
+                    }
+                }
+            }
+        }
+        let mut fields = json!({ "rows": rows });
+        if let Some(total) = total {
+            fields["total"] = json!(total);
+        }
+        Ok(Output::fields(fields))
     }
 }

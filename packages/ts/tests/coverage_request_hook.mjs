@@ -6,26 +6,21 @@ import { withCaseDatabase } from './case-database.mjs';
 import { runCases } from './coverage_case.mjs';
 import { cases, runOn } from './request_hook_run.mjs';
 
-// Requirements, by case of request_hook_run.mjs (each case runs in every database item of this file):
+// Requirements, by case of request_hook_run.mjs (each case runs in every database item of this file; the cases that the
+// recipe request_hook does not run, FCV-4):
 // without_hook: Requirements: INT-78.
 // read_filter: Requirements: INT-78, PRT-2.
-// same_handle_child_hook_once: Requirements: INT-78, PRT-2.
 // relation_scope: Requirements: INT-78.
-// insert_assign: Requirements: PRT-4, PRT-5, PRT-41.
-// upsert_scope: Requirements: INT-78, PRT-4, PRT-6.
-// loaded_row_writes: Requirements: CFG-21, INT-36, INT-37, PLN-16.
 // invalid_param: Requirements: PRT-65.
-// restore_key: Requirements: DIA-161.
-// restore_condition: Requirements: DIA-161, INT-38.
 // restore_no_key: Requirements: DIA-161.
 // restore_rewritten_key: Requirements: DIA-161.
 // restore_hook_set_key: Requirements: DIA-161.
 // restore_rewritten_key_set_scope: Requirements: DIA-161.
+// reads_params: Requirements: INT-78.
 const coverage = {};
 for (const name of [
-  'without_hook', 'read_filter', 'same_handle_child_hook_once', 'relation_scope', 'insert_assign', 'upsert_scope', 'loaded_row_writes',
-  'invalid_param', 'restore_key', 'restore_condition', 'restore_no_key', 'restore_rewritten_key', 'restore_hook_set_key',
-  'restore_rewritten_key_set_scope',
+  'without_hook', 'read_filter', 'relation_scope', 'invalid_param', 'restore_no_key', 'restore_rewritten_key', 'restore_hook_set_key',
+  'restore_rewritten_key_set_scope', 'reads_params',
 ]) {
   const run = cases[name];
   coverage[name] = async ({ driver }) => {

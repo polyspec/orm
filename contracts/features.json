@@ -12599,24 +12599,21 @@
         }
       ],
       "parity": [
-        "coverage-request-hook-insert-assign",
         "coverage-request-hook-invalid-param",
-        "coverage-request-hook-loaded-row-writes",
         "coverage-request-hook-read-filter",
         "request-hook-reads-params",
-        "coverage-request-hook-same-handle-child-hook-once",
         "coverage-request-hook-relation-scope",
-        "coverage-request-hook-restore-condition",
         "coverage-request-hook-restore-hook-set-key",
-        "coverage-request-hook-restore-key",
         "coverage-request-hook-restore-no-key",
         "coverage-request-hook-restore-rewritten-key",
         "coverage-request-hook-restore-rewritten-key-set-scope",
-        "coverage-request-hook-upsert-scope",
-        "coverage-request-hook-without-hook"
+        "coverage-request-hook-without-hook",
+        "request_hook-mysql",
+        "request_hook-postgres",
+        "request_hook-sqlite"
       ],
       "fixtures": [
-        "contracts/fixtures/request_hook.dbs",
+        "contracts/fixtures/request_hook/request_hook.dbs",
         "packages/ts/tests/request_hook_run.mjs",
         "packages/php/tests/request_hook_cases.php",
         "packages/php/tests/case_database.php",
@@ -12649,7 +12646,7 @@
           "shard": "other",
           "inputs": [
             "packages/go/orm/request_hook_test.go",
-            "contracts/fixtures/request_hook.dbs"
+            "contracts/fixtures/request_hook/request_hook.dbs"
           ]
         },
         {
@@ -12659,7 +12656,7 @@
           "inputs": [
             "packages/ts/tests/request_hook.mjs",
             "packages/ts/tests/request_hook_run.mjs",
-            "contracts/fixtures/request_hook.dbs"
+            "contracts/fixtures/request_hook/request_hook.dbs"
           ]
         },
         {
@@ -12669,7 +12666,7 @@
           "inputs": [
             "packages/php/tests/RequestHookTest.php",
             "packages/php/tests/request_hook_cases.php",
-            "contracts/fixtures/request_hook.dbs"
+            "contracts/fixtures/request_hook/request_hook.dbs"
           ]
         },
         {
@@ -12678,7 +12675,7 @@
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/tests/request_hook.rs",
-            "contracts/fixtures/request_hook.dbs"
+            "contracts/fixtures/request_hook/request_hook.dbs"
           ]
         },
         {
@@ -12687,7 +12684,7 @@
           "shard": "other",
           "inputs": [
             "packages/python/tests/test_request_hook.py",
-            "contracts/fixtures/request_hook.dbs"
+            "contracts/fixtures/request_hook/request_hook.dbs"
           ]
         }
       ],
@@ -12717,7 +12714,7 @@
             ],
             "inputs": [
               "packages/go/orm/request_hook_test.go",
-              "contracts/fixtures/request_hook.dbs"
+              "contracts/fixtures/request_hook/request_hook.dbs"
             ],
             "commands": {
               "mysql": [
@@ -12847,7 +12844,7 @@
             "inputs": [
               "packages/php/tests/request_hook_cases.php",
               "packages/php/tests/case_database.php",
-              "contracts/fixtures/request_hook.dbs"
+              "contracts/fixtures/request_hook/request_hook.dbs"
             ],
             "commands": {
               "mysql": [
@@ -12975,7 +12972,7 @@
               "packages/rust/orm/tests/request_hook.rs"
             ],
             "inputs": [
-              "contracts/fixtures/request_hook.dbs"
+              "contracts/fixtures/request_hook/request_hook.dbs"
             ],
             "commands": {
               "mysql": [
@@ -13105,7 +13102,7 @@
             "inputs": [
               "packages/ts/tests/request_hook_run.mjs",
               "packages/ts/tests/case-database.mjs",
-              "contracts/fixtures/request_hook.dbs"
+              "contracts/fixtures/request_hook/request_hook.dbs"
             ],
             "commands": {
               "mysql": [
@@ -13187,7 +13184,7 @@
             "inputs": [
               "packages/python/tests/test_request_hook.py",
               "packages/python/tests/case_database.py",
-              "contracts/fixtures/request_hook.dbs"
+              "contracts/fixtures/request_hook/request_hook.dbs"
             ],
             "commands": {
               "mysql": [
@@ -13269,7 +13266,7 @@
             "inputs": [
               "packages/php/tests/request_hook_cases.php",
               "packages/php/tests/case_database.php",
-              "contracts/fixtures/request_hook.dbs",
+              "contracts/fixtures/request_hook/request_hook.dbs",
               "packages/php/tests/CoverageRequestHookTest.php"
             ],
             "commands": {

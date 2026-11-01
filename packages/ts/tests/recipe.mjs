@@ -10,7 +10,7 @@ import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { Db, OrmError, StyledValue, blindIndex, connectCatalog, dbspecManifest, decode, encode, hostDecode, hostEncode, parseDbspec, readDbspecFile, registerModel } from '../dist/index.js';
+import { CORE, Db, Model, OrmError, StyledValue, blindIndex, connectCatalog, dbspecManifest, decode, encode, hostDecode, hostEncode, parseDbspec, readDbspecFile, registerModel } from '../dist/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { withCaseDatabase } from './case-database.mjs';
@@ -255,10 +255,12 @@ async function runCase({ name, recipe, recipeCase, database, schema, caseDatabas
   try { await db.utils().schema().install(schema); } finally { await db.close(); }
   step('schema installed');
   const catalog = await connectCatalog(caseDatabase.dsn);
+  const request = new RequestState(caseDatabase.dsn, schema);
   try {
+    await request.start();
     const namespace = await catalog.currentNamespace();
     const bound = new Map([['database', { text: caseDatabase.name }]]);
-    const context = { catalog, namespace, database, dsn: caseDatabase.dsn, bound };
+    const context = { catalog, namespace, database, dsn: caseDatabase.dsn, bound, request };
     for (const rows of [recipe.seed?.rows, recipeCase.seed?.rows]) {
       for (const [table, values] of Object.entries(rows ?? {})) {
         const metadata = await catalog.describeTable({ namespace, name: table });
@@ -276,6 +278,7 @@ async function runCase({ name, recipe, recipeCase, database, schema, caseDatabas
       step(`step ${index} ${current.op}`);
     }
   } finally {
+    await request.close();
     await catalog.close();
   }
 }
@@ -325,7 +328,272 @@ const OPS = {
     await nativeQuery(context.database, context.dsn, [sql(s.sql, context)]);
     return {};
   },
+  // The request ops of FCV-4 (T334-3-4): each calls the public API of the model and the request hook of the same name.
+  async 'model.connect'(s, context) {
+    if (s.as === undefined || (s.pool_size ?? 0) !== 0) throw new Error('model.connect of a second connection needs as and no pool_size');
+    context.request.named.set(s.as, await Db.connectSchema(context.dsn, context.request.schema));
+    return {};
+  },
+  'hook.install'(s, context) {
+    installHook(context.request, s.hooks);
+    return {};
+  },
+  'hook.records'(_, { request }) {
+    const counts = {};
+    for (const record of request.records) counts[record.entity] = (counts[record.entity] ?? 0) + 1;
+    const list = request.records.map(record => ({ object: [['kind', { text: record.kind }], ['entity', { text: record.entity }]] }));
+    return { value: { array: list }, counts };
+  },
+  async transaction(s, context) {
+    const { request } = context;
+    await request.conn.transaction(async () => {
+      request.inTx = true;
+      try {
+        for (const sub of s.steps) await runStep(sub, context);
+      } finally {
+        request.inTx = false;
+      }
+    });
+    return {};
+  },
+  async 'model.create'(s, context) {
+    await setValues(newModel(context.request, s.model, s.connection), s.values, context).create();
+    return {};
+  },
+  async 'model.creates'(s, context) {
+    const { request } = context;
+    const all = newModel(request, s.model, s.connection);
+    const models = s.rows.map(row => setValues(newModel(request, s.model, s.connection), row, context));
+    return { value: { int: String(await all.creates(models, s.batch)) } };
+  },
+  async 'model.duplicate_create'(s, context) {
+    const { request } = context;
+    const row = setValues(newModel(request, s.model, s.connection), s.values, context);
+    row.duplication(setValues(newModel(request, s.model, ''), s.duplicate, context));
+    await row.create();
+    return {};
+  },
+  async 'model.query'(s, context) {
+    const { request } = context;
+    const parent = whereOf(newModel(request, s.model, s.connection), s.where, context);
+    for (const column of s.order ?? []) parent[CORE].orderBy(column, false, []);
+    const rel = s.relation;
+    if (rel !== undefined) {
+      const child = newModel(request, rel.model, s.connection);
+      for (const [left, right] of rel.match) child[`match${pascal(left)}With${pascal(right)}`]();
+      if (rel.many) parent.relations(child);
+      else parent.relation(child);
+    }
+    const offset = s.offset ?? 0;
+    const paged = s.page === true;
+    let parents;
+    let total;
+    if (paged) {
+      if (!(s.limit > 0)) throw new Error('a paged model.query needs limit above 0');
+      const page = await parent.getsPage(Math.floor(offset / s.limit) + 1, s.limit);
+      parents = page.items.values();
+      total = page.totalCount;
+    } else {
+      parents = (await parent.gets()).values();
+      if (s.limit > 0) parents = parents.slice(Math.min(offset, parents.length), Math.min(offset + s.limit, parents.length));
+    }
+    const rows = [];
+    for (const row of parents) {
+      const own = project(row, s.columns);
+      if (rel === undefined) {
+        rows.push(own);
+        continue;
+      }
+      for (const child of relatedRows(row, rel)) rows.push([...own, ...project(child, rel.columns)]);
+    }
+    return paged ? { rows, total } : { rows };
+  },
+  async 'model.count'(s, context) {
+    const count = await whereOf(newModel(context.request, s.model, s.connection), s.where, context).getCount();
+    return { value: { int: String(count) } };
+  },
+  async 'model.update'(s, context) {
+    for (const row of await loadedRows(s, context)) await setValues(row, s.set, context).update();
+    return {};
+  },
+  async 'model.delete'(s, context) {
+    for (const row of await loadedRows(s, context)) await row.delete();
+    return {};
+  },
+  async 'model.restore'(s, context) {
+    await setValues(newModel(context.request, s.model, s.connection), s.values, context).restore();
+    return {};
+  },
 };
+
+/** The request state of a case: the connection of the case (the hook of the handle is derived from it), the named connections and the records. */
+class RequestState {
+  constructor(dsn, schema) {
+    this.dsn = dsn;
+    this.schema = schema;
+    this.base = undefined;
+    this.conn = undefined;
+    this.runtime = undefined;
+    this.named = new Map();
+    this.models = new Map();
+    this.records = [];
+    this.inTx = false;
+  }
+
+  async start() {
+    this.base = await Db.connectSchema(this.dsn, this.schema);
+    this.conn = this.base;
+    this.runtime = registerModel(this.schema.manifestText, this.schema.manifestHash);
+  }
+
+  async close() {
+    for (const db of [...this.named.values(), this.base]) if (db !== undefined) await db.close();
+  }
+}
+
+/** The model class of a table of the case, with the entity of the registered schema (FCV-4). */
+function modelClass(request, name) {
+  if (!request.models.has(name)) {
+    const entity = request.runtime.entities.get(name);
+    if (entity === undefined) throw new Error(`the schema has no table ${name}`);
+    class Generated extends Model {}
+    Generated.entity = { model: request.runtime, entity, create: core => new Generated(core) };
+    request.models.set(name, Generated);
+  }
+  return request.models.get(name);
+}
+
+/** The connection that a step names with on, or the default connection of the case (the hooked handle after hook.install). */
+function connectionOf(request, on) {
+  if (on === undefined || on === '') return request.conn;
+  const db = request.named.get(on);
+  if (db === undefined) throw new Error(`connection ${on} is not connected by a model.connect step`);
+  return db;
+}
+
+/** A model of the table of a step, connected to the connection of the step, or left unconnected in a transaction (the Go core). */
+function newModel(request, name, on) {
+  const model = new (modelClass(request, name))();
+  if (!request.inTx) model.connect(connectionOf(request, on));
+  return model;
+}
+
+/** Sets the columns of an object of recipe wrappers on the model. */
+function setValues(model, raw = {}, context) {
+  for (const { name, value } of assignments(raw, context)) model[CORE].setValue(name, value);
+  return model;
+}
+
+/** Adds the equalities of the where object to the model, ANDed. */
+function whereOf(model, raw = {}, context) {
+  for (const { name, value } of assignments(raw, context)) {
+    model[CORE].whereChain(model[CORE].where.items.length > 0 ? 'and' : '', [{ conn: '', op: '', column: name, columns: [], compare: '' }], [value]);
+  }
+  return model;
+}
+
+/** The rows that the where of a step loads, read through the connection of the step. */
+async function loadedRows(s, context) {
+  return [...(await whereOf(newModel(context.request, s.model, s.connection), s.where, context).gets()).values()];
+}
+
+/** The cells of the columns of a loaded model: text and integer values have a recipe wrapper (FCV-4). */
+function project(model, columns) {
+  const values = model.toArray();
+  return columns.map(column => {
+    if (!(column in values)) throw new Error(`the row has no column ${column}`);
+    return cell(values[column]);
+  });
+}
+
+function cell(value) {
+  if (typeof value === 'string') return { text: value };
+  if (typeof value === 'bigint') return { int: value.toString() };
+  if (typeof value === 'number' && Number.isInteger(value)) return { int: String(value) };
+  throw new Error(`a read value ${String(value)} of type ${typeof value} has no recipe wrapper in a request op`);
+}
+
+/** The child rows that the relation of a parent read attached: each child of a many relation, or the one child of a single relation. */
+function relatedRows(parent, rel) {
+  const related = parent[`get${pascal(rel.model)}${rel.many ? 'Models' : 'Model'}`]();
+  if (rel.many) return related.values();
+  return related === null || related === undefined ? [] : [related];
+}
+
+/** The name of a table or column in the chain grammar: hook_item is HookItem. */
+function pascal(name) {
+  return name.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('');
+}
+
+/** Installs the hook of the default connection with the actions in order, replacing the hook of the previous install (FCV-4). */
+function installHook(request, hooks) {
+  const actions = hooks.map(a => ({
+    action: a.action,
+    kinds: a.kinds,
+    column: a.column,
+    value: a.value === undefined ? undefined : native(a.value),
+    nested: a.nested === true,
+    code: a.error,
+  }));
+  request.records = [];
+  request.conn = request.base.withRequestHook((query, addParam) => {
+    for (const a of actions) {
+      if (!kindMatches(a.kinds, query.kind)) continue;
+      switch (a.action) {
+        case 'scope':
+          if (a.nested) scopeTree(query, a.column, a.value, addParam);
+          else andWhere(query, equalPred(addParam, a.column, a.value));
+          break;
+        case 'assign': {
+          const p = addParam(a.value);
+          (query.set ??= []).push({ column: a.column, p });
+          for (const row of query.rows ?? []) row.push(addParam(a.value));
+          break;
+        }
+        case 'record':
+          request.records.push({ kind: query.kind, entity: query.entity });
+          break;
+        case 'fail':
+          throw new OrmError(a.code, `request hook refused ${query.kind}`);
+        default:
+          throw new Error(`hook action ${a.action} is unknown`);
+      }
+    }
+    return query;
+  });
+}
+
+const READS = new Set(['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate']);
+
+/** Whether a kind list (or one of the names reads, reads+restore, every) holds kind. */
+function kindMatches(kinds, kind) {
+  if (typeof kinds === 'string') {
+    if (kinds === 'every') return true;
+    if (kinds === 'reads') return READS.has(kind);
+    if (kinds === 'reads+restore') return READS.has(kind) || kind === 'restore';
+    return false;
+  }
+  return Array.isArray(kinds) && kinds.includes(kind);
+}
+
+function equalPred(addParam, column, value) {
+  return { column, op: 'eq', p: addParam(value) };
+}
+
+/** Adds pred to the where of query with and; an existing where is wrapped in one group item. */
+function andWhere(query, pred) {
+  if (query.where === undefined || query.where.items.length === 0) {
+    query.where = { items: [{ pred }] };
+    return;
+  }
+  query.where = { items: [{ group: query.where }, { pred: { ...pred, conn: 'and' } }] };
+}
+
+/** Adds column = value to the where of query and of each of its relation queries, nested ones included. */
+function scopeTree(query, column, value, addParam) {
+  andWhere(query, equalPred(addParam, column, value));
+  for (const relation of query.relations ?? []) scopeTree(relation.query, column, value, addParam);
+}
 
 async function runStep(s, context) {
   const op = OPS[s.op];
