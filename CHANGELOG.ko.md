@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 97501feba3de6420f36fbefe794f8efefd4d3f0902c41fca32d94c573a4eb04e -->
+<!-- source-sha256: 6e4c46fd54799106f9fcd352b1d45bf49495a04f0b7173bd1c341e95abb1c9b0 -->
 # 변경 이력
 
 ## Unreleased
 
+- `tests/bind/vectors.json`의 부동소수와 bool bind case(f64, bool slot)는 message recipe `tests/bind/messages.json`의 case다. 비유한 f64는 공개 호출이 CODEC_ENCODE로 거부한다. f64 slot의 text 또는 bool 값은 타입 없는 공개 경로가 거부하며, go와 rust에서는 타입 있는 API 이유로 제외한다. Rust의 message 비교는 정수에 대해 정확하여 1만큼 다른 i64는 실패한다 (T334-3-15-4c).
 - `tests/bind/vectors.json`의 정수 bind case(i16, i32, i64 slot)는 message recipe `tests/bind/messages.json`의 case다. 각 case는 slot 컬럼의 `markdown.send` step 하나, parameter wrapper 하나와 expect(bound 값 또는 오류 code)를 갖는다. 여섯 runtime이 공개 filter로 실행하며, 타입 있는 공개 API가 거부하는 값은 go와 rust에서 "타입 있는 공개 API가 이 host 값을 컴파일 시점에 거부한다"는 이유로 제외한다 (T334-3-15-4b).
 - recipe case는 `exclude`에 그 case를 돌리지 않는 runtime과 이유를 적을 수 있다. 제외된 runtime은 `EXCLUDED <case id> <runtime>: <reason>` 줄 하나를 출력하고 case를 목록에서 뺀다. 그래서 통과도 skip도 아니다. 모든 runtime을 제외하는 case는 schema가 거부한다. recipe schema의 데이터베이스 없는 expectation은 `markdown.send` step을 면제하고, `tests/bind/messages.json`은 검증되는 suite 파일이다 (T334-3-15-4a).
 - `tests/bind/vectors.json`의 markdown message와 control vector는 `markdown.send` step(`column`, `operator`, `params`, `begin`, `process_zone`, `expect`)으로 된 recipe `tests/bind/messages.json` 하나다. 여섯 recipe helper가 각자 공개 markdown 연결로 실행하고, listener가 처음 받은 message를 기록한다. 기존 native message test와 parity 바인딩은 지웠고, DST gap의 offset 없는 datetime case는 `process_zone` 아래에서 실행한다 (T334-3-15-3c).

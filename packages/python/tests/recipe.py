@@ -152,10 +152,15 @@ SEND_FILTERS = frozenset(
         "i16_value",
         "i32_value",
         "i64_value",
+        "f64_value",
+        "bool_value",
     ]
 )
 # The integer columns of SEND_FILTERS: their typed filter takes the host value of the wrapper, an int, and not its text.
 INTEGER_FILTERS = frozenset(["i16_value", "i32_value", "i64_value"])
+# The columns of SEND_FILTERS whose typed filter takes the host value of the wrapper (a float, a bool or an int), not its text:
+# the integer columns and the float and bool columns.
+HOST_FILTERS = INTEGER_FILTERS | frozenset(["f64_value", "bool_value"])
 BIND_MODELS: dict = {}
 
 
@@ -282,22 +287,23 @@ def _send(step: dict) -> None:
 
 def _query_slot(models, db, step: dict) -> None:
     """Runs the generated typed filter of the slot column of step. A temporal column's filter takes the text of its wrapper, the
-    text form of the value (DBS-121); an integer column's filter takes the host value of its wrapper, and a wrapper kind that
-    the Python public path takes unchanged reaches the filter as it is, so the filter refuses it itself. A column or operator
-    without a typed filter here is a defect of the recipe."""
+    text form of the value (DBS-121); a host-value column's filter (HOST_FILTERS) takes the Python value of its wrapper: an int
+    wrapper an int, a float wrapper a float, an f64 wrapper its non-finite float (NaN, Infinity, -Infinity), so the Python public
+    path refuses it with the code the expect names. A text or bool wrapper reaches the filter unchanged, so the filter refuses it
+    itself. A column or operator without a typed filter here is a defect of the recipe."""
     if step["operator"] != "eq":
         raise AssertionError(f"operator {step['operator']} has no typed filter in the Python cases")
     table, _, name = step["column"].partition(".")
     if table != "slots" or name not in SEND_FILTERS:
         raise AssertionError(f"the column {step['column']} has no typed filter in the Python cases")
     wrapper = step["params"][0]
-    if name in INTEGER_FILTERS:
+    if name in HOST_FILTERS:
         if len(wrapper) != 1:
             raise AssertionError(f"the parameter {json.dumps(wrapper)} is no single wrapper")
         ((kind, value),) = wrapper.items()
         if kind == "int":
             value = int(value)
-        elif kind == "float":
+        elif kind in ("float", "f64"):
             value = float(value)
         elif kind not in ("text", "bool"):
             raise AssertionError(f"the parameter {json.dumps(wrapper)} is no host value of the Python API")

@@ -144,6 +144,8 @@ const SEND_COLUMNS: &[&str] = &[
     "slots.i16_value",
     "slots.i32_value",
     "slots.i64_value",
+    "slots.f64_value",
+    "slots.bool_value",
 ];
 
 /// One markdown.send step (FCV-3, FCV-4): a transaction begin, or the typed query of a slot column. The step runs on a
@@ -175,9 +177,24 @@ fn markdown_send(step: &Value) -> Result<(), String> {
     }
     let Some(want) = expect.get("message") else { return Err("markdown.send expects a message or an error".to_owned()) };
     match sent {
-        Sent::Message(got) if &got == want => Ok(()),
+        Sent::Message(got) if same_message(&got, want) => Ok(()),
         Sent::Message(got) => Err(format!("message {got}, want {want}")),
         Sent::Error(code) => Err(format!("the call returned error {code} before a message")),
+    }
+}
+
+/// A message equals its expect by value; two numbers compare by their value, so the float 5.0 of an f64 column equals 5.
+fn same_message(got: &Value, want: &Value) -> bool {
+    match (got, want) {
+        // Two integers are compared exactly, so an i64 that is off by one fails; a float or a mix compares by value.
+        (Value::Number(x), Value::Number(y)) => match (x.as_i64(), y.as_i64()) {
+            (Some(a), Some(b)) => a == b,
+            _ => match (x.as_f64(), y.as_f64()) {
+                (Some(a), Some(b)) => a == b || a.is_nan() && b.is_nan(),
+                _ => false,
+            },
+        },
+        _ => got == want,
     }
 }
 
@@ -217,13 +234,16 @@ struct SendStep {
     value: Filter,
 }
 
-/// The typed filter value of a statement: the text of a string column, or the integer that the text of an integer column
-/// converts to the host type of its column (a text that does not convert is an error of the step, not a pass).
+/// The typed filter value of a statement: the text of a string column, the integer that the text of an integer column
+/// converts to the host type of its column, the float of a float column, or the bool of a bool column (a value that does not
+/// convert is an error of the step, not a pass).
 enum Filter {
     Text(String),
     I16(i16),
     I32(i32),
     I64(i64),
+    F64(f64),
+    Bool(bool),
 }
 
 impl SendStep {
@@ -239,14 +259,20 @@ impl SendStep {
         if !SEND_COLUMNS.contains(&column) {
             return Err(format!("the column {column} has no typed filter in the Rust cases"));
         }
-        // The typed filters take the text of the wrapper: the runtime reads it in the form of the column type (FCV-4).
-        let (_, body) = kind(&step["params"][0])?;
-        let text = body.as_str().ok_or_else(|| format!("the parameter {} holds no text", step["params"][0]))?;
+        // The typed filters take the wrapper of the parameter: the runtime reads it in the form of the column type (FCV-4).
+        let (wrapper, body) = kind(&step["params"][0])?;
         let value = match column {
-            "slots.i16_value" => Filter::I16(integer(column, text)?),
-            "slots.i32_value" => Filter::I32(integer(column, text)?),
-            "slots.i64_value" => Filter::I64(integer(column, text)?),
-            _ => Filter::Text(text.to_owned()),
+            "slots.f64_value" => Filter::F64(float(column, wrapper, body)?),
+            "slots.bool_value" => Filter::Bool(boolean(column, wrapper, body)?),
+            _ => {
+                let text = body.as_str().ok_or_else(|| format!("the parameter {} holds no text", step["params"][0]))?;
+                match column {
+                    "slots.i16_value" => Filter::I16(integer(column, text)?),
+                    "slots.i32_value" => Filter::I32(integer(column, text)?),
+                    "slots.i64_value" => Filter::I64(integer(column, text)?),
+                    _ => Filter::Text(text.to_owned()),
+                }
+            }
         };
         Ok(Self { begin: None, column: column.to_owned(), value })
     }
@@ -267,6 +293,8 @@ impl SendStep {
             ("slots.i16_value", Filter::I16(v)) => bind_model::Slots::new().connect(db).i16_value(*v).gets().await.map(drop),
             ("slots.i32_value", Filter::I32(v)) => bind_model::Slots::new().connect(db).i32_value(*v).gets().await.map(drop),
             ("slots.i64_value", Filter::I64(v)) => bind_model::Slots::new().connect(db).i64_value(*v).gets().await.map(drop),
+            ("slots.f64_value", Filter::F64(v)) => bind_model::Slots::new().connect(db).f64_value(*v).gets().await.map(drop),
+            ("slots.bool_value", Filter::Bool(v)) => bind_model::Slots::new().connect(db).bool_value(*v).gets().await.map(drop),
             (column, _) => unreachable!("parse builds the filter of each column of SEND_COLUMNS, not {column}"),
         }
     }
@@ -278,6 +306,26 @@ where
     T::Err: std::fmt::Display,
 {
     text.parse::<T>().map_err(|error| format!("the parameter {text:?} of {column} is no integer of its host type: {error}"))
+}
+
+/// The float of a float column's parameter: a float or f64 wrapper, or an int wrapper, parsed as an f64. Rust parses NaN,
+/// Infinity and -Infinity, the three non-finite values of the f64 wrapper; a text that does not parse is an error of the step.
+fn float(column: &str, wrapper: &str, body: &Value) -> Result<f64, String> {
+    match wrapper {
+        "float" | "f64" | "int" => {
+            let text = body.as_str().ok_or_else(|| format!("the parameter of {column} holds no text"))?;
+            text.parse::<f64>().map_err(|error| format!("the parameter {text:?} of {column} is no float: {error}"))
+        }
+        other => Err(format!("a {other} wrapper is no float parameter of {column}")),
+    }
+}
+
+/// The bool of a bool column's parameter: a bool wrapper holding a JSON boolean.
+fn boolean(column: &str, wrapper: &str, body: &Value) -> Result<bool, String> {
+    match (wrapper, body.as_bool()) {
+        ("bool", Some(value)) => Ok(value),
+        _ => Err(format!("the parameter of {column} is no bool wrapper holding a boolean")),
+    }
 }
 
 /// Runs one call on a connection to `dsn` with a current-thread runtime, on a thread with a stack of its own (the futures of

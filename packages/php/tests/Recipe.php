@@ -203,6 +203,8 @@ final class Recipe
         'slots.i16_value' => 'i16Value',
         'slots.i32_value' => 'i32Value',
         'slots.i64_value' => 'i64Value',
+        'slots.f64_value' => 'f64Value',
+        'slots.bool_value' => 'boolValue',
     ];
 
     /** The answer of the markdown.send listener to the message it records, which ends the call. */
