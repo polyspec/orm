@@ -34,10 +34,6 @@ jobs:
       - uses: ./.github/actions/kit-bootstrap
         id: kit-bootstrap
         if: ${{ !cancelled() }}
-      - name: npm of devEngines
-        id: npm
-        if: ${{ !cancelled() }}
-        run: make install-tools TOOLS=npm
       - name: install Node dependencies
         id: node-modules
         if: ${{ !cancelled() }}

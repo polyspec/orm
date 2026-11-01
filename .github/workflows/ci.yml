@@ -81,10 +81,6 @@ jobs:
       - uses: ./.github/actions/kit-bootstrap
         id: kit-bootstrap
         if: ${{ !cancelled() }}
-      - name: npm of devEngines
-        id: npm
-        if: ${{ !cancelled() }}
-        run: make install-tools TOOLS=npm
       - name: setup of the CI group
         id: group-needs
         if: ${{ !cancelled() }}
@@ -262,10 +258,6 @@ jobs:
       - uses: ./.github/actions/kit-bootstrap
         id: kit-bootstrap
         if: ${{ !cancelled() }}
-      - name: npm of devEngines
-        id: npm
-        if: ${{ !cancelled() }}
-        run: make install-tools TOOLS=npm
       - name: Go of mise.toml
         id: go
         if: ${{ !cancelled() }}
@@ -309,10 +301,6 @@ jobs:
       - uses: ./.github/actions/kit-bootstrap
         id: kit-bootstrap
         if: ${{ !cancelled() }}
-      - name: npm of devEngines
-        id: npm
-        if: ${{ !cancelled() }}
-        run: make install-tools TOOLS=npm
       - name: tools of mise.toml
         id: go
         if: ${{ !cancelled() }}
@@ -350,10 +338,6 @@ jobs:
       - uses: ./.github/actions/kit-bootstrap
         id: kit-bootstrap
         if: ${{ !cancelled() }}
-      - name: npm of devEngines
-        id: npm
-        if: ${{ !cancelled() }}
-        run: make install-tools TOOLS=npm
       - name: every job passed
         if: ${{ !cancelled() }}
         env:

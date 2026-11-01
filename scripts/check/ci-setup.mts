@@ -24,8 +24,6 @@ export const CI_SETUP: Record<string, string | null> = {
   'go-lease-modules': 'go-lease',
   // The full Go workspace modules and generated models are installed only for groups that declare Go work.
   'go-modules': 'go',
-  // npm installs the pinned npm after Kit's bootstrap installs the repository dependencies and exposes its Makefile.
-  npm: 'node-modules',
   'interfaces-typescript': 'interfaces-typescript',
   'parity-symbols': 'parity-symbols',
   rust: 'rust',
@@ -76,8 +74,7 @@ export const STEP_OUTPUT: Record<string, string | null> = {
   'kit-bootstrap': null,
   // The test runner itself builds the Go lease executable.
   go: null,
-  // Kit bootstrap and npm run in every group before group-needs: the first Make target reads Kit's Makefile.
-  npm: null,
+  // Kit bootstrap, which installs the pinned npm and the packages, runs in every group before group-needs: the first Make target reads Kit's Makefile.
   'interfaces-typescript': 'interfaces-typescript',
   'parity-symbols': 'parity-symbols',
   rust: 'rust',

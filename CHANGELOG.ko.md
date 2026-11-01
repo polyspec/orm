@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 3fd5e2ac24188500c3acc9a912a05b5b84d1b4538672b38ed214aebc4b7eeb5f -->
+<!-- source-sha256: a2a0722873daa67f71d56b9bfb8465623d54fc96585d473cfa245f53bb1cf36e -->
 # 변경 이력
 
 ## Unreleased
 
+- orm은 모든 CI job에서 kit을 공유 action `.github/actions/kit-bootstrap`으로만 bootstrap한다(T346-2). ci.yml과 docs-pages.yml에서 `make install-tools TOOLS=npm`을 실행하던 인라인 step을 제거했다.
 - orm은 kit 0.0.88을 채택한다(T346-1). package pin은 그 release asset과 integrity를 가리키며, kit-sync 사본은 link, 파이프라인, 매니페스트 경로 규칙 S11, S12, P30(K997, K998)을 담은 그 release의 것이다.
 - orm은 ordered-json 0.0.17을 모든 생태계에서 채택한다(T346). npm, Composer, Go, Python, Rust의 pin이 그 release asset과 tag를 가리키며, packaging.md는 그 release의 asset `polyspec-ordered-json-0.0.17.tgz`와 Composer zip, wheel 이름을 적는다.
 - orm은 kit 0.0.87을 채택한다(T346). .github/workflows의 모든 CI job은 각 job이 가지던 인라인 bootstrap 복사본 대신 kit-sync가 제공하는 local action `.github/actions/kit-bootstrap`으로 kit을 bootstrap한다(K992). ci.yml에 네 곳, docs-pages.yml에 한 곳이 있었다. 이 action은 mise.toml의 Node.js를 설치하고, 고정된 kit 패키지를 설치한 뒤, var/tools의 npm과 package-lock.json의 패키지를 설치한다. ci-pipeline.yml과 release.yml도 kit-sync로부터 같은 action을 쓴다.
