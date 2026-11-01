@@ -283,7 +283,7 @@ export function savepointLine(op: 'savepoint' | 'release' | 'rollback_to', name:
  * YYYY-MM-DD HH:MM:SS.ffffff, date is YYYY-MM-DD, time is HH:MM:SS.ffffff (the digits after p are 0, and string values match too). Which form is used is decided by the
  * type of the slot that the parameter fills. A slot of a hex or ip style column is sent with the value encoded by the client, as in an SQL connection.
  */
-function markdownParam(db: Pick<Db, 'zone' | 'aesKey'>, i: number, value: unknown, uses: readonly ParamUse[]): string {
+export function markdownParam(db: Pick<Db, 'zone' | 'aesKey'>, i: number, value: unknown, uses: readonly ParamUse[]): string {
   const use = uses[0];
   if (use?.column !== undefined && value !== null && value !== undefined) {
     const host = use.column.stages.filter(s => s === 'aes' || s === 'hex' || s === 'ip');
