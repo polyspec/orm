@@ -497,6 +497,10 @@ descriptor/원본 행을 비교한 뒤 타입형 쓰기를 수행해야 한다. 
 의존할 수 있으므로 스키마 revision으로 삼지 않고 projection 이름과 네이티브
 descriptor를 비교한다.
 
+캡처된 행 snapshot은 세 접근자를 제공한다. `keys`는 제약 순서의 기본키 셀을 돌려준다.
+`key indexes`는 물리 순서 컬럼 가운데 각 키 셀의 위치를 돌려주고, `captured cells`는
+revision이 덮는 모든 원본 셀을 물리 순서로 돌려준다.
+
 ### Catalog 테이블 페이지
 
 `table_page(table, limit, offset)`는 새 강제 읽기 전용
