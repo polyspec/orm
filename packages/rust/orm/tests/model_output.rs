@@ -5,7 +5,6 @@
 
 use polyspec_orm::{Core, Model, Val};
 
-
 #[path = "common/secret_config.rs"]
 mod secret_config;
 use secret_config::{Secret, SECRET};

@@ -1,7 +1,7 @@
 //! The shared clock event model used by clock and write-set integration cases.
 
-use polyspec_orm_test_support::model_row;
 use polyspec_orm::{Entity, Schema};
+use polyspec_orm_test_support::model_row;
 
 pub static CLOCK_SCHEMA: Schema =
     Schema::new(include_str!("../../../../../contracts/fixtures/clock.dbs"), "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb");

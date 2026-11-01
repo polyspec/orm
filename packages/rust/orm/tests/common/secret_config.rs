@@ -1,8 +1,8 @@
 //! The `secret_config` model of the AES tests (KSTD-5-46): its schema and entity, the row that reads and writes its
 //! values by column name, and the connection of a row to a database. The schema is contracts/fixtures/secret_config.dbs.
 
-use polyspec_orm_test_support::model_row;
 use polyspec_orm::{Entity, Schema};
+use polyspec_orm_test_support::model_row;
 
 // secret_config { bigint seq PK "auto"; int aes_key_version; longblob config "json aes" }
 pub static SCHEMA: Schema =

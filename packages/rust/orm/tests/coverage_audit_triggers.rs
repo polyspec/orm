@@ -25,9 +25,9 @@ mod sql_text_rows;
 use audit_rows::drop_tables;
 use polyspec_orm::db::Pool;
 use polyspec_orm::{Db, Entity, Model, Param, Schema};
+use polyspec_orm_test_support::table_exists::table_exists;
 use sql_text_rows::text_rows;
 use std::time::Duration;
-use polyspec_orm_test_support::table_exists::table_exists;
 
 /// The case deadline. It is wall-clock time, since it bounds what the database does.
 const DEADLINE: Duration = Duration::from_secs(300);

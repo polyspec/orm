@@ -2,10 +2,10 @@
 //! case that restores soft-deleted rows (in the same order as restoreCase in packages/go/orm/restore_test.go). restore.rs and
 //! coverage_audit_triggers.rs both use it.
 
-use polyspec_orm_test_support::model_row;
 use crate::model_connect;
 use crate::or_panic::OrPanic;
 use crate::result_code::code;
+use polyspec_orm_test_support::model_row;
 
 use std::collections::BTreeMap;
 
