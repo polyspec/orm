@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c8225e3686ec992202e69fbfde17ffa3c0cd8e16298f83b4823c28491c966f34 -->
+<!-- source-sha256: 45e02031a4f25c72168c93befa3369b2306952a9895c37891e3bebc1ff8fece1 -->
 # 변경 이력
 
 ## Unreleased
 
+- TypeScript의 catalog_connection 시험은 connect, describe, close, reconnect, revision, snapshot, bind와 grid cell 값을 확인했으나 공유 recipe가 그것을 표현하지 못했다. 이제 recipe가 그것을 case로 가지며, catalog.connect, catalog.close, catalog.reconnect, catalog.revision op, describe의 native type, nullable, generated, automatic key, default field, row_snapshot의 keys와 key_indexes field, page_with 입력, 쌍의 목록인 assignment, read_only_query의 binds, float, unsigned, binary cell wrapper를 가진다. TypeScript runner는 MySQL, PostgreSQL, SQLite에서 그것을 실행하고, 그것이 소유하는 native assertion은 제거되었다(T334-3-3-2-1).
 - Rust runner는 공유 DDL vector의 behavior step을 MySQL, PostgreSQL, SQLite에서 실행하고, 서버 DSN이 빠지면 그 이름을 대며 실패한다. 전에는 rendered statement만 만들었다 (CR16-1-2).
 - recipe schema에 비유한 binary64 wrapper `{"f64": "NaN" | "Infinity" | "-Infinity"}`를 더했고, 여섯 recipe helper가 각각 그 수의 host 값으로 바꾼다. 유한한 수는 `float` wrapper를 그대로 쓴다 (T334-3-15-3b).
 - bind vector의 slot 픽스처 `tests/bind/slots.dbs`와 그 set `tests/bind/dbspec-set.json`은 `tests/bind/vectors.json`의 parameter slot마다 컬럼 하나를 가진 테이블 하나를 둔다. 모델은 모델을 쓰는 make 대상이 생성한다(Go와 PHP는 모델 목록, TypeScript는 빌드, Python은 `bind-python-models`, Rust는 tests crate의 build script). `make bind-models-check`가 이를 검사한다 (T334-3-15-3a).
