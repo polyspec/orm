@@ -66,6 +66,9 @@ go.work.sum
 !/packages/go/markdownmodel/*_test.go
 /packages/go/decimalmodel/*.go
 !/packages/go/decimalmodel/*_test.go
+# The Go models of the slot fixture tests/bind (make go-models; P34).
+/packages/go/bindmodel/*.go
+!/packages/go/bindmodel/*_test.go
 # The PHP models that orm-gen writes at each orm-install-php (make php-models; P34: generated output is never tracked). Every file of
 # these directories is generated.
 /packages/php/gen/
@@ -74,6 +77,9 @@ go.work.sum
 /packages/php/gen.tmp/
 /packages/php/markdownmodel.tmp/
 /packages/php/complexmodel/
+# The PHP models of the slot fixture tests/bind (make php-models; P34).
+/packages/php/bindmodel/
+/packages/php/bindmodel.tmp/
 /packages/php/src/native/bin/
 # The arginfo header and the copy of the SQLite cancel callback of the PHP extension are build output (make php-ext-sources).
 /packages/php-ext/src/polyspec_orm_arginfo.h

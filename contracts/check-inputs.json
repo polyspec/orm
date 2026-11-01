@@ -4374,6 +4374,24 @@
         "flowmark",
         "go-lease"
       ]
+    },
+    "bind-models-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "php",
+        "composer",
+        "python",
+        "node-modules"
+      ],
+      "inputs": [
+        "tests/bind/dbspec-set.json",
+        "tests/bind/slots.dbs",
+        "scripts/typescript/models.mts",
+        "packages/go/models.txt",
+        "packages/php/models.txt",
+        "packages/rust/tests/build.rs"
+      ]
     }
   },
   "paths": {

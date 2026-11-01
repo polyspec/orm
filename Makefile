@@ -2051,6 +2051,21 @@ python-models: python-venv-check
 python-model-check: python-venv-check
 	$(PYTHON_VENV)/bin/orm-gen gen --check --set $(PYTHON_MODELS_SET) --out $(PYTHON_MODELS_OUT) --scan $(PYTHON_MODELS_SCAN)
 
+# bind-models-check generates the models of the slot fixture tests/bind/dbspec-set.json in each runtime that uses them (FCV-3):
+# Go and PHP check their declared entries (go-model-check, php-model-check), the Python directory and the TypeScript build write
+# theirs, and the Rust tests crate generates its own in its build script. No database runs.
+.PHONY: bind-models-check
+bind-models-check: go-model-check php-model-check bind-python-models typescript-build
+
+# BIND_PY_MODELS is the model directory of the slot fixture tests/bind/dbspec-set.json that the Python recipe helper imports (FCV-4,
+# markdown.send). The venv orm-gen writes it into a temporary directory and renames it into place, as conformance-python-models does.
+BIND_PY_MODELS = $(abspath .runtime/run)/bind-python-models
+.PHONY: bind-python-models
+bind-python-models: python-venv-check
+	rm -rf $(BIND_PY_MODELS).tmp
+	$(PYTHON_VENV)/bin/orm-gen gen --set tests/bind/dbspec-set.json --out $(BIND_PY_MODELS).tmp
+	rm -rf $(BIND_PY_MODELS) && mv $(BIND_PY_MODELS).tmp $(BIND_PY_MODELS)
+
 # CONFORMANCE_PY_MODELS is the model directory that the Python conformance runner imports. The venv orm-gen writes it from
 # contracts/fixtures/bench/bench.dbs into a temporary directory and renames it into place (an atomic publish of build output).
 CONFORMANCE_PY_MODELS = $(abspath .runtime/run)/conformance-python-models

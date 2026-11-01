@@ -23,4 +23,6 @@ fn main() {
     polyspec_orm_build::Builder::set("external/dbspec-set.json").scan("tests/integration_program/main.rs").out_dir(out.join("external")).generate();
     // The corpus catalog model of the markdown executor conformance (tests/markdown), used by the library module markdown.
     polyspec_orm_build::Builder::set("../../../tests/markdown/corpus/dbspec/dbspec-set.json").scan("src/markdown.rs").out_dir(out.join("markdown")).generate();
+    // The slot fixture of the bind vectors (tests/bind), used by the recipe helper of markdown.send (FCV-4).
+    polyspec_orm_build::Builder::set("../../../tests/bind/dbspec-set.json").scan("src/recipe.rs").out_dir(out.join("bind")).generate();
 }

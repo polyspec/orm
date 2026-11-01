@@ -1,0 +1,28 @@
+dbspec 1 slots
+
+table slots {
+  seq i64
+  i16_value i16
+  i32_value i32
+  i64_value i64
+  f64_value f64
+  bool_value bool
+  decimal_value decimal(5,2)
+  varchar_value varchar(3)
+  varchar_null_value varchar(3) null
+  varchar_long_value varchar(16383)
+  text_value text
+  bytes_value bytes
+  uuid_value uuid
+  date_value date
+  time0_value time(0)
+  time1_value time(1)
+  time2_value time(2)
+  time3_value time(3)
+  time6_value time(6)
+  datetime0_value datetime(0)
+  datetime1_value datetime(1)
+  datetime2_value datetime(2)
+  datetime6_value datetime(6)
+  primary key (seq)
+}

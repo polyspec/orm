@@ -4,3 +4,4 @@
 --set contracts/fixtures/bench/dbspec-set.json --out packages/php/gen --namespace Polyspec\Orm\Tests\Model
 --set tests/markdown/corpus/dbspec/dbspec-set.json --out packages/php/markdownmodel --namespace Polyspec\Orm\Tests\MarkdownModel
 --set contracts/fixtures/complex_query/dbspec-set.json --out packages/php/complexmodel --namespace Polyspec\Orm\Tests\ComplexModel
+--set tests/bind/dbspec-set.json --out packages/php/bindmodel --namespace Polyspec\Orm\Tests\BindModel
