@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 162a6566fa5ca6c53013e4a0cb8522f7399c945c0b2304e6703cff664b20bb7b -->
+<!-- source-sha256: ef7f0a21fafc8796d45ae8622d9b8eb4d94ecc426f716d56ff80f2d8bd8e5614 -->
 # 변경 이력
 
 ## Unreleased
@@ -56,6 +56,7 @@
 - 모든 parity job이 PHP extension과 Rust conformance program을 build해서, python, go, typescript, php, API job도 둘 다 읽지 않는 binding을 위해 PHP-Parser를 내려받고 두 산출물을 compile했다. 이제 parity gate는 그 binding이 읽는 것만 build한다. php-extension은 extension을, rust는 program을, 전체 parity-check는 둘 다 build한다. (CR39)
 - check recipes의 Task row가 docs 규칙이 영어에서 금지하는 단어를 써서 test (static)의 docs-rules-check가 실패했다. CR39 Task는 두 언어 모두 parity 검사로 고쳤다 (CR50).
 - answer chain의 Rust test helper가 형식에 맞지 않아 test (static)에서 clients, bench, interfaces의 rust-fmt-check가 실패했다. 이제 고정된 toolchain으로 그 파일을 형식에 맞췄다 (CR51).
+- GroupRows PHP extension test가 이전 php-ext-build 형식의 build를 가짜로 만들어서 module을 찾지 못했고, test (static)의 makefile-pinned-node-recipes-check가 실패했다. 이제 가짜는 build를 한 번만 하도록 바꾼 리팩터링(CR4)이 php-ext-build에 준 형식을 따른다 (CR52).
 
 ## 0.0.21
 

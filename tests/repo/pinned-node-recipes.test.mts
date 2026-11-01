@@ -91,11 +91,11 @@ caseTest('the GroupRows PHP extension target builds in its own run directory', C
       '#!/bin/sh',
       'set -eu',
       'test "$1" = php-extension-build',
-      // php-ext-build runs `build.sh <output> <mode>` (T339-9): the module is the argument after build.sh, the mode the last.
+      // php-ext-build runs `scripts/php/php-ext-build.mts <output> <mode>` (CR4): the module is the argument after that script, the mode the last.
       'module=',
       'mode=',
       'previous=',
-      'for argument do if [ "$previous" = packages/php-ext/scripts/build.sh ]; then module=$argument; fi; mode=$argument; previous=$argument; done',
+      'for argument do if [ "$previous" = scripts/php/php-ext-build.mts ]; then module=$argument; fi; mode=$argument; previous=$argument; done',
       'test "$mode" = release',
       'case "$module" in */group-rows-db-php-extension-*/php-extension/polyspec_orm.so) ;; *) exit 41 ;; esac',
       'mkdir -p "$(dirname "$module")"',
