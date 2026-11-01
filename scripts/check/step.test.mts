@@ -258,11 +258,12 @@ caseTest('the group listing names ENOBUFS when the process table overflows, and 
   const padding = 'x'.repeat(400_000);
   const child = spawn('sh', ['-c', 'sleep 30', 'sh', padding], { detached: true, stdio: 'ignore' });
   try {
-    assert.ok(child.pid);
+    const pid = child.pid;
+    assert.ok(pid !== undefined, 'the group leader has a process id');
     await new Promise(resolve => setTimeout(resolve, 200));
-    assert.throws(() => groupProcesses(child.pid!, { maxBuffer: 64 }), /ENOBUFS/);
-    const found = groupProcesses(child.pid!);
-    assert.ok(found.some(process => process.pid === child.pid && process.command.includes('sleep 30')), 'the group member is listed with its command');
+    assert.throws(() => groupProcesses(pid, { maxBuffer: 64 }), /ENOBUFS/);
+    const found = groupProcesses(pid);
+    assert.ok(found.some(process => process.pid === pid && process.command.includes('sleep 30')), 'the group member is listed with its command');
   } finally {
     child.kill('SIGKILL');
   }
