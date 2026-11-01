@@ -356,7 +356,6 @@ final class ModelWriteSurfaceTest extends TestCase
             'flat' => [],
         ]);
         $method = new \ReflectionMethod(Model::class, 'withAesColumns');
-        $method->setAccessible(true);
 
         try {
             $method->invoke($model);

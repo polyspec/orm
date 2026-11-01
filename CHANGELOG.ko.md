@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d3dbdb35d535f4a39daff4a4d3f6a9fd38c78443c135709972f859cdd178a130 -->
+<!-- source-sha256: 08b5cdee54e0fac50f4072bbad448563e054a7fd6000819cc2d8096a128d5c31 -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP 8.5 owner가 두 원인으로 실패했다. 모델 시험의 효과 없는 setAccessible을 PHP 8.5가 deprecated로 알렸고, large object 쓰기는 NUL byte 때문에 pg_lo_write가 거부했다. 시험은 setAccessible을 빼고, stream과 native 확장은 composer.json이 허용하는 모든 PHP에서 lo_put으로 나눠 쓴다 (CR23).
 - interfaces CI 시험은 CR9가 docs job으로 옮긴 docs-site-check와 docs-verify-idempotent를 거부했다. 그 시험은 CI group과 kit 실행 target만 셌기 때문이다. 이제 Makefile에서 읽은 make docs-ci와 make ci-vscode-integration의 target도 세며, 어느 쪽에도 없는 target은 거부한다 (CR9-1).
 - 인터페이스 명세는 모든 runtime의 public statement runner를 정한다(INT-150): `utils().run(fn)`과 frame 호출 `run(kind, tables, sql, params)`이며, frame 호출의 판정은 CR21이다. runtime들은 뒤따르는 CR21 행에서 구현한다 (CR21).
 - statement event 벡터의 server-transaction 검사는 MySQL과 PostgreSQL만 이름을 적었고 SQLite에는 항목도 사유도 없었다. 이제 SQLite를 사유와 함께 제외로 명시하며, 모든 runtime의 시험이 각 database가 한 번씩만 이름 붙었는지 확인한다 (CR16-2).

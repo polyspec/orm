@@ -324,7 +324,7 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
         if ($lob === false) {
             return false;
         }
-        return PgsqlLargeObjectStream::open($lob, $mode);
+        return PgsqlLargeObjectStream::open($lob, $mode, $this->connection, $oid);
     }
 
     public function lobUnlink(string $oid): bool

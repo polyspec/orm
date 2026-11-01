@@ -5,7 +5,12 @@
 
 typedef struct {
     zval lob;
+    zval connection;
+    zend_string *oid;
 } orm_pgsql_lob_stream_data;
+
+/* Bytes that one lo_put statement sends. */
+#define ORM_PGSQL_LOB_CHUNK ((size_t) 65536)
 
 static bool orm_pgsql_lob_call(const char *name, zval *result, uint32_t argc, zval *args)
 {
@@ -30,21 +35,96 @@ static bool orm_pgsql_lob_call_on(orm_pgsql_lob_stream_data *data, const char *n
     return called;
 }
 
+/* Writes count bytes at offset through lo_put on the connection: the bytea is sent as its hex text form, so no NUL byte
+ * reaches a PHP function argument (pg_lo_write refuses them on PHP 8.5). False when the statement fails. */
+static bool orm_pgsql_lob_put(orm_pgsql_lob_stream_data *data, zend_long offset, const char *buffer, size_t count)
+{
+    static const char digits[] = "0123456789abcdef";
+    zend_string *hex = zend_string_alloc(2 + 2 * count, 0);
+    ZSTR_VAL(hex)[0] = '\\';
+    ZSTR_VAL(hex)[1] = 'x';
+    for (size_t i = 0; i < count; i++) {
+        unsigned char byte = (unsigned char) buffer[i];
+        ZSTR_VAL(hex)[2 + 2 * i] = digits[byte >> 4];
+        ZSTR_VAL(hex)[3 + 2 * i] = digits[byte & 0x0f];
+    }
+    ZSTR_VAL(hex)[2 + 2 * count] = '\0';
+
+    zval params;
+    array_init(&params);
+    zval oid_value, offset_value, hex_value;
+    ZVAL_STR_COPY(&oid_value, data->oid);
+    add_next_index_zval(&params, &oid_value);
+    ZVAL_STR(&offset_value, zend_long_to_str(offset));
+    add_next_index_zval(&params, &offset_value);
+    ZVAL_STR(&hex_value, hex);
+    add_next_index_zval(&params, &hex_value);
+
+    zval args[3], result;
+    ZVAL_COPY(&args[0], &data->connection);
+    ZVAL_STRING(&args[1], "SELECT lo_put($1::oid, $2::bigint, $3::bytea)");
+    ZVAL_COPY_VALUE(&args[2], &params);
+    bool called = orm_pgsql_lob_call("pg_query_params", &result, 3, args);
+    zval_ptr_dtor(&args[0]);
+    zval_ptr_dtor(&args[1]);
+    zval_ptr_dtor(&args[2]);
+    bool ok = called && Z_TYPE(result) != IS_FALSE;
+    if (called) {
+        zval_ptr_dtor(&result);
+    }
+    return ok;
+}
+
+/* Moves the large object's position to offset from its start. */
+static bool orm_pgsql_lob_seek_to(orm_pgsql_lob_stream_data *data, zend_long offset)
+{
+    zval args[3], result;
+    ZVAL_COPY(&args[0], &data->lob);
+    ZVAL_LONG(&args[1], offset);
+    ZVAL_LONG(&args[2], SEEK_SET);
+    bool called = orm_pgsql_lob_call("pg_lo_seek", &result, 3, args);
+    zval_ptr_dtor(&args[0]);
+    bool ok = called && Z_TYPE(result) == IS_TRUE;
+    if (called) {
+        zval_ptr_dtor(&result);
+    }
+    return ok;
+}
+
 static ssize_t orm_pgsql_lob_write(php_stream *stream, const char *buffer, size_t count)
 {
     orm_pgsql_lob_stream_data *data = stream->abstract;
-    zval argument, result;
-    ZVAL_STRINGL(&argument, buffer, count);
-    if (!orm_pgsql_lob_call_on(data, "pg_lo_write", &argument, &result)) {
+    zval tell_arg, position;
+    ZVAL_COPY(&tell_arg, &data->lob);
+    bool told = orm_pgsql_lob_call("pg_lo_tell", &position, 1, &tell_arg);
+    zval_ptr_dtor(&tell_arg);
+    if (!told || Z_TYPE(position) != IS_LONG || Z_LVAL(position) < 0) {
+        if (told) {
+            zval_ptr_dtor(&position);
+        }
         return -1;
     }
-    if (Z_TYPE(result) != IS_LONG || Z_LVAL(result) < 0) {
-        zval_ptr_dtor(&result);
+    zend_long start = Z_LVAL(position);
+    zval_ptr_dtor(&position);
+
+    size_t written = 0;
+    while (written < count) {
+        size_t chunk = count - written;
+        if (chunk > ORM_PGSQL_LOB_CHUNK) {
+            chunk = ORM_PGSQL_LOB_CHUNK;
+        }
+        if (!orm_pgsql_lob_put(data, start + (zend_long) written, buffer + written, chunk)) {
+            break;
+        }
+        written += chunk;
+    }
+    if (written == 0 && count > 0) {
         return -1;
     }
-    ssize_t written = (ssize_t) Z_LVAL(result);
-    zval_ptr_dtor(&result);
-    return written;
+    if (!orm_pgsql_lob_seek_to(data, start + (zend_long) written)) {
+        return -1;
+    }
+    return (ssize_t) written;
 }
 
 static ssize_t orm_pgsql_lob_read(php_stream *stream, char *buffer, size_t count)
@@ -132,6 +212,8 @@ static int orm_pgsql_lob_close(php_stream *stream, int close_handle)
         zval_ptr_dtor(&result);
     }
     zval_ptr_dtor(&data->lob);
+    zval_ptr_dtor(&data->connection);
+    zend_string_release(data->oid);
     efree(data);
     stream->abstract = NULL;
     return status;
@@ -155,9 +237,9 @@ static const php_stream_ops orm_pgsql_lob_stream_ops = {
     NULL
 };
 
-int orm_pgsql_lob_stream(zval *native_lob, zval *return_value)
+int orm_pgsql_lob_stream(zval *native_lob, zval *connection, zend_string *oid, zval *return_value)
 {
-    if (native_lob == NULL || Z_TYPE_P(native_lob) != IS_OBJECT || return_value == NULL) {
+    if (native_lob == NULL || Z_TYPE_P(native_lob) != IS_OBJECT || connection == NULL || oid == NULL || return_value == NULL) {
         return FAILURE;
     }
     zend_string *class_name = zend_string_init("PgSql\\Lob", sizeof("PgSql\\Lob") - 1, 0);
@@ -168,9 +250,13 @@ int orm_pgsql_lob_stream(zval *native_lob, zval *return_value)
     }
     orm_pgsql_lob_stream_data *data = emalloc(sizeof(*data));
     ZVAL_COPY(&data->lob, native_lob);
+    ZVAL_COPY(&data->connection, connection);
+    data->oid = zend_string_copy(oid);
     php_stream *stream = php_stream_alloc(&orm_pgsql_lob_stream_ops, data, NULL, "r+");
     if (stream == NULL) {
         zval_ptr_dtor(&data->lob);
+        zval_ptr_dtor(&data->connection);
+        zend_string_release(data->oid);
         efree(data);
         return FAILURE;
     }

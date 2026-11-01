@@ -10971,6 +10971,10 @@
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream extends  implements  uses "
   },
+  "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream::$connection": {
+    "exported": false,
+    "signature": "private ?PgSql\\Connection"
+  },
   "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream::$context": {
     "exported": true,
     "signature": "public "
@@ -10987,6 +10991,10 @@
     "exported": false,
     "signature": "private static int"
   },
+  "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream::$oid": {
+    "exported": false,
+    "signature": "private string"
+  },
   "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream::$pending": {
     "exported": false,
     "signature": "private static array"
@@ -10997,7 +11005,7 @@
   },
   "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream::open": {
     "exported": true,
-    "signature": "public static function open(PgSql\\Lob $lob, string $mode): mixed"
+    "signature": "public static function open(PgSql\\Lob $lob, string $mode, PgSql\\Connection $connection, string $oid): mixed"
   },
   "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream::stream_close": {
     "exported": true,

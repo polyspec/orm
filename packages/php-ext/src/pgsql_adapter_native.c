@@ -1960,7 +1960,7 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, lobOpen)
     if (!pg_call_function("pg_lo_open", &lob, 3, args)) { for (int i = 0; i < 3; i++) zval_ptr_dtor(&args[i]); zval_ptr_dtor(&connection); RETURN_THROWS(); }
     for (int i = 0; i < 3; i++) zval_ptr_dtor(&args[i]);
     if (Z_TYPE(lob) == IS_FALSE) { zval_ptr_dtor(&connection); RETURN_ZVAL(&lob, 1, 1); }
-    if (orm_pgsql_lob_stream(&lob, return_value) != SUCCESS) {
+    if (orm_pgsql_lob_stream(&lob, &connection, oid, return_value) != SUCCESS) {
         zval close_arg, close_result; ZVAL_COPY(&close_arg, &lob);
         if (pg_call_function("pg_lo_close", &close_result, 1, &close_arg)) zval_ptr_dtor(&close_result);
         zval_ptr_dtor(&close_arg); zval_ptr_dtor(&lob); zval_ptr_dtor(&connection); zend_string_release(mode);

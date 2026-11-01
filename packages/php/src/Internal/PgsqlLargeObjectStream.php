@@ -13,7 +13,7 @@ use PDOException;
  */
 final class PgsqlLargeObjectStream
 {
-    /** @var array<string, array{0: \PgSql\Lob, 1: string}> */
+    /** @var array<string, array{0: \PgSql\Lob, 1: string, 2: \PgSql\Connection, 3: string}> */
     private static array $pending = [];
     private static bool $registered = false;
     private static int $nextId = 0;
@@ -21,9 +21,11 @@ final class PgsqlLargeObjectStream
     /** @var resource|null The stream context that PHP's streamWrapper protocol sets on each wrapper instance. */
     public $context = null;
     private ?\PgSql\Lob $lob = null;
+    private ?\PgSql\Connection $connection = null;
+    private string $oid = '';
     private bool $eof = false;
 
-    public static function open(\PgSql\Lob $lob, string $mode): mixed
+    public static function open(\PgSql\Lob $lob, string $mode, \PgSql\Connection $connection, string $oid): mixed
     {
         if (!self::$registered) {
             if (!stream_wrapper_register('polyspec-pgsql-lob', self::class)) {
@@ -32,7 +34,7 @@ final class PgsqlLargeObjectStream
             self::$registered = true;
         }
         $id = getmypid() . '-' . (++self::$nextId);
-        self::$pending[$id] = [$lob, $mode];
+        self::$pending[$id] = [$lob, $mode, $connection, $oid];
         // The E_WARNING of a failed open is the reason of the PDOException below; no warning leaves the ORM.
         $reason = null;
         set_error_handler(static function (int $level, string $message) use (&$reason): bool {
@@ -61,7 +63,7 @@ final class PgsqlLargeObjectStream
         if (!is_string($id) || !isset(self::$pending[$id])) {
             return false;
         }
-        [$this->lob] = self::$pending[$id];
+        [$this->lob, , $this->connection, $this->oid] = self::$pending[$id];
         $openedPath = $path;
         return true;
     }
@@ -80,13 +82,38 @@ final class PgsqlLargeObjectStream
         return $value;
     }
 
+    /** Bytes that one lo_put statement sends. The write is binary-safe: pg_lo_write refuses NUL bytes on PHP 8.5. */
+    private const WRITE_CHUNK = 65536;
+
     // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- PHP's streamWrapper protocol requires this method name.
     public function stream_write(string $data): int|false
     {
-        if ($this->lob === null) {
+        if ($this->lob === null || $this->connection === null) {
             return false;
         }
-        return pg_lo_write($this->lob, $data);
+        $start = pg_lo_tell($this->lob);
+        if ($start === false) {
+            return false;
+        }
+        $written = 0;
+        $length = strlen($data);
+        while ($written < $length) {
+            $chunk = substr($data, $written, self::WRITE_CHUNK);
+            // lo_put takes the bytea as text in its hex form, so no NUL byte reaches the parameter list.
+            $result = pg_query_params(
+                $this->connection,
+                'SELECT lo_put($1::oid, $2::bigint, $3::bytea)',
+                [$this->oid, (string) ($start + $written), '\\x' . bin2hex($chunk)],
+            );
+            if ($result === false) {
+                break;
+            }
+            $written += strlen($chunk);
+        }
+        if ($written > 0 && !pg_lo_seek($this->lob, $start + $written, SEEK_SET)) {
+            return false;
+        }
+        return $written === 0 && $length > 0 ? false : $written;
     }
 
     // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- PHP's streamWrapper protocol requires this method name.
