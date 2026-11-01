@@ -379,8 +379,22 @@ GO_PACKAGES = ./packages/go/... ./tests/... ./examples/...
 # package tests, including the DSN refusal and output comparisons, run once in example-check with their PHP, Python and database setup.
 GO_TEST_CHECK_PACKAGES = $$(go list ./packages/go/cmd/... ./packages/go/procevent/... ./packages/go/internal/... ./tests/...)
 .PHONY: go-test-check
-go-test-check:
-	$(WITH_TEST_ENV) $(GO_TEST) $(GO_TEST_CHECK_PACKAGES)
+# go-test-check runs every go test of the check packages. The cross-runtime tests of packages/go/internal/dialects (apply clients,
+# introspect compare, dialect facts) need the runner binaries, the PHP extension, the Python runtime, the stress document and the
+# MySQL privilege fixture, which go-test-check builds or declares and exports (T334-3-6-3); without them those tests fail.
+go-test-check: RUN_DIR = $(abspath .runtime/run)/go-test-check-$$PPID
+go-test-check: lease-tool python-venv-check php-vendor-check orm-codes-typescript go-test-check/cross-runtime
+	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=$(RUN_TARGET)/debug/examples/dbspec_apply POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_INTROSPECT_DOCUMENT) DBSPEC_INTROSPECT_RUST=$(RUN_TARGET)/$(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect DBSPEC_INTROSPECT_PYTHON=$(PYTHON_VENV)/bin/python $(GO_TEST) $(GO_TEST_CHECK_PACKAGES)
+	rm -rf $(RUN_DIR)
+
+go-test-check/cross-runtime: lease-tool python-venv-check php-vendor-check orm-codes-typescript
+	$(HOLD_TYPESCRIPT)
+	mkdir -p $(dir $(DBSPEC_INTROSPECT_DOCUMENT))
+	$(PUBLISH) $(DBSPEC_INTROSPECT_DOCUMENT) node tests/dbspec/stress.mts $(DBSPEC_INTROSPECT_TABLES)
+	$(TSC_BUILD)
+	$(RUN_LONG) rust-build/dbspec_apply --cwd packages/rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm --example dbspec_apply
+	$(RUN_LONG) rust-build/dbspec_introspect --cwd packages/rust -- $(CARGO_COPY) $(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --profile $(DBSPEC_INTROSPECT_PROFILE) --locked --offline -p polyspec-orm --example dbspec_introspect
+	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
 
 # The DB-independent Go public-plan case exercises the generated Product query and rejects SQLite before execution.
 complex-query-go-plan-check:
@@ -451,14 +465,12 @@ dbspec-stress-rust-check:
 # applies the rendered statements.
 .PHONY: dbspec-ddl-check
 dbspec-ddl-check:
-	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^(TestDDLVectors|TestSchemaDocumentsApply)$$' -count=1
 
 # dbspec-introspect-check renders tests/dbspec/ddl.json and every schema document into MySQL, PostgreSQL,
 # and SQLite and applies them, introspects each database and requires the source schema text,
 # and runs tests/dbspec/introspect.json.
 .PHONY: dbspec-introspect-check
 dbspec-introspect-check:
-	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^(TestIntrospectRoundTrip|TestIntrospectUnsupported)$$' -count=1
 
 # dbspec-introspect-ts-check builds the TypeScript client and runs the round trip of dbspec-introspect-check and its unsupported cases
 # against MySQL, PostgreSQL, and SQLite with that introspectDbspec.
@@ -580,7 +592,6 @@ typescript-database-case-fixture-helper-check: typescript-build
 # no hidden names (docs/spec/plans.md "Verification").
 .PHONY: dbspec-plan-check
 dbspec-plan-check:
-	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^TestPlanApply$$' -count=1
 
 # dbspec-plan-python-check applies every case of tests/dbspec/plans.json to MySQL, PostgreSQL and SQLite with the Python client (packages/python/tests/dbspec_plan_physical.py).
 .PHONY: dbspec-plan-python-check
@@ -594,7 +605,6 @@ dbspec-plan-python-check: python-venv-check
 # commits its statements and its 22000 history steps separately, so the deadline of that case is long.
 .PHONY: dbspec-apply-check
 dbspec-apply-check:
-	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^(TestApplyChain|TestApplyThroughTransactionPooler)$$' -count=1
 
 # Runs Python's native PLN-90 lock-wait cases and PLN-104 stress apply case.
 .PHONY: dbspec-apply-python-check
@@ -633,7 +643,6 @@ APPLY_STRESS_DIALECTS = mysql|postgres|sqlite
 .PHONY: dbspec-apply-stress-bench
 dbspec-apply-stress-bench:
 	$(if $(APPLY_STRESS_DIALECTS),,$(error APPLY_STRESS_DIALECTS is empty; give mysql, postgres or sqlite separated by |))$(foreach dialect,$(subst |, ,$(APPLY_STRESS_DIALECTS)),$(if $(filter $(dialect),mysql postgres sqlite),,$(error APPLY_STRESS_DIALECTS names $(dialect), which is no database; give mysql, postgres or sqlite separated by |)))
-	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^TestApplyStressPlan$$/^($(APPLY_STRESS_DIALECTS))$$' -count=1
 
 # dbspec-apply-pairs-check builds the TypeScript client and the Rust apply runner,
 # the Go, PHP, TypeScript, and Rust runners in tests/dbspec/apply, the PHP extension polyspec_orm runner (built in this run's directory), and the Python runner
@@ -643,13 +652,7 @@ dbspec-apply-stress-bench:
 # rows and the introspected schema text must match those of the chain. Python also runs the
 # representative finalize and lock-wait scenarios on each database.
 .PHONY: dbspec-apply-pairs-check
-dbspec-apply-pairs-check: lease-tool python-venv-check php-vendor-check orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
-	$(RUN_LONG) rust-build/dbspec_apply --cwd packages/rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm --example dbspec_apply
-	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
-	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=$(RUN_TARGET)/debug/examples/dbspec_apply POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^(TestApplyChainAcrossClients|TestApplyExtensionRunnerMode)$$' -count=1
-	rm -rf $(RUN_DIR)
+dbspec-apply-pairs-check: go-test-check
 
 # dbspec-apply-rust-check runs the scenario of dbspec-apply-check, minus the 2000-table plan, with the Rust client's
 # polyspec_orm::dbspec::apply, recover, rollback, and finalize.
@@ -709,15 +712,7 @@ dbspec-apply-php-extension-check: php-vendor-check php-models
 # prints the introspection time and warns when it exceeds the reference value. dbspec-introspect-compare-bench runs the same target with the 2000
 # table document and the release runners.
 .PHONY: dbspec-introspect-compare-check dbspec-introspect-compare-bench
-dbspec-introspect-compare-check: lease-tool python-venv-check php-vendor-check orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	mkdir -p $(dir $(DBSPEC_INTROSPECT_DOCUMENT))
-	$(PUBLISH) $(DBSPEC_INTROSPECT_DOCUMENT) node tests/dbspec/stress.mts $(DBSPEC_INTROSPECT_TABLES)
-	$(TSC_BUILD)
-	$(RUN_LONG) rust-build/dbspec_introspect --cwd packages/rust -- $(CARGO_COPY) $(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --profile $(DBSPEC_INTROSPECT_PROFILE) --locked --offline -p polyspec-orm --example dbspec_introspect
-	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
-	$(WITH_TEST_ENV) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_INTROSPECT_DOCUMENT) DBSPEC_INTROSPECT_RUST=$(RUN_TARGET)/$(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) DBSPEC_INTROSPECT_PYTHON=$(PYTHON_VENV)/bin/python $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^(TestIntrospectCompare|TestIntrospectCompareRunnerEnvironment)$$' -count=1
-	rm -rf $(RUN_DIR)
+dbspec-introspect-compare-check: go-test-check
 
 dbspec-introspect-compare-bench:
 	$(MAKE) --no-print-directory dbspec-introspect-compare-check DBSPEC_INTROSPECT_TABLES=2000 DBSPEC_INTROSPECT_PROFILE=release
@@ -1943,8 +1938,7 @@ python-schema-inspection-check: python-venv-check
 dialect-facts-check: dialect-facts-check/probes dialect-facts-check/facts
 dialect-facts-check/probes:
 	$(GO_TEST) ./packages/go/internal/dialects -run '^(TestProbeIDs|TestProbeCitations)$$' -count=1
-dialect-facts-check/facts:
-	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^(TestDialectFacts|TestSQLiteFileNameWithQuery)$$' -count=1
+dialect-facts-check/facts: go-test-check
 
 conformance-counter-check:
 	$(WITH_TEST_ENV) node --test tests/conformance/check/counters.physical.test.mts

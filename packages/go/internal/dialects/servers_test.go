@@ -1,6 +1,4 @@
-//go:build physical
-
-// The servers of the probes and of the physical tests are built with those tests, which alone open them (build tag physical).
+// The servers of the probes and of the physical tests are built with those tests, which alone open them.
 
 package dialects
 
@@ -9,10 +7,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -73,32 +69,6 @@ func (s *Servers) Unreachable(db string) error {
 // Close closes the administrative connections.
 func (s *Servers) Close() error {
 	return errors.Join(s.mysqlAdmin.Close(), s.postgres.Close())
-}
-
-// mysqlConfig converts a mysql:// DSN URI to a driver configuration without a
-// default database.
-func mysqlConfig(raw string) (*mysql.Config, error) {
-	u, err := url.Parse(raw)
-	if err != nil || u.Scheme != "mysql" {
-		return nil, fmt.Errorf("invalid mysql DSN URI")
-	}
-	cfg := mysql.NewConfig()
-	cfg.User = u.User.Username()
-	cfg.Passwd, _ = u.User.Password()
-	cfg.Net = "tcp"
-	cfg.Addr = u.Host
-	cfg.DBName = strings.TrimPrefix(u.Path, "/")
-	return cfg, nil
-}
-
-// MySQLDriverDSN returns the driver form of a mysql:// DSN URI, the form that
-// sql.Open takes, by the same conversion mysqlConfig performs.
-func MySQLDriverDSN(raw string) (string, error) {
-	cfg, err := mysqlConfig(raw)
-	if err != nil {
-		return "", err
-	}
-	return cfg.FormatDSN(), nil
 }
 
 // Name is the disposable object name of the probe at index.

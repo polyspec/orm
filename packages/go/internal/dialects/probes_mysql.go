@@ -3,6 +3,8 @@ package dialects
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -644,4 +646,30 @@ func openMySQLConn(ctx context.Context, cfg *mysql.Config) (*sql.Conn, func() er
 		return nil, nil, err
 	}
 	return database.Conn(ctx, sql.OpenDB(connector))
+}
+
+// mysqlConfig converts a mysql:// DSN URI to a driver configuration without a
+// default database.
+func mysqlConfig(raw string) (*mysql.Config, error) {
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "mysql" {
+		return nil, fmt.Errorf("invalid mysql DSN URI")
+	}
+	cfg := mysql.NewConfig()
+	cfg.User = u.User.Username()
+	cfg.Passwd, _ = u.User.Password()
+	cfg.Net = "tcp"
+	cfg.Addr = u.Host
+	cfg.DBName = strings.TrimPrefix(u.Path, "/")
+	return cfg, nil
+}
+
+// MySQLDriverDSN returns the driver form of a mysql:// DSN URI, the form that
+// sql.Open takes, by the same conversion mysqlConfig performs.
+func MySQLDriverDSN(raw string) (string, error) {
+	cfg, err := mysqlConfig(raw)
+	if err != nil {
+		return "", err
+	}
+	return cfg.FormatDSN(), nil
 }

@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The physical Go tests of packages/go/internal/dialects and packages/go/engine ran only under the build tag `physical`, which the hand-kept `-run` lists of the Makefile selected, so the normal `go test` left them out. They carry no tag now and run in go-test-check, which builds and exports what they need; `servers.go` is `servers_test.go`, and the MySQL DSN helper moved to probes_mysql.go, because a production package cannot import a `_test.go` file (T334-3-6-3).
+- The workspace `cargo test` left out the markdown_conformance trials (`test = false`), so no run of the rust lane checked the flowmark conformance cases. It runs in the workspace test now, with FLOWMARK passed by client-pooler-check (T334-3-13).
 - The refused DSN cases of CFG-1, CFG-2, CFG-11, CFG-17, CFG-19 and CFG-26 (a non-UTC timezone, an unknown scheme, a missing database name, a relative SQLite path, an address host with VERIFY_IDENTITY, a malformed SQLite path) are one recipe, contracts/fixtures/dsn_reject/dsn_reject.json, which every runtime runs without a database through the new op dsn.connect (FCV-4) (T334-3-23).
 - The correctness cases of `performance_gate` (the primary-key read and the list of 100 rows) are a recipe, contracts/fixtures/performance_gate/performance_gate.json, that the six runtimes run on MySQL, PostgreSQL and SQLite; the timing gates stay in make perf-check, because their timing depends on the load of the tests beside them (FCV-2, FCV-14) (T334-3-11).
 - The recipe schema refused the model.get_by steps of the model_writes fixture, because both forms took the generic expect instead of the rows outcome that FCV-4 gives model.get_by; both forms now take the rows outcome (T334-3-4-9).

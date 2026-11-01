@@ -2119,7 +2119,7 @@
         "packages/go/internal/dialects/probes_*.go",
         "packages/go/internal/dialects/facts_physical_test.go",
         "packages/go/internal/dialects/sqlite_filename_physical_test.go",
-        "packages/go/internal/dialects/servers.go",
+        "packages/go/internal/dialects/servers_test.go",
         "docs/spec/dialects.md",
         "docs/spec/dialects.ko.md"
       ]
@@ -3576,7 +3576,14 @@
       "scope": "suite",
       "needs": [
         "go",
-        "databases"
+        "databases",
+        "rust",
+        "php",
+        "composer",
+        "node-modules",
+        "php-extension-tools",
+        "python",
+        "mysql-privilege-server"
       ]
     },
     "connection-sqlite-concurrent-writers-python-check": {
