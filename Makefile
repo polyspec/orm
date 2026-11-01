@@ -2631,9 +2631,13 @@ orm-install-cli-check: lease-tool orm-codes-typescript
 # the case harness, and that it rejects, with the position, every missing or wrongly typed field of every vector file. The stress
 # document (TestStressDocument, build tag bench) is run by make bench.
 .PHONY: dbspec-go-check dbspec-go-check/engine dbspec-go-check/unicode
-dbspec-go-check: dbspec-go-check/engine dbspec-go-check/unicode
+dbspec-go-check: dbspec-go-check/engine dbspec-go-check/unicode dbspec-go-check/render-physical
 dbspec-go-check/engine:
 	$(RUN_TESTS) go --cwd packages/go -- ./engine/dbspec -count=1
+# dbspec-go-check/render-physical runs the rendered statements of tests/dbspec/ddl.json with their behavior steps on MySQL, PostgreSQL and
+# SQLite, through the client package (TestDBSpecRenderPhysical); an unset ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN fails it by name.
+dbspec-go-check/render-physical:
+	$(WITH_TEST_ENV) $(RUN_TESTS) go --cwd packages/go -- ./orm -run '^TestDBSpecRenderPhysical$$' -count=1
 # dbspec-go-check/unicode checks that the three table files written by the generator of tests/dbspec/unicode match the current Go tables, and that the C extension and the Python module
 # give the same classification as Go at every code point.
 dbspec-go-check/unicode:

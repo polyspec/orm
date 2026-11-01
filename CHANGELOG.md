@@ -46,6 +46,7 @@
 - The duplication check found three clones of shared test code. The PHP fetchAll of PgsqlStatementAdapter and CatalogAnswerStatement is now the trait FetchesAllRows, the parse_set of the Rust dbspec tests is in the probe module tests/common/dbspec_probe.rs, and the TypeScript within helper is in tests/deadline.mjs, which both use (CR27).
 - The PHP render test checked the statements of tests/dbspec/ddl.json but not their behaviour steps. It now runs the steps on MySQL, PostgreSQL and SQLite, and fails naming the server DSN that is unset (CR16-1-3).
 - The PHP extension render test checked the statements of tests/dbspec/ddl.json but not their behaviour steps. Its make target now runs the steps on MySQL, PostgreSQL and SQLite with the extension, and fails naming the server DSN that is unset (CR16-1-4).
+- The Go runner of the DDL behaviour ran the steps of tests/dbspec/ddl.json on the three databases only in its internal package, so the client package had no test of them. A client test now runs the statements and steps through the client database driver, its make target dbspec-go-check/render-physical fails naming an unset server DSN, and parity binds it as the Go test of dbspec-render-physical (CR16-1-6).
 
 ## 0.0.21
 

@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4b439ecdabb021321d097eb9bd9c38a5bffc869569829e8c51e3f3b168110b8f -->
+<!-- source-sha256: f8bbebbb25ee154710578164afb32d42cab394905739b7490903bfc6f93ca823 -->
 # 변경 이력
 
 ## Unreleased
@@ -47,6 +47,7 @@
 - duplication check가 공용 test 코드의 clone 세 개를 찾았다. PgsqlStatementAdapter와 CatalogAnswerStatement의 PHP fetchAll은 trait FetchesAllRows가 되었고, Rust dbspec test의 parse_set은 probe 모듈 tests/common/dbspec_probe.rs에 있으며, TypeScript의 within helper는 둘이 함께 쓰는 tests/deadline.mjs에 있다 (CR27).
 - PHP render test는 tests/dbspec/ddl.json의 statement만 확인하고 behavior step은 확인하지 않았다. 이제 그 step을 MySQL, PostgreSQL, SQLite에서 실행하며, 서버 DSN이 빠지면 그 이름을 대며 실패한다 (CR16-1-3).
 - php-extension render test는 tests/dbspec/ddl.json의 statement만 확인하고 behavior step은 확인하지 않았다. 이제 그 make target이 extension으로 step을 MySQL, PostgreSQL, SQLite에서 실행하며, 서버 DSN이 빠지면 그 이름을 대며 실패한다 (CR16-1-4).
+- Go runner의 DDL behavior는 tests/dbspec/ddl.json의 step을 세 database에서 internal package 안에서만 실행해서, client package에는 이를 확인하는 시험이 없었다. 이제 client 시험이 statement와 step을 client의 database driver로 실행하고, make target dbspec-go-check/render-physical은 서버 DSN이 빠지면 그 이름을 대며 실패하며, parity가 이 시험을 dbspec-render-physical의 Go 시험으로 binding한다 (CR16-1-6).
 
 ## 0.0.21
 
