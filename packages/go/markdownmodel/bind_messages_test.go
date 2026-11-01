@@ -4,6 +4,7 @@ package markdownmodel_test
 
 import (
 	"bufio"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -93,6 +94,10 @@ func messageValue(t *testing.T, msg json.RawMessage) json.RawMessage {
 	if m.Op == "begin" {
 		return msg
 	}
+	// A statement with no parameter (a nil compared with eq is IS NULL, DSL-48) has the empty list as its message.
+	if len(m.Params) == 0 {
+		return json.RawMessage("[]")
+	}
 	if len(m.Params) != 1 {
 		t.Fatalf("the statement message %s holds %d parameters, want one", msg, len(m.Params))
 	}
@@ -128,6 +133,25 @@ func queryColumn(t *testing.T, db *orm.DB, column string, value json.RawMessage)
 	case "slots.decimal_value":
 		_, err := bindmodel.Slots().Connect(db).DecimalValue(text(t, value)).Gets()
 		return err
+	case "slots.varchar_value":
+		_, err := bindmodel.Slots().Connect(db).VarcharValue(text(t, value)).Gets()
+		return err
+	case "slots.varchar_null_value":
+		if isNil(value) {
+			_, err := bindmodel.Slots().Connect(db).VarcharNullValue(orm.Null).Gets()
+			return err
+		}
+		_, err := bindmodel.Slots().Connect(db).VarcharNullValue(text(t, value)).Gets()
+		return err
+	case "slots.varchar_long_value":
+		_, err := bindmodel.Slots().Connect(db).VarcharLongValue(text(t, value)).Gets()
+		return err
+	case "slots.text_value":
+		_, err := bindmodel.Slots().Connect(db).TextValue(text(t, value)).Gets()
+		return err
+	case "slots.bytes_value":
+		_, err := bindmodel.Slots().Connect(db).BytesValue(bytesHex(t, value)).Gets()
+		return err
 	case "slots.i16_value":
 		_, err := bindmodel.Slots().Connect(db).I16Value(integer[int16](t, value, 16)).Gets()
 		return err
@@ -159,6 +183,30 @@ func text(t *testing.T, value json.RawMessage) string {
 		return v
 	}
 	return ""
+}
+
+// isNil reports whether the parameter is the nil wrapper, the SQL NULL of a nullable column.
+func isNil(value json.RawMessage) bool {
+	var w map[string]json.RawMessage
+	if err := json.Unmarshal(value, &w); err != nil {
+		return false
+	}
+	_, ok := w["nil"]
+	return ok
+}
+
+// bytesHex is the host value of a bytes_hex wrapper.
+func bytesHex(t *testing.T, value json.RawMessage) []byte {
+	t.Helper()
+	var w map[string]string
+	if err := json.Unmarshal(value, &w); err != nil || len(w) != 1 {
+		t.Fatalf("the parameter %s is no bytes_hex wrapper", value)
+	}
+	b, err := hex.DecodeString(w["bytes_hex"])
+	if err != nil {
+		t.Fatalf("the parameter %s holds no hex: %v", value, err)
+	}
+	return b
 }
 
 // integer is the host value of an int wrapper for a host type of the given bit size. A text that the host type cannot hold

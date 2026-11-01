@@ -202,6 +202,11 @@ final class Recipe
         'slots.datetime6_value' => 'datetime6Value',
         'slots.date_value' => 'dateValue',
         'slots.decimal_value' => 'decimalValue',
+        'slots.varchar_value' => 'varcharValue',
+        'slots.varchar_null_value' => 'varcharNullValue',
+        'slots.varchar_long_value' => 'varcharLongValue',
+        'slots.text_value' => 'textValue',
+        'slots.bytes_value' => 'bytesValue',
         'slots.i16_value' => 'i16Value',
         'slots.i32_value' => 'i32Value',
         'slots.i64_value' => 'i64Value',
@@ -266,6 +271,10 @@ final class Recipe
             return $message;
         }
         $params = $message['params'] ?? null;
+        // A statement with no parameter (a nil compared with eq is IS NULL, DSL-48) has the empty list as its message.
+        if (is_array($params) && $params === []) {
+            return [];
+        }
         if (!is_array($params) || count($params) !== 1) {
             Assert::fail("the statement message $text holds no single parameter");
         }

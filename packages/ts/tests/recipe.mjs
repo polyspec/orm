@@ -412,7 +412,7 @@ function native(wrapper) {
     case 'text': case 'date': case 'time': case 'datetime': case 'decimal': return value;
     case 'bytes_hex': return Uint8Array.from(Buffer.from(value, 'hex'));
     case 'bool': return value;
-    case 'null': return null;
+    case 'null': case 'nil': return null;
     default: throw new Error(`unknown recipe wrapper ${kind}`);
   }
 }
@@ -615,6 +615,8 @@ function messageValue(text) {
   const message = fromJson(parseJson(text));
   if (member(message, 'op')?.text === 'begin') return message;
   const params = member(message, 'params');
+  // A statement with no parameter (a nil compared with eq is IS NULL, DSL-48) has the empty list as its message.
+  if (params?.array?.length === 0) return params;
   if (params?.array?.length !== 1) throw new Error(`the statement message ${text} holds no single parameter`);
   return params.array[0];
 }
@@ -633,6 +635,11 @@ async function queryColumn(step, db) {
     case 'slots.f64_value': return slots.f64Value(hostValue(step.params[0])).gets();
     case 'slots.bool_value': return slots.boolValue(hostValue(step.params[0])).gets();
     case 'slots.decimal_value': return slots.decimalValue(hostValue(step.params[0])).gets();
+    case 'slots.varchar_value': return slots.varcharValue(hostValue(step.params[0])).gets();
+    case 'slots.varchar_null_value': return slots.varcharNullValue(hostValue(step.params[0])).gets();
+    case 'slots.varchar_long_value': return slots.varcharLongValue(hostValue(step.params[0])).gets();
+    case 'slots.text_value': return slots.textValue(hostValue(step.params[0])).gets();
+    case 'slots.bytes_value': return slots.bytesValue(hostValue(step.params[0])).gets();
   }
   const value = wrapperText(step.params[0]);
   switch (step.column) {

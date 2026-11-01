@@ -345,7 +345,7 @@
           "process_zone": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_+-]*(/[A-Za-z][A-Za-z0-9_+-]*)*$", "description": "An IANA zone name that is the process default zone while the case runs, restored after it. An offset-less datetime is a wall clock in the connection zone, not in this zone (docs/spec/protocol.md section 5)." },
           "begin": { "type": "object", "required": ["read_only"], "additionalProperties": false, "properties": { "read_only": { "type": "boolean" } }, "description": "A transaction begin on the connection, sent in place of a statement." },
           "expect": { "type": "object", "oneOf": [
-            { "required": ["message"], "additionalProperties": false, "properties": { "message": { "description": "The JSON that the listener receives first: the begin message of a begin, or the JSON of the parameter of a statement (runtime value model, docs/spec/protocol.md section 5)." } } },
+            { "required": ["message"], "additionalProperties": false, "properties": { "message": { "description": "The JSON that the listener receives first: the begin message of a begin, or the JSON of the parameter of a statement (runtime value model, docs/spec/protocol.md section 5), or the empty list `[]` of a statement that binds no parameter (a nil compared with eq is IS NULL, DSL-48)." } } },
             { "required": ["error"], "additionalProperties": false, "properties": { "error": { "type": "string", "pattern": "^[A-Z_]+$", "description": "The code of the error that the public call returns before any message is sent." } } }
           ] }
         }

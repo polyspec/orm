@@ -929,6 +929,401 @@
         "go": "the typed public API refuses this host value at compile time",
         "rust": "the typed public API refuses this host value at compile time"
       }
+    },
+    {
+      "id": "bind_null_accepted",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.varchar_null_value",
+          "operator": "eq",
+          "params": [
+            {
+              "nil": true
+            }
+          ],
+          "expect": {
+            "message": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_null_compared_into_not_null",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.varchar_value",
+          "operator": "eq",
+          "params": [
+            {
+              "nil": true
+            }
+          ],
+          "expect": {
+            "error": "CONFIG"
+          }
+        }
+      ],
+      "exclude": {
+        "go": "the typed public API refuses this host value at compile time",
+        "rust": "the typed public API refuses this host value at compile time",
+        "typescript": "the typed public API refuses this host value at compile time"
+      }
+    },
+    {
+      "id": "bind_value_into_not_null",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.varchar_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "abc"
+            }
+          ],
+          "expect": {
+            "message": "abc"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_varchar_length",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.varchar_null_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "abc"
+            }
+          ],
+          "expect": {
+            "message": "abc"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_varchar_code_points",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.varchar_null_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "가나다"
+            }
+          ],
+          "expect": {
+            "message": "가나다"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_varchar_too_long",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.varchar_null_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "abcd"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_varchar_trailing_space",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.varchar_null_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "abc "
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_varchar_code_points_too_long",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.varchar_null_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "가나다라"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_varchar_nul",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.varchar_null_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "a\u0000"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_varchar_number",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.varchar_null_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "5"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ],
+      "exclude": {
+        "go": "the typed public API refuses this host value at compile time",
+        "rust": "the typed public API refuses this host value at compile time"
+      }
+    },
+    {
+      "id": "bind_varchar_without_length",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.varchar_long_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "a slot of a utils statement"
+            }
+          ],
+          "expect": {
+            "message": "a slot of a utils statement"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_text",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.text_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "hello"
+            }
+          ],
+          "expect": {
+            "message": "hello"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_text_nul",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.text_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "a\u0000b"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_text_bool",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.text_value",
+          "operator": "eq",
+          "params": [
+            {
+              "bool": true
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ],
+      "exclude": {
+        "go": "the typed public API refuses this host value at compile time",
+        "rust": "the typed public API refuses this host value at compile time"
+      }
+    },
+    {
+      "id": "bind_bytes",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.bytes_value",
+          "operator": "eq",
+          "params": [
+            {
+              "bytes_hex": "0001"
+            }
+          ],
+          "expect": {
+            "message": "AAE="
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_bytes_text",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.bytes_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "ab"
+            }
+          ],
+          "expect": {
+            "message": "YWI="
+          }
+        }
+      ],
+      "exclude": {
+        "go": "the typed public API refuses this host value at compile time",
+        "rust": "the typed public API refuses this host value at compile time"
+      }
+    },
+    {
+      "id": "bind_bytes_number",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.bytes_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "5"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ],
+      "exclude": {
+        "go": "the typed public API refuses this host value at compile time",
+        "rust": "the typed public API refuses this host value at compile time"
+      }
     }
   ]
 }

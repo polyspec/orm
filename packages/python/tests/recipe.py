@@ -139,6 +139,11 @@ SEND_ERROR = b'{"error":{"code":"IR_INVALID","message":"recorded by the markdown
 # The typed filters of the bind fixture tests/bind/slots.dbs that a markdown.send statement may name, by column (DBS-121).
 SEND_FILTERS = frozenset(
     [
+        "varchar_value",
+        "varchar_null_value",
+        "varchar_long_value",
+        "text_value",
+        "bytes_value",
         "time0_value",
         "time3_value",
         "time6_value",
@@ -316,9 +321,40 @@ def _query_slot(models, db, step: dict) -> None:
             )
         getattr(models.Slots().connect(db), f"gets_by_{name}")(value)
         return
-    if len(wrapper) != 1 or not isinstance(next(iter(wrapper.values())), str):
-        raise AssertionError(f"the parameter {json.dumps(wrapper)} is no text wrapper")
-    value = next(iter(wrapper.values()))
+    if list(wrapper) == ["nil"]:
+        # The nil wrapper of a nullable column is the SQL NULL that the typed filter takes as IS NULL (DSL-48).
+        getattr(models.Slots().connect(db), f"gets_by_{name}")(None)
+        return
+    if list(wrapper) == ["bytes_hex"]:
+        getattr(models.Slots().connect(db), f"gets_by_{name}")(
+            bytes.fromhex(wrapper["bytes_hex"])
+        )
+        return
+    if len(wrapper) != 1:
+        raise AssertionError(
+            f"the parameter {json.dumps(wrapper)} is no single wrapper"
+        )
+    # A text wrapper is the text the filter takes; any other kind reaches the filter as its Python value, so the public path
+    # refuses a value of the wrong kind itself (PRT-67) instead of the harness turning it into text.
+    ((kind, raw),) = wrapper.items()
+    if kind in ("text", "time", "datetime", "date"):
+        value = raw
+    elif kind == "int":
+        value = int(raw)
+    elif kind == "bool":
+        value = raw
+    elif kind in ("float", "f64"):
+        value = float(raw)
+    elif kind == "decimal":
+        value = raw
+    elif kind == "nil":
+        value = None
+    elif kind == "bytes_hex":
+        value = bytes.fromhex(raw)
+    else:
+        raise AssertionError(
+            f"the parameter {json.dumps(wrapper)} has no value of the Python filter of {name}"
+        )
     getattr(models.Slots().connect(db), f"gets_by_{name}")(value)
 
 
@@ -328,6 +364,9 @@ def _message_value(text: str):
     if message.get("op") == "begin":
         return message
     params = message.get("params")
+    # A statement with no parameter (a nil compared with eq is IS NULL, DSL-48) has the empty list as its message.
+    if params == []:
+        return []
     if not isinstance(params, list) or len(params) != 1:
         raise AssertionError(f"the statement message {text} holds no single parameter")
     return params[0]
