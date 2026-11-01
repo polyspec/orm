@@ -141,6 +141,9 @@ const SEND_COLUMNS: &[&str] = &[
     "slots.datetime3_value",
     "slots.datetime6_value",
     "slots.date_value",
+    "slots.i16_value",
+    "slots.i32_value",
+    "slots.i64_value",
 ];
 
 /// One markdown.send step (FCV-3, FCV-4): a transaction begin, or the typed query of a slot column. The step runs on a
@@ -211,13 +214,22 @@ enum Sent {
 struct SendStep {
     begin: Option<bool>,
     column: String,
-    value: String,
+    value: Filter,
+}
+
+/// The typed filter value of a statement: the text of a string column, or the integer that the text of an integer column
+/// converts to the host type of its column (a text that does not convert is an error of the step, not a pass).
+enum Filter {
+    Text(String),
+    I16(i16),
+    I32(i32),
+    I64(i64),
 }
 
 impl SendStep {
     fn parse(step: &Value) -> Result<Self, String> {
         if let Some(begin) = step.get("begin") {
-            return Ok(Self { begin: Some(begin["read_only"].as_bool().unwrap_or(false)), column: String::new(), value: String::new() });
+            return Ok(Self { begin: Some(begin["read_only"].as_bool().unwrap_or(false)), column: String::new(), value: Filter::Text(String::new()) });
         }
         let operator = step["operator"].as_str().unwrap_or_default();
         if operator != "eq" {
@@ -229,27 +241,43 @@ impl SendStep {
         }
         // The typed filters take the text of the wrapper: the runtime reads it in the form of the column type (FCV-4).
         let (_, body) = kind(&step["params"][0])?;
-        let value = body.as_str().ok_or_else(|| format!("the parameter {} holds no text", step["params"][0]))?;
-        Ok(Self { begin: None, column: column.to_owned(), value: value.to_owned() })
+        let text = body.as_str().ok_or_else(|| format!("the parameter {} holds no text", step["params"][0]))?;
+        let value = match column {
+            "slots.i16_value" => Filter::I16(integer(column, text)?),
+            "slots.i32_value" => Filter::I32(integer(column, text)?),
+            "slots.i64_value" => Filter::I64(integer(column, text)?),
+            _ => Filter::Text(text.to_owned()),
+        };
+        Ok(Self { begin: None, column: column.to_owned(), value })
     }
 
     /// Runs the call on the connection `db`.
     async fn call(&self, db: &polyspec_orm::Db) -> polyspec_orm::Result<()> {
-        let value = self.value.as_str();
         if let Some(read_only) = self.begin {
             return if read_only { db.transaction(async || Ok(())).read_only().await } else { db.transaction(async || Ok(())).await };
         }
-        match self.column.as_str() {
-            "slots.time0_value" => bind_model::Slots::new().connect(db).time0_value(value).gets().await.map(drop),
-            "slots.time3_value" => bind_model::Slots::new().connect(db).time3_value(value).gets().await.map(drop),
-            "slots.time6_value" => bind_model::Slots::new().connect(db).time6_value(value).gets().await.map(drop),
-            "slots.datetime0_value" => bind_model::Slots::new().connect(db).datetime0_value(value).gets().await.map(drop),
-            "slots.datetime3_value" => bind_model::Slots::new().connect(db).datetime3_value(value).gets().await.map(drop),
-            "slots.datetime6_value" => bind_model::Slots::new().connect(db).datetime6_value(value).gets().await.map(drop),
-            "slots.date_value" => bind_model::Slots::new().connect(db).date_value(value).gets().await.map(drop),
-            other => unreachable!("parse admits only the columns of SEND_COLUMNS, not {other}"),
+        match (self.column.as_str(), &self.value) {
+            ("slots.time0_value", Filter::Text(v)) => bind_model::Slots::new().connect(db).time0_value(v.as_str()).gets().await.map(drop),
+            ("slots.time3_value", Filter::Text(v)) => bind_model::Slots::new().connect(db).time3_value(v.as_str()).gets().await.map(drop),
+            ("slots.time6_value", Filter::Text(v)) => bind_model::Slots::new().connect(db).time6_value(v.as_str()).gets().await.map(drop),
+            ("slots.datetime0_value", Filter::Text(v)) => bind_model::Slots::new().connect(db).datetime0_value(v.as_str()).gets().await.map(drop),
+            ("slots.datetime3_value", Filter::Text(v)) => bind_model::Slots::new().connect(db).datetime3_value(v.as_str()).gets().await.map(drop),
+            ("slots.datetime6_value", Filter::Text(v)) => bind_model::Slots::new().connect(db).datetime6_value(v.as_str()).gets().await.map(drop),
+            ("slots.date_value", Filter::Text(v)) => bind_model::Slots::new().connect(db).date_value(v.as_str()).gets().await.map(drop),
+            ("slots.i16_value", Filter::I16(v)) => bind_model::Slots::new().connect(db).i16_value(*v).gets().await.map(drop),
+            ("slots.i32_value", Filter::I32(v)) => bind_model::Slots::new().connect(db).i32_value(*v).gets().await.map(drop),
+            ("slots.i64_value", Filter::I64(v)) => bind_model::Slots::new().connect(db).i64_value(*v).gets().await.map(drop),
+            (column, _) => unreachable!("parse builds the filter of each column of SEND_COLUMNS, not {column}"),
         }
     }
+}
+
+/// The integer of a statement's text for the host type `T` of its column; a text outside the range of `T` is an error.
+fn integer<T: std::str::FromStr>(column: &str, text: &str) -> Result<T, String>
+where
+    T::Err: std::fmt::Display,
+{
+    text.parse::<T>().map_err(|error| format!("the parameter {text:?} of {column} is no integer of its host type: {error}"))
 }
 
 /// Runs one call on a connection to `dsn` with a current-thread runtime, on a thread with a stack of its own (the futures of
