@@ -142,6 +142,11 @@ const SEND_COLUMNS: &[&str] = &[
     "slots.datetime6_value",
     "slots.date_value",
     "slots.decimal_value",
+    "slots.varchar_value",
+    "slots.varchar_null_value",
+    "slots.varchar_long_value",
+    "slots.text_value",
+    "slots.bytes_value",
     "slots.i16_value",
     "slots.i32_value",
     "slots.i64_value",
@@ -237,6 +242,8 @@ struct SendStep {
 /// convert is an error of the step, not a pass).
 enum Filter {
     Text(String),
+    Bytes(Vec<u8>),
+    Nil,
     I16(i16),
     I32(i32),
     I64(i64),
@@ -260,8 +267,13 @@ impl SendStep {
         // The typed filters take the wrapper of the parameter: the runtime reads it in the form of the column type (FCV-4).
         let (wrapper, body) = kind(&step["params"][0])?;
         let value = match column {
+            _ if wrapper == "nil" => Filter::Nil,
             "slots.f64_value" => Filter::F64(float(column, wrapper, body)?),
             "slots.bool_value" => Filter::Bool(boolean(column, wrapper, body)?),
+            "slots.bytes_value" => {
+                let hex = body.as_str().ok_or_else(|| format!("the parameter {} holds no hex", step["params"][0]))?;
+                Filter::Bytes(hex_bytes(hex)?)
+            }
             _ => {
                 let text = body.as_str().ok_or_else(|| format!("the parameter {} holds no text", step["params"][0]))?;
                 match column {
@@ -288,6 +300,12 @@ impl SendStep {
             ("slots.datetime3_value", Filter::Text(v)) => bind_model::Slots::new().connect(db).datetime3_value(v.as_str()).gets().await.map(drop),
             ("slots.datetime6_value", Filter::Text(v)) => bind_model::Slots::new().connect(db).datetime6_value(v.as_str()).gets().await.map(drop),
             ("slots.date_value", Filter::Text(v)) => bind_model::Slots::new().connect(db).date_value(v.as_str()).gets().await.map(drop),
+            ("slots.varchar_value", Filter::Text(v)) => bind_model::Slots::new().connect(db).varchar_value(v.as_str()).gets().await.map(drop),
+            ("slots.varchar_null_value", Filter::Text(v)) => bind_model::Slots::new().connect(db).varchar_null_value(v.as_str()).gets().await.map(drop),
+            ("slots.varchar_null_value", Filter::Nil) => bind_model::Slots::new().connect(db).varchar_null_value(polyspec_orm::Null).gets().await.map(drop),
+            ("slots.varchar_long_value", Filter::Text(v)) => bind_model::Slots::new().connect(db).varchar_long_value(v.as_str()).gets().await.map(drop),
+            ("slots.text_value", Filter::Text(v)) => bind_model::Slots::new().connect(db).text_value(v.as_str()).gets().await.map(drop),
+            ("slots.bytes_value", Filter::Bytes(v)) => bind_model::Slots::new().connect(db).bytes_value(v.clone()).gets().await.map(drop),
             ("slots.decimal_value", Filter::Text(v)) => bind_model::Slots::new().connect(db).decimal_value(v.as_str()).gets().await.map(drop),
             ("slots.i16_value", Filter::I16(v)) => bind_model::Slots::new().connect(db).i16_value(*v).gets().await.map(drop),
             ("slots.i32_value", Filter::I32(v)) => bind_model::Slots::new().connect(db).i32_value(*v).gets().await.map(drop),
@@ -352,6 +370,8 @@ fn message_value(message: &Value) -> Result<Value, String> {
         return Ok(message.clone());
     }
     match message["params"].as_array().map(Vec::as_slice) {
+        // A statement with no parameter (a nil compared with eq is IS NULL, DSL-48) has the empty list as its message.
+        Some([]) => Ok(Value::Array(Vec::new())),
         Some([only]) => Ok(only.clone()),
         _ => Err(format!("the statement message {message} holds no one parameter")),
     }
