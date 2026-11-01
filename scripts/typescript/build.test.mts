@@ -6,7 +6,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'no
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { test } from 'node:test';
+import { caseTest, PROCESS } from '../../tests/testcase.mts';
 import assert from 'node:assert/strict';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 
@@ -26,7 +26,7 @@ childProcess.spawnSync = (command, args = [], options) => {
 syncBuiltinESMExports();
 `;
 
-test('a second build of the same sources runs no compiler', () => {
+caseTest('a second build of the same sources runs no compiler', PROCESS, () => {
   const scratch = mkdtempSync(path.join(os.tmpdir(), 'ts-build-'));
   try {
     const hook = path.join(scratch, 'count-tsc.mjs');
