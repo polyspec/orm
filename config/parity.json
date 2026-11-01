@@ -365,6 +365,7 @@
         "packages/php/tests/PostgresSessionSettings.php",
         "packages/php/tests/QueryCancellationDbCases.php",
         "packages/php/tests/AuthenticatedEncryptionFixtureCases.php",
+        "packages/php/tests/StatementRunnerCases.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeCases.php",
         "packages/php/tests/CatalogPostgresTemporalPdo.php",
@@ -43733,42 +43734,59 @@
           "implementation": "go",
           "symbols": [
             "github.com/polyspec/orm/packages/go/orm.Utils.Run",
-            "github.com/polyspec/orm/packages/go/orm.TxFrame.Run"
+            "github.com/polyspec/orm/packages/go/orm.TxFrame",
+    "github.com/polyspec/orm/packages/go/orm.TxFrame.Run",
+    "github.com/polyspec/orm/packages/go/orm.StatementResult",
+    "github.com/polyspec/orm/packages/go/orm.StatementResult.Rows"
           ]
         },
         {
           "implementation": "php",
           "symbols": [
             "Polyspec\\Orm\\Utils::run",
-            "Polyspec\\Orm\\TxFrame::run"
+            "Polyspec\\Orm\\TxFrame",
+    "Polyspec\\Orm\\TxFrame::run"
           ]
         },
         {
           "implementation": "php-extension",
           "symbols": [
             "Polyspec\\Orm\\Utils::run",
-            "Polyspec\\Orm\\TxFrame::run"
+            "Polyspec\\Orm\\TxFrame",
+    "Polyspec\\Orm\\TxFrame::run"
           ]
         },
         {
           "implementation": "python",
           "symbols": [
             "polyspec.orm.utils.Utils.run",
-            "polyspec.orm.database.TxFrame.run"
+            "polyspec.orm.database.TxFrame",
+    "polyspec.orm.database.TxFrame.run"
           ]
         },
         {
           "implementation": "rust",
           "symbols": [
-            "polyspec_orm::utils::Utils::run",
-            "polyspec_orm::tx::TxFrame::run"
+            "polyspec_orm::Utils::run",
+            "polyspec_orm::TxFrame",
+    "polyspec_orm::TxFrame::run"
           ]
         },
         {
           "implementation": "typescript",
           "symbols": [
             "@polyspec/orm!Utils#run:member(1)",
-            "@polyspec/orm!TxFrame#run:member(1)"
+            "@polyspec/orm!TxFrame:class",
+    "@polyspec/orm!TxFrame#run:member(1)",
+    "@polyspec/orm!DriverResult:interface",
+    "@polyspec/orm!DriverResult#rows:member",
+    "@polyspec/orm!DriverResult#affected:member",
+    "@polyspec/orm!DriverResult#insertId:member",
+    "@polyspec/orm!DriverResult#columns:member",
+    "@polyspec/orm!DriverColumn:interface",
+    "@polyspec/orm!DriverColumn#name:member",
+    "@polyspec/orm!DriverColumn#type:member",
+    "@polyspec/orm!DriverValue:type"
           ]
         }
       ]
@@ -43808,7 +43826,17 @@
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/statement-runner.mjs",
-          "id": "statement_runner"
+          "id": "statement-runner/statement_runner/sqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement-runner.mjs",
+          "id": "statement-runner/statement_runner/mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement-runner.mjs",
+          "id": "statement-runner/statement_runner/postgres"
         }
       ]
     },
@@ -43822,7 +43850,18 @@
         {
           "implementation": "go",
           "test": "packages/go/orm/coverage_statement_runner_test.go",
-          "id": "TestCoverageStatementRunner"
+          "id": "TestCoverageStatementRunner",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageStatementRunner",
+            "FEATURE_PACKAGE=./orm"
+          ]
         },
         {
           "implementation": "php",
@@ -43842,7 +43881,7 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/statement_runner.rs",
-          "id": "coverage_statement_runner"
+          "id": "statement_runner"
         },
         {
           "implementation": "typescript",

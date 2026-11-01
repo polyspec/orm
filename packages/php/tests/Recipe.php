@@ -205,7 +205,8 @@ final class Recipe
         if (array_key_exists('ordered_json', $raw)) {
             return StyledValue::value(OrderedJson::parse(self::jsonText($raw['ordered_json'])));
         }
-        // Bytes have no JSON text, so a value that holds bytes reaches an ordered_json stage as the value it is (COD-63).
+        // Bytes have no JSON text, so a value that holds bytes reaches an ordered_json stage as the value it is
+        // (COD-63).
         if (in_array('ordered_json', $styles, true) && !self::holdsBytes($raw)) {
             return StyledValue::value(OrderedJson::parse(self::jsonText($raw)));
         }

@@ -4,15 +4,21 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm;
 
-/** One active transaction; its run is the public statement call of INT-150. */
+/**
+ * One active transaction; its run is the public statement call of INT-150. Its state and its constructor are
+ * internal: Db and the extension write path own them.
+ */
 final class TxFrame
 {
+    /** @internal */
     public bool $finished = false;
+    /** @internal */
     public bool $cancelled = false;
+    /** @internal */
     public int $savepoints = 0;
-    /** @var array<string, string> */
+    /** @internal @var array<string, string> */
     public array $locals = [];
-    /** @var list<string> */
+    /** @internal @var list<string> */
     public array $locks = [];
     /**
      * The table and primary key value of the audit record the transaction inserted before its first write
@@ -20,6 +26,7 @@ final class TxFrame
      * That key is written to the audit column of audited rows. Until that write, and without audit values, it is null.
      *
      * @var array{table: string, key: mixed}|null
+     * @internal
      */
     public ?array $audit = null;
     /**
@@ -27,6 +34,7 @@ final class TxFrame
      * without audit values.
      *
      * @var array{hash: string, entity: array, values: array<string, mixed>}|null
+     * @internal
      */
     public ?array $pendingAudit = null;
     /**
@@ -34,6 +42,7 @@ final class TxFrame
      * A savepoint that does not release restores it.
      *
      * @var array<string, array<int, true>>
+     * @internal
      */
     public array $inserted = [];
 
@@ -58,17 +67,25 @@ final class TxFrame
         $frame->inserted[$r->ir['entity']][$key] = true;
     }
 
-    /** @param int $number This transaction's number on the connection. A statement event carries it. */
+    /**
+     * @param int $number This transaction's number on the connection. A statement event carries it.
+     *
+     * @internal
+     */
     public function __construct(
+        /** @internal */
         public readonly Db $db,
+        /** @internal */
         public readonly bool $readOnly,
+        /** @internal */
         public readonly string $isolation,
+        /** @internal */
         public readonly int $number
     ) {
         $this->flow = \Fiber::getCurrent();
     }
 
-    /** The fiber that owns this transaction; the main request has no Fiber object. */
+    /** @internal The fiber that owns this transaction; the main request has no Fiber object. */
     public readonly ?\Fiber $flow;
 
     /**

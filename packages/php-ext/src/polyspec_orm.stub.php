@@ -838,28 +838,43 @@ final class DbState
     public bool $rowLockReady = false;
 }
 
-/** @internal One active transaction. */
+/** One active transaction; its run is the public statement call of INT-150, and its state and constructor are internal. */
 final class TxFrame
 {
+    /** @internal */
     public bool $finished = false;
+    /** @internal */
     public bool $cancelled = false;
+    /** @internal */
     public int $savepoints = 0;
+    /** @internal */
     public array $locals = [];
+    /** @internal */
     public array $locks = [];
+    /** @internal */
     public ?array $audit = null;
+    /** @internal */
     public ?array $pendingAudit = null;
+    /** @internal */
     public array $inserted = [];
+    /** @internal */
     public readonly Db $db;
+    /** @internal */
     public readonly bool $readOnly;
+    /** @internal */
     public readonly string $isolation;
+    /** @internal */
     public readonly int $number;
+    /** @internal */
     public readonly ?\Fiber $flow;
 
+    /** @internal */
     public function __construct(Db $db, bool $readOnly, string $isolation, int $number) {}
 
     /** Runs one statement of kind $kind that touches $tables in this transaction; returns its rows (INT-150). A $sql that is not text is CONFIG. */
     public function run(string $kind, array $tables, mixed $sql, array $params = []): array {}
 
+    /** @internal */
     public static function recordInserted(?TxFrame $frame, Request $r, mixed $id): void {}
 }
 

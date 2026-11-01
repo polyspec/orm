@@ -14014,6 +14014,7 @@
         "packages/ts/tests/statement-runner.mjs",
         "packages/go/orm/statement_runner_test.go",
         "packages/php/tests/StatementRunnerTest.php",
+        "packages/php/tests/StatementRunnerCases.php",
         "packages/python/tests/test_statement_runner.py",
         "packages/rust/orm/tests/statement_runner.rs",
         "packages/php-ext/tests/StatementRunnerExtensionTest.php",
@@ -14053,7 +14054,8 @@
           "inputs": [
             "packages/php/src/Utils.php",
             "packages/php/src/TxFrame.php",
-            "packages/php/tests/StatementRunnerTest.php"
+            "packages/php/tests/StatementRunnerTest.php",
+            "packages/php/tests/StatementRunnerCases.php"
           ]
         },
         {

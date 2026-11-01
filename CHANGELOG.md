@@ -19,6 +19,7 @@
 - The coverage owners of `authenticated_encryption` hold only the test files that run an AES case: the codec test files of T334-3-14 and T334-3-14b are bound by their parity units and stay in the feature tests, so the feature coverage run no longer refuses the owner with `invalid native test command` in any runtime (T334-3-14b-3).
 - The feature `statement_runner` has its coverage block of kind database, as the other database features have: one owner per runtime with a command for SQLite, MySQL and PostgreSQL, bound in the parity unit `coverage-statement-runner-statement-runner`, so the feature coverage run checks the statement runner in every runtime and database, and the feature is `implemented`, which the divergence check accepts (T345-9).
 - The coverage owners of `statement_runner` share their helpers instead of copying them: the Go owner reads the selected database through `featureDatabase`, and the PHP and PHP-extension owners call `coverStatementRunner` of `StatementRunnerCases`, so the duplication check of the shared gates passes (T345-10).
+- The statement runner passes the runtime gates and the parity checks: its Python test is formatted, the PHP trait `StatementRunnerCases` has its own file loaded by the test bootstrap, the TypeScript bindings name each database case, the Go coverage binding runs through `feature-go-unit` and the Rust one binds the trial that runs, and the frame of INT-150 is public in every runtime with only its `run` and its result type, its state and constructor internal (T345-11).
 
 ## 0.0.20
 

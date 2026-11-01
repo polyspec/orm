@@ -77,9 +77,7 @@ class StatementRunnerTest(unittest.TestCase):
 
     # Requirements: INT-150.
     def test_runner_opens_a_transaction_outside_and_joins_inside_sqlite(self):
-        db = Db.connect(
-            f"sqlite://{os.path.join(self.tmp.name, 'runner.sqlite3')}"
-        )
+        db = Db.connect(f"sqlite://{os.path.join(self.tmp.name, 'runner.sqlite3')}")
         try:
             self.assert_runner_outside_and_inside(db)
         finally:
@@ -87,9 +85,7 @@ class StatementRunnerTest(unittest.TestCase):
 
     # Requirements: INT-150.
     def test_frame_run_returns_rows_and_a_non_text_statement_is_config_sqlite(self):
-        db = Db.connect(
-            f"sqlite://{os.path.join(self.tmp.name, 'frame.sqlite3')}"
-        )
+        db = Db.connect(f"sqlite://{os.path.join(self.tmp.name, 'frame.sqlite3')}")
         try:
             self.assert_frame_rows_and_config(db)
         finally:

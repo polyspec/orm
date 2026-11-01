@@ -1,7 +1,8 @@
 <?php
 
-// A text that is not a sequence of Unicode scalar values is no JSON text (RFC 8259, 8.1), so an ordered_json stage returns
-// CODEC_ENCODE for it (COD-64); a recipe text is a JSON string, which holds Unicode only, so each client tests this.
+// A text that is not a sequence of Unicode scalar values is no JSON text (RFC 8259, 8.1), so an ordered_json stage
+// returns CODEC_ENCODE for it (COD-64); a recipe text is a JSON string, which holds Unicode only, so each client tests
+// this.
 declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Extension\Tests;
 
-require_once __DIR__ . '/../../php/tests/StatementRunnerTest.php';
-
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
@@ -13,11 +11,12 @@ use Polyspec\Orm\Tests\StatementRunnerCases;
 use Polyspec\Orm\Tests\ThreeDrivers;
 use Polyspec\Orm\TxFrame;
 use ReflectionClass;
+
 use function Polyspec\Orm\Tests\with_case_database;
 
-// Checks the native statement runner of INT-150 on SQLite, MySQL, and PostgreSQL. The cases are the ones of the PHP runtime
-// (Polyspec\Orm\Tests\StatementRunnerCases), and this file adds that the surface is native. Each case runs in its own case
-// database, and a missing test server fails.
+// Checks the native statement runner of INT-150 on SQLite, MySQL, and PostgreSQL. The cases are the ones of the PHP
+// runtime (Polyspec\Orm\Tests\StatementRunnerCases), and this file adds that the surface is native. Each case runs in
+// its own case database, and a missing test server fails.
 #[Medium]
 final class StatementRunnerExtensionTest extends TestCase
 {

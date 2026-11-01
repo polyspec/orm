@@ -63,6 +63,7 @@ __all__ = [
     "Db",
     "DbStats",
     "RequestHook",
+    "TxFrame",
     "connect",
     "format_instant",
     "key_of_values",

@@ -165,35 +165,47 @@ export type Runner = (kind: StatementKind, tables: readonly string[], sql: strin
 const ROW_LOCK_TABLES: readonly string[] = ['orm__row_lock'];
 const ROW_LOCK_DDL = 'CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))';
 
-/** One active transaction. */
+/**
+ * One active transaction. Its run is the public statement call of INT-150; its state, its constructor and its other members
+ * are internal.
+ */
 export class TxFrame {
+  /** @internal */
   public busy = false;
+  /** @internal */
   public finished = false;
+  /** @internal */
   public savepoints = 0;
+  /** @internal */
   public readonly locals = new Map<string, string>();
+  /** @internal */
   public readonly locks: string[] = [];
   /**
    * The audit record the unit of work inserted right before its first write of an audited table; audited writes of the
    * transaction write its key. Until that write, and in a transaction without audit values, it is undefined.
+   *
+   * @internal
    */
   public audit: AuditRecord | undefined = undefined;
-  /** The audit record the transaction inserts before its first write of an audited table; undefined without audit values. */
+  /** @internal The audit record the transaction inserts before its first write of an audited table; undefined without audit values. */
   public pendingAudit: AuditInsert | undefined = undefined;
-  /** The identity keys of the generated single inserts that the transaction succeeded in, by entity (INT-52); a savepoint that does not release restores it. */
+  /** @internal The identity keys of the generated single inserts that the transaction succeeded in, by entity (INT-52); a savepoint that does not release restores it. */
   public inserted = new Map<string, Set<number>>();
   /**
    * The number is this transaction's number on the connection; the event of that statement carries it. The connection is held
    * until the transaction ends: it is the driver session of an SQL connection or the flowmark session of a markdown connection.
+   *
+   * @internal
    */
-  public constructor(public readonly db: Db, private readonly connection: DriverSession | MarkdownSession, public readonly number: number, public readonly options: BeginOptions) {}
+  public constructor(/** @internal */ public readonly db: Db, private readonly connection: DriverSession | MarkdownSession, /** @internal */ public readonly number: number, /** @internal */ public readonly options: BeginOptions) {}
 
-  /** The driver session of a SQL transaction. A markdown transaction sends no statement and has none. */
+  /** @internal The driver session of a SQL transaction. A markdown transaction sends no statement and has none. */
   public get session(): DriverSession {
     if (this.connection instanceof MarkdownSession) throw new OrmError(codes.INTERNAL, 'a markdown transaction has no SQL session');
     return this.connection;
   }
 
-  /** The flowmark session of a markdown transaction. It is undefined in an SQL transaction, where the session itself is the place. */
+  /** @internal The flowmark session of a markdown transaction. It is undefined in an SQL transaction, where the session itself is the place. */
   public get md(): MarkdownSession | undefined {
     return this.connection instanceof MarkdownSession ? this.connection : undefined;
   }
