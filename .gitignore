@@ -70,6 +70,9 @@ go.work.sum
 # these directories is generated.
 /packages/php/gen/
 /packages/php/markdownmodel/
+# The temporary directories of php-models, which replace each of them by a rename (B1-4); a stopped run may leave one.
+/packages/php/gen.tmp/
+/packages/php/markdownmodel.tmp/
 /packages/php/complexmodel/
 /packages/php/src/native/bin/
 # The arginfo header and the copy of the SQLite cancel callback of the PHP extension are build output (make php-ext-sources).

@@ -2038,12 +2038,14 @@ caseTest('a Makefile build output is published through a temporary file', COMPUT
     '\tnode packages/ts/node_modules/typescript/bin/tsc -p packages/ts/tsconfig.build.json',
     '\tnode packages/ts/node_modules/typescript/bin/tsc -p packages/ts/tsconfig.json --noEmit',
     '# go build -o $(LEASE) in a comment',
+    '\tvendor-php/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out packages/php/gen',
   ].join('\n');
   assert.deepEqual(unpublishedOutputErrors(makefile).map(error => error.split(', so ')[0]), [
     'Makefile:1 writes a Go build output in place',
     'Makefile:4 redirects a command into a file in place',
     'Makefile:8 redirects a command into a file in place',
     'Makefile:9 runs tsc into dist in place',
+    'Makefile:12 writes the generated output directory in place',
   ]);
   assert.deepEqual(unpublishedOutputErrors(readFileSync(new URL('../../Makefile', import.meta.url), 'utf8')), []);
 });

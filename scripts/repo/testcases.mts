@@ -489,9 +489,12 @@ export function unpublishedOutputErrors(makefile: string): string[] {
     // The command string of a shell (sh -c "...") is a command, so its quotes are kept and a redirect in it is found.
     const unquoted = /\b(?:sh|bash|zsh) -c\b/.test(line) ? line : line.replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, '""');
     const text = unquoted.replace(/\d?>&\d|>\s*\/dev\/null/g, '');
+    // A generator run of the PHP client writes the directory it names (its --out, or the entry of the models file) in place, unless the line
+    // names a temporary directory of its own (`<dir>.tmp`), which the target then swaps into place (php-models).
     const direct = /\bgo (?:build|test -c)\b[^#]*\s-o\s+(?!@OUT@)\S/.test(text) ? 'writes a Go build output in place'
       : /(?<![-=<>])>>?\s*[^\s&>]/.test(text) && !/^\s*@?echo /.test(text.replace(/^\t/, '')) ? 'redirects a command into a file in place'
-      : /typescript\/bin\/tsc\b(?![^#]*--noEmit)/.test(text) ? 'runs tsc into dist in place' : '';
+      : /typescript\/bin\/tsc\b(?![^#]*--noEmit)/.test(text) ? 'runs tsc into dist in place'
+      : /vendor-php\/bin\/orm-gen gen\b(?![^#]*--check)(?![^#]*\.tmp\b)/.test(text) ? 'writes the generated output directory in place' : '';
     if (direct) errors.push(`Makefile:${index + 1} ${direct}, so a stopped build leaves half a file that another run reads; write it through $(PUBLISH) <output> <command> (@OUT@ names the temporary file) or scripts/typescript/build.mts: ${line.trim()}`);
   }
   return errors;

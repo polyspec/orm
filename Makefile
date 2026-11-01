@@ -2882,8 +2882,10 @@ orm-install-php: orm-codes-php
 	$(COMPOSER) dump-autoload --no-interaction --quiet
 	$(MAKE) --no-print-directory php-models
 PHP_MODELS_STAMP = $(CURDIR)/packages/php/gen/php-models.key
+# Each entry generates into <dir>.tmp, which replaces <dir> by a rename after the generator succeeds (B1-4), so a stopped run leaves the
+# previous directory whole and never a directory with some files new and some old.
 php-models: php-vendor-check
-	$(GENERATE_ONCE) $(PHP_MODELS_STAMP) "" composer.lock packages/php/src packages/php/bin $(PHP_MODELS_FILE) -- sh -c 'while IFS= read -r entry; do case "$$entry" in ""|"#"*) continue ;; esac; vendor-php/bin/orm-gen gen $$entry || exit 1; done < $(CURDIR)/$(PHP_MODELS_FILE)'
+	$(GENERATE_ONCE) $(PHP_MODELS_STAMP) "" composer.lock packages/php/src packages/php/bin $(PHP_MODELS_FILE) -- sh -c 'while IFS= read -r entry; do case "$$entry" in ""|"#"*) continue ;; esac; out=$$(printf "%s\n" "$$entry" | sed "s/.*--out \([^ ]*\).*/\1/"); rm -rf "$$out.tmp"; vendor-php/bin/orm-gen gen $$(printf "%s\n" "$$entry" | sed "s|--out [^ ]*|--out $$out.tmp|") || exit 1; rm -rf "$$out" && mv "$$out.tmp" "$$out"; done < $(CURDIR)/$(PHP_MODELS_FILE)'
 # php-cancel-helper-build publishes the SQLite loadable callback as an explicit product build; PHP queries only load its platform artifact.
 .PHONY: php-cancel-helper-build
 php-cancel-helper-build: php-vendor-check
