@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm;
 
-/** @internal one active transaction */
+/** One active transaction; its run is the public statement call of INT-150. */
 final class TxFrame
 {
     public bool $finished = false;
@@ -70,4 +70,21 @@ final class TxFrame
 
     /** The fiber that owns this transaction; the main request has no Fiber object. */
     public readonly ?\Fiber $flow;
+
+    /**
+     * Runs one statement of kind $kind that touches $tables (empty when none) in this transaction, publishes its
+     * statement event (INT-77) and returns the statement result with its rows (INT-150). The frame never opens a
+     * transaction. A statement that is not text is CONFIG; any other error is the database error code of the statement.
+     *
+     * @param list<string> $tables
+     * @param list<mixed> $params
+     * @return list<list<mixed>>
+     */
+    public function run(string $kind, array $tables, mixed $sql, array $params = []): array
+    {
+        if (!is_string($sql)) {
+            throw new OrmException(Code::CONFIG, 'a statement must be text');
+        }
+        return $this->db->fetch($kind, $tables, $this->number, $sql, $params);
+    }
 }

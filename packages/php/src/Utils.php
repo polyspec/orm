@@ -28,13 +28,17 @@ final class Utils
         );
     }
 
-    /** @internal runs $fn in the active transaction of the connection or in a new one without retry */
+    /**
+     * Calls $fn with the transaction frame of the connection (INT-150). It joins the active transaction of the
+     * connection, or opens one that ends without retry and returns what $fn returns.
+     */
     public function run(\Closure $fn): mixed
     {
-        if (Db::activeFor($this->db) !== null) {
-            return $fn();
+        $active = Db::activeFor($this->db);
+        if ($active !== null) {
+            return $fn($active);
         }
-        return $this->db->transaction($fn, retry: 0);
+        return $this->db->transaction(fn() => $fn(Db::activeFor($this->db)), retry: 0);
     }
 
     /**
