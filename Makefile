@@ -2238,6 +2238,10 @@ $(PARITY_GATE_TARGETS): export ORM_CHECKOUT = $(CURDIR)
 # ORM_NODE_REPORTER is the node:test reporter of the kit that this make includes: a node binding command names it with
 # ${ORM_NODE_REPORTER}, which is the linked source or the dist of a packed kit, as KIT and KIT_EXT of kit-bootstrap.mk select.
 $(PARITY_GATE_TARGETS): export ORM_NODE_REPORTER = $(KIT)/parity-node-reporter.$(KIT_EXT)
+# ORM_PYTHON_BIND_MODELS is the model directory that the Python recipe helper imports for tests/bind/messages.json; the helper
+# raises without it, so the python bindings of the parity gate need it built (bind-python-models) and named.
+$(PARITY_GATE_TARGETS): bind-python-models
+$(PARITY_GATE_TARGETS): export ORM_PYTHON_BIND_MODELS = $(BIND_PY_MODELS)
 $(PARITY_GATE_TARGETS): export ORM_PROGRAM_CONFORMANCE = $(PARITY_RUN_DIR)/target/debug/conformance
 
 # CI provides the declared group needs as booleans; static checks need every tool,
