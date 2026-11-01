@@ -20,16 +20,10 @@ class BindMessagesRecipeTest extends TestCase
         return 'tests/bind/messages.json';
     }
 
-    /** The runtime name of the suite, which a case excludes by its exclude key. */
-    protected static function runtime(): string
-    {
-        return 'php';
-    }
-
-    /** The cases this runtime runs: an excluded case is not registered as a test (Recipe::runnableCases). */
+    /** The cases of the recipe: every case runs in each runtime that the recipe is bound to. */
     public static function cases(): iterable
     {
-        return Recipe::runnableCases(static::recipe(), static::runtime());
+        return Recipe::cases(static::recipe());
     }
 
     #[DataProvider('cases')]

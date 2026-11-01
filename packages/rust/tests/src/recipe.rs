@@ -53,16 +53,11 @@ pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testc
     let Some(cases) = recipe["cases"].as_array() else { panic!("recipe {path} has no cases") };
     cases
         .iter()
-        .filter_map(|case| {
+        .map(|case| {
             let case = case.clone();
             let (path, database) = (path.to_owned(), database.to_owned());
             let id = case["id"].as_str().unwrap_or_default().to_owned();
-            if let Some(reason) = case["exclude"]["rust"].as_str() {
-                // An excluded case is not a trial at all: the runner prints one EXCLUDED line for it and does not run it.
-                println!("EXCLUDED {id} rust: {reason}");
-                return None;
-            }
-            Some(polyspec_orm_testcase::trial(format!("{entry}::{id}"), polyspec_orm_testcase::COMPUTE, move || {
+            polyspec_orm_testcase::trial(format!("{entry}::{id}"), polyspec_orm_testcase::COMPUTE, move || {
                 let mut bound = HashMap::new();
                 let steps = case["steps"].as_array().cloned().unwrap_or_default();
                 for (index, step) in steps.iter().enumerate() {
@@ -70,7 +65,7 @@ pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testc
                         panic!("recipe {path} case {id} step {index} ({}) on {database}: {failure}", step["op"]);
                     }
                 }
-            }))
+            })
         })
         .collect()
 }

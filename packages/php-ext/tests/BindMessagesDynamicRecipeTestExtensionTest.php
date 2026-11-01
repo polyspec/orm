@@ -11,8 +11,4 @@ use Polyspec\Orm\Tests\BindMessagesDynamicRecipeTest;
 #[\PHPUnit\Framework\Attributes\Medium]
 final class BindMessagesDynamicRecipeTestExtensionTest extends BindMessagesDynamicRecipeTest
 {
-    protected static function runtime(): string
-    {
-        return 'php-extension';
-    }
 }

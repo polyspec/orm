@@ -23,14 +23,9 @@ import { caseTest, COMPUTE, DATABASE } from '../../../tests/testcase.mts';
 // NONE is the database part of a recipe without a database (FCV-3).
 export const NONE = 'none';
 
-// registerRecipeCase registers one case of a recipe with node:test. A case whose exclude names typescript is not registered at all:
-// the runner prints `EXCLUDED <case id> typescript: <reason>` once and returns, so no test is run or reported for it (a skip is not a verification).
+// registerRecipeCase registers one case of a recipe with node:test.
 function registerRecipeCase(recipeCase, deadline, body) {
-  const exclude = recipeCase.exclude ?? {};
-  if (!('typescript' in exclude)) return caseTest(recipeCase.id, deadline, body);
-  const reason = exclude.typescript;
-  if (typeof reason !== 'string' || reason === '') throw new Error(`case ${recipeCase.id}: exclude typescript needs a reason`);
-  console.log(`EXCLUDED ${recipeCase.id} typescript: ${reason}`);
+  return caseTest(recipeCase.id, deadline, body);
 }
 
 // runRecipe registers every case of the recipe at path, relative to the repository root, on database. A database other than

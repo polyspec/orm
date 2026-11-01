@@ -88,15 +88,8 @@
         "id": { "$ref": "#/$defs/name" },
         "requirements": { "$ref": "#/$defs/requirements" },
         "seed": { "$ref": "#/$defs/seed" },
-        "steps": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/step" } },
-        "exclude": {
-          "type": "object",
-          "description": "The runtimes that do not run this case, each with the reason. A runtime that the case excludes prints one EXCLUDED line and counts the case apart from passes; a case that excludes every runtime is refused.",
-          "propertyNames": { "enum": ["go", "typescript", "python", "php", "php-extension", "rust"] },
-          "additionalProperties": { "type": "string", "minLength": 1 },
-          "minProperties": 1,
-          "maxProperties": 5
-        }
+        "steps": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/step" } }
+
       }
     },
     "value": {

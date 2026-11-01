@@ -11,8 +11,4 @@ use Polyspec\Orm\Tests\BindMessagesUntypedNullRecipeTest;
 #[\PHPUnit\Framework\Attributes\Medium]
 final class BindMessagesUntypedNullRecipeTestExtensionTest extends BindMessagesUntypedNullRecipeTest
 {
-    protected static function runtime(): string
-    {
-        return 'php-extension';
-    }
 }
