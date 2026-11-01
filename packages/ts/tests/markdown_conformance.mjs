@@ -7,7 +7,7 @@
 // Usage: FLOWMARK=<flowmark> node --conditions=orm-test packages/ts/tests/markdown_conformance.mjs
 // (after npm run typescript:build; make markdown-conformance-check supplies FLOWMARK)
 //
-// The IR answer cases of contracts/fixtures/ir_answers.json run through ir_answers.mjs without flowmark. The two files
+// The IR answer cases of tests/ir/answers.json run through ir_answers.mjs without flowmark. The two files
 // share the case functions of markdown_cases.mjs.
 import { execFile, spawn } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';

@@ -1,0 +1,670 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "PRT-69",
+    "PRT-71",
+    "PRT-72"
+  ],
+  "cases": [
+    {
+      "id": "one",
+      "requirements": [
+        "PRT-69",
+        "PRT-71",
+        "PRT-72"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "one",
+          "answer": {
+            "rows": [
+              {
+                "id": "P1",
+                "name": "Ann",
+                "email": "ann@example.com",
+                "age": 30,
+                "active": true,
+                "score": "1.50"
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "id": "P1",
+                "name": "Ann",
+                "email": "ann@example.com",
+                "age": 30,
+                "active": true,
+                "score": "1.50"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "one_no_rows",
+      "requirements": [
+        "PRT-69",
+        "PRT-71",
+        "PRT-72"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "one_no_rows",
+          "answer": {
+            "rows": []
+          },
+          "expect": {
+            "none": {
+              "value": null
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "all",
+      "requirements": [
+        "PRT-69",
+        "PRT-71",
+        "PRT-72"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "all",
+          "answer": {
+            "rows": [
+              {
+                "id": "P3",
+                "name": "Cara",
+                "age": null
+              },
+              {
+                "id": "P2",
+                "name": "Bob",
+                "age": 25
+              },
+              {
+                "id": "P1",
+                "name": "Ann",
+                "age": 30
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": [
+                {
+                  "id": "P3",
+                  "name": "Cara",
+                  "age": null
+                },
+                {
+                  "id": "P2",
+                  "name": "Bob",
+                  "age": 25
+                },
+                {
+                  "id": "P1",
+                  "name": "Ann",
+                  "age": 30
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "count",
+      "requirements": [
+        "PRT-69",
+        "PRT-71",
+        "PRT-72"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "count",
+          "answer": {
+            "count": 2
+          },
+          "expect": {
+            "none": {
+              "value": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "group_count",
+      "requirements": [
+        "PRT-69",
+        "PRT-71",
+        "PRT-72"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "group_count",
+          "answer": {
+            "rows": [
+              {
+                "owner": "P1",
+                "row_count": 2
+              },
+              {
+                "owner": "P2",
+                "row_count": 1
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": [
+                {
+                  "owner": "P1",
+                  "row_count": 2
+                },
+                {
+                  "owner": "P2",
+                  "row_count": 1
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sum",
+      "requirements": [
+        "PRT-69",
+        "PRT-71",
+        "PRT-72"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "sum",
+          "answer": {
+            "value": 16
+          },
+          "expect": {
+            "none": {
+              "value": 16
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "avg",
+      "requirements": [
+        "PRT-69",
+        "PRT-71",
+        "PRT-72"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "avg",
+          "answer": {
+            "value": 27.5
+          },
+          "expect": {
+            "none": {
+              "value": 27.5
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sum_no_value",
+      "requirements": [
+        "PRT-69",
+        "PRT-71",
+        "PRT-72"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "sum",
+          "answer": {
+            "value": null
+          },
+          "expect": {
+            "none": {
+              "value": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "avg_no_value",
+      "requirements": [
+        "PRT-69",
+        "PRT-71",
+        "PRT-72"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "avg",
+          "answer": {
+            "value": null
+          },
+          "expect": {
+            "none": {
+              "value": null
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "paginate",
+      "requirements": [
+        "PRT-69",
+        "PRT-71",
+        "PRT-72"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "paginate",
+          "answer": {
+            "rows": [
+              {
+                "id": "P3",
+                "name": "Cara"
+              }
+            ],
+            "count": 3
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "items": [
+                  {
+                    "id": "P3",
+                    "name": "Cara"
+                  }
+                ],
+                "total_count": 3,
+                "total_pages": 2
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "join",
+      "requirements": [
+        "PRT-69",
+        "PRT-71",
+        "PRT-72"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "join",
+          "answer": {
+            "rows": [
+              {
+                "id": "T2",
+                "owner": "P1",
+                "title": "review",
+                "people_model": {
+                  "id": "P1",
+                  "name": "Ann"
+                }
+              },
+              {
+                "id": "T3",
+                "owner": "P2",
+                "title": "ship",
+                "people_model": {
+                  "id": "P2",
+                  "name": "Bob"
+                }
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": [
+                {
+                  "id": "T2",
+                  "owner": "P1",
+                  "title": "review",
+                  "people_model": {
+                    "id": "P1",
+                    "name": "Ann"
+                  }
+                },
+                {
+                  "id": "T3",
+                  "owner": "P2",
+                  "title": "ship",
+                  "people_model": {
+                    "id": "P2",
+                    "name": "Bob"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation_many",
+      "requirements": [
+        "PRT-69",
+        "PRT-71",
+        "PRT-72"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "relation_many",
+          "answer": {
+            "rows": [
+              {
+                "id": "P1",
+                "name": "Ann",
+                "tasks_models": [
+                  {
+                    "id": "T2",
+                    "owner": "P1",
+                    "due": null
+                  },
+                  {
+                    "id": "T1",
+                    "owner": "P1",
+                    "due": "2026-10-01"
+                  }
+                ]
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "id": "P1",
+                "name": "Ann",
+                "tasks_models": [
+                  {
+                    "id": "T2",
+                    "owner": "P1",
+                    "due": null
+                  },
+                  {
+                    "id": "T1",
+                    "owner": "P1",
+                    "due": "2026-10-01"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation_many_empty",
+      "requirements": [
+        "PRT-69",
+        "PRT-71",
+        "PRT-72"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "relation_many",
+          "answer": {
+            "rows": [
+              {
+                "id": "P1",
+                "name": "Ann",
+                "tasks_models": []
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "id": "P1",
+                "name": "Ann",
+                "tasks_models": []
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation_one",
+      "requirements": [
+        "PRT-69",
+        "PRT-71",
+        "PRT-72"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "relation_one",
+          "answer": {
+            "rows": [
+              {
+                "id": "T3",
+                "owner": "P2",
+                "title": "ship",
+                "people_model": {
+                  "id": "P2",
+                  "name": "Bob"
+                }
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "id": "T3",
+                "owner": "P2",
+                "title": "ship",
+                "people_model": {
+                  "id": "P2",
+                  "name": "Bob"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation_one_null",
+      "requirements": [
+        "PRT-69",
+        "PRT-71",
+        "PRT-72"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "relation_one",
+          "answer": {
+            "rows": [
+              {
+                "id": "T3",
+                "owner": "P2",
+                "title": "ship",
+                "people_model": null
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "id": "T3",
+                "owner": "P2",
+                "title": "ship",
+                "people_model": null
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "commit_write_conflict",
+      "requirements": [
+        "PRT-69",
+        "PRT-71",
+        "PRT-72"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "transaction_retry_commit",
+          "answers": {
+            "begin": {
+              "ok": true
+            },
+            "one": {
+              "rows": [
+                {
+                  "id": "P1",
+                  "name": "Ann",
+                  "email": "ann@example.com",
+                  "age": 30,
+                  "active": true,
+                  "score": "1.50"
+                }
+              ]
+            },
+            "update": {
+              "affected": 1,
+              "keys": []
+            },
+            "commit": {
+              "error": {
+                "code": "WRITE_CONFLICT",
+                "message": "people.flowmark.md:3: a row the transaction read changed since it was read"
+              }
+            },
+            "rollback": {
+              "ok": true
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "error": "WRITE_CONFLICT",
+                "runs": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "commit_deadlock",
+      "requirements": [
+        "PRT-69",
+        "PRT-71",
+        "PRT-72"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "transaction_retry_commit",
+          "answers": {
+            "begin": {
+              "ok": true
+            },
+            "one": {
+              "rows": [
+                {
+                  "id": "P1",
+                  "name": "Ann",
+                  "email": "ann@example.com",
+                  "age": 30,
+                  "active": true,
+                  "score": "1.50"
+                }
+              ]
+            },
+            "update": {
+              "affected": 1,
+              "keys": []
+            },
+            "commit": {
+              "error": {
+                "code": "DEADLOCK",
+                "message": "deadlock"
+              }
+            },
+            "rollback": {
+              "ok": true
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "error": "DEADLOCK",
+                "runs": 4
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "read_only_write",
+      "requirements": [
+        "PRT-69",
+        "PRT-71",
+        "PRT-72"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "read_only_write",
+          "answers": {
+            "begin": {
+              "ok": true
+            },
+            "insert": {
+              "error": {
+                "code": "READ_ONLY",
+                "message": "the transaction is read-only"
+              }
+            },
+            "rollback": {
+              "ok": true
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "error": "READ_ONLY"
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

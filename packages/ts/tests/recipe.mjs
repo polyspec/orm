@@ -6,11 +6,17 @@ import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createServer } from 'node:net';
+import { createInterface } from 'node:readline';
+import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { Db, StyledValue, blindIndex, connectCatalog, dbspecManifest, decode, encode, hostDecode, hostEncode, parseDbspec, readDbspecFile, registerModel } from '../dist/index.js';
+import { Db, OrmError, StyledValue, blindIndex, connectCatalog, dbspecManifest, decode, encode, hostDecode, hostEncode, parseDbspec, readDbspecFile, registerModel } from '../dist/index.js';
+import { connect } from '../dist/models/markdown_fixture/models.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { withCaseDatabase } from './case-database.mjs';
 import { nativeQuery } from './coverage_case.mjs';
+import { conformanceCases, normalize } from './markdown_cases.mjs';
+import { listenMarkdownTestServer } from './markdown_test_listener.mjs';
 import { caseTest, COMPUTE, DATABASE } from '../../../tests/testcase.mts';
 
 // NONE is the database part of a recipe without a database (FCV-3).
@@ -26,16 +32,17 @@ export function runRecipe(path, database) {
   // An ir.validate step checks its request against the schema of the recipe, which the recipe names relative to its own file.
   const schema = recipe.schema === undefined ? undefined : validationModel(resolve(root, dirname(path), recipe.schema));
   for (const [caseIndex, recipeCase] of recipe.cases.entries()) {
-    caseTest(recipeCase.id, COMPUTE, () => {
+    caseTest(recipeCase.id, COMPUTE, async () => {
       const bound = new Map();
-      recipeCase.steps.forEach((step, index) => {
+      for (const [index, step] of recipeCase.steps.entries()) {
         try {
           if (step.op === 'ir.validate') checkValidate(step, requestText(literal, caseIndex, index), schema, database);
+          else if (step.op === 'ir.answer') await checkAnswer(step, database);
           else run(step, bound, database);
         } catch (error) {
           throw new Error(`recipe ${path} case ${recipeCase.id} step ${index} (${step.op}) on ${database}: ${error.message}`, { cause: error });
         }
-      });
+      }
     });
   }
 }
@@ -470,4 +477,65 @@ function checkValidate(step, text, schema, database) {
   }
   if (JSON.stringify(outcome.value) !== '{"bool":true}') throw new Error(`ir.validate expects {bool true} or an error, got ${JSON.stringify(outcome.value)}`);
   if (got !== null) throw new Error(`got ${got}, want valid`);
+}
+
+// startMarkdownTestServerWithKeyedAnswers is a listener that answers connect with {"ok":true} and every later message with the answer of answers keyed
+// by the op of a control message or the kind of a request; a message without an answer is IR_INVALID.
+async function startMarkdownTestServerWithKeyedAnswers(answers) {
+  const server = createServer(socket => {
+    let first = true;
+    createInterface({ input: socket }).on('line', line => {
+      if (first) {
+        first = false;
+        socket.write('{"ok":true}\n');
+        return;
+      }
+      let key = 'unreadable';
+      try {
+        const message = JSON.parse(line);
+        key = message.op ?? message.request?.kind ?? key;
+      } catch (error) {
+        // An unreadable line keeps the key 'unreadable'; any other error is a defect and is thrown.
+        if (!(error instanceof SyntaxError)) throw error;
+      }
+      const answer = Object.hasOwn(answers, key) ? answers[key] : { error: { code: 'IR_INVALID', message: `the case has no answer for ${key}` } };
+      socket.write(`${JSON.stringify(answer)}\n`);
+    });
+    socket.on('error', () => {});
+  });
+  return listenMarkdownTestServer(server);
+}
+
+// startMarkdownTestServerWithAnswer is a listener that answers connect with {"ok":true} and the one later request with answer.
+async function startMarkdownTestServerWithAnswer(answer) {
+  const server = createServer(socket => {
+    const replies = ['{"ok":true}', answer];
+    createInterface({ input: socket }).on('line', () => {
+      if (replies.length > 0) socket.write(`${replies.shift()}\n`);
+    });
+    socket.on('error', () => {});
+  });
+  return listenMarkdownTestServer(server);
+}
+
+// checkAnswer runs the chain of an ir.answer step on a connection to a listener that answers with the answer or answers of the step,
+// normalizes its result, and compares it with the value of the expect of database. An OrmError from the chain is {error: CODE}.
+async function checkAnswer(step, database) {
+  const expect = step.expect?.[database];
+  if (expect === undefined) throw new Error(`ir.answer has no expect for ${database}`);
+  const chain = conformanceCases[step.chain];
+  if (chain === undefined) throw new Error(`chain ${step.chain} is no markdown conformance case`);
+  const server = step.answers !== undefined ? await startMarkdownTestServerWithKeyedAnswers(step.answers) : await startMarkdownTestServerWithAnswer(JSON.stringify(step.answer));
+  const db = await connect(server.dsn);
+  let got;
+  try {
+    got = normalize(await chain({ db }));
+  } catch (error) {
+    if (!(error instanceof OrmError)) throw new Error(`${step.chain} failed without an orm code: ${error?.stack ?? error}`, { cause: error });
+    got = { error: error.code };
+  } finally {
+    await db.close();
+    await server.close();
+  }
+  if (!isDeepStrictEqual(got, expect.value)) throw new Error(`got ${JSON.stringify(got)}, want ${JSON.stringify(expect.value)}`);
 }

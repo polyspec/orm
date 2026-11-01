@@ -35,6 +35,12 @@ name = "coverage_conformance_verification"
 path = "tests/coverage_conformance_verification.rs"
 harness = false
 
+# Each case of the read answer recipe, tests/ir/answers.json, is the trial ir_answers::<case id> (FCV-3).
+[[test]]
+name = "ir_answers"
+path = "tests/ir_answers.rs"
+harness = false
+
 # Each case of the codec recipe, tests/codec/codec.json, is the trial codec_none::<case id> (FCV-3).
 [[test]]
 name = "codec_none"

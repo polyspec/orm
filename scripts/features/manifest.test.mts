@@ -214,7 +214,7 @@ caseTest('the composite-key rows fixture has distinct bounded tuples with equal 
 const markdownServerContracts = [
   { path: 'packages/php/tests/markdown_test_server.php', required: ['$receivedMessages = [];'], forbidden: ['$received = [];', 'markdown_fake_server.php'] },
   { path: 'packages/php/tests/MarkdownTest.php', required: ['function start_markdown_test_server(', 'function markdown_test_server_received_messages('], forbidden: ['markdown_fake_server(', 'markdown_received('] },
-  { path: 'packages/php/tests/IrAnswersTest.php', required: ['start_markdown_test_server(', 'markdown_test_server_received_messages('], forbidden: ['markdown_fake_server(', 'markdown_received('] },
+  { path: 'packages/php/tests/Recipe.php', required: ['start_markdown_test_server(', 'markdown_test_server_received_messages('], forbidden: ['markdown_fake_server(', 'markdown_received('] },
   { path: 'packages/php/tests/WasInsertedTest.php', required: ['start_markdown_test_server(', 'markdown_test_server_received_messages('], forbidden: ['markdown_fake_server(', 'markdown_received('] },
   { path: 'packages/php-ext/tests/ModelWriteSurfaceTest.php', required: ['start_markdown_test_server(', 'markdown_test_server_received_messages('], forbidden: ['markdown_fake_server(', 'markdown_received('] },
   { path: 'packages/php-ext/tests/OrmExceptionNativeTest.php', required: ['markdownTestServerCode(', 'startMarkdownTestServer(', 'stopMarkdownTestServer('], forbidden: ['markdownServerCode(', 'startMarkdownServer(', 'stopMarkdownServer('] },
@@ -222,10 +222,10 @@ const markdownServerContracts = [
   { path: 'packages/go/markdownmodel/ir_answers_test.go', required: ['startMarkdownTestServerWithKeyedAnswers(', 'startMarkdownTestServerWithAnswer(', 'listenMarkdownTestServer(', 'serveMarkdownTestConnection('], forbidden: ['keyedServer(', 'answeringServer(', 'listenLocal(', 'serveListener('] },
   { path: 'packages/python/tests/test_markdown.py', required: ['class MarkdownTestServer:', 'def received_messages(self)', 'self._received_messages'], forbidden: ['class FakeServer:', 'def messages(self)', 'self.received_messages:'] },
   { path: 'packages/python/tests/test_was_inserted.py', required: ['MarkdownTestServer'], forbidden: ['FakeServer'] },
-  { path: 'packages/python/tests/ir_answers.py', required: ['start_markdown_test_server_with_keyed_answers(', 'start_markdown_test_server_with_answer(', 'listen_markdown_test_server(', 'accept_markdown_test_connection('], forbidden: ['keyed_server(', 'answering_server(', 'listen_once(', 'accept_once('] },
+  { path: 'packages/python/tests/chain_answer.py', required: ['start_markdown_test_server_with_keyed_answers(', 'start_markdown_test_server_with_answer(', 'listen_markdown_test_server(', 'accept_markdown_test_connection('], forbidden: ['keyed_server(', 'answering_server(', 'listen_once(', 'accept_once('] },
   { path: 'packages/rust/orm/tests/markdown.rs', required: ['struct MarkdownTestServer', 'received_messages', 'start_markdown_test_server('], forbidden: ['struct FakeServer', 'fake_server('] },
   { path: 'packages/ts/tests/markdown.mjs', required: ['startMarkdownTestServer(', 'receivedMessages'], forbidden: ['fakeServer(', '.received;'] },
-  { path: 'packages/ts/tests/ir_answers.mjs', required: ['startMarkdownTestServerWithKeyedAnswers(', 'startMarkdownTestServerWithAnswer(', 'listenMarkdownTestServer('], forbidden: ['keyedServer(', 'answeringServer(', 'listenMarkdownServer('] },
+  { path: 'packages/ts/tests/recipe.mjs', required: ['startMarkdownTestServerWithKeyedAnswers(', 'startMarkdownTestServerWithAnswer(', 'listenMarkdownTestServer('], forbidden: ['keyedServer(', 'answeringServer(', 'listenMarkdownServer('] },
   { path: 'packages/ts/tests/markdown_test_listener.mjs', required: ['listenMarkdownTestServer('], forbidden: ['listenMarkdownServer('] },
   { path: 'packages/ts/tests/markdown_test_listener.test.mjs', required: ['listenMarkdownTestServer('], forbidden: ['listenMarkdownServer('] },
 ] as const;

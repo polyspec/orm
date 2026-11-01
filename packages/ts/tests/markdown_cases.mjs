@@ -1,6 +1,6 @@
 // The cases of the markdown conformance (tests/markdown/cases.json) as functions of the TypeScript client. Each takes a served
 // corpus (markdown_conformance.mjs, the flowmark server) or a connection (ir_answers.mjs, the IR answers of
-// contracts/fixtures/ir_answers.json) and returns the result that tests/markdown/README.md defines.
+// tests/ir/answers.json) and returns the result that tests/markdown/README.md defines.
 import { execFile } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -153,7 +153,7 @@ export const conformanceCases = {
   isolation: async s => s.db.transaction(async () => undefined, { isolation: 'serializable' }),
   // A transaction that reads P1 and writes its own name back, with retry options: the commit's code (null when it
   // commits) and how many times the callback ran. WRITE_CONFLICT is never retried, DEADLOCK is
-  // (contracts/fixtures/ir_answers.json).
+  // (tests/ir/answers.json).
   transaction_retry_commit: async s => {
     let runs = 0;
     const error = await s.db.transaction(async () => {

@@ -57,7 +57,7 @@ case의 결과는 JSON 값이며, 결과와 `expect`를 모두 JSON으로 읽은
 `paginate`, 행 하나와 여러 행과 `identity` key와 `on_duplicate`의 `insert`, `optimistic`이 있고 없는 `update`,
 foreign key 거절과 soft delete의 `delete`, `restore`), join과 relation, commit, rollback, savepoint rollback의
 트랜잭션, 읽기 전용 트랜잭션, row lock `update`와 거절되는 `update_nowait`, 거절되는 `getQuery()`와 `isolation`,
-engine 밖의 편집을 만난 commit(`WRITE_CONFLICT`, 재시도하지 않는다), retry option으로 commit하는 transaction(`transaction_retry_commit`, `{"error", "runs"}`: commit의 code나 null과 callback이 실행된 횟수이며, `contracts/fixtures/ir_answers.json`이 이를 `WRITE_CONFLICT`와 `DEADLOCK`으로 답한 commit으로도 실행한다), corpus나 token이 다른 연결(`CONFIG`),
+engine 밖의 편집을 만난 commit(`WRITE_CONFLICT`, 재시도하지 않는다), retry option으로 commit하는 transaction(`transaction_retry_commit`, `{"error", "runs"}`: commit의 code나 null과 callback이 실행된 횟수이며, `tests/ir/answers.json`이 이를 `WRITE_CONFLICT`와 `DEADLOCK`으로 답한 commit으로도 실행한다), corpus나 token이 다른 연결(`CONFIG`),
 오름차순과 내림차순의 NULL 순서와 `orderByRandom`, 대소문자를 가리지 않으면 다른 key와 같은 primary key(`DUPLICATE_KEY`와
 `on_duplicate` insert가 만나는 행), tuple 조건, scalar `Sub` aggregate와 `IN` subquery, limit이 있고 없는 scalar column
 subquery(`IR_INVALID`), 만나는 column 비교와 만나지 않는 column 비교(`OPERATOR_NOT_ALLOWED`), `contains`와

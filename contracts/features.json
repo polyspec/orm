@@ -11405,6 +11405,8 @@
         "packages/go/markdownmodel/ir_answers_test.go",
         "packages/php/tests/IrAnswersTest.php",
         "packages/python/tests/ir_answers.py",
+        "packages/rust/tests/tests/ir_answers.rs",
+        "tests/ir/answers.json",
         "tests/conformance/check/main.mts",
         "packages/go/internal/conformance/main.go",
         "packages/go/internal/conformance/main_test.go",
@@ -11440,12 +11442,12 @@
       "verification": [
         {
           "id": "ir-answers-go",
-          "command": "node tests/go-test.mts -v -timeout 0 -tags markdown ./packages/go/markdownmodel -run '^TestIRAnswers$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 -tags markdown ./packages/go/markdownmodel -run '^TestRecipeIRAnswersNone$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/markdownmodel/ir_answers_test.go",
-            "packages/go/orm/markdown.go",
-            "contracts/fixtures/ir_answers.json"
+            "packages/go/internal/recipe/recipe.go",
+            "tests/ir/answers.json"
           ]
         },
         {
@@ -11454,8 +11456,9 @@
           "shard": "other",
           "inputs": [
             "packages/php/tests/IrAnswersTest.php",
+            "packages/php/tests/Recipe.php",
             "packages/php/src/Markdown.php",
-            "contracts/fixtures/ir_answers.json"
+            "tests/ir/answers.json"
           ]
         },
         {
@@ -11464,8 +11467,10 @@
           "shard": "other",
           "inputs": [
             "packages/python/tests/ir_answers.py",
+            "packages/python/tests/recipe.py",
+            "packages/python/tests/chain_answer.py",
             "packages/python/src/polyspec/orm/markdown.py",
-            "contracts/fixtures/ir_answers.json"
+            "tests/ir/answers.json"
           ]
         },
         {
@@ -11473,20 +11478,20 @@
           "command": "node --conditions=orm-test packages/ts/tests/ir_answers.mjs",
           "shard": "other",
           "inputs": [
-            "packages/ts/tests/markdown_conformance.mjs",
+            "packages/ts/tests/recipe.mjs",
             "packages/ts/tests/ir_answers.mjs",
             "packages/ts/tests/markdown_cases.mjs",
-            "contracts/fixtures/ir_answers.json"
+            "tests/ir/answers.json"
           ]
         },
         {
           "id": "ir-answers-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts ir-answers-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked -p polyspec-orm-tests --test markdown_conformance -- ir_answers::",
+          "command": "node tests/cargo-test.mts ir-answers-check -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --test ir_answers",
           "shard": "rust",
           "inputs": [
-            "packages/rust/tests/tests/markdown_conformance.rs",
-            "packages/rust/orm/src/markdown.rs",
-            "contracts/fixtures/ir_answers.json"
+            "packages/rust/tests/tests/ir_answers.rs",
+            "packages/rust/tests/src/recipe.rs",
+            "tests/ir/answers.json"
           ]
         },
         {

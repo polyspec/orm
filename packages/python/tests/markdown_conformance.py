@@ -540,7 +540,7 @@ def conformance_cases() -> dict:
     def transaction_retry_commit(s):
         # A transaction that reads P1 and writes its own name back, with retry options: the commit's code
         # (None when it commits) and how many times the callback ran. WRITE_CONFLICT is never retried,
-        # DEADLOCK is (contracts/fixtures/ir_answers.json).
+        # DEADLOCK is (tests/ir/answers.json).
         runs = []
 
         def body():

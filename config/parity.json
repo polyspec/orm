@@ -813,6 +813,10 @@
       "runner": "python",
       "internal": [
         {
+          "glob": "packages/python/tests/chain_answer.py",
+          "reason": "harness: the chain runner and the answer listener of the markdown conformance chains that the ir.answer op of tests/ir/answers.json (FCV-4) runs; the cases are bound by the suite unit ir-answers, and the module holds no test of its own"
+        },
+        {
           "glob": "packages/python/tests/test_catalog_mutation_helper.py",
           "reason": "test: calls private _lock_original_row with FakeSession to verify helper call ordering and schema-change refusal without a real SQL session"
         },
@@ -1033,6 +1037,10 @@
         {
           "glob": "packages/rust/orm/src/driver/tests.rs",
           "reason": "test: calls the crate-private parent-slot expansion and SQLite binding helpers directly; public composite relation behavior is covered by the six-client composite-key feature cases"
+        },
+        {
+          "glob": "packages/rust/tests/src/markdown.rs",
+          "reason": "harness: the chain runner and the answer listener of the markdown conformance chains that the ir.answer op of tests/ir/answers.json (FCV-4) runs; the cases are bound by the suite unit ir-answers, and the module holds no test of its own"
         },
         {
           "glob": "packages/rust/tests/src/conformance.rs",
@@ -19377,23 +19385,23 @@
         "PRT-71",
         "PRT-72"
       ],
-      "file": "contracts/fixtures/ir_answers.json",
+      "file": "tests/ir/answers.json",
       "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
           "test": "packages/go/markdownmodel/ir_answers_test.go",
-          "symbol": "TestIRAnswers"
+          "symbol": "TestRecipeIRAnswersNone"
         },
         {
           "implementation": "php",
           "test": "packages/php/tests/IrAnswersTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\IrAnswersTest::testIrAnswer"
+          "symbol": "Polyspec\\Orm\\Tests\\IrAnswersTest::testNone"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/IrAnswersTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\IrAnswersTestExtensionTest::testIrAnswer"
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\IrAnswersTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
@@ -19405,7 +19413,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/markdown_conformance.rs",
+          "test": "packages/rust/tests/tests/ir_answers.rs",
           "symbol": "ir_answers"
         }
       ]

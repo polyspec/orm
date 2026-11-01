@@ -5,6 +5,7 @@
 
 use std::collections::HashMap;
 
+use crate::markdown;
 use polyspec_orm::codec;
 use polyspec_orm::ordered_json::{self, Kind};
 use polyspec_orm::{Param, StyledValue, Val};
@@ -59,6 +60,12 @@ pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testc
 
 /// Maps the op of `step` to its call and checks the result against the expect of `database`.
 fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str) -> Result<(), String> {
+    if step["op"] == "ir.answer" {
+        // The chain runs on a listener that answers with the step's answer (or answers), and its value is compared as JSON (FCV-3).
+        let got = markdown::answer(step["chain"].as_str().unwrap_or_default(), &step["answer"], &step["answers"]);
+        let want = &step["expect"][database]["value"];
+        return if markdown::same(&got, want) { Ok(()) } else { Err(format!("got {got}, want {want}")) };
+    }
     let styles: Vec<String> = step["styles"].as_array().map(|s| s.iter().filter_map(|x| x.as_str().map(str::to_owned)).collect()).unwrap_or_default();
     let key = step["key"].as_str().unwrap_or_default();
     let op = step["op"].as_str().unwrap_or_default();

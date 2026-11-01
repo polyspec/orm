@@ -1276,7 +1276,7 @@ dbspec-php-extension-check/set-parse: php-vendor-check dbspec-php-extension-chec
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecSetParseTest.php
 # dbspec-php-extension-check/planner runs the planner suites with the extension: the native-owner CoveragePlannerExtensionTest
 # (the compile vectors of contracts/fixtures/planner.json), InsertPartsTest (contracts/fixtures/insert_parts.json) and IrAnswersTest
-# (contracts/fixtures/ir_answers.json).
+# (the recipe tests/ir/answers.json).
 # It first checks that the extension registers Polyspec\Orm\Planner: its class is internal, so the planner the suites run is C.
 dbspec-php-extension-check/planner: dbspec-php-extension-check/planner/coverage dbspec-php-extension-check/planner/insert-parts dbspec-php-extension-check/planner/ir-answers
 
@@ -2789,15 +2789,15 @@ bind-check/python: python-venv-check
 bind-check/php: php-vendor-check
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter 'testBind(Message)?Vectors' packages/php/tests/MarkdownTest.php
 
-# ir-answers-check runs the read answers of contracts/fixtures/ir_answers.json in the five clients (docs/spec/protocol.md
-# section 5, Read): each runner runs the chain of the markdown conformance case that a case names on a listener that
-# answers with the case's answer, and compares the result with its expect. No flowmark server runs.
-.PHONY: ir-answers-check ir-answers-check/go ir-answers-check/rust ir-answers-check/typescript ir-answers-check/python ir-answers-check/php
-ir-answers-check: ir-answers-check/go ir-answers-check/rust ir-answers-check/typescript ir-answers-check/python ir-answers-check/php
+# ir-answers-check runs the read answer recipe, tests/ir/answers.json, in each runtime (FCV-3, FCV-4): each part runs the entry of
+# its runtime that calls the recipe helper, without a database; the ir.answer steps run each chain on a listener that answers with
+# the case's answer (docs/spec/protocol.md section 5, Read). No flowmark server runs.
+.PHONY: ir-answers-check ir-answers-check/go ir-answers-check/rust ir-answers-check/typescript ir-answers-check/python ir-answers-check/php ir-answers-check/php-extension
+ir-answers-check: ir-answers-check/go ir-answers-check/rust ir-answers-check/typescript ir-answers-check/python ir-answers-check/php ir-answers-check/php-extension
 ir-answers-check/go:
-	$(GO_TEST) -tags markdown ./packages/go/markdownmodel -run '^TestIRAnswers$$' -count=1
+	$(GO_TEST) -tags markdown ./packages/go/markdownmodel -run '^TestRecipeIRAnswersNone$$' -count=1
 ir-answers-check/rust: lease-tool
-	cd packages/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) ir-answers-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test markdown_conformance -- ir_answers::
+	cd packages/rust && $(CARGO_TEST) ir-answers-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test ir_answers
 ir-answers-check/typescript: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
@@ -2806,6 +2806,8 @@ ir-answers-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.ir_answers
 ir-answers-check/php: php-vendor-check
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/IrAnswersTest.php
+ir-answers-check/php-extension: php-vendor-check build-php-ext
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/IrAnswersTestExtensionTest.php
 
 # rust-fmt-check fails when cargo fmt would change a source of the Rust
 # workspace (packages/rust/rustfmt.toml).

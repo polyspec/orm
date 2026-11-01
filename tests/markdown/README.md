@@ -58,7 +58,7 @@ Each case covers one surface of the capability table: every IR kind (`one`, `all
 with and without `optimistic`, `delete` with its foreign key refusal and the soft delete, `restore`), joins and
 relations, transactions with their commit, rollback and savepoint rollback, a read-only transaction, the row lock
 `update` and the refused `update_nowait`, the refused `getQuery()` and `isolation`, a commit that meets an edit
-outside the engine (`WRITE_CONFLICT`, not retried), a transaction with retry options that commits (`transaction_retry_commit`, `{"error", "runs"}`: the commit's code or null and how many times its callback ran, which `contracts/fixtures/ir_answers.json` also runs with a commit answered `WRITE_CONFLICT` and `DEADLOCK`), a connection whose corpus or token differs (`CONFIG`), the order of NULL ascending and descending and `orderByRandom`,
+outside the engine (`WRITE_CONFLICT`, not retried), a transaction with retry options that commits (`transaction_retry_commit`, `{"error", "runs"}`: the commit's code or null and how many times its callback ran, which `tests/ir/answers.json` also runs with a commit answered `WRITE_CONFLICT` and `DEADLOCK`), a connection whose corpus or token differs (`CONFIG`), the order of NULL ascending and descending and `orderByRandom`,
 a primary key that equals another without regard to case (`DUPLICATE_KEY`, and the row an `on_duplicate` insert
 meets), tuple conditions, a scalar `Sub` aggregate and an `IN` subquery, a scalar column subquery with and without
 its limit (`IR_INVALID`), a column comparison that meets and one that does not (`OPERATOR_NOT_ALLOWED`), `contains`

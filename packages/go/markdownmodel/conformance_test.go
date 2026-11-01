@@ -592,7 +592,7 @@ func conformanceCases() map[string]caseFunc {
 		},
 		// transaction_retry_commit runs a transaction that reads P1 and writes its own name back, with retry options,
 		// and answers the commit's code (null when it commits) and how many times the callback ran: a commit that is
-		// WRITE_CONFLICT is never retried, a DEADLOCK is (contracts/fixtures/ir_answers.json).
+		// WRITE_CONFLICT is never retried, a DEADLOCK is (tests/ir/answers.json).
 		"transaction_retry_commit": func(s *served) (any, error) {
 			runs := 0
 			err := s.db.Transaction(func() error {

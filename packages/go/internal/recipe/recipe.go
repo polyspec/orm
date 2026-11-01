@@ -13,6 +13,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -45,7 +46,27 @@ type step struct {
 	Key     *string                    `json:"key"`
 	As      string                     `json:"as"`
 	Request json.RawMessage            `json:"request"`
+	Chain   string                     `json:"chain"`
+	Answer  json.RawMessage            `json:"answer"`
+	Answers map[string]json.RawMessage `json:"answers"`
 	Expect  map[string]json.RawMessage `json:"expect"`
+}
+
+// IRAnswer runs the chain of one ir.answer step on a listener that answers with the answer, or with answers keyed by the op of
+// a control message or the kind of a request, and returns the result of the chain or its error. It is supplied by the test
+// that owns the chain registry and the listener, since a chain cannot be reached from this package.
+type IRAnswer func(t *testing.T, chain string, answer json.RawMessage, answers map[string]json.RawMessage) (any, error)
+
+// Option configures Run.
+type Option func(*options)
+
+type options struct {
+	irAnswer IRAnswer
+}
+
+// WithIRAnswer supplies the function that runs the chain of each ir.answer step of a recipe without a database.
+func WithIRAnswer(fn IRAnswer) Option {
+	return func(o *options) { o.irAnswer = fn }
 }
 
 // result is what a step produced: the decoded value of a decode, the cell of an encode, or the error of either.
@@ -56,12 +77,17 @@ type result struct {
 	err     error
 }
 
-// Run runs every case of the recipe at path, relative to the test's package directory, on database.
-func Run(t *testing.T, path, database string) {
+// Run runs every case of the recipe at path, relative to the test's package directory, on database. The options configure
+// the ops that need a function from the test, such as WithIRAnswer.
+func Run(t *testing.T, path, database string, opts ...Option) {
 	t.Helper()
 	if database != None {
 		runDatabase(t, path, database)
 		return
+	}
+	var o options
+	for _, opt := range opts {
+		opt(&o)
 	}
 	src, err := os.ReadFile(path)
 	if err != nil {
@@ -87,7 +113,7 @@ func Run(t *testing.T, path, database string) {
 				if err := json.Unmarshal(raw, &s); err != nil {
 					t.Fatalf("recipe %s case %s step %d on %s: %v", path, c.ID, index, database, err)
 				}
-				if err := run(s, bound, database, model); err != nil {
+				if err := run(t, s, bound, database, model, o); err != nil {
 					t.Fatalf("recipe %s case %s step %d (%s) on %s: %v", path, c.ID, index, s.Op, database, err)
 				}
 			}
@@ -96,9 +122,12 @@ func Run(t *testing.T, path, database string) {
 }
 
 // run maps the op of s to its call and checks the result against the expect of database.
-func run(s step, bound map[string]result, database string, model *runtimemodel.Model) error {
+func run(t *testing.T, s step, bound map[string]result, database string, model *runtimemodel.Model, o options) error {
 	if s.Op == "ir.validate" {
 		return checkValidate(s.Expect[database], validate(model, s.Request))
+	}
+	if s.Op == "ir.answer" {
+		return checkAnswer(t, s, database, o.irAnswer)
 	}
 	var r result
 	switch s.Op {
@@ -723,6 +752,51 @@ func checkValidate(raw json.RawMessage, err error) error {
 	}
 	if err != nil {
 		return fmt.Errorf("unexpected error %w", err)
+	}
+	return nil
+}
+
+// checkAnswer runs the chain of an ir.answer step with fn and compares its result with the value of the expect of database.
+// The result is normalized as a JSON value, an orm error becomes {"error": CODE}, and any other error fails the step.
+func checkAnswer(t *testing.T, s step, database string, fn IRAnswer) error {
+	if fn == nil {
+		return fmt.Errorf("ir.answer needs the WithIRAnswer option of the test")
+	}
+	raw, ok := s.Expect[database]
+	if !ok {
+		return fmt.Errorf("ir.answer has no expect for %s", database)
+	}
+	var outcome struct {
+		Value json.RawMessage `json:"value"`
+	}
+	if err := json.Unmarshal(raw, &outcome); err != nil {
+		return err
+	}
+	if outcome.Value == nil {
+		return fmt.Errorf("ir.answer expect for %s has no value", database)
+	}
+	var want any
+	if err := json.Unmarshal(outcome.Value, &want); err != nil {
+		return err
+	}
+	got, err := fn(t, s.Chain, s.Answer, s.Answers)
+	if err != nil {
+		code := orm.ErrorCode(err)
+		if code == "" {
+			return fmt.Errorf("chain %s failed without an orm code: %w", s.Chain, err)
+		}
+		got = map[string]any{"error": code}
+	}
+	body, err := json.Marshal(got)
+	if err != nil {
+		return fmt.Errorf("chain %s result %#v: %w", s.Chain, got, err)
+	}
+	var actual any
+	if err := json.Unmarshal(body, &actual); err != nil {
+		return err
+	}
+	if !reflect.DeepEqual(actual, want) {
+		return fmt.Errorf("chain %s: got %s, want %s", s.Chain, body, outcome.Value)
 	}
 	return nil
 }

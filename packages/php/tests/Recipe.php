@@ -54,6 +54,10 @@ final class Recipe
                     self::validateStep($step, $path, $database);
                     continue;
                 }
+                if ($step['op'] === 'ir.answer') {
+                    self::answerStep($step);
+                    continue;
+                }
                 self::step($step, $bound, $database);
             } catch (\PHPUnit\Framework\AssertionFailedError $failure) {
                 Assert::fail(
@@ -93,6 +97,46 @@ final class Recipe
         }
         Assert::assertSame(['bool' => true], $outcome['value'] ?? null, 'ir.validate expects {bool true} or an error');
         Assert::assertSame('no error', $got);
+    }
+
+    /**
+     * Runs the chain of an ir.answer step (a case of MarkdownConformanceTest::conformanceCases) on a connection whose listener
+     * answers connect with {"ok":true} and then the one request with answer. A step with answers instead gets the keyed
+     * listener (--keyed), which answers each control message by its op and each request by its request.kind. The normalized
+     * result of the chain must equal the normalized expect.none.value. An OrmException of the chain is the result {error: CODE};
+     * any other exception fails the case.
+     */
+    private static function answerStep(array $step): void
+    {
+        if (!array_key_exists('value', $step['expect']['none'] ?? [])) {
+            Assert::fail('ir.answer has no expect.none.value');
+        }
+        $want = $step['expect']['none']['value'];
+        $chain = MarkdownConformanceTest::conformanceCases()[$step['chain']] ?? null;
+        if ($chain === null) {
+            Assert::fail("chain {$step['chain']} is no markdown conformance case");
+        }
+        $flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR;
+        $server = array_key_exists('answers', $step)
+            ? start_markdown_test_server(['--keyed', json_encode($step['answers'], $flags)])
+            : start_markdown_test_server(['{"ok":true}', json_encode($step['answer'], $flags)]);
+        $served = new Served();
+        $served->db = \Polyspec\Orm\Tests\MarkdownModel\connect($server[2], new Config());
+        try {
+            $got = $chain($served);
+        } catch (OrmException $error) {
+            $got = ['error' => $error->code_];
+        } finally {
+            $served->db->close();
+            markdown_test_server_received_messages($server);
+        }
+        $actual = MarkdownConformanceTest::normalize($got);
+        $expect = MarkdownConformanceTest::normalize($want);
+        Assert::assertSame(
+            $expect,
+            $actual,
+            'got ' . MarkdownConformanceTest::jsonText($actual) . ', want ' . MarkdownConformanceTest::jsonText($expect)
+        );
     }
 
     /** Maps the op of step to its call and checks the result against the expect of database. */

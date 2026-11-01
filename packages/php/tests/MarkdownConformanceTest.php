@@ -489,7 +489,7 @@ class MarkdownConformanceTest extends TestCase
             },
             // A transaction that reads P1 and writes its own name back, with retry options: the commit's code (null
             // when it commits) and how many times the callback ran. WRITE_CONFLICT is never retried, DEADLOCK is
-            // (contracts/fixtures/ir_answers.json).
+            // (tests/ir/answers.json).
             'transaction_retry_commit' => static function (Served $s): mixed {
                 $runs = 0;
                 $code = null;

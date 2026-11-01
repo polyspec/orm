@@ -9,67 +9,49 @@ import (
 	"errors"
 	"io"
 	"net"
-	"os"
-	"path/filepath"
 	"syscall"
 	"testing"
 
+	"github.com/polyspec/orm/packages/go/internal/recipe"
 	"github.com/polyspec/orm/packages/go/markdownmodel"
 	"github.com/polyspec/orm/packages/go/orm"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// TestIRAnswers runs the chain of each case in contracts/fixtures/ir_answers.json: the server
-// instead writes {"ok": true} for connect and the case's answer for one request of the chain, and connects to a listener
-// and checks that the result of the chain equals expect (see Read in docs/spec/protocol.md §5). flowmark
-// is not needed.
+// TestRecipeIRAnswersNone runs the read answer recipe, tests/ir/answers.json, without a database (FCV-3, FCV-4): each ir.answer
+// step runs the chain of its case on a listener that answers with the case's answer. The chains come from conformanceCases, and
+// the listener is served here, so the recipe package only compares the result (see Read in docs/spec/protocol.md §5).
 // Requirements: PRT-69, PRT-71, PRT-72.
-func TestIRAnswers(t *testing.T) {
+func TestRecipeIRAnswersNone(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	b, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", "ir_answers.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var doc struct {
-		Cases []struct {
-			ID     string          `json:"id"`
-			Chain  string          `json:"chain"`
-			Answer json.RawMessage `json:"answer"`
-			// Answers answers a transaction's messages by the op of a control message or the kind of a request.
-			Answers map[string]json.RawMessage `json:"answers"`
-			Expect  any                        `json:"expect"`
-		} `json:"cases"`
-	}
-	if err := json.Unmarshal(b, &doc); err != nil {
-		t.Fatalf("ir_answers.json: %v", err)
-	}
-	funcs := conformanceCases()
-	for _, c := range doc.Cases {
-		t.Run(c.ID, func(t *testing.T) {
-			testcase.Start(t, testcase.Compute)
-			run := funcs[c.Chain]
-			if run == nil {
-				t.Fatalf("chain %s is no markdown conformance case", c.Chain)
+	chains := conformanceCases()
+	recipe.Run(t, "../../../tests/ir/answers.json", recipe.None, recipe.WithIRAnswer(func(t *testing.T, chain string, answer json.RawMessage, answers map[string]json.RawMessage) (any, error) {
+		testcase.Start(t, testcase.Compute)
+		run := chains[chain]
+		if run == nil {
+			t.Fatalf("chain %s is no markdown conformance case", chain)
+		}
+		dsn := ""
+		if answers != nil {
+			dsn = startMarkdownTestServerWithKeyedAnswers(t, answers)
+		} else {
+			// The fixture is pretty-printed, and the wire takes one message per line, so the answer is compacted.
+			var compact bytes.Buffer
+			if err := json.Compact(&compact, answer); err != nil {
+				t.Fatalf("answer of chain %s: %v", chain, err)
 			}
-			dsn := ""
-			if c.Answers != nil {
-				dsn = startMarkdownTestServerWithKeyedAnswers(t, c.Answers)
-			} else {
-				dsn = startMarkdownTestServerWithAnswer(t, string(c.Answer))
-			}
-			db, err := markdownmodel.Connect(dsn, orm.Config{PoolSize: 1})
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer testcase.Close(t, db)
-			got, err := run(&served{db: db})
-			checkCaseResult(t, c.ID, got, err, c.Expect)
-		})
-	}
+			dsn = startMarkdownTestServerWithAnswer(t, compact.String())
+		}
+		db, err := markdownmodel.Connect(dsn, orm.Config{PoolSize: 1})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer testcase.Close(t, db)
+		return run(&served{db: db})
+	}))
 }
 
 // startMarkdownTestServerWithAnswer is the DSN of a listener that writes {"ok": true} for the connect of one connection and, for the next message, the answer.
-// listener's DSN.
 func startMarkdownTestServerWithAnswer(t *testing.T, answer string) string {
 	t.Helper()
 	ln := listenMarkdownTestServer(t)

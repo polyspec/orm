@@ -184,7 +184,7 @@
     "step": {
       "type": "object",
       "required": ["op"],
-      "properties": { "op": { "enum": ["model.connect", "codec.decode", "codec.encode", "codec.host_encode", "codec.host_decode", "codec.blind_index", "sql.exec", "ir.validate", "catalog.current_namespace", "catalog.describe_table", "catalog.table_page", "catalog.read_only_query", "catalog.read_only_grid_query", "catalog.row_snapshot", "catalog.insert_row", "catalog.update_row", "catalog.delete_row"] } },
+      "properties": { "op": { "enum": ["model.connect", "codec.decode", "codec.encode", "codec.host_encode", "codec.host_decode", "codec.blind_index", "sql.exec", "ir.validate", "ir.answer", "catalog.current_namespace", "catalog.describe_table", "catalog.table_page", "catalog.read_only_query", "catalog.read_only_grid_query", "catalog.row_snapshot", "catalog.insert_row", "catalog.update_row", "catalog.delete_row"] } },
       "oneOf": [
         { "$ref": "#/$defs/ops/model.connect" },
         { "$ref": "#/$defs/ops/codec.decode" },
@@ -192,7 +192,7 @@
         { "$ref": "#/$defs/ops/codec.host_encode" },
         { "$ref": "#/$defs/ops/codec.host_decode" },
         { "$ref": "#/$defs/ops/codec.blind_index" },
-        { "$ref": "#/$defs/ops/sql.exec" }, { "$ref": "#/$defs/ops/ir.validate" },
+        { "$ref": "#/$defs/ops/sql.exec" }, { "$ref": "#/$defs/ops/ir.validate" }, { "$ref": "#/$defs/ops/ir.answer" },
         { "$ref": "#/$defs/ops/catalog.current_namespace" },
         { "$ref": "#/$defs/ops/catalog.describe_table" },
         { "$ref": "#/$defs/ops/catalog.table_page" },
@@ -286,6 +286,31 @@
           "op": { "const": "ir.validate" },
           "request": { "type": "object", "description": "A request of the protocol (docs/spec/protocol.md) without manifest_hash; the step adds the hash of the schema named by the schema key of the recipe." },
           "expect": { "$ref": "#/$defs/expect" }
+        }
+      },
+      "ir.answer": {
+        "type": "object",
+        "required": ["op", "chain", "expect"],
+        "oneOf": [{ "required": ["answer"], "properties": { "answer": {} } }, { "required": ["answers"], "properties": { "answers": {} } }],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "ir.answer" },
+          "chain": { "type": "string", "pattern": "^[a-z_][a-z0-9_]*$", "description": "The case of tests/markdown/cases.json that the chain runs (tests/markdown/README.md)." },
+          "answer": { "description": "The answer of the chain's one request, as the case gives it (docs/spec/protocol.md section 5, Read)." },
+          "answers": { "type": "object", "description": "The answers of a transaction chain keyed by the op of each control message and the kind of each request." },
+          "expect": {
+            "type": "object",
+            "required": ["none"],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "required": ["value"],
+                "additionalProperties": false,
+                "properties": { "value": { "description": "The result of the chain in the plain JSON form of tests/markdown/README.md, a row, a list, a count, a value or {error, runs}." } }
+              }
+            }
+          }
         }
       },
       "sql.exec": {

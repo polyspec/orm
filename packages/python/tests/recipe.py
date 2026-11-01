@@ -31,9 +31,10 @@ from polyspec.orm.engine import model_of_documents, parse_document_set
 from polyspec.orm.engine.validate import validate
 from polyspec.orm.styled_value import StyledValue
 
-from . import testcase
+from . import chain_answer, testcase
 from .case_database import case_database
 from .coverage_case import native_query
+from .markdown_conformance import same
 from .vector_case import VectorCase, vector_load_tests
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -44,6 +45,18 @@ NONE = "none"
 
 class RecipeCase(VectorCase):
     """A case of a recipe."""
+
+
+class ChainRecipeCase(RecipeCase):
+    """A case of a recipe with ir.answer steps: the class prepares the chain runner once for all its cases."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        chain_answer.prepare()
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        chain_answer.release()
 
 
 class _Failed:
@@ -70,13 +83,28 @@ def recipe_tests(path: str, database: str):
                 if step["op"] == "ir.validate":
                     _validate(step, model, database)
                     continue
+                if step["op"] == "ir.answer":
+                    _answer(step, database)
+                    continue
                 _run(step, bound, database)
             except AssertionError as error:
                 raise AssertionError(
                     f"recipe {path} case {case['id']} step {index} ({step['op']}) on {database}: {error}"
                 ) from error
 
-    return vector_load_tests(RecipeCase, recipe["cases"], check)
+    has_chain = any(step["op"] == "ir.answer" for case in recipe["cases"] for step in case["steps"])
+    return vector_load_tests(ChainRecipeCase if has_chain else RecipeCase, recipe["cases"], check)
+
+
+def _answer(step: dict, database: str) -> None:
+    """Runs the chain of an ir.answer step on the listener of the chain runner, and checks its normalized result against
+    the expect of database: {value: JSON}, compared as the markdown conformance cases compare theirs."""
+    outcome = step["expect"].get(database)
+    if outcome is None or "value" not in outcome:
+        raise AssertionError(f"ir.answer has no value expect for {database}")
+    got = chain_answer.run_chain(step["chain"], step)
+    if not same(got, outcome["value"]):
+        raise AssertionError(f"got {json.dumps(got)}, want {json.dumps(outcome['value'])}")
 
 
 def _validation_model(schema: Path):

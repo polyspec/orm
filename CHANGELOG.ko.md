@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ec23e679a8e1d419e821c9c583f1a0997600e1aac7245c67eaf5b5efb5b80a11 -->
+<!-- source-sha256: 54f2be5b2ce9307b63eb943ea371c63a3c322ffabf2e5dd90412c06c27e52e36 -->
 # 변경 이력
 
 ## Unreleased
 
+- 읽기 answer 사례 `contracts/fixtures/ir_answers.json`은 `tests/ir/answers.json`으로 옮겨져, 여섯 runtime 모두 데이터베이스 없이 실행하는 `ir.answer` op(FCV-4)의 recipe가 된다. 각 사례는 markdown chain을 answer를 돌려주는 listener 위에서 실행한다. 대체되는 native answer test는 제거되고, parity unit ir-answers는 여섯 recipe entry에 묶인다 (#T334-3-15-2).
 - 요청 검증 사례 `tests/ir/validate.json`은 recipe(`ir.validate` op, FCV-4)가 되어 여섯 runtime 모두 데이터베이스 없이 실행한다. Go, TypeScript, PHP, PHP extension, Python, Rust의 native vector test는 제거되고, parity unit ir-validate는 여섯 recipe entry에 묶인다 (#T334-3-15-1).
 - PHP 확장 한 번 빌드 검사(CR4)는 spec requirement가 아닌 build 시스템 시험이라, parity 선언 검사가 requirement를 요구하지 않는 scripts의 harness 루트인 scripts/php/php-ext-build-cache.test.mts로 packages/php-ext/tests에서 옮긴다 (#CR4-1).
 - 네 client 변경이 전체 suite target을 고르지 않는다는 owner test의 기대 목록에 CR5가 선언한 typescript-build-unit-check를 넣는다. TypeScript client build(packages/ts/**)가 이 target을 고른다 (#CR5-1).
