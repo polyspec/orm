@@ -114,6 +114,17 @@ class ServerTransactionsTest(unittest.TestCase):
             with self.subTest(database=spec["database"]):
                 run_entry(self, spec)
 
+    # Requirements: INT-149. Every database of the statement events is named once: by an entry, or by an excluded database
+    # with its reason. SQLite has no server transaction (CR16-2), so it is excluded, and no entry names it.
+    def test_every_database_is_an_entry_or_an_excluded_one_with_its_reason(self):
+        named = [spec["database"] for spec in VECTORS["server_transactions"]]
+        excluded = VECTORS["server_transactions_excluded"]
+        self.assertEqual(len(named), len(set(named)), "an entry names a database twice")
+        self.assertEqual(set(named) | set(excluded), {"mysql", "postgres", "sqlite"})
+        self.assertEqual(set(named) & set(excluded), set(), "a database is both an entry and excluded")
+        for database, exclusion in excluded.items():
+            self.assertTrue(exclusion["reason"].strip(), f"the exclusion of {database} states no reason")
+
 
 if __name__ == "__main__":
     testcase.main()

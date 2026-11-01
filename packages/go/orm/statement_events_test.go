@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/polyspec/orm/packages/go/internal/stmtevent"
@@ -373,6 +374,52 @@ func TestStatementEventsServerTransactions(t *testing.T) {
 		t.Run(spec.Database, func(t *testing.T) {
 			runServerTransactions(t, doc.Cases, spec)
 		})
+	}
+}
+
+// TestStatementEventsServerTransactionsNamedOnce requires every database of the statement events to be named once: by an
+// entry of server_transactions, or by server_transactions_excluded with its reason. SQLite is excluded (CR16-2).
+// Requirements: INT-149.
+func TestStatementEventsServerTransactionsNamedOnce(t *testing.T) {
+	testcase.Group(t)
+	raw, err := os.ReadFile(eventsVector)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		ServerTransactions []struct {
+			Database string `json:"database"`
+		} `json:"server_transactions"`
+		Excluded map[string]struct {
+			Reason string `json:"reason"`
+		} `json:"server_transactions_excluded"`
+	}
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatal(err)
+	}
+	named := map[string]bool{}
+	for _, spec := range doc.ServerTransactions {
+		if named[spec.Database] {
+			t.Errorf("an entry names %s twice", spec.Database)
+		}
+		named[spec.Database] = true
+	}
+	for database, exclusion := range doc.Excluded {
+		if named[database] {
+			t.Errorf("%s is both an entry and excluded", database)
+		}
+		if strings.TrimSpace(exclusion.Reason) == "" {
+			t.Errorf("the exclusion of %s states no reason", database)
+		}
+		named[database] = true
+	}
+	for _, database := range []string{"mysql", "postgres", "sqlite"} {
+		if !named[database] {
+			t.Errorf("%s is neither an entry nor excluded", database)
+		}
+	}
+	if len(named) != 3 {
+		t.Errorf("the statement events name %d databases, want 3", len(named))
 	}
 }
 

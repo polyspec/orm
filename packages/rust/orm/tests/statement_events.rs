@@ -407,6 +407,34 @@ async fn server_transactions_entry(spec: &Value, page: &Value) -> Vec<String> {
     failures
 }
 
+/// Every database of the statement events is named once: by an entry of server_transactions, or by
+/// server_transactions_excluded with its reason. SQLite is excluded (CR16-2). It reads the vector only.
+// Requirements: INT-149.
+fn statement_events_server_transactions_named_once() {
+    let vector: Value = serde_json::from_str(VECTOR).expect("tests/events/vectors.json");
+    let named: Vec<String> = vector["server_transactions"]
+        .as_array()
+        .expect("server_transactions entries")
+        .iter()
+        .map(|spec| spec["database"].as_str().expect("database").to_string())
+        .collect();
+    let excluded = vector["server_transactions_excluded"].as_object().cloned().unwrap_or_default();
+    let mut unique = named.clone();
+    unique.sort();
+    unique.dedup();
+    assert_eq!(unique.len(), named.len(), "an entry names a database twice");
+    for name in excluded.keys() {
+        assert!(!named.contains(name), "{name} is both an entry and excluded");
+    }
+    let mut all: Vec<String> = named.iter().cloned().chain(excluded.keys().cloned()).collect();
+    all.sort();
+    all.dedup();
+    assert_eq!(all, ["mysql", "postgres", "sqlite"]);
+    for (name, exclusion) in &excluded {
+        assert!(!exclusion["reason"].as_str().unwrap_or("").trim().is_empty(), "the exclusion of {name} states no reason");
+    }
+}
+
 fn main() {
     let mut trials = statement_events();
     trials.push(
@@ -416,6 +444,11 @@ fn main() {
         "statement_events_server_transactions",
         polyspec_orm_testcase::DATABASE,
         statement_events_server_transactions,
+    ));
+    trials.push(polyspec_orm_testcase::trial(
+        "statement_events_server_transactions_named_once",
+        polyspec_orm_testcase::COMPUTE,
+        statement_events_server_transactions_named_once,
     ));
     polyspec_orm_testcase::run_in_order(trials);
 }
