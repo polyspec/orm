@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- orm pins kit 0.0.92, whose targets match the crate fetch of orm-install-rust-crates, and takes the principles it ships (T353).
 - contracts/check-inputs.json declared no dbspec-php-check/render, so make run-databases refused the target that runs the physical DDL cases and CI's database run did not cover them. The target is declared like its sibling dbspec-plan-php-check (CR55-1).
 - The check runner reads the process table with a 256 MiB buffer and names the error code of a failed listing, so a large table no longer fails a step with SIGTERM (T351).
 - The parity units of the statement runner (INT-150) name `Utils.run` and the frame `run` in all six runtimes, and bind the statement_runner tests on every database (T345-7).

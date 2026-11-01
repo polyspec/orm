@@ -1,5 +1,5 @@
 <!-- doc-id: principles -->
-<!-- source-sha256: 2397f8e08f2841bb8b08343261d8797361a3991051bcb16774d35a5dd5af1957 -->
+<!-- source-sha256: 145aaff71707e4d90c95ea34f0ef619172c227f94a7764fbc01074b01c7111f6 -->
 # 원칙
 
 [English](PRINCIPLES.md)
@@ -39,7 +39,7 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-inject-
 - P8 오류는 숨기지 않습니다: 잘못된 입력을 그럴듯한 입력으로 바꾸는 fallback도, 입력이나 출력을 조용히 버리는 것도, 삼킨
   오류도 없습니다. fallback은 정말 필요한 곳에만 그 필요를 적고 둡니다.
   Enforced by: `make lint-ts`, `make lint-python`, `make lint-go`, `make lint-php`, `make lint-rust`, `make suppression-check`,
-  catch-check(`make lint-ts`와 `make lint-rust`의 한 단계: 문장 없는 catch 금지)
+  catch-check(`make lint-ts`의 한 단계: 문장 없는 catch 금지)
 - P9 올바름이 먼저입니다; 빠름은 올바름을 지킬 때만 좇습니다.
   Enforced by: none, 올바름과 빠름의 순서는 판단입니다.
 - P10 main에 작업이 들어가는 길은 둘입니다. main에서 직접 하는 작업은 P38의 commit으로 들어갑니다. 병렬이나 격리된
@@ -268,3 +268,12 @@ owner가 2026-10-13에 이 기준을 승인했습니다. 각 기준은 위반 �
   repository와 `dev-<branch>` require). 공개 registry는 쓰지 않습니다. upstream이 수정을 릴리즈하면 fork를 폐기합니다(K1000).
   Enforced by: none, link는 개발 환경에만 있고 거기서 make link-check가 어떤 설치 폴더도 link하지 않는 선언된 fork를
   적지만(K999) CI는 아무것도 link하지 않으므로 어떤 CI도 거기에 닿지 않는다(K824). root가 어느 branch를 설치하는지는 lock의 기록이다(S4)
+- S15 느슨한 결합: core, plugin, sidecar, kit, spec, contract는 인터페이스로만 서로를 아는 part입니다. part는 다른 part의 설치된
+  manifest가 선언한 인터페이스(npm package라면 package.json의 `exports`)로만 그 part에 닿고, 설치가 놓은 package와 설치 때 기록된
+  JSON으로 그 part를 찾습니다. 그 인터페이스 너머의 다른 part 파일을 import, include, 읽기, build, 실행하지 않으며, 다른 checkout의
+  경로를 적지 않으므로 형제 checkout, `../<repository>`, 다른 저장소의 source 폴더를 적지 않습니다. part는 다른 part에 필요한 것을
+  자기 package의 export나 자기 make target으로 제공합니다(K1002).
+  Enforced by: `make kit-check`, Node가 해석하는 package.json의 exports 너머로 설치된 npm package의 파일에 닿는 코드나 설정의
+  각 줄, kit이 export하지 않는 kit 파일을 실행하는 각 recipe, 저장소를 벗어나는 config/ 또는 .github/의 각 경로, 형제 checkout을
+  적는 각 make 변수·rule·include, 저장소를 벗어나는 각 module specifier를 적는다(K1002). 코드가 실행 중에 계산하는 경로와 다른
+  package manager의 인터페이스는 검토에서 판단한다

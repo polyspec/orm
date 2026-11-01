@@ -39,7 +39,7 @@ in kit, with its grounding.
 - P8 Errors are never hidden: no fallback that turns a wrong input into a plausible one, no silent drop of an input or an
   output, no swallowed error. A fallback stands only where it is truly needed, with that need stated.
   Enforced by: `make lint-ts`, `make lint-python`, `make lint-go`, `make lint-php`, `make lint-rust`, `make suppression-check`,
-  catch-check (a step of `make lint-ts` and `make lint-rust`: no catch without a statement)
+  catch-check (a step of `make lint-ts`: no catch without a statement)
 - P9 Correct first; fast only when it stays correct.
   Enforced by: none, the order of correctness and speed is a judgement.
 - P10 Work reaches main in one of two ways. Direct work on main is committed through the commits of P38. Parallel or
@@ -300,3 +300,14 @@ tool lands, a standard binds the work as written here.
   releases the fix (K1000).
   Enforced by: none, links exist only in development, where make link-check names a declared fork that no installed folder links
   (K999) and no CI reaches it, since CI links nothing (K824); which branch a root installs is the record of its lock (S4)
+- S15 Loose coupling: core, plugins, sidecars, kit, specs and contracts are parts that know each other only through interfaces.
+  A part reaches another part only through the interface that the installed manifest of that part declares (for an npm package,
+  the `exports` of its package.json), and finds it through the package that installation puts in place and the JSON written at
+  installation; it never imports, includes, reads, builds or runs a file of another part past that interface, and names no path to
+  another checkout, so no sibling checkout, `../<repository>` or source folder of another repository. A part offers what others
+  need as an export of its package or a make target of its own (K1002).
+  Enforced by: `make kit-check`, which names each line of code or configuration that reaches a file of an installed npm package
+  past the exports of its package.json as Node resolves them, each recipe that runs a file of kit that kit does not export, each
+  path of config/ or .github/ out of the repository, each make variable, rule or include that names a sibling checkout, and each
+  module specifier out of the repository (K1002); a path that code computes while it runs, and the interfaces of other package
+  managers, are judged at review

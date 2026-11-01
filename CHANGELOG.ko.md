@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- orm은 kit 0.0.92를 고정한다. 그 target은 orm-install-rust-crates의 crate 받기와 맞고, 그 kit이 담은 원칙 사본을 받는다 (T353).
 - contracts/check-inputs.json에 dbspec-php-check/render가 선언되어 있지 않아 make run-databases가 물리 DDL 케이스를 실행하는 target을 거부했고, CI의 데이터베이스 실행이 그 케이스를 다루지 못했다. 형제 target dbspec-plan-php-check와 같은 형태로 선언했다 (CR55-1).
 - check runner는 프로세스 표를 256 MiB buffer로 읽고, 실패한 목록은 오류 코드를 밝힌다. 그래서 큰 표가 단계를 SIGTERM으로 실패시키지 않는다 (T351).
 - 문장 runner(INT-150)의 parity unit은 여섯 런타임 모두에서 `Utils.run`과 frame `run`을 이름으로 쓰고, 모든 데이터베이스에서 statement_runner 테스트를 바인딩한다 (T345-7).
