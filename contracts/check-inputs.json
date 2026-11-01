@@ -2591,7 +2591,7 @@
         "packages/php-ext/tests/bootstrap.php",
         "packages/php-ext/src/**",
         "tests/dbspec/cases.json",
-        "contracts/fixtures/schema_definition.json",
+        "tests/dbspec/schema-definition.json",
         "packages/php-ext/tests/DbspecStressCanonicalNativeTest.php",
         "packages/php/tests/DbspecStressTestSupport.php",
         "tests/dbspec/stress.mts"

@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 6b422b8d06b1ee05e146dba0ceb5b974d9e4df791346dcb9eed5398d5cd9d39d -->
+<!-- source-sha256: 1c5994480a28ecc5a2bd6f96813060f58afb9ae487fe4a294f1080bf6df0875a -->
 # 변경 이력
 
 ## Unreleased
@@ -66,6 +66,7 @@
 - dbspec PHP extension aggregate의 공유 module 테스트가 T334-3-15-1이 지운 child를 기대해서, test (static)의 makefile-pinned-node-recipes-check가 실패했다. 테스트는 요청 검증이 ir-validate-check로 옮겨진 것을 따른다 (CR53).
 - 물리 DDL 동작과 IR 검증 recipe의 test 파일 여섯 개가 어떤 feature에도 속하지 않아 features 검사가 여섯 CI job에서 실패했다. 물리 DDL test는 이제 schema_definition에, IR 검증 test는 planner에 속한다 (CR54).
 - DbspecRenderTest의 preempted 검사는 main CI run 41324077414의 test (feature_verify_other) job에서 DSN 오류 아홉 개로 실패했다. 데이터베이스 DSN 없이 파일 전체를 실행했기 때문이다. testBehaviourPhysical(CR16-1-3)은 이제 group database에 속하고 preempted 실행은 그 group을 제외한다. 물리 케이스는 dbspec-php-check/render에서 여전히 실행된다 (CR55).
+- schema_definition 벡터는 하나의 사본을 유지하도록 tests/dbspec/schema-definition.json recipe로 옮겼고, FCV-4의 여섯 op(dbspec.parse_emit, dbspec.manifest, dbspec.render, dbspec.analyze, dbspec.parse_positions, dbspec.format)이 여섯 runtime 모두에서 이를 실행한다. 네이티브 벡터 테스트는 제거했다. manifest 케이스는 벡터 파일을 두 행에 나누면 사본이 둘이 되므로 T334-3-18-3이 아니라 이 행에서 옮겼다 (T334-3-18-1)
 
 ## 0.0.21
 

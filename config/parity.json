@@ -9435,43 +9435,45 @@
       "kind": "suite",
       "requirements": [
         "DBS-1",
+        "DBS-99",
         "DBS-103",
         "DBS-123",
         "DBS-134",
+        "DBS-135",
         "DBS-141",
         "DBS-142",
         "ORES-14"
       ],
-      "file": "contracts/fixtures/schema_definition.json",
+      "file": "tests/dbspec/schema-definition.json",
       "cases": "$.cases[*].id",
       "bindings": [
         {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageSchemaDefinitionExtensionTest::testVector"
-        },
-        {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_schema_definition_test.go",
-          "symbol": "TestCoverageSchemaDefinition"
+          "test": "packages/go/orm/recipe_schema_definition_test.go",
+          "symbol": "TestRecipeSchemaDefinitionNone"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageSchemaDefinitionTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\CoverageSchemaDefinitionTest::testVector"
+          "test": "packages/php/tests/SchemaDefinitionRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\SchemaDefinitionRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/SchemaDefinitionRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\SchemaDefinitionRecipeTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_schema_definition.mjs"
+          "test": "packages/ts/tests/recipe_schema_definition.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_schema_definition.py"
+          "test": "packages/python/tests/recipe_schema_definition.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/coverage_schema_definition.rs",
-          "symbol": "schema_definition"
+          "test": "packages/rust/tests/tests/schema_definition_none.rs",
+          "symbol": "schema_definition_none"
         }
       ]
     },
@@ -28640,33 +28642,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_schema_definition_test.go",
-          "id": "TestCoverageDbspecEmitRoundTrip"
+          "test": "packages/go/orm/recipe_schema_definition_test.go",
+          "id": "TestRecipeSchemaDefinitionNone/dbspec_emit_round_trip"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageSchemaDefinitionTest.php",
-          "id": "CoverageSchemaDefinitionTest::testDbspecEmitRoundTrip"
+          "test": "packages/php/tests/SchemaDefinitionRecipeTest.php",
+          "id": "SchemaDefinitionRecipeTest::testNone with data set \"dbspec_emit_round_trip\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
-          "id": "CoverageSchemaDefinitionExtensionTest::testDbspecEmitRoundTrip"
+          "test": "packages/php-ext/tests/SchemaDefinitionRecipeTestExtensionTest.php",
+          "id": "SchemaDefinitionRecipeTestExtensionTest::testNone with data set \"dbspec_emit_round_trip\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_schema_definition.mjs",
+          "test": "packages/ts/tests/recipe_schema_definition.mjs",
           "id": "dbspec_emit_round_trip"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_schema_definition.py",
+          "test": "packages/python/tests/recipe_schema_definition.py",
           "id": "dbspec_emit_round_trip"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/coverage_schema_definition.rs",
-          "id": "schema_definition::dbspec_emit_round_trip"
+          "test": "packages/rust/tests/tests/schema_definition_none.rs",
+          "id": "schema_definition_none::dbspec_emit_round_trip"
         }
       ]
     },
@@ -28679,38 +28681,38 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_schema_definition_test.go",
-          "id": "TestCoverageDbspecManifestHash"
+          "test": "packages/go/orm/recipe_schema_definition_test.go",
+          "id": "TestRecipeSchemaDefinitionNone/dbspec_manifest_hash"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageSchemaDefinitionTest.php",
-          "id": "CoverageSchemaDefinitionTest::testDbspecManifestHash"
+          "test": "packages/php/tests/SchemaDefinitionRecipeTest.php",
+          "id": "SchemaDefinitionRecipeTest::testNone with data set \"dbspec_manifest_hash\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
-          "id": "CoverageSchemaDefinitionExtensionTest::testDbspecManifestHash"
+          "test": "packages/php-ext/tests/SchemaDefinitionRecipeTestExtensionTest.php",
+          "id": "SchemaDefinitionRecipeTestExtensionTest::testNone with data set \"dbspec_manifest_hash\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/recipe_schema_definition.mjs",
+          "id": "dbspec_manifest_hash"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/recipe_schema_definition.py",
+          "id": "dbspec_manifest_hash"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/schema_definition_none.rs",
+          "id": "schema_definition_none::dbspec_manifest_hash"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/RegistrySchemaNativeTest.php",
           "id": "RegistrySchemaNativeTest::testNativeOriginsAndReadonlySchemaRoundTrip"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_schema_definition.mjs",
-          "id": "dbspec_manifest_hash"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_schema_definition.py",
-          "id": "dbspec_manifest_hash"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/tests/coverage_schema_definition.rs",
-          "id": "schema_definition::dbspec_manifest_hash"
         }
       ]
     },
@@ -28723,33 +28725,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_schema_definition_test.go",
-          "id": "TestCoverageDbspecRenderDdl"
+          "test": "packages/go/orm/recipe_schema_definition_test.go",
+          "id": "TestRecipeSchemaDefinitionNone/dbspec_render_ddl"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageSchemaDefinitionTest.php",
-          "id": "CoverageSchemaDefinitionTest::testDbspecRenderDdl"
+          "test": "packages/php/tests/SchemaDefinitionRecipeTest.php",
+          "id": "SchemaDefinitionRecipeTest::testNone with data set \"dbspec_render_ddl\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
-          "id": "CoverageSchemaDefinitionExtensionTest::testDbspecRenderDdl"
+          "test": "packages/php-ext/tests/SchemaDefinitionRecipeTestExtensionTest.php",
+          "id": "SchemaDefinitionRecipeTestExtensionTest::testNone with data set \"dbspec_render_ddl\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_schema_definition.mjs",
+          "test": "packages/ts/tests/recipe_schema_definition.mjs",
           "id": "dbspec_render_ddl"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_schema_definition.py",
+          "test": "packages/python/tests/recipe_schema_definition.py",
           "id": "dbspec_render_ddl"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/coverage_schema_definition.rs",
-          "id": "schema_definition::dbspec_render_ddl"
+          "test": "packages/rust/tests/tests/schema_definition_none.rs",
+          "id": "schema_definition_none::dbspec_render_ddl"
         }
       ]
     },
@@ -28763,38 +28765,38 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_schema_definition_test.go",
-          "id": "TestCoverageDbspecAnalyzeTokens"
+          "test": "packages/go/orm/recipe_schema_definition_test.go",
+          "id": "TestRecipeSchemaDefinitionNone/dbspec_analyze_tokens"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/SchemaDefinitionRecipeTest.php",
+          "id": "SchemaDefinitionRecipeTest::testNone with data set \"dbspec_analyze_tokens\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/SchemaDefinitionRecipeTestExtensionTest.php",
+          "id": "SchemaDefinitionRecipeTestExtensionTest::testNone with data set \"dbspec_analyze_tokens\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/recipe_schema_definition.mjs",
+          "id": "dbspec_analyze_tokens"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/recipe_schema_definition.py",
+          "id": "dbspec_analyze_tokens"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/schema_definition_none.rs",
+          "id": "schema_definition_none::dbspec_analyze_tokens"
         },
         {
           "implementation": "go",
           "test": "packages/go/engine/dbspec/analyze_test.go",
           "id": "TestAnalyzeSampleTokens"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/dbspec/analyze_test.go",
-          "id": "TestAnalyzeClasses"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/dbspec/analyze_test.go",
-          "id": "TestAnalyzeIsParse"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageSchemaDefinitionTest.php",
-          "id": "CoverageSchemaDefinitionTest::testDbspecAnalyzeTokens"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
-          "id": "CoverageSchemaDefinitionExtensionTest::testDbspecAnalyzeTokens"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_schema_definition.mjs",
-          "id": "dbspec_analyze_tokens"
         },
         {
           "implementation": "typescript",
@@ -28803,18 +28805,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_schema_definition.py",
-          "id": "dbspec_analyze_tokens"
-        },
-        {
-          "implementation": "python",
           "test": "packages/python/tests/test_dbspec_analyze.py",
           "id": "test_header_only"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/tests/coverage_schema_definition.rs",
-          "id": "schema_definition::dbspec_analyze_tokens"
         },
         {
           "implementation": "rust",
@@ -28832,38 +28824,38 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_schema_definition_test.go",
-          "id": "TestCoverageDbspecFormat"
+          "test": "packages/go/orm/recipe_schema_definition_test.go",
+          "id": "TestRecipeSchemaDefinitionNone/dbspec_format"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/SchemaDefinitionRecipeTest.php",
+          "id": "SchemaDefinitionRecipeTest::testNone with data set \"dbspec_format\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/SchemaDefinitionRecipeTestExtensionTest.php",
+          "id": "SchemaDefinitionRecipeTestExtensionTest::testNone with data set \"dbspec_format\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/recipe_schema_definition.mjs",
+          "id": "dbspec_format"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/recipe_schema_definition.py",
+          "id": "dbspec_format"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/schema_definition_none.rs",
+          "id": "schema_definition_none::dbspec_format"
         },
         {
           "implementation": "go",
           "test": "packages/go/engine/dbspec/analyze_test.go",
           "id": "TestFormat"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageSchemaDefinitionTest.php",
-          "id": "CoverageSchemaDefinitionTest::testDbspecFormat"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
-          "id": "CoverageSchemaDefinitionExtensionTest::testDbspecFormat"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_schema_definition.mjs",
-          "id": "dbspec_format"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_schema_definition.py",
-          "id": "dbspec_format"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/tests/coverage_schema_definition.rs",
-          "id": "schema_definition::dbspec_format"
         }
       ]
     },
@@ -28877,38 +28869,38 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_schema_definition_test.go",
-          "id": "TestCoverageDbspecFormatRefusal"
+          "test": "packages/go/orm/recipe_schema_definition_test.go",
+          "id": "TestRecipeSchemaDefinitionNone/dbspec_format_refusal"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/SchemaDefinitionRecipeTest.php",
+          "id": "SchemaDefinitionRecipeTest::testNone with data set \"dbspec_format_refusal\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/SchemaDefinitionRecipeTestExtensionTest.php",
+          "id": "SchemaDefinitionRecipeTestExtensionTest::testNone with data set \"dbspec_format_refusal\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/recipe_schema_definition.mjs",
+          "id": "dbspec_format_refusal"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/recipe_schema_definition.py",
+          "id": "dbspec_format_refusal"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/schema_definition_none.rs",
+          "id": "schema_definition_none::dbspec_format_refusal"
         },
         {
           "implementation": "go",
           "test": "packages/go/engine/dbspec/analyze_test.go",
           "id": "TestFormat"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageSchemaDefinitionTest.php",
-          "id": "CoverageSchemaDefinitionTest::testDbspecFormatRefusal"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
-          "id": "CoverageSchemaDefinitionExtensionTest::testDbspecFormatRefusal"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_schema_definition.mjs",
-          "id": "dbspec_format_refusal"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_schema_definition.py",
-          "id": "dbspec_format_refusal"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/tests/coverage_schema_definition.rs",
-          "id": "schema_definition::dbspec_format_refusal"
         }
       ]
     },
@@ -28921,33 +28913,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_schema_definition_test.go",
-          "id": "TestCoverageDbspecParsePositions"
+          "test": "packages/go/orm/recipe_schema_definition_test.go",
+          "id": "TestRecipeSchemaDefinitionNone/dbspec_parse_positions"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageSchemaDefinitionTest.php",
-          "id": "CoverageSchemaDefinitionTest::testDbspecParsePositions"
+          "test": "packages/php/tests/SchemaDefinitionRecipeTest.php",
+          "id": "SchemaDefinitionRecipeTest::testNone with data set \"dbspec_parse_positions\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
-          "id": "CoverageSchemaDefinitionExtensionTest::testDbspecParsePositions"
+          "test": "packages/php-ext/tests/SchemaDefinitionRecipeTestExtensionTest.php",
+          "id": "SchemaDefinitionRecipeTestExtensionTest::testNone with data set \"dbspec_parse_positions\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_schema_definition.mjs",
+          "test": "packages/ts/tests/recipe_schema_definition.mjs",
           "id": "dbspec_parse_positions"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_schema_definition.py",
+          "test": "packages/python/tests/recipe_schema_definition.py",
           "id": "dbspec_parse_positions"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/coverage_schema_definition.rs",
-          "id": "schema_definition::dbspec_parse_positions"
+          "test": "packages/rust/tests/tests/schema_definition_none.rs",
+          "id": "schema_definition_none::dbspec_parse_positions"
         }
       ]
     },
@@ -43782,9 +43774,9 @@
           "symbols": [
             "github.com/polyspec/orm/packages/go/orm.Utils.Run",
             "github.com/polyspec/orm/packages/go/orm.TxFrame",
-    "github.com/polyspec/orm/packages/go/orm.TxFrame.Run",
-    "github.com/polyspec/orm/packages/go/orm.StatementResult",
-    "github.com/polyspec/orm/packages/go/orm.StatementResult.Rows"
+            "github.com/polyspec/orm/packages/go/orm.TxFrame.Run",
+            "github.com/polyspec/orm/packages/go/orm.StatementResult",
+            "github.com/polyspec/orm/packages/go/orm.StatementResult.Rows"
           ]
         },
         {
@@ -43792,7 +43784,7 @@
           "symbols": [
             "Polyspec\\Orm\\Utils::run",
             "Polyspec\\Orm\\TxFrame",
-    "Polyspec\\Orm\\TxFrame::run"
+            "Polyspec\\Orm\\TxFrame::run"
           ]
         },
         {
@@ -43800,7 +43792,7 @@
           "symbols": [
             "Polyspec\\Orm\\Utils::run",
             "Polyspec\\Orm\\TxFrame",
-    "Polyspec\\Orm\\TxFrame::run"
+            "Polyspec\\Orm\\TxFrame::run"
           ]
         },
         {
@@ -43808,7 +43800,7 @@
           "symbols": [
             "polyspec.orm.utils.Utils.run",
             "polyspec.orm.database.TxFrame",
-    "polyspec.orm.database.TxFrame.run"
+            "polyspec.orm.database.TxFrame.run"
           ]
         },
         {
@@ -43827,16 +43819,16 @@
           "symbols": [
             "@polyspec/orm!Utils#run:member(1)",
             "@polyspec/orm!TxFrame:class",
-    "@polyspec/orm!TxFrame#run:member(1)",
-    "@polyspec/orm!DriverResult:interface",
-    "@polyspec/orm!DriverResult#rows:member",
-    "@polyspec/orm!DriverResult#affected:member",
-    "@polyspec/orm!DriverResult#insertId:member",
-    "@polyspec/orm!DriverResult#columns:member",
-    "@polyspec/orm!DriverColumn:interface",
-    "@polyspec/orm!DriverColumn#name:member",
-    "@polyspec/orm!DriverColumn#type:member",
-    "@polyspec/orm!DriverValue:type"
+            "@polyspec/orm!TxFrame#run:member(1)",
+            "@polyspec/orm!DriverResult:interface",
+            "@polyspec/orm!DriverResult#rows:member",
+            "@polyspec/orm!DriverResult#affected:member",
+            "@polyspec/orm!DriverResult#insertId:member",
+            "@polyspec/orm!DriverResult#columns:member",
+            "@polyspec/orm!DriverColumn:interface",
+            "@polyspec/orm!DriverColumn#name:member",
+            "@polyspec/orm!DriverColumn#type:member",
+            "@polyspec/orm!DriverValue:type"
           ]
         }
       ]

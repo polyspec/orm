@@ -3,10 +3,12 @@
 //! runner, and each case of the recipe is the trial `<recipe>_<database>::<case id>`, whose steps call the public API of
 //! `polyspec_orm` that each op names. It has no command line and no output of its own.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
+use std::path::{Path, PathBuf};
 
 use crate::markdown;
 use polyspec_orm::codec;
+use polyspec_orm::dbspec::{self, Dialect, Document, Position};
 use polyspec_orm::ordered_json::{self, Kind};
 use polyspec_orm::{Param, StyledValue, Val};
 use serde_json::{Map, Number, Value};
@@ -39,17 +41,19 @@ pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testc
         Err(error) => panic!("recipe {path}: {error}"),
     };
     let Some(cases) = recipe["cases"].as_array() else { panic!("recipe {path} has no cases") };
+    // The documents of a dbspec step are relative to the directory of the recipe file.
+    let dir: PathBuf = root.join(path).parent().map_or_else(|| root.clone(), Path::to_path_buf);
     cases
         .iter()
         .map(|case| {
             let case = case.clone();
-            let (path, database) = (path.to_owned(), database.to_owned());
+            let (path, database, dir) = (path.to_owned(), database.to_owned(), dir.clone());
             let id = case["id"].as_str().unwrap_or_default().to_owned();
             polyspec_orm_testcase::trial(format!("{entry}::{id}"), polyspec_orm_testcase::COMPUTE, move || {
                 let mut bound = HashMap::new();
                 let steps = case["steps"].as_array().cloned().unwrap_or_default();
                 for (index, step) in steps.iter().enumerate() {
-                    if let Err(failure) = run(step, &mut bound, &database) {
+                    if let Err(failure) = run(step, &mut bound, &database, &dir) {
                         panic!("recipe {path} case {id} step {index} ({}) on {database}: {failure}", step["op"]);
                     }
                 }
@@ -59,7 +63,10 @@ pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testc
 }
 
 /// Maps the op of `step` to its call and checks the result against the expect of `database`.
-fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str) -> Result<(), String> {
+fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: &Path) -> Result<(), String> {
+    if step["op"].as_str().is_some_and(|op| op.starts_with("dbspec.")) {
+        return dbspec_step(step, dir, database);
+    }
     if step["op"] == "ir.answer" {
         // The chain runs on a listener that answers with the step's answer (or answers), and its value is compared as JSON (FCV-3).
         let got = markdown::answer(step["chain"].as_str().unwrap_or_default(), &step["answer"], &step["answers"]);
@@ -109,6 +116,153 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str) -> Re
                 Err(format!("decoded {got}, want {want}"))
             }
         }
+    }
+}
+
+/// The documents of a dbspec step, read from `dir` and parsed with the set of their headers (FCV-4). A document without a
+/// `dbspec <kind> <name>` header is refused, as the reference implementation does.
+fn read_documents(dir: &Path, paths: &[String]) -> Result<(Vec<String>, Vec<Document>), String> {
+    let mut texts = Vec::with_capacity(paths.len());
+    let mut set = BTreeMap::new();
+    for path in paths {
+        let text = std::fs::read_to_string(dir.join(path)).map_err(|error| format!("{path}: {error}"))?;
+        let header: Vec<&str> = text.split('\n').next().unwrap_or_default().split_whitespace().collect();
+        match header.as_slice() {
+            ["dbspec", _, name] => set.insert((*name).to_owned(), text.clone()),
+            _ => return Err(format!("{path} has no dbspec header")),
+        };
+        texts.push(text);
+    }
+    let mut documents = Vec::with_capacity(texts.len());
+    for (path, text) in paths.iter().zip(&texts) {
+        let parsed = dbspec::parse(text, &set).map_err(|errors| format!("{path}: {errors:?}"))?;
+        documents.push(parsed.document);
+    }
+    Ok((texts, documents))
+}
+
+/// The documents named by a dbspec step.
+fn step_documents(step: &Value) -> Vec<String> {
+    step["documents"].as_array().map(|d| d.iter().filter_map(|x| x.as_str().map(str::to_owned)).collect()).unwrap_or_default()
+}
+
+/// The text of the one document of a dbspec step, read from `dir`.
+fn step_document(step: &Value, dir: &Path) -> Result<String, String> {
+    let path = step["document"].as_str().unwrap_or_default();
+    std::fs::read_to_string(dir.join(path)).map_err(|error| format!("{path}: {error}"))
+}
+
+/// The JSON form of declaration positions, as the fixtures write them.
+fn positions_json(positions: &[Position]) -> Vec<Value> {
+    positions.iter().map(|p| serde_json::json!({"kind": p.kind, "path": p.path, "line": p.line, "column": p.column})).collect()
+}
+
+/// One dbspec op of a recipe step, through the public dbspec calls of polyspec_orm, checked against the expect of `database`.
+/// The ops and their expects are those of docs/spec/feature-coverage.md FCV-4, and each one mirrors the reference
+/// implementation (packages/go/internal/recipe/dbspec.go).
+fn dbspec_step(step: &Value, dir: &Path, database: &str) -> Result<(), String> {
+    let op = step["op"].as_str().unwrap_or_default();
+    let Some(want) = step["expect"].get(database) else { return Err(format!("{op} has no expect for {database}")) };
+    let no_defaults = BTreeMap::new();
+    match op {
+        "dbspec.parse_emit" => {
+            let want_identical = want["identical"].as_bool().ok_or("expect identical is not a bool")?;
+            let (texts, documents) = read_documents(dir, &step_documents(step))?;
+            let identical = texts.iter().zip(&documents).all(|(text, document)| dbspec::emit(document) == *text);
+            if identical == want_identical {
+                Ok(())
+            } else {
+                Err(format!("emit identical = {identical}, want {want_identical}"))
+            }
+        }
+        "dbspec.manifest" => {
+            let want_hash = want["manifest_hash"].as_str().unwrap_or_default();
+            let (_, documents) = read_documents(dir, &step_documents(step))?;
+            let references: Vec<&Document> = documents.iter().collect();
+            let manifest = dbspec::manifest(&references).map_err(|errors| format!("{errors:?}"))?;
+            if want_hash.is_empty() || manifest.manifest_hash != want_hash {
+                return Err(format!("manifest hash = {}, want {want_hash}", manifest.manifest_hash));
+            }
+            Ok(())
+        }
+        "dbspec.render" => {
+            let (_, documents) = read_documents(dir, &step_documents(step))?;
+            let references: Vec<&Document> = documents.iter().collect();
+            for (name, dialect) in [("mysql", Dialect::MySql), ("postgres", Dialect::Postgres), ("sqlite", Dialect::Sqlite)] {
+                let want_statements: Vec<String> =
+                    want[name].as_array().map(|s| s.iter().filter_map(|x| x.as_str().map(str::to_owned)).collect()).unwrap_or_default();
+                let got = dbspec::render(&references, dialect).map_err(|errors| format!("{name}: {errors:?}"))?;
+                if want_statements.is_empty() || got != want_statements {
+                    return Err(format!("{name} statements:\n got {got:?}\nwant {want_statements:?}"));
+                }
+            }
+            Ok(())
+        }
+        "dbspec.analyze" => {
+            let want_tokens = want["tokens"].as_array().cloned().unwrap_or_default();
+            let text = step_document(step, dir)?;
+            let analysis = dbspec::analyze(&text, &no_defaults);
+            let parsed = dbspec::parse(&text, &no_defaults).map_err(|errors| format!("{errors:?}"))?;
+            if !analysis.diagnostics.is_empty() {
+                return Err(format!("{:?}", analysis.diagnostics));
+            }
+            let analysis_positions = analysis.positions.as_deref().map(positions_json);
+            if analysis.document.as_ref().map(dbspec::emit) != Some(dbspec::emit(&parsed.document))
+                || analysis_positions != Some(positions_json(&parsed.positions))
+            {
+                return Err("the analysis differs from the parse".to_owned());
+            }
+            let got: Vec<Value> = analysis.tokens.iter().map(|t| serde_json::json!([t.line, t.start, t.end, t.class])).collect();
+            if want_tokens.is_empty() || got != want_tokens {
+                return Err(format!("tokens:\n got {got:?}\nwant {want_tokens:?}"));
+            }
+            Ok(())
+        }
+        "dbspec.parse_positions" => {
+            let want_positions = want["positions"].as_array().cloned().unwrap_or_default();
+            let text = step_document(step, dir)?;
+            let parsed = dbspec::parse(&text, &no_defaults).map_err(|errors| format!("{errors:?}"))?;
+            let got = positions_json(&parsed.positions);
+            if got.is_empty() || got != want_positions {
+                return Err(format!("positions:\n got {got:?}\nwant {want_positions:?}"));
+            }
+            Ok(())
+        }
+        "dbspec.format" => dbspec_format(step, want),
+        other => Err(format!("OP_UNKNOWN {other}")),
+    }
+}
+
+/// The dbspec.format op: the text of the step, its lines joined with LF and a final LF, formats to the expect's text and
+/// the formatted text formats to itself, or the text is refused with the expect's diagnostics and no text is written.
+fn dbspec_format(step: &Value, want: &Value) -> Result<(), String> {
+    let lines: Vec<&str> = step["text"].as_array().map(|t| t.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
+    if lines.is_empty() {
+        return Err("dbspec.format has no text".to_owned());
+    }
+    let text = format!("{}\n", lines.join("\n"));
+    let formatted = dbspec::format(&text, &BTreeMap::new());
+    if let Some(want_diagnostics) = want["diagnostics"].as_array() {
+        let diagnostics = match formatted {
+            Ok(rewritten) => return Err(format!("a document with a diagnostic was rewritten:\n{rewritten}")),
+            Err(diagnostics) => diagnostics,
+        };
+        let got: Vec<Value> = diagnostics.iter().map(|d| serde_json::json!({"rule": d.rule, "line": d.line, "column": d.column})).collect();
+        if got.is_empty() || got != *want_diagnostics {
+            return Err(format!("diagnostics = {got:?}, want {want_diagnostics:?}"));
+        }
+        return Ok(());
+    }
+    let formatted = formatted.map_err(|diagnostics| format!("{diagnostics:?}"))?;
+    let want_lines: Vec<&str> = want["text"].as_array().map(|t| t.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
+    let want_text = format!("{}\n", want_lines.join("\n"));
+    if formatted != want_text {
+        return Err(format!("formatted text:\n{formatted}\nwant\n{want_text}"));
+    }
+    match dbspec::format(&formatted, &BTreeMap::new()) {
+        Ok(again) if again == formatted => Ok(()),
+        Ok(again) => Err(format!("the format of the formatted text differs:\n{again}")),
+        Err(diagnostics) => Err(format!("the formatted text is refused: {diagnostics:?}")),
     }
 }
 

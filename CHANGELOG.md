@@ -65,6 +65,7 @@
 - The shared-module test of the dbspec PHP extension aggregate asserted a child that T334-3-15-1 had removed, so makefile-pinned-node-recipes-check failed in test (static). The test now follows the move of request validation to ir-validate-check (CR53).
 - Six test files of the physical DDL behaviour and the IR validate recipe belonged to no feature, so the features check failed in six CI jobs. The physical DDL tests now belong to schema_definition and the IR validate tests to planner (CR54).
 - The preempted test of DbspecRenderTest failed in test (feature_verify_other) of main CI run 41324077414 with nine DSN errors, because it ran the whole file without the database DSNs. testBehaviourPhysical (CR16-1-3) now carries the group database, which the preempted run excludes; the physical cases still run in dbspec-php-check/render (CR55).
+- The schema_definition vectors moved into the recipe tests/dbspec/schema-definition.json with one copy of each datum; six ops of FCV-4 (dbspec.parse_emit, dbspec.manifest, dbspec.render, dbspec.analyze, dbspec.parse_positions, dbspec.format) run them in every runtime, and the native vector tests were removed. The manifest case moved in this row, not in T334-3-18-3, because splitting one vector file across two rows would leave two copies (T334-3-18-1)
 
 ## 0.0.21
 

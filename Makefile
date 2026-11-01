@@ -1224,9 +1224,9 @@ dbspec-php-extension-check/graph: php-vendor-check dbspec-php-extension-check/pr
 dbspec-php-extension-check/behaviour: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecBehaviourTest.php
 	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecBehaviourNativeTest.php
-# dbspec-php-extension-check/schema-definition runs CoverageSchemaDefinitionTest with the extension: the cases of contracts/fixtures/schema_definition.json.
+# dbspec-php-extension-check/schema-definition runs SchemaDefinitionRecipeTestExtensionTest with the extension: the cases of tests/dbspec/schema-definition.json.
 dbspec-php-extension-check/schema-definition: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/SchemaDefinitionRecipeTestExtensionTest.php
 
 # dbspec-php-extension-check/stress-canonical runs the exact large canonical round-trip owner with the native parser.
 dbspec-php-extension-check/stress-canonical: php-vendor-check dbspec-php-extension-check/prepare

@@ -49,7 +49,11 @@ type step struct {
 	Chain   string                     `json:"chain"`
 	Answer  json.RawMessage            `json:"answer"`
 	Answers map[string]json.RawMessage `json:"answers"`
-	Expect  map[string]json.RawMessage `json:"expect"`
+	// Documents and Document name the .dbs files of the dbspec ops, relative to the recipe file; Text is the lines of a document text.
+	Documents []string                   `json:"documents"`
+	Document  string                     `json:"document"`
+	Text      []string                   `json:"text"`
+	Expect    map[string]json.RawMessage `json:"expect"`
 }
 
 // IRAnswer runs the chain of one ir.answer step on a listener that answers with the answer, or with answers keyed by the op of
@@ -62,6 +66,8 @@ type Option func(*options)
 
 type options struct {
 	irAnswer IRAnswer
+	// dir is the directory of the recipe file, which the dbspec ops resolve their documents against.
+	dir string
 }
 
 // WithIRAnswer supplies the function that runs the chain of each ir.answer step of a recipe without a database.
@@ -85,7 +91,7 @@ func Run(t *testing.T, path, database string, opts ...Option) {
 		runDatabase(t, path, database)
 		return
 	}
-	var o options
+	o := options{dir: filepath.Dir(path)}
 	for _, opt := range opts {
 		opt(&o)
 	}
@@ -123,6 +129,9 @@ func Run(t *testing.T, path, database string, opts ...Option) {
 
 // run maps the op of s to its call and checks the result against the expect of database.
 func run(t *testing.T, s step, bound map[string]result, database string, model *runtimemodel.Model, o options) error {
+	if strings.HasPrefix(s.Op, "dbspec.") {
+		return checkDBSpec(s, o.dir, database)
+	}
 	if s.Op == "ir.validate" {
 		return checkValidate(s.Expect[database], validate(model, s.Request))
 	}

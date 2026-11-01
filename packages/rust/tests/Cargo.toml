@@ -47,6 +47,12 @@ name = "codec_none"
 path = "tests/codec_none.rs"
 harness = false
 
+# Each case of the schema definition recipe, tests/dbspec/schema-definition.json, is the trial schema_definition_none::<case id> (FCV-3).
+[[test]]
+name = "schema_definition_none"
+path = "tests/schema_definition_none.rs"
+harness = false
+
 # Each case of the catalog_connection recipe, contracts/fixtures/catalog_connection/catalog_connection.json, is the
 # trial catalog_connection_<database>::<case id> on a case database of its own (FCV-3).
 [[test]]

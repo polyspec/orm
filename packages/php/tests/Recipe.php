@@ -58,6 +58,10 @@ final class Recipe
                     self::answerStep($step);
                     continue;
                 }
+                if (str_starts_with($step['op'], 'dbspec.')) {
+                    self::dbspecStep($step, $path, $database);
+                    continue;
+                }
                 self::step($step, $bound, $database);
             } catch (\PHPUnit\Framework\AssertionFailedError $failure) {
                 Assert::fail(
@@ -137,6 +141,165 @@ final class Recipe
             $actual,
             'got ' . MarkdownConformanceTest::jsonText($actual) . ', want ' . MarkdownConformanceTest::jsonText($expect)
         );
+    }
+
+    /**
+     * Runs one dbspec op of a recipe step through the public calls of Dbspec and checks the result against the expect
+     * of none (the Go twin is checkDBSpec in packages/go/internal/recipe/dbspec.go; the semantics are the same).
+     */
+    private static function dbspecStep(array $step, string $path, string $database): void
+    {
+        $expect = $step['expect'][$database] ?? Assert::fail("{$step['op']} has no expect for $database");
+        $dir = dirname(dirname(__DIR__, 3) . '/' . $path);
+        switch ($step['op']) {
+            case 'dbspec.parse_emit':
+                [$texts, $documents] = self::dbspecDocuments($dir, $step['documents']);
+                $identical = true;
+                foreach ($documents as $i => $document) {
+                    $identical = $identical && Dbspec::emit($document) === $texts[$i];
+                }
+                Assert::assertSame($expect['identical'] ?? null, $identical, 'emit identical');
+                return;
+            case 'dbspec.manifest':
+                [, $documents] = self::dbspecDocuments($dir, $step['documents']);
+                $result = Dbspec::manifest($documents);
+                if ($result->diagnostics !== []) {
+                    Assert::fail(self::diagnostics($result->diagnostics));
+                }
+                $hash = $expect['manifest_hash'] ?? '';
+                if ($hash === '' || $result->manifest->manifestHash !== $hash) {
+                    Assert::fail("manifest hash {$result->manifest->manifestHash}, want $hash");
+                }
+                return;
+            case 'dbspec.render':
+                [, $documents] = self::dbspecDocuments($dir, $step['documents']);
+                foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
+                    $result = Dbspec::render($documents, $dialect);
+                    if ($result->diagnostics !== []) {
+                        Assert::fail("$dialect: " . self::diagnostics($result->diagnostics));
+                    }
+                    $want = $expect[$dialect] ?? [];
+                    if ($want === [] || $result->statements !== $want) {
+                        Assert::fail("$dialect statements " . json_encode($result->statements));
+                    }
+                }
+                return;
+            case 'dbspec.analyze':
+                $text = self::dbspecText($dir, $step['document']);
+                $analysis = Dbspec::analyze($text, []);
+                $parsed = Dbspec::parse($text, []);
+                if ($analysis->diagnostics !== []) {
+                    Assert::fail(self::diagnostics($analysis->diagnostics));
+                }
+                $same = $analysis->document !== null && $parsed->document !== null
+                    && Dbspec::emit($analysis->document) === Dbspec::emit($parsed->document)
+                    && $analysis->positions == $parsed->positions;
+                if (!$same) {
+                    Assert::fail('the analysis differs from the parse');
+                }
+                $tokens = array_map(
+                    static fn(object $t): array => [$t->line, $t->start, $t->end, $t->class],
+                    $analysis->tokens
+                );
+                $want = $expect['tokens'] ?? [];
+                if ($want === [] || $tokens !== $want) {
+                    Assert::fail('tokens ' . json_encode($tokens));
+                }
+                return;
+            case 'dbspec.parse_positions':
+                $parsed = Dbspec::parse(self::dbspecText($dir, $step['document']), []);
+                if ($parsed->diagnostics !== []) {
+                    Assert::fail(self::diagnostics($parsed->diagnostics));
+                }
+                $got = array_map(
+                    static fn(object $p): array => [$p->kind, $p->path, $p->line, $p->column],
+                    $parsed->positions
+                );
+                $want = array_map(
+                    static fn(array $p): array => [$p['kind'], $p['path'], $p['line'], $p['column']],
+                    $expect['positions'] ?? []
+                );
+                if ($got === [] || $got !== $want) {
+                    Assert::fail('positions ' . json_encode($got));
+                }
+                return;
+            case 'dbspec.format':
+                if (($step['text'] ?? []) === []) {
+                    Assert::fail('dbspec.format has no text');
+                }
+                $result = Dbspec::format(implode("\n", $step['text']) . "\n", []);
+                if (array_key_exists('diagnostics', $expect)) {
+                    if ($result->text !== null) {
+                        Assert::fail("a document with a diagnostic was rewritten: {$result->text}");
+                    }
+                    $got = array_map(
+                        static fn(object $d): array => [$d->rule, $d->line, $d->column],
+                        $result->diagnostics
+                    );
+                    $want = array_map(
+                        static fn(array $d): array => [$d['rule'], $d['line'], $d['column']],
+                        $expect['diagnostics']
+                    );
+                    if ($got === [] || $got !== $want) {
+                        Assert::fail('diagnostics ' . json_encode($got));
+                    }
+                    return;
+                }
+                if ($result->diagnostics !== []) {
+                    Assert::fail(self::diagnostics($result->diagnostics));
+                }
+                $want = implode("\n", $expect['text'] ?? []) . "\n";
+                if ($result->text !== $want) {
+                    Assert::fail("formatted text {$result->text}, want $want");
+                }
+                if (Dbspec::format($result->text, [])->text !== $result->text) {
+                    Assert::fail('the format of the formatted text differs');
+                }
+                return;
+            default:
+                Assert::fail("OP_UNKNOWN {$step['op']}");
+        }
+    }
+
+    /**
+     * Reads the .dbs files that paths name relative to dir and parses each with the set of their headers (the Go twin
+     * is readDocuments). Returns the text of each file and its parsed document, in the order of paths.
+     *
+     * @param list<string> $paths
+     * @return array{list<string>, list<\Polyspec\Orm\Dbspec\Document>}
+     */
+    private static function dbspecDocuments(string $dir, array $paths): array
+    {
+        $texts = [];
+        $set = [];
+        foreach ($paths as $path) {
+            $text = self::dbspecText($dir, $path);
+            $texts[] = $text;
+            $fields = preg_split('/\s+/', trim(explode("\n", $text, 2)[0]), -1, PREG_SPLIT_NO_EMPTY);
+            if ($fields === false || count($fields) !== 3 || $fields[0] !== 'dbspec') {
+                Assert::fail("$path has no dbspec header");
+            }
+            $set[$fields[2]] = $text;
+        }
+        $documents = [];
+        foreach ($texts as $i => $text) {
+            $result = Dbspec::parse($text, $set);
+            if ($result->document === null) {
+                Assert::fail("{$paths[$i]}: " . self::diagnostics($result->diagnostics));
+            }
+            $documents[] = $result->document;
+        }
+        return [$texts, $documents];
+    }
+
+    /** The text of the file that path names relative to dir. */
+    private static function dbspecText(string $dir, string $path): string
+    {
+        $text = file_get_contents("$dir/$path");
+        if ($text === false) {
+            Assert::fail("cannot read $path");
+        }
+        return $text;
     }
 
     /** Maps the op of step to its call and checks the result against the expect of database. */
