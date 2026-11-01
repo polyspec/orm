@@ -79,10 +79,8 @@ pub fn unique() -> u128 {
 pub fn answer(chain: &str, answer: &Value, answers: &Value) -> Value {
     // The chain's future is large in a debug build, so it runs on a thread with a stack of its own (not the trial's).
     let (chain, answer, answers) = (chain.to_owned(), answer.clone(), answers.clone());
-    let thread = std::thread::Builder::new()
-        .stack_size(64 << 20)
-        .spawn(move || answer_on_thread(&chain, &answer, &answers))
-        .expect("a thread with a 64 MiB stack");
+    let thread =
+        std::thread::Builder::new().stack_size(64 << 20).spawn(move || answer_on_thread(&chain, &answer, &answers)).expect("a thread with a 64 MiB stack");
     match thread.join() {
         Ok(value) => value,
         Err(panic) => std::panic::resume_unwind(panic),

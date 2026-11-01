@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 6ffced2fbef7b875377e881ae57a9a90a938bcbf415ee2abb7ce6f86e8b16993 -->
+<!-- source-sha256: 162a6566fa5ca6c53013e4a0cb8522f7399c945c0b2304e6703cff664b20bb7b -->
 # 변경 이력
 
 ## Unreleased
@@ -55,6 +55,7 @@
 - orm은 flowmark의 capability 표를 더 이상 복사하지 않는다. dialects.md의 "Markdown IR executor" 표는 고정된 flowmark spec 60의 링크로 바뀌었고, flowmark source checkout을 읽던 markdown-table 검사는 지웠다 (T347).
 - 모든 parity job이 PHP extension과 Rust conformance program을 build해서, python, go, typescript, php, API job도 둘 다 읽지 않는 binding을 위해 PHP-Parser를 내려받고 두 산출물을 compile했다. 이제 parity gate는 그 binding이 읽는 것만 build한다. php-extension은 extension을, rust는 program을, 전체 parity-check는 둘 다 build한다. (CR39)
 - check recipes의 Task row가 docs 규칙이 영어에서 금지하는 단어를 써서 test (static)의 docs-rules-check가 실패했다. CR39 Task는 두 언어 모두 parity 검사로 고쳤다 (CR50).
+- answer chain의 Rust test helper가 형식에 맞지 않아 test (static)에서 clients, bench, interfaces의 rust-fmt-check가 실패했다. 이제 고정된 toolchain으로 그 파일을 형식에 맞췄다 (CR51).
 
 ## 0.0.21
 

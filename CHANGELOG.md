@@ -54,6 +54,7 @@
 - The runtime lint gates of Go, PHP, TypeScript and Python failed on the integrated tree: a Go errorlint finding and an unused Go alias, 13 PHP lines over 120 characters, an unsafe any and a template literal in two TypeScript scripts, and five Python tests that ruff check and ruff format refused. Each is fixed at its source, and no noqa is added (CR34).
 - Every parity job built the PHP extension and the Rust conformance program, so the python, go, typescript, php and API jobs fetched PHP-Parser and compiled both for bindings that load neither. A parity gate now builds only what its bindings load: the extension for php-extension, the program for rust, and both for the full parity-check. (CR39)
 - A Task row of the check recipes used a word that the docs rule forbids in English, so docs-rules-check failed in test (static). The Task of CR39 now says parity check in both languages (CR50).
+- The Rust test helper of the answer chain was not formatted, so rust-fmt-check failed for the clients, bench and interfaces programs in test (static). The file is now formatted with the pinned toolchain (CR51).
 
 ## 0.0.21
 
