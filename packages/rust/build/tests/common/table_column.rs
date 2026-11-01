@@ -12,5 +12,6 @@ pub fn plain_column(name: &str, native_type: &str, nullable: bool) -> TableColum
         automatic_key: false,
         default_expression: None,
         expression_default: false,
+        check_precision: None,
     }
 }

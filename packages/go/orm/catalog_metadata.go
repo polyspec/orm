@@ -36,9 +36,9 @@ type CatalogColumn struct {
 	AutomaticKey      bool
 	DefaultExpression *string
 	ExpressionDefault bool
-	// checkPrecision is, on SQLite, the fraction digits that the dbspec CHECK of a TIME or DATETIME column fixes; nil
+	// CheckPrecision is, on SQLite, the fraction digits that the dbspec CHECK of a TIME or DATETIME column fixes; nil
 	// when no CHECK fixes them and on the other dialects.
-	checkPrecision *int
+	CheckPrecision *int
 }
 
 // CatalogTableMetadata describes a table: its kind, its columns, its primary key in constraint order and whether that key
@@ -358,7 +358,7 @@ func (s *catalogSession) sqliteCheckPrecisions(ref CatalogTableRef, columns []Ca
 		switch strings.ToUpper(column.NativeType) {
 		case "TIME", "DATETIME":
 			if precision, ok := catalogCheckPrecision(definition, column.Name); ok {
-				columns[i].checkPrecision = &precision
+				columns[i].CheckPrecision = &precision
 			}
 		}
 	}

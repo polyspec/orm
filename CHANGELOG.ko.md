@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 72146e5a3627c6ee345c8b4c345a9724547a7e4413e18469d92cd9c2fb5a34d5 -->
+<!-- source-sha256: e1165657e555ff1a498dee654f718c36e17ac82cdfba2ff376bd01d0058a359e -->
 # 변경 이력
 
 ## Unreleased
 
+- checkPrecision은 여섯 runtime 모두에서 public이다(INT-117): SQLite CHECK precision을 채우는 Go CatalogColumn 필드와 Rust TableColumnMetadata 필드를 공개 이름으로 export하고, config/parity.json은 그것들을 catalog connection이 export하는 다른 public symbol과 함께 선언한다 (T334-3-3-2-9).
 - PostgreSQL describe는 생성 컬럼에 default를 보고하지 않는다: 생성 컬럼의 생성 식은 default가 있는 자리인 pg_attrdef에 보관되므로, 모든 runtime은 그 컬럼의 default 식을 읽지 않고 default 표지를 false로 본다(SCH-6a) (T334-3-3-2-8).
 - catalog_connection runner의 lint 및 중복 finding을 제자리에서 고쳤다: Go의 Close errcheck, TypeScript의 미사용 변수와 중복 helper, Python ruff finding, PHP phpcs finding과 빈 catch(catch는 오류를 처리하거나 다시 던진다), Rust의 도달 불가 grid arm과 공유 probe의 미사용 helper, PHP의 중복 fetchAll (T334-3-3-2-7).
 - 공유 catalog_connection recipe의 Rust runner가 MySQL, PostgreSQL, SQLite에서 recipe의 모든 op와 필드를 실행한다. PostgreSQL 문장의 UNION ALL 피연산자 또는 + 항이 200개 이상이면 CATALOG_LIMIT로 거부된다(INT-136). 음수 행 또는 바이트 수는 질의 실행 전에 QUERY_LIMIT_INVALID로 거부된다. PostgreSQL real은 float32 값으로 읽고, MySQL YEAR() grid 값은 CATALOG_VALUE로 거부된다(T334-3-3-2-6).

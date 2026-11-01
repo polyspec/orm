@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- checkPrecision is public in all six runtimes (INT-117): the Go CatalogColumn field and the Rust TableColumnMetadata field that the SQLite CHECK precision fills are exported under their public names, and config/parity.json declares them with every other public symbol the catalog connection exports (T334-3-3-2-9).
 - PostgreSQL describe reports no default for a generated column: the generation expression of a generated column is kept in pg_attrdef where a default is, so every runtime reads no default expression and a false default flag for it, as SCH-6a states (T334-3-3-2-8).
 - The lint and duplication findings of the catalog_connection runners are fixed in place: the Go errcheck of Close, the TypeScript unused variables and duplicated helper, the Python ruff findings, the PHP phpcs findings and empty catches (a catch handles or rethrows its error), the Rust unreachable grid arm and the dead helpers of the shared probe, and the duplicated PHP fetchAll (T334-3-3-2-7).
 - The Rust runner of the shared catalog_connection recipe runs every op and field of the recipe on MySQL, PostgreSQL and SQLite. A PostgreSQL statement with 200 or more UNION ALL operands or + terms refuses with CATALOG_LIMIT (INT-136), and a negative row or byte count refuses with QUERY_LIMIT_INVALID before the query runs. A PostgreSQL real reads as its float32 value, and a MySQL YEAR() grid value refuses with CATALOG_VALUE (T334-3-3-2-6).

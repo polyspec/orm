@@ -163,7 +163,7 @@ func TestCatalogDescribedTemporalText(t *testing.T) {
 			column := CatalogColumn{Name: "c", NativeType: test.native}
 			if test.dialect == "sqlite" && test.native == "TIME" {
 				precision := 3
-				column.checkPrecision = &precision
+				column.CheckPrecision = &precision
 			}
 			got, err := catalogDescribedTemporal(test.value, column, test.dialect)
 			if test.code != "" {
