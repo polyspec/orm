@@ -34,6 +34,13 @@ caseTest('codec/malformed-json-and-yaml', COMPUTE, () => {
   }
 });
 
+// The empty text of an ordered_json column is a decode error, not an empty value; the catalog recipe reads the stored empty text (COD-31).
+caseTest('empty text with ordered_json returns CODEC_DECODE', COMPUTE, () => {
+  const error = thrown(() => decode(['ordered_json'], ''));
+  assert(error instanceof CodecError);
+  assert.equal(error.code, 'CODEC_DECODE');
+});
+
 caseTest('invalid UTF-8 in JSON and YAML returns CODEC_DECODE', COMPUTE, () => {
   for (const style of ['ordered_json', 'yaml']) {
     const error = thrown(() => decode([style], new Uint8Array([0xff])));

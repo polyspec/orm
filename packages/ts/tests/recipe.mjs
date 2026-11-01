@@ -11,7 +11,7 @@ import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { Db, OrmError, StyledValue, blindIndex, connectCatalog, dbspecManifest, decode, encode, hostDecode, hostEncode, parseDbspec, readDbspecFile, registerModel } from '../dist/index.js';
+import { BindCell, Db, OrmError, StyledValue, blindIndex, connect as connectModel, connectCatalog, dbspecManifest, decode, encode, hostDecode, hostEncode, parseDbspec, readDbspecFile, registerModel } from '../dist/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { withCaseDatabase } from './case-database.mjs';
@@ -229,6 +229,7 @@ async function databaseRecipe(path, database) {
   if (recipe.fixture === undefined) throw new Error(`recipe ${name}: no fixture, so it has no database`);
   const schema = await fixtureSchema(resolve(root, recipe.fixture));
   for (const recipeCase of recipe.cases) {
+    if (recipeCase.only !== undefined && !recipeCase.only.includes(database)) continue;
     caseTest(recipeCase.id, DATABASE, ({ step }) =>
       withCaseDatabase(database, step, caseDatabase => runCase({ name, recipe, recipeCase, database, schema, caseDatabase, step })));
   }
@@ -286,6 +287,11 @@ async function runCase({ name, recipe, recipeCase, database, schema, caseDatabas
 // Each op maps to one call of the public API and returns the fields that its expect compares.
 const OPS = {
   async 'catalog.connect'(s) {
+    if (s.dsn.url !== undefined) {
+      const connection = await connectCatalog(s.dsn.url).then(catalog => ({ catalog }), error => ({ error }));
+      if (connection.catalog !== undefined) await connection.catalog.close();
+      return { error: connection.error?.code };
+    }
     // A DSN of a SQLite file that the case does not create: the connection fails, and the file must not exist afterwards.
     const directory = mkdtempSync(join(tmpdir(), 'orm-recipe-absent-'));
     const path = join(directory, 'absent.sqlite');
@@ -319,9 +325,11 @@ const OPS = {
     return { value: { text: await catalog.currentNamespace() } };
   },
   async 'catalog.describe_table'(s, { catalog, namespace }) {
-    const metadata = await catalog.describeTable({ namespace, name: s.table });
+    const metadata = await catalog.describeTable({ namespace: s.namespace ?? namespace, name: s.table });
     return {
       bind: metadata,
+      kind: metadata.kind,
+      columns_present: metadata.columns.length > 0,
       namespace: { text: metadata.table.namespace },
       columns: metadata.columns.map(c => c.name),
       primary_key: metadata.primaryKey,
@@ -345,7 +353,7 @@ const OPS = {
   },
   async 'catalog.read_only_query'(s, context) {
     const result = await context.catalog.readOnlyQuery(sql(s.sql, context), (s.binds ?? []).map(bind => native(databaseValue(bind, context))), limits(s));
-    return { rows: result.rows.map(row => row.map(cell => plain(cell, null))) };
+    return { columns: result.columns, row_count: result.rows.length, rows: result.rows.map(row => row.map(cell => plain(cell, null))) };
   },
   async 'catalog.read_only_grid_query'(s, context) {
     const result = await context.catalog.readOnlyGridQuery(sql(s.sql, context), [], limits(s));
@@ -355,6 +363,21 @@ const OPS = {
     const page = s.page_with === undefined ? stepArgument(s.page, context) : { ...bound(s.page_with.page.ref, context), orderBy: s.page_with.order_by };
     const snapshot = context.catalog.rowSnapshotFromPage(page, s.index);
     return { bind: snapshot, keys: snapshot.keys().map(key => plain(key, null)), key_indexes: snapshot.keyIndexList() };
+  },
+  // The generated model reads the bind_cell row by its key; the body is the model's value, SQL NULL or text.
+  async 'model.read_bind_cell'(s, context) {
+    const db = await connectModel(context.dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
+    try {
+      const body = (await new BindCell().connect(db).seq(s.seq).get()).getBody();
+      return { value: body === null ? { null: 'text' } : { text: body } };
+    } finally {
+      await db.close();
+    }
+  },
+  async 'catalog.row_cells'(s, context) {
+    const snapshot = stepArgument(s.snapshot, context);
+    const types = snapshot.metadata.columns.map(c => c.nativeType);
+    return { cells: snapshot.originalCells().map((cell, at) => plain(cell, types[at])) };
   },
   async 'catalog.insert_row'(s, context) {
     const metadata = stepArgument(s.metadata, context);
@@ -373,13 +396,31 @@ const OPS = {
   },
 };
 
+// OP_DEADLINE_MS bounds one op: a read that did not stop at its budget (the cross join of the user table) fails instead of running on.
+const OP_DEADLINE_MS = 20000;
+
+function within(promise, ms, label) {
+  let timer;
+  const deadline = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label}: no result within ${ms} ms`)), ms);
+  });
+  return Promise.race([promise, deadline]).finally(() => clearTimeout(timer));
+}
+
 async function runStep(s, context) {
   const op = OPS[s.op];
   if (op === undefined) throw new Error(`OP_UNKNOWN ${s.op}`);
+  // A step with only runs on the databases it names, and its expect names exactly those; a step without only names every database.
+  if (s.only !== undefined && !s.only.includes(context.database)) return;
+  if (s.expect !== undefined) {
+    const named = Object.keys(s.expect).sort().join(',');
+    const want = (s.only ?? ['mysql', 'postgres', 'sqlite']).slice().sort().join(',');
+    if (named !== want) throw new Error(`the expect of ${s.op} names ${named}, want ${want}`);
+  }
   const expected = s.expect === undefined ? undefined : resolveRefs(s.expect[context.database], context);
   let actual;
   try {
-    actual = await op(s, context);
+    actual = await within(Promise.resolve().then(() => op(s, context)), OP_DEADLINE_MS, `${s.op} on ${context.database}`);
   } catch (error) {
     if (expected?.error === undefined || typeof error?.code !== 'string') throw error;
     assert.equal(error.code, expected.error, `the error code (${error.message})`);
@@ -460,6 +501,7 @@ function plain(value, nativeType) {
   if (typeof value === 'boolean') return { bool: value };
   if (value instanceof Uint8Array) return { bytes_hex: Buffer.from(value).toString('hex') };
   if (typeof value === 'string') return { [temporalKind(nativeType) ?? 'text']: value };
+  if (typeof value === 'number') return { float: String(value) };
   throw new Error(`no recipe wrapper for the plain value ${String(value)}`);
 }
 
