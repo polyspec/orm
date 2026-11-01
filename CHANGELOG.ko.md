@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f8c440f255f2ca4af83c183eba558896d09cd6d9d30fba5b3e6d1e787c737796 -->
+<!-- source-sha256: 53f49b182e90c1f3166035bb057fdd9eab2aa4d637dab5bebe61d8326745d185 -->
 # 변경 이력
 
 ## Unreleased
@@ -45,6 +45,7 @@
 - 공유 catalog_connection recipe의 Go runner가 MySQL, PostgreSQL, SQLite에서 recipe의 모든 op와 필드를 실행한다. 행 snapshot은 이제 명세가 적은 키, 키 위치, 캡처된 셀을 내보내고, 읽기 예산은 결과의 나머지를 읽지 않고 질의를 멈춘다. 드라이버의 읽기 전용 거부는 QUERY_READ_ONLY, 하루 밖의 시간은 GRID_TEMPORAL_VALUE이며, MySQL YEAR는 grid 셀이 없고, 선언한 정밀도를 넘는 시간은 어떤 문장보다 먼저 CODEC_ENCODE로 실패한다 (T334-3-3-2-2).
 - 공유 catalog_connection recipe의 PHP runner가 MySQL, PostgreSQL, SQLite에서 recipe의 모든 op와 필드를 실행한다. catalog의 updateRow와 insertRow는 map과 함께 `[이름, 값]` 쌍의 목록으로 값을 받으므로, 반복된 열이 catalog에 도달해 쓰기 전에 ROW_UPDATE_INVALID 또는 ROW_INSERT_INVALID로 거부된다(INT-111). MySQL 읽기 예산은 서버 질의의 connection id로 질의를 KILL하여 멈추고, PostgreSQL 읽기는 cursor로 스트림하므로 예산에서 멈출 때 결과의 나머지를 읽지 않는다(T334-3-3-2-3).
 - duplication check가 공용 test 코드의 clone 세 개를 찾았다. PgsqlStatementAdapter와 CatalogAnswerStatement의 PHP fetchAll은 trait FetchesAllRows가 되었고, Rust dbspec test의 parse_set은 probe 모듈 tests/common/dbspec_probe.rs에 있으며, TypeScript의 within helper는 둘이 함께 쓰는 tests/deadline.mjs에 있다 (CR27).
+- PHP render test는 tests/dbspec/ddl.json의 statement만 확인하고 behavior step은 확인하지 않았다. 이제 그 step을 MySQL, PostgreSQL, SQLite에서 실행하며, 서버 DSN이 빠지면 그 이름을 대며 실패한다 (CR16-1-3).
 
 ## 0.0.21
 

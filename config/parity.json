@@ -3795,6 +3795,11 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/dbspec_render_physical.rs",
           "id": "render_physical"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecRenderTest.php",
+          "id": "DbspecRenderTest::testBehaviourPhysical"
         }
       ]
     },
