@@ -34,8 +34,8 @@ caseTest('a Go module that is not downloaded names make install, never a retry o
   const root = mkdtempSync(join(tmpdir(), 'orm-downloads-'));
   try {
     write(join(root, 'go.work'), 'go 1.27.2\n');
-    // go answers as an offline go does for a module that is not downloaded. install-kit of @polyspec/kit downloads the crates
-    // of every Cargo.lock, so no download check reads them (kit K864).
+    // go answers as an offline go does for a module that is not downloaded. make orm-install-rust-crates downloads the
+    // crates of every Cargo.lock with cargo fetch --locked, so no download check reads them.
     const calls: string[] = [];
     const run = (program: string, args: string[]) => {
       calls.push([program, ...args].join(' '));

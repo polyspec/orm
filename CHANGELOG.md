@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- orm takes kit 0.0.92 (T348): the pin names the release asset of kit 0.0.92 with its integrity, the kit-sync copies are that release's, and make orm-install-rust-crates downloads the crates of every tracked Cargo.lock with cargo fetch --locked, since kit 0.0.92 deletes the cargo-downloads-fetch target that it called.
 - The row's premise does not hold: kit's parity-symbols.mts:229-230 reads the Rust nightly from the exceptions of config/toolchain.json, never from a rustNightly key, and orm's config/toolchain.json:16-22 holds exactly that exception (KSTD-5-121).
 - The deps-<runtime> targets are not needed: kit's ci-setup.mts:130-133 calls deps-<runtime> only for a runtime that config/ci.json does not set up, and orm declares setup.runtimes for go, php, php-ext, python, rust and ts (KSTD-5-120).
 - config/release.json:38-44 declares the generated sources of the PHP extension package as one make entry, php-ext-sources, with both outputs, which the release schema of kit K930 accepts, so the row closes on make kit-check (T325-1).

@@ -3,7 +3,7 @@
 // CARGO_NET_OFFLINE, GOPROXY, npm_config_offline, COMPOSER_DISABLE_NETWORK). So a missing download does not split results between runs that reach the registry and runs that do not;
 // it fails at once, and this check records it along with
 // `run make install`. The result is { need, message } for each missing item, where need is a needs entry of contracts/check-inputs.json (go,
-// node-modules, composer); the crates of every Cargo.lock are downloaded by install-kit of @polyspec/kit, so no check reads them (kit K864).
+// node-modules, composer); the crates of every Cargo.lock are downloaded by make orm-install-rust-crates (cargo fetch --locked), so no check reads them.
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
