@@ -108,7 +108,9 @@ caseTest('rust: the polyspec-orm-schema vector tests pass while preempted', TIME
 
 for (const test of ['DbspecTest', 'DbspecRulesTest', 'DbspecManifestTest', 'DbspecRenderTest', 'DbspecMermaidTest', 'DbspecPlanTest', 'DbspecStressTest']) {
   caseTest(`php: ${test} passes while preempted`, TIMEOUT, async ({ step }) => {
-    await passesPreempted(step, 'php', ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', `packages/php/tests/${test}.php`]);
+    // The database cases (group database) need the DSNs of the test servers, which this isolated child does not receive; they run in their own
+    // database target, so this case excludes them and checks the parse and render code only.
+    await passesPreempted(step, 'php', ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', '--exclude-group', 'database', `packages/php/tests/${test}.php`]);
   });
 }
 

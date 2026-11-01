@@ -12,6 +12,7 @@ use PDO;
 use PDOException;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Dbspec\Dbspec;
@@ -109,6 +110,7 @@ class DbspecRenderTest extends TestCase
      * naming the one that is unset. Requirement: DIA-113 (check-recipes CR16-1-3).
      */
     #[DataProvider('behaviourCases')]
+    #[Group('database')]
     public function testBehaviourPhysical(array $case): void
     {
         $dsns = dbspec_dsns([
