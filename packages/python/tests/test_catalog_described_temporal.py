@@ -83,7 +83,8 @@ class FakeConnection:
         self.loaders = []
         self.closed = False
 
-    def cursor(self):
+    def cursor(self, cursor_class=None):
+        # A streamed read asks for an unbuffered cursor class: the double answers the same either way.
         return FakeCursor(self.description, self.rows, self.loaders)
 
 

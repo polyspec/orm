@@ -29,7 +29,8 @@ class CatalogMysqlVisibilityTest(unittest.TestCase):
             state = {"inserted": False, "queries": []}
 
             class Connection:
-                def cursor(self):
+                def cursor(self, cursor_class=None):
+                    # A streamed read asks for an unbuffered cursor class: the double answers the same either way.
                     return Cursor(self)
 
                 def close(self):

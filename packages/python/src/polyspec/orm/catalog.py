@@ -826,6 +826,23 @@ def _validate_inserted_locator_row(
             raise _error(codes.ROW_WRITE_MISMATCH, mismatch_message)
 
 
+def _check_write_precision(metadata: CatalogTableMetadata, changes: list, dialect: str) -> None:
+    """Refuses a temporal value that names more fraction digits than the precision of its column, before any write. A SQLite
+    column whose precision no CHECK fixes has nothing to refuse."""
+    for index, value in changes:
+        temporal = _temporal_kind(metadata.columns[index], dialect)
+        if temporal is None or not isinstance(value, str) or "." not in value:
+            continue
+        _, precision, declared = temporal
+        if not declared:
+            continue
+        if any(digit != "0" for digit in value.partition(".")[2][precision:]):
+            raise _error(
+                codes.CODEC_ENCODE,
+                f'temporal value "{value}" has more fraction digits than its precision {precision}',
+            )
+
+
 def _changes(metadata: CatalogTableMetadata, values, code: str, dialect: str) -> list:
     """Checks named assignments against a descriptor and returns (column index, normalized value) in the order given."""
     values = list(values)
@@ -911,6 +928,8 @@ class GridCell:
     _MYSQL_DATETIME,
 ) = 4, 5, 7, 10, 11, 12
 _MYSQL_DECIMAL, _MYSQL_NEWDECIMAL, _MYSQL_UNSIGNED_FLAG = 0, 246, 32
+# The MySQL YEAR field type, which a YEAR() result has: it has no grid cell (the spec's unsupported types).
+_MYSQL_YEAR = 13
 _PG_FLOAT4, _PG_FLOAT8, _PG_NUMERIC, _PG_DATE, _PG_TIME, _PG_TIMESTAMP = (
     700,
     701,
@@ -925,8 +944,40 @@ _DATE_TEXT = re.compile(r"(\d{4})-(\d{2})-(\d{2})")
 _TIME_TEXT = re.compile(r"(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?")
 
 
+# The rows that a PostgreSQL cursor fetches in one round trip.
+_PG_CHUNK = 256
+
+
+def _stream_rows(cursor, cursor_name):
+    """The rows of a read in order: the rows of an unbuffered MySQL result, or the chunks of a PostgreSQL cursor."""
+    if cursor_name is None:
+        while True:
+            row = cursor.fetchone()
+            if row is None:
+                return
+            yield row
+    while True:
+        cursor.execute(f"FETCH FORWARD {_PG_CHUNK} FROM {cursor_name}")
+        chunk = cursor.fetchall()
+        yield from chunk
+        if len(chunk) < _PG_CHUNK:
+            return
+
+
+def _plain_float(value, code, dialect: str):
+    """A PostgreSQL real value is the float32 that the server holds, widened to a double, as the Go and Rust runtimes read it."""
+    if dialect == "postgres" and code == _PG_FLOAT4 and isinstance(value, float):
+        return struct.unpack("<f", struct.pack("<f", value))[0]
+    return value
+
+
 def _refuse(message: str):
     return _error(codes.CATALOG_VALUE, f"unsupported grid value: {message}")
+
+
+def _refuse_temporal(message: str):
+    """A date, time or datetime grid value that is outside its range or whose text is not one (GRID_TEMPORAL_VALUE)."""
+    return _error(codes.GRID_TEMPORAL_VALUE, f"unsupported grid value: {message}")
 
 
 def _float32_bits(value: float) -> int:
@@ -942,28 +993,28 @@ def _date_text(year: int, month: int, day: int) -> str:
     try:
         date(year, month, day)
     except ValueError:
-        raise _refuse("date outside 0001-01-01 to 9999-12-31") from None
+        raise _refuse_temporal("date outside 0001-01-01 to 9999-12-31") from None
     return f"{year:04d}-{month:02d}-{day:02d}"
 
 
 def _time_text(hour: int, minute: int, second: int, micro: int) -> str:
     """dbspec time HH:MM:SS.ffffff: a time of day from 00:00:00 to 23:59:59.999999."""
     if hour > 23 or minute > 59 or second > 59:
-        raise _refuse("time outside 00:00:00 to 23:59:59.999999")
+        raise _refuse_temporal("time outside 00:00:00 to 23:59:59.999999")
     return f"{hour:02d}:{minute:02d}:{second:02d}.{micro:06d}"
 
 
 def _pg_text_date(text: str) -> GridCell:
     match = _DATE_TEXT.fullmatch(text)
     if match is None:
-        raise _refuse(f"date text {text!r}")
+        raise _refuse_temporal(f"date text {text!r}")
     return GridCell("date", _date_text(*(int(part) for part in match.groups())))
 
 
 def _pg_text_time(text: str) -> str:
     match = _TIME_TEXT.fullmatch(text)
     if match is None:
-        raise _refuse(f"time text {text!r}")
+        raise _refuse_temporal(f"time text {text!r}")
     hour, minute, second = (int(part) for part in match.groups()[:3])
     fraction = (match.group(4) or "").ljust(6, "0")
     return _time_text(hour, minute, second, int(fraction or "0"))
@@ -987,6 +1038,8 @@ def _grid_cell(value, dialect: str, code, unsigned: bool) -> GridCell:
             return GridCell("float64", _float64_bits(value))
         if code == _MYSQL_TIMESTAMP:
             raise _refuse("MySQL TIMESTAMP follows a time zone")
+        if code == _MYSQL_YEAR:
+            raise _refuse("MySQL YEAR has no grid cell")
         if (
             code == _MYSQL_DATE
             and isinstance(value, date)
@@ -1002,7 +1055,7 @@ def _grid_cell(value, dialect: str, code, unsigned: bool) -> GridCell:
         if code == _MYSQL_TIME and isinstance(value, timedelta):
             micros = (value.days * 86400 + value.seconds) * 1000000 + value.microseconds
             if not 0 <= micros < 86400 * 1000000:
-                raise _refuse("time outside 00:00:00 to 23:59:59.999999")
+                raise _refuse_temporal("time outside 00:00:00 to 23:59:59.999999")
             clock = micros // 1000000
             return GridCell(
                 "time",
@@ -1025,13 +1078,13 @@ def _grid_cell(value, dialect: str, code, unsigned: bool) -> GridCell:
             raise _refuse("PostgreSQL timestamptz and timetz are unsupported")
         if code == _PG_DATE and isinstance(value, str):
             if value.startswith("infinity") or value.startswith("-infinity"):
-                raise _refuse("PostgreSQL infinity")
+                raise _refuse_temporal("PostgreSQL infinity")
             return _pg_text_date(value)
         if code == _PG_TIME and isinstance(value, str):
             return GridCell("time", _pg_text_time(value))
         if code == _PG_TIMESTAMP and isinstance(value, str):
             if "infinity" in value:
-                raise _refuse("PostgreSQL infinity")
+                raise _refuse_temporal("PostgreSQL infinity")
             return _pg_text_datetime(value)
     if isinstance(value, bool):
         return GridCell("boolean", value)
@@ -1071,12 +1124,26 @@ class _Session:
             text, args = for_mysql(sql, list(params))
         else:
             text, args = for_postgres(sql, list(params))
-        cursor = self.raw.cursor()
+        # A budgeted read streams its rows. A MySQL result is unbuffered, and a PostgreSQL read with no parameter is a cursor,
+        # so a stop ends the statement on the server; a buffered read has to finish the whole statement first.
+        streamed = max_rows is not None
+        if self.dialect == "mysql" and streamed:
+            from pymysql.cursors import SSCursor
+
+            cursor = self.raw.cursor(SSCursor)
+        else:
+            cursor = self.raw.cursor()
+        cursor_name = (
+            f"orm_read_{uuid.uuid4().hex}"
+            if self.dialect == "postgres" and streamed and not args
+            else None
+        )
         names: list = []
         rows: list = []
         type_codes: list = []
         unsigned: list = []
         budget = 0
+        stopped = False
         try:
             if (grid or described is not None) and self.dialect == "postgres":
                 # Grid cells and the cells of a described table read PostgreSQL date, time and timestamp values as their
@@ -1087,7 +1154,12 @@ class _Session:
 
                 for name in _PG_TEXT_TEMPORAL:
                     cursor.adapters.register_loader(pg_types[name].oid, TextLoader)
-            cursor.execute(text, args)
+            if cursor_name is not None:
+                cursor.execute(f"DECLARE {cursor_name} NO SCROLL CURSOR FOR {text}")
+                # FETCH FORWARD 0 has no rows, and the server describes the columns of the cursor in its answer.
+                cursor.execute(f"FETCH FORWARD 0 FROM {cursor_name}")
+            else:
+                cursor.execute(text, args)
             if cursor.description:
                 names = [column[0] for column in cursor.description]
                 type_codes = [column[1] for column in cursor.description]
@@ -1102,10 +1174,7 @@ class _Session:
                     ]
                 else:
                     unsigned = [False] * len(names)
-                while True:
-                    row = cursor.fetchone()
-                    if row is None:
-                        break
+                for row in _stream_rows(cursor, cursor_name):
                     if max_rows is not None and len(rows) == max_rows:
                         raise _error(
                             codes.CATALOG_LIMIT, f"result has more than {max_rows} rows"
@@ -1130,7 +1199,9 @@ class _Session:
                             )
                             if self.dialect == "mysql"
                             and type_codes[index] == _MYSQL_TIME
-                            else _check_value(value)
+                            else _check_value(
+                                _plain_float(value, type_codes[index], self.dialect)
+                            )
                             for index, value in enumerate(row)
                         ]
                     )
@@ -1150,14 +1221,37 @@ class _Session:
                     rows.append(converted)
             affected = cursor.rowcount if cursor.rowcount is not None else 0
             insert_id = cursor.lastrowid if self.dialect == "mysql" else None
+            if cursor_name is not None:
+                cursor.execute(f"CLOSE {cursor_name}")
         except Exception as error:
+            if isinstance(error, OrmError) and error.code == codes.CATALOG_LIMIT:
+                stopped = True
+                self._stop_read(cursor, cursor_name)
             if not _is_driver_error(self.dialect, error):
                 raise
             lost = self.dialect == "postgres" and bool(self.raw.closed)
             _raise_driver_error(self.dialect, error, lost)
         finally:
-            cursor.close()
+            if stopped:
+                # The budget error is the one reported: a cursor that the stop has ended may fail to close.
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
+            else:
+                cursor.close()
         return _Raw(names, rows, affected, type_codes, unsigned, insert_id)
+
+    def _stop_read(self, cursor, cursor_name) -> None:
+        """Ends a read that a budget stopped on the server: MySQL kills the running statement by its thread id on a
+        connection of its own, and a PostgreSQL cursor is closed. A failure here is not reported: the budget error is."""
+        try:
+            if self.dialect == "mysql":
+                self.wrapper.cancel_query()
+            elif cursor_name is not None:
+                cursor.execute(f"CLOSE {cursor_name}")
+        except Exception:
+            pass
 
     def close(self) -> None:
         self.wrapper.close()
@@ -1619,7 +1713,15 @@ class CatalogConnection:
             raw = session.run(query, values, rows_budget, bytes_budget)
             return CatalogQueryResult(columns=raw.names, rows=raw.rows)
 
-        return self._read(work)
+        try:
+            return self._read(work)
+        except OrmError as error:
+            # The server refused a write of the read session: the query is the one that fails, as a write fails before it runs.
+            if error.code == codes.READ_ONLY:
+                raise _error(
+                    codes.QUERY_READ_ONLY, "the database rejected a read-only query", error
+                ) from error
+            raise
 
     def insert_row(
         self, declared: CatalogTableMetadata, values
@@ -1629,6 +1731,7 @@ class CatalogConnection:
         descriptor and re-reads the row by its key before commit. Every supplied value must read back exactly."""
         key_indexes = _descriptor(declared)
         changes = _changes(declared, values, codes.ROW_INSERT_INVALID, self._dialect)
+        _check_write_precision(declared, changes, self._dialect)
         provided = {index: value for index, value in changes}
         omitted_indexes = []
         for index in key_indexes:
@@ -1850,6 +1953,7 @@ class CatalogConnection:
         changes = _changes(
             original.metadata, values, codes.ROW_UPDATE_INVALID, self._dialect
         )
+        _check_write_precision(original.metadata, changes, self._dialect)
         updated = list(original.cells)
         for index, value in changes:
             updated[index] = value
