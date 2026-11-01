@@ -2,10 +2,12 @@
 # test_<recipe>_<database>.py, takes the load_tests of recipe_tests for the recipe and the database, and each case of the
 # recipe is one test whose steps call the public API of polyspec.orm that each op names. It has no command line and no
 # output of its own.
+import atexit
 import dataclasses
 import json
 import math
 import re
+import shutil
 import tempfile
 import unittest
 from decimal import Decimal
@@ -15,9 +17,14 @@ from urllib.parse import unquote, urlsplit
 
 from polyspec.ordered_json import (
     Kind,
+)
+from polyspec.ordered_json import (
     Value as OrderedJson,
+)
+from polyspec.ordered_json import (
     parse as ordered_json_parse,
 )
+from polyspec.orm import Db, OrmError, Schema, connect_catalog
 from polyspec.orm.codec import (
     CodecError,
     blind_index,
@@ -26,17 +33,16 @@ from polyspec.orm.codec import (
     host_decode,
     host_encode,
 )
-from polyspec.orm import Db, OrmError, Schema, connect_catalog
 from polyspec.orm.dbspec import dbspec_manifest, parse_dbspec, read_dbspec_file
 from polyspec.orm.engine import model_of_documents, parse_document_set
 from polyspec.orm.engine.validate import validate
 from polyspec.orm.styled_value import StyledValue
-from .test_sqlite import generate
 
 from . import chain_answer, testcase
 from .case_database import case_database
 from .coverage_case import native_query
 from .markdown_conformance import same
+from .test_sqlite import generate
 from .vector_case import VectorCase, vector_load_tests
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -612,6 +618,7 @@ def _bench_models():
     """The generated models of the bench set, generated once per run."""
     if "bench" not in _MODEL_SETS:
         directory = tempfile.mkdtemp(prefix="orm_recipe_models_")
+        atexit.register(shutil.rmtree, directory, ignore_errors=True)
         _MODEL_SETS["bench"] = generate(
             directory, ROOT / "contracts" / "fixtures" / "bench" / "dbspec-set.json"
         )
