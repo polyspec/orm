@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0b289122a7e29ca25fae707c6d2a6fc319eddd4d8205100d2a6ad83cc865a93e -->
+<!-- source-sha256: 512e526005f8a4860b1e1a9ca8ff06553383ee4776d111832116b64b59e8106c -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP 확장 한 번 빌드 검사(CR4)는 spec requirement가 아닌 build 시스템 시험이라, parity 선언 검사가 requirement를 요구하지 않는 scripts의 harness 루트인 scripts/php/php-ext-build-cache.test.mts로 packages/php-ext/tests에서 옮긴다 (#CR4-1).
 - 네 client 변경이 전체 suite target을 고르지 않는다는 owner test의 기대 목록에 CR5가 선언한 typescript-build-unit-check를 넣는다. TypeScript client build(packages/ts/**)가 이 target을 고른다 (#CR5-1).
 - Makefile 빌드 산출물을 제자리에 쓰는 PHP client generator 실행은 저장소 검사가 거부한다. `php-models`는 각 models 디렉터리를 `<dir>.tmp`에 생성한 뒤 rename으로 바꿔, 중단된 실행이 이전 디렉터리를 온전히 남긴다 (CR12).
 - compiler fixtures 테스트는 caseTest로 실행한다. `rust-compiler-fixtures-check`는 native 시험과 runner 시험을 make -j가 함께 실행하는 두 part로 나눠, 한 레시피가 독립 테스트 둘을 실행하지 않는다 (CR25-1).

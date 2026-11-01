@@ -3677,7 +3677,7 @@
         "packages/php/models.txt",
         "packages/php-ext/scripts/build.sh",
         "scripts/php/php-ext-build.mts",
-        "packages/php-ext/tests/build-cache.test.mts",
+        "scripts/php/php-ext-build-cache.test.mts",
         "packages/php-ext/src/polyspec_orm.stub.php",
         "packages/php-ext/src/polyspec_orm.c",
         "packages/php-ext/src/aes_utils.c",
