@@ -10,7 +10,7 @@ import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { errorCode } from '../../tests/errors.mts';
 import { command } from './run.mts';
-import { endGroup, runStep, signalGroup, processGroupOf } from './step.mts';
+import { endGroup, groupProcesses, runStep, signalGroup, processGroupOf } from './step.mts';
 import { spawn } from 'node:child_process';
 
 const repo = resolve(fileURLToPath(new URL('../..', import.meta.url)));
@@ -250,4 +250,20 @@ caseTest('the resource lines list the processes with the largest resident memory
   assert.equal(lines.length, 4);
   assert.match(lines[0] ?? '', /^RESOURCES 1970-01-01T00:00:00\.000Z memory /);
   assert.match(lines[3] ?? '', /^RESOURCES group signals /);
+});
+
+// T351: the process table is listed with a bounded output, so a large table never fails a step. An overflow names ENOBUFS, and a group
+// member with a command line longer than the buffer that the listing uses by default is still listed with its command.
+caseTest('the group listing names ENOBUFS when the process table overflows, and lists a long command of its group', PROCESS, async () => {
+  const padding = 'x'.repeat(400_000);
+  const child = spawn('sh', ['-c', 'sleep 30', 'sh', padding], { detached: true, stdio: 'ignore' });
+  try {
+    assert.ok(child.pid);
+    await new Promise(resolve => setTimeout(resolve, 200));
+    assert.throws(() => groupProcesses(child.pid!, { maxBuffer: 64 }), /ENOBUFS/);
+    const found = groupProcesses(child.pid!);
+    assert.ok(found.some(process => process.pid === child.pid && process.command.includes('sleep 30')), 'the group member is listed with its command');
+  } finally {
+    child.kill('SIGKILL');
+  }
 });
