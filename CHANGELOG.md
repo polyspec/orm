@@ -5,6 +5,7 @@
 
 ## 0.0.21
 
+- client-statement-runner declares each Rust symbol of the statement runner at both public paths, the crate-root re-export and the module of its definition: `polyspec_orm::Utils::run` and `polyspec_orm::utils::Utils::run`, `polyspec_orm::TxFrame::run` and `polyspec_orm::tx::TxFrame::run` (T346-11).
 - client-statement-runner declares the Rust symbols of the statement runner at their definition paths, `polyspec_orm::utils::Utils::run`, `polyspec_orm::tx::TxFrame` and `polyspec_orm::tx::TxFrame::run`, beside the crate-root `polyspec_orm::TxFrame`, as Transaction is declared (T346-10).
 - The composer lock of packages/php-ext is current with its composer.json (T346-9).
 - The pypi:vulture uv lock of the mise tools is current with the pinned uv 0.13.0, and the digest of mise.lock names it (T346-8).

@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d75edef04ab26ee095937cc6469c165e4af6b4f0bb9da451fa47fd1677c437ed -->
+<!-- source-sha256: 38be92d83e21eb1dde7e629fd4e36a85148810c6426e4890f3eef5ffcab3ce7b -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.21
 
+- client-statement-runner는 statement runner의 Rust 기호를 두 공개 경로, 곧 crate root re-export와 정의 module 모두에 선언한다: `polyspec_orm::Utils::run`과 `polyspec_orm::utils::Utils::run`, `polyspec_orm::TxFrame::run`과 `polyspec_orm::tx::TxFrame::run` (T346-11).
 - client-statement-runner는 statement runner의 Rust 기호를 parity가 Rust를 읽는 방식대로 정의 경로 `polyspec_orm::utils::Utils::run`, `polyspec_orm::tx::TxFrame`, `polyspec_orm::tx::TxFrame::run`에 선언하고, Transaction처럼 crate root의 `polyspec_orm::TxFrame`도 선언한다 (T346-10).
 - packages/php-ext의 composer lock이 composer.json과 맞는다(T346-9).
 - mise 도구 pypi:vulture의 uv lock이 고정된 uv 0.13.0에 맞고, mise.lock의 digest가 그것을 가리킨다(T346-8).

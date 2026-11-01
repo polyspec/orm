@@ -43767,8 +43767,10 @@
         {
           "implementation": "rust",
           "symbols": [
+            "polyspec_orm::Utils::run",
             "polyspec_orm::utils::Utils::run",
             "polyspec_orm::TxFrame",
+            "polyspec_orm::TxFrame::run",
             "polyspec_orm::tx::TxFrame",
             "polyspec_orm::tx::TxFrame::run"
           ]
