@@ -67,6 +67,7 @@ impl CatalogConnection {
             if &descriptor != declared {
                 return Err("ROW_SCHEMA_CHANGED: insertion descriptor changed".into());
             }
+            super::temporal::check_write_precision(&mut connection, &descriptor, values, &self.dialect).await?;
             if self.dialect == "mysql" {
                 mysql_safety(&mut connection, &descriptor).await?;
             }

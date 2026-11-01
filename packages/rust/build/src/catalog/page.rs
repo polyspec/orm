@@ -2,7 +2,7 @@
 use super::{metadata, read_only, temporal, TableMetadata, TableRef};
 use crate::tool_db::{Conn, GridQueryResult, QueryLimits};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TablePage {
     pub metadata: TableMetadata,
     pub result: GridQueryResult,

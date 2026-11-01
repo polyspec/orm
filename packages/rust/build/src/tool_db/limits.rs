@@ -43,7 +43,7 @@ impl CellSize for super::Val {
     fn size_bytes(&self) -> usize {
         match self {
             super::Val::Text(text) => text.len(),
-            super::Val::Null | super::Val::Int(_) | super::Val::Bool(_) => 8,
+            super::Val::Null | super::Val::Int(_) | super::Val::Float(_) | super::Val::Bool(_) => 8,
         }
     }
 }

@@ -24,6 +24,7 @@ impl From<Val> for GridCell {
         match value {
             Val::Null => Self::Null,
             Val::Int(value) => Self::Integer(value),
+            Val::Float(value) => Self::Float64(value.to_bits()),
             Val::Text(value) => Self::Text(value),
             Val::Bool(value) => Self::Boolean(value),
         }
@@ -62,7 +63,7 @@ pub(super) fn postgres_decimal(row: &sqlx::postgres::PgRow, index: usize) -> Res
 use polyspec_orm::chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeDelta};
 
 fn temporal_error(message: &str) -> sqlx::Error {
-    sqlx::Error::Decode(format!("Unsupported or invalid grid temporal value: {message}").into())
+    sqlx::Error::Decode(format!("TOOL_QUERY_TEMPORAL: {message}").into())
 }
 
 /// `YYYY-MM-DD` within the dbspec date range 0001-01-01 to 9999-12-31.
