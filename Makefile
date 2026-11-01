@@ -2306,7 +2306,7 @@ interface-check/self-test: php-vendor-check lease-tool typescript-build interfac
 
 # go-model-check fails when the Go models that orm-install-go wrote differ from what the entries of GO_MODELS_FILE generate (orm-gen gen --check).
 go-model-check:
-	$(RUN_LONG) go-model -- sh -c 'cd packages/go && while IFS= read -r entry; do case "$$entry" in ""|"#"*) continue ;; esac; $(GO) run ./cmd/orm-gen gen --check --lang go $$entry || exit 1; done < $(CURDIR)/$(GO_MODELS_FILE)'
+	$(RUN_LONG) go-model -- sh -c 'cd packages/go && $(GO) run ./cmd/orm-gen sets --check $(CURDIR)/$(GO_MODELS_FILE)'
 
 # ts-model-check builds the TypeScript client, then fails when the models
 # script scans a source that does not call models or misses one that does,
@@ -2962,7 +2962,7 @@ GO_MODELS_FILE = packages/go/models.txt
 .PHONY: go-models
 GO_MODELS_STAMP = $(CURDIR)/packages/go/go-models.key
 go-models:
-	$(GENERATE_ONCE) $(GO_MODELS_STAMP) "$(GO_VERSION)" packages/go -- sh -c 'cd packages/go && while IFS= read -r entry; do case "$$entry" in ""|"#"*) continue ;; esac; $(GO) run ./cmd/orm-gen gen --lang go $$entry || exit 1; done < $(CURDIR)/$(GO_MODELS_FILE)'
+	$(GENERATE_ONCE) $(GO_MODELS_STAMP) "$(GO_VERSION)" packages/go -- sh -c 'cd packages/go && $(GO) run ./cmd/orm-gen sets $(CURDIR)/$(GO_MODELS_FILE)'
 
 # The runtime build compiles Go packages that import these generated models.
 build-go: go-models

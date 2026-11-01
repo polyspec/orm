@@ -3,6 +3,7 @@
 //
 //	orm-gen gen --set <dbspec-set.json> --lang go --out <directory> [--scan <package pattern>...] [--check]
 //	orm-gen errors --lang go|php|rust|typescript|python --out <file> [--yaml docs/spec/errors.yaml]
+//	orm-gen sets [--check] <models file>
 package main
 
 import (
@@ -25,6 +26,8 @@ func main() {
 		gen(os.Args[2:])
 	case "errors":
 		errorsCmd(os.Args[2:])
+	case "sets":
+		setsCmd(os.Args[2:])
 	default:
 		usage()
 	}
@@ -33,6 +36,7 @@ func main() {
 func usage() {
 	fmt.Fprintln(os.Stderr, "usage: orm-gen gen --set <dbspec-set.json> --lang go --out <directory> [--scan <package pattern>...] [--check]")
 	fmt.Fprintln(os.Stderr, "       orm-gen errors --lang go|php|rust|typescript|python --out <file> [--yaml docs/spec/errors.yaml]")
+	fmt.Fprintln(os.Stderr, "       orm-gen sets [--check] <models file>")
 	os.Exit(2)
 }
 

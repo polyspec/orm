@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f3ae1163a24975e099470cf18c128e1784355b236c3420de7a5a89acc12392b4 -->
+<!-- source-sha256: 5811246691aa83c866cbf92b4d90f5fa22045d99ce7c1047f1f83c7abe320090 -->
 # 변경 이력
 
 ## Unreleased
 
+- Go model 생성은 `packages/go/models.txt`의 set을 scan으로 정한 순서로 생성한다. scan한 package가 다른 set의 출력을 import하는 set은 그 set 뒤에 생성되며, set 사이의 cycle은 이름을 밝히고 거부한다(`orm-gen sets`, T334-3-15-4g-1). 줄 순서는 더 이상 중요하지 않다. 이전에는 `bindmodel` set을 `markdownmodel` 뒤에 두면 실패했다. 수정.
 - `tests/bind/vectors.json`의 varchar, text, bytes bind case 중 `like_contains` 변환이 없는 17개는 message recipe `tests/bind/messages.json`의 case다. `eq`로 비교한 nil은 `IS NULL`이고 parameter를 바인드하지 않으므로(DSL-48) statement의 message는 빈 목록 `[]`이며, 스키마와 FCV가 이를 명시한다. not-null 컬럼에 대한 nil은 PHP와 Python에서 `CONFIG`다(DSL-49). Go, Rust, TypeScript는 이를 컴파일 시점에 거부하므로 제외한다. bytes 컬럼에 넣은 text의 message는 base64다(PRT-67) (T334-3-15-4f).
 - 생성된 model은 모든 column의 조건 메서드를 선언한다(DSL-154). Go, TypeScript, Rust 생성기는 key나 index의 column에만 이를 선언해 `text_value`, `bytes_value`, `varchar_long_value`에는 조건 메서드가 없었다. 이제 각 생성기가 모든 column에 대해 선언하며, PHP와 Python 생성기는 이미 그렇게 하고 있었다 (T334-3-15-4f-1). 수정.
 - message recipe 행의 파일에 남은 lint 지적을 같은 파일에서 고쳤다 (Go errorlint와 Close, Rust Option::map, PHP, Python과 recipe helper 형식). PHP, Python, TypeScript gate와 Rust kit link에 남은 지적은 이 branch가 바꾸지 않은 파일에 있으며 CR34가 고친다 (T334-3-15-4d).
