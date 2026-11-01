@@ -125,6 +125,9 @@ func queryColumn(t *testing.T, db *orm.DB, column string, value json.RawMessage)
 	case "slots.date_value":
 		_, err := bindmodel.Slots().Connect(db).GetsByDateValue(text(t, value))
 		return err
+	case "slots.decimal_value":
+		_, err := bindmodel.Slots().Connect(db).DecimalValue(text(t, value)).Gets()
+		return err
 	case "slots.i16_value":
 		_, err := bindmodel.Slots().Connect(db).I16Value(integer[int16](t, value, 16)).Gets()
 		return err

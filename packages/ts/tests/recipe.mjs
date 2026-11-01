@@ -719,6 +719,7 @@ async function queryColumn(step, db) {
     case 'slots.i64_value': return slots.getsByI64Value(hostValue(step.params[0]));
     case 'slots.f64_value': return slots.f64Value(hostValue(step.params[0])).gets();
     case 'slots.bool_value': return slots.boolValue(hostValue(step.params[0])).gets();
+    case 'slots.decimal_value': return slots.decimalValue(hostValue(step.params[0])).gets();
   }
   const value = wrapperText(step.params[0]);
   switch (step.column) {

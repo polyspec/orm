@@ -815,6 +815,120 @@
         "go": "the typed public API refuses this host value at compile time",
         "rust": "the typed public API refuses this host value at compile time"
       }
+    },
+    {
+      "id": "bind_decimal",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.decimal_value",
+          "operator": "eq",
+          "params": [
+            {
+              "decimal": "123.45"
+            }
+          ],
+          "expect": {
+            "message": "123.45"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_decimal_short_scale",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.decimal_value",
+          "operator": "eq",
+          "params": [
+            {
+              "decimal": "-1.5"
+            }
+          ],
+          "expect": {
+            "message": "-1.5"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_decimal_precision",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.decimal_value",
+          "operator": "eq",
+          "params": [
+            {
+              "decimal": "1234.5"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_decimal_scale",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.decimal_value",
+          "operator": "eq",
+          "params": [
+            {
+              "decimal": "1.234"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_decimal_number",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.decimal_value",
+          "operator": "eq",
+          "params": [
+            {
+              "float": "1.5"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ],
+      "exclude": {
+        "go": "the typed public API refuses this host value at compile time",
+        "rust": "the typed public API refuses this host value at compile time"
+      }
     }
   ]
 }

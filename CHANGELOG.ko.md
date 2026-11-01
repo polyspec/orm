@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c823f4497a7aa20c33ca5d1abe2d7ad49be515a402fe60a0822088b4e74640a5 -->
+<!-- source-sha256: b51769029af676bf8ea136273a5770922a56ff3e35c89f27a2ba98b282abecc3 -->
 # 변경 이력
 
 ## Unreleased
 
+- decimal bind case(`tests/bind/vectors.json`의 decimal slot)는 message recipe `tests/bind/messages.json`의 case다: `decimal_value`의 `markdown.send` step 하나, decimal wrapper 하나와 expect. 수정: TypeScript와 Python recipe helper가 decimal 컬럼의 float wrapper를 text로 넘겨 float을 공개 filter에서 가리고 있었다. 이제 host 값으로 넘겨, 공개 decimal filter가 PHP와 같이 float을 CODEC_ENCODE로 거부한다. 제품 코드는 바뀌지 않았다. 기존 검사가 이미 거부하고 있었다 (T334-3-15-4e).
 - message recipe 행의 파일에 남은 lint 지적을 제자리에서 고쳤다 (Go errorlint와 Close, Rust Option::map, PHP, Python과 recipe helper 형식). PHP, Python, TypeScript gate와 Rust kit link에 남은 지적은 이 branch가 바꾸지 않은 파일에 있으며 CR34가 고친다 (T334-3-15-4d).
 - `tests/bind/vectors.json`의 부동소수와 bool bind case(f64, bool slot)는 message recipe `tests/bind/messages.json`의 case다. 비유한 f64는 공개 호출이 CODEC_ENCODE로 거부한다. f64 slot의 text 또는 bool 값은 타입 없는 공개 경로가 거부하며, go와 rust에서는 타입 있는 API 이유로 제외한다. Rust의 message 비교는 정수에 대해 정확하여 1만큼 다른 i64는 실패한다 (T334-3-15-4c).
 - `tests/bind/vectors.json`의 정수 bind case(i16, i32, i64 slot)는 message recipe `tests/bind/messages.json`의 case다. 각 case는 slot 컬럼의 `markdown.send` step 하나, parameter wrapper 하나와 expect(bound 값 또는 오류 code)를 갖는다. 여섯 runtime이 공개 filter로 실행하며, 타입 있는 공개 API가 거부하는 값은 go와 rust에서 "타입 있는 공개 API가 이 host 값을 컴파일 시점에 거부한다"는 이유로 제외한다 (T334-3-15-4b).
