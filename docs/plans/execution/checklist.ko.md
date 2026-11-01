@@ -6,6 +6,7 @@
 <!-- source-sha256: f2f50484da67c0ed2304a0c6016afbcad079aef25328e3f6410eb93d0cb1ce85 -->
 <!-- source-sha256: ba0e6056d8d6d319b5f6750025d2b45fdba2d44b295b70472d2ae03ce124f19b -->
 <!-- source-sha256: a9fb88969688cecd05ae52cf4fe8984b70f4a7d4cc6cf95acd32a6762b5968c0 -->
+<!-- source-sha256: 9c02b7e54b06f8fdb2c1aa8a3118db57930c945ba9d397e3deb7f5168f30e7d7 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
