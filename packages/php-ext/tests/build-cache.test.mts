@@ -6,14 +6,14 @@ import { mkdtempSync, rmSync, existsSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { test } from 'node:test';
+import { caseTest, PROCESS } from '../../../tests/testcase.mts';
 import assert from 'node:assert/strict';
 import { isolatedEnvironment } from '../../../tests/environment.mts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const PHPIZE_LINE = '[php-extension] phpize';
 
-test('two extension sites of one run share one phpize', () => {
+caseTest('two extension sites of one run share one phpize', PROCESS, () => {
   const scratch = mkdtempSync(path.join(os.tmpdir(), 'php-ext-build-cache-'));
   try {
     const outputs = [path.join(scratch, 'first', 'polyspec_orm.so'), path.join(scratch, 'second', 'polyspec_orm.so')];
