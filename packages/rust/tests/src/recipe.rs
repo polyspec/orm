@@ -1014,7 +1014,6 @@ mod database {
             GridCell::DateTime(text) => json!({ "datetime": text }),
             GridCell::Boolean(b) => json!({ "bool": b }),
             GridCell::Binary(bytes) => json!({ "bytes_hex": hex_text(bytes) }),
-            other => return Err(format!("no recipe wrapper for the grid cell {other:?}")),
         })
     }
 

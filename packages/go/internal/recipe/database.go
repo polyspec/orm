@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -326,6 +327,41 @@ func runDatabaseStep(s databaseStep, c *databaseContext) error {
 	return nil
 }
 
+// closeFirst returns the first error of a step. A close failure is the step's error only when the step has none of its own;
+// otherwise it is joined after the first error, so that neither is lost.
+func closeFirst(err, closeErr error) error {
+	if closeErr == nil {
+		return err
+	}
+	if err == nil {
+		return closeErr
+	}
+	return errors.Join(err, closeErr)
+}
+
+// readBindCell reads the body of the bind cell at seq through a new connection, and closes that connection.
+func readBindCell(dsn string, seq int64) (out outcome, err error) {
+	db, err := model.Connect(dsn, orm.Config{AESKey: "bench-salt", BlindIndexKey: "bench-blind-index"})
+	if err != nil {
+		return outcome{}, err
+	}
+	defer func() {
+		err = closeFirst(err, db.Close())
+	}()
+	row, err := model.BindCell().Connect(db).Seq(seq).Get()
+	if err != nil {
+		return outcome{}, err
+	}
+	body, err := row.GetBody()
+	if err != nil {
+		return outcome{}, err
+	}
+	if body == nil {
+		return outcome{fields: map[string]any{"value": map[string]any{"null": "text"}}}, nil
+	}
+	return outcome{fields: map[string]any{"value": map[string]any{"text": *body}}}, nil
+}
+
 // databaseOp calls the public API that the op names and returns the fields that its expect compares (FCV-4).
 func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 	switch s.Op {
@@ -507,16 +543,17 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		// A SQLite file that the case does not create: the connection fails, and the file must not exist afterwards.
 		path := filepath.Join(c.t.TempDir(), "absent.sqlite")
 		connection, err := orm.ConnectCatalog("sqlite://" + path)
+		var closeErr error
 		if connection != nil {
-			connection.Close()
+			closeErr = connection.Close()
 		}
 		if _, statErr := os.Stat(path); statErr == nil {
-			return outcome{}, fmt.Errorf("the connection created %s", path)
+			return outcome{}, closeFirst(fmt.Errorf("the connection created %s", path), closeErr)
 		}
 		if err == nil {
-			return outcome{}, fmt.Errorf("the connection to an absent SQLite file succeeded")
+			return outcome{}, closeFirst(fmt.Errorf("the connection to an absent SQLite file succeeded"), closeErr)
 		}
-		return outcome{}, err
+		return outcome{}, closeFirst(err, closeErr)
 	case "catalog.close":
 		// The closed connection stays bound: its operations fail with CATALOG_CLOSED and send no statement.
 		return outcome{}, c.catalog.Close()
@@ -527,30 +564,13 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		namespace, err := catalog.CurrentNamespace(c.ctx)
 		if err != nil {
-			catalog.Close()
-			return outcome{}, err
+			return outcome{}, closeFirst(err, catalog.Close())
 		}
 		c.catalog = catalog
 		c.namespace = namespace
 		return outcome{}, nil
 	case "model.read_bind_cell":
-		db, err := model.Connect(c.dsn, orm.Config{AESKey: "bench-salt", BlindIndexKey: "bench-blind-index"})
-		if err != nil {
-			return outcome{}, err
-		}
-		defer db.Close()
-		row, err := model.BindCell().Connect(db).Seq(s.Seq).Get()
-		if err != nil {
-			return outcome{}, err
-		}
-		body, err := row.GetBody()
-		if err != nil {
-			return outcome{}, err
-		}
-		if body == nil {
-			return outcome{fields: map[string]any{"value": map[string]any{"null": "text"}}}, nil
-		}
-		return outcome{fields: map[string]any{"value": map[string]any{"text": *body}}}, nil
+		return readBindCell(c.dsn, s.Seq)
 	case "catalog.insert_row":
 		metadata, err := boundAPI[orm.CatalogTableMetadata](s.Metadata, c)
 		if err != nil {

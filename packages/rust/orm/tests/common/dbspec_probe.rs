@@ -3,6 +3,9 @@
 //! language, the process and the run, created before and dropped after the
 //! probe body, which runs within its deadline.
 
+#![allow(dead_code, reason = "each test binary includes this module and calls only part of it")]
+
+use crate::or_panic::OrPanic;
 use polyspec_orm::db::{parse_dsn, ConnectOptions};
 use polyspec_orm::dbspec::{introspect, ApplyConnection, CatalogQuerier, IntrospectError};
 use polyspec_orm_schema::dbspec::{self, CatalogValue, Dialect, Document, Introspection};
@@ -409,4 +412,16 @@ pub fn lines(value: &Value) -> String {
 
 pub fn strings(value: &Value) -> Vec<String> {
     value.as_array().expect("strings").iter().map(|s| s.as_str().expect("string").to_owned()).collect()
+}
+
+/// Parses all documents of a set. Each document receives the rest as its document set.
+#[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
+pub fn parse_set(id: &str, documents: &BTreeMap<String, String>) -> Vec<Document> {
+    documents
+        .iter()
+        .map(|(name, text)| {
+            let set: BTreeMap<String, String> = documents.iter().filter(|(other, _)| *other != name).map(|(o, t)| (o.clone(), t.clone())).collect();
+            dbspec::parse(text, &set).map(|parsed| parsed.document).or_panic(|e| format!("{id}/{name}: {e:?}"))
+        })
+        .collect()
 }

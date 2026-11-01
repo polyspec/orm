@@ -13,13 +13,13 @@ from pathlib import Path
 
 import psycopg
 import pymysql
+from polyspec.orm.dbspec.render import render_dbspec
 
+from . import testcase
 from .dbspec_ddl import parse_set
 from .dbspec_introspect import CONNECTION_RULES, case_database
 from .runner_connect import Adapter
-from polyspec.orm.dbspec.render import render_dbspec
 from .vector_case import VectorCase, vector_tests
-from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
 DIALECTS = ("mysql", "postgres", "sqlite")

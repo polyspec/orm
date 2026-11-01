@@ -824,7 +824,8 @@ final class Catalog
     private function mysqlGridRun(\mysqli $link, string $sql, array $args, int $maxRows, int $maxBytes): CatalogResult
     {
         // A query without parameters reads its rows as the server sends them (MYSQLI_USE_RESULT), so a budget stops it
-        // before the rest of a result is read. A query with parameters is a prepared statement, which buffers its result.
+        // before the rest of a result is read. A query with parameters is a prepared statement, which buffers its
+        // result.
         $connectionId = $link->thread_id;
         if ($args === []) {
             $link->real_query($sql);
@@ -871,13 +872,16 @@ final class Catalog
             );
         } catch (\Throwable $stop) {
             if ($stop instanceof OrmException && $stop->code_ === Code::CATALOG_LIMIT) {
-                // The server ends the stopped query; the interrupted result is freed, and its error is the expected end.
+                // The server ends the stopped query; the interrupted result is freed, and its error is the expected
+                // end.
                 $this->killQuery($connectionId);
             }
             // A failed row leaves the result unread; freeing it returns the link to the transaction that ends it.
+            // A free that fails does not replace the stop: it is recorded on the stop as cleanup.
             try {
                 $result->free();
-            } catch (\mysqli_sql_exception) {
+            } catch (\mysqli_sql_exception $freeError) {
+                throw OrmException::withCleanup($stop, OrmException::fromMysqli($freeError));
             }
             throw $stop;
         }
@@ -1226,7 +1230,10 @@ final class Catalog
             );
         }
         if (preg_match('/^(\d{2,3}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?$/', $text, $m) !== 1) {
-            throw new OrmException(Code::GRID_TEMPORAL_VALUE, "unsupported grid value: time \"$text\" is not a time of day");
+            throw new OrmException(
+                Code::GRID_TEMPORAL_VALUE,
+                "unsupported grid value: time \"$text\" is not a time of day"
+            );
         }
         if ((int) $m[1] > 23 || (int) $m[2] > 59 || (int) $m[3] > 59) {
             // A time outside its day is a temporal value the grid refuses (docs/spec/errors.yaml), not a refused type.
@@ -1244,7 +1251,10 @@ final class Catalog
         $space = strpos($text, ' ');
         if ($space === false) {
             // PostgreSQL infinity has no date and time: the grid refuses it as a temporal value.
-            throw new OrmException(Code::GRID_TEMPORAL_VALUE, "unsupported grid value: datetime \"$text\" has no date and time");
+            throw new OrmException(
+                Code::GRID_TEMPORAL_VALUE,
+                "unsupported grid value: datetime \"$text\" has no date and time"
+            );
         }
         return self::dateText(substr($text, 0, $space)) . ' ' . self::timeText(substr($text, $space + 1));
     }
@@ -1439,7 +1449,8 @@ final class Catalog
                 $args = $ordered;
             }
             $statement = $pdo->prepare($sql);
-            // Each parameter keeps its PHP type where the driver binds it: execute() would bind every value as a string,
+            // Each parameter keeps its PHP type where the driver binds it: execute() would bind every value as a
+            // string,
             // and an integer would come back as text. PostgreSQL's execute() binds its parameters as text, which its
             // casts in the statement read.
             if ($this->dialect === 'postgres') {
@@ -1539,7 +1550,8 @@ final class Catalog
                 throw $stop;
             } finally {
                 // A budget that stops the read leaves the rest of the result unread. The killed query ends its cursor
-                // with an interrupted error, which is the expected end of a stop, so only a failure without a stop is raised.
+                // with an interrupted error, which is the expected end of a stop, so only a failure without a stop is
+                // raised.
                 try {
                     $st->closeCursor();
                 } catch (\PDOException $cursorError) {
@@ -1634,7 +1646,7 @@ final class Catalog
         $described = false;
         $current = null;
         try {
-            return $this->boundedRows(
+            $rows = $this->boundedRows(
                 function () use ($pdo, $cursor, $begin, &$chunk, &$ended, &$described, &$current): array|false {
                     if ($chunk === []) {
                         if ($ended) {
@@ -1662,13 +1674,22 @@ final class Catalog
                     return $cells($current, $row);
                 }
             );
-        } finally {
+        } catch (\Throwable $primary) {
             // After a stop or a failed transaction the cursor may already be gone; the transaction ends it either way.
+            // A CLOSE that fails here does not replace the primary error: it is recorded on it as cleanup.
             try {
                 $pdo->exec("CLOSE $cursor");
-            } catch (\PDOException) {
+            } catch (\PDOException $closeError) {
+                throw OrmException::withCleanup($primary, $this->db->driverError($closeError));
             }
+            throw $primary;
         }
+        try {
+            $pdo->exec("CLOSE $cursor");
+        } catch (\PDOException $e) {
+            throw $this->db->driverError($e);
+        }
+        return $rows;
     }
 
     /** @param list<mixed> $args Runs one statement and returns the number of rows it affected. */
@@ -1769,7 +1790,8 @@ final class Catalog
             }
         }
 
-        // On SQLite the declared precision of a TIME or DATETIME column is read from its dbspec CHECK (Go's checkPrecision).
+        // On SQLite the declared precision of a TIME or DATETIME column is read from its dbspec CHECK (Go's
+        // checkPrecision).
         if ($this->dialect === 'sqlite' && $kind === 'table') {
             $definition = $this->query(
                 $pdo,
@@ -2097,7 +2119,8 @@ final class Catalog
 
     /**
      * A write of a temporal value with a non-zero digit beyond the declared precision of its column fails with
-     * CODEC_ENCODE before any statement runs (docs/spec/errors.yaml). On SQLite the precision is the CHECK of the column.
+     * CODEC_ENCODE before any statement runs (docs/spec/errors.yaml). On SQLite the precision is the CHECK of the
+     * column.
      */
     private static function checkWritePrecision(string $dialect, CatalogTableMetadata $metadata, array $values): void
     {
@@ -2263,7 +2286,8 @@ final class Catalog
         if ($values === [] || count($values) > count($metadata->columns)) {
             throw new OrmException($code, 'invalid column assignments');
         }
-        // A list of [name, value] pairs may repeat a name (the form of Go, TypeScript and Python); a map has distinct names.
+        // A list of [name, value] pairs may repeat a name (the form of Go, TypeScript and Python); a map has distinct
+        // names.
         $normalized = [];
         if (array_is_list($values)) {
             foreach ($values as $pair) {

@@ -290,8 +290,12 @@ func (s *catalogSession) queryRaw(query string, args []any, maxRows int, maxByte
 	stopped := false
 	defer func() {
 		if stopped {
+			// The budget error is the one reported: a close that the stop interrupted may fail, and that failure is joined
+			// after it, not in place of it.
 			cancel()
-			rows.Close()
+			if closeErr := rows.Close(); closeErr != nil {
+				err = errors.Join(err, mapDriverErrContext(closeErr, s.ctx))
+			}
 			return
 		}
 		if closeErr := rows.Close(); closeErr != nil {

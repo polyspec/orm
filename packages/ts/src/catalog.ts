@@ -42,7 +42,7 @@ const DRIVER_READ_ONLY = 'READ_ONLY';
 /** A write that the database's read-only scope refuses, such as a routine that writes, fails with QUERY_READ_ONLY (INT-104). */
 function refusedWrite(error: unknown): never {
   if (typeof error === 'object' && error !== null && (error as { code?: unknown }).code === DRIVER_READ_ONLY) {
-    throw err(CODE_READ_ONLY, (error as Error).message);
+    throw err(CODE_READ_ONLY, error instanceof Error ? error.message : DRIVER_READ_ONLY);
   }
   throw error;
 }

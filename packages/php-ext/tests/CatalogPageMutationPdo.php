@@ -44,7 +44,10 @@ final class CatalogPageMutationPdo extends UninitializedRecordingPdo
             ];
         }
         if (str_starts_with($query, 'SELECT sql FROM sqlite_master')) {
-            return ['columns' => [['name' => 'sql', 'native_type' => 'TEXT']], 'rows' => [['CREATE TABLE "page_probe" ("id" INTEGER PRIMARY KEY, "name" TEXT)']]];
+            return [
+                'columns' => [['name' => 'sql', 'native_type' => 'TEXT']],
+                'rows' => [['CREATE TABLE "page_probe" ("id" INTEGER PRIMARY KEY, "name" TEXT)']],
+            ];
         }
         if (str_starts_with($query, 'SELECT "id" FROM "main"."page_probe"')) {
             $name = $this->scenario === 'prepared' ? 'renamed' : 'id';

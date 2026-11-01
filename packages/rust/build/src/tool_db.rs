@@ -229,6 +229,16 @@ macro_rules! grid_sqlite {
     };
 }
 
+/// Checks the budget of one fetched row, converts its cells and keeps them in `rows`.
+macro_rules! push_row {
+    ($row:ident, $budget:expr, $rows:ident, $cell:ident) => {
+        $budget.check_row_count($rows.len())?;
+        let values = (0..$row.columns().len()).map(|i| $cell!(&$row, i)).collect::<Result<Vec<_>, sqlx::Error>>()?;
+        $budget.add_row(&values, $rows.len())?;
+        $rows.push(values);
+    };
+}
+
 macro_rules! fetch_result {
     ($conn:expr, $sql:expr, $params:expr, $budget:expr, $cell:ident, $result:ident, $bind:ident) => {{
         let statement = prepare_query!($conn, $sql, $params, $bind);
@@ -237,10 +247,7 @@ macro_rules! fetch_result {
         let mut stream = q.fetch(&mut **$conn);
         let mut rows = Vec::new();
         while let Some(row) = stream.try_next().await? {
-            $budget.check_row_count(rows.len())?;
-            let values = (0..row.columns().len()).map(|i| $cell!(&row, i)).collect::<Result<Vec<_>, sqlx::Error>>()?;
-            $budget.add_row(&values, rows.len())?;
-            rows.push(values);
+            push_row!(row, $budget, rows, $cell);
         }
         Ok($result { columns, rows })
     }};
@@ -266,10 +273,7 @@ macro_rules! fetch_cursor_result {
             let mut fetched = 0usize;
             let mut stream = sqlx::query(AssertSqlSafe(format!("FETCH FORWARD {PG_CURSOR_CHUNK} FROM {cursor}"))).fetch(&mut **connection);
             while let Some(row) = stream.try_next().await? {
-                $budget.check_row_count(rows.len())?;
-                let values = (0..row.columns().len()).map(|i| $cell!(&row, i)).collect::<Result<Vec<_>, sqlx::Error>>()?;
-                $budget.add_row(&values, rows.len())?;
-                rows.push(values);
+                push_row!(row, $budget, rows, $cell);
                 fetched += 1;
             }
             if fetched < PG_CURSOR_CHUNK {
