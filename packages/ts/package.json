@@ -44,7 +44,7 @@
   },
   "dependencies": {
     "@noble/hashes": "2.4.0",
-    "@polyspec/ordered-json": "https://github.com/polyspec/ordered-json/releases/download/v0.0.16/polyspec-ordered-json-0.0.16.tgz",
+    "@polyspec/ordered-json": "https://github.com/polyspec/ordered-json/releases/download/v0.0.17/polyspec-ordered-json-0.0.17.tgz",
     "mysql2": "^3.24.6",
     "oxc-parser": "0.156.0",
     "pg": "^8.23.1",

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 36c5e37e53ac50084f743c4a58bafe057e31a5ba78697a7b621767f565c9cfe5 -->
+<!-- source-sha256: 1122c632f519ad81d98ad4f0c3ec7b02f536e0eddd17796b9e5553b54fcb17ed -->
 # 변경 이력
 
 ## Unreleased
 
+- orm은 ordered-json 0.0.17을 모든 생태계에서 채택한다(T346). npm, Composer, Go, Python, Rust의 pin이 그 release asset과 tag를 가리키며, packaging.md는 그 release의 asset `polyspec-ordered-json-0.0.17.tgz`와 Composer zip, wheel 이름을 적는다.
 - orm은 kit 0.0.87을 채택한다(T346). .github/workflows의 모든 CI job은 각 job이 가지던 인라인 bootstrap 복사본 대신 kit-sync가 제공하는 local action `.github/actions/kit-bootstrap`으로 kit을 bootstrap한다(K992). ci.yml에 네 곳, docs-pages.yml에 한 곳이 있었다. 이 action은 mise.toml의 Node.js를 설치하고, 고정된 kit 패키지를 설치한 뒤, var/tools의 npm과 package-lock.json의 패키지를 설치한다. ci-pipeline.yml과 release.yml도 kit-sync로부터 같은 action을 쓴다.
 - 인터페이스 명세는 모든 runtime의 public 문 실행기를 정한다(INT-150): `utils().run(fn)`과 frame 호출 `run(kind, tables, sql, params)`이며 TypeScript 순서를 쓰고, 모든 database에서 이를 묶는 parity unit을 둔다 (T345).
 - TypeScript runtime은 `utils().run(fn)`을 선언 파일에서 public으로 두고, `TxFrame.run`은 statement의 행을 돌려준다 (T345-1).

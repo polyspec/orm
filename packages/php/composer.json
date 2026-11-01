@@ -7,7 +7,7 @@
     "require": {
         "php": ">=8.4",
         "composer-runtime-api": "^2.2",
-        "polyspec/ordered-json": "0.0.16",
+        "polyspec/ordered-json": "0.0.17",
         "ext-pdo": "*",
         "ext-json": "*",
         "ext-zlib": "*",
