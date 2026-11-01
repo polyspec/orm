@@ -87,3 +87,36 @@ func readModelFileFrom(t *testing.T, dir, name string) []byte {
 	}
 	return raw
 }
+
+// TestGenerateSetsOrdersAProducerImportedOnlyByATaggedFile checks that the
+// import of a producer's output by a file that only a build tag selects (the
+// markdown tag of the markdown message cases) orders the sets like any other
+// import: the scan of the default build alone does not see it.
+func TestGenerateSetsOrdersAProducerImportedOnlyByATaggedFile(t *testing.T) {
+	// Requirements: DSL-151, DSL-154.
+	testcase.Start(t, testcase.Process)
+	write := scannedModule(t)
+	write("consumer/consumer.go", "package consumer\n")
+	write("consumer/tagged.go", `//go:build markdown
+
+package consumer
+
+import (
+	"example.com/ormexample/producer"
+	"github.com/polyspec/orm/packages/go/orm"
+)
+
+func Search(db *orm.DB) error {
+	_, err := producer.Product().Connect(db).LkName("a%").Gets()
+	return err
+}
+`)
+	m := namesManifest(t, namesDiagram)
+	err := GenerateSets([]Options{
+		{Model: m, OutputDir: "consumermodel", Scan: []string{"./consumer"}},
+		{Model: m, OutputDir: "producer", Scan: []string{"./consumer"}},
+	})
+	if err != nil {
+		t.Fatalf("the producer imported only by a tagged file is not generated first: %v", err)
+	}
+}
