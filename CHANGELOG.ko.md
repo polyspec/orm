@@ -1,48 +1,50 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f9e7194de5b859e948a4bb057fa7840f42f6a82b056c1c098dfa8623ce5de129 -->
+<!-- source-sha256: 7a2ca948520030cdc4ffae27cb6875ae7b0892948fe1658a6894dc62aeae63f3 -->
 # 변경 이력
 
 ## Unreleased
 
-- 공유 catalog_connection recipe의 PHP runner가 MySQL, PostgreSQL, SQLite에서 recipe의 모든 op와 필드를 실행한다. catalog의 updateRow와 insertRow는 map과 함께 `[이름, 값]` 쌍의 목록으로 값을 받으므로, 반복된 열이 catalog에 도달해 쓰기 전에 ROW_UPDATE_INVALID 또는 ROW_INSERT_INVALID로 거부된다(INT-111). MySQL 읽기 예산은 서버 질의의 connection id로 질의를 KILL하여 멈추고, PostgreSQL 읽기는 cursor로 스트림하므로 예산에서 멈출 때 결과의 나머지를 읽지 않는다(T334-3-3-2-3).
-- 공유 catalog_connection recipe의 Go runner가 MySQL, PostgreSQL, SQLite에서 recipe의 모든 op와 필드를 실행한다. 행 snapshot은 이제 명세가 적은 키, 키 위치, 캡처된 셀을 내보내고, 읽기 예산은 결과의 나머지를 읽지 않고 질의를 멈춘다. 드라이버의 읽기 전용 거부는 QUERY_READ_ONLY, 하루 밖의 시간은 GRID_TEMPORAL_VALUE이며, MySQL YEAR는 grid 셀이 없고, 선언한 정밀도를 넘는 시간은 어떤 문장보다 먼저 CODEC_ENCODE로 실패한다 (T334-3-3-2-2).
-- TypeScript, Python, Rust의 physical DDL behavior 시험이 config/parity.json에 binding이 없어 parity-declarations-check가 binding 없는 test로 보고했다. 이 시험들을 DIA-113을 인용하는 feature unit dbspec-render-physical로 선언하고, 각 시험이 그 요구사항을 이름으로 적는다 (CR16-1-5).
-- TypeScript의 catalog_connection 시험은 5000행 교차 결합의 stream 예산, byte 예산, float4 비트, temporal 정밀도와 SQLite temporal 규칙, grid 거부, 지원하지 않는 DSN, MySQL SYSTEM VIEW, 캡처된 셀과 null·빈 텍스트 읽기를 여전히 native로 단언했다. 이제 recipe가 이들을 case로 가지며, op catalog.row_cells와 model.read_bind_cell, field only·row_count·columns·kind·columns_present로 표현한다. 선언된 정밀도를 넘는 쓰기는 문을 실행하기 전에 CODEC_ENCODE로 실패하고, 읽기 범위가 쓰는 루틴을 거부하면 QUERY_READ_ONLY로 실패하며, TypeScript catalog는 드라이버의 읽기 전용 거부를 그 code로 옮긴다(T334-3-3-2-1).
-- TypeScript의 catalog_connection 시험은 connect, describe, close, reconnect, revision, snapshot, bind와 grid cell 값을 확인했으나 공유 recipe가 그것을 표현하지 못했다. 이제 recipe가 그것을 case로 가지며, catalog.connect, catalog.close, catalog.reconnect, catalog.revision op, describe의 native type, nullable, generated, automatic key, default field, row_snapshot의 keys와 key_indexes field, page_with 입력, 쌍의 목록인 assignment, read_only_query의 binds, float, unsigned, binary cell wrapper를 가진다. TypeScript runner는 MySQL, PostgreSQL, SQLite에서 그것을 실행하고, 그것이 소유하는 native assertion은 제거되었다(T334-3-3-2-1).
-- Rust runner는 공유 DDL vector의 behavior step을 MySQL, PostgreSQL, SQLite에서 실행하고, 서버 DSN이 빠지면 그 이름을 대며 실패한다. 전에는 rendered statement만 만들었다 (CR16-1-2).
-- recipe schema에 비유한 binary64 wrapper `{"f64": "NaN" | "Infinity" | "-Infinity"}`를 더했고, 여섯 recipe helper가 각각 그 수의 host 값으로 바꾼다. 유한한 수는 `float` wrapper를 그대로 쓴다 (T334-3-15-3b).
-- bind vector의 slot 픽스처 `tests/bind/slots.dbs`와 그 set `tests/bind/dbspec-set.json`은 `tests/bind/vectors.json`의 parameter slot마다 컬럼 하나를 가진 테이블 하나를 둔다. 모델은 모델을 쓰는 make 대상이 생성한다(Go와 PHP는 모델 목록, TypeScript는 빌드, Python은 `bind-python-models`, Rust는 tests crate의 build script). `make bind-models-check`가 이를 검사한다 (T334-3-15-3a).
-- 읽기 answer 사례 `contracts/fixtures/ir_answers.json`은 `tests/ir/answers.json`으로 옮겨져, 여섯 runtime 모두 데이터베이스 없이 실행하는 `ir.answer` op(FCV-4)의 recipe가 된다. 각 사례는 markdown chain을 answer를 돌려주는 listener 위에서 실행한다. 대체되는 native answer test는 제거되고, parity unit ir-answers는 여섯 recipe entry에 묶인다 (#T334-3-15-2).
-- 요청 검증 사례 `tests/ir/validate.json`은 recipe(`ir.validate` op, FCV-4)가 되어 여섯 runtime 모두 데이터베이스 없이 실행한다. Go, TypeScript, PHP, PHP extension, Python, Rust의 native vector test는 제거되고, parity unit ir-validate는 여섯 recipe entry에 묶인다 (#T334-3-15-1).
-- PHP 확장 한 번 빌드 검사(CR4)는 spec requirement가 아닌 build 시스템 시험이라, parity 선언 검사가 requirement를 요구하지 않는 scripts의 harness 루트인 scripts/php/php-ext-build-cache.test.mts로 packages/php-ext/tests에서 옮긴다 (#CR4-1).
-- 네 client 변경이 전체 suite target을 고르지 않는다는 owner test의 기대 목록에 CR5가 선언한 typescript-build-unit-check를 넣는다. TypeScript client build(packages/ts/**)가 이 target을 고른다 (#CR5-1).
-- Makefile 빌드 산출물을 제자리에 쓰는 PHP client generator 실행은 저장소 검사가 거부한다. `php-models`는 각 models 디렉터리를 `<dir>.tmp`에 생성한 뒤 rename으로 바꿔, 중단된 실행이 이전 디렉터리를 온전히 남긴다 (CR12).
-- compiler fixtures 테스트는 caseTest로 실행한다. `rust-compiler-fixtures-check`는 native 시험과 runner 시험을 make -j가 함께 실행하는 두 part로 나눠, 한 레시피가 독립 테스트 둘을 실행하지 않는다 (CR25-1).
-- TypeScript client는 소스마다 한 번만 빌드한다. `scripts/typescript/build.mts`는 추적되는 client 소스, 빌드와 모델 스크립트, fixture, 도구 버전의 hash로 정한 key로 `packages/ts/dist`를 게시하고, holder lock 아래에서 동작한다. 기록된 key가 같은 run은 컴파일러를 시작하지 않으므로 `TSC_BUILD`와 `typescript-build`가 한 빌드를 공유한다 (CR5).
-- PHP 확장 site는 한 run 안에서 더 이상 확장을 다시 컴파일하지 않는다. `php-ext-build`은 소스와 모드마다 한 번만 `var/php-ext/build/<key>/`에 만들고, key는 소스, arginfo 헤더, PHP 버전, 모드, 컴파일러 설정, kit 빌더로 정하며, holder lock 아래에서 각 site에 복사한다 (CR4).
-- Rust runner의 compiler fixture는 중단된 run이 packages/rust/tests/examples에 stale source를 남기면 EEXIST로 실패했고 빈 디렉터리를 tree에 남겼다. 이제 script는 stale source를 덮어쓰고 끝에 scratch 디렉터리를 지운다 (CR25).
-- TypeScript와 Python runner는 공유 DDL vector의 behavior step을 MySQL, PostgreSQL, SQLite에서 실행하고, 서버 DSN이 빠지면 그 이름을 대며 실패한다. 전에는 rendered statement만 비교했다 (CR16-1-1).
-- CR21과 하위 행 (CR21-1) (CR21-2) (CR21-3) (CR21-4) (CR21-5) (CR21-6) (CR21-7)는 consumer를 위해 main의 T345로 옮겼고, 그 T345가 공개 statement runner를 들였다 (#CR21).
-- PHP 8.5 owner가 두 원인으로 실패했다. 모델 시험의 효과 없는 setAccessible을 PHP 8.5가 deprecated로 알렸고, large object 쓰기는 NUL byte 때문에 pg_lo_write가 거부했다. 시험은 setAccessible을 빼고, stream과 native 확장은 composer.json이 허용하는 모든 PHP에서 lo_put으로 나눠 쓴다 (CR23).
-- interfaces CI 시험은 CR9가 docs job으로 옮긴 docs-site-check와 docs-verify-idempotent를 거부했다. 그 시험은 CI group과 kit 실행 target만 셌기 때문이다. 이제 Makefile에서 읽은 make docs-ci와 make ci-vscode-integration의 target도 세며, 어느 쪽에도 없는 target은 거부한다 (CR9-1).
-- 인터페이스 명세는 모든 runtime의 public statement runner를 정한다(INT-150): `utils().run(fn)`과 frame 호출 `run(kind, tables, sql, params)`이며, frame 호출의 판정은 CR21이다. runtime들은 뒤따르는 CR21 행에서 구현한다 (CR21).
-- statement event 벡터의 server-transaction 검사는 MySQL과 PostgreSQL만 이름을 적었고 SQLite에는 항목도 사유도 없었다. 이제 SQLite를 사유와 함께 제외로 명시하며, 모든 runtime의 시험이 각 database가 한 번씩만 이름 붙었는지 확인한다 (CR16-2).
-- owner 검사는 변경된 Python test마다 python-check를 골랐고, 그 recipe는 kit이 CI 밖에서 거부하는 선택 없는 discovery를 실행했다. php-extension coverage는 make 밖에서 실행되어 POLYSPEC_ORM_EXTENSION이 설정되지 않았다. 이제 변경된 test는 자신의 명령을 고른다: python-check는 test가 아닌 Python 원본을 맡고, interface test는 모듈을 이름으로 지정하며, php-extension coverage는 먼저 make로 extension을 빌드한다 (CR24).
-- publish-output은 명령이 끝나자마자 출력 파일을 확인했고, 복사가 파일을 만들기 전에 검사했으므로 빠른 명령이 "wrote no"로 실패했다. 부하가 걸린 병렬 실행에서 640회 중 2회 실패했다(CR3 owner 검사의 phpstan owner). 이제 검사 전에 복사가 끝나기를 기다린다 (CR22).
-- recipe 시험은 JSON 값을 타입으로 캐스트했고 lint-ts가 이를 거부한다. 이제 shape를 확인해 좁힌다 (CR13).
-- complex-query context 검사는 파싱한 check input을 타입으로 캐스트했고 lint-ts가 이를 거부한다. 이제 type guard로 읽는다 (CR7).
-- workflow cache 검사에는 빈 loop가 있었고 step 값을 String()으로 읽었는데, lint-ts가 이를 거부한다. 이제 문자열인 값만 읽는다 (CR8).
-- docs build test는 build에 test process의 환경을 그대로 주었고 non-null assertion을 썼는데, repo-check와 lint-ts가 이를 거부한다. 이제 build를 isolatedEnvironment로 실행하며, process group id를 단언하지 않고 확인한다 (CR11).
-- lease를 잡는 recipe(WITH_TEST_ENV, check-run, run-databases)는 make를 재귀로 호출했고, GNU make는 make -n 아래에서도 그것을 실행하므로 check-run의 dry run이 검사 전체를 돌렸다. 이제 이 recipe들은 lease program이 없거나 tests/lease의 어떤 source보다 오래된 때에만 shell 단계로 그것을 빌드한다 (CR11).
-- arginfo header는 제자리에서 복사됐으므로, 중단된 복사는 이전 header를 불완전하게 남겼고 PHP extension 빌드는 그것을 읽었다. 이제 header는 임시 파일에 쓰인 뒤 이전 header 위로 이름이 바뀌므로, 중단된 쓰기는 이전 header를 온전하게 남긴다 (CR3).
-- 모든 kit parity job은 target 중 어느 것도 읽지 않는 complex-query fixture 데이터베이스 18개를 만들었다. 이제 context는 target의 check input이나 recipe가 필요로 할 때만 그것을 만든다 (CR7).
-- Go, PHP, Python model과 orm-codes 파일은 입력이 바뀌지 않았는데도 그것이 필요한 target마다 다시 생성됐다 (한 CI run에서 generator 호출 1451회). 이제 generator는 추적되는 입력의 key가 바뀔 때만 실행되며, 그 stamp는 출력 옆에 원자적으로 기록된다 (CR6).
-- CI job들은 lock file이 바뀌지 않았는데도 npm, composer, uv, Go, mise.toml 패키지를 매 실행마다 다시 설치했다. 이제 각 job은 설치 전에 npm, Go module, composer, uv, tool 캐시를 그 lock file의 hash로 키를 잡아 복원한다 (CR8).
-- 한 CI run에서 일부 target이 두 job에서 실행됐다: static group, docs job, editor job이 docs-verify-idempotent, docs-site-check, dbspec-vscode-check를 각각 실행했고, docs-check는 kit job과 docs job에서 모두 실행됐다. 이제 각 target은 한 job에서만 실행되며, 두 CI job이 같은 target을 실행하면 repo check의 case가 실패한다 (CR9).
-- lease 도구가 필요한 target마다 도구를 다시 빌드해서, 한 job의 여러 target이 같은 프로그램의 빌드를 반복했다. 이제 lease 프로그램은 그 source의 file target이어서 한 번 빌드되고, 이후에는 최신으로 확인된다 (CR11). docs 빌드 test(CR2)도 node:test로 case를 직접 선언했는데 repo 규칙이 이를 금지하므로, 이제 caseTest를 쓴다.
-- recipe 스키마는 fixture가 없는 recipe에 데이터베이스 op(`sql.exec`, `model.connect`)를 받아들여, 그런 동작이 세 데이터베이스 없이 실행될 수 있었다. 이제 그 op를 거부한다 (CR13).
-- docs 빌드는 게시된 폴더에 직접 사이트를 렌더링해서, 중단된 빌드는 사이트의 절반을 남겼다. 이제 임시 폴더에 렌더링한 뒤 이름 바꾸기 한 번으로 게시한다 (CR2).
+- 두 branch의 check-recipes 작업이 하나의 통합으로 main에 들어간다. 한국어 checklist는 영어 checklist의 모든 row를 가지고, 변경 이력은 그 commit들의 항목을 가지며, Makefile은 `rust-compiler-fixtures-check/unit`에서 node를 `$(NODE)`로 실행하고, `config/rebuild.json`은 `scripts/generate/once.mts`와 `scripts/php/php-ext-build.mts`를 분류한다 (CR26).
 - check runner는 실패한 target의 `::error` 줄을 출력하지 않아, GitHub Actions에서 실패는 작업이 끝나야 보였다. 이제 실패한 target은 끝날 때 `::error` 줄을 출력한다 (CR1).
+- docs 빌드는 게시된 폴더에 직접 사이트를 렌더링해서, 중단된 빌드는 사이트의 절반을 남겼다. 이제 임시 폴더에 렌더링한 뒤 이름 바꾸기 한 번으로 게시한다 (CR2).
+- recipe 스키마는 fixture가 없는 recipe에 데이터베이스 op(`sql.exec`, `model.connect`)를 받아들여, 그런 동작이 세 데이터베이스 없이 실행될 수 있었다. 이제 그 op를 거부한다 (CR13).
+- lease 도구가 필요한 target마다 도구를 다시 빌드해서, 한 job의 여러 target이 같은 프로그램의 빌드를 반복했다. 이제 lease 프로그램은 그 source의 file target이어서 한 번 빌드되고, 이후에는 최신으로 확인된다 (CR11). docs 빌드 test(CR2)도 node:test로 case를 직접 선언했는데 repo 규칙이 이를 금지하므로, 이제 caseTest를 쓴다.
+- 한 CI run에서 일부 target이 두 job에서 실행됐다: static group, docs job, editor job이 docs-verify-idempotent, docs-site-check, dbspec-vscode-check를 각각 실행했고, docs-check는 kit job과 docs job에서 모두 실행됐다. 이제 각 target은 한 job에서만 실행되며, 두 CI job이 같은 target을 실행하면 repo check의 case가 실패한다 (CR9).
+- CI job들은 lock file이 바뀌지 않았는데도 npm, composer, uv, Go, mise.toml 패키지를 매 실행마다 다시 설치했다. 이제 각 job은 설치 전에 npm, Go module, composer, uv, tool 캐시를 그 lock file의 hash로 키를 잡아 복원한다 (CR8).
+- Go, PHP, Python model과 orm-codes 파일은 입력이 바뀌지 않았는데도 그것이 필요한 target마다 다시 생성됐다 (한 CI run에서 generator 호출 1451회). 이제 generator는 추적되는 입력의 key가 바뀔 때만 실행되며, 그 stamp는 출력 옆에 원자적으로 기록된다 (CR6).
+- 모든 kit parity job은 target 중 어느 것도 읽지 않는 complex-query fixture 데이터베이스 18개를 만들었다. 이제 context는 target의 check input이나 recipe가 필요로 할 때만 그것을 만든다 (CR7).
+- arginfo header는 제자리에서 복사됐으므로, 중단된 복사는 이전 header를 불완전하게 남겼고 PHP extension 빌드는 그것을 읽었다. 이제 header는 임시 파일에 쓰인 뒤 이전 header 위로 이름이 바뀌므로, 중단된 쓰기는 이전 header를 온전하게 남긴다 (CR3).
+- lease를 잡는 recipe(WITH_TEST_ENV, check-run, run-databases)는 make를 재귀로 호출했고, GNU make는 make -n 아래에서도 그것을 실행하므로 check-run의 dry run이 검사 전체를 돌렸다. 이제 이 recipe들은 lease program이 없거나 tests/lease의 어떤 source보다 오래된 때에만 shell 단계로 그것을 빌드한다 (CR11).
+- docs build test는 build에 test process의 환경을 그대로 주었고 non-null assertion을 썼는데, repo-check와 lint-ts가 이를 거부한다. 이제 build를 isolatedEnvironment로 실행하며, process group id를 단언하지 않고 확인한다 (CR11).
+- workflow cache 검사에는 빈 loop가 있었고 step 값을 String()으로 읽었는데, lint-ts가 이를 거부한다. 이제 문자열인 값만 읽는다 (CR8).
+- complex-query context 검사는 파싱한 check input을 타입으로 캐스트했고 lint-ts가 이를 거부한다. 이제 type guard로 읽는다 (CR7).
+- recipe 시험은 JSON 값을 타입으로 캐스트했고 lint-ts가 이를 거부한다. 이제 shape를 확인해 좁힌다 (CR13).
+- publish-output은 명령이 끝나자마자 출력 파일을 확인했고, 복사가 파일을 만들기 전에 검사했으므로 빠른 명령이 "wrote no"로 실패했다. 부하가 걸린 병렬 실행에서 640회 중 2회 실패했다(CR3 owner 검사의 phpstan owner). 이제 검사 전에 복사가 끝나기를 기다린다 (CR22).
+- owner 검사는 변경된 Python test마다 python-check를 골랐고, 그 recipe는 kit이 CI 밖에서 거부하는 선택 없는 discovery를 실행했다. php-extension coverage는 make 밖에서 실행되어 POLYSPEC_ORM_EXTENSION이 설정되지 않았다. 이제 변경된 test는 자신의 명령을 고른다: python-check는 test가 아닌 Python 원본을 맡고, interface test는 모듈을 이름으로 지정하며, php-extension coverage는 먼저 make로 extension을 빌드한다 (CR24).
+- statement event 벡터의 server-transaction 검사는 MySQL과 PostgreSQL만 이름을 적었고 SQLite에는 항목도 사유도 없었다. 이제 SQLite를 사유와 함께 제외로 명시하며, 모든 runtime의 시험이 각 database가 한 번씩만 이름 붙었는지 확인한다 (CR16-2).
+- 인터페이스 명세는 모든 runtime의 public statement runner를 정한다(INT-150): `utils().run(fn)`과 frame 호출 `run(kind, tables, sql, params)`이며, frame 호출의 판정은 CR21이다. runtime들은 뒤따르는 CR21 행에서 구현한다 (CR21).
+- interfaces CI 시험은 CR9가 docs job으로 옮긴 docs-site-check와 docs-verify-idempotent를 거부했다. 그 시험은 CI group과 kit 실행 target만 셌기 때문이다. 이제 Makefile에서 읽은 make docs-ci와 make ci-vscode-integration의 target도 세며, 어느 쪽에도 없는 target은 거부한다 (CR9-1).
+- PHP 8.5 owner가 두 원인으로 실패했다. 모델 시험의 효과 없는 setAccessible을 PHP 8.5가 deprecated로 알렸고, large object 쓰기는 NUL byte 때문에 pg_lo_write가 거부했다. 시험은 setAccessible을 빼고, stream과 native 확장은 composer.json이 허용하는 모든 PHP에서 lo_put으로 나눠 쓴다 (CR23).
+- CR21과 하위 행 (CR21-1) (CR21-2) (CR21-3) (CR21-4) (CR21-5) (CR21-6) (CR21-7)는 consumer를 위해 main의 T345로 옮겼고, 그 T345가 공개 statement runner를 들였다 (#CR21).
+- TypeScript와 Python runner는 공유 DDL vector의 behavior step을 MySQL, PostgreSQL, SQLite에서 실행하고, 서버 DSN이 빠지면 그 이름을 대며 실패한다. 전에는 rendered statement만 비교했다 (CR16-1-1).
+- Rust runner의 compiler fixture는 중단된 run이 packages/rust/tests/examples에 stale source를 남기면 EEXIST로 실패했고 빈 디렉터리를 tree에 남겼다. 이제 script는 stale source를 덮어쓰고 끝에 scratch 디렉터리를 지운다 (CR25).
+- PHP 확장 site는 한 run 안에서 더 이상 확장을 다시 컴파일하지 않는다. `php-ext-build`은 소스와 모드마다 한 번만 `var/php-ext/build/<key>/`에 만들고, key는 소스, arginfo 헤더, PHP 버전, 모드, 컴파일러 설정, kit 빌더로 정하며, holder lock 아래에서 각 site에 복사한다 (CR4).
+- TypeScript client는 소스마다 한 번만 빌드한다. `scripts/typescript/build.mts`는 추적되는 client 소스, 빌드와 모델 스크립트, fixture, 도구 버전의 hash로 정한 key로 `packages/ts/dist`를 게시하고, holder lock 아래에서 동작한다. 기록된 key가 같은 run은 컴파일러를 시작하지 않으므로 `TSC_BUILD`와 `typescript-build`가 한 빌드를 공유한다 (CR5).
+- compiler fixtures 테스트는 caseTest로 실행한다. `rust-compiler-fixtures-check`는 native 시험과 runner 시험을 make -j가 함께 실행하는 두 part로 나눠, 한 레시피가 독립 테스트 둘을 실행하지 않는다 (CR25-1).
+- Makefile 빌드 산출물을 제자리에 쓰는 PHP client generator 실행은 저장소 검사가 거부한다. `php-models`는 각 models 디렉터리를 `<dir>.tmp`에 생성한 뒤 rename으로 바꿔, 중단된 실행이 이전 디렉터리를 온전히 남긴다 (CR12).
+- 네 client 변경이 전체 suite target을 고르지 않는다는 owner test의 기대 목록에 CR5가 선언한 typescript-build-unit-check를 넣는다. TypeScript client build(packages/ts/**)가 이 target을 고른다 (#CR5-1).
+- PHP 확장 한 번 빌드 검사(CR4)는 spec requirement가 아닌 build 시스템 시험이라, parity 선언 검사가 requirement를 요구하지 않는 scripts의 harness 루트인 scripts/php/php-ext-build-cache.test.mts로 packages/php-ext/tests에서 옮긴다 (#CR4-1).
+- 요청 검증 사례 `tests/ir/validate.json`은 recipe(`ir.validate` op, FCV-4)가 되어 여섯 runtime 모두 데이터베이스 없이 실행한다. Go, TypeScript, PHP, PHP extension, Python, Rust의 native vector test는 제거되고, parity unit ir-validate는 여섯 recipe entry에 묶인다 (#T334-3-15-1).
+- 읽기 answer 사례 `contracts/fixtures/ir_answers.json`은 `tests/ir/answers.json`으로 옮겨져, 여섯 runtime 모두 데이터베이스 없이 실행하는 `ir.answer` op(FCV-4)의 recipe가 된다. 각 사례는 markdown chain을 answer를 돌려주는 listener 위에서 실행한다. 대체되는 native answer test는 제거되고, parity unit ir-answers는 여섯 recipe entry에 묶인다 (#T334-3-15-2).
+- bind vector의 slot 픽스처 `tests/bind/slots.dbs`와 그 set `tests/bind/dbspec-set.json`은 `tests/bind/vectors.json`의 parameter slot마다 컬럼 하나를 가진 테이블 하나를 둔다. 모델은 모델을 쓰는 make 대상이 생성한다(Go와 PHP는 모델 목록, TypeScript는 빌드, Python은 `bind-python-models`, Rust는 tests crate의 build script). `make bind-models-check`가 이를 검사한다 (T334-3-15-3a).
+- recipe schema에 비유한 binary64 wrapper `{"f64": "NaN" | "Infinity" | "-Infinity"}`를 더했고, 여섯 recipe helper가 각각 그 수의 host 값으로 바꾼다. 유한한 수는 `float` wrapper를 그대로 쓴다 (T334-3-15-3b).
+- Rust runner는 공유 DDL vector의 behavior step을 MySQL, PostgreSQL, SQLite에서 실행하고, 서버 DSN이 빠지면 그 이름을 대며 실패한다. 전에는 rendered statement만 만들었다 (CR16-1-2).
+- TypeScript의 catalog_connection 시험은 connect, describe, close, reconnect, revision, snapshot, bind와 grid cell 값을 확인했으나 공유 recipe가 그것을 표현하지 못했다. 이제 recipe가 그것을 case로 가지며, catalog.connect, catalog.close, catalog.reconnect, catalog.revision op, describe의 native type, nullable, generated, automatic key, default field, row_snapshot의 keys와 key_indexes field, page_with 입력, 쌍의 목록인 assignment, read_only_query의 binds, float, unsigned, binary cell wrapper를 가진다. TypeScript runner는 MySQL, PostgreSQL, SQLite에서 그것을 실행하고, 그것이 소유하는 native assertion은 제거되었다(T334-3-3-2-1).
+- TypeScript의 catalog_connection 시험은 5000행 교차 결합의 stream 예산, byte 예산, float4 비트, temporal 정밀도와 SQLite temporal 규칙, grid 거부, 지원하지 않는 DSN, MySQL SYSTEM VIEW, 캡처된 셀과 null·빈 텍스트 읽기를 여전히 native로 단언했다. 이제 recipe가 이들을 case로 가지며, op catalog.row_cells와 model.read_bind_cell, field only·row_count·columns·kind·columns_present로 표현한다. 선언된 정밀도를 넘는 쓰기는 문을 실행하기 전에 CODEC_ENCODE로 실패하고, 읽기 범위가 쓰는 루틴을 거부하면 QUERY_READ_ONLY로 실패하며, TypeScript catalog는 드라이버의 읽기 전용 거부를 그 code로 옮긴다(T334-3-3-2-1).
+- TypeScript, Python, Rust의 physical DDL behavior 시험이 config/parity.json에 binding이 없어 parity-declarations-check가 binding 없는 test로 보고했다. 이 시험들을 DIA-113을 인용하는 feature unit dbspec-render-physical로 선언하고, 각 시험이 그 요구사항을 이름으로 적는다 (CR16-1-5).
+- 공유 catalog_connection recipe의 Go runner가 MySQL, PostgreSQL, SQLite에서 recipe의 모든 op와 필드를 실행한다. 행 snapshot은 이제 명세가 적은 키, 키 위치, 캡처된 셀을 내보내고, 읽기 예산은 결과의 나머지를 읽지 않고 질의를 멈춘다. 드라이버의 읽기 전용 거부는 QUERY_READ_ONLY, 하루 밖의 시간은 GRID_TEMPORAL_VALUE이며, MySQL YEAR는 grid 셀이 없고, 선언한 정밀도를 넘는 시간은 어떤 문장보다 먼저 CODEC_ENCODE로 실패한다 (T334-3-3-2-2).
+- 공유 catalog_connection recipe의 PHP runner가 MySQL, PostgreSQL, SQLite에서 recipe의 모든 op와 필드를 실행한다. catalog의 updateRow와 insertRow는 map과 함께 `[이름, 값]` 쌍의 목록으로 값을 받으므로, 반복된 열이 catalog에 도달해 쓰기 전에 ROW_UPDATE_INVALID 또는 ROW_INSERT_INVALID로 거부된다(INT-111). MySQL 읽기 예산은 서버 질의의 connection id로 질의를 KILL하여 멈추고, PostgreSQL 읽기는 cursor로 스트림하므로 예산에서 멈출 때 결과의 나머지를 읽지 않는다(T334-3-3-2-3).
+
 ## 0.0.21
 
 - client-statement-runner는 statement runner의 Rust 기호를 두 공개 경로, 곧 crate root re-export와 정의 module 모두에 선언한다: `polyspec_orm::Utils::run`과 `polyspec_orm::utils::Utils::run`, `polyspec_orm::TxFrame::run`과 `polyspec_orm::tx::TxFrame::run` (T346-11).

@@ -393,6 +393,14 @@
     "scripts/features/performance-reference.mts": {
       "kind": "policy",
       "reason": "reads the PERF hot_path_gate lines of the performance owner tests of this repository into measurement records for the coverage of performance_gate; the line format is a rule of this repository"
+    },
+    "scripts/generate/once.mts": {
+      "kind": "policy",
+      "reason": "runs a generator of this repository only when the key of its declared inputs changes (B3-2); the key covers the generator's own inputs, which no ecosystem build cache of the six runtimes knows"
+    },
+    "scripts/php/php-ext-build.mts": {
+      "kind": "policy",
+      "reason": "builds the PHP extension of this repository once per source and mode and copies that build to each site (B1-7); it calls packages/php-ext/scripts/build.sh, the phpize, configure and make of php-src, and adds only the per-key cache"
     }
   }
 }

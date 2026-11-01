@@ -1715,7 +1715,7 @@ rust-compiler-fixtures-check/native: lease-tool
 	cd packages/rust && $(CARGO_TEST) rust-compiler-fixtures-native -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm --test compiler_fixtures -- --test-threads=1
 
 rust-compiler-fixtures-check/unit: lease-tool
-	node --test scripts/rust/compiler-fixtures.test.mts
+	$(NODE) --test scripts/rust/compiler-fixtures.test.mts
 
 # Native no-database cases bind driver errors, cells and the Markdown wire handshake to each runtime's native call path.
 .PHONY: native-error-cause-check
