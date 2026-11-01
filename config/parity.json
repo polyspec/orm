@@ -1261,10 +1261,6 @@
             {
               "test": "packages/dbspec-codemirror/tests/fixtures.test.mjs",
               "id": "fixture syntax-after-non-bmp through the CodeMirror adapter"
-            },
-            {
-              "test": "packages/dbspec-codemirror/tests/fixtures.test.mjs",
-              "id": "the editor fixtures exist"
             }
           ]
         },
@@ -1331,10 +1327,6 @@
             {
               "test": "packages/dbspec-language/tests/editor.test.mjs",
               "id": "editor fixture syntax-after-non-bmp"
-            },
-            {
-              "test": "packages/dbspec-language/tests/editor.test.mjs",
-              "id": "every editor fixture has its expected output and the reverse"
             }
           ]
         },
@@ -1930,10 +1922,6 @@
             {
               "test": "packages/dbspec-lsp/tests/session.test.mjs",
               "id": "fixture syntax-after-non-bmp through the language server"
-            },
-            {
-              "test": "packages/dbspec-lsp/tests/session.test.mjs",
-              "id": "the editor fixture list matches declared cases"
             }
           ]
         },
@@ -14712,44 +14700,28 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::testCatalogRead",
-          "command": [
-            "env",
-            "ORM_PHP_MODE=extension",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "php",
-            "-d",
-            "extension=${ORM_PARITY_PHP_EXTENSION}",
-            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
-            "--teamcity",
-            "--configuration",
-            "phpunit.xml.dist",
-            "--filter",
-            "testCatalogRead",
-            "tests/CoverageCatalogConnectionTest.php"
-          ]
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
-          "id": "catalog_read"
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "catalog_connection-mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-postgres.test.mjs",
+          "id": "catalog_connection-postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "catalog_connection-sqlite"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_catalog_connection.py",
-          "id": "test_read",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_catalog_connection.CatalogConnectionCoverageTest.test_read"
-          ]
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "test_catalog_connection_sqlite"
         },
         {
           "implementation": "rust",
@@ -14772,6 +14744,11 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_catalog_read"
           ]
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_read"
         }
       ]
     },
@@ -14817,44 +14794,28 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::testCatalogRead",
-          "command": [
-            "env",
-            "ORM_PHP_MODE=extension",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "php",
-            "-d",
-            "extension=${ORM_PARITY_PHP_EXTENSION}",
-            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
-            "--teamcity",
-            "--configuration",
-            "phpunit.xml.dist",
-            "--filter",
-            "testCatalogRead",
-            "tests/CoverageCatalogConnectionTest.php"
-          ]
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
-          "id": "catalog_read"
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "catalog_connection-mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-postgres.test.mjs",
+          "id": "catalog_connection-postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "catalog_connection-sqlite"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_catalog_connection.py",
-          "id": "test_read",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_catalog_connection.CatalogConnectionCoverageTest.test_read"
-          ]
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "test_catalog_connection_sqlite"
         },
         {
           "implementation": "rust",
@@ -14877,6 +14838,11 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_catalog_read"
           ]
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_read"
         }
       ]
     },
@@ -15409,44 +15375,28 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::testCatalogRead",
-          "command": [
-            "env",
-            "ORM_PHP_MODE=extension",
-            "ORM_FEATURE_DATABASE=mysql",
-            "ORM_FEATURE_DSN=${BENCH_MYSQL_DSN}",
-            "php",
-            "-d",
-            "extension=${ORM_PARITY_PHP_EXTENSION}",
-            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
-            "--teamcity",
-            "--configuration",
-            "phpunit.xml.dist",
-            "--filter",
-            "testCatalogRead",
-            "tests/CoverageCatalogConnectionTest.php"
-          ]
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testMysql"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
-          "id": "catalog_read"
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "catalog_connection-mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-postgres.test.mjs",
+          "id": "catalog_connection-postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "catalog_connection-sqlite"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_catalog_connection.py",
-          "id": "test_read",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=mysql",
-            "ORM_FEATURE_DSN=${BENCH_MYSQL_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_catalog_connection.CatalogConnectionCoverageTest.test_read"
-          ]
+          "test": "packages/python/tests/test_catalog_connection_mysql.py",
+          "id": "test_catalog_connection_mysql"
         },
         {
           "implementation": "rust",
@@ -15464,6 +15414,11 @@
             "FEATURE_DSN_ENV=BENCH_MYSQL_DSN",
             "FEATURE_TEST=coverage_catalog_read"
           ]
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_read"
         }
       ]
     },
@@ -15530,44 +15485,28 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::testCatalogRead",
-          "command": [
-            "env",
-            "ORM_PHP_MODE=extension",
-            "ORM_FEATURE_DATABASE=mysql",
-            "ORM_FEATURE_DSN=${BENCH_MYSQL_DSN}",
-            "php",
-            "-d",
-            "extension=${ORM_PARITY_PHP_EXTENSION}",
-            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
-            "--teamcity",
-            "--configuration",
-            "phpunit.xml.dist",
-            "--filter",
-            "testCatalogRead",
-            "tests/CoverageCatalogConnectionTest.php"
-          ]
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testMysql"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
-          "id": "catalog_read"
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "catalog_connection-mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-postgres.test.mjs",
+          "id": "catalog_connection-postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "catalog_connection-sqlite"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_catalog_connection.py",
-          "id": "test_read",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=mysql",
-            "ORM_FEATURE_DSN=${BENCH_MYSQL_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_catalog_connection.CatalogConnectionCoverageTest.test_read"
-          ]
+          "test": "packages/python/tests/test_catalog_connection_mysql.py",
+          "id": "test_catalog_connection_mysql"
         },
         {
           "implementation": "rust",
@@ -15585,6 +15524,11 @@
             "FEATURE_DSN_ENV=BENCH_MYSQL_DSN",
             "FEATURE_TEST=coverage_catalog_read"
           ]
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_read"
         }
       ]
     },
@@ -15630,49 +15574,38 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::testCatalogRead",
-          "command": [
-            "env",
-            "ORM_PHP_MODE=extension",
-            "ORM_FEATURE_DATABASE=mysql",
-            "ORM_FEATURE_DSN=${BENCH_MYSQL_DSN}",
-            "php",
-            "-d",
-            "extension=${ORM_PARITY_PHP_EXTENSION}",
-            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
-            "--teamcity",
-            "--configuration",
-            "phpunit.xml.dist",
-            "--filter",
-            "testCatalogRead",
-            "tests/CoverageCatalogConnectionTest.php"
-          ]
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testMysql"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
-          "id": "catalog_read"
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "catalog_connection-mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-postgres.test.mjs",
+          "id": "catalog_connection-postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "catalog_connection-sqlite"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_catalog_connection.py",
-          "id": "test_read",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=mysql",
-            "ORM_FEATURE_DSN=${BENCH_MYSQL_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_catalog_connection.CatalogConnectionCoverageTest.test_read"
-          ]
+          "test": "packages/python/tests/test_catalog_connection_mysql.py",
+          "id": "test_catalog_connection_mysql"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/read_only_query.rs",
           "id": "actual_catalog_queries_enforce_read_only_scopes_on_three_databases"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_read"
         }
       ]
     },
@@ -15738,24 +15671,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::testCatalogRowMutation",
-          "command": [
-            "env",
-            "ORM_PHP_MODE=extension",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "php",
-            "-d",
-            "extension=${ORM_PARITY_PHP_EXTENSION}",
-            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
-            "--teamcity",
-            "--configuration",
-            "phpunit.xml.dist",
-            "--filter",
-            "testCatalogRowMutation",
-            "tests/CoverageCatalogConnectionTest.php"
-          ]
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
         },
         {
           "implementation": "typescript",
@@ -15836,29 +15753,23 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::testCatalogRowMutation",
-          "command": [
-            "env",
-            "ORM_PHP_MODE=extension",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "php",
-            "-d",
-            "extension=${ORM_PARITY_PHP_EXTENSION}",
-            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
-            "--teamcity",
-            "--configuration",
-            "phpunit.xml.dist",
-            "--filter",
-            "testCatalogRowMutation",
-            "tests/CoverageCatalogConnectionTest.php"
-          ]
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
-          "id": "catalog_row_mutation"
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "catalog_connection-mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-postgres.test.mjs",
+          "id": "catalog_connection-postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "catalog_connection-sqlite"
         },
         {
           "implementation": "python",
@@ -15879,6 +15790,11 @@
           "implementation": "rust",
           "test": "packages/rust/build/tests/row_mutation.rs",
           "id": "native_updates_lock_compare_verify_and_rollback"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_row_mutation"
         }
       ]
     },
@@ -15963,29 +15879,23 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::testCatalogRowMutation",
-          "command": [
-            "env",
-            "ORM_PHP_MODE=extension",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "php",
-            "-d",
-            "extension=${ORM_PARITY_PHP_EXTENSION}",
-            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
-            "--teamcity",
-            "--configuration",
-            "phpunit.xml.dist",
-            "--filter",
-            "testCatalogRowMutation",
-            "tests/CoverageCatalogConnectionTest.php"
-          ]
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
-          "id": "catalog_row_mutation"
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "catalog_connection-mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-postgres.test.mjs",
+          "id": "catalog_connection-postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "catalog_connection-sqlite"
         },
         {
           "implementation": "python",
@@ -16006,6 +15916,11 @@
           "implementation": "rust",
           "test": "packages/rust/build/tests/row_snapshot.rs",
           "id": "row_baseline_preserves_immutable_values_and_key_order"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_row_mutation"
         }
       ]
     },
@@ -16051,29 +15966,23 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::testCatalogRowMutation",
-          "command": [
-            "env",
-            "ORM_PHP_MODE=extension",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "php",
-            "-d",
-            "extension=${ORM_PARITY_PHP_EXTENSION}",
-            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
-            "--teamcity",
-            "--configuration",
-            "phpunit.xml.dist",
-            "--filter",
-            "testCatalogRowMutation",
-            "tests/CoverageCatalogConnectionTest.php"
-          ]
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
-          "id": "catalog_row_mutation"
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "catalog_connection-mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-postgres.test.mjs",
+          "id": "catalog_connection-postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "catalog_connection-sqlite"
         },
         {
           "implementation": "python",
@@ -16094,6 +16003,11 @@
           "implementation": "rust",
           "test": "packages/rust/build/tests/row_snapshot.rs",
           "id": "row_baseline_rejects_invalid_identity_and_distinguishes_conflicts"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_row_mutation"
         }
       ]
     },
@@ -16139,29 +16053,23 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::testCatalogRowMutation",
-          "command": [
-            "env",
-            "ORM_PHP_MODE=extension",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "php",
-            "-d",
-            "extension=${ORM_PARITY_PHP_EXTENSION}",
-            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
-            "--teamcity",
-            "--configuration",
-            "phpunit.xml.dist",
-            "--filter",
-            "testCatalogRowMutation",
-            "tests/CoverageCatalogConnectionTest.php"
-          ]
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
-          "id": "catalog_row_mutation"
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "catalog_connection-mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-postgres.test.mjs",
+          "id": "catalog_connection-postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "catalog_connection-sqlite"
         },
         {
           "implementation": "python",
@@ -16182,6 +16090,11 @@
           "implementation": "rust",
           "test": "packages/rust/build/tests/row_snapshot.rs",
           "id": "row_update_verification_rejects_coercion_and_unrequested_changes"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_row_mutation"
         }
       ]
     },
@@ -16227,29 +16140,23 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::testCatalogRowMutation",
-          "command": [
-            "env",
-            "ORM_PHP_MODE=extension",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "php",
-            "-d",
-            "extension=${ORM_PARITY_PHP_EXTENSION}",
-            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
-            "--teamcity",
-            "--configuration",
-            "phpunit.xml.dist",
-            "--filter",
-            "testCatalogRowMutation",
-            "tests/CoverageCatalogConnectionTest.php"
-          ]
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
-          "id": "catalog_row_mutation"
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "catalog_connection-mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-postgres.test.mjs",
+          "id": "catalog_connection-postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "catalog_connection-sqlite"
         },
         {
           "implementation": "python",
@@ -16275,6 +16182,11 @@
           "implementation": "go",
           "test": "packages/go/orm/catalog_mutation_test.go",
           "id": "TestCatalogChangesRejectsValuesBeyondDeclaredCapacity"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_row_mutation"
         }
       ]
     },
@@ -16320,44 +16232,28 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::testCatalogRead",
-          "command": [
-            "env",
-            "ORM_PHP_MODE=extension",
-            "ORM_FEATURE_DATABASE=mysql",
-            "ORM_FEATURE_DSN=${BENCH_MYSQL_DSN}",
-            "php",
-            "-d",
-            "extension=${ORM_PARITY_PHP_EXTENSION}",
-            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
-            "--teamcity",
-            "--configuration",
-            "phpunit.xml.dist",
-            "--filter",
-            "testCatalogRead",
-            "tests/CoverageCatalogConnectionTest.php"
-          ]
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testMysql"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
-          "id": "catalog_read"
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "catalog_connection-mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-postgres.test.mjs",
+          "id": "catalog_connection-postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "catalog_connection-sqlite"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_catalog_connection.py",
-          "id": "test_read",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=mysql",
-            "ORM_FEATURE_DSN=${BENCH_MYSQL_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_catalog_connection.CatalogConnectionCoverageTest.test_read"
-          ]
+          "test": "packages/python/tests/test_catalog_connection_mysql.py",
+          "id": "test_catalog_connection_mysql"
         },
         {
           "implementation": "rust",
@@ -16380,6 +16276,11 @@
             "FEATURE_DSN_ENV=BENCH_MYSQL_DSN",
             "FEATURE_TEST=coverage_catalog_read"
           ]
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_read"
         }
       ]
     },
@@ -16425,49 +16326,38 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::testCatalogRead",
-          "command": [
-            "env",
-            "ORM_PHP_MODE=extension",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "php",
-            "-d",
-            "extension=${ORM_PARITY_PHP_EXTENSION}",
-            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
-            "--teamcity",
-            "--configuration",
-            "phpunit.xml.dist",
-            "--filter",
-            "testCatalogRead",
-            "tests/CoverageCatalogConnectionTest.php"
-          ]
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
-          "id": "catalog_read"
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "catalog_connection-mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-postgres.test.mjs",
+          "id": "catalog_connection-postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "catalog_connection-sqlite"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_catalog_connection.py",
-          "id": "test_read",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_catalog_connection.CatalogConnectionCoverageTest.test_read"
-          ]
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "test_catalog_connection_sqlite"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/table_metadata.rs",
           "id": "qualified_table_metadata_preserves_identity_and_generated_columns"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_read"
         }
       ]
     },
@@ -16513,49 +16403,38 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::testCatalogRead",
-          "command": [
-            "env",
-            "ORM_PHP_MODE=extension",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "php",
-            "-d",
-            "extension=${ORM_PARITY_PHP_EXTENSION}",
-            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
-            "--teamcity",
-            "--configuration",
-            "phpunit.xml.dist",
-            "--filter",
-            "testCatalogRead",
-            "tests/CoverageCatalogConnectionTest.php"
-          ]
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
-          "id": "catalog_read"
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "catalog_connection-mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-postgres.test.mjs",
+          "id": "catalog_connection-postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "catalog_connection-sqlite"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_catalog_connection.py",
-          "id": "test_read",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_catalog_connection.CatalogConnectionCoverageTest.test_read"
-          ]
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "test_catalog_connection_sqlite"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/table_page.rs",
           "id": "qualified_table_pages_preserve_columns_key_order_and_bounds"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_read"
         }
       ]
     },
@@ -16740,49 +16619,38 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::testCatalogRead",
-          "command": [
-            "env",
-            "ORM_PHP_MODE=extension",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "php",
-            "-d",
-            "extension=${ORM_PARITY_PHP_EXTENSION}",
-            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
-            "--teamcity",
-            "--configuration",
-            "phpunit.xml.dist",
-            "--filter",
-            "testCatalogRead",
-            "tests/CoverageCatalogConnectionTest.php"
-          ]
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
-          "id": "catalog_read"
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "catalog_connection-mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-postgres.test.mjs",
+          "id": "catalog_connection-postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "catalog_connection-sqlite"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_catalog_connection.py",
-          "id": "test_read",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_catalog_connection.CatalogConnectionCoverageTest.test_read"
-          ]
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "test_catalog_connection_sqlite"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/row_insert_identity.rs",
           "id": "typed_catalog_writes_return_declared_temporal_fraction_digits"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_read"
         }
       ]
     },
@@ -16959,49 +16827,38 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::testCatalogRead",
-          "command": [
-            "env",
-            "ORM_PHP_MODE=extension",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "php",
-            "-d",
-            "extension=${ORM_PARITY_PHP_EXTENSION}",
-            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
-            "--teamcity",
-            "--configuration",
-            "phpunit.xml.dist",
-            "--filter",
-            "testCatalogRead",
-            "tests/CoverageCatalogConnectionTest.php"
-          ]
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
-          "id": "catalog_read"
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "catalog_connection-mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-postgres.test.mjs",
+          "id": "catalog_connection-postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "catalog_connection-sqlite"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_catalog_connection.py",
-          "id": "test_read",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_catalog_connection.CatalogConnectionCoverageTest.test_read"
-          ]
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "test_catalog_connection_sqlite"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/unit/read_only_policy.rs",
           "id": "catalog::read_only::tests::policy_validates_nested_read_shapes_and_rejects_writes"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_read"
         }
       ]
     },
@@ -17588,44 +17445,28 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::testCatalogRead",
-          "command": [
-            "env",
-            "ORM_PHP_MODE=extension",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "php",
-            "-d",
-            "extension=${ORM_PARITY_PHP_EXTENSION}",
-            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
-            "--teamcity",
-            "--configuration",
-            "phpunit.xml.dist",
-            "--filter",
-            "testCatalogRead",
-            "tests/CoverageCatalogConnectionTest.php"
-          ]
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
-          "id": "catalog_read"
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "catalog_connection-mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-postgres.test.mjs",
+          "id": "catalog_connection-postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "catalog_connection-sqlite"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_catalog_connection.py",
-          "id": "test_read",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_catalog_connection.CatalogConnectionCoverageTest.test_read"
-          ]
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "test_catalog_connection_sqlite"
         },
         {
           "implementation": "rust",
@@ -17643,6 +17484,11 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_catalog_read"
           ]
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_read"
         }
       ]
     },
@@ -17720,44 +17566,28 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::testCatalogRead",
-          "command": [
-            "env",
-            "ORM_PHP_MODE=extension",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "php",
-            "-d",
-            "extension=${ORM_PARITY_PHP_EXTENSION}",
-            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
-            "--teamcity",
-            "--configuration",
-            "phpunit.xml.dist",
-            "--filter",
-            "testCatalogRead",
-            "tests/CoverageCatalogConnectionTest.php"
-          ]
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
-          "id": "catalog_read"
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "catalog_connection-mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-postgres.test.mjs",
+          "id": "catalog_connection-postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "catalog_connection-sqlite"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_catalog_connection.py",
-          "id": "test_read",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_catalog_connection.CatalogConnectionCoverageTest.test_read"
-          ]
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "test_catalog_connection_sqlite"
         },
         {
           "implementation": "rust",
@@ -17790,6 +17620,11 @@
           "implementation": "rust",
           "test": "packages/rust/build/tests/grid_temporal.rs",
           "id": "temporal_grid_cells_follow_the_declared_precision"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_read"
         }
       ]
     },
@@ -17867,44 +17702,28 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::testCatalogRead",
-          "command": [
-            "env",
-            "ORM_PHP_MODE=extension",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "php",
-            "-d",
-            "extension=${ORM_PARITY_PHP_EXTENSION}",
-            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
-            "--teamcity",
-            "--configuration",
-            "phpunit.xml.dist",
-            "--filter",
-            "testCatalogRead",
-            "tests/CoverageCatalogConnectionTest.php"
-          ]
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
-          "id": "catalog_read"
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "catalog_connection-mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-postgres.test.mjs",
+          "id": "catalog_connection-postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "catalog_connection-sqlite"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_catalog_connection.py",
-          "id": "test_read",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_catalog_connection.CatalogConnectionCoverageTest.test_read"
-          ]
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "test_catalog_connection_sqlite"
         },
         {
           "implementation": "python",
@@ -17932,6 +17751,11 @@
           "implementation": "rust",
           "test": "packages/rust/build/src/catalog/temporal.rs",
           "id": "catalog::temporal::tests::precision_follows_the_native_type_and_dialect_default"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_read"
         }
       ]
     },
@@ -17944,24 +17768,23 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_catalog_connection_test.go",
-          "id": "TestCoverageCatalogReadOnlyQueryBudgets",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageCatalogReadOnlyQueryBudgets",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "test": "packages/go/orm/recipe_catalog_connection_test.go",
+          "id": "TestRecipeCatalogConnectionSqlite"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
-          "id": "catalog_plain_query_bounds"
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "catalog_connection-mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-postgres.test.mjs",
+          "id": "catalog_connection-postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "catalog_connection-sqlite"
         },
         {
           "implementation": "php",
@@ -18003,35 +17826,13 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_catalog_connection.py",
-          "id": "test_read",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_catalog_connection.CatalogConnectionCoverageTest.test_read"
-          ]
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "test_catalog_connection_sqlite"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
-          "id": "coverage_catalog_read_budgets",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test coverage_catalog_connection",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_catalog_read_budgets"
-          ]
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite"
         },
         {
           "implementation": "rust",
@@ -18100,29 +17901,23 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::testCatalogRowMutation",
-          "command": [
-            "env",
-            "ORM_PHP_MODE=extension",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "php",
-            "-d",
-            "extension=${ORM_PARITY_PHP_EXTENSION}",
-            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
-            "--teamcity",
-            "--configuration",
-            "phpunit.xml.dist",
-            "--filter",
-            "testCatalogRowMutation",
-            "tests/CoverageCatalogConnectionTest.php"
-          ]
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
-          "id": "catalog_row_mutation"
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "catalog_connection-mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-postgres.test.mjs",
+          "id": "catalog_connection-postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "catalog_connection-sqlite"
         },
         {
           "implementation": "python",
@@ -18155,6 +17950,11 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_catalog_row_mutation"
           ]
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_row_mutation"
         }
       ]
     },
@@ -18211,29 +18011,23 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::testCatalogRowMutation",
-          "command": [
-            "env",
-            "ORM_PHP_MODE=extension",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "php",
-            "-d",
-            "extension=${ORM_PARITY_PHP_EXTENSION}",
-            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
-            "--teamcity",
-            "--configuration",
-            "phpunit.xml.dist",
-            "--filter",
-            "testCatalogRowMutation",
-            "tests/CoverageCatalogConnectionTest.php"
-          ]
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
-          "id": "catalog_row_mutation"
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "catalog_connection-mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-postgres.test.mjs",
+          "id": "catalog_connection-postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "catalog_connection-sqlite"
         },
         {
           "implementation": "python",
@@ -18266,6 +18060,11 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_catalog_row_mutation"
           ]
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_row_mutation"
         }
       ]
     },
@@ -32291,83 +32090,48 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::testModelReadNullAndEmptyText",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
-            "--teamcity",
-            "--configuration",
-            "phpunit.xml.dist",
-            "--filter",
-            "testModelReadNullAndEmptyText",
-            "tests/CoverageCatalogConnectionTest.php"
-          ]
+          "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
+          "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::testModelReadNullAndEmptyText",
-          "command": [
-            "env",
-            "ORM_PHP_MODE=extension",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "php",
-            "-d",
-            "extension=${ORM_PARITY_PHP_EXTENSION}",
-            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
-            "--teamcity",
-            "--configuration",
-            "phpunit.xml.dist",
-            "--filter",
-            "testModelReadNullAndEmptyText",
-            "tests/CoverageCatalogConnectionTest.php"
-          ]
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
-          "id": "model_read_null_and_empty_text"
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "catalog_connection-mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-postgres.test.mjs",
+          "id": "catalog_connection-postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "catalog_connection-sqlite"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_catalog_connection.py",
-          "id": "test_model_read_null_and_empty_text",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_catalog_connection.CatalogConnectionCoverageTest.test_model_read_null_and_empty_text"
-          ]
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "test_catalog_connection_sqlite"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
-          "id": "coverage_model_read_null_and_empty_text",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test coverage_catalog_connection",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_model_read_null_and_empty_text"
-          ]
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/val_text.rs",
           "id": "sql_null_and_empty_text_are_two_values"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "model_read_null_and_empty_text"
         }
       ]
     },
@@ -32457,99 +32221,53 @@
         },
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_catalog_connection_test.go",
-          "id": "TestCoverageCatalogGridColumnAndRowOrder",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageCatalogGridColumnAndRowOrder",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "test": "packages/go/orm/recipe_catalog_connection_test.go",
+          "id": "TestRecipeCatalogConnectionSqlite"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::testGridColumnAndRowOrder",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
-            "--teamcity",
-            "--configuration",
-            "phpunit.xml.dist",
-            "--filter",
-            "testGridColumnAndRowOrder",
-            "tests/CoverageCatalogConnectionTest.php"
-          ]
+          "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
+          "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::testGridColumnAndRowOrder",
-          "command": [
-            "env",
-            "ORM_PHP_MODE=extension",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "php",
-            "-d",
-            "extension=${ORM_PARITY_PHP_EXTENSION}",
-            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
-            "--teamcity",
-            "--configuration",
-            "phpunit.xml.dist",
-            "--filter",
-            "testGridColumnAndRowOrder",
-            "tests/CoverageCatalogConnectionTest.php"
-          ]
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
-          "id": "catalog_grid_column_and_row_order"
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "catalog_connection-mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-postgres.test.mjs",
+          "id": "catalog_connection-postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "catalog_connection-sqlite"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_catalog_connection.py",
-          "id": "test_grid_column_and_row_order",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_catalog_connection.CatalogConnectionCoverageTest.test_grid_column_and_row_order"
-          ]
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "test_catalog_connection_sqlite"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
-          "id": "coverage_catalog_grid_column_and_row_order",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test coverage_catalog_connection",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_catalog_grid_column_and_row_order"
-          ]
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/src/dbspec.rs",
           "id": "dbspec::catalog_row_tests::catalog_rows_preserves_row_and_column_order"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_grid_column_and_row_order"
         }
       ]
     },

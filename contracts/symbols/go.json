@@ -17685,11 +17685,15 @@
   },
   "packages/go/orm/catalog_metadata.go::CatalogColumn": {
     "exported": true,
-    "signature": "type CatalogColumn struct { Name string NativeType string Nullable bool Generated bool AutomaticKey bool DefaultExpression *string ExpressionDefault bool checkPrecision *int }"
+    "signature": "type CatalogColumn struct { Name string NativeType string Nullable bool Generated bool AutomaticKey bool DefaultExpression *string ExpressionDefault bool CheckPrecision *int }"
   },
   "packages/go/orm/catalog_metadata.go::CatalogColumn#field.AutomaticKey": {
     "exported": true,
     "signature": "bool"
+  },
+  "packages/go/orm/catalog_metadata.go::CatalogColumn#field.CheckPrecision": {
+    "exported": true,
+    "signature": "*int"
   },
   "packages/go/orm/catalog_metadata.go::CatalogColumn#field.DefaultExpression": {
     "exported": true,
@@ -17714,10 +17718,6 @@
   "packages/go/orm/catalog_metadata.go::CatalogColumn#field.Nullable": {
     "exported": true,
     "signature": "bool"
-  },
-  "packages/go/orm/catalog_metadata.go::CatalogColumn#field.checkPrecision": {
-    "exported": false,
-    "signature": "*int"
   },
   "packages/go/orm/catalog_metadata.go::CatalogConnection.DescribeTable": {
     "exported": true,

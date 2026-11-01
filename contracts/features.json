@@ -11993,7 +11993,7 @@
       "verification": [
         {
           "id": "catalog-grid-sqlite-go",
-          "command": "ORM_FEATURE_DATABASE=sqlite ORM_FEATURE_DSN=\"$BENCH_SQLITE_DSN\" node tests/go-test.mts -v -timeout 0 -tags featurecoverage ./packages/go/orm -run '^(TestCoverageCatalogGridOrder|TestCoverageCatalogGridDeclared)$' -count=1",
+          "command": "ORM_FEATURE_DATABASE=sqlite ORM_FEATURE_DSN=\"$BENCH_SQLITE_DSN\" node tests/go-test.mts -v -timeout 0 -tags featurecoverage ./packages/go/orm -run '^TestCoverageCatalogGridDeclared$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/catalog_grid_order_test.go",
@@ -12003,7 +12003,7 @@
         },
         {
           "id": "catalog-grid-timestamp-mysql-go",
-          "command": "ORM_FEATURE_DATABASE=mysql ORM_FEATURE_DSN=\"$BENCH_MYSQL_DSN\" node tests/go-test.mts -v -timeout 0 -tags featurecoverage ./packages/go/orm -run '^TestCoverageCatalogGridTimestamp$' -count=1",
+          "command": "ORM_FEATURE_DATABASE=mysql ORM_FEATURE_DSN=\"$BENCH_MYSQL_DSN\" node tests/go-test.mts -v -timeout 0 -tags featurecoverage ./packages/go/orm -run '^TestCoverageCatalogGridCells$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/coverage_catalog_connection_test.go",
@@ -12012,7 +12012,7 @@
         },
         {
           "id": "catalog-grid-timestamp-postgres-go",
-          "command": "ORM_FEATURE_DATABASE=postgres ORM_FEATURE_DSN=\"$BENCH_POSTGRES_DSN\" node tests/go-test.mts -v -timeout 0 -tags featurecoverage ./packages/go/orm -run '^TestCoverageCatalogGridTimestamp$' -count=1",
+          "command": "ORM_FEATURE_DATABASE=postgres ORM_FEATURE_DSN=\"$BENCH_POSTGRES_DSN\" node tests/go-test.mts -v -timeout 0 -tags featurecoverage ./packages/go/orm -run '^TestCoverageCatalogGridCells$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/coverage_catalog_connection_test.go",
@@ -12021,7 +12021,7 @@
         },
         {
           "id": "catalog-grid-timestamp-mysql-python",
-          "command": "ORM_FEATURE_DATABASE=mysql ORM_FEATURE_DSN=\"$BENCH_MYSQL_DSN\" packages/python/.venv/bin/python -m packages.python.tests.testcase packages.python.tests.coverage_catalog_connection.CatalogConnectionCoverageTest.test_mysql_timestamp_refused",
+          "command": "ORM_FEATURE_DATABASE=mysql ORM_FEATURE_DSN=\"$BENCH_MYSQL_DSN\" packages/python/.venv/bin/python -m packages.python.tests.testcase packages.python.tests.coverage_catalog_connection.CatalogConnectionCoverageTest.test_mysql_temporal_precision_refused",
           "shard": "other",
           "inputs": [
             "packages/python/tests/coverage_catalog_connection.py",
@@ -12167,13 +12167,15 @@
           "rust": {
             "part": "packages/rust/tests",
             "tests": [
-              "packages/rust/tests/tests/coverage_catalog_connection.rs"
+              "packages/rust/tests/tests/catalog_connection_mysql.rs",
+              "packages/rust/tests/tests/catalog_connection_postgres.rs",
+              "packages/rust/tests/tests/catalog_connection_sqlite.rs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
+                  "test": "packages/rust/tests/tests/catalog_connection_mysql.rs",
                   "cases": [
                     "catalog_read",
                     "catalog_row_mutation",
@@ -12182,11 +12184,11 @@
                     "catalog_plain_query_bounds"
                   ],
                   "symbols": {
-                    "catalog_read": "coverage_catalog_read",
-                    "catalog_row_mutation": "coverage_catalog_row_mutation",
-                    "model_read_null_and_empty_text": "coverage_model_read_null_and_empty_text",
-                    "catalog_grid_column_and_row_order": "coverage_catalog_grid_column_and_row_order",
-                    "catalog_plain_query_bounds": "coverage_catalog_read_budgets"
+                    "catalog_read": "catalog_connection_mysql",
+                    "catalog_row_mutation": "catalog_connection_mysql",
+                    "model_read_null_and_empty_text": "catalog_connection_mysql",
+                    "catalog_grid_column_and_row_order": "catalog_connection_mysql",
+                    "catalog_plain_query_bounds": "catalog_connection_mysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -12194,7 +12196,7 @@
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
+                  "test": "packages/rust/tests/tests/catalog_connection_postgres.rs",
                   "cases": [
                     "catalog_read",
                     "catalog_row_mutation",
@@ -12203,11 +12205,11 @@
                     "catalog_plain_query_bounds"
                   ],
                   "symbols": {
-                    "catalog_read": "coverage_catalog_read",
-                    "catalog_row_mutation": "coverage_catalog_row_mutation",
-                    "model_read_null_and_empty_text": "coverage_model_read_null_and_empty_text",
-                    "catalog_grid_column_and_row_order": "coverage_catalog_grid_column_and_row_order",
-                    "catalog_plain_query_bounds": "coverage_catalog_read_budgets"
+                    "catalog_read": "catalog_connection_postgres",
+                    "catalog_row_mutation": "catalog_connection_postgres",
+                    "model_read_null_and_empty_text": "catalog_connection_postgres",
+                    "catalog_grid_column_and_row_order": "catalog_connection_postgres",
+                    "catalog_plain_query_bounds": "catalog_connection_postgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -12215,7 +12217,7 @@
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
+                  "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
                   "cases": [
                     "catalog_read",
                     "catalog_row_mutation",
@@ -12224,11 +12226,11 @@
                     "catalog_plain_query_bounds"
                   ],
                   "symbols": {
-                    "catalog_read": "coverage_catalog_read",
-                    "catalog_row_mutation": "coverage_catalog_row_mutation",
-                    "model_read_null_and_empty_text": "coverage_model_read_null_and_empty_text",
-                    "catalog_grid_column_and_row_order": "coverage_catalog_grid_column_and_row_order",
-                    "catalog_plain_query_bounds": "coverage_catalog_read_budgets"
+                    "catalog_read": "catalog_connection_sqlite",
+                    "catalog_row_mutation": "catalog_connection_sqlite",
+                    "model_read_null_and_empty_text": "catalog_connection_sqlite",
+                    "catalog_grid_column_and_row_order": "catalog_connection_sqlite",
+                    "catalog_plain_query_bounds": "catalog_connection_sqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -12238,7 +12240,7 @@
           "go": {
             "part": "packages/go/orm",
             "tests": [
-              "packages/go/orm/coverage_catalog_connection_test.go"
+              "packages/go/orm/recipe_catalog_connection_test.go"
             ],
             "inputs": [
               "contracts/fixtures/bench/bench.dbs"
@@ -12247,7 +12249,7 @@
               "mysql": [
                 {
                   "runner": "go",
-                  "test": "packages/go/orm/coverage_catalog_connection_test.go",
+                  "test": "packages/go/orm/recipe_catalog_connection_test.go",
                   "cases": [
                     "catalog_read",
                     "catalog_row_mutation",
@@ -12256,11 +12258,11 @@
                     "catalog_plain_query_bounds"
                   ],
                   "symbols": {
-                    "catalog_read": "TestCoverageCatalogRead",
-                    "catalog_row_mutation": "TestCoverageCatalogRowMutation",
-                    "model_read_null_and_empty_text": "TestCoverageModelReadNullAndEmptyText",
-                    "catalog_grid_column_and_row_order": "TestCoverageCatalogGridColumnAndRowOrder",
-                    "catalog_plain_query_bounds": "TestCoverageCatalogReadOnlyQueryBudgets"
+                    "catalog_read": "TestRecipeCatalogConnectionMysql",
+                    "catalog_row_mutation": "TestRecipeCatalogConnectionMysql",
+                    "model_read_null_and_empty_text": "TestRecipeCatalogConnectionMysql",
+                    "catalog_grid_column_and_row_order": "TestRecipeCatalogConnectionMysql",
+                    "catalog_plain_query_bounds": "TestRecipeCatalogConnectionMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -12268,7 +12270,7 @@
               "postgres": [
                 {
                   "runner": "go",
-                  "test": "packages/go/orm/coverage_catalog_connection_test.go",
+                  "test": "packages/go/orm/recipe_catalog_connection_test.go",
                   "cases": [
                     "catalog_read",
                     "catalog_row_mutation",
@@ -12277,11 +12279,11 @@
                     "catalog_plain_query_bounds"
                   ],
                   "symbols": {
-                    "catalog_read": "TestCoverageCatalogRead",
-                    "catalog_row_mutation": "TestCoverageCatalogRowMutation",
-                    "model_read_null_and_empty_text": "TestCoverageModelReadNullAndEmptyText",
-                    "catalog_grid_column_and_row_order": "TestCoverageCatalogGridColumnAndRowOrder",
-                    "catalog_plain_query_bounds": "TestCoverageCatalogReadOnlyQueryBudgets"
+                    "catalog_read": "TestRecipeCatalogConnectionPostgres",
+                    "catalog_row_mutation": "TestRecipeCatalogConnectionPostgres",
+                    "model_read_null_and_empty_text": "TestRecipeCatalogConnectionPostgres",
+                    "catalog_grid_column_and_row_order": "TestRecipeCatalogConnectionPostgres",
+                    "catalog_plain_query_bounds": "TestRecipeCatalogConnectionPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -12289,7 +12291,7 @@
               "sqlite": [
                 {
                   "runner": "go",
-                  "test": "packages/go/orm/coverage_catalog_connection_test.go",
+                  "test": "packages/go/orm/recipe_catalog_connection_test.go",
                   "cases": [
                     "catalog_read",
                     "catalog_row_mutation",
@@ -12298,11 +12300,11 @@
                     "catalog_plain_query_bounds"
                   ],
                   "symbols": {
-                    "catalog_read": "TestCoverageCatalogRead",
-                    "catalog_row_mutation": "TestCoverageCatalogRowMutation",
-                    "model_read_null_and_empty_text": "TestCoverageModelReadNullAndEmptyText",
-                    "catalog_grid_column_and_row_order": "TestCoverageCatalogGridColumnAndRowOrder",
-                    "catalog_plain_query_bounds": "TestCoverageCatalogReadOnlyQueryBudgets"
+                    "catalog_read": "TestRecipeCatalogConnectionSqlite",
+                    "catalog_row_mutation": "TestRecipeCatalogConnectionSqlite",
+                    "model_read_null_and_empty_text": "TestRecipeCatalogConnectionSqlite",
+                    "catalog_grid_column_and_row_order": "TestRecipeCatalogConnectionSqlite",
+                    "catalog_plain_query_bounds": "TestRecipeCatalogConnectionSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -12312,7 +12314,9 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
-              "packages/ts/tests/coverage_catalog_connection.mjs"
+              "packages/ts/tests/catalog_connection-mysql.test.mjs",
+              "packages/ts/tests/catalog_connection-postgres.test.mjs",
+              "packages/ts/tests/catalog_connection-sqlite.test.mjs"
             ],
             "inputs": [
               "contracts/fixtures/bench/bench.dbs"
@@ -12321,7 +12325,7 @@
               "mysql": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+                  "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
                   "cases": [
                     "catalog_read",
                     "catalog_row_mutation",
@@ -12335,7 +12339,7 @@
               "postgres": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+                  "test": "packages/ts/tests/catalog_connection-postgres.test.mjs",
                   "cases": [
                     "catalog_read",
                     "catalog_row_mutation",
@@ -12349,7 +12353,7 @@
               "sqlite": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+                  "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
                   "cases": [
                     "catalog_read",
                     "catalog_row_mutation",
@@ -12365,7 +12369,9 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_catalog_connection.py"
+              "packages/python/tests/test_catalog_connection_mysql.py",
+              "packages/python/tests/test_catalog_connection_postgres.py",
+              "packages/python/tests/test_catalog_connection_sqlite.py"
             ],
             "inputs": [
               "contracts/fixtures/bench/bench.dbs"
@@ -12374,7 +12380,7 @@
               "mysql": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_catalog_connection.py",
+                  "test": "packages/python/tests/test_catalog_connection_mysql.py",
                   "cases": [
                     "catalog_read",
                     "catalog_row_mutation",
@@ -12388,7 +12394,7 @@
               "postgres": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_catalog_connection.py",
+                  "test": "packages/python/tests/test_catalog_connection_postgres.py",
                   "cases": [
                     "catalog_read",
                     "catalog_row_mutation",
@@ -12402,7 +12408,7 @@
               "sqlite": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_catalog_connection.py",
+                  "test": "packages/python/tests/test_catalog_connection_sqlite.py",
                   "cases": [
                     "catalog_read",
                     "catalog_row_mutation",
@@ -12418,7 +12424,7 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoverageCatalogConnectionTest.php"
+              "packages/php/tests/CatalogConnectionRecipeTest.php"
             ],
             "inputs": [
               "contracts/fixtures/bench/bench.dbs"
@@ -12427,7 +12433,7 @@
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+                  "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
                   "cases": [
                     "catalog_read",
                     "catalog_row_mutation",
@@ -12436,11 +12442,11 @@
                     "catalog_plain_query_bounds"
                   ],
                   "symbols": {
-                    "catalog_read": "testCatalogRead",
-                    "catalog_row_mutation": "testCatalogRowMutation",
-                    "model_read_null_and_empty_text": "testModelReadNullAndEmptyText",
-                    "catalog_grid_column_and_row_order": "testGridColumnAndRowOrder",
-                    "catalog_plain_query_bounds": "testCatalogPlainReadOnlyQueryBudgets"
+                    "catalog_read": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testMysql",
+                    "catalog_row_mutation": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testMysql",
+                    "model_read_null_and_empty_text": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testMysql",
+                    "catalog_grid_column_and_row_order": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testMysql",
+                    "catalog_plain_query_bounds": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -12448,7 +12454,7 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+                  "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
                   "cases": [
                     "catalog_read",
                     "catalog_row_mutation",
@@ -12457,11 +12463,11 @@
                     "catalog_plain_query_bounds"
                   ],
                   "symbols": {
-                    "catalog_read": "testCatalogRead",
-                    "catalog_row_mutation": "testCatalogRowMutation",
-                    "model_read_null_and_empty_text": "testModelReadNullAndEmptyText",
-                    "catalog_grid_column_and_row_order": "testGridColumnAndRowOrder",
-                    "catalog_plain_query_bounds": "testCatalogPlainReadOnlyQueryBudgets"
+                    "catalog_read": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testPostgres",
+                    "catalog_row_mutation": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testPostgres",
+                    "model_read_null_and_empty_text": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testPostgres",
+                    "catalog_grid_column_and_row_order": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testPostgres",
+                    "catalog_plain_query_bounds": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -12469,7 +12475,7 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+                  "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
                   "cases": [
                     "catalog_read",
                     "catalog_row_mutation",
@@ -12478,11 +12484,11 @@
                     "catalog_plain_query_bounds"
                   ],
                   "symbols": {
-                    "catalog_read": "testCatalogRead",
-                    "catalog_row_mutation": "testCatalogRowMutation",
-                    "model_read_null_and_empty_text": "testModelReadNullAndEmptyText",
-                    "catalog_grid_column_and_row_order": "testGridColumnAndRowOrder",
-                    "catalog_plain_query_bounds": "testCatalogPlainReadOnlyQueryBudgets"
+                    "catalog_read": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite",
+                    "catalog_row_mutation": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite",
+                    "model_read_null_and_empty_text": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite",
+                    "catalog_grid_column_and_row_order": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite",
+                    "catalog_plain_query_bounds": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -12492,7 +12498,7 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/CoverageCatalogConnectionTest.php"
+              "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php"
             ],
             "inputs": [
               "contracts/fixtures/bench/bench.dbs"
@@ -12501,7 +12507,7 @@
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+                  "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
                   "cases": [
                     "catalog_read",
                     "catalog_row_mutation",
@@ -12510,11 +12516,11 @@
                     "catalog_plain_query_bounds"
                   ],
                   "symbols": {
-                    "catalog_read": "testCatalogRead",
-                    "catalog_row_mutation": "testCatalogRowMutation",
-                    "model_read_null_and_empty_text": "testModelReadNullAndEmptyText",
-                    "catalog_grid_column_and_row_order": "testGridColumnAndRowOrder",
-                    "catalog_plain_query_bounds": "testCatalogPlainReadOnlyQueryBudgets"
+                    "catalog_read": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testMysql",
+                    "catalog_row_mutation": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testMysql",
+                    "model_read_null_and_empty_text": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testMysql",
+                    "catalog_grid_column_and_row_order": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testMysql",
+                    "catalog_plain_query_bounds": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -12522,7 +12528,7 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+                  "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
                   "cases": [
                     "catalog_read",
                     "catalog_row_mutation",
@@ -12531,11 +12537,11 @@
                     "catalog_plain_query_bounds"
                   ],
                   "symbols": {
-                    "catalog_read": "testCatalogRead",
-                    "catalog_row_mutation": "testCatalogRowMutation",
-                    "model_read_null_and_empty_text": "testModelReadNullAndEmptyText",
-                    "catalog_grid_column_and_row_order": "testGridColumnAndRowOrder",
-                    "catalog_plain_query_bounds": "testCatalogPlainReadOnlyQueryBudgets"
+                    "catalog_read": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testPostgres",
+                    "catalog_row_mutation": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testPostgres",
+                    "model_read_null_and_empty_text": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testPostgres",
+                    "catalog_grid_column_and_row_order": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testPostgres",
+                    "catalog_plain_query_bounds": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -12543,7 +12549,7 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+                  "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
                   "cases": [
                     "catalog_read",
                     "catalog_row_mutation",
@@ -12552,11 +12558,11 @@
                     "catalog_plain_query_bounds"
                   ],
                   "symbols": {
-                    "catalog_read": "testCatalogRead",
-                    "catalog_row_mutation": "testCatalogRowMutation",
-                    "model_read_null_and_empty_text": "testModelReadNullAndEmptyText",
-                    "catalog_grid_column_and_row_order": "testGridColumnAndRowOrder",
-                    "catalog_plain_query_bounds": "testCatalogPlainReadOnlyQueryBudgets"
+                    "catalog_read": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite",
+                    "catalog_row_mutation": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite",
+                    "model_read_null_and_empty_text": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite",
+                    "catalog_grid_column_and_row_order": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite",
+                    "catalog_plain_query_bounds": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }

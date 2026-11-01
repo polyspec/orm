@@ -49,11 +49,15 @@
   },
   "packages/rust/build/src/catalog/metadata.rs::TableColumnMetadata": {
     "exported": true,
-    "signature": "pub struct TableColumnMetadata  { pub name : String , pub native_type : String , pub nullable : bool , pub generated : bool , pub automatic_key : bool , pub default_expression : Option \u003c String \u003e , pub expression_default : bool , }"
+    "signature": "pub struct TableColumnMetadata  { pub name : String , pub native_type : String , pub nullable : bool , pub generated : bool , pub automatic_key : bool , pub default_expression : Option \u003c String \u003e , pub expression_default : bool , # [doc = \" On SQLite, the fraction digits that the dbspec CHECK of a TIME or DATETIME column fixes; None when no CHECK fixes them\"] # [doc = \" and on the other dialects.\"] pub check_precision : Option \u003c i64 \u003e , }"
   },
   "packages/rust/build/src/catalog/metadata.rs::TableColumnMetadata#field.automatic_key": {
     "exported": true,
     "signature": "bool"
+  },
+  "packages/rust/build/src/catalog/metadata.rs::TableColumnMetadata#field.check_precision": {
+    "exported": true,
+    "signature": "Option \u003c i64 \u003e"
   },
   "packages/rust/build/src/catalog/metadata.rs::TableColumnMetadata#field.default_expression": {
     "exported": true,
@@ -81,7 +85,7 @@
   },
   "packages/rust/build/src/catalog/metadata.rs::TableColumnMetadata#wire": {
     "exported": true,
-    "signature": "{\"automatic_key\":\"bool\",\"default_expression\":\"text\",\"expression_default\":\"bool\",\"generated\":\"bool\",\"name\":\"text\",\"native_type\":\"text\",\"nullable\":\"bool\"}"
+    "signature": "{\"automatic_key\":\"bool\",\"check_precision\":\"integer\",\"default_expression\":\"text\",\"expression_default\":\"bool\",\"generated\":\"bool\",\"name\":\"text\",\"native_type\":\"text\",\"nullable\":\"bool\"}"
   },
   "packages/rust/build/src/catalog/metadata.rs::TableKind": {
     "exported": true,
@@ -197,15 +201,27 @@
   },
   "packages/rust/build/src/catalog/mod.rs::CatalogConnection::read_only_connection": {
     "exported": false,
-    "signature": " async fn read_only_connection (\u0026 self , sql : \u0026 str) -\u003e Result \u003c Conn , String \u003e"
+    "signature": " async fn read_only_connection (\u0026 self , sql : \u0026 str) -\u003e Result \u003c (Conn , Option \u003c u64 \u003e) , String \u003e"
   },
   "packages/rust/build/src/catalog/mod.rs::CatalogConnection::read_only_grid_query": {
     "exported": true,
     "signature": "pub async fn read_only_grid_query (\u0026 mut self , sql : \u0026 str , params : \u0026 [crate :: tool_db :: P] , limits : crate :: tool_db :: QueryLimits) -\u003e Result \u003c crate :: tool_db :: GridQueryResult , String \u003e"
   },
+  "packages/rust/build/src/catalog/mod.rs::CatalogConnection::read_only_grid_query_counted": {
+    "exported": true,
+    "signature": "pub async fn read_only_grid_query_counted (\u0026 mut self , sql : \u0026 str , params : \u0026 [crate :: tool_db :: P] , max_rows : Option \u003c i64 \u003e , max_bytes : Option \u003c i64 \u003e) -\u003e Result \u003c crate :: tool_db :: GridQueryResult , String \u003e"
+  },
   "packages/rust/build/src/catalog/mod.rs::CatalogConnection::read_only_query": {
     "exported": true,
     "signature": "pub async fn read_only_query (\u0026 mut self , sql : \u0026 str , params : \u0026 [crate :: tool_db :: P] , limits : crate :: tool_db :: QueryLimits) -\u003e Result \u003c crate :: tool_db :: QueryResult , String \u003e"
+  },
+  "packages/rust/build/src/catalog/mod.rs::CatalogConnection::read_only_query_counted": {
+    "exported": true,
+    "signature": "pub async fn read_only_query_counted (\u0026 mut self , sql : \u0026 str , params : \u0026 [crate :: tool_db :: P] , max_rows : Option \u003c i64 \u003e , max_bytes : Option \u003c i64 \u003e) -\u003e Result \u003c crate :: tool_db :: QueryResult , String \u003e"
+  },
+  "packages/rust/build/src/catalog/mod.rs::CatalogConnection::stop_limited_read": {
+    "exported": false,
+    "signature": " async fn stop_limited_read \u003c T \u003e (\u0026 self , thread : Option \u003c u64 \u003e , result : \u0026 Result \u003c T , String \u003e)"
   },
   "packages/rust/build/src/catalog/mod.rs::CatalogConnection::table_page": {
     "exported": true,
@@ -218,6 +234,10 @@
   "packages/rust/build/src/catalog/mod.rs::finish_read_only": {
     "exported": false,
     "signature": " async fn finish_read_only \u003c T \u003e (connection : \u0026 mut Conn , result : Result \u003c T , String \u003e) -\u003e Result \u003c T , String \u003e"
+  },
+  "packages/rust/build/src/catalog/mod.rs::read_limits": {
+    "exported": false,
+    "signature": " fn read_limits (max_rows : Option \u003c i64 \u003e , max_bytes : Option \u003c i64 \u003e) -\u003e Result \u003c crate :: tool_db :: QueryLimits , String \u003e"
   },
   "packages/rust/build/src/catalog/mutation.rs::CatalogConnection::update_row": {
     "exported": true,
@@ -353,7 +373,7 @@
   },
   "packages/rust/build/src/catalog/read_only.rs::ReadOnly": {
     "exported": false,
-    "signature": " struct ReadOnly  { expression_depth : usize , }"
+    "signature": " struct ReadOnly  { expression_depth : usize , postgres : bool , # [doc = \" Set when the read is refused for its PostgreSQL operand or term bound, not for a write.\"] limit : bool , }"
   },
   "packages/rust/build/src/catalog/read_only.rs::ReadOnly as Visitor::Break": {
     "exported": false,
@@ -383,13 +403,21 @@
     "exported": false,
     "signature": "usize"
   },
+  "packages/rust/build/src/catalog/read_only.rs::ReadOnly#field.limit": {
+    "exported": false,
+    "signature": "bool"
+  },
+  "packages/rust/build/src/catalog/read_only.rs::ReadOnly#field.postgres": {
+    "exported": false,
+    "signature": "bool"
+  },
   "packages/rust/build/src/catalog/read_only.rs::ReadOnly#wire": {
     "exported": false,
-    "signature": "{\"expression_depth\":\"integer\"}"
+    "signature": "{\"expression_depth\":\"integer\",\"limit\":\"bool\",\"postgres\":\"bool\"}"
   },
   "packages/rust/build/src/catalog/read_only.rs::ReadOnlyError": {
     "exported": false,
-    "signature": "pub (super) struct ReadOnlyError  { cause : Option \u003c Box \u003c dyn std :: error :: Error + Send + Sync \u003e \u003e , }"
+    "signature": "pub (super) struct ReadOnlyError  { cause : Option \u003c Box \u003c dyn std :: error :: Error + Send + Sync \u003e \u003e , # [doc = \" A PostgreSQL read over the operand or term bound, which is a budget refusal and not a write (INT-136).\"] limit : bool , }"
   },
   "packages/rust/build/src/catalog/read_only.rs::ReadOnlyError as std :: error :: Error::source": {
     "exported": false,
@@ -403,13 +431,21 @@
     "exported": false,
     "signature": "Option \u003c Box \u003c dyn std :: error :: Error + Send + Sync \u003e \u003e"
   },
+  "packages/rust/build/src/catalog/read_only.rs::ReadOnlyError#field.limit": {
+    "exported": false,
+    "signature": "bool"
+  },
   "packages/rust/build/src/catalog/read_only.rs::ReadOnlyError#wire": {
     "exported": false,
-    "signature": "{\"cause\":\"unsupported:dyn std :: error :: Error + Send + Sync\"}"
+    "signature": "{\"cause\":\"unsupported:dyn std :: error :: Error + Send + Sync\",\"limit\":\"bool\"}"
+  },
+  "packages/rust/build/src/catalog/read_only.rs::Walk": {
+    "exported": false,
+    "signature": " enum Walk  { Allowed , Refused , Limit }"
   },
   "packages/rust/build/src/catalog/read_only.rs::body_allowed": {
     "exported": false,
-    "signature": " fn body_allowed (body : \u0026 SetExpr) -\u003e bool"
+    "signature": " fn body_allowed (body : \u0026 SetExpr , postgres : bool) -\u003e Walk"
   },
   "packages/rust/build/src/catalog/read_only.rs::error": {
     "exported": false,
@@ -418,6 +454,10 @@
   "packages/rust/build/src/catalog/read_only.rs::error_with": {
     "exported": false,
     "signature": " fn error_with (error : impl std :: error :: Error + Send + Sync + 'static) -\u003e ReadOnlyError"
+  },
+  "packages/rust/build/src/catalog/read_only.rs::limit": {
+    "exported": false,
+    "signature": " fn limit () -\u003e ReadOnlyError"
   },
   "packages/rust/build/src/catalog/read_only.rs::validate": {
     "exported": false,
@@ -503,6 +543,10 @@
     "exported": true,
     "signature": "pub fn key (\u0026 self) -\u003e impl Iterator \u003c Item = (\u0026 str , \u0026 GridCell) \u003e"
   },
+  "packages/rust/build/src/catalog/row_snapshot.rs::RowSnapshot::key_indexes": {
+    "exported": true,
+    "signature": "pub fn key_indexes (\u0026 self) -\u003e \u0026 [usize]"
+  },
   "packages/rust/build/src/catalog/row_snapshot.rs::RowSnapshot::metadata": {
     "exported": true,
     "signature": "pub fn metadata (\u0026 self) -\u003e \u0026 TableMetadata"
@@ -567,13 +611,33 @@
     "exported": false,
     "signature": " fn invalid_with (error : impl std :: fmt :: Display) -\u003e String"
   },
+  "packages/rust/build/src/catalog/temporal.rs::check_clauses": {
+    "exported": false,
+    "signature": " fn check_clauses (table_sql : \u0026 str) -\u003e Vec \u003c \u0026 str \u003e"
+  },
+  "packages/rust/build/src/catalog/temporal.rs::check_precision": {
+    "exported": false,
+    "signature": " fn check_precision (table_sql : \u0026 str , column : \u0026 str) -\u003e Option \u003c usize \u003e"
+  },
+  "packages/rust/build/src/catalog/temporal.rs::check_write_precision": {
+    "exported": false,
+    "signature": "pub (super) async fn check_write_precision (connection : \u0026 mut Conn , metadata : \u0026 TableMetadata , values : \u0026 [(String , P)] , dialect : \u0026 str) -\u003e Result \u003c () , String \u003e"
+  },
+  "packages/rust/build/src/catalog/temporal.rs::declared_digit": {
+    "exported": false,
+    "signature": " fn declared_digit (lower : \u0026 str , base : \u0026 str , suffix : \u0026 str) -\u003e Option \u003c Option \u003c usize \u003e \u003e"
+  },
   "packages/rust/build/src/catalog/temporal.rs::declared_precision": {
     "exported": false,
-    "signature": "pub (super) fn declared_precision (metadata : \u0026 TableMetadata , dialect : \u0026 str , result : \u0026 mut GridQueryResult) -\u003e Result \u003c () , String \u003e"
+    "signature": "pub (super) fn declared_precision (metadata : \u0026 TableMetadata , dialect : \u0026 str , checks : \u0026 [Option \u003c usize \u003e] , result : \u0026 mut GridQueryResult) -\u003e Result \u003c () , String \u003e"
   },
   "packages/rust/build/src/catalog/temporal.rs::fraction": {
     "exported": false,
     "signature": " fn fraction (text : \u0026 str , p : usize , column : \u0026 str) -\u003e Result \u003c String , String \u003e"
+  },
+  "packages/rust/build/src/catalog/temporal.rs::glob_digits": {
+    "exported": false,
+    "signature": " fn glob_digits (clause : \u0026 str) -\u003e Option \u003c usize \u003e"
   },
   "packages/rust/build/src/catalog/temporal.rs::precision": {
     "exported": false,
@@ -583,9 +647,17 @@
     "exported": false,
     "signature": "pub (super) async fn read (connection : \u0026 mut Conn , metadata : \u0026 TableMetadata , dialect : \u0026 str , sql : \u0026 str , params : \u0026 [P] , limits : QueryLimits) -\u003e Result \u003c GridQueryResult , String \u003e"
   },
+  "packages/rust/build/src/catalog/temporal.rs::sqlite_check_precisions": {
+    "exported": false,
+    "signature": "pub (super) async fn sqlite_check_precisions (connection : \u0026 mut Conn , metadata : \u0026 TableMetadata , dialect : \u0026 str) -\u003e Result \u003c Vec \u003c Option \u003c usize \u003e \u003e , String \u003e"
+  },
   "packages/rust/build/src/catalog/temporal.rs::sqlite_kind": {
     "exported": false,
     "signature": " fn sqlite_kind (native_type : \u0026 str) -\u003e Option \u003c \u0026 'static str \u003e"
+  },
+  "packages/rust/build/src/catalog/temporal.rs::temporal_kind": {
+    "exported": false,
+    "signature": " fn temporal_kind (column : \u0026 TableColumnMetadata , dialect : \u0026 str , check : Option \u003c usize \u003e) -\u003e Option \u003c (\u0026 'static str , usize , bool) \u003e"
   },
   "packages/rust/build/src/fixed.rs.txt::T::add_all_columns": {
     "exported": false,
@@ -1581,7 +1653,7 @@
   },
   "packages/rust/build/src/tool_db.rs::Val": {
     "exported": true,
-    "signature": "pub enum Val  { Null , Int (i64) , Text (String) , Bool (bool) }"
+    "signature": "pub enum Val  { Null , Int (i64) , # [doc = \" A PostgreSQL real, held as the float32 value that the server stores, widened to a double.\"] Float (f64) , Text (String) , Bool (bool) }"
   },
   "packages/rust/build/src/tool_db.rs::Val::bool": {
     "exported": true,

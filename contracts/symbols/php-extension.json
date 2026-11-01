@@ -295,6 +295,10 @@
     "exported": true,
     "signature": "public readonly bool"
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\CatalogColumn::$checkPrecision": {
+    "exported": true,
+    "signature": "public readonly ?int"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\CatalogColumn::$defaultExpression": {
     "exported": true,
     "signature": "public readonly ?string"
@@ -321,7 +325,7 @@
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\CatalogColumn::__construct": {
     "exported": true,
-    "signature": "public function __construct(string $name, string $nativeType, bool $nullable, bool $generated, bool $automaticKey, ?string $defaultExpression, bool $expressionDefault): "
+    "signature": "public function __construct(string $name, string $nativeType, bool $nullable, bool $generated, bool $automaticKey, ?string $defaultExpression, bool $expressionDefault, ?int $checkPrecision=null): "
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\CatalogGridCell": {
     "exported": true,
@@ -962,6 +966,10 @@
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\DbState::$cancelQuery": {
     "exported": true,
     "signature": "public ?Closure"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\DbState::$catalogOwner": {
+    "exported": true,
+    "signature": "public ?Polyspec\\Orm\\Catalog"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\DbState::$closed": {
     "exported": true,
