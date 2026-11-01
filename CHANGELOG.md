@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- make uv-install already routes the Python install: Makefile:768 calls `$(MAKE) uv-install DIR=packages/python`, and no raw uv sync remains, so the row closes on its Verification (KSTD-5-118).
 - Cancellation of a statement through PgBouncer is best effort, not guaranteed (CFG-31): the PgBouncer cancel race (BUG #14891) was fixed only in 1.18 with a hang side effect, cancels were lost in multi-process setups until peering in 1.19, and SQLx 0.9 has no CancelRequest API, so KSTD-2-11-16-3 closes as impossible (KSTD-2-11-16-3).
 - AGENTS.md states the item states of kit P25: an item is `[v]` when it is committed and its unit tests pass, which permits the push, and `[o]` after the push run of `ci.yml` concludes with success; a release takes the id of a `ci.yml` run whose conclusion is success (T309).
 - The Rust crates share their test helpers through packages/rust/test-support, and no crate includes another crate's source by `#[path]`: the cross-crate `#[path]` attributes are removed, and a repo test fails on any of them (T349).
