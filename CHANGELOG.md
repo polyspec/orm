@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The DDL behaviour tests of tests/dbspec/ddl.json ran only in the Go runner against a database; the PHP, php-extension, TypeScript, Python and Rust runners now run their behaviour steps on MySQL, PostgreSQL and SQLite, and each fails by name when a DSN is unset (CR16-1).
 - A leftover source of a compiler fixture case, from an interrupted run, made the next run fail with EEXIST and left its directory in the tree. The run now overwrites a stale source and removes its scratch directory at the end (CR25).
 - The Python and TypeScript generators write models.py and models.ts atomically: a file that already holds the text is left as it is, and a changed file is written to a temporary file of its directory and renamed over the old one, so a test that reads it during a generation never reads a partial file. The targets client-unit-check/orm-gen-python and client-unit-check/orm-gen-typescript test this (T341-2).
 - The sixty make targets that run PHPUnit with packages/php/phpunit.xml.dist have php-models among their prerequisites, since its bootstrap requires the generated models that php-vendor-check does not write, and repo-check refuses such a reader without it (T341-1).
@@ -84,6 +85,7 @@
 - The shared-module test of the dbspec PHP extension aggregate asserted a child that T334-3-15-1 had removed, so makefile-pinned-node-recipes-check failed in test (static). The test now follows the move of request validation to ir-validate-check (CR53).
 - Six test files of the physical DDL behaviour and the IR validate recipe belonged to no feature, so the features check failed in six CI jobs. The physical DDL tests now belong to schema_definition and the IR validate tests to planner (CR54).
 - The preempted test of DbspecRenderTest failed in test (feature_verify_other) of main CI run 41324077414 with nine DSN errors, because it ran the whole file without the database DSNs. testBehaviourPhysical (CR16-1-3) now carries the group database, which the preempted run excludes; the physical cases still run in dbspec-php-check/render (CR55).
+- A leftover source of a compiler fixture case, from an interrupted run, made the next run fail with EEXIST and left its directory in the tree. The run now overwrites a stale source and removes its scratch directory at the end (CR25).
 
 ## 0.0.21
 
