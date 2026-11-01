@@ -1,0 +1,8 @@
+dbspec 1 bench_user
+
+table user {
+  seq i64 identity
+  name varchar(191)
+  coverage_missing varchar(8) null
+  primary key (seq)
+}

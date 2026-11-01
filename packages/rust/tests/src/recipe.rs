@@ -388,11 +388,11 @@ pub use database::database_trials;
 mod database {
     use std::collections::{BTreeMap, HashMap};
     use std::path::Path;
-    use std::sync::atomic::AtomicBool;
+    use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
     use std::sync::Arc;
 
     use polyspec_orm::db::{parse_dsn, ConnectOptions};
-    use polyspec_orm::{dbspec, Config, Db, Schema};
+    use polyspec_orm::{dbspec, Config, Db, Schema, StatementEvent, TransactionOnceError};
     use polyspec_orm_build::catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableMetadata, TablePage, TableRef};
     use polyspec_orm_build::tool_db::{GridCell, GridQueryResult, ParamType, QueryLimits, Val, P};
     use polyspec_orm_case_database::CaseDatabase;
@@ -441,6 +441,8 @@ mod database {
         database: &'a str,
         dsn: String,
         bound: HashMap<String, Bound>,
+        db: &'a Db,
+        dir: &'a Path,
     }
 
     /// One trial for each case of the recipe at `path`, relative to the repository root, on `database` ("mysql",
@@ -450,16 +452,18 @@ mod database {
         let root = polyspec_orm_testcase::manifest_dir().join("../../..");
         let recipe = Arc::new(read_json(&root.join(path)));
         let Some(fixture) = recipe["fixture"].as_str() else { panic!("recipe {path}: no fixture, so it has no database") };
-        let schema = Arc::new(fixture_schema(&root.join(fixture)));
+        // A fixture of none runs every case on an empty case database; the helper never infers it (FCV-3).
+        let schema = if fixture == "none" { None } else { Some(Arc::new(fixture_schema(&root.join(fixture)))) };
+        let dir = Arc::new(root.join(path).parent().map(Path::to_path_buf).unwrap_or_default());
         let Some(cases) = recipe["cases"].as_array() else { panic!("recipe {path} has no cases") };
         cases
             .iter()
             .map(|case| {
-                let (recipe, schema, case) = (recipe.clone(), schema.clone(), case.clone());
+                let (recipe, schema, dir, case) = (recipe.clone(), schema.clone(), dir.clone(), case.clone());
                 let (path, database) = (path.to_owned(), database.to_owned());
                 let id = case["id"].as_str().unwrap_or_default().to_owned();
                 polyspec_orm_testcase::async_trial(format!("{entry}::{id}"), polyspec_orm_testcase::DATABASE, move || async move {
-                    run_case(&path, &recipe, &case, &database, &schema).await;
+                    run_case(&path, &recipe, &case, &database, schema.as_deref(), &dir).await;
                 })
             })
             .collect()
@@ -505,33 +509,41 @@ mod database {
 
     /// Runs one case on a case database of its own and drops the database; a failure names the recipe, the case, the
     /// index of the step and the database.
-    async fn run_case(path: &str, recipe: &Value, case: &Value, database: &str, schema: &Schema) {
+    async fn run_case(path: &str, recipe: &Value, case: &Value, database: &str, schema: Option<&Schema>, dir: &Path) {
         let id = case["id"].as_str().unwrap_or_default();
         let case_database = CaseDatabase::create(database).await;
-        let result = case_body(recipe, case, database, schema, &case_database).await;
+        let result = case_body(recipe, case, database, schema, dir, &case_database).await;
         case_database.drop().await;
         if let Err(failure) = result {
             panic!("recipe {path}, case {id}, {failure}");
         }
     }
 
-    async fn case_body(recipe: &Value, case: &Value, database: &str, schema: &Schema, case_database: &CaseDatabase) -> Result<(), String> {
+    async fn case_body(recipe: &Value, case: &Value, database: &str, schema: Option<&Schema>, dir: &Path, case_database: &CaseDatabase) -> Result<(), String> {
         let dsn = case_database.dsn().to_owned();
         let db = Db::connect(&dsn, 1, Config::default()).await.map_err(|e| format!("database {database}: connect: {e}"))?;
-        let installed = db.utils().schema().install(schema).await;
+        let result = case_on(&db, recipe, case, database, schema, dir, case_database).await;
         db.close().await;
-        installed.map_err(|e| format!("database {database}: schema install: {e}"))?;
-        polyspec_orm_testcase::step("schema installed");
-        let mut catalog = CatalogConnection::connect(&dsn).await.map_err(|e| format!("database {database}: catalog connection: {e}"))?;
-        let result = run_steps(&mut catalog, recipe, case, database, dsn, case_database.name()).await;
+        result
+    }
+
+    async fn case_on(db: &Db, recipe: &Value, case: &Value, database: &str, schema: Option<&Schema>, dir: &Path, case_database: &CaseDatabase) -> Result<(), String> {
+        if let Some(schema) = schema {
+            let installed = db.utils().schema().install(schema).await;
+            installed.map_err(|e| format!("database {database}: schema install: {e}"))?;
+            polyspec_orm_testcase::step("schema installed");
+        }
+        let mut catalog = CatalogConnection::connect(case_database.dsn()).await.map_err(|e| format!("database {database}: catalog connection: {e}"))?;
+        let result = run_steps(&mut catalog, db, dir, recipe, case, database, case_database).await;
         catalog.close().await;
         result
     }
 
-    async fn run_steps(catalog: &mut CatalogConnection, recipe: &Value, case: &Value, database: &str, dsn: String, name: &str) -> Result<(), String> {
+    async fn run_steps(catalog: &mut CatalogConnection, db: &Db, dir: &Path, recipe: &Value, case: &Value, database: &str, case_database: &CaseDatabase) -> Result<(), String> {
         let namespace = catalog.current_namespace().await.map_err(|e| format!("database {database}: current namespace: {e}"))?;
-        let bound = HashMap::from([("database".to_owned(), Bound::Json(json!({ "text": name })))]);
-        let mut context = Context { namespace, database, dsn, bound };
+        let bound = HashMap::from([("database".to_owned(), Bound::Json(json!({ "text": case_database.name() })))]);
+        let dsn = case_database.dsn().to_owned();
+        let mut context = Context { namespace, database, dsn, bound, db, dir };
         for rows in [&recipe["seed"]["rows"], &case["seed"]["rows"]] {
             for (table, values) in rows.as_object().into_iter().flatten() {
                 let seed = |e: String| format!("seed row of {table}, database {database}: {e}");
@@ -550,6 +562,56 @@ mod database {
             polyspec_orm_testcase::step(format_args!("step {index} {op}"));
         }
         Ok(())
+    }
+
+    /// The value of an op that returns without error (FCV-4).
+    fn ok_value() -> Value {
+        json!({ "value": { "bool": true } })
+    }
+
+    /// An ORM error of a schema or statement op: its message starts with its code, which an expect may name.
+    fn orm(error: polyspec_orm::Error) -> Failure {
+        Failure::Call(error.to_string())
+    }
+
+    /// The Schema argument of a schema op (FCV-4): the documents of the set and its external documents, read from the recipe's
+    /// directory and parsed through the public dbspec API; manifest_replace changes the manifest text after building and keeps
+    /// its hash, so that the text no longer hashes to it.
+    fn schema_argument(step: &Value, context: &Context<'_>) -> Result<Schema, String> {
+        let arg = &step["schema"];
+        let read = |names: &Value| -> Result<Vec<String>, String> {
+            names
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(|name| {
+                    let path = context.dir.join(name.as_str().unwrap_or_default());
+                    std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))
+                })
+                .collect()
+        };
+        let owned = read(&arg["documents"])?;
+        let external = read(&arg["external"])?;
+        let owned: Vec<&str> = owned.iter().map(String::as_str).collect();
+        let external: Vec<&str> = external.iter().map(String::as_str).collect();
+        let set = dbspec::parse_set(&owned, &external);
+        let mut documents: Vec<&dbspec::Document> = Vec::new();
+        for entry in &set {
+            if !entry.diagnostics.is_empty() {
+                return Err(format!("schema: {:?}", entry.diagnostics));
+            }
+            match entry.document.as_ref() {
+                Some(document) => documents.push(document),
+                None => return Err("schema: a document has no parse".to_owned()),
+            }
+        }
+        let manifest = dbspec::manifest(&documents).map_err(|d| format!("schema: {d:?}"))?;
+        let mut text = manifest.manifest_text;
+        if let Some(replace) = arg.get("manifest_replace") {
+            text = text.replace(replace["from"].as_str().unwrap_or_default(), replace["to"].as_str().unwrap_or_default());
+        }
+        let leak = |t: String| -> &'static str { Box::leak(t.into_boxed_str()) };
+        Ok(Schema::with_external(leak(text), leak(manifest.external_text), leak(manifest.manifest_hash)))
     }
 
     /// A mutation that is never cancelled, whose phases are not observed and whose commit is permitted.
@@ -594,9 +656,69 @@ mod database {
     }
 
     /// Maps the op of `step` to its call of the public API and returns the fields that its expect compares.
-    async fn call(catalog: &mut CatalogConnection, step: &Value, context: &Context<'_>) -> Result<Output, Failure> {
+    async fn call(catalog: &mut CatalogConnection, step: &Value, context: &mut Context<'_>) -> Result<Output, Failure> {
         let fault = Failure::Step;
         Ok(match step["op"].as_str().unwrap_or_default() {
+            "schema.install" => {
+                let schema = schema_argument(step, context).map_err(fault)?;
+                context.db.utils().schema().install(&schema).await.map_err(orm)?;
+                Output::fields(ok_value())
+            }
+            "schema.register" => {
+                let schema = schema_argument(step, context).map_err(fault)?;
+                context.db.utils().schema().register(&schema).map_err(orm)?;
+                Output::fields(ok_value())
+            }
+            "schema.connect" => {
+                let schema = schema_argument(step, context).map_err(fault)?;
+                let connected = Db::connect_schema(&context.dsn, &schema, 1, Config::default()).await.map_err(orm)?;
+                connected.close().await;
+                Output::fields(ok_value())
+            }
+            "schema.add_tables_and_columns" => {
+                let schema = schema_argument(step, context).map_err(fault)?;
+                let added = context.db.utils().schema().add_tables_and_columns(&schema).await.map_err(orm)?;
+                let names: Vec<Value> = added.iter().map(|name| json!({ "text": name })).collect();
+                Output::fields(json!({ "value": { "array": names } }))
+            }
+            "statements.count" => {
+                let count = Arc::new(AtomicU64::new(0));
+                let seen = count.clone();
+                let subscription = context
+                    .db
+                    .subscribe(move |_event: &StatementEvent<'_>| {
+                        seen.fetch_add(1, Ordering::SeqCst);
+                        Ok(())
+                    })
+                    .map_err(orm)?;
+                let mut outcome = Ok(());
+                for nested in step["steps"].as_array().into_iter().flatten() {
+                    if let Err(message) = Box::pin(run_step(catalog, nested, context)).await {
+                        outcome = Err(message);
+                        break;
+                    }
+                }
+                subscription.unsubscribe();
+                outcome.map_err(fault)?;
+                Output::fields(json!({ "count": count.load(Ordering::SeqCst) }))
+            }
+            "transaction" => {
+                let steps: Vec<Value> = step["steps"].as_array().cloned().unwrap_or_default();
+                let db = context.db;
+                db.transaction_once(|| async move {
+                    for nested in &steps {
+                        Box::pin(run_step(catalog, nested, context)).await?;
+                    }
+                    Ok::<(), String>(())
+                })
+                .await
+                .map_err(|e| match e {
+                    TransactionOnceError::Callback(message) => Failure::Step(message),
+                    TransactionOnceError::Orm(error) => orm(error),
+                    TransactionOnceError::Rollback { callback, rollback } => Failure::Step(format!("{callback}; rollback: {rollback}")),
+                })?;
+                Output::fields(ok_value())
+            }
             "catalog.current_namespace" => {
                 let namespace = catalog.current_namespace().await.map_err(Failure::Call)?;
                 Output::fields(json!({ "value": { "text": namespace } }))

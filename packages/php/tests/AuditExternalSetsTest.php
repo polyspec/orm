@@ -15,6 +15,7 @@ namespace Polyspec\Orm\Tests;
 // (case_database.php); the test fails when ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist
 // packages/php/tests/AuditExternalSetsTest.php
+// Requirements: SCH-14, DBS-110.
 
 use PDO;
 use RuntimeException;

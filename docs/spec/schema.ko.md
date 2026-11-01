@@ -87,6 +87,10 @@ PHP extension은 extension 선언을 통해 PHP API의 `Dbspec` parse/render/int
 - **SCH-12** generated schema 값의 parse된 문서는 연결 없이 그 manifest text와 external text에서 얻는다. `RuntimeModel::loadSet`(PHP), `runtimemodel.LoadSet`(Go), `Manifest::load_set`(Rust), `loadSet`(TypeScript), `RuntimeModel.load_set`(Python)은 manifest text의 문서들, 그다음 external로 표시한 external text의 문서들을 돌려주며, dbspec header가 없는 text나 diagnostic이 있는 문서에는 `SCHEMA_INVALID`로 실패한다. module의 table, column, key를 읽는 도구는 text를 직접 나누지 않고 여기서 읽는다.
 
 - **SCH-13** 데이터베이스는 연결마다가 아니라 set을 설치하거나 올릴 때 확인한다. 배포는 새 데이터베이스에 `install`을, 더하기만 하는 새 version에 `addTablesAndColumns`를 부른다. 둘 다 데이터베이스를 set과 비교하고 다르면 실패한다. `register`와 connect helper는 요청마다 연 연결에도 statement 없이 연결마다 set을 등록한다. 배포 뒤 ORM 밖에서 데이터베이스를 바꾸면 다음 `install`이나 `addTablesAndColumns`가 찾는다.
+- **SCH-14** PHP와 Rust는 외부 document를 쓰는 member set의 audit transaction을 실행한다. PHP는 `AuditExternalSetsTest`에서, Rust는 `external_documents.rs`에서 member의 audit 기록을 core set이 소유한 `ext_audit`에 넣는다. recipe 형식에는 audit transaction 연산이 없으므로 이 case는 두 runtime에 네이티브로 남으며(FCV-2), 다른 runtime에는 이 case가 없다.
+- **SCH-15** Go는 편집된 manifest 텍스트의 `register`가 SCH-11대로 `CONFIG`로 실패하고, TypeScript의 engine과 Rust의 `Manifest::load`는 선언된 hash와 맞지 않는 텍스트에 `SCHEMA_HASH_MISMATCH`로 실패한다. 두 코드는 연결의 register 연산과 생성 코드의 load라는 다른 층에서 나온다. `CONFIG` 층은 모든 runtime에서 recipe case `register_sends_no_statement`가 다루고, load 층은 FCV-2에 따라 네이티브로 남는다.
+- **SCH-16** Go는 생성된 model만 가진 bench manifest의 설치를 `packages/go/model/coverage_schema_install_test.go`에서 검사한다. 이미 설치된 데이터베이스에 다시 설치하고 author 수를 집계한다. recipe case는 bench 모델을 읽지 않으므로 이 case는 FCV-2에 따라 네이티브이다.
+- **SCH-17** Go와 Python의 연결은 요청마다 자기 manifest hash의 engine으로 계획한다. 서로 다른 hash의 두 set을 등록하고 각각 다시 등록해도 hash마다 engine 하나가 유지되며, 실패한 register는 engine을 바꾸지 않는다. recipe 형식은 engine 정체를 관찰할 수 없으므로 이 case는 FCV-2에 따라 네이티브이다.
 
 | 시점 | 호출 | 데이터베이스를 읽거나 쓰는지 |
 |---|---|---|

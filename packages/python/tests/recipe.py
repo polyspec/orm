@@ -406,7 +406,10 @@ def _database_recipe_tests(path: str, database: str):
     recipe = json.loads((ROOT / path).read_text(encoding="utf-8"))
     if "fixture" not in recipe:
         raise ValueError(f"recipe {path}: no fixture, so it has no database")
-    schema = _fixture_schema(ROOT / recipe["fixture"])
+    # A fixture of none runs every case on an empty case database; the helper never infers it (FCV-3).
+    schema = (
+        None if recipe["fixture"] == NONE else _fixture_schema(ROOT / recipe["fixture"])
+    )
 
     def check(test: unittest.TestCase, case: dict) -> None:
         with tempfile.TemporaryDirectory(prefix="orm_recipe_") as directory:
@@ -444,13 +447,20 @@ def _database_name(dsn: str) -> str:
 
 
 def _run_case(
-    path: str, recipe: dict, case: dict, database: str, schema: Schema, dsn: str
+    path: str, recipe: dict, case: dict, database: str, schema: Schema | None, dsn: str
 ) -> None:
     db = Db.connect(dsn)
     try:
-        db.utils().schema().install(schema)
+        if schema is not None:
+            db.utils().schema().install(schema)
+        _run_case_on(path, recipe, case, database, dsn, db)
     finally:
         db.close()
+
+
+def _run_case_on(
+    path: str, recipe: dict, case: dict, database: str, dsn: str, db: Db
+) -> None:
     catalog = connect_catalog(dsn)
     try:
         namespace = catalog.current_namespace()
@@ -460,6 +470,8 @@ def _run_case(
             "database": database,
             "dsn": dsn,
             "bound": {"database": {"text": _database_name(dsn)}},
+            "db": db,
+            "dir": (ROOT / path).parent,
         }
         for part, rows in (
             ("recipe", recipe.get("seed", {}).get("rows")),
@@ -571,6 +583,14 @@ def _op_sql_exec(step: dict, context: dict) -> dict:
 
 # Each op maps to one call of the public API and returns the fields that its expect compares.
 _DATABASE_OPS = {
+    "schema.install": lambda step, context: _op_schema_install(step, context),
+    "schema.register": lambda step, context: _op_schema_register(step, context),
+    "schema.connect": lambda step, context: _op_schema_connect(step, context),
+    "schema.add_tables_and_columns": lambda step, context: _op_schema_add_tables(
+        step, context
+    ),
+    "statements.count": lambda step, context: _op_statements_count(step, context),
+    "transaction": lambda step, context: _op_transaction(step, context),
     "catalog.current_namespace": _op_current_namespace,
     "catalog.describe_table": _op_describe_table,
     "catalog.table_page": _op_table_page,
@@ -763,3 +783,73 @@ def _normalized(value) -> Any:
     if set(value) == {"null"}:
         return {"null": True}
     return {key: _normalized(item) for key, item in value.items()}
+
+
+# Schema installation (FCV-4). A schema argument is the document set of its files, read from the recipe's directory and parsed
+# with its external documents through the public dbspec API; manifest_replace changes the manifest text after building and
+# keeps its hash, so that the text no longer hashes to it.
+def _schema_argument(arg: dict, context: dict) -> Schema:
+    def read(names: list) -> list:
+        return [(context["dir"] / name).read_text(encoding="utf-8") for name in names]
+
+    documents = parse_document_set(
+        read(arg["documents"]), read(arg.get("external", []))
+    )
+    manifest, diagnostics = dbspec_manifest(documents)
+    if manifest is None:
+        raise AssertionError(f"schema: {diagnostics}")
+    text = manifest.manifest_text
+    replace = arg.get("manifest_replace")
+    if replace is not None:
+        text = text.replace(replace["from"], replace["to"])
+    return Schema(text, manifest.manifest_hash, manifest.external_text)
+
+
+def _op_schema_install(step: dict, context: dict) -> dict:
+    context["db"].utils().schema().install(_schema_argument(step["schema"], context))
+    return {"value": {"bool": True}}
+
+
+def _op_schema_register(step: dict, context: dict) -> dict:
+    context["db"].utils().schema().register(_schema_argument(step["schema"], context))
+    return {"value": {"bool": True}}
+
+
+def _op_schema_connect(step: dict, context: dict) -> dict:
+    Db.connect_schema(context["dsn"], _schema_argument(step["schema"], context)).close()
+    return {"value": {"bool": True}}
+
+
+def _op_schema_add_tables(step: dict, context: dict) -> dict:
+    added = (
+        context["db"]
+        .utils()
+        .schema()
+        .add_tables_and_columns(_schema_argument(step["schema"], context))
+    )
+    return {"value": {"array": [{"text": name} for name in added]}}
+
+
+def _op_statements_count(step: dict, context: dict) -> dict:
+    count = 0
+
+    def subscriber(_event) -> None:
+        nonlocal count
+        count += 1
+
+    unsubscribe = context["db"].subscribe(subscriber)
+    try:
+        for nested in step["steps"]:
+            _run_database_step(nested, context)
+    finally:
+        unsubscribe()
+    return {"count": count}
+
+
+def _op_transaction(step: dict, context: dict) -> dict:
+    def run() -> None:
+        for nested in step["steps"]:
+            _run_database_step(nested, context)
+
+    context["db"].transaction(run)
+    return {"value": {"bool": True}}

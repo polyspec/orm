@@ -5566,12 +5566,18 @@
         }
       ],
       "parity": [
-        "coverage-schema-install-existing",
-        "coverage-schema-install-partial",
+        "schema_install-mysql",
+        "schema_install-postgres",
+        "schema_install-sqlite",
         "privilege-table-operations",
-        "coverage-schema-install-external-documents",
         "schema-exists-literal-underscore-sqlite",
-        "dbspec-apply-chain-finalization"
+        "dbspec-apply-chain-finalization",
+        "schema-set-external-audit-record-mysql",
+        "schema-set-external-audit-record-postgres",
+        "schema-set-external-audit-record-sqlite",
+        "schema-manifest-text-hash-mismatch-is-reported",
+        "coverage-schema-install-bench",
+        "schema-register-reuses-engine-per-hash"
       ],
       "fixtures": [
         "packages/go/model/coverage_helpers_test.go",
@@ -5614,18 +5620,12 @@
         "packages/ts/tests/case-database.mjs",
         "packages/go/decimalmodel/schema_set_test.go",
         "packages/rust/tests/tests/decimal_physical.rs",
-        "packages/go/model/coverage_schema_install_test.go",
-        "packages/php/tests/CoverageSchemaInstallTest.php",
-        "packages/rust/tests/tests/integration/coverage_schema_install.rs",
-        "packages/ts/tests/coverage_schema_install.mjs",
         "packages/go/orm/add_tables_and_columns_test.go",
         "packages/php/tests/AddTablesAndColumnsTest.php",
         "packages/rust/orm/tests/add_tables_and_columns.rs",
         "packages/ts/tests/add-tables-and-columns.mjs",
-        "packages/go/orm/external_documents_test.go",
         "packages/rust/orm/tests/external_documents.rs",
         "packages/go/orm/register_test.go",
-        "packages/rust/orm/tests/register.rs",
         "packages/rust/orm/tests/install.rs",
         "packages/ts/tests/dbspec_runtime_db.mjs",
         "packages/python/tests/test_schema_install.py",
@@ -5639,7 +5639,6 @@
         "packages/python/tests/test_schema_utils.py",
         "packages/python/tests/test_load_set.py",
         "packages/python/tests/case_database.py",
-        "packages/python/tests/coverage_schema_install.py",
         "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
         "packages/php-ext/tests/CoverageNativeChangedDatabaseExtensionTest.php",
         "packages/ts/tests/dbspec-apply-verify-errors.mjs",
@@ -5661,7 +5660,22 @@
         "packages/php/tests/SchemaExistsSqliteTest.php",
         "packages/rust/orm/tests/schema_exists_underscore.rs",
         "packages/python/tests/test_schema_set.py",
-        "packages/php-ext/tests/ModelTestExtensionTest.php"
+        "packages/php-ext/tests/ModelTestExtensionTest.php",
+        "packages/go/orm/recipe_schema_install_test.go",
+        "packages/php/tests/SchemaInstallRecipeTest.php",
+        "packages/rust/tests/tests/schema_install_mysql.rs",
+        "packages/rust/tests/tests/schema_install_postgres.rs",
+        "packages/rust/tests/tests/schema_install_sqlite.rs",
+        "packages/ts/tests/schema_install-mysql.test.mjs",
+        "packages/ts/tests/schema_install-postgres.test.mjs",
+        "packages/ts/tests/schema_install-sqlite.test.mjs",
+        "packages/python/tests/test_schema_install_mysql.py",
+        "packages/python/tests/test_schema_install_postgres.py",
+        "packages/python/tests/test_schema_install_sqlite.py",
+        "packages/php-ext/tests/SchemaInstallRecipeTestExtensionTest.php",
+        "packages/go/model/coverage_schema_install_test.go",
+        "packages/php/tests/AuditExternalSetsTest.php",
+        "packages/ts/tests/engine_features.mjs"
       ],
       "docs": [
         "docs/spec/schema.md",
@@ -5727,10 +5741,9 @@
         },
         {
           "id": "install-register-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestRegisterSendsNoStatement|TestInstallVerifiesTheDatabase|TestInstallAppliesRenderedStatements|TestExternalDocuments)$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestRegisterRefusesEditedManifest|TestRegisterReusesEnginePerHash|TestInstallVerifiesTheDatabase|TestInstallAppliesRenderedStatements)$' -count=1",
           "shard": "other",
           "inputs": [
-            "packages/go/orm/external_documents_test.go",
             "packages/go/orm/install_test.go",
             "packages/go/orm/register_test.go",
             "contracts/fixtures/install/note.dbs",
@@ -5787,10 +5800,9 @@
         },
         {
           "id": "install-register-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts install-register-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test register --test install --test external_documents",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts install-register-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test install --test external_documents",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/register.rs",
             "packages/rust/orm/tests/install.rs",
             "packages/rust/orm/tests/external_documents.rs",
             "contracts/fixtures/install/changed_database.json",
@@ -5909,30 +5921,42 @@
       "coverage": {
         "kind": "database",
         "cases": [
-          "schema_install_existing",
-          "schema_install_partial",
-          "schema_install_external_documents"
+          "install_existing",
+          "install_partial",
+          "install_transaction",
+          "register_sends_no_statement",
+          "connect_external_documents",
+          "install_external_drift",
+          "add_tables_and_columns"
         ],
         "owners": {
           "go": {
-            "part": "packages/go/model",
+            "part": "packages/go",
             "tests": [
-              "packages/go/model/coverage_schema_install_test.go"
+              "packages/go/orm/recipe_schema_install_test.go"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_schema_install_test.go",
+                  "test": "packages/go/orm/recipe_schema_install_test.go",
                   "cases": [
-                    "schema_install_existing",
-                    "schema_install_partial",
-                    "schema_install_external_documents"
+                    "install_existing",
+                    "install_partial",
+                    "install_transaction",
+                    "register_sends_no_statement",
+                    "connect_external_documents",
+                    "install_external_drift",
+                    "add_tables_and_columns"
                   ],
                   "symbols": {
-                    "schema_install_existing": "TestCoverageSchemaInstallExisting",
-                    "schema_install_partial": "TestCoverageSchemaInstallPartial",
-                    "schema_install_external_documents": "TestCoverageSchemaInstallExternalDocuments"
+                    "install_existing": "TestRecipeSchemaInstallMysql",
+                    "install_partial": "TestRecipeSchemaInstallMysql",
+                    "install_transaction": "TestRecipeSchemaInstallMysql",
+                    "register_sends_no_statement": "TestRecipeSchemaInstallMysql",
+                    "connect_external_documents": "TestRecipeSchemaInstallMysql",
+                    "install_external_drift": "TestRecipeSchemaInstallMysql",
+                    "add_tables_and_columns": "TestRecipeSchemaInstallMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -5940,16 +5964,24 @@
               "postgres": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_schema_install_test.go",
+                  "test": "packages/go/orm/recipe_schema_install_test.go",
                   "cases": [
-                    "schema_install_existing",
-                    "schema_install_partial",
-                    "schema_install_external_documents"
+                    "install_existing",
+                    "install_partial",
+                    "install_transaction",
+                    "register_sends_no_statement",
+                    "connect_external_documents",
+                    "install_external_drift",
+                    "add_tables_and_columns"
                   ],
                   "symbols": {
-                    "schema_install_existing": "TestCoverageSchemaInstallExisting",
-                    "schema_install_partial": "TestCoverageSchemaInstallPartial",
-                    "schema_install_external_documents": "TestCoverageSchemaInstallExternalDocuments"
+                    "install_existing": "TestRecipeSchemaInstallPostgres",
+                    "install_partial": "TestRecipeSchemaInstallPostgres",
+                    "install_transaction": "TestRecipeSchemaInstallPostgres",
+                    "register_sends_no_statement": "TestRecipeSchemaInstallPostgres",
+                    "connect_external_documents": "TestRecipeSchemaInstallPostgres",
+                    "install_external_drift": "TestRecipeSchemaInstallPostgres",
+                    "add_tables_and_columns": "TestRecipeSchemaInstallPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -5957,16 +5989,24 @@
               "sqlite": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_schema_install_test.go",
+                  "test": "packages/go/orm/recipe_schema_install_test.go",
                   "cases": [
-                    "schema_install_existing",
-                    "schema_install_partial",
-                    "schema_install_external_documents"
+                    "install_existing",
+                    "install_partial",
+                    "install_transaction",
+                    "register_sends_no_statement",
+                    "connect_external_documents",
+                    "install_external_drift",
+                    "add_tables_and_columns"
                   ],
                   "symbols": {
-                    "schema_install_existing": "TestCoverageSchemaInstallExisting",
-                    "schema_install_partial": "TestCoverageSchemaInstallPartial",
-                    "schema_install_external_documents": "TestCoverageSchemaInstallExternalDocuments"
+                    "install_existing": "TestRecipeSchemaInstallSqlite",
+                    "install_partial": "TestRecipeSchemaInstallSqlite",
+                    "install_transaction": "TestRecipeSchemaInstallSqlite",
+                    "register_sends_no_statement": "TestRecipeSchemaInstallSqlite",
+                    "connect_external_documents": "TestRecipeSchemaInstallSqlite",
+                    "install_external_drift": "TestRecipeSchemaInstallSqlite",
+                    "add_tables_and_columns": "TestRecipeSchemaInstallSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -5976,81 +6016,115 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoverageSchemaInstallTest.php"
+              "packages/php/tests/SchemaInstallRecipeTest.php"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageSchemaInstallTest.php",
+                  "test": "packages/php/tests/SchemaInstallRecipeTest.php",
                   "cases": [
-                    "schema_install_existing",
-                    "schema_install_partial",
-                    "schema_install_external_documents"
+                    "install_existing",
+                    "install_partial",
+                    "install_transaction",
+                    "register_sends_no_statement",
+                    "connect_external_documents",
+                    "install_external_drift",
+                    "add_tables_and_columns"
                   ],
-                  "dsn_env": "BENCH_MYSQL_DSN",
                   "symbols": {
-                    "schema_install_existing": "testSchemaInstallExisting",
-                    "schema_install_partial": "testSchemaInstallPartial",
-                    "schema_install_external_documents": "testSchemaInstallExternalDocuments"
-                  }
+                    "install_existing": "testMysql",
+                    "install_partial": "testMysql",
+                    "install_transaction": "testMysql",
+                    "register_sends_no_statement": "testMysql",
+                    "connect_external_documents": "testMysql",
+                    "install_external_drift": "testMysql",
+                    "add_tables_and_columns": "testMysql"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageSchemaInstallTest.php",
+                  "test": "packages/php/tests/SchemaInstallRecipeTest.php",
                   "cases": [
-                    "schema_install_existing",
-                    "schema_install_partial",
-                    "schema_install_external_documents"
+                    "install_existing",
+                    "install_partial",
+                    "install_transaction",
+                    "register_sends_no_statement",
+                    "connect_external_documents",
+                    "install_external_drift",
+                    "add_tables_and_columns"
                   ],
-                  "dsn_env": "BENCH_POSTGRES_DSN",
                   "symbols": {
-                    "schema_install_existing": "testSchemaInstallExisting",
-                    "schema_install_partial": "testSchemaInstallPartial",
-                    "schema_install_external_documents": "testSchemaInstallExternalDocuments"
-                  }
+                    "install_existing": "testPostgres",
+                    "install_partial": "testPostgres",
+                    "install_transaction": "testPostgres",
+                    "register_sends_no_statement": "testPostgres",
+                    "connect_external_documents": "testPostgres",
+                    "install_external_drift": "testPostgres",
+                    "add_tables_and_columns": "testPostgres"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageSchemaInstallTest.php",
+                  "test": "packages/php/tests/SchemaInstallRecipeTest.php",
                   "cases": [
-                    "schema_install_existing",
-                    "schema_install_partial",
-                    "schema_install_external_documents"
+                    "install_existing",
+                    "install_partial",
+                    "install_transaction",
+                    "register_sends_no_statement",
+                    "connect_external_documents",
+                    "install_external_drift",
+                    "add_tables_and_columns"
                   ],
-                  "dsn_env": "BENCH_SQLITE_DSN",
                   "symbols": {
-                    "schema_install_existing": "testSchemaInstallExisting",
-                    "schema_install_partial": "testSchemaInstallPartial",
-                    "schema_install_external_documents": "testSchemaInstallExternalDocuments"
-                  }
+                    "install_existing": "testSqlite",
+                    "install_partial": "testSqlite",
+                    "install_transaction": "testSqlite",
+                    "register_sends_no_statement": "testSqlite",
+                    "connect_external_documents": "testSqlite",
+                    "install_external_drift": "testSqlite",
+                    "add_tables_and_columns": "testSqlite"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
             }
           },
           "rust": {
-            "part": "packages/rust/tests",
+            "part": "packages/rust",
             "tests": [
-              "packages/rust/tests/tests/integration/coverage_schema_install.rs"
+              "packages/rust/tests/tests/schema_install_mysql.rs",
+              "packages/rust/tests/tests/schema_install_postgres.rs",
+              "packages/rust/tests/tests/schema_install_sqlite.rs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration/coverage_schema_install.rs",
+                  "test": "packages/rust/tests/tests/schema_install_mysql.rs",
                   "cases": [
-                    "schema_install_existing",
-                    "schema_install_partial",
-                    "schema_install_external_documents"
+                    "install_existing",
+                    "install_partial",
+                    "install_transaction",
+                    "register_sends_no_statement",
+                    "connect_external_documents",
+                    "install_external_drift",
+                    "add_tables_and_columns"
                   ],
                   "symbols": {
-                    "schema_install_existing": "coverage_schema_install::coverage_schema_install_existing",
-                    "schema_install_partial": "coverage_schema_install::coverage_schema_install_partial",
-                    "schema_install_external_documents": "coverage_schema_install::coverage_schema_install_external_documents"
+                    "install_existing": "schema_install_mysql",
+                    "install_partial": "schema_install_mysql",
+                    "install_transaction": "schema_install_mysql",
+                    "register_sends_no_statement": "schema_install_mysql",
+                    "connect_external_documents": "schema_install_mysql",
+                    "install_external_drift": "schema_install_mysql",
+                    "add_tables_and_columns": "schema_install_mysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -6058,16 +6132,24 @@
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration/coverage_schema_install.rs",
+                  "test": "packages/rust/tests/tests/schema_install_postgres.rs",
                   "cases": [
-                    "schema_install_existing",
-                    "schema_install_partial",
-                    "schema_install_external_documents"
+                    "install_existing",
+                    "install_partial",
+                    "install_transaction",
+                    "register_sends_no_statement",
+                    "connect_external_documents",
+                    "install_external_drift",
+                    "add_tables_and_columns"
                   ],
                   "symbols": {
-                    "schema_install_existing": "coverage_schema_install::coverage_schema_install_existing",
-                    "schema_install_partial": "coverage_schema_install::coverage_schema_install_partial",
-                    "schema_install_external_documents": "coverage_schema_install::coverage_schema_install_external_documents"
+                    "install_existing": "schema_install_postgres",
+                    "install_partial": "schema_install_postgres",
+                    "install_transaction": "schema_install_postgres",
+                    "register_sends_no_statement": "schema_install_postgres",
+                    "connect_external_documents": "schema_install_postgres",
+                    "install_external_drift": "schema_install_postgres",
+                    "add_tables_and_columns": "schema_install_postgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -6075,16 +6157,24 @@
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration/coverage_schema_install.rs",
+                  "test": "packages/rust/tests/tests/schema_install_sqlite.rs",
                   "cases": [
-                    "schema_install_existing",
-                    "schema_install_partial",
-                    "schema_install_external_documents"
+                    "install_existing",
+                    "install_partial",
+                    "install_transaction",
+                    "register_sends_no_statement",
+                    "connect_external_documents",
+                    "install_external_drift",
+                    "add_tables_and_columns"
                   ],
                   "symbols": {
-                    "schema_install_existing": "coverage_schema_install::coverage_schema_install_existing",
-                    "schema_install_partial": "coverage_schema_install::coverage_schema_install_partial",
-                    "schema_install_external_documents": "coverage_schema_install::coverage_schema_install_external_documents"
+                    "install_existing": "schema_install_sqlite",
+                    "install_partial": "schema_install_sqlite",
+                    "install_transaction": "schema_install_sqlite",
+                    "register_sends_no_statement": "schema_install_sqlite",
+                    "connect_external_documents": "schema_install_sqlite",
+                    "install_external_drift": "schema_install_sqlite",
+                    "add_tables_and_columns": "schema_install_sqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -6094,17 +6184,23 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
-              "packages/ts/tests/coverage_schema_install.mjs"
+              "packages/ts/tests/schema_install-mysql.test.mjs",
+              "packages/ts/tests/schema_install-postgres.test.mjs",
+              "packages/ts/tests/schema_install-sqlite.test.mjs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_schema_install.mjs",
+                  "test": "packages/ts/tests/schema_install-mysql.test.mjs",
                   "cases": [
-                    "schema_install_existing",
-                    "schema_install_partial",
-                    "schema_install_external_documents"
+                    "install_existing",
+                    "install_partial",
+                    "install_transaction",
+                    "register_sends_no_statement",
+                    "connect_external_documents",
+                    "install_external_drift",
+                    "add_tables_and_columns"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -6112,11 +6208,15 @@
               "postgres": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_schema_install.mjs",
+                  "test": "packages/ts/tests/schema_install-postgres.test.mjs",
                   "cases": [
-                    "schema_install_existing",
-                    "schema_install_partial",
-                    "schema_install_external_documents"
+                    "install_existing",
+                    "install_partial",
+                    "install_transaction",
+                    "register_sends_no_statement",
+                    "connect_external_documents",
+                    "install_external_drift",
+                    "add_tables_and_columns"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -6124,11 +6224,15 @@
               "sqlite": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_schema_install.mjs",
+                  "test": "packages/ts/tests/schema_install-sqlite.test.mjs",
                   "cases": [
-                    "schema_install_existing",
-                    "schema_install_partial",
-                    "schema_install_external_documents"
+                    "install_existing",
+                    "install_partial",
+                    "install_transaction",
+                    "register_sends_no_statement",
+                    "connect_external_documents",
+                    "install_external_drift",
+                    "add_tables_and_columns"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -6138,17 +6242,23 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_schema_install.py"
+              "packages/python/tests/test_schema_install_mysql.py",
+              "packages/python/tests/test_schema_install_postgres.py",
+              "packages/python/tests/test_schema_install_sqlite.py"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_schema_install.py",
+                  "test": "packages/python/tests/test_schema_install_mysql.py",
                   "cases": [
-                    "schema_install_existing",
-                    "schema_install_partial",
-                    "schema_install_external_documents"
+                    "install_existing",
+                    "install_partial",
+                    "install_transaction",
+                    "register_sends_no_statement",
+                    "connect_external_documents",
+                    "install_external_drift",
+                    "add_tables_and_columns"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -6156,11 +6266,15 @@
               "postgres": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_schema_install.py",
+                  "test": "packages/python/tests/test_schema_install_postgres.py",
                   "cases": [
-                    "schema_install_existing",
-                    "schema_install_partial",
-                    "schema_install_external_documents"
+                    "install_existing",
+                    "install_partial",
+                    "install_transaction",
+                    "register_sends_no_statement",
+                    "connect_external_documents",
+                    "install_external_drift",
+                    "add_tables_and_columns"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -6168,11 +6282,15 @@
               "sqlite": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_schema_install.py",
+                  "test": "packages/python/tests/test_schema_install_sqlite.py",
                   "cases": [
-                    "schema_install_existing",
-                    "schema_install_partial",
-                    "schema_install_external_documents"
+                    "install_existing",
+                    "install_partial",
+                    "install_transaction",
+                    "register_sends_no_statement",
+                    "connect_external_documents",
+                    "install_external_drift",
+                    "add_tables_and_columns"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -6182,58 +6300,82 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php"
+              "packages/php-ext/tests/SchemaInstallRecipeTestExtensionTest.php"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+                  "test": "packages/php-ext/tests/SchemaInstallRecipeTestExtensionTest.php",
                   "cases": [
-                    "schema_install_existing",
-                    "schema_install_partial",
-                    "schema_install_external_documents"
+                    "install_existing",
+                    "install_partial",
+                    "install_transaction",
+                    "register_sends_no_statement",
+                    "connect_external_documents",
+                    "install_external_drift",
+                    "add_tables_and_columns"
                   ],
-                  "dsn_env": "BENCH_MYSQL_DSN",
                   "symbols": {
-                    "schema_install_existing": "testSchemaInstallExisting",
-                    "schema_install_partial": "testSchemaInstallPartial",
-                    "schema_install_external_documents": "testSchemaInstallExternalDocuments"
-                  }
+                    "install_existing": "testMysql",
+                    "install_partial": "testMysql",
+                    "install_transaction": "testMysql",
+                    "register_sends_no_statement": "testMysql",
+                    "connect_external_documents": "testMysql",
+                    "install_external_drift": "testMysql",
+                    "add_tables_and_columns": "testMysql"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+                  "test": "packages/php-ext/tests/SchemaInstallRecipeTestExtensionTest.php",
                   "cases": [
-                    "schema_install_existing",
-                    "schema_install_partial",
-                    "schema_install_external_documents"
+                    "install_existing",
+                    "install_partial",
+                    "install_transaction",
+                    "register_sends_no_statement",
+                    "connect_external_documents",
+                    "install_external_drift",
+                    "add_tables_and_columns"
                   ],
-                  "dsn_env": "BENCH_POSTGRES_DSN",
                   "symbols": {
-                    "schema_install_existing": "testSchemaInstallExisting",
-                    "schema_install_partial": "testSchemaInstallPartial",
-                    "schema_install_external_documents": "testSchemaInstallExternalDocuments"
-                  }
+                    "install_existing": "testPostgres",
+                    "install_partial": "testPostgres",
+                    "install_transaction": "testPostgres",
+                    "register_sends_no_statement": "testPostgres",
+                    "connect_external_documents": "testPostgres",
+                    "install_external_drift": "testPostgres",
+                    "add_tables_and_columns": "testPostgres"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+                  "test": "packages/php-ext/tests/SchemaInstallRecipeTestExtensionTest.php",
                   "cases": [
-                    "schema_install_existing",
-                    "schema_install_partial",
-                    "schema_install_external_documents"
+                    "install_existing",
+                    "install_partial",
+                    "install_transaction",
+                    "register_sends_no_statement",
+                    "connect_external_documents",
+                    "install_external_drift",
+                    "add_tables_and_columns"
                   ],
-                  "dsn_env": "BENCH_SQLITE_DSN",
                   "symbols": {
-                    "schema_install_existing": "testSchemaInstallExisting",
-                    "schema_install_partial": "testSchemaInstallPartial",
-                    "schema_install_external_documents": "testSchemaInstallExternalDocuments"
-                  }
+                    "install_existing": "testSqlite",
+                    "install_partial": "testSqlite",
+                    "install_transaction": "testSqlite",
+                    "register_sends_no_statement": "testSqlite",
+                    "connect_external_documents": "testSqlite",
+                    "install_external_drift": "testSqlite",
+                    "add_tables_and_columns": "testSqlite"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
             }

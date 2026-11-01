@@ -36,7 +36,7 @@ caseTest('owner-check asks for the complex-query fixture databases only for a se
 // Requirements: FCV-7.
 caseTest('a changed test selects only the commands that run it', 5000, async () => {
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/orm/mysql_tls_test.go'])), ['dsn_connection/dsn-go', 'dsn_connection/dsn-mysql-tls-go']);
-  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/orm/external_documents_test.go'])), ['schema_install/install-register-go']);
+  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/orm/register_test.go'])), ['schema_install/install-register-go']);
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/php/tests/CoverageDsnTest.php'])), ['dsn_connection/coverage/owner/php', 'dsn_connection/coverage/owner/php-extension']);
   assert.ok(selected(await selectOwners(manifest, root, ['contracts/check-inputs.json'])).includes('authenticated_encryption/aes-json-php-extension'));
 });

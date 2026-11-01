@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/polyspec/orm/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 	"github.com/polyspec/orm/packages/go/internal/testdb"
 	"github.com/polyspec/orm/packages/go/orm"
 	_ "github.com/polyspec/orm/packages/go/orm/pg"
@@ -64,6 +65,8 @@ type databaseStep struct {
 	Set      json.RawMessage            `json:"set"`
 	As       string                     `json:"as"`
 	Expect   map[string]json.RawMessage `json:"expect"`
+	Schema   json.RawMessage            `json:"schema"`
+	Steps    []json.RawMessage          `json:"steps"`
 }
 
 // bound is what a step bound with `as`: the API value that a later argument takes, the fields of its result that a dotted
@@ -90,6 +93,8 @@ type outcome struct {
 type databaseContext struct {
 	t         *testing.T
 	ctx       context.Context
+	db        *orm.DB
+	dir       string
 	catalog   *orm.CatalogConnection
 	namespace string
 	database  string
@@ -114,14 +119,18 @@ func runDatabase(t *testing.T, path, database string) {
 	if f.Fixture == "" {
 		t.Fatalf("recipe %s: no fixture, so it has no database", path)
 	}
-	relative, ok := strings.CutSuffix(f.Schema, schemaPath)
-	if !ok {
-		t.Fatalf("recipe %s: $schema %s does not name %s", path, f.Schema, schemaPath)
-	}
-	root := filepath.Join(filepath.Dir(path), relative)
-	schema, err := fixtureSchema(filepath.Join(root, f.Fixture))
-	if err != nil {
-		t.Fatalf("recipe %s: %v", path, err)
+	// A fixture of "none" runs every case on an empty case database (FCV-3); the helper never infers it.
+	var schema *orm.Schema
+	if f.Fixture != "none" {
+		relative, ok := strings.CutSuffix(f.Schema, schemaPath)
+		if !ok {
+			t.Fatalf("recipe %s: $schema %s does not name %s", path, f.Schema, schemaPath)
+		}
+		root := filepath.Join(filepath.Dir(path), relative)
+		schema, err = fixtureSchema(filepath.Join(root, f.Fixture))
+		if err != nil {
+			t.Fatalf("recipe %s: %v", path, err)
+		}
 	}
 	for _, c := range f.Cases {
 		t.Run(c.ID, func(t *testing.T) {
@@ -175,12 +184,13 @@ func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database
 	if err != nil {
 		t.Fatalf("recipe %s case %s on %s: connect: %v", path, c.ID, database, err)
 	}
-	if err := db.Utils().Schema().Install(schema); err != nil {
-		testcase.Close(t, db)
-		t.Fatalf("recipe %s case %s on %s: install: %v", path, c.ID, database, err)
+	defer testcase.Close(t, db)
+	if schema != nil {
+		if err := db.Utils().Schema().Install(schema); err != nil {
+			t.Fatalf("recipe %s case %s on %s: install: %v", path, c.ID, database, err)
+		}
+		step.Step("schema installed")
 	}
-	testcase.Close(t, db)
-	step.Step("schema installed")
 	catalog, err := orm.ConnectCatalog(dsn)
 	if err != nil {
 		t.Fatalf("recipe %s case %s on %s: catalog: %v", path, c.ID, database, err)
@@ -195,7 +205,7 @@ func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database
 		name = strings.TrimSuffix(filepath.Base(strings.TrimPrefix(dsn, "sqlite://")), ".sqlite")
 	}
 	state := &databaseContext{
-		t: t, ctx: ctx, catalog: catalog, namespace: namespace, database: database, dsn: dsn,
+		t: t, ctx: ctx, db: db, dir: filepath.Dir(path), catalog: catalog, namespace: namespace, database: database, dsn: dsn,
 		bound: map[string]bound{"database": {value: map[string]any{"text": name}}},
 	}
 	for _, s := range []*seed{f.Seed, c.Seed} {
@@ -434,6 +444,72 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, err
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"int": strconv.FormatInt(deleted, 10)}}}, nil
+	case "schema.install":
+		schema, err := schemaArgument(s.Schema, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		if err := c.db.Utils().Schema().Install(schema); err != nil {
+			return outcome{}, err
+		}
+		return okOutcome(), nil
+	case "schema.register":
+		schema, err := schemaArgument(s.Schema, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		if err := c.db.Utils().Schema().Register(schema); err != nil {
+			return outcome{}, err
+		}
+		return okOutcome(), nil
+	case "schema.connect":
+		schema, err := schemaArgument(s.Schema, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		connected, err := orm.ConnectSchema(c.dsn, schema, orm.Config{})
+		if err != nil {
+			return outcome{}, err
+		}
+		if err := connected.Close(); err != nil {
+			return outcome{}, err
+		}
+		return okOutcome(), nil
+	case "schema.add_tables_and_columns":
+		schema, err := schemaArgument(s.Schema, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		added, err := c.db.Utils().Schema().AddTablesAndColumns(schema)
+		if err != nil {
+			return outcome{}, err
+		}
+		names := make([]any, len(added))
+		for i, name := range added {
+			names[i] = map[string]any{"text": name}
+		}
+		return outcome{fields: map[string]any{"value": map[string]any{"array": names}}}, nil
+	case "statements.count":
+		var count int64
+		stop, err := c.db.Subscribe(func(orm.StatementEvent) error {
+			count++
+			return nil
+		})
+		if err != nil {
+			return outcome{}, err
+		}
+		runErr := runNested(s.Steps, c)
+		stop()
+		if runErr != nil {
+			return outcome{}, runErr
+		}
+		return outcome{fields: map[string]any{"count": count}}, nil
+	case "transaction":
+		err := c.db.Transaction(func() error { return runNested(s.Steps, c) })
+		if err != nil {
+			return outcome{}, err
+		}
+		return okOutcome(), nil
 	case "sql.exec":
 		statement, err := databaseText(s.SQL, c)
 		if err != nil {
@@ -447,6 +523,70 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return outcome{fields: map[string]any{}}, nil
 	}
 	return outcome{}, fmt.Errorf("OP_UNKNOWN %s", s.Op)
+}
+
+// okOutcome is the value of an op that returns without error (FCV-4).
+func okOutcome() outcome {
+	return outcome{fields: map[string]any{"value": map[string]any{"bool": true}}}
+}
+
+// runNested runs the nested steps of a statements.count or transaction op, each with its own expect (FCV-4).
+func runNested(raw []json.RawMessage, c *databaseContext) error {
+	for index, nested := range raw {
+		var s databaseStep
+		if err := json.Unmarshal(nested, &s); err != nil {
+			return fmt.Errorf("nested step %d: %w", index, err)
+		}
+		if err := runDatabaseStep(s, c); err != nil {
+			return fmt.Errorf("nested step %d (%s): %w", index, s.Op, err)
+		}
+	}
+	return nil
+}
+
+// schemaArgument builds the generated schema value of a schema argument: the documents of the set and the external
+// documents it uses, read from the recipe's directory and built through the public engine, with manifest_replace
+// applied to the manifest text after building, so that the text no longer hashes to its declared hash (FCV-4).
+func schemaArgument(raw json.RawMessage, c *databaseContext) (*orm.Schema, error) {
+	var arg struct {
+		Documents       []string `json:"documents"`
+		External        []string `json:"external"`
+		ManifestReplace *struct {
+			From string `json:"from"`
+			To   string `json:"to"`
+		} `json:"manifest_replace"`
+	}
+	if err := json.Unmarshal(raw, &arg); err != nil {
+		return nil, fmt.Errorf("schema argument: %w", err)
+	}
+	read := func(names []string) ([]string, error) {
+		texts := make([]string, len(names))
+		for i, name := range names {
+			src, err := os.ReadFile(filepath.Join(c.dir, name))
+			if err != nil {
+				return nil, err
+			}
+			texts[i] = string(src)
+		}
+		return texts, nil
+	}
+	owned, err := read(arg.Documents)
+	if err != nil {
+		return nil, err
+	}
+	external, err := read(arg.External)
+	if err != nil {
+		return nil, err
+	}
+	m, diagnostics := runtimemodel.LoadDocumentSet(owned, external)
+	if len(diagnostics) > 0 {
+		return nil, fmt.Errorf("schema: %s", runtimemodel.DiagnosticsError(diagnostics))
+	}
+	text := m.ManifestText
+	if arg.ManifestReplace != nil {
+		text = strings.ReplaceAll(text, arg.ManifestReplace.From, arg.ManifestReplace.To)
+	}
+	return &orm.Schema{Hash: m.ManifestHash, Text: text, External: m.ExternalText}, nil
 }
 
 func indexOf(names []string, name string) int {

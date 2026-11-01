@@ -1,3 +1,4 @@
+//! Requirements: SCH-14, DBS-110.
 //! Checks document sets that use external documents on SQLite, MySQL, and PostgreSQL (docs/spec/dbspec.md "External
 //! documents", contracts/fixtures/external). The member set uses ext_account and ext_audit from ext_core via use,
 //! and owns only ext_post and ext_post_history.

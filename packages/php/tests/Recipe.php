@@ -453,7 +453,10 @@ final class Recipe
         if (!isset($recipe['fixture'])) {
             Assert::fail("recipe $path: no fixture, so it has no database");
         }
-        $schema = self::$schemas[$recipe['fixture']] ??= self::fixtureSchema($root . '/' . $recipe['fixture']);
+        // A fixture of none runs every case on an empty case database; the helper never infers it (FCV-3).
+        $schema = $recipe['fixture'] === 'none'
+            ? null
+            : (self::$schemas[$recipe['fixture']] ??= self::fixtureSchema($root . '/' . $recipe['fixture']));
         with_case_database(
             $database,
             static function (string $step): void {
@@ -502,47 +505,80 @@ final class Recipe
         array $recipe,
         array $case,
         string $database,
-        Schema $schema,
+        ?Schema $schema,
         string $dsn,
         string $name,
     ): void {
         $db = Orm::connect($dsn, new Config());
         try {
-            $db->utils()->schema()->install($schema);
+            if ($schema !== null) {
+                $db->utils()->schema()->install($schema);
+            }
+            $catalog = Catalog::connect($dsn);
+            try {
+                $namespace = $catalog->currentNamespace();
+                $context = [
+                    'catalog' => $catalog,
+                    'namespace' => $namespace,
+                    'database' => $database,
+                    'dsn' => $dsn,
+                    'bound' => ['database' => ['text' => $name]],
+                    'db' => $db,
+                    'dir' => dirname(__DIR__, 3) . '/' . dirname($path),
+                ];
+                foreach ([$recipe['seed']['rows'] ?? [], $case['seed']['rows'] ?? []] as $rows) {
+                    foreach ($rows as $table => $values) {
+                        $metadata = $catalog->describeTable(['namespace' => $namespace, 'name' => $table]);
+                        foreach ($values as $row) {
+                            $catalog->insertRow($metadata, self::assignments($row, $context));
+                        }
+                    }
+                }
+                foreach ($case['steps'] as $index => $step) {
+                    try {
+                        self::databaseStep($step, $context);
+                    } catch (\Throwable $failure) {
+                        Assert::fail(
+                            "recipe $path, case {$case['id']}, step $index ({$step['op']}), database $database: "
+                            . get_class($failure) . ': ' . $failure->getMessage()
+                        );
+                    }
+                }
+            } finally {
+                $catalog->close();
+            }
         } finally {
             $db->close();
         }
-        $catalog = Catalog::connect($dsn);
-        try {
-            $namespace = $catalog->currentNamespace();
-            $context = [
-                'catalog' => $catalog,
-                'namespace' => $namespace,
-                'database' => $database,
-                'dsn' => $dsn,
-                'bound' => ['database' => ['text' => $name]],
-            ];
-            foreach ([$recipe['seed']['rows'] ?? [], $case['seed']['rows'] ?? []] as $rows) {
-                foreach ($rows as $table => $values) {
-                    $metadata = $catalog->describeTable(['namespace' => $namespace, 'name' => $table]);
-                    foreach ($values as $row) {
-                        $catalog->insertRow($metadata, self::assignments($row, $context));
-                    }
-                }
+    }
+
+    /**
+     * The Schema argument of a schema op (FCV-4): the documents of the set and its external documents, read from the
+     * recipe's directory and parsed through the public dbspec API; manifest_replace changes the manifest text after
+     * building and keeps its hash.
+     */
+    private static function schemaArgument(array $arg, array $context): Schema
+    {
+        $read = static fn(array $names): array => array_map(
+            static fn(string $name): string => (string) file_get_contents($context['dir'] . '/' . $name),
+            $names,
+        );
+        $documents = [];
+        foreach (Dbspec::parseSet($read($arg['documents']), $read($arg['external'] ?? [])) as $entry) {
+            if ($entry->document === null) {
+                Assert::fail(self::diagnostics($entry->diagnostics));
             }
-            foreach ($case['steps'] as $index => $step) {
-                try {
-                    self::databaseStep($step, $context);
-                } catch (\Throwable $failure) {
-                    Assert::fail(
-                        "recipe $path, case {$case['id']}, step $index ({$step['op']}), database $database: "
-                        . get_class($failure) . ': ' . $failure->getMessage()
-                    );
-                }
-            }
-        } finally {
-            $catalog->close();
+            $documents[] = $entry->document;
         }
+        $result = Dbspec::manifest($documents);
+        if ($result->manifest === null) {
+            Assert::fail(self::diagnostics($result->diagnostics));
+        }
+        $text = $result->manifest->manifestText;
+        if (isset($arg['manifest_replace'])) {
+            $text = str_replace($arg['manifest_replace']['from'], $arg['manifest_replace']['to'], $text);
+        }
+        return new Schema($text, $result->manifest->manifestHash, $result->manifest->externalText);
     }
 
     /**
@@ -587,6 +623,44 @@ final class Recipe
         $catalog = $context['catalog'];
         $table = static fn (): array => ['namespace' => $context['namespace'], 'name' => $s['table']];
         switch ($s['op']) {
+            case 'schema.install':
+                $context['db']->utils()->schema()->install(self::schemaArgument($s['schema'], $context));
+                return ['value' => ['bool' => true]];
+            case 'schema.register':
+                $context['db']->utils()->schema()->register(self::schemaArgument($s['schema'], $context));
+                return ['value' => ['bool' => true]];
+            case 'schema.connect':
+                Orm::connectSchema(
+                    $context['dsn'],
+                    self::schemaArgument($s['schema'], $context),
+                    new Config(),
+                )->close();
+                return ['value' => ['bool' => true]];
+            case 'schema.add_tables_and_columns':
+                $added = $context['db']->utils()->schema()->addTablesAndColumns(
+                    self::schemaArgument($s['schema'], $context),
+                );
+                return ['value' => ['array' => array_map(static fn(string $name): array => ['text' => $name], $added)]];
+            case 'statements.count':
+                $count = 0;
+                $unsubscribe = $context['db']->subscribe(static function () use (&$count): void {
+                    $count++;
+                });
+                try {
+                    foreach ($s['steps'] as $nested) {
+                        self::databaseStep($nested, $context);
+                    }
+                } finally {
+                    $unsubscribe();
+                }
+                return ['count' => $count];
+            case 'transaction':
+                $context['db']->transaction(static function () use ($s, &$context): void {
+                    foreach ($s['steps'] as $nested) {
+                        self::databaseStep($nested, $context);
+                    }
+                });
+                return ['value' => ['bool' => true]];
             case 'catalog.current_namespace':
                 return ['value' => ['text' => $catalog->currentNamespace()]];
             case 'catalog.describe_table':

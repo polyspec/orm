@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The schema installation cases of the six runtimes are one recipe (`contracts/fixtures/schema_install/schema_install.json`) that runs on MySQL, PostgreSQL and SQLite. The native tests of the same behaviour are removed, the register tests are split into a refusal test and an engine-per-hash test, and SCH-14 to SCH-17 state the cases that stay native under FCV-2: the audit transaction, the hash check at load, the bench model and the engine per hash (T334-3-4).
 - The spec states how a database feature runs as a recipe on the run databases: FCV-8 to FCV-14 of docs/spec/feature-coverage.md give the conversion, the databases from the `databases` need and TEST_ENV, the three databases with no exclusion, the failure of a missing DSN, the per-case result, the seed ownership and the native tests (T334-3-4-0).
 - The per-target runtime and database cells of check-recipes (CR17 to CR20) are held: they would duplicate kit's CI plan (config/ci.json targets.runtimes and kit-ci-plan). The committed CR17-1 fields stay as they are (CR17).
 - Every target of CHECK_TARGETS declares its runtime and its database in contracts/check-inputs.json, read from its name first, and the checker refuses a target without either field; multi and all are transitional values until CR18 splits them (CR17-1).
@@ -89,6 +90,7 @@
 - Six test files of the physical DDL behaviour and the IR validate recipe belonged to no feature, so the features check failed in six CI jobs. The physical DDL tests now belong to schema_definition and the IR validate tests to planner (CR54).
 - The preempted test of DbspecRenderTest failed in test (feature_verify_other) of main CI run 41324077414 with nine DSN errors, because it ran the whole file without the database DSNs. testBehaviourPhysical (CR16-1-3) now carries the group database, which the preempted run excludes; the physical cases still run in dbspec-php-check/render (CR55).
 - A leftover source of a compiler fixture case, from an interrupted run, made the next run fail with EEXIST and left its directory in the tree. The run now overwrites a stale source and removes its scratch directory at the end (CR25).
+- The spec states how a database feature runs as a recipe on the run databases: FCV-8 to FCV-14 of docs/spec/feature-coverage.md give the conversion, the databases from the `databases` need and TEST_ENV, the three databases with no exclusion, the failure of a missing DSN, the per-case result, the seed ownership and the native tests (T334-3-4-0).
 
 ## 0.0.21
 

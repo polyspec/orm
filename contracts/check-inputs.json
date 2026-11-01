@@ -1590,6 +1590,100 @@
         "packages/rust/orm/src/codec.rs"
       ]
     },
+    "schema-install-check/go": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/schema_install/**",
+        "packages/go/orm/recipe_schema_install_test.go",
+        "packages/go/internal/recipe/recipe.go",
+        "packages/go/internal/recipe/database.go",
+        "packages/go/orm/utils.go"
+      ]
+    },
+    "schema-install-check/typescript": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/schema_install/**",
+        "packages/ts/tests/schema_install-mysql.test.mjs",
+        "packages/ts/tests/schema_install-postgres.test.mjs",
+        "packages/ts/tests/schema_install-sqlite.test.mjs",
+        "packages/ts/tests/recipe.mjs",
+        "packages/ts/src/catalog.ts"
+      ]
+    },
+    "schema-install-check/python": {
+      "scope": "owner",
+      "needs": [
+        "python",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/schema_install/**",
+        "packages/python/tests/test_schema_install_mysql.py",
+        "packages/python/tests/test_schema_install_postgres.py",
+        "packages/python/tests/test_schema_install_sqlite.py",
+        "packages/python/tests/recipe.py",
+        "packages/python/src/polyspec/orm/database.py"
+      ]
+    },
+    "schema-install-check/php": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/schema_install/**",
+        "packages/php/tests/SchemaInstallRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php",
+        "packages/php/src/Catalog.php",
+        "packages/php/src/Schema.php",
+        "packages/php/tests/bootstrap.php"
+      ]
+    },
+    "schema-install-check/php-extension": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/schema_install/**",
+        "packages/php-ext/tests/SchemaInstallRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/bootstrap.php",
+        "packages/php/tests/SchemaInstallRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php",
+        "packages/php/src/Catalog.php"
+      ]
+    },
+    "schema-install-check/rust": {
+      "scope": "owner",
+      "needs": [
+        "rust",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/schema_install/**",
+        "packages/rust/tests/tests/schema_install_mysql.rs",
+        "packages/rust/tests/tests/schema_install_postgres.rs",
+        "packages/rust/tests/tests/schema_install_sqlite.rs",
+        "packages/rust/tests/src/recipe.rs",
+        "packages/rust/tests/Cargo.toml"
+      ]
+    },
     "catalog-connection-check/go": {
       "scope": "owner",
       "needs": [

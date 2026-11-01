@@ -593,24 +593,6 @@ final class SchemaSetTest extends TestCase
         }, static fn(string $dsn) => self::editedManifest($dsn));
     }
 
-    // Requirements: DBS-105, DBS-107, DBS-108, DBS-110, SCH-7, SCH-8.
-    #[DataProvider('drivers')]
-    public function testExternalDocuments(string $driver): void
-    {
-        // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {
-        }, static fn(string $dsn) => self::externalDocuments($dsn));
-    }
-
-    // Requirements: DBS-119, SCH-11, INT-54.
-    #[DataProvider('drivers')]
-    public function testRegisterSendsNoStatement(string $driver): void
-    {
-        // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {
-        }, static fn(string $dsn) => self::registerSendsNoStatement($dsn));
-    }
-
     /** @return iterable<string, array{array<string, mixed>}> the cases of changed_database.json by their ids */
     public static function changedDatabaseCases(): iterable
     {

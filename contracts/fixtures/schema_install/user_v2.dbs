@@ -1,0 +1,13 @@
+dbspec 1 bench_user
+
+table user {
+  seq i64 identity
+  name varchar(191)
+  nickname varchar(64) null
+  primary key (seq)
+}
+
+table coverage_added {
+  seq i64 identity
+  primary key (seq)
+}

@@ -199,12 +199,6 @@ DBSPEC,
         self::runNativeSchemaSet('testEditedManifest');
     }
 
-    // Requirements: DBS-105, DBS-107, DBS-108, DBS-110, SCH-7, SCH-8.
-    public function testSchemaSetExternalDocuments(): void
-    {
-        self::runNativeSchemaSet('testExternalDocuments');
-    }
-
     /** Runs the library-owned scenario with the loaded native entry points and the same per-driver case databases. */
     private static function runNativeSchemaSet(string $method): void
     {

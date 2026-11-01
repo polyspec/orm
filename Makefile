@@ -2797,6 +2797,40 @@ catalog-connection-check/php: lease-tool php-vendor-check php-models
 catalog-connection-check/php-extension: lease-tool php-vendor-check build-php-ext
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php
 
+# schema-install-check runs the recipe contracts/fixtures/schema_install/schema_install.json on the three databases in the six
+# clients (docs/spec/feature-coverage.md FCV-3): each part runs its client's three entries on the servers of TEST_ENV.
+.PHONY: schema-install-check schema-install-check/go schema-install-check/typescript schema-install-check/python schema-install-check/php schema-install-check/php-extension schema-install-check/rust
+schema-install-check: schema-install-check/go schema-install-check/typescript schema-install-check/python schema-install-check/php schema-install-check/php-extension schema-install-check/rust
+schema-install-check/go: lease-tool
+	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeSchemaInstall(Mysql|Postgres|Sqlite)$$' -count=1
+schema-install-check/typescript: lease-tool orm-codes-typescript
+	$(HOLD_TYPESCRIPT)
+	$(TSC_BUILD)
+	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/schema_install-mysql.test.mjs packages/ts/tests/schema_install-postgres.test.mjs packages/ts/tests/schema_install-sqlite.test.mjs
+schema-install-check/python: python-venv-check
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_schema_install_mysql
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_schema_install_postgres
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_schema_install_sqlite
+schema-install-check/php: lease-tool php-vendor-check
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/SchemaInstallRecipeTest.php
+schema-install-check/php-extension: lease-tool php-vendor-check build-php-ext
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/SchemaInstallRecipeTestExtensionTest.php
+schema-install-check/rust: lease-tool
+	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) schema-install-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test schema_install_mysql --test schema_install_postgres --test schema_install_sqlite
+
+CHECK_TARGETS += schema-install-check/go
+CI_TARGETS_client_db_go += schema-install-check/go
+CHECK_TARGETS += schema-install-check/typescript
+CI_TARGETS_client_db_typescript += schema-install-check/typescript
+CHECK_TARGETS += schema-install-check/python
+CI_TARGETS_client_db_python += schema-install-check/python
+CHECK_TARGETS += schema-install-check/php
+CI_TARGETS_client_db_php += schema-install-check/php
+CHECK_TARGETS += schema-install-check/php-extension
+CI_TARGETS_client_db_php_extension += schema-install-check/php-extension
+CHECK_TARGETS += schema-install-check/rust
+CI_TARGETS_client_db_rust += schema-install-check/rust
+
 # bind-check runs the shared cases of tests/bind/vectors.json in the five clients (tests/bind/README.md): the bind
 # cases check a parameter against the logical type of its slot, and the message cases write it as an IR executor
 # message value. Each runner compares its answers with the file, so the clients agree when every runner passes; the

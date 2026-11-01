@@ -1,0 +1,11 @@
+dbspec 1 coverage_external
+
+use bench_user { user }
+
+table coverage_external_post {
+  seq i64 identity
+  user_seq i64
+  primary key (seq)
+  index ix_coverage_external_post_user (user_seq)
+  foreign key fk_coverage_external_post_user (user_seq) references user (seq)
+}

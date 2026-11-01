@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b2b857a5b14a1c51bc4b9261e498c643c716e089025d2385282d0594ea5ddcea -->
+<!-- source-sha256: ee2f429b9e5fc97ae9b71f46935f39eceb05dc6501e047bfff2a2983139d09e9 -->
 # 변경 이력
 
 ## Unreleased
@@ -90,6 +90,7 @@
 - DbspecRenderTest의 preempted 검사는 main CI run 41324077414의 test (feature_verify_other) job에서 DSN 오류 아홉 개로 실패했다. 데이터베이스 DSN 없이 파일 전체를 실행했기 때문이다. testBehaviourPhysical(CR16-1-3)은 이제 group database에 속하고 preempted 실행은 그 group을 제외한다. 물리 케이스는 dbspec-php-check/render에서 여전히 실행된다 (CR55).
 - 중단된 실행이 남긴 compiler fixture case의 오래된 source 때문에 다음 실행이 EEXIST로 실패하고 디렉터리가 트리에 남았다. 이제 실행은 오래된 source를 덮어쓰고 끝에 임시 디렉터리를 지운다 (CR25).
 - 데이터베이스 기능이 실행 데이터베이스에서 recipe로 도는 방식을 spec이 밝힌다: docs/spec/feature-coverage.md의 FCV-8부터 FCV-14까지가 전환, `databases` need와 TEST_ENV로 받는 데이터베이스, 제외 없는 세 데이터베이스, DSN 누락 실패, 사례별 결과, seed 소유, 네이티브 테스트를 정한다 (T334-3-4-0).
+- 여섯 runtime의 스키마 설치 case가 하나의 recipe(`contracts/fixtures/schema_install/schema_install.json`)가 되어 MySQL, PostgreSQL, SQLite에서 돈다. 같은 동작의 네이티브 테스트는 지웠고, register 테스트는 거부 테스트와 hash별 engine 테스트로 나눴으며, SCH-14부터 SCH-17까지는 FCV-2에 따라 네이티브로 남는 case(감사 transaction, load 시점 hash 검사, bench 모델, hash별 engine)를 나타낸다(T334-3-4).
 
 ## 0.0.21
 

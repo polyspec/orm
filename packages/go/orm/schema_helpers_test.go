@@ -44,17 +44,6 @@ func fixtureTexts(t *testing.T, names []string) []string {
 	return documents
 }
 
-// externalSchema is an orm.Schema built from the owned document of contracts/fixtures and the external
-// document (another set's document used through use). It carries the external text, as generated code does.
-func externalSchema(t *testing.T, owned, external []string) *orm.Schema {
-	t.Helper()
-	m, diagnostics := runtimemodel.LoadDocumentSet(fixtureTexts(t, owned), fixtureTexts(t, external))
-	if len(diagnostics) > 0 {
-		t.Fatal(runtimemodel.DiagnosticsError(diagnostics))
-	}
-	return &orm.Schema{Hash: m.ManifestHash, Text: m.ManifestText, External: m.ExternalText}
-}
-
 // rowEntity is the entity of a hand-written model that holds column values by name.
 func rowEntity(name string, s *orm.Schema, columns ...string) *orm.Entity {
 	return &orm.Entity{

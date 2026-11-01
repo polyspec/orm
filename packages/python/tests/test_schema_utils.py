@@ -78,9 +78,8 @@ class SchemaRegisterTest(unittest.TestCase):
         self.assertEqual(caught.exception.code, "CONFIG")
         self.assertEqual(dict(self.db.engines), before)
 
-    # Requirements: INT-54.
-    def test_changed_manifest_is_config_on_db_register_and_connect_schema(self):
-        from polyspec.orm.database import Db
+    # Requirements: SCH-17, INT-54.
+    def test_failed_register_leaves_engines_unchanged(self):
         from polyspec.orm.errors import OrmError
         from polyspec.orm.schema import Schema
 
@@ -95,13 +94,9 @@ class SchemaRegisterTest(unittest.TestCase):
                 manifest_hash=self.schema.manifest_hash,
                 external_text=other.external_text,
             )
-            with self.assertRaises(OrmError) as caught:
+            with self.assertRaises(OrmError):
                 self.db.register(changed)
-            self.assertEqual(caught.exception.code, "CONFIG")
             self.assertEqual(dict(self.db.engines), before)
-            with self.assertRaises(OrmError) as caught:
-                Db.connect_schema(f"sqlite://{tmp}/changed.sqlite3", changed)
-            self.assertEqual(caught.exception.code, "CONFIG")
 
     # Requirements: INT-54.
     def test_failed_connect_schema_leaves_no_open_connection(self):

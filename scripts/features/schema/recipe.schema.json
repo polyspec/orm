@@ -8,7 +8,7 @@
   "properties": {
     "$schema": { "type": "string", "pattern": "(^|/)recipe\\.schema\\.json$" },
     "requirements": { "$ref": "#/$defs/requirements" },
-    "fixture": { "type": "string", "pattern": "(^|/)dbspec-set\\.json$" },
+    "fixture": { "type": "string", "pattern": "(^|/)dbspec-set\\.json$|^none$", "description": "A dbspec-set.json document set, or none: the cases of a recipe with fixture none run on an empty case database (FCV-3)." },
     "seed": { "$ref": "#/$defs/seed" },
     "cases": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/case" } },
     "schema": { "type": "string", "pattern": "\\.dbs$", "description": "The schema manifest that the ir.validate steps check their requests against, relative to the recipe file." }
@@ -185,7 +185,7 @@
     "step": {
       "type": "object",
       "required": ["op"],
-      "properties": { "op": { "enum": ["model.connect", "codec.decode", "codec.encode", "codec.host_encode", "codec.host_decode", "codec.blind_index", "sql.exec", "ir.validate", "ir.answer", "catalog.current_namespace", "catalog.describe_table", "catalog.table_page", "catalog.read_only_query", "catalog.read_only_grid_query", "catalog.row_snapshot", "catalog.insert_row", "catalog.update_row", "catalog.delete_row"] } },
+      "properties": { "op": { "enum": ["model.connect", "codec.decode", "codec.encode", "codec.host_encode", "codec.host_decode", "codec.blind_index", "sql.exec", "ir.validate", "ir.answer", "catalog.current_namespace", "catalog.describe_table", "catalog.table_page", "catalog.read_only_query", "catalog.read_only_grid_query", "catalog.row_snapshot", "catalog.insert_row", "catalog.update_row", "catalog.delete_row", "schema.install", "schema.register", "schema.connect", "schema.add_tables_and_columns", "statements.count", "transaction"] } },
       "oneOf": [
         { "$ref": "#/$defs/ops/model.connect" },
         { "$ref": "#/$defs/ops/codec.decode" },
@@ -202,10 +202,33 @@
         { "$ref": "#/$defs/ops/catalog.row_snapshot" },
         { "$ref": "#/$defs/ops/catalog.insert_row" },
         { "$ref": "#/$defs/ops/catalog.update_row" },
-        { "$ref": "#/$defs/ops/catalog.delete_row" }
+        { "$ref": "#/$defs/ops/catalog.delete_row" },
+        { "$ref": "#/$defs/ops/schema.install" },
+        { "$ref": "#/$defs/ops/schema.register" },
+        { "$ref": "#/$defs/ops/schema.connect" },
+        { "$ref": "#/$defs/ops/schema.add_tables_and_columns" },
+        { "$ref": "#/$defs/ops/statements.count" },
+        { "$ref": "#/$defs/ops/transaction" }
       ]
     },
+    "stepList": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/step" } },
+    "schemaArgument": {
+      "type": "object",
+      "required": ["documents"],
+      "additionalProperties": false,
+      "properties": {
+        "documents": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "\\.dbs$" } },
+        "external": { "type": "array", "items": { "type": "string", "pattern": "\\.dbs$" } },
+        "manifest_replace": { "type": "object", "required": ["from", "to"], "additionalProperties": false, "properties": { "from": { "type": "string", "minLength": 1 }, "to": { "type": "string" } } }
+      }
+    },
     "ops": {
+      "schema.install": { "type": "object", "required": ["op", "schema", "expect"], "additionalProperties": false, "properties": { "op": { "const": "schema.install" }, "schema": { "$ref": "#/$defs/schemaArgument" }, "expect": { "$ref": "#/$defs/expect" } } },
+      "schema.register": { "type": "object", "required": ["op", "schema", "expect"], "additionalProperties": false, "properties": { "op": { "const": "schema.register" }, "schema": { "$ref": "#/$defs/schemaArgument" }, "expect": { "$ref": "#/$defs/expect" } } },
+      "schema.connect": { "type": "object", "required": ["op", "schema", "expect"], "additionalProperties": false, "properties": { "op": { "const": "schema.connect" }, "schema": { "$ref": "#/$defs/schemaArgument" }, "expect": { "$ref": "#/$defs/expect" } } },
+      "schema.add_tables_and_columns": { "type": "object", "required": ["op", "schema", "expect"], "additionalProperties": false, "properties": { "op": { "const": "schema.add_tables_and_columns" }, "schema": { "$ref": "#/$defs/schemaArgument" }, "expect": { "$ref": "#/$defs/expect" } } },
+      "statements.count": { "type": "object", "required": ["op", "steps", "expect"], "additionalProperties": false, "properties": { "op": { "const": "statements.count" }, "steps": { "$ref": "#/$defs/stepList" }, "expect": { "type": "object", "minProperties": 1, "additionalProperties": { "$ref": "#/$defs/outcomes/count" } } } },
+      "transaction": { "type": "object", "required": ["op", "steps", "expect"], "additionalProperties": false, "properties": { "op": { "const": "transaction" }, "steps": { "$ref": "#/$defs/stepList" }, "expect": { "$ref": "#/$defs/expect" } } },
       "model.connect": {
         "type": "object",
         "required": ["op", "pool_size", "as"],
@@ -428,6 +451,12 @@
       }
     },
     "outcomes": {
+      "count": {
+        "oneOf": [
+          { "type": "object", "required": ["count"], "additionalProperties": false, "properties": { "count": { "type": "integer", "minimum": 0 } } },
+          { "type": "object", "required": ["error"], "additionalProperties": false, "properties": { "error": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" } } }
+        ]
+      },
       "value": {
         "oneOf": [
           { "type": "object", "required": ["value"], "additionalProperties": false, "properties": { "value": { "$ref": "#/$defs/argument" } } },

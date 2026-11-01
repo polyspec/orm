@@ -10,7 +10,7 @@ import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { Db, OrmError, StyledValue, blindIndex, connectCatalog, dbspecManifest, decode, encode, hostDecode, hostEncode, parseDbspec, readDbspecFile, registerModel } from '../dist/index.js';
+import { Db, OrmError, StyledValue, blindIndex, connectCatalog, dbspecManifest, decode, encode, hostDecode, hostEncode, parseDbspec, parseDbspecSet, readDbspecFile, registerModel } from '../dist/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { withCaseDatabase } from './case-database.mjs';
@@ -226,7 +226,8 @@ async function databaseRecipe(path, database) {
   const recipe = JSON.parse(await readFile(resolve(root, path), 'utf8'));
   const name = path;
   if (recipe.fixture === undefined) throw new Error(`recipe ${name}: no fixture, so it has no database`);
-  const schema = await fixtureSchema(resolve(root, recipe.fixture));
+  // A fixture of none runs every case on an empty case database; the helper never infers it (FCV-3).
+  const schema = recipe.fixture === NONE_FIXTURE ? undefined : await fixtureSchema(resolve(root, recipe.fixture));
   for (const recipeCase of recipe.cases) {
     caseTest(recipeCase.id, DATABASE, ({ step }) =>
       withCaseDatabase(database, step, caseDatabase => runCase({ name, recipe, recipeCase, database, schema, caseDatabase, step })));
@@ -250,15 +251,27 @@ async function fixtureSchema(setPath) {
   return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
 }
 
+const NONE_FIXTURE = 'none';
+
 async function runCase({ name, recipe, recipeCase, database, schema, caseDatabase, step }) {
   const db = await Db.connect(caseDatabase.dsn);
-  try { await db.utils().schema().install(schema); } finally { await db.close(); }
-  step('schema installed');
+  try {
+    if (schema !== undefined) {
+      await db.utils().schema().install(schema);
+      step('schema installed');
+    }
+    await runCaseOn({ name, recipe, recipeCase, database, caseDatabase, step, db });
+  } finally {
+    await db.close();
+  }
+}
+
+async function runCaseOn({ name, recipe, recipeCase, database, caseDatabase, step, db }) {
   const catalog = await connectCatalog(caseDatabase.dsn);
   try {
     const namespace = await catalog.currentNamespace();
     const bound = new Map([['database', { text: caseDatabase.name }]]);
-    const context = { catalog, namespace, database, dsn: caseDatabase.dsn, bound };
+    const context = { catalog, namespace, database, dsn: caseDatabase.dsn, bound, db, dir: dirname(resolve(root, name)) };
     for (const rows of [recipe.seed?.rows, recipeCase.seed?.rows]) {
       for (const [table, values] of Object.entries(rows ?? {})) {
         const metadata = await catalog.describeTable({ namespace, name: table });
@@ -541,3 +554,60 @@ async function checkAnswer(step, database) {
   }
   if (!isDeepStrictEqual(got, expect.value)) throw new Error(`got ${JSON.stringify(got)}, want ${JSON.stringify(expect.value)}`);
 }
+
+// Schema installation (FCV-4). A schema argument is the document set of its files, read from the recipe's directory, parsed
+// with its external documents through the public dbspec API and built into a manifest; manifest_replace changes the manifest
+// text after building and keeps its hash, so that the text no longer hashes to it.
+async function schemaArgument(arg, context) {
+  const read = names => Promise.all(names.map(name => readFile(resolve(context.dir, name), 'utf8')));
+  const set = parseDbspecSet(await read(arg.documents), await read(arg.external ?? []));
+  const diagnostics = set.flatMap(entry => entry.diagnostics);
+  if (diagnostics.length > 0) throw new Error(`schema: ${JSON.stringify(diagnostics)}`);
+  const built = dbspecManifest(set.map(entry => entry.document));
+  if (built.manifest === null) throw new Error(`schema: ${JSON.stringify(built.diagnostics)}`);
+  let manifestText = built.manifest.manifestText;
+  if (arg.manifest_replace !== undefined) manifestText = manifestText.replaceAll(arg.manifest_replace.from, arg.manifest_replace.to);
+  return { manifestText, manifestHash: built.manifest.manifestHash, externalText: built.manifest.externalText };
+}
+
+// okValue is the value of an op that returns without error (FCV-4).
+const okValue = { value: { bool: true } };
+
+// runNested runs the nested steps of statements.count or transaction, each with its own expect, through the same runStep (FCV-4).
+async function runNested(steps, context) {
+  for (const nested of steps) await runStep(nested, context);
+}
+
+Object.assign(OPS, {
+  async 'schema.install'(s, context) {
+    await context.db.utils().schema().install(await schemaArgument(s.schema, context));
+    return okValue;
+  },
+  async 'schema.register'(s, context) {
+    context.db.utils().schema().register(await schemaArgument(s.schema, context));
+    return okValue;
+  },
+  async 'schema.connect'(s, context) {
+    const connected = await Db.connectSchema(context.dsn, await schemaArgument(s.schema, context));
+    await connected.close();
+    return okValue;
+  },
+  async 'schema.add_tables_and_columns'(s, context) {
+    const added = await context.db.utils().schema().addTablesAndColumns(await schemaArgument(s.schema, context));
+    return { value: { array: added.map(text => ({ text })) } };
+  },
+  async 'statements.count'(s, context) {
+    let count = 0;
+    const unsubscribe = context.db.subscribe(() => { count += 1; });
+    try {
+      await runNested(s.steps, context);
+    } finally {
+      unsubscribe();
+    }
+    return { count };
+  },
+  async transaction(s, context) {
+    await context.db.transaction(() => runNested(s.steps, context));
+    return okValue;
+  },
+});

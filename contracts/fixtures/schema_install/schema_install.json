@@ -1,0 +1,698 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "DBS-104",
+    "DBS-107",
+    "DBS-108",
+    "DBS-119",
+    "DBS-120",
+    "INT-54",
+    "INT-55",
+    "INT-132",
+    "INT-133",
+    "PLN-44",
+    "SCH-7",
+    "SCH-10",
+    "SCH-11"
+  ],
+  "fixture": "none",
+  "cases": [
+    {
+      "id": "install_existing",
+      "requirements": [
+        "DBS-108",
+        "SCH-7"
+      ],
+      "steps": [
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "user.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "user.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "user",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "primary_key": [
+                "seq"
+              ],
+              "reliable_row_identity": true
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "primary_key": [
+                "seq"
+              ],
+              "reliable_row_identity": true
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "primary_key": [
+                "seq"
+              ],
+              "reliable_row_identity": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "install_partial",
+      "requirements": [
+        "DBS-108",
+        "SCH-10"
+      ],
+      "steps": [
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "user.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "partial.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": {
+            "mysql": "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'coverage_install_missing'",
+            "postgres": "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'coverage_install_missing'",
+            "sqlite": "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'coverage_install_missing'"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "install_transaction",
+      "requirements": [
+        "DBS-108",
+        "PLN-44"
+      ],
+      "steps": [
+        {
+          "op": "transaction",
+          "steps": [
+            {
+              "op": "schema.install",
+              "schema": {
+                "documents": [
+                  "user.dbs"
+                ]
+              },
+              "expect": {
+                "mysql": {
+                  "error": "CONFIG"
+                },
+                "postgres": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "bool": true
+                  }
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "register_sends_no_statement",
+      "requirements": [
+        "SCH-11",
+        "INT-54"
+      ],
+      "steps": [
+        {
+          "op": "statements.count",
+          "steps": [
+            {
+              "op": "schema.register",
+              "schema": {
+                "documents": [
+                  "member.dbs"
+                ],
+                "external": [
+                  "user.dbs"
+                ]
+              },
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "postgres": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "bool": true
+                  }
+                }
+              }
+            },
+            {
+              "op": "schema.register",
+              "schema": {
+                "documents": [
+                  "member.dbs"
+                ],
+                "external": [
+                  "user.dbs"
+                ]
+              },
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "postgres": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "bool": true
+                  }
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "count": 0
+            },
+            "postgres": {
+              "count": 0
+            },
+            "sqlite": {
+              "count": 0
+            }
+          }
+        },
+        {
+          "op": "schema.register",
+          "schema": {
+            "documents": [
+              "member.dbs"
+            ],
+            "external": [
+              "user.dbs"
+            ],
+            "manifest_replace": {
+              "from": "coverage_external_post",
+              "to": "coverage_external_post_changed"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "connect_external_documents",
+      "requirements": [
+        "DBS-107",
+        "DBS-119",
+        "INT-132",
+        "INT-133"
+      ],
+      "steps": [
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "user.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.connect",
+          "schema": {
+            "documents": [
+              "member.dbs"
+            ],
+            "external": [
+              "user.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.connect",
+          "schema": {
+            "documents": [
+              "member.dbs"
+            ],
+            "external": [
+              "user.dbs"
+            ],
+            "manifest_replace": {
+              "from": "coverage_external_post",
+              "to": "coverage_external_post_changed"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "schema.connect",
+          "schema": {
+            "documents": [
+              "member.dbs"
+            ],
+            "external": [
+              "user_drifted.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "install_external_drift",
+      "requirements": [
+        "DBS-107",
+        "DBS-108",
+        "INT-55"
+      ],
+      "steps": [
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "user.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "member.dbs"
+            ],
+            "external": [
+              "user_drifted.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": {
+            "mysql": "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'coverage_external_post'",
+            "postgres": "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'coverage_external_post'",
+            "sqlite": "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'coverage_external_post'"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "add_tables_and_columns",
+      "requirements": [
+        "SCH-10",
+        "DBS-108"
+      ],
+      "steps": [
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "user.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.add_tables_and_columns",
+          "schema": {
+            "documents": [
+              "user_v2.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "text": "coverage_added"
+                  },
+                  {
+                    "text": "user.nickname"
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "text": "coverage_added"
+                  },
+                  {
+                    "text": "user.nickname"
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "text": "coverage_added"
+                  },
+                  {
+                    "text": "user.nickname"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "user",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "name",
+                "nickname"
+              ],
+              "primary_key": [
+                "seq"
+              ],
+              "reliable_row_identity": true
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "name",
+                "nickname"
+              ],
+              "primary_key": [
+                "seq"
+              ],
+              "reliable_row_identity": true
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "name",
+                "nickname"
+              ],
+              "primary_key": [
+                "seq"
+              ],
+              "reliable_row_identity": true
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

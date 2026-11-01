@@ -16,10 +16,9 @@
 //
 // Usage: node packages/ts/tests/schema-set.mjs [case ...] (after npm run typescript:build)
 import { readFile } from 'node:fs/promises';
-import { CORE, Db, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
+import { CORE, Db, OrmError, registerModel } from '../dist/index.js';
 import { withCaseDatabase } from './case-database.mjs';
 import { registerDatabaseCases } from './database-case-tests.mjs';
-import { nativeQuery } from './coverage_case.mjs';
 import { classesFromModel, manifestOf } from './registered_models.mjs';
 
 const benchText = await readFile(new URL('../../../contracts/fixtures/bench/bench.dbs', import.meta.url), 'utf8');
@@ -134,143 +133,10 @@ for (const name of ['core', 'core_extra', 'member', 'member_v2']) {
   externalTexts[name] = await readFile(new URL(`../../../contracts/fixtures/external/${name}.dbs`, import.meta.url), 'utf8');
 }
 
-/**
- * The generated schema value of a document set that owns the documents and uses the external documents: each
- * document is parsed with all others as its set and the external documents are marked external.
- */
-function externalSchema(owned, external) {
-  const texts = [...owned, ...external].map(name => externalTexts[name]);
-  const headerName = text => text.slice('dbspec 1 '.length, text.indexOf('\n'));
-  const documents = texts.map((text, i) => {
-    const set = {};
-    texts.forEach((other, j) => { if (j !== i) set[headerName(other)] = other; });
-    const parsed = parseDbspec(text, set);
-    if (parsed.document === null) throw new Error(JSON.stringify(parsed.diagnostics));
-    return i >= owned.length ? Object.freeze({ ...parsed.document, external: true }) : parsed.document;
-  });
-  const { manifest } = dbspecManifest(documents);
-  if (manifest === null) throw new Error('the external fixture set has no manifest');
-  return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash, externalText: manifest.externalText };
-}
-
-/** The error a run throws, or null when it succeeds. */
-async function thrown(run) {
-  try { await run(); return null; } catch (error) { return error; }
-}
-
-/**
- * The externalCase of packages/go/orm/external_documents_test.go. The member set uses ext_account and ext_audit of ext_core
- * as uses, and owns only ext_post and ext_post_history (contracts/fixtures/external).
- * - If an external table is missing, install and addTablesAndColumns are CONFIG before any statement and do not create the member's
- *   tables. Registration does not read the database, so connectSchema connects even if the external tables are missing or differ.
- * - After core is installed, member install creates only the tables it owns, and running it again changes nothing. addTablesAndColumns
- *   adds columns only to the tables it owns.
- * - The member's audit transaction inserts a record into ext_audit, which core owns.
- * - If a writable table of an external document differs from the database (a missing column), it is CONFIG.
- */
-// Requirements: DBS-105, DBS-107, DBS-108, DBS-110, SCH-7, SCH-8.
-async function externalDocuments(dsn, driver) {
-  const core = manifestOf(externalTexts.core);
-  const coreSchema = { manifestText: core.manifestText, manifestHash: core.manifestHash };
-  const member = externalSchema(['member'], ['core']);
-  const memberV2 = externalSchema(['member_v2'], ['core']);
-  const drifted = externalSchema(['member'], ['core_extra']);
-  const options = { auditSource: () => ({ actor: 'writer' }) };
-  const expectConfig = (step, error, message) => {
-    check(error instanceof OrmError && error.code === 'CONFIG' && error.message.includes(message), `${step}: ${error?.code ?? ''} ${error?.message ?? 'no error'}, want CONFIG with ${message}`);
-  };
-  const missing = 'the tables that the set uses from external documents differ from the database: table ext_account does not exist; table ext_audit does not exist';
-  await (await Db.connectSchema(dsn, member, options)).close();
-  const db = await Db.connect(dsn, options);
-  try {
-    const schema = db.utils().schema();
-    const exists = async table => (await thrown(() => nativeQuery(driver, dsn, [`SELECT COUNT(*) AS n FROM ${table}`]))) === null;
-    expectConfig('install before core', await thrown(() => schema.install(member)), missing);
-    expectConfig('addTablesAndColumns before core', await thrown(() => schema.addTablesAndColumns(member)), missing);
-    check(!(await exists('ext_post')), 'ext_post exists after the refused install');
-
-    await schema.install(coreSchema);
-    await nativeQuery(driver, dsn, ["INSERT INTO ext_account (name) VALUES ('kim')"]);
-    for (let i = 0; i < 2; i++) await schema.install(member);
-    for (const table of ['ext_post', 'ext_post_history']) check(await exists(table), `${table} exists after the member install`);
-    const connected = await Db.connectSchema(dsn, member, options);
-    await connected.close();
-
-    const { ext_post: Post } = classesFromModel(registerModel(member.manifestText, member.manifestHash, member.externalText));
-    await db.transaction(async () => {
-      const post = new Post();
-      post[CORE].setValue('account_seq', 1);
-      post[CORE].setValue('title', 'hello');
-      await post.create();
-    }, { audit: {} });
-    const [[record], [history]] = await nativeQuery(driver, dsn, ['SELECT seq, actor FROM ext_audit', 'SELECT audit_seq FROM ext_post_history']);
-    check(record.actor === 'writer' && Number(history.audit_seq) === Number(record.seq), `audit record ${JSON.stringify(record)} and history ${JSON.stringify(history)}, want the record of writer in the history`);
-
-    const unchanged = await schema.addTablesAndColumns(member);
-    check(unchanged.length === 0, `addTablesAndColumns of the installed member: ${JSON.stringify(unchanged)}, want nothing`);
-    const added = await schema.addTablesAndColumns(memberV2);
-    check(JSON.stringify(added) === JSON.stringify(['ext_post.summary', 'ext_post_history.summary']), `addTablesAndColumns of member_v2: ${JSON.stringify(added)}`);
-    const [[accounts]] = await nativeQuery(driver, dsn, ['SELECT COUNT(*) AS n FROM ext_account']);
-    check(Number(accounts.n) === 1, `ext_account has ${accounts.n} rows after the member changes, want 1`);
-
-    const differs = 'the tables that the set uses from external documents differ from the database: column ext_account.nick does not exist';
-    await (await Db.connectSchema(dsn, drifted, options)).close();
-    expectConfig('install with a drifted external table', await thrown(() => schema.install(drifted)), differs);
-    expectConfig('addTablesAndColumns with a drifted external table', await thrown(() => schema.addTablesAndColumns(drifted)), differs);
-  } finally { await db.close(); }
-}
-
-/**
- * Counts all statements the db's pool sent to the database, transaction starts, and reserved sessions. If registration calls the driver,
- * that count increases.
- */
-function countStatements(db) {
-  const counter = { sent: 0 };
-  const pool = db.pool;
-  for (const method of ['execute', 'begin', 'session']) {
-    const original = pool[method];
-    if (typeof original !== 'function') continue;
-    pool[method] = (...args) => { counter.sent++; return original.apply(pool, args); };
-  }
-  return counter;
-}
-
-/**
- * Registration sends no statement to the database (docs/spec/schema.md "Schema registration"). register does not read
- * external documents, and a set that writes them does not read the database either; text that does not hash to the declared hash is CONFIG without any statement. The requests of a registered bench
- * set run on that connection. connectSchema also connects to a database without the external tables.
- */
-// Requirements: SCH-11, DBS-119.
-// Requirements: INT-54.
-async function registerSendsNoStatement(dsn) {
-  const member = externalSchema(['member'], ['core']);
-  const installer = await Db.connect(dsn);
-  try { await installer.utils().schema().install(benchSchema); } finally { await installer.close(); }
-  const db = await Db.connect(dsn);
-  try {
-    const counter = countStatements(db);
-    check(await code(() => new User().connect(db).getCount()) === 'SCHEMA_HASH_MISMATCH', 'bench read before the register');
-    const before = counter.sent;
-    db.utils().schema().register(benchSchema);
-    db.utils().schema().register(benchSchema);
-    db.utils().schema().register(member);
-    const edited = { manifestText: decimal.manifestText.replaceAll('decimal(13,4)', 'decimal(14,4)'), manifestHash: decimal.manifestHash };
-    check(await code(() => db.utils().schema().register(edited)) === 'CONFIG', 'register of a text that does not hash to its declared hash');
-    check(counter.sent === before, `register sent ${counter.sent - before} statements, want 0`);
-    const users = await new User().connect(db).getCount();
-    check(users === 0, `bench read after the register: ${users} rows`);
-  } finally { await db.close(); }
-  // connectSchema also connects to this database, which lacks the external tables: registration does not read external tables.
-  const connected = await Db.connectSchema(dsn, member);
-  await connected.close();
-}
-
 const cases = {
   several_schemas: severalSchemas,
   unregistered_schema: unregisteredSchema,
   edited_manifest: editedManifest,
-  external_documents: externalDocuments,
-  register_sends_no_statement: registerSendsNoStatement,
 };
 registerDatabaseCases({
   feature: 'schema-set', cases, deadline: CASE_DEADLINE_MS, withDatabase: withCaseDatabase,
