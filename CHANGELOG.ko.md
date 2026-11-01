@@ -4,6 +4,9 @@
 
 ## Unreleased
 
+- check runner는 프로세스 표를 256 MiB buffer로 읽고, 실패한 목록은 오류 코드를 밝힌다. 그래서 큰 표가 단계를 SIGTERM으로 실패시키지 않는다 (T351).
+- 문장 runner(INT-150)의 parity unit은 여섯 런타임 모두에서 `Utils.run`과 frame `run`을 이름으로 쓰고, 모든 데이터베이스에서 statement_runner 테스트를 바인딩한다 (T345-7).
+- Python runtime은 `utils().run(fn)`을 public으로 두고, frame의 text가 아닌 statement는 CONFIG로 실패한다 (T345-6).
 - 명세는 데이터베이스 feature가 run database에서 recipe로 실행되는 방법을 정한다: FCV-8부터 FCV-14까지가 전환, `databases` need와 TEST_ENV, 세 데이터베이스(제외 없음), 실패 사례를 정한다 (FCV-8~FCV-14).
 - 두 branch의 check-recipes 작업이 하나의 통합으로 main에 들어간다. 한국어 checklist는 영어 checklist의 모든 row를 가지고, 변경 이력은 그 commit들의 항목을 가지며, Makefile은 `rust-compiler-fixtures-check/unit`에서 node를 `$(NODE)`로 실행하고, `config/rebuild.json`은 `scripts/generate/once.mts`와 `scripts/php/php-ext-build.mts`를 분류한다 (CR26).
 - check runner는 실패한 target의 `::error` 줄을 출력하지 않아, GitHub Actions에서 실패는 작업이 끝나야 보였다. 이제 실패한 target은 끝날 때 `::error` 줄을 출력한다 (CR1).

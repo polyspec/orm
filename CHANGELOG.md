@@ -3,6 +3,10 @@
 
 ## Unreleased
 
+- The check runner reads the process table with a 256 MiB buffer and names the error code of a failed listing, so a large table no longer fails a step with SIGTERM (T351).
+- The parity units of the statement runner (INT-150) name `Utils.run` and the frame `run` in all six runtimes, and bind the statement_runner tests on every database (T345-7).
+- The Python runtime makes `utils().run(fn)` public, calling `fn` with the transaction frame of the connection (INT-150, T345-6).
+- orm-install-rust-crates fetches the crates of each tracked Cargo.lock with `cargo fetch --locked` itself, since kit deleted cargo-downloads-fetch, so `make install` no longer stops with `No rule to make target` (T352).
 - The spec states how a database feature runs as a recipe on the run databases: FCV-8 to FCV-14 of docs/spec/feature-coverage.md give the conversion, the databases from the `databases` need and TEST_ENV, the three databases with no exclusion, the failure of a missing DSN, the per-case result, the seed ownership and the native tests (T334-3-4-0).
 - orm no longer copies the capability table of flowmark: the table "Markdown IR executor" of dialects.md is replaced by a link to the pinned flowmark spec 60, and the markdown-table check that read a flowmark source checkout is removed (T347).
 - The check-recipes work of two branches lands on main as one integration: the Korean checklists hold every row of the English ones, the change logs hold the entries of those commits, the Makefile starts node through `$(NODE)` in `rust-compiler-fixtures-check/unit`, and `config/rebuild.json` classifies `scripts/generate/once.mts` and `scripts/php/php-ext-build.mts` (CR26).
