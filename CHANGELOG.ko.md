@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b53c3c848325faf530a9aacfe70a6f2265acfa63996684fc741848cb0907fc2a -->
+<!-- source-sha256: c70f35804a23830de0373525ef6665e571635666577d9baf58fece9e794e5083 -->
 # 변경 이력
 
 ## Unreleased
 
+- compiler fixtures 테스트는 caseTest로 실행한다. `rust-compiler-fixtures-check`는 native 시험과 runner 시험을 make -j가 함께 실행하는 두 part로 나눠, 한 레시피가 독립 테스트 둘을 실행하지 않는다 (CR25-1).
 - TypeScript client는 소스마다 한 번만 빌드한다. `scripts/typescript/build.mts`는 추적되는 client 소스, 빌드와 모델 스크립트, fixture, 도구 버전의 hash로 정한 key로 `packages/ts/dist`를 게시하고, holder lock 아래에서 동작한다. 기록된 key가 같은 run은 컴파일러를 시작하지 않으므로 `TSC_BUILD`와 `typescript-build`가 한 빌드를 공유한다 (CR5).
 - PHP 확장 site는 한 run 안에서 더 이상 확장을 다시 컴파일하지 않는다. `php-ext-build`은 소스와 모드마다 한 번만 `var/php-ext/build/<key>/`에 만들고, key는 소스, arginfo 헤더, PHP 버전, 모드, 컴파일러 설정, kit 빌더로 정하며, holder lock 아래에서 각 site에 복사한다 (CR4).
 - Rust runner의 compiler fixture는 중단된 run이 packages/rust/tests/examples에 stale source를 남기면 EEXIST로 실패했고 빈 디렉터리를 tree에 남겼다. 이제 script는 stale source를 덮어쓰고 끝에 scratch 디렉터리를 지운다 (CR25).

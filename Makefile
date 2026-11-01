@@ -1713,8 +1713,14 @@ generator-consumer-check/rust-chain-scan/stored-column-name: lease-tool
 generator-consumer-check/rust-integration: lease-tool
 	cd packages/rust && $(CARGO_TEST) generator-consumer-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-tests --test integration_program generated_typed_getter_is_a_checked_public_consumer_api -- --test-threads=1 --exact
 
-rust-compiler-fixtures-check: lease-tool
+# rust-compiler-fixtures-check runs its two suites as parts that make -j runs together (KSTD-5-23): the native compiler fixtures, and the test of their runner.
+.PHONY: rust-compiler-fixtures-check rust-compiler-fixtures-check/native rust-compiler-fixtures-check/unit
+rust-compiler-fixtures-check: rust-compiler-fixtures-check/native rust-compiler-fixtures-check/unit
+
+rust-compiler-fixtures-check/native: lease-tool
 	cd packages/rust && $(CARGO_TEST) rust-compiler-fixtures-native -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm --test compiler_fixtures -- --test-threads=1
+
+rust-compiler-fixtures-check/unit: lease-tool
 	node --test scripts/rust/compiler-fixtures.test.mts
 
 # Native no-database cases bind driver errors, cells and the Markdown wire handshake to each runtime's native call path.
