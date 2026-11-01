@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Python recipe tests format the case filter of the chain path as ruff format writes it (CR43).
 - The TypeScript client no longer exports markdownParam, which only markdown.ts uses; knip reported it as an unused export (CR42).
 - The interface snapshot of the landed recipe rows is recorded again: the Go, PHP extension, PHP, Rust and TypeScript symbol snapshots and the manifest hashes follow the tree (CR41).
 - The plan and spec words that the docs rules of kit 0.0.92 refuse are reworded in the Task and Deliverables cells of the check-recipes, execution and kit-standard rows and in docs/spec/schema.ko.md, with the same meaning in both languages (CR40).

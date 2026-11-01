@@ -118,9 +118,7 @@ def recipe_tests(path: str, database: str):
         step["op"] == "ir.answer" for case in recipe["cases"] for step in case["steps"]
     )
     cases = [case for case in recipe["cases"] if _runnable(case)]
-    return vector_load_tests(
-        ChainRecipeCase if has_chain else RecipeCase, cases, check
-    )
+    return vector_load_tests(ChainRecipeCase if has_chain else RecipeCase, cases, check)
 
 
 def _answer(step: dict, database: str) -> None:

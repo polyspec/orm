@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 13b0acfa7807d65e047e69288687709229ba532ebeb624888456ab81579a87c0 -->
+<!-- source-sha256: 48b2ce9d5722a0c32d6daa0752b762d98449cb71e275a9e0dece49aad11387ca -->
 # 변경 이력
 
 ## Unreleased
 
+- Python recipe 시험의 chain 경로 case 필터를 ruff format이 쓰는 형태로 고쳤다 (CR43).
 - TypeScript client는 markdownParam을 더 이상 export하지 않는다. markdown.ts만 쓰며, knip이 unused export로 보고했다 (CR42).
 - 착륙한 recipe row의 interface snapshot을 다시 기록했다. Go, PHP extension, PHP, Rust, TypeScript symbol snapshot과 manifest hash가 tree를 따른다 (CR41).
 - kit 0.0.92 docs rules가 거부하는 계획과 spec의 단어를 check-recipes, execution, kit-standard 행의 Task와 Deliverables 칸과 docs/spec/schema.ko.md에서 두 언어의 뜻을 같게 바꾼다 (CR40).

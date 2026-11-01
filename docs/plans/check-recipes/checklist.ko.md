@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-check-recipes -->
-<!-- source-sha256: d4469f175c662ca106c973217c2658d78ef6acdd9909375e211572c839f8e19a -->
+<!-- source-sha256: c9bd5574dc1ae5f2e2fa357b1feb338a7ded9ed33ca8499047febedf6207d1a5 -->
 # 병렬 check runner와 모든 공통 동작의 recipe 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -64,3 +64,4 @@
 | CR40 | docs: kit 0.0.92 docs rules가 거부하는 계획과 spec의 단어를, 나열한 row의 Task와 Deliverables 칸과 docs/spec/schema.ko.md에서 두 언어의 뜻을 같게 바꾼다. CR32와 CR34도 바꾼다 (#CR40) | docs/plans/check-recipes/checklist.md, docs/plans/check-recipes/checklist.ko.md, docs/plans/execution/checklist.ko.md, docs/plans/kit-standard/checklist.md, docs/plans/kit-standard/checklist.ko.md, docs/spec/schema.ko.md | `make docs-rules-check` | [v] |
 | CR41 | chore: 착륙한 recipe row의 interface snapshot을 다시 기록한다 (#CR41) | contracts/interfaces.json, contracts/symbols/go.json, contracts/symbols/php-extension.json, contracts/symbols/php.json, contracts/symbols/rust.json, contracts/symbols/typescript.json | `make interface-check/self-test` | [v] |
 | CR42 | fix(ts): markdownParam은 markdown.ts만 쓰므로 export를 뗀다. knip이 unused export로 보고한다 (#CR42) | packages/ts/src/markdown.ts | `make lint-ts` | [v] |
+| CR43 | fix(python): ruff format이 보고하는 recipe.py의 chain case 필터 줄을 고친다 (#CR43) | packages/python/tests/recipe.py | `ruff format --check --config node_modules/@polyspec/kit/ruff.toml .` | [v] |
