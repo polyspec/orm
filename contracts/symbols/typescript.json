@@ -10008,8 +10008,8 @@
     "signature": "export function markdownLinks(row: readonly unknown[]): MarkdownLinks"
   },
   "packages/ts/src/markdown.ts::markdownParam": {
-    "exported": true,
-    "signature": "export function markdownParam(db: Pick\u003cDb, 'zone' | 'aesKey'\u003e, i: number, value: unknown, uses: readonly ParamUse[]): string"
+    "exported": false,
+    "signature": "function markdownParam(db: Pick\u003cDb, 'zone' | 'aesKey'\u003e, i: number, value: unknown, uses: readonly ParamUse[]): string"
   },
   "packages/ts/src/markdown.ts::markdownRead": {
     "exported": true,
@@ -10623,13 +10623,149 @@
     "exported": true,
     "signature": "class Slots"
   },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.boolValue": {
+    "exported": true,
+    "signature": "(v0: boolean | readonly (boolean)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.bytesValue": {
+    "exported": true,
+    "signature": "(v0: Uint8Array | readonly (Uint8Array)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.dateValue": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.datetime0Value": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.datetime1Value": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.datetime2Value": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.datetime3Value": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.datetime6Value": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.decimalValue": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
   "packages/ts/src/models/bind_fixture/models.ts::Slots#field.entity": {
     "exported": true,
     "signature": "EntityDef"
   },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.f64Value": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.getsByDateValue": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) =\u003e Promise\u003cCollection\u003cthis\u003e\u003e"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.getsByDatetime0Value": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) =\u003e Promise\u003cCollection\u003cthis\u003e\u003e"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.getsByDatetime3Value": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) =\u003e Promise\u003cCollection\u003cthis\u003e\u003e"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.getsByDatetime6Value": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) =\u003e Promise\u003cCollection\u003cthis\u003e\u003e"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.getsByI16Value": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cCollection\u003cthis\u003e\u003e"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.getsByI32Value": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cCollection\u003cthis\u003e\u003e"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.getsByI64Value": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cCollection\u003cthis\u003e\u003e"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.getsByTime0Value": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e Promise\u003cCollection\u003cthis\u003e\u003e"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.getsByTime3Value": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e Promise\u003cCollection\u003cthis\u003e\u003e"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.getsByTime6Value": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e Promise\u003cCollection\u003cthis\u003e\u003e"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.i16Value": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.i32Value": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.i64Value": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.lkTextValue": {
+    "exported": true,
+    "signature": "(v0: string) =\u003e this"
+  },
   "packages/ts/src/models/bind_fixture/models.ts::Slots#field.seq": {
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.textValue": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.time0Value": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.time1Value": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.time2Value": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.time3Value": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.time6Value": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.uuidValue": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.varcharLongValue": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.varcharNullValue": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model | null) =\u003e this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.varcharValue": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
   },
   "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnBoolValue": {
     "exported": true,
@@ -10654,6 +10790,10 @@
   "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnDatetime2Value": {
     "exported": true,
     "signature": "public addColumnDatetime2Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnDatetime3Value": {
+    "exported": true,
+    "signature": "public addColumnDatetime3Value(): this"
   },
   "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnDatetime6Value": {
     "exported": true,
@@ -10747,6 +10887,86 @@
     "exported": true,
     "signature": "public avgSeq(): this"
   },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.forceIndexIxBoolValue": {
+    "exported": true,
+    "signature": "public forceIndexIxBoolValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.forceIndexIxDateValue": {
+    "exported": true,
+    "signature": "public forceIndexIxDateValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.forceIndexIxDatetime0Value": {
+    "exported": true,
+    "signature": "public forceIndexIxDatetime0Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.forceIndexIxDatetime1Value": {
+    "exported": true,
+    "signature": "public forceIndexIxDatetime1Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.forceIndexIxDatetime2Value": {
+    "exported": true,
+    "signature": "public forceIndexIxDatetime2Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.forceIndexIxDatetime3Value": {
+    "exported": true,
+    "signature": "public forceIndexIxDatetime3Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.forceIndexIxDatetime6Value": {
+    "exported": true,
+    "signature": "public forceIndexIxDatetime6Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.forceIndexIxDecimalValue": {
+    "exported": true,
+    "signature": "public forceIndexIxDecimalValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.forceIndexIxF64Value": {
+    "exported": true,
+    "signature": "public forceIndexIxF64Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.forceIndexIxI16Value": {
+    "exported": true,
+    "signature": "public forceIndexIxI16Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.forceIndexIxI32Value": {
+    "exported": true,
+    "signature": "public forceIndexIxI32Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.forceIndexIxI64Value": {
+    "exported": true,
+    "signature": "public forceIndexIxI64Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.forceIndexIxTime0Value": {
+    "exported": true,
+    "signature": "public forceIndexIxTime0Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.forceIndexIxTime1Value": {
+    "exported": true,
+    "signature": "public forceIndexIxTime1Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.forceIndexIxTime2Value": {
+    "exported": true,
+    "signature": "public forceIndexIxTime2Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.forceIndexIxTime3Value": {
+    "exported": true,
+    "signature": "public forceIndexIxTime3Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.forceIndexIxTime6Value": {
+    "exported": true,
+    "signature": "public forceIndexIxTime6Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.forceIndexIxUuidValue": {
+    "exported": true,
+    "signature": "public forceIndexIxUuidValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.forceIndexIxVarcharNullValue": {
+    "exported": true,
+    "signature": "public forceIndexIxVarcharNullValue(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.forceIndexIxVarcharValue": {
+    "exported": true,
+    "signature": "public forceIndexIxVarcharValue(): this"
+  },
   "packages/ts/src/models/bind_fixture/models.ts::Slots.getBoolValue": {
     "exported": true,
     "signature": "public getBoolValue(): boolean"
@@ -10770,6 +10990,10 @@
   "packages/ts/src/models/bind_fixture/models.ts::Slots.getDatetime2Value": {
     "exported": true,
     "signature": "public getDatetime2Value(): string"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getDatetime3Value": {
+    "exported": true,
+    "signature": "public getDatetime3Value(): string"
   },
   "packages/ts/src/models/bind_fixture/models.ts::Slots.getDatetime6Value": {
     "exported": true,
@@ -10863,6 +11087,10 @@
     "exported": true,
     "signature": "public groupByDatetime2Value(): this"
   },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByDatetime3Value": {
+    "exported": true,
+    "signature": "public groupByDatetime3Value(): this"
+  },
   "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByDatetime6Value": {
     "exported": true,
     "signature": "public groupByDatetime6Value(): this"
@@ -10954,6 +11182,10 @@
   "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameDatetime2Value": {
     "exported": true,
     "signature": "public keyNameDatetime2Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameDatetime3Value": {
+    "exported": true,
+    "signature": "public keyNameDatetime3Value(): this"
   },
   "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameDatetime6Value": {
     "exported": true,
@@ -11094,6 +11326,14 @@
   "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByDatetime2ValueDesc": {
     "exported": true,
     "signature": "public orderByDatetime2ValueDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByDatetime3ValueAsc": {
+    "exported": true,
+    "signature": "public orderByDatetime3ValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByDatetime3ValueDesc": {
+    "exported": true,
+    "signature": "public orderByDatetime3ValueDesc(...fn: ColumnFunction[]): this"
   },
   "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByDatetime6ValueAsc": {
     "exported": true,
@@ -11279,6 +11519,10 @@
     "exported": true,
     "signature": "public removeColumnDatetime2Value(): this"
   },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnDatetime3Value": {
+    "exported": true,
+    "signature": "public removeColumnDatetime3Value(): this"
+  },
   "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnDatetime6Value": {
     "exported": true,
     "signature": "public removeColumnDatetime6Value(): this"
@@ -11370,6 +11614,10 @@
   "packages/ts/src/models/bind_fixture/models.ts::Slots.setDatetime2Value": {
     "exported": true,
     "signature": "public setDatetime2Value(value: string): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setDatetime3Value": {
+    "exported": true,
+    "signature": "public setDatetime3Value(value: string): this"
   },
   "packages/ts/src/models/bind_fixture/models.ts::Slots.setDatetime6Value": {
     "exported": true,
@@ -11486,6 +11734,10 @@
   "packages/ts/src/models/complex_query/models.ts::OrderProductItem#field.entity": {
     "exported": true,
     "signature": "EntityDef"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem#field.isClose": {
+    "exported": true,
+    "signature": "(v0: boolean | readonly (boolean)[] | ValueFunction | Model) =\u003e this"
   },
   "packages/ts/src/models/complex_query/models.ts::OrderProductItem#field.matchSeqWithProductSeq": {
     "exported": true,
@@ -11707,6 +11959,18 @@
     "exported": true,
     "signature": "(...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
   },
+  "packages/ts/src/models/complex_query/models.ts::Product#field.content": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product#field.displayEndDt": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model | null] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product#field.displayStartDt": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model | null] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
+  },
   "packages/ts/src/models/complex_query/models.ts::Product#field.entity": {
     "exported": true,
     "signature": "EntityDef"
@@ -11718,6 +11982,22 @@
   "packages/ts/src/models/complex_query/models.ts::Product#field.isAllday": {
     "exported": true,
     "signature": "(v0: boolean | readonly (boolean)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product#field.isClose": {
+    "exported": true,
+    "signature": "(v0: boolean | readonly (boolean)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product#field.isDisplay": {
+    "exported": true,
+    "signature": "(v0: boolean | readonly (boolean)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product#field.likeCount": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product#field.name": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
   },
   "packages/ts/src/models/complex_query/models.ts::Product#field.orderByLikeCountDescAndSeqDesc": {
     "exported": true,
@@ -11734,6 +12014,10 @@
   "packages/ts/src/models/complex_query/models.ts::Product#field.serviceSeq": {
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product#field.shortDescription": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
   },
   "packages/ts/src/models/complex_query/models.ts::Product.addColumnContent": {
     "exported": true,
@@ -12207,6 +12491,10 @@
     "exported": true,
     "signature": "() =\u003e this"
   },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrand#field.name": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
   "packages/ts/src/models/complex_query/models.ts::ProductBrand#field.seq": {
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
@@ -12295,6 +12583,10 @@
     "exported": true,
     "signature": "class ProductBrandLang"
   },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang#field.description": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
   "packages/ts/src/models/complex_query/models.ts::ProductBrandLang#field.entity": {
     "exported": true,
     "signature": "EntityDef"
@@ -12310,6 +12602,10 @@
   "packages/ts/src/models/complex_query/models.ts::ProductBrandLang#field.matchSeqWithProductBrandSeq": {
     "exported": true,
     "signature": "() =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang#field.name": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
   },
   "packages/ts/src/models/complex_query/models.ts::ProductBrandLang#field.productBrandSeq": {
     "exported": true,
@@ -12539,6 +12835,10 @@
     "exported": true,
     "signature": "class ProductLang"
   },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang#field.content": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
   "packages/ts/src/models/complex_query/models.ts::ProductLang#field.entity": {
     "exported": true,
     "signature": "EntityDef"
@@ -12555,6 +12855,10 @@
     "exported": true,
     "signature": "() =\u003e this"
   },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang#field.name": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
   "packages/ts/src/models/complex_query/models.ts::ProductLang#field.productSeq": {
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
@@ -12562,6 +12866,10 @@
   "packages/ts/src/models/complex_query/models.ts::ProductLang#field.seq": {
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang#field.shortDescription": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
   },
   "packages/ts/src/models/complex_query/models.ts::ProductLang#field.tupleProductSeqWithLangId": {
     "exported": true,
@@ -12939,6 +13247,10 @@
     "exported": true,
     "signature": "() =\u003e this"
   },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview#field.content": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
   "packages/ts/src/models/complex_query/models.ts::ProductReview#field.entity": {
     "exported": true,
     "signature": "EntityDef"
@@ -13195,6 +13507,14 @@
     "exported": true,
     "signature": "() =\u003e this"
   },
+  "packages/ts/src/models/complex_query/models.ts::User#field.name": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User#field.profileUrl": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
   "packages/ts/src/models/complex_query/models.ts::User#field.seq": {
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
@@ -13323,9 +13643,17 @@
     "exported": true,
     "signature": "class DecimalCase"
   },
+  "packages/ts/src/models/decimal_fixture/models.ts::DecimalCase#field.amount": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
   "packages/ts/src/models/decimal_fixture/models.ts::DecimalCase#field.entity": {
     "exported": true,
     "signature": "EntityDef"
+  },
+  "packages/ts/src/models/decimal_fixture/models.ts::DecimalCase#field.largeValue": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model | null) =\u003e this"
   },
   "packages/ts/src/models/decimal_fixture/models.ts::DecimalCase#field.seq": {
     "exported": true,
@@ -13507,6 +13835,10 @@
     "exported": true,
     "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
   },
+  "packages/ts/src/models/markdown_fixture/models.ts::CodecRows#field.payload": {
+    "exported": true,
+    "signature": "(v0: ValueFunction | null) =\u003e this"
+  },
   "packages/ts/src/models/markdown_fixture/models.ts::CodecRows.addColumnId": {
     "exported": true,
     "signature": "public addColumnId(): this"
@@ -13598,6 +13930,10 @@
   "packages/ts/src/models/markdown_fixture/models.ts::Logs#field.id": {
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::Logs#field.note": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
   },
   "packages/ts/src/models/markdown_fixture/models.ts::Logs#field.task": {
     "exported": true,
@@ -13723,6 +14059,10 @@
     "exported": true,
     "signature": "class People"
   },
+  "packages/ts/src/models/markdown_fixture/models.ts::People#field.active": {
+    "exported": true,
+    "signature": "(v0: boolean | readonly (boolean)[] | ValueFunction | Model) =\u003e this"
+  },
   "packages/ts/src/models/markdown_fixture/models.ts::People#field.addColumnFirstTask": {
     "exported": true,
     "signature": "(fn: (model: this) =\u003e Model) =\u003e this"
@@ -13731,6 +14071,10 @@
     "exported": true,
     "signature": "(fn: (model: this) =\u003e Model) =\u003e this"
   },
+  "packages/ts/src/models/markdown_fixture/models.ts::People#field.age": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model | null) =\u003e this"
+  },
   "packages/ts/src/models/markdown_fixture/models.ts::People#field.andGtJoined": {
     "exported": true,
     "signature": "(...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
@@ -13738,6 +14082,10 @@
   "packages/ts/src/models/markdown_fixture/models.ts::People#field.andLeJoined": {
     "exported": true,
     "signature": "(...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::People#field.deletedAt": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model | null] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
   },
   "packages/ts/src/models/markdown_fixture/models.ts::People#field.email": {
     "exported": true,
@@ -13774,6 +14122,18 @@
   "packages/ts/src/models/markdown_fixture/models.ts::People#field.matchOwnerWithId": {
     "exported": true,
     "signature": "() =\u003e this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::People#field.name": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::People#field.score": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::People#field.updatedAt": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model | null] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
   },
   "packages/ts/src/models/markdown_fixture/models.ts::People.addColumnActive": {
     "exported": true,
@@ -14103,6 +14463,14 @@
     "exported": true,
     "signature": "class Tasks"
   },
+  "packages/ts/src/models/markdown_fixture/models.ts::Tasks#field.done": {
+    "exported": true,
+    "signature": "(v0: boolean | readonly (boolean)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::Tasks#field.due": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model | null] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
+  },
   "packages/ts/src/models/markdown_fixture/models.ts::Tasks#field.entity": {
     "exported": true,
     "signature": "EntityDef"
@@ -14147,9 +14515,17 @@
     "exported": true,
     "signature": "(v0: People | Tasks | Logs | CodecRows) =\u003e this"
   },
+  "packages/ts/src/models/markdown_fixture/models.ts::Tasks#field.points": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
   "packages/ts/src/models/markdown_fixture/models.ts::Tasks#field.pointsEqName": {
     "exported": true,
     "signature": "(v0: People) =\u003e this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::Tasks#field.title": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
   },
   "packages/ts/src/models/markdown_fixture/models.ts::Tasks#field.titleNeName": {
     "exported": true,
@@ -14462,6 +14838,10 @@
   "packages/ts/src/models/models.ts::Account#field.getWriter": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::Account#field.name": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Account#field.newLabel": {
     "exported": true,
@@ -14819,6 +15199,10 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::AuditRecord#field.requestId": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
   "packages/ts/src/models/models.ts::AuditRecord#field.seq": {
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
@@ -15127,6 +15511,14 @@
     "exported": true,
     "signature": "class AuditedNoteHistory"
   },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.auditSeq": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.change": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
   "packages/ts/src/models/models.ts::AuditedNoteHistory#field.entity": {
     "exported": true,
     "signature": "EntityDef"
@@ -15200,6 +15592,18 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::AuditedNoteHistory#field.historyId": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.label": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.previousAuditSeq": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model | null) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.seq": {
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
   },
@@ -15475,6 +15879,14 @@
     "exported": true,
     "signature": "(v0: string | readonly (string)[] | ValueFunction | Model | null) =\u003e this"
   },
+  "packages/ts/src/models/models.ts::Author#field.aesHexPhone": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model | null) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::Author#field.aesKeyVersion": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
   "packages/ts/src/models/models.ts::Author#field.andAesHexEmail": {
     "exported": true,
     "signature": "(v0: string | readonly (string)[] | ValueFunction | Model | null) =\u003e this"
@@ -15571,6 +15983,10 @@
     "exported": true,
     "signature": "(v0: string | readonly (string)[] | ValueFunction | Model | null) =\u003e this"
   },
+  "packages/ts/src/models/models.ts::Author#field.base64Extra": {
+    "exported": true,
+    "signature": "(v0: ValueFunction | null) =\u003e this"
+  },
   "packages/ts/src/models/models.ts::Author#field.betweenReadCount": {
     "exported": true,
     "signature": "(v0: readonly [number, number]) =\u003e this"
@@ -15579,13 +15995,33 @@
     "exported": true,
     "signature": "(v0: readonly [string | Date, string | Date]) =\u003e this"
   },
+  "packages/ts/src/models/models.ts::Author#field.createdTs": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::Author#field.description": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model | null) =\u003e this"
+  },
   "packages/ts/src/models/models.ts::Author#field.descriptionNeName": {
     "exported": true,
     "signature": "(v0: Author | User | Service | ServiceRegion | CompositeAccount | SoftRecord | Account | Project) =\u003e this"
   },
+  "packages/ts/src/models/models.ts::Author#field.displayEndDt": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model | null] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::Author#field.displayStartDt": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model | null] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
+  },
   "packages/ts/src/models/models.ts::Author#field.emailBlindIndex": {
     "exported": true,
     "signature": "(v0: string | readonly (string)[] | ValueFunction | Model | null) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::Author#field.endDt": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.entity": {
     "exported": true,
@@ -15687,15 +16123,27 @@
     "exported": true,
     "signature": "(...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
   },
+  "packages/ts/src/models/models.ts::Author#field.gzExtend": {
+    "exported": true,
+    "signature": "(v0: ValueFunction | null) =\u003e this"
+  },
   "packages/ts/src/models/models.ts::Author#field.ip": {
     "exported": true,
     "signature": "(v0: string | readonly (string)[] | ValueFunction | Model | null) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::Author#field.isAllday": {
+    "exported": true,
+    "signature": "(v0: boolean | readonly (boolean)[] | ValueFunction | Model) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.isClose": {
     "exported": true,
     "signature": "(v0: boolean | readonly (boolean)[] | ValueFunction | Model) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.isDisplay": {
+    "exported": true,
+    "signature": "(v0: boolean | readonly (boolean)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::Author#field.isSingleWork": {
     "exported": true,
     "signature": "(v0: boolean | readonly (boolean)[] | ValueFunction | Model) =\u003e this"
   },
@@ -15718,6 +16166,14 @@
   "packages/ts/src/models/models.ts::Author#field.joinUserSeqWithSeq": {
     "exported": true,
     "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | IpHexCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::Author#field.jsonSetting": {
+    "exported": true,
+    "signature": "(v0: ValueFunction | null) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::Author#field.jsonsTags": {
+    "exported": true,
+    "signature": "(v0: ValueFunction | null) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.leftJoinServiceRegionSeqWithSeq": {
     "exported": true,
@@ -15795,9 +16251,17 @@
     "exported": true,
     "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | IpHexCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
+  "packages/ts/src/models/models.ts::Author#field.readerCount": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
   "packages/ts/src/models/models.ts::Author#field.seq": {
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::Author#field.serializeData": {
+    "exported": true,
+    "signature": "(v0: ValueFunction | null) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.serviceMemberSeq": {
     "exported": true,
@@ -15812,6 +16276,18 @@
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.startDt": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::Author#field.successCount": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::Author#field.targetClubReaderCount": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::Author#field.updatedTs": {
     "exported": true,
     "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
   },
@@ -17203,6 +17679,10 @@
     "exported": true,
     "signature": "class BindCell"
   },
+  "packages/ts/src/models/models.ts::BindCell#field.body": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model | null) =\u003e this"
+  },
   "packages/ts/src/models/models.ts::BindCell#field.entity": {
     "exported": true,
     "signature": "EntityDef"
@@ -17275,9 +17755,17 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::BindCell#field.label": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
   "packages/ts/src/models/models.ts::BindCell#field.seq": {
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::BindCell#field.token": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model | null) =\u003e this"
   },
   "packages/ts/src/models/models.ts::BindCell.addColumnBody": {
     "exported": true,
@@ -17434,6 +17922,18 @@
   "packages/ts/src/models/models.ts::ClockCell#field.andLtAt3": {
     "exported": true,
     "signature": "(...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::ClockCell#field.at0": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::ClockCell#field.at3": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::ClockCell#field.at6": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
   },
   "packages/ts/src/models/models.ts::ClockCell#field.entity": {
     "exported": true,
@@ -17699,6 +18199,10 @@
     "exported": true,
     "signature": "class CompositeAccount"
   },
+  "packages/ts/src/models/models.ts::CompositeAccount#field.accountId": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
   "packages/ts/src/models/models.ts::CompositeAccount#field.andAccountId": {
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
@@ -17786,6 +18290,10 @@
   "packages/ts/src/models/models.ts::CompositeAccount#field.getWriter": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::CompositeAccount#field.name": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
   },
   "packages/ts/src/models/models.ts::CompositeAccount#field.tenantId": {
     "exported": true,
@@ -17927,6 +18435,10 @@
     "exported": true,
     "signature": "class CompositeMembership"
   },
+  "packages/ts/src/models/models.ts::CompositeMembership#field.accountId": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
   "packages/ts/src/models/models.ts::CompositeMembership#field.aliasMemberships": {
     "exported": true,
     "signature": "() =\u003e this"
@@ -18014,6 +18526,10 @@
   "packages/ts/src/models/models.ts::CompositeMembership#field.matchTenantIdWithTenantId": {
     "exported": true,
     "signature": "() =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::CompositeMembership#field.role": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
   },
   "packages/ts/src/models/models.ts::CompositeMembership#field.tenantId": {
     "exported": true,
@@ -18154,6 +18670,14 @@
   "packages/ts/src/models/models.ts::DayCell": {
     "exported": true,
     "signature": "class DayCell"
+  },
+  "packages/ts/src/models/models.ts::DayCell#field.atTime": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model | null) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::DayCell#field.day": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model | null] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
   },
   "packages/ts/src/models/models.ts::DayCell#field.entity": {
     "exported": true,
@@ -18459,9 +18983,17 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::HexCell#field.label": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
   "packages/ts/src/models/models.ts::HexCell#field.seq": {
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::HexCell#field.value": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model | null) =\u003e this"
   },
   "packages/ts/src/models/models.ts::HexCell.addColumnLabel": {
     "exported": true,
@@ -18994,6 +19526,10 @@
   "packages/ts/src/models/models.ts::Project#field.getWriter": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::Project#field.name": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Project#field.seq": {
     "exported": true,
@@ -19607,6 +20143,10 @@
     "exported": true,
     "signature": "() =\u003e this"
   },
+  "packages/ts/src/models/models.ts::ServiceRegion#field.name": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
   "packages/ts/src/models/models.ts::ServiceRegion#field.possibleIsClose": {
     "exported": true,
     "signature": "(value: unknown) =\u003e this"
@@ -19835,6 +20375,10 @@
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
   },
+  "packages/ts/src/models/models.ts::SharedNote#field.title": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
   "packages/ts/src/models/models.ts::SharedNote.addColumnSeq": {
     "exported": true,
     "signature": "public addColumnSeq(): this"
@@ -19923,6 +20467,10 @@
     "exported": true,
     "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
   },
+  "packages/ts/src/models/models.ts::SoftLink#field.deletedAt": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model | null] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
+  },
   "packages/ts/src/models/models.ts::SoftLink#field.entity": {
     "exported": true,
     "signature": "EntityDef"
@@ -19994,6 +20542,10 @@
   "packages/ts/src/models/models.ts::SoftLink#field.getWriter": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::SoftLink#field.label": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
   },
   "packages/ts/src/models/models.ts::SoftLink#field.seq": {
     "exported": true,
@@ -20154,6 +20706,10 @@
   "packages/ts/src/models/models.ts::SoftRecord#field.aliasRecord": {
     "exported": true,
     "signature": "() =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::SoftRecord#field.deletedAt": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model | null] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
   },
   "packages/ts/src/models/models.ts::SoftRecord#field.entity": {
     "exported": true,
@@ -20426,6 +20982,14 @@
   "packages/ts/src/models/models.ts::Task#field.seq": {
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::Task#field.state": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::Task#field.title": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Task.addColumnSeq": {
     "exported": true,
@@ -20822,6 +21386,10 @@
   "packages/ts/src/models/models.ts::UpsertCell#field.getWriter": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::UpsertCell#field.label": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
   },
   "packages/ts/src/models/models.ts::UpsertCell#field.seq": {
     "exported": true,
