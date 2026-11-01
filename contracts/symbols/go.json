@@ -6531,6 +6531,10 @@
     "exported": true,
     "signature": "receiver=*AccountModel func(n int64) *AccountModel"
   },
+  "packages/go/model/account.go::AccountModel.Name": {
+    "exported": true,
+    "signature": "receiver=*AccountModel func[T0 argStringEq](v0 T0) *AccountModel"
+  },
   "packages/go/model/account.go::AccountModel.NewLabel": {
     "exported": true,
     "signature": "receiver=*AccountModel func(v any) *AccountModel"
@@ -7215,6 +7219,10 @@
     "exported": true,
     "signature": "receiver=*AuditRecordModel func() *AuditRecordModel"
   },
+  "packages/go/model/audit_record.go::AuditRecordModel.RequestId": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func[T0 argStringEq](v0 T0) *AuditRecordModel"
+  },
   "packages/go/model/audit_record.go::AuditRecordModel.Restore": {
     "exported": true,
     "signature": "receiver=*AuditRecordModel func() (*AuditRecordModel, error)"
@@ -7699,6 +7707,10 @@
     "exported": true,
     "signature": "receiver=*AuditedNoteHistoryModel func(fn func(*AuditedNoteHistoryModel)) *AuditedNoteHistoryModel"
   },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.AuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func[T0 argIntEq](v0 T0) *AuditedNoteHistoryModel"
+  },
   "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.AvgAuditSeq": {
     "exported": true,
     "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
@@ -7714,6 +7726,10 @@
   "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.AvgSeq": {
     "exported": true,
     "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.Change": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func[T0 argStringEq](v0 T0) *AuditedNoteHistoryModel"
   },
   "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.Connect": {
     "exported": true,
@@ -7879,6 +7895,10 @@
     "exported": true,
     "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
   },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.Label": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func[T0 argStringEq](v0 T0) *AuditedNoteHistoryModel"
+  },
   "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.Limit": {
     "exported": true,
     "signature": "receiver=*AuditedNoteHistoryModel func(offset, count int) *AuditedNoteHistoryModel"
@@ -7995,6 +8015,10 @@
     "exported": true,
     "signature": "receiver=*AuditedNoteHistoryModel func(n int64) *AuditedNoteHistoryModel"
   },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.PreviousAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func[T0 argIntEqNull](v0 T0) *AuditedNoteHistoryModel"
+  },
   "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.Relation": {
     "exported": true,
     "signature": "receiver=*AuditedNoteHistoryModel func(child orm.Model) *AuditedNoteHistoryModel"
@@ -8042,6 +8066,10 @@
   "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.Save": {
     "exported": true,
     "signature": "receiver=*AuditedNoteHistoryModel func() (*AuditedNoteHistoryModel, error)"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.Seq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func[T0 argIntEq](v0 T0) *AuditedNoteHistoryModel"
   },
   "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.SetAuditSeq": {
     "exported": true,
@@ -8427,6 +8455,14 @@
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 argStringEqNull](v0 T0) *AuthorModel"
   },
+  "packages/go/model/author.go::AuthorModel.AesHexPhone": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argStringEqNull](v0 T0) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.AesKeyVersion": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argIntEq](v0 T0) *AuthorModel"
+  },
   "packages/go/model/author.go::AuthorModel.And": {
     "exported": true,
     "signature": "receiver=*AuthorModel func(args ...any) *AuthorModel"
@@ -8575,6 +8611,10 @@
     "exported": true,
     "signature": "receiver=*AuthorModel func() *AuthorModel"
   },
+  "packages/go/model/author.go::AuthorModel.Base64Extra": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argNoneEqNull](v0 T0) *AuthorModel"
+  },
   "packages/go/model/author.go::AuthorModel.BetweenReadCount": {
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 argIntBetween](v0 T0) *AuthorModel"
@@ -8586,6 +8626,10 @@
   "packages/go/model/author.go::AuthorModel.Create": {
     "exported": true,
     "signature": "receiver=*AuthorModel func() (*AuthorModel, error)"
+  },
+  "packages/go/model/author.go::AuthorModel.CreatedTs": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argTimeEq](v0 T0, compared ...any) *AuthorModel"
   },
   "packages/go/model/author.go::AuthorModel.Creates": {
     "exported": true,
@@ -8599,9 +8643,21 @@
     "exported": true,
     "signature": "receiver=*AuthorModel func() *AuthorModel"
   },
+  "packages/go/model/author.go::AuthorModel.Description": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argStringEqNull](v0 T0) *AuthorModel"
+  },
   "packages/go/model/author.go::AuthorModel.DescriptionNeName": {
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 hasName](v0 T0) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.DisplayEndDt": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argTimeEqNull](v0 T0, compared ...any) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.DisplayStartDt": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argTimeEqNull](v0 T0, compared ...any) *AuthorModel"
   },
   "packages/go/model/author.go::AuthorModel.Duplication": {
     "exported": true,
@@ -8610,6 +8666,10 @@
   "packages/go/model/author.go::AuthorModel.EmailBlindIndex": {
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 argStringEqNull](v0 T0) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.EndDt": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argTimeEq](v0 T0, compared ...any) *AuthorModel"
   },
   "packages/go/model/author.go::AuthorModel.ExpectRevision": {
     "exported": true,
@@ -9075,15 +9135,27 @@
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 argTimeCmp](v0 T0, compared ...any) *AuthorModel"
   },
+  "packages/go/model/author.go::AuthorModel.GzExtend": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argNoneEqNull](v0 T0) *AuthorModel"
+  },
   "packages/go/model/author.go::AuthorModel.Ip": {
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 argStringEqNull](v0 T0) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.IsAllday": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argBoolEq](v0 T0) *AuthorModel"
   },
   "packages/go/model/author.go::AuthorModel.IsClose": {
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 argBoolEq](v0 T0) *AuthorModel"
   },
   "packages/go/model/author.go::AuthorModel.IsDisplay": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argBoolEq](v0 T0) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.IsSingleWork": {
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 argBoolEq](v0 T0) *AuthorModel"
   },
@@ -9106,6 +9178,14 @@
   "packages/go/model/author.go::AuthorModel.JoinUserSeqWithSeq": {
     "exported": true,
     "signature": "receiver=*AuthorModel func[C hasSeq](child C) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.JsonSetting": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argNoneEqNull](v0 T0) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.JsonsTags": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argNoneEqNull](v0 T0) *AuthorModel"
   },
   "packages/go/model/author.go::AuthorModel.KeyNameAesHexEmail": {
     "exported": true,
@@ -9747,6 +9827,10 @@
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 hasSeq](v0 T0) *AuthorModel"
   },
+  "packages/go/model/author.go::AuthorModel.ReaderCount": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argIntEq](v0 T0) *AuthorModel"
+  },
   "packages/go/model/author.go::AuthorModel.Relation": {
     "exported": true,
     "signature": "receiver=*AuthorModel func(child orm.Model) *AuthorModel"
@@ -9919,6 +10003,10 @@
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 argIntEq](v0 T0) *AuthorModel"
   },
+  "packages/go/model/author.go::AuthorModel.SerializeData": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argNoneEqNull](v0 T0) *AuthorModel"
+  },
   "packages/go/model/author.go::AuthorModel.ServiceMemberSeq": {
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 argIntEq](v0 T0) *AuthorModel"
@@ -10075,6 +10163,14 @@
     "exported": true,
     "signature": "receiver=*AuthorModel func(v *string) *AuthorModel"
   },
+  "packages/go/model/author.go::AuthorModel.StartDt": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argTimeEq](v0 T0, compared ...any) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.SuccessCount": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argIntEq](v0 T0) *AuthorModel"
+  },
   "packages/go/model/author.go::AuthorModel.SumAesKeyVersion": {
     "exported": true,
     "signature": "receiver=*AuthorModel func() *AuthorModel"
@@ -10123,6 +10219,10 @@
     "exported": true,
     "signature": "receiver=*AuthorModel func() *AuthorModel"
   },
+  "packages/go/model/author.go::AuthorModel.TargetClubReaderCount": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argIntEq](v0 T0) *AuthorModel"
+  },
   "packages/go/model/author.go::AuthorModel.ToArray": {
     "exported": true,
     "signature": "receiver=*AuthorModel func() map[string]any"
@@ -10130,6 +10230,10 @@
   "packages/go/model/author.go::AuthorModel.Update": {
     "exported": true,
     "signature": "receiver=*AuthorModel func(optimistic ...bool) (*AuthorModel, error)"
+  },
+  "packages/go/model/author.go::AuthorModel.UpdatedTs": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argTimeEq](v0 T0, compared ...any) *AuthorModel"
   },
   "packages/go/model/author.go::AuthorModel.UserSeq": {
     "exported": true,
@@ -10222,6 +10326,10 @@
   "packages/go/model/bind_cell.go::BindCellModel.AvgSeq": {
     "exported": true,
     "signature": "receiver=*BindCellModel func() *BindCellModel"
+  },
+  "packages/go/model/bind_cell.go::BindCellModel.Body": {
+    "exported": true,
+    "signature": "receiver=*BindCellModel func[T0 argStringEqNull](v0 T0) *BindCellModel"
   },
   "packages/go/model/bind_cell.go::BindCellModel.Connect": {
     "exported": true,
@@ -10358,6 +10466,10 @@
   "packages/go/model/bind_cell.go::BindCellModel.KeyNameToken": {
     "exported": true,
     "signature": "receiver=*BindCellModel func() *BindCellModel"
+  },
+  "packages/go/model/bind_cell.go::BindCellModel.Label": {
+    "exported": true,
+    "signature": "receiver=*BindCellModel func[T0 argStringEq](v0 T0) *BindCellModel"
   },
   "packages/go/model/bind_cell.go::BindCellModel.Limit": {
     "exported": true,
@@ -10503,6 +10615,10 @@
     "exported": true,
     "signature": "receiver=*BindCellModel func() map[string]any"
   },
+  "packages/go/model/bind_cell.go::BindCellModel.Token": {
+    "exported": true,
+    "signature": "receiver=*BindCellModel func[T0 argStringEqNull](v0 T0) *BindCellModel"
+  },
   "packages/go/model/bind_cell.go::BindCellModel.Update": {
     "exported": true,
     "signature": "receiver=*BindCellModel func(optimistic ...bool) (*BindCellModel, error)"
@@ -10598,6 +10714,18 @@
   "packages/go/model/clock_cell.go::ClockCellModel.AndNot": {
     "exported": true,
     "signature": "receiver=*ClockCellModel func(fn func(*ClockCellModel)) *ClockCellModel"
+  },
+  "packages/go/model/clock_cell.go::ClockCellModel.At0": {
+    "exported": true,
+    "signature": "receiver=*ClockCellModel func[T0 argTimeEq](v0 T0, compared ...any) *ClockCellModel"
+  },
+  "packages/go/model/clock_cell.go::ClockCellModel.At3": {
+    "exported": true,
+    "signature": "receiver=*ClockCellModel func[T0 argTimeEq](v0 T0, compared ...any) *ClockCellModel"
+  },
+  "packages/go/model/clock_cell.go::ClockCellModel.At6": {
+    "exported": true,
+    "signature": "receiver=*ClockCellModel func[T0 argTimeEq](v0 T0, compared ...any) *ClockCellModel"
   },
   "packages/go/model/clock_cell.go::ClockCellModel.AvgSeq": {
     "exported": true,
@@ -11159,6 +11287,10 @@
     "exported": true,
     "signature": "receiver=*CompositeAccountModel func(n int64) *CompositeAccountModel"
   },
+  "packages/go/model/composite_account.go::CompositeAccountModel.Name": {
+    "exported": true,
+    "signature": "receiver=*CompositeAccountModel func[T0 argStringEq](v0 T0) *CompositeAccountModel"
+  },
   "packages/go/model/composite_account.go::CompositeAccountModel.Not": {
     "exported": true,
     "signature": "receiver=*CompositeAccountModel func(fn func(*CompositeAccountModel)) *CompositeAccountModel"
@@ -11334,6 +11466,10 @@
   "packages/go/model/composite_membership.go::CompositeMembershipModel#field.m": {
     "exported": false,
     "signature": "*orm.Core"
+  },
+  "packages/go/model/composite_membership.go::CompositeMembershipModel.AccountId": {
+    "exported": true,
+    "signature": "receiver=*CompositeMembershipModel func[T0 argIntEq](v0 T0) *CompositeMembershipModel"
   },
   "packages/go/model/composite_membership.go::CompositeMembershipModel.AddAllColumns": {
     "exported": true,
@@ -11611,6 +11747,10 @@
     "exported": true,
     "signature": "receiver=*CompositeMembershipModel func() (*CompositeMembershipModel, error)"
   },
+  "packages/go/model/composite_membership.go::CompositeMembershipModel.Role": {
+    "exported": true,
+    "signature": "receiver=*CompositeMembershipModel func[T0 argStringEq](v0 T0) *CompositeMembershipModel"
+  },
   "packages/go/model/composite_membership.go::CompositeMembershipModel.Save": {
     "exported": true,
     "signature": "receiver=*CompositeMembershipModel func() (*CompositeMembershipModel, error)"
@@ -11727,6 +11867,10 @@
     "exported": true,
     "signature": "receiver=*DayCellModel func(fn func(*DayCellModel)) *DayCellModel"
   },
+  "packages/go/model/day_cell.go::DayCellModel.AtTime": {
+    "exported": true,
+    "signature": "receiver=*DayCellModel func[T0 argStringEqNull](v0 T0) *DayCellModel"
+  },
   "packages/go/model/day_cell.go::DayCellModel.AvgSeq": {
     "exported": true,
     "signature": "receiver=*DayCellModel func() *DayCellModel"
@@ -11742,6 +11886,10 @@
   "packages/go/model/day_cell.go::DayCellModel.Creates": {
     "exported": true,
     "signature": "receiver=*DayCellModel func(rows []*DayCellModel, batch int) (int64, error)"
+  },
+  "packages/go/model/day_cell.go::DayCellModel.Day": {
+    "exported": true,
+    "signature": "receiver=*DayCellModel func[T0 argTimeEqNull](v0 T0, compared ...any) *DayCellModel"
   },
   "packages/go/model/day_cell.go::DayCellModel.Delete": {
     "exported": true,
@@ -12219,6 +12367,10 @@
     "exported": true,
     "signature": "receiver=*HexCellModel func() *HexCellModel"
   },
+  "packages/go/model/hex_cell.go::HexCellModel.Label": {
+    "exported": true,
+    "signature": "receiver=*HexCellModel func[T0 argStringEq](v0 T0) *HexCellModel"
+  },
   "packages/go/model/hex_cell.go::HexCellModel.Limit": {
     "exported": true,
     "signature": "receiver=*HexCellModel func(offset, count int) *HexCellModel"
@@ -12350,6 +12502,10 @@
   "packages/go/model/hex_cell.go::HexCellModel.Update": {
     "exported": true,
     "signature": "receiver=*HexCellModel func(optimistic ...bool) (*HexCellModel, error)"
+  },
+  "packages/go/model/hex_cell.go::HexCellModel.Value": {
+    "exported": true,
+    "signature": "receiver=*HexCellModel func[T0 argStringEqNull](v0 T0) *HexCellModel"
   },
   "packages/go/model/hex_cell.go::HexCellModel.assign": {
     "exported": false,
@@ -13047,6 +13203,14 @@
     "exported": false,
     "signature": "type argIntEq interface { ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~[]int | ~[]int8 | ~[]int16 | ~[]int32 | ~[]int64 | ~[]uint | ~[]uint8 | ~[]uint16 | ~[]uint32 | ~[]uint64 | orm.Func | ormModel }"
   },
+  "packages/go/model/orm.go::argIntEqNull": {
+    "exported": false,
+    "signature": "type argIntEqNull interface { ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~[]int | ~[]int8 | ~[]int16 | ~[]int32 | ~[]int64 | ~[]uint | ~[]uint8 | ~[]uint16 | ~[]uint32 | ~[]uint64 | orm.Func | ormModel | orm.NullType }"
+  },
+  "packages/go/model/orm.go::argNoneEqNull": {
+    "exported": false,
+    "signature": "type argNoneEqNull interface { orm.Func | orm.NullType }"
+  },
   "packages/go/model/orm.go::argStringEq": {
     "exported": false,
     "signature": "type argStringEq interface { ~string | ~[]string | orm.Func | ormModel }"
@@ -13066,6 +13230,10 @@
   "packages/go/model/orm.go::argTimeEq": {
     "exported": false,
     "signature": "type argTimeEq interface { time.Time | ~string | []time.Time | ~[]string | orm.Func | ormModel }"
+  },
+  "packages/go/model/orm.go::argTimeEqNull": {
+    "exported": false,
+    "signature": "type argTimeEqNull interface { time.Time | ~string | []time.Time | ~[]string | orm.Func | ormModel | orm.NullType }"
   },
   "packages/go/model/orm.go::hasName": {
     "exported": false,
@@ -13246,6 +13414,10 @@
   "packages/go/model/project.go::ProjectModel.MinusSeq": {
     "exported": true,
     "signature": "receiver=*ProjectModel func(n int64) *ProjectModel"
+  },
+  "packages/go/model/project.go::ProjectModel.Name": {
+    "exported": true,
+    "signature": "receiver=*ProjectModel func[T0 argStringEq](v0 T0) *ProjectModel"
   },
   "packages/go/model/project.go::ProjectModel.Not": {
     "exported": true,
@@ -14315,6 +14487,10 @@
     "exported": true,
     "signature": "receiver=*ServiceRegionModel func(n int64) *ServiceRegionModel"
   },
+  "packages/go/model/service_region.go::ServiceRegionModel.Name": {
+    "exported": true,
+    "signature": "receiver=*ServiceRegionModel func[T0 argStringEq](v0 T0) *ServiceRegionModel"
+  },
   "packages/go/model/service_region.go::ServiceRegionModel.Not": {
     "exported": true,
     "signature": "receiver=*ServiceRegionModel func(fn func(*ServiceRegionModel)) *ServiceRegionModel"
@@ -14739,6 +14915,10 @@
     "exported": true,
     "signature": "receiver=*SharedNoteModel func() *SharedNoteModel"
   },
+  "packages/go/model/shared_note.go::SharedNoteModel.Title": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func[T0 argStringEq](v0 T0) *SharedNoteModel"
+  },
   "packages/go/model/shared_note.go::SharedNoteModel.ToArray": {
     "exported": true,
     "signature": "receiver=*SharedNoteModel func() map[string]any"
@@ -14850,6 +15030,10 @@
   "packages/go/model/soft_link.go::SoftLinkModel.DeleteLock": {
     "exported": true,
     "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.DeletedAt": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func[T0 argTimeEqNull](v0 T0, compared ...any) *SoftLinkModel"
   },
   "packages/go/model/soft_link.go::SoftLinkModel.Duplication": {
     "exported": true,
@@ -14966,6 +15150,10 @@
   "packages/go/model/soft_link.go::SoftLinkModel.KeyNameSeq": {
     "exported": true,
     "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.Label": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func[T0 argStringEq](v0 T0) *SoftLinkModel"
   },
   "packages/go/model/soft_link.go::SoftLinkModel.Limit": {
     "exported": true,
@@ -15210,6 +15398,10 @@
   "packages/go/model/soft_record.go::SoftRecordModel.DeleteLock": {
     "exported": true,
     "signature": "receiver=*SoftRecordModel func() *SoftRecordModel"
+  },
+  "packages/go/model/soft_record.go::SoftRecordModel.DeletedAt": {
+    "exported": true,
+    "signature": "receiver=*SoftRecordModel func[T0 argTimeEqNull](v0 T0, compared ...any) *SoftRecordModel"
   },
   "packages/go/model/soft_record.go::SoftRecordModel.Duplication": {
     "exported": true,
@@ -15771,9 +15963,17 @@
     "exported": true,
     "signature": "receiver=*TaskModel func(v string) *TaskModel"
   },
+  "packages/go/model/task.go::TaskModel.State": {
+    "exported": true,
+    "signature": "receiver=*TaskModel func[T0 argStringEq](v0 T0) *TaskModel"
+  },
   "packages/go/model/task.go::TaskModel.SumSeq": {
     "exported": true,
     "signature": "receiver=*TaskModel func() *TaskModel"
+  },
+  "packages/go/model/task.go::TaskModel.Title": {
+    "exported": true,
+    "signature": "receiver=*TaskModel func[T0 argStringEq](v0 T0) *TaskModel"
   },
   "packages/go/model/task.go::TaskModel.ToArray": {
     "exported": true,
@@ -16322,6 +16522,10 @@
   "packages/go/model/upsert_cell.go::UpsertCellModel.KeyNameSeq": {
     "exported": true,
     "signature": "receiver=*UpsertCellModel func() *UpsertCellModel"
+  },
+  "packages/go/model/upsert_cell.go::UpsertCellModel.Label": {
+    "exported": true,
+    "signature": "receiver=*UpsertCellModel func[T0 argStringEq](v0 T0) *UpsertCellModel"
   },
   "packages/go/model/upsert_cell.go::UpsertCellModel.Limit": {
     "exported": true,
@@ -17685,11 +17889,15 @@
   },
   "packages/go/orm/catalog_metadata.go::CatalogColumn": {
     "exported": true,
-    "signature": "type CatalogColumn struct { Name string NativeType string Nullable bool Generated bool AutomaticKey bool DefaultExpression *string ExpressionDefault bool checkPrecision *int }"
+    "signature": "type CatalogColumn struct { Name string NativeType string Nullable bool Generated bool AutomaticKey bool DefaultExpression *string ExpressionDefault bool CheckPrecision *int }"
   },
   "packages/go/orm/catalog_metadata.go::CatalogColumn#field.AutomaticKey": {
     "exported": true,
     "signature": "bool"
+  },
+  "packages/go/orm/catalog_metadata.go::CatalogColumn#field.CheckPrecision": {
+    "exported": true,
+    "signature": "*int"
   },
   "packages/go/orm/catalog_metadata.go::CatalogColumn#field.DefaultExpression": {
     "exported": true,
@@ -17714,10 +17922,6 @@
   "packages/go/orm/catalog_metadata.go::CatalogColumn#field.Nullable": {
     "exported": true,
     "signature": "bool"
-  },
-  "packages/go/orm/catalog_metadata.go::CatalogColumn#field.checkPrecision": {
-    "exported": false,
-    "signature": "*int"
   },
   "packages/go/orm/catalog_metadata.go::CatalogConnection.DescribeTable": {
     "exported": true,

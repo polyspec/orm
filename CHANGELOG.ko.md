@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ce6d351608832c3b6860356aa972be7f4ef64622efa4a9bcd506962c010e41e9 -->
+<!-- source-sha256: 6c80fa7a5afccc528764d6aaa4de383152d3dd770dbc5300fe17645c2b1e5c46 -->
 # 변경 이력
 
 ## Unreleased
 
+- 착륙한 recipe row의 interface snapshot을 다시 기록했다. Go, PHP extension, PHP, Rust, TypeScript symbol snapshot과 manifest hash가 tree를 따른다 (CR41).
 - kit 0.0.92 docs rules가 거부하는 계획과 spec의 단어를 check-recipes, execution, kit-standard 행의 Task와 Deliverables 칸과 docs/spec/schema.ko.md에서 두 언어의 뜻을 같게 바꾼다 (CR40).
 - `tests/bind/vectors.json`의 contains case(`like_contains`, 다섯 개)가 여섯 runtime 모두에서 message recipe `tests/bind/messages.json`의 case로 실행된다(T334-3-15-4g). contains step의 message는 요청 값이다(PRT-66, PRT-67). 이스케이프와 감싸기는 SQL 쪽 transform(PRT-32)이므로 기대 message는 값 그대로다. Go와 Rust의 contains case는 typed 메서드가 null을 받지 않아 null case를 제외한다. bind message test는 `packages/go/bindmessages`로 옮겨 markdown set이 bind set의 출력을 import하지 않는다.
 - Go model 생성은 `packages/go/models.txt`의 set을 scan으로 정한 순서로 생성한다. scan한 package가 다른 set의 출력을 import하는 set은 그 set 뒤에 생성되며, set 사이의 cycle은 이름을 밝히고 거부한다(`orm-gen sets`, T334-3-15-4g-1). 줄 순서는 더 이상 중요하지 않다. 이전에는 `bindmodel` set을 `markdownmodel` 뒤에 두면 실패했다. 수정.
