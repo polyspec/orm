@@ -4371,6 +4371,24 @@
         "go-lease"
       ]
     },
+    "parity-api-check": {
+      "scope": "suite",
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "python",
+        "node-modules",
+        "interfaces-typescript",
+        "parity-symbols",
+        "php-extension-tools",
+        "databases",
+        "complex-query",
+        "flowmark",
+        "go-lease"
+      ]
+    },
     "bind-models-check": {
       "scope": "owner",
       "needs": [

@@ -204,6 +204,7 @@ caseTest('every target of CHECK_TARGETS declares inputs that match tracked files
   assert.ok(checkTargets.includes('catalog-row-baseline-go-check'), 'CHECK_TARGETS includes appended owner targets');
   const tracked = (await import('node:child_process')).execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean);
   assert.deepEqual(checkInputErrors(inputs, checkTargets, tracked), []);
+  assert.deepEqual(checkInputErrors({ a: { scope: 'owner', needs: [], inputs: ['docs/**'] }, 'parity-api-check': { scope: 'suite', needs: [] } }, ['a'], ['docs/x.md']), []);
   assert.deepEqual(checkInputErrors({ a: { scope: 'owner', needs: [], inputs: ['docs/**'] }, b: { scope: 'owner', needs: [], inputs: ['nothing/**'] } }, ['a', 'c'], ['docs/x.md']), [
     'contracts/check-inputs.json declares no scope of c of CHECK_TARGETS',
     'contracts/check-inputs.json declares b, which is not in CHECK_TARGETS',

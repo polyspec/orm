@@ -2787,6 +2787,10 @@
     "exported": true,
     "signature": "def render_models(m: RuntimeModel, out_dir: str, scan) -\u003e str"
   },
+  "packages/python/src/polyspec/orm/generate/python.py::write_text_if_changed": {
+    "exported": true,
+    "signature": "def write_text_if_changed(path: str, text: str) -\u003e None"
+  },
   "packages/python/src/polyspec/orm/generate/scan.py::parameters": {
     "exported": true,
     "signature": "def parameters(args) -\u003e list"

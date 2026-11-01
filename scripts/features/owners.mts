@@ -266,13 +266,17 @@ export function untestedPaths(changed: string[], { owners, helpers, targets, pat
 // checkInputErrors returns one error for each place where declared does not declare a CHECK_TARGETS target, or declares a target that is not in CHECK_TARGETS,
 // declares a need the setup step does not provide, or where an owner target's pattern matches no tracked file
 // The shape of scope, needs, and inputs is checked by the schema.
+// PHASE_TARGETS are the parity API phase targets: the parity-api job of ci-pipeline runs them, not a CI group of CHECK_TARGETS (KSTD-5-115),
+// and the check runner (scripts/check/run.mts) still needs their scope and needs declared here.
+export const PHASE_TARGETS = ['parity-api-check'];
+
 export function checkInputErrors(declared: Record<string, TargetDeclaration>, targets: string[], tracked: string[]): string[] {
   const errors: string[] = [];
   for (const target of targets)
     if (!Object.hasOwn(declared, target))
       errors.push(`contracts/check-inputs.json declares no scope of ${target} of CHECK_TARGETS`);
   for (const [target, declaration] of Object.entries(declared)) {
-    if (!targets.includes(target)) errors.push(`contracts/check-inputs.json declares ${target}, which is not in CHECK_TARGETS`);
+    if (!targets.includes(target) && !PHASE_TARGETS.includes(target)) errors.push(`contracts/check-inputs.json declares ${target}, which is not in CHECK_TARGETS`);
     // needs is the setup step a target requires. The runner (scripts/check/run.mts) records the target as not-run if that step fails.
     for (const need of declaration.needs) if (!NEEDS.includes(need)) errors.push(`contracts/check-inputs.json: ${target} needs ${need}, which no setup step provides; the needs are ${NEEDS.join(', ')}`);
     for (const glob of [...(declaration.inputs ?? []), ...(declaration.lints ?? [])]) {

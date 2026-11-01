@@ -8771,6 +8771,10 @@
     "exported": false,
     "signature": "function tsTemplate(s: string): string"
   },
+  "packages/ts/src/generate/typescript.ts::writeTextIfChanged": {
+    "exported": true,
+    "signature": "export function writeTextIfChanged(file: string, text: string): void"
+  },
   "packages/ts/src/group_rows.ts::GroupRow": {
     "exported": true,
     "signature": "class GroupRow { public constructor(entries: readonly (readonly [ string, unknown ])[]); }"
