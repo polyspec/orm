@@ -52,7 +52,7 @@ PHP extension은 extension 선언을 통해 PHP API의 `Dbspec` parse/render/int
 
 - **SCH-6** SQLite Catalog 연결은 기존 regular database file을 요구하고 파일 자동 생성을 끈다. Catalog를 닫으면 소유한 database resource를 해제하고, 닫힌 뒤의 연산은 statement를 보내지 않고 `CATALOG_CLOSED`로 실패한다.
 
-- **SCH-6a** Catalog 연결은 Go, PHP, PHP extension, TypeScript, Python, Rust의 공통 요구다. 각 native package는 [인터페이스](interfaces.md)의 의미와 오류 코드를 따르는 `connect(dsn)`, `current_namespace`, `describe_table`, `table_page`, `read_only_query`, `read_only_grid_query`, `insert_row`, `update_row`, `delete_row`를 제공한다. 연산이나 owner case가 빠지면 feature는 미완료이며, 구현별 wrapper와 값 표현은 공통 결과, 검증, 오류, snapshot, 정리 동작을 바꾸지 않는다. Catalog 연결은 markdown DSN을 거부한다. Catalog feature의 database case는 모든 client에서 MySQL, PostgreSQL, SQLite를 대상으로 한다. 생성 컬럼은 default가 아니다: describe 결과에 default 식이 없고 default 표지는 false이며, 이는 PostgreSQL에서도 같다. PostgreSQL 카탈로그는 생성 식을 default와 같은 자리에 보관하기 때문이다.
+- **SCH-6a** Catalog 연결은 Go, PHP, PHP extension, TypeScript, Python, Rust의 공통 요구다. 각 native package는 [인터페이스](interfaces.md)의 의미와 오류 코드를 따르는 `connect(dsn)`, `current_namespace`, `describe_table`, `table_page`, `read_only_query`, `read_only_grid_query`, `insert_row`, `update_row`, `delete_row`를 제공한다. 연산이나 owner case가 빠지면 feature는 미완료이며, 구현별 wrapper와 값 표현은 공통 결과, 검증, 오류, snapshot, 정리 동작을 바꾸지 않는다. Catalog 연결은 markdown DSN을 거부한다. Catalog feature의 database case는 모든 client에서 MySQL, PostgreSQL, SQLite를 대상으로 한다. 생성 컬럼은 default가 아니다: describe 결과에 default 식이 없고 default 표지는 false이며, 이는 PostgreSQL에서도 같다. PostgreSQL 카탈로그는 생성 식을 default와 같은 위치에 보관하기 때문이다.
 
 ## 4. 스키마 설치 {#_4-schema-installation}
 
