@@ -1,9 +1,16 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9c77374b6092747e9e7cc927a812a92743065bcf2309892784fc52d24893579f -->
+<!-- source-sha256: b93bbbbb73cc27677dbd8a072808401b41c7be1a932b44eb893dd49786f06cfc -->
 # 변경 이력
 
 ## Unreleased
 
+- 인터페이스 명세는 모든 runtime의 public 문 실행기를 정한다(INT-150): `utils().run(fn)`과 frame 호출 `run(kind, tables, sql, params)`이며 TypeScript 순서를 쓰고, 모든 database에서 이를 묶는 parity unit을 둔다 (T345).
+- TypeScript runtime은 `utils().run(fn)`을 선언 파일에서 public으로 두고, `TxFrame.run`은 statement의 행을 돌려준다 (T345-1).
+- Go runtime은 `Utils.Run`과, `Run(kind, tables, sql, params)`가 행을 돌려주는 transaction frame을 내보낸다 (T345-2).
+- Rust runtime은 `Utils::run`과 transaction frame의 `run(kind, tables, sql, params)`을 public으로 둔다 (T345-3).
+- PHP runtime은 `Utils::run`이 transaction frame을 넘기고, `TxFrame::run(kind, tables, sql, params)`이 행을 돌려준다 (T345-4).
+- PHP extension은 `Utils::run`과 `TxFrame::run`을 PHP runtime과 같은 의미의 native public method로 둔다 (T345-5).
+- Python runtime은 `utils().run(fn)`을 public으로 두고, frame의 text가 아닌 statement는 CONFIG로 실패한다 (T345-6).
 - TypeScript codec API가 파괴적으로 바뀐다(T334-3-14b). codec 값 모델의 모든 정수는 bigint이고 모든 실수는 number다. Python이 정수를 i64 범위로 검사한 int로 갖고 Go, PHP, Rust가 자기 정수 형으로 갖는 것과 같다: `codec.encode`는 정수를 bigint(`2n`, `2`가 아니라)로 받고, `codec.decode`는 전에 실패하던 2^53를 넘는 정수를 포함해 모든 정수를 bigint로 돌려주며, 정수 값 실수는 serialize에서 다른 모든 클라이언트처럼 `d:N;`로 쓴다(TypeScript의 COD-3 예외를 지웠다). 이유: TypeScript는 다른 runtime이 쓰는 올바른 i64 데이터를 거부했고(`codec_integers_of_i64`, `CODEC_DECODE: serialize: bad or unsafe int`), 정수 값 실수를 다른 runtime이 `d:4;`로 쓰는 자리에 `i:4;`로 썼다(`serialize_integral_float`). 그래서 실수를 왕복하면 타입이 바뀌었다. 2^53를 넘을 때만 bigint로 하면 앞의 것만 고치고 뒤의 것은 고치지 못한다. 정수의 number 경로는 제거한다. 소비자: 정수 column 값은 `BigInt(n)`으로 쓰고, 읽은 정수는 bigint로 비교하며, 값이 안전한 정수로 알려진 경우에만 `Number(...)`를 쓴다.
   - 소비자: fsm, flowmark, hyper, template, crudui는 @polyspec/orm에서 `decode`, `encode`, `hostDecode`, `hostEncode`, `blindIndex`, `CodecValue`, `CodecError`, `EncodedValue`를 하나도 import하지 않으며, codec style 접두사(`serialize_`, `gz_`, `yaml_`, `base64_`)를 가진 column이 없어 바뀌는 것이 없다. limepie hyper node의 생성 model은 `CodecValue`를 `setPayload(value: StyledValue<JsonValue | CodecValue>)`에서만 import하며, `CodecValue`에 `bigint`를 넓히면 그 setter 입력이 넓어질 뿐 깨지지 않는다. 그 `payload`는 json column이고 serialize, yaml, gz, base64 column이 없어 바뀌는 것이 없다.
 - `ordered_json`은 짝 없는 surrogate 같은 Unicode scalar 값의 열이 아닌 text를 CODEC_ENCODE로 거부한다(COD-64, RFC 8259, 8.1). TypeScript는 전에 `JSON.stringify`로 escape했고, Go는 code가 아닌 오류를 돌려주었다. PHP, PHP 확장, Python은 전에도 거부했으므로 바뀌지 않는다.
