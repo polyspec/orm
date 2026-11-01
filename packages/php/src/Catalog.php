@@ -53,8 +53,10 @@ final class Catalog
             . "AND pk.CONSTRAINT_NAME='PRIMARY' WHERE c.TABLE_SCHEMA=? AND c.TABLE_NAME=? ORDER BY c.ORDINAL_POSITION",
         'postgres' => 'SELECT a.attname::text,format_type(a.atttypid,a.atttypmod),NOT '
             . 'a.attnotnull,(a.attgenerated<>\'\' OR '
-            . 'a.attidentity=\'a\'),COALESCE(k.ord,0),(a.attidentity<>\'\'),pg_get_expr(d.adbin,d.adrelid),(d.adbin '
-            . 'IS NOT NULL) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_attribute a ON '
+            . 'a.attidentity=\'a\'),COALESCE(k.ord,0),(a.attidentity<>\'\'),CASE WHEN length(a.attgenerated)=0 '
+            . 'THEN pg_get_expr(d.adbin,d.adrelid) END,(d.adbin '
+            . 'IS NOT NULL AND length(a.attgenerated)=0) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace '
+            . 'JOIN pg_attribute a ON '
             . 'a.attrelid=c.oid LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum LEFT JOIN '
             . 'pg_index i ON i.indrelid=c.oid AND i.indisprimary LEFT JOIN LATERAL unnest(i.indkey) WITH ORDINALITY '
             . 'AS k(attnum,ord) ON k.attnum=a.attnum WHERE n.nspname=? AND c.relname=? AND a.attnum>0 AND NOT '
