@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"golang.org/x/tools/go/packages"
@@ -102,31 +103,51 @@ func allDone(needs map[int]bool, done []bool) bool {
 }
 
 // scannedImports returns the import paths of the packages that the scan
-// patterns load and of every package they depend on.
+// patterns load and of every package they depend on, under the default build
+// and under every build configuration that the scan loads for a file the
+// default build ignores (configFor, as the scan does).
 func scannedImports(patterns []string) (map[string]bool, error) {
 	dir, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
-	pkgs, err := packages.Load(&packages.Config{Mode: packages.NeedName | packages.NeedImports | packages.NeedDeps, Dir: dir}, patterns...)
-	if err != nil {
-		return nil, err
-	}
 	paths := map[string]bool{}
-	var visit func(p *packages.Package)
-	seen := map[*packages.Package]bool{}
-	visit = func(p *packages.Package) {
-		if seen[p] {
-			return
+	configs := []scanConfig{{}}
+	for i := 0; i < len(configs); i++ {
+		pkgs, err := packages.Load(&packages.Config{
+			Mode:       packages.NeedName | packages.NeedFiles | packages.NeedImports | packages.NeedDeps,
+			Dir:        dir,
+			Tests:      true,
+			BuildFlags: configs[i].buildFlags(),
+			Env:        configs[i].env(),
+		}, patterns...)
+		if err != nil {
+			return nil, err
 		}
-		seen[p] = true
-		for path, dep := range p.Imports {
-			paths[path] = true
-			visit(dep)
+		seen := map[*packages.Package]bool{}
+		var visit func(p *packages.Package)
+		visit = func(p *packages.Package) {
+			if seen[p] {
+				return
+			}
+			seen[p] = true
+			for path, dep := range p.Imports {
+				paths[path] = true
+				visit(dep)
+			}
 		}
-	}
-	for _, p := range pkgs {
-		visit(p)
+		for _, p := range pkgs {
+			visit(p)
+			if i > 0 {
+				continue
+			}
+			for _, ignored := range p.IgnoredFiles {
+				config, ok := configFor(ignored)
+				if ok && !slices.Contains(configs, config) {
+					configs = append(configs, config)
+				}
+			}
+		}
 	}
 	return paths, nil
 }
