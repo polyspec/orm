@@ -144,10 +144,11 @@ repository.
   Enforced by: none, a guided rule: the names of the targets of a repository are its own (K810).
 - P30 During 0.0.x development, applications connect declared local provider sources through native package-manager
   mechanisms. The package manager owns links, installed records, dependency resolution and generated metadata; a source
-  is not disguised as an installed released version. Applications own compatible native development declarations and
-  locks. Release declarations and locks remain records of released dependencies; kit does not synthesize link manifests,
-  version aliases or lock metadata, and no tracked lock waits for a coordinated batch.
-  Enforced by: none, the links exist only in development, where make link-check checks them against the link declaration .links (K869); CI links nothing (K824)
+  is not disguised as an installed released version. A repository links its providers to local checkouts only through
+  `.links` and `make link`, and declares nothing of its own for that: no tracked manifest of a package manager names a path
+  out of the repository (K997). Release declarations and locks remain records of released dependencies; kit does not
+  synthesize link manifests, version aliases or lock metadata, and no tracked lock waits for a coordinated batch.
+  Enforced by: `make kit-check`, which names each tracked manifest path out of the repository (K773, K997, K998); the links exist only in development, where make link-check checks them against the link declaration .links (K869); CI links nothing (K824)
 - P31 No gate is bypassed: a test, script or Makefile never sets the CI identity (`GITHUB_ACTIONS`, `CI`) outside a workflow, never
   names a gate of kit-gates in `make -o`, `--old-file` or `--assume-old`, and never uses `--no-verify` (K308).
   Enforced by: `make bypass-check`
@@ -274,15 +275,28 @@ tool lands, a standard binds the work as written here.
 - S11 Local links: during development each polyspec package's install folder (node_modules, vendor, site-packages) is one
   plain directory symlink to its checkout. No package-manager link step (npm link, Composer path repository, pip/uv editable)
   (K591, K761, K765).
-  Enforced by: none, the links exist only in development, where make link-check checks them against the link declaration .links (K869), and CI links nothing (K824);
-  the K761 link test of kit finds no npm link, composer update or editable install in the tool log
+  Enforced by: `make kit-check`, which names each line of a tracked Makefile, *.mk or workflow that runs a link step of a package
+  manager (K998); the links exist only in development, where make link-check checks them against the link declaration .links (K869),
+  and CI links nothing (K824); the K761 link test of kit finds no npm link, composer update or editable install in the tool log
 - S12 A repository's CI is one pipeline: its own ci.yml calls the workflow that kit gives it (`ci-pipeline.yml`) as its
   job `kit`, which runs the prerequisites of `make kit-gates` once with the targets of config/ci.json (`targets.shared`,
   `targets.parity`, `targets.runtimes`), and a repository job of the same ci.yml follows with `needs: kit`. No other workflow
   of the repository, and no input that ci-targets or ci-setup reads, names a prerequisite of kit-gates again. kit's own ci.yml,
   which tests kit itself, is no consumer CI (K870, K910).
-  Enforced by: none, a workflow is the repository's own file; each consumer removes its duplicates in its adoption row
+  Enforced by: `make kit-check`, which names a ci.yml without the job kit, a job of it without needs: kit, and a line of a workflow
+  of the repository that names a gate of kit-gates again, checks out another repository or to a path, or clones one, and an input
+  of config/ci.json that names a gate of kit-gates again (K998)
 - S13 The rules that every repository shares are injected identically: each copy of `kit.copies` of the installed kit (this
   file, ci-pipeline.yml, release.yml and the others) is the bytes of the package, written by `make kit-sync` and changed only in kit;
   scripts/kit holds those copies only. kit itself is their source and holds no copies (K851).
   Enforced by: `make kit-inject-check`
+- S14 Forks: a maintained fork of a third-party package, whose fix waits for upstream, is a package of its own name
+  (`min-0-max/<name>`). Its fixes go on a branch whose name carries the upstream version it is based on (such as
+  polyspec-origin-2.6.0), which is the default branch of the fork, since Composer's VCS source names the package by its default
+  branch; master stays the line of upstream, and a rebase onto a newer upstream is a new branch that becomes the
+  default. During development its installed folder is linked to the development checkout through `.links` and `make link` (S11).
+  A polyspec package requires the name of the fork, and a root installs it through the VCS source of its package manager at that
+  branch (Composer: a `vcs` repository and a require of `dev-<branch>`); no public registry. The fork is retired when upstream
+  releases the fix (K1000).
+  Enforced by: none, links exist only in development, where make link-check names a declared fork that no installed folder links
+  (K999) and no CI reaches it, since CI links nothing (K824); which branch a root installs is the record of its lock (S4)

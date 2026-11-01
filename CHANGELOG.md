@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- orm takes kit 0.0.88 (T346-1): the pin names the release asset of kit 0.0.88 with its integrity, and the kit-sync copies are that release's, with the link, pipeline and manifest-path rules S11, S12 and P30 (K997, K998).
 - orm takes ordered-json 0.0.17 (T346) in every ecosystem: the npm, Composer, Go, Python and Rust pins name its release assets and tag, and packaging.md names its assets `polyspec-ordered-json-0.0.17.tgz` and the Composer zip and wheel of that release.
 - orm takes kit 0.0.87 (T346). Every CI job of .github/workflows bootstraps kit through the shared local action `.github/actions/kit-bootstrap` that kit-sync provides (K992), in place of the inline copy of the bootstrap that each job carried: ci.yml had four and docs-pages.yml one. The action sets up the Node.js of mise.toml, installs the locked kit package, then the npm of var/tools and the packages of package-lock.json. ci-pipeline.yml and release.yml take the same action from kit-sync.
 - The interfaces spec states the public statement runner in every runtime (INT-150): `utils().run(fn)` and the frame call `run(kind, tables, sql, params)` in TypeScript order, with a parity unit that binds it on every database (T345).
