@@ -31,7 +31,9 @@ pub struct Scratch(pub PathBuf);
 
 impl Drop for Scratch {
     fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.0);
+        if let Err(error) = std::fs::remove_dir_all(&self.0) {
+            eprintln!("remove {}: {error}", self.0.display());
+        }
     }
 }
 
@@ -40,8 +42,12 @@ pub struct Server(Child);
 
 impl Drop for Server {
     fn drop(&mut self) {
-        let _ = self.0.kill();
-        let _ = self.0.wait();
+        if let Err(error) = self.0.kill() {
+            eprintln!("kill the server: {error}");
+        }
+        if let Err(error) = self.0.wait() {
+            eprintln!("wait for the server: {error}");
+        }
     }
 }
 
@@ -73,12 +79,14 @@ pub fn unique() -> u128 {
 pub fn answer(chain: &str, answer: &Value, answers: &Value) -> Value {
     // The chain's future is large in a debug build, so it runs on a thread with a stack of its own (not the trial's).
     let (chain, answer, answers) = (chain.to_owned(), answer.clone(), answers.clone());
-    std::thread::Builder::new()
+    let thread = std::thread::Builder::new()
         .stack_size(64 << 20)
         .spawn(move || answer_on_thread(&chain, &answer, &answers))
-        .expect("a thread with a 64 MiB stack")
-        .join()
-        .unwrap_or_else(|panic| std::panic::resume_unwind(panic))
+        .expect("a thread with a 64 MiB stack");
+    match thread.join() {
+        Ok(value) => value,
+        Err(panic) => std::panic::resume_unwind(panic),
+    }
 }
 
 fn answer_on_thread(chain: &str, answer: &Value, answers: &Value) -> Value {
@@ -98,7 +106,10 @@ fn answer_on_thread(chain: &str, answer: &Value, answers: &Value) -> Value {
                 let reply = if std::mem::take(&mut first) {
                     json!({ "ok": true })
                 } else {
-                    let message: Value = serde_json::from_str(&line).unwrap_or(Value::Null);
+                    let message: Value = match serde_json::from_str(&line) {
+                        Ok(message) => message,
+                        Err(error) => panic!("the keyed server read a line that is not JSON: {error}"),
+                    };
                     let key = message["op"].as_str().or(message["request"]["kind"].as_str()).unwrap_or("unreadable").to_owned();
                     keyed
                         .get(&key)
@@ -119,7 +130,7 @@ fn answer_on_thread(chain: &str, answer: &Value, answers: &Value) -> Value {
                 return;
             }
         }
-        let _ = lines.next();
+        let _request: Option<std::io::Result<String>> = lines.next();
     });
     let token = "0123456789abcdef0123456789abcdef".to_owned();
     let got = runtime.block_on(async {
@@ -133,7 +144,9 @@ fn answer_on_thread(chain: &str, answer: &Value, answers: &Value) -> Value {
         s.db.close().await;
         got
     });
-    let _ = server.join();
+    if let Err(panic) = server.join() {
+        std::panic::resume_unwind(panic);
+    }
     got
 }
 
@@ -163,12 +176,18 @@ pub async fn serve(bin: &Path, scratch: &Path) -> (Served, Server) {
         .trim_end()
         .strip_prefix("[serve] listening on 127.0.0.1:")
         .and_then(|rest| rest.strip_suffix(&format!(" for the corpus {corpus}")))
-        .and_then(|port| port.parse::<u16>().ok())
+        .map(|port| match port.parse::<u16>() {
+            Ok(port) => port,
+            Err(error) => panic!("flowmark serve printed the port {port:?}, which is not a u16: {error}"),
+        })
         .unwrap_or_else(|| panic!("flowmark serve printed {line:?}, not its listening line"));
     let file: Value = serde_json::from_str(&std::fs::read_to_string(dir.join(".flowmark/server.json")).unwrap()).unwrap();
     let token = file["token"].as_str().expect("server.json has a token").to_owned();
     let dsn = format!("markdown://127.0.0.1:{port}/{corpus}?token={token}");
-    let db = markdown_model::connect(&dsn, 0, Config::default()).await.unwrap_or_else(|e| panic!("connect: {e}"));
+    let db = match markdown_model::connect(&dsn, 0, Config::default()).await {
+        Ok(db) => db,
+        Err(error) => panic!("connect: {error}"),
+    };
     (Served { bin: bin.to_path_buf(), db, dir, corpus, port, token }, server)
 }
 
@@ -199,7 +218,10 @@ fn code_of<T>(r: polyspec_orm::Result<T>) -> Value {
 /// An integer result value, which a client may hold as a number or as its text; an absent or null value is null.
 fn integer(v: Option<Value>) -> Value {
     match v {
-        Some(Value::String(text)) => json!(text.parse::<i64>().unwrap_or_else(|_| panic!("invalid integer text: {text}"))),
+        Some(Value::String(text)) => match text.parse::<i64>() {
+            Ok(number) => json!(number),
+            Err(error) => panic!("invalid integer text: {text}: {error}"),
+        },
         Some(other) => other,
         None => Value::Null,
     }
@@ -580,7 +602,7 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
         // codec_default_select asks for a select-explicit getter without selecting it.
         "codec_default_select" => {
             let row = CodecRows::new().connect(db).id("C1").get().await?.ok_or(Error::NoRows)?;
-            let _ = row.get_payload()?;
+            let _payload = row.get_payload()?;
             Value::Null
         }
         // codec_explicit_select reads the selected column through its base64 codec.

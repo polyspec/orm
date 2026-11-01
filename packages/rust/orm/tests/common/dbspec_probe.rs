@@ -27,7 +27,10 @@ pub fn parse_set(id: &str, documents: &BTreeMap<String, String>) -> Vec<Document
         .iter()
         .map(|(name, text)| {
             let set: BTreeMap<String, String> = documents.iter().filter(|(other, _)| *other != name).map(|(o, t)| (o.clone(), t.clone())).collect();
-            dbspec::parse(text, &set).map(|parsed| parsed.document).unwrap_or_else(|e| panic!("{id}/{name}: {e:?}"))
+            match dbspec::parse(text, &set) {
+                Ok(parsed) => parsed.document,
+                Err(e) => panic!("{id}/{name}: {e:?}"),
+            }
         })
         .collect()
 }
@@ -122,6 +125,7 @@ impl Conn {
     /// protocol of the query (raw_sql is the simple query protocol); SQLite gives a typed value, which sqlx reads
     /// as text through sqlite3_value_text. A query with no row, and a NULL value, are errors: no vector expects
     /// either, and a NULL must never compare equal to a want.
+    #[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
     pub async fn text_value(&mut self, query: &str) -> Result<String, String> {
         macro_rules! first {
             ($connection:expr) => {{
@@ -146,6 +150,7 @@ impl Conn {
     }
 
     /// Introspects with the connection's dialect and also returns the query count.
+    #[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
     pub async fn introspect(&mut self) -> Result<(Introspection, usize), IntrospectError> {
         async fn counted<C: CatalogQuerier + Send>(inner: &mut C, dialect: Dialect) -> Result<(Introspection, usize), IntrospectError> {
             let mut counter = Counting { inner, count: 0 };
