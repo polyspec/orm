@@ -231,7 +231,7 @@ const t42 = [
 
 caseTest('a change across the four clients selects no full-suite target', 5000, async () => {
   // comment-language-check reads every source file (T131), so a source change selects it.
-  assert.deepEqual(targets(selectTargets(inputs, t42)), ['comment-language-check', 'repo-check', 'go-fmt-check', 'go-vet-check', 'rust-fmt-check', 'catalog-php-extension-surface-check']);
+  assert.deepEqual(targets(selectTargets(inputs, t42)), ['typescript-build-unit-check', 'comment-language-check', 'repo-check', 'go-fmt-check', 'go-vet-check', 'rust-fmt-check', 'catalog-php-extension-surface-check']);
   const runtimes = ['go', 'php', 'php-extension', 'typescript', 'python', 'rust'];
   const nativeTargets = runtimes.flatMap(runtime => [
     `client-db-${runtime}-check`,
