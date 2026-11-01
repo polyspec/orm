@@ -6,6 +6,7 @@
       "name": "go",
       "runner": "go",
       "roots": [
+        "packages/go/bindmessages",
         "packages/go/cmd",
         "packages/go/complexquery",
         "packages/go/decimalmodel",
@@ -18990,6 +18991,35 @@
       ]
     },
     {
+      "id": "generator-orders-sets-by-imports",
+      "kind": "feature",
+      "requirements": [
+        "DSL-157"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_sets_test.go",
+          "id": "TestGenerateSetsGeneratesAProducerBeforeItsConsumerWhateverTheOrder"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_sets_test.go",
+          "id": "TestGenerateSetsRefusesACycleAndNamesBothSets"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_sets_test.go",
+          "id": "TestGenerateSetsOrdersAProducerImportedOnlyByATaggedFile"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "go-module",
+        "package": "github.com/polyspec/orm/packages/go"
+      }
+    },
+    {
       "id": "generator-declares-schema-key-prefix-methods",
       "kind": "feature",
       "requirements": [
@@ -19597,6 +19627,158 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/coverage_model_generation.rs",
           "id": "coverage_model_generation_check"
+        }
+      ]
+    },
+    {
+      "id": "generated-model-column-conditions",
+      "kind": "api",
+      "requirements": [
+        "DSL-154"
+      ],
+      "symbols": [
+        {
+          "implementation": "typescript",
+          "symbols": [
+            "@polyspec/orm!Account#name:member",
+            "@polyspec/orm!AuditRecord#requestId:member",
+            "@polyspec/orm!AuditedNoteHistory#auditSeq:member",
+            "@polyspec/orm!AuditedNoteHistory#change:member",
+            "@polyspec/orm!AuditedNoteHistory#label:member",
+            "@polyspec/orm!AuditedNoteHistory#previousAuditSeq:member",
+            "@polyspec/orm!AuditedNoteHistory#seq:member",
+            "@polyspec/orm!Author#aesHexPhone:member",
+            "@polyspec/orm!Author#aesKeyVersion:member",
+            "@polyspec/orm!Author#base64Extra:member",
+            "@polyspec/orm!Author#createdTs:member",
+            "@polyspec/orm!Author#description:member",
+            "@polyspec/orm!Author#displayEndDt:member",
+            "@polyspec/orm!Author#displayStartDt:member",
+            "@polyspec/orm!Author#endDt:member",
+            "@polyspec/orm!Author#gzExtend:member",
+            "@polyspec/orm!Author#isAllday:member",
+            "@polyspec/orm!Author#isSingleWork:member",
+            "@polyspec/orm!Author#jsonSetting:member",
+            "@polyspec/orm!Author#jsonsTags:member",
+            "@polyspec/orm!Author#readerCount:member",
+            "@polyspec/orm!Author#serializeData:member",
+            "@polyspec/orm!Author#successCount:member",
+            "@polyspec/orm!Author#targetClubReaderCount:member",
+            "@polyspec/orm!Author#updatedTs:member",
+            "@polyspec/orm!BindCell#body:member",
+            "@polyspec/orm!BindCell#label:member",
+            "@polyspec/orm!BindCell#token:member",
+            "@polyspec/orm!ClockCell#at0:member",
+            "@polyspec/orm!ClockCell#at3:member",
+            "@polyspec/orm!ClockCell#at6:member",
+            "@polyspec/orm!CompositeAccount#accountId:member",
+            "@polyspec/orm!CompositeAccount#name:member",
+            "@polyspec/orm!CompositeMembership#accountId:member",
+            "@polyspec/orm!CompositeMembership#role:member",
+            "@polyspec/orm!DayCell#atTime:member",
+            "@polyspec/orm!DayCell#day:member",
+            "@polyspec/orm!HexCell#label:member",
+            "@polyspec/orm!HexCell#value:member",
+            "@polyspec/orm!Project#name:member",
+            "@polyspec/orm!ServiceRegion#name:member",
+            "@polyspec/orm!SharedNote#title:member",
+            "@polyspec/orm!SoftLink#deletedAt:member",
+            "@polyspec/orm!SoftLink#label:member",
+            "@polyspec/orm!SoftRecord#deletedAt:member",
+            "@polyspec/orm!Task#state:member",
+            "@polyspec/orm!Task#title:member",
+            "@polyspec/orm!UpsertCell#label:member"
+          ]
+        },
+        {
+          "implementation": "go",
+          "symbols": [
+            "github.com/polyspec/orm/packages/go/model.AccountModel.Name",
+            "github.com/polyspec/orm/packages/go/model.AuditRecordModel.RequestId",
+            "github.com/polyspec/orm/packages/go/model.AuditedNoteHistoryModel.AuditSeq",
+            "github.com/polyspec/orm/packages/go/model.AuditedNoteHistoryModel.Change",
+            "github.com/polyspec/orm/packages/go/model.AuditedNoteHistoryModel.Label",
+            "github.com/polyspec/orm/packages/go/model.AuditedNoteHistoryModel.PreviousAuditSeq",
+            "github.com/polyspec/orm/packages/go/model.AuditedNoteHistoryModel.Seq",
+            "github.com/polyspec/orm/packages/go/model.AuthorModel.AesHexPhone",
+            "github.com/polyspec/orm/packages/go/model.AuthorModel.AesKeyVersion",
+            "github.com/polyspec/orm/packages/go/model.AuthorModel.Base64Extra",
+            "github.com/polyspec/orm/packages/go/model.AuthorModel.CreatedTs",
+            "github.com/polyspec/orm/packages/go/model.AuthorModel.Description",
+            "github.com/polyspec/orm/packages/go/model.AuthorModel.DisplayEndDt",
+            "github.com/polyspec/orm/packages/go/model.AuthorModel.DisplayStartDt",
+            "github.com/polyspec/orm/packages/go/model.AuthorModel.EndDt",
+            "github.com/polyspec/orm/packages/go/model.AuthorModel.GzExtend",
+            "github.com/polyspec/orm/packages/go/model.AuthorModel.IsAllday",
+            "github.com/polyspec/orm/packages/go/model.AuthorModel.IsSingleWork",
+            "github.com/polyspec/orm/packages/go/model.AuthorModel.JsonSetting",
+            "github.com/polyspec/orm/packages/go/model.AuthorModel.JsonsTags",
+            "github.com/polyspec/orm/packages/go/model.AuthorModel.ReaderCount",
+            "github.com/polyspec/orm/packages/go/model.AuthorModel.SerializeData",
+            "github.com/polyspec/orm/packages/go/model.AuthorModel.StartDt",
+            "github.com/polyspec/orm/packages/go/model.AuthorModel.SuccessCount",
+            "github.com/polyspec/orm/packages/go/model.AuthorModel.TargetClubReaderCount",
+            "github.com/polyspec/orm/packages/go/model.AuthorModel.UpdatedTs",
+            "github.com/polyspec/orm/packages/go/model.BindCellModel.Body",
+            "github.com/polyspec/orm/packages/go/model.BindCellModel.Label",
+            "github.com/polyspec/orm/packages/go/model.BindCellModel.Token",
+            "github.com/polyspec/orm/packages/go/model.ClockCellModel.At0",
+            "github.com/polyspec/orm/packages/go/model.ClockCellModel.At3",
+            "github.com/polyspec/orm/packages/go/model.ClockCellModel.At6",
+            "github.com/polyspec/orm/packages/go/model.CompositeAccountModel.Name",
+            "github.com/polyspec/orm/packages/go/model.CompositeMembershipModel.AccountId",
+            "github.com/polyspec/orm/packages/go/model.CompositeMembershipModel.Role",
+            "github.com/polyspec/orm/packages/go/model.DayCellModel.AtTime",
+            "github.com/polyspec/orm/packages/go/model.DayCellModel.Day",
+            "github.com/polyspec/orm/packages/go/model.HexCellModel.Label",
+            "github.com/polyspec/orm/packages/go/model.HexCellModel.Value",
+            "github.com/polyspec/orm/packages/go/model.ProjectModel.Name",
+            "github.com/polyspec/orm/packages/go/model.ServiceRegionModel.Name",
+            "github.com/polyspec/orm/packages/go/model.SharedNoteModel.Title",
+            "github.com/polyspec/orm/packages/go/model.SoftLinkModel.DeletedAt",
+            "github.com/polyspec/orm/packages/go/model.SoftLinkModel.Label",
+            "github.com/polyspec/orm/packages/go/model.SoftRecordModel.DeletedAt",
+            "github.com/polyspec/orm/packages/go/model.TaskModel.State",
+            "github.com/polyspec/orm/packages/go/model.TaskModel.Title",
+            "github.com/polyspec/orm/packages/go/model.UpsertCellModel.Label"
+          ]
+        },
+        {
+          "implementation": "php",
+          "symbols": [
+            "Polyspec\\Orm\\Model::__call"
+          ]
+        },
+        {
+          "implementation": "php-extension",
+          "symbols": [
+            "Polyspec\\Orm\\Model::__call"
+          ]
+        },
+        {
+          "implementation": "python",
+          "symbols": [
+            "polyspec.orm.model.Model"
+          ]
+        },
+        {
+          "implementation": "rust",
+          "symbols": [
+            "polyspec_orm::args::EqArg",
+            "polyspec_orm::args::EqArg::into_value",
+            "polyspec_orm::args::CmpArg",
+            "polyspec_orm::args::CmpArg::into_value",
+            "polyspec_orm::args::BetweenArg",
+            "polyspec_orm::args::BetweenArg::into_value",
+            "polyspec_orm::args::LikeArg",
+            "polyspec_orm::args::LikeArg::into_value",
+            "polyspec_orm::args::Compared",
+            "polyspec_orm::args::Value",
+            "polyspec_orm::args::Func",
+            "polyspec_orm::core::Arg",
+            "polyspec_orm::Param",
+            "polyspec_orm::Model::core"
+          ]
         }
       ]
     },
@@ -32856,7 +33038,7 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/markdownmodel/bind_messages_test.go",
+          "test": "packages/go/bindmessages/bind_messages_test.go",
           "symbol": "TestRecipeBindMessagesNone"
         },
         {

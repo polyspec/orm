@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The spec requires the Go generator to generate sets in the order their scans need, refusing a cycle (DSL-157); the parity units bind its tests, the Go test roots hold the moved markdown message test, and the generated condition methods are declared as public API (CR46).
+- The parity unit markdown-message-vectors names the Go test at its moved path, packages/go/bindmessages (CR46).
 - The duplication check no longer reports the two GenerateSets test setups of the generator, and the Rust orm test probe defines parse_set once again (CR45).
 - The repo check test "the Go model build regenerates models" asserts the orm-gen sets call that make go-models runs since the Go model sets were ordered (CR44).
 - The Python recipe tests format the case filter of the chain path as ruff format writes it (CR43).

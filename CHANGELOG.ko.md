@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a8dabac2716c6ecae9b488b08140b74172a8488d1886700ab4ad743ccc343db4 -->
+<!-- source-sha256: f95495d7f0c499d7c7b03960f65fc3ee86897293097beeee9dbba15f0157b18b -->
 # 변경 이력
 
 ## Unreleased
 
+- spec은 Go generator가 각 scan이 필요로 하는 순서로 set을 생성하고 순환을 거부하도록 요구한다 (DSL-157). parity unit이 그 시험을 연결하고, Go 테스트 루트가 옮겨진 markdown message 시험을 포함하며, 생성된 condition 메서드를 public API로 선언한다 (CR46).
+- parity unit markdown-message-vectors는 옮겨진 Go 시험의 경로 packages/go/bindmessages를 가리킨다 (CR46).
 - duplication 검사가 generator의 GenerateSets 시험 설정 두 벌을 더 이상 보고하지 않으며, Rust orm 시험 probe는 parse_set을 한 번만 정의한다 (CR45).
 - repo check 시험 "the Go model build regenerates models"은 Go model set을 순서대로 만든 뒤 make go-models가 실행하는 orm-gen sets 호출을 확인한다 (CR44).
 - Python recipe 시험의 chain 경로 case 필터를 ruff format이 쓰는 형태로 고쳤다 (CR43).
