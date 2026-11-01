@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The spec states how a database feature runs as a recipe on the run databases: FCV-8 to FCV-14 of docs/spec/feature-coverage.md give the conversion, the databases from the `databases` need and TEST_ENV, the three databases with no exclusion, the failure of a missing DSN, the per-case result, the seed ownership and the native tests (T334-3-4-0).
 - The per-target runtime and database cells of check-recipes (CR17 to CR20) are held: they would duplicate kit's CI plan (config/ci.json targets.runtimes and kit-ci-plan). The committed CR17-1 fields stay as they are (CR17).
 - Every target of CHECK_TARGETS declares its runtime and its database in contracts/check-inputs.json, read from its name first, and the checker refuses a target without either field; multi and all are transitional values until CR18 splits them (CR17-1).
 - The DDL behaviour tests of tests/dbspec/ddl.json ran only in the Go runner against a database; the PHP, php-extension, TypeScript, Python and Rust runners now run their behaviour steps on MySQL, PostgreSQL and SQLite, and each fails by name when a DSN is unset (CR16-1).
