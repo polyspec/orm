@@ -656,6 +656,25 @@ export function typescriptReaderErrors(makefile: string, read: Read): string[] {
   return errors;
 }
 
+// phpunitModelErrors returns one error for each make target that runs PHPUnit with packages/php/phpunit.xml.dist, whose bootstrap requires
+// packages/php/gen/bootstrap.php, without make php-models among its prerequisites, directly or through a prerequisite (T341-1). php-vendor-check
+// does not write packages/php/gen, so a target that names only it passes only after another target wrote the generated models.
+export function phpunitModelErrors(makefile: string): string[] {
+  const prerequisites = new Map<string, string[]>();
+  for (const rule of makeTargets(makefile)) prerequisites.set(rule.target, [...(prerequisites.get(rule.target) ?? []), ...rule.prerequisites]);
+  const reaches = (target: string, seen = new Set<string>()): boolean => {
+    if (seen.has(target)) return false;
+    seen.add(target);
+    return (prerequisites.get(target) ?? []).some(prerequisite => prerequisite === 'php-models' || reaches(prerequisite, seen));
+  };
+  const readers = new Set(makeTargets(makefile)
+    .filter(rule => rule.commands.some(command => /\bphpunit\b/.test(command) && /packages\/php\/phpunit\.xml\.dist\b/.test(command)))
+    .map(rule => rule.target));
+  return [...readers]
+    .filter(target => !reaches(target))
+    .map(target => `Makefile ${target} runs PHPUnit with packages/php/phpunit.xml.dist, which requires packages/php/gen/bootstrap.php, without the prerequisite php-models, which writes it; add php-models to its prerequisites`);
+}
+
 // goRunErrors returns one error for each segment in units that runs `go run`. go run compiles without
 // output before it runs the program, so that build is long-running work without step logs. tests/go-run.mts runs the build
 // as long-running work with step logs and no deadline, then runs the program.

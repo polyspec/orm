@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The sixty make targets that run PHPUnit with packages/php/phpunit.xml.dist have php-models among their prerequisites, since its bootstrap requires the generated models that php-vendor-check does not write, and repo-check refuses such a reader without it (T341-1).
 - The seven make targets that run the compiled TypeScript client without building it (replica-check, session-state-check, native-error-cause-check/typescript-driver and /typescript-markdown, page-cache-unit-check/typescript, generator-consumer-check/typescript, request-hook-relation-scope-check) have typescript-build as a prerequisite, and repo-check refuses a target that reads the build output without it (T339-5).
 - The Makefile and scripts name no kit-install-php-arginfo, so make install no longer calls a target that kit K930 removed; make install, make repo-check/unit and make native-arginfo-php-extension-check exit 0 on PHP 8.4 (T328).
 - orm takes kit 0.0.92 (T348): the pin names the release asset of kit 0.0.92 with its integrity, the kit-sync copies are that release's, and make orm-install-rust-crates downloads the crates of every tracked Cargo.lock with cargo fetch --locked, since kit 0.0.92 deletes the cargo-downloads-fetch target that it called.

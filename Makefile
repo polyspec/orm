@@ -478,7 +478,7 @@ dbspec-introspect-ts-check: lease-tool orm-codes-typescript
 # dbspec-introspect-php-check runs the same round trip and unsupported cases with the PHP client's
 # Polyspec\Orm\Dbspec\Dbspec::introspect.
 .PHONY: dbspec-introspect-php-check
-dbspec-introspect-php-check: php-vendor-check
+dbspec-introspect-php-check: php-vendor-check php-models
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecIntrospectTest.php packages/php/tests/DbspecCatalogChecksTest.php
 
 # dbspec-introspect-php-extension-check runs the same round trip and unsupported cases, the PHP client's DbspecIntrospectTest, with the PHP
@@ -501,7 +501,7 @@ dbspec-introspect-query-count-rust-check:
 
 # Observes the SQLite-memory catalog queries through each native client's introspection entry point; the round-trip cases retain the three-database count checks.
 .PHONY: dbspec-sqlite-literal-rows-helper-check
-dbspec-sqlite-literal-rows-helper-check: php-vendor-check
+dbspec-sqlite-literal-rows-helper-check: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecShowCreateIntrospectTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecBehaviourTest.php
 
@@ -682,14 +682,14 @@ dbspec-plan-rust-check:
 # dbspec-plan-php-check applies the same cases with the PHP client's Polyspec\Orm\Dbspec\Dbspec::planSteps and
 # Dbspec::introspect.
 .PHONY: dbspec-plan-php-check
-dbspec-plan-php-check: php-vendor-check
+dbspec-plan-php-check: php-vendor-check php-models
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecPlanApplyTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecPlanReaderTest.php
 
 # dbspec-apply-php-check runs the scenario of dbspec-apply-check, minus the 2000-table plan, with the PHP client's
 # Polyspec\Orm\Dbspec\Dbspec::apply, recover, rollback, and finalize on MySQL, PostgreSQL, and SQLite.
 .PHONY: dbspec-apply-php-check
-dbspec-apply-php-check: php-vendor-check
+dbspec-apply-php-check: php-vendor-check php-models
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter '^(?!.*testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks).*' packages/php/tests/DbspecApplyTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit --timeout 120 -- --configuration packages/php/phpunit.xml.dist --filter testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks packages/php/tests/DbspecApplyTest.php
 
@@ -697,7 +697,7 @@ dbspec-apply-php-check: php-vendor-check
 # whose Polyspec\Orm\Dbspec\Dbspec::apply, recover, rollback, and finalize take the place of the client's. The extension is built in this
 # run's directory.
 .PHONY: dbspec-apply-php-extension-check
-dbspec-apply-php-extension-check: php-vendor-check
+dbspec-apply-php-extension-check: php-vendor-check php-models
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) --filter '^(?!.*testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks).*' packages/php/tests/DbspecApplyTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --timeout 120 --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php/phpunit.xml.dist --filter testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks packages/php/tests/DbspecApplyTest.php
@@ -866,10 +866,10 @@ dbspec-stress-bench/prepare:
 dbspec-stress-bench/go: dbspec-stress-bench/prepare
 	$(GO_TEST) -tags bench ./packages/go/engine/dbspec -run '^TestStressDocument$$' -count=1
 	$(GO_TEST) -tags bench ./packages/go/engine/dbspec -run '^TestStressDocument$$' -count=1
-dbspec-stress-bench/php: php-vendor-check dbspec-stress-bench/prepare
+dbspec-stress-bench/php: php-vendor-check dbspec-stress-bench/prepare php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecStressTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecStressTest.php
-dbspec-stress-bench/php-introspect: php-vendor-check dbspec-stress-bench/prepare
+dbspec-stress-bench/php-introspect: php-vendor-check dbspec-stress-bench/prepare php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecIntrospectStressTest.php
 dbspec-stress-bench/typescript: dbspec-stress-bench/prepare lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
@@ -946,56 +946,56 @@ rust-send-savepoint-check/test:
 # bench.
 dbspec-php-check: dbspec-php-check/documents dbspec-php-check/graph dbspec-php-check/behaviour dbspec-php-check/show-create-introspect dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode dbspec-php-check/show-create dbspec-php-check/analyze dbspec-php-check/set dbspec-php-check/set-parse
 .PHONY: dbspec-php-check/documents dbspec-php-check/graph dbspec-php-check/behaviour dbspec-php-check/show-create-introspect dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode dbspec-php-check/show-create dbspec-php-check/analyze dbspec-php-check/set dbspec-php-check/set-parse
-dbspec-php-check/documents: php-vendor-check
+dbspec-php-check/documents: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecCatalogRowsTest.php
 # dbspec-php-check/graph checks that a document, document set, plan list or unsupported list whose array holds another type is a TypeError.
-dbspec-php-check/graph: php-vendor-check
+dbspec-php-check/graph: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecGraphTest.php
 # dbspec-php-check/behaviour checks the PHP behaviours that no shared vector fixes against fixtures/dbspec-behaviour.json, which
 # php packages/php/testing/dbspec/behaviour.php records from the PHP library.
-dbspec-php-check/behaviour: php-vendor-check
+dbspec-php-check/behaviour: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecBehaviourTest.php
 # dbspec-php-check/show-create-introspect reads the canned MySQL catalog of tests/dbspec/show-create.json through introspect.
-dbspec-php-check/show-create-introspect: php-vendor-check
+dbspec-php-check/show-create-introspect: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecShowCreateIntrospectTest.php
-dbspec-php-check/rules: php-vendor-check
+dbspec-php-check/rules: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRulesTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRulesTest.php
-dbspec-php-check/manifest: php-vendor-check
+dbspec-php-check/manifest: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecManifestTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecManifestTest.php
-dbspec-php-check/render: php-vendor-check
+dbspec-php-check/render: php-vendor-check php-models
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRenderTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRenderTest.php
-dbspec-php-check/plan: php-vendor-check
+dbspec-php-check/plan: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecPlanTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecPlanTest.php
-dbspec-php-check/mermaid: php-vendor-check
+dbspec-php-check/mermaid: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecMermaidTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecMermaidTest.php
-dbspec-php-check/apply-cleanup: php-vendor-check
+dbspec-php-check/apply-cleanup: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecApplyCleanupTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecApplyCleanupTest.php
 # dbspec-php-check/unicode checks that the PHP UnicodeWord table matches its ranges at every code point (the table itself is matched to Go by dbspec-go-check/unicode).
-dbspec-php-check/unicode: php-vendor-check
+dbspec-php-check/unicode: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecUnicodeTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecUnicodeTest.php
 # dbspec-php-check/show-create checks that MysqlCatalog::createChecks reads every case of tests/dbspec/show-create.json with the expected body.
 # dbspec-php-check/analyze checks syntax analysis and format with focused cases and every case of cases.json (docs/spec/dbspec.md "Syntax analysis", "Formatting").
-dbspec-php-check/analyze: php-vendor-check
+dbspec-php-check/analyze: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecAnalyzeTest.php
-dbspec-php-check/show-create: php-vendor-check
+dbspec-php-check/show-create: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecShowCreateTest.php
 # dbspec-php-check/set runs Dbspec::readSet on every case of tests/dbspec/set-files.json and the focused cases, each
 # a temporary file tree with real symbolic and hard links (docs/spec/dbspec.md "Document sets").
-dbspec-php-check/set: php-vendor-check
+dbspec-php-check/set: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecSetTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/SetReaderDiagnosticsTest.php
 # dbspec-php-check/set-parse runs Dbspec::parseSet on every case of tests/dbspec/set-parse.json (docs/spec/dbspec.md
 # "Parsing a set").
-dbspec-php-check/set-parse: php-vendor-check
+dbspec-php-check/set-parse: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecSetParseTest.php
 
 .PHONY: dbspec-php-extension-check
@@ -1047,10 +1047,10 @@ dbspec-php-extension-check/arginfo:
 dbspec-php-extension-check/prepare:
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
 # Builds the extension in an isolated run directory and executes only its native Collection unit cases.
-collection-php-extension-check: RUN_DIR = $(abspath .runtime/run)/collection-php-extension-check-$$PPID
+collection-php-extension-check: RUN_DIR = $(abspath .runtime/run)/collection-php-extension-check-$$PPID php-models
 COLLECTION_TEST_FILTER ?=
 .PHONY: collection-php-extension-check
-collection-php-extension-check: php-vendor-check
+collection-php-extension-check: php-vendor-check php-models
 	@set -eu; \
 	run_dir="$(RUN_DIR)"; \
 	trap 'rm -rf "$$run_dir"' EXIT; \
@@ -1070,7 +1070,7 @@ blind-index-source-php-extension-check: php-vendor-check
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/BlindIndexSourceNativeTest.php
 
 # Runs the native Model helper surface cases against a fresh extension build; the source-library comparison is a separate PHPUnit run.
-model-types-php-extension-check: php-vendor-check
+model-types-php-extension-check: php-vendor-check php-models
 	@set -eu; \
 	run_dir="$(abspath .runtime/run)/model-types-php-extension-check-$$PPID"; \
 	trap 'rm -rf "$$run_dir"' EXIT; \
@@ -1116,7 +1116,7 @@ t182-php-extension-schema-check: php-vendor-check php-model-check
 # MODEL_NATIVE_TEST_FILTER=testNativeSqliteRoundTrip selects only the server-free decimal native SQLite owner case.
 .PHONY: model-native-php-extension-check
 MODEL_NATIVE_TEST_FILTER ?=
-model-native-php-extension-check: php-vendor-check php-model-check
+model-native-php-extension-check: php-vendor-check php-model-check php-models
 	@set -eu; \
 	run_dir="$(abspath .runtime/run)/model-native-php-extension-check-$$PPID"; \
 	trap 'rm -rf "$$run_dir"' EXIT; \
@@ -1162,7 +1162,7 @@ group-row-count-rust-unit-check:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) group-row-count-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --manifest-path packages/rust/Cargo.toml --locked --offline --workspace --features "$(ORM_RUST_TEST_FEATURES)" -p polyspec-orm --lib collection::group_count_exactness_tests::count_exactness_matches_the_safe_integer_contract -- --test-threads=1 --exact
 
 # Runs grouped-boolean, exact i64, and row-count contract cases through each native result path.
-group-count-boolean-unit-check: lease-tool php-vendor-check php-model-check python-venv-check typescript-build
+group-count-boolean-unit-check: lease-tool php-vendor-check php-model-check python-venv-check typescript-build php-models
 	@set +e; status=0; last_result=0; \
 	run_case() { label=$$1; shift; printf '[group-result] %s\n' "$$label"; "$$@"; last_result=$$?; printf '[group-result] %s exit %s\n' "$$label" "$$last_result"; if [ "$$last_result" -ne 0 ]; then status=1; fi; return 0; }; \
 	run_case go $(GO_TEST) ./packages/go/orm -run '^(TestGroupCountRejectsInvalidStoredBoolean|TestGroupCountPreservesExactI64Value|TestGroupRowCountEnforcesExactness)$$' -count=1; \
@@ -1179,7 +1179,7 @@ group-count-boolean-unit-check: lease-tool php-vendor-check php-model-check pyth
 
 # Exercises ordered-json result text through each client's actual model output serializer.
 .PHONY: model-json-ordered-number-text-unit-check
-model-json-ordered-number-text-unit-check: lease-tool php-vendor-check php-model-check python-venv-check typescript-build
+model-json-ordered-number-text-unit-check: lease-tool php-vendor-check php-model-check python-venv-check typescript-build php-models
 	@set +e; status=0; last_result=0; \
 	run_case() { label=$$1; shift; printf '[model-json-text] %s\n' "$$label"; "$$@"; last_result=$$?; printf '[model-json-text] %s exit %s\n' "$$label" "$$last_result"; if [ "$$last_result" -ne 0 ]; then status=1; fi; return 0; }; \
 	run_case go $(GO_TEST) ./packages/go/model -run '^TestModelOrderedJSONOutputPreservesExactText$$' -count=1; \
@@ -1614,28 +1614,28 @@ RUN_TESTS = $(NODE) $(KIT)/run-tests.$(KIT_EXT)
 client-unit-check: client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/code-catalog client-unit-check/hostcodec client-unit-check/insert-parts client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/model-methods client-unit-check/client-generics client-unit-check/perf-extensions client-unit-check/dbspec-runners
 client-unit-check/dbspec-runners: php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRunnerTest.php
-client-unit-check/dsn: php-vendor-check
+client-unit-check/dsn: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DsnTest.php
-client-unit-check/markdown: php-vendor-check
+client-unit-check/markdown: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/MarkdownTest.php
-client-unit-check/relation-keys: php-vendor-check
+client-unit-check/relation-keys: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php
 # client-unit-check/code-catalog compares the generated Code.php with docs/spec/errors.yaml.
-client-unit-check/code-catalog: php-vendor-check
+client-unit-check/code-catalog: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodeCatalogTest.php
-client-unit-check/hostcodec: php-vendor-check
+client-unit-check/hostcodec: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/HostcodecTest.php
 # client-unit-check/insert-parts runs the cases of contracts/fixtures/insert_parts.json in PHP and TypeScript.
-client-unit-check/insert-parts: php-vendor-check lease-tool orm-codes-typescript
+client-unit-check/insert-parts: php-vendor-check lease-tool orm-codes-typescript php-models
 	$(HOLD_TYPESCRIPT)
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/InsertPartsTest.php
 	$(TSC_BUILD)
 	$(NODE) --conditions=orm-test --test packages/ts/tests/insert-parts.mjs
-client-unit-check/engine: php-vendor-check
+client-unit-check/engine: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/EngineTest.php
 
 # Shared-target derivation is checked independently in the PHP and TypeScript planners.
-blind-index-source-php-check: php-vendor-check
+blind-index-source-php-check: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/BlindIndexSourcePlannerTest.php
 
 blind-index-source-ts-check: lease-tool orm-codes-typescript
@@ -1657,15 +1657,15 @@ nowait-restore-check: lease-tool typescript-build php-vendor-check php-models py
 		env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php/phpunit.xml.dist packages/php/tests/SqliteRowLockRestoreTest.php || status=1; \
 	else status=1; fi; \
 	exit "$$status"
-client-unit-check/runtime-model: php-vendor-check
+client-unit-check/runtime-model: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RuntimeModelTest.php
-client-unit-check/orm-gen: php-vendor-check
+client-unit-check/orm-gen: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenTest.php
 
-php-go-text-check: php-vendor-check
+php-go-text-check: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/GoSerializationTest.php
 
-php-gen-unit-check: php-vendor-check lease-tool orm-codes-typescript
+php-gen-unit-check: php-vendor-check lease-tool orm-codes-typescript php-models
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenCliTest.php packages/php/tests/OrmGenScanTest.php packages/php/tests/OrmGenScanParityTest.php packages/php/tests/OrmGenPackageTest.php
@@ -1735,7 +1735,7 @@ native-error-cause-check/python-driver: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p test_driver_cells.py
 native-error-cause-check/python-markdown: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p test_markdown.py -k test_markdown_connect_refused
-native-error-cause-check/php: php-vendor-check
+native-error-cause-check/php: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmExceptionLockWaitTest.php packages/php/tests/MarkdownTest.php packages/php/tests/NativeCellReadTest.php
 native-error-cause-check/rust-markdown:
 	cd packages/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) native-error-cause-markdown-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --test markdown --features test-faults markdown_connect_refused -- --nocapture
@@ -1750,19 +1750,19 @@ native-error-cause-check/php-extension: php-models
 	mkdir -p "$$run_dir"; \
 	$(call php_ext_build,"$$run_dir/polyspec_orm.so",release); \
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'DriverErrorTest|testNativeRowAssemblyPreservesBinaryDriverCellBytes|testNativeMarkdownConnectionRefusesConnectError' packages/php-ext/tests/DriverErrorTest.php packages/php-ext/tests/ModelStreamReadTest.php packages/php-ext/tests/OrmExceptionNativeTest.php
-client-unit-check/model-methods: php-vendor-check
+client-unit-check/model-methods: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelMethodsTest.php
-client-unit-check/client-generics: php-vendor-check
+client-unit-check/client-generics: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ClientGenericsTest.php
 
 .PHONY: dbspec-php-interface-program-helper-check
-dbspec-php-interface-program-helper-check: php-vendor-check
+dbspec-php-interface-program-helper-check: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRunnerTest.php --filter testCompareRunnerUsesOneSharedOutputSequence
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecPlanTest.php --filter testComparisonHarnessParsesPlanVectorsAndWritesDiagnostics
 
 # Runs the shared PHP source scanner failure case with the PHP extension loaded.
 .PHONY: php-orm-gen-scan-failure-case-check
-php-orm-gen-scan-failure-case-check: php-vendor-check php-model-check orm-install-php-extension-tools
+php-orm-gen-scan-failure-case-check: php-vendor-check php-model-check orm-install-php-extension-tools php-models
 	@set -eu; \
 	run_dir="$(abspath .runtime/run)/php-orm-gen-scan-failure-case-check-$$PPID"; \
 	trap 'rm -rf "$$run_dir"' EXIT; \
@@ -1771,7 +1771,7 @@ php-orm-gen-scan-failure-case-check: php-vendor-check php-model-check orm-instal
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenScanTest.php --filter testAFileThatDoesNotParseStopsTheGenerationAndNamesItsPosition; \
 	env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/OrmGenScanNativeTest.php --filter testAFileThatDoesNotParseStopsTheGenerationAndNamesItsPosition
 .PHONY: phpstan-test-runner-helper-check
-phpstan-test-runner-helper-check: php-vendor-check
+phpstan-test-runner-helper-check: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ClientGenericsTest.php --filter testPhpstanTypesTheTransactionResultAndTheRowsOfAModel
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelMethodsTest.php --filter testPhpstanFindsEveryQueryMethodOfAGeneratedModel
 .PHONY: audit-native-method-assertions-helper-check
@@ -1783,7 +1783,7 @@ audit-native-method-assertions-helper-check: php-vendor-check php-model-check or
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php --filter testNativeMethodsAreInternal
 
-client-unit-check/perf-extensions: php-vendor-check
+client-unit-check/perf-extensions: php-vendor-check php-models
 	env ORM_PHP_MODE=library ORM_PERF_REFUSED_LOADED= $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/PerfExtensionsTest.php
 
 # php-min-check runs the PHP client unit tests on the lowest PHP release that
@@ -1947,7 +1947,7 @@ conformance-counter-check:
 # tests. Each runner reports its cases with their deadlines.
 conformance-result-check: conformance-result-check/php conformance-result-check/typescript conformance-result-check/go conformance-result-check/python
 .PHONY: conformance-result-check/php conformance-result-check/typescript conformance-result-check/go conformance-result-check/python
-conformance-result-check/php: php-vendor-check
+conformance-result-check/php: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ConformanceResultTest.php
 conformance-result-check/typescript: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
@@ -1979,7 +1979,7 @@ group-rows-db-typescript: typescript-build
 	ORM_GROUP_DATABASE=sqlite ORM_GROUP_DSN="$$BENCH_SQLITE_DSN" $(NODE) packages/ts/tests/group_rows_db.mjs
 # Runs the selected model getter/setter styled states in each native client. Each runtime reports independently.
 .PHONY: styled-column-states-unit-check
-styled-column-states-unit-check: lease-tool php-vendor-check php-model-check python-venv-check orm-codes-typescript
+styled-column-states-unit-check: lease-tool php-vendor-check php-model-check python-venv-check orm-codes-typescript php-models
 	$(HOLD_TYPESCRIPT)
 	@set +e; status=0; last_result=0; \
 	run_case() { label=$$1; shift; printf '[styled-column-states] %s\n' "$$label"; "$$@"; last_result=$$?; printf '[styled-column-states] %s exit %s\n' "$$label" "$$last_result"; if [ "$$last_result" -ne 0 ]; then status=1; fi; return 0; }; \
@@ -1999,7 +1999,7 @@ styled-column-states-unit-check: lease-tool php-vendor-check php-model-check pyt
 group-rows-db-go:
 	$(GO_TEST) ./packages/go/model -run '^TestGroupRowsDatabase$$' -count=1
 # group-rows-db-php runs GroupRowsDbTest, which reads BENCH_MYSQL_DSN, BENCH_POSTGRES_DSN and BENCH_SQLITE_DSN.
-group-rows-db-php: php-vendor-check
+group-rows-db-php: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/GroupRowsDbTest.php
 # group-rows-db-php-extension runs the extension-owned native group-row case on BENCH_MYSQL_DSN, BENCH_POSTGRES_DSN and BENCH_SQLITE_DSN.
 group-rows-db-php-extension: RUN_DIR = $(abspath .runtime/run)/group-rows-db-php-extension-$$PPID
@@ -2236,7 +2236,7 @@ endif
 markdown-conformance-check: markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/php-extension markdown-conformance-check/python markdown-conformance-check/rust markdown-conformance-check/typescript
 markdown-conformance-check/go:
 	FLOWMARK=$(FLOWMARK) $(GO_TEST) -tags markdown ./packages/go/markdownmodel -run '^TestMarkdownConformance$$' -count=1
-markdown-conformance-check/php: php-vendor-check
+markdown-conformance-check/php: php-vendor-check php-models
 	FLOWMARK=$(FLOWMARK) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --stop-on-defect packages/php/tests/MarkdownConformanceTest.php
 markdown-conformance-check/php-extension: php-vendor-check php-models orm-install-php-extension-tools
 	@set -eu; run_dir="$(abspath .runtime/run)/markdown-conformance-php-extension-check-$$$$"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); FLOWMARK=$(FLOWMARK) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --stop-on-defect packages/php-ext/tests/MarkdownConformanceNativeTest.php
@@ -2451,7 +2451,7 @@ paged-read-rust-check: lease-tool
 page-cache-unit-check: lease-tool php-vendor-check php-models python-venv-check typescript-build model-types-php-extension-check page-cache-unit-check/go page-cache-unit-check/php page-cache-unit-check/typescript page-cache-unit-check/python page-cache-unit-check/rust
 page-cache-unit-check/go:
 	$(GO_TEST) ./packages/go/orm -run '^(TestPlanCachePagedReadBindsPageValues|TestCanonicalizeCompositeRequestParameterWalk)$$' -count=1
-page-cache-unit-check/php: php-vendor-check
+page-cache-unit-check/php: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/PlanCacheBoundTest.php
 page-cache-unit-check/typescript: typescript-build
 	$(READ_TYPESCRIPT)
@@ -2474,7 +2474,7 @@ split-null-check/ts: lease-tool orm-codes-typescript
 	$(TSC_BUILD)
 	$(NODE) --conditions=orm-test --test packages/ts/tests/split-null.test.mjs
 
-split-null-check/php: php-vendor-check
+split-null-check/php: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CollectionIdentityTest.php --filter testSplitRootMergeRejectsSqlNullIdentity
 
 split-null-check/python: python-venv-check
@@ -2509,7 +2509,7 @@ split-read-plan-check/rust:
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib model::split_plan_tests::split_root_in_count_plans_no_statement_over_the_bind_limit
 
 # The six native clients preserve typed composite collection components and the shared opaque encoding.
-collection-composite-key-check: typescript-build php-vendor-check python-venv-check orm-install-php-extension-tools
+collection-composite-key-check: typescript-build php-vendor-check python-venv-check orm-install-php-extension-tools php-models
 	@set -eu; \
 	run_dir="$(abspath .runtime/run)/collection-composite-key-check-$$$$"; \
 	trap 'rm -rf "$$run_dir"' EXIT; \
@@ -2740,7 +2740,7 @@ codec-check/typescript: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NODE) --test packages/ts/tests/codec-none.test.mjs packages/ts/tests/codec-integer-beyond-i64-none.test.mjs packages/ts/tests/codec-bytes-value-none.test.mjs
-codec-check/php: php-vendor-check
+codec-check/php: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecRecipeTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecBytesValueRecipeTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecOrderedJsonTextTest.php
@@ -2763,7 +2763,7 @@ ir-validate-check/typescript: lease-tool orm-codes-typescript
 	$(NODE) --test packages/ts/tests/engine.mjs
 ir-validate-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_ir_validate_none
-ir-validate-check/php: php-vendor-check
+ir-validate-check/php: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/IrValidateRecipeTest.php
 ir-validate-check/php-extension: php-vendor-check build-php-ext
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/IrValidateRecipeTestExtensionTest.php
@@ -2785,7 +2785,7 @@ catalog-connection-check/python: lease-tool python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_catalog_connection_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_catalog_connection_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_catalog_connection_sqlite
-catalog-connection-check/php: lease-tool php-vendor-check
+catalog-connection-check/php: lease-tool php-vendor-check php-models
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CatalogConnectionRecipeTest.php
 catalog-connection-check/php-extension: lease-tool php-vendor-check build-php-ext
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php
@@ -2806,7 +2806,7 @@ bind-check/typescript: lease-tool orm-codes-typescript
 	$(NODE) packages/ts/tests/markdown.mjs
 bind-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase packages.python.tests.test_markdown.BindMessageVectors packages.python.tests.test_markdown.BindVectors
-bind-check/php: php-vendor-check
+bind-check/php: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter 'testBind(Message)?Vectors' packages/php/tests/MarkdownTest.php
 
 # ir-answers-check runs the read answer recipe, tests/ir/answers.json, in each runtime (FCV-3, FCV-4): each part runs the entry of
@@ -2824,7 +2824,7 @@ ir-answers-check/typescript: lease-tool orm-codes-typescript
 	$(NODE) --conditions=orm-test packages/ts/tests/ir_answers.mjs
 ir-answers-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.ir_answers
-ir-answers-check/php: php-vendor-check
+ir-answers-check/php: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/IrAnswersTest.php
 ir-answers-check/php-extension: php-vendor-check build-php-ext
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/IrAnswersTestExtensionTest.php
@@ -3481,12 +3481,12 @@ request-hook-audit-native-binding-check: php-vendor-check php-model-check
 
 # Runs the database-free tests of shared PHP fixture and assertion helpers.
 .PHONY: php-test-assertions-helper-check
-php-test-assertions-helper-check: php-vendor-check
+php-test-assertions-helper-check: php-vendor-check php-models
 	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DatabaseTestAssertionsTest.php
 
 # Runs the shared PHP and native-extension duplicate-relation cases on private SQLite fixtures.
 .PHONY: cpx5-duplicate-relation-helper-check
-cpx5-duplicate-relation-helper-check: php-vendor-check php-model-check orm-install-php-extension-tools
+cpx5-duplicate-relation-helper-check: php-vendor-check php-model-check orm-install-php-extension-tools php-models
 	@set -eu; \
 	run_dir="$(abspath .runtime/run)/cpx5-duplicate-relation-helper-check-$$PPID"; \
 	trap 'rm -rf "$$run_dir"' EXIT; \

@@ -27,7 +27,7 @@ import { parse as parseYaml, stringify } from 'yaml';
 import { parse as parseToml } from 'smol-toml';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
 import { detachedGroupErrors, timeFailureErrors } from './sources.mts';
-import { callerEnvironmentErrors, generateRuns, scriptCommands, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, phpExtensionBuildErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, makeTargets, rustTestCaseErrors, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
+import { callerEnvironmentErrors, generateRuns, scriptCommands, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, phpExtensionBuildErrors, typescriptHolderErrors, typescriptReaderErrors, phpunitModelErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, makeTargets, rustTestCaseErrors, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
 
 // yamlSteps writes steps (the values of a workflow's steps) as the list under a job's steps:, six spaces deep.
 const yamlSteps = (steps: unknown[]) => stringify(steps).split('\n').map(line => line ? `      ${line}` : line).join('\n');
@@ -1230,6 +1230,24 @@ caseTest('a TypeScript reader holds the build output and has typescript-build as
   const holds = 'typescript-build:\n\t$(HOLD_TYPESCRIPT)\n\tnpm run typescript:build\n';
   assert.deepEqual(typescriptReaderErrors(`${holds}direct: typescript-build\n\t$(READ_TYPESCRIPT)\n\tnode packages/ts/tests/db.mjs\nhub: php-vendor-check\n\t$(READ_TYPESCRIPT)\n\tnode packages/ts/tests/db.mjs\nphp-vendor-check: typescript-build\n\ttrue\n`, read), []);
   assert.deepEqual(typescriptReaderErrors(`${holds}alone:\n\t$(READ_TYPESCRIPT)\n\tnode packages/ts/tests/db.mjs\n`, read), [reader('alone')]);
+});
+
+// T341-1: a target that runs PHPUnit with the packages/php configuration reaches php-models, which writes the bootstrap it requires, directly or through a prerequisite.
+caseTest('a PHPUnit reader of packages/php reaches php-models', COMPUTE, () => {
+  const makefile = [
+    'php-models: php-vendor-check\n\ttrue',
+    'php-vendor-check:\n\ttrue',
+    'direct: php-vendor-check php-models\n\t$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/A.php',
+    'hub: php-models-hub\n\t$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/A.php',
+    'php-models-hub: php-models\n\ttrue',
+    'order: php-vendor-check | php-models\n\t$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/A.php',
+    'named-only: php-vendor-check\n\t$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/A.php',
+    'other-config: php-vendor-check\n\t$(RUN_TESTS) phpunit -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/A.php',
+    '',
+  ].join('\n');
+  assert.deepEqual(phpunitModelErrors(makefile), [
+    'Makefile named-only runs PHPUnit with packages/php/phpunit.xml.dist, which requires packages/php/gen/bootstrap.php, without the prerequisite php-models, which writes it; add php-models to its prerequisites',
+  ]);
 });
 
 // The name-only case (G5.40) does not count as reading a TypeScript test whose path is only written as a string (expected output of a fake node, stub,
