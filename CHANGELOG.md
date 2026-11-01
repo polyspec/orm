@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- orm pins ordered-json at 0.0.20 in every ecosystem, and each lock is refreshed by its own package manager (T350).
 - orm pins kit 0.0.92, whose targets match the crate fetch of orm-install-rust-crates, and takes the principles it ships (T353).
 - contracts/check-inputs.json declared no dbspec-php-check/render, so make run-databases refused the target that runs the physical DDL cases and CI's database run did not cover them. The target is declared like its sibling dbspec-plan-php-check (CR55-1).
 - The check runner reads the process table with a 256 MiB buffer and names the error code of a failed listing, so a large table no longer fails a step with SIGTERM (T351).
@@ -74,7 +75,7 @@
 - The pypi:vulture uv lock of the mise tools is current with the pinned uv 0.13.0, and the digest of mise.lock names it (T346-8).
 - The feature check declares its TypeScript lease tool, scripts/features/typescript-lease.mts, as a policy in config/rebuild.json, so make rebuild-check accepts it (T346-7-1).
 - A verification command that reads the TypeScript build output holds the shared lease of READ_TYPESCRIPT, and a command that builds it holds the exclusive lease, so a reader never overlaps a build in make feature-verify-other (T346-7).
-- orm takes ordered-json 0.0.18 (T346-6) in every ecosystem: the npm, Composer, Go, Python and Rust pins name its release assets and tag, and packaging.md names its 0.0.18 assets.
+- orm takes ordered-json 0.0.20 (T346-6) in every ecosystem: the npm, Composer, Go, Python and Rust pins name its release assets and tag, and packaging.md names its 0.0.20 assets.
 - The Korean Task of T346-5 no longer names an expression that the writing-style rule forbids (T346-5-1).
 - orm requires the maintained fork `min-0-max/json-schema` at its branch `dev-polyspec-origin-2.6.0` in require-dev, in place of the upstream package opis/json-schema (S14) (T346-5).
 - orm takes kit 0.0.88 (T346-1): the pin names the release asset of kit 0.0.88 with its integrity, and the kit-sync copies are that release's, with the link, pipeline and manifest-path rules S11, S12 and P30 (K997, K998).

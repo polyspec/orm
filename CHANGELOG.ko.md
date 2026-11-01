@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 6b422b8d06b1ee05e146dba0ceb5b974d9e4df791346dcb9eed5398d5cd9d39d -->
+<!-- source-sha256: 9bcf46be7e4619f613415d200ebac6c4af90334de8f0e7bd26f80936baa90657 -->
 # 변경 이력
 
 ## Unreleased
 
+- orm은 모든 생태계에서 ordered-json을 0.0.20으로 고정하며, 각 lock은 자기 package manager로 갱신한다 (T350).
 - orm은 kit 0.0.92를 고정한다. 그 target은 orm-install-rust-crates의 crate 받기와 맞고, 그 kit이 담은 원칙 사본을 받는다 (T353).
 - contracts/check-inputs.json에 dbspec-php-check/render가 선언되어 있지 않아 make run-databases가 물리 DDL 케이스를 실행하는 target을 거부했고, CI의 데이터베이스 실행이 그 케이스를 다루지 못했다. 형제 target dbspec-plan-php-check와 같은 형태로 선언했다 (CR55-1).
 - check runner는 프로세스 표를 256 MiB buffer로 읽고, 실패한 목록은 오류 코드를 밝힌다. 그래서 큰 표가 단계를 SIGTERM으로 실패시키지 않는다 (T351).
@@ -75,7 +76,7 @@
 - mise 도구 pypi:vulture의 uv lock이 고정된 uv 0.13.0에 맞고, mise.lock의 digest가 그것을 가리킨다(T346-8).
 - config/rebuild.json이 feature check의 TypeScript lease 도구 scripts/features/typescript-lease.mts를 policy로 선언하여, make rebuild-check가 이를 받아들인다(T346-7-1).
 - TypeScript build output을 읽는 verification command는 READ_TYPESCRIPT의 공유 lease를 잡고, 빌드하는 command는 배타 lease를 잡아, make feature-verify-other에서 reader가 build와 겹치지 않는다(T346-7).
-- orm은 모든 생태계에서 ordered-json 0.0.18을 채택한다(T346-6). npm, Composer, Go, Python, Rust의 pin이 그 release asset과 tag를 가리키며, packaging.md는 0.0.18 asset을 적는다.
+- orm은 모든 생태계에서 ordered-json 0.0.20을 채택한다(T346-6). npm, Composer, Go, Python, Rust의 pin이 그 release asset과 tag를 가리키며, packaging.md는 0.0.20 asset을 적는다.
 - T346-5의 한국어 Task에서 writing-style 규칙이 금지한 표현을 고쳤다(T346-5-1).
 - orm은 require-dev에서 upstream package opis/json-schema 대신 maintained fork `min-0-max/json-schema`를 branch `dev-polyspec-origin-2.6.0`으로 요구한다(S14)(T346-5).
 - orm은 kit 0.0.88을 채택한다(T346-1). package pin은 그 release asset과 integrity를 가리키며, kit-sync 사본은 link, 파이프라인, 매니페스트 경로 규칙 S11, S12, P30(K997, K998)을 담은 그 release의 것이다.
