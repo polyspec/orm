@@ -3800,6 +3800,11 @@
           "implementation": "php",
           "test": "packages/php/tests/DbspecRenderTest.php",
           "id": "DbspecRenderTest::testBehaviourPhysical"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecRenderTestExtensionTest.php",
+          "id": "DbspecRenderTestExtensionTest::testBehaviourPhysical"
         }
       ]
     },

@@ -1216,7 +1216,7 @@ dbspec-php-extension-check/sets: php-vendor-check dbspec-php-extension-check/pre
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecManifestTest.php
 # dbspec-php-extension-check/render runs DbspecRenderTest with the extension: the statements of tests/dbspec/ddl.json.
 dbspec-php-extension-check/render: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecRenderTest.php
+	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/DbspecRenderTest.php
 # dbspec-php-extension-check/graph runs DbspecGraphTest with the extension: the TypeError of a document or plan whose array holds another type.
 dbspec-php-extension-check/graph: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecGraphTest.php

@@ -45,6 +45,7 @@
 - The PHP runner of the shared catalog_connection recipe runs every op and field of the recipe on MySQL, PostgreSQL and SQLite. A catalog updateRow or insertRow takes its values as a list of [name, value] pairs as well as a map, so a repeated column reaches the catalog and is refused with ROW_UPDATE_INVALID or ROW_INSERT_INVALID before any write, as INT-111 states; a MySQL read budget stops by killing the server query by its connection id, and a PostgreSQL read streams through a cursor, so a budget stop does not read the rest of the result (T334-3-3-2-3).
 - The duplication check found three clones of shared test code. The PHP fetchAll of PgsqlStatementAdapter and CatalogAnswerStatement is now the trait FetchesAllRows, the parse_set of the Rust dbspec tests is in the probe module tests/common/dbspec_probe.rs, and the TypeScript within helper is in tests/deadline.mjs, which both use (CR27).
 - The PHP render test checked the statements of tests/dbspec/ddl.json but not their behaviour steps. It now runs the steps on MySQL, PostgreSQL and SQLite, and fails naming the server DSN that is unset (CR16-1-3).
+- The PHP extension render test checked the statements of tests/dbspec/ddl.json but not their behaviour steps. Its make target now runs the steps on MySQL, PostgreSQL and SQLite with the extension, and fails naming the server DSN that is unset (CR16-1-4).
 
 ## 0.0.21
 
