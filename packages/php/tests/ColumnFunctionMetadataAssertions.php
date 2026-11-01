@@ -17,19 +17,19 @@ final class ColumnFunctionMetadataAssertions
     private static function fixture(): array
     {
         $root = dirname(__DIR__, 3);
-        $fixture = json_decode(
-            (string) file_get_contents("$root/contracts/fixtures/planner.json"),
+        $recipe = json_decode(
+            (string) file_get_contents("$root/tests/planner/compile.json"),
             true,
             512,
             JSON_THROW_ON_ERROR
         );
         $cases = array_values(array_filter(
-            $fixture['cases'],
+            $recipe['cases'],
             static fn(array $case): bool => $case['id'] === 'planner_column_function_date'
         ));
-        Assert::assertCount(1, $cases, 'planner fixture has exactly one date column-function case');
-        $case = $cases[0];
-        return [RuntimeModel::build(RuntimeModel::files(["$root/{$case['schema']}"])), $case['input']];
+        Assert::assertCount(1, $cases, 'planner recipe has exactly one date column-function case');
+        $step = $cases[0]['steps'][0];
+        return [RuntimeModel::build(RuntimeModel::files(["$root/tests/planner/{$step['schema']}"])), $step['input']];
     }
 
     /** @return array{RuntimeModel, Validator, array<string, mixed>} */

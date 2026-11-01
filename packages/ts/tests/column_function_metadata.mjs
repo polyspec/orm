@@ -11,9 +11,10 @@ import { repositoryRoot } from './coverage_case.mjs';
 import { isInternalColumnError } from './internal-column-error.mjs';
 import { markdownReadDatabase } from './markdown-read-db.mjs';
 
-const fixtures = JSON.parse(await readFile(join(repositoryRoot, 'contracts/fixtures/planner.json'), 'utf8'));
-const predicateCase = fixtures.cases.find(({ id }) => id === 'planner_column_function_date');
-assert.ok(predicateCase, 'planner fixture contains a valid date column-function request');
+const plannerRecipe = JSON.parse(await readFile(join(repositoryRoot, 'tests/planner/compile.json'), 'utf8'));
+const predicateCaseRecipe = plannerRecipe.cases.find(({ id }) => id === 'planner_column_function_date');
+assert.ok(predicateCaseRecipe, 'planner recipe contains a valid date column-function request');
+const predicateCase = { input: predicateCaseRecipe.steps[0].input, schema: join('tests/planner', predicateCaseRecipe.steps[0].schema) };
 const parsed = parseDbspec(await readFile(join(repositoryRoot, predicateCase.schema), 'utf8'), {});
 assert.deepEqual(parsed.diagnostics, []);
 const { manifest } = dbspecManifest([parsed.document]);

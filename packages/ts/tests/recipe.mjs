@@ -13,6 +13,7 @@ import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJso
 import { CORE, Db, OrmError, StyledValue, blindIndex, connectCatalog, dbspecManifest, decode, encode, hostDecode, hostEncode, parseDbspec, parseDbspecSet, readDbspecSet, registerModel } from '../dist/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
+import { Engine } from '../dist/index.js';
 import { withCaseDatabase } from './case-database.mjs';
 import { modelOps } from './recipe_model.mjs';
 import { classesFromModel } from './registered_models.mjs';
@@ -39,6 +40,7 @@ export function runRecipe(path, database) {
       for (const [index, step] of recipeCase.steps.entries()) {
         try {
           if (step.op === 'ir.validate') checkValidate(step, requestText(literal, caseIndex, index), schema, database);
+          else if (step.op === 'planner.compile') checkPlanner(step, dirname(path), database);
           else if (step.op === 'ir.answer') await checkAnswer(step, database);
           else run(step, bound, database);
         } catch (error) {
@@ -594,6 +596,47 @@ function checkValidate(step, text, schema, database) {
   }
   if (JSON.stringify(outcome.value) !== '{"bool":true}') throw new Error(`ir.validate expects {bool true} or an error, got ${JSON.stringify(outcome.value)}`);
   if (got !== null) throw new Error(`got ${got}, want valid`);
+}
+
+// plannerDialects are the dialects that a planner.compile step compiles its request for, in the order of the planner fixture.
+const plannerDialects = ['mysql', 'postgres', 'sqlite'];
+
+// plannerSlot is the source and type of one bind slot in the form of the planner fixture: the request value number of a param
+// slot, the key types of a parent slot, and the fraction digits, varchar length and not-null flag where the fixture writes them.
+function plannerSlot(slot) {
+  if (slot.from === 'parent') return { from: slot.from, key_types: slot.key_types };
+  const out = slot.from === 'param' ? { from: slot.from, param: slot.param, type: slot.col_type } : { from: slot.from, type: slot.col_type };
+  if (slot.col_type === 'datetime' || slot.col_type === 'time') out.precision = slot.precision ?? 0;
+  if (slot.from === 'param' && slot.col_type === 'varchar') out.length = slot.length ?? 0;
+  if (slot.not_null === true) out.not_null = true;
+  return out;
+}
+
+// checkPlanner compiles the request of a planner.compile step with the client engine of each dialect, against the manifest of
+// the schema that the step names relative to the recipe file, and checks the plans with the expect of database: {value: {mysql,
+// postgres, sqlite}} with the statements of each dialect, or {error: CODE}, which every dialect must reject with.
+function checkPlanner(step, recipeDir, database) {
+  if (database !== NONE) throw new Error('planner.compile runs without a database');
+  if (typeof step.schema !== 'string') throw new Error('planner.compile needs a schema');
+  const { model, hash } = validationModel(resolve(root, recipeDir, step.schema));
+  const request = { ...structuredClone(step.input), manifest_hash: hash };
+  const outcome = step.expect[database];
+  if (outcome === undefined) throw new Error(`planner.compile has no expect for ${database}`);
+  if (outcome.error !== undefined) {
+    for (const dialect of plannerDialects) {
+      let code = null;
+      try { new Engine(model, dialect).compile(request); } catch (error) { code = error.code ?? String(error); }
+      if (code !== outcome.error) throw new Error(`${dialect}: got ${code ?? 'a plan'}, want ${outcome.error}`);
+    }
+    return;
+  }
+  const got = {};
+  for (const dialect of plannerDialects) {
+    const plan = new Engine(model, dialect).compile(request);
+    got[dialect] = plan.steps.map(planStep => ({ role: planStep.role, sql: planStep.sql, slots: planStep.bind_slots.map(plannerSlot), tables: planStep.tables }));
+  }
+  const actual = JSON.parse(JSON.stringify(got));
+  if (!isDeepStrictEqual(actual, outcome.value)) throw new Error(`planner.compile: got ${JSON.stringify(actual)}, want ${JSON.stringify(outcome.value)}`);
 }
 
 // startMarkdownTestServerWithKeyedAnswers is a listener that answers connect with {"ok":true} and every later message with the answer of answers keyed

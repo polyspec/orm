@@ -187,7 +187,7 @@
     "step": {
       "type": "object",
       "required": ["op"],
-      "properties": { "op": { "enum": ["dsn.connect", "model.connect", "codec.decode", "codec.encode", "codec.host_encode", "codec.host_decode", "codec.blind_index", "sql.exec", "ir.validate", "ir.answer", "catalog.current_namespace", "catalog.describe_table", "catalog.table_page", "catalog.read_only_query", "catalog.read_only_grid_query", "catalog.row_snapshot", "catalog.insert_row", "catalog.update_row", "catalog.delete_row", "schema.install", "schema.register", "schema.connect", "schema.add_tables_and_columns", "statements.count", "transaction", "model.create", "model.creates", "model.save", "model.duplicate_create", "model.update", "model.arithmetic", "model.delete", "model.count", "model.get_by", "model.query", "events.subscribe", "events.fail_subscriber", "events.stop_failing", "events.unsubscribe", "events.captured"] } },
+      "properties": { "op": { "enum": ["dsn.connect", "model.connect", "codec.decode", "codec.encode", "codec.host_encode", "codec.host_decode", "codec.blind_index", "sql.exec", "ir.validate", "ir.answer", "catalog.current_namespace", "catalog.describe_table", "catalog.table_page", "catalog.read_only_query", "catalog.read_only_grid_query", "catalog.row_snapshot", "catalog.insert_row", "catalog.update_row", "catalog.delete_row", "schema.install", "schema.register", "schema.connect", "schema.add_tables_and_columns", "statements.count", "transaction", "model.create", "model.creates", "model.save", "model.duplicate_create", "model.update", "model.arithmetic", "model.delete", "model.count", "model.get_by", "model.query", "events.subscribe", "events.fail_subscriber", "events.stop_failing", "events.unsubscribe", "events.captured", "planner.compile"] } },
       "oneOf": [
         { "$ref": "#/$defs/ops/dsn.connect" },
         { "$ref": "#/$defs/ops/model.connect" },
@@ -196,7 +196,7 @@
         { "$ref": "#/$defs/ops/codec.host_encode" },
         { "$ref": "#/$defs/ops/codec.host_decode" },
         { "$ref": "#/$defs/ops/codec.blind_index" },
-        { "$ref": "#/$defs/ops/sql.exec" }, { "$ref": "#/$defs/ops/ir.validate" }, { "$ref": "#/$defs/ops/ir.answer" },
+        { "$ref": "#/$defs/ops/sql.exec" }, { "$ref": "#/$defs/ops/ir.validate" }, { "$ref": "#/$defs/ops/ir.answer" }, { "$ref": "#/$defs/ops/planner.compile" },
         { "$ref": "#/$defs/ops/catalog.current_namespace" },
         { "$ref": "#/$defs/ops/catalog.describe_table" },
         { "$ref": "#/$defs/ops/catalog.table_page" },
@@ -328,6 +328,30 @@
           "value": { "$ref": "#/$defs/argument" },
           "key": { "type": "string" },
           "expect": { "$ref": "#/$defs/expect" }
+        }
+      },
+      "planner.compile": {
+        "type": "object",
+        "required": ["op", "schema", "input", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "planner.compile" },
+          "schema": { "type": "string", "pattern": "\\.dbs$", "description": "The schema manifest of the request, relative to the recipe file." },
+          "input": { "type": "object", "description": "A request of the protocol (docs/spec/protocol.md) without manifest_hash; the step adds the hash of the schema named by schema." },
+          "expect": {
+            "type": "object",
+            "required": ["none"],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "oneOf": [
+                  { "required": ["value"], "additionalProperties": false, "properties": { "value": { "type": "object", "required": ["mysql", "postgres", "sqlite"], "additionalProperties": false, "properties": { "mysql": { "type": "array" }, "postgres": { "type": "array" }, "sqlite": { "type": "array" } } } } },
+                  { "required": ["error"], "additionalProperties": false, "properties": { "error": { "type": "string" } } }
+                ]
+              }
+            }
+          }
         }
       },
       "ir.validate": {

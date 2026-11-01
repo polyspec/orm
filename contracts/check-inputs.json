@@ -1228,11 +1228,13 @@
         "packages/go/engine/planner/planner.go",
         "packages/go/engine/planner/scalar_subquery_type_test.go",
         "packages/go/orm/coverage_planner_test.go",
+        "packages/go/orm/recipe_planner_test.go",
         "packages/go/orm/markdown.go",
         "packages/rust/orm/src/engine/params.rs",
         "packages/rust/orm/src/engine/planner.rs",
         "packages/rust/orm/src/markdown.rs",
         "packages/rust/orm/tests/unit/coverage_planner.rs",
+        "packages/rust/orm/tests/planner.rs",
         "packages/rust/orm/tests/unit/param_uses.rs",
         "packages/rust/orm/tests/unit/markdown_column_function.rs",
         "packages/ts/src/engine/params.ts",
@@ -1252,7 +1254,9 @@
         "packages/python/src/polyspec/orm/markdown.py",
         "packages/python/tests/test_column_function_internal.py",
         "packages/python/tests/coverage_planner.py",
-        "contracts/fixtures/planner.json"
+        "packages/python/tests/test_planner_compile_none.py",
+        "contracts/fixtures/planner.json",
+        "tests/planner/compile.json"
       ]
     },
     "rust-time-precision-check": {
@@ -1314,6 +1318,7 @@
         "packages/rust/orm/src/engine/planner.rs",
         "packages/rust/orm/src/markdown.rs",
         "packages/rust/orm/tests/unit/coverage_planner.rs",
+        "packages/rust/orm/tests/planner.rs",
         "packages/rust/orm/tests/unit/markdown_scalar_subquery.rs",
         "packages/ts/src/engine/planner.ts",
         "packages/ts/src/markdown.ts",
@@ -1418,6 +1423,7 @@
         "packages/rust/orm/src/ir.rs",
         "packages/rust/orm/src/request.rs",
         "packages/rust/orm/tests/unit/coverage_planner.rs",
+        "packages/rust/orm/tests/planner.rs",
         "packages/rust/orm/tests/unit/ir_request.rs",
         "packages/rust/orm/tests/unit/markdown_scalar_subquery.rs",
         "packages/rust/orm/tests/unit/param_uses.rs",
@@ -3622,6 +3628,7 @@
         "tests/dbspec/show-create.json",
         "tests/dbspec/cases.json",
         "contracts/fixtures/planner.json",
+        "tests/planner/compile.json",
         "tests/ir/validate.json",
         "tests/dbspec/stress.mts"
       ]

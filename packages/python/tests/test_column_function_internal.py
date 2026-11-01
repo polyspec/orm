@@ -14,21 +14,21 @@ from .coverage_case import REPOSITORY_ROOT
 
 class ColumnFunctionMetadataTest(unittest.TestCase):
     def setUp(self):
-        fixture = json.loads(
-            (REPOSITORY_ROOT / "contracts/fixtures/planner.json").read_text(
+        recipe = json.loads(
+            (REPOSITORY_ROOT / "tests/planner/compile.json").read_text(
                 encoding="utf-8"
             )
         )
-        self.case = next(
-            case
-            for case in fixture["cases"]
+        self.step = next(
+            case["steps"][0]
+            for case in recipe["cases"]
             if case["id"] == "planner_column_function_date"
         )
-        schema = (REPOSITORY_ROOT / self.case["schema"]).read_text(encoding="utf-8")
-        self.model = model_of_documents(parse_document_set([schema]))
+        schema = (REPOSITORY_ROOT / "tests/planner" / self.step["schema"]).resolve()
+        self.model = model_of_documents(parse_document_set([schema.read_text(encoding="utf-8")]))
 
     def test_missing_post_validation_field_is_internal(self):
-        request = dict(self.case["input"], manifest_hash=self.model.manifest_hash)
+        request = dict(self.step["input"], manifest_hash=self.model.manifest_hash)
         validate(self.model, request)
         self.assertEqual(param_uses(self.model, request)[0][0].type, "date")
         for dialect in ("mysql", "postgres", "sqlite"):

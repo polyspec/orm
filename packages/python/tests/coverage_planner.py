@@ -1,16 +1,12 @@
-# planner coverage: compiles the request of every case of contracts/fixtures/planner.json with the manifest hash of the
-# case's schema document in every dialect, and compares the statements (role, sql, the source of each bind slot, its
-# param number and type, the tables) or the error code with the expectation, as the planner coverage of Go, PHP,
-# TypeScript and Rust does. The feature coverage check runs `-m packages.python.tests.coverage_planner <case id>...`
-# (scripts/features/coverage.mts, coverage_case.py); a unittest run of this module, such as the parity check's, runs
-# every case as a test named by its id.
+# planner coverage: the param_uses cases of contracts/fixtures/planner.json, which compare the uses of each parameter with
+# the expectation. The compile cases are the recipe tests/planner/compile.json (test_planner_compile_none.py).
+# The feature coverage check runs `-m packages.python.tests.coverage_planner <case id>...` (scripts/features/coverage.mts,
+# coverage_case.py); a unittest run of this module, such as the parity check's, runs every case as a test named by its id.
 import json
 import unittest
 
 from polyspec.orm.engine import model_of_documents, parse_document_set
-from polyspec.orm.engine.dialect import dialect_of
 from polyspec.orm.engine.params import param_uses
-from polyspec.orm.engine.planner import Planner
 from polyspec.orm.engine.validate import validate
 from polyspec.orm.errors import OrmError
 from .coverage_case import REPOSITORY_ROOT, run_cases
@@ -21,7 +17,6 @@ FIXTURE = json.loads(
         encoding="utf-8"
     )
 )
-DIALECTS = ("mysql", "postgres", "sqlite")
 # The runtime model of each schema document that a case names, by repository path.
 MODELS = {}
 
@@ -43,69 +38,6 @@ def model_of(case: dict):
             parse_document_set([(REPOSITORY_ROOT / schema).read_text()])
         )
     return MODELS[schema]
-
-
-def planner_slot(slot: dict) -> dict:
-    """A bind slot's source and type: the request value number of a param slot, the key types of a parent slot."""
-    if slot["from"] == "parent":
-        return {"from": "parent", "key_types": slot["key_types"]}
-    out = {"from": slot["from"], "type": slot.get("col_type", "")}
-    if slot["from"] == "param":
-        out = {"from": "param", "param": slot["param"], "type": out["type"]}
-    # A datetime or time slot carries its fraction digits.
-    if out["type"] in ("datetime", "time"):
-        out["precision"] = slot.get("precision", 0)
-    # A varchar param slot carries its length.
-    if slot["from"] == "param" and out["type"] == "varchar":
-        out["length"] = slot.get("length", 0)
-    # An assignment slot of a non-null column says so.
-    if slot.get("not_null"):
-        out["not_null"] = True
-    return out
-
-
-def compile_case(case: dict) -> None:
-    """Validates and compiles the request of a case in every dialect and compares the expectation."""
-    # Requirements: PRT-6. The upsert conflict-key cases are listed below in planner.json.
-    # The planner_tables case checks PRT-37; planner_scalar_column_subquery checks PRT-78.
-    expect_equal(case["operation"], "compile", f"operation of case {case['id']}")
-    model = model_of(case)
-    request = dict(case["input"], manifest_hash=model.manifest_hash)
-    # Requirements: DSL-24.
-    if case["id"] in (
-        "planner_rejects_unknown_column",
-        "planner_rejects_column_function_unknown_column",
-    ):
-        try:
-            validate(model, request)
-        except OrmError as error:
-            expect_equal(error.code, "COLUMN_UNKNOWN", "public validate error")
-        else:
-            raise AssertionError("public validate accepted an unknown column")
-    for dialect in DIALECTS:
-        planner = Planner(model, dialect_of(dialect)())
-        if "error" in case["expected"]:
-            try:
-                validate(model, request)
-                planner.compile(request)
-            except OrmError as error:
-                expect_equal(error.code, case["expected"]["error"], f"{dialect} error")
-                continue
-            raise AssertionError(
-                f"{dialect}: compiled, want {case['expected']['error']}"
-            )
-        validate(model, request)
-        plan = planner.compile(request)
-        statements = [
-            {
-                "role": step["role"],
-                "slots": [planner_slot(s) for s in step["bind_slots"]],
-                "sql": step["sql"],
-                "tables": step["tables"],
-            }
-            for step in plan["steps"]
-        ]
-        expect_equal(statements, case["expected"][dialect], f"{dialect} statements")
 
 
 # Requirements: DIA-31, PRT-67. Each fixture case asserts the logical slot type and its column metadata.
@@ -138,11 +70,8 @@ def param_uses_case(case: dict) -> None:
 
 
 def run_case(case: dict) -> None:
-    """Runs a case by its operation."""
-    if case["operation"] == "param_uses":
-        param_uses_case(case)
-    else:
-        compile_case(case)
+    """Runs a case of the fixture, which holds only param_uses cases."""
+    param_uses_case(case)
 
 
 # Requirements: DSL-95. Joined-child fixture cases cover grouped placement and implicit AND appending.

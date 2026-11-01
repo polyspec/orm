@@ -8672,6 +8672,46 @@
         "PRT-78",
         "DSL-95"
       ],
+      "file": "tests/planner/compile.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_planner_test.go",
+          "symbol": "TestRecipePlannerCompileNone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/PlannerCompileTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\PlannerCompileTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PlannerCompileTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\PlannerCompileTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/planner_compile.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_planner_compile_none.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/planner.rs",
+          "symbol": "planner_compile_none"
+        }
+      ]
+    },
+    {
+      "id": "planner-params",
+      "kind": "suite",
+      "requirements": [
+        "DIA-31",
+        "PRT-67"
+      ],
       "file": "contracts/fixtures/planner.json",
       "cases": "$.cases[*].id",
       "bindings": [
@@ -8729,28 +8769,28 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoveragePlannerTest.php",
-          "id": "CoveragePlannerTest::testPlannerJoinedChildConditionsGrouped"
+          "test": "packages/php/tests/PlannerCompileTest.php",
+          "id": "PlannerCompileTest::testNone with data set \"planner_joined_child_conditions_grouped\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
-          "id": "CoveragePlannerExtensionTest::test_planner_joined_child_conditions_grouped"
+          "test": "packages/php-ext/tests/PlannerCompileTestExtensionTest.php",
+          "id": "PlannerCompileTestExtensionTest::testNone with data set \"planner_joined_child_conditions_grouped\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_planner.mjs",
+          "test": "packages/ts/tests/planner_compile.mjs",
           "id": "planner_joined_child_conditions_grouped"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_planner.py",
+          "test": "packages/python/tests/test_planner_compile_none.py",
           "id": "planner_joined_child_conditions_grouped"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/coverage_planner.rs",
-          "id": "engine::coverage_planner::planner::planner_joined_child_conditions_grouped"
+          "test": "packages/rust/orm/tests/planner.rs",
+          "id": "planner_compile_none::planner_joined_child_conditions_grouped"
         }
       ]
     },
@@ -8763,93 +8803,93 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_planner_test.go",
-          "id": "TestCoveragePlanner/planner_rejects_upsert_primary_and_unique_key"
+          "test": "packages/go/orm/recipe_planner_test.go",
+          "id": "TestRecipePlannerCompileNone/planner_rejects_upsert_primary_and_unique_key"
         },
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_planner_test.go",
-          "id": "TestCoveragePlanner/planner_rejects_upsert_unique_key_not_assigned"
+          "test": "packages/go/orm/recipe_planner_test.go",
+          "id": "TestRecipePlannerCompileNone/planner_rejects_upsert_unique_key_not_assigned"
         },
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_planner_test.go",
-          "id": "TestCoveragePlanner/planner_rejects_upsert_without_a_key"
+          "test": "packages/go/orm/recipe_planner_test.go",
+          "id": "TestRecipePlannerCompileNone/planner_rejects_upsert_without_a_key"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoveragePlannerTest.php",
-          "id": "CoveragePlannerTest::testPlannerRejectsUpsertPrimaryAndUniqueKey"
+          "test": "packages/php/tests/PlannerCompileTest.php",
+          "id": "PlannerCompileTest::testNone with data set \"planner_rejects_upsert_primary_and_unique_key\""
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoveragePlannerTest.php",
-          "id": "CoveragePlannerTest::testPlannerRejectsUpsertUniqueKeyNotAssigned"
+          "test": "packages/php/tests/PlannerCompileTest.php",
+          "id": "PlannerCompileTest::testNone with data set \"planner_rejects_upsert_unique_key_not_assigned\""
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoveragePlannerTest.php",
-          "id": "CoveragePlannerTest::testPlannerRejectsUpsertWithoutAKey"
+          "test": "packages/php/tests/PlannerCompileTest.php",
+          "id": "PlannerCompileTest::testNone with data set \"planner_rejects_upsert_without_a_key\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
-          "id": "CoveragePlannerExtensionTest::test_planner_rejects_upsert_primary_and_unique_key"
+          "test": "packages/php-ext/tests/PlannerCompileTestExtensionTest.php",
+          "id": "PlannerCompileTestExtensionTest::testNone with data set \"planner_rejects_upsert_primary_and_unique_key\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
-          "id": "CoveragePlannerExtensionTest::test_planner_rejects_upsert_unique_key_not_assigned"
+          "test": "packages/php-ext/tests/PlannerCompileTestExtensionTest.php",
+          "id": "PlannerCompileTestExtensionTest::testNone with data set \"planner_rejects_upsert_unique_key_not_assigned\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
-          "id": "CoveragePlannerExtensionTest::test_planner_rejects_upsert_without_a_key"
+          "test": "packages/php-ext/tests/PlannerCompileTestExtensionTest.php",
+          "id": "PlannerCompileTestExtensionTest::testNone with data set \"planner_rejects_upsert_without_a_key\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_planner.mjs",
+          "test": "packages/ts/tests/planner_compile.mjs",
           "id": "planner_rejects_upsert_primary_and_unique_key"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_planner.mjs",
+          "test": "packages/ts/tests/planner_compile.mjs",
           "id": "planner_rejects_upsert_unique_key_not_assigned"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_planner.mjs",
+          "test": "packages/ts/tests/planner_compile.mjs",
           "id": "planner_rejects_upsert_without_a_key"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_planner.py",
+          "test": "packages/python/tests/test_planner_compile_none.py",
           "id": "planner_rejects_upsert_primary_and_unique_key"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_planner.py",
+          "test": "packages/python/tests/test_planner_compile_none.py",
           "id": "planner_rejects_upsert_unique_key_not_assigned"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_planner.py",
+          "test": "packages/python/tests/test_planner_compile_none.py",
           "id": "planner_rejects_upsert_without_a_key"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/coverage_planner.rs",
-          "id": "engine::coverage_planner::planner::planner_rejects_upsert_primary_and_unique_key"
+          "test": "packages/rust/orm/tests/planner.rs",
+          "id": "planner_compile_none::planner_rejects_upsert_primary_and_unique_key"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/coverage_planner.rs",
-          "id": "engine::coverage_planner::planner::planner_rejects_upsert_unique_key_not_assigned"
+          "test": "packages/rust/orm/tests/planner.rs",
+          "id": "planner_compile_none::planner_rejects_upsert_unique_key_not_assigned"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/coverage_planner.rs",
-          "id": "engine::coverage_planner::planner::planner_rejects_upsert_without_a_key"
+          "test": "packages/rust/orm/tests/planner.rs",
+          "id": "planner_compile_none::planner_rejects_upsert_without_a_key"
         },
         {
           "implementation": "rust",

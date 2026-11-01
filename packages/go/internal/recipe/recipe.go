@@ -20,7 +20,9 @@ import (
 	"testing"
 
 	orderedjson "github.com/polyspec/ordered-json/packages/go"
+	"github.com/polyspec/orm/packages/go/engine"
 	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/packages/go/engine/plan"
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 	"github.com/polyspec/orm/packages/go/orm"
 )
@@ -50,6 +52,8 @@ type step struct {
 	Answer  json.RawMessage            `json:"answer"`
 	Answers map[string]json.RawMessage `json:"answers"`
 	Expect  map[string]json.RawMessage `json:"expect"`
+	Schema  string                     `json:"schema"`
+	Input   json.RawMessage            `json:"input"`
 }
 
 // IRAnswer runs the chain of one ir.answer step on a listener that answers with the answer, or with answers keyed by the op of
@@ -113,7 +117,7 @@ func Run(t *testing.T, path, database string, opts ...Option) {
 				if err := json.Unmarshal(raw, &s); err != nil {
 					t.Fatalf("recipe %s case %s step %d on %s: %v", path, c.ID, index, database, err)
 				}
-				if err := run(t, s, bound, database, model, o); err != nil {
+				if err := run(t, s, bound, database, model, o, filepath.Dir(path)); err != nil {
 					t.Fatalf("recipe %s case %s step %d (%s) on %s: %v", path, c.ID, index, s.Op, database, err)
 				}
 			}
@@ -122,7 +126,10 @@ func Run(t *testing.T, path, database string, opts ...Option) {
 }
 
 // run maps the op of s to its call and checks the result against the expect of database.
-func run(t *testing.T, s step, bound map[string]result, database string, model *runtimemodel.Model, o options) error {
+func run(t *testing.T, s step, bound map[string]result, database string, model *runtimemodel.Model, o options, dir string) error {
+	if s.Op == "planner.compile" {
+		return checkPlanner(dir, s, database)
+	}
 	if s.Op == "ir.validate" {
 		return checkValidate(s.Expect[database], validate(model, s.Request))
 	}
@@ -809,4 +816,148 @@ func checkAnswer(t *testing.T, s step, database string, fn IRAnswer) error {
 		return fmt.Errorf("chain %s: got %s, want %s", s.Chain, body, outcome.Value)
 	}
 	return nil
+}
+
+// plannerDialects are the dialects that a planner.compile step compiles its request for, in the order of the planner fixture.
+var plannerDialects = []string{"mysql", "postgres", "sqlite"}
+
+// plannerStatement is the role, SQL, bind slot, and table of one compiled plan step, as the planner fixture writes it.
+type plannerStatement struct {
+	Role   string        `json:"role"`
+	SQL    string        `json:"sql"`
+	Slots  []plannerSlot `json:"slots"`
+	Tables []string      `json:"tables"`
+}
+
+// plannerSlot is the source and type of one bind slot. A param slot carries the request value's number, a parent slot
+// carries the key's type, and the other slots carry a type.
+type plannerSlot struct {
+	From  string `json:"from"`
+	Param *int   `json:"param,omitempty"`
+	Type  string `json:"type,omitempty"`
+	// Precision is the fraction digits of a datetime or time slot.
+	Precision *int `json:"precision,omitempty"`
+	// Length is the n of a varchar(n) param slot.
+	Length *int `json:"length,omitempty"`
+	// NotNull marks a param slot that assigns a non-null column.
+	NotNull  bool     `json:"not_null,omitempty"`
+	KeyTypes []string `json:"key_types,omitempty"`
+}
+
+// checkPlanner compiles the request of a planner.compile step with the engine of each dialect, against the manifest of the
+// schema that the step names relative to dir, and compares the plans with the expect of database: {value: {mysql, postgres,
+// sqlite}} with the statements of each dialect, or {error: CODE}, which every dialect must fail with.
+func checkPlanner(dir string, s step, database string) error {
+	if database != None {
+		return fmt.Errorf("planner.compile runs without a database")
+	}
+	if s.Schema == "" {
+		return fmt.Errorf("planner.compile needs a schema")
+	}
+	raw, ok := s.Expect[database]
+	if !ok {
+		return fmt.Errorf("planner.compile has no expect for %s", database)
+	}
+	var outcome struct {
+		Value json.RawMessage `json:"value"`
+		Error string          `json:"error"`
+	}
+	if err := json.Unmarshal(raw, &outcome); err != nil {
+		return err
+	}
+	m, err := runtimemodel.LoadFiles(filepath.Join(dir, s.Schema))
+	if err != nil {
+		return err
+	}
+	var input map[string]json.RawMessage
+	if err := json.Unmarshal(s.Input, &input); err != nil {
+		return err
+	}
+	if _, ok := input["manifest_hash"]; ok {
+		return fmt.Errorf("input already holds manifest_hash")
+	}
+	hash, err := json.Marshal(m.ManifestHash)
+	if err != nil {
+		return err
+	}
+	input["manifest_hash"] = hash
+	request, err := json.Marshal(input)
+	if err != nil {
+		return err
+	}
+	if outcome.Error != "" {
+		for _, dialect := range plannerDialects {
+			e, err := engine.New(m, dialect)
+			if err != nil {
+				return err
+			}
+			if _, err := e.Compile(request); err == nil || orm.ErrorCode(err) != outcome.Error {
+				return fmt.Errorf("%s: compile = %v; want %s", dialect, err, outcome.Error)
+			}
+		}
+		return nil
+	}
+	got := map[string]any{}
+	for _, dialect := range plannerDialects {
+		e, err := engine.New(m, dialect)
+		if err != nil {
+			return err
+		}
+		out, err := e.Compile(request)
+		if err != nil {
+			return fmt.Errorf("%s: %w", dialect, err)
+		}
+		var compiled plan.Plan
+		if err := json.Unmarshal(out, &compiled); err != nil {
+			return err
+		}
+		statements := plannerStatements(compiled)
+		got[dialect] = statements
+	}
+	body, err := json.Marshal(got)
+	if err != nil {
+		return err
+	}
+	var actual, want any
+	if err := json.Unmarshal(body, &actual); err != nil {
+		return err
+	}
+	if err := json.Unmarshal(outcome.Value, &want); err != nil {
+		return err
+	}
+	if !reflect.DeepEqual(actual, want) {
+		return fmt.Errorf("planner.compile: got %s, want %s", body, outcome.Value)
+	}
+	return nil
+}
+
+// plannerStatements converts the steps of a compiled plan to the statements of the planner fixture.
+func plannerStatements(compiled plan.Plan) []plannerStatement {
+	got := []plannerStatement{}
+	for _, step := range compiled.Steps {
+		slots := []plannerSlot{}
+		for _, slot := range step.BindSlots {
+			s := plannerSlot{From: slot.From}
+			switch slot.From {
+			case "param":
+				s.Param, s.Type = &slot.Param, slot.ColType
+			case "parent":
+				s.KeyTypes = slot.KeyTypes
+			default:
+				s.Type = slot.ColType
+			}
+			if slot.ColType == "datetime" || slot.ColType == "time" {
+				precision := slot.Precision
+				s.Precision = &precision
+			}
+			s.NotNull = slot.NotNull
+			if slot.From == "param" && slot.ColType == "varchar" {
+				length := slot.Length
+				s.Length = &length
+			}
+			slots = append(slots, s)
+		}
+		got = append(got, plannerStatement{Role: step.Role, SQL: step.SQL, Slots: slots, Tables: step.Tables})
+	}
+	return got
 }

@@ -28,10 +28,12 @@ from polyspec.orm.codec import (
 from polyspec.orm import Db, Model, OrmError, Schema, connect_catalog, register_model
 from polyspec.orm.dbspec import (
     dbspec_manifest,
+    parse_dbspec,
     parse_dbspec_set,
+    read_dbspec_file,
     read_dbspec_set,
 )
-from polyspec.orm.engine import model_of_documents, parse_document_set
+from polyspec.orm.engine import Engine, model_of_documents, parse_document_set
 from polyspec.orm.engine.validate import validate
 from polyspec.orm.styled_value import StyledValue
 
@@ -98,6 +100,9 @@ def recipe_tests(path: str, database: str):
                 if step["op"] == "ir.answer":
                     _answer(step, database)
                     continue
+                if step["op"] == "planner.compile":
+                    _plan(step, ROOT / Path(path).parent, database)
+                    continue
                 _run(step, bound, database)
             except AssertionError as error:
                 raise AssertionError(
@@ -128,6 +133,76 @@ def _answer(step: dict, database: str) -> None:
 def _validation_model(schema: Path):
     """The model of the schema manifest that the ir.validate steps check their requests against."""
     return model_of_documents(parse_document_set([schema.read_text(encoding="utf-8")]))
+
+
+# The models of the planner.compile steps, by the path of their schema.
+_plan_models: dict[Path, Any] = {}
+
+# plannerDialects are the dialects that a planner.compile step compiles its request for, in the order of the planner fixture.
+_PLAN_DIALECTS = ("mysql", "postgres", "sqlite")
+
+
+def _plan_slot(slot: dict) -> dict:
+    """A bind slot's source and type in the form of the planner fixture: the request value number of a param slot, the key
+    types of a parent slot, and the fraction digits, varchar length and not-null flag where the fixture writes them."""
+    if slot["from"] == "parent":
+        return {"from": "parent", "key_types": slot["key_types"]}
+    out = {"from": slot["from"], "type": slot.get("col_type", "")}
+    if slot["from"] == "param":
+        out = {"from": "param", "param": slot["param"], "type": out["type"]}
+    if out["type"] in ("datetime", "time"):
+        out["precision"] = slot.get("precision", 0)
+    if slot["from"] == "param" and out["type"] == "varchar":
+        out["length"] = slot.get("length", 0)
+    if slot.get("not_null"):
+        out["not_null"] = True
+    return out
+
+
+def _plan(step: dict, recipe_dir: Path, database: str) -> None:
+    """Compiles the request of a planner.compile step with the Engine of each dialect, against the manifest of the schema that
+    the step names relative to the recipe file, and checks the plans with the expect of database: {value: {mysql, postgres,
+    sqlite}} with the statements of each dialect, or {error: CODE}, which every dialect must reject with."""
+    if database != NONE:
+        raise AssertionError("planner.compile runs without a database")
+    if not isinstance(step.get("schema"), str):
+        raise AssertionError("planner.compile needs a schema")
+    schema = (recipe_dir / step["schema"]).resolve()
+    if schema not in _plan_models:
+        _plan_models[schema] = _validation_model(schema)
+    model = _plan_models[schema]
+    request = dict(json.loads(json.dumps(step["input"])), manifest_hash=model.manifest_hash)
+    outcome = step["expect"].get(database)
+    if outcome is None:
+        raise AssertionError(f"planner.compile has no expect for {database}")
+    if "error" in outcome:
+        for dialect in _PLAN_DIALECTS:
+            got = None
+            try:
+                Engine(model, dialect).compile(request)
+            except OrmError as error:
+                got = error.code
+            if got != outcome["error"]:
+                raise AssertionError(
+                    f"{dialect}: got {got or 'a plan'}, want {outcome['error']}"
+                )
+        return
+    got = {}
+    for dialect in _PLAN_DIALECTS:
+        plan = Engine(model, dialect).compile(request)
+        got[dialect] = [
+            {
+                "role": planned["role"],
+                "slots": [_plan_slot(s) for s in planned["bind_slots"]],
+                "sql": planned["sql"],
+                "tables": planned["tables"],
+            }
+            for planned in plan["steps"]
+        ]
+    if got != outcome["value"]:
+        raise AssertionError(
+            f"planner.compile: got {json.dumps(got)}, want {json.dumps(outcome['value'])}"
+        )
 
 
 def _validate(step: dict, model: Any, database: str) -> None:

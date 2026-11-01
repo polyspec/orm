@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The planner compile cases (86) run as the recipe tests/planner/compile.json through the op `planner.compile` in the six runtimes, in place of the native compile tests; the five param_uses cases stay in contracts/fixtures/planner.json (T334-3-16-1).
 - The statement events of `tests/events/vectors.json` run as the recipe `contracts/fixtures/statement_events/statement_events.json` in all six clients on MySQL, PostgreSQL and SQLite. The native statement-event suite is removed; the server-transaction tests and the coverage owners stay native (T334-3-5).
 - The model_writes recipe, contracts/fixtures/model_writes/model_writes.json, runs its six cases on MySQL, PostgreSQL and SQLite in the six runtimes (T334-3-4): config/parity.json binds the units model_writes-<database>. The native save-key, arithmetic, CRUD write-cycle and round-trip tests that the recipe covers are removed. The write cycle keeps its ordered JSON and codec assertions (COD-11, COD-12, COD-15, COD-38, DIA-26), and the create_parts native test stays for its StatementEvent batch assertions. The PHP extension's native write layer is documented as INT-151 and bound to its eight tests (T334-3-4).
 - The `dsn.connect` op of FCV-4 runs the DSN connection recipe `contracts/fixtures/dsn_connection/dsn_connection.json` on all six runtimes and the three databases; the native DSN coverage tests are removed, and the parity units bind the six recipe entries (T334-3-4).

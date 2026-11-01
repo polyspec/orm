@@ -36,6 +36,7 @@ require_once dirname(__DIR__, 2) . '/php/tests/CoverageSchemaDefinitionTest.php'
 require_once dirname(__DIR__, 2) . '/php/tests/Recipe.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CodecRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/IrValidateRecipeTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/PlannerCompileTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CatalogConnectionRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/SchemaInstallRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DsnConnectionRecipeTest.php';

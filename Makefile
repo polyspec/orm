@@ -1277,7 +1277,7 @@ dbspec-php-extension-check/hostcodec: php-vendor-check dbspec-php-extension-chec
 dbspec-php-extension-check/set-parse: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecSetParseTest.php
 # dbspec-php-extension-check/planner runs the planner suites with the extension: the native-owner CoveragePlannerExtensionTest
-# (the compile vectors of contracts/fixtures/planner.json), InsertPartsTest (contracts/fixtures/insert_parts.json) and IrAnswersTest
+# (the compile recipe tests/planner/compile.json), InsertPartsTest (contracts/fixtures/insert_parts.json) and IrAnswersTest
 # (the recipe tests/ir/answers.json).
 # It first checks that the extension registers Polyspec\Orm\Planner: its class is internal, so the planner the suites run is C.
 dbspec-php-extension-check/planner: dbspec-php-extension-check/planner/coverage dbspec-php-extension-check/planner/insert-parts dbspec-php-extension-check/planner/ir-answers

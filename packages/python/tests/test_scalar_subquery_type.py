@@ -14,19 +14,17 @@ from .coverage_case import REPOSITORY_ROOT
 
 
 def scalar_subquery_case():
-    """The planner_scalar_column_subquery case of contracts/fixtures/planner.json and the model of its schema."""
-    fixture = json.loads(
-        (REPOSITORY_ROOT / "contracts/fixtures/planner.json").read_text(
-            encoding="utf-8"
-        )
+    """The planner_scalar_column_subquery step of tests/planner/compile.json and the model of its schema."""
+    recipe = json.loads(
+        (REPOSITORY_ROOT / "tests/planner/compile.json").read_text(encoding="utf-8")
     )
     case = next(
-        case
-        for case in fixture["cases"]
+        case["steps"][0]
+        for case in recipe["cases"]
         if case["id"] == "planner_scalar_column_subquery"
     )
-    schema = (REPOSITORY_ROOT / case["schema"]).read_text(encoding="utf-8")
-    return case, model_of_documents(parse_document_set([schema]))
+    schema = (REPOSITORY_ROOT / "tests/planner" / case["schema"]).resolve()
+    return case, model_of_documents(parse_document_set([schema.read_text(encoding="utf-8")]))
 
 
 class ScalarSubqueryTypeTest(unittest.TestCase):

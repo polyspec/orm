@@ -83,6 +83,11 @@ path = "tests/ir_validate.rs"
 harness = false
 
 [[test]]
+name = "planner"
+path = "tests/planner.rs"
+harness = false
+
+[[test]]
 name = "dbspec_introspect"
 path = "tests/dbspec_introspect.rs"
 harness = false

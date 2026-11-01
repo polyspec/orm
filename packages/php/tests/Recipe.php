@@ -21,6 +21,7 @@ use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Model;
+use Polyspec\Orm\Engine;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
 use Polyspec\Orm\RuntimeModel;
@@ -68,6 +69,10 @@ final class Recipe
                     self::answerStep($step);
                     continue;
                 }
+                if ($step['op'] === 'planner.compile') {
+                    self::planStep($step, $path, $database);
+                    continue;
+                }
                 self::step($step, $bound, $database);
             } catch (\PHPUnit\Framework\AssertionFailedError $failure) {
                 Assert::fail(
@@ -107,6 +112,87 @@ final class Recipe
         }
         Assert::assertSame(['bool' => true], $outcome['value'] ?? null, 'ir.validate expects {bool true} or an error');
         Assert::assertSame('no error', $got);
+    }
+
+    /**
+     * Compiles the request of a planner.compile step with the Engine of each dialect, against the manifest of the schema
+     * that the step names relative to the recipe file, and checks the plans with the expect of database: {value: {mysql,
+     * postgres, sqlite}} with the statements of each dialect, or {error: CODE}, which every dialect must reject with.
+     */
+    private static function planStep(array $step, string $path, string $database): void
+    {
+        if ($database !== self::NONE) {
+            Assert::fail('planner.compile runs without a database');
+        }
+        $outcome = $step['expect'][$database] ?? Assert::fail("planner.compile has no expect for $database");
+        $root = dirname(__DIR__, 3);
+        $schema = realpath(dirname($root . '/' . $path) . '/' . $step['schema']);
+        if ($schema === false) {
+            Assert::fail("planner.compile: the schema of $path is missing");
+        }
+        $model = RuntimeModel::build(RuntimeModel::files([$schema]));
+        $request = $step['input'] + ['manifest_hash' => $model->manifestHash];
+        $dialects = ['mysql', 'postgres', 'sqlite'];
+        if (isset($outcome['error'])) {
+            foreach ($dialects as $dialect) {
+                $code = 'no error';
+                try {
+                    (new Engine($model, $dialect, 8))->compile($request);
+                } catch (OrmException $error) {
+                    $code = $error->code_;
+                }
+                Assert::assertSame($outcome['error'], $code, "$dialect planner.compile");
+            }
+            return;
+        }
+        $got = [];
+        foreach ($dialects as $dialect) {
+            $plan = (new Engine($model, $dialect, 8))->compile($request);
+            $got[$dialect] = array_map(static fn(array $planned): array => [
+                'role' => $planned['role'],
+                'slots' => array_map(self::planSlot(...), $planned['bind_slots']),
+                'sql' => $planned['sql'],
+                'tables' => $planned['tables'],
+            ], $plan['steps']);
+        }
+        Assert::assertSame(self::sortedKeys($outcome['value']), self::sortedKeys($got), 'planner.compile statements');
+    }
+
+    /** A bind slot in the form of the planner fixture: its source, param number, type and the fields that the fixture writes. */
+    private static function planSlot(array $slot): array
+    {
+        if ($slot['from'] === 'parent') {
+            return ['from' => 'parent', 'key_types' => $slot['key_types']];
+        }
+        $type = $slot['col_type'] ?? '';
+        $out = ['from' => $slot['from']];
+        if ($slot['from'] === 'param' && $type === 'varchar') {
+            $out['length'] = $slot['length'] ?? 0;
+        }
+        if (!empty($slot['not_null'])) {
+            $out['not_null'] = true;
+        }
+        if ($slot['from'] === 'param') {
+            $out['param'] = $slot['param'];
+        }
+        if ($type === 'datetime' || $type === 'time') {
+            $out['precision'] = $slot['precision'] ?? 0;
+        }
+        $out['type'] = $type;
+        return $out;
+    }
+
+    /** The value with the keys of every object sorted, so that two plans compare as their fixture writes them. */
+    private static function sortedKeys(mixed $value): mixed
+    {
+        if (!is_array($value)) {
+            return $value;
+        }
+        $value = array_map(self::sortedKeys(...), $value);
+        if (!array_is_list($value)) {
+            ksort($value);
+        }
+        return $value;
     }
 
     /**

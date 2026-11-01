@@ -10,9 +10,10 @@ import { repositoryRoot } from './coverage_case.mjs';
 import { isInternalColumnError } from './internal-column-error.mjs';
 import { markdownReadDatabase } from './markdown-read-db.mjs';
 
-const plannerFixture = JSON.parse(await readFile(join(repositoryRoot, 'contracts/fixtures/planner.json'), 'utf8'));
-const scalar = plannerFixture.cases.find(({ id }) => id === 'planner_scalar_column_subquery');
-assert.ok(scalar, 'planner fixture contains a valid scalar column subquery');
+const plannerRecipe = JSON.parse(await readFile(join(repositoryRoot, 'tests/planner/compile.json'), 'utf8'));
+const scalarCase = plannerRecipe.cases.find(({ id }) => id === 'planner_scalar_column_subquery');
+assert.ok(scalarCase, 'planner recipe contains a valid scalar column subquery');
+const scalar = { input: scalarCase.steps[0].input, schema: join('tests/planner', scalarCase.steps[0].schema) };
 const parsed = parseDbspec(await readFile(join(repositoryRoot, scalar.schema), 'utf8'), {});
 assert.deepEqual(parsed.diagnostics, []);
 const { manifest } = dbspecManifest([parsed.document]);
