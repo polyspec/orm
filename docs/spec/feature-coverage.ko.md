@@ -24,6 +24,7 @@
   - `catalog.update_row {snapshot, set}`은 묶인 snapshot의 행을 `set`의 값으로 바꾼다(`update_row`). expect는 `{"rows": [[<value>, ...], ...]}` 또는 `{"error": ...}`이다.
   - `catalog.delete_row {snapshot}`은 묶인 snapshot의 행을 지운다(`delete_row`). expect는 지운 행 수인 `{"value": {"int": ...}}` 또는 `{"error": ...}`이다.
   - `sql.exec {sql, reason}`은 `.dbs`가 선언할 수 없는 DDL, 예를 들어 generated column(DBS-42)이나 dbspec 밖의 native type을 runtime의 native driver로 실행한다. `reason`은 fixture가 그것을 선언할 수 없는 이유를 적고, 그 step은 `expect`가 없다.
+  - `dsn.connect {dsn}`은 case database의 DSN(`"case"`)이나 step의 DSN 문자열을 공개 API의 `Connect`(Go `orm.Connect`, PHP `Orm::connect`, TypeScript `Db.connect`, Python `Db.connect`, Rust `Db::connect`, 여섯 runtime 모두 공개)로 연다. expect는 `{"value": {"text": <driver>}}` 또는 `{"error": <code>}`이며, 연결은 닫는다.
 
   Rust의 mutation은 cancellation flag, phase publisher, commit permit도 받는다. Rust helper는 설정되지 않은 flag, 아무것도 남기지 않는 publisher, 허용하는 permit을 넘긴다. 각 runtime의 helper는 호출이 돌려준 값을 비교하기 전에 recipe wrapper로 바꾼다.
 

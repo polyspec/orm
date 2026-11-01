@@ -119,4 +119,26 @@ harness = false
 [[test]]
 name = "schema_install_sqlite"
 path = "tests/schema_install_sqlite.rs"
+
+# The primary and replica routing of a model and the read-only SQLite file (CFG-21 to CFG-25, PLN-31). The replica
+# cases are native, because no dsn_connection recipe case states them; FCV-14 converts them under T334-3-23.
+[[test]]
+name = "replica"
+path = "tests/replica.rs"
+
+# Each case of the dsn_connection recipe, contracts/fixtures/dsn_connection/dsn_connection.json, is the trial
+# dsn_connection_<database>::<case id> on a case database of its own (FCV-3).
+[[test]]
+name = "dsn_connection_mysql"
+path = "tests/dsn_connection_mysql.rs"
+harness = false
+
+[[test]]
+name = "dsn_connection_postgres"
+path = "tests/dsn_connection_postgres.rs"
+harness = false
+
+[[test]]
+name = "dsn_connection_sqlite"
+path = "tests/dsn_connection_sqlite.rs"
 harness = false

@@ -21,7 +21,6 @@ caseTest('Rust workspace dispatch skips only the database cases owned by the fea
   assert.equal(args.length % 2, 0);
   const skipped = new Set(args.filter((_, index) => index % 2 === 1));
   assert.ok(skipped.has('coverage_request_hook_insert_assign'));
-  assert.ok(skipped.has('coverage_dsn_connection'));
   assert.ok(skipped.has('coverage_catalog_read'));
   assert.ok(skipped.has('coverage_catalog_connection::coverage_catalog_read'));
   assert.ok(skipped.has('coverage_catalog_read_budgets'));

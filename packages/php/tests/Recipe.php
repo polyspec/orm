@@ -744,6 +744,15 @@ final class Recipe
                 $pdo = case_admin($context['dsn']);
                 $pdo->exec(self::sqlField($s['sql'], $context));
                 return [];
+            // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
+            case 'dsn.connect':
+                $dsn = $s['dsn'] === 'case' ? $context['dsn'] : $s['dsn'];
+                $db = Orm::connect($dsn, new Config());
+                try {
+                    return ['value' => ['text' => $db->driver()]];
+                } finally {
+                    $db->close();
+                }
         }
         Assert::fail("OP_UNKNOWN {$s['op']}");
     }

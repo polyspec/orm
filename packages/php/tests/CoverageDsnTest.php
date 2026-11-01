@@ -25,30 +25,6 @@ class CoverageDsnTest extends TestCase
     }
 
     // Requirements: CFG-1, INT-13.
-    public function testDsnConnection(): void
-    {
-        foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
-            selectCoverageItem($item);
-            [$driver, $dsn] = coverageItem();
-            $this->assertSame(
-                Code::CONFIG,
-                coverageCode(static fn() => Orm::parseDsn('invalid://database')),
-                'unsupported DSN scheme'
-            );
-            $db = Orm::connect($dsn, new Config());
-            try {
-                $this->assertSame($driver, $db->driver(), 'DSN selected the wrong database');
-                $this->assertSame(
-                    1,
-                    (int) $db->pdo()->query('SELECT 1')->fetchColumn(),
-                    'DSN selected the wrong connection'
-                );
-            } finally {
-                $db->close();
-            }
-        }
-    }
-
     // Requirements: DSL-150.
     public function testSqliteMinimumVersionValidation(): void
     {

@@ -1010,7 +1010,12 @@
         "packages/rust/tests/tests/common/temp_sqlite.rs",
         "packages/rust/orm/tests/common/rollback_probe.rs",
         "packages/rust/tests/src/lib.rs",
-        "packages/rust/tests/src/recipe.rs"
+        "packages/rust/tests/src/recipe.rs",
+        "packages/rust/tests/tests/common/model_connect.rs",
+        "packages/rust/tests/tests/common/model_core_methods.rs",
+        "packages/rust/tests/tests/common/model_row.rs",
+        "packages/rust/tests/tests/common/or_panic.rs",
+        "packages/rust/tests/tests/common/rollback_probe.rs"
       ],
       "symbols": {
         "extractor": "rust",
@@ -4726,22 +4731,6 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_dsn_test.go",
-          "id": "TestCoverageDSNConnection",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageDSNConnection",
-            "FEATURE_PACKAGE=./orm"
-          ]
-        },
-        {
-          "implementation": "go",
           "test": "packages/go/model/coverage_dsn_test.go",
           "id": "TestCoverageGeneratedModelConnection",
           "command": [
@@ -4762,43 +4751,6 @@
           "id": "TestDriverFromDSN"
         },
         {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageDsnTest.php",
-          "id": "CoverageDsnTest::testDsnConnection"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php",
-          "id": "CoverageDsnConnectionExtensionTest::testDsnConnection"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_dsn.mjs",
-          "id": "dsn_connection"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_dsn.py",
-          "id": "test_dsn_connection"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/coverage_dsn.rs",
-          "id": "coverage_dsn_connection",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--test coverage_dsn",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_dsn_connection"
-          ]
-        },
-        {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/integration_program/main.rs",
           "id": "coverage_generated_model_connection_sqlite",
@@ -4814,6 +4766,26 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_generated_model_connection_sqlite"
           ]
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_connection-sqlite.test.mjs",
+          "id": "dsn_connection"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_connection_sqlite.py",
+          "id": "test_dsn_connection"
         }
       ]
     },
@@ -7928,8 +7900,8 @@
       "bindings": [
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageDsnTest.php",
-          "id": "CoverageDsnTest::testDsnConnection"
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testSqlite"
         }
       ],
       "owner": {
@@ -8006,19 +7978,7 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/coverage_dsn.rs",
-          "id": "coverage_dsn_connection",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--test coverage_dsn",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_dsn_connection"
-          ]
+          "id": "coverage_dsn_connection"
         }
       ],
       "owner": {
@@ -8036,7 +7996,7 @@
       "bindings": [
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_dsn.mjs",
+          "test": "packages/ts/tests/dsn_connection-sqlite.test.mjs",
           "id": "dsn_connection"
         }
       ],
@@ -9424,6 +9384,144 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/codec_none.rs",
           "symbol": "codec_none"
+        }
+      ]
+    },
+    {
+      "id": "dsn_connection-mysql",
+      "kind": "suite",
+      "requirements": [
+        "CFG-1",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
+      ],
+      "file": "contracts/fixtures/dsn_connection/dsn_connection.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "symbol": "TestRecipeDsnConnectionMysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DsnConnectionRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DsnConnectionRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_connection-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_connection_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
+          "symbol": "dsn_connection_mysql"
+        }
+      ]
+    },
+    {
+      "id": "dsn_connection-postgres",
+      "kind": "suite",
+      "requirements": [
+        "CFG-1",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
+      ],
+      "file": "contracts/fixtures/dsn_connection/dsn_connection.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "symbol": "TestRecipeDsnConnectionPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DsnConnectionRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DsnConnectionRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_connection-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_connection_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "symbol": "dsn_connection_postgres"
+        }
+      ]
+    },
+    {
+      "id": "dsn_connection-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "CFG-1",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
+      ],
+      "file": "contracts/fixtures/dsn_connection/dsn_connection.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "symbol": "TestRecipeDsnConnectionSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DsnConnectionRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DsnConnectionRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_connection-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_connection_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+          "symbol": "dsn_connection_sqlite"
         }
       ]
     },
@@ -29259,12 +29357,12 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/replica.rs",
+          "test": "packages/rust/tests/tests/replica.rs",
           "id": "primary_and_replica_mysql"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/replica.rs",
+          "test": "packages/rust/tests/tests/replica.rs",
           "id": "primary_and_replica_postgres"
         }
       ]
@@ -29338,17 +29436,17 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/replica.rs",
+          "test": "packages/rust/tests/tests/replica.rs",
           "id": "read_only_sqlite"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/replica.rs",
+          "test": "packages/rust/tests/tests/replica.rs",
           "id": "primary_and_replica_mysql"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/replica.rs",
+          "test": "packages/rust/tests/tests/replica.rs",
           "id": "primary_and_replica_postgres"
         }
       ]
@@ -29362,12 +29460,12 @@
       "bindings": [
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/replica.rs",
+          "test": "packages/rust/tests/tests/replica.rs",
           "id": "primary_and_replica_mysql"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/replica.rs",
+          "test": "packages/rust/tests/tests/replica.rs",
           "id": "primary_and_replica_postgres"
         }
       ],

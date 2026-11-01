@@ -71,7 +71,10 @@
         "markdown-message-vectors",
         "markdown-rejected-surfaces",
         "py-test-placeholders",
-        "pool-idle-server-end"
+        "pool-idle-server-end",
+        "dsn_connection-mysql",
+        "dsn_connection-postgres",
+        "dsn_connection-sqlite"
       ],
       "fixtures": [
         "packages/go/orm/test_helpers_test.go",
@@ -79,7 +82,8 @@
         "packages/php/tests/coverage_cases.php",
         "packages/php/tests/markdown_test_server.php",
         "packages/python/tests/coverage_case.py",
-        "packages/php/tests/request_termination_child.php"
+        "packages/php/tests/request_termination_child.php",
+        "contracts/fixtures/dsn_connection/dsn_connection.json"
       ],
       "tests": [
         "packages/go/orm/dsn_test.go",
@@ -87,7 +91,7 @@
         "packages/go/orm/sqlite_file_name_test.go",
         "packages/go/model/replica_test.go",
         "packages/ts/tests/replica.mjs",
-        "packages/rust/orm/tests/replica.rs",
+        "packages/rust/tests/tests/replica.rs",
         "packages/php/tests/DsnTest.php",
         "packages/php/tests/ModelTest.php",
         "packages/php-ext/tests/ConnectionUtcNativeTest.php",
@@ -101,12 +105,9 @@
         "packages/ts/tests/idle-connection-end.mjs",
         "packages/rust/orm/tests/zone.rs",
         "packages/rust/orm/tests/sqlite_file_name.rs",
-        "packages/go/orm/coverage_dsn_test.go",
         "packages/go/model/coverage_dsn_test.go",
         "packages/php/tests/CoverageDsnTest.php",
-        "packages/rust/orm/tests/coverage_dsn.rs",
         "packages/rust/tests/tests/integration_program/main.rs",
-        "packages/ts/tests/coverage_dsn.mjs",
         "packages/go/orm/sqlite_path_test.go",
         "packages/rust/tests/tests/example_dsn.rs",
         "packages/php/tests/SqliteWithoutMysqlTest.php",
@@ -140,7 +141,6 @@
         "packages/python/tests/mysql_tls.py",
         "packages/python/tests/connection_config.py",
         "packages/python/tests/replica.py",
-        "packages/python/tests/coverage_dsn.py",
         "packages/python/tests/connection_utc.py",
         "packages/python/tests/connection_pool.py",
         "packages/python/tests/mysql_session.py",
@@ -172,7 +172,19 @@
         "packages/go/orm/sqlite_version_test.go",
         "packages/php-ext/tests/DsnTestExtensionTest.php",
         "packages/php-ext/tests/MarkdownTestExtensionTest.php",
-        "packages/php-ext/tests/ModelTestExtensionTest.php"
+        "packages/php-ext/tests/ModelTestExtensionTest.php",
+        "packages/go/orm/recipe_dsn_connection_test.go",
+        "packages/php/tests/DsnConnectionRecipeTest.php",
+        "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+        "packages/rust/tests/tests/dsn_connection_mysql.rs",
+        "packages/rust/tests/tests/dsn_connection_postgres.rs",
+        "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+        "packages/ts/tests/dsn_connection-mysql.test.mjs",
+        "packages/ts/tests/dsn_connection-postgres.test.mjs",
+        "packages/ts/tests/dsn_connection-sqlite.test.mjs",
+        "packages/python/tests/test_dsn_connection_mysql.py",
+        "packages/python/tests/test_dsn_connection_postgres.py",
+        "packages/python/tests/test_dsn_connection_sqlite.py"
       ],
       "docs": [
         "docs/spec/config.md",
@@ -571,7 +583,7 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts replica-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --offline --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test replica",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/replica.rs",
+            "packages/rust/tests/tests/replica.rs",
             "contracts/fixtures/rollback.dbs"
           ]
         },
@@ -747,18 +759,18 @@
           "go": {
             "part": "packages/go/orm",
             "tests": [
-              "packages/go/orm/coverage_dsn_test.go"
+              "packages/go/orm/recipe_dsn_connection_test.go"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "go",
-                  "test": "packages/go/orm/coverage_dsn_test.go",
+                  "test": "packages/go/orm/recipe_dsn_connection_test.go",
                   "cases": [
                     "dsn_connection"
                   ],
                   "symbols": {
-                    "dsn_connection": "TestCoverageDSNConnection"
+                    "dsn_connection": "TestRecipeDsnConnectionMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -766,12 +778,12 @@
               "postgres": [
                 {
                   "runner": "go",
-                  "test": "packages/go/orm/coverage_dsn_test.go",
+                  "test": "packages/go/orm/recipe_dsn_connection_test.go",
                   "cases": [
                     "dsn_connection"
                   ],
                   "symbols": {
-                    "dsn_connection": "TestCoverageDSNConnection"
+                    "dsn_connection": "TestRecipeDsnConnectionPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -779,12 +791,12 @@
               "sqlite": [
                 {
                   "runner": "go",
-                  "test": "packages/go/orm/coverage_dsn_test.go",
+                  "test": "packages/go/orm/recipe_dsn_connection_test.go",
                   "cases": [
                     "dsn_connection"
                   ],
                   "symbols": {
-                    "dsn_connection": "TestCoverageDSNConnection"
+                    "dsn_connection": "TestRecipeDsnConnectionSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -794,18 +806,18 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoverageDsnTest.php"
+              "packages/php/tests/DsnConnectionRecipeTest.php"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageDsnTest.php",
+                  "test": "packages/php/tests/DsnConnectionRecipeTest.php",
                   "cases": [
                     "dsn_connection"
                   ],
                   "symbols": {
-                    "dsn_connection": "testDsnConnection"
+                    "dsn_connection": "testMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -813,12 +825,12 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageDsnTest.php",
+                  "test": "packages/php/tests/DsnConnectionRecipeTest.php",
                   "cases": [
                     "dsn_connection"
                   ],
                   "symbols": {
-                    "dsn_connection": "testDsnConnection"
+                    "dsn_connection": "testPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -826,12 +838,12 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageDsnTest.php",
+                  "test": "packages/php/tests/DsnConnectionRecipeTest.php",
                   "cases": [
                     "dsn_connection"
                   ],
                   "symbols": {
-                    "dsn_connection": "testDsnConnection"
+                    "dsn_connection": "testSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -841,21 +853,18 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php"
-            ],
-            "inputs": [
-              "packages/php/tests/CoverageDsnTest.php"
+              "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php",
+                  "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
                   "cases": [
                     "dsn_connection"
                   ],
                   "symbols": {
-                    "dsn_connection": "testDsnConnection"
+                    "dsn_connection": "testMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -863,12 +872,12 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php",
+                  "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
                   "cases": [
                     "dsn_connection"
                   ],
                   "symbols": {
-                    "dsn_connection": "testDsnConnection"
+                    "dsn_connection": "testPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -876,33 +885,38 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php",
+                  "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
                   "cases": [
                     "dsn_connection"
                   ],
                   "symbols": {
-                    "dsn_connection": "testDsnConnection"
+                    "dsn_connection": "testSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
-            }
+            },
+            "inputs": [
+              "packages/php/tests/DsnConnectionRecipeTest.php"
+            ]
           },
           "rust": {
-            "part": "packages/rust/orm",
+            "part": "packages/rust/tests",
             "tests": [
-              "packages/rust/orm/tests/coverage_dsn.rs"
+              "packages/rust/tests/tests/dsn_connection_mysql.rs",
+              "packages/rust/tests/tests/dsn_connection_postgres.rs",
+              "packages/rust/tests/tests/dsn_connection_sqlite.rs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/orm/tests/coverage_dsn.rs",
+                  "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
                   "cases": [
                     "dsn_connection"
                   ],
                   "symbols": {
-                    "dsn_connection": "coverage_dsn_connection"
+                    "dsn_connection": "dsn_connection_mysql::dsn_connection"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -910,12 +924,12 @@
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/orm/tests/coverage_dsn.rs",
+                  "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
                   "cases": [
                     "dsn_connection"
                   ],
                   "symbols": {
-                    "dsn_connection": "coverage_dsn_connection"
+                    "dsn_connection": "dsn_connection_postgres::dsn_connection"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -923,12 +937,12 @@
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/orm/tests/coverage_dsn.rs",
+                  "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
                   "cases": [
                     "dsn_connection"
                   ],
                   "symbols": {
-                    "dsn_connection": "coverage_dsn_connection"
+                    "dsn_connection": "dsn_connection_sqlite::dsn_connection"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -938,13 +952,15 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
-              "packages/ts/tests/coverage_dsn.mjs"
+              "packages/ts/tests/dsn_connection-mysql.test.mjs",
+              "packages/ts/tests/dsn_connection-postgres.test.mjs",
+              "packages/ts/tests/dsn_connection-sqlite.test.mjs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_dsn.mjs",
+                  "test": "packages/ts/tests/dsn_connection-mysql.test.mjs",
                   "cases": [
                     "dsn_connection"
                   ],
@@ -954,7 +970,7 @@
               "postgres": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_dsn.mjs",
+                  "test": "packages/ts/tests/dsn_connection-postgres.test.mjs",
                   "cases": [
                     "dsn_connection"
                   ],
@@ -964,7 +980,7 @@
               "sqlite": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_dsn.mjs",
+                  "test": "packages/ts/tests/dsn_connection-sqlite.test.mjs",
                   "cases": [
                     "dsn_connection"
                   ],
@@ -976,13 +992,15 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_dsn.py"
+              "packages/python/tests/test_dsn_connection_mysql.py",
+              "packages/python/tests/test_dsn_connection_postgres.py",
+              "packages/python/tests/test_dsn_connection_sqlite.py"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_dsn.py",
+                  "test": "packages/python/tests/test_dsn_connection_mysql.py",
                   "cases": [
                     "dsn_connection"
                   ],
@@ -992,7 +1010,7 @@
               "postgres": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_dsn.py",
+                  "test": "packages/python/tests/test_dsn_connection_postgres.py",
                   "cases": [
                     "dsn_connection"
                   ],
@@ -1002,7 +1020,7 @@
               "sqlite": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_dsn.py",
+                  "test": "packages/python/tests/test_dsn_connection_sqlite.py",
                   "cases": [
                     "dsn_connection"
                   ],
@@ -1068,7 +1086,7 @@
           {
             "id": "generated_rust_model",
             "language": "rust",
-            "part": "packages/rust/tests",
+            "part": "packages/rust/tests/tests/integration_program",
             "tests": [
               "packages/rust/tests/tests/integration_program/main.rs"
             ],

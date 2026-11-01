@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The `dsn.connect` op of FCV-4 runs the DSN connection recipe `contracts/fixtures/dsn_connection/dsn_connection.json` on all six runtimes and the three databases; the native DSN coverage tests are removed, and the parity units bind the six recipe entries (T334-3-4).
 - The schema installation cases of the six runtimes are one recipe (`contracts/fixtures/schema_install/schema_install.json`) that runs on MySQL, PostgreSQL and SQLite. The native tests of the same behaviour are removed, the register tests are split into a refusal test and an engine-per-hash test, and SCH-14 to SCH-17 state the cases that stay native under FCV-2: the audit transaction, the hash check at load, the bench model and the engine per hash (T334-3-4).
 - The spec states how a database feature runs as a recipe on the run databases: FCV-8 to FCV-14 of docs/spec/feature-coverage.md give the conversion, the databases from the `databases` need and TEST_ENV, the three databases with no exclusion, the failure of a missing DSN, the per-case result, the seed ownership and the native tests (T334-3-4-0).
 - The per-target runtime and database cells of check-recipes (CR17 to CR20) are held: they would duplicate kit's CI plan (config/ci.json targets.runtimes and kit-ci-plan). The committed CR17-1 fields stay as they are (CR17).

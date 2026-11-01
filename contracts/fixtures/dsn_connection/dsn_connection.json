@@ -1,0 +1,31 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": ["CFG-1"],
+  "fixture": "contracts/fixtures/catalog_connection/dbspec-set.json",
+  "cases": [
+    {
+      "id": "dsn_connection",
+      "requirements": ["CFG-1"],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "case",
+          "expect": {
+            "mysql": { "value": { "text": "mysql" } },
+            "postgres": { "value": { "text": "postgres" } },
+            "sqlite": { "value": { "text": "sqlite" } }
+          }
+        },
+        {
+          "op": "dsn.connect",
+          "dsn": "invalid://database",
+          "expect": {
+            "mysql": { "error": "CONFIG" },
+            "postgres": { "error": "CONFIG" },
+            "sqlite": { "error": "CONFIG" }
+          }
+        }
+      ]
+    }
+  ]
+}

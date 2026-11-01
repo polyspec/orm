@@ -50,6 +50,7 @@ type databaseCase struct {
 // databaseStep holds the fields of every database op (scripts/features/schema/recipe.schema.json).
 type databaseStep struct {
 	Op       string                     `json:"op"`
+	DSN      string                     `json:"dsn"`
 	Table    string                     `json:"table"`
 	Limit    int                        `json:"limit"`
 	Offset   int64                      `json:"offset"`
@@ -521,6 +522,19 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, err
 		}
 		return outcome{fields: map[string]any{}}, nil
+	// dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step, opened with Connect.
+	case "dsn.connect":
+		dsn := s.DSN
+		if dsn == "case" {
+			dsn = c.dsn
+		}
+		db, err := orm.Connect(dsn, orm.Config{})
+		if err != nil {
+			return outcome{}, err
+		}
+		driver := db.Driver()
+		testcase.Close(c.t, db)
+		return outcome{fields: map[string]any{"value": map[string]any{"text": driver}}}, nil
 	}
 	return outcome{}, fmt.Errorf("OP_UNKNOWN %s", s.Op)
 }

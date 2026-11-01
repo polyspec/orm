@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ee2f429b9e5fc97ae9b71f46935f39eceb05dc6501e047bfff2a2983139d09e9 -->
+<!-- source-sha256: cccbdc14f721156c5df318b8a00a627b8ae38d7ad2da1affeb4b718cd71f30ba -->
 # 변경 이력
 
 ## Unreleased
@@ -32,6 +32,8 @@
 - CHECK_TARGETS의 모든 target은 contracts/check-inputs.json에 runtime과 database를 선언한다. 둘 다 이름에서 먼저 읽으며, 검사기는 두 필드 중 하나가 없는 target을 거부한다. multi와 all은 CR18이 나누기 전까지의 과도기 값이다 (CR17-1).
 - tests/dbspec/ddl.json의 DDL 동작 테스트는 Go runner만 데이터베이스에서 돌렸다. 이제 PHP, php-extension, TypeScript, Python, Rust runner도 MySQL, PostgreSQL, SQLite에서 동작 단계를 실행하고, DSN이 없으면 이름을 밝히며 실패한다 (CR16-1).
 - 중단된 실행이 남긴 compiler fixture case의 오래된 source 때문에 다음 실행이 EEXIST로 실패하고 디렉터리가 트리에 남았다. 이제 실행은 오래된 source를 덮어쓰고 끝에 임시 디렉터리를 지운다 (CR25).
+- 데이터베이스 기능이 실행 데이터베이스에서 recipe로 도는 방식을 spec이 밝힌다: docs/spec/feature-coverage.md의 FCV-8부터 FCV-14까지가 전환, `databases` need와 TEST_ENV로 받는 데이터베이스, 제외 없는 세 데이터베이스, DSN 누락 실패, 사례별 결과, seed 소유, 네이티브 테스트를 정한다 (T334-3-4-0).
+- FCV-4의 `dsn.connect` op가 DSN 연결 recipe `contracts/fixtures/dsn_connection/dsn_connection.json`을 여섯 runtime과 세 데이터베이스에서 실행한다. 네이티브 DSN coverage 시험은 제거되고, parity unit이 여섯 recipe 항목을 묶는다 (T334-3-4).
 - 두 branch의 check-recipes 작업이 하나의 통합으로 main에 들어간다. 한국어 checklist는 영어 checklist의 모든 row를 가지고, 변경 이력은 그 commit들의 항목을 가지며, Makefile은 `rust-compiler-fixtures-check/unit`에서 node를 `$(NODE)`로 실행하고, `config/rebuild.json`은 `scripts/generate/once.mts`와 `scripts/php/php-ext-build.mts`를 분류한다 (CR26).
 - check runner는 실패한 target의 `::error` 줄을 출력하지 않아, GitHub Actions에서 실패는 작업이 끝나야 보였다. 이제 실패한 target은 끝날 때 `::error` 줄을 출력한다 (CR1).
 - docs 빌드는 게시된 폴더에 직접 사이트를 렌더링해서, 중단된 빌드는 사이트의 절반을 남겼다. 이제 임시 폴더에 렌더링한 뒤 이름 바꾸기 한 번으로 게시한다 (CR2).

@@ -1780,6 +1780,96 @@
         "packages/php-ext/src/catalog_connection.c"
       ]
     },
+    "dsn-connection-check/go": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/dsn_connection/**",
+        "packages/go/orm/recipe_dsn_connection_test.go",
+        "packages/go/internal/recipe/recipe.go",
+        "packages/go/internal/recipe/database.go",
+        "packages/go/orm/dsn.go"
+      ]
+    },
+    "dsn-connection-check/rust": {
+      "scope": "owner",
+      "needs": [
+        "rust",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/dsn_connection/**",
+        "packages/rust/tests/tests/dsn_connection_mysql.rs",
+        "packages/rust/tests/tests/dsn_connection_postgres.rs",
+        "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+        "packages/rust/tests/src/recipe.rs",
+        "packages/rust/tests/Cargo.toml"
+      ]
+    },
+    "dsn-connection-check/typescript": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/dsn_connection/**",
+        "packages/ts/tests/dsn_connection-mysql.test.mjs",
+        "packages/ts/tests/dsn_connection-postgres.test.mjs",
+        "packages/ts/tests/dsn_connection-sqlite.test.mjs",
+        "packages/ts/tests/recipe.mjs"
+      ]
+    },
+    "dsn-connection-check/python": {
+      "scope": "owner",
+      "needs": [
+        "python",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/dsn_connection/**",
+        "packages/python/tests/test_dsn_connection_mysql.py",
+        "packages/python/tests/test_dsn_connection_postgres.py",
+        "packages/python/tests/test_dsn_connection_sqlite.py",
+        "packages/python/tests/recipe.py"
+      ]
+    },
+    "dsn-connection-check/php": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/dsn_connection/**",
+        "packages/php/tests/DsnConnectionRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php",
+        "packages/php/src/DsnUrl.php",
+        "packages/php/tests/bootstrap.php"
+      ]
+    },
+    "dsn-connection-check/php-extension": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/dsn_connection/**",
+        "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/bootstrap.php",
+        "packages/php/tests/DsnConnectionRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php"
+      ]
+    },
     "php-codec-causes-check": {
       "scope": "owner",
       "needs": [

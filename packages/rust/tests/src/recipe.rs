@@ -797,6 +797,17 @@ mod database {
                 native_exec(&context.dsn, sql).await.map_err(Failure::Call)?;
                 Output::fields(json!({}))
             }
+            // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
+            "dsn.connect" => {
+                let dsn = match step["dsn"].as_str().unwrap_or_default() {
+                    "case" => context.dsn.as_str(),
+                    text => text,
+                };
+                let db = Db::connect(dsn, 1, Config::default()).await.map_err(|e| Failure::Call(e.to_string()))?;
+                let driver = db.driver();
+                db.close().await;
+                Output::fields(json!({ "value": { "text": driver } }))
+            }
             other => return Err(fault(format!("OP_UNKNOWN {other}"))),
         })
     }

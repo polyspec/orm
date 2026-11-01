@@ -581,6 +581,15 @@ def _op_sql_exec(step: dict, context: dict) -> dict:
     return {}
 
 
+def _op_dsn_connect(step: dict, context: dict) -> dict:
+    """dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step."""
+    db = Db.connect(context["dsn"] if step["dsn"] == "case" else step["dsn"])
+    try:
+        return {"value": {"text": db.driver}}
+    finally:
+        db.close()
+
+
 # Each op maps to one call of the public API and returns the fields that its expect compares.
 _DATABASE_OPS = {
     "schema.install": lambda step, context: _op_schema_install(step, context),
@@ -591,6 +600,7 @@ _DATABASE_OPS = {
     ),
     "statements.count": lambda step, context: _op_statements_count(step, context),
     "transaction": lambda step, context: _op_transaction(step, context),
+    "dsn.connect": _op_dsn_connect,
     "catalog.current_namespace": _op_current_namespace,
     "catalog.describe_table": _op_describe_table,
     "catalog.table_page": _op_table_page,

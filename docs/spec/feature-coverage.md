@@ -23,6 +23,7 @@
   - `catalog.update_row {snapshot, set}` updates the row of a bound snapshot with the values of `set` (`update_row`); its expect is `{"rows": [[<value>, ...], ...]}` or `{"error": ...}`.
   - `catalog.delete_row {snapshot}` deletes the row of a bound snapshot (`delete_row`); its expect is `{"value": {"int": ...}}`, the count of deleted rows, or `{"error": ...}`.
   - `sql.exec {sql, reason}` runs DDL that a `.dbs` cannot declare, such as a generated column (DBS-42) or a native type outside dbspec, through the native driver of the runtime; `reason` states why the fixture cannot declare it, and its step has no `expect`.
+  - `dsn.connect {dsn}` opens the DSN of the case database (`"case"`) or the DSN text of the step with `Connect` of the public API (Go `orm.Connect`, PHP `Orm::connect`, TypeScript `Db.connect`, Python `Db.connect`, Rust `Db::connect`, public in all six runtimes); its expect is `{"value": {"text": <driver>}}` or `{"error": <code>}`, and the connection is closed.
 
   The Rust mutations also take a cancellation flag, a publisher of the phases and a commit permit; the Rust helper passes a flag that is not set, a publisher that keeps nothing and a permit that allows. The helper of each runtime turns the values that its calls return into recipe wrappers before it compares them.
 

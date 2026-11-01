@@ -185,8 +185,9 @@
     "step": {
       "type": "object",
       "required": ["op"],
-      "properties": { "op": { "enum": ["model.connect", "codec.decode", "codec.encode", "codec.host_encode", "codec.host_decode", "codec.blind_index", "sql.exec", "ir.validate", "ir.answer", "catalog.current_namespace", "catalog.describe_table", "catalog.table_page", "catalog.read_only_query", "catalog.read_only_grid_query", "catalog.row_snapshot", "catalog.insert_row", "catalog.update_row", "catalog.delete_row", "schema.install", "schema.register", "schema.connect", "schema.add_tables_and_columns", "statements.count", "transaction"] } },
+      "properties": { "op": { "enum": ["dsn.connect", "model.connect", "codec.decode", "codec.encode", "codec.host_encode", "codec.host_decode", "codec.blind_index", "sql.exec", "ir.validate", "ir.answer", "catalog.current_namespace", "catalog.describe_table", "catalog.table_page", "catalog.read_only_query", "catalog.read_only_grid_query", "catalog.row_snapshot", "catalog.insert_row", "catalog.update_row", "catalog.delete_row", "schema.install", "schema.register", "schema.connect", "schema.add_tables_and_columns", "statements.count", "transaction"] } },
       "oneOf": [
+        { "$ref": "#/$defs/ops/dsn.connect" },
         { "$ref": "#/$defs/ops/model.connect" },
         { "$ref": "#/$defs/ops/codec.decode" },
         { "$ref": "#/$defs/ops/codec.encode" },
@@ -229,6 +230,16 @@
       "schema.add_tables_and_columns": { "type": "object", "required": ["op", "schema", "expect"], "additionalProperties": false, "properties": { "op": { "const": "schema.add_tables_and_columns" }, "schema": { "$ref": "#/$defs/schemaArgument" }, "expect": { "$ref": "#/$defs/expect" } } },
       "statements.count": { "type": "object", "required": ["op", "steps", "expect"], "additionalProperties": false, "properties": { "op": { "const": "statements.count" }, "steps": { "$ref": "#/$defs/stepList" }, "expect": { "type": "object", "minProperties": 1, "additionalProperties": { "$ref": "#/$defs/outcomes/count" } } } },
       "transaction": { "type": "object", "required": ["op", "steps", "expect"], "additionalProperties": false, "properties": { "op": { "const": "transaction" }, "steps": { "$ref": "#/$defs/stepList" }, "expect": { "$ref": "#/$defs/expect" } } },
+      "dsn.connect": {
+        "type": "object",
+        "required": ["op", "dsn", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "dsn.connect" },
+          "dsn": { "type": "string", "minLength": 1, "description": "The DSN of the case database for case, otherwise the DSN text of the step (FCV-4)." },
+          "expect": { "$ref": "#/$defs/expect" }
+        }
+      },
       "model.connect": {
         "type": "object",
         "required": ["op", "pool_size", "as"],

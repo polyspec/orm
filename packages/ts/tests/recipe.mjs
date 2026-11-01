@@ -295,6 +295,15 @@ async function runCaseOn({ name, recipe, recipeCase, database, caseDatabase, ste
 
 // Each op maps to one call of the public API and returns the fields that its expect compares.
 const OPS = {
+  // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
+  async 'dsn.connect'(s, context) {
+    const db = await Db.connect(s.dsn === 'case' ? context.dsn : s.dsn);
+    try {
+      return { value: { text: db.driver } };
+    } finally {
+      await db.close();
+    }
+  },
   async 'catalog.current_namespace'(_, { catalog }) {
     return { value: { text: await catalog.currentNamespace() } };
   },
