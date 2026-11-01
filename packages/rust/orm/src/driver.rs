@@ -71,7 +71,7 @@ pub(crate) fn parent_values<'a>(pr: &ParentRef, parents: impl Iterator<Item = &'
                     Val::DateTime(t) => Param::DateTime(*t),
                     Val::Date(d) => Param::Date(*d),
                     Val::Json(j) => Param::Str(j.to_string()),
-                    Val::Ordered(j) => Param::Str(j.compact()),
+                    Val::Ordered(j) => Param::Str(crate::codec::ordered_text(j)),
                     Val::Null => Param::Null,
                 });
             }

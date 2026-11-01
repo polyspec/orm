@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- A jsontext value keeps the member order and the repeated member names of its source text: a write stores the compacted source text instead of re-serialising the parsed member map, and a read returns the text it holds (DIA-26). Go, TypeScript and Python collapsed a repeated name before this on SQLite, MySQL and PostgreSQL (T332)
 - The transaction-retry-on-deadlock parity unit now runs a driver-level deadlock in the Go, Rust, TypeScript and Python bindings: two connections lock two rows in opposite order on MySQL, one flow's first attempt fails with DEADLOCK, the transaction retries, and both commit, so the retry of a driver deadlock is tested in four runtimes, not only PHP (T303).
 - The Python parity bindings of the complex query and the hot-path performance gates no longer name an unloadable test: on 6ff320c72 the run of their units passes under PHP 8.4 (25 bindings, 27 cases), so the Cause of T269 does not reproduce and the row now runs those units as its Verification (T269).
 - orm no longer copies the capability table of flowmark: the table "Markdown IR executor" of dialects.md is replaced by a link to the pinned flowmark spec 60, and the markdown-table check that read a flowmark source checkout is removed (T347).

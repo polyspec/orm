@@ -292,7 +292,7 @@ export function encodeStyled(styles: readonly string[], state: StyledValue<unkno
         }
         break;
       case 'ordered_json':
-        current = utf8.encode(transformed instanceof JsonValue ? orderedJsonStringify(transformed) : orderedJsonStringify(orderedJsonValue(transformed)));
+        current = utf8.encode(transformed instanceof JsonValue ? storedJsonText(transformed) : storedJsonText(orderedJsonValue(transformed)));
         break;
       case 'base64':
         current = utf8.encode(Buffer.from(current).toString('base64'));
@@ -354,6 +354,38 @@ function isCodecValue(value: unknown): value is CodecValue {
  * property order; nested ordered-json values are kept as they are. Non-finite
  * numbers and values outside the model return CODEC_ENCODE.
  */
+/**
+ * The stored text of a JSON text: insignificant whitespace outside the string literals is removed, and every other
+ * character, the member order and the repeated member names included, stays in place (DIA-26).
+ */
+function compactJsonText(text: string): string {
+  let out = '';
+  let inString = false;
+  let escaped = false;
+  for (const c of text) {
+    if (inString) {
+      out += c;
+      if (escaped) escaped = false;
+      else if (c === '\\') escaped = true;
+      else if (c === '"') inString = false;
+      continue;
+    }
+    if (c === ' ' || c === '\t' || c === '\n' || c === '\r') continue;
+    if (c === '"') inString = true;
+    out += c;
+  }
+  return out;
+}
+
+/**
+ * The stored text of an ordered-json value: its source text, so the member order and the repeated member names
+ * survive, which the member map of stringify would collapse (DIA-26). A value without source text is stringified.
+ */
+function storedJsonText(value: JsonValue): string {
+  const raw = value.raw;
+  return raw === '' ? orderedJsonStringify(value) : compactJsonText(raw);
+}
+
 function orderedJsonValue(value: unknown): JsonValue {
   try {
     return orderedJsonParse(jsonText(value, 0));
@@ -375,7 +407,7 @@ function jsonString(text: string): string {
 
 function jsonText(value: unknown, depth: number): string {
   if (depth > 256) throw new CodecError(codes.CODEC_ENCODE, 'json: value nesting exceeds 256 levels');
-  if (value instanceof JsonValue) return orderedJsonStringify(value);
+  if (value instanceof JsonValue) return storedJsonText(value);
   if (value === null) return 'null';
   switch (typeof value) {
     case 'boolean': return value ? 'true' : 'false';

@@ -83,13 +83,48 @@ fn takes_text(stage: Option<&str>) -> bool {
     matches!(stage, None | Some("gz" | "base64"))
 }
 
+/// The stored text of an ordered-json value: its source text with the insignificant whitespace removed, so the
+/// member order and the repeated member names of the source survive (DIA-26). A value without source text is
+/// written from its compact form.
+pub(crate) fn ordered_text(v: &strict_json::Value) -> String {
+    let raw = v.raw();
+    if raw.is_empty() {
+        return v.compact();
+    }
+    let mut out = String::with_capacity(raw.len());
+    let mut in_string = false;
+    let mut escaped = false;
+    for c in raw.chars() {
+        if in_string {
+            out.push(c);
+            if escaped {
+                escaped = false;
+            } else if c == '\\' {
+                escaped = true;
+            } else if c == '"' {
+                in_string = false;
+            }
+            continue;
+        }
+        match c {
+            ' ' | '\t' | '\n' | '\r' => {}
+            '"' => {
+                in_string = true;
+                out.push(c);
+            }
+            _ => out.push(c),
+        }
+    }
+    out
+}
+
 /// An ordered-json value → stored representation. The first stage is
-/// `ordered_json` and writes the compact text of the value, including JSON null.
+/// `ordered_json` and writes the stored text of the value (`ordered_text`), including JSON null.
 pub fn encode_ordered(styles: &[&str], v: StyledValue<&strict_json::Value>) -> Result<Param> {
     check_styles(styles.iter().copied())?;
     let StyledValue::Value(v) = v else { return Ok(Param::Null) };
     match styles.first() {
-        Some(&"ordered_json") => finish(&styles[1..], v.compact().into_bytes()),
+        Some(&"ordered_json") => finish(&styles[1..], ordered_text(v).into_bytes()),
         // An ordered-json value is written by a first ordered_json stage only (COD-16).
         _ => Err(err(CODEC_ENCODE, format!("an ordered-json value is written by a first ordered_json stage only, not {styles:?}"))),
     }

@@ -70,6 +70,12 @@ func TestJsonTextOrderPreservation(t *testing.T) {
 				input:    jsontext.Value(`{"z":{},"a":[],"nested":{"second":2,"first":1}}`),
 				expected: `{"z":{},"a":[],"nested":{"second":2,"first":1}}`,
 			},
+			{
+				// DIA-26: a repeated member name is kept in place, with both values.
+				name:     "repeated member name",
+				input:    jsontext.Value(`{"a":1,"b":2,"a":3}`),
+				expected: `{"a":1,"b":2,"a":3}`,
+			},
 		}
 
 		for _, tc := range testCases {
@@ -104,10 +110,9 @@ func TestJsonTextOrderPreservation(t *testing.T) {
 				if !ok {
 					t.Fatalf("data is %T, want *orderedjson.Value", data)
 				}
-				readStr, err := orderedjson.Stringify(value)
-				if err != nil {
-					t.Fatal(err)
-				}
+				// The value holds the stored text as written (DIA-26); Stringify would
+				// rebuild it from the member map and collapse a repeated name.
+				readStr := value.Raw()
 
 				if readStr != tc.expected {
 					t.Errorf("order mismatch:\n  expected: %s\n  got:      %s", tc.expected, readStr)

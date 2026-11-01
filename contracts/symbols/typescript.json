@@ -827,6 +827,10 @@
     "exported": false,
     "signature": "function commonValue(value: unknown, style: string): CodecValue"
   },
+  "packages/ts/src/codec.ts::compactJsonText": {
+    "exported": false,
+    "signature": "function compactJsonText(text: string): string"
+  },
   "packages/ts/src/codec.ts::decode": {
     "exported": true,
     "signature": "export function decode(styles: readonly string[], raw: string | Uint8Array | null): StyledValue\u003cCodecValue | JsonValue | string\u003e"
@@ -894,6 +898,10 @@
   "packages/ts/src/codec.ts::plainBytes": {
     "exported": false,
     "signature": "function plainBytes(value: unknown): Buffer"
+  },
+  "packages/ts/src/codec.ts::storedJsonText": {
+    "exported": false,
+    "signature": "function storedJsonText(value: JsonValue): string"
   },
   "packages/ts/src/codec.ts::string": {
     "exported": false,

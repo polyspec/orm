@@ -20927,6 +20927,14 @@
     "exported": false,
     "signature": "func(ent *runtimemodel.Entity, generated *Entity, m Model) error"
   },
+  "packages/go/orm/ordered_json_value.go::compactJSONText": {
+    "exported": false,
+    "signature": "func(text string) string"
+  },
+  "packages/go/orm/ordered_json_value.go::orderedJSONCompact": {
+    "exported": false,
+    "signature": "func(value *orderedjson.Value) (string, error)"
+  },
   "packages/go/orm/ordered_json_value.go::orderedJSONEmpty": {
     "exported": false,
     "signature": "func(value reflect.Value) bool"

@@ -344,6 +344,46 @@ def model_write_arithmetic_attributes(item):
             db.close()
 
 
+# Requirements: DIA-26, COD-15.
+def ordered_json_repeated_member_name(item):
+    driver, dsn = item
+    _db = models.connect(dsn, aesKey="bench-salt", blindIndexKey="bench-blind-index")
+    text = '{"a":1,"b":2,"a":3}'
+    rollback = RuntimeError("rollback repeated member name probe")
+
+    def probe():
+        row = models.Author().connect(_db).add_all_columns().get_by_seq(1)
+        expect_equal(
+            row is not None, True, "seed author row 1 exists for repeated member names"
+        )
+        row.set_json_setting(StyledValue.value(parse_json(text))).update()
+        stored = models.Author().connect(_db).add_all_columns().get_by_seq(1)
+        expect_equal(
+            stored is not None,
+            True,
+            "seed author row 1 remains after repeated member name update",
+        )
+        expect_equal(
+            stored.get_json_setting().payload().raw,
+            text,
+            "repeated member name text round trip",
+        )
+        raise rollback
+
+    try:
+        _db.transaction(probe, {"retry": 0})
+    except RuntimeError as error:
+        expect_equal(
+            error is rollback,
+            True,
+            "repeated member name probe rolls back its row update",
+        )
+    else:
+        raise AssertionError(
+            "repeated member name probe transaction unexpectedly committed"
+        )
+
+
 class CoverageTest(CoverageCase):
     # Requirements: DSL-104, INT-35, PRT-41.
     def test_create_parts(self):
@@ -464,6 +504,12 @@ class CoverageTest(CoverageCase):
     # Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110, PLN-12, PLN-27, DIA-26, COD-15.
     def test_model_write_cycle(self):
         self.each_item("model_write_cycle", model_write_cycle)
+
+    # Requirements: DIA-26, COD-15.
+    def test_ordered_json_repeated_member_name(self):
+        self.each_item(
+            "ordered_json_repeated_member_name", ordered_json_repeated_member_name
+        )
 
     # Requirements: DSL-109.
     def test_save_key_dispatch(self):

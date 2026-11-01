@@ -2395,6 +2395,10 @@
     "exported": false,
     "signature": " fn number_check (value : \u0026 Value , style : \u0026 str) -\u003e Result \u003c () \u003e"
   },
+  "packages/rust/orm/src/codec.rs::ordered_text": {
+    "exported": false,
+    "signature": "pub (crate) fn ordered_text (v : \u0026 strict_json :: Value) -\u003e String"
+  },
   "packages/rust/orm/src/codec.rs::pack_ip": {
     "exported": false,
     "signature": " fn pack_ip (s : \u0026 str) -\u003e Result \u003c Vec \u003c u8 \u003e \u003e"

@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- jsontext 값은 원본 text의 멤버 순서와 반복된 멤버 이름을 유지한다: 쓰기는 파싱한 멤버 map을 다시 직렬화하지 않고 원본 text를 compact하여 저장하며, 읽기는 값이 가진 text를 돌려준다 (DIA-26). Go, TypeScript, Python은 이전에 SQLite, MySQL, PostgreSQL에서 반복된 이름을 하나로 합쳤다 (T332)
 - transaction-retry-on-deadlock parity unit이 Go, Rust, TypeScript, Python binding에서 driver 수준의 deadlock을 실행한다: 두 connection이 두 행을 반대 순서로 MySQL에서 잠그면 한 flow의 첫 시도가 DEADLOCK으로 실패하고, transaction은 재시도되어 둘 다 commit되므로, driver deadlock의 재시도는 PHP만이 아니라 네 runtime에서 시험된다 (T303).
 - complex query와 hot-path 성능 gate의 Python parity binding이 적재할 수 없는 test를 가리키지 않는다: 6ff320c72에서 그 unit들의 실행이 PHP 8.4 아래에서 통과하므로(25 binding, 27 case) T269의 원인은 재현되지 않고, 이 row는 그 unit들을 Verification으로 실행한다 (T269).
 - 두 branch의 check-recipes 작업이 하나의 통합으로 main에 들어간다. 한국어 checklist는 영어 checklist의 모든 row를 가지고, 변경 이력은 그 commit들의 항목을 가지며, Makefile은 `rust-compiler-fixtures-check/unit`에서 node를 `$(NODE)`로 실행하고, `config/rebuild.json`은 `scripts/generate/once.mts`와 `scripts/php/php-ext-build.mts`를 분류한다 (CR26).

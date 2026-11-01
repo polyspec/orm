@@ -23,7 +23,6 @@ use Purr\Yaml\Schema\CoreSchema;
 use Purr\Yaml\YamlStream;
 
 use function Polyspec\OrderedJson\parse as orderedJsonParse;
-use function Polyspec\OrderedJson\stringify as orderedJsonStringify;
 
 /**
  * Column-style codecs (docs/spec/codec.md). Styles are in write order; decode applies them in reverse.
@@ -200,7 +199,7 @@ final class Codec
                     break;
                 case 'ordered_json':
                     try {
-                        $cur = orderedJsonStringify(orderedJsonParse(self::jsonText($value)));
+                        $cur = self::compactJsonText(orderedJsonParse(self::jsonText($value))->raw());
                     } catch (\JsonException | \InvalidArgumentException $e) {
                         throw new OrmException(Code::CODEC_ENCODE, 'json: ' . $e->getMessage(), $e);
                     }
@@ -219,13 +218,48 @@ final class Codec
     }
 
     /**
+     * The stored text of a JSON text: the insignificant whitespace outside the string literals is removed, and every
+     * other byte, the member order and the repeated member names included, stays in place (DIA-26).
+     */
+    private static function compactJsonText(string $text): string
+    {
+        $out = '';
+        $inString = false;
+        $escaped = false;
+        $length = strlen($text);
+        for ($i = 0; $i < $length; $i++) {
+            $c = $text[$i];
+            if ($inString) {
+                $out .= $c;
+                if ($escaped) {
+                    $escaped = false;
+                } elseif ($c === '\\') {
+                    $escaped = true;
+                } elseif ($c === '"') {
+                    $inString = false;
+                }
+                continue;
+            }
+            if ($c === ' ' || $c === "\t" || $c === "\n" || $c === "\r") {
+                continue;
+            }
+            if ($c === '"') {
+                $inString = true;
+            }
+            $out .= $c;
+        }
+        return $out;
+    }
+
+    /**
      * The JSON text of an ordered-json value or of the common value model. An
      * ordered-json value, also inside an array, is written as its compact text.
      */
     private static function jsonText(mixed $value): string
     {
         if ($value instanceof Value) {
-            return orderedJsonStringify($value);
+            // The source text keeps the member order and the repeated names that the member map collapses (DIA-26).
+            return $value->raw();
         }
         if (is_array($value)) {
             $parts = [];

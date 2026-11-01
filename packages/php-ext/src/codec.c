@@ -995,6 +995,35 @@ static bool json_map(HashTable *ht, smart_str *out)
     return true;
 }
 
+/* The stored text of a JSON text: insignificant whitespace outside the string literals is removed, and every other
+   byte, the member order and the repeated member names included, stays in place (DIA-26). */
+static void compact_json_text(const char *text, size_t len, smart_str *out)
+{
+    bool in_string = false;
+    bool escaped = false;
+    for (size_t i = 0; i < len; i++) {
+        char c = text[i];
+        if (in_string) {
+            smart_str_appendc(out, c);
+            if (escaped) {
+                escaped = false;
+            } else if (c == '\\') {
+                escaped = true;
+            } else if (c == '"') {
+                in_string = false;
+            }
+            continue;
+        }
+        if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
+            continue;
+        }
+        if (c == '"') {
+            in_string = true;
+        }
+        smart_str_appendc(out, c);
+    }
+}
+
 static bool json_text(zval *v, smart_str *out)
 {
     bool yes;
@@ -1002,7 +1031,8 @@ static bool json_text(zval *v, smart_str *out)
         IS_A(v, "Polyspec\\OrderedJson\\Value", yes);
         if (yes) {
             zval s;
-            if (!call_fn("Polyspec\\OrderedJson\\stringify", &s, 1, v)) {
+            /* The source text keeps the member order and the repeated names that the member map collapses (DIA-26). */
+            if (!call_method(v, "raw", &s, 0, NULL)) {
                 return false;
             }
             smart_str_append(out, Z_STR(s));
@@ -1503,13 +1533,16 @@ bool codec_encode(HashTable *styles, zval *styled, zval *ret)
                 ZVAL_STR(&text, smart_str_extract(&buf));
                 if (!call_fn("Polyspec\\OrderedJson\\parse", &parsed, 1, &text)) {
                     ok = false;
-                } else if (!call_fn("Polyspec\\OrderedJson\\stringify", &s, 1, &parsed)) {
+                } else if (!call_method(&parsed, "raw", &s, 0, NULL)) {
                     zval_ptr_dtor(&parsed);
                     ok = false;
                 } else {
+                    smart_str stored = {0};
+                    compact_json_text(Z_STRVAL(s), Z_STRLEN(s), &stored);
+                    zval_ptr_dtor(&s);
                     zval_ptr_dtor(&parsed);
                     zval_ptr_dtor(&cur);
-                    ZVAL_COPY_VALUE(&cur, &s);
+                    ZVAL_STR(&cur, smart_str_extract(&stored));
                 }
                 zval_ptr_dtor(&text);
             }

@@ -5236,6 +5236,31 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_model_writes::coverage_model_write_cycle"
           ]
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageModelWritesTest.php",
+          "id": "CoverageModelWritesTest::testOrderedJsonRepeatedMemberName"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
+          "id": "CoverageModelWritesExtensionTest::testOrderedJsonRepeatedMemberName"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_model_writes.mjs",
+          "id": "ordered_json_repeated_member_name"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_model_writes.py",
+          "id": "test_ordered_json_repeated_member_name"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
+          "id": "coverage_model_writes::coverage_ordered_json_repeated_member_name"
         }
       ]
     },

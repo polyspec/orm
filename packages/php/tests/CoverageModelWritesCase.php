@@ -38,6 +38,34 @@ final class CoverageModelWritesCase
         }
     }
 
+    // DIA-26: a repeated member name is kept in place, with both values, on every database.
+    public static function orderedJsonRepeatedMemberNameRoundTrip(Db $db): void
+    {
+        $text = '{"a":1,"b":2,"a":3}';
+        $rollback = new \RuntimeException('rollback repeated member name probe');
+        try {
+            $db->transaction(function () use ($db, $text, $rollback): void {
+                $row = (new Author())($db)->addAllColumns()->getBySeq(1);
+                Assert::assertNotNull($row, 'seed author row 1 exists for repeated member names');
+                $row->setJsonSetting(StyledValue::value(\Polyspec\OrderedJson\parse($text)))->update();
+
+                $stored = (new Author())($db)->addAllColumns()->getBySeq(1);
+                Assert::assertNotNull($stored, 'seed author row 1 remains after repeated member name update');
+                Assert::assertSame(
+                    $text,
+                    $stored->getJsonSetting()->payload()->raw(),
+                    'repeated member name text round trip'
+                );
+                $cell = $db->pdo()->query('SELECT json_setting FROM author WHERE seq = 1')->fetchColumn();
+                Assert::assertSame($text, $cell, 'database stores the repeated member name text unchanged');
+                throw $rollback;
+            }, retry: 0);
+            Assert::fail('repeated member name probe transaction unexpectedly committed');
+        } catch (\Throwable $failure) {
+            Assert::assertSame($rollback, $failure, 'repeated member name probe rolls back its row update');
+        }
+    }
+
     public static function codecColumnsRoundTrip(Db $db): void
     {
         $rollback = new \RuntimeException('rollback codec columns probe');
