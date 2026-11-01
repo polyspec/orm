@@ -84,7 +84,7 @@ PgBouncer 설정:
 - **CFG-29** `track_extra_parameters`: `statement_timeout`. 연결이 `statementTimeoutMs`를 설정할 때 필요하다. 클라이언트는 `statement_timeout`을 startup 매개변수로 전달한다. PgBouncer는 추적하지 않는 startup 매개변수를 거부하고, 추적하는 매개변수는 그 클라이언트 연결에 배정하는 모든 서버 연결에만 설정한다.
 
 - **CFG-30** 클라이언트가 트랜잭션 밖에서 정하는 PostgreSQL 세션 상태는 시간대뿐이다. 모든 클라이언트는 시간대를 startup 매개변수 `TimeZone=UTC`로 보내며, PgBouncer는 `TimeZone`을 기본으로 추적한다. 트랜잭션 옵션(`SET TRANSACTION`, `SET LOCAL statement_timeout`), `utils().setLocal`(`set_config(…, true)`), `utils().lock`(`pg_advisory_xact_lock`)은 트랜잭션과 함께 끝난다.
-- **CFG-31** 문 취소는 PgBouncer를 거쳐서도 동작한다. PgBouncer는 클라이언트 연결의 프로토콜 취소 요청을 그 문을 실행하는 서버 연결로 전달한다. TypeScript는 연결의 process id와 secret key로 그 요청을 전송하고, PHP는 PostgreSQL 연결에서 `ext-pgsql`로 protocol cancel request를 전송한다.
+- **CFG-31** 문 취소는 PgBouncer를 거치면 best effort이며 보장되지 않는다. PgBouncer는 클라이언트 연결의 프로토콜 취소 요청을 그 문을 실행하는 서버 연결로 전달하지만, 이 경로는 신뢰할 수 없다. PgBouncer의 취소 경쟁(BUG #14891)은 1.18에서만 고쳐졌고 그 수정에는 hang 부작용이 있으며, 다중 프로세스 구성에서는 peering이 1.19에서 들어오기 전까지 취소 요청이 유실되었다. SQLx 0.9에는 CancelRequest API가 없어 Rust 클라이언트에는 PgBouncer를 거치는 지원되는 취소 경로가 없다. TypeScript는 연결의 process id와 secret key로 그 요청을 전송하고, PHP는 PostgreSQL 연결에서 `ext-pgsql`로 protocol cancel request를 전송한다. 유실된 취소는 문을 계속 실행 상태로 두므로, 호출자는 취소가 서버에 닿는다고 의존해서는 안 된다.
 - **CFG-32** `polyspec-orm` crate, 곧 Rust 클라이언트는 startup 매개변수 `extra_float_digits`를 보내지 않는다. PostgreSQL 12 이상은 서버 기본값으로 float8 값을 정확히 출력한다.
 - **CFG-33** 위반된 foreign key, check 또는 unique key는 `FOREIGN_KEY`, `CONSTRAINT` 또는 `DUPLICATE_KEY`로 보고되며, 각 database의 native code는 [errors.yaml](errors.yaml)이 나열한 것이고, statement는 어떤 row도 바꾸지 않는다. 이는 CFG-6의 `1205` 규칙 옆의 대응이다.
 
