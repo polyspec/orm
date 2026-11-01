@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2db1de7f9dfc56d800d4b481a698f58cbc59120ad5bfe5921fda2531da19e7b4 -->
+<!-- source-sha256: 31682ddd9a63b7191c733963ed5d2ca606921712b6ad29f63ef0868aaa4995c0 -->
 # 변경 이력
 
 ## Unreleased
@@ -50,6 +50,7 @@
 - CR25의 compiler fixture 시험은 repo-check에 실패했다: node:test를 직접 선언했고 cargo test와 한 레시피에서 함께 실행했다. 이제 caseTest를 쓰고 rust-compiler-fixtures-check의 독립 part로 실행한다 (CR25-1).
 - 통합의 변경 기록에 0.0.21 절 아래 통합이 넣은 항목 18개가 있어 목록 항목이 한국어 기록의 35개가 아니라 53개였고, docs.translation-shape가 실패했다. 0.0.21 절은 커밋 874946330의 본문으로 복원했고, 어느 Unreleased 절에도 없던 CR25 항목은 Unreleased로 옮겼다 (CR36).
 - 통합 트리의 인터페이스 스냅샷이 오래되어 있었다. contracts/interfaces.json에 기록된 go와 typescript 심볼 해시가 트리와 달랐고, php 스냅샷은 packages/php/src/Catalog.php가 더 이상 선언하지 않는 private 메서드 네 개를 담고 있어서 make interface-check/self-test가 실패했다. 문서화된 기록 실행이 스냅샷과 매니페스트 해시를 다시 쓴다 (CR35).
+- kit parity job은 complex-query 데이터베이스 없이 parity-bench-env-check를 실행했다. CR7 이후 parity context가 대상을 하나도 넘기지 않았고(PARITY_CONTEXT_TARGETS가 비어 있었다), complexQueryNeeded가 parity-check가 선언한 need complex-query를 읽지 않았다. 이제 context는 parity 대상을 넘기고, 대상이 그 need를 선언하면 complex-query fixture를 만든다 (CR37).
 
 ## 0.0.21
 

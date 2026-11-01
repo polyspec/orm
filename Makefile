@@ -2157,8 +2157,9 @@ parity-check: parity-prepare
 # Kit's gates workflow runs parity context preparation and cleanup in separate job steps. This context gives that job the same
 # run-owned servers, benchmark fixtures and build-output directory as run-databases, while GITHUB_ENV carries the two paths to the gate.
 # PARITY_CONTEXT_TARGETS and PHP_EXTENSION_CONTEXT_TARGETS name the targets that the context's databases serve. The databases get the
-# complex-query fixtures only when one of them needs it (complexQueryNeeded, parity-context.mts, B3-3); none is named by default.
-PARITY_CONTEXT_TARGETS ?=
+# complex-query fixtures only when one of them needs it (complexQueryNeeded, parity-context.mts, B3-3). Every parity gate runs
+# parity-bench-env-check, which requires the COMPLEX_QUERY_*_DSN, and parity-check declares the need complex-query, so the parity context names the gates.
+PARITY_CONTEXT_TARGETS ?= $(PARITY_GATE_TARGETS)
 PHP_EXTENSION_CONTEXT_TARGETS ?=
 .PHONY: parity-context-prepare parity-context-cleanup
 parity-context-prepare:

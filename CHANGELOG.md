@@ -49,6 +49,7 @@
 - The compiler fixtures test of CR25 failed repo-check: it declared its cases with node:test directly, and ran beside the cargo test in one recipe. It now uses caseTest and runs as its own part of rust-compiler-fixtures-check (CR25-1).
 - The change log of the integration had 18 entries of the integration under its 0.0.21 section, so the section had 53 list items against 35 in the Korean twin, and docs.translation-shape failed. The 0.0.21 section is restored to its text at commit 874946330, and the CR25 entry that no Unreleased section held moves to Unreleased (CR36).
 - The interface snapshot of the integrated tree was stale: the go and typescript symbol hashes recorded in contracts/interfaces.json differed from the tree, and the php snapshot listed four private Catalog methods that packages/php/src/Catalog.php no longer declares, so make interface-check/self-test failed. The documented record run regenerates the snapshots and the manifest hashes (CR35).
+- The kit parity jobs ran parity-bench-env-check without the complex-query databases: since CR7 the parity context named no target (PARITY_CONTEXT_TARGETS was empty), and complexQueryNeeded did not read the need complex-query that parity-check declares. The context now names the parity gates, and a context whose target declares the need gets the complex-query fixtures (CR37).
 
 ## 0.0.21
 

@@ -20,12 +20,14 @@ export type ContextCommandResult = { status: number | null; signal: NodeJS.Signa
 export type ContextCommand = (command: string, args: string[], cwd: string, env: NodeJS.ProcessEnv) => ContextCommandResult;
 
 // complexQueryNeeded returns whether one of the targets of a context needs the complex-query fixtures (B3-3): its inputs in
-// contracts/check-inputs.json include contracts/fixtures/complex_query/**, or its recipe in the Makefile reads a COMPLEX_QUERY_*_DSN.
+// contracts/check-inputs.json include contracts/fixtures/complex_query/**, its recipe in the Makefile reads a COMPLEX_QUERY_*_DSN,
+// or it declares the need complex-query in contracts/check-inputs.json, the declaration that owners.mts reads too.
 // A context with no target creates no complex-query databases.
 export function complexQueryNeeded(targets: readonly string[]): boolean {
   if (targets.length === 0) return false;
   const parsed: unknown = JSON.parse(readFileSync(join(REPOSITORY, CHECK_INPUTS), 'utf8'));
   const declared = declaredInputs(parsed);
+  const needing = declaredNeeds(parsed, 'complex-query');
   const lines = readFileSync(join(REPOSITORY, 'Makefile'), 'utf8').split('\n');
   const reads = new Set<string>();
   let owners: string[] = [];
@@ -37,7 +39,7 @@ export function complexQueryNeeded(targets: readonly string[]): boolean {
     const rule = /^([^\s#:=][^:=]*?)\s*:(?![=])/.exec(line);
     owners = rule ? (rule[1] ?? '').trim().split(/\s+/) : [];
   }
-  return targets.some(target => (declared.get(target) ?? []).includes(COMPLEX_QUERY_FIXTURES) || reads.has(target));
+  return targets.some(target => needing.has(target) || (declared.get(target) ?? []).includes(COMPLEX_QUERY_FIXTURES) || reads.has(target));
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -51,6 +53,17 @@ function declaredInputs(value: unknown): Map<string, string[]> {
     inputs.set(name, list.filter((item): item is string => typeof item === 'string'));
   }
   return inputs;
+}
+
+// declaredNeeds returns the targets of contracts/check-inputs.json whose needs list the named need.
+function declaredNeeds(value: unknown, need: string): Set<string> {
+  const names = new Set<string>();
+  const targets = isRecord(value) && isRecord(value.targets) ? value.targets : {};
+  for (const [name, entry] of Object.entries(targets)) {
+    const list: unknown[] = isRecord(entry) && Array.isArray(entry.needs) ? entry.needs : [];
+    if (list.includes(need)) names.add(name);
+  }
+  return names;
 }
 
 function run(command: string, args: string[], cwd: string, env: NodeJS.ProcessEnv): ContextCommandResult {

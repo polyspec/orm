@@ -51,6 +51,19 @@ caseTest('a parity context with a target that reads a complex-query DSN creates 
   }
 });
 
+// The parity gates run parity-bench-env-check, which requires the COMPLEX_QUERY_*_DSN, so the parity context of the Makefile
+// (PARITY_CONTEXT_TARGETS) names them, and parity-check declares the need complex-query: the databases get the fixtures.
+caseTest('a parity context whose target is a parity gate creates the complex-query fixtures', COMPUTE, () => {
+  const f = fixture();
+  try {
+    const calls: string[] = [];
+    prepareContext('parity', f.root, f.env, stub(f.root, calls), ['parity-check', 'parity-api-check']);
+    assert.ok(calls.some(call => call.endsWith('COMPLEX_QUERY=1')), 'parity-check declares the need complex-query, so the fixtures are created');
+  } finally {
+    f.dispose();
+  }
+});
+
 const stub = (root: string, calls: string[], failCreate = false, decimal = true): ContextCommand => (program, args, cwd) => {
   assert.equal(cwd, root);
   calls.push(`${program} ${args.join(' ')}`);
