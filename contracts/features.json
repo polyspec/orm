@@ -123,7 +123,6 @@
         "packages/php/tests/MarkdownTest.php",
         "packages/php-ext/src/markdown_native.c",
         "packages/php-ext/src/markdown_native.h",
-        "packages/php-ext/src/polyspec_orm.stub.php",
         "packages/php-ext/src/orm.c",
         "packages/php-ext/src/polyspec_orm.c",
         "packages/rust/orm/tests/markdown.rs",
@@ -13982,6 +13981,116 @@
         },
         "dependents": []
       }
+    },
+    {
+      "id": "statement_runner",
+      "title": "Statement runner",
+      "title_ko": "\ubb38 \uc2e4\ud589\uae30",
+      "status": "partial",
+      "description": "The statement runner is public API in every runtime (INT-150): utils().run(fn) calls fn with a transaction frame of the connection, which opens a transaction when none is active and joins the active one otherwise, and the frame's run(kind, tables, sql, params) runs one statement of kind kind that touches tables, records one statement event, and returns the statement result with its rows. A statement that is not text fails with CONFIG.",
+      "description_ko": "\ubb38 \uc2e4\ud589\uae30\ub294 \ubaa8\ub4e0 runtime\uc5d0\uc11c public API\ub2e4(INT-150). utils().run(fn)\uc740 \uc5f0\uacb0\uc758 transaction frame\uc73c\ub85c fn\uc744 \ud638\ucd9c\ud558\uba70, \ud65c\uc131 transaction\uc774 \uc5c6\uc73c\uba74 \uc5f4\uace0 \uc788\uc73c\uba74 \ucc38\uc5ec\ud55c\ub2e4. frame\uc758 run(kind, tables, sql, params)\ub294 tables\ub97c \uac74\ub4dc\ub9ac\ub294 kind\uc758 statement \ud558\ub098\ub97c \uc2e4\ud589\ud574 statement event \ud558\ub098\ub97c \uae30\ub85d\ud558\uace0, \ud589\uc744 \ud3ec\ud568\ud55c statement \uacb0\uacfc\ub97c \ub3cc\ub824\uc900\ub2e4. \ud14d\uc2a4\ud2b8\uac00 \uc544\ub2cc statement\ub294 CONFIG\ub85c \uc2e4\ud328\ud55c\ub2e4.",
+      "inputs": {
+        "type": "StatementRunnerRequest",
+        "fields": [
+          "kind",
+          "tables",
+          "sql",
+          "params"
+        ]
+      },
+      "outputs": {
+        "type": "StatementResult",
+        "fields": [
+          "rows",
+          "affected",
+          "insertId",
+          "columns"
+        ]
+      },
+      "state": [
+        "open a transaction when none is active, and join the active one otherwise",
+        "run one statement of the kind and tables given, and record its statement event",
+        "return the statement result with its rows"
+      ],
+      "errors": [
+        {
+          "code": "CONFIG",
+          "when": "the statement is not text, or the frame is used after its transaction ended"
+        }
+      ],
+      "parity": ["statement-runner-database"],
+      "fixtures": [],
+      "tests": [
+        "packages/ts/tests/statement-runner.mjs",
+        "packages/go/orm/statement_runner_test.go",
+        "packages/php/tests/StatementRunnerTest.php",
+        "packages/python/tests/test_statement_runner.py",
+        "packages/rust/orm/tests/statement_runner.rs",
+        "packages/php-ext/tests/StatementRunnerExtensionTest.php"
+      ],
+      "docs": [
+        "docs/spec/interfaces.md"
+      ],
+      "verification": [
+        {
+          "id": "statement-runner-typescript",
+          "command": "node packages/ts/tests/statement-runner.mjs",
+          "shard": "other",
+          "inputs": [
+            "packages/ts/tests/statement-runner.mjs",
+            "packages/ts/tests/case-database.mjs"
+          ]
+        },
+        {
+          "id": "statement-runner-go",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestStatementRunner' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/go/orm/utils.go",
+            "packages/go/orm/statement_runner_test.go"
+          ]
+        },
+        {
+          "id": "statement-runner-php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/StatementRunnerTest.php",
+          "shard": "other",
+          "inputs": [
+            "packages/php/src/Utils.php",
+            "packages/php/src/TxFrame.php",
+            "packages/php/tests/StatementRunnerTest.php"
+          ]
+        },
+        {
+          "id": "statement-runner-python",
+          "command": "packages/python/.venv/bin/python -m unittest packages.python.tests.test_statement_runner -v",
+          "shard": "other",
+          "inputs": [
+            "packages/python/src/polyspec/orm/utils.py",
+            "packages/python/src/polyspec/orm/database.py",
+            "packages/python/tests/test_statement_runner.py"
+          ]
+        },
+        {
+          "id": "statement-runner-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts statement-runner-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test statement_runner",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/orm/src/utils.rs",
+            "packages/rust/orm/src/tx.rs",
+            "packages/rust/orm/tests/statement_runner.rs"
+          ]
+        },
+        {
+          "id": "statement-runner-php-extension",
+          "command": "make client-db-php-extension-check",
+          "shard": "other",
+          "inputs": [
+            "packages/php-ext/src/native_classes.c",
+            "packages/php-ext/src/utils.c",
+            "packages/php-ext/tests/StatementRunnerExtensionTest.php"
+          ]
+        }
+      ]
     }
   ],
   "helpers": [
@@ -14418,7 +14527,6 @@
         "docs/spec/errors.yaml",
         "packages/go/cmd/orm-gen/errors.go",
         "packages/go/orm/codes.go",
-        "packages/php-ext/src/polyspec_orm.stub.php",
         "packages/rust/orm/src/codes.rs"
       ],
       "tests": [

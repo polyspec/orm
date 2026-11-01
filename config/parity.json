@@ -43756,6 +43756,96 @@
           "owner/python"
         ]
       }
+    },
+    {
+      "id": "client-statement-runner",
+      "kind": "api",
+      "requirements": [
+        "INT-150"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbols": [
+            "github.com/polyspec/orm/packages/go/orm.Utils.Run",
+            "github.com/polyspec/orm/packages/go/orm.TxFrame.Run"
+          ]
+        },
+        {
+          "implementation": "php",
+          "symbols": [
+            "Polyspec\\Orm\\Utils::run",
+            "Polyspec\\Orm\\TxFrame::run"
+          ]
+        },
+        {
+          "implementation": "php-extension",
+          "symbols": [
+            "Polyspec\\Orm\\Utils::run",
+            "Polyspec\\Orm\\TxFrame::run"
+          ]
+        },
+        {
+          "implementation": "python",
+          "symbols": [
+            "polyspec.orm.utils.Utils.run",
+            "polyspec.orm.database.TxFrame.run"
+          ]
+        },
+        {
+          "implementation": "rust",
+          "symbols": [
+            "polyspec_orm::utils::Utils::run",
+            "polyspec_orm::tx::TxFrame::run"
+          ]
+        },
+        {
+          "implementation": "typescript",
+          "symbols": [
+            "@polyspec/orm!Utils#run:member(1)",
+            "@polyspec/orm!TxFrame#run:member(1)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "statement-runner-database",
+      "kind": "feature",
+      "requirements": [
+        "INT-150"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/statement_runner_test.go",
+          "id": "TestStatementRunnerSQLite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementRunnerTest.php",
+          "id": "StatementRunnerTest::testStatementRunner"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementRunnerExtensionTest.php",
+          "id": "StatementRunnerExtensionTest::testStatementRunnerOpensOrJoinsTransactionAndReturnsRows"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_runner.py",
+          "id": "test_runner_opens_a_transaction_outside_and_joins_inside_sqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/statement_runner.rs",
+          "id": "statement_runner"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement-runner.mjs",
+          "id": "statement_runner"
+        }
+      ]
     }
   ],
   "errors": {
