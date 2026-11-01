@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 572251017b7374a71bda53c814458bd3ebf837e388777aee0a7ba537ee20041b -->
+<!-- source-sha256: d676c3e9f6a5d3deba5dafde4c72eb98d2d4c40478a0bf98edc3c28a464d4ddc -->
 # 변경 이력
 
 ## Unreleased
@@ -14,6 +14,7 @@
 - AGENTS.md는 kit P25의 항목 상태를 적는다: 항목은 commit되고 unit test가 통과하면 `[v]`가 되어 push를 허락하며, push의 `ci.yml` run이 success로 끝나면 `[o]`가 된다. release는 conclusion이 success인 `ci.yml` run의 id를 받는다 (T309).
 - Rust 크레이트는 테스트 helper를 packages/rust/test-support로 공유하며, 어떤 크레이트도 다른 크레이트의 source를 `#[path]`로 include하지 않는다. 크레이트를 넘는 `#[path]`는 모두 삭제되고, repo test가 그런 `#[path]`를 실패로 판정한다 (T349).
 - PgBouncer를 거치는 문 취소는 best effort이며 보장되지 않는다 (CFG-31): PgBouncer의 취소 경쟁(BUG #14891)은 1.18에서만 고쳐졌고 그 수정에는 hang 부작용이 있었으며, 다중 프로세스에서는 peering이 1.19에서 들어오기 전까지 취소가 유실되었고, SQLx 0.9에는 CancelRequest API가 없다. 따라서 KSTD-2-11-16-3은 불가능으로 닫힌다 (KSTD-2-11-16-3).
+- config/release.json:38-44는 PHP extension package의 생성 source를 출력 둘을 가진 make entry 하나 php-ext-sources로 선언하고 kit K930의 release schema가 그것을 받아들이므로, 이 row는 make kit-check로 닫는다 (T325-1).
 - divergence-check는 main 6ff320c72에서 exit 0이다. KSTD-7-6이 performance_gate의 고정 기준값을 기록한 뒤로 분기, 범위 축소, feature 상태, 종류 없는 예외로 갈라지는 구현이 없다 (KSTD-5-12).
 - orm은 toolchain-check, cargo-downloads-check, link-state-check를 부르지 않고 kit.mk:425가 link-check를 제공하므로, 이 row는 make kit-check repo-check로 닫는다. 삭제된 cargo-downloads-fetch를 부르는 하나(Makefile:2936)는 kit 0.0.92 채택과 함께 T348이 바꾼다 (KSTD-5-117).
 - CARGO_SIBLINGS는 더 이상 `--siblings`를 넘기지 않고(Makefile:215) kit의 link.mts에는 그 option이 없다. link 선언 `.links`는 kit의 link-providers.mts:136이 읽으므로, 이 row는 make link-check로 닫는다 (KSTD-5-119).

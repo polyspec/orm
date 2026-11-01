@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- config/release.json:38-44 declares the generated sources of the PHP extension package as one make entry, php-ext-sources, with both outputs, which the release schema of kit K930 accepts, so the row closes on make kit-check (T325-1).
 - divergence-check exits 0 on main 6ff320c72: no implementation diverges through a branch, a narrowing, a feature state or an exception without a kind, since KSTD-7-6 recorded the fixed references of performance_gate (KSTD-5-12).
 - orm names none of toolchain-check, cargo-downloads-check or link-state-check, and kit.mk:425 provides link-check, so the row closes on make kit-check repo-check; the one call of the deleted cargo-downloads-fetch (Makefile:2936) is replaced by T348 with the kit 0.0.92 adoption (KSTD-5-117).
 - CARGO_SIBLINGS no longer passes `--siblings` (Makefile:215), and kit's link.mts has no such option; the link declaration `.links` is read by kit's link-providers.mts:136, so the row closes on make link-check (KSTD-5-119).
