@@ -1,7 +1,8 @@
 // Package recipe runs the cases of a recipe (docs/spec/feature-coverage.md FCV-2 to FCV-4) in Go: the entry of each suite
 // unit, TestRecipe<Recipe><Database>, starts its case with packages/go/testcase and calls Run with the recipe and the
 // database, and Run runs each case as a subtest whose
-// steps call the public API of the orm package that each op names. It has no command line and no output of its own.
+// steps call the public API of the orm package that each op names. A case that its exclude names for go is not run and
+// is not a subtest: Run prints one EXCLUDED line for it. Otherwise the package has no output of its own.
 package recipe
 
 import (
@@ -34,8 +35,9 @@ type file struct {
 }
 
 type recipeCase struct {
-	ID    string            `json:"id"`
-	Steps []json.RawMessage `json:"steps"`
+	ID      string            `json:"id"`
+	Steps   []json.RawMessage `json:"steps"`
+	Exclude map[string]string `json:"exclude"`
 }
 
 type step struct {
@@ -75,25 +77,11 @@ type Option func(*options)
 type options struct {
 	irAnswer     IRAnswer
 	markdownSend MarkdownSend
-	exclude      map[string]bool
 }
 
 // WithMarkdownSend supplies the function that runs each markdown.send step of a recipe without a database.
 func WithMarkdownSend(fn MarkdownSend) Option {
 	return func(o *options) { o.markdownSend = fn }
-}
-
-// WithExclude leaves the cases named by ids out of the run. A runtime excludes a case only when its public API cannot
-// observe the case, and config/parity.json records the reason of each exclusion.
-func WithExclude(ids ...string) Option {
-	return func(o *options) {
-		if o.exclude == nil {
-			o.exclude = map[string]bool{}
-		}
-		for _, id := range ids {
-			o.exclude[id] = true
-		}
-	}
 }
 
 // WithIRAnswer supplies the function that runs the chain of each ir.answer step of a recipe without a database.
@@ -138,7 +126,8 @@ func Run(t *testing.T, path, database string, opts ...Option) {
 		}
 	}
 	for _, c := range f.Cases {
-		if o.exclude[c.ID] {
+		if reason, ok := c.Exclude["go"]; ok {
+			fmt.Printf("EXCLUDED %s go: %s\n", c.ID, reason)
 			continue
 		}
 		t.Run(c.ID, func(t *testing.T) {

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a888be75889425e6f983f085435fd6aa7f68aa446c6ffdde8dcabff60c36d80e -->
+<!-- source-sha256: ff9243da6bc47db3d04826e5364b49fd4f531e7319fb62ecb1df17cbd9fea015 -->
 # 변경 이력
 
 ## Unreleased
 
+- recipe case는 `exclude`에 그 case를 돌리지 않는 runtime과 이유를 적을 수 있다. 제외된 runtime은 `EXCLUDED <case id> <runtime>: <reason>` 줄 하나를 출력하고 case를 목록에서 뺀다. 그래서 통과도 skip도 아니다. 모든 runtime을 제외하는 case는 schema가 거부한다. recipe schema의 데이터베이스 없는 expectation은 `markdown.send` step을 면제하고, `tests/bind/messages.json`은 검증되는 suite 파일이다 (T334-3-15-4a).
 - `tests/bind/vectors.json`의 markdown message와 control vector는 `markdown.send` step(`column`, `operator`, `params`, `begin`, `process_zone`, `expect`)으로 된 recipe `tests/bind/messages.json` 하나다. 여섯 recipe helper가 각자 공개 markdown 연결로 실행하고, listener가 처음 받은 message를 기록한다. 기존 native message test와 parity 바인딩은 지웠고, DST gap의 offset 없는 datetime case는 `process_zone` 아래에서 실행한다 (T334-3-15-3c).
 - checkPrecision은 여섯 runtime 모두에서 public이다(INT-117): SQLite CHECK precision을 채우는 Go CatalogColumn 필드와 Rust TableColumnMetadata 필드를 공개 이름으로 export하고, config/parity.json은 그것들을 catalog connection이 export하는 다른 public symbol과 함께 선언한다 (T334-3-3-2-9).
 - PostgreSQL describe는 생성 컬럼에 default를 보고하지 않는다: 생성 컬럼의 생성 식은 default가 있는 자리인 pg_attrdef에 보관되므로, 모든 runtime은 그 컬럼의 default 식을 읽지 않고 default 표지를 false로 본다(SCH-6a) (T334-3-3-2-8).

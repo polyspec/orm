@@ -44,10 +44,11 @@ type seed struct {
 }
 
 type databaseCase struct {
-	ID    string            `json:"id"`
-	Only  []string          `json:"only"`
-	Seed  *seed             `json:"seed"`
-	Steps []json.RawMessage `json:"steps"`
+	ID      string            `json:"id"`
+	Only    []string          `json:"only"`
+	Seed    *seed             `json:"seed"`
+	Steps   []json.RawMessage `json:"steps"`
+	Exclude map[string]string `json:"exclude"`
 }
 
 // databaseStep holds the fields of every database op (scripts/features/schema/recipe.schema.json).
@@ -136,6 +137,10 @@ func runDatabase(t *testing.T, path, database string) {
 	for _, c := range f.Cases {
 		// A case with only runs on the databases it names; the others do not register it (TypeScript does the same).
 		if len(c.Only) > 0 && !slices.Contains(c.Only, database) {
+			continue
+		}
+		if reason, ok := c.Exclude["go"]; ok {
+			fmt.Printf("EXCLUDED %s go: %s\n", c.ID, reason)
 			continue
 		}
 		t.Run(c.ID, func(t *testing.T) {

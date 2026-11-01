@@ -41,6 +41,38 @@ final class Recipe
         }
     }
 
+    /**
+     * The cases of the recipe at path that runtime does not exclude, so an excluded case is never registered as a test; each
+     * excluded case prints its EXCLUDED line here, once, as the data provider is read.
+     *
+     * @return iterable<string, array{array<string, mixed>}>
+     */
+    public static function runnableCases(string $path, string $runtime): iterable
+    {
+        foreach (self::cases($path) as $id => $data) {
+            if (self::exclusion($data[0], $runtime) === null) {
+                yield $id => $data;
+            }
+        }
+    }
+
+    /**
+     * The reason that the case excludes runtime (the suite's runtime name: php or php-extension), or null when the case runs. An
+     * excluded case prints one EXCLUDED line to the process stdout, written past the output buffer PHPUnit checks, so the test
+     * stays clean; the caller marks the test skipped with the reason.
+     *
+     * @param array<string, mixed> $case
+     */
+    public static function exclusion(array $case, string $runtime): ?string
+    {
+        $reason = $case['exclude'][$runtime] ?? null;
+        if ($reason === null) {
+            return null;
+        }
+        fwrite(STDOUT, "EXCLUDED {$case['id']} $runtime: $reason\n");
+        return $reason;
+    }
+
     /** Runs the steps of one case on database. */
     public static function run(string $path, array $case, string $database): void
     {

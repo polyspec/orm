@@ -89,7 +89,15 @@
         "requirements": { "$ref": "#/$defs/requirements" },
         "seed": { "$ref": "#/$defs/seed" },
         "only": { "$ref": "#/$defs/only" },
-        "steps": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/step" } }
+        "steps": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/step" } },
+        "exclude": {
+          "type": "object",
+          "description": "The runtimes that do not run this case, each with the reason. A runtime that the case excludes prints one EXCLUDED line and counts the case apart from passes; a case that excludes every runtime is refused.",
+          "propertyNames": { "enum": ["go", "typescript", "python", "php", "php-extension", "rust"] },
+          "additionalProperties": { "type": "string", "minLength": 1 },
+          "minProperties": 1,
+          "maxProperties": 5
+        }
       }
     },
     "value": {
@@ -724,8 +732,12 @@
                   "type": "array",
                   "items": {
                     "type": "object",
-                    "properties": {
-                      "expect": { "type": "object", "required": ["none"], "propertyNames": { "enum": ["none"] }, "properties": { "none": true } }
+                    "if": { "required": ["op"], "properties": { "op": { "const": "markdown.send" } } },
+                    "then": {},
+                    "else": {
+                      "properties": {
+                        "expect": { "type": "object", "required": ["none"], "propertyNames": { "enum": ["none"] }, "properties": { "none": true } }
+                      }
                     }
                   }
                 }
