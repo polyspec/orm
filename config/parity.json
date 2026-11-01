@@ -32856,7 +32856,7 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/markdownmodel/bind_messages_test.go",
+          "test": "packages/go/bindmessages/bind_messages_test.go",
           "symbol": "TestRecipeBindMessagesNone"
         },
         {
