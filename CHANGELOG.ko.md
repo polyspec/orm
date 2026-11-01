@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d255cf878c0623aad7812bc0e9a853057415f6929dbcc7059d1f58bc301a5d0d -->
+<!-- source-sha256: 2db1de7f9dfc56d800d4b481a698f58cbc59120ad5bfe5921fda2531da19e7b4 -->
 # 변경 이력
 
 ## Unreleased
@@ -49,6 +49,7 @@
 - 통합에는 TypeScript와 PHP helper만 구현한 catalog recipe op가 있어서, Go, Python, Rust, PHP extension의 catalog-connection-check가 실패했다. 그 catalog 행과 parity 선언은 되돌려 다른 runtime과 함께 들어오게 하고, 그 행만 쓰던 TypeScript deadline helper는 지운다. (CR33)
 - CR25의 compiler fixture 시험은 repo-check에 실패했다: node:test를 직접 선언했고 cargo test와 한 레시피에서 함께 실행했다. 이제 caseTest를 쓰고 rust-compiler-fixtures-check의 독립 part로 실행한다 (CR25-1).
 - 통합의 변경 기록에 0.0.21 절 아래 통합이 넣은 항목 18개가 있어 목록 항목이 한국어 기록의 35개가 아니라 53개였고, docs.translation-shape가 실패했다. 0.0.21 절은 커밋 874946330의 본문으로 복원했고, 어느 Unreleased 절에도 없던 CR25 항목은 Unreleased로 옮겼다 (CR36).
+- 통합 트리의 인터페이스 스냅샷이 오래되어 있었다. contracts/interfaces.json에 기록된 go와 typescript 심볼 해시가 트리와 달랐고, php 스냅샷은 packages/php/src/Catalog.php가 더 이상 선언하지 않는 private 메서드 네 개를 담고 있어서 make interface-check/self-test가 실패했다. 문서화된 기록 실행이 스냅샷과 매니페스트 해시를 다시 쓴다 (CR35).
 
 ## 0.0.21
 

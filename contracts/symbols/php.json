@@ -5337,11 +5337,7 @@
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::boundedRows": {
     "exported": false,
-    "signature": "private function boundedRows(Closure $fetch, int $maxRows, int $maxBytes, ?Closure $transform=null, ?Closure $sizes=null): array"
-  },
-  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::bufferedQueryAttribute": {
-    "exported": false,
-    "signature": "private static function bufferedQueryAttribute(): int"
+    "signature": "private function boundedRows(Closure $fetch, int $maxRows, int $maxBytes, ?Closure $transform=null): array"
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::bytes": {
     "exported": false,
@@ -5359,10 +5355,6 @@
     "exported": false,
     "signature": "private static function checkCells(Polyspec\\Orm\\CatalogTableMetadata $metadata, array $cells): void"
   },
-  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::checkClauses": {
-    "exported": false,
-    "signature": "private static function checkClauses(string $tableSql): array"
-  },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::checkCurrent": {
     "exported": false,
     "signature": "private static function checkCurrent(array $current, array $original): void"
@@ -5370,14 +5362,6 @@
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::checkName": {
     "exported": false,
     "signature": "private static function checkName(string $name): void"
-  },
-  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::checkPrecision": {
-    "exported": false,
-    "signature": "private static function checkPrecision(string $tableSql, string $column): ?int"
-  },
-  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::checkWritePrecision": {
-    "exported": false,
-    "signature": "private static function checkWritePrecision(string $dialect, Polyspec\\Orm\\CatalogTableMetadata $metadata, array $values): void"
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::close": {
     "exported": true,
@@ -5406,18 +5390,6 @@
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::currentNamespace": {
     "exported": true,
     "signature": "public function currentNamespace(): string"
-  },
-  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::cursorGrid": {
-    "exported": false,
-    "signature": "private function cursorGrid(PDO $pdo, string $sql, int $maxRows, int $maxBytes): array"
-  },
-  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::cursorQuery": {
-    "exported": false,
-    "signature": "private function cursorQuery(PDO $pdo, string $sql, int $maxRows, int $maxBytes): array"
-  },
-  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::cursorRead": {
-    "exported": false,
-    "signature": "private function cursorRead(PDO $pdo, string $sql, int $maxRows, int $maxBytes, Closure $begin, ?Closure $cells): array"
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::dateText": {
     "exported": false,
@@ -5531,10 +5503,6 @@
     "exported": false,
     "signature": "private static function keysOf(Polyspec\\Orm\\CatalogRowSnapshot $snapshot): array"
   },
-  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::killQuery": {
-    "exported": false,
-    "signature": "private function killQuery(int $connectionId): void"
-  },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::kind": {
     "exported": false,
     "signature": "private static function kind(string $dialect, string $native): string"
@@ -5579,21 +5547,13 @@
     "exported": false,
     "signature": "private static function nativeTypes(Polyspec\\Orm\\CatalogTableMetadata $metadata): array"
   },
-  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::numericField": {
-    "exported": false,
-    "signature": "private static function numericField(object $field): bool"
-  },
-  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::openMysqli": {
-    "exported": false,
-    "signature": "private function openMysqli(): mysqli"
-  },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::param": {
     "exported": false,
     "signature": "private static function param(mixed $value): mixed"
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::prepareQuery": {
     "exported": false,
-    "signature": "private function prepareQuery(PDO $pdo, string $sql, array $args, bool $streamed=false): PDOStatement"
+    "signature": "private function prepareQuery(PDO $pdo, string $sql, array $args): PDOStatement"
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::qualified": {
     "exported": false,
@@ -5663,10 +5623,6 @@
     "exported": false,
     "signature": "private static function skipQuoted(string $query, int $start, string $quote, bool $backslash): ?int"
   },
-  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::storedFloat": {
-    "exported": false,
-    "signature": "private static function storedFloat(float $value, string $nativeType): float"
-  },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::tablePage": {
     "exported": true,
     "signature": "public function tablePage(array $table, int $limit, int $offset): Polyspec\\Orm\\CatalogTablePage"
@@ -5727,10 +5683,6 @@
     "exported": true,
     "signature": "public readonly bool"
   },
-  "packages/php/src/CatalogColumn.php::Polyspec\\Orm\\CatalogColumn::$checkPrecision": {
-    "exported": true,
-    "signature": "public readonly ?int"
-  },
   "packages/php/src/CatalogColumn.php::Polyspec\\Orm\\CatalogColumn::$defaultExpression": {
     "exported": true,
     "signature": "public readonly ?string"
@@ -5757,7 +5709,7 @@
   },
   "packages/php/src/CatalogColumn.php::Polyspec\\Orm\\CatalogColumn::__construct": {
     "exported": true,
-    "signature": "public function __construct(string $name, string $nativeType, bool $nullable, bool $generated, bool $automaticKey, ?string $defaultExpression, bool $expressionDefault, ?int $checkPrecision=null): "
+    "signature": "public function __construct(string $name, string $nativeType, bool $nullable, bool $generated, bool $automaticKey, ?string $defaultExpression, bool $expressionDefault): "
   },
   "packages/php/src/CatalogGridCell.php::Polyspec\\Orm\\CatalogGridCell": {
     "exported": true,
