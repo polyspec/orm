@@ -85,7 +85,8 @@ def recipe_tests(path: str, database: str):
     if database != NONE:
         return _database_recipe_tests(path, database)
     recipe = json.loads((ROOT / path).read_text(encoding="utf-8"))
-    # An ir.validate step checks its request against the schema of the recipe, which the recipe names relative to its own file.
+    # An ir.validate step checks its request against the schema of the recipe, which the recipe names
+    # relative to its own file.
     model = (
         _validation_model(ROOT / Path(path).parent / recipe["schema"])
         if "schema" in recipe
@@ -288,21 +289,29 @@ def _query_slot(models, db, step: dict) -> None:
     path refuses it with the code the expect names. A text or bool wrapper reaches the filter unchanged, so the filter refuses it
     itself. A column or operator without a typed filter here is a defect of the recipe."""
     if step["operator"] != "eq":
-        raise AssertionError(f"operator {step['operator']} has no typed filter in the Python cases")
+        raise AssertionError(
+            f"operator {step['operator']} has no typed filter in the Python cases"
+        )
     table, _, name = step["column"].partition(".")
     if table != "slots" or name not in SEND_FILTERS:
-        raise AssertionError(f"the column {step['column']} has no typed filter in the Python cases")
+        raise AssertionError(
+            f"the column {step['column']} has no typed filter in the Python cases"
+        )
     wrapper = step["params"][0]
     if name in HOST_FILTERS:
         if len(wrapper) != 1:
-            raise AssertionError(f"the parameter {json.dumps(wrapper)} is no single wrapper")
+            raise AssertionError(
+                f"the parameter {json.dumps(wrapper)} is no single wrapper"
+            )
         ((kind, value),) = wrapper.items()
         if kind == "int":
             value = int(value)
         elif kind in ("float", "f64"):
             value = float(value)
         elif kind not in ("text", "bool"):
-            raise AssertionError(f"the parameter {json.dumps(wrapper)} is no host value of the Python API")
+            raise AssertionError(
+                f"the parameter {json.dumps(wrapper)} is no host value of the Python API"
+            )
         getattr(models.Slots().connect(db), f"gets_by_{name}")(value)
         return
     if len(wrapper) != 1 or not isinstance(next(iter(wrapper.values())), str):

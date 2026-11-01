@@ -154,10 +154,7 @@ const SEND_COLUMNS: &[&str] = &[
 fn markdown_send(step: &Value) -> Result<(), String> {
     // The process zone is the TZ environment variable of the process, restored when the step ends (even on a panic). The
     // Rust connection zone is fixed at UTC, so the bound value does not depend on it.
-    let _zone = match step["process_zone"].as_str() {
-        Some(zone) => Some(ProcessZone::set(zone)),
-        None => None,
-    };
+    let _zone = step["process_zone"].as_str().map(ProcessZone::set);
     let send = SendStep::parse(step)?;
     let listener = markdown::send_listener();
     let result = call_on_connection(listener.dsn.clone(), send);

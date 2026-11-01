@@ -31,7 +31,8 @@ final class Recipe
     /** The database part of a recipe without a database (FCV-3). */
     public const NONE = 'none';
 
-    /** @return iterable<string, array{array<string, mixed>}> each case of the recipe at path, relative to the repository root */
+    /** @return iterable<string, array{array<string, mixed>}> each case of the recipe at path, relative to the
+     * repository root */
     public static function cases(string $path): iterable
     {
         $recipe = json_decode(file_get_contents(dirname(__DIR__, 3) . '/' . $path), true, 512, JSON_THROW_ON_ERROR);
@@ -41,7 +42,8 @@ final class Recipe
     }
 
     /**
-     * The cases of the recipe at path that runtime does not exclude, so an excluded case is never registered as a test; each
+     * The cases of the recipe at path that runtime does not exclude, so an excluded case is never registered as a
+     * test; each
      * excluded case prints its EXCLUDED line here, once, as the data provider is read.
      *
      * @return iterable<string, array{array<string, mixed>}>
@@ -56,8 +58,10 @@ final class Recipe
     }
 
     /**
-     * The reason that the case excludes runtime (the suite's runtime name: php or php-extension), or null when the case runs. An
-     * excluded case prints one EXCLUDED line to the process stdout, written past the output buffer PHPUnit checks, so the test
+     * The reason that the case excludes runtime (the suite's runtime name: php or php-extension), or null when the
+     * case runs. An
+     * excluded case prints one EXCLUDED line to the process stdout, written past the output buffer PHPUnit checks, so
+     * the test
      * stays clean; the caller marks the test skipped with the reason.
      *
      * @param array<string, mixed> $case
@@ -92,7 +96,8 @@ final class Recipe
                 }
                 if ($step['op'] === 'markdown.send') {
                     if (array_key_exists('process_zone', $step)) {
-                        // The process zone holds while the step runs, so the public call sees it, and is restored after it.
+                        // The process zone holds while the step runs, so the public call sees it, and is restored
+                        // after it.
                         $saved = date_default_timezone_get();
                         date_default_timezone_set($step['process_zone']);
                         try {
@@ -186,7 +191,8 @@ final class Recipe
         );
     }
 
-    /** The typed filters of the bind fixture tests/bind/slots.dbs that a markdown.send statement may name, by column (DBS-121). */
+    /** The typed filters of the bind fixture tests/bind/slots.dbs that a markdown.send statement may name, by column
+     * (DBS-121). */
     private const BIND_FILTERS = [
         'slots.time0_value' => 'time0Value',
         'slots.time3_value' => 'time3Value',
@@ -206,9 +212,12 @@ final class Recipe
     private const SEND_ERROR = '{"error":{"code":"IR_INVALID","message":"recorded by the markdown.send listener"}}';
 
     /**
-     * Runs one markdown.send step (FCV-4) on a listener that answers connect with {"ok":true}, records the first message after
-     * it and answers that message with SEND_ERROR so the call ends. The expect is {"message": JSON}, compared with the whole
-     * message of a begin or the one parameter of a statement, or {"error": CODE}, compared with the code of the orm error that
+     * Runs one markdown.send step (FCV-4) on a listener that answers connect with {"ok":true}, records the first
+     * message after
+     * it and answers that message with SEND_ERROR so the call ends. The expect is {"message": JSON}, compared with the
+     * whole
+     * message of a begin or the one parameter of a statement, or {"error": CODE}, compared with the code of the orm
+     * error that
      * the call raises before it sends a message.
      */
     private static function sendStep(array $step): void
@@ -263,14 +272,17 @@ final class Recipe
     }
 
     /**
-     * Runs the generated typed filter of the slot column of step with the PHP value of its wrapper (DBS-121). A text wrapper
-     * gives its text, an int wrapper its PHP int; a float, text or bool wrapper on an integer column gives the value the
+     * Runs the generated typed filter of the slot column of step with the PHP value of its wrapper (DBS-121). A text
+     * wrapper
+     * gives its text, an int wrapper its PHP int; a float, text or bool wrapper on an integer column gives the value
+     * the
      * untyped PHP path receives, so the public call refuses it with CODEC_ENCODE.
      */
     private static function sendQuery(array $step, mixed $db): void
     {
         $column = $step['column'];
-        $method = self::BIND_FILTERS[$column] ?? Assert::fail("the column $column has no typed filter in the PHP cases");
+        $method = self::BIND_FILTERS[$column]
+            ?? Assert::fail("the column $column has no typed filter in the PHP cases");
         if ($step['operator'] !== 'eq') {
             Assert::fail("operator {$step['operator']} has no typed filter in the PHP cases");
         }
@@ -278,7 +290,8 @@ final class Recipe
         if (!is_array($wrapper) || count($wrapper) !== 1) {
             Assert::fail('the parameter ' . json_encode($wrapper) . ' is no single-member wrapper');
         }
-        // A time, datetime or date wrapper is the text the typed string filter takes; the others go through the common value model.
+        // A time, datetime or date wrapper is the text the typed string filter takes; the others go through the common
+        // value model.
         $kind = array_key_first($wrapper);
         $value = in_array($kind, ['time', 'datetime', 'date'], true) ? $wrapper[$kind] : self::toValue($wrapper);
         (new \Polyspec\Orm\Tests\BindModel\Slots())->connect($db)->{$method}($value)->gets();
@@ -389,7 +402,8 @@ final class Recipe
         return $bound[$name]['value'];
     }
 
-    /** A stored cell, which PHP holds as a string of bytes: SQL NULL is null, and bytes or a written cell are their string. */
+    /** A stored cell, which PHP holds as a string of bytes: SQL NULL is null, and bytes or a written cell are their
+     * string. */
     private static function cell(array $raw, array $bound): ?string
     {
         $value = self::argument($raw, $bound);
@@ -931,7 +945,8 @@ final class Recipe
         Assert::fail("unknown recipe wrapper $kind");
     }
 
-    /** The recipe wrapper of a plain value; a string takes the wrapper of the native type of its column when one is known. */
+    /** The recipe wrapper of a plain value; a string takes the wrapper of the native type of its column when one is
+     * known. */
     private static function plainWrapper(mixed $value, ?string $nativeType): array
     {
         if ($value === null) {
@@ -989,7 +1004,8 @@ final class Recipe
         return array_map(static fn (string $name): ?string => $types[$name] ?? null, $names);
     }
 
-    /** The fields of a mutation result: its rows, each cell wrapped by the native type of its column in the metadata. */
+    /** The fields of a mutation result: its rows, each cell wrapped by the native type of its column in the
+     * metadata. */
     private static function mutation(CatalogTableMetadata $metadata, CatalogResult $result): array
     {
         $types = self::nativeTypes($metadata, $result->columns);
