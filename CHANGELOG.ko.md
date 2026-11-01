@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9e5d682be0324bfbd7856a94340bd802cbff413948a67fc78bfcd8e8ac23c995 -->
+<!-- source-sha256: 28245568dd1ba891c9de9e3bbc3b7866ce19a9be69a9e43b1feb4ae11e3b84bc -->
 # 변경 이력
 
 ## Unreleased
@@ -14,6 +14,7 @@
 - AGENTS.md는 kit P25의 항목 상태를 적는다: 항목은 commit되고 unit test가 통과하면 `[v]`가 되어 push를 허락하며, push의 `ci.yml` run이 success로 끝나면 `[o]`가 된다. release는 conclusion이 success인 `ci.yml` run의 id를 받는다 (T309).
 - Rust 크레이트는 테스트 helper를 packages/rust/test-support로 공유하며, 어떤 크레이트도 다른 크레이트의 source를 `#[path]`로 include하지 않는다. 크레이트를 넘는 `#[path]`는 모두 삭제되고, repo test가 그런 `#[path]`를 실패로 판정한다 (T349).
 - PgBouncer를 거치는 문 취소는 best effort이며 보장되지 않는다 (CFG-31): PgBouncer의 취소 경쟁(BUG #14891)은 1.18에서만 고쳐졌고 그 수정에는 hang 부작용이 있었으며, 다중 프로세스에서는 peering이 1.19에서 들어오기 전까지 취소가 유실되었고, SQLx 0.9에는 CancelRequest API가 없다. 따라서 KSTD-2-11-16-3은 불가능으로 닫힌다 (KSTD-2-11-16-3).
+- row의 전제가 성립하지 않는다. kit의 parity-symbols.mts:229-230은 Rust nightly를 config/toolchain.json의 exceptions에서 읽고 rustNightly key는 읽지 않으며, orm의 config/toolchain.json:16-22가 바로 그 exception을 가진다 (KSTD-5-121).
 - deps-<runtime> target은 필요 없다. kit의 ci-setup.mts:130-133은 config/ci.json이 setup하지 않는 runtime에만 deps-<runtime>을 호출하고, orm은 go, php, php-ext, python, rust, ts의 setup.runtimes를 선언한다 (KSTD-5-120).
 - config/release.json:38-44는 PHP extension package의 생성 source를 출력 둘을 가진 make entry 하나 php-ext-sources로 선언하고 kit K930의 release schema가 그것을 받아들이므로, 이 row는 make kit-check로 닫는다 (T325-1).
 - divergence-check는 main 6ff320c72에서 exit 0이다. KSTD-7-6이 performance_gate의 고정 기준값을 기록한 뒤로 분기, 범위 축소, feature 상태, 종류 없는 예외로 갈라지는 구현이 없다 (KSTD-5-12).
