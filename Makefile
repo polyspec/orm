@@ -831,6 +831,7 @@ dbspec-python-check: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_cases
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_ddl
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_apply
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_render_physical
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p 'test_dbspec_*.py'
 dbspec-compare-check/prepare: lease-tool python-venv-check php-vendor-check orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
@@ -2527,6 +2528,7 @@ dbspec-ts-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NODE) --test packages/ts/tests/browser-entry.mjs packages/ts/tests/dbspec.mjs packages/ts/tests/dbspec-canonical.mjs packages/ts/tests/dbspec-normalize.mjs packages/ts/tests/dbspec-positions.mjs packages/ts/tests/dbspec-invalid.mjs packages/ts/tests/dbspec-files.mjs packages/ts/tests/dbspec-hashes.mjs packages/ts/tests/dbspec-sets.mjs packages/ts/tests/dbspec-set.mjs packages/ts/tests/dbspec-set-edges.mjs packages/ts/tests/dbspec-set-parse.mjs packages/ts/tests/dbspec-analyze.mjs packages/ts/tests/dbspec-syntax.mjs packages/ts/tests/syntax-vectors.mjs packages/ts/tests/dbspec-rules.mjs packages/ts/tests/dbspec-render.mjs packages/ts/tests/dbspec-render-dialect.mjs packages/ts/tests/dbspec-plan.mjs packages/ts/tests/dbspec-plan-cases.mjs packages/ts/tests/dbspec-plan-invalid.mjs packages/ts/tests/dbspec-plan-chains.mjs packages/ts/tests/dbspec-plan-parse.mjs packages/ts/tests/dbspec-plan-comparisons.mjs packages/ts/tests/dbspec-mermaid-export.mjs packages/ts/tests/dbspec-mermaid-import.mjs packages/ts/tests/dbspec-mermaid-invalid.mjs packages/ts/tests/dbspec-mermaid-round-trip.mjs packages/ts/tests/dbspec-apply-cleanup.mjs packages/ts/tests/dbspec-unicode.mjs packages/ts/tests/dbspec-show-create.mjs packages/ts/tests/dbspec-show-create-introspect.mjs
+	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/dbspec-render-physical.mjs
 
 # dbspec-language-check builds the TypeScript client and @polyspec/dbspec-language, and checks that the language service's module graph does not reach
 # node modules, Node globals, or drivers, the format and hash of shared vectors, tokens and UTF-16 ranges, and the tests/editor

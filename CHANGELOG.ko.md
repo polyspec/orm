@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 09d15d51fb041f43ea7c495f90a9793e4d72799f95559f04e857840d9dc91f45 -->
+<!-- source-sha256: 3d0bcbf398c353d274966e27d2289f5ebd66516c2a2508bd41df424461d1326a -->
 # 변경 이력
 
 ## Unreleased
 
+- TypeScript와 Python runner는 공유 DDL vector의 behavior step을 MySQL, PostgreSQL, SQLite에서 실행하고, 서버 DSN이 빠지면 그 이름을 대며 실패한다. 전에는 rendered statement만 비교했다 (CR16-1-1).
 - CR21과 하위 행 (CR21-1) (CR21-2) (CR21-3) (CR21-4) (CR21-5) (CR21-6) (CR21-7)는 consumer를 위해 main의 T345로 옮겼고, 그 T345가 공개 statement runner를 들였다 (#CR21).
 - PHP 8.5 owner가 두 원인으로 실패했다. 모델 시험의 효과 없는 setAccessible을 PHP 8.5가 deprecated로 알렸고, large object 쓰기는 NUL byte 때문에 pg_lo_write가 거부했다. 시험은 setAccessible을 빼고, stream과 native 확장은 composer.json이 허용하는 모든 PHP에서 lo_put으로 나눠 쓴다 (CR23).
 - interfaces CI 시험은 CR9가 docs job으로 옮긴 docs-site-check와 docs-verify-idempotent를 거부했다. 그 시험은 CI group과 kit 실행 target만 셌기 때문이다. 이제 Makefile에서 읽은 make docs-ci와 make ci-vscode-integration의 target도 세며, 어느 쪽에도 없는 target은 거부한다 (CR9-1).
