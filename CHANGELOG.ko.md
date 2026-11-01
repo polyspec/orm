@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 3c0eade205d5a355fd900dd3efb1a5edde4c81810de9bee19c77ec22183027e1 -->
+<!-- source-sha256: df770b931455c6fda558b1d7e246a8cfeb8e3598a75782e34beb1d2f5c4d0f22 -->
 # 변경 이력
 
 ## Unreleased
@@ -14,6 +14,7 @@
 - AGENTS.md는 kit P25의 항목 상태를 적는다: 항목은 commit되고 unit test가 통과하면 `[v]`가 되어 push를 허락하며, push의 `ci.yml` run이 success로 끝나면 `[o]`가 된다. release는 conclusion이 success인 `ci.yml` run의 id를 받는다 (T309).
 - Rust 크레이트는 테스트 helper를 packages/rust/test-support로 공유하며, 어떤 크레이트도 다른 크레이트의 source를 `#[path]`로 include하지 않는다. 크레이트를 넘는 `#[path]`는 모두 삭제되고, repo test가 그런 `#[path]`를 실패로 판정한다 (T349).
 - PgBouncer를 거치는 문 취소는 best effort이며 보장되지 않는다 (CFG-31): PgBouncer의 취소 경쟁(BUG #14891)은 1.18에서만 고쳐졌고 그 수정에는 hang 부작용이 있었으며, 다중 프로세스에서는 peering이 1.19에서 들어오기 전까지 취소가 유실되었고, SQLx 0.9에는 CancelRequest API가 없다. 따라서 KSTD-2-11-16-3은 불가능으로 닫힌다 (KSTD-2-11-16-3).
+- CARGO_SIBLINGS는 더 이상 `--siblings`를 넘기지 않고(Makefile:215) kit의 link.mts에는 그 option이 없다. link 선언 `.links`는 kit의 link-providers.mts:136이 읽으므로, 이 row는 make link-check로 닫는다 (KSTD-5-119).
 - Python 설치는 이미 make uv-install을 거친다. Makefile:768이 `$(MAKE) uv-install DIR=packages/python`을 호출하고 직접 실행하는 uv sync는 남아 있지 않으므로, 이 row는 Verification으로 닫는다 (KSTD-5-118).
 - 두 branch의 check-recipes 작업이 하나의 통합으로 main에 들어간다. 한국어 checklist는 영어 checklist의 모든 row를 가지고, 변경 이력은 그 commit들의 항목을 가지며, Makefile은 `rust-compiler-fixtures-check/unit`에서 node를 `$(NODE)`로 실행하고, `config/rebuild.json`은 `scripts/generate/once.mts`와 `scripts/php/php-ext-build.mts`를 분류한다 (CR26).
 - check runner는 실패한 target의 `::error` 줄을 출력하지 않아, GitHub Actions에서 실패는 작업이 끝나야 보였다. 이제 실패한 target은 끝날 때 `::error` 줄을 출력한다 (CR1).
