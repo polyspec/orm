@@ -3,7 +3,8 @@
 // run time from the method name; their types are declared on a model for the
 // names the scanned sources call on that model, so an unknown name or a wrong
 // value type fails the type check.
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import type { Entity, Field as Column, RuntimeModel as Manifest } from '../engine/model.js';
 import { Model } from '../model.js';
@@ -361,9 +362,25 @@ export function renderTypeScript(m: Manifest, outDir: string, scan: readonly str
   return g.write(runtimeImport(outDir));
 }
 
+/**
+ * Writes text to file (T341-2): a file that already holds it is left as it is; a changed file is written to a temporary file of its
+ * directory and renamed over the old one, so a reader never sees a partial file. The directory must exist.
+ */
+export function writeTextIfChanged(file: string, text: string): void {
+  if (existsSync(file) && readFileSync(file, 'utf8') === text) return;
+  const tmp = `${file}.${process.pid}.${randomBytes(6).toString('hex')}.tmp`;
+  try {
+    writeFileSync(tmp, text);
+    renameSync(tmp, file);
+  } catch (error) {
+    rmSync(tmp, { force: true });
+    throw error;
+  }
+}
+
 /** Writes models.ts to outDir. */
 export function generateTypeScript(m: Manifest, outDir: string, scan: readonly string[]): void {
   const text = renderTypeScript(m, outDir, scan);
   mkdirSync(outDir, { recursive: true });
-  writeFileSync(join(outDir, 'models.ts'), text);
+  writeTextIfChanged(join(outDir, 'models.ts'), text);
 }

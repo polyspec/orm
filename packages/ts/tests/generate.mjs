@@ -10,6 +10,8 @@ import { join } from 'node:path';
 import assert from 'node:assert/strict';
 import { caseTest, PROCESS, runLong, stepLines } from '../../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../../tests/environment.mts';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { writeTextIfChanged } from '../dist/generate/typescript.js';
 
 const root = new URL('../../..', import.meta.url).pathname;
 const bin = join(root, 'packages/ts/dist/bin/orm-gen.js');
@@ -365,5 +367,54 @@ caseTest('generated manifest text and hash match', PROCESS, async () => {
     assert.ok(source.indexOf('export class FirstItem') < source.indexOf('export class SecondItem'), 'generated entities follow document order');
   } finally {
     await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// writeTextIfChanged (T341-2): a file that already holds the text is left as it is, and a changed file is written to a temporary file of its
+// directory and renamed over the old one, so a reader never sees a partial file.
+function writeIfChangedDirectory() {
+  return mkdtempSync(join(tmpdir(), 'write-if-changed-'));
+}
+
+caseTest('writeTextIfChanged leaves a file that holds the text as it is', PROCESS, () => {
+  const dir = writeIfChangedDirectory();
+  try {
+    const file = join(dir, 'models.ts');
+    writeTextIfChanged(file, 'export const a = 1;\n');
+    const before = statSync(file);
+    writeTextIfChanged(file, 'export const a = 1;\n');
+    const after = statSync(file);
+    assert.equal(after.ino, before.ino);
+    assert.equal(after.mtimeMs, before.mtimeMs);
+    assert.deepEqual(readdirSync(dir), ['models.ts']);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+caseTest('writeTextIfChanged renames a changed text over the old file from its directory', PROCESS, () => {
+  const dir = writeIfChangedDirectory();
+  try {
+    const file = join(dir, 'models.ts');
+    writeFileSync(file, 'export const a = 1;\n');
+    const before = statSync(file);
+    writeTextIfChanged(file, 'export const a = 2;\n');
+    assert.notEqual(statSync(file).ino, before.ino);
+    assert.equal(readFileSync(file, 'utf8'), 'export const a = 2;\n');
+    assert.deepEqual(readdirSync(dir), ['models.ts']);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+caseTest('writeTextIfChanged creates a missing file', PROCESS, () => {
+  const dir = writeIfChangedDirectory();
+  try {
+    const file = join(dir, 'models.ts');
+    writeTextIfChanged(file, 'export const b = 1;\n');
+    assert.equal(readFileSync(file, 'utf8'), 'export const b = 1;\n');
+    assert.deepEqual(readdirSync(dir), ['models.ts']);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });

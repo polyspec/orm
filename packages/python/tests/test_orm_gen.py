@@ -3,6 +3,7 @@
 import hashlib
 import inspect
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -10,6 +11,9 @@ import types
 import typing
 import unittest
 from pathlib import Path
+from unittest import mock
+
+from polyspec.orm.generate.python import write_text_if_changed
 
 from . import testcase
 
@@ -940,6 +944,41 @@ class OrmGenTest(unittest.TestCase):
             self.assertIn(f"{root}/a.dbs:1:1: signature:", result.stderr)
             self.assertIn(f"{root}/b.dbs:2:1: encoding:", result.stderr)
             self.assertFalse(out.exists())
+
+
+# write_text_if_changed (T341-2): a file that holds the text is left as it is, and a changed file is renamed over the old one from its directory.
+class WriteTextIfChangedTest(unittest.TestCase):
+    def test_same_text_leaves_the_file_without_a_rename(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "models.py")
+            write_text_if_changed(path, "a = 1\n")
+            with mock.patch("os.replace") as replace:
+                write_text_if_changed(path, "a = 1\n")
+            replace.assert_not_called()
+            with open(path, encoding="utf-8") as handle:
+                self.assertEqual(handle.read(), "a = 1\n")
+
+    def test_changed_text_is_renamed_over_the_old_file_from_its_own_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "models.py")
+            write_text_if_changed(path, "a = 1\n")
+            with mock.patch("os.replace", wraps=os.replace) as replace:
+                write_text_if_changed(path, "a = 2\n")
+            replace.assert_called_once()
+            source, target = replace.call_args.args
+            self.assertEqual(os.path.dirname(source), directory)
+            self.assertEqual(target, path)
+            self.assertEqual(os.listdir(directory), ["models.py"])
+            with open(path, encoding="utf-8") as handle:
+                self.assertEqual(handle.read(), "a = 2\n")
+
+    def test_missing_file_is_created(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "models.py")
+            write_text_if_changed(path, "b = 1\n")
+            with open(path, encoding="utf-8") as handle:
+                self.assertEqual(handle.read(), "b = 1\n")
+            self.assertEqual(os.listdir(directory), ["models.py"])
 
 
 if __name__ == "__main__":

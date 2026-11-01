@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5d192b4d937410763dfac540ac61f121f356a87f8fdd8a3b2128cd1fcb8e08a9 -->
+<!-- source-sha256: 84e38b1c6aff9eea4832a60401e43e8371a53e02dc1e59899bd953ec8f23b444 -->
 # 변경 이력
 
 ## Unreleased
@@ -23,6 +23,7 @@
 - orm은 toolchain-check, cargo-downloads-check, link-state-check를 부르지 않고 kit.mk:425가 link-check를 제공하므로, 이 row는 make kit-check repo-check로 닫는다. 삭제된 cargo-downloads-fetch를 부르는 하나(Makefile:2936)는 kit 0.0.92 채택과 함께 T348이 바꾼다 (KSTD-5-117).
 - CARGO_SIBLINGS는 더 이상 `--siblings`를 넘기지 않고(Makefile:215) kit의 link.mts에는 그 option이 없다. link 선언 `.links`는 kit의 link-providers.mts:136이 읽으므로, 이 row는 make link-check로 닫는다 (KSTD-5-119).
 - Python 설치는 이미 make uv-install을 거친다. Makefile:768이 `$(MAKE) uv-install DIR=packages/python`을 호출하고 직접 실행하는 uv sync는 남아 있지 않으므로, 이 row는 Verification으로 닫는다 (KSTD-5-118).
+- Python과 TypeScript generator는 models.py와 models.ts를 원자적으로 쓴다. 내용이 이미 같은 파일은 그대로 두고, 바뀐 파일은 같은 디렉터리의 임시 파일에 쓴 뒤 기존 파일 위로 이름을 바꾸므로, 생성 중에 읽는 테스트가 부분 파일을 읽지 않는다. client-unit-check/orm-gen-python과 client-unit-check/orm-gen-typescript target이 이를 검사한다 (T341-2).
 - packages/php/phpunit.xml.dist로 PHPUnit을 실행하는 make target 예순 개는 php-models를 선행 조건으로 가진다. 부트스트랩이 생성된 모델을 요구하는데 php-vendor-check는 그것을 쓰지 않기 때문이며, repo-check는 그것 없이 이 target을 거부한다 (T341-1).
 - packages/ts/dist를 실행만 하고 빌드하지 않는 일곱 make target(replica-check, session-state-check, native-error-cause-check/typescript-driver와 /typescript-markdown, page-cache-unit-check/typescript, generator-consumer-check/typescript, request-hook-relation-scope-check)은 typescript-build를 선행 조건으로 가지며, repo-check는 그것 없이 빌드 결과를 읽는 target을 거부한다 (T339-5).
 - 두 branch의 check-recipes 작업이 하나의 통합으로 main에 들어간다. 한국어 checklist는 영어 checklist의 모든 row를 가지고, 변경 이력은 그 commit들의 항목을 가지며, Makefile은 `rust-compiler-fixtures-check/unit`에서 node를 `$(NODE)`로 실행하고, `config/rebuild.json`은 `scripts/generate/once.mts`와 `scripts/php/php-ext-build.mts`를 분류한다 (CR26).

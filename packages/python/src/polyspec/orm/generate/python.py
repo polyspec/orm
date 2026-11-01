@@ -2,6 +2,7 @@
 # Methods named by chain syntax are resolved at runtime from the method name. The call names that the scan finds
 # are validated, so a name that does not fit the syntax is reported at generation time.
 import os
+import tempfile
 
 from polyspec.orm import codes
 from polyspec.orm.engine.model import Entity, Field, RuntimeModel
@@ -502,9 +503,32 @@ def render_models(m: RuntimeModel, out_dir: str, scan) -> str:
     return "\n".join(b)
 
 
+def write_text_if_changed(path: str, text: str) -> None:
+    """Writes text to path (T341-2): a file that already holds it is left as it is; a changed file is written to a temporary file of
+    its directory and renamed over the old one, so a reader never sees a partial file."""
+    try:
+        with open(path, encoding="utf-8") as handle:
+            current = handle.read()
+    except FileNotFoundError:
+        current = None
+    if current == text:
+        return
+    directory = os.path.dirname(path) or "."
+    fd, tmp = tempfile.mkstemp(
+        dir=directory, prefix=os.path.basename(path) + ".", suffix=".tmp"
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        os.replace(tmp, path)
+    except BaseException:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+        raise
+
+
 def generate_models(m: RuntimeModel, out_dir: str, scan) -> None:
     """Writes models.py to out_dir."""
     text = render_models(m, out_dir, scan)
     os.makedirs(out_dir, exist_ok=True)
-    with open(os.path.join(out_dir, "models.py"), "w", encoding="utf-8") as handle:
-        handle.write(text)
+    write_text_if_changed(os.path.join(out_dir, "models.py"), text)
