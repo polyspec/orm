@@ -2,6 +2,7 @@
 <!-- source-sha256: 8d4f7cb33d413401e9f44119827a104b202b6a6a645e8e1cb96a4f918bb33709 -->
 # 변경 이력
 
+- duplication 검사가 generator의 GenerateSets 시험 설정 두 벌을 더 이상 보고하지 않으며, Rust orm 시험 probe는 parse_set을 한 번만 정의한다 (CR45).
 - repo check 시험 "the Go model build regenerates models"은 Go model set을 순서대로 만든 뒤 make go-models가 실행하는 orm-gen sets 호출을 확인한다 (CR44).
 ## Unreleased
 

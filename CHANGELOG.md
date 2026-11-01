@@ -96,6 +96,7 @@
 
 A SQLite lock wait between two connections that write the same row ends with `CANCELED` after the busy timeout and is not retried, because SQLite reports no row-lock deadlock: SQLITE_LOCKED (6, 262) is `DRIVER` in every runtime, and transaction_deadlock_retry runs the sqlite case in all six runtimes (PLN-24, CFG-12) (T343-3)
 
+- The duplication check no longer reports the two GenerateSets test setups of the generator, and the Rust orm test probe defines parse_set once again (CR45).
 - The repo check test "the Go model build regenerates models" asserts the orm-gen sets call that make go-models runs since the Go model sets were ordered (CR44).
 - The Python recipe tests format the case filter of the chain path as ruff format writes it (CR43).
 - The TypeScript client no longer exports markdownParam, which only markdown.ts uses; knip reported it as an unused export (CR42).

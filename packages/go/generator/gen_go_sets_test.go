@@ -8,17 +8,8 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// TestGenerateSetsGeneratesAProducerBeforeItsConsumerWhateverTheOrder checks that
-// a set whose scanned package imports the output of another set is generated after
-// that set, so the producer's operator methods exist when the consumer's scanned
-// calls are type-checked. The consumer is listed first here.
-func TestGenerateSetsGeneratesAProducerBeforeItsConsumerWhateverTheOrder(t *testing.T) {
-	// Requirements: DSL-151, DSL-154.
-	testcase.Start(t, testcase.Process)
-	write := scannedModule(t)
-	write("consumer/consumer.go", `package consumer
-
-import (
+// searchConsumerImports is the consumer file that calls the producer's operator, after its package clause.
+const searchConsumerImports = `import (
 	"example.com/ormexample/producer"
 	"github.com/polyspec/orm/packages/go/orm"
 )
@@ -27,15 +18,32 @@ func Search(db *orm.DB) error {
 	_, err := producer.Product().Connect(db).LkName("a%").Gets()
 	return err
 }
-`)
+`
+
+// generateConsumerAndProducer generates the consumer set listed first and its producer set listed second, and
+// fails the test with the given reason when generation errs.
+func generateConsumerAndProducer(t *testing.T, reason string) {
+	t.Helper()
 	m := namesManifest(t, namesDiagram)
 	err := GenerateSets([]Options{
 		{Model: m, OutputDir: "consumermodel", Scan: []string{"./consumer"}},
 		{Model: m, OutputDir: "producer", Scan: []string{"./consumer"}},
 	})
 	if err != nil {
-		t.Fatalf("the consumer set listed first is not generated after its producer: %v", err)
+		t.Fatalf("%s: %v", reason, err)
 	}
+}
+
+// TestGenerateSetsGeneratesAProducerBeforeItsConsumerWhateverTheOrder checks that
+// a set whose scanned package imports the output of another set is generated after
+// that set, so the producer's operator methods exist when the consumer's scanned
+// calls are type-checked. The consumer is listed first here.
+func TestGenerateSetsGeneratesAProducerBeforeItsConsumerWhateverTheOrder(t *testing.T) {
+	// Requirements: DSL-151, DSL-154.
+	testcase.Start(t, testcase.Process)
+	write := scannedModule(t)
+	write("consumer/consumer.go", "package consumer\n\n"+searchConsumerImports)
+	generateConsumerAndProducer(t, "the consumer set listed first is not generated after its producer")
 	if !strings.Contains(string(readModelFileFrom(t, "producer", "product.go")), "func (x *ProductModel) LkName[") {
 		t.Error("producer/product.go does not declare LkName, the operator method the consumer calls")
 	}
@@ -97,26 +105,6 @@ func TestGenerateSetsOrdersAProducerImportedOnlyByATaggedFile(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	write := scannedModule(t)
 	write("consumer/consumer.go", "package consumer\n")
-	write("consumer/tagged.go", `//go:build markdown
-
-package consumer
-
-import (
-	"example.com/ormexample/producer"
-	"github.com/polyspec/orm/packages/go/orm"
-)
-
-func Search(db *orm.DB) error {
-	_, err := producer.Product().Connect(db).LkName("a%").Gets()
-	return err
-}
-`)
-	m := namesManifest(t, namesDiagram)
-	err := GenerateSets([]Options{
-		{Model: m, OutputDir: "consumermodel", Scan: []string{"./consumer"}},
-		{Model: m, OutputDir: "producer", Scan: []string{"./consumer"}},
-	})
-	if err != nil {
-		t.Fatalf("the producer imported only by a tagged file is not generated first: %v", err)
-	}
+	write("consumer/tagged.go", "//go:build markdown\n\npackage consumer\n\n"+searchConsumerImports)
+	generateConsumerAndProducer(t, "the producer imported only by a tagged file is not generated first")
 }
