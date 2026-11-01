@@ -168,15 +168,32 @@ static bool utils_get_frame(zval *db, const char *name, zval *frame)
     return true;
 }
 
-static bool utils_call_closure(zval *closure, zval *result)
+/* Calls the runner's closure with the transaction frame as its one argument (INT-150). */
+static bool utils_call_closure(zval *closure, zval *frame, zval *result)
 {
     zend_fcall_info fci;
     zend_fcall_info_cache fcc;
     if (zend_fcall_info_init(closure, 0, &fci, &fcc, NULL, NULL) != SUCCESS) return false;
     fci.retval = result;
-    fci.params = NULL;
-    fci.param_count = 0;
+    fci.params = frame;
+    fci.param_count = 1;
     return zend_call_function(&fci, &fcc) == SUCCESS && EG(exception) == NULL;
+}
+
+/* The transaction callback of Utils::run when it opens the transaction: the frame is the active one of the connection. */
+static bool utils_run_body(zval *connection, void *context, zval *result)
+{
+    zval frame;
+    ZVAL_UNDEF(&frame);
+    if (!utils_active_frame(connection, &frame)) return false;
+    if (Z_TYPE(frame) != IS_OBJECT) {
+        zval_ptr_dtor(&frame);
+        db_throw_orm("INTERNAL", "the transaction that Utils::run opened has no frame");
+        return false;
+    }
+    bool ok = utils_call_closure((zval *)context, &frame, result);
+    zval_ptr_dtor(&frame);
+    return ok;
 }
 
 ZEND_METHOD(Polyspec_Orm_Utils, __construct)
@@ -224,21 +241,15 @@ ZEND_METHOD(Polyspec_Orm_Utils, run)
     ZVAL_UNDEF(&frame);
     if (!utils_active_frame(db, &frame)) RETURN_THROWS();
     bool active = Z_TYPE(frame) != IS_NULL;
-    zval_ptr_dtor(&frame);
     if (active) {
-        if (!utils_call_closure(closure, return_value)) RETURN_THROWS();
+        bool ok = utils_call_closure(closure, &frame, return_value);
+        zval_ptr_dtor(&frame);
+        if (!ok) RETURN_THROWS();
         return;
     }
-    zval args[6];
-    ZVAL_COPY(&args[0], closure);
-    ZVAL_EMPTY_STRING(&args[1]);
-    ZVAL_FALSE(&args[2]);
-    ZVAL_LONG(&args[3], 0);
-    ZVAL_LONG(&args[4], 0);
-    ZVAL_NULL(&args[5]);
-    bool ok = utils_call(db, "transaction", return_value, 6, args);
-    for (size_t i = 0; i < 6; i++) zval_ptr_dtor(&args[i]);
-    if (!ok) RETURN_THROWS();
+    zval_ptr_dtor(&frame);
+    /* No active transaction: open one without retry and call the closure with its frame (INT-150). */
+    if (!db_transaction_native(db, utils_run_body, closure, return_value)) RETURN_THROWS();
 }
 
 ZEND_METHOD(Polyspec_Orm_Utils, read)

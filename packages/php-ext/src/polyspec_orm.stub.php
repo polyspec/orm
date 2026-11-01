@@ -857,6 +857,9 @@ final class TxFrame
 
     public function __construct(Db $db, bool $readOnly, string $isolation, int $number) {}
 
+    /** Runs one statement of kind $kind that touches $tables in this transaction; returns its rows (INT-150). A $sql that is not text is CONFIG. */
+    public function run(string $kind, array $tables, mixed $sql, array $params = []): array {}
+
     public static function recordInserted(?TxFrame $frame, Request $r, mixed $id): void {}
 }
 
@@ -1633,7 +1636,7 @@ final class Utils
     /** @internal */
     public function active(string $name): TxFrame {}
 
-    /** @internal */
+    /** Calls $fn with the transaction frame of the connection: the active one, or a new one this call opens and ends without retry (INT-150). */
     public function run(\Closure $fn): mixed {}
 
     /** @internal @param list<string> $tables */

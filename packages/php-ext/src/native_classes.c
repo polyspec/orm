@@ -600,6 +600,52 @@ ZEND_METHOD(Polyspec_Orm_TxFrame, __construct)
     zval_ptr_dtor(&flow);
 }
 
+/* TxFrame::run(kind, tables, sql, params = []): one statement of the frame's transaction through Db::fetch, which publishes
+ * its statement event (INT-77). The frame never opens a transaction. A statement that is not text is CONFIG (INT-150). */
+ZEND_METHOD(Polyspec_Orm_TxFrame, run)
+{
+    zend_string *kind;
+    zval *tables, *sql, *params = NULL;
+    ZEND_PARSE_PARAMETERS_START(3, 4)
+        Z_PARAM_STR(kind)
+        Z_PARAM_ARRAY(tables)
+        Z_PARAM_ZVAL(sql)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_ARRAY(params)
+    ZEND_PARSE_PARAMETERS_END();
+    if (Z_TYPE_P(sql) != IS_STRING) {
+        native_config_error("a statement must be text");
+        RETURN_THROWS();
+    }
+    zval empty;
+    bool own_params = params == NULL;
+    if (own_params) {
+        array_init(&empty);
+        params = &empty;
+    }
+    zval rv_db, rv_number;
+    zval *db = zend_read_property(Z_OBJCE_P(ZEND_THIS), Z_OBJ_P(ZEND_THIS), ZEND_STRL("db"), 1, &rv_db);
+    zval *number = zend_read_property(Z_OBJCE_P(ZEND_THIS), Z_OBJ_P(ZEND_THIS), ZEND_STRL("number"), 1, &rv_number);
+    zval args[5];
+    ZVAL_STR_COPY(&args[0], kind);
+    ZVAL_COPY(&args[1], tables);
+    ZVAL_COPY(&args[2], number);
+    ZVAL_COPY(&args[3], sql);
+    ZVAL_COPY(&args[4], params);
+    zval fn, rows;
+    ZVAL_STRING(&fn, "fetch");
+    ZVAL_UNDEF(&rows);
+    zend_result status = call_user_function(NULL, db, &fn, &rows, 5, args);
+    zval_ptr_dtor(&fn);
+    for (size_t i = 0; i < 5; i++) zval_ptr_dtor(&args[i]);
+    if (own_params) zval_ptr_dtor(&empty);
+    if (status != SUCCESS || EG(exception) != NULL) {
+        if (!Z_ISUNDEF(rows)) zval_ptr_dtor(&rows);
+        RETURN_THROWS();
+    }
+    ZVAL_COPY_VALUE(return_value, &rows);
+}
+
 ZEND_METHOD(Polyspec_Orm_TxFrame, recordInserted)
 {
     zval *frame, *request, *id;
