@@ -152,18 +152,11 @@ export function modelOps({ native, databaseValue, stepArgument }) {
     async 'model.get_by'(s, context) {
       const db = connection(s.connection, context);
       if (s.model === 'Author') {
-        const author = await new Author().connect(db).getBySeq(objectValues(s.key, context).seq);
-        const cells = author === null ? [] : [s.columns.map(column => {
-          if (column !== 'read_count') throw new Error(`Author column ${column} has no recipe getter`);
-          return wrap(author.getReadCount());
-        })];
-        return { rows: cells };
-      }
-      if (s.where !== undefined) {
-        if (s.model !== 'Author') throw new Error(`model ${s.model} has no recipe where`);
-        const found = await chain(db, objectValues(s.where, context), s.columns).get();
+        // The key and the where are one chain: the equalities, the projection of columns, then the terminal get.
+        const found = await chain(db, objectValues(s.where ?? s.key, context), s.columns).get();
         return { rows: found === null ? [] : [cells(found, s.columns)] };
       }
+      if (s.where !== undefined) throw new Error(`model ${s.model} has no recipe where`);
       const row = await compositeKey(db, objectValues(s.key, context));
       const rows = row === null ? [] : [s.columns.map(column => {
         if (column !== 'name') throw new Error(`CompositeAccount column ${column} has no recipe getter`);

@@ -295,21 +295,10 @@ trait RecipeModel
                 $count = self::authorChain($db, self::modelValues($s['where'] ?? null, $context), [])->getCount();
                 return ['value' => ['int' => (string) $count]];
             case 'model.get_by':
-                if (isset($s['where'])) {
-                    $row = self::authorChain($db, self::modelValues($s['where'], $context), $s['columns'])->get();
-                    return ['rows' => $row === null ? [] : [self::authorCells($row, $s['columns'])]];
-                }
-                $key = self::modelValues($s['key'], $context);
-                $row = (new $Author())($db)->getBySeq($key['seq']);
-                if ($row === null) {
-                    return ['rows' => []];
-                }
-                return ['rows' => [array_map(static function (string $column) use ($row): array {
-                    if ($column !== 'read_count') {
-                        Assert::fail("Author column $column has no recipe getter");
-                    }
-                    return self::modelWrapper($row->getReadCount());
-                }, $s['columns'])]];
+                // The key and the where are one chain: the equalities, the projection of columns, then the terminal get.
+                $where = isset($s['where']) ? $s['where'] : $s['key'];
+                $row = self::authorChain($db, self::modelValues($where, $context), $s['columns'])->get();
+                return ['rows' => $row === null ? [] : [self::authorCells($row, $s['columns'])]];
             case 'model.arithmetic':
                 if ($s['column'] !== 'read_count') {
                     Assert::fail("Author column {$s['column']} has no recipe arithmetic");

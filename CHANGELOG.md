@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The model_queries database feature is the recipe contracts/fixtures/model_queries/model_queries.json on mysql, postgres and sqlite, run by the six runtimes' helpers. The counts, the missing key and the ordered limit that each coverage test asserted are its cases, so those assertions leave the native tests of the feature, and the native tests keep the aggregate, page total, relation, join, column removal, group rows and collection identity behaviour that no FCV-4 op expresses (T334-3-4).
 - The refused DSN cases of CFG-1, CFG-2, CFG-11, CFG-17, CFG-19 and CFG-26 (a non-UTC timezone, an unknown scheme, a missing database name, a relative SQLite path, an address host with VERIFY_IDENTITY, a malformed SQLite path) are one recipe, contracts/fixtures/dsn_reject/dsn_reject.json, which every runtime runs without a database through the new op dsn.connect (FCV-4) (T334-3-23).
 - The correctness cases of `performance_gate` (the primary-key read and the list of 100 rows) are a recipe, contracts/fixtures/performance_gate/performance_gate.json, that the six runtimes run on MySQL, PostgreSQL and SQLite; the timing gates stay in make perf-check, because their timing depends on the load of the tests beside them (FCV-2, FCV-14) (T334-3-11).
 - The recipe schema refused the model.get_by steps of the model_writes fixture, because both forms took the generic expect instead of the rows outcome that FCV-4 gives model.get_by; both forms now take the rows outcome (T334-3-4-9).
@@ -101,7 +102,6 @@
 - The preempted test of DbspecRenderTest failed in test (feature_verify_other) of main CI run 41324077414 with nine DSN errors, because it ran the whole file without the database DSNs. testBehaviourPhysical (CR16-1-3) now carries the group database, which the preempted run excludes; the physical cases still run in dbspec-php-check/render (CR55).
 - A leftover source of a compiler fixture case, from an interrupted run, made the next run fail with EEXIST and left its directory in the tree. The run now overwrites a stale source and removes its scratch directory at the end (CR25).
 - The spec states how a database feature runs as a recipe on the run databases: FCV-8 to FCV-14 of docs/spec/feature-coverage.md give the conversion, the databases from the `databases` need and TEST_ENV, the three databases with no exclusion, the failure of a missing DSN, the per-case result, the seed ownership and the native tests (T334-3-4-0).
-- The catalog read returned the driver's integer for a boolean column, so a bool written to a MySQL `tinyint(1)` or SQLite `BOOLEAN` column failed its write check (ROW_WRITE_MISMATCH), and the PHP catalog bound a PHP false as the empty string, which MySQL and SQLite refuse. Every runtime now reads a boolean column as a bool by its column type, and PHP and the PHP extension bind a bool as a bool (DIA-29) (T334-3-11-1).
 
 ## 0.0.21
 

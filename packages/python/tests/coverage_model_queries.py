@@ -79,19 +79,13 @@ def model_query_rows(item):
             "a terminal inside a condition group",
         )
 
-        expect_equal(author().seq(-1).get(), None, "get for a missing author")
-        expect_equal(author().user_seq(1).get_count(), 20, "authors of user 1")
-        rows = author().service_seq(7).order_by_seq_desc().limit(0, 3).gets()
-        expect_equal(
-            [row.get_name() for row in rows.values()],
-            ["author-99906", "author-99806", "author-99706"],
-            "ordered and limited rows",
-        )
+        # The counts, the missing key and the ordered limit are cases of the model_queries recipe (FCV-8).
+        names = ["author-99906", "author-99806", "author-99706"]
         query = author().service_seq(7).order_by_seq_desc()
         page = query.gets_page(1, 3)
         expect_equal(
             [row.get_name() for row in page["items"]],
-            [row.get_name() for row in rows.values()],
+            names,
             "first page contains the first ordered rows",
         )
         expect_equal(

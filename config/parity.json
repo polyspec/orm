@@ -1030,7 +1030,8 @@
         "packages/rust/tests/tests/common/model_core_methods.rs",
         "packages/rust/tests/tests/common/or_panic.rs",
         "packages/rust/tests/tests/common/rollback_probe.rs",
-        "packages/rust/tests/tests/model_writes/dispatch.rs"
+        "packages/rust/tests/tests/model_writes/dispatch.rs",
+        "packages/rust/tests/src/model_queries_dispatch.rs"
       ],
       "symbols": {
         "extractor": "rust",
@@ -43880,6 +43881,198 @@
           "implementation": "python",
           "test": "packages/python/tests/test_schema_utils.py",
           "id": "test_failed_register_leaves_engines_unchanged"
+        }
+      ]
+    },
+    {
+      "id": "model_queries-mysql",
+      "kind": "suite",
+      "requirements": [
+        "DSL-57",
+        "DSL-58",
+        "DSL-60",
+        "DSL-62",
+        "DSL-73",
+        "DSL-74",
+        "DSL-76",
+        "DSL-80",
+        "DSL-82",
+        "DSL-99",
+        "INT-16",
+        "INT-29",
+        "INT-30",
+        "INT-31",
+        "INT-32",
+        "INT-33",
+        "PLN-11",
+        "PLN-25",
+        "PRT-35",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
+      ],
+      "file": "contracts/fixtures/model_queries/model_queries.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_model_queries_test.go",
+          "symbol": "TestRecipeModelQueriesMysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelQueriesRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ModelQueriesRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelQueriesRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ModelQueriesRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model_queries-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_queries_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/model_queries_mysql.rs",
+          "symbol": "model_queries_mysql"
+        }
+      ]
+    },
+    {
+      "id": "model_queries-postgres",
+      "kind": "suite",
+      "requirements": [
+        "DSL-57",
+        "DSL-58",
+        "DSL-60",
+        "DSL-62",
+        "DSL-73",
+        "DSL-74",
+        "DSL-76",
+        "DSL-80",
+        "DSL-82",
+        "DSL-99",
+        "INT-16",
+        "INT-29",
+        "INT-30",
+        "INT-31",
+        "INT-32",
+        "INT-33",
+        "PLN-11",
+        "PLN-25",
+        "PRT-35",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
+      ],
+      "file": "contracts/fixtures/model_queries/model_queries.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_model_queries_test.go",
+          "symbol": "TestRecipeModelQueriesPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelQueriesRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ModelQueriesRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelQueriesRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ModelQueriesRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model_queries-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_queries_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/model_queries_postgres.rs",
+          "symbol": "model_queries_postgres"
+        }
+      ]
+    },
+    {
+      "id": "model_queries-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "DSL-57",
+        "DSL-58",
+        "DSL-60",
+        "DSL-62",
+        "DSL-73",
+        "DSL-74",
+        "DSL-76",
+        "DSL-80",
+        "DSL-82",
+        "DSL-99",
+        "INT-16",
+        "INT-29",
+        "INT-30",
+        "INT-31",
+        "INT-32",
+        "INT-33",
+        "PLN-11",
+        "PLN-25",
+        "PRT-35",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
+      ],
+      "file": "contracts/fixtures/model_queries/model_queries.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_model_queries_test.go",
+          "symbol": "TestRecipeModelQueriesSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelQueriesRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ModelQueriesRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelQueriesRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ModelQueriesRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model_queries-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_queries_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/model_queries_sqlite.rs",
+          "symbol": "model_queries_sqlite"
         }
       ]
     }

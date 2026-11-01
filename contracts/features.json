@@ -1200,7 +1200,10 @@
         "go-model-constructor-api",
         "php-internal-model-conditions",
         "collection-null-identity-from-physical-row",
-        "php-extension-model-date-read-decode-error"
+        "php-extension-model-date-read-decode-error",
+        "model_queries-mysql",
+        "model_queries-postgres",
+        "model_queries-sqlite"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -1211,7 +1214,8 @@
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
         "packages/python/tests/coverage_case.py",
-        "contracts/fixtures/bench/bench.dbs"
+        "contracts/fixtures/bench/bench.dbs",
+        "contracts/fixtures/model_queries/model_queries.json"
       ],
       "tests": [
         "packages/go/model/model_test.go",
@@ -1336,7 +1340,20 @@
         "packages/php-ext/tests/InsertPartsTestExtensionTest.php",
         "packages/php-ext/tests/ModelTestExtensionTest.php",
         "packages/rust/orm/src/value.rs",
-        "packages/php-ext/tests/InvalidDateReadNativeTest.php"
+        "packages/php-ext/tests/InvalidDateReadNativeTest.php",
+        "packages/go/orm/recipe_model_queries_test.go",
+        "packages/php/tests/ModelQueriesRecipeTest.php",
+        "packages/php-ext/tests/ModelQueriesRecipeTestExtensionTest.php",
+        "packages/ts/tests/model_queries-mysql.test.mjs",
+        "packages/ts/tests/model_queries-postgres.test.mjs",
+        "packages/ts/tests/model_queries-sqlite.test.mjs",
+        "packages/python/tests/test_model_queries_mysql.py",
+        "packages/python/tests/test_model_queries_postgres.py",
+        "packages/python/tests/test_model_queries_sqlite.py",
+        "packages/rust/tests/tests/model_queries_mysql.rs",
+        "packages/rust/tests/tests/model_queries_postgres.rs",
+        "packages/rust/tests/tests/model_queries_sqlite.rs",
+        "packages/rust/tests/src/model_queries_dispatch.rs"
       ],
       "docs": [
         "docs/spec/dsl.md",

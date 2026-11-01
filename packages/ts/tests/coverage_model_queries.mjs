@@ -11,13 +11,11 @@ await runCases('coverage_model_queries.mjs', {
     const db = await connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
     try {
       assert.equal(db.driver, driver);
-      assert.equal(await new Author().connect(db).seq(-1).get(), null, 'get for a missing author');
-      assert.equal(await new Author().connect(db).userSeq(1).getCount(), 20, 'authors of user 1');
-      const rows = await new Author().connect(db).serviceSeq(7).orderBySeqDesc().limit(0, 3).gets();
-      assert.deepEqual(rows.values().map(b => b.getName()), ['author-99906', 'author-99806', 'author-99706'], 'ordered and limited rows');
+      // The counts, the missing key and the ordered limit are cases of the model_queries recipe (FCV-8).
+      const names = ['author-99906', 'author-99806', 'author-99706'];
       const query = new Author().connect(db).serviceSeq(7).orderBySeqDesc();
       const page = await query.getsPage(1, 3);
-      assert.deepEqual(page.items.values().map(b => b.getName()), rows.values().map(b => b.getName()), 'first page contains the first ordered rows');
+      assert.deepEqual(page.items.values().map(b => b.getName()), names, 'first page contains the first ordered rows');
       assert.equal(page.totalCount, await query.getCount(), 'page total matches getCount');
       assert.equal(await new Author().connect(db).serviceSeq(7).sumReadCount().getSum(), 456000, 'sum of read_count');
       const alias = await new Author().connect(db)

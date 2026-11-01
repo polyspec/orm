@@ -543,55 +543,28 @@ func authorOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, error) {
 		}
 		return outcome{fields: map[string]any{"rows": rows}}, nil
 	case "model.get_by":
+		// The key and the where are one chain: the equalities, the projection of columns, then the terminal Get.
+		raw := s.Key
 		if len(s.Where) > 0 {
-			where, err := modelValues(s.Where, c)
-			if err != nil {
-				return outcome{}, err
-			}
-			m, err := authorChain(db, where, s.Columns)
-			if err != nil {
-				return outcome{}, err
-			}
-			row, err := m.Get()
-			if err != nil {
-				return outcome{}, err
-			}
-			rows := []any{}
-			if row != nil {
-				rows = append(rows, rowCells(row, s.Columns))
-			}
-			return outcome{fields: map[string]any{"rows": rows}}, nil
+			raw = s.Where
 		}
-		m, err := filterOf(s.Key)
+		where, err := modelValues(raw, c)
 		if err != nil {
 			return outcome{}, err
 		}
-		rows, err := m.Gets()
+		m, err := authorChain(db, where, s.Columns)
 		if err != nil {
 			return outcome{}, err
 		}
-		var out [][]any
-		for _, row := range rows.Slice() {
-			var cells []any
-			for _, column := range s.Columns {
-				var v any
-				var err error
-				switch column {
-				case "read_count":
-					v, err = row.GetReadCount()
-				case "name":
-					v, err = row.GetName()
-				default:
-					return outcome{}, fmt.Errorf("Author column %s has no recipe getter", column)
-				}
-				if err != nil {
-					return outcome{}, err
-				}
-				cells = append(cells, wrapperOf(v))
-			}
-			out = append(out, cells)
+		row, err := m.Get()
+		if err != nil {
+			return outcome{}, err
 		}
-		return outcome{fields: map[string]any{"rows": out}}, nil
+		rows := []any{}
+		if row != nil {
+			rows = append(rows, rowCells(row, s.Columns))
+		}
+		return outcome{fields: map[string]any{"rows": rows}}, nil
 	case "model.arithmetic":
 		m, err := filterOf(s.Key)
 		if err != nil {

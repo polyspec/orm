@@ -102,6 +102,27 @@ name = "performance_gate_sqlite"
 path = "tests/performance_gate_sqlite.rs"
 harness = false
 
+# Each case of the model_queries recipe, contracts/fixtures/model_queries/model_queries.json, is the trial
+# model_queries_mysql::<case id> on a case database of its own (FCV-3, FCV-4).
+[[test]]
+name = "model_queries_mysql"
+path = "tests/model_queries_mysql.rs"
+harness = false
+
+# Each case of the model_queries recipe, contracts/fixtures/model_queries/model_queries.json, is the trial
+# model_queries_postgres::<case id> on a case database of its own (FCV-3, FCV-4).
+[[test]]
+name = "model_queries_postgres"
+path = "tests/model_queries_postgres.rs"
+harness = false
+
+# Each case of the model_queries recipe, contracts/fixtures/model_queries/model_queries.json, is the trial
+# model_queries_sqlite::<case id> on a case database of its own (FCV-3, FCV-4).
+[[test]]
+name = "model_queries_sqlite"
+path = "tests/model_queries_sqlite.rs"
+harness = false
+
 [[test]]
 name = "codec_integer_beyond_i64_none"
 path = "tests/codec_integer_beyond_i64_none.rs"

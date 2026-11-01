@@ -1,0 +1,757 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "DSL-57",
+    "DSL-58",
+    "DSL-60",
+    "DSL-62",
+    "DSL-73",
+    "DSL-74",
+    "DSL-76",
+    "DSL-80",
+    "DSL-82",
+    "DSL-99",
+    "INT-16",
+    "INT-29",
+    "INT-30",
+    "INT-31",
+    "INT-32",
+    "INT-33",
+    "PLN-11",
+    "PLN-25",
+    "PRT-35"
+  ],
+  "fixture": "contracts/fixtures/bench/dbspec-set.json",
+  "seed": {
+    "rows": {
+      "user": [
+        {
+          "name": {
+            "text": "user-1"
+          }
+        },
+        {
+          "name": {
+            "text": "user-2"
+          }
+        }
+      ],
+      "service": [
+        {
+          "name": {
+            "text": "service-1"
+          }
+        },
+        {
+          "name": {
+            "text": "service-2"
+          }
+        }
+      ],
+      "service_region": [
+        {
+          "service_seq": {
+            "int": "1"
+          },
+          "name": {
+            "text": "region-1"
+          }
+        },
+        {
+          "service_seq": {
+            "int": "2"
+          },
+          "name": {
+            "text": "region-2"
+          }
+        }
+      ],
+      "service_member": [
+        {
+          "service_seq": {
+            "int": "1"
+          },
+          "user_seq": {
+            "int": "1"
+          }
+        },
+        {
+          "service_seq": {
+            "int": "2"
+          },
+          "user_seq": {
+            "int": "2"
+          }
+        },
+        {
+          "service_seq": {
+            "int": "1"
+          },
+          "user_seq": {
+            "int": "2"
+          }
+        }
+      ],
+      "author": [
+        {
+          "name": {
+            "text": "author-1"
+          },
+          "start_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "end_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "user_seq": {
+            "int": "1"
+          },
+          "service_seq": {
+            "int": "1"
+          },
+          "service_region_seq": {
+            "int": "1"
+          },
+          "service_member_seq": {
+            "int": "1"
+          },
+          "read_count": {
+            "int": "10"
+          }
+        },
+        {
+          "name": {
+            "text": "author-2"
+          },
+          "start_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "end_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "user_seq": {
+            "int": "1"
+          },
+          "service_seq": {
+            "int": "1"
+          },
+          "service_region_seq": {
+            "int": "1"
+          },
+          "service_member_seq": {
+            "int": "1"
+          },
+          "read_count": {
+            "int": "20"
+          }
+        },
+        {
+          "name": {
+            "text": "author-3"
+          },
+          "start_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "end_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "user_seq": {
+            "int": "2"
+          },
+          "service_seq": {
+            "int": "2"
+          },
+          "service_region_seq": {
+            "int": "2"
+          },
+          "service_member_seq": {
+            "int": "2"
+          },
+          "read_count": {
+            "int": "30"
+          }
+        },
+        {
+          "name": {
+            "text": "author-4"
+          },
+          "start_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "end_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "user_seq": {
+            "int": "1"
+          },
+          "service_seq": {
+            "int": "1"
+          },
+          "service_region_seq": {
+            "int": "1"
+          },
+          "service_member_seq": {
+            "int": "3"
+          },
+          "read_count": {
+            "int": "40"
+          }
+        },
+        {
+          "name": {
+            "text": "author-5"
+          },
+          "start_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "end_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          },
+          "user_seq": {
+            "int": "2"
+          },
+          "service_seq": {
+            "int": "2"
+          },
+          "service_region_seq": {
+            "int": "2"
+          },
+          "service_member_seq": {
+            "int": "2"
+          },
+          "read_count": {
+            "int": "50"
+          }
+        }
+      ]
+    }
+  },
+  "cases": [
+    {
+      "id": "count_by_user",
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 2,
+          "as": "db"
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "user_seq": {
+              "int": "1"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "3"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "3"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "3"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "count_by_two_conditions",
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 2,
+          "as": "db"
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "user_seq": {
+              "int": "1"
+            },
+            "service_seq": {
+              "int": "2"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "0"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "0"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "0"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "get_by_missing_key",
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 2,
+          "as": "db"
+        },
+        {
+          "op": "model.get_by",
+          "connection": "db",
+          "model": "Author",
+          "key": {
+            "seq": {
+              "int": "-1"
+            }
+          },
+          "columns": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": []
+            },
+            "postgres": {
+              "rows": []
+            },
+            "sqlite": {
+              "rows": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "get_by_key_with_columns",
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 2,
+          "as": "db"
+        },
+        {
+          "op": "model.get_by",
+          "connection": "db",
+          "model": "Author",
+          "key": {
+            "seq": {
+              "int": "2"
+            }
+          },
+          "columns": [
+            "seq",
+            "name",
+            "read_count"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "author-2"
+                  },
+                  {
+                    "int": "20"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "author-2"
+                  },
+                  {
+                    "int": "20"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "author-2"
+                  },
+                  {
+                    "int": "20"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "query_filter_order_and_page",
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 2,
+          "as": "db"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "service_seq": {
+              "int": "1"
+            }
+          },
+          "order": [
+            "seq"
+          ],
+          "columns": [
+            "seq",
+            "name"
+          ],
+          "offset": 0,
+          "limit": 3,
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "author-1"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "author-2"
+                  }
+                ],
+                [
+                  {
+                    "int": "4"
+                  },
+                  {
+                    "text": "author-4"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "author-1"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "author-2"
+                  }
+                ],
+                [
+                  {
+                    "int": "4"
+                  },
+                  {
+                    "text": "author-4"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "author-1"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "author-2"
+                  }
+                ],
+                [
+                  {
+                    "int": "4"
+                  },
+                  {
+                    "text": "author-4"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "service_seq": {
+              "int": "1"
+            }
+          },
+          "order": [
+            "seq"
+          ],
+          "columns": [
+            "seq",
+            "name"
+          ],
+          "offset": 1,
+          "limit": 2,
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "author-2"
+                  }
+                ],
+                [
+                  {
+                    "int": "4"
+                  },
+                  {
+                    "text": "author-4"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "author-2"
+                  }
+                ],
+                [
+                  {
+                    "int": "4"
+                  },
+                  {
+                    "text": "author-4"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "author-2"
+                  }
+                ],
+                [
+                  {
+                    "int": "4"
+                  },
+                  {
+                    "text": "author-4"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "query_two_conditions_in_order",
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 2,
+          "as": "db"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "user_seq": {
+              "int": "2"
+            },
+            "service_seq": {
+              "int": "2"
+            }
+          },
+          "order": [
+            "seq"
+          ],
+          "columns": [
+            "seq",
+            "read_count"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "int": "30"
+                  }
+                ],
+                [
+                  {
+                    "int": "5"
+                  },
+                  {
+                    "int": "50"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "int": "30"
+                  }
+                ],
+                [
+                  {
+                    "int": "5"
+                  },
+                  {
+                    "int": "50"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "int": "30"
+                  }
+                ],
+                [
+                  {
+                    "int": "5"
+                  },
+                  {
+                    "int": "50"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "query_projection_keeps_only_named_columns",
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 2,
+          "as": "db"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "seq": {
+              "int": "4"
+            }
+          },
+          "order": [
+            "seq"
+          ],
+          "columns": [
+            "name"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "author-4"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "author-4"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "author-4"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -209,6 +209,8 @@
         { "$ref": "#/$defs/ops/dsn.connect" },
         { "$ref": "#/$defs/ops/model.connect" },
         { "$ref": "#/$defs/ops/model.query" },
+        { "$ref": "#/$defs/ops/model.count" },
+        { "$ref": "#/$defs/ops/model.get_by" },
         { "$ref": "#/$defs/ops/codec.decode" },
         { "$ref": "#/$defs/ops/codec.encode" },
         { "$ref": "#/$defs/ops/codec.host_encode" },

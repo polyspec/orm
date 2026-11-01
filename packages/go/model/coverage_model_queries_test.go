@@ -18,20 +18,8 @@ import (
 func TestCoverageModelQueryRows(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, driver, _ := connectFeature(t)
-	if n := must(model.Author().Connect(db).UserSeq(1).GetCount()); n != 20 {
-		t.Fatalf("author count with user_seq 1 = %d, want 20", n)
-	}
-	if row := must(model.Author().Connect(db).Seq(-1).Get()); row != nil {
-		t.Fatalf("get for a missing author = %v, want nil", row)
-	}
-	rows := must(model.Author().Connect(db).ServiceSeq(7).OrderBySeqDesc().Limit(0, 3).Gets())
-	var names []string
-	for _, b := range rows.Slice() {
-		names = append(names, readColumn(t, b.GetName))
-	}
-	if want := []string{"author-99906", "author-99806", "author-99706"}; !slices.Equal(names, want) {
-		t.Fatalf("service_seq 7 by seq desc = %q, want %q", names, want)
-	}
+	// The counts, the missing key and the ordered limit of the model queries are cases of the model_queries recipe (FCV-8).
+	names := []string{"author-99906", "author-99806", "author-99706"}
 	page := must(model.Author().Connect(db).ServiceSeq(7).OrderBySeqDesc().GetsPage(1, 3))
 	pageNames := make([]string, 0, page.Items.Len())
 	for _, author := range page.Items.Slice() {

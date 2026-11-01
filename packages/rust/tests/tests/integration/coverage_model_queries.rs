@@ -34,11 +34,8 @@ async fn coverage_model_query_rows() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("model_query_rows", async {
         let db = connect().await;
-        assert!(Author::new().connect(&db).seq(-1).get().await.unwrap().is_none(), "get for a missing author");
-        assert_eq!(Author::new().connect(&db).user_seq(1).get_count().await.unwrap(), 20, "authors of user 1");
-        let rows = Author::new().connect(&db).service_seq(7).order_by_seq_desc().limit(0, 3).gets().await.unwrap();
-        let names: Vec<&str> = rows.models().map(|b| b.get_name().unwrap()).collect();
-        assert_eq!(names, ["author-99906", "author-99806", "author-99706"], "service 7 by seq desc");
+        // The counts, the missing key and the ordered limit are cases of the model_queries recipe (FCV-8).
+        let names = ["author-99906", "author-99806", "author-99706"];
         let query = Author::new().connect(&db).service_seq(7).order_by_seq_desc();
         let page = query.gets_page(1, 3).await.unwrap();
         let page_names: Vec<&str> = page.items.models().map(|b| b.get_name().unwrap()).collect();

@@ -202,25 +202,15 @@ def model_ops(native, database_value, step_argument):
 
     def model_get_by(step, context):
         db = connection(step["connection"], context)
-        if "where" in step:
-            if step["model"] != "Author":
-                raise AssertionError(f"model {step['model']} has no recipe where")
-            found = chain(db, values_of(step["where"], context), step["columns"]).get()
+        if step["model"] == "Author":
+            # The key and the where are one chain: the equalities, the projection of columns, then the terminal get.
+            where = step["where"] if "where" in step else step["key"]
+            found = chain(db, values_of(where, context), step["columns"]).get()
             if found is None:
                 return {"rows": []}
             return {"rows": [[_wrap(getattr(found, COLUMNS[column][1])()) for column in step["columns"]]]}
-        if step["model"] == "Author":
-            author = (
-                models.Author()
-                .connect(db)
-                .get_by_seq(values_of(step["key"], context)["seq"])
-            )
-            rows = (
-                []
-                if author is None
-                else [[_wrap(author.get_read_count()) for _ in step["columns"]]]
-            )
-            return {"rows": rows}
+        if "where" in step:
+            raise AssertionError(f"model {step['model']} has no recipe where")
         row = composite_key(db, values_of(step["key"], context))
         if row is None:
             return {"rows": []}
