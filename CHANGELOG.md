@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- orm no longer copies the capability table of flowmark: the table "Markdown IR executor" of dialects.md is replaced by a link to the pinned flowmark spec 60, and the markdown-table check that read a flowmark source checkout is removed (T347).
 - The check-recipes work of two branches lands on main as one integration: the Korean checklists hold every row of the English ones, the change logs hold the entries of those commits, the Makefile starts node through `$(NODE)` in `rust-compiler-fixtures-check/unit`, and `config/rebuild.json` classifies `scripts/generate/once.mts` and `scripts/php/php-ext-build.mts` (CR26).
 - The check runner printed no `::error` line for a failed target, so on GitHub Actions a failure was visible only when the job ended. A failed target now prints its `::error` line when it ends (CR1).
 - The docs build rendered the site into the published folder in place, so an interrupted build left half of the site behind. It now renders into a staging folder and publishes it by one rename (CR2).

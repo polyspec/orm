@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 04c0dd605a222fb38ec964ef9a56dfc4ab687bf3519939306bae8a8321961edd -->
+<!-- source-sha256: 0f53116e660990e8fca7a8c23f469b9db0d9447638c61768e6acb0ffb2247915 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -260,7 +260,7 @@ generated code는 document set의 manifest text와 `manifestHash`를 가진다. 
 
 ## 5. IR executors
 
-DSN scheme은 SQL dialect 대신 IR executor를 고를 수 있다. `markdown://` scheme은 flowmark executor를 고르며, 이 executor는 flowmark server가 제공하는 markdown corpus에서 요청을 실행한다([capability 표](dialects.ko.md#markdown-ir-executor)). 4절은 SQL dialect에만 적용된다.
+DSN scheme은 SQL dialect 대신 IR executor를 고를 수 있다. `markdown://` scheme은 flowmark executor를 고르며, 이 executor는 flowmark server가 제공하는 markdown corpus에서 요청을 실행한다([해당 절](dialects.ko.md#markdown-ir-executor), flowmark의 capability 표 링크). 4절은 SQL dialect에만 적용된다.
 
 - **PRT-63** **연결.** DSN은 `markdown://127.0.0.1:<port>/<corpus>?token=<token>`이다. port는 `flowmark serve`가 loopback TCP에서만 듣는 port이고, corpus는 corpus root의 directory 이름이며, token은 server가 corpus의 `.flowmark/server.json`에 두는 token이다. DSN은 다른 매개변수를 받지 않으며, 다른 host, 빠진 port, 이름 하나가 아닌 path, 빠진 token은 연결을 열기 전에 `CONFIG`다. 클라이언트의 연결 하나는 server와의 TCP 연결 하나이고, 클라이언트는 데이터베이스 연결과 같은 방식으로 그 연결을 유지한다([설정](config.ko.md)). 그 연결의 풀을 유지하며, 풀이 없는 PHP 클라이언트는 `Db`마다 연결 하나를 유지한다.
 - **PRT-64** **전송.** 메시지는 한 줄에 JSON object 하나이고, server는 연결의 메시지마다 차례대로 한 줄의 답을 쓴다. `op`가 있는 메시지는 제어 메시지이고 나머지는 요청 메시지다. 연결의 첫 메시지는 DSN의 corpus와 token을 담은 `{"op": "connect", "corpus": <corpus>, "token": <token>}`이며 `{"ok": true}`로 답을 받는다. server는 다른 corpus나 token, 또는 다른 첫 메시지에 `CONFIG`로 답하고 연결을 닫으므로, 연결은 그 `CONFIG`로 실패한다.

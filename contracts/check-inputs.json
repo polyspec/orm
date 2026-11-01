@@ -414,7 +414,6 @@
       "inputs": [
         "scripts/docs/**",
         "tests/docs/html.test.mts",
-        "tests/docs/markdown-table.test.mts",
         "tests/docs/tables.test.mts",
         "tests/docs/fixture.mts",
         "tests/testcase.mts",
@@ -447,23 +446,6 @@
         "tests/testcase.mts",
         "package.json",
         "package-lock.json"
-      ]
-    },
-    "markdown-table-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "node-modules",
-        "flowmark"
-      ],
-      "inputs": [
-        "scripts/docs/markdown-table.mts",
-        "scripts/docs/markdown-tables.mts",
-        "scripts/docs/flowmark-source.mts",
-        "Makefile",
-        "tests/markdown/flowmark.version",
-        "docs/spec/dialects.md",
-        "docs/spec/dialects.ko.md"
       ]
     },
     "makefile-pinned-node-recipes-check": {

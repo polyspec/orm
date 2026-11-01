@@ -154,17 +154,13 @@
       "kind": "policy",
       "reason": "serves the built site with node:http without a SPA fallback and records each request, because the docs check must find a deep route that has no HTML page, which a preview server with fallback hides"
     },
-    "scripts/docs/markdown-table.mts": {
-      "kind": "replaced",
-      "reason": "mdast-util-from-markdown with mdast-util-gfm reads the Markdown tables instead of splitting lines on the pipe; item KSTD-5-4-1 moves the table reading to it"
-    },
     "scripts/docs/markdown-tables.mts": {
       "kind": "policy",
-      "reason": "the source-owned list of Flowmark tables whose exact content markdown-table-check verifies; the list is maintained with its source specifications rather than generated"
+      "reason": "the source-owned list of Flowmark tables that writing-style.mts removes before the style check; the list is maintained with its source specifications rather than generated"
     },
     "scripts/docs/tables.mts": {
       "kind": "replaced",
-      "reason": "mdast-util-from-markdown with mdast-util-gfm reads the Markdown tables and their cells from the source text, so an escaped pipe stays in its cell; the table reading that check.mts, markdown-table.mts and rules.mts share is in this file (item KSTD-5-4-1)"
+      "reason": "mdast-util-from-markdown with mdast-util-gfm reads the Markdown tables and their cells from the source text, so an escaped pipe stays in its cell; the table reading that check.mts and rules.mts share is in this file (item KSTD-5-4-1)"
     },
     "scripts/docs/rules.mts": {
       "kind": "replaced",
@@ -353,10 +349,6 @@
     "examples/thin-slice/php/thin_slice_functions.php": {
       "kind": "policy",
       "reason": "the functions and constants of the thin-slice demo of the PHP client of this repository, which its main.php requires; it shows the product and rebuilds no tool"
-    },
-    "scripts/docs/flowmark-source.mts": {
-      "kind": "ecosystem",
-      "tool": "git clone, fetch and checkout of the Flowmark revision that tests/markdown/flowmark.version pins"
     },
     "scripts/docs/rules-filter.mts": {
       "kind": "policy",

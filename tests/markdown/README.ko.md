@@ -26,7 +26,7 @@ make orm-install-flowmark
 make markdown-conformance-check
 ```
 
-`make orm-install-flowmark`는 고정한 `flowmark`를 `.runtime/bin/flowmark`에 설치하고 문서 표를 위한 고정 revision의 clean source도 checkout한다. `make markdown-conformance-check`는
+`make orm-install-flowmark`는 고정한 `flowmark`를 `.runtime/bin/flowmark`에 설치한다. `make markdown-conformance-check`는
 그 경로를 `FLOWMARK`로 각 실행기에 넘기며, 각 실행기는 자기 server와 corpus를 쓴다(`make markdown-conformance-check/<client>`가
 하나를 실행하고, TypeScript 것은 먼저 package를 build한다). 실행기는 `FLOWMARK`의 build 정보를 읽고 main module이
 `flowmark.version` 판의 `github.com/polyspec/flowmark/packages/go`이거나, pin과 revision이 일치하는 clean checkout이

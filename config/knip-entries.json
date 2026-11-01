@@ -59,7 +59,7 @@
     "mysql_tzinfo_to_sql": "the MySQL tool that loads the time zone tables for make test-servers",
     "make": "GNU make, which the tests of scripts/check/run, scripts/repo/python-venv and tests/cargo-test run on the Makefile",
     "php": "the PHP of .php-version, which scripts/ci/php-extension-tools.mts, scripts/php-without-mysql.mts and the interface and repository checks run",
-    "go": "the Go of mise.toml, which tests/go-run.mts, tests/go-test.mts and scripts/docs/markdown-table.mts run",
+    "go": "the Go of mise.toml, which tests/go-run.mts and tests/go-test.mts run",
     "psql": "the PostgreSQL client that the test servers of the PostgreSQL database check run against the primary, the replica and the pooler (scripts/test-servers.test.mts)",
     "initdb": "the PostgreSQL command that creates the cluster of the replica tests (scripts/test-servers.test.mts)",
     "pg_basebackup": "the PostgreSQL command that copies the primary into the replica (scripts/test-servers.test.mts)"

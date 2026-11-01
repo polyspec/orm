@@ -25,7 +25,7 @@ make orm-install-flowmark
 make markdown-conformance-check
 ```
 
-`make orm-install-flowmark` installs the pinned `flowmark` at `.runtime/bin/flowmark` and checks out its clean source at the pinned revision for the documentation table, and
+`make orm-install-flowmark` installs the pinned `flowmark` at `.runtime/bin/flowmark`, and
 `make markdown-conformance-check` passes that path as `FLOWMARK` to each runner, each on a server and a corpus of its
 own (`make markdown-conformance-check/<client>` runs one; the TypeScript one builds the package first). A runner
 reads the build information of `FLOWMARK` and fails unless its main module is `github.com/polyspec/flowmark/packages/go` at the version of
