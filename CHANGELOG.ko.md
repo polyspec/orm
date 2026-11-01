@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- PHP extension stub에서 Catalog::insertRow와 updateRow의 values 매개변수를 설명이 붙은 `array`로 선언한다. stub 생성기(gen_stub)가 공백이 든 제네릭 타입을 거부해 php-extension lane 빌드가 실패했고, PHP 8.4 빌드가 다시 통과한다(T334-3-3-2-10).
 - checkPrecision은 여섯 runtime 모두에서 public이다(INT-117): SQLite CHECK precision을 채우는 Go CatalogColumn 필드와 Rust TableColumnMetadata 필드를 공개 이름으로 export하고, config/parity.json은 그것들을 catalog connection이 export하는 다른 public symbol과 함께 선언한다 (T334-3-3-2-9).
 - PostgreSQL describe는 생성 컬럼에 default를 보고하지 않는다: 생성 컬럼의 생성 식은 default가 있는 자리인 pg_attrdef에 보관되므로, 모든 runtime은 그 컬럼의 default 식을 읽지 않고 default 표지를 false로 본다(SCH-6a) (T334-3-3-2-8).
 - catalog_connection runner의 lint 및 중복 finding을 제자리에서 고쳤다: Go의 Close errcheck, TypeScript의 미사용 변수와 중복 helper, Python ruff finding, PHP phpcs finding과 빈 catch(catch는 오류를 처리하거나 다시 던진다), Rust의 도달 불가 grid arm과 공유 probe의 미사용 helper, PHP의 중복 fetchAll (T334-3-3-2-7).

@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The PHP extension stub declares the values parameter of Catalog::insertRow and updateRow as `array` with its description, because the stub generator refuses a generic type with a space (gen_stub) and the php-extension lane failed to build on it; the PHP 8.4 build passes again (T334-3-3-2-10).
 - checkPrecision is public in all six runtimes (INT-117): the Go CatalogColumn field and the Rust TableColumnMetadata field that the SQLite CHECK precision fills are exported under their public names, and config/parity.json declares them with every other public symbol the catalog connection exports (T334-3-3-2-9).
 - PostgreSQL describe reports no default for a generated column: the generation expression of a generated column is kept in pg_attrdef where a default is, so every runtime reads no default expression and a false default flag for it, as SCH-6a states (T334-3-3-2-8).
 - The lint and duplication findings of the catalog_connection runners are fixed in place: the Go errcheck of Close, the TypeScript unused variables and duplicated helper, the Python ruff findings, the PHP phpcs findings and empty catches (a catch handles or rethrows its error), the Rust unreachable grid arm and the dead helpers of the shared probe, and the duplicated PHP fetchAll (T334-3-3-2-7).

@@ -1852,14 +1852,14 @@ final class Catalog
      * The values are a list of [name, value] pairs, or a map of column name => value. A repeated name in the list is
      * refused with ROW_INSERT_INVALID before any write (INT-111).
      *
-     * @param array<mixed, mixed> $values the list of [name, value] pairs, or the map of column name => value
+     * @param array $values the list of [name, value] pairs, or the map of column name => value
      */
     public function insertRow(CatalogTableMetadata $declared, array $values): CatalogResult {}
     /**
      * The values are a list of [name, value] pairs, or a map of column name => value. A repeated name in the list is
      * refused with ROW_UPDATE_INVALID before any write (INT-111).
      *
-     * @param array<mixed, mixed> $values the list of [name, value] pairs, or the map of column name => value
+     * @param array $values the list of [name, value] pairs, or the map of column name => value
      */
     public function updateRow(CatalogRowSnapshot $original, array $values): CatalogResult {}
     public function deleteRow(CatalogRowSnapshot $original): int {}
