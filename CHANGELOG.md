@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The seven make targets that run the compiled TypeScript client without building it (replica-check, session-state-check, native-error-cause-check/typescript-driver and /typescript-markdown, page-cache-unit-check/typescript, generator-consumer-check/typescript, request-hook-relation-scope-check) have typescript-build as a prerequisite, and repo-check refuses a target that reads the build output without it (T339-5).
 - The Makefile and scripts name no kit-install-php-arginfo, so make install no longer calls a target that kit K930 removed; make install, make repo-check/unit and make native-arginfo-php-extension-check exit 0 on PHP 8.4 (T328).
 - orm takes kit 0.0.92 (T348): the pin names the release asset of kit 0.0.92 with its integrity, the kit-sync copies are that release's, and make orm-install-rust-crates downloads the crates of every tracked Cargo.lock with cargo fetch --locked, since kit 0.0.92 deletes the cargo-downloads-fetch target that it called.
 - The row's premise does not hold: kit's parity-symbols.mts:229-230 reads the Rust nightly from the exceptions of config/toolchain.json, never from a rustNightly key, and orm's config/toolchain.json:16-22 holds exactly that exception (KSTD-5-121).

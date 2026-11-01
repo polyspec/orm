@@ -1686,7 +1686,8 @@ generator-consumer-check/php-extension: php-vendor-check php-models
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
 	env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelNativeTest.php packages/php-ext/tests/ModelDslNativeTest.php --filter 'testPhpGeneratedTypedGetterUsesInternalModelStorage|testDynamicConditionsAndBuilderCallsReturnTheNativeModel'
-generator-consumer-check/typescript:
+generator-consumer-check/typescript: typescript-build
+	$(READ_TYPESCRIPT)
 	$(NODE) --test packages/ts/tests/generate.mjs
 	$(NODE) --test --test-name-pattern='generate-scan/model_calls' packages/ts/tests/generate-scan.mjs
 generator-consumer-check/python: python-venv-check
@@ -1723,9 +1724,11 @@ rust-compiler-fixtures-check/unit: lease-tool
 native-error-cause-check: php-models native-error-cause-check/php-extension native-error-cause-check/rust native-error-cause-check/go native-error-cause-check/typescript-driver native-error-cause-check/typescript-markdown native-error-cause-check/python-driver native-error-cause-check/python-markdown native-error-cause-check/php native-error-cause-check/rust-markdown
 native-error-cause-check/go:
 	$(GO_TEST) -v -timeout 0 ./packages/go/orm -run '^(TestMapDriverErrorPreservesNativeCause|TestCellScanCopiesLosslessNativeBytes|TestMarkdownConnectRefused)$$' -count=1
-native-error-cause-check/typescript-driver:
+native-error-cause-check/typescript-driver: typescript-build
+	$(READ_TYPESCRIPT)
 	$(NODE) --test packages/ts/tests/driver-error-lock-wait.mjs packages/ts/tests/driver-cell-bytes.mjs
-native-error-cause-check/typescript-markdown:
+native-error-cause-check/typescript-markdown: typescript-build
+	$(READ_TYPESCRIPT)
 	$(NODE) packages/ts/tests/markdown.mjs
 native-error-cause-check/python-driver: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p test_driver_errors.py
@@ -1878,7 +1881,7 @@ python-clock-check: python-venv-check
 # servers of make orm-test-servers (WITH_TEST_ENV).
 .PHONY: replica-check
 replica-check: RUN_DIR = $(abspath .runtime/run)/replica-check-$$PPID
-replica-check: php-vendor-check php-models python-venv-check lease-tool
+replica-check: php-vendor-check php-models python-venv-check lease-tool typescript-build
 	$(WITH_TEST_ENV) $(NODE) tests/go-test.mts -v -timeout 0 ./packages/go/model -run '^Test(PrimaryAndReplica|ReadOnlySQLite)$$' -count=1
 	$(WITH_TEST_ENV) $(NODE) packages/ts/tests/replica.mjs
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.replica
@@ -1898,7 +1901,7 @@ replica-check: php-vendor-check php-models python-venv-check lease-tool
 # (WITH_TEST_ENV).
 .PHONY: session-state-check
 session-state-check: RUN_DIR = $(abspath .runtime/run)/session-state-check-$$PPID
-session-state-check: php-vendor-check php-models python-venv-check lease-tool
+session-state-check: php-vendor-check php-models python-venv-check lease-tool typescript-build
 	$(WITH_TEST_ENV) $(NODE) tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestCancelledTransactionClearsSessionState$$' -count=1
 	$(WITH_TEST_ENV) $(NODE) packages/ts/tests/session_state.mjs
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.session_state
@@ -2450,7 +2453,8 @@ page-cache-unit-check/go:
 	$(GO_TEST) ./packages/go/orm -run '^(TestPlanCachePagedReadBindsPageValues|TestCanonicalizeCompositeRequestParameterWalk)$$' -count=1
 page-cache-unit-check/php: php-vendor-check
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/PlanCacheBoundTest.php
-page-cache-unit-check/typescript:
+page-cache-unit-check/typescript: typescript-build
+	$(READ_TYPESCRIPT)
 	$(NODE) --test packages/ts/tests/plan-cache-in.mjs
 page-cache-unit-check/python: python-venv-check
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_plan_cache_bound
@@ -3192,7 +3196,7 @@ request-hook-php-extension-check: php-vendor-check php-model-check lease-tool
 # service scope, T203) on SQLite in every client: Go, TypeScript, Python, the PHP library, the PHP extension and Rust.
 .PHONY: request-hook-relation-scope-check
 request-hook-relation-scope-check: RUN_DIR = $(abspath .runtime/run)/request-hook-relation-scope-check-$$PPID
-request-hook-relation-scope-check: php-vendor-check php-models python-venv-check lease-tool
+request-hook-relation-scope-check: php-vendor-check php-models python-venv-check lease-tool typescript-build
 	$(NODE) tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestRequestHook$$/^relation_scope$$' -count=1
 	$(NODE) --test-name-pattern='^request-hook/relation_scope$$' packages/ts/tests/request_hook.mjs
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_request_hook.RequestHookTest.test_relation_scope

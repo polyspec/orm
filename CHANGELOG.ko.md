@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 43aeb6311ded85c240fb9b6c9d356c830a1adee208a27d1b43b75847f871bb7a -->
+<!-- source-sha256: c218db74ebe1b5a4022133f832750cf13ed4e9a03db4dc7067a3a3b88cf843ea -->
 # 변경 이력
 
 ## Unreleased
@@ -23,6 +23,7 @@
 - orm은 toolchain-check, cargo-downloads-check, link-state-check를 부르지 않고 kit.mk:425가 link-check를 제공하므로, 이 row는 make kit-check repo-check로 닫는다. 삭제된 cargo-downloads-fetch를 부르는 하나(Makefile:2936)는 kit 0.0.92 채택과 함께 T348이 바꾼다 (KSTD-5-117).
 - CARGO_SIBLINGS는 더 이상 `--siblings`를 넘기지 않고(Makefile:215) kit의 link.mts에는 그 option이 없다. link 선언 `.links`는 kit의 link-providers.mts:136이 읽으므로, 이 row는 make link-check로 닫는다 (KSTD-5-119).
 - Python 설치는 이미 make uv-install을 거친다. Makefile:768이 `$(MAKE) uv-install DIR=packages/python`을 호출하고 직접 실행하는 uv sync는 남아 있지 않으므로, 이 row는 Verification으로 닫는다 (KSTD-5-118).
+- packages/ts/dist를 실행만 하고 빌드하지 않는 일곱 make target(replica-check, session-state-check, native-error-cause-check/typescript-driver와 /typescript-markdown, page-cache-unit-check/typescript, generator-consumer-check/typescript, request-hook-relation-scope-check)은 typescript-build를 선행 조건으로 가지며, repo-check는 그것 없이 빌드 결과를 읽는 target을 거부한다 (T339-5).
 - 두 branch의 check-recipes 작업이 하나의 통합으로 main에 들어간다. 한국어 checklist는 영어 checklist의 모든 row를 가지고, 변경 이력은 그 commit들의 항목을 가지며, Makefile은 `rust-compiler-fixtures-check/unit`에서 node를 `$(NODE)`로 실행하고, `config/rebuild.json`은 `scripts/generate/once.mts`와 `scripts/php/php-ext-build.mts`를 분류한다 (CR26).
 - check runner는 실패한 target의 `::error` 줄을 출력하지 않아, GitHub Actions에서 실패는 작업이 끝나야 보였다. 이제 실패한 target은 끝날 때 `::error` 줄을 출력한다 (CR1).
 - docs 빌드는 게시된 폴더에 직접 사이트를 렌더링해서, 중단된 빌드는 사이트의 절반을 남겼다. 이제 임시 폴더에 렌더링한 뒤 이름 바꾸기 한 번으로 게시한다 (CR2).

@@ -631,14 +631,27 @@ export function nodeRuns(text: string): string[] {
 
 // typescriptReaderErrors returns one error for each make target that runs with node a file writing the TypeScript client's build output and, on its first line,
 // does not get the holding of that output ($(READ_TYPESCRIPT) to read, $(HOLD_TYPESCRIPT) when building).
+// A target that only reads the output holds it with $(READ_TYPESCRIPT) and has typescript-build among its prerequisites, directly or through a
+// prerequisite, so the output exists when it runs alone (T339-5).
 export function typescriptReaderErrors(makefile: string, read: Read): string[] {
   const errors: string[] = [];
+  const prerequisites = new Map<string, string[]>();
+  for (const rule of makeTargets(makefile)) prerequisites.set(rule.target, [...(prerequisites.get(rule.target) ?? []), ...rule.prerequisites]);
+  const builds = (target: string, seen = new Set<string>()): boolean => {
+    if (seen.has(target)) return false;
+    seen.add(target);
+    return (prerequisites.get(target) ?? []).some(prerequisite => prerequisite === 'typescript-build' || builds(prerequisite, seen));
+  };
   for (const unit of makeRecipes(makefile)) {
-    if (unit.name === 'Makefile' || /^\$\((?:READ|HOLD)_TYPESCRIPT\)$/.test((unit.commands[0] ?? '').trim())) continue;
+    if (unit.name === 'Makefile') continue;
+    const first = (unit.commands[0] ?? '').trim();
+    if (/^\$\(HOLD_TYPESCRIPT\)$/.test(first)) continue;
     const files = unit.commands.flatMap(command => [...command.matchAll(/\bnode\s+(?:--test\s+)?((?:[\w./-]+\.mjs\s*)+)/g)]
       .flatMap(match => (match[1] ?? '').trim().split(/\s+/)));
     const reader = files.find(file => usesTypescriptOutput(file, read));
-    if (reader) errors.push(`${unit.name} runs ${reader}, which uses the TypeScript build output, without holding it; start the recipe with $(READ_TYPESCRIPT)`);
+    if (!reader) continue;
+    if (first !== '$(READ_TYPESCRIPT)') errors.push(`${unit.name} runs ${reader}, which uses the TypeScript build output, without holding it; start the recipe with $(READ_TYPESCRIPT)`);
+    else if (!builds(unit.name.replace(/^Makefile /, ''))) errors.push(`${unit.name} reads the TypeScript build output without the prerequisite typescript-build, which builds it; add typescript-build to its prerequisites`);
   }
   return errors;
 }

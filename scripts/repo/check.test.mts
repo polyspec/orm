@@ -1216,10 +1216,20 @@ caseTest('a target that runs code using the TypeScript build output holds it', C
     'packages/ts/tests/db.mjs': "const { Db } = await import('../dist/index.js');\n",
     'scripts/quoted.mjs': "const fixture = \"import { Db } from '../dist/index.js';\";\n",
   };
-  const makefile = 'reader:\n\tnode scripts/reads.mjs\nheld:\n\t$(READ_TYPESCRIPT)\n\tnode scripts/reads.mjs\nquoted:\n\tnode --test scripts/quoted.mjs\n';
+  const makefile = 'reader:\n\tnode scripts/reads.mjs\nheld: typescript-build\n\t$(READ_TYPESCRIPT)\n\tnode scripts/reads.mjs\nquoted:\n\tnode --test scripts/quoted.mjs\n';
   assert.deepEqual(typescriptReaderErrors(makefile, (path: string) => sources[path]), [
     'Makefile reader runs scripts/reads.mjs, which uses the TypeScript build output, without holding it; start the recipe with $(READ_TYPESCRIPT)',
   ]);
+});
+
+// T339-5: a target that reads the build output holds it, and reaches typescript-build through its prerequisites, so the output exists when it runs alone.
+caseTest('a TypeScript reader holds the build output and has typescript-build as a prerequisite', COMPUTE, () => {
+  const sources: Record<string, string> = { 'packages/ts/tests/db.mjs': "const { Db } = await import('../dist/index.js');\n" };
+  const read = (path: string) => sources[path];
+  const reader = (target: string) => `Makefile ${target} reads the TypeScript build output without the prerequisite typescript-build, which builds it; add typescript-build to its prerequisites`;
+  const holds = 'typescript-build:\n\t$(HOLD_TYPESCRIPT)\n\tnpm run typescript:build\n';
+  assert.deepEqual(typescriptReaderErrors(`${holds}direct: typescript-build\n\t$(READ_TYPESCRIPT)\n\tnode packages/ts/tests/db.mjs\nhub: php-vendor-check\n\t$(READ_TYPESCRIPT)\n\tnode packages/ts/tests/db.mjs\nphp-vendor-check: typescript-build\n\ttrue\n`, read), []);
+  assert.deepEqual(typescriptReaderErrors(`${holds}alone:\n\t$(READ_TYPESCRIPT)\n\tnode packages/ts/tests/db.mjs\n`, read), [reader('alone')]);
 });
 
 // The name-only case (G5.40) does not count as reading a TypeScript test whose path is only written as a string (expected output of a fake node, stub,
