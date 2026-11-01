@@ -1134,8 +1134,8 @@ func goStringLiteral(text string) string {
 }
 
 // declareKeyPrefixes declares the method of every prefix of every key of each
-// model, whether or not a scanned call names it: the schema gives the methods
-// of a model (T156). A prefix of one column is its column method, and a prefix
+// model, and the condition method of every column (DSL-154), whether or not a
+// scanned call names it: the schema gives the methods of a model (T156). A prefix of one column is its column method, and a prefix
 // of several columns is the tuple method of those columns.
 func (g *goGen) declareKeyPrefixes() {
 	names := make([]string, 0, len(g.models))
@@ -1147,6 +1147,10 @@ func (g *goGen) declareKeyPrefixes() {
 		gm := g.models[name]
 		e := gm.e
 		keys := [][]string{e.PK}
+		// The condition method of each column (DSL-154) is declared for every column, indexed or not.
+		for _, f := range e.Fields {
+			keys = append(keys, []string{f.Name})
+		}
 		for _, u := range e.Uniques {
 			keys = append(keys, u.Columns)
 		}

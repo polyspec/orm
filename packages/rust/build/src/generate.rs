@@ -700,8 +700,8 @@ impl<'m> Gen<'m> {
     }
 }
 
-/// The calls that declare the methods of every prefix of every key of each model (T156): a prefix of one column is its
-/// column method, and a prefix of several columns is the tuple method of those columns. A fixed method of a model is not
+/// The calls that declare the methods of every prefix of every key of each model (T156), and the condition method of every
+/// column (DSL-154): a prefix of one column is its column method, and a prefix of several columns is the tuple method of those columns. A fixed method of a model is not
 /// declared again.
 fn key_prefix_calls(g: &Gen<'_>) -> Vec<Call> {
     let mut calls = Vec::new();
@@ -710,6 +710,8 @@ fn key_prefix_calls(g: &Gen<'_>) -> Vec<Call> {
         let mut keys: Vec<&[String]> = vec![&e.primary_key];
         keys.extend(e.uniques.iter().map(|u| u.columns.as_slice()));
         keys.extend(e.indexes.iter().map(|i| i.columns.as_slice()));
+        // The condition method of each column is declared for every column, indexed or not (DSL-154).
+        keys.extend(e.fields.iter().map(|c| std::slice::from_ref(&c.name)));
         for columns in keys {
             for k in 1..=columns.len() {
                 let name = if k == 1 { columns[0].clone() } else { format!("tuple_{}", columns[..k].join("_with_")) };
