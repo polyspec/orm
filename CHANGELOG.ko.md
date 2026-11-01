@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c2fb04312d49787b02ae985b3c4b12b462c274c194f47db423d3f586f31e5ec3 -->
+<!-- source-sha256: ae1afd362f31b01ef01c0a379b3cc08841dcea1465ef6cd62e1d2f10cac6af57 -->
 # 변경 이력
 
 ## Unreleased
@@ -132,6 +132,7 @@
 - feature `statement_runner`는 다른 database feature와 같이 kind database coverage 블록을 가진다. runtime마다 owner 하나와 SQLite, MySQL, PostgreSQL 명령을 두고 parity unit `coverage-statement-runner-statement-runner`에 바인딩하므로, feature coverage 실행이 모든 runtime과 database에서 statement runner를 검사한다. feature는 `implemented`이고 divergence check가 이를 받아들인다(T345-9).
 - `statement_runner`의 coverage owner는 helper를 복사하지 않고 공유한다. Go owner는 선택된 database를 `featureDatabase`로 읽고, PHP와 PHP extension owner는 `StatementRunnerCases`의 `coverStatementRunner`를 부르므로 공통 gate의 duplication check가 통과한다 (T345-10).
 - statement runner가 runtime gate와 parity 검사를 통과한다. Python 시험은 포맷되고, PHP trait `StatementRunnerCases`는 시험 bootstrap이 읽는 자기 파일을 갖고, TypeScript binding은 database별 case를 가리키고, Go coverage binding은 `feature-go-unit`으로 실행되고 Rust binding의 id는 실행되는 trial이다. INT-150의 frame은 모든 runtime에서 `run`과 결과 type만 공개하고 상태와 생성자는 내부다 (T345-11).
+- recipe op `model.assign`(FCV-4)이 public setter로 새 row의 열 값을 정하고 database 없이 그 insert를 만든다. Python 공개 쓰기 경로는 not-null 열에 할당되는 NULL을 engine validator 앞에서 codec 단계에 거부하며, 다른 runtime과 같다(T334-3-15-4k, T334-3-15-4j).
 
 ## 0.0.20
 

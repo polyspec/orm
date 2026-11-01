@@ -118,6 +118,7 @@
 - The feature `statement_runner` has its coverage block of kind database, as the other database features have: one owner per runtime with a command for SQLite, MySQL and PostgreSQL, bound in the parity unit `coverage-statement-runner-statement-runner`, so the feature coverage run checks the statement runner in every runtime and database, and the feature is `implemented`, which the divergence check accepts (T345-9).
 - The coverage owners of `statement_runner` share their helpers instead of copying them: the Go owner reads the selected database through `featureDatabase`, and the PHP and PHP-extension owners call `coverStatementRunner` of `StatementRunnerCases`, so the duplication check of the shared gates passes (T345-10).
 - The statement runner passes the runtime gates and the parity checks: its Python test is formatted, the PHP trait `StatementRunnerCases` has its own file loaded by the test bootstrap, the TypeScript bindings name each database case, the Go coverage binding runs through `feature-go-unit` and the Rust one binds the trial that runs, and the frame of INT-150 is public in every runtime with only its `run` and its result type, its state and constructor internal (T345-11).
+- The recipe op `model.assign` (FCV-4) sets a column of a new row through the public setter and builds its insert without a database. The Python public write path refuses NULL assigned to a not-null column at the codec, before the engine validator, as the other runtimes do (T334-3-15-4k, T334-3-15-4j).
 
 ## 0.0.20
 

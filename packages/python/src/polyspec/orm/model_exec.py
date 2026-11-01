@@ -402,9 +402,17 @@ def _encode_value(schema: Entity, column: str, value):
     return encode(codec, value)
 
 
+def _refuse_null(schema: Entity, column: str) -> None:
+    """Refuses NULL assigned to a non-null column at the codec, before the engine validator (PRT-67, CODEC_ENCODE)."""
+    field = field_of(schema, column)
+    if field is not None and not field.nullable:
+        raise OrmError(codes.CODEC_ENCODE, f"{column} assigns NULL to a non-null column")
+
+
 def _assign(r: dict, schema: Entity, s: SetSpec) -> dict:
 
     if s.null:
+        _refuse_null(schema, s.column)
         return {"column": s.column, "null": True}
     if s.plus:
         r["params"].append(s.value)
@@ -414,6 +422,7 @@ def _assign(r: dict, schema: Entity, s: SetSpec) -> dict:
         return {"column": s.column, "minus_p": len(r["params"]) - 1}
     value = _encode_value(schema, s.column, s.value)
     if value is None:
+        _refuse_null(schema, s.column)
         return {"column": s.column, "null": True}
     r["params"].append(value)
     return {"column": s.column, "p": len(r["params"]) - 1}
