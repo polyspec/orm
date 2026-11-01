@@ -1,0 +1,344 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "PRT-67"
+  ],
+  "cases": [
+    {
+      "id": "control_begin",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "begin": {
+            "read_only": false
+          },
+          "expect": {
+            "message": {
+              "op": "begin"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "control_begin_read_only",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "begin": {
+            "read_only": true
+          },
+          "expect": {
+            "message": {
+              "op": "begin",
+              "read_only": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "message_time_p0",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "time": "10:00:00"
+            }
+          ],
+          "expect": {
+            "message": "10:00:00.000000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "message_time_p3",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time3_value",
+          "operator": "eq",
+          "params": [
+            {
+              "time": "10:00:00.123"
+            }
+          ],
+          "expect": {
+            "message": "10:00:00.123000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "message_time_p3_whole",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time3_value",
+          "operator": "eq",
+          "params": [
+            {
+              "time": "10:00:00"
+            }
+          ],
+          "expect": {
+            "message": "10:00:00.000000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "message_time_p6",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time6_value",
+          "operator": "eq",
+          "params": [
+            {
+              "time": "23:59:59.999999"
+            }
+          ],
+          "expect": {
+            "message": "23:59:59.999999"
+          }
+        }
+      ]
+    },
+    {
+      "id": "message_datetime_p0",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "datetime": "2024-01-02 03:04:05"
+            }
+          ],
+          "expect": {
+            "message": "2024-01-02 03:04:05.000000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "message_datetime_p3_t",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime3_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "2024-01-02T03:04:05.5"
+            }
+          ],
+          "expect": {
+            "message": "2024-01-02 03:04:05.500000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "message_datetime_offset",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime6_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "2024-01-02 03:04:05+09:00"
+            }
+          ],
+          "expect": {
+            "message": "2024-01-01 18:04:05.000000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "message_date",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.date_value",
+          "operator": "eq",
+          "params": [
+            {
+              "date": "2024-01-02"
+            }
+          ],
+          "expect": {
+            "message": "2024-01-02"
+          }
+        }
+      ]
+    },
+    {
+      "id": "message_datetime_dst_gap",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime6_value",
+          "operator": "eq",
+          "params": [
+            {
+              "datetime": "2026-03-08 02:30:00"
+            }
+          ],
+          "expect": {
+            "message": "2026-03-08 02:30:00.000000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "message_datetime_dst_gap_process_zone",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime6_value",
+          "operator": "eq",
+          "params": [
+            {
+              "datetime": "2026-03-08 02:30:00"
+            }
+          ],
+          "expect": {
+            "message": "2026-03-08 02:30:00.000000"
+          },
+          "process_zone": "America/New_York"
+        }
+      ]
+    },
+    {
+      "id": "message_datetime_dst_gap_process_zone_fraction",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime6_value",
+          "operator": "eq",
+          "params": [
+            {
+              "datetime": "2026-03-08T02:30:00.5"
+            }
+          ],
+          "expect": {
+            "message": "2026-03-08 02:30:00.500000"
+          },
+          "process_zone": "America/New_York"
+        }
+      ]
+    },
+    {
+      "id": "message_date_process_zone",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.date_value",
+          "operator": "eq",
+          "params": [
+            {
+              "date": "2026-03-08"
+            }
+          ],
+          "expect": {
+            "message": "2026-03-08"
+          },
+          "process_zone": "America/New_York"
+        }
+      ]
+    },
+    {
+      "id": "message_time_not_clock",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "10:00"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "message_datetime_not_date",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "datetime": "2024-13-01 00:00:00"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    }
+  ]
+}

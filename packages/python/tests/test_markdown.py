@@ -177,41 +177,6 @@ class MarkdownTest(unittest.TestCase):
         self.assertEqual(server.received_messages(), [CONNECT_LINE])
 
 
-class BindMessageVectors(unittest.TestCase):
-    """Message case of tests/bind/vectors.json: the runtime value model JSON of an IR executor message parameter
-    (docs/spec/protocol.md §5 "Parameters"). It is the same case as Go's TestBindMessageVectors."""
-
-    def test_message_cases(self):
-        # Requirements: PRT-67.
-        import json
-        import pathlib
-        import types
-
-        from polyspec.orm.engine.params import ParamUse
-        from polyspec.orm.markdown import begin_message, markdown_param
-
-        root = pathlib.Path(__file__).resolve().parents[3]
-        vectors = json.loads((root / "tests/bind/vectors.json").read_text())
-        self.assertTrue(
-            vectors.get("control"), "tests/bind/vectors.json has no control cases"
-        )
-        for case in vectors["control"]:
-            with self.subTest("control/" + case["name"]):
-                self.assertEqual(begin_message(case["read_only"]), case["json"])
-        db = types.SimpleNamespace(zone=vectors["zone"], aes_key="")
-        for case in vectors["message"]:
-            with self.subTest(case["name"]):
-                uses = [ParamUse(case["type"])]
-                if "code" in case:
-                    with self.assertRaises(OrmError) as caught:
-                        markdown_param(db, 0, case["value"], uses)
-                    self.assertEqual(caught.exception.code, case["code"])
-                else:
-                    self.assertEqual(
-                        markdown_param(db, 0, case["value"], uses), case["json"]
-                    )
-
-
 def vector_value(value):
     """A value of a bind case as the host value a Python program passes: {"int": text} an int, {"f64": text} a
     non-finite float, {"bytes": base64} bytes."""

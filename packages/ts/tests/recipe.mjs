@@ -12,6 +12,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { Db, OrmError, StyledValue, blindIndex, connectCatalog, dbspecManifest, decode, encode, hostDecode, hostEncode, parseDbspec, readDbspecFile, registerModel } from '../dist/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
+import { Slots, connect as connectSlots } from '../dist/models/bind_fixture/models.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { withCaseDatabase } from './case-database.mjs';
 import { nativeQuery } from './coverage_case.mjs';
@@ -38,6 +39,7 @@ export function runRecipe(path, database) {
         try {
           if (step.op === 'ir.validate') checkValidate(step, requestText(literal, caseIndex, index), schema, database);
           else if (step.op === 'ir.answer') await checkAnswer(step, database);
+          else if (step.op === 'markdown.send') await withProcessZone(step.process_zone, () => checkSend(step));
           else run(step, bound, database);
         } catch (error) {
           throw new Error(`recipe ${path} case ${recipeCase.id} step ${index} (${step.op}) on ${database}: ${error.message}`, { cause: error });
@@ -540,4 +542,103 @@ async function checkAnswer(step, database) {
     await server.close();
   }
   if (!isDeepStrictEqual(got, expect.value)) throw new Error(`got ${JSON.stringify(got)}, want ${JSON.stringify(expect.value)}`);
+}
+
+// withProcessZone runs work with the process default zone set to zone when the step names one (process_zone, an IANA zone). Node reads
+// process.env.TZ for every Date and Intl use from the assignment on, and the previous value is restored in finally: a missing value is
+// deleted, so no zone outlives the step.
+async function withProcessZone(zone, work) {
+  if (zone === undefined) return work();
+  const previous = process.env.TZ;
+  process.env.TZ = zone;
+  try {
+    return await work();
+  } finally {
+    if (previous === undefined) delete process.env.TZ;
+    else process.env.TZ = previous;
+  }
+}
+
+// checkSend runs a markdown.send step: a transaction begin, or the typed filter of a slot column with the value of its wrapper, on a
+// listener that records the first message it receives. The expect is not per database: {message: json} is compared with the message
+// (messageValue) and {error: code} with the OrmError code of a call that sent no message (FCV-4).
+async function checkSend(step) {
+  const received = [];
+  const server = await startMarkdownSendListener(received);
+  let db;
+  let callError;
+  try {
+    db = await connectSlots(server.dsn);
+    if (step.begin !== undefined) await db.transaction(() => {}, { readOnly: step.begin.read_only === true });
+    else await queryColumn(step, db);
+  } catch (error) {
+    callError = error;
+  } finally {
+    if (db !== undefined) await db.close();
+    await server.close();
+  }
+  let got;
+  if (received.length > 0) got = { message: messageValue(received[0]) };
+  else if (callError instanceof OrmError) got = { code: callError.code };
+  else throw new Error(`the call returned ${callError ?? 'no error'} and sent no message`, { cause: callError });
+  if (step.expect.error !== undefined) {
+    const code = got.code ?? '';
+    if (code !== step.expect.error) throw new Error(`the call returned error ${code || 'none'}, want ${step.expect.error}`);
+    return;
+  }
+  if (step.expect.message === undefined) throw new Error('markdown.send expects a message or an error');
+  if (got.code !== undefined) throw new Error(`the call returned error ${got.code} before a message`);
+  if (!isDeepStrictEqual(got.message, step.expect.message)) throw new Error(`message ${JSON.stringify(got.message)}, want ${JSON.stringify(step.expect.message)}`);
+}
+
+// messageValue is the message that an expect compares: the whole message of a begin, or the one parameter of a statement.
+function messageValue(text) {
+  const message = JSON.parse(text);
+  if (message.op === 'begin') return message;
+  if (!Array.isArray(message.params) || message.params.length !== 1) throw new Error(`the statement message ${text} holds no single parameter`);
+  return message.params[0];
+}
+
+// queryColumn runs the generated typed filter of the slot column of step with the text of its wrapper; the filter takes the text form
+// of the value (DBS-121). A column or operator without a typed filter here is a defect of the recipe.
+async function queryColumn(step, db) {
+  if (step.operator !== 'eq') throw new Error(`operator ${step.operator} has no typed filter in the TypeScript cases`);
+  const value = wrapperText(step.params[0]);
+  const slots = new Slots().connect(db);
+  switch (step.column) {
+    case 'slots.time0_value': return slots.getsByTime0Value(value);
+    case 'slots.time3_value': return slots.getsByTime3Value(value);
+    case 'slots.time6_value': return slots.getsByTime6Value(value);
+    case 'slots.datetime0_value': return slots.getsByDatetime0Value(value);
+    case 'slots.datetime3_value': return slots.getsByDatetime3Value(value);
+    case 'slots.datetime6_value': return slots.getsByDatetime6Value(value);
+    case 'slots.date_value': return slots.getsByDateValue(value);
+  }
+  throw new Error(`the column ${step.column} has no typed filter in the TypeScript cases`);
+}
+
+// wrapperText is the text of a wrapper of one string key, such as {"time": "10:00:00"} or {"text": "2024-01-02T03:04:05.5"}.
+function wrapperText(wrapper) {
+  const keys = Object.keys(wrapper);
+  if (keys.length !== 1 || typeof wrapper[keys[0]] !== 'string') throw new Error(`the parameter ${JSON.stringify(wrapper)} is no text wrapper`);
+  return wrapper[keys[0]];
+}
+
+// startMarkdownSendListener answers connect with {"ok":true}, records the first message after it in received, and answers that message
+// and every later one with an error so the call ends.
+async function startMarkdownSendListener(received) {
+  const server = createServer(socket => {
+    let lines = 0;
+    createInterface({ input: socket }).on('line', line => {
+      lines += 1;
+      if (lines === 1) {
+        socket.write('{"ok":true}\n');
+        return;
+      }
+      if (lines === 2) received.push(line);
+      socket.write('{"error":{"code":"IR_INVALID","message":"recorded by the markdown.send listener"}}\n');
+    });
+    socket.on('error', () => {});
+  });
+  return listenMarkdownTestServer(server);
 }

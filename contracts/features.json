@@ -127,7 +127,6 @@
         "packages/php-ext/src/polyspec_orm.c",
         "packages/rust/orm/tests/markdown.rs",
         "packages/ts/tests/markdown.mjs",
-        "packages/go/orm/markdown_param_test.go",
         "packages/go/orm/bind_check_test.go",
         "packages/rust/orm/tests/unit/bind_message.rs",
         "packages/rust/orm/tests/unit/bind_vectors.rs",
@@ -230,8 +229,7 @@
           "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestBindMessageVectors$' -count=1",
           "shard": "other",
           "inputs": [
-            "packages/go/orm/markdown_param_test.go",
-            "packages/go/orm/markdown.go",
+                "packages/go/orm/markdown.go",
             "tests/bind/vectors.json"
           ]
         },

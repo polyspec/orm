@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 02bf02c105efa5a1b553a6b8b081c1b69c48e31bfaee12afe4cbf141c3ce00b2 -->
+<!-- source-sha256: a1241e6a8e62ff01b1219019465abb8947b401a86b6ab46027d2cef7f01e22b4 -->
 # 변경 이력
 
 ## Unreleased
 
+- `tests/bind/vectors.json`의 markdown message와 control vector는 `markdown.send` step(`column`, `operator`, `params`, `begin`, `process_zone`, `expect`)으로 된 recipe `tests/bind/messages.json` 하나다. 여섯 recipe helper가 각자 공개 markdown 연결로 실행하고, listener가 처음 받은 message를 기록한다. 기존 native message test와 parity 바인딩은 지웠고, DST gap의 offset 없는 datetime case는 `process_zone` 아래에서 실행한다 (T334-3-15-3c).
 - 두 branch의 check-recipes 작업이 하나의 통합으로 main에 들어간다. 한국어 checklist는 영어 checklist의 모든 row를 가지고, 변경 이력은 그 commit들의 항목을 가지며, Makefile은 `rust-compiler-fixtures-check/unit`에서 node를 `$(NODE)`로 실행하고, `config/rebuild.json`은 `scripts/generate/once.mts`와 `scripts/php/php-ext-build.mts`를 분류한다 (CR26).
 - check runner는 실패한 target의 `::error` 줄을 출력하지 않아, GitHub Actions에서 실패는 작업이 끝나야 보였다. 이제 실패한 target은 끝날 때 `::error` 줄을 출력한다 (CR1).
 - docs 빌드는 게시된 폴더에 직접 사이트를 렌더링해서, 중단된 빌드는 사이트의 절반을 남겼다. 이제 임시 폴더에 렌더링한 뒤 이름 바꾸기 한 번으로 게시한다 (CR2).
@@ -23,6 +24,19 @@
 - owner 검사는 변경된 Python test마다 python-check를 골랐고, 그 recipe는 kit이 CI 밖에서 거부하는 선택 없는 discovery를 실행했다. php-extension coverage는 make 밖에서 실행되어 POLYSPEC_ORM_EXTENSION이 설정되지 않았다. 이제 변경된 test는 자신의 명령을 고른다: python-check는 test가 아닌 Python 원본을 맡고, interface test는 모듈을 이름으로 지정하며, php-extension coverage는 먼저 make로 extension을 빌드한다 (CR24).
 - statement event 벡터의 server-transaction 검사는 MySQL과 PostgreSQL만 이름을 적었고 SQLite에는 항목도 사유도 없었다. 이제 SQLite를 사유와 함께 제외로 명시하며, 모든 runtime의 시험이 각 database가 한 번씩만 이름 붙었는지 확인한다 (CR16-2).
 - 인터페이스 명세는 모든 runtime의 public statement runner를 정한다(INT-150): `utils().run(fn)`과 frame 호출 `run(kind, tables, sql, params)`이며, frame 호출의 판정은 CR21이다. runtime들은 뒤따르는 CR21 행에서 구현한다 (CR21).
+- recipe schema에 비유한 binary64 wrapper `{"f64": "NaN" | "Infinity" | "-Infinity"}`를 더했고, 여섯 recipe helper가 각각 그 수의 host 값으로 바꾼다. 유한한 수는 `float` wrapper를 그대로 쓴다 (T334-3-15-3b).
+- bind vector의 slot 픽스처 `tests/bind/slots.dbs`와 그 set `tests/bind/dbspec-set.json`은 `tests/bind/vectors.json`의 parameter slot마다 컬럼 하나를 가진 테이블 하나를 둔다. 모델은 모델을 쓰는 make 대상이 생성한다(Go와 PHP는 모델 목록, TypeScript는 빌드, Python은 `bind-python-models`, Rust는 tests crate의 build script). `make bind-models-check`가 이를 검사한다 (T334-3-15-3a).
+- 읽기 answer 사례 `contracts/fixtures/ir_answers.json`은 `tests/ir/answers.json`으로 옮겨져, 여섯 runtime 모두 데이터베이스 없이 실행하는 `ir.answer` op(FCV-4)의 recipe가 된다. 각 사례는 markdown chain을 answer를 돌려주는 listener 위에서 실행한다. 대체되는 native answer test는 제거되고, parity unit ir-answers는 여섯 recipe entry에 묶인다 (#T334-3-15-2).
+- 요청 검증 사례 `tests/ir/validate.json`은 recipe(`ir.validate` op, FCV-4)가 되어 여섯 runtime 모두 데이터베이스 없이 실행한다. Go, TypeScript, PHP, PHP extension, Python, Rust의 native vector test는 제거되고, parity unit ir-validate는 여섯 recipe entry에 묶인다 (#T334-3-15-1).
+- 네 client 변경이 전체 suite target을 고르지 않는다는 owner test의 기대 목록에 CR5가 선언한 typescript-build-unit-check를 넣는다. TypeScript client build(packages/ts/**)가 이 target을 고른다 (#CR5-1).
+- Makefile 빌드 산출물을 제자리에 쓰는 PHP client generator 실행은 저장소 검사가 거부한다. `php-models`는 각 models 디렉터리를 `<dir>.tmp`에 생성한 뒤 rename으로 바꿔, 중단된 실행이 이전 디렉터리를 온전히 남긴다 (CR12).
+- compiler fixtures 테스트는 caseTest로 실행한다. `rust-compiler-fixtures-check`는 native 시험과 runner 시험을 make -j가 함께 실행하는 두 part로 나눠, 한 레시피가 독립 테스트 둘을 실행하지 않는다 (CR25-1).
+- TypeScript client는 소스마다 한 번만 빌드한다. `scripts/typescript/build.mts`는 추적되는 client 소스, 빌드와 모델 스크립트, fixture, 도구 버전의 hash로 정한 key로 `packages/ts/dist`를 게시하고, holder lock 아래에서 동작한다. 기록된 key가 같은 run은 컴파일러를 시작하지 않으므로 `TSC_BUILD`와 `typescript-build`가 한 빌드를 공유한다 (CR5).
+- PHP 확장 site는 한 run 안에서 더 이상 확장을 다시 컴파일하지 않는다. `php-ext-build`은 소스와 모드마다 한 번만 `var/php-ext/build/<key>/`에 만들고, key는 소스, arginfo 헤더, PHP 버전, 모드, 컴파일러 설정, kit 빌더로 정하며, holder lock 아래에서 각 site에 복사한다 (CR4).
+- Rust runner의 compiler fixture는 중단된 run이 packages/rust/tests/examples에 stale source를 남기면 EEXIST로 실패했고 빈 디렉터리를 tree에 남겼다. 이제 script는 stale source를 덮어쓰고 끝에 scratch 디렉터리를 지운다 (CR25).
+- TypeScript와 Python runner는 공유 DDL vector의 behavior step을 MySQL, PostgreSQL, SQLite에서 실행하고, 서버 DSN이 빠지면 그 이름을 대며 실패한다. 전에는 rendered statement만 비교했다 (CR16-1-1).
+- CR21과 하위 행 (CR21-1) (CR21-2) (CR21-3) (CR21-4) (CR21-5) (CR21-6) (CR21-7)는 consumer를 위해 main의 T345로 옮겼고, 그 T345가 공개 statement runner를 들였다 (#CR21).
+- PHP 8.5 owner가 두 원인으로 실패했다. 모델 시험의 효과 없는 setAccessible을 PHP 8.5가 deprecated로 알렸고, large object 쓰기는 NUL byte 때문에 pg_lo_write가 거부했다. 시험은 setAccessible을 빼고, stream과 native 확장은 composer.json이 허용하는 모든 PHP에서 lo_put으로 나눠 쓴다 (CR23).
 - interfaces CI 시험은 CR9가 docs job으로 옮긴 docs-site-check와 docs-verify-idempotent를 거부했다. 그 시험은 CI group과 kit 실행 target만 셌기 때문이다. 이제 Makefile에서 읽은 make docs-ci와 make ci-vscode-integration의 target도 세며, 어느 쪽에도 없는 target은 거부한다 (CR9-1).
 - PHP 8.5 owner가 두 원인으로 실패했다. 모델 시험의 효과 없는 setAccessible을 PHP 8.5가 deprecated로 알렸고, large object 쓰기는 NUL byte 때문에 pg_lo_write가 거부했다. 시험은 setAccessible을 빼고, stream과 native 확장은 composer.json이 허용하는 모든 PHP에서 lo_put으로 나눠 쓴다 (CR23).
 - CR21과 하위 행 (CR21-1) (CR21-2) (CR21-3) (CR21-4) (CR21-5) (CR21-6) (CR21-7)는 consumer를 위해 main의 T345로 옮겼고, 그 T345가 공개 statement runner를 들였다 (#CR21).
