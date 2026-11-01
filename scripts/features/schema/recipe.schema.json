@@ -333,7 +333,7 @@
           "value": { "description": "A recipe wrapper, the value that the setter takes." },
           "expect": {
             "type": "object",
-            "oneOf": [{ "required": ["message"] }, { "required": ["error"] }],
+            "oneOf": [{ "required": ["message"], "properties": { "message": true } }, { "required": ["error"], "properties": { "error": true } }],
             "additionalProperties": false,
             "properties": { "message": { "description": "The JSON of the one parameter of the insert statement." }, "error": { "type": "string", "minLength": 1 } }
           }
@@ -595,7 +595,7 @@
                   "type": "array",
                   "items": {
                     "type": "object",
-                    "if": { "required": ["op"], "properties": { "op": { "const": "markdown.send" } } },
+                    "if": { "required": ["op"], "properties": { "op": { "enum": ["markdown.send", "model.assign"] } } },
                     "then": {},
                     "else": {
                       "properties": {
