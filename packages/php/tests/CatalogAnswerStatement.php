@@ -52,6 +52,28 @@ final class CatalogAnswerStatement extends PDOStatement
         return array_values($this->rows[$this->index++]);
     }
 
+    /** The answers are canned, so a bound value changes nothing: the statement only records that it was bound. */
+    public function bindValue(int|string $param, mixed $value, int $type = PDO::PARAM_STR): bool
+    {
+        return true;
+    }
+
+    /** @return list<array<mixed>> the rest of the answered rows */
+    public function fetchAll(int $mode = PDO::FETCH_DEFAULT, mixed ...$args): array
+    {
+        $rows = [];
+        while (($row = $this->fetch($mode)) !== false) {
+            $rows[] = $row;
+        }
+        return $rows;
+    }
+
+    public function closeCursor(): bool
+    {
+        $this->rows = [];
+        return true;
+    }
+
     public function rowCount(): int
     {
         return $this->affected;
