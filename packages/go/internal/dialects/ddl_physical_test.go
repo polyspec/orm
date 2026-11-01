@@ -3,7 +3,6 @@
 package dialects
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -11,29 +10,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/polyspec/orm/packages/go/internal/dbspec/ddlcases"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// ddlVectors is tests/dbspec/ddl.json (docs/spec/dialects.md "Rendered
-// statements").
-type ddlVectors struct {
-	Version int `json:"version"`
-	Cases   []struct {
-		ID         string              `json:"id"`
-		Statements map[string][]string `json:"statements"`
-		Behavior   []ddlStep           `json:"behavior"`
-	} `json:"cases"`
-}
-
-// ddlStep runs sql, which must succeed or, with fails, fail; or runs query,
-// whose first value must equal want. dialects limits the step.
-type ddlStep struct {
-	SQL      string   `json:"sql"`
-	Fails    bool     `json:"fails"`
-	Query    string   `json:"query"`
-	Want     string   `json:"want"`
-	Dialects []string `json:"dialects"`
-}
+// ddlVectors and ddlStep are the vectors of tests/dbspec/ddl.json, read by the shared loader of the dbspec packages.
+type (
+	ddlVectors = ddlcases.Vectors
+	ddlStep    = ddlcases.Step
+)
 
 // connectionRules are the statements every client runs on a new connection:
 // UTC on MySQL and PostgreSQL and foreign keys on SQLite (docs/spec/dbspec.md
@@ -50,13 +35,9 @@ var connectionRules = map[string][]string{
 func TestDDLVectors(t *testing.T) {
 	testcase.Group(t)
 	mysqlDSN, postgresDSN := testDSNs(t)
-	raw := readDBSpecFile(t, "ddl.json")
-	var vectors ddlVectors
-	if err := json.Unmarshal(raw, &vectors); err != nil {
+	vectors, err := ddlcases.Parse(readDBSpecFile(t, "ddl.json"))
+	if err != nil {
 		t.Fatal(err)
-	}
-	if vectors.Version != 1 || len(vectors.Cases) == 0 {
-		t.Fatalf("tests/dbspec/ddl.json has version %d and %d cases", vectors.Version, len(vectors.Cases))
 	}
 	servers := openTestServers(t, mysqlDSN, postgresDSN, "ddl"+strconv.Itoa(os.Getpid()))
 	started := time.Now()

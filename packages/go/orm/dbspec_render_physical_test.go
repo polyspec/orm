@@ -2,34 +2,13 @@ package orm_test
 
 import (
 	"database/sql"
-	"encoding/json"
-	"os"
 	"slices"
 	"testing"
 
+	"github.com/polyspec/orm/packages/go/internal/dbspec/ddlcases"
 	"github.com/polyspec/orm/packages/go/internal/testdb"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
-
-// ddlRenderVectors is tests/dbspec/ddl.json: the rendered statements of each vector and its behavior steps.
-type ddlRenderVectors struct {
-	Version int `json:"version"`
-	Cases   []struct {
-		ID         string              `json:"id"`
-		Statements map[string][]string `json:"statements"`
-		Behavior   []ddlRenderStep     `json:"behavior"`
-	} `json:"cases"`
-}
-
-// ddlRenderStep runs sql, which must succeed or, with fails, fail; or runs query, whose first value must equal want.
-// Dialects limits the step to the dialects it names.
-type ddlRenderStep struct {
-	SQL      string   `json:"sql"`
-	Fails    bool     `json:"fails"`
-	Query    string   `json:"query"`
-	Want     string   `json:"want"`
-	Dialects []string `json:"dialects"`
-}
 
 // renderConnectionRules are the statements every client runs on a new connection (docs/spec/dbspec.md "Types",
 // docs/spec/dialects.md "Foreign keys").
@@ -45,16 +24,9 @@ var renderConnectionRules = map[string][]string{
 // Requirement: DIA-113 (check-recipes CR16-1-6).
 func TestDBSpecRenderPhysical(t *testing.T) {
 	testcase.Group(t)
-	raw, err := os.ReadFile("../../../tests/dbspec/ddl.json")
+	vectors, err := ddlcases.Read("../../../tests/dbspec/ddl.json")
 	if err != nil {
 		t.Fatal(err)
-	}
-	var vectors ddlRenderVectors
-	if err := json.Unmarshal(raw, &vectors); err != nil {
-		t.Fatal(err)
-	}
-	if vectors.Version != 1 || len(vectors.Cases) == 0 {
-		t.Fatalf("tests/dbspec/ddl.json has version %d and %d cases", vectors.Version, len(vectors.Cases))
 	}
 	for _, c := range vectors.Cases {
 		if len(c.Behavior) == 0 {
@@ -98,7 +70,7 @@ func mustExec(t *testing.T, conn *sql.DB, statement string) {
 }
 
 // runRenderSteps runs the steps of one vector on the database of driver db.
-func runRenderSteps(t *testing.T, conn *sql.DB, db string, steps []ddlRenderStep) {
+func runRenderSteps(t *testing.T, conn *sql.DB, db string, steps []ddlcases.Step) {
 	t.Helper()
 	for _, step := range steps {
 		if len(step.Dialects) > 0 && !slices.Contains(step.Dialects, db) {
