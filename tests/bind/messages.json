@@ -1324,6 +1324,128 @@
         "go": "the typed public API refuses this host value at compile time",
         "rust": "the typed public API refuses this host value at compile time"
       }
+    },
+    {
+      "id": "bind_contains_text",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.text_value",
+          "operator": "like_contains",
+          "params": [
+            {
+              "text": "a%"
+            }
+          ],
+          "expect": {
+            "message": "a%"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_contains_escapes",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.text_value",
+          "operator": "like_contains",
+          "params": [
+            {
+              "text": "a_b\\"
+            }
+          ],
+          "expect": {
+            "message": "a_b\\"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_contains_null",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.text_value",
+          "operator": "like_contains",
+          "params": [
+            {
+              "nil": true
+            }
+          ],
+          "expect": {
+            "message": null
+          }
+        }
+      ],
+      "exclude": {
+        "go": "the typed contains method takes a string and no null argument (DSL-29, DSL-154), so the host value cannot be bound",
+        "rust": "the typed contains method takes a string and no null argument (DSL-29, DSL-154), so the host value cannot be bound"
+      }
+    },
+    {
+      "id": "bind_contains_number",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.text_value",
+          "operator": "like_contains",
+          "params": [
+            {
+              "int": "5"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ],
+      "exclude": {
+        "go": "the typed public API refuses this host value at compile time",
+        "rust": "the typed public API refuses this host value at compile time"
+      }
+    },
+    {
+      "id": "bind_contains_bool",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.text_value",
+          "operator": "like_contains",
+          "params": [
+            {
+              "bool": true
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ],
+      "exclude": {
+        "go": "the typed public API refuses this host value at compile time",
+        "rust": "the typed public API refuses this host value at compile time"
+      }
     }
   ]
 }

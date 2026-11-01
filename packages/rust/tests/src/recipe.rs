@@ -235,6 +235,8 @@ struct SendStep {
     begin: Option<bool>,
     column: String,
     value: Filter,
+    /// The contains condition (the like_contains operator) of the column, which the generated lk method runs (DSL-29).
+    contains: bool,
 }
 
 /// The typed filter value of a statement: the text of a string column, the integer that the text of an integer column
@@ -254,13 +256,18 @@ enum Filter {
 impl SendStep {
     fn parse(step: &Value) -> Result<Self, String> {
         if let Some(begin) = step.get("begin") {
-            return Ok(Self { begin: Some(begin["read_only"].as_bool().unwrap_or(false)), column: String::new(), value: Filter::Text(String::new()) });
+            return Ok(Self { begin: Some(begin["read_only"].as_bool().unwrap_or(false)), column: String::new(), value: Filter::Text(String::new()), contains: false });
         }
         let operator = step["operator"].as_str().unwrap_or_default();
-        if operator != "eq" {
-            return Err(format!("operator {operator} has no typed filter in the Rust cases"));
-        }
+        let contains = match operator {
+            "eq" => false,
+            "like_contains" => true,
+            _ => return Err(format!("operator {operator} has no typed filter in the Rust cases")),
+        };
         let column = step["column"].as_str().unwrap_or_default();
+        if contains && column != "slots.text_value" {
+            return Err(format!("the column {column} has no contains filter in the Rust cases"));
+        }
         if !SEND_COLUMNS.contains(&column) {
             return Err(format!("the column {column} has no typed filter in the Rust cases"));
         }
@@ -284,13 +291,20 @@ impl SendStep {
                 }
             }
         };
-        Ok(Self { begin: None, column: column.to_owned(), value })
+        Ok(Self { begin: None, column: column.to_owned(), value, contains })
     }
 
     /// Runs the call on the connection `db`.
     async fn call(&self, db: &polyspec_orm::Db) -> polyspec_orm::Result<()> {
         if let Some(read_only) = self.begin {
             return if read_only { db.transaction(async || Ok(())).read_only().await } else { db.transaction(async || Ok(())).await };
+        }
+        if self.contains {
+            return match &self.value {
+                Filter::Text(v) => bind_model::Slots::new().connect(db).lk_text_value(v.as_str()).gets().await.map(drop),
+                Filter::Nil => unreachable!("the typed contains method takes no null, so the Rust cases exclude a nil wrapper"),
+                _ => unreachable!("the Rust cases exclude a contains wrapper of another kind"),
+            };
         }
         match (self.column.as_str(), &self.value) {
             ("slots.time0_value", Filter::Text(v)) => bind_model::Slots::new().connect(db).time0_value(v.as_str()).gets().await.map(drop),
