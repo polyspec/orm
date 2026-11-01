@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { caseTest, COMPUTE } from '../../testcase.mts';
+import { jobTargets } from '../../../scripts/repo/ci.mts';
 
 const root = resolve(import.meta.dirname, '../../..');
 
@@ -35,12 +36,15 @@ function validateGeneratedCI(workflow: string, makefile: string, features: strin
   for (const target of ['go-model-check', 'ts-model-check']) {
     if (!targets.has(target)) throw new Error(`CHECK_TARGETS must include ${target}`);
   }
-  // Every CHECK_TARGETS target but a gate of kit (CI_KIT_GATES, which the gates workflow runs) is a target of some CI group: that
-  // group's job runs it with make check-run GROUP=<group>.
+  // Every CHECK_TARGETS target runs in one CI place: a CI group (its job runs it with make check-run GROUP=<group>), a gate of
+  // kit (CI_KIT_GATES, which the gates workflow runs), the docs job's make docs-ci, or the editor job's make ci-vscode-integration. The targets of docs-ci are read from the
+  // Makefile by jobTargets, the parser of the CI coverage check, so this test and that check agree on the docs job.
   const grouped = new Set(makeVariable(makefile, 'CI_GROUPS').flatMap(group => makeVariable(makefile, `CI_TARGETS_${group}`)));
   const gates = new Set(makeVariable(makefile, 'CI_KIT_GATES'));
+  const own = jobTargets(makefile);
+  const docs = new Set(own.docs), editor = new Set(own.editor);
   for (const target of targets) {
-    if (!grouped.has(target) && !gates.has(target)) throw new Error(`no CI group of CI_GROUPS runs ${target} of CHECK_TARGETS`);
+    if (!grouped.has(target) && !gates.has(target) && !docs.has(target) && !editor.has(target)) throw new Error(`no CI place runs ${target} of CHECK_TARGETS: no CI group of CI_GROUPS, gate, the docs job or the editor job runs it`);
   }
   if (!features.includes(INTERFACE_COMMAND)) throw new Error(`contracts/features.json must verify ${INTERFACE_COMMAND}`);
 }
@@ -57,6 +61,7 @@ caseTest('CI requires the generated checks', COMPUTE, () => {
     ['go-model-check in a CI group', workflow, withoutTarget(makefile, 'CI_TARGETS_', 'go-model-check'), features],
     ['ts-model-check in a CI group', workflow, withoutTarget(makefile, 'CI_TARGETS_', 'ts-model-check'), features],
     ['interface-check', workflow, makefile, features.replace(INTERFACE_COMMAND, 'true')],
+    ['docs-site-check in neither a CI group nor the docs job', workflow, makefile.replace('--job-summary - docs-verify-idempotent docs-site-check', '--job-summary - docs-verify-idempotent'), features],
   ] as const) {
     assert.ok(w !== workflow || mk !== makefile || f !== features, `missing mutation target ${name}`);
     assert.throws(() => validateGeneratedCI(w, mk, f), `CI without ${name} passed`);

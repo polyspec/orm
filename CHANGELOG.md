@@ -25,6 +25,7 @@
 - orm takes kit 0.0.88 (T346-1): the pin names the release asset of kit 0.0.88 with its integrity, and the kit-sync copies are that release's, with the link, pipeline and manifest-path rules S11, S12 and P30 (K997, K998).
 - orm takes ordered-json 0.0.17 (T346) in every ecosystem: the npm, Composer, Go, Python and Rust pins name its release assets and tag, and packaging.md names its assets `polyspec-ordered-json-0.0.17.tgz` and the Composer zip and wheel of that release.
 - orm takes kit 0.0.87 (T346). Every CI job of .github/workflows bootstraps kit through the shared local action `.github/actions/kit-bootstrap` that kit-sync provides (K992), in place of the inline copy of the bootstrap that each job carried: ci.yml had four and docs-pages.yml one. The action sets up the Node.js of mise.toml, installs the locked kit package, then the npm of var/tools and the packages of package-lock.json. ci-pipeline.yml and release.yml take the same action from kit-sync.
+- The interfaces CI test refused docs-site-check and docs-verify-idempotent, which CR9 moved to the docs job, because it counted only the CI groups and the kit-run targets. It now also counts the targets of make docs-ci and make ci-vscode-integration, read from the Makefile, and refuses a target that runs in neither (CR9-1).
 - The interfaces spec states the public statement runner in every runtime (INT-150): `utils().run(fn)` and the frame call `run(kind, tables, sql, params)` in TypeScript order, with a parity unit that binds it on every database (T345).
 - The TypeScript runtime makes `utils().run(fn)` public in its declarations, and `TxFrame.run` returns the rows of its statement (T345-1).
 - The Go runtime exports `Utils.Run` and the transaction frame whose `Run(kind, tables, sql, params)` returns the rows (T345-2).
@@ -42,7 +43,6 @@
 - The feature `statement_runner` has its coverage block of kind database, as the other database features have: one owner per runtime with a command for SQLite, MySQL and PostgreSQL, bound in the parity unit `coverage-statement-runner-statement-runner`, so the feature coverage run checks the statement runner in every runtime and database, and the feature is `implemented`, which the divergence check accepts (T345-9).
 - The coverage owners of `statement_runner` share their helpers instead of copying them: the Go owner reads the selected database through `featureDatabase`, and the PHP and PHP-extension owners call `coverStatementRunner` of `StatementRunnerCases`, so the duplication check of the shared gates passes (T345-10).
 - The statement runner passes the runtime gates and the parity checks: its Python test is formatted, the PHP trait `StatementRunnerCases` has its own file loaded by the test bootstrap, the TypeScript bindings name each database case, the Go coverage binding runs through `feature-go-unit` and the Rust one binds the trial that runs, and the frame of INT-150 is public in every runtime with only its `run` and its result type, its state and constructor internal (T345-11).
-
 
 ## 0.0.20
 

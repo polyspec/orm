@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 21fdef77703f0832f55be1a3738373bc1d82cd8a5803712a9aabb15d0bbbb750 -->
+<!-- source-sha256: d3dbdb35d535f4a39daff4a4d3f6a9fd38c78443c135709972f859cdd178a130 -->
 # 변경 이력
 
 ## Unreleased
 
+- interfaces CI 시험은 CR9가 docs job으로 옮긴 docs-site-check와 docs-verify-idempotent를 거부했다. 그 시험은 CI group과 kit 실행 target만 셌기 때문이다. 이제 Makefile에서 읽은 make docs-ci와 make ci-vscode-integration의 target도 세며, 어느 쪽에도 없는 target은 거부한다 (CR9-1).
 - 인터페이스 명세는 모든 runtime의 public statement runner를 정한다(INT-150): `utils().run(fn)`과 frame 호출 `run(kind, tables, sql, params)`이며, frame 호출의 판정은 CR21이다. runtime들은 뒤따르는 CR21 행에서 구현한다 (CR21).
 - statement event 벡터의 server-transaction 검사는 MySQL과 PostgreSQL만 이름을 적었고 SQLite에는 항목도 사유도 없었다. 이제 SQLite를 사유와 함께 제외로 명시하며, 모든 runtime의 시험이 각 database가 한 번씩만 이름 붙었는지 확인한다 (CR16-2).
 - owner 검사는 변경된 Python test마다 python-check를 골랐고, 그 recipe는 kit이 CI 밖에서 거부하는 선택 없는 discovery를 실행했다. php-extension coverage는 make 밖에서 실행되어 POLYSPEC_ORM_EXTENSION이 설정되지 않았다. 이제 변경된 test는 자신의 명령을 고른다: python-check는 test가 아닌 Python 원본을 맡고, interface test는 모듈을 이름으로 지정하며, php-extension coverage는 먼저 make로 extension을 빌드한다 (CR24).
