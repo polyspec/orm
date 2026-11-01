@@ -25,6 +25,7 @@
   - `catalog.update_row {snapshot, set}`은 묶인 snapshot의 행을 `set`의 값으로 바꾼다(`update_row`). expect는 `{"rows": [[<value>, ...], ...]}` 또는 `{"error": ...}`이다.
   - `catalog.delete_row {snapshot}`은 묶인 snapshot의 행을 지운다(`delete_row`). expect는 지운 행 수인 `{"value": {"int": ...}}` 또는 `{"error": ...}`이다.
   - `sql.exec {sql, reason}`은 `.dbs`가 선언할 수 없는 DDL, 예를 들어 generated column(DBS-42)이나 dbspec 밖의 native type을 runtime의 native driver로 실행한다. `reason`은 fixture가 그것을 선언할 수 없는 이유를 적고, 그 step은 `expect`가 없다.
+  - `model.assign {model, column, value}`은 생성된 model `model`(bind fixture `slots`)의 새 row에 `column`의 public setter(Go `Set<Column>`, TypeScript와 PHP `set<Column>`, Python `set_<column>`, Rust `set_<column>`)로 값을 넣고, database 없이 그 row의 insert 문장, 즉 encode 단계를 만든다. database는 돌지 않으며, `markdown.send`의 markdown listener가 받는 첫 message가 그 문장이다. `value`는 recipe wrapper이고, expect는 `{"message": <json>}`(문장의 parameter 하나의 JSON)이며, setter나 encode가 message를 보내기 전에 돌려주는 error는 `{"error": <code>}`다(public API: `client-model-terminal-write`, INT-34부터 INT-39까지, 그리고 여섯 runtime이 모두 가진 `generated-model-field-access`). null을 받지 않는 typed setter는 nil wrapper를 호출 전에 거부하므로, 그런 runtime은 그 case를 exclude한다(T334-3-15-4a).
 
   Rust의 mutation은 cancellation flag, phase publisher, commit permit도 받는다. Rust helper는 설정되지 않은 flag, 아무것도 남기지 않는 publisher, 허용하는 permit을 넘긴다. 각 runtime의 helper는 호출이 돌려준 값을 비교하기 전에 recipe wrapper로 바꾼다.
 

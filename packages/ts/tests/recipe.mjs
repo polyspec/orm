@@ -52,6 +52,7 @@ export function runRecipe(path, database) {
           if (step.op === 'ir.validate') checkValidate(step, requestText(literal, caseIndex, index), schema, database);
           else if (step.op === 'ir.answer') await checkAnswer(step, database);
           else if (step.op === 'markdown.send') await withProcessZone(step.process_zone, () => checkSend(step, member(member(member(wrapped, 'cases').array[caseIndex], 'steps').array[index], 'expect')));
+          else if (step.op === 'model.assign') await checkAssign(step, member(member(member(wrapped, 'cases').array[caseIndex], 'steps').array[index], 'expect'));
           else run(step, bound, database);
         } catch (error) {
           throw new Error(`recipe ${path} case ${recipeCase.id} step ${index} (${step.op}) on ${database}: ${error.message}`, { cause: error });
@@ -575,14 +576,22 @@ async function withProcessZone(zone, work) {
 // listener that records the first message it receives. The expect is not per database: {message: json} is compared with the message
 // (messageValue) and {error: code} with the OrmError code of a call that sent no message (FCV-4).
 async function checkSend(step, wrappedExpect) {
+  await checkFirst(async db => {
+    if (step.begin !== undefined) await db.transaction(() => {}, { readOnly: step.begin.read_only === true });
+    else await queryColumn(step, db);
+  }, step, wrappedExpect);
+}
+
+// checkFirst runs call on a connection to the markdown.send listener and compares the first message it records, or the OrmError code of a
+// call that sent none, with the expect of step.
+async function checkFirst(call, step, wrappedExpect) {
   const received = [];
   const server = await startMarkdownSendListener(received);
   let db;
   let callError;
   try {
     db = await connectSlots(server.dsn);
-    if (step.begin !== undefined) await db.transaction(() => {}, { readOnly: step.begin.read_only === true });
-    else await queryColumn(step, db);
+    await call(db);
   } catch (error) {
     callError = error;
   } finally {
@@ -602,6 +611,14 @@ async function checkSend(step, wrappedExpect) {
   if (got.code !== undefined) throw new Error(`the call returned error ${got.code} before a message`);
   const want = member(wrappedExpect, 'message');
   if (!equal(got.message, want, false)) throw new Error(`message ${JSON.stringify(got.message)}, want ${JSON.stringify(want)}`);
+}
+
+// checkAssign runs a model.assign step: the public setter of the column of a new row of the generated model, then its insert, which the
+// listener of checkFirst records (FCV-4). The setter takes the host value of the wrapper, so a null wrapper reaches the setter's
+// typed check only if the setter accepts null; the nil case is excluded for TypeScript (DSL-29).
+async function checkAssign(step, wrappedExpect) {
+  if (step.model !== 'slots' || step.column !== 'varchar_value') throw new Error(`model.assign of ${step.model}.${step.column} has no typed setter in the TypeScript cases`);
+  await checkFirst(db => new Slots().connect(db).setVarcharValue(hostValue(step.value)).create(), step, wrappedExpect);
 }
 
 // member is the value of the member name of an object wrapper (fromJson), or undefined when there is none.

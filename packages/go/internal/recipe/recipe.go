@@ -51,6 +51,7 @@ type step struct {
 	Chain       string                     `json:"chain"`
 	Answer      json.RawMessage            `json:"answer"`
 	Answers     map[string]json.RawMessage `json:"answers"`
+	Model       string                     `json:"model"`
 	Column      string                     `json:"column"`
 	Operator    string                     `json:"operator"`
 	Params      []json.RawMessage          `json:"params"`
@@ -74,9 +75,20 @@ type IRAnswer func(t *testing.T, chain string, answer json.RawMessage, answers m
 // Option configures Run.
 type Option func(*options)
 
+// ModelAssign runs one model.assign step: it sets column of a new row of the generated model model through its public setter
+// with value, builds the insert statement without a database, and returns the JSON of its one parameter or the code of the
+// error that the setter or the encode returns before it sends a message. It is supplied by the test package that owns the models.
+type ModelAssign func(t *testing.T, model, column string, value json.RawMessage) (json.RawMessage, string)
+
 type options struct {
 	irAnswer     IRAnswer
 	markdownSend MarkdownSend
+	modelAssign  ModelAssign
+}
+
+// WithModelAssign supplies the function that runs each model.assign step of a recipe without a database.
+func WithModelAssign(fn ModelAssign) Option {
+	return func(o *options) { o.modelAssign = fn }
 }
 
 // WithMarkdownSend supplies the function that runs each markdown.send step of a recipe without a database.
@@ -155,6 +167,9 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	}
 	if s.Op == "markdown.send" {
 		return checkSend(t, s, o.markdownSend)
+	}
+	if s.Op == "model.assign" {
+		return checkAssign(t, s, o.modelAssign)
 	}
 	var r result
 	switch s.Op {
@@ -855,7 +870,22 @@ func checkSend(t *testing.T, s step, fn MarkdownSend) error {
 		begin = &b.ReadOnly
 	}
 	message, code := fn(t, s.Column, s.Operator, s.Params, begin, s.ProcessZone)
-	if raw, ok := s.Expect["error"]; ok {
+	return checkMessage(s.Expect, message, code)
+}
+
+// checkAssign runs one model.assign step and checks its expect against the message or the error it returns.
+func checkAssign(t *testing.T, s step, fn ModelAssign) error {
+	if fn == nil {
+		return fmt.Errorf("model.assign needs WithModelAssign")
+	}
+	message, code := fn(t, s.Model, s.Column, s.Value)
+	return checkMessage(s.Expect, message, code)
+}
+
+// checkMessage checks the message or the code of an error of a markdown listener step against its expect, {"message": JSON}
+// or {"error": CODE}.
+func checkMessage(expect map[string]json.RawMessage, message json.RawMessage, code string) error {
+	if raw, ok := expect["error"]; ok {
 		var want string
 		if err := json.Unmarshal(raw, &want); err != nil {
 			return err
@@ -865,9 +895,9 @@ func checkSend(t *testing.T, s step, fn MarkdownSend) error {
 		}
 		return nil
 	}
-	raw, ok := s.Expect["message"]
+	raw, ok := expect["message"]
 	if !ok {
-		return fmt.Errorf("markdown.send expects a message or an error")
+		return fmt.Errorf("the step expects a message or an error")
 	}
 	if code != "" {
 		return fmt.Errorf("the call returned error %s before a message", code)

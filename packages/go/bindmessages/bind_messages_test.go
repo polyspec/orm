@@ -27,7 +27,7 @@ import (
 // Requirements: PRT-67.
 func TestRecipeBindMessagesNone(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	recipe.Run(t, "../../../tests/bind/messages.json", recipe.None, recipe.WithMarkdownSend(markdownSend))
+	recipe.Run(t, "../../../tests/bind/messages.json", recipe.None, recipe.WithMarkdownSend(markdownSend), recipe.WithModelAssign(modelAssign))
 }
 
 // markdownSend runs one markdown.send step. It returns the first message that the listener receives, the message of a begin or
@@ -45,6 +45,45 @@ func markdownSend(t *testing.T, column, operator string, params []json.RawMessag
 		time.Local = loc
 		defer func() { time.Local = prev }()
 	}
+	return sendFirst(t, func(db *orm.DB) error {
+		if begin != nil {
+			var opts []orm.TransactionOption
+			if *begin {
+				opts = append(opts, orm.ReadOnly())
+			}
+			return db.Transaction(func() error { return nil }, opts...)
+		}
+		switch operator {
+		case "eq":
+			return queryColumn(t, db, column, params[0])
+		case "like_contains":
+			return likeColumn(t, db, column, params[0])
+		default:
+			t.Fatalf("operator %s has no typed filter in the Go cases", operator)
+		}
+		return nil
+	})
+}
+
+// modelAssign runs one model.assign step: the public setter of the column of a new row of the model, then its insert, which
+// the listener of sendFirst records. The setter takes the host value of the wrapper, so a nil wrapper is not reached here: the
+// typed setter takes no null, and the case excludes go.
+func modelAssign(t *testing.T, model, column string, value json.RawMessage) (json.RawMessage, string) {
+	t.Helper()
+	testcase.Start(t, testcase.Compute)
+	if model != "slots" || column != "varchar_value" {
+		t.Fatalf("model.assign of %s.%s has no typed setter in the Go cases", model, column)
+	}
+	return sendFirst(t, func(db *orm.DB) error {
+		_, err := bindmodel.Slots().Connect(db).SetVarcharValue(text(t, value)).Create()
+		return err
+	})
+}
+
+// sendFirst runs call on a connection to a listener that answers connect and records the first message after it, and returns
+// that message's value, or the code of the orm error that call returns before it sends a message.
+func sendFirst(t *testing.T, call func(db *orm.DB) error) (json.RawMessage, string) {
+	t.Helper()
 	first := make(chan json.RawMessage, 1)
 	dsn := startMarkdownSendListener(t, first)
 	db, err := bindmodel.Connect(dsn, orm.Config{})
@@ -56,23 +95,7 @@ func markdownSend(t *testing.T, column, operator string, params []json.RawMessag
 			t.Errorf("close: %v", err)
 		}
 	})
-	var callErr error
-	if begin != nil {
-		var opts []orm.TransactionOption
-		if *begin {
-			opts = append(opts, orm.ReadOnly())
-		}
-		callErr = db.Transaction(func() error { return nil }, opts...)
-	} else {
-		switch operator {
-		case "eq":
-			callErr = queryColumn(t, db, column, params[0])
-		case "like_contains":
-			callErr = likeColumn(t, db, column, params[0])
-		default:
-			t.Fatalf("operator %s has no typed filter in the Go cases", operator)
-		}
-	}
+	callErr := call(db)
 	select {
 	case msg := <-first:
 		return messageValue(t, msg), ""

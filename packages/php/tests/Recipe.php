@@ -110,6 +110,10 @@ final class Recipe
                     }
                     continue;
                 }
+                if ($step['op'] === 'model.assign') {
+                    self::assignStep($step);
+                    continue;
+                }
                 self::step($step, $bound, $database);
             } catch (\PHPUnit\Framework\AssertionFailedError $failure) {
                 Assert::fail(
@@ -234,16 +238,53 @@ final class Recipe
     private static function sendStep(array $step): void
     {
         self::loadBindModels();
-        $server = start_markdown_test_server(['{"ok":true}', self::SEND_ERROR]);
-        $code = '';
-        $db = null;
-        try {
-            $db = \Polyspec\Orm\Tests\BindModel\connect($server[2], new Config());
+        [$message, $code] = self::sendFirst(static function (mixed $db) use ($step): void {
             if (array_key_exists('begin', $step)) {
                 $db->transaction(static fn(): null => null, '', $step['begin']['read_only'] === true);
             } else {
                 self::sendQuery($step, $db);
             }
+        });
+        self::checkMessage($step['expect'], $message, $code);
+    }
+
+    /**
+     * Runs one model.assign step (FCV-4): sets the column of a new row of the generated model through its public
+     * setter and builds the insert of that row on the markdown listener of sendFirst, with no database. The value is
+     * a text wrapper, the only one the typed setter of the case takes; the nil case is excluded in PHP
+     * (SetVarcharValue takes a string, not null).
+     */
+    private static function assignStep(array $step): void
+    {
+        self::loadBindModels();
+        [$message, $code] = self::sendFirst(static function (mixed $db) use ($step): void {
+            $model = $step['model'];
+            $column = $step['column'];
+            if ($model !== 'slots' || $column !== 'varchar_value') {
+                Assert::fail("model.assign of $model.$column has no typed setter in the PHP cases");
+            }
+            $text = $step['value']['text'] ?? Assert::fail('model.assign takes a text wrapper in the PHP cases');
+            (new \Polyspec\Orm\Tests\BindModel\Slots())->connect($db)->setVarcharValue($text)->create();
+        });
+        self::checkMessage($step['expect'], $message, $code);
+    }
+
+    /**
+     * Runs call with a connection to a markdown listener that answers connect with {"ok":true}, records the first
+     * message after it and answers that message with SEND_ERROR so the call ends. Returns the first message, or null,
+     * and the code of the orm error that call raises before it sends a message.
+     *
+     * @param callable(mixed): void $call
+     * @return array{0: ?string, 1: string}
+     */
+    private static function sendFirst(callable $call): array
+    {
+        $server = start_markdown_test_server(['{"ok":true}', self::SEND_ERROR]);
+        $code = '';
+        $db = null;
+        try {
+            $db = \Polyspec\Orm\Tests\BindModel\connect($server[2], new Config());
+            $call($db);
         } catch (OrmException $error) {
             $code = $error->code_;
         } finally {
@@ -251,8 +292,14 @@ final class Recipe
             $received = markdown_test_server_received_messages($server);
         }
         // The first line is connect; the second is the first message after it.
-        $message = $received[1] ?? null;
-        $expect = $step['expect'];
+        return [$received[1] ?? null, $code];
+    }
+
+    /**
+     * Checks the message or the error code of a listener step against its expect, {"message": JSON} or {"error": CODE}.
+     */
+    private static function checkMessage(array $expect, ?string $message, string $code): void
+    {
         if (isset($expect['error'])) {
             Assert::assertSame($expect['error'], $message === null ? $code : '', 'the error code of the call');
             return;

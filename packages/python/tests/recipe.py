@@ -250,10 +250,11 @@ def _send_in_process_zone(step: dict) -> None:
         time.tzset()
 
 
-def _send(step: dict) -> None:
+def _send(step: dict, call=None) -> None:
     """Runs one markdown.send step and checks its expect, which is not per database: {"message": JSON} against the first
     message the listener received (the whole message of a begin, the one parameter of a statement), or {"error": CODE} against
-    the code of the orm error that the call raises before it sends a message."""
+    the code of the orm error that the call raises before it sends a message. A call, when given, runs the public call of the
+    step in place of its filter or transaction."""
     received: list = []
     listener, thread = _start_send_listener(received)
     code = ""
@@ -264,7 +265,9 @@ def _send(step: dict) -> None:
             f"markdown://127.0.0.1:{listener.getsockname()[1]}/conformance?token={SEND_TOKEN}"
         )
         try:
-            if "begin" in step:
+            if call is not None:
+                call(models, db)
+            elif "begin" in step:
                 db.transaction(
                     lambda: None, {"readOnly": step["begin"].get("read_only") is True}
                 )
@@ -431,9 +434,41 @@ def _validate(step: dict, model: Any, database: str) -> None:
         raise AssertionError(f"got {got}, want valid")
 
 
+def _assign(step: dict) -> None:
+    """Runs one model.assign step (docs/spec/feature-coverage.md FCV-4): the public setter of the column of a new row of the
+    generated model, then its insert, on the listener of _send. The setter takes the host value of the wrapper: a text wrapper
+    its text, a nil wrapper None, which the untyped setter stores as SQL NULL."""
+    if step["model"] != "slots":
+        raise AssertionError(
+            f"model.assign of {step['model']} has no model in the Python cases"
+        )
+    if step["column"] not in SEND_FILTERS:
+        raise AssertionError(
+            f"model.assign of {step['column']} has no setter in the Python cases"
+        )
+    wrapper = step["value"]
+    if list(wrapper) == ["nil"]:
+        value = None
+    elif list(wrapper) == ["text"]:
+        value = wrapper["text"]
+    else:
+        raise AssertionError(
+            f"the value {json.dumps(wrapper)} has no host value of the Python setters"
+        )
+    setter = f"set_{step['column']}"
+
+    def call(models, db) -> None:
+        getattr(models.Slots().connect(db), setter)(value).create()
+
+    _send(step, call)
+
+
 def _run(step: dict, bound: dict, database: str) -> None:
     """Maps the op of step to its call and checks the result against the expect of database."""
     op = step["op"]
+    if op == "model.assign":
+        _assign(step)
+        return
     decoded = False
     try:
         if op == "codec.decode":

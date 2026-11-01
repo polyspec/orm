@@ -86,6 +86,9 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str) -> Re
     if step["op"] == "markdown.send" {
         return markdown_send(step);
     }
+    if step["op"] == "model.assign" {
+        return model_assign(step);
+    }
     let styles: Vec<String> = step["styles"].as_array().map(|s| s.iter().filter_map(|x| x.as_str().map(str::to_owned)).collect()).unwrap_or_default();
     let key = step["key"].as_str().unwrap_or_default();
     let op = step["op"].as_str().unwrap_or_default();
@@ -167,8 +170,30 @@ fn markdown_send(step: &Value) -> Result<(), String> {
     // Rust connection zone is fixed at UTC, so the bound value does not depend on it.
     let _zone = step["process_zone"].as_str().map(ProcessZone::set);
     let send = SendStep::parse(step)?;
+    send_and_check(step, Call::Send(send), "markdown.send")
+}
+
+/// One model.assign step (FCV-4): the public setter of a column of a new row of the slots model, then the insert that the
+/// listener records. The setter takes text, so the Rust cases exclude a nil value (DSL-29).
+fn model_assign(step: &Value) -> Result<(), String> {
+    let model = step["model"].as_str().unwrap_or_default();
+    let column = step["column"].as_str().unwrap_or_default();
+    if model != "slots" || column != "varchar_value" {
+        return Err(format!("model.assign of {model}.{column} has no typed setter in the Rust cases"));
+    }
+    let (wrapper, body) = kind(&step["value"])?;
+    if wrapper == "nil" {
+        return Err("the typed setter takes no null, so the Rust cases exclude a nil value".to_owned());
+    }
+    let text = body.as_str().ok_or_else(|| format!("the value {} holds no text", step["value"]))?;
+    send_and_check(step, Call::Assign(text.to_owned()), "model.assign")
+}
+
+/// Runs one call on a connection to a listener of its own, and checks the first message that the listener records, or the
+/// code of the error that the call returned before it sent one, against the expect of `step`.
+fn send_and_check(step: &Value, call: Call, op: &str) -> Result<(), String> {
     let listener = markdown::send_listener();
-    let result = call_on_connection(listener.dsn.clone(), send);
+    let result = call_on_connection(listener.dsn.clone(), call);
     let sent = match (listener.finish(), result) {
         (Some(message), _) => Sent::Message(message_value(&message)?),
         (None, Err(error)) => Sent::Error(error.code().to_owned()),
@@ -183,7 +208,7 @@ fn markdown_send(step: &Value) -> Result<(), String> {
             Sent::Message(message) => Err(format!("the call sent {message} and returned no error, want {want}")),
         };
     }
-    let Some(want) = expect.get("message") else { return Err("markdown.send expects a message or an error".to_owned()) };
+    let Some(want) = expect.get("message") else { return Err(format!("{op} expects a message or an error")) };
     match sent {
         Sent::Message(got) if same_message(&got, want) => Ok(()),
         Sent::Message(got) => Err(format!("message {got}, want {want}")),
@@ -232,6 +257,12 @@ impl Drop for ProcessZone {
 enum Sent {
     Message(Value),
     Error(String),
+}
+
+/// What one listener step runs on its connection: a markdown.send call, or the text of a model.assign setter.
+enum Call {
+    Send(SendStep),
+    Assign(String),
 }
 
 /// The call of one markdown.send step: a transaction begin with its read_only option, or a statement with its column and the
@@ -371,14 +402,17 @@ fn boolean(column: &str, wrapper: &str, body: &Value) -> Result<bool, String> {
 
 /// Runs one call on a connection to `dsn` with a current-thread runtime, on a thread with a stack of its own (the futures of
 /// the calls are large in a debug build), and closes the connection after the call.
-fn call_on_connection(dsn: String, send: SendStep) -> polyspec_orm::Result<()> {
+fn call_on_connection(dsn: String, call: Call) -> polyspec_orm::Result<()> {
     std::thread::Builder::new()
         .stack_size(64 << 20)
         .spawn(move || {
             let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().expect("a current-thread runtime");
             runtime.block_on(async {
                 let db = bind_model::connect(&dsn, 1, polyspec_orm::Config::default()).await.expect("connect");
-                let result = send.call(&db).await;
+                let result = match &call {
+                    Call::Send(send) => send.call(&db).await,
+                    Call::Assign(text) => bind_model::Slots::new().connect(&db).set_varchar_value(text.as_str()).create().await.map(drop),
+                };
                 db.close().await;
                 result
             })
