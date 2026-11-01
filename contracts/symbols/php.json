@@ -6003,6 +6003,10 @@
     "exported": true,
     "signature": "public static function blindIndex(mixed $v, string $key): ?string"
   },
+  "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::checkStyles": {
+    "exported": false,
+    "signature": "private static function checkStyles(array $styles): void"
+  },
   "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::decode": {
     "exported": true,
     "signature": "public static function decode(array $styles, mixed $raw): Polyspec\\Orm\\StyledValue"
@@ -6043,21 +6047,29 @@
     "exported": false,
     "signature": "private static function packIp(string $s): string"
   },
+  "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::plainBytes": {
+    "exported": false,
+    "signature": "private static function plainBytes(mixed $v, string $what): string"
+  },
   "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::rowVersion": {
     "exported": false,
     "signature": "private static function rowVersion(array $vals, int $index): int"
   },
-  "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::serializedObjectOrReference": {
+  "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::serializedI64": {
     "exported": false,
-    "signature": "private static function serializedObjectOrReference(string $text): bool"
+    "signature": "private static function serializedI64(string $digits): bool"
+  },
+  "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::serializedRefusal": {
+    "exported": false,
+    "signature": "private static function serializedRefusal(string $text): ?Polyspec\\Orm\\OrmException"
   },
   "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::unpackIp": {
     "exported": false,
     "signature": "private static function unpackIp(string $b): string"
   },
-  "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::validateYamlValue": {
+  "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::validateCommonValue": {
     "exported": false,
-    "signature": "private static function validateYamlValue(mixed $value): void"
+    "signature": "private static function validateCommonValue(mixed $value): void"
   },
   "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::yamlDecode": {
     "exported": false,
@@ -6070,6 +6082,10 @@
   "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::yamlNode": {
     "exported": false,
     "signature": "private static function yamlNode(Purr\\Yaml\\Node\\AbstractNode $node, Purr\\Yaml\\Schema\\CoreSchema $schema): mixed"
+  },
+  "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::yamlNodeOf": {
+    "exported": false,
+    "signature": "private static function yamlNodeOf(mixed $value): Purr\\Yaml\\Node\\AbstractNode"
   },
   "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::yamlStream": {
     "exported": false,
@@ -13730,6 +13746,10 @@
   "packages/php/src/TxFrame.php::Polyspec\\Orm\\TxFrame::recordInserted": {
     "exported": true,
     "signature": "public static function recordInserted(?Polyspec\\Orm\\TxFrame $frame, Polyspec\\Orm\\Request $r, mixed $id): void"
+  },
+  "packages/php/src/TxFrame.php::Polyspec\\Orm\\TxFrame::run": {
+    "exported": true,
+    "signature": "public function run(string $kind, array $tables, mixed $sql, array $params=[]): array"
   },
   "packages/php/src/UsageError.php::Polyspec\\Orm\\UsageError": {
     "exported": true,

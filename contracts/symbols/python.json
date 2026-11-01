@@ -4039,6 +4039,10 @@
     "exported": true,
     "signature": "def privileges(self) -\u003e PrivilegeUtils"
   },
+  "packages/python/src/polyspec/orm/utils.py::Utils.run": {
+    "exported": true,
+    "signature": "def run(self, fn)"
+  },
   "packages/python/src/polyspec/orm/utils.py::Utils.schema": {
     "exported": true,
     "signature": "def schema(self) -\u003e SchemaUtils"

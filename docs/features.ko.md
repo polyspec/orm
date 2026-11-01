@@ -1,5 +1,5 @@
 <!-- doc-id: features -->
-<!-- source-sha256: 2ce4f3bbb37828517cf01a6d76a90f3ccc987ff10c2b58cefbd44ab0680ea1d5 -->
+<!-- source-sha256: 8c7c7354764bb200588d89de449d1d6e99dcb708ff33fea3b021d087eda61018 -->
 # 기능 정의
 
 실행 기준은 저장소의 기능 manifest이다. 먼저 manifest의 `source.read_order` 경로를 읽고 선택한 기능의 모든 참조 경로를 읽는다. 각 항목은 input, output, 상태 전이, 오류, parity unit, fixture, test, paired document, 실제 검증 명령을 정의한다.
@@ -27,6 +27,7 @@
 | request_hook | Request hook | implemented | go, php, php-extension, typescript, python, rust |
 | complex_query | 복합 상품 검색 | implemented | go, php, php-extension, typescript, python, rust |
 | model_query_duplicate_relation | 중복된 relation 결과 이름 | implemented | go, php, php-extension, typescript, python, rust |
+| statement_runner | 문 실행기 | partial | go, php, php-extension, typescript, python, rust |
 
 ## 현재 동작
 
@@ -51,5 +52,6 @@
 - `request_hook`: 연결 handle은 hook 하나를 가지며, 그 hook은 handle의 각 request를 plan 직전에 받는다: 읽기, count, page, 행 하나나 여러 행의 insert, update, delete, restore, getQuery다. hook은 client의 매개변수 추가 호출로 predicate, assignment, 매개변수를 더할 수 있다. client는 n_params를 쓰고 request를 다른 request처럼 plan하므로 planner가 검증하고 plan cache는 그 request로 key를 정한다. handle의 행과 transaction은 hook을 지키며, client는 hook에 자기 의미를 붙이지 않는다.
 - `complex_query`: CPX-2는 생성된 공개 product 검색을 컴파일하고 실행한다. 지역화 full-text OR 필터는 IN semijoin으로 표현하고 category membership 필터 하나, 안정적인 like-count 정렬, 관계 6개, 정확한 page/count, 순서가 지정된 데이터베이스 문장 8개를 유지한다. 각 runtime은 MySQL, PostgreSQL, SQLite에서 별도로 seed된 fixture 데이터베이스를 사용하며 SQLite는 문장을 실행하기 전에 full-text operator를 거부한다.
 - `model_query_duplicate_relation`: alias하지 않은 두 relation이 같은 결과 이름을 만들면 model query를 거부하고 한 relation에 alias를 지정하라고 알린다.
+- `statement_runner`: 문 실행기는 모든 runtime에서 public API다(INT-150). utils().run(fn)은 연결의 transaction frame으로 fn을 호출하며, 활성 transaction이 없으면 열고 있으면 참여한다. frame의 run(kind, tables, sql, params)는 tables를 건드리는 kind의 statement 하나를 실행해 statement event 하나를 기록하고, 행을 포함한 statement 결과를 돌려준다. 텍스트가 아닌 statement는 CONFIG로 실패한다.
 
 make feature-check는 경로를 검사하고 planned가 아닌 기능의 검증 명령을 실제 실행한다. implemented 항목은 test와 paired document가 필요하다. partial과 planned는 미완료 상태다.

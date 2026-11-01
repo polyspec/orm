@@ -18103,6 +18103,10 @@
     "exported": false,
     "signature": "func(code, format string, a ...any) error"
   },
+  "packages/go/orm/codec.go::commonValue": {
+    "exported": false,
+    "signature": "func(v any) error"
+  },
   "packages/go/orm/codec.go::firstStageText": {
     "exported": false,
     "signature": "func(stage string, value any) ([]byte, error)"
@@ -18182,6 +18186,10 @@
   "packages/go/orm/codec.go::yamlNode": {
     "exported": false,
     "signature": "func(node ast.Node) (any, error)"
+  },
+  "packages/go/orm/codec.go::yamlPrintable": {
+    "exported": false,
+    "signature": "func(r rune) bool"
   },
   "packages/go/orm/codec.go::yamlQuoteBreaks": {
     "exported": false,
@@ -21767,6 +21775,14 @@
     "exported": false,
     "signature": "receiver=*SchemaUtils func(query string, args ...any) (bool, error)"
   },
+  "packages/go/orm/utils.go::StatementResult": {
+    "exported": true,
+    "signature": "type StatementResult struct { Rows [][]any }"
+  },
+  "packages/go/orm/utils.go::StatementResult#field.Rows": {
+    "exported": true,
+    "signature": "[][]any"
+  },
   "packages/go/orm/utils.go::TablePrivileges": {
     "exported": true,
     "signature": "type TablePrivileges struct { Insert bool Select bool Update bool Delete bool Truncate bool }"
@@ -21790,6 +21806,18 @@
   "packages/go/orm/utils.go::TablePrivileges#field.Update": {
     "exported": true,
     "signature": "bool"
+  },
+  "packages/go/orm/utils.go::TxFrame": {
+    "exported": true,
+    "signature": "type TxFrame struct{ t *txConn }"
+  },
+  "packages/go/orm/utils.go::TxFrame#field.t": {
+    "exported": false,
+    "signature": "*txConn"
+  },
+  "packages/go/orm/utils.go::TxFrame.Run": {
+    "exported": true,
+    "signature": "receiver=*TxFrame func(kind string, tables []string, sqlText string, params ...any) (StatementResult, error)"
   },
   "packages/go/orm/utils.go::Utils": {
     "exported": true,
@@ -21818,6 +21846,10 @@
   "packages/go/orm/utils.go::Utils.Privileges": {
     "exported": true,
     "signature": "receiver=*Utils func() *PrivilegeUtils"
+  },
+  "packages/go/orm/utils.go::Utils.Run": {
+    "exported": true,
+    "signature": "receiver=*Utils func(fn func(f *TxFrame) error) error"
   },
   "packages/go/orm/utils.go::Utils.Schema": {
     "exported": true,

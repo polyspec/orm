@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Extension\Tests;
 
-require_once __DIR__ . '/../../php/tests/StatementRunnerCases.php';
+require_once __DIR__ . '/../../php/tests/StatementRunnerTest.php';
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Medium;

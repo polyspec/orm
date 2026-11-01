@@ -2335,6 +2335,10 @@
     "exported": true,
     "signature": "pub fn blind_index (v : \u0026 Param , key : \u0026 str) -\u003e Result \u003c String \u003e"
   },
+  "packages/rust/orm/src/codec.rs::check_styles": {
+    "exported": false,
+    "signature": " fn check_styles \u003c 'a \u003e (styles : impl IntoIterator \u003c Item = \u0026 'a str \u003e) -\u003e Result \u003c () \u003e"
+  },
   "packages/rust/orm/src/codec.rs::decode": {
     "exported": true,
     "signature": "pub fn decode (styles : \u0026 [String] , raw : \u0026 Val) -\u003e Result \u003c Val \u003e"
@@ -2387,6 +2391,10 @@
     "exported": false,
     "signature": " fn is_host (style : \u0026 str) -\u003e bool"
   },
+  "packages/rust/orm/src/codec.rs::number_check": {
+    "exported": false,
+    "signature": " fn number_check (value : \u0026 Value , style : \u0026 str) -\u003e Result \u003c () \u003e"
+  },
   "packages/rust/orm/src/codec.rs::pack_ip": {
     "exported": false,
     "signature": " fn pack_ip (s : \u0026 str) -\u003e Result \u003c Vec \u003c u8 \u003e \u003e"
@@ -2434,10 +2442,6 @@
   "packages/rust/orm/src/codec.rs::yaml_encode": {
     "exported": false,
     "signature": " fn yaml_encode (value : \u0026 Value) -\u003e Result \u003c Vec \u003c u8 \u003e \u003e"
-  },
-  "packages/rust/orm/src/codec.rs::yaml_number_check": {
-    "exported": false,
-    "signature": " fn yaml_number_check (value : \u0026 Value) -\u003e Result \u003c () \u003e"
   },
   "packages/rust/orm/src/codec.rs::yaml_printable": {
     "exported": false,
@@ -8463,6 +8467,26 @@
     "exported": true,
     "signature": "{\"state\":\"OnceState\"}"
   },
+  "packages/rust/orm/src/tx.rs::TxFrame": {
+    "exported": true,
+    "signature": "pub struct TxFrame  { tx : Arc \u003c TxShared \u003e , }"
+  },
+  "packages/rust/orm/src/tx.rs::TxFrame#field.tx": {
+    "exported": false,
+    "signature": "Arc \u003c TxShared \u003e"
+  },
+  "packages/rust/orm/src/tx.rs::TxFrame#wire": {
+    "exported": true,
+    "signature": "{\"tx\":\"TxShared\"}"
+  },
+  "packages/rust/orm/src/tx.rs::TxFrame::new": {
+    "exported": false,
+    "signature": "pub (crate) fn new (tx : Arc \u003c TxShared \u003e) -\u003e Self"
+  },
+  "packages/rust/orm/src/tx.rs::TxFrame::run": {
+    "exported": true,
+    "signature": "pub async fn run (\u0026 self , kind : \u0026 str , tables : \u0026 [\u0026 str] , sql : \u0026 str , params : \u0026 [Param]) -\u003e Result \u003c Vec \u003c Vec \u003c Val \u003e \u003e \u003e"
+  },
   "packages/rust/orm/src/tx.rs::TxShared": {
     "exported": false,
     "signature": "pub (crate) struct TxShared  { pub (crate) db : Db , # [doc = \" The number of this transaction on the connection. Statement events carry it.\"] pub (crate) number : u64 , pub (crate) inner : tokio :: sync :: Mutex \u003c Option \u003c TxInner \u003e \u003e , pub (crate) finished : AtomicBool , savepoints : AtomicU32 , pub (crate) locals : Mutex \u003c HashMap \u003c String , String \u003e \u003e , pub (crate) locks : Mutex \u003c Vec \u003c String \u003e \u003e , # [doc = \" The audit record the transaction inserted right before its first write of an audited table. Inserts and updates of\"] # [doc = \" audit-target tables write its key to the audit column. None until that write and for a transaction with no audit values.\"] pub (crate) audit : Mutex \u003c Option \u003c AuditKey \u003e \u003e , # [doc = \" The audit record the transaction inserts before its first write of an audited table; None without audit values.\"] pub (crate) pending_audit : Mutex \u003c Option \u003c Arc \u003c AuditInsert \u003e \u003e \u003e , # [doc = \" The identity keys of the generated single inserts that the transaction succeeded in, by entity (INT-52). A savepoint that does not\"] # [doc = \" release restores it.\"] pub (crate) inserted : Mutex \u003c HashMap \u003c String , HashSet \u003c i64 \u003e \u003e \u003e , sqlite_mode : Mutex \u003c Option \u003c (bool , bool) \u003e \u003e , }"
@@ -8570,6 +8594,10 @@
   "packages/rust/orm/src/tx.rs::begin_markdown": {
     "exported": false,
     "signature": " async fn begin_markdown (db : \u0026 Db , pool : \u0026 Arc \u003c MdPool \u003e , isolation : Option \u003c Isolation \u003e , read_only : bool) -\u003e Result \u003c TxShared \u003e"
+  },
+  "packages/rust/orm/src/tx.rs::bind_type": {
+    "exported": false,
+    "signature": " fn bind_type (p : \u0026 Param) -\u003e \u0026 'static str"
   },
   "packages/rust/orm/src/tx.rs::commit": {
     "exported": false,
@@ -8936,8 +8964,12 @@
     "signature": " fn read (\u0026 self) -\u003e Executor"
   },
   "packages/rust/orm/src/utils.rs::Utils \u003c 'a \u003e::run": {
+    "exported": true,
+    "signature": "pub async fn run \u003c T \u003e (\u0026 self , f : impl AsyncFn (\u0026 TxFrame) -\u003e Result \u003c T \u003e) -\u003e Result \u003c T \u003e"
+  },
+  "packages/rust/orm/src/utils.rs::Utils \u003c 'a \u003e::run_executor": {
     "exported": false,
-    "signature": " async fn run \u003c T \u003e (\u0026 self , f : impl AsyncFn (\u0026 Executor) -\u003e Result \u003c T \u003e) -\u003e Result \u003c T \u003e"
+    "signature": " async fn run_executor \u003c T \u003e (\u0026 self , f : impl AsyncFn (\u0026 Executor) -\u003e Result \u003c T \u003e) -\u003e Result \u003c T \u003e"
   },
   "packages/rust/orm/src/utils.rs::Utils \u003c 'a \u003e::schema": {
     "exported": true,

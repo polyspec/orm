@@ -26,6 +26,7 @@ The executable source is the repository feature manifest. Read the manifest, the
 | request_hook | Request hook | implemented | go, php, php-extension, typescript, python, rust |
 | complex_query | Complex product search | implemented | go, php, php-extension, typescript, python, rust |
 | model_query_duplicate_relation | Duplicate relation result names | implemented | go, php, php-extension, typescript, python, rust |
+| statement_runner | Statement runner | partial | go, php, php-extension, typescript, python, rust |
 
 ## Current behavior
 
@@ -50,5 +51,6 @@ The executable source is the repository feature manifest. Read the manifest, the
 - `request_hook`: A connection handle carries one hook that receives each request of the handle right before planning: reads, counts, pages, inserts with one row or rows, updates, deletes, restores and getQuery. The hook may add predicates, assignments and parameters through the client's add-parameter call; the client sets n_params and plans the request as any other, so the planner validates it and the plan cache keys on it. Rows and transactions of the handle keep the hook, and the client gives the hook no meaning of its own.
 - `complex_query`: CPX-2 compiles and executes a generated public product search with localized full-text OR filters expressed as IN semijoins, one category membership filter, stable like-count ordering, six relations, an exact page and count, and eight ordered database statements. Each runtime uses its own seeded fixture database on MySQL, PostgreSQL, and SQLite; SQLite rejects full-text operators before issuing a statement.
 - `model_query_duplicate_relation`: Reject a model query when two unaliased relations produce the same result name, and tell the caller to alias one relation.
+- `statement_runner`: The statement runner is public API in every runtime (INT-150): utils().run(fn) calls fn with a transaction frame of the connection, which opens a transaction when none is active and joins the active one otherwise, and the frame's run(kind, tables, sql, params) runs one statement of kind kind that touches tables, records one statement event, and returns the statement result with its rows. A statement that is not text fails with CONFIG.
 
 Run make feature-check to validate paths and execute every verification command declared for non-planned features. An implemented feature requires tests and paired documentation; partial and planned are incomplete.

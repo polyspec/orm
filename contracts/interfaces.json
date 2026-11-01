@@ -39,11 +39,11 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:142109e7c94ea8ecddf5c7fcb6072f9ba60cc606aa21bec35ee5c0932774cfc8",
-    "php": "sha256:f5558e6ae3098399cc92cbe4afddf1488d86573f56df694ad4ed6d76029a520a",
-    "rust": "sha256:07ba112ef423ea19b4521d9ffd1b3eb4a217d9acf233821e37900a6cabc8a1f6",
-    "typescript": "sha256:463c66d56a9e96c719fad6199400a03f2d8f08ee025433e57b2ea2798f0c69a2",
-    "python": "sha256:000338dbe028b49e9ec3ce7ac42f957d3209b2a030d6f7c277f0750dfd555888"
+    "go": "sha256:19081715b70c98d8cb33d0f3b1dd9fa66ca8a65f6932e660a2d7f15b055ce74a",
+    "php": "sha256:66772658f29a2def7bebe8c951de722ac0048885079b9d214f6cddd5bc4ff8e5",
+    "rust": "sha256:ae2e88dd8fdb642a5bf634d5ca32b1c5257541b1c968727830a9f243f9a5fc03",
+    "typescript": "sha256:93be08edb8da05dd1678a9493c947efda5f2956e128ddb1afaa2845317487c73",
+    "python": "sha256:e31ce1ecafefafb2a7605b32c3c5e5843f30ee0647694975aab091156abd6766"
   },
   "native_surfaces": [
     {
@@ -152,7 +152,7 @@
         "packages/php-ext/src"
       ],
       "symbols": "contracts/symbols/php-extension.json",
-      "symbol_hash": "sha256:a4d9aa64c38f6138d5d88e3f1b72b59c1d13ebd03f6dc846bfe9a910eba8a7a2",
+      "symbol_hash": "sha256:34e6bcf9e8c7d80cd9189f030f6e9489e17f97971d6a65e29649c2d0612a383f",
       "rules": [
         "Model.connect",
         "Model.and",

@@ -154,3 +154,18 @@ func TestStatementRunnerPostgres(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	statementRunnerCase(t, "postgres")
 }
+
+// subscribeStatementEvents subscribes to the statement events of db and returns the events recorded so far and the
+// unsubscribe function. The events are read through the pointer after the statements run; statement_fault_test.go uses it too.
+func subscribeStatementEvents(t *testing.T, db *orm.DB) (*[]orm.StatementEvent, func()) {
+	t.Helper()
+	var events []orm.StatementEvent
+	unsubscribe, err := db.Subscribe(func(e orm.StatementEvent) error {
+		events = append(events, e)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &events, unsubscribe
+}

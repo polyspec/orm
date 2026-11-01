@@ -4679,6 +4679,10 @@
     "exported": true,
     "signature": "public static function recordInserted(?Polyspec\\Orm\\TxFrame $frame, Polyspec\\Orm\\Request $r, mixed $id): void"
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\TxFrame::run": {
+    "exported": true,
+    "signature": "public function run(string $kind, array $tables, mixed $sql, array $params=[]): array"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Utils": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Utils extends  implements  uses "

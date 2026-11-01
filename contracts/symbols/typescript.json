@@ -761,7 +761,7 @@
   },
   "packages/ts/src/codec.ts::CodecValue": {
     "exported": true,
-    "signature": "type CodecValue = null | boolean | number | string | CodecValue[] | {\n    [key: string]: CodecValue;\n}"
+    "signature": "type CodecValue = null | boolean | bigint | number | string | CodecValue[] | {\n    [key: string]: CodecValue;\n}"
   },
   "packages/ts/src/codec.ts::EncodedValue": {
     "exported": true,
@@ -819,6 +819,10 @@
     "exported": false,
     "signature": "function bytes(value: string | Uint8Array): Uint8Array"
   },
+  "packages/ts/src/codec.ts::checkStyles": {
+    "exported": false,
+    "signature": "function checkStyles(styles: readonly string[]): void"
+  },
   "packages/ts/src/codec.ts::commonValue": {
     "exported": false,
     "signature": "function commonValue(value: unknown, style: string): CodecValue"
@@ -851,9 +855,17 @@
     "exported": true,
     "signature": "export function hostEncode(value: unknown, styles: readonly string[], aesKey: string): string | Uint8Array | null"
   },
+  "packages/ts/src/codec.ts::i64": {
+    "exported": false,
+    "signature": "function i64(value: bigint): boolean"
+  },
   "packages/ts/src/codec.ts::isCodecValue": {
     "exported": false,
     "signature": "function isCodecValue(value: unknown): value is CodecValue"
+  },
+  "packages/ts/src/codec.ts::jsonString": {
+    "exported": false,
+    "signature": "function jsonString(text: string): string"
   },
   "packages/ts/src/codec.ts::jsonText": {
     "exported": false,
@@ -894,6 +906,10 @@
   "packages/ts/src/codec.ts::validateCodecValue": {
     "exported": false,
     "signature": "function validateCodecValue(value: unknown, operation: string): CodecValue"
+  },
+  "packages/ts/src/codec.ts::yamlText": {
+    "exported": false,
+    "signature": "function yamlText(value: CodecValue): string"
   },
   "packages/ts/src/core.ts::BuiltRequest": {
     "exported": true,
