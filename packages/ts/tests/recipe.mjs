@@ -43,6 +43,7 @@ export function runRecipe(path, database) {
           else if (step.op === 'planner.compile') checkPlanner(step, dirname(path), database);
           else if (dbspecOps.includes(step.op)) checkDbspec(step, bound, database);
           else if (step.op === 'ir.answer') await checkAnswer(step, database);
+          else if (step.op === 'dsn.connect') await checkDsnConnect(step, database);
           else run(step, bound, database);
         } catch (error) {
           throw new Error(`recipe ${path} case ${recipeCase.id} step ${index} (${step.op}) on ${database}: ${error.message}`, { cause: error });
@@ -50,6 +51,38 @@ export function runRecipe(path, database) {
       }
     });
   }
+}
+
+// connectDriver opens a DSN with Db.connect, closes it and returns its driver: the one implementation of dsn.connect (FCV-4).
+async function connectDriver(dsn) {
+  const db = await Db.connect(dsn);
+  try {
+    return db.driver;
+  } finally {
+    await db.close();
+  }
+}
+
+// checkDsnConnect runs the dsn.connect op (FCV-4) on the DSN text of the step, and checks the refusal code or the driver of its expect.
+async function checkDsnConnect(step, database) {
+  const expect = step.expect?.[database];
+  let driver;
+  let code = '';
+  try {
+    driver = await connectDriver(step.dsn);
+  } catch (error) {
+    code = error?.code ?? '';
+  }
+  if (expect === undefined) {
+    if (code !== '') throw new Error(`unexpected error ${code}`);
+    return;
+  }
+  if (expect.error !== undefined) {
+    if (code !== expect.error) throw new Error(`error ${code || 'none'}, want ${expect.error}`);
+    return;
+  }
+  if (code !== '') throw new Error(`unexpected error ${code}`);
+  if (!isDeepStrictEqual(expect.value, { text: driver })) throw new Error(`driver ${driver}, want ${JSON.stringify(expect.value)}`);
 }
 
 // run maps the op of step to its call and checks the result against the expect of database.
@@ -388,12 +421,7 @@ const routeOf = (s, context) => {
 const OPS = {
   // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
   async 'dsn.connect'(s, context) {
-    const db = await Db.connect(s.dsn === 'case' ? context.dsn : s.dsn);
-    try {
-      return { value: { text: db.driver } };
-    } finally {
-      await db.close();
-    }
+    return { value: { text: await connectDriver(s.dsn === 'case' ? context.dsn : s.dsn) } };
   },
   async 'catalog.current_namespace'(_, { catalog }) {
     return { value: { text: await catalog.currentNamespace() } };

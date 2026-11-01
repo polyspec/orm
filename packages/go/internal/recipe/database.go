@@ -601,12 +601,10 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if dsn == "case" {
 			dsn = c.dsn
 		}
-		db, err := orm.Connect(dsn, orm.Config{})
+		driver, err := connectDriver(dsn)
 		if err != nil {
 			return outcome{}, err
 		}
-		driver := db.Driver()
-		testcase.Close(c.t, db)
 		return outcome{fields: map[string]any{"value": map[string]any{"text": driver}}}, nil
 	}
 	if strings.HasPrefix(s.Op, "model.") {

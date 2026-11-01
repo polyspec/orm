@@ -1,0 +1,387 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "CFG-1",
+    "CFG-2",
+    "CFG-11",
+    "CFG-17",
+    "CFG-19",
+    "CFG-26"
+  ],
+  "cases": [
+    {
+      "id": "timezone_mysql_offset",
+      "requirements": [
+        "CFG-2"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@localhost/orm_example?timezone=%2B09:00",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "timezone_postgres_zone",
+      "requirements": [
+        "CFG-2"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://root@localhost/orm_example?timezone=Asia/Seoul",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "timezone_sqlite_zone",
+      "requirements": [
+        "CFG-2"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "sqlite:///tmp/orm_example.sqlite?timezone=Asia%2FSeoul",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "timezone_unknown_zone",
+      "requirements": [
+        "CFG-2"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@localhost/orm_example?timezone=Nowhere/City",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "mysql_without_database",
+      "requirements": [
+        "CFG-19"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@localhost",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "postgres_without_database",
+      "requirements": [
+        "CFG-19"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://root@localhost",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "unknown_scheme",
+      "requirements": [
+        "CFG-19"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "oracle://root@localhost/orm_example",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "not_a_uri",
+      "requirements": [
+        "CFG-19"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "root@tcp(localhost)/orm_example",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_txlock_immediate",
+      "requirements": [
+        "CFG-19"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "sqlite:///tmp/orm_example.sqlite?_txlock=immediate",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_txlock_deferred",
+      "requirements": [
+        "CFG-19"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "sqlite:///tmp/orm_example.sqlite?_txlock=deferred",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_relative_path",
+      "requirements": [
+        "CFG-26"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "sqlite://relative.sqlite",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "mysql_tls_address_literal",
+      "requirements": [
+        "CFG-17"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@127.0.0.1/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "mysql_tls_ipv6_literal",
+      "requirements": [
+        "CFG-17"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@[::1]:3306/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "mysql_tls_socket",
+      "requirements": [
+        "CFG-17"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@localhost/orm_example?socket=/tmp/mysql.sock&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "scheme_mysqlx",
+      "requirements": [
+        "CFG-1"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysqlx://localhost/orm_example",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "scheme_postgresql",
+      "requirements": [
+        "CFG-1"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgresql://localhost/db",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "no_scheme_relative_path",
+      "requirements": [
+        "CFG-1"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "relative/path",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "no_scheme_host_path",
+      "requirements": [
+        "CFG-1"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "localhost/db",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "empty_dsn",
+      "requirements": [
+        "CFG-1"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "postgres_timezone_zone_name",
+      "requirements": [
+        "CFG-2"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://localhost/app?timezone=Nowhere",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_path_percent_without_hex",
+      "requirements": [
+        "CFG-11"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "sqlite:///tmp/app%2.sqlite",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_path_not_utf8",
+      "requirements": [
+        "CFG-11"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "sqlite:///tmp/app%FF.sqlite",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

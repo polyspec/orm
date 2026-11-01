@@ -82,6 +82,10 @@ final class Recipe
                     self::dbspecStep($step, $bound, $database);
                     continue;
                 }
+                if ($step['op'] === 'dsn.connect') {
+                    self::dsnConnectStep($step, $database);
+                    continue;
+                }
                 self::step($step, $bound, $database);
             } catch (\PHPUnit\Framework\AssertionFailedError $failure) {
                 Assert::fail(
@@ -377,6 +381,45 @@ final class Recipe
             $actual,
             'got ' . MarkdownConformanceTest::jsonText($actual) . ', want ' . MarkdownConformanceTest::jsonText($expect)
         );
+    }
+
+    /** Opens a DSN with Orm::connect, closes it and returns its driver: the one implementation of dsn.connect (FCV-4). */
+    private static function connectDriver(string $dsn): string
+    {
+        $db = Orm::connect($dsn, new Config());
+        try {
+            return $db->driver();
+        } finally {
+            $db->close();
+        }
+    }
+
+    /** The dsn.connect op (FCV-4): the DSN text of the step, checked against the outcome of the expect of database. */
+    private static function dsnConnectStep(array $step, string $database): void
+    {
+        $expect = $step['expect'][$database] ?? null;
+        if ($expect === null) {
+            Assert::fail("dsn.connect has no expect for $database");
+        }
+        $code = null;
+        $driver = null;
+        try {
+            $driver = self::connectDriver($step['dsn']);
+        } catch (OrmException $error) {
+            $code = $error->code_;
+        }
+        if (isset($expect['error'])) {
+            if ($code !== $expect['error']) {
+                Assert::fail('error ' . ($code ?? 'none') . ", want {$expect['error']}");
+            }
+            return;
+        }
+        if ($code !== null) {
+            Assert::fail("unexpected error $code");
+        }
+        if ($expect['value'] !== ['text' => $driver]) {
+            Assert::fail("driver $driver, want " . json_encode($expect['value']));
+        }
     }
 
     /** Maps the op of step to its call and checks the result against the expect of database. */
@@ -1059,12 +1102,7 @@ final class Recipe
             // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
             case 'dsn.connect':
                 $dsn = $s['dsn'] === 'case' ? $context['dsn'] : $s['dsn'];
-                $db = Orm::connect($dsn, new Config());
-                try {
-                    return ['value' => ['text' => $db->driver()]];
-                } finally {
-                    $db->close();
-                }
+                return ['value' => ['text' => self::connectDriver($dsn)]];
         }
         if (str_starts_with($s['op'], 'model.')) {
             return self::modelOp($s, $context);

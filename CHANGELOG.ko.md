@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- CFG-1, CFG-2, CFG-11, CFG-17, CFG-19, CFG-26의 거부되는 DSN case(UTC가 아닌 timezone, 알 수 없는 scheme, database 이름 없음, 상대 SQLite 경로, VERIFY_IDENTITY와 함께 쓰인 주소 host, 잘못된 SQLite 경로 percent 인코딩)는 하나의 recipe, contracts/fixtures/dsn_reject/dsn_reject.json이 되었고, 모든 runtime이 새 op dsn.connect(FCV-4)로 database 없이 실행한다 (T334-3-23).
 - recipe schema가 model_writes fixture의 model.get_by step을 거부했다. 두 형식 모두 FCV-4가 model.get_by에 주는 rows outcome 대신 일반 expect를 받았다. 이제 두 형식 모두 rows outcome을 받는다 (T334-3-4-9).
 - recipe schema가 schema_install fixture의 schema.install step을 거부했다. {schema} 형식에 expect가 없었는데 FCV-4는 이 형식에 expect를 준다. 이제 schema가 그 expect를 받는다 (T334-3-4-8).
 - tests/dbspec/plans.json의 case 13개는 여섯 runtime에서 recipe tests/dbspec/plan-cases.json으로 실행된다. op dbspec.parse, dbspec.parse_plan, dbspec.emit_plan, dbspec.diff, dbspec.plan_steps로 실행하며 native plan test를 대신한다. before와 after physical record는 tests/dbspec/plans-physical.json으로 옮겼고 case id로 찾는다 (T334-3-16-2-2).

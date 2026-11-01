@@ -198,3 +198,9 @@ harness = false
 name = "model_writes_sqlite"
 path = "tests/model_writes_sqlite.rs"
 harness = false
+
+# Each case of the refused DSN recipe, contracts/fixtures/dsn_reject/dsn_reject.json, is the trial dsn_reject_none::<case id> (FCV-3).
+[[test]]
+name = "dsn_reject_none"
+path = "tests/dsn_reject_none.rs"
+harness = false

@@ -52,6 +52,7 @@ type step struct {
 	Chain   string                     `json:"chain"`
 	Answer  json.RawMessage            `json:"answer"`
 	Answers map[string]json.RawMessage `json:"answers"`
+	DSN     string                     `json:"dsn"`
 	Expect  map[string]json.RawMessage `json:"expect"`
 	Schema  string                     `json:"schema"`
 	Input   json.RawMessage            `json:"input"`
@@ -182,6 +183,9 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 			return err
 		}
 		r.cell, r.err = orm.BlindIndex(value, key(s))
+	// dsn.connect (FCV-4): the DSN text of the step opened with Connect; a DSN that is refused never touches a database.
+	case "dsn.connect":
+		r.cell, r.err = connectDriver(s.DSN)
 	default:
 		return fmt.Errorf("OP_UNKNOWN %s", s.Op)
 	}
@@ -196,6 +200,17 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 		return nil
 	}
 	return check(expect, r, s.Styles)
+}
+
+// connectDriver opens the DSN with Connect, closes the connection and returns its driver: the one implementation of
+// dsn.connect (FCV-4).
+func connectDriver(dsn string) (string, error) {
+	db, err := orm.Connect(dsn, orm.Config{})
+	if err != nil {
+		return "", err
+	}
+	driver := db.Driver()
+	return driver, db.Close()
 }
 
 func key(s step) string {

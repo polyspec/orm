@@ -42,6 +42,7 @@ require_once dirname(__DIR__, 2) . '/php/tests/DbspecPlanInvalidTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DbspecPlanChainsTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DbspecPlanParseTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DbspecPlanComparisonsTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/DsnRejectRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CatalogConnectionRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/SchemaInstallRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DsnConnectionRecipeTest.php';

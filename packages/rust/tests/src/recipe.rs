@@ -58,8 +58,45 @@ pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testc
         .collect()
 }
 
+/// Opens a DSN with Db::connect, closes it and returns its driver: the one implementation of dsn.connect (FCV-4).
+/// A refused DSN returns its error code and message.
+async fn connect_driver(dsn: &str) -> Result<String, (String, String)> {
+    match polyspec_orm::Db::connect(dsn, 1, polyspec_orm::Config::default()).await {
+        Ok(db) => {
+            let driver = db.driver().to_owned();
+            db.close().await;
+            Ok(driver)
+        }
+        Err(error) => Err((error.code().to_owned(), error.to_string())),
+    }
+}
+
+/// The dsn.connect op (FCV-4) on the DSN text of the step, checked against the outcome of the expect of `database`.
+fn dsn_connect(step: &Value, database: &str) -> Result<(), String> {
+    let expect = &step["expect"][database];
+    let dsn = step["dsn"].as_str().unwrap_or_default();
+    let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
+    let outcome = runtime.block_on(connect_driver(dsn));
+    match (outcome, expect["error"].as_str()) {
+        (Err((got, _)), Some(code)) if got == code => Ok(()),
+        (Err((got, message)), Some(code)) => Err(format!("error {got} ({message}), want {code}")),
+        (Ok(_), Some(code)) => Err(format!("error none, want {code}")),
+        (Err((_, message)), None) => Err(format!("unexpected error {message}")),
+        (Ok(driver), None) => {
+            if expect["value"] == serde_json::json!({ "text": driver }) {
+                Ok(())
+            } else {
+                Err(format!("driver {driver}, want {}", expect["value"]))
+            }
+        }
+    }
+}
+
 /// Maps the op of `step` to its call and checks the result against the expect of `database`.
 fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str) -> Result<(), String> {
+    if step["op"] == "dsn.connect" {
+        return dsn_connect(step, database);
+    }
     if step["op"] == "ir.answer" {
         // The chain runs on a listener that answers with the step's answer (or answers), and its value is compared as JSON (FCV-3).
         let got = markdown::answer(step["chain"].as_str().unwrap_or_default(), &step["answer"], &step["answers"]);
@@ -1015,9 +1052,7 @@ mod database {
                     "case" => context.dsn.as_str(),
                     text => text,
                 };
-                let db = Db::connect(dsn, 1, Config::default()).await.map_err(|e| Failure::Call(e.to_string()))?;
-                let driver = db.driver();
-                db.close().await;
+                let driver = connect_driver(dsn).await.map_err(|(_, message)| Failure::Call(message))?;
                 Output::fields(json!({ "value": { "text": driver } }))
             }
             other => return Err(fault(format!("OP_UNKNOWN {other}"))),

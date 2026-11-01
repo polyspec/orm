@@ -270,7 +270,7 @@
         "additionalProperties": false,
         "properties": {
           "op": { "const": "dsn.connect" },
-          "dsn": { "type": "string", "minLength": 1, "description": "The DSN of the case database for case, otherwise the DSN text of the step (FCV-4)." },
+          "dsn": { "type": "string", "description": "The DSN of the case database for case, otherwise the DSN text of the step (FCV-4)." },
           "expect": { "$ref": "#/$defs/expect" }
         }
       },

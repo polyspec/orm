@@ -33,31 +33,6 @@ func TestParseDSN(t *testing.T) {
 	}
 }
 
-// Requirements: CFG-19.
-func TestParseDSNRejectsInvalidInput(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	for _, input := range []string{
-		"mysql://root@localhost",
-		"postgres://root@localhost",
-		"sqlite://relative.sqlite",
-		"sqlite:///tmp/orm_example.sqlite?_txlock=immediate",
-		"sqlite:///tmp/orm_example.sqlite?_txlock=deferred",
-		"mysql://root@localhost/orm_example?timezone=Nowhere/City",
-		// Every connection reads and writes datetime as UTC (docs/spec/dialects.md "Date and time").
-		"mysql://root@localhost/orm_example?timezone=%2B09:00",
-		"postgres://root@localhost/orm_example?timezone=Asia/Seoul",
-		"sqlite:///tmp/orm_example.sqlite?timezone=Asia%2FSeoul",
-		"oracle://root@localhost/orm_example",
-		"root@tcp(localhost)/orm_example",
-	} {
-		t.Run(input, func(t *testing.T) {
-			if _, err := parseDSN(input, 0); err == nil {
-				t.Fatal("parseDSN accepted an invalid DSN")
-			}
-		})
-	}
-}
-
 // TestSQLiteDSNRequiresAbsolutePath checks the local-file boundary without opening a database.
 // Requirements: CFG-26.
 func TestSQLiteDSNRequiresAbsolutePath(t *testing.T) {

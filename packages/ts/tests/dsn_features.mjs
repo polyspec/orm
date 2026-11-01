@@ -19,10 +19,9 @@ await run.run('dsn/sqlite-requires-absolute-path', COMPUTE, async () => {
   if (parseDsn('sqlite:///tmp/orm-example.sqlite').driver !== 'sqlite') throw new Error('absolute SQLite path was rejected');
 });
 
-// Requirements: CFG-2, CFG-19. A DSN of an unknown scheme, a relative SQLite path, a non-UTC timezone or an unsupported
-// parameter value fails as CONFIG.
+// Requirements: CFG-19. A non-numeric busy_timeout value fails as CONFIG. The shared DSN reject recipe covers the other rejected DSNs.
 await run.run('dsn/invalid', COMPUTE, async () => {
-  for (const dsn of ['mysqlx://localhost/db', 'postgresql://localhost/db', 'sqlite://relative.db', 'localhost/db', 'mysql://root@localhost/orm_example?timezone=Nowhere/City', 'sqlite:///tmp/x.sqlite?_txlock=immediate', 'sqlite:///tmp/x.sqlite?_txlock=deferred', 'sqlite:///tmp/x.sqlite?_pragma=busy_timeout(soon)']) {
+  for (const dsn of ['sqlite:///tmp/x.sqlite?_pragma=busy_timeout(soon)']) {
     let failed = false;
     try { await Db.connect(dsn); } catch (error) { failed = error?.code === 'CONFIG'; }
     if (!failed) throw new Error(`invalid DSN was accepted: ${dsn}`);

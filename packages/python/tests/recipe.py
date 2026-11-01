@@ -110,6 +110,9 @@ def recipe_tests(path: str, database: str):
                 if step["op"] in _DBSPEC_OPS:
                     _dbspec(step, bound, database)
                     continue
+                if step["op"] == "dsn.connect":
+                    _dsn_connect(step, database)
+                    continue
                 _run(step, bound, database)
             except AssertionError as error:
                 raise AssertionError(
@@ -375,6 +378,37 @@ def _validate(step: dict, model: Any, database: str) -> None:
         )
     if got is not None:
         raise AssertionError(f"got {got}, want valid")
+
+
+def _connect_driver(dsn: str) -> str:
+    """Opens a DSN with Db.connect, closes it and returns its driver: the one implementation of dsn.connect (FCV-4)."""
+    db = Db.connect(dsn)
+    try:
+        return db.driver
+    finally:
+        db.close()
+
+
+def _dsn_connect(step: dict, database: str) -> None:
+    """Runs the dsn.connect op (FCV-4) on the DSN text of the step, and checks the outcome of the expect of database:
+    {error: CODE} for a refused DSN, {value: {text: DRIVER}} for an opened one."""
+    outcome = step["expect"].get(database)
+    if outcome is None:
+        raise AssertionError(f"dsn.connect has no expect for {database}")
+    got = None
+    driver = None
+    try:
+        driver = _connect_driver(step["dsn"])
+    except OrmError as error:
+        got = error.code
+    if "error" in outcome:
+        if got != outcome["error"]:
+            raise AssertionError(f"got {got}, want {outcome['error']}")
+        return
+    if got is not None:
+        raise AssertionError(f"unexpected error {got}")
+    if outcome.get("value") != {"text": driver}:
+        raise AssertionError(f"driver {driver}, want {outcome.get('value')}")
 
 
 def _run(step: dict, bound: dict, database: str) -> None:
@@ -845,11 +879,7 @@ def _op_sql_exec(step: dict, context: dict) -> dict:
 
 def _op_dsn_connect(step: dict, context: dict) -> dict:
     """dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step."""
-    db = Db.connect(context["dsn"] if step["dsn"] == "case" else step["dsn"])
-    try:
-        return {"value": {"text": db.driver}}
-    finally:
-        db.close()
+    return {"value": {"text": _connect_driver(context["dsn"] if step["dsn"] == "case" else step["dsn"])}}
 
 
 def _bound_value(field, context: dict) -> Any:

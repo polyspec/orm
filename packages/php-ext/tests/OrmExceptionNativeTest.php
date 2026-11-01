@@ -107,15 +107,8 @@ final class OrmExceptionNativeTest extends TestCase
     {
         foreach (
             [
-            'mysqlx://localhost/app',
-            'relative/path',
-            'sqlite://relative.sqlite',
             'mysql://localhost/',
-            'postgres://localhost/app?timezone=Nowhere',
-            'sqlite:///tmp/app.sqlite?_txlock=immediate',
             'sqlite:///tmp/app.sqlite?_pragma=busy_timeout',
-            'sqlite:///tmp/app%2.sqlite',
-            'sqlite:///tmp/app%FF.sqlite',
             'mysql://localhost/app?ssl-mode=VERIFY_IDENTITY&ssl-ca=ca.pem',
             'mysql://localhost/app?charset=utf8',
             'postgres://localhost/app?application_name=orm',
