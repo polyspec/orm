@@ -677,11 +677,13 @@ final class Parser
     /** Go's isWordRune: `_` or `.`, or a code point of the table of UnicodeWord (a letter or digit of Go's unicode). */
     private static function wordRune(string $c): bool
     {
-        // A single byte from 0x80 is an invalid byte: a valid code point of that range has two bytes or more.
-        if (strlen($c) === 1 && ord($c) >= 0x80) {
-            return false;
+        // A single byte is ASCII, read without the table as Go's isWordRune does; from 0x80 it is an invalid
+        // byte, since a valid code point of that range has two bytes or more.
+        if (strlen($c) === 1) {
+            return $c === '_' || $c === '.' || ($c >= 'a' && $c <= 'z') || ($c >= 'A' && $c <= 'Z')
+                || ($c >= '0' && $c <= '9');
         }
-        return $c === '_' || $c === '.' || UnicodeWord::contains(mb_ord($c, 'UTF-8'));
+        return UnicodeWord::contains(mb_ord($c, 'UTF-8'));
     }
 
     /** The character as Go's %q writes a rune. */

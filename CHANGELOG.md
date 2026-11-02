@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The PHP dbspec parser reads an ASCII character of a word without the Unicode table, as the Go reference does: one parse of the bench document takes 6.1 ms instead of 14.7 ms, which php-fpm pays on every request that builds its runtime model (T354).
 - orm pins kit 0.0.92, whose targets match the crate fetch of orm-install-rust-crates, and takes the principles it ships (T353).
 - contracts/check-inputs.json declared no dbspec-php-check/render, so make run-databases refused the target that runs the physical DDL cases and CI's database run did not cover them. The target is declared like its sibling dbspec-plan-php-check (CR55-1).
 - The check runner reads the process table with a 256 MiB buffer and names the error code of a failed listing, so a large table no longer fails a step with SIGTERM (T351).
