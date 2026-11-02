@@ -432,7 +432,7 @@ temp-sqlite-fixture-rust-helper-check/cpx5: lease-tool
 # extension, so it installs the PHP extension tools (T272).
 client-pooler-check: lease-tool python-venv-check orm-install-php-extension-tools orm-codes-typescript orm-codes
 	$(HOLD_TYPESCRIPT)
-	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_TEST_POSTGRES_DSN="$$ORM_TEST_PGBOUNCER_DSN" ORM_TEST_MYSQL_DSN="$$ORM_TEST_PROXYSQL_DSN" node scripts/client-db-test.mts
+	$(WITH_TEST_ENV) ORM_CLIENT_DB_POOLER=1 ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_TEST_POSTGRES_DSN="$$ORM_TEST_PGBOUNCER_DSN" ORM_TEST_MYSQL_DSN="$$ORM_TEST_PROXYSQL_DSN" node scripts/client-db-test.mts
 
 # runner-check checks the check runner (scripts/check/run.mts) and its run record (scripts/check/record.mts) with a temporary git checkout and stub steps.
 # It does not run the actual targets or databases.
@@ -2300,6 +2300,12 @@ interface-typescript-check:
 interface-check/self-test: php-vendor-check lease-tool typescript-build interface-typescript-check python-venv-check
 	$(READ_TYPESCRIPT)
 	ORM_PYTHON=$(PYTHON_VENV)/bin/python PATH="$(HOME)/.cargo/bin:$(PATH)" $(NODE) tests/interfaces/check/main.mts --self-test
+
+# interface-record writes the symbol snapshots and manifest hashes that interface-check compares, with the same checker and leases; LANGUAGE=<name> records one language.
+.PHONY: interface-record
+interface-record: php-vendor-check lease-tool typescript-build interface-typescript-check python-venv-check
+	$(READ_TYPESCRIPT)
+	ORM_PYTHON=$(PYTHON_VENV)/bin/python PATH="$(HOME)/.cargo/bin:$(PATH)" $(NODE) tests/interfaces/check/main.mts --record $(if $(LANGUAGE),-language $(LANGUAGE),)
 
 # go-model-check fails when the Go models that orm-install-go wrote differ from what the entries of GO_MODELS_FILE generate (orm-gen gen --check).
 go-model-check:

@@ -39,10 +39,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:7040c12fd206f45792a79ace8a5c9b8b2e005aaeb787aaa61a3d75ad068d9346",
-    "php": "sha256:4c8d6e978abdd2838ba159e0bb5822f5691b95aca69318dd33441b7a62ad6fd6",
-    "rust": "sha256:fb72e67946fa80dc46830eb1e76011d2a26195a098608b7394288d698eb4ac65",
-    "typescript": "sha256:8ae316dc78cff99bf0003bbac72a788db587c5d628ca006983f153e60261621a",
+    "go": "sha256:bb3742c75d1061152bda77436ac54f0d5722888c78f8157021a31805d3ac6eff",
+    "php": "sha256:71572aea4eec6640247fa52941d9f582a276801ce025ce7c64947794c2d5f76f",
+    "rust": "sha256:2e76b9b313aafe804496c7270731350eeedb4d8d4fc8c0e4ee8d6c36b57e0984",
+    "typescript": "sha256:62000d974e959c26c6760ede695e37e28bd9fbfa25c18b86e8a0fd16853563fb",
     "python": "sha256:cef18e2bc9519632a0a0d14aadc2314647796d3071be0bc8fea5bc9e2c9ded02"
   },
   "native_surfaces": [
@@ -93,8 +93,14 @@
           "primitive": "Db.WithContext",
           "surface": "Db.withContext",
           "cases": [
-            { "test": "packages/go/orm/cancel_test.go", "id": "TestWithContextCancels" },
-            { "test": "packages/go/orm/cancel_test.go", "id": "TestWithContextCancelsInsideTransaction" }
+            {
+              "test": "packages/go/orm/cancel_test.go",
+              "id": "TestWithContextCancels"
+            },
+            {
+              "test": "packages/go/orm/cancel_test.go",
+              "id": "TestWithContextCancelsInsideTransaction"
+            }
           ]
         },
         "typescript": {
@@ -102,10 +108,23 @@
           "primitive": "Db.withSignal",
           "surface": "Db.withSignal",
           "cases": [
-            { "test": "packages/ts/tests/coverage_transactions.mjs", "id": "handle_abandoned_query [sqlite]", "phase": "before-start" },
-            { "test": "packages/ts/tests/coverage_transactions.mjs", "id": "handle_abandoned_query [mysql]" },
-            { "test": "packages/ts/tests/coverage_transactions.mjs", "id": "handle_abandoned_query [postgres]" },
-            { "test": "packages/ts/tests/model.mjs", "id": "cancellation" }
+            {
+              "test": "packages/ts/tests/coverage_transactions.mjs",
+              "id": "handle_abandoned_query [sqlite]",
+              "phase": "before-start"
+            },
+            {
+              "test": "packages/ts/tests/coverage_transactions.mjs",
+              "id": "handle_abandoned_query [mysql]"
+            },
+            {
+              "test": "packages/ts/tests/coverage_transactions.mjs",
+              "id": "handle_abandoned_query [postgres]"
+            },
+            {
+              "test": "packages/ts/tests/model.mjs",
+              "id": "cancellation"
+            }
           ]
         },
         "python": {
@@ -113,32 +132,61 @@
           "primitive": "Db.with_future",
           "surface": "Db.withFuture",
           "cases": [
-            { "test": "packages/python/tests/coverage_transactions.py", "id": "test_handle_abandoned_query" },
-            { "test": "packages/python/tests/test_query_cancel.py", "id": "test_cancel_interrupts_active_statement_and_root_is_reusable" }
+            {
+              "test": "packages/python/tests/coverage_transactions.py",
+              "id": "test_handle_abandoned_query"
+            },
+            {
+              "test": "packages/python/tests/test_query_cancel.py",
+              "id": "test_cancel_interrupts_active_statement_and_root_is_reusable"
+            }
           ]
         },
         "rust": {
           "status": "implemented",
           "primitive": "dropping the statement future",
-          "cases": [{ "test": "packages/rust/orm/tests/zone.rs", "id": "dropping_a_query_cancels_it" }]
+          "cases": [
+            {
+              "test": "packages/rust/orm/tests/zone.rs",
+              "id": "dropping_a_query_cancels_it"
+            }
+          ]
         },
         "php": {
           "status": "implemented",
           "primitive": "Cancellation::cancel and Db::withCancellation",
           "surface": "Db.withCancellation",
           "cases": [
-            { "test": "packages/php/tests/QueryCancellationTest.php", "id": "testCancellationInterruptsSqliteVmRollsBackAndKeepsRootConnectionUsable" },
-            { "test": "packages/php/tests/QueryCancellationTest.php", "id": "testPostgresNoticeCancelsActiveStatementRollsBackAndReusesRoot" },
-            { "test": "packages/php/tests/QueryCancellationTest.php", "id": "testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot" }
+            {
+              "test": "packages/php/tests/QueryCancellationTest.php",
+              "id": "testCancellationInterruptsSqliteVmRollsBackAndKeepsRootConnectionUsable"
+            },
+            {
+              "test": "packages/php/tests/QueryCancellationTest.php",
+              "id": "testPostgresNoticeCancelsActiveStatementRollsBackAndReusesRoot"
+            },
+            {
+              "test": "packages/php/tests/QueryCancellationTest.php",
+              "id": "testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot"
+            }
           ]
         },
         "php-extension": {
           "status": "implemented",
           "primitive": "Cancellation::cancel and Db::withCancellation",
           "cases": [
-            { "test": "packages/php-ext/tests/QueryCancellationNativeTest.php", "id": "testNativeCancellationInterruptsSqliteRollsBackAndKeepsRootConnectionUsable" },
-            { "test": "packages/php-ext/tests/QueryCancellationNativeTest.php", "id": "testPostgresNoticeCancelsActiveStatementRollsBackAndReusesRoot" },
-            { "test": "packages/php-ext/tests/QueryCancellationNativeTest.php", "id": "testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot" }
+            {
+              "test": "packages/php-ext/tests/QueryCancellationNativeTest.php",
+              "id": "testNativeCancellationInterruptsSqliteRollsBackAndKeepsRootConnectionUsable"
+            },
+            {
+              "test": "packages/php-ext/tests/QueryCancellationNativeTest.php",
+              "id": "testPostgresNoticeCancelsActiveStatementRollsBackAndReusesRoot"
+            },
+            {
+              "test": "packages/php-ext/tests/QueryCancellationNativeTest.php",
+              "id": "testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot"
+            }
           ]
         }
       }

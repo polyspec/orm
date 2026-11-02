@@ -126,6 +126,51 @@ func TestCoverageModelWriteCycle(t *testing.T) {
 
 }
 
+// TestCoverageModelOrderedJsonRepeatedMemberName stores a jsontext value whose object repeats a member name,
+// and reads the stored text back, in a transaction that is rolled back. A repeated name keeps both values
+// in place (DIA-26), so the text is compared with value.Raw(); orderedjson.Stringify compacts the parsed
+// member map and would hide the repeated name.
+// Requirements: DIA-26, COD-15.
+func TestCoverageModelOrderedJsonRepeatedMemberName(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	db, _, _ := connectFeature(t)
+	const jsonText = `{"a":1,"b":2,"a":3}`
+	rollback := errors.New("rollback ordered JSON repeated member probe")
+	err := db.Transaction(func() error {
+		row, err := loadSeedAuthor(db, "seed author row 1 is missing")
+		if err != nil {
+			return err
+		}
+		row, err = row.SetJsonSetting(orm.Value(jsontext.Value(jsonText)))
+		if err != nil {
+			return err
+		}
+		stored, err := updateAndReloadAuthor(row, db, "seed author row 1 disappeared after ordered JSON update")
+		if err != nil {
+			return err
+		}
+		styled, err := stored.GetJsonSetting()
+		if err != nil {
+			return err
+		}
+		data, ok := styled.Data()
+		if !ok {
+			return errors.New("ordered JSON text read back as SQL NULL")
+		}
+		value, ok := data.(*orderedjson.Value)
+		if !ok {
+			return fmt.Errorf("ordered JSON value has type %T", data)
+		}
+		if actual := value.Raw(); actual != jsonText {
+			return fmt.Errorf("ordered JSON text = %s, want %s", actual, jsonText)
+		}
+		return rollback
+	}, orm.Retry(0))
+	if !errors.Is(err, rollback) {
+		t.Fatalf("ordered JSON repeated member transaction = %v, want rollback sentinel", err)
+	}
+}
+
 func loadSeedAuthor(db *orm.DB, missingMessage string) (*model.AuthorModel, error) {
 	row, err := model.Author().Connect(db).AddAllColumns().GetBySeq(1)
 	if err != nil {

@@ -2769,7 +2769,8 @@
         "kind": "database",
         "cases": [
           "model_write_cycle",
-          "create_parts"
+          "create_parts",
+          "ordered_json_repeated_member_name"
         ],
         "owners": {
           "go": {
@@ -2787,11 +2788,13 @@
                   "test": "packages/go/model/coverage_model_writes_test.go",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts"
+                    "create_parts",
+                    "ordered_json_repeated_member_name"
                   ],
                   "symbols": {
                     "model_write_cycle": "TestCoverageModelWriteCycle",
-                    "create_parts": "TestCoverageModelCreateParts"
+                    "create_parts": "TestCoverageModelCreateParts",
+                    "ordered_json_repeated_member_name": "TestCoverageModelOrderedJsonRepeatedMemberName"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2802,11 +2805,13 @@
                   "test": "packages/go/model/coverage_model_writes_test.go",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts"
+                    "create_parts",
+                    "ordered_json_repeated_member_name"
                   ],
                   "symbols": {
                     "model_write_cycle": "TestCoverageModelWriteCycle",
-                    "create_parts": "TestCoverageModelCreateParts"
+                    "create_parts": "TestCoverageModelCreateParts",
+                    "ordered_json_repeated_member_name": "TestCoverageModelOrderedJsonRepeatedMemberName"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2817,11 +2822,13 @@
                   "test": "packages/go/model/coverage_model_writes_test.go",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts"
+                    "create_parts",
+                    "ordered_json_repeated_member_name"
                   ],
                   "symbols": {
                     "model_write_cycle": "TestCoverageModelWriteCycle",
-                    "create_parts": "TestCoverageModelCreateParts"
+                    "create_parts": "TestCoverageModelCreateParts",
+                    "ordered_json_repeated_member_name": "TestCoverageModelOrderedJsonRepeatedMemberName"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -2843,11 +2850,13 @@
                   "test": "packages/php/tests/CoverageModelWritesTest.php",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts"
+                    "create_parts",
+                    "ordered_json_repeated_member_name"
                   ],
                   "symbols": {
                     "model_write_cycle": "testModelWriteCycle",
-                    "create_parts": "testCreateParts"
+                    "create_parts": "testCreateParts",
+                    "ordered_json_repeated_member_name": "testOrderedJsonRepeatedMemberName"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2858,11 +2867,13 @@
                   "test": "packages/php/tests/CoverageModelWritesTest.php",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts"
+                    "create_parts",
+                    "ordered_json_repeated_member_name"
                   ],
                   "symbols": {
                     "model_write_cycle": "testModelWriteCycle",
-                    "create_parts": "testCreateParts"
+                    "create_parts": "testCreateParts",
+                    "ordered_json_repeated_member_name": "testOrderedJsonRepeatedMemberName"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2873,11 +2884,13 @@
                   "test": "packages/php/tests/CoverageModelWritesTest.php",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts"
+                    "create_parts",
+                    "ordered_json_repeated_member_name"
                   ],
                   "symbols": {
                     "model_write_cycle": "testModelWriteCycle",
-                    "create_parts": "testCreateParts"
+                    "create_parts": "testCreateParts",
+                    "ordered_json_repeated_member_name": "testOrderedJsonRepeatedMemberName"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -2899,11 +2912,13 @@
                   "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts"
+                    "create_parts",
+                    "ordered_json_repeated_member_name"
                   ],
                   "symbols": {
                     "model_write_cycle": "coverage_model_writes::coverage_model_write_cycle",
-                    "create_parts": "coverage_model_writes::coverage_model_create_parts"
+                    "create_parts": "coverage_model_writes::coverage_model_create_parts",
+                    "ordered_json_repeated_member_name": "coverage_model_writes::coverage_ordered_json_repeated_member_name"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2914,11 +2929,13 @@
                   "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts"
+                    "create_parts",
+                    "ordered_json_repeated_member_name"
                   ],
                   "symbols": {
                     "model_write_cycle": "coverage_model_writes::coverage_model_write_cycle",
-                    "create_parts": "coverage_model_writes::coverage_model_create_parts"
+                    "create_parts": "coverage_model_writes::coverage_model_create_parts",
+                    "ordered_json_repeated_member_name": "coverage_model_writes::coverage_ordered_json_repeated_member_name"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2929,11 +2946,13 @@
                   "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts"
+                    "create_parts",
+                    "ordered_json_repeated_member_name"
                   ],
                   "symbols": {
                     "model_write_cycle": "coverage_model_writes::coverage_model_write_cycle",
-                    "create_parts": "coverage_model_writes::coverage_model_create_parts"
+                    "create_parts": "coverage_model_writes::coverage_model_create_parts",
+                    "ordered_json_repeated_member_name": "coverage_model_writes::coverage_ordered_json_repeated_member_name"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -2955,7 +2974,8 @@
                   "test": "packages/ts/tests/coverage_model_writes.mjs",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts"
+                    "create_parts",
+                    "ordered_json_repeated_member_name"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2966,7 +2986,8 @@
                   "test": "packages/ts/tests/coverage_model_writes.mjs",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts"
+                    "create_parts",
+                    "ordered_json_repeated_member_name"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2977,7 +2998,8 @@
                   "test": "packages/ts/tests/coverage_model_writes.mjs",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts"
+                    "create_parts",
+                    "ordered_json_repeated_member_name"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -2999,7 +3021,8 @@
                   "test": "packages/python/tests/coverage_model_writes.py",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts"
+                    "create_parts",
+                    "ordered_json_repeated_member_name"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -3010,7 +3033,8 @@
                   "test": "packages/python/tests/coverage_model_writes.py",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts"
+                    "create_parts",
+                    "ordered_json_repeated_member_name"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -3021,7 +3045,8 @@
                   "test": "packages/python/tests/coverage_model_writes.py",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts"
+                    "create_parts",
+                    "ordered_json_repeated_member_name"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -3043,11 +3068,13 @@
                   "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts"
+                    "create_parts",
+                    "ordered_json_repeated_member_name"
                   ],
                   "symbols": {
                     "model_write_cycle": "testModelWriteCycle",
-                    "create_parts": "testCreateParts"
+                    "create_parts": "testCreateParts",
+                    "ordered_json_repeated_member_name": "testOrderedJsonRepeatedMemberName"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -3058,11 +3085,13 @@
                   "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts"
+                    "create_parts",
+                    "ordered_json_repeated_member_name"
                   ],
                   "symbols": {
                     "model_write_cycle": "testModelWriteCycle",
-                    "create_parts": "testCreateParts"
+                    "create_parts": "testCreateParts",
+                    "ordered_json_repeated_member_name": "testOrderedJsonRepeatedMemberName"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -3073,11 +3102,13 @@
                   "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
                   "cases": [
                     "model_write_cycle",
-                    "create_parts"
+                    "create_parts",
+                    "ordered_json_repeated_member_name"
                   ],
                   "symbols": {
                     "model_write_cycle": "testModelWriteCycle",
-                    "create_parts": "testCreateParts"
+                    "create_parts": "testCreateParts",
+                    "ordered_json_repeated_member_name": "testOrderedJsonRepeatedMemberName"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }

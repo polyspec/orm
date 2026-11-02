@@ -129,6 +129,10 @@ export const MYSQLD_STORAGE = ['--innodb-redo-log-capacity=16777216', '--innodb-
 // The shared test databases deliberately use a non-UTC server zone so connection tests can prove that clients set UTC.
 export const SERVER_TIME_ZONE = 'Asia/Seoul';
 
+// The ProxySQL pooler of MySQL keeps this many server connections for its one backend. The pooler lane of client-db-test caps
+// the Rust test threads at this count per pool (T343-1), so the declared demand never exceeds it.
+export const PROXYSQL_BACKEND_CONNECTIONS = 4;
+
 /** mysqlEnvironment fixes the timezone inherited by mysqld, independent of the host running the checks. */
 export function mysqlEnvironment(base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
   return { ...base, TZ: SERVER_TIME_ZONE };
@@ -689,7 +693,7 @@ pgsql_variables=
 }
 mysql_servers=
 (
-  { address="127.0.0.1", port=${ports.mysql}, hostgroup=0, max_connections=4 }
+  { address="127.0.0.1", port=${ports.mysql}, hostgroup=0, max_connections=${PROXYSQL_BACKEND_CONNECTIONS} }
 )
 mysql_users=
 (

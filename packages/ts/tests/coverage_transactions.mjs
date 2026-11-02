@@ -19,6 +19,38 @@ async function withTenant({ driver, dsn }, body) {
   } finally { await db.close(); }
 }
 
+// SQLite has no row-lock deadlock. The holder keeps the write lock of a composite_account row while another connection
+// writes the same row: that write waits for busy_timeout and fails with CANCELED (SQLITE_BUSY). CANCELED is not retried,
+// so the callback runs once, and the holder's commit stands.
+async function sqliteLockedWriterFails(item) {
+  await withTenant(item, async db => {
+    const other = await connect(item.dsn);
+    try {
+      await new CompositeAccount().connect(db).setTenantId(tenant).setAccountId(7).setName('seed').create();
+      let attempts = 0;
+      let blocked = null;
+      await db.transaction(async () => {
+        const holder = await new CompositeAccount().connect(db).getByTenantIdAndAccountId(tenant, 7);
+        await holder.setName('holder').update();
+        try {
+          await other.transaction(async () => {
+            attempts++;
+            const row = await new CompositeAccount().connect(other).getByTenantIdAndAccountId(tenant, 7);
+            await row.setName('other').update();
+          }, { isolation: 'read_committed', retry: 3 });
+        } catch (error) {
+          blocked = error;
+        }
+      }, { isolation: 'read_committed' });
+      assert.ok(blocked instanceof OrmError && blocked.code === codes.CANCELED, `the second writer waits for busy_timeout: ${blocked}`);
+      assert.equal(attempts, 0, 'CANCELED is not retried: BEGIN waits for busy_timeout, the callback never starts, nothing is retried');
+      assert.equal((await new CompositeAccount().connect(db).getByTenantIdAndAccountId(tenant, 7)).getName(), 'holder', 'the holder commits its row');
+    } finally {
+      await other.close();
+    }
+  });
+}
+
 const exists = async (db, account) => await new CompositeAccount().connect(db).tenantId(tenant).andAccountId(account).getCount() === 1;
 
 await runCases('coverage_transactions.mjs', {
@@ -188,6 +220,65 @@ await runCases('coverage_transactions.mjs', {
       } catch (error) { retryError = error; }
       assert.ok(retryError instanceof OrmError && retryError.code === codes.DEADLOCK, `retry=0 error: ${retryError}`);
       assert.equal(attempts, 1, 'retry=0 invokes the callback once');
+    });
+  },
+  // Requirements: PLN-24.
+  async transaction_deadlock_retry(item) {
+    if (item.driver === 'sqlite') return sqliteLockedWriterFails(item);
+    await withTenant(item, async db => {
+      const other = await connect(item.dsn);
+      try {
+        for (const account of [7, 8]) {
+          await new CompositeAccount().connect(db).setTenantId(tenant).setAccountId(account).setName('seed').create();
+        }
+        // Each flow holds its first row before either takes its second, so the database aborts one flow with its
+        // deadlock error. The ORM retries that flow, and both transactions commit.
+        let held = 0;
+        let releaseBoth;
+        const bothHeld = new Promise(resolve => { releaseBoth = resolve; });
+        const setName = async (conn, account, name) => {
+          const row = await new CompositeAccount().connect(conn).getByTenantIdAndAccountId(tenant, account);
+          await row.setName(name).update();
+        };
+        const flow = async (conn, first, second) => {
+          const name = `flow-${first}`;
+          let attempts = 0;
+          let victim = null;
+          await conn.transaction(async () => {
+            attempts++;
+            const firstAttempt = attempts === 1;
+            try {
+              await setName(conn, first, name);
+            } finally {
+              if (firstAttempt && ++held === 2) releaseBoth();
+              if (firstAttempt) await bothHeld;
+            }
+            try {
+              await setName(conn, second, name);
+            } catch (error) {
+              if (firstAttempt) victim = error;
+              throw error;
+            }
+          }, { isolation: 'read_committed', retry: 3 });
+          return { attempts, victim };
+        };
+        const outcomes = await Promise.all([flow(db, 7, 8), flow(other, 8, 7)]);
+        let victims = 0;
+        let attempts = 0;
+        for (const outcome of outcomes) {
+          attempts += outcome.attempts;
+          if (outcome.victim !== null) {
+            victims++;
+            assert.ok(outcome.victim instanceof OrmError && outcome.victim.code === codes.DEADLOCK, `first attempt of the deadlocked flow: ${outcome.victim}`);
+          }
+        }
+        assert.deepEqual([victims, attempts], [1, 3], 'one deadlocked flow retried, 3 attempts in total');
+        const seven = (await new CompositeAccount().connect(db).getByTenantIdAndAccountId(tenant, 7)).getName();
+        const eight = (await new CompositeAccount().connect(db).getByTenantIdAndAccountId(tenant, 8)).getName();
+        assert.ok(seven === eight && (seven === 'flow-7' || seven === 'flow-8'), `committed rows are (${seven}, ${eight})`);
+      } finally {
+        await other.close();
+      }
     });
   },
   // Requirements: CFG-9.

@@ -336,7 +336,6 @@ ZEND_METHOD(Polyspec_Orm_OrmException, fromDriver)
         const char *mapped = "DRIVER";
         zend_long primary = has_number ? number & 0xff : -1;
         if (has_number && primary == 5) mapped = "CANCELED";
-        else if (has_number && (number == 6 || number == 262)) mapped = "DEADLOCK";
         else if (has_number && (number == 2067 || number == 1555
             || (number == 19 && zend_string_starts_with_literal(driver_message, "UNIQUE constraint failed")))) mapped = "DUPLICATE_KEY";
         else if (has_number && (number == 787 || ((number == 19 || number == 1811)

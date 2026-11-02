@@ -2,6 +2,9 @@
 //! is present, and no default feature enables it.
 
 use std::sync::atomic::Ordering;
+use std::sync::Arc;
+
+use tokio::sync::Notify;
 
 use crate::Db;
 use crate::Error;
@@ -51,6 +54,52 @@ pub fn fail_next_statement(db: &Db, code: &str, message: &str) {
 pub(crate) fn take_statement_fault(db: &Db) -> Option<Error> {
     let fault = db.inner.statement_fault.lock().unwrap().take()?;
     Some(Error::Engine { code: fault.code, msg: fault.message })
+}
+
+/// The statement gate of a connection: the next statement on one of its transactions waits there, holding the
+/// transaction connection, until the test releases it.
+pub(crate) struct StatementGate {
+    reached: Arc<Notify>,
+    release: Arc<Notify>,
+}
+
+/// The test side of a statement gate set by `hold_next_statement`.
+pub struct StatementHold {
+    reached: Arc<Notify>,
+    release: Arc<Notify>,
+}
+
+/// Holds the next statement that runs on a transaction of the connection of `db` and all its clones. The statement
+/// takes the transaction connection as every statement does, and then waits there until `StatementHold::release`, so
+/// a second statement of the same transaction is refused with CONFIG for as long as the first one waits. A statement
+/// outside a transaction does not consume the gate. An already set gate is replaced.
+pub fn hold_next_statement(db: &Db) -> StatementHold {
+    let reached = Arc::new(Notify::new());
+    let release = Arc::new(Notify::new());
+    let gate = StatementGate { reached: Arc::clone(&reached), release: Arc::clone(&release) };
+    *db.inner.statement_gate.lock().unwrap() = Some(gate);
+    StatementHold { reached, release }
+}
+
+impl StatementHold {
+    /// Waits until the held statement has reached the hold, so it holds the transaction connection from then on.
+    pub async fn reached(&self) {
+        self.reached.notified().await;
+    }
+
+    /// Lets the held statement continue.
+    pub fn release(&self) {
+        self.release.notify_one();
+    }
+}
+
+/// Takes the gate of `db`, if one is set, and waits at it while the calling statement holds the transaction connection.
+pub(crate) async fn wait_at_statement_gate(db: &Db) {
+    let gate = db.inner.statement_gate.lock().unwrap().take();
+    if let Some(gate) = gate {
+        gate.reached.notify_one();
+        gate.release.notified().await;
+    }
 }
 
 /// Pins the executor clock of the connection of `db` and all its clones to the time `clock`. `clock` is UTC

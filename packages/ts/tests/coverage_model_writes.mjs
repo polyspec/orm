@@ -110,4 +110,28 @@ await runCases('coverage_model_writes.mjs', {
       assert.equal(codecCaught, codecRollback, 'codec column probe rolls back its row update');
     } finally { await db.close(); }
   },
+  // Requirements: DIA-26, COD-15.
+  async ordered_json_repeated_member_name({ driver, dsn }) {
+    const db = await connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
+    const text = '{"a":1,"b":2,"a":3}';
+    const rollback = new Error('rollback repeated member name probe');
+    try {
+      assert.equal(db.driver, driver);
+      let caught = null;
+      try {
+        await db.transaction(async () => {
+          const row = await new Author().connect(db).addAllColumns().getBySeq(1);
+          assert.ok(row, 'seed author row 1 exists for repeated member names');
+          await row.setJsonSetting(StyledValue.value(parseJson(text))).update();
+          const stored = await new Author().connect(db).addAllColumns().getBySeq(1);
+          assert.ok(stored, 'seed author row 1 remains after repeated member name update');
+          assert.equal(stored.getJsonSetting().payload().raw, text, 'repeated member name text round trip');
+          throw rollback;
+        }, { retry: 0 });
+      } catch (error) {
+        caught = error;
+      }
+      assert.equal(caught, rollback, 'repeated member name probe rolls back its row update');
+    } finally { await db.close(); }
+  },
 }, 300_000);

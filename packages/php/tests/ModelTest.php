@@ -800,6 +800,32 @@ class ModelTest extends TestCase
         self::check($runs === [1, 2], 'closure runs: ' . implode(',', $runs));
     }
 
+    // SQLite has no row-lock deadlock. The holder keeps the write lock of an author row while another connection writes it:
+    // that write waits for busy_timeout and fails with CANCELED (SQLITE_BUSY). CANCELED is not retried, so the closure
+    // runs once, and the holder's commit stands.
+    private static function caseSqliteLockedWriterFails(Db $db, string $dsn): void
+    {
+        $f = self::seed($db);
+        $seq = $f['authors'][0]->getSeq();
+        $other = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
+        $runs = 0;
+        $blocked = null;
+        $db->transaction(function () use ($db, $other, $seq, &$runs, &$blocked): void {
+            (new Author())($db)->getBySeq($seq)->setName('holder')->update();
+            try {
+                $other->transaction(function () use ($other, $seq, &$runs): void {
+                    $runs++;
+                    (new Author())($other)->getBySeq($seq)->setName('other')->update();
+                });
+            } catch (OrmException $error) {
+                $blocked = $error;
+            }
+        });
+        self::check($blocked !== null && $blocked->code_ === Code::CANCELED, 'the second writer waits for busy_timeout: ' . ($blocked?->getMessage() ?? 'no error'));
+        self::check($runs === 0, 'CANCELED is not retried: BEGIN waits for busy_timeout, the closure never starts, ran ' . $runs);
+        self::check((new Author())($db)->getBySeq($seq)->getName() === 'holder', 'the holder commits its row');
+    }
+
     private static function caseAesRotation(Db $db, string $dsn): void
     {
         $f = self::seed($db);
@@ -1687,14 +1713,17 @@ class ModelTest extends TestCase
         self::caseUtilities($db, $dsn);
     }
 
-    // deadlock retry, on the server drivers: SQLite has one writer, so two transactions cannot hold row locks at the
-    // same time and no deadlock can arise.
+    // deadlock retry. SQLite has no row-lock deadlock, so it runs the sequential case of a locked writer instead.
     // Requirements: PLN-24.
-    #[DataProvider('serverDrivers')]
+    #[DataProvider('drivers')]
     public function testDeadlockRetry(string $driver): void
     {
         $dsn = self::caseDsn($driver);
         $db = self::database($driver, $dsn);
+        if ($driver === 'sqlite') {
+            self::caseSqliteLockedWriterFails($db, $dsn);
+            return;
+        }
         self::caseDeadlockRetry($db, $dsn);
     }
 

@@ -179,7 +179,11 @@ def model_ops(native, database_value, step_argument):
             if row is None:
                 raise AssertionError("Author update: the key names no row")
             for column, value in sorted(values_of(step["set"], context).items()):
-                if column == "like_count" and isinstance(value, int) and not isinstance(value, bool):
+                if (
+                    column == "like_count"
+                    and isinstance(value, int)
+                    and not isinstance(value, bool)
+                ):
                     row.set_like_count(value)
                 elif column == "uuid" and isinstance(value, str):
                     row.set_uuid(value)
@@ -204,7 +208,11 @@ def model_ops(native, database_value, step_argument):
         if step["model"] == "User":
             # The User rows of where, which is the seq only (the referenced-user case of constraint_errors).
             where = values_of(step["where"], context)
-            if sorted(where) != ["seq"] or not isinstance(where["seq"], int) or isinstance(where["seq"], bool):
+            if (
+                sorted(where) != ["seq"]
+                or not isinstance(where["seq"], int)
+                or isinstance(where["seq"], bool)
+            ):
                 raise AssertionError("User delete: the recipe condition is seq only")
             models.User().connect(db).seq(where["seq"]).gets().delete()
             return {}
@@ -214,11 +222,17 @@ def model_ops(native, database_value, step_argument):
     def model_count(step, context):
         db = connection(step["connection"], context)
         if step["model"] == "Author":
-            return {"value": _wrap(chain(db, values_of(step.get("where"), context), []).get_count())}
+            return {
+                "value": _wrap(
+                    chain(db, values_of(step.get("where"), context), []).get_count()
+                )
+            }
         return {
             "value": {
                 "int": str(
-                    composite_filter(db, values_of(step.get("where"), context)).get_count()
+                    composite_filter(
+                        db, values_of(step.get("where"), context)
+                    ).get_count()
                 )
             }
         }
@@ -231,7 +245,14 @@ def model_ops(native, database_value, step_argument):
             found = chain(db, values_of(where, context), step["columns"]).get()
             if found is None:
                 return {"rows": []}
-            return {"rows": [[_wrap(getattr(found, COLUMNS[column][1])()) for column in step["columns"]]]}
+            return {
+                "rows": [
+                    [
+                        _wrap(getattr(found, COLUMNS[column][1])())
+                        for column in step["columns"]
+                    ]
+                ]
+            }
         if "where" in step:
             raise AssertionError(f"model {step['model']} has no recipe where")
         row = composite_key(db, values_of(step["key"], context))
@@ -264,7 +285,9 @@ def model_ops(native, database_value, step_argument):
             child = row.get_shared_note_model()
             if child is None:
                 continue
-            rows.append([_wrap(row.to_array()["seq"]), _wrap(child.to_array()["title"])])
+            rows.append(
+                [_wrap(row.to_array()["seq"]), _wrap(child.to_array()["title"])]
+            )
         return {"rows": rows}
 
     def model_query(step, context):
@@ -283,11 +306,16 @@ def model_ops(native, database_value, step_argument):
                 model.limit(offset, limit)
             return {
                 "rows": [
-                    [_wrap(getattr(row, COLUMNS[column][1])()) for column in step["columns"]]
+                    [
+                        _wrap(getattr(row, COLUMNS[column][1])())
+                        for column in step["columns"]
+                    ]
                     for row in model.gets().values()
                 ]
             }
-        rows = composite_filter(db, values_of(step.get("where"), context)).gets().values()
+        rows = (
+            composite_filter(db, values_of(step.get("where"), context)).gets().values()
+        )
         return {
             "rows": [
                 [_column_wrap(row, column) for column in step["columns"]]

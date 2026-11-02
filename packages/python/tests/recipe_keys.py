@@ -9,7 +9,11 @@ ROOT = Path(__file__).resolve().parents[3]
 
 def key_table(path, schema):
     """The key table beside the schema that the $schema of the recipe at path names, relative to the recipe's directory."""
-    return json.loads((ROOT / Path(path).parent / Path(schema).parent / "recipe-keys.json").read_text(encoding="utf-8"))
+    return json.loads(
+        (ROOT / Path(path).parent / Path(schema).parent / "recipe-keys.json").read_text(
+            encoding="utf-8"
+        )
+    )
 
 
 def _unknown(obj, keys):
@@ -42,7 +46,11 @@ def check_keys(path, text):
         for index, step in enumerate(case["steps"]):
             op = step.get("op")
             if not isinstance(op, str) or op not in table["step"]:
-                raise ValueError(f"recipe {path} case {case_id} step {index}: unknown op {op}")
+                raise ValueError(
+                    f"recipe {path} case {case_id} step {index}: unknown op {op}"
+                )
             key = _unknown(step, table["step"][op])
             if key is not None:
-                raise ValueError(f"recipe {path} case {case_id} step {index} ({op}): unknown key {key}")
+                raise ValueError(
+                    f"recipe {path} case {case_id} step {index} ({op}): unknown key {key}"
+                )

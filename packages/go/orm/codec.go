@@ -180,7 +180,7 @@ func Encode(styles []string, v StyledValue) (any, error) {
 				}
 				return nil, err
 			}
-			raw, err := ordered.Compact()
+			raw, err := orderedJSONCompact(ordered)
 			if err != nil {
 				return nil, codecErr(CodeCodecEncode, "json: %v", err)
 			}

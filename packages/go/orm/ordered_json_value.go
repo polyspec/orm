@@ -53,6 +53,16 @@ func orderedJSONReflect(reflectValue reflect.Value) (*orderedjson.Value, error) 
 	if (reflectValue.Kind() == reflect.Interface || reflectValue.Kind() == reflect.Pointer) && reflectValue.IsNil() {
 		return orderedjson.Null(), nil
 	}
+	// An ordered-json value is taken as it is before the json.Marshaler check: its MarshalJSON
+	// re-serialises the parsed member map, which collapses a repeated member name (DIA-26).
+	if reflectValue.CanInterface() {
+		if value, ok := reflectValue.Interface().(*orderedjson.Value); ok {
+			if value == nil {
+				return orderedjson.Null(), nil
+			}
+			return value, nil
+		}
+	}
 	if reflectValue.CanInterface() {
 		if marshaler, ok := reflectValue.Interface().(json.Marshaler); ok {
 			body, err := marshaler.MarshalJSON()
@@ -64,14 +74,6 @@ func orderedJSONReflect(reflectValue reflect.Value) (*orderedjson.Value, error) 
 				return nil, codecErr(CodeCodecEncode, "json: custom marshaler returned invalid JSON: %v", err)
 			}
 			return parsed, nil
-		}
-	}
-	if reflectValue.CanInterface() {
-		if value, ok := reflectValue.Interface().(*orderedjson.Value); ok {
-			if value == nil {
-				return orderedjson.Null(), nil
-			}
-			return value, nil
 		}
 	}
 	if reflectValue.Kind() == reflect.Interface || reflectValue.Kind() == reflect.Pointer {
@@ -299,4 +301,48 @@ func orderedJSONFloat(value float64) (*orderedjson.Value, error) {
 		return nil, codecErr(CodeCodecEncode, "json: non-finite number")
 	}
 	return orderedjson.Number(strconv.FormatFloat(value, 'g', -1, 64))
+}
+
+// compactJSONText removes the insignificant whitespace of a JSON text and keeps
+// every other byte in place, so member order and repeated member names survive
+// (DIA-26). Whitespace inside a string literal is significant and is kept.
+func compactJSONText(text string) string {
+	var out strings.Builder
+	out.Grow(len(text))
+	inString := false
+	escaped := false
+	for i := 0; i < len(text); i++ {
+		c := text[i]
+		if inString {
+			out.WriteByte(c)
+			switch {
+			case escaped:
+				escaped = false
+			case c == '\\':
+				escaped = true
+			case c == '"':
+				inString = false
+			}
+			continue
+		}
+		switch c {
+		case ' ', '\t', '\n', '\r':
+			continue
+		case '"':
+			inString = true
+		}
+		out.WriteByte(c)
+	}
+	return out.String()
+}
+
+// orderedJSONCompact is the stored text of an ordered-json value. A parsed
+// value keeps its source text, which holds the repeated member names that its
+// map form would collapse, so the text is compacted from the source; a value
+// with no source text is compacted from its tree.
+func orderedJSONCompact(value *orderedjson.Value) (string, error) {
+	if raw := value.Raw(); raw != "" {
+		return compactJSONText(raw), nil
+	}
+	return value.Compact()
 }

@@ -173,7 +173,7 @@ pub(crate) fn val_param(v: &Val) -> Param {
         Val::Date(d) => Param::Date(*d),
         Val::Bool(b) => Param::Bool(*b),
         Val::Json(j) => Param::Str(j.to_string()),
-        Val::Ordered(j) => Param::Str(j.compact()),
+        Val::Ordered(j) => Param::Str(crate::codec::ordered_text(j)),
     }
 }
 

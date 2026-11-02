@@ -340,6 +340,9 @@ pub(crate) struct DbInner {
     /// Present only in builds with `test-faults`.
     #[cfg(feature = "test-faults")]
     pub(crate) statement_fault: Mutex<Option<crate::testing::StatementFault>>,
+    /// The statement gate set by `polyspec_orm::testing::hold_next_statement`. Present only in builds with `test-faults`.
+    #[cfg(feature = "test-faults")]
+    pub(crate) statement_gate: Mutex<Option<crate::testing::StatementGate>>,
     /// The executor clock pinned by `polyspec_orm::testing::fix_clock` (`YYYY-MM-DD HH:MM:SS.ffffff`).
     /// Present only in builds with feature `test-faults`.
     #[cfg(feature = "test-faults")]
@@ -640,6 +643,8 @@ impl Db {
                 rollback_fault: AtomicBool::new(false),
                 #[cfg(feature = "test-faults")]
                 statement_fault: Mutex::new(None),
+                #[cfg(feature = "test-faults")]
+                statement_gate: Mutex::new(None),
                 #[cfg(feature = "test-faults")]
                 fixed_clock: Mutex::new(None),
                 #[cfg(feature = "test-faults")]
@@ -962,6 +967,11 @@ impl Db {
         #[cfg(feature = "test-faults")]
         if let Some(error) = crate::testing::take_statement_fault(self) {
             return self.step_done(st, origin, &sql, || self.shown(st, &args, parent_vals.len()), std::time::Instant::now(), Err(error));
+        }
+        // A held transaction statement waits here, while it holds the transaction connection, until the test releases it.
+        #[cfg(feature = "test-faults")]
+        if matches!(target, Target::Tx(_)) {
+            crate::testing::wait_at_statement_gate(self).await;
         }
         let start = std::time::Instant::now();
         let r: Result<Vec<DriverRow>> = match target {

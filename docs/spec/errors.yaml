@@ -155,7 +155,7 @@ codes:
   # ---- driver (mapped) ----
   - code: LOCK_NOT_AVAILABLE      # a NOWAIT lock could not be acquired immediately
     origin: driver
-  - code: DEADLOCK                # MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01 / SQLite LOCKED; retries require TransactionOptions
+  - code: DEADLOCK                # MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01; retries require TransactionOptions
     origin: driver
   - code: DUPLICATE_KEY           # MySQL 1062 (SQLSTATE 23000), PostgreSQL 23505, SQLite 2067 and 1555
     origin: driver
@@ -167,5 +167,5 @@ codes:
     origin: driver
   - code: CONNECTION_LOST         # the server ended the connection or the connection broke (a killed session, a restart, an idle limit): MySQL 2006/2013/4031 / PostgreSQL SQLSTATE class 08 and 57P01/57P02/57P05, or a client library error on a connection that is no longer open; SQLite has no server connection
     origin: driver
-  - code: DRIVER                  # any other driver error, such as a write that a trigger refuses: MySQL 1644 / PostgreSQL P0001 / SQLite 1811 of a trigger RAISE
+  - code: DRIVER                  # any other driver error, such as a write that a trigger refuses: MySQL 1644 / PostgreSQL P0001 / SQLite 1811 of a trigger RAISE, and SQLite LOCKED (6, 262), which SQLite reports for no row-lock deadlock
     origin: driver

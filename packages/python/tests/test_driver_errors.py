@@ -17,6 +17,7 @@ from polyspec.orm.database import (
     Subscription,
     _MysqlConnection,
     _PostgresConnection,
+    _sqlite_code,
 )
 from polyspec.orm.errors import OrmError
 
@@ -443,6 +444,15 @@ class ServerDriverErrorTest(unittest.TestCase):
         with self.assertRaises(RuntimeError) as propagated:
             subscription.receive()
         self.assertIs(propagated.exception, unexpected_cleanup)
+
+
+class SqliteLockedClassifierTest(unittest.TestCase):
+    # Requirements: PLN-24.
+    def test_sqlite_locked_is_driver_not_deadlock(self):
+        for number in (6, 262):
+            error = sqlite3.Error("database table is locked")
+            error.sqlite_errorcode = number
+            self.assertEqual(_sqlite_code(error), "DRIVER", f"SQLITE_LOCKED {number}")
 
 
 if __name__ == "__main__":

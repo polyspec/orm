@@ -50,7 +50,6 @@ from .coverage_case import native_query
 from .recipe_keys import check_keys
 from .recipe_model import model_ops
 from .markdown_conformance import same
-from .recipe_model import model_ops
 from .vector_case import VectorCase, vector_load_tests
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -905,7 +904,13 @@ def _op_sql_exec(step: dict, context: dict) -> dict:
 
 def _op_dsn_connect(step: dict, context: dict) -> dict:
     """dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step."""
-    return {"value": {"text": _connect_driver(context["dsn"] if step["dsn"] == "case" else step["dsn"])}}
+    return {
+        "value": {
+            "text": _connect_driver(
+                context["dsn"] if step["dsn"] == "case" else step["dsn"]
+            )
+        }
+    }
 
 
 def _bound_value(field, context: dict) -> Any:

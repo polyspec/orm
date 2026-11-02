@@ -47,7 +47,7 @@ The ORM provides one model-based query syntax in Go, PHP, Rust, TypeScript, and 
 
 - **PLN-22** The generator rejects a column name that matches a reserved method (`and`, `or`, `get`, `gets`, `limit`, `alias`, `connect`, `create`, `update`, `delete`, `save`) or starts with a reserved prefix (`and`, `or`, `get`, `set`, `new`, `plus`, `minus`, `orderBy`, `groupBy`, or an operator prefix).
 - **PLN-23** Conditions are stored as a tree. A terminal operation does not change the builder, so a second terminal produces the same statement.
-- **PLN-24** Deadlock retry runs for driver deadlock errors.
+- **PLN-24** Deadlock retry runs for driver deadlock errors. On SQLite a write that waits for a lock another connection holds stops after the busy timeout of CFG-12 with `CANCELED`, and the transaction does not run again, because SQLite reports no row-lock deadlock.
 - **PLN-25** A join index hint is placed on the joined table. Every join contributes its aggregates and ordering. The relation key default uses the parent key. `possible<Col>` reads the joined parent row.
 - **PLN-26** `minus<Col>` never stores a negative value. `plus<Col>` and `minus<Col>` bind their amounts. Attribute changes are cleared after a write.
 - **PLN-27** `update(true)` compares the stored `updated_ts` value that was read, not the current attribute value.

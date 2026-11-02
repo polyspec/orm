@@ -65,7 +65,6 @@ final class OrmException extends \RuntimeException
             'sqlite' => match (true) {
                 // SQLITE_BUSY: another connection held the lock when busy_timeout ended.
                 is_int($num) && ($num & 0xff) === 5 => Code::CANCELED,
-                in_array($num, [6, 262], true) => Code::DEADLOCK,
                 in_array($num, [2067, 1555], true)
                     || ($num === 19 && str_starts_with($message, 'UNIQUE constraint failed')) => Code::DUPLICATE_KEY,
                 // A FK violation of a RESTRICT action comes as CONSTRAINT_TRIGGER (1811). The 1811 from a trigger

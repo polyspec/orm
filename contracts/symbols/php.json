@@ -6019,6 +6019,10 @@
     "exported": false,
     "signature": "private static function checkStyles(array $styles): void"
   },
+  "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::compactJsonText": {
+    "exported": false,
+    "signature": "private static function compactJsonText(string $text): string"
+  },
   "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::decode": {
     "exported": true,
     "signature": "public static function decode(array $styles, mixed $raw): Polyspec\\Orm\\StyledValue"

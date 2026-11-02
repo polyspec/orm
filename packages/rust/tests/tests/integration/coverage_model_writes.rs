@@ -114,3 +114,30 @@ async fn coverage_model_write_cycle() {
     })
     .await;
 }
+#[tokio::test]
+// Requirements: DIA-26, COD-15.
+async fn coverage_ordered_json_repeated_member_name() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    run("ordered_json_repeated_member_name", async {
+        let db = connect().await;
+        let text = r#"{"a":1,"b":2,"a":3}"#;
+        let rollback: polyspec_orm::Result<()> = db
+            .transaction(async || {
+                let row = Author::new().connect(&db).add_all_columns().get_by_seq(1).await?.expect("seed author row 1 for repeated member names");
+                let mut row = row.set_json_setting(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::parse(text).unwrap()))?;
+                row.update(false).await?;
+                let stored = Author::new().connect(&db).add_all_columns().get_by_seq(1).await?.expect("author row remains after repeated member name update");
+                match stored.get_json_setting()? {
+                    polyspec_orm::StyledValue::Value(value) => assert_eq!(value.raw(), text, "repeated member name text round trip"),
+                    polyspec_orm::StyledValue::SqlNull => panic!("repeated member name text read back as SQL NULL"),
+                }
+                Err(polyspec_orm::Error::Config("rollback repeated member name probe".into()))
+            })
+            .retry(0)
+            .await;
+        assert!(matches!(rollback, Err(polyspec_orm::Error::Config(message)) if message == "rollback repeated member name probe"));
+        db.close().await;
+    })
+    .await;
+}
+

@@ -37,4 +37,20 @@ final class CoverageModelWritesExtensionTest extends TestCase
             }
         }
     }
+    // Requirements: DIA-26, COD-15.
+    public function testOrderedJsonRepeatedMemberName(): void
+    {
+        require_once dirname(__DIR__, 2) . '/php/tests/CoverageModelWritesCase.php';
+        foreach (coverageItemsOf(__FILE__) as $item) {
+            selectCoverageItem($item);
+            [, $dsn] = coverageItem();
+            $db = coverageConnect($dsn);
+            try {
+                \Polyspec\Orm\Tests\CoverageModelWritesCase::orderedJsonRepeatedMemberNameRoundTrip($db);
+            } finally {
+                $db->close();
+            }
+        }
+    }
+
 }

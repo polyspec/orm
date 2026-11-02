@@ -32,27 +32,35 @@ func mapErr(err error) error {
 	if !errors.As(err, &se) {
 		return err
 	}
-	if se.Code()&0xff == 5 { // SQLITE_BUSY and its extended forms
-		return &ir.Error{Code: orm.CodeCanceled, Msg: se.Error()}
-	}
-	switch se.Code() {
-	case 6, 262: // SQLITE_LOCKED / SQLITE_LOCKED_SHAREDCACHE
-		return &ir.Error{Code: orm.CodeDeadlock, Msg: se.Error()}
-	case 2067, 1555: // SQLITE_CONSTRAINT_UNIQUE / _PRIMARYKEY
-		return &ir.Error{Code: orm.CodeDuplicateKey, Msg: se.Error()}
-	case 787: // SQLITE_CONSTRAINT_FOREIGNKEY
-		return &ir.Error{Code: orm.CodeForeignKey, Msg: se.Error()}
-	case 1811: // SQLITE_CONSTRAINT_TRIGGER: a RESTRICT action is an FK error, and a trigger RAISE is DRIVER
-		if strings.Contains(se.Error(), "FOREIGN KEY constraint failed") {
-			return &ir.Error{Code: orm.CodeForeignKey, Msg: se.Error()}
-		}
-	case 275: // SQLITE_CONSTRAINT_CHECK
-		return &ir.Error{Code: orm.CodeConstraint, Msg: se.Error()}
-	case 9: // SQLITE_INTERRUPT: the statement was cancelled
-		return &ir.Error{Code: orm.CodeCanceled, Msg: se.Error()}
-	}
-	if se.Code()&0xff == 8 { // SQLITE_READONLY and its extended forms
-		return &ir.Error{Code: orm.CodeReadOnly, Msg: se.Error()}
+	if code := sqliteCode(se.Code(), se.Error()); code != "" {
+		return &ir.Error{Code: code, Msg: se.Error()}
 	}
 	return err
+}
+
+// sqliteCode is the ORM code of a SQLite extended result code n, or "" when the executor reports the error as DRIVER.
+func sqliteCode(n int, msg string) string {
+	if n&0xff == 5 { // SQLITE_BUSY and its extended forms
+		return orm.CodeCanceled
+	}
+	switch n {
+	case 6, 262: // SQLITE_LOCKED / SQLITE_LOCKED_SHAREDCACHE: no row-lock deadlock, so DRIVER (errors.yaml)
+		return orm.CodeDriver
+	case 2067, 1555: // SQLITE_CONSTRAINT_UNIQUE / _PRIMARYKEY
+		return orm.CodeDuplicateKey
+	case 787: // SQLITE_CONSTRAINT_FOREIGNKEY
+		return orm.CodeForeignKey
+	case 1811: // SQLITE_CONSTRAINT_TRIGGER: a RESTRICT action is an FK error, and a trigger RAISE is DRIVER
+		if strings.Contains(msg, "FOREIGN KEY constraint failed") {
+			return orm.CodeForeignKey
+		}
+	case 275: // SQLITE_CONSTRAINT_CHECK
+		return orm.CodeConstraint
+	case 9: // SQLITE_INTERRUPT: the statement was cancelled
+		return orm.CodeCanceled
+	}
+	if n&0xff == 8 { // SQLITE_READONLY and its extended forms
+		return orm.CodeReadOnly
+	}
+	return ""
 }

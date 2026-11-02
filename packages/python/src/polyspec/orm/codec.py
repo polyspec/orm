@@ -399,12 +399,43 @@ class _PhpParser:
         return dict(entries)
 
 
+def _compact_json_text(text: str) -> str:
+    # The stored text of a JSON text: insignificant whitespace outside the string literals is removed, and every other
+    # character, the member order and the repeated member names included, stays in place (DIA-26).
+    out = []
+    in_string = False
+    escaped = False
+    for c in text:
+        if in_string:
+            out.append(c)
+            if escaped:
+                escaped = False
+            elif c == "\\":
+                escaped = True
+            elif c == '"':
+                in_string = False
+            continue
+        if c in " \t\n\r":
+            continue
+        if c == '"':
+            in_string = True
+        out.append(c)
+    return "".join(out)
+
+
+def _stored_json_text(value: OrderedJson) -> str:
+    # The stored text of an ordered-json value: its source text, so the member order and the repeated member names
+    # survive, which the member map of stringify collapses (DIA-26). A value without source text is stringified.
+    raw = value.raw
+    return ordered_json_stringify(value) if raw == "" else _compact_json_text(raw)
+
+
 def _json_text(value, depth: int) -> str:
     # Builds ordered-json syntax text from a plain value. Object members keep their insertion order.
     if depth > 256:
         raise CodecError(codes.CODEC_ENCODE, "json: value nesting exceeds 256 levels")
     if isinstance(value, OrderedJson):
-        return ordered_json_stringify(value)
+        return _stored_json_text(value)
     if value is None:
         return "null"
     if isinstance(value, bool):
@@ -710,11 +741,11 @@ def encode(styles, state: StyledValue):
             current = _yaml_dump(_common_value(transformed, "yaml")).encode("utf-8")
         elif style == "ordered_json":
             if isinstance(transformed, OrderedJson):
-                current = ordered_json_stringify(transformed).encode("utf-8")
+                current = _stored_json_text(transformed).encode("utf-8")
             else:
-                current = ordered_json_stringify(
-                    ordered_json_value(transformed)
-                ).encode("utf-8")
+                current = _stored_json_text(ordered_json_value(transformed)).encode(
+                    "utf-8"
+                )
         elif style == "base64":
             current = base64.b64encode(current)
         elif style == "gz":

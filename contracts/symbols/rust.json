@@ -2471,6 +2471,10 @@
     "exported": false,
     "signature": " fn number_check (value : \u0026 Value , style : \u0026 str) -\u003e Result \u003c () \u003e"
   },
+  "packages/rust/orm/src/codec.rs::ordered_text": {
+    "exported": false,
+    "signature": "pub (crate) fn ordered_text (v : \u0026 strict_json :: Value) -\u003e String"
+  },
   "packages/rust/orm/src/codec.rs::pack_ip": {
     "exported": false,
     "signature": " fn pack_ip (s : \u0026 str) -\u003e Result \u003c Vec \u003c u8 \u003e \u003e"
@@ -3593,7 +3597,7 @@
   },
   "packages/rust/orm/src/db.rs::DbInner": {
     "exported": false,
-    "signature": "pub (crate) struct DbInner  { pub (crate) id : u64 , pub (crate) pool : Pool , # [doc = \" The PostgreSQL options of the pool, which a LISTEN subscription connects with; None on other databases.\"] pub (crate) listen : Option \u003c sqlx :: postgres :: PgConnectOptions \u003e , # [doc = \" The dialect a SQL connection plans for. Markdown connections, which do not plan, have none.\"] pub (crate) dialect : Option \u003c Dialect \u003e , pub (crate) cfg : Config , pub (crate) zone : Zone , plans : Mutex \u003c HashMap \u003c u64 , Arc \u003c Plan \u003e \u003e \u003e , plan_order : Mutex \u003c VecDeque \u003c u64 \u003e \u003e , # [doc = \" The manifest hash of the set registered on this connection.\"] pub (crate) sets : std :: sync :: RwLock \u003c std :: collections :: HashSet \u003c String \u003e \u003e , # [doc = \" The schema of the registered set. Audit records are inserted with the set that has that table.\"] pub (crate) schemas : std :: sync :: RwLock \u003c Vec \u003c \u0026 'static Schema \u003e \u003e , pub (crate) closed : AtomicBool , pub (crate) sqlite_lock_ready : AtomicBool , # [doc = \" The connection's statement event subscribers and transaction number. All clones of the connection share them.\"] pub (crate) subscribers : Subscribers , # [doc = \" The test fault set by `polyspec_orm::testing::fail_next_rollback`. The feature\"] # [doc = \" Can be set only in builds with `test-faults`.\"] pub (crate) rollback_fault : AtomicBool , # [doc = \" The test fault set by `polyspec_orm::testing::fail_next_statement`. The feature\"] # [doc = \" Present only in builds with `test-faults`.\"] # [cfg (feature = \"test-faults\")] pub (crate) statement_fault : Mutex \u003c Option \u003c crate :: testing :: StatementFault \u003e \u003e , # [doc = \" The executor clock pinned by `polyspec_orm::testing::fix_clock` (`YYYY-MM-DD HH:MM:SS.ffffff`).\"] # [doc = \" Present only in builds with feature `test-faults`.\"] # [cfg (feature = \"test-faults\")] pub (crate) fixed_clock : Mutex \u003c Option \u003c String \u003e \u003e , # [doc = \" The affected count of the connection's last successful write result. Read by `polyspec_orm::testing::last_affected`.\"] # [doc = \" Present only in builds with feature `test-faults`.\"] # [cfg (feature = \"test-faults\")] pub (crate) last_affected : Mutex \u003c Option \u003c u64 \u003e \u003e , }"
+    "signature": "pub (crate) struct DbInner  { pub (crate) id : u64 , pub (crate) pool : Pool , # [doc = \" The PostgreSQL options of the pool, which a LISTEN subscription connects with; None on other databases.\"] pub (crate) listen : Option \u003c sqlx :: postgres :: PgConnectOptions \u003e , # [doc = \" The dialect a SQL connection plans for. Markdown connections, which do not plan, have none.\"] pub (crate) dialect : Option \u003c Dialect \u003e , pub (crate) cfg : Config , pub (crate) zone : Zone , plans : Mutex \u003c HashMap \u003c u64 , Arc \u003c Plan \u003e \u003e \u003e , plan_order : Mutex \u003c VecDeque \u003c u64 \u003e \u003e , # [doc = \" The manifest hash of the set registered on this connection.\"] pub (crate) sets : std :: sync :: RwLock \u003c std :: collections :: HashSet \u003c String \u003e \u003e , # [doc = \" The schema of the registered set. Audit records are inserted with the set that has that table.\"] pub (crate) schemas : std :: sync :: RwLock \u003c Vec \u003c \u0026 'static Schema \u003e \u003e , pub (crate) closed : AtomicBool , pub (crate) sqlite_lock_ready : AtomicBool , # [doc = \" The connection's statement event subscribers and transaction number. All clones of the connection share them.\"] pub (crate) subscribers : Subscribers , # [doc = \" The test fault set by `polyspec_orm::testing::fail_next_rollback`. The feature\"] # [doc = \" Can be set only in builds with `test-faults`.\"] pub (crate) rollback_fault : AtomicBool , # [doc = \" The test fault set by `polyspec_orm::testing::fail_next_statement`. The feature\"] # [doc = \" Present only in builds with `test-faults`.\"] # [cfg (feature = \"test-faults\")] pub (crate) statement_fault : Mutex \u003c Option \u003c crate :: testing :: StatementFault \u003e \u003e , # [doc = \" The statement gate set by `polyspec_orm::testing::hold_next_statement`. Present only in builds with `test-faults`.\"] # [cfg (feature = \"test-faults\")] pub (crate) statement_gate : Mutex \u003c Option \u003c crate :: testing :: StatementGate \u003e \u003e , # [doc = \" The executor clock pinned by `polyspec_orm::testing::fix_clock` (`YYYY-MM-DD HH:MM:SS.ffffff`).\"] # [doc = \" Present only in builds with feature `test-faults`.\"] # [cfg (feature = \"test-faults\")] pub (crate) fixed_clock : Mutex \u003c Option \u003c String \u003e \u003e , # [doc = \" The affected count of the connection's last successful write result. Read by `polyspec_orm::testing::last_affected`.\"] # [doc = \" Present only in builds with feature `test-faults`.\"] # [cfg (feature = \"test-faults\")] pub (crate) last_affected : Mutex \u003c Option \u003c u64 \u003e \u003e , }"
   },
   "packages/rust/orm/src/db.rs::DbInner#field.cfg": {
     "exported": false,
@@ -3655,6 +3659,10 @@
     "exported": false,
     "signature": "Mutex \u003c Option \u003c crate :: testing :: StatementFault \u003e \u003e"
   },
+  "packages/rust/orm/src/db.rs::DbInner#field.statement_gate": {
+    "exported": false,
+    "signature": "Mutex \u003c Option \u003c crate :: testing :: StatementGate \u003e \u003e"
+  },
   "packages/rust/orm/src/db.rs::DbInner#field.subscribers": {
     "exported": false,
     "signature": "Subscribers"
@@ -3665,7 +3673,7 @@
   },
   "packages/rust/orm/src/db.rs::DbInner#wire": {
     "exported": false,
-    "signature": "{\"cfg\":\"Config\",\"closed\":\"AtomicBool\",\"dialect\":\"Dialect\",\"fixed_clock\":\"Mutex\",\"id\":\"integer\",\"last_affected\":\"Mutex\",\"listen\":\"PgConnectOptions\",\"plan_order\":\"Mutex\",\"plans\":\"Mutex\",\"pool\":\"Pool\",\"rollback_fault\":\"AtomicBool\",\"schemas\":\"RwLock\",\"sets\":\"RwLock\",\"sqlite_lock_ready\":\"AtomicBool\",\"statement_fault\":\"Mutex\",\"subscribers\":\"Subscribers\",\"zone\":\"Zone\"}"
+    "signature": "{\"cfg\":\"Config\",\"closed\":\"AtomicBool\",\"dialect\":\"Dialect\",\"fixed_clock\":\"Mutex\",\"id\":\"integer\",\"last_affected\":\"Mutex\",\"listen\":\"PgConnectOptions\",\"plan_order\":\"Mutex\",\"plans\":\"Mutex\",\"pool\":\"Pool\",\"rollback_fault\":\"AtomicBool\",\"schemas\":\"RwLock\",\"sets\":\"RwLock\",\"sqlite_lock_ready\":\"AtomicBool\",\"statement_fault\":\"Mutex\",\"statement_gate\":\"Mutex\",\"subscribers\":\"Subscribers\",\"zone\":\"Zone\"}"
   },
   "packages/rust/orm/src/db.rs::DbStats": {
     "exported": true,
@@ -6303,6 +6311,10 @@
     "exported": false,
     "signature": "pub (crate) fn sqlite_busy (e : \u0026 sqlx :: Error) -\u003e Result \u003c bool \u003e"
   },
+  "packages/rust/orm/src/lib.rs::sqlite_extended_code": {
+    "exported": false,
+    "signature": " fn sqlite_extended_code (n : i64 , message : \u0026 str) -\u003e \u0026 'static str"
+  },
   "packages/rust/orm/src/listen.rs::Db::listen": {
     "exported": true,
     "signature": "pub async fn listen (\u0026 self , channel : \u0026 str) -\u003e Result \u003c Subscription \u003e"
@@ -8187,6 +8199,46 @@
     "exported": false,
     "signature": "{\"code\":\"text\",\"message\":\"text\"}"
   },
+  "packages/rust/orm/src/testing.rs::StatementGate": {
+    "exported": false,
+    "signature": "pub (crate) struct StatementGate  { reached : Arc \u003c Notify \u003e , release : Arc \u003c Notify \u003e , }"
+  },
+  "packages/rust/orm/src/testing.rs::StatementGate#field.reached": {
+    "exported": false,
+    "signature": "Arc \u003c Notify \u003e"
+  },
+  "packages/rust/orm/src/testing.rs::StatementGate#field.release": {
+    "exported": false,
+    "signature": "Arc \u003c Notify \u003e"
+  },
+  "packages/rust/orm/src/testing.rs::StatementGate#wire": {
+    "exported": false,
+    "signature": "{\"reached\":\"Notify\",\"release\":\"Notify\"}"
+  },
+  "packages/rust/orm/src/testing.rs::StatementHold": {
+    "exported": true,
+    "signature": "pub struct StatementHold  { reached : Arc \u003c Notify \u003e , release : Arc \u003c Notify \u003e , }"
+  },
+  "packages/rust/orm/src/testing.rs::StatementHold#field.reached": {
+    "exported": false,
+    "signature": "Arc \u003c Notify \u003e"
+  },
+  "packages/rust/orm/src/testing.rs::StatementHold#field.release": {
+    "exported": false,
+    "signature": "Arc \u003c Notify \u003e"
+  },
+  "packages/rust/orm/src/testing.rs::StatementHold#wire": {
+    "exported": true,
+    "signature": "{\"reached\":\"Notify\",\"release\":\"Notify\"}"
+  },
+  "packages/rust/orm/src/testing.rs::StatementHold::reached": {
+    "exported": true,
+    "signature": "pub async fn reached (\u0026 self)"
+  },
+  "packages/rust/orm/src/testing.rs::StatementHold::release": {
+    "exported": true,
+    "signature": "pub fn release (\u0026 self)"
+  },
   "packages/rust/orm/src/testing.rs::compile_core_request": {
     "exported": true,
     "signature": "pub fn compile_core_request (core : \u0026 crate :: Core , kind : \u0026 str , dialect : crate :: Dialect) -\u003e crate :: Result \u003c crate :: plan :: Plan \u003e"
@@ -8203,6 +8255,10 @@
     "exported": true,
     "signature": "pub fn fix_clock (db : \u0026 Db , clock : \u0026 str)"
   },
+  "packages/rust/orm/src/testing.rs::hold_next_statement": {
+    "exported": true,
+    "signature": "pub fn hold_next_statement (db : \u0026 Db) -\u003e StatementHold"
+  },
   "packages/rust/orm/src/testing.rs::last_affected": {
     "exported": true,
     "signature": "pub fn last_affected (db : \u0026 Db) -\u003e Option \u003c u64 \u003e"
@@ -8210,6 +8266,10 @@
   "packages/rust/orm/src/testing.rs::take_statement_fault": {
     "exported": false,
     "signature": "pub (crate) fn take_statement_fault (db : \u0026 Db) -\u003e Option \u003c Error \u003e"
+  },
+  "packages/rust/orm/src/testing.rs::wait_at_statement_gate": {
+    "exported": false,
+    "signature": "pub (crate) async fn wait_at_statement_gate (db : \u0026 Db)"
   },
   "packages/rust/orm/src/tx.rs::AuditInsert": {
     "exported": false,

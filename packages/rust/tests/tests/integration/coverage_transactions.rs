@@ -289,3 +289,130 @@ async fn coverage_transaction_savepoint() {
     })
     .await;
 }
+async fn set_account_name(db: &polyspec_orm::Db, account: i64, name: &str) -> polyspec_orm::Result<()> {
+    let mut row = CompositeAccount::new()
+        .connect(db)
+        .get_by_tenant_id_and_account_id(TENANT, account)
+        .await?
+        .ok_or_else(|| failure("composite_account row is missing"))?
+        .set_name(name);
+    row.update(false).await.map(|_| ())
+}
+
+// SQLite has no row-lock deadlock. The holder keeps the write lock of a row while another connection writes it: that write
+// waits for busy_timeout and fails with CANCELED (SQLITE_BUSY). CANCELED is not retried, so the callback runs once.
+async fn sqlite_locked_writer_fails(db: &polyspec_orm::Db) {
+    CompositeAccount::new().connect(db).set_tenant_id(TENANT).set_account_id(7).set_name("seed").create().await.unwrap();
+    let other = connect().await;
+    let attempts = std::cell::Cell::new(0);
+    let blocked = std::cell::RefCell::new(None::<String>);
+    let outcome = db
+        .transaction(async || {
+            set_account_name(db, 7, "holder").await?;
+            let second: polyspec_orm::Result<()> = other
+                .transaction(async || {
+                    attempts.set(attempts.get() + 1);
+                    set_account_name(&other, 7, "other").await
+                })
+                .isolation(polyspec_orm::Isolation::ReadCommitted)
+                .retry(3)
+                .await;
+            *blocked.borrow_mut() = second.err().map(|error| error.code().to_owned());
+            Ok(())
+        })
+        .isolation(polyspec_orm::Isolation::ReadCommitted)
+        .await;
+    assert!(outcome.is_ok(), "the holder did not commit: {outcome:?}");
+    assert_eq!(blocked.into_inner().as_deref(), Some("CANCELED"), "the second writer waits for busy_timeout");
+    assert_eq!(attempts.get(), 0, "CANCELED is not retried: BEGIN waits for busy_timeout, the callback never starts, nothing is retried");
+    let row = CompositeAccount::new().connect(db).get_by_tenant_id_and_account_id(TENANT, 7).await.unwrap().expect("row 7");
+    let name = row.get_name().unwrap().to_owned();
+    assert_eq!(name, "holder", "the holder commits its row");
+    row.delete(false).await.unwrap();
+    other.close().await;
+}
+
+#[tokio::test]
+// Requirements: PLN-24.
+async fn coverage_transaction_deadlock_retry() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    run("transaction_deadlock_retry", async {
+        let db = connect().await;
+        assert_eq!(CompositeAccount::new().connect(&db).tenant_id(TENANT).get_count().await.unwrap(), 0, "a row of tenant {TENANT} already exists");
+        if db.driver() == "sqlite" {
+            sqlite_locked_writer_fails(&db).await;
+            db.close().await;
+            return;
+        }
+        for account in [7, 8] {
+            CompositeAccount::new().connect(&db).set_tenant_id(TENANT).set_account_id(account).set_name("seed").create().await.unwrap();
+        }
+        // Two flows, each on its own thread and connection, lock their first row before either takes its second, so the
+        // database aborts one flow with its deadlock error. The ORM retries that flow, and both transactions commit.
+        let held = std::sync::Arc::new(std::sync::Barrier::new(2));
+        let flows: Vec<_> = [(7, 8), (8, 7)]
+            .into_iter()
+            .map(|(first, second)| {
+                let held = held.clone();
+                std::thread::spawn(move || {
+                    tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(async move {
+                        let conn = connect().await;
+                        let name = format!("flow-{first}");
+                        let attempts = std::cell::Cell::new(0);
+                        let victim = std::cell::RefCell::new(None::<String>);
+                        let result: polyspec_orm::Result<()> = conn
+                            .transaction(async || {
+                                attempts.set(attempts.get() + 1);
+                                let first_attempt = attempts.get() == 1;
+                                let first_result = set_account_name(&conn, first, &name).await;
+                                if first_attempt {
+                                    held.wait();
+                                }
+                                first_result?;
+                                let second_result = set_account_name(&conn, second, &name).await;
+                                if first_attempt {
+                                    *victim.borrow_mut() = second_result.as_ref().err().map(|error| error.code().to_owned());
+                                }
+                                second_result
+                            })
+                            .isolation(polyspec_orm::Isolation::ReadCommitted)
+                            .retry(3)
+                            .await;
+                        conn.close().await;
+                        (attempts.get(), victim.into_inner(), result)
+                    })
+                })
+            })
+            .collect();
+        let mut attempts = 0;
+        let mut victims = 0;
+        for flow in flows {
+            let (flow_attempts, victim, result) = flow.join().expect("flow thread");
+            assert!(result.is_ok(), "flow did not commit after retry: {result:?}");
+            attempts += flow_attempts;
+            if let Some(victim) = victim {
+                victims += 1;
+                assert_eq!(victim, "DEADLOCK", "first attempt of the deadlocked flow");
+            }
+        }
+        assert!(victims == 1 && attempts == 3, "deadlocked flows = {victims} and attempts = {attempts}, want one retried flow and 3 attempts");
+        let seven =
+            CompositeAccount::new().connect(&db).get_by_tenant_id_and_account_id(TENANT, 7).await.unwrap().expect("row 7").get_name().unwrap().to_owned();
+        let eight =
+            CompositeAccount::new().connect(&db).get_by_tenant_id_and_account_id(TENANT, 8).await.unwrap().expect("row 8").get_name().unwrap().to_owned();
+        assert!(seven == eight && (seven == "flow-7" || seven == "flow-8"), "committed rows are ({seven}, {eight})");
+        for account in [7, 8] {
+            CompositeAccount::new()
+                .connect(&db)
+                .get_by_tenant_id_and_account_id(TENANT, account)
+                .await
+                .unwrap()
+                .expect("seeded row")
+                .delete(false)
+                .await
+                .unwrap();
+        }
+        db.close().await;
+    })
+    .await;
+}

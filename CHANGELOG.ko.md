@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 846965813fbf238e0408b7e50139c699af3bcc7a62c513f594f7ffa1e505f999 -->
+<!-- source-sha256: 4a960185333a706f8e8845e91a087c91d33263ad4d66749d16449651a9672990 -->
 # 변경 이력
 
 ## Unreleased
@@ -69,6 +69,14 @@
 - 데이터베이스 기능이 실행 데이터베이스에서 recipe로 도는 방식을 spec이 밝힌다: docs/spec/feature-coverage.md의 FCV-8부터 FCV-14까지가 전환, `databases` need와 TEST_ENV로 받는 데이터베이스, 제외 없는 세 데이터베이스, DSN 누락 실패, 사례별 결과, seed 소유, 네이티브 테스트를 정한다 (T334-3-4-0).
 - FCV-4의 `dsn.connect` op가 DSN 연결 recipe `contracts/fixtures/dsn_connection/dsn_connection.json`을 여섯 runtime과 세 데이터베이스에서 실행한다. 네이티브 DSN coverage 시험은 제거되고, parity unit이 여섯 recipe 항목을 묶는다 (T334-3-4).
 - model_writes recipe인 contracts/fixtures/model_writes/model_writes.json은 여섯 사례를 여섯 runtime에서 MySQL, PostgreSQL, SQLite로 실행한다(T334-3-4). config/parity.json은 model_writes-<database> unit을 묶는다. recipe가 다루는 손으로 쓴 save-key, arithmetic, CRUD write cycle과 round-trip 시험은 제거한다. write cycle은 ordered JSON과 codec 단언(COD-11, COD-12, COD-15, COD-38, DIA-26)을 유지하고, create_parts 네이티브 시험은 StatementEvent의 batch 단언 때문에 남긴다. PHP extension의 native write layer는 INT-151로 명세하고 여덟 시험에 묶는다(T334-3-4).
+SQLite에서 같은 행을 쓰는 두 connection의 잠금 대기는 busy timeout 뒤 `CANCELED`로 끝나고 재시도되지 않는다. SQLite는 row-lock 교착을 보고하지 않으므로 SQLITE_LOCKED(6, 262)는 모든 runtime에서 `DRIVER`이며, transaction_deadlock_retry는 여섯 runtime 모두에서 sqlite case를 실행한다 (PLN-24, CFG-12) (T343-3)
+- model_writes feature는 ordered-json text의 반복된 member name을 모든 owner(Go, PHP, php-extension, Rust, TypeScript, Python)와 MySQL, PostgreSQL, SQLite에 선언하므로, 일반 Rust 실행은 ORM_FEATURE_DATABASE 없이 실패하는 대신 선언된 symbol로 이 case를 건너뛴다(T343-2)
+- model_writes feature는 Go owner에서 ordered-json text의 반복된 member name을 선언한다(MySQL, PostgreSQL, SQLite): Go case는 `{"a":1,"b":2,"a":3}`을 Author json 설정으로 저장하고 다시 읽으므로, 다른 owner가 실행하는 case를 Go owner도 실행한다(T343-2-1)
+- generated Go model은 jsontext 값의 반복된 member name을 보존한다: ordered-json 값을 json.Marshaler 분기 전에 원본 text 그대로 취하며, 그 분기는 파싱된 member map을 다시 직렬화했으므로 `{"a":1,"b":2,"a":3}`이 SQLite에서 `{"a":3,"b":2}`로 돌아오지 않는다 (DIA-26) (T343-2-1-1)
+- pooler lane의 Rust test는 ProxySQL이 backend를 위해 유지하는 server connection 수보다 많은 test thread를 실행하지 않는다: 그 수는 한 곳의 선언(PROXYSQL_BACKEND_CONNECTIONS)이며, lane은 backend 수를 pool 크기로 나눈 값을 `--test-threads`로 넘겨서, 고정된 pool이 10000 ms connect timeout을 넘겨 기다리지 않는다 (T343-1)
+- jsontext 값은 원본 text의 멤버 순서와 반복된 멤버 이름을 유지한다: 쓰기는 파싱한 멤버 map을 다시 직렬화하지 않고 원본 text를 compact하여 저장하며, 읽기는 값이 가진 text를 돌려준다 (DIA-26). Go, TypeScript, Python은 이전에 SQLite, MySQL, PostgreSQL에서 반복된 이름을 하나로 합쳤다 (T332)
+- transaction-retry-on-deadlock parity unit이 Go, Rust, TypeScript, Python binding에서 driver 수준의 deadlock을 실행한다: 두 connection이 두 행을 반대 순서로 MySQL에서 잠그면 한 flow의 첫 시도가 DEADLOCK으로 실패하고, transaction은 재시도되어 둘 다 commit되므로, driver deadlock의 재시도는 PHP만이 아니라 네 runtime에서 시험된다 (T303).
+- complex query와 hot-path 성능 gate의 Python parity binding이 적재할 수 없는 test를 가리키지 않는다: 6ff320c72에서 그 unit들의 실행이 PHP 8.4 아래에서 통과하므로(25 binding, 27 case) T269의 원인은 재현되지 않고, 이 row는 그 unit들을 Verification으로 실행한다 (T269).
 - 두 branch의 check-recipes 작업이 하나의 통합으로 main에 들어간다. 한국어 checklist는 영어 checklist의 모든 row를 가지고, 변경 이력은 그 commit들의 항목을 가지며, Makefile은 `rust-compiler-fixtures-check/unit`에서 node를 `$(NODE)`로 실행하고, `config/rebuild.json`은 `scripts/generate/once.mts`와 `scripts/php/php-ext-build.mts`를 분류한다 (CR26).
 - check runner는 실패한 target의 `::error` 줄을 출력하지 않아, GitHub Actions에서 실패는 작업이 끝나야 보였다. 이제 실패한 target은 끝날 때 `::error` 줄을 출력한다 (CR1).
 - docs 빌드는 게시된 폴더에 직접 사이트를 렌더링해서, 중단된 빌드는 사이트의 절반을 남겼다. 이제 임시 폴더에 렌더링한 뒤 이름 바꾸기 한 번으로 게시한다 (CR2).
@@ -135,6 +143,8 @@
 - 여섯 runtime의 스키마 설치 case가 하나의 recipe(`contracts/fixtures/schema_install/schema_install.json`)가 되어 MySQL, PostgreSQL, SQLite에서 돈다. 같은 동작의 네이티브 테스트는 지웠고, register 테스트는 거부 테스트와 hash별 engine 테스트로 나눴으며, SCH-14부터 SCH-17까지는 FCV-2에 따라 네이티브로 남는 case(감사 transaction, load 시점 hash 검사, bench 모델, hash별 engine)를 나타낸다(T334-3-4).
 - drop 단계는 복제본이 적용하지 않은 binary log 정리를 거부하고, 거부 메시지에 복제본 SQL thread의 상태와 마지막 오류를 적는다. 테스트 서버 시작은 SQL thread가 멈춘 MySQL 복제본을 재사용하지 않고, 마지막 오류와 함께 보고한 뒤 다시 시작한다 (G5.55-2).
 - dbspec 텍스트의 format 거부(DBS-141, ORES-14)가 feature coverage-schema-definition-dbspec-format-refusal의 native binding 여섯 개로 돌았고, 각 binding은 schema-definition의 suite case dbspec_format_refusal과 같은 함수였다. binding을 지우고 suite case만 남긴다. set 파일 generator 규칙(ORES-21)은 FCV-2의 runtime별 진입점으로 각 runtime에 native로 남는다 (T334-3-21-1)
+- `make interface-record`는 `make interface-check`와 같은 checker와 lease 환경으로 interface 심볼 스냅샷과 manifest 해시를 기록한다. `LANGUAGE=<name>`이면 한 언어만 기록하므로, transaction statement gate로 바뀐 Rust DbInner 스냅샷을 make 밖이 아니라 make로 재생성한다 (#T343-4-1)
+- transaction 중복 문장 테스트는 첫 문장을 transaction connection 안에서 `testing::hold_next_statement`로 붙잡고, 첫 문장이 그 지점에 도달한 뒤에야 둘째 문장을 시도한다. 그래서 두 future가 겹치는지에 따라 달라지지 않고 모든 schedule에서 둘째 문장이 CONFIG로 거부된다 (#T343-4)
 
 ## 0.0.21
 
