@@ -9,7 +9,6 @@ import { isDeepStrictEqual } from 'node:util';
 import { COMPUTE, caseTest } from '../../../tests/testcase.mts';
 import { Db, OrmError } from '../dist/index.js';
 import { parseDsn } from '../dist/driver.js';
-import { beginLine, markdownParam } from '../dist/markdown.js';
 import { checkAssign, checkParam, transformParam } from '../dist/bind_check.js';
 import * as publicIndex from '../dist/index.js';
 import { readFileSync } from 'node:fs';
@@ -170,34 +169,7 @@ caseTest('markdown/rejected-surfaces', COMPUTE, async () => {
     await s.close();
   }
 });
-// Message case of tests/bind/vectors.json: the runtime value model JSON of an IR executor message parameter
-// (docs/spec/protocol.md §5 "Parameters"). These are the same cases as TestBindMessageVectors in Go.
 const bind = JSON.parse(readFileSync(new URL('../../../tests/bind/vectors.json', import.meta.url), 'utf8'));
-// The control cases: the begin control message of a transaction with and without readOnly (docs/spec/protocol.md §5 Session).
-if (!Array.isArray(bind.control) || bind.control.length === 0) throw new Error('tests/bind/vectors.json has no control cases');
-for (const c of bind.control) {
-  // Requirements: PRT-67.
-  caseTest(`markdown/bind-message/control/${c.name}`, COMPUTE, () => {
-    const got = beginLine(c.read_only);
-    if (!isDeepStrictEqual(JSON.parse(got), c.json)) throw new Error(`begin of readOnly ${c.read_only} = ${got}; want ${JSON.stringify(c.json)}`);
-  });
-}
-for (const c of bind.message) {
-  // Requirements: PRT-67.
-  caseTest(`markdown/bind-message/${c.name}`, COMPUTE, () => {
-    const db = { zone: bind.zone, aesKey: '' };
-    let got, code = '';
-    try { got = markdownParam(db, 0, c.value, [{ type: c.type }]); } catch (error) {
-      if (!(error instanceof OrmError)) throw error;
-      code = error.code;
-    }
-    if (c.code !== undefined) {
-      if (code !== c.code) throw new Error(`markdownParam(${JSON.stringify(c.value)}) = ${got} ${code}; want ${c.code}`);
-    } else if (code !== '' || got !== JSON.stringify(c.json)) {
-      throw new Error(`markdownParam(${JSON.stringify(c.value)}) = ${got} ${code}; want ${JSON.stringify(c.json)}`);
-    }
-  });
-}
 // Bind case of tests/bind/vectors.json: checks a parameter value against the logical type of its slot (docs/spec/protocol.md §5
 // "Parameters"). These are the same cases as TestBindVectors in Go.
 // Requirements: PRT-67, DIA-31.

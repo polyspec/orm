@@ -1,7 +1,7 @@
 // Package recipe runs the cases of a recipe (docs/spec/feature-coverage.md FCV-2 to FCV-4) in Go: the entry of each suite
 // unit, TestRecipe<Recipe><Database>, starts its case with packages/go/testcase and calls Run with the recipe and the
 // database, and Run runs each case as a subtest whose
-// steps call the public API of the orm package that each op names. It has no command line and no output of its own.
+// steps call the public API of the orm package that each op names.
 package recipe
 
 import (
@@ -52,7 +52,6 @@ type step struct {
 	Chain   string                     `json:"chain"`
 	Answer  json.RawMessage            `json:"answer"`
 	Answers map[string]json.RawMessage `json:"answers"`
-	Bind    json.RawMessage            `json:"bind"`
 	DSN     string                     `json:"dsn"`
 	Schema  string                     `json:"schema"`
 	Input   json.RawMessage            `json:"input"`
@@ -77,28 +76,56 @@ type step struct {
 	Path     string              `json:"path"`
 	// Name, Mermaid and SkeletonOf are the fields of dbspec.import_mermaid: the name of the imported document, its Mermaid
 	// text or a ref to an export, and the .dbs file whose skeleton the import must equal (FCV-4).
-	Name       string                     `json:"name"`
-	Mermaid    json.RawMessage            `json:"mermaid"`
-	SkeletonOf string                     `json:"skeleton_of"`
-	Expect     map[string]json.RawMessage `json:"expect"`
-	Options    json.RawMessage            `json:"options"`
+	Name        string                     `json:"name"`
+	Mermaid     json.RawMessage            `json:"mermaid"`
+	SkeletonOf  string                     `json:"skeleton_of"`
+	Expect      map[string]json.RawMessage `json:"expect"`
+	Options     json.RawMessage            `json:"options"`
+	Model       string                     `json:"model"`
+	Column      string                     `json:"column"`
+	Operator    string                     `json:"operator"`
+	Params      []json.RawMessage          `json:"params"`
+	Begin       json.RawMessage            `json:"begin"`
+	ProcessZone string                     `json:"process_zone"`
 }
+
+// MarkdownSend runs one markdown.send step on a markdown connection to a listener that records the first message it receives,
+// and returns that message (the JSON of the message, or of the parameter of a statement) and the code of the error that the
+// public call returned before it sent one. A begin step passes begin, the statement passes column, operator and params.
+// A non-empty processZone is the IANA zone name that is the process default zone while the step runs.
+// It is supplied by the test package that owns the listener and the generated bind models, since they cannot be reached from here.
+type MarkdownSend func(t *testing.T, column, operator string, params []json.RawMessage, begin *bool, processZone string) (message json.RawMessage, code string)
 
 // IRAnswer runs the chain of one ir.answer step on a listener that answers with the answer, or with answers keyed by the op of
 // a control message or the kind of a request, and returns the result of the chain or its error. It is supplied by the test
 // that owns the chain registry and the listener, since a chain cannot be reached from this package. With params set (the expect
 // of the step is {"params": [...]}, PRT-66), the function returns the params of the request that the listener received instead.
-// With bind set (the step's bind field, T334-3-15-3c), the chain binds the bind value to the slot column the field names, and
-// the function runs the chain of that bind value.
-type IRAnswer func(t *testing.T, chain string, answer json.RawMessage, answers map[string]json.RawMessage, bind json.RawMessage, params bool) (any, error)
+type IRAnswer func(t *testing.T, chain string, answer json.RawMessage, answers map[string]json.RawMessage, params bool) (any, error)
 
 // Option configures Run.
 type Option func(*options)
 
+// ModelAssign runs one model.assign step: it sets column of a new row of the generated model model through its public setter
+// with value, builds the insert statement without a database, and returns the JSON of its one parameter or the code of the
+// error that the setter or the encode returns before it sends a message. It is supplied by the test package that owns the models.
+type ModelAssign func(t *testing.T, model, column string, value json.RawMessage) (json.RawMessage, string)
+
 type options struct {
 	irAnswer IRAnswer
 	// dir is the directory of the recipe file, which the dbspec ops resolve their documents against.
-	dir string
+	dir          string
+	markdownSend MarkdownSend
+	modelAssign  ModelAssign
+}
+
+// WithModelAssign supplies the function that runs each model.assign step of a recipe without a database.
+func WithModelAssign(fn ModelAssign) Option {
+	return func(o *options) { o.modelAssign = fn }
+}
+
+// WithMarkdownSend supplies the function that runs each markdown.send step of a recipe without a database.
+func WithMarkdownSend(fn MarkdownSend) Option {
+	return func(o *options) { o.markdownSend = fn }
 }
 
 // WithIRAnswer supplies the function that runs the chain of each ir.answer step of a recipe without a database.
@@ -194,6 +221,12 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	}
 	if s.Op == "ir.answer" {
 		return checkAnswer(t, s, database, o.irAnswer)
+	}
+	if s.Op == "markdown.send" {
+		return checkSend(t, s, o.markdownSend)
+	}
+	if s.Op == "model.assign" {
+		return checkAssign(t, s, o.modelAssign)
 	}
 	var r result
 	switch s.Op {
@@ -928,7 +961,7 @@ func checkAnswer(t *testing.T, s step, database string, fn IRAnswer) error {
 	if err := json.Unmarshal(want, &wantValue); err != nil {
 		return err
 	}
-	got, err := fn(t, s.Chain, s.Answer, s.Answers, s.Bind, params)
+	got, err := fn(t, s.Chain, s.Answer, s.Answers, params)
 	if err != nil {
 		code := orm.ErrorCode(err)
 		if code == "" {
@@ -1374,4 +1407,66 @@ func dbspecPlan(raw json.RawMessage, bound map[string]result) (*dbspec.Plan, err
 		return nil, fmt.Errorf("%s binds no plan", raw)
 	}
 	return p, nil
+}
+
+// checkSend runs a markdown.send step and checks its expect: {"message": <json>} against the first message the listener received,
+// or {"error": <code>} against the code of the error the call returned before it sent a message. The expect is not per database.
+func checkSend(t *testing.T, s step, fn MarkdownSend) error {
+	if fn == nil {
+		return fmt.Errorf("markdown.send needs WithMarkdownSend")
+	}
+	var begin *bool
+	if s.Begin != nil {
+		var b struct {
+			ReadOnly bool `json:"read_only"`
+		}
+		if err := json.Unmarshal(s.Begin, &b); err != nil {
+			return err
+		}
+		begin = &b.ReadOnly
+	}
+	message, code := fn(t, s.Column, s.Operator, s.Params, begin, s.ProcessZone)
+	return checkMessage(s.Expect, message, code)
+}
+
+// checkAssign runs one model.assign step and checks its expect against the message or the error it returns.
+func checkAssign(t *testing.T, s step, fn ModelAssign) error {
+	if fn == nil {
+		return fmt.Errorf("model.assign needs WithModelAssign")
+	}
+	message, code := fn(t, s.Model, s.Column, s.Value)
+	return checkMessage(s.Expect, message, code)
+}
+
+// checkMessage checks the message or the code of an error of a markdown listener step against its expect, {"message": JSON}
+// or {"error": CODE}.
+func checkMessage(expect map[string]json.RawMessage, message json.RawMessage, code string) error {
+	if raw, ok := expect["error"]; ok {
+		var want string
+		if err := json.Unmarshal(raw, &want); err != nil {
+			return err
+		}
+		if code != want {
+			return fmt.Errorf("the call returned error %q, want %q (message %s)", code, want, message)
+		}
+		return nil
+	}
+	raw, ok := expect["message"]
+	if !ok {
+		return fmt.Errorf("the step expects a message or an error")
+	}
+	if code != "" {
+		return fmt.Errorf("the call returned error %s before a message", code)
+	}
+	var got, want any
+	if err := json.Unmarshal(message, &got); err != nil {
+		return fmt.Errorf("the message %s is not JSON: %w", message, err)
+	}
+	if err := json.Unmarshal(raw, &want); err != nil {
+		return err
+	}
+	if !reflect.DeepEqual(got, want) {
+		return fmt.Errorf("message %s, want %s", message, raw)
+	}
+	return nil
 }

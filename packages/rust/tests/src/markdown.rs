@@ -78,13 +78,12 @@ pub fn unique() -> u128 {
 /// of `answers` named by the op of a control message or the kind of a request, and a message without one IR_INVALID.
 /// With `params` (an expect of {"params": [...]}), the result is the params of the one request that the listener
 /// received, in the JSON form of the params of docs/spec/protocol.md, instead of the chain's result; a chain that fails returns its error.
-/// A step with a `bind` runs the slot insert of `recipe::bind_slot` on the slots model instead of the chain (T334-3-15-3c).
-pub fn answer(chain: &str, bind: &Value, answer: &Value, answers: &Value, params: bool) -> Value {
+pub fn answer(chain: &str, answer: &Value, answers: &Value, params: bool) -> Value {
     // The chain's future is large in a debug build, so it runs on a thread with a stack of its own (not the trial's).
-    let (chain, bind, answer, answers) = (chain.to_owned(), bind.clone(), answer.clone(), answers.clone());
+    let (chain, answer, answers) = (chain.to_owned(), answer.clone(), answers.clone());
     let thread = std::thread::Builder::new()
         .stack_size(64 << 20)
-        .spawn(move || answer_on_thread(&chain, &bind, &answer, &answers, params))
+        .spawn(move || answer_on_thread(&chain, &answer, &answers, params))
         .expect("a thread with a 64 MiB stack");
     match thread.join() {
         Ok(value) => value,
@@ -92,7 +91,7 @@ pub fn answer(chain: &str, bind: &Value, answer: &Value, answers: &Value, params
     }
 }
 
-fn answer_on_thread(chain: &str, bind: &Value, answer: &Value, answers: &Value, params: bool) -> Value {
+fn answer_on_thread(chain: &str, answer: &Value, answers: &Value, params: bool) -> Value {
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().expect("a current-thread runtime");
     let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("a listener");
     let port = listener.local_addr().expect("its address").port();
@@ -142,13 +141,6 @@ fn answer_on_thread(chain: &str, bind: &Value, answer: &Value, answers: &Value, 
     let token = "0123456789abcdef0123456789abcdef".to_owned();
     let got: Result<Value, Value> = runtime.block_on(async {
         let dsn = format!("markdown://127.0.0.1:{port}/conformance?token={token}");
-        // A bind step writes the slots model, so its connection carries the schema of tests/bind/dbspec-set.json (its hash).
-        if !bind.is_null() {
-            return match crate::recipe::bind_slot(&dsn, bind).await {
-                Ok(()) => Ok(Value::Null),
-                Err(error) => Err(json!({ "error": error.code() })),
-            };
-        }
         let db = markdown_model::connect(&dsn, 1, Config::default()).await.expect("connect");
         let s = Served { bin: PathBuf::new(), db, dir: PathBuf::new(), corpus: "conformance".to_owned(), port, token };
         let got = match run_case(chain, &s).await {
@@ -181,6 +173,64 @@ fn request_params(request: Option<&str>) -> Value {
         panic!("the listener received no request message");
     }
     message.get("params").cloned().unwrap_or_else(|| json!([]))
+}
+
+/// The listener of one markdown.send step of the recipe helper: it accepts one connection, answers connect with
+/// {"ok": true}, records the first message after it, and answers that message and each later one with an error so that the
+/// call ends. `dsn` is the connection string of the connection to make; `first` yields the recorded message after the call.
+pub struct SendListener {
+    pub dsn: String,
+    first: std::sync::mpsc::Receiver<Value>,
+    thread: std::thread::JoinHandle<()>,
+}
+
+/// Starts the listener of one markdown.send step on a port of its own.
+pub fn send_listener() -> SendListener {
+    use std::io::Write;
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("a listener");
+    let port = listener.local_addr().expect("its address").port();
+    let (record, first) = std::sync::mpsc::channel();
+    let thread = std::thread::spawn(move || {
+        let Ok((conn, _)) = listener.accept() else { return };
+        let mut writer = conn.try_clone().expect("a second handle");
+        let mut lines = std::io::BufReader::new(conn).lines();
+        let mut connected = false;
+        let mut recorded = false;
+        while let Some(Ok(line)) = lines.next() {
+            let reply = if !std::mem::replace(&mut connected, true) {
+                json!({ "ok": true })
+            } else {
+                if !std::mem::replace(&mut recorded, true) {
+                    let message: Value = match serde_json::from_str(&line) {
+                        Ok(message) => message,
+                        Err(error) => panic!("the markdown.send listener read a line that is not JSON: {error}"),
+                    };
+                    // The receiver ends only with the case, after which nothing reads the record.
+                    if record.send(message).is_err() {
+                        return;
+                    }
+                }
+                json!({ "error": { "code": "IR_INVALID", "message": "recorded by the markdown.send listener" } })
+            };
+            if writer.write_all(format!("{reply}\n").as_bytes()).is_err() {
+                return;
+            }
+        }
+    });
+    let token = "0123456789abcdef0123456789abcdef";
+    SendListener { dsn: format!("markdown://127.0.0.1:{port}/conformance?token={token}"), first, thread }
+}
+
+impl SendListener {
+    /// The first message the listener received, or none when the call sent no message. Call it after the call and the
+    /// connection have ended: the call returns only after the listener has answered, so a sent message is already recorded.
+    pub fn finish(self) -> Option<Value> {
+        if let Err(panic) = self.thread.join() {
+            std::panic::resume_unwind(panic);
+        }
+        // The listener has ended, so an empty channel is a call that sent no message.
+        self.first.try_iter().next()
+    }
 }
 
 /// Installs corpus/ as a new corpus, starts that server, and connects to it.

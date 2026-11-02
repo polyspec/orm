@@ -72,7 +72,8 @@ final class Recipe
     /** The Mermaid ops (FCV-4), on the public Mermaid calls of Dbspec (DBS-169). */
     private const MERMAID_OPS = ['dbspec.export_mermaid', 'dbspec.import_mermaid'];
 
-    /** @return iterable<string, array{array<string, mixed>}> each case of the recipe at path, relative to the repository root */
+    /** @return iterable<string, array{array<string, mixed>}> each case of the recipe at path, relative to the
+     * repository root */
     public static function cases(string $path): iterable
     {
         $text = (string) file_get_contents(dirname(__DIR__, 3) . '/' . $path);
@@ -123,6 +124,26 @@ final class Recipe
                 }
                 if (in_array($step['op'], self::MERMAID_OPS, true)) {
                     self::mermaidStep($step, $bound, $path, $database);
+                    continue;
+                }
+                if ($step['op'] === 'markdown.send') {
+                    if (array_key_exists('process_zone', $step)) {
+                        // The process zone holds while the step runs, so the public call sees it, and is restored
+                        // after it.
+                        $saved = date_default_timezone_get();
+                        date_default_timezone_set($step['process_zone']);
+                        try {
+                            self::sendStep($step);
+                        } finally {
+                            date_default_timezone_set($saved);
+                        }
+                    } else {
+                        self::sendStep($step);
+                    }
+                    continue;
+                }
+                if ($step['op'] === 'model.assign') {
+                    self::assignStep($step);
                     continue;
                 }
                 self::step($step, $bound, $database);
@@ -400,13 +421,7 @@ final class Recipe
             Assert::fail('a params expect needs one answer, not answers');
         }
         $want = $params ? $outcome['params'] : $outcome['value'];
-        $bind = $step['bind'] ?? null;
-        if ($bind !== null && $step['chain'] !== 'slot') {
-            Assert::fail("a bind step names the chain slot, not {$step['chain']}");
-        }
-        $chain = $bind !== null
-            ? self::bindSlotChain($bind)
-            : (MarkdownConformanceTest::conformanceCases()[$step['chain']] ?? null);
+        $chain = MarkdownConformanceTest::conformanceCases()[$step['chain']] ?? null;
         if ($chain === null) {
             Assert::fail("chain {$step['chain']} is no markdown conformance case");
         }
@@ -415,9 +430,7 @@ final class Recipe
             ? start_markdown_test_server(['--keyed', json_encode($step['answers'], $flags)])
             : start_markdown_test_server(['{"ok":true}', json_encode($step['answer'], $flags)]);
         $served = new Served();
-        $served->db = $bind !== null
-            ? \Polyspec\Orm\Tests\BindModel\connect($server[2], new Config())
-            : \Polyspec\Orm\Tests\MarkdownModel\connect($server[2], new Config());
+        $served->db = \Polyspec\Orm\Tests\MarkdownModel\connect($server[2], new Config());
         $failed = false;
         try {
             $got = $chain($served);
@@ -438,20 +451,6 @@ final class Recipe
             $actual,
             'got ' . MarkdownConformanceTest::jsonText($actual) . ', want ' . MarkdownConformanceTest::jsonText($expect)
         );
-    }
-
-    /**
-     * The chain of a bind step (T334-3-15-3c, PRT-67): it writes the bind value into the slot column of the bind model
-     * through its setter and sends the insert, so the request carries the wire value of the slot.
-     */
-    private static function bindSlotChain(array $bind): \Closure
-    {
-        $setter = 'set' . self::studly(explode('_', $bind['column'])[0]) . 'Value';
-        return static function (Served $served) use ($setter, $bind): mixed {
-            $row = (new \Polyspec\Orm\Tests\BindModel\Slots())->connect($served->db);
-            $row->{$setter}($bind['value'])->create();
-            return null;
-        };
     }
 
     /** The params of the request message that a server received, in the JSON form of PRT-67 (PRT-66). */
@@ -1080,6 +1079,192 @@ final class Recipe
         return $out;
     }
 
+    /** The typed filters of the bind fixture tests/bind/slots.dbs that a markdown.send statement may name, by column
+     * (DBS-121). */
+    private const BIND_FILTERS = [
+        'slots.uuid_value' => 'uuidValue',
+        'slots.time0_value' => 'time0Value',
+        'slots.time1_value' => 'time1Value',
+        'slots.time2_value' => 'time2Value',
+        'slots.datetime1_value' => 'datetime1Value',
+        'slots.datetime2_value' => 'datetime2Value',
+        'slots.time3_value' => 'time3Value',
+        'slots.time6_value' => 'time6Value',
+        'slots.datetime0_value' => 'datetime0Value',
+        'slots.datetime3_value' => 'datetime3Value',
+        'slots.datetime6_value' => 'datetime6Value',
+        'slots.date_value' => 'dateValue',
+        'slots.decimal_value' => 'decimalValue',
+        'slots.varchar_value' => 'varcharValue',
+        'slots.varchar_null_value' => 'varcharNullValue',
+        'slots.varchar_long_value' => 'varcharLongValue',
+        'slots.text_value' => 'textValue',
+        'slots.bytes_value' => 'bytesValue',
+        'slots.i16_value' => 'i16Value',
+        'slots.i32_value' => 'i32Value',
+        'slots.i64_value' => 'i64Value',
+        'slots.f64_value' => 'f64Value',
+        'slots.bool_value' => 'boolValue',
+    ];
+
+    /** The answer of the markdown.send listener to the message it records, which ends the call. */
+    private const SEND_ERROR = '{"error":{"code":"IR_INVALID","message":"recorded by the markdown.send listener"}}';
+
+    /**
+     * Runs one markdown.send step (FCV-4) on a listener that answers connect with {"ok":true}, records the first
+     * message after
+     * it and answers that message with SEND_ERROR so the call ends. The expect is {"message": JSON}, compared with the
+     * whole
+     * message of a begin or the one parameter of a statement, or {"error": CODE}, compared with the code of the orm
+     * error that
+     * the call raises before it sends a message.
+     */
+    private static function sendStep(array $step): void
+    {
+        self::loadBindModels();
+        [$message, $code] = self::sendFirst(static function (mixed $db) use ($step): void {
+            if (array_key_exists('begin', $step)) {
+                $db->transaction(static fn(): null => null, '', $step['begin']['read_only'] === true);
+            } else {
+                self::sendQuery($step, $db);
+            }
+        });
+        self::checkMessage($step['expect'], $message, $code);
+    }
+
+    /**
+     * Runs one model.assign step (FCV-4): sets the column of a new row of the generated model through its public
+     * setter and builds the insert of that row on the markdown listener of sendFirst, with no database. The value is
+     * a text wrapper, the only one the typed setter of the case takes; the nil case is excluded in PHP
+     * (SetVarcharValue takes a string, not null).
+     */
+    private static function assignStep(array $step): void
+    {
+        self::loadBindModels();
+        [$message, $code] = self::sendFirst(static function (mixed $db) use ($step): void {
+            $model = $step['model'];
+            $column = $step['column'];
+            if ($model !== 'slots' || $column !== 'varchar_value') {
+                Assert::fail("model.assign of $model.$column has no typed setter in the PHP cases");
+            }
+            $text = $step['value']['text'] ?? Assert::fail('model.assign takes a text wrapper in the PHP cases');
+            (new \Polyspec\Orm\Tests\BindModel\Slots())->connect($db)->setVarcharValue($text)->create();
+        });
+        self::checkMessage($step['expect'], $message, $code);
+    }
+
+    /**
+     * Runs call with a connection to a markdown listener that answers connect with {"ok":true}, records the first
+     * message after it and answers that message with SEND_ERROR so the call ends. Returns the first message, or null,
+     * and the code of the orm error that call raises before it sends a message.
+     *
+     * @param callable(mixed): void $call
+     * @return array{0: ?string, 1: string}
+     */
+    private static function sendFirst(callable $call): array
+    {
+        $server = start_markdown_test_server(['{"ok":true}', self::SEND_ERROR]);
+        $code = '';
+        $db = null;
+        try {
+            $db = \Polyspec\Orm\Tests\BindModel\connect($server[2], new Config());
+            $call($db);
+        } catch (OrmException $error) {
+            $code = $error->code_;
+        } finally {
+            $db?->close();
+            $received = markdown_test_server_received_messages($server);
+        }
+        // The first line is connect; the second is the first message after it.
+        return [$received[1] ?? null, $code];
+    }
+
+    /**
+     * Checks the message or the error code of a listener step against its expect, {"message": JSON} or {"error": CODE}.
+     */
+    private static function checkMessage(array $expect, ?string $message, string $code): void
+    {
+        if (isset($expect['error'])) {
+            Assert::assertSame($expect['error'], $message === null ? $code : '', 'the error code of the call');
+            return;
+        }
+        if ($message === null) {
+            Assert::fail("the call returned error $code before a message, want " . json_encode($expect['message']));
+        }
+        $got = self::messageValue($message);
+        if (is_array($expect['message'])) {
+            Assert::assertEqualsCanonicalizing($expect['message'], $got, "message $message");
+            return;
+        }
+        Assert::assertSame($expect['message'], $got, "message $message");
+    }
+
+    /** The message that an expect compares: the whole message of a begin, or the one parameter of a statement. */
+    private static function messageValue(string $text): mixed
+    {
+        $message = json_decode($text, true, 512, JSON_THROW_ON_ERROR);
+        if (($message['op'] ?? null) === 'begin') {
+            return $message;
+        }
+        $params = $message['params'] ?? null;
+        // A statement with no parameter (a nil compared with eq is IS NULL, DSL-48) has the empty list as its message.
+        if (is_array($params) && $params === []) {
+            return [];
+        }
+        if (!is_array($params) || count($params) !== 1) {
+            Assert::fail("the statement message $text holds no single parameter");
+        }
+        return $params[0];
+    }
+
+    /**
+     * Runs the generated typed filter of the slot column of step with the PHP value of its wrapper (DBS-121). A text
+     * wrapper
+     * gives its text, an int wrapper its PHP int; a float, text or bool wrapper on an integer column gives the value
+     * the
+     * untyped PHP path receives, so the public call refuses it with CODEC_ENCODE.
+     */
+    private static function sendQuery(array $step, mixed $db): void
+    {
+        $column = $step['column'];
+        if ($step['operator'] === 'like_contains') {
+            // The contains condition of the text column is the lk operator of the generated model, which __call
+            // dispatches (DSL-29).
+            if ($column !== 'slots.text_value') {
+                Assert::fail("the column $column has no contains filter in the PHP cases");
+            }
+            $method = 'lkTextValue';
+        } elseif ($step['operator'] === 'eq') {
+            $method = self::BIND_FILTERS[$column]
+                ?? Assert::fail("the column $column has no typed filter in the PHP cases");
+        } else {
+            Assert::fail("operator {$step['operator']} has no typed filter in the PHP cases");
+        }
+        $wrapper = $step['params'][0];
+        if (!is_array($wrapper) || count($wrapper) !== 1) {
+            Assert::fail('the parameter ' . json_encode($wrapper) . ' is no single-member wrapper');
+        }
+        // A time, datetime, date or decimal wrapper is the text the typed string filter takes; the others go through
+        // the common value model.
+        $kind = array_key_first($wrapper);
+        $textual = in_array($kind, ['time', 'datetime', 'date', 'decimal'], true);
+        $value = $textual ? $wrapper[$kind] : self::toValue($wrapper);
+        (new \Polyspec\Orm\Tests\BindModel\Slots())->connect($db)->{$method}($value)->gets();
+    }
+
+    /** Loads the generated models of tests/bind/dbspec-set.json, which make php-models writes, once. */
+    private static function loadBindModels(): void
+    {
+        static $loaded = false;
+        if ($loaded) {
+            return;
+        }
+        $directory = dirname(__DIR__) . '/bindmodel';
+        requireGeneratedClasses($directory);
+        require_once $directory . '/bootstrap.php';
+        $loaded = true;
+    }
+
     /** Maps the op of step to its call and checks the result against the expect of database. */
     private static function step(array $step, array &$bound, string $database): void
     {
@@ -1172,7 +1357,8 @@ final class Recipe
         return $bound[$name]['value'];
     }
 
-    /** A stored cell, which PHP holds as a string of bytes: SQL NULL is null, and bytes or a written cell are their string. */
+    /** A stored cell, which PHP holds as a string of bytes: SQL NULL is null, and bytes or a written cell are their
+     * string. */
     private static function cell(array $raw, array $bound): ?string
     {
         $value = self::argument($raw, $bound);
@@ -2544,7 +2730,8 @@ final class Recipe
         return array_map(static fn(int $index): int => $sequence['from'] + $index, range(0, $sequence['count'] - 1));
     }
 
-    /** The recipe wrapper of a plain value; a string takes the wrapper of the native type of its column when one is known. */
+    /** The recipe wrapper of a plain value; a string takes the wrapper of the native type of its column when one is
+     * known. */
     private static function plainWrapper(mixed $value, ?string $nativeType): array
     {
         if ($value === null) {
@@ -2625,7 +2812,8 @@ final class Recipe
         return array_map(static fn (string $name): ?string => $types[$name] ?? null, $names);
     }
 
-    /** The fields of a mutation result: its rows, each cell wrapped by the native type of its column in the metadata. */
+    /** The fields of a mutation result: its rows, each cell wrapped by the native type of its column in the
+     * metadata. */
     private static function mutation(CatalogTableMetadata $metadata, CatalogResult $result): array
     {
         $types = self::nativeTypes($metadata, $result->columns);

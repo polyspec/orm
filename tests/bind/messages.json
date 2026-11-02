@@ -1,0 +1,1750 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "PRT-67"
+  ],
+  "cases": [
+    {
+      "id": "control_begin",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "begin": {
+            "read_only": false
+          },
+          "expect": {
+            "message": {
+              "op": "begin"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "control_begin_read_only",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "begin": {
+            "read_only": true
+          },
+          "expect": {
+            "message": {
+              "op": "begin",
+              "read_only": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "message_time_p0",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "time": "10:00:00"
+            }
+          ],
+          "expect": {
+            "message": "10:00:00.000000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "message_time_p3",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time3_value",
+          "operator": "eq",
+          "params": [
+            {
+              "time": "10:00:00.123"
+            }
+          ],
+          "expect": {
+            "message": "10:00:00.123000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "message_time_p3_whole",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time3_value",
+          "operator": "eq",
+          "params": [
+            {
+              "time": "10:00:00"
+            }
+          ],
+          "expect": {
+            "message": "10:00:00.000000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "message_time_p6",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time6_value",
+          "operator": "eq",
+          "params": [
+            {
+              "time": "23:59:59.999999"
+            }
+          ],
+          "expect": {
+            "message": "23:59:59.999999"
+          }
+        }
+      ]
+    },
+    {
+      "id": "message_datetime_p0",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "datetime": "2024-01-02 03:04:05"
+            }
+          ],
+          "expect": {
+            "message": "2024-01-02 03:04:05.000000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "message_datetime_p3_t",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime3_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "2024-01-02T03:04:05.5"
+            }
+          ],
+          "expect": {
+            "message": "2024-01-02 03:04:05.500000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "message_datetime_offset",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime6_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "2024-01-02 03:04:05+09:00"
+            }
+          ],
+          "expect": {
+            "message": "2024-01-01 18:04:05.000000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "message_date",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.date_value",
+          "operator": "eq",
+          "params": [
+            {
+              "date": "2024-01-02"
+            }
+          ],
+          "expect": {
+            "message": "2024-01-02"
+          }
+        }
+      ]
+    },
+    {
+      "id": "message_datetime_dst_gap",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime6_value",
+          "operator": "eq",
+          "params": [
+            {
+              "datetime": "2026-03-08 02:30:00"
+            }
+          ],
+          "expect": {
+            "message": "2026-03-08 02:30:00.000000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "message_datetime_dst_gap_process_zone",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime6_value",
+          "operator": "eq",
+          "params": [
+            {
+              "datetime": "2026-03-08 02:30:00"
+            }
+          ],
+          "expect": {
+            "message": "2026-03-08 02:30:00.000000"
+          },
+          "process_zone": "America/New_York"
+        }
+      ]
+    },
+    {
+      "id": "message_datetime_dst_gap_process_zone_fraction",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime6_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "2026-03-08T02:30:00.5"
+            }
+          ],
+          "expect": {
+            "message": "2026-03-08 02:30:00.500000"
+          },
+          "process_zone": "America/New_York"
+        }
+      ]
+    },
+    {
+      "id": "message_date_process_zone",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.date_value",
+          "operator": "eq",
+          "params": [
+            {
+              "date": "2026-03-08"
+            }
+          ],
+          "expect": {
+            "message": "2026-03-08"
+          },
+          "process_zone": "America/New_York"
+        }
+      ]
+    },
+    {
+      "id": "message_time_not_clock",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "10:00"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "message_datetime_not_date",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "datetime": "2024-13-01 00:00:00"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_i16_max",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i16_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "32767"
+            }
+          ],
+          "expect": {
+            "message": 32767
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_i16_min",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i16_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "-32768"
+            }
+          ],
+          "expect": {
+            "message": -32768
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_i32_max",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i32_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "2147483647"
+            }
+          ],
+          "expect": {
+            "message": 2147483647
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_i64_max",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i64_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "9223372036854775807"
+            }
+          ],
+          "expect": {
+            "message": 9223372036854775807
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_i64_min",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i64_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "-9223372036854775808"
+            }
+          ],
+          "expect": {
+            "message": -9223372036854775808
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_f64_fraction",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.f64_value",
+          "operator": "eq",
+          "params": [
+            {
+              "float": "1.5"
+            }
+          ],
+          "expect": {
+            "message": 1.5
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_f64_integer",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.f64_value",
+          "operator": "eq",
+          "params": [
+            {
+              "int": "5"
+            }
+          ],
+          "expect": {
+            "message": 5
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_f64_nan",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.f64_value",
+          "operator": "eq",
+          "params": [
+            {
+              "f64": "NaN"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_f64_infinity",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.f64_value",
+          "operator": "eq",
+          "params": [
+            {
+              "f64": "Infinity"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_f64_negative_infinity",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.f64_value",
+          "operator": "eq",
+          "params": [
+            {
+              "f64": "-Infinity"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_bool",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.bool_value",
+          "operator": "eq",
+          "params": [
+            {
+              "bool": true
+            }
+          ],
+          "expect": {
+            "message": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_decimal",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.decimal_value",
+          "operator": "eq",
+          "params": [
+            {
+              "decimal": "123.45"
+            }
+          ],
+          "expect": {
+            "message": "123.45"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_decimal_short_scale",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.decimal_value",
+          "operator": "eq",
+          "params": [
+            {
+              "decimal": "-1.5"
+            }
+          ],
+          "expect": {
+            "message": "-1.5"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_decimal_precision",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.decimal_value",
+          "operator": "eq",
+          "params": [
+            {
+              "decimal": "1234.5"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_decimal_scale",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.decimal_value",
+          "operator": "eq",
+          "params": [
+            {
+              "decimal": "1.234"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_null_accepted",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.varchar_null_value",
+          "operator": "eq",
+          "params": [
+            {
+              "nil": true
+            }
+          ],
+          "expect": {
+            "message": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "assign_value_into_not_null",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "model.assign",
+          "model": "slots",
+          "column": "varchar_value",
+          "value": {
+            "text": "abc"
+          },
+          "expect": {
+            "message": "abc"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_value_into_not_null",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.varchar_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "abc"
+            }
+          ],
+          "expect": {
+            "message": "abc"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_varchar_length",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.varchar_null_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "abc"
+            }
+          ],
+          "expect": {
+            "message": "abc"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_varchar_code_points",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.varchar_null_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "가나다"
+            }
+          ],
+          "expect": {
+            "message": "가나다"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_varchar_too_long",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.varchar_null_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "abcd"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_varchar_trailing_space",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.varchar_null_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "abc "
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_varchar_code_points_too_long",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.varchar_null_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "가나다라"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_varchar_nul",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.varchar_null_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "a\u0000"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_varchar_without_length",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.varchar_long_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "a slot of a utils statement"
+            }
+          ],
+          "expect": {
+            "message": "a slot of a utils statement"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_text",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.text_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "hello"
+            }
+          ],
+          "expect": {
+            "message": "hello"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_text_nul",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.text_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "a\u0000b"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_bytes",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.bytes_value",
+          "operator": "eq",
+          "params": [
+            {
+              "bytes_hex": "0001"
+            }
+          ],
+          "expect": {
+            "message": "AAE="
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_contains_text",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.text_value",
+          "operator": "like_contains",
+          "params": [
+            {
+              "text": "a%"
+            }
+          ],
+          "expect": {
+            "message": "a%"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_contains_escapes",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.text_value",
+          "operator": "like_contains",
+          "params": [
+            {
+              "text": "a_b\\"
+            }
+          ],
+          "expect": {
+            "message": "a_b\\"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_uuid",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.uuid_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "123e4567-e89b-12d3-a456-426614174000"
+            }
+          ],
+          "expect": {
+            "message": "123e4567-e89b-12d3-a456-426614174000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_uuid_upper",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.uuid_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "123E4567-E89B-12D3-A456-426614174000"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_uuid_braces",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.uuid_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "{123e4567-e89b-12d3-a456-426614174000}"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_uuid_no_hyphens",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.uuid_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "123e4567e89b12d3a456426614174000"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_date",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.date_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "2024-01-02"
+            }
+          ],
+          "expect": {
+            "message": "2024-01-02"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_date_first",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.date_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "0001-01-01"
+            }
+          ],
+          "expect": {
+            "message": "0001-01-01"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_date_last",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.date_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "9999-12-31"
+            }
+          ],
+          "expect": {
+            "message": "9999-12-31"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_date_year_zero",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.date_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "0000-12-31"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_date_not_a_day",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.date_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "2024-02-30"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_time_p0",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "10:00:00"
+            }
+          ],
+          "expect": {
+            "message": "10:00:00.000000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_time_p0_zero_past_p",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "10:00:00.000"
+            }
+          ],
+          "expect": {
+            "message": "10:00:00.000000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_time_p0_digit_past_p",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "10:00:00.5"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_time_p1",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time1_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "10:00:00.5"
+            }
+          ],
+          "expect": {
+            "message": "10:00:00.500000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_time_p1_zero_past_p",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time1_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "10:00:00.500000"
+            }
+          ],
+          "expect": {
+            "message": "10:00:00.500000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_time_p1_digit_past_p",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time1_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "10:00:00.51"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_time_p2",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time2_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "10:00:00.12"
+            }
+          ],
+          "expect": {
+            "message": "10:00:00.120000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_time_p2_zero_past_p",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time2_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "10:00:00.120000"
+            }
+          ],
+          "expect": {
+            "message": "10:00:00.120000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_time_p2_digit_past_p",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time2_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "10:00:00.123"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_time_p3",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time3_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "10:00:00.123"
+            }
+          ],
+          "expect": {
+            "message": "10:00:00.123000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_time_p3_digit_past_p",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time3_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "10:00:00.1234"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_time_hour_24",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.time0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "24:00:00"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime_p0",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "2024-01-02 03:04:05"
+            }
+          ],
+          "expect": {
+            "message": "2024-01-02 03:04:05.000000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime_p0_zero_past_p",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "2024-01-02 03:04:05.000000"
+            }
+          ],
+          "expect": {
+            "message": "2024-01-02 03:04:05.000000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime_p0_digit_past_p",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "2024-01-02 03:04:05.5"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime_p1",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime1_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "2024-01-02 03:04:05.5"
+            }
+          ],
+          "expect": {
+            "message": "2024-01-02 03:04:05.500000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime_p1_zero_past_p",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime1_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "2024-01-02 03:04:05.500000"
+            }
+          ],
+          "expect": {
+            "message": "2024-01-02 03:04:05.500000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime_p1_digit_past_p",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime1_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "2024-01-02 03:04:05.51"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime_p2",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime2_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "2024-01-02 03:04:05.12"
+            }
+          ],
+          "expect": {
+            "message": "2024-01-02 03:04:05.120000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime_p2_zero_past_p",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime2_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "2024-01-02 03:04:05.120000"
+            }
+          ],
+          "expect": {
+            "message": "2024-01-02 03:04:05.120000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime_p2_digit_past_p",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime2_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "2024-01-02 03:04:05.123"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime_last",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime6_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "9999-12-31 23:59:59.999999"
+            }
+          ],
+          "expect": {
+            "message": "9999-12-31 23:59:59.999999"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime_first",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "0001-01-01 00:00:00"
+            }
+          ],
+          "expect": {
+            "message": "0001-01-01 00:00:00.000000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime_before_first",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "0001-01-01 00:00:00+09:00"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime_year_zero",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.datetime0_value",
+          "operator": "eq",
+          "params": [
+            {
+              "text": "0000-06-01 00:00:00"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    }
+  ]
+}

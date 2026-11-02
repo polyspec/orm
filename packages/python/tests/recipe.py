@@ -6,9 +6,14 @@ import atexit
 import dataclasses
 import json
 import math
+import os
 import re
 import shutil
+import socket
 import tempfile
+import threading
+import time
+import types
 import unittest
 from decimal import Decimal
 from pathlib import Path
@@ -140,6 +145,9 @@ def recipe_tests(path: str, database: str):
                 if step["op"] in _MERMAID_OPS:
                     _mermaid(step, bound, database, directory)
                     continue
+                if step["op"] == "markdown.send":
+                    _send_in_process_zone(step)
+                    continue
                 _run(step, bound, database)
             except AssertionError as error:
                 raise AssertionError(
@@ -149,9 +157,8 @@ def recipe_tests(path: str, database: str):
     has_chain = any(
         step["op"] == "ir.answer" for case in recipe["cases"] for step in case["steps"]
     )
-    return vector_load_tests(
-        ChainRecipeCase if has_chain else RecipeCase, recipe["cases"], check
-    )
+    cases = recipe["cases"]
+    return vector_load_tests(ChainRecipeCase if has_chain else RecipeCase, cases, check)
 
 
 def _mermaid(step: dict, bound: dict, database: str, directory: Path) -> None:
@@ -687,6 +694,276 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
         raise AssertionError(f"OP_UNKNOWN {op}")
 
 
+# The markdown.send steps (docs/spec/feature-coverage.md FCV-4): each runs one public call on a listener that answers connect with
+# {"ok": true} and records the first message after it, and answers that message with an error so the call ends.
+SEND_TOKEN = "0123456789abcdef0123456789abcdef"
+SEND_ERROR = b'{"error":{"code":"IR_INVALID","message":"recorded by the markdown.send listener"}}'
+# The typed filters of the bind fixture tests/bind/slots.dbs that a markdown.send statement may name, by column (DBS-121).
+SEND_FILTERS = frozenset(
+    [
+        "varchar_value",
+        "varchar_null_value",
+        "varchar_long_value",
+        "text_value",
+        "bytes_value",
+        "uuid_value",
+        "time0_value",
+        "time1_value",
+        "time2_value",
+        "datetime1_value",
+        "datetime2_value",
+        "time3_value",
+        "time6_value",
+        "datetime0_value",
+        "datetime3_value",
+        "datetime6_value",
+        "date_value",
+        "decimal_value",
+        "i16_value",
+        "i32_value",
+        "i64_value",
+        "f64_value",
+        "bool_value",
+    ]
+)
+# The integer columns of SEND_FILTERS: their typed filter takes the host value of the wrapper, an int, and not its text.
+INTEGER_FILTERS = frozenset(["i16_value", "i32_value", "i64_value"])
+# The columns of SEND_FILTERS whose typed filter takes the host value of the wrapper (a float, a bool, an int or a decimal
+# text), not its text: the integer columns, the float and bool columns, and the decimal column, whose float wrapper must reach
+# the filter as a float so that the public path refuses it with CODEC_ENCODE.
+HOST_FILTERS = INTEGER_FILTERS | frozenset(
+    ["f64_value", "bool_value", "decimal_value", "uuid_value"]
+)
+BIND_MODELS: dict = {}
+
+
+def _bind_models():
+    """The generated models of tests/bind/dbspec-set.json, loaded once from the directory that the environment variable
+    ORM_PYTHON_BIND_MODELS names, the way the Python conformance runner loads its models.py (make bind-message-check/python)."""
+    if "models" not in BIND_MODELS:
+        directory = os.environ.get("ORM_PYTHON_BIND_MODELS", "")
+        if not directory:
+            raise AssertionError(
+                "ORM_PYTHON_BIND_MODELS names no model directory; run make bind-message-check/python"
+            )
+        source = os.path.join(directory, "models.py")
+        module = types.ModuleType("bind_models")
+        module.__file__ = source
+        with open(source, encoding="utf-8") as file:
+            exec(compile(file.read(), source, "exec"), module.__dict__)
+        BIND_MODELS["models"] = module
+    return BIND_MODELS["models"]
+
+
+def _start_send_listener(received: list):
+    """A listener on a free loopback port that takes one connection: it answers the first line with {"ok": true}, appends the
+    second line to received, and answers every later line with SEND_ERROR."""
+    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(1)
+    listener.settimeout(10)
+
+    def serve():
+        try:
+            conn, _ = listener.accept()
+        except OSError:
+            return
+        conn.settimeout(10)
+        try:
+            with conn, conn.makefile("rb") as lines:
+                index = 0
+                while True:
+                    line = lines.readline()
+                    if not line:
+                        return
+                    if index == 0:
+                        reply = b'{"ok":true}'
+                    else:
+                        if index == 1:
+                            received.append(line.decode("utf-8").rstrip("\n"))
+                        reply = SEND_ERROR
+                    index += 1
+                    conn.sendall(reply + b"\n")
+        except OSError:
+            return
+
+    thread = threading.Thread(target=serve, daemon=True)
+    thread.start()
+    return listener, thread
+
+
+def _send_in_process_zone(step: dict) -> None:
+    """Runs one markdown.send step with the process default zone of its process_zone (an IANA zone), when it names one: the zone
+    is set in TZ and applied with time.tzset(), and the previous TZ is restored afterward, so no case keeps the zone."""
+    zone = step.get("process_zone")
+    if zone is None:
+        _send(step)
+        return
+    previous = os.environ.get("TZ")
+    os.environ["TZ"] = zone
+    time.tzset()
+    try:
+        _send(step)
+    finally:
+        if previous is None:
+            os.environ.pop("TZ", None)
+        else:
+            os.environ["TZ"] = previous
+        time.tzset()
+
+
+def _send(step: dict, call=None) -> None:
+    """Runs one markdown.send step and checks its expect, which is not per database: {"message": JSON} against the first
+    message the listener received (the whole message of a begin, the one parameter of a statement), or {"error": CODE} against
+    the code of the orm error that the call raises before it sends a message. A call, when given, runs the public call of the
+    step in place of its filter or transaction."""
+    received: list = []
+    listener, thread = _start_send_listener(received)
+    code = ""
+    db = None
+    try:
+        models = _bind_models()
+        db = models.connect(
+            f"markdown://127.0.0.1:{listener.getsockname()[1]}/conformance?token={SEND_TOKEN}"
+        )
+        try:
+            if call is not None:
+                call(models, db)
+            elif "begin" in step:
+                db.transaction(
+                    lambda: None, {"readOnly": step["begin"].get("read_only") is True}
+                )
+            else:
+                _query_slot(models, db, step)
+        except OrmError as error:
+            code = error.code
+    finally:
+        if db is not None:
+            db.close()
+        listener.close()
+        thread.join(5)
+    expect = step["expect"]
+    if "error" in expect:
+        got = "" if received else code
+        if got != expect["error"]:
+            raise AssertionError(
+                f"the call returned error {got or 'none'}, want {expect['error']}"
+            )
+        return
+    if not received:
+        raise AssertionError(
+            f"the call returned error {code or 'none'} before a message, want {json.dumps(expect.get('message'))}"
+        )
+    got = _message_value(received[0])
+    if got != expect["message"]:
+        raise AssertionError(
+            f"message {json.dumps(got)}, want {json.dumps(expect['message'])} (message {received[0]})"
+        )
+
+
+def _query_slot(models, db, step: dict) -> None:
+    """Runs the generated typed filter of the slot column of step. A temporal column's filter takes the text of its wrapper, the
+    text form of the value (DBS-121); a host-value column's filter (HOST_FILTERS) takes the Python value of its wrapper: an int
+    wrapper an int, a float wrapper a float, an f64 wrapper its non-finite float (NaN, Infinity, -Infinity), so the Python public
+    path refuses it with the code the expect names. A text or bool wrapper reaches the filter unchanged, so the filter refuses it
+    itself. A column or operator without a typed filter here is a defect of the recipe."""
+    table, _, name = step["column"].partition(".")
+    if step["operator"] == "like_contains":
+        # The contains condition of the text column is the lk operator of the generated model, a dynamic attribute (DSL-29).
+        # The wrapper's value goes unchanged, and a nil wrapper is the SQL NULL that the contains condition binds.
+        if table != "slots" or name != "text_value":
+            raise AssertionError(
+                f"the column {step['column']} has no contains filter in the Python cases"
+            )
+        wrapper = step["params"][0]
+        if list(wrapper) == ["nil"]:
+            value = None
+        else:
+            # The host value of the wrapper, as the eq filters take it: an int or a float is its number, so a number
+            # reaches the text slot and is CODEC_ENCODE, and text or bool reaches it unchanged.
+            ((kind, value),) = wrapper.items()
+            if kind == "int":
+                value = int(value)
+            elif kind in ("float", "f64"):
+                value = float(value)
+        getattr(models.Slots().connect(db), "lk_text_value")(value).gets()
+        return
+    if step["operator"] != "eq":
+        raise AssertionError(
+            f"operator {step['operator']} has no typed filter in the Python cases"
+        )
+    if table != "slots" or name not in SEND_FILTERS:
+        raise AssertionError(
+            f"the column {step['column']} has no typed filter in the Python cases"
+        )
+    wrapper = step["params"][0]
+    if name in HOST_FILTERS:
+        if len(wrapper) != 1:
+            raise AssertionError(
+                f"the parameter {json.dumps(wrapper)} is no single wrapper"
+            )
+        ((kind, value),) = wrapper.items()
+        if kind == "int":
+            value = int(value)
+        elif kind in ("float", "f64"):
+            value = float(value)
+        elif kind not in ("text", "bool", "decimal"):
+            raise AssertionError(
+                f"the parameter {json.dumps(wrapper)} is no host value of the Python API"
+            )
+        getattr(models.Slots().connect(db), f"gets_by_{name}")(value)
+        return
+    if list(wrapper) == ["nil"]:
+        # The nil wrapper of a nullable column is the SQL NULL that the typed filter takes as IS NULL (DSL-48).
+        getattr(models.Slots().connect(db), f"gets_by_{name}")(None)
+        return
+    if list(wrapper) == ["bytes_hex"]:
+        getattr(models.Slots().connect(db), f"gets_by_{name}")(
+            bytes.fromhex(wrapper["bytes_hex"])
+        )
+        return
+    if len(wrapper) != 1:
+        raise AssertionError(
+            f"the parameter {json.dumps(wrapper)} is no single wrapper"
+        )
+    # A text wrapper is the text the filter takes; any other kind reaches the filter as its Python value, so the public path
+    # refuses a value of the wrong kind itself (PRT-67) instead of the harness turning it into text.
+    ((kind, raw),) = wrapper.items()
+    if kind in ("text", "time", "datetime", "date"):
+        value = raw
+    elif kind == "int":
+        value = int(raw)
+    elif kind == "bool":
+        value = raw
+    elif kind in ("float", "f64"):
+        value = float(raw)
+    elif kind == "decimal":
+        value = raw
+    elif kind == "nil":
+        value = None
+    elif kind == "bytes_hex":
+        value = bytes.fromhex(raw)
+    else:
+        raise AssertionError(
+            f"the parameter {json.dumps(wrapper)} has no value of the Python filter of {name}"
+        )
+    getattr(models.Slots().connect(db), f"gets_by_{name}")(value)
+
+
+def _message_value(text: str):
+    """The message that an expect compares: the whole message of a begin, or the one parameter of a statement."""
+    message = json.loads(text)
+    if message.get("op") == "begin":
+        return message
+    params = message.get("params")
+    # A statement with no parameter (a nil compared with eq is IS NULL, DSL-48) has the empty list as its message.
+    if params == []:
+        return []
+    if not isinstance(params, list) or len(params) != 1:
+        raise AssertionError(f"the statement message {text} holds no single parameter")
+    return params[0]
+
+
 def _validation_model(schema: Path):
     """The model of the schema manifest that the ir.validate steps check their requests against."""
     return model_of_documents(parse_document_set([schema.read_text(encoding="utf-8")]))
@@ -958,9 +1235,41 @@ def _dsn_connect(step: dict, database: str) -> None:
         raise AssertionError(f"driver {driver}, want {outcome.get('value')}")
 
 
+def _assign(step: dict) -> None:
+    """Runs one model.assign step (docs/spec/feature-coverage.md FCV-4): the public setter of the column of a new row of the
+    generated model, then its insert, on the listener of _send. The setter takes the host value of the wrapper: a text wrapper
+    its text, a nil wrapper None, which the untyped setter stores as SQL NULL."""
+    if step["model"] != "slots":
+        raise AssertionError(
+            f"model.assign of {step['model']} has no model in the Python cases"
+        )
+    if step["column"] not in SEND_FILTERS:
+        raise AssertionError(
+            f"model.assign of {step['column']} has no setter in the Python cases"
+        )
+    wrapper = step["value"]
+    if list(wrapper) == ["nil"]:
+        value = None
+    elif list(wrapper) == ["text"]:
+        value = wrapper["text"]
+    else:
+        raise AssertionError(
+            f"the value {json.dumps(wrapper)} has no host value of the Python setters"
+        )
+    setter = f"set_{step['column']}"
+
+    def call(models, db) -> None:
+        getattr(models.Slots().connect(db), setter)(value).create()
+
+    _send(step, call)
+
+
 def _run(step: dict, bound: dict, database: str) -> None:
     """Maps the op of step to its call and checks the result against the expect of database."""
     op = step["op"]
+    if op == "model.assign":
+        _assign(step)
+        return
     decoded = False
     try:
         if op == "codec.decode":

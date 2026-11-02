@@ -323,8 +323,9 @@ export function renderTypeScript(m: Manifest, outDir: string, scan: readonly str
       if (decl !== undefined) declared.set(name, decl);
     }
     // Each prefix of a key names a method of the model, whether or not a scanned source calls it (the schema rule): a single
-    // column is its column method, and several columns are the tuple method of the columns.
-    for (const columns of [e.primaryKey, ...e.uniques, ...e.indexColumns]) {
+    // column is its column method, and several columns are the tuple method of the columns. The condition method of each
+    // column is declared for every column, indexed or not (DSL-154).
+    for (const columns of [e.primaryKey, ...e.uniques, ...e.indexColumns, ...e.fields.map(c => [c.name])]) {
       for (let k = 1; k <= columns.length; k++) {
         const prefix = columns.slice(0, k);
         const [only] = prefix;

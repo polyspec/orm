@@ -128,7 +128,6 @@
         "packages/php-ext/src/polyspec_orm.c",
         "packages/rust/orm/tests/markdown.rs",
         "packages/ts/tests/markdown.mjs",
-        "packages/go/orm/markdown_param_test.go",
         "packages/go/orm/bind_check_test.go",
         "packages/rust/orm/tests/unit/bind_message.rs",
         "packages/rust/orm/tests/unit/bind_vectors.rs",
@@ -242,8 +241,7 @@
           "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestBindMessageVectors$' -count=1",
           "shard": "other",
           "inputs": [
-            "packages/go/orm/markdown_param_test.go",
-            "packages/go/orm/markdown.go",
+                "packages/go/orm/markdown.go",
             "tests/bind/vectors.json"
           ]
         },
@@ -2331,7 +2329,9 @@
         "ts-styled-value-checks-encoding",
         "model_writes-mysql",
         "model_writes-postgres",
-        "model_writes-sqlite"
+        "model_writes-sqlite",
+        "markdown-message-dynamic-vectors",
+        "markdown-message-untyped-null-vectors"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -2351,6 +2351,13 @@
         "contracts/fixtures/model_writes/model_writes.json"
       ],
       "tests": [
+        "packages/php/tests/BindMessagesDynamicRecipeTest.php",
+        "packages/php/tests/BindMessagesUntypedNullRecipeTest.php",
+        "packages/php-ext/tests/BindMessagesDynamicRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/BindMessagesUntypedNullRecipeTestExtensionTest.php",
+        "packages/ts/tests/bind_messages_dynamic.mjs",
+        "packages/python/tests/test_bind_messages_dynamic_none.py",
+        "packages/python/tests/test_bind_messages_untyped_null_none.py",
         "packages/go/model/model_test.go",
         "packages/go/model/assignment_test.go",
         "packages/go/generator/gen_go_scan_test.go",
@@ -2838,6 +2845,8 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
+              "packages/php/tests/BindMessagesDynamicRecipeTest.php",
+              "packages/php/tests/BindMessagesUntypedNullRecipeTest.php",
               "packages/php/tests/CoverageModelWritesTest.php"
             ],
             "inputs": [
@@ -2962,6 +2971,7 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
+              "packages/ts/tests/bind_messages_dynamic.mjs",
               "packages/ts/tests/coverage_model_writes.mjs"
             ],
             "inputs": [
@@ -3009,7 +3019,9 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_model_writes.py"
+              "packages/python/tests/test_bind_messages_dynamic_none.py",
+              "packages/python/tests/test_bind_messages_untyped_null_none.py",
+                    "packages/python/tests/coverage_model_writes.py"
             ],
             "inputs": [
               "contracts/fixtures/bench/bench.dbs"
@@ -3056,6 +3068,8 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
+              "packages/php-ext/tests/BindMessagesDynamicRecipeTestExtensionTest.php",
+              "packages/php-ext/tests/BindMessagesUntypedNullRecipeTestExtensionTest.php",
               "packages/php-ext/tests/CoverageModelWritesExtensionTest.php"
             ],
             "inputs": [

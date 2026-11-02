@@ -88,10 +88,25 @@
     "ir.answer": [
       "answer",
       "answers",
-      "bind",
       "chain",
       "expect",
       "op"
+    ],
+    "markdown.send": [
+      "begin",
+      "column",
+      "expect",
+      "op",
+      "operator",
+      "params",
+      "process_zone"
+    ],
+    "model.assign": [
+      "column",
+      "expect",
+      "model",
+      "op",
+      "value"
     ],
     "catalog.current_namespace": [
       "as",

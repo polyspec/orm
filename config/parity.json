@@ -823,6 +823,10 @@
       "runner": "python",
       "internal": [
         {
+          "glob": "packages/python/tests/test_bind_messages_python_null_none.py",
+          "reason": "test: the native Python test of assign_null_into_not_null, the one case that only Python holds (FCV-2, DSL-29): the typed setters of the other runtimes take no null, so no suite unit binds it; the file runs tests/bind/messages-python-null.json through the recipe helper"
+        },
+        {
           "glob": "packages/python/tests/chain_answer.py",
           "reason": "harness: the chain runner and the answer listener of the markdown conformance chains that the ir.answer op of tests/ir/answers.json (FCV-4) runs; the cases are bound by the suite unit ir-answers, and the module holds no test of its own"
         },
@@ -1176,6 +1180,10 @@
         {
           "glob": "packages/rust/build/tests/unit/catalog_value.rs",
           "reason": "test: tests the private mapping of an unsupported tool cell to CATALOG_VALUE and the catalog codes of the tool errors; its owner is catalog-value-rust-check, while the shared behavior is covered by the catalog_connection recipe"
+        },
+        {
+          "glob": "packages/rust/orm/tests/unit/bind_message.rs",
+          "reason": "test: an internal test of the rust crate that tests a helper of the owner (answer_value's base64 cause), not a behaviour of the contract (K313)"
         }
       ]
     }
@@ -1187,7 +1195,10 @@
     "tests/dbspec/*.json",
     "tests/dsn/sqlite-paths.json",
     "tests/ir/*.json",
-    "tests/markdown/*.json"
+    "tests/markdown/*.json",
+    "tests/bind/messages.json",
+    "tests/bind/messages-dynamic.json",
+    "tests/bind/messages-untyped-null.json"
   ],
   "comparators": [
     "tests/conformance",
@@ -30898,112 +30909,115 @@
     },
     {
       "id": "markdown-message-vectors",
-      "kind": "feature",
+      "kind": "suite",
       "requirements": [
         "PRT-67"
       ],
+      "file": "tests/bind/messages.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/markdown_param_test.go",
-          "id": "TestBindMessageVectors"
+          "test": "packages/go/bindmessages/bind_messages_test.go",
+          "symbol": "TestRecipeBindMessagesNone"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::testBindMessageVectors"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::testBindOffsetlessDatetimeUsesTheConnectionZoneUnderDst"
+          "test": "packages/php/tests/BindMessagesRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\BindMessagesRecipeTest::testNone"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/MarkdownTestExtensionTest.php",
-          "id": "MarkdownTestExtensionTest::testPublicBindMessageVectors"
+          "test": "packages/php-ext/tests/BindMessagesRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\BindMessagesRecipeTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/markdown.mjs",
-          "id": "markdown/bind-message/control/begin"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/markdown.mjs",
-          "id": "markdown/bind-message/control/begin-read-only"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/markdown.mjs",
-          "id": "markdown/bind-message/time-p0"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/markdown.mjs",
-          "id": "markdown/bind-message/time-p3"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/markdown.mjs",
-          "id": "markdown/bind-message/time-p3-whole"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/markdown.mjs",
-          "id": "markdown/bind-message/time-p6"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/markdown.mjs",
-          "id": "markdown/bind-message/datetime-p0"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/markdown.mjs",
-          "id": "markdown/bind-message/datetime-p3-t"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/markdown.mjs",
-          "id": "markdown/bind-message/datetime-offset"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/markdown.mjs",
-          "id": "markdown/bind-message/date"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/markdown.mjs",
-          "id": "markdown/bind-message/datetime-dst-gap"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/markdown.mjs",
-          "id": "markdown/bind-message/time-not-clock"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/markdown.mjs",
-          "id": "markdown/bind-message/datetime-not-date"
+          "test": "packages/ts/tests/bind_messages.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_markdown.py",
-          "id": "test_message_cases"
+          "test": "packages/python/tests/test_bind_messages_none.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/bind_message.rs",
-          "id": "markdown::bind_message_tests::control_vectors"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/bind_message.rs",
-          "id": "markdown::bind_message_tests::message_vectors"
+          "test": "packages/rust/tests/tests/bind_messages.rs",
+          "symbol": "bind_messages"
         }
       ]
+    },
+    {
+      "id": "markdown-message-dynamic-vectors",
+      "kind": "suite",
+      "requirements": [
+        "PRT-67"
+      ],
+      "file": "tests/bind/messages-dynamic.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/BindMessagesDynamicRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\BindMessagesDynamicRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/BindMessagesDynamicRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\BindMessagesDynamicRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/bind_messages_dynamic.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_bind_messages_dynamic_none.py"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "model_writes",
+        "parts": [
+          "owner/php",
+          "owner/php-extension",
+          "owner/typescript",
+          "owner/python"
+        ]
+      }
+    },
+    {
+      "id": "markdown-message-untyped-null-vectors",
+      "kind": "suite",
+      "requirements": [
+        "PRT-67"
+      ],
+      "file": "tests/bind/messages-untyped-null.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/BindMessagesUntypedNullRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\BindMessagesUntypedNullRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/BindMessagesUntypedNullRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\BindMessagesUntypedNullRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_bind_messages_untyped_null_none.py"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "model_writes",
+        "parts": [
+          "owner/php",
+          "owner/php-extension",
+          "owner/python"
+        ]
+      }
     },
     {
       "id": "relation-model-output-under-relation-name",

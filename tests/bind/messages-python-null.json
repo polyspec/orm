@@ -1,0 +1,28 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "PRT-67"
+  ],
+  "cases": [
+    {
+      "id": "assign_null_into_not_null",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "model.assign",
+          "model": "slots",
+          "column": "varchar_value",
+          "value": {
+            "nil": true
+          },
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    }
+  ]
+}

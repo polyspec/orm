@@ -2085,6 +2085,26 @@ python-model-check: python-venv-check
 .PHONY: bind-models-check
 bind-models-check: go-model-check php-model-check bind-python-models typescript-build
 
+# bind-message-check runs the markdown message and control recipe, tests/bind/messages.json, in each runtime (FCV-3, FCV-4): each part
+# runs the entry of its runtime that calls the recipe helper, without a database. Each markdown.send step runs one public call on a
+# listener that records the first message it receives (docs/spec/feature-coverage.md).
+.PHONY: bind-message-check bind-message-check/go bind-message-check/rust bind-message-check/typescript bind-message-check/python bind-message-check/php bind-message-check/php-extension
+bind-message-check: bind-message-check/go bind-message-check/rust bind-message-check/typescript bind-message-check/python bind-message-check/php bind-message-check/php-extension
+bind-message-check/go:
+	$(GO_TEST) -tags markdown ./packages/go/bindmessages -run '^TestRecipeBindMessagesNone$$' -count=1
+bind-message-check/rust: lease-tool
+	cd packages/rust && $(CARGO_TEST) bind-message-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test bind_messages
+bind-message-check/python: python-venv-check bind-python-models
+	ORM_PYTHON_BIND_MODELS=$(BIND_PY_MODELS) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_bind_messages_none
+bind-message-check/php: php-vendor-check php-models
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/BindMessagesRecipeTest.php
+bind-message-check/php-extension: php-vendor-check php-models build-php-ext
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/BindMessagesRecipeTestExtensionTest.php
+bind-message-check/typescript: lease-tool orm-codes-typescript
+	$(HOLD_TYPESCRIPT)
+	$(TSC_BUILD)
+	$(NODE) --conditions=orm-test packages/ts/tests/bind_messages.mjs
+
 # BIND_PY_MODELS is the model directory of the slot fixture tests/bind/dbspec-set.json that the Python recipe helper imports (FCV-4,
 # markdown.send). The venv orm-gen writes it into a temporary directory and renames it into place, as conformance-python-models does.
 BIND_PY_MODELS = $(abspath .runtime/run)/bind-python-models
@@ -2244,6 +2264,10 @@ $(PARITY_GATE_TARGETS): export ORM_CHECKOUT = $(CURDIR)
 # ORM_NODE_REPORTER is the node:test reporter of the kit that this make includes: a node binding command names it with
 # ${ORM_NODE_REPORTER}, which is the linked source or the dist of a packed kit, as KIT and KIT_EXT of kit-bootstrap.mk select.
 $(PARITY_GATE_TARGETS): export ORM_NODE_REPORTER = $(KIT)/parity-node-reporter.$(KIT_EXT)
+# ORM_PYTHON_BIND_MODELS is the model directory that the Python recipe helper imports for tests/bind/messages.json; the helper
+# raises without it, so the python bindings of the parity gate need it built (bind-python-models) and named.
+$(PARITY_GATE_TARGETS): bind-python-models
+$(PARITY_GATE_TARGETS): export ORM_PYTHON_BIND_MODELS = $(BIND_PY_MODELS)
 $(PARITY_GATE_TARGETS): export ORM_PROGRAM_CONFORMANCE = $(PARITY_RUN_DIR)/target/debug/conformance
 
 # CI provides the declared group needs as booleans; static checks need every tool,
@@ -2318,7 +2342,7 @@ interface-record: php-vendor-check lease-tool typescript-build interface-typescr
 
 # go-model-check fails when the Go models that orm-install-go wrote differ from what the entries of GO_MODELS_FILE generate (orm-gen gen --check).
 go-model-check:
-	$(RUN_LONG) go-model -- sh -c 'cd packages/go && while IFS= read -r entry; do case "$$entry" in ""|"#"*) continue ;; esac; $(GO) run ./cmd/orm-gen gen --check --lang go $$entry || exit 1; done < $(CURDIR)/$(GO_MODELS_FILE)'
+	$(RUN_LONG) go-model -- sh -c 'cd packages/go && $(GO) run ./cmd/orm-gen sets --check $(CURDIR)/$(GO_MODELS_FILE)'
 
 # ts-model-check builds the TypeScript client, then fails when the models
 # script scans a source that does not call models or misses one that does,
@@ -3076,7 +3100,7 @@ request-hook-check/php-extension: lease-tool php-vendor-check build-php-ext
 .PHONY: bind-check bind-check/go bind-check/rust bind-check/typescript bind-check/python bind-check/php
 bind-check: bind-check/go bind-check/rust bind-check/typescript bind-check/python bind-check/php
 bind-check/go:
-	$(GO_TEST) ./packages/go/orm -run '^(TestBindVectors|TestBindMessageVectors)$$' -count=1
+	$(GO_TEST) ./packages/go/orm -run '^TestBindVectors$$' -count=1
 bind-check/rust: lease-tool
 	cd packages/rust && $(CARGO_TEST) bind-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib bind_
 bind-check/typescript: lease-tool orm-codes-typescript
@@ -3084,7 +3108,7 @@ bind-check/typescript: lease-tool orm-codes-typescript
 	$(TSC_BUILD)
 	$(NODE) packages/ts/tests/markdown.mjs
 bind-check/python: python-venv-check
-	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase packages.python.tests.test_markdown.BindMessageVectors packages.python.tests.test_markdown.BindVectors
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase packages.python.tests.test_markdown.BindVectors
 bind-check/php: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter 'testBind(Message)?Vectors' packages/php/tests/MarkdownTest.php
 
@@ -3197,7 +3221,7 @@ PHP_MODELS_STAMP = $(CURDIR)/packages/php/gen/php-models.key
 # Each entry generates into <dir>.tmp, which replaces <dir> by a rename after the generator succeeds (B1-4), so a stopped run leaves the
 # previous directory whole and never a directory with some files new and some old.
 php-models: php-vendor-check
-	$(GENERATE_ONCE) $(PHP_MODELS_STAMP) "" composer.lock packages/php/src packages/php/bin $(PHP_MODELS_FILE) -- sh -c 'while IFS= read -r entry; do case "$$entry" in ""|"#"*) continue ;; esac; out=$$(printf "%s\n" "$$entry" | sed "s/.*--out \([^ ]*\).*/\1/"); rm -rf "$$out.tmp"; vendor-php/bin/orm-gen gen $$(printf "%s\n" "$$entry" | sed "s|--out [^ ]*|--out $$out.tmp|") || exit 1; rm -rf "$$out" && mv "$$out.tmp" "$$out"; done < $(CURDIR)/$(PHP_MODELS_FILE)'
+	$(GENERATE_ONCE) $(PHP_MODELS_STAMP) "" composer.lock packages/php/src packages/php/bin $(PHP_MODELS_FILE) tests/bind -- sh -c 'while IFS= read -r entry; do case "$$entry" in ""|"#"*) continue ;; esac; out=$$(printf "%s\n" "$$entry" | sed "s/.*--out \([^ ]*\).*/\1/"); rm -rf "$$out.tmp"; vendor-php/bin/orm-gen gen $$(printf "%s\n" "$$entry" | sed "s|--out [^ ]*|--out $$out.tmp|") || exit 1; rm -rf "$$out" && mv "$$out.tmp" "$$out"; done < $(CURDIR)/$(PHP_MODELS_FILE)'
 # php-cancel-helper-build publishes the SQLite loadable callback as an explicit product build; PHP queries only load its platform artifact.
 .PHONY: php-cancel-helper-build
 php-cancel-helper-build: php-vendor-check
@@ -3227,7 +3251,7 @@ GO_MODELS_FILE = packages/go/models.txt
 .PHONY: go-models
 GO_MODELS_STAMP = $(CURDIR)/packages/go/go-models.key
 go-models:
-	$(GENERATE_ONCE) $(GO_MODELS_STAMP) "$(GO_VERSION)" packages/go -- sh -c 'cd packages/go && while IFS= read -r entry; do case "$$entry" in ""|"#"*) continue ;; esac; $(GO) run ./cmd/orm-gen gen --lang go $$entry || exit 1; done < $(CURDIR)/$(GO_MODELS_FILE)'
+	$(GENERATE_ONCE) $(GO_MODELS_STAMP) "$(GO_VERSION)" packages/go -- sh -c 'cd packages/go && $(GO) run ./cmd/orm-gen sets $(CURDIR)/$(GO_MODELS_FILE)'
 
 # The runtime build compiles Go packages that import these generated models.
 build-go: go-models

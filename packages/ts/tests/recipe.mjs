@@ -15,7 +15,7 @@ import { AesKeyring, BindCell, CORE, Db, OrmError, StyledValue, blindIndex, chai
 import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, readDbspecBytes } from '../dist/dbspec/entry.js';
 import { exportMermaid, importMermaid } from '../dist/dbspec/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
-import { connect as connectBind, Slots as BindSlots } from '../dist/models/bind_fixture/models.js';
+import { Slots, connect as connectSlots } from '../dist/models/bind_fixture/models.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { Engine } from '../dist/index.js';
 import { withCaseDatabase } from './case-database.mjs';
@@ -30,6 +30,11 @@ import { caseTest, COMPUTE, DATABASE } from '../../../tests/testcase.mts';
 // NONE is the database part of a recipe without a database (FCV-3).
 export const NONE = 'none';
 
+// registerRecipeCase registers one case of a recipe with node:test.
+function registerRecipeCase(recipeCase, deadline, body) {
+  return caseTest(recipeCase.id, deadline, body);
+}
+
 // runRecipe registers every case of the recipe at path, relative to the repository root, on database. A database other than
 // none runs each case on a case database of its own (databaseRecipe), and the entry awaits the registration.
 export function runRecipe(path, database) {
@@ -38,11 +43,13 @@ export function runRecipe(path, database) {
   checkKeys(path, text);
   const recipe = JSON.parse(text);
   const literal = parseJson(text);
+  // The recipe as wrappers, so that an expect's integers are compared by their digits (not by a JavaScript number).
+  const wrapped = fromJson(literal);
   // An ir.validate step checks its request against the schema of the recipe, which the recipe names relative to its own file.
   const schema = recipe.schema === undefined ? undefined : validationModel(resolve(root, dirname(path), recipe.schema));
   const dir = resolve(root, dirname(path));
   for (const [caseIndex, recipeCase] of recipe.cases.entries()) {
-    caseTest(recipeCase.id, COMPUTE, async () => {
+    registerRecipeCase(recipeCase, COMPUTE, async () => {
       const bound = new Map();
       for (const [index, step] of recipeCase.steps.entries()) {
         try {
@@ -53,6 +60,8 @@ export function runRecipe(path, database) {
           else if (step.op === 'dsn.connect') await checkDsnConnect(step, database);
           else if (dbspecFileOps.includes(step.op)) await checkDbspecFiles(step, dir, database);
           else if (mermaidOps.includes(step.op)) checkMermaid(step, mermaidStep(step, bound, dir), database);
+          else if (step.op === 'markdown.send') await withProcessZone(step.process_zone, () => checkSend(step, member(member(member(wrapped, 'cases').array[caseIndex], 'steps').array[index], 'expect')));
+          else if (step.op === 'model.assign') await checkAssign(step, member(member(member(wrapped, 'cases').array[caseIndex], 'steps').array[index], 'expect'));
           else run(step, bound, database);
         } catch (error) {
           throw new Error(`recipe ${path} case ${recipeCase.id} step ${index} (${step.op}) on ${database}: ${error.message}`, { cause: error });
@@ -367,7 +376,7 @@ async function databaseRecipe(path, database) {
     : await fixtureSchema(resolve(root, recipe.fixture));
   for (const recipeCase of recipe.cases) {
     if (recipeCase.only !== undefined && !recipeCase.only.includes(database)) continue;
-    caseTest(recipeCase.id, DATABASE, ({ step }) =>
+    registerRecipeCase(recipeCase, DATABASE, ({ step }) =>
       withCaseDatabase(database, step, caseDatabase => runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step })));
   }
 }
@@ -771,7 +780,7 @@ function native(wrapper) {
     case 'text': case 'date': case 'time': case 'datetime': case 'decimal': return value;
     case 'bytes_hex': return Uint8Array.from(Buffer.from(value, 'hex'));
     case 'bool': return value;
-    case 'null': return null;
+    case 'null': case 'nil': return null;
     // An array is a list of values (an IN list of where); a sequence item adds its integers in place (FCV-4).
     case 'array': return value.flatMap(item => ('sequence' in item ? sequenceValues(item.sequence) : [native(item)]));
     case 'sequence': return sequenceValues(value);
@@ -1075,19 +1084,6 @@ function requestParams(sent) {
   throw new Error('the listener received no request message');
 }
 
-// bindSlotChain is the chain of a bind step (T334-3-15-3c, PRT-67): it writes the bind value into the slot column of the bind_fixture
-// model through its setter and sends the insert, so the request carries the wire value of the slot.
-function bindSlotChain(bind) {
-  const prefix = bind.column.slice(0, bind.column.indexOf('_'));
-  const setter = `set${prefix[0].toUpperCase()}${prefix.slice(1)}Value`;
-  return async ({ db }) => {
-    const row = new BindSlots().connect(db);
-    row[setter](bind.value);
-    await row.create();
-    return null;
-  };
-}
-
 // checkAnswer runs the chain of an ir.answer step on a connection to a listener that answers with the answer or answers of the step,
 // normalizes its result, and compares it with the value of the expect of database. An OrmError from the chain is {error: CODE}.
 // An expect of {params} compares the params of the request that the listener received instead (PRT-66).
@@ -1095,13 +1091,12 @@ async function checkAnswer(step, database) {
   const expect = step.expect?.[database];
   if (expect === undefined) throw new Error(`ir.answer has no expect for ${database}`);
   if (expect.value === undefined && expect.params === undefined) throw new Error(`ir.answer expect for ${database} has neither value nor params`);
-  if (step.bind !== undefined && step.chain !== 'slot') throw new Error(`a bind step names the chain slot, not ${step.chain}`);
-  const chain = step.bind !== undefined ? bindSlotChain(step.bind) : conformanceCases[step.chain];
+  const chain = conformanceCases[step.chain];
   if (chain === undefined) throw new Error(`chain ${step.chain} is no markdown conformance case`);
   if (expect.params !== undefined && step.answers !== undefined) throw new Error('a params expect needs one answer, not answers');
   const sent = [];
   const server = step.answers !== undefined ? await startMarkdownTestServerWithKeyedAnswers(step.answers) : await startMarkdownTestServerWithAnswer(JSON.stringify(step.answer), sent);
-  const db = await (step.bind !== undefined ? connectBind : connect)(server.dsn);
+  const db = await connect(server.dsn);
   let got;
   let failed = false;
   try {
@@ -1693,4 +1688,163 @@ async function checkDbspecFiles(step, dir, database) {
     default:
       throw new Error(`OP_UNKNOWN ${step.op}`);
   }
+}
+
+// withProcessZone runs work with the process default zone set to zone when the step names one (process_zone, an IANA zone). Node reads
+// process.env.TZ for every Date and Intl use from the assignment on, and the previous value is restored in finally: a missing value is
+// deleted, so no zone outlives the step.
+async function withProcessZone(zone, work) {
+  if (zone === undefined) return work();
+  const previous = process.env.TZ;
+  process.env.TZ = zone;
+  try {
+    return await work();
+  } finally {
+    if (previous === undefined) delete process.env.TZ;
+    else process.env.TZ = previous;
+  }
+}
+
+// checkSend runs a markdown.send step: a transaction begin, or the typed filter of a slot column with the value of its wrapper, on a
+// listener that records the first message it receives. The expect is not per database: {message: json} is compared with the message
+// (messageValue) and {error: code} with the OrmError code of a call that sent no message (FCV-4).
+async function checkSend(step, wrappedExpect) {
+  await checkFirst(async db => {
+    if (step.begin !== undefined) await db.transaction(() => {}, { readOnly: step.begin.read_only === true });
+    else await queryColumn(step, db);
+  }, step, wrappedExpect);
+}
+
+// checkFirst runs call on a connection to the markdown.send listener and compares the first message it records, or the OrmError code of a
+// call that sent none, with the expect of step.
+async function checkFirst(call, step, wrappedExpect) {
+  const received = [];
+  const server = await startMarkdownSendListener(received);
+  let db;
+  let callError;
+  try {
+    db = await connectSlots(server.dsn);
+    await call(db);
+  } catch (error) {
+    callError = error;
+  } finally {
+    if (db !== undefined) await db.close();
+    await server.close();
+  }
+  let got;
+  if (received.length > 0) got = { message: messageValue(received[0]) };
+  else if (callError instanceof OrmError) got = { code: callError.code };
+  else throw new Error(`the call returned ${callError ?? 'no error'} and sent no message`, { cause: callError });
+  if (step.expect.error !== undefined) {
+    const code = got.code ?? '';
+    if (code !== step.expect.error) throw new Error(`the call returned error ${code || 'none'}, want ${step.expect.error}`);
+    return;
+  }
+  if (step.expect.message === undefined) throw new Error('markdown.send expects a message or an error');
+  if (got.code !== undefined) throw new Error(`the call returned error ${got.code} before a message`);
+  const want = member(wrappedExpect, 'message');
+  if (!equal(got.message, want, false)) throw new Error(`message ${JSON.stringify(got.message)}, want ${JSON.stringify(want)}`);
+}
+
+// checkAssign runs a model.assign step: the public setter of the column of a new row of the generated model, then its insert, which the
+// listener of checkFirst records (FCV-4). The setter takes the host value of the wrapper, so a null wrapper reaches the setter's
+// typed check only if the setter accepts null; the nil case is excluded for TypeScript (DSL-29).
+async function checkAssign(step, wrappedExpect) {
+  if (step.model !== 'slots' || step.column !== 'varchar_value') throw new Error(`model.assign of ${step.model}.${step.column} has no typed setter in the TypeScript cases`);
+  await checkFirst(db => new Slots().connect(db).setVarcharValue(hostValue(step.value)).create(), step, wrappedExpect);
+}
+
+// member is the value of the member name of an object wrapper (fromJson), or undefined when there is none.
+function member(wrapper, name) {
+  return wrapper?.object?.find(([key]) => key === name)?.[1];
+}
+
+// messageValue is the message that an expect compares, as a wrapper: the whole message of a begin, or the one parameter of a statement.
+// The message is read with its number text, so an integer is compared by its digits.
+function messageValue(text) {
+  const message = fromJson(parseJson(text));
+  if (member(message, 'op')?.text === 'begin') return message;
+  const params = member(message, 'params');
+  // A statement with no parameter (a nil compared with eq is IS NULL, DSL-48) has the empty list as its message.
+  if (params?.array?.length === 0) return params;
+  if (params?.array?.length !== 1) throw new Error(`the statement message ${text} holds no single parameter`);
+  return params.array[0];
+}
+
+// queryColumn runs the generated typed filter of the slot column of step with the value of its wrapper. The time, datetime and date
+// filters take the text form of the value (DBS-121); the integer filters take the host value, which TypeScript does not type, so a
+// wrapper of another kind reaches the public path and is refused there (CODEC_ENCODE). A column or operator without a typed filter
+// here is a defect of the recipe.
+async function queryColumn(step, db) {
+  const slots = new Slots().connect(db);
+  if (step.operator === 'like_contains') {
+    if (step.column !== 'slots.text_value') throw new Error(`the column ${step.column} has no contains filter in the TypeScript cases`);
+    return slots.lkTextValue(hostValue(step.params[0])).gets();
+  }
+  if (step.operator !== 'eq') throw new Error(`operator ${step.operator} has no typed filter in the TypeScript cases`);
+  switch (step.column) {
+    case 'slots.i16_value': return slots.getsByI16Value(hostValue(step.params[0]));
+    case 'slots.i32_value': return slots.getsByI32Value(hostValue(step.params[0]));
+    case 'slots.i64_value': return slots.getsByI64Value(hostValue(step.params[0]));
+    case 'slots.f64_value': return slots.f64Value(hostValue(step.params[0])).gets();
+    case 'slots.bool_value': return slots.boolValue(hostValue(step.params[0])).gets();
+    case 'slots.decimal_value': return slots.decimalValue(hostValue(step.params[0])).gets();
+    case 'slots.varchar_value': return slots.varcharValue(hostValue(step.params[0])).gets();
+    case 'slots.varchar_null_value': return slots.varcharNullValue(hostValue(step.params[0])).gets();
+    case 'slots.varchar_long_value': return slots.varcharLongValue(hostValue(step.params[0])).gets();
+    case 'slots.text_value': return slots.textValue(hostValue(step.params[0])).gets();
+    case 'slots.uuid_value': return slots.uuidValue(hostValue(step.params[0])).gets();
+    case 'slots.bytes_value': return slots.bytesValue(hostValue(step.params[0])).gets();
+  }
+  const value = temporalValue(step.params[0]);
+  switch (step.column) {
+    case 'slots.time1_value': return slots.time1Value(value).gets();
+    case 'slots.time2_value': return slots.time2Value(value).gets();
+    case 'slots.datetime1_value': return slots.datetime1Value(value).gets();
+    case 'slots.datetime2_value': return slots.datetime2Value(value).gets();
+    case 'slots.time0_value': return slots.getsByTime0Value(value);
+    case 'slots.time3_value': return slots.getsByTime3Value(value);
+    case 'slots.time6_value': return slots.getsByTime6Value(value);
+    case 'slots.datetime0_value': return slots.getsByDatetime0Value(value);
+    case 'slots.datetime3_value': return slots.getsByDatetime3Value(value);
+    case 'slots.datetime6_value': return slots.getsByDatetime6Value(value);
+    case 'slots.date_value': return slots.getsByDateValue(value);
+  }
+  throw new Error(`the column ${step.column} has no typed filter in the TypeScript cases`);
+}
+
+// hostValue is the value that the TypeScript API takes for a wrapper of a numeric or bool column: an int by native (a number, or a bigint
+// beyond the safe range), a float or an f64 as its number (NaN, Infinity and -Infinity included), and text or bool as they are, so
+// that the public path refuses the wrong kind.
+function hostValue(wrapper) {
+  const keys = Object.keys(wrapper);
+  if (keys.length === 1 && (keys[0] === 'float' || keys[0] === 'f64')) return Number(wrapper[keys[0]]);
+  return native(wrapper);
+}
+
+// temporalValue is the text of a temporal wrapper of one string key; any other wrapper is its host value, which the public path
+// refuses with its code (CODEC_ENCODE, PRT-67), so a bool wrapper of a datetime column reaches it.
+function temporalValue(wrapper) {
+  const keys = Object.keys(wrapper);
+  if (keys.length === 1 && typeof wrapper[keys[0]] === 'string') return wrapper[keys[0]];
+  return hostValue(wrapper);
+}
+
+// startMarkdownSendListener answers connect with {"ok":true}, records the first message after it in received, and answers that message
+// and every later one with an error so the call ends.
+async function startMarkdownSendListener(received) {
+  const server = createServer(socket => {
+    let lines = 0;
+    createInterface({ input: socket }).on('line', line => {
+      lines += 1;
+      if (lines === 1) {
+        socket.write('{"ok":true}\n');
+        return;
+      }
+      if (lines === 2) received.push(line);
+      socket.write('{"error":{"code":"IR_INVALID","message":"recorded by the markdown.send listener"}}\n');
+    });
+    socket.on('error', () => {});
+  });
+  return listenMarkdownTestServer(server);
 }

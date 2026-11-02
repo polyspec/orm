@@ -1,0 +1,30 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "PRT-67"
+  ],
+  "cases": [
+    {
+      "id": "bind_null_compared_into_not_null",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.varchar_value",
+          "operator": "eq",
+          "params": [
+            {
+              "nil": true
+            }
+          ],
+          "expect": {
+            "error": "CONFIG"
+          }
+        }
+      ]
+    }
+  ]
+}
