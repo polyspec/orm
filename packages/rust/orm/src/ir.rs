@@ -1,9 +1,10 @@
 //! Value-free IR (docs/spec/protocol.md). The serialized form is the plan-cache
 //! key.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(default)]
 pub struct Request {
     pub ir_version: u32,
     pub manifest_hash: String,
@@ -29,7 +30,8 @@ pub struct Request {
     pub n_params: usize,
 }
 
-#[derive(Serialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(default)]
 pub struct Query {
     pub entity: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -69,7 +71,8 @@ fn is_zero(n: &u32) -> bool {
     *n == 0
 }
 
-#[derive(Serialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(default)]
 pub struct Columns {
     #[serde(skip_serializing_if = "String::is_empty")]
     pub mode: String,
@@ -84,7 +87,8 @@ pub struct Columns {
 }
 
 /// An ORM function and the indices of its bound arguments.
-#[derive(Serialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(default)]
 pub struct Func {
     pub name: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -92,14 +96,16 @@ pub struct Func {
 }
 
 /// A column function applied to a column of the query's entity.
-#[derive(Serialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(default)]
 pub struct ColFunc {
     pub column: String,
     pub r#fn: Func,
 }
 
 /// A subquery: one column for IN lists and scalar columns, or an aggregate.
-#[derive(Serialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(default)]
 pub struct Sub {
     pub query: Box<Query>,
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -108,7 +114,8 @@ pub struct Sub {
     pub agg: String,
 }
 
-#[derive(Serialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(default)]
 pub struct Join {
     pub rel: String,
     pub kind: String,
@@ -119,7 +126,8 @@ pub struct Join {
     pub right: String,
 }
 
-#[derive(Serialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(default)]
 pub struct Relation {
     pub rel: String,
     pub query: Box<Query>,
@@ -131,13 +139,15 @@ pub struct Relation {
 
 /// One component of a relation key: parent column `left` equals child column `right`.
 /// The relation of a composite key holds one pair per component, in key order.
-#[derive(Serialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(default)]
 pub struct KeyPair {
     pub left: String,
     pub right: String,
 }
 
-#[derive(Serialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(default)]
 pub struct Group {
     #[serde(skip_serializing_if = "String::is_empty")]
     pub conn: String,
@@ -147,7 +157,7 @@ pub struct Group {
     pub items: Vec<Item>,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum Item {
     Pred { pred: Box<Pred> },
@@ -156,14 +166,16 @@ pub enum Item {
 }
 
 /// Places the where conditions of the named join as a group.
-#[derive(Serialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(default)]
 pub struct JoinedRef {
     #[serde(skip_serializing_if = "String::is_empty")]
     pub conn: String,
     pub join: String,
 }
 
-#[derive(Serialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(default)]
 pub struct Pred {
     #[serde(skip_serializing_if = "String::is_empty")]
     pub conn: String,
@@ -187,13 +199,15 @@ pub struct Pred {
     pub sub: Option<Sub>,
 }
 
-#[derive(Serialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(default)]
 pub struct ColRef {
     pub path: String,
     pub column: String,
 }
 
-#[derive(Serialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(default)]
 pub struct Order {
     #[serde(skip_serializing_if = "String::is_empty")]
     pub column: String,
@@ -205,7 +219,7 @@ pub struct Order {
     pub r#fn: Option<Func>,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum Limit {
     Literal { offset: u32, count: u32 },
@@ -221,13 +235,15 @@ impl Limit {
     }
 }
 
-#[derive(Serialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(default)]
 pub struct IfParent {
     pub column: String,
     pub p: usize,
 }
 
-#[derive(Serialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(default)]
 pub struct Assign {
     pub column: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -240,7 +256,8 @@ pub struct Assign {
     pub minus_p: Option<usize>,
 }
 
-#[derive(Serialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(default)]
 pub struct Optimist {
     pub column: String,
     pub p: usize,

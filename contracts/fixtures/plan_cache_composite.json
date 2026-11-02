@@ -1,0 +1,311 @@
+{
+  "feature": "plan-cache-composite-parameter-order",
+  "requirements": [
+    "CPX-4"
+  ],
+  "cases": [
+    {"id": "plan_cache_composite_parameter_order"},
+    {"id": "plan_cache_predicate_fn_parameter_order"}
+  ],
+  "request": {
+    "ir_version": 1,
+    "manifest_hash": "h",
+    "kind": "all",
+    "entity": "root",
+    "n_params": 18,
+    "columns": {
+      "fn": {
+        "z_fn": {
+          "column": "seq",
+          "fn": {
+            "name": "year",
+            "ps": [
+              0
+            ]
+          }
+        },
+        "a_fn": {
+          "column": "seq",
+          "fn": {
+            "name": "year",
+            "ps": [
+              1
+            ]
+          }
+        }
+      },
+      "sub": {
+        "z_sub": {
+          "column": "seq",
+          "query": {
+            "entity": "inner",
+            "where": {
+              "items": [
+                {
+                  "pred": {
+                    "column": "seq",
+                    "op": "eq",
+                    "p": 2
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "a_sub": {
+          "column": "seq",
+          "query": {
+            "entity": "inner",
+            "where": {
+              "items": [
+                {
+                  "pred": {
+                    "column": "seq",
+                    "op": "eq",
+                    "p": 3
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "on": {
+      "items": [
+        {
+          "pred": {
+            "column": "seq",
+            "op": "eq",
+            "p": 4
+          }
+        }
+      ]
+    },
+    "where": {
+      "items": [
+        {
+          "pred": {
+            "column": "seq",
+            "op": "eq",
+            "p": 5
+          }
+        }
+      ]
+    },
+    "joins": [
+      {
+        "rel": "j",
+        "kind": "inner",
+        "query": {
+          "entity": "joined",
+          "on": {
+            "items": [
+              {
+                "pred": {
+                  "column": "seq",
+                  "op": "eq",
+                  "p": 6
+                }
+              }
+            ]
+          },
+          "where": {
+            "items": [
+              {
+                "pred": {
+                  "column": "seq",
+                  "op": "eq",
+                  "p": 7
+                }
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "relations": [
+      {
+        "rel": "r1",
+        "query": {
+          "entity": "related",
+          "where": {
+            "items": [
+              {
+                "pred": {
+                  "column": "seq",
+                  "op": "eq",
+                  "p": 8
+                }
+              }
+            ]
+          },
+          "if_parent": {
+            "column": "seq",
+            "p": 9
+          }
+        }
+      },
+      {
+        "rel": "r2",
+        "query": {
+          "entity": "related",
+          "where": {
+            "items": [
+              {
+                "pred": {
+                  "column": "seq",
+                  "op": "eq",
+                  "p": 10
+                }
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "order": [
+      {
+        "column": "seq",
+        "fn": {
+          "name": "year",
+          "ps": [
+            11
+          ]
+        }
+      }
+    ],
+    "limit": {
+      "offset": 0,
+      "count": 20
+    },
+    "if_parent": {
+      "column": "seq",
+      "p": 12
+    },
+    "set": [
+      {
+        "column": "seq",
+        "p": 13
+      }
+    ],
+    "on_duplicate": [
+      {
+        "column": "seq",
+        "p": 14
+      }
+    ],
+    "rows": [
+      [
+        15
+      ]
+    ],
+    "optimistic": {
+      "column": "seq",
+      "p": 16
+    }
+  },
+  "params": [
+    "v0",
+    "v1",
+    "v2",
+    "v3",
+    "v4",
+    "v5",
+    "v6",
+    "v7",
+    "v8",
+    "v9",
+    "v10",
+    "v11",
+    "v12",
+    "v13",
+    "v14",
+    "v15",
+    "v16",
+    "v17"
+  ],
+  "canonical": {
+    "params": [
+      "v1",
+      "v0",
+      "v3",
+      "v2",
+      "v4",
+      "v5",
+      "v6",
+      "v7",
+      "v8",
+      "v9",
+      "v10",
+      "v11",
+      0,
+      20,
+      "v12",
+      "v13",
+      "v14",
+      "v15",
+      "v16",
+      "v17"
+    ],
+    "n_params": 20,
+    "limit": {
+      "offset_p": 12,
+      "count_p": 13
+    },
+    "if_parent_p": 14,
+    "set_p": [
+      15
+    ],
+    "on_duplicate_p": [
+      16
+    ],
+    "rows": [
+      [
+        17
+      ]
+    ],
+    "optimistic_p": 18
+  },
+  "predicate_fn_param": {
+    "request": {
+      "ir_version": 1,
+      "manifest_hash": "h",
+      "kind": "all",
+      "entity": "root",
+      "n_params": 2,
+      "where": {
+        "items": [
+          {
+            "pred": {
+              "column": "seq",
+              "op": "eq",
+              "p": 1,
+              "fn": {
+                "name": "year",
+                "ps": [
+                  0
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    "params": [
+      "v0",
+      "v1"
+    ],
+    "canonical": {
+      "params": [
+        "v1",
+        "v0"
+      ],
+      "n_params": 2,
+      "where_p": 0,
+      "fn_ps": [
+        1
+      ]
+    }
+  }
+}

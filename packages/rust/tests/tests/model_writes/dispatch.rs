@@ -257,7 +257,10 @@ async fn author_query(db: &Db, step: &Value) -> Result<Value, String> {
     }
     let window = |key: &str| match &step[key] {
         Value::Null => Ok(0),
-        value => value.as_u64().and_then(|n| u32::try_from(n).ok()).ok_or_else(|| format!("{key} is not a count: {value}")),
+        value => match value.as_u64().map(u32::try_from) {
+            Some(Ok(n)) => Ok(n),
+            _ => Err(format!("{key} is not a count: {value}")),
+        },
     };
     let (limit, offset) = (window("limit")?, window("offset")?);
     if limit > 0 || offset > 0 {

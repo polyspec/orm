@@ -18,6 +18,8 @@ pub struct Req {
     pub schema: &'static Schema,
     /// Relations whose child has its own connection, by parent model identity.
     pub(crate) external: HashMap<u64, Vec<RelSpec>>,
+    /// The parameters are numbered in walk order (canonical.rs), so a second walk is not run.
+    pub(crate) canonical: bool,
 }
 
 impl Req {
@@ -34,7 +36,18 @@ impl Req {
             err: None,
             schema,
             external: HashMap::new(),
+            canonical: false,
         }
+    }
+
+    /// Numbers the parameters in walk order, once. The plan cache key and the bind slots then use the same numbers.
+    pub(crate) fn canonicalize(&mut self) -> crate::Result<()> {
+        if self.canonical {
+            return Ok(());
+        }
+        crate::canonical::canonicalize(&mut self.ir, &mut self.params)?;
+        self.canonical = true;
+        Ok(())
     }
 
     pub fn p(&mut self, v: Param) -> usize {

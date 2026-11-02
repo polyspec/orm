@@ -2215,6 +2215,78 @@
     "exported": false,
     "signature": "pub (crate) fn use_slot_type \u003c 'a \u003e (u : \u0026 'a ParamUse \u003c '_ \u003e) -\u003e ParamSlot \u003c 'a \u003e"
   },
+  "packages/rust/orm/src/canonical.rs::Canonicalizer": {
+    "exported": false,
+    "signature": " struct Canonicalizer  { params : Vec \u003c Param \u003e , out : Vec \u003c Param \u003e , used : Vec \u003c bool \u003e , err : Option \u003c Error \u003e , }"
+  },
+  "packages/rust/orm/src/canonical.rs::Canonicalizer#field.err": {
+    "exported": false,
+    "signature": "Option \u003c Error \u003e"
+  },
+  "packages/rust/orm/src/canonical.rs::Canonicalizer#field.out": {
+    "exported": false,
+    "signature": "Vec \u003c Param \u003e"
+  },
+  "packages/rust/orm/src/canonical.rs::Canonicalizer#field.params": {
+    "exported": false,
+    "signature": "Vec \u003c Param \u003e"
+  },
+  "packages/rust/orm/src/canonical.rs::Canonicalizer#field.used": {
+    "exported": false,
+    "signature": "Vec \u003c bool \u003e"
+  },
+  "packages/rust/orm/src/canonical.rs::Canonicalizer#wire": {
+    "exported": false,
+    "signature": "{\"err\":\"Error\",\"out\":\"list\u003cParam\u003e\",\"params\":\"list\u003cParam\u003e\",\"used\":\"list\u003cbool\u003e\"}"
+  },
+  "packages/rust/orm/src/canonical.rs::Canonicalizer::assign": {
+    "exported": false,
+    "signature": " fn assign (\u0026 mut self , a : \u0026 ir :: Assign) -\u003e ir :: Assign"
+  },
+  "packages/rust/orm/src/canonical.rs::Canonicalizer::fail": {
+    "exported": false,
+    "signature": " fn fail (\u0026 mut self , code : \u0026 str , msg : impl Into \u003c String \u003e)"
+  },
+  "packages/rust/orm/src/canonical.rs::Canonicalizer::func": {
+    "exported": false,
+    "signature": " fn func (\u0026 mut self , f : \u0026 ir :: Func) -\u003e ir :: Func"
+  },
+  "packages/rust/orm/src/canonical.rs::Canonicalizer::group": {
+    "exported": false,
+    "signature": " fn group (\u0026 mut self , g : \u0026 ir :: Group) -\u003e ir :: Group"
+  },
+  "packages/rust/orm/src/canonical.rs::Canonicalizer::index": {
+    "exported": false,
+    "signature": " fn index (\u0026 mut self , p : usize) -\u003e usize"
+  },
+  "packages/rust/orm/src/canonical.rs::Canonicalizer::ints": {
+    "exported": false,
+    "signature": " fn ints (\u0026 mut self , ps : \u0026 [usize]) -\u003e Vec \u003c usize \u003e"
+  },
+  "packages/rust/orm/src/canonical.rs::Canonicalizer::list": {
+    "exported": false,
+    "signature": " fn list (\u0026 mut self , ps : \u0026 [usize]) -\u003e Vec \u003c usize \u003e"
+  },
+  "packages/rust/orm/src/canonical.rs::Canonicalizer::literal": {
+    "exported": false,
+    "signature": " fn literal (\u0026 mut self , value : u32) -\u003e usize"
+  },
+  "packages/rust/orm/src/canonical.rs::Canonicalizer::pred": {
+    "exported": false,
+    "signature": " fn pred (\u0026 mut self , p : \u0026 ir :: Pred) -\u003e ir :: Pred"
+  },
+  "packages/rust/orm/src/canonical.rs::Canonicalizer::query": {
+    "exported": false,
+    "signature": " fn query (\u0026 mut self , q : \u0026 ir :: Query , root : bool) -\u003e ir :: Query"
+  },
+  "packages/rust/orm/src/canonical.rs::Canonicalizer::sub": {
+    "exported": false,
+    "signature": " fn sub (\u0026 mut self , s : \u0026 ir :: Sub) -\u003e ir :: Sub"
+  },
+  "packages/rust/orm/src/canonical.rs::canonicalize": {
+    "exported": false,
+    "signature": "pub (crate) fn canonicalize (request : \u0026 mut ir :: Request , params : \u0026 mut Vec \u003c Param \u003e) -\u003e Result \u003c () \u003e"
+  },
   "packages/rust/orm/src/codec.rs::BinaryStage": {
     "exported": false,
     "signature": " enum BinaryStage  { Continue , Complete (Param) }"
@@ -7729,7 +7801,11 @@
   },
   "packages/rust/orm/src/request.rs::Req": {
     "exported": true,
-    "signature": "pub struct Req  { pub ir : ir :: Request , pub params : Vec \u003c Param \u003e , pub err : Option \u003c (String , String) \u003e , # [doc = \" The schema the statement is planned with.\"] pub schema : \u0026 'static Schema , # [doc = \" Relations whose child has its own connection, by parent model identity.\"] pub (crate) external : HashMap \u003c u64 , Vec \u003c RelSpec \u003e \u003e , }"
+    "signature": "pub struct Req  { pub ir : ir :: Request , pub params : Vec \u003c Param \u003e , pub err : Option \u003c (String , String) \u003e , # [doc = \" The schema the statement is planned with.\"] pub schema : \u0026 'static Schema , # [doc = \" Relations whose child has its own connection, by parent model identity.\"] pub (crate) external : HashMap \u003c u64 , Vec \u003c RelSpec \u003e \u003e , # [doc = \" The parameters are numbered in walk order (canonical.rs), so a second walk is not run.\"] pub (crate) canonical : bool , }"
+  },
+  "packages/rust/orm/src/request.rs::Req#field.canonical": {
+    "exported": false,
+    "signature": "bool"
   },
   "packages/rust/orm/src/request.rs::Req#field.err": {
     "exported": true,
@@ -7753,7 +7829,11 @@
   },
   "packages/rust/orm/src/request.rs::Req#wire": {
     "exported": true,
-    "signature": "{\"err\":\"unsupported:(String , String)\",\"external\":\"HashMap\",\"ir\":\"Request\",\"params\":\"list\u003cParam\u003e\",\"schema\":\"unsupported:\u0026 'static Schema\"}"
+    "signature": "{\"canonical\":\"bool\",\"err\":\"unsupported:(String , String)\",\"external\":\"HashMap\",\"ir\":\"Request\",\"params\":\"list\u003cParam\u003e\",\"schema\":\"unsupported:\u0026 'static Schema\"}"
+  },
+  "packages/rust/orm/src/request.rs::Req::canonicalize": {
+    "exported": false,
+    "signature": "pub (crate) fn canonicalize (\u0026 mut self) -\u003e crate :: Result \u003c () \u003e"
   },
   "packages/rust/orm/src/request.rs::Req::error": {
     "exported": true,

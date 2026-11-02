@@ -8317,6 +8317,45 @@
       ]
     },
     {
+      "id": "plan-cache-composite-parameter-order",
+      "kind": "suite",
+      "requirements": [
+        "CPX-4"
+      ],
+      "file": "contracts/fixtures/plan_cache_composite.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/plan_cache_test.go",
+          "symbol": "TestCanonicalizeCompositeRequestParameterWalk"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/PlanCacheCompositeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\PlanCacheCompositeTest::testPlanCacheCompositeParameterOrder"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PlanCacheCompositeNativeTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\PlanCacheCompositeNativeTest::testPlanCacheCompositeParameterOrder"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/plan-cache-composite.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_plan_cache_composite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/canonical.rs",
+          "symbol": "canonical::plan_cache_composite_tests::plan_cache_composite_parameter_order"
+        }
+      ]
+    },
+    {
       "id": "plan-cache-in-list-shapes-share-ten-bucketed-keys",
       "kind": "feature",
       "requirements": [

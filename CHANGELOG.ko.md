@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c17770b21d36ec765c66a8be643f4c305c786a5dbd5b13737d853d62fc3382a3 -->
+<!-- source-sha256: 84a0d6d1a36ecda7d18c2cddea362b6a1bbe370586e39dbe13bddb3c99c32004 -->
 # 변경 이력
 
 ## Unreleased
@@ -23,6 +23,14 @@
 - 55fd126fa가 model_writes recipe로 옮긴 unloaded-update-state-go 검사를 contracts/features.json에서 제거했다. DSL-109의 key 기준 갱신은 그 recipe의 save_updates_the_row_of_its_key case가 덮는다 (T334-3-5-8).
 - 4a669db8a가 CoverageDsnTest.php의 SQLite 최소 버전 test를 어떤 coverage owner에도 두지 않아, contracts/features.json에서 php owner와 php-extension owner의 inputs가 이 파일을 다시 선택한다 (T334-3-5-9).
 - 네 언어 owner test는 statement-events-check/<runtime> owner target을 기대하며, 이는 recipe fixture의 owner 규칙이 네 언어 변경에서 선택하는 target이다. test는 선택된 어느 target도 full-suite가 아님을 함께 확인한다 (T334-3-5-10).
+- `contracts/features.json`의 `model_writes` feature에 있는 오래된 entry `unloaded-update-state-go`는 통합 branch가 받는다. 통합 branch는 `T334-3-17-6`(`8828d675d`)과 같은 수정을 받는다 (T326-18).
+- TypeScript `getReadCount` member의 parity check는 새로 build한 결과로 본다: `var/typescript/dist.key`가 남긴 오래된 `packages/ts/dist`는 Author 외 model 25개에 대해 R11 undeclared-public 25건을 보고했고, 다시 build하면 `parity --phase api`는 보고하지 않으며 Author 선언은 그대로 남는다 (T326-17).
+- Rust tests crate는 clippy `-D warnings`를 통과한다: seed reader와 connect step이 금지된 `unwrap_or_default`와 `ok`를 호출하지 않는다 (T326-16).
+- Rust 클라이언트는 plan cache key를 구하기 전에 request의 parameter를 Go client의 walk 순서로 다시 번호 매기므로, 다른 순서로 만들어진 request도 Go와 같은 plan cache slot을 얻는다. `contracts/fixtures/plan_cache_composite.json`의 composite 및 predicate 벡터는 `canonical.rs`에서 시험한다 (T326-15-1).
+- PHP 확장도 PHP 라이브러리와 같은 Go 순서로 predicate의 parameter를 walk하므로, `p`와 `fn`을 함께 가진 predicate의 plan cache slot이 Go client와 같다 (T326-15-3).
+- 복합 parameter 재번호의 plan cache key vector `contracts/fixtures/plan_cache_composite.json`을 여섯 runtime이 parity unit 하나(`plan-cache-composite-parameter-order`)로 함께 실행하므로, 각 runtime의 plan cache slot을 같은 vector로 검사한다 (T326-15).
+- composite vector의 native plan cache test 다섯 개(Go, PHP, PHP 확장, Python, Rust)는 `contracts/fixtures/plan_cache_composite.json`의 case ID마다 이름 붙은 test 하나를 보고한다. TypeScript test와 같은 형식이므로 parity check가 여섯 runtime 모두에서 두 case를 실행한다 (T326-15-4).
+- PHP 라이브러리는 predicate의 parameter를 키 정렬 순서가 아니라 Go 순서(p, plus_p, minus_p, ps, fn, value, sub)로 walk하므로, `p`와 `fn`을 함께 가진 predicate의 plan cache slot이 Go와 TypeScript client와 같다 (T326-15-2).
 - tests/events/vectors.json의 statement event는 여섯 client 모두에서 MySQL, PostgreSQL, SQLite 위에서 recipe `contracts/fixtures/statement_events/statement_events.json`으로 실행한다. native statement-event suite는 제거했고, server-transaction 시험과 coverage owner는 native로 남는다 (T334-3-5).
 - orm은 모든 생태계에서 ordered-json을 0.0.20으로 고정하며, 각 lock은 자기 package manager로 갱신한다 (T350).
 - orm은 kit 0.0.92를 고정한다. 그 target은 orm-install-rust-crates의 crate 받기와 맞고, 그 kit이 담은 원칙 사본을 받는다 (T353).

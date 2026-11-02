@@ -609,7 +609,12 @@ mod database {
     /// The table names of the `rows` of a seed object, in the order the document writes them.
     fn seed_order(seed: Option<&polyspec_orm::ordered_json::Value>) -> Vec<String> {
         let Some(rows) = seed.and_then(|seed| member(seed, "rows")).and_then(|rows| rows.members()) else { return Vec::new() };
-        rows.iter().map(|(key, _)| String::from_utf8(key.string_value().unwrap_or_default()).unwrap_or_default()).collect()
+        rows.iter()
+            .map(|(key, _)| {
+                let bytes = key.string_value().expect("a seed table name is a JSON string");
+                String::from_utf8(bytes).expect("a seed table name is UTF-8")
+            })
+            .collect()
     }
 
     /// The Schema of a dbspec-set.json through the public dbspec API (docs/spec/dbspec.md "External documents"): the
@@ -1075,7 +1080,10 @@ mod database {
         let op = step["op"].as_str().unwrap_or_default();
         if op == "model.connect" {
             let name = step["as"].as_str().ok_or_else(|| Failure::Step("model.connect names no as".into()))?;
-            let pool_size = step["pool_size"].as_u64().and_then(|n| u32::try_from(n).ok()).ok_or_else(|| Failure::Step("pool_size is not a count".into()))?;
+            let pool_size = match step["pool_size"].as_u64().map(u32::try_from) {
+                Some(Ok(count)) => count,
+                _ => return Err(Failure::Step("pool_size is not a count".into())),
+            };
             let dsn = context.dsn.clone();
             context.models.connect(name, &dsn, pool_size).await.map_err(Failure::Call)?;
             return Ok(Output::fields(json!({})));

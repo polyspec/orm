@@ -736,6 +736,10 @@ impl Db {
         if let Some(n_params) = n_params {
             req.ir.n_params = n_params;
         }
+        // A split probe or part keeps the parameter indices of its parent request (n_params), so only a root plan is renumbered.
+        if n_params.is_none() {
+            req.canonicalize()?;
+        }
         engine::validate(&manifest, &req.ir)?;
         crate::request::validate_page_params(&req.ir, &req.params)?;
         let key = match n_params {
