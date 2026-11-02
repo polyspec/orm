@@ -5,11 +5,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
+	"sync"
 	"syscall"
 	"testing"
 
+	"github.com/polyspec/orm/packages/go/bindmodel"
 	"github.com/polyspec/orm/packages/go/internal/recipe"
 	"github.com/polyspec/orm/packages/go/markdownmodel"
 	"github.com/polyspec/orm/packages/go/orm"
@@ -23,14 +26,31 @@ import (
 func TestRecipeIRAnswersNone(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	chains := conformanceCases()
-	recipe.Run(t, "../../../tests/ir/answers.json", recipe.None, recipe.WithIRAnswer(func(t *testing.T, chain string, answer json.RawMessage, answers map[string]json.RawMessage) (any, error) {
+	recipe.Run(t, "../../../tests/ir/answers.json", recipe.None, recipe.WithIRAnswer(func(t *testing.T, chain string, answer json.RawMessage, answers map[string]json.RawMessage, bind json.RawMessage, params bool) (any, error) {
 		testcase.Start(t, testcase.Compute)
-		run := chains[chain]
+		var run caseFunc
+		if bind != nil {
+			// A bind step names the chain slot (T334-3-15-3c): it binds the bind value to its slot column and sends the insert.
+			if chain != "slot" {
+				return nil, fmt.Errorf("a bind step names the chain slot, not %s", chain)
+			}
+			var b bindStep
+			if err := json.Unmarshal(bind, &b); err != nil {
+				return nil, fmt.Errorf("bind of the step: %w", err)
+			}
+			run = func(s *served) (any, error) { return bindSlot(s.db, b.Column, b.Value) }
+		} else {
+			run = chains[chain]
+		}
 		if run == nil {
 			t.Fatalf("chain %s is no markdown conformance case", chain)
 		}
 		dsn := ""
+		var sent *requestLog
 		if answers != nil {
+			if params {
+				return nil, fmt.Errorf("a params expect needs one answer, not answers")
+			}
 			dsn = startMarkdownTestServerWithKeyedAnswers(t, answers)
 		} else {
 			// The fixture is pretty-printed, and the wire takes one message per line, so the answer is compacted.
@@ -38,26 +58,118 @@ func TestRecipeIRAnswersNone(t *testing.T) {
 			if err := json.Compact(&compact, answer); err != nil {
 				t.Fatalf("answer of chain %s: %v", chain, err)
 			}
-			dsn = startMarkdownTestServerWithAnswer(t, compact.String())
+			sent = &requestLog{}
+			dsn = startMarkdownTestServerWithAnswer(t, compact.String(), sent)
 		}
-		db, err := markdownmodel.Connect(dsn, orm.Config{PoolSize: 1})
+		// A bind step writes the slots model, so its connection carries the schema of tests/bind/dbspec-set.json (its hash).
+		connect := markdownmodel.Connect
+		if bind != nil {
+			connect = bindmodel.Connect
+		}
+		db, err := connect(dsn, orm.Config{PoolSize: 1})
 		if err != nil {
 			t.Fatal(err)
 		}
 		defer testcase.Close(t, db)
-		return run(&served{db: db})
+		result, err := run(&served{db: db})
+		if params && err == nil {
+			return sent.params(t), nil
+		}
+		return result, err
 	}))
 }
 
+// bindStep is the bind field of an ir.answer step (T334-3-15-3c): the slot column of tests/bind/slots.dbs that takes the value,
+// and the value in its text form. The column gives the type and the precision of the slot.
+type bindStep struct {
+	Column string `json:"column"`
+	Value  string `json:"value"`
+}
+
+// bindSlot writes value into column of the slots model and sends the insert, so the request carries the wire value of the slot
+// (PRT-67). A value the slot rejects is the orm error of the setter, before any statement.
+func bindSlot(db *orm.DB, column, value string) (any, error) {
+	// A time setter returns its error; a datetime setter keeps its text error for Create, which returns it before any statement.
+	setters := map[string]func(*bindmodel.SlotsModel, string) error{
+		"time0_value":     func(m *bindmodel.SlotsModel, v string) error { _, err := m.SetTime0Value(v); return err },
+		"time1_value":     func(m *bindmodel.SlotsModel, v string) error { _, err := m.SetTime1Value(v); return err },
+		"time2_value":     func(m *bindmodel.SlotsModel, v string) error { _, err := m.SetTime2Value(v); return err },
+		"time3_value":     func(m *bindmodel.SlotsModel, v string) error { _, err := m.SetTime3Value(v); return err },
+		"time4_value":     func(m *bindmodel.SlotsModel, v string) error { _, err := m.SetTime4Value(v); return err },
+		"time5_value":     func(m *bindmodel.SlotsModel, v string) error { _, err := m.SetTime5Value(v); return err },
+		"time6_value":     func(m *bindmodel.SlotsModel, v string) error { _, err := m.SetTime6Value(v); return err },
+		"datetime0_value": func(m *bindmodel.SlotsModel, v string) error { m.SetDatetime0Value(v); return nil },
+		"datetime1_value": func(m *bindmodel.SlotsModel, v string) error { m.SetDatetime1Value(v); return nil },
+		"datetime2_value": func(m *bindmodel.SlotsModel, v string) error { m.SetDatetime2Value(v); return nil },
+		"datetime3_value": func(m *bindmodel.SlotsModel, v string) error { m.SetDatetime3Value(v); return nil },
+		"datetime4_value": func(m *bindmodel.SlotsModel, v string) error { m.SetDatetime4Value(v); return nil },
+		"datetime5_value": func(m *bindmodel.SlotsModel, v string) error { m.SetDatetime5Value(v); return nil },
+		"datetime6_value": func(m *bindmodel.SlotsModel, v string) error { m.SetDatetime6Value(v); return nil },
+	}
+	set := setters[column]
+	if set == nil {
+		return nil, fmt.Errorf("column %s is no time or datetime slot of tests/bind/slots.dbs", column)
+	}
+	row := bindmodel.Slots().Connect(db)
+	if err := set(row, value); err != nil {
+		return nil, err
+	}
+	if _, err := row.Create(); err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+
+// requestLog keeps the lines that a listener receives after its connect, so that a case checks the request text the chain
+// sends (PRT-66). The listener writes on its goroutine, and the case reads after the chain has answered.
+type requestLog struct {
+	mu    sync.Mutex
+	lines []string
+}
+
+func (l *requestLog) add(line string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.lines = append(l.lines, line)
+}
+
+// params returns the params of the request that the listener received, the message with a request key, in the JSON form of
+// PRT-67. A request without params has none, and the result is an empty list.
+func (l *requestLog) params(t *testing.T) []any {
+	t.Helper()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	for _, line := range l.lines {
+		var msg struct {
+			Request json.RawMessage `json:"request"`
+			Params  []any           `json:"params"`
+		}
+		if json.Unmarshal([]byte(line), &msg) != nil || msg.Request == nil {
+			continue
+		}
+		if msg.Params == nil {
+			return []any{}
+		}
+		return msg.Params
+	}
+	t.Fatalf("the listener received no request message")
+	return nil
+}
+
 // startMarkdownTestServerWithAnswer is the DSN of a listener that writes {"ok": true} for the connect of one connection and, for the next message, the answer.
-func startMarkdownTestServerWithAnswer(t *testing.T, answer string) string {
+// Each line after the connect is also added to sent.
+func startMarkdownTestServerWithAnswer(t *testing.T, answer string, sent *requestLog) string {
 	t.Helper()
 	ln := listenMarkdownTestServer(t)
 	serveMarkdownTestConnection(t, ln, func(conn net.Conn) error {
 		r := bufio.NewReader(conn)
-		for _, line := range []string{`{"ok":true}`, answer} {
-			if _, err := r.ReadString('\n'); err != nil {
+		for i, line := range []string{`{"ok":true}`, answer} {
+			received, err := r.ReadString('\n')
+			if err != nil {
 				return clientEnded(err)
+			}
+			if i > 0 {
+				sent.add(received)
 			}
 			if _, err := conn.Write([]byte(line + "\n")); err != nil {
 				return clientEnded(err)

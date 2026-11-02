@@ -11,6 +11,7 @@
         "psr-4": {
             "Polyspec\\Orm\\Tests\\Model\\": "packages/php/gen/",
             "Polyspec\\Orm\\Tests\\MarkdownModel\\": "packages/php/markdownmodel/",
+            "Polyspec\\Orm\\Tests\\BindModel\\": "packages/php/bindmodel/",
             "Polyspec\\Orm\\Tests\\ComplexModel\\": "packages/php/complexmodel/"
         }
     },

@@ -528,7 +528,8 @@ abstract class Model implements \JsonSerializable, ModelMetadata
                 throw new OrmException(Code::CODEC_DECODE, "invalid date value $s", $e);
             }
         }
-        foreach (['Y-m-d H:i:s.u', 'Y-m-d H:i:s', 'Y-m-d'] as $format) {
+        // A space or a T separates the date and the time (PRT-67).
+        foreach (['Y-m-d H:i:s.u', 'Y-m-d H:i:s', 'Y-m-d\\TH:i:s.u', 'Y-m-d\\TH:i:s', 'Y-m-d'] as $format) {
             $t = \DateTimeImmutable::createFromFormat('!' . $format, $s, $zone);
             if ($t !== false) {
                 return $t;

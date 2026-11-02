@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 84a0d6d1a36ecda7d18c2cddea362b6a1bbe370586e39dbe13bddb3c99c32004 -->
+<!-- source-sha256: 846965813fbf238e0408b7e50139c699af3bcc7a62c513f594f7ffa1e505f999 -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP library와 PHP extension이 PRT-67이 받는 T 구분 datetime 문자열을 읽고, PHP 시험이 bind model을 autoload한다 (T334-3-15-3c-10)
+- Rust client가 PRT-67이 받는 T 구분 datetime 문자열을 읽는다 (T334-3-15-3c-9)
 - constraints_and_relations 데이터베이스 기능의 constraint_errors와 external_relation case는 mysql, postgres, sqlite의 recipe contracts/fixtures/constraints_and_relations/constraints_and_relations.json이며, 여섯 runtime의 helper가 실행한다. 외래 키 위반 삭제는 user 행을 바꾸지 않고, CHECK와 unique 위반은 CONSTRAINT와 DUPLICATE_KEY로 실패하며, NoteReader 관계는 SharedNote 행을 읽으므로 이 확인들은 native test에서 빠진다. native test에는 immutable_write가 남는다. 이는 driver 오류 사슬로 확인하며 runtime에 따라 다르고(catalog는 MySQL에서 trigger가 걸린 table을 설계상 거부한다, ROW_MUTATION_UNSUPPORTED), soft_delete_restore는 audited transaction과 생성된 restore entity가 필요하므로 통합 branch에서 audit_triggers가 전환할 때까지 native로 남는다. 복합 키 행도 native로 남는다 (T334-3-4)
 - model_queries 데이터베이스 기능은 mysql, postgres, sqlite의 recipe contracts/fixtures/model_queries/model_queries.json이며, 여섯 runtime의 helper가 실행한다. 각 coverage test가 확인하던 개수, 없는 key, 정렬된 limit은 그 recipe의 case이므로 기능의 native test에서 빠지고, native test는 FCV-4 op로 표현되지 않는 집계, page 총계, 관계, join, 열 제거, group rows, 수집 identity 동작을 계속 확인한다 (T334-3-4).
 - packages/go/bench의 timing gate(TestHotPathGate)와 packages/go/engine/dbspec의 stress document test(TestStressDocument)는 build tag perfgate, bench를 달고 있어서 평범한 `go test`가 이것들을 빼 두었다. 이제 tag가 없으며, stress test는 CPU clock이 필요해서 unix에서만 빌드되고, Makefile의 `-tags bench` 실행과 perf-test의 `-tags perfgate` 실행은 없어졌다 (T334-3-6-5).
@@ -13,6 +15,11 @@
 - scripts/features/owners.test.mts의 두 case가 현재 owner 선언과 맞는다: DSN case는 T334-3-4가 PHP owner test로 만든 packages/php/tests/DsnConnectionRecipeTest.php를 읽고(CoverageDsnTest.php는 owner에서 빠졌다), 네 client case는 manifest가 고르는 statement-events-check owner target 여섯 개를 든다 (T334-3-14b-3-2).
 - `owners.mts --list`가 HEAD에서 exit 0으로 끝난다. T334-3-17-6(8828d675d)이 고쳤고, cherry-pick -x로 가져왔다 (T334-3-14b-3-1).
 - contracts/features.json의 owner 선언이 실제 파일을 가리키게 한다. 지운 schema test packages/rust/schema/tests/dbspec_plan.rs는 owner에서 빼고, 그 case를 대신 실행하는 recipe 실행기 packages/rust/orm/tests/dbspec_plan_cases.rs를 가리킨다. Go test TestUnloadedUpdateKeepsAssignedValuesSelectedAndKeyed는 packages/go/orm/model_update_state_test.go에 되살린다 (T334-3-17-6).
+- Rust recipe helper가 ir.answer의 bind step을 생성 bind model에서 slot column setter와 insert로 실행한다 (T334-3-15-3c-8)
+- TypeScript recipe helper가 ir.answer의 bind step을 bind_fixture model에서 실행한다. 그 slot column의 setter와 insert를 거치므로 tests/ir/answers.json의 bind_time3과 bind_datetime3이 TypeScript에서 통과한다 (T334-3-15-3c-4).
+- Python recipe helper가 ir.answer의 bind step을 tests/bind/dbspec-set.json에서 생성한 bind model에서 실행한다. 그 slot column의 setter와 insert를 거치므로 tests/ir/answers.json의 bind_time3과 bind_datetime3이 Python에서 통과한다 (T334-3-15-3c-5).
+- recipe의 ir.answer expect는 `{"none": {"params": [...]}}` 형식을 받는다. 이 형식은 listener가 받은 request 하나의 params를 비교하므로(PRT-66, PRT-67), chain의 bind 값과 wire 값을 recipe case로 쓸 수 있다. 여섯 runtime이 각자의 recipe helper에 이를 구현했다 (T334-3-15-5).
+- PHP recipe helper와 이를 상속하는 php-ext 실행이 ir.answer의 bind step을 tests/bind/dbspec-set.json에서 생성한 bind model에서 실행한다. 그 slot column의 setter와 insert를 거친다 (T334-3-15-3c-7).
 - CFG-1, CFG-2, CFG-11, CFG-17, CFG-19, CFG-26의 거부되는 DSN case(UTC가 아닌 timezone, 알 수 없는 scheme, database 이름 없음, 상대 SQLite 경로, VERIFY_IDENTITY와 함께 쓰인 주소 host, 잘못된 SQLite 경로 percent 인코딩)는 하나의 recipe, contracts/fixtures/dsn_reject/dsn_reject.json이 되었고, 모든 runtime이 새 op dsn.connect(FCV-4)로 database 없이 실행한다 (T334-3-23).
 - recipe schema가 model_writes fixture의 model.get_by step을 거부했다. 두 형식 모두 FCV-4가 model.get_by에 주는 rows outcome 대신 일반 expect를 받았다. 이제 두 형식 모두 rows outcome을 받는다 (T334-3-4-9).
 - recipe schema가 schema_install fixture의 schema.install step을 거부했다. {schema} 형식에 expect가 없었는데 FCV-4는 이 형식에 expect를 준다. 이제 schema가 그 expect를 받는다 (T334-3-4-8).
@@ -96,6 +103,9 @@
 - 읽기 answer 사례 `contracts/fixtures/ir_answers.json`은 `tests/ir/answers.json`으로 옮겨져, 여섯 runtime 모두 데이터베이스 없이 실행하는 `ir.answer` op(FCV-4)의 recipe가 된다. 각 사례는 markdown chain을 answer를 돌려주는 listener 위에서 실행한다. 대체되는 native answer test는 제거되고, parity unit ir-answers는 여섯 recipe entry에 묶인다 (#T334-3-15-2).
 - bind vector의 slot 픽스처 `tests/bind/slots.dbs`와 그 set `tests/bind/dbspec-set.json`은 `tests/bind/vectors.json`의 parameter slot마다 컬럼 하나를 가진 테이블 하나를 둔다. 모델은 모델을 쓰는 make 대상이 생성한다(Go와 PHP는 모델 목록, TypeScript는 빌드, Python은 `bind-python-models`, Rust는 tests crate의 build script). `make bind-models-check`가 이를 검사한다 (T334-3-15-3a).
 - recipe schema에 비유한 binary64 wrapper `{"f64": "NaN" | "Infinity" | "-Infinity"}`를 더했고, 여섯 recipe helper가 각각 그 수의 host 값으로 바꾼다. 유한한 수는 `float` wrapper를 그대로 쓴다 (T334-3-15-3b).
+- slot fixture `tests/bind/slots.dbs`에 bind chain이 이름 붙이는 time4, time5, datetime3, datetime4, datetime5 열을 더했고, 새 열마다 생성된 Go model에 setter가 있다 (#T334-3-15-3c-1).
+- `tests/ir/answers.json`의 bind case는 insert에 count가 아니라 PRT-70의 write answer `{affected, keys}`로 답하므로, client의 INTERNAL이 case 결과가 되지 않는다 (#T334-3-15-3c-3).
+- Go client는 offset 없는 `T` 구분자의 PRT-67 client datetime 텍스트(예: `2024-01-02T03:04:05.5`)를 받는다(`packages/go/orm/collection.go`의 `AsTime`). 그래서 그 텍스트의 datetime bind가 CODEC_ENCODE로 실패하지 않는다 (#T334-3-15-3c-2).
 - Rust runner는 공유 DDL vector의 behavior step을 MySQL, PostgreSQL, SQLite에서 실행하고, 서버 DSN이 빠지면 그 이름을 대며 실패한다. 전에는 rendered statement만 만들었다 (CR16-1-2).
 - TypeScript, Python, Rust의 physical DDL behavior 시험이 config/parity.json에 binding이 없어 parity-declarations-check가 binding 없는 test로 보고했다. 이 시험들을 DIA-113을 인용하는 feature unit dbspec-render-physical로 선언하고, 각 시험이 그 요구사항을 이름으로 적는다 (CR16-1-5).
 - duplication check가 공용 test 코드의 clone 세 개를 찾았다. PgsqlStatementAdapter와 CatalogAnswerStatement의 PHP fetchAll은 trait FetchesAllRows가 되었고, Rust dbspec test의 parse_set은 probe 모듈 tests/common/dbspec_probe.rs에 있으며, TypeScript의 within helper는 둘이 함께 쓰는 tests/deadline.mjs에 있다 (CR27).

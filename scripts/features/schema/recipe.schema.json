@@ -1774,6 +1774,26 @@
             "type": "object",
             "description": "The answers of a transaction chain keyed by the op of each control message and the kind of each request."
           },
+          "bind": {
+            "type": "object",
+            "required": [
+              "column",
+              "value"
+            ],
+            "additionalProperties": false,
+            "description": "The bind field of a slot step (FCV-4 ir.answer, T334-3-15-3c): the chain is slot, which writes the value into the column of tests/bind/slots.dbs that the column names and sends the insert. The column gives the type and the precision of the slot.",
+            "properties": {
+              "column": {
+                "type": "string",
+                "pattern": "^(time|datetime)[0-6]_value$",
+                "description": "A time or datetime column of tests/bind/slots.dbs; its precision is the digit of the name."
+              },
+              "value": {
+                "type": "string",
+                "description": "The client value as text, such as 10:00:00.123 or 2024-01-02T03:04:05.5 (PRT-67)."
+              }
+            }
+          },
           "expect": {
             "type": "object",
             "required": [
@@ -1783,13 +1803,32 @@
             "properties": {
               "none": {
                 "type": "object",
-                "required": [
-                  "value"
+                "oneOf": [
+                  {
+                    "required": [
+                      "value"
+                    ],
+                    "properties": {
+                      "value": true
+                    }
+                  },
+                  {
+                    "required": [
+                      "params"
+                    ],
+                    "properties": {
+                      "params": true
+                    }
+                  }
                 ],
                 "additionalProperties": false,
                 "properties": {
                   "value": {
                     "description": "The result of the chain in the plain JSON form of tests/markdown/README.md, a row, a list, a count, a value or {error, runs}."
+                  },
+                  "params": {
+                    "type": "array",
+                    "description": "The params of the one request that the listener received (PRT-66, PRT-67), in the JSON form of PRT-67; the now of the message is not compared."
                   }
                 }
               }

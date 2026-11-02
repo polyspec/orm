@@ -1,8 +1,8 @@
 <?php
 
-// The key check of the recipe format (FCV-2 to FCV-4, T334-3-5-6): the PHP loader refuses a file, case or step key that the
-// key table beside the recipe's schema does not hold, and each op that the table does not hold, by name, before any case runs.
-// It needs no built client, so its unit test runs without one.
+// The key check of the recipe format (FCV-2 to FCV-4, T334-3-5-6): the PHP loader refuses a file, case or step key that
+// the key table beside the recipe's schema does not hold, and each op that the table does not hold, by name, before any
+// case runs. It needs no built client, so its unit test runs without one.
 declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;

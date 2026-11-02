@@ -11,8 +11,8 @@ use Polyspec\Orm\Request;
 
 // Requirements: CPX-4.
 /**
- * The shared plan cache key vector of contracts/fixtures/plan_cache_composite.json through the native Request::canonicalize.
- * Each case of the vector is one data set of the test method, named by its ID.
+ * The shared plan cache key vector of contracts/fixtures/plan_cache_composite.json through the native
+ * Request::canonicalize. Each case of the vector is one data set of the test method, named by its ID.
  */
 #[Small]
 final class PlanCacheCompositeNativeTest extends TestCase

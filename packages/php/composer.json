@@ -35,6 +35,7 @@
         "psr-4": {
             "Polyspec\\Orm\\Tests\\Model\\": "gen/",
             "Polyspec\\Orm\\Tests\\MarkdownModel\\": "markdownmodel/",
+            "Polyspec\\Orm\\Tests\\BindModel\\": "bindmodel/",
             "Polyspec\\Orm\\Tests\\ComplexModel\\": "complexmodel/"
         }
     },

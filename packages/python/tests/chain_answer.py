@@ -12,7 +12,7 @@ from typing import Any
 
 from polyspec.orm import OrmError
 
-from .markdown_conformance import CONFORMANCE_DIR, Served, conformance_cases
+from .markdown_conformance import CONFORMANCE_DIR, ROOT, Served, conformance_cases
 from .test_sqlite import generate
 
 TOKEN = "0123456789abcdef0123456789abcdef"
@@ -36,8 +36,9 @@ def accept_markdown_test_connection(listener):
     return conn
 
 
-def start_markdown_test_server_with_answer(answer: str):
-    """A listener that answers connect with {"ok": true} and the next message with answer."""
+def start_markdown_test_server_with_answer(answer: str, sent: list):
+    """A listener that answers connect with {"ok": true} and the next message with answer. The request line is appended
+    to sent, so that a params expect reads the request the chain sends."""
     listener = listen_markdown_test_server()
 
     def serve():
@@ -45,9 +46,12 @@ def start_markdown_test_server_with_answer(answer: str):
         if conn is None:
             return
         with conn, conn.makefile("rb") as lines:
-            for reply in ('{"ok":true}', answer):
-                if not lines.readline():
+            for index, reply in enumerate(('{"ok":true}', answer)):
+                line = lines.readline()
+                if not line:
                     return
+                if index == 1:
+                    sent.append(line.decode())
                 conn.sendall(reply.encode() + b"\n")
             lines.readline()
 
@@ -112,6 +116,10 @@ def prepare() -> None:
             str(STATE["workdir"] / "models"),
             CONFORMANCE_DIR / "corpus" / "dbspec" / "dbspec-set.json",
         )
+        STATE["bind_models"] = generate(
+            str(STATE["workdir"] / "bind_models"),
+            ROOT / "tests" / "bind" / "dbspec-set.json",
+        )
         STATE["funcs"] = conformance_cases()
     except BaseException:
         release()
@@ -123,30 +131,55 @@ def release() -> None:
     STATE.clear()
 
 
-def run_chain(name: str, step: dict) -> Any:
-    """Runs the chain name on a listener that answers step, and returns its result as JSON: an orm error is
-    {"error": CODE}. Any other exception of the chain propagates, which fails the case."""
-    run = STATE["funcs"].get(name)
+def _bind_run(bind: dict):
+    """The chain of a bind step (T334-3-15-3c, PRT-67): it writes the bind value into the slot column of the bind models through
+    its setter and sends the insert, so the request carries the wire value of the slot."""
+    setter = f"set_{bind['column'].split('_')[0]}_value"
+
+    def run(s):
+        row = STATE["bind_models"].Slots().connect(s.db)
+        getattr(row, setter)(bind["value"])
+        row.create()
+        return None
+
+    return run
+
+
+def run_chain(name: str, step: dict) -> tuple[Any, list, bool]:
+    """Runs the chain name on a listener that answers step, and returns its result as JSON, the request lines the listener
+    received after its connect, and whether the chain failed with an orm error, which is the result {"error": CODE}.
+    Any other exception of the chain propagates, which fails the case. A step with a bind field runs the slot chain on the
+    bind models instead (T334-3-15-3c)."""
+    bind = step.get("bind")
+    if bind is not None:
+        if name != "slot":
+            raise AssertionError(f"a bind step names the chain slot, not {name}")
+        run, models = _bind_run(bind), STATE["bind_models"]
+    else:
+        run, models = STATE["funcs"].get(name), STATE["models"]
     if run is None:
         raise AssertionError(f"chain {name} is no markdown conformance case")
+    sent: list = []
+    failed = False
     if "answers" in step:
         listener, thread = start_markdown_test_server_with_keyed_answers(
             step["answers"]
         )
     else:
         listener, thread = start_markdown_test_server_with_answer(
-            json.dumps(step["answer"])
+            json.dumps(step["answer"]), sent
         )
     port = listener.getsockname()[1]
-    s = Served(STATE["models"], STATE["workdir"], str(port), TOKEN)
-    s.db = STATE["models"].connect(s.dsn("conformance", TOKEN))
+    s = Served(models, STATE["workdir"], str(port), TOKEN)
+    s.db = models.connect(s.dsn("conformance", TOKEN))
     try:
         try:
             got = run(s)
         except OrmError as error:
             got = {"error": error.code}
+            failed = True
     finally:
         s.db.close()
         listener.close()
         thread.join(5)
-    return json.loads(json.dumps(got))
+    return json.loads(json.dumps(got)), sent, failed

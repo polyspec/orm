@@ -299,7 +299,7 @@ trait RecipeModel
                 $count = self::authorChain($db, self::modelValues($s['where'] ?? null, $context), [])->getCount();
                 return ['value' => ['int' => (string) $count]];
             case 'model.get_by':
-                // The key and the where are one chain: the equalities, the projection of columns, then the terminal get.
+                // The key and the where are one chain: the equalities, the column projection, then the terminal get.
                 $where = isset($s['where']) ? $s['where'] : $s['key'];
                 $row = self::authorChain($db, self::modelValues($where, $context), $s['columns'])->get();
                 return ['rows' => $row === null ? [] : [self::authorCells($row, $s['columns'])]];

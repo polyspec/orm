@@ -10663,6 +10663,18 @@
     "exported": true,
     "signature": "public addColumnDatetime2Value(): this"
   },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnDatetime3Value": {
+    "exported": true,
+    "signature": "public addColumnDatetime3Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnDatetime4Value": {
+    "exported": true,
+    "signature": "public addColumnDatetime4Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnDatetime5Value": {
+    "exported": true,
+    "signature": "public addColumnDatetime5Value(): this"
+  },
   "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnDatetime6Value": {
     "exported": true,
     "signature": "public addColumnDatetime6Value(): this"
@@ -10710,6 +10722,14 @@
   "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnTime3Value": {
     "exported": true,
     "signature": "public addColumnTime3Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnTime4Value": {
+    "exported": true,
+    "signature": "public addColumnTime4Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnTime5Value": {
+    "exported": true,
+    "signature": "public addColumnTime5Value(): this"
   },
   "packages/ts/src/models/bind_fixture/models.ts::Slots.addColumnTime6Value": {
     "exported": true,
@@ -10779,6 +10799,18 @@
     "exported": true,
     "signature": "public getDatetime2Value(): string"
   },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getDatetime3Value": {
+    "exported": true,
+    "signature": "public getDatetime3Value(): string"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getDatetime4Value": {
+    "exported": true,
+    "signature": "public getDatetime4Value(): string"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getDatetime5Value": {
+    "exported": true,
+    "signature": "public getDatetime5Value(): string"
+  },
   "packages/ts/src/models/bind_fixture/models.ts::Slots.getDatetime6Value": {
     "exported": true,
     "signature": "public getDatetime6Value(): string"
@@ -10827,6 +10859,14 @@
     "exported": true,
     "signature": "public getTime3Value(): string"
   },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getTime4Value": {
+    "exported": true,
+    "signature": "public getTime4Value(): string"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.getTime5Value": {
+    "exported": true,
+    "signature": "public getTime5Value(): string"
+  },
   "packages/ts/src/models/bind_fixture/models.ts::Slots.getTime6Value": {
     "exported": true,
     "signature": "public getTime6Value(): string"
@@ -10870,6 +10910,18 @@
   "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByDatetime2Value": {
     "exported": true,
     "signature": "public groupByDatetime2Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByDatetime3Value": {
+    "exported": true,
+    "signature": "public groupByDatetime3Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByDatetime4Value": {
+    "exported": true,
+    "signature": "public groupByDatetime4Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByDatetime5Value": {
+    "exported": true,
+    "signature": "public groupByDatetime5Value(): this"
   },
   "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByDatetime6Value": {
     "exported": true,
@@ -10919,6 +10971,14 @@
     "exported": true,
     "signature": "public groupByTime3Value(): this"
   },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByTime4Value": {
+    "exported": true,
+    "signature": "public groupByTime4Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByTime5Value": {
+    "exported": true,
+    "signature": "public groupByTime5Value(): this"
+  },
   "packages/ts/src/models/bind_fixture/models.ts::Slots.groupByTime6Value": {
     "exported": true,
     "signature": "public groupByTime6Value(): this"
@@ -10962,6 +11022,18 @@
   "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameDatetime2Value": {
     "exported": true,
     "signature": "public keyNameDatetime2Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameDatetime3Value": {
+    "exported": true,
+    "signature": "public keyNameDatetime3Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameDatetime4Value": {
+    "exported": true,
+    "signature": "public keyNameDatetime4Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameDatetime5Value": {
+    "exported": true,
+    "signature": "public keyNameDatetime5Value(): this"
   },
   "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameDatetime6Value": {
     "exported": true,
@@ -11010,6 +11082,14 @@
   "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameTime3Value": {
     "exported": true,
     "signature": "public keyNameTime3Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameTime4Value": {
+    "exported": true,
+    "signature": "public keyNameTime4Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameTime5Value": {
+    "exported": true,
+    "signature": "public keyNameTime5Value(): this"
   },
   "packages/ts/src/models/bind_fixture/models.ts::Slots.keyNameTime6Value": {
     "exported": true,
@@ -11102,6 +11182,30 @@
   "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByDatetime2ValueDesc": {
     "exported": true,
     "signature": "public orderByDatetime2ValueDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByDatetime3ValueAsc": {
+    "exported": true,
+    "signature": "public orderByDatetime3ValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByDatetime3ValueDesc": {
+    "exported": true,
+    "signature": "public orderByDatetime3ValueDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByDatetime4ValueAsc": {
+    "exported": true,
+    "signature": "public orderByDatetime4ValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByDatetime4ValueDesc": {
+    "exported": true,
+    "signature": "public orderByDatetime4ValueDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByDatetime5ValueAsc": {
+    "exported": true,
+    "signature": "public orderByDatetime5ValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByDatetime5ValueDesc": {
+    "exported": true,
+    "signature": "public orderByDatetime5ValueDesc(...fn: ColumnFunction[]): this"
   },
   "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByDatetime6ValueAsc": {
     "exported": true,
@@ -11199,6 +11303,22 @@
     "exported": true,
     "signature": "public orderByTime3ValueDesc(...fn: ColumnFunction[]): this"
   },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByTime4ValueAsc": {
+    "exported": true,
+    "signature": "public orderByTime4ValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByTime4ValueDesc": {
+    "exported": true,
+    "signature": "public orderByTime4ValueDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByTime5ValueAsc": {
+    "exported": true,
+    "signature": "public orderByTime5ValueAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByTime5ValueDesc": {
+    "exported": true,
+    "signature": "public orderByTime5ValueDesc(...fn: ColumnFunction[]): this"
+  },
   "packages/ts/src/models/bind_fixture/models.ts::Slots.orderByTime6ValueAsc": {
     "exported": true,
     "signature": "public orderByTime6ValueAsc(...fn: ColumnFunction[]): this"
@@ -11287,6 +11407,18 @@
     "exported": true,
     "signature": "public removeColumnDatetime2Value(): this"
   },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnDatetime3Value": {
+    "exported": true,
+    "signature": "public removeColumnDatetime3Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnDatetime4Value": {
+    "exported": true,
+    "signature": "public removeColumnDatetime4Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnDatetime5Value": {
+    "exported": true,
+    "signature": "public removeColumnDatetime5Value(): this"
+  },
   "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnDatetime6Value": {
     "exported": true,
     "signature": "public removeColumnDatetime6Value(): this"
@@ -11335,6 +11467,14 @@
     "exported": true,
     "signature": "public removeColumnTime3Value(): this"
   },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnTime4Value": {
+    "exported": true,
+    "signature": "public removeColumnTime4Value(): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnTime5Value": {
+    "exported": true,
+    "signature": "public removeColumnTime5Value(): this"
+  },
   "packages/ts/src/models/bind_fixture/models.ts::Slots.removeColumnTime6Value": {
     "exported": true,
     "signature": "public removeColumnTime6Value(): this"
@@ -11378,6 +11518,18 @@
   "packages/ts/src/models/bind_fixture/models.ts::Slots.setDatetime2Value": {
     "exported": true,
     "signature": "public setDatetime2Value(value: string): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setDatetime3Value": {
+    "exported": true,
+    "signature": "public setDatetime3Value(value: string): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setDatetime4Value": {
+    "exported": true,
+    "signature": "public setDatetime4Value(value: string): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setDatetime5Value": {
+    "exported": true,
+    "signature": "public setDatetime5Value(value: string): this"
   },
   "packages/ts/src/models/bind_fixture/models.ts::Slots.setDatetime6Value": {
     "exported": true,
@@ -11426,6 +11578,14 @@
   "packages/ts/src/models/bind_fixture/models.ts::Slots.setTime3Value": {
     "exported": true,
     "signature": "public setTime3Value(value: string): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setTime4Value": {
+    "exported": true,
+    "signature": "public setTime4Value(value: string): this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots.setTime5Value": {
+    "exported": true,
+    "signature": "public setTime5Value(value: string): this"
   },
   "packages/ts/src/models/bind_fixture/models.ts::Slots.setTime6Value": {
     "exported": true,

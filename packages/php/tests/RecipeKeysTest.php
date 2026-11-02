@@ -1,7 +1,7 @@
 <?php
 
-// The refusal unit test of the PHP recipe loader's key check (FCV-2 to FCV-4, T334-3-5-6): each unknown file, case, op or step
-// key is refused by name, and a recipe whose keys the table holds is accepted.
+// The refusal unit test of the PHP recipe loader's key check (FCV-2 to FCV-4, T334-3-5-6): each unknown file, case, op
+// or step key is refused by name, and a recipe whose keys the table holds is accepted.
 declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
@@ -21,7 +21,8 @@ class RecipeKeysTest extends TestCase
     {
         $step ??= ['op' => 'dsn.connect', 'dsn' => 'case'];
         return json_encode(
-            ['$schema' => self::SCHEMA] + $file + ['cases' => [['id' => 'case-under-test', 'steps' => [$step]] + $case]],
+            ['$schema' => self::SCHEMA] + $file
+                + ['cases' => [['id' => 'case-under-test', 'steps' => [$step]] + $case]],
             JSON_THROW_ON_ERROR
         );
     }

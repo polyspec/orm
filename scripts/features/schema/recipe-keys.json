@@ -75,6 +75,7 @@
     "ir.answer": [
       "answer",
       "answers",
+      "bind",
       "chain",
       "expect",
       "op"

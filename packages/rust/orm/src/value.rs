@@ -388,12 +388,21 @@ impl Val {
     pub fn as_datetime(&self) -> crate::Result<NaiveDateTime> {
         match self {
             Val::DateTime(t) => Ok(*t),
-            // The text is read with fractional seconds first; without them is the second shape the spec accepts. If both fail, the
-            // error of the second shape is reported with the text.
-            Val::Str(s) => match NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S%.f") {
-                Ok(value) => Ok(value),
-                Err(_) => NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S").map_err(|error| decode_value(format!("invalid datetime: {s:?}: {error}"))),
-            },
+            // The text is read with a space or a T between the date and the time (PRT-67), each with fractional seconds first and
+            // without them second. If every shape fails, the error of the last shape is reported with the text.
+            Val::Str(s) => {
+                let mut last = None;
+                for shape in ["%Y-%m-%d %H:%M:%S%.f", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S%.f", "%Y-%m-%dT%H:%M:%S"] {
+                    match NaiveDateTime::parse_from_str(s, shape) {
+                        Ok(value) => return Ok(value),
+                        Err(error) => last = Some(error),
+                    }
+                }
+                Err(decode_value(match last {
+                    Some(error) => format!("invalid datetime: {s:?}: {error}"),
+                    None => format!("invalid datetime: {s:?}"),
+                }))
+            }
             other => Err(decode_value(format!("expected datetime, received {other:?}"))),
         }
     }

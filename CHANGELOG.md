@@ -3,6 +3,16 @@
 
 ## Unreleased
 
+- The PHP library and the PHP extension read the datetime text with a T separator that PRT-67 accepts, and the PHP tests autoload the bind models (T334-3-15-3c-10)
+- The Rust client reads the datetime text with a T separator that PRT-67 accepts (T334-3-15-3c-9)
+- The Rust recipe helper runs the bind step of ir.answer on the generated bind model, through the slot column setter and the insert (T334-3-15-3c-8)
+- The ir.answer expect of the recipe takes a params form, `{"none": {"params": [...]}}`, which compares the params of the one request that the listener received (PRT-66, PRT-67), so a chain's bound and wire values can be recipe cases; the six runtimes implement it in their recipe helpers (T334-3-15-5).
+- The TypeScript recipe helper runs the bind step of ir.answer on the bind_fixture model, through the setter of its slot column and the insert, so bind_time3 and bind_datetime3 of tests/ir/answers.json pass in TypeScript (T334-3-15-3c-4).
+- The Python recipe helper runs the bind step of ir.answer on the generated bind models of tests/bind/dbspec-set.json, through the setter of its slot column and the insert, so bind_time3 and bind_datetime3 of tests/ir/answers.json pass in Python (T334-3-15-3c-5).
+- The PHP recipe helper, and the php-ext run that extends it, runs the bind step of ir.answer on the generated bind models of tests/bind/dbspec-set.json, through the setter of its slot column and the insert (T334-3-15-3c-7).
+- The slot fixture `tests/bind/slots.dbs` has the time4, time5, datetime3, datetime4 and datetime5 columns that the bind chain names, and the generated Go model of each new column has its setter (#T334-3-15-3c-1).
+- The bind cases of `tests/ir/answers.json` answer their insert with the write answer `{affected, keys}` of PRT-70, not a count, so the client's INTERNAL is no longer the case result (#T334-3-15-3c-3).
+- The Go client accepts the PRT-67 client datetime text with a `T` separator and no offset, such as `2024-01-02T03:04:05.5` (`AsTime` in `packages/go/orm/collection.go`), so a datetime bind of that text no longer fails with CODEC_ENCODE (#T334-3-15-3c-2).
 - The stale `unloaded-update-state-go` entry of the `model_writes` feature in `contracts/features.json` is taken from the integration branch, which takes the same fix as `T334-3-17-6` (`8828d675d`) (T326-18).
 - The parity check of the TypeScript `getReadCount` members is run on a fresh build: a stale `packages/ts/dist` kept by `var/typescript/dist.key` had reported 25 R11 undeclared-public findings for the models other than Author, and after a rebuild `parity --phase api` reports none, the Author declaration staying as it is (T326-17).
 - The Rust tests crate passes clippy with `-D warnings`: its seed reader and its connect step no longer call the disallowed `unwrap_or_default` or `ok` (T326-16).

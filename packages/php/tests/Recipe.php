@@ -354,11 +354,22 @@ final class Recipe
      */
     private static function answerStep(array $step): void
     {
-        if (!array_key_exists('value', $step['expect']['none'] ?? [])) {
-            Assert::fail('ir.answer has no expect.none.value');
+        $outcome = $step['expect']['none'] ?? [];
+        $params = array_key_exists('params', $outcome);
+        if (!array_key_exists('value', $outcome) && !$params) {
+            Assert::fail('ir.answer has neither expect.none.value nor params');
         }
-        $want = $step['expect']['none']['value'];
-        $chain = MarkdownConformanceTest::conformanceCases()[$step['chain']] ?? null;
+        if ($params && array_key_exists('answers', $step)) {
+            Assert::fail('a params expect needs one answer, not answers');
+        }
+        $want = $params ? $outcome['params'] : $outcome['value'];
+        $bind = $step['bind'] ?? null;
+        if ($bind !== null && $step['chain'] !== 'slot') {
+            Assert::fail("a bind step names the chain slot, not {$step['chain']}");
+        }
+        $chain = $bind !== null
+            ? self::bindSlotChain($bind)
+            : (MarkdownConformanceTest::conformanceCases()[$step['chain']] ?? null);
         if ($chain === null) {
             Assert::fail("chain {$step['chain']} is no markdown conformance case");
         }
@@ -367,14 +378,21 @@ final class Recipe
             ? start_markdown_test_server(['--keyed', json_encode($step['answers'], $flags)])
             : start_markdown_test_server(['{"ok":true}', json_encode($step['answer'], $flags)]);
         $served = new Served();
-        $served->db = \Polyspec\Orm\Tests\MarkdownModel\connect($server[2], new Config());
+        $served->db = $bind !== null
+            ? \Polyspec\Orm\Tests\BindModel\connect($server[2], new Config())
+            : \Polyspec\Orm\Tests\MarkdownModel\connect($server[2], new Config());
+        $failed = false;
         try {
             $got = $chain($served);
         } catch (OrmException $error) {
             $got = ['error' => $error->code_];
+            $failed = true;
         } finally {
             $served->db->close();
-            markdown_test_server_received_messages($server);
+            $received = markdown_test_server_received_messages($server);
+        }
+        if ($params && !$failed) {
+            $got = self::requestParams($received);
         }
         $actual = MarkdownConformanceTest::normalize($got);
         $expect = MarkdownConformanceTest::normalize($want);
@@ -383,6 +401,32 @@ final class Recipe
             $actual,
             'got ' . MarkdownConformanceTest::jsonText($actual) . ', want ' . MarkdownConformanceTest::jsonText($expect)
         );
+    }
+
+    /**
+     * The chain of a bind step (T334-3-15-3c, PRT-67): it writes the bind value into the slot column of the bind model
+     * through its setter and sends the insert, so the request carries the wire value of the slot.
+     */
+    private static function bindSlotChain(array $bind): \Closure
+    {
+        $setter = 'set' . self::studly(explode('_', $bind['column'])[0]) . 'Value';
+        return static function (Served $served) use ($setter, $bind): mixed {
+            $row = (new \Polyspec\Orm\Tests\BindModel\Slots())->connect($served->db);
+            $row->{$setter}($bind['value'])->create();
+            return null;
+        };
+    }
+
+    /** The params of the request message that a server received, in the JSON form of PRT-67 (PRT-66). */
+    private static function requestParams(array $received): array
+    {
+        foreach ($received as $line) {
+            $message = json_decode($line, true, 512, JSON_THROW_ON_ERROR);
+            if (array_key_exists('request', $message)) {
+                return $message['params'] ?? [];
+            }
+        }
+        throw new \RuntimeException('the listener received no request message');
     }
 
     /** Opens a DSN with Orm::connect, closes it and returns its driver: the one implementation of dsn.connect (FCV-4). */

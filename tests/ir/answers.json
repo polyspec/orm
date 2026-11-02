@@ -665,6 +665,99 @@
           }
         }
       ]
+    },
+    {
+      "id": "request_params",
+      "requirements": [
+        "PRT-66",
+        "PRT-67",
+        "PRT-69",
+        "PRT-71",
+        "PRT-72"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "one",
+          "answer": {
+            "rows": [
+              {
+                "id": "P1",
+                "name": "Ann",
+                "email": "ann@example.com",
+                "age": 30,
+                "active": true,
+                "score": "1.50"
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "params": [
+                "P1"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_time3",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "slot",
+          "bind": {
+            "column": "time3_value",
+            "value": "10:00:00.123"
+          },
+          "answer": {
+            "affected": 1,
+            "keys": [
+              1
+            ]
+          },
+          "expect": {
+            "none": {
+              "params": [
+                "10:00:00.123000"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_datetime3",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "slot",
+          "bind": {
+            "column": "datetime3_value",
+            "value": "2024-01-02T03:04:05.5"
+          },
+          "answer": {
+            "affected": 1,
+            "keys": [
+              1
+            ]
+          },
+          "expect": {
+            "none": {
+              "params": [
+                "2024-01-02 03:04:05.500000"
+              ]
+            }
+          }
+        }
+      ]
     }
   ]
 }

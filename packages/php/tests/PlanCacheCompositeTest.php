@@ -12,7 +12,8 @@ use Polyspec\Orm\CanonicalRequest;
 // Requirements: CPX-4.
 /**
  * The plan cache key of a composite request (T169-3): the shared vector of contracts/fixtures/plan_cache_composite.json
- * through the canonical request of the PHP library. Each case of the vector is one data set of the test method, named by its ID.
+ * through the canonical request of the PHP library. Each case of the vector is one data set of the test method, named
+ * by its ID.
  */
 #[Small]
 final class PlanCacheCompositeTest extends TestCase

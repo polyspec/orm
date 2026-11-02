@@ -14,9 +14,14 @@ from urllib.parse import unquote, urlsplit
 
 from polyspec.ordered_json import (
     Kind,
+)
+from polyspec.ordered_json import (
     Value as OrderedJson,
+)
+from polyspec.ordered_json import (
     parse as ordered_json_parse,
 )
+from polyspec.orm import Db, Model, OrmError, Schema, connect_catalog, register_model
 from polyspec.orm.codec import (
     CodecError,
     blind_index,
@@ -25,12 +30,10 @@ from polyspec.orm.codec import (
     host_decode,
     host_encode,
 )
-from polyspec.orm import Db, Model, OrmError, Schema, connect_catalog, register_model
 from polyspec.orm.dbspec import (
     dbspec_manifest,
     parse_dbspec,
     parse_dbspec_set,
-    read_dbspec_file,
     read_dbspec_set,
 )
 from polyspec.orm.dbspec.compare import compare_schemas
@@ -47,6 +50,7 @@ from .coverage_case import native_query
 from .recipe_keys import check_keys
 from .recipe_model import model_ops
 from .markdown_conformance import same
+from .recipe_model import model_ops
 from .vector_case import VectorCase, vector_load_tests
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -132,15 +136,30 @@ def recipe_tests(path: str, database: str):
 
 def _answer(step: dict, database: str) -> None:
     """Runs the chain of an ir.answer step on the listener of the chain runner, and checks its normalized result against
-    the expect of database: {value: JSON}, compared as the markdown conformance cases compare theirs."""
+    the expect of database: {value: JSON}, compared as the markdown conformance cases compare theirs, or {params: [...]},
+    which compares the params of the request that the listener received (PRT-66, PRT-67)."""
     outcome = step["expect"].get(database)
-    if outcome is None or "value" not in outcome:
-        raise AssertionError(f"ir.answer has no value expect for {database}")
-    got = chain_answer.run_chain(step["chain"], step)
-    if not same(got, outcome["value"]):
+    if outcome is None or ("value" not in outcome and "params" not in outcome):
         raise AssertionError(
-            f"got {json.dumps(got)}, want {json.dumps(outcome['value'])}"
+            f"ir.answer has neither value nor params expect for {database}"
         )
+    if "params" in outcome and "answers" in step:
+        raise AssertionError("a params expect needs one answer, not answers")
+    got, sent, failed = chain_answer.run_chain(step["chain"], step)
+    want = outcome["value"] if "value" in outcome else outcome["params"]
+    if "params" in outcome and not failed:
+        got = _request_params(sent)
+    if not same(got, want):
+        raise AssertionError(f"got {json.dumps(got)}, want {json.dumps(want)}")
+
+
+def _request_params(sent: list) -> list:
+    """The params of the request message that a listener received, in the JSON form of PRT-67 (PRT-66)."""
+    for line in sent:
+        message = json.loads(line)
+        if "request" in message:
+            return message.get("params", [])
+    raise AssertionError("the listener received no request message")
 
 
 def _validation_model(schema: Path):
@@ -179,7 +198,7 @@ def _plan(step: dict, recipe_dir: Path, database: str) -> None:
     if database != NONE:
         raise AssertionError("planner.compile runs without a database")
     if not isinstance(step.get("schema"), str):
-        raise AssertionError("planner.compile needs a schema")
+        raise TypeError("planner.compile needs a schema")
     schema = (recipe_dir / step["schema"]).resolve()
     if schema not in _plan_models:
         _plan_models[schema] = _validation_model(schema)
@@ -456,7 +475,7 @@ def _run(step: dict, bound: dict, database: str) -> None:
                 f"error {code or 'none'} ({result!r}), want {expect['error']}"
             )
         return
-    if isinstance(result, _Failed):
+    if type(result) is _Failed:
         raise AssertionError(f"unexpected error {result.error!r}")
     want = expect["value"]
     if not decoded:
@@ -493,7 +512,7 @@ def _reference(name: str, bound: dict) -> Any:
     if name not in bound:
         raise AssertionError(f"ref {name} names no bound result")
     result = bound[name]
-    if isinstance(result, _Failed):
+    if type(result) is _Failed:
         raise AssertionError(f"ref {name} names a failed step: {result.error!r}")
     return result
 
@@ -683,9 +702,11 @@ def _database_recipe_tests(path: str, database: str):
     )
 
     def check(test: unittest.TestCase, case: dict) -> None:
-        with tempfile.TemporaryDirectory(prefix="orm_recipe_") as directory:
-            with case_database(database, directory, "orm_recipe") as dsn:
-                _run_case(path, recipe, case, database, schema, dsn, install_first)
+        with (
+            tempfile.TemporaryDirectory(prefix="orm_recipe_") as directory,
+            case_database(database, directory, "orm_recipe") as dsn,
+        ):
+            _run_case(path, recipe, case, database, schema, dsn, install_first)
 
     return vector_load_tests(DatabaseRecipeCase, recipe["cases"], check)
 

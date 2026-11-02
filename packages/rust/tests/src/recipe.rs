@@ -102,8 +102,22 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str) -> Re
     }
     if step["op"] == "ir.answer" {
         // The chain runs on a listener that answers with the step's answer (or answers), and its value is compared as JSON (FCV-3).
-        let got = markdown::answer(step["chain"].as_str().unwrap_or_default(), &step["answer"], &step["answers"]);
-        let want = &step["expect"][database]["value"];
+        // An expect of {params} compares the params of the request that the listener received instead (PRT-66, PRT-67).
+        let expect = &step["expect"][database];
+        let params = expect.get("params").is_some();
+        if params && step["answers"].is_object() {
+            return Err("a params expect needs one answer, not answers".to_owned());
+        }
+        let present = if params { expect.get("params") } else { expect.get("value") };
+        let Some(want) = present else {
+            return Err(format!("ir.answer expect for {database} has neither value nor params"));
+        };
+        let chain = step["chain"].as_str().unwrap_or_default();
+        // A bind step names the chain slot (T334-3-15-3c): it binds the bind value to its slot column and sends the insert.
+        if !step["bind"].is_null() && chain != "slot" {
+            return Err(format!("a bind step names the chain slot, not {chain}"));
+        }
+        let got = markdown::answer(chain, &step["bind"], &step["answer"], &step["answers"], params);
         return if markdown::same(&got, want) { Ok(()) } else { Err(format!("got {got}, want {want}")) };
     }
     let styles: Vec<String> = step["styles"].as_array().map(|s| s.iter().filter_map(|x| x.as_str().map(str::to_owned)).collect()).unwrap_or_default();
@@ -150,6 +164,45 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str) -> Re
             }
         }
     }
+}
+
+#[allow(
+    dead_code,
+    unused_imports,
+    clippy::all,
+    reason = "the generated models are included whole, a crate uses only some of them, and lints of hand-written code do not apply to generated code"
+)]
+mod bind_model {
+    include!(concat!(env!("OUT_DIR"), "/bind/orm_model.rs"));
+}
+
+/// Writes the value of a bind step into its slot column of the slots model of tests/bind/slots.dbs and sends the insert, so the
+/// request carries the wire value of the slot (PRT-67). A value the slot rejects is the orm error of the setter, before any statement.
+pub async fn bind_slot(dsn: &str, bind: &Value) -> Result<(), polyspec_orm::Error> {
+    let column = bind["column"].as_str().unwrap_or_default();
+    let value = bind["value"].as_str().unwrap_or_default().to_owned();
+    let db = bind_model::connect(dsn, 1, polyspec_orm::Config::default()).await?;
+    let row = bind_model::Slots::new().connect(&db);
+    let mut row = match column {
+        "time0_value" => row.set_time0_value(value),
+        "time1_value" => row.set_time1_value(value),
+        "time2_value" => row.set_time2_value(value),
+        "time3_value" => row.set_time3_value(value),
+        "time4_value" => row.set_time4_value(value),
+        "time5_value" => row.set_time5_value(value),
+        "time6_value" => row.set_time6_value(value),
+        "datetime0_value" => row.set_datetime0_value(value)?,
+        "datetime1_value" => row.set_datetime1_value(value)?,
+        "datetime2_value" => row.set_datetime2_value(value)?,
+        "datetime3_value" => row.set_datetime3_value(value)?,
+        "datetime4_value" => row.set_datetime4_value(value)?,
+        "datetime5_value" => row.set_datetime5_value(value)?,
+        "datetime6_value" => row.set_datetime6_value(value)?,
+        other => panic!("column {other} is no time or datetime slot of tests/bind/slots.dbs"),
+    };
+    let created = row.create().await.map(|_| ());
+    db.close().await;
+    created
 }
 
 /// The cell form of a value a host decode read.

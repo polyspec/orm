@@ -883,8 +883,9 @@ bool model_time_value_in_zone(zval *input, zval *zone, zval *ret)
                 ZVAL_UNDEF(&time);
             }
         } else {
-            static const char *const fallbacks[] = {"!Y-m-d H:i:s.u", "!Y-m-d H:i:s", "!Y-m-d"};
-            for (size_t i = 0; i < 3 && Z_TYPE(time) == IS_UNDEF && EG(exception) == NULL; i++) {
+            /* A space or a T separates the date and the time (PRT-67). */
+            static const char *const fallbacks[] = {"!Y-m-d H:i:s.u", "!Y-m-d H:i:s", "!Y-m-d\\TH:i:s.u", "!Y-m-d\\TH:i:s", "!Y-m-d"};
+            for (size_t i = 0; i < sizeof fallbacks / sizeof fallbacks[0] && Z_TYPE(time) == IS_UNDEF && EG(exception) == NULL; i++) {
                 model_time_from_format(fallbacks[i], &input_text, zone, &time);
             }
         }
