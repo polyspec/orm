@@ -1169,6 +1169,10 @@
           "reason": "test: tests the private row-snapshot update budget validator and ROW_UPDATE_LIMIT diagnostic; its owner is rust-duplicate-catalog-check, while shared update behavior remains covered by model_writes cases"
         },
         {
+          "glob": "packages/rust/build/tests/unit/catalog_tool_errors.rs",
+          "reason": "test: tests the private catalog_query_error mapping that puts the TOOL_QUERY_STATEMENT and TOOL_QUERY_COLUMNS codes of tool_db ahead of the driver text; its owner is catalog-tool-errors-rust-check, while the codes of INT-124 and INT-125 are the public behaviour of the catalog recipes (K313)"
+        },
+        {
           "glob": "packages/rust/build/tests/unit/catalog_value.rs",
           "reason": "test: tests the private mapping of an unsupported tool cell to CATALOG_VALUE and the catalog codes of the tool errors; its owner is catalog-value-rust-check, while the shared behavior is covered by the catalog_connection recipe"
         }
@@ -43292,6 +43296,173 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/transactions_sqlite.rs",
           "symbol": "transactions_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "composite_keys-mysql",
+      "kind": "suite",
+      "requirements": [
+        "DSL-82",
+        "INT-87",
+        "PRT-12",
+        "PRT-40"
+      ],
+      "file": "contracts/fixtures/composite_keys/composite_keys.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_composite_keys_test.go",
+          "symbol": "TestRecipeCompositeKeysMysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CompositeKeysRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\CompositeKeysRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CompositeKeysRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CompositeKeysRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/composite_keys-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_composite_keys_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/composite_keys_mysql.rs",
+          "symbol": "composite_keys_mysql"
+        }
+      ]
+    },
+    {
+      "id": "composite_keys-postgres",
+      "kind": "suite",
+      "requirements": [
+        "DSL-82",
+        "INT-87",
+        "PRT-12",
+        "PRT-40"
+      ],
+      "file": "contracts/fixtures/composite_keys/composite_keys.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_composite_keys_test.go",
+          "symbol": "TestRecipeCompositeKeysPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CompositeKeysRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\CompositeKeysRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CompositeKeysRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CompositeKeysRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/composite_keys-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_composite_keys_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/composite_keys_postgres.rs",
+          "symbol": "composite_keys_postgres"
+        }
+      ]
+    },
+    {
+      "id": "composite_keys-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "DSL-82",
+        "INT-87",
+        "PRT-12",
+        "PRT-40"
+      ],
+      "file": "contracts/fixtures/composite_keys/composite_keys.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_composite_keys_test.go",
+          "symbol": "TestRecipeCompositeKeysSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CompositeKeysRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\CompositeKeysRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CompositeKeysRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CompositeKeysRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/composite_keys-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_composite_keys_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/composite_keys_sqlite.rs",
+          "symbol": "composite_keys_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "generator-scan",
+      "kind": "suite",
+      "requirements": [
+        "DSL-44",
+        "DSL-151",
+        "DSL-152"
+      ],
+      "file": "contracts/fixtures/generator_scan/generator_scan.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_generator_scan_test.go",
+          "symbol": "TestRecipeGeneratorScanNone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/GeneratorScanTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\GeneratorScanTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/GeneratorScanTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\GeneratorScanTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/generator_scan-none.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_generator_scan_none.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/generator_scan_none.rs",
+          "symbol": "generator_scan_none"
         }
       ]
     }

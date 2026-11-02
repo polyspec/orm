@@ -314,3 +314,26 @@ harness = false
 name = "transactions_sqlite"
 path = "tests/transactions_sqlite.rs"
 harness = false
+
+# Each case of the composite_keys recipe, contracts/fixtures/composite_keys/composite_keys.json, is the trial
+# composite_keys_<database>::<case id> on a case database of its own (FCV-3, FCV-4).
+[[test]]
+name = "composite_keys_mysql"
+path = "tests/composite_keys_mysql.rs"
+harness = false
+
+[[test]]
+name = "composite_keys_postgres"
+path = "tests/composite_keys_postgres.rs"
+harness = false
+
+[[test]]
+name = "composite_keys_sqlite"
+path = "tests/composite_keys_sqlite.rs"
+harness = false
+
+# Each case of the generator scan recipe, contracts/fixtures/generator_scan/generator_scan.json, is the trial generator_scan_none::<case id> (FCV-3).
+[[test]]
+name = "generator_scan_none"
+path = "tests/generator_scan_none.rs"
+harness = false

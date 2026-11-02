@@ -2906,7 +2906,6 @@
           "op",
           "connection",
           "model",
-          "where",
           "order",
           "columns",
           "expect"
@@ -2981,6 +2980,10 @@
                 "items": {
                   "$ref": "#/$defs/name"
                 }
+              },
+              "connect": {
+                "description": "The related model is connected to the connection of the query; without it the related model takes the connection of its parent (INT-87).",
+                "type": "boolean"
               }
             }
           },
@@ -2999,8 +3002,55 @@
               "update_nowait",
               "share_nowait"
             ]
+          },
+          "tuples": {
+            "description": "The rows whose key columns equal one tuple of values (DSL-82, the generated tuple filter of a composite key).",
+            "type": "object",
+            "required": [
+              "columns",
+              "values"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "columns": {
+                "type": "array",
+                "minItems": 2,
+                "items": {
+                  "$ref": "#/$defs/name"
+                }
+              },
+              "values": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "array",
+                  "minItems": 2,
+                  "items": {
+                    "$ref": "#/$defs/argument"
+                  }
+                }
+              }
+            }
           }
-        }
+        },
+        "anyOf": [
+          {
+            "properties": {
+              "where": true
+            },
+            "required": [
+              "where"
+            ]
+          },
+          {
+            "properties": {
+              "tuples": true
+            },
+            "required": [
+              "tuples"
+            ]
+          }
+        ]
       },
       "events.subscribe": {
         "type": "object",

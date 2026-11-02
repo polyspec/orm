@@ -285,6 +285,7 @@
       "op",
       "order",
       "relation",
+      "tuples",
       "where"
     ],
     "events.subscribe": [

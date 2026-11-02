@@ -61,6 +61,8 @@ require_once dirname(__DIR__, 2) . '/php/tests/ModelQueriesRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ConstraintsAndRelationsRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CatalogConnectionSqliteOnlyRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/TransactionsRecipeTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/CompositeKeysRecipeTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/GeneratorScanTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CodecBytesValueRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CodecOrderedJsonTextTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CodecErrorCauseTest.php';
