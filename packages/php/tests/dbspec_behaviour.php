@@ -177,8 +177,8 @@ function behaviour_applied(array $chain, array $script): array
 }
 
 /**
- * The chains of tests/dbspec/plan-cases.json that the apply cases run: main, and three cases each after its source as the
- * first plan.
+ * The chains of tests/dbspec/plan-cases.json that the apply cases run: main, and three cases each after its source as
+ * the first plan.
  */
 function behaviour_chains(): array
 {

@@ -146,9 +146,9 @@ const HIDDEN_LEFT = [
 ];
 
 /**
- * The scenarios of the chains of tests/dbspec/plan-cases.json, made once: 'scenarios' is a list of [name, dialects, closure
- * (Closure(): PDO $session, PDO $pdo, string $db)], 'runs' the number of runs they make, 'pooler' the transaction
- * pooler scenarios by name.
+ * The scenarios of the chains of tests/dbspec/plan-cases.json, made once: 'scenarios' is a list of [name, dialects,
+ * closure (Closure(): PDO $session, PDO $pdo, string $db)], 'runs' the number of runs they make, 'pooler' the
+ * transaction pooler scenarios by name.
  *
  * @return array{scenarios: list<array{0: string, 1: list<string>, 2: Closure}>, runs: int, pooler: array<string,
  *   Closure>}

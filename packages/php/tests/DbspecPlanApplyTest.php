@@ -173,7 +173,8 @@ class DbspecPlanApplyTest extends TestCase
         }
     }
 
-    // applyPlan applies one case to one dialect: the source, the steps, the rollback and the finalize, checked at each step.
+    // applyPlan applies one case to one dialect: the source, the steps, the rollback and the finalize, checked at each
+    // step.
     private function applyPlan(array $case, string $dialect): void
     {
         $parsed = Dbspec::parsePlan(dbspec_plan_text($case['plan']));

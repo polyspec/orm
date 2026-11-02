@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: 6710280a7951c092467f0a75f64a7fb296cf2c20d03ca9387d59dc6b01dceda5 -->
+<!-- source-sha256: f63b4d483ea904f870acba7d2b473695b28ff1af8649a1c31e84dfd50b2be889 -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 언어별 테스트 명령을 선언한다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-check`가 실패한다.
@@ -96,7 +96,7 @@
   - `{"outer": <name>}`은 subquery 안에서 바깥 query의 열을 가리키는 `expr`이다(상관 참조). `column`은 subquery 자신의 모델 열을 뜻한다. API: DSL-53과 DSL-54.
   - `{"expr": <fnCall>, "cmp": {<op>: <expr>}}`는 key가 열 함수인 predicate다(F5). API unit: column-function-generated-alias(DSL-73).
   - `relations` 항목은 `lock`(`share` 또는 `update`, transaction 안에서만), `order`, `columns`(목록 또는 `"all"`), `relations`(관련 모델의 relation을 중첩한 목록)를 받는다. API unit: client-query-relation(INT-87), client-utils-lock(INT-50), DSL-44.
-  - `model.query`의 `tuples`는 `{"columns": [<name>, <name>, ...], "values": [[<value>, ...], ...]}`이며, composite key의 생성된 tuple filter로 key 열이 tuple 하나와 같은 행을 고른다(DSL-82). query는 `where`, `tuples` 또는 둘 다를 받는다. `model.query`의 `relation`은 `connect`를 받는다. true이면 관계 model을 query의 connection에 연결하고, false이거나 없으면 부모의 connection을 쓴다(INT-87). API unit: coverage-composite-keys-composite-key-rows(DSL-82, INT-87, PRT-12, PRT-40).
+  - `model.query`의 `tuples`는 `{"columns": [<name>, <name>, ...], "values": [[<value>, ...], ...]}`이며, composite key의 생성된 tuple filter로 key 열이 tuple 하나와 같은 행을 고른다(DSL-82). query는 `where`, `tuples` 또는 둘 다를 받는다. `model.query`의 `relation`은 `connect`를 받는다. true이면 관계 model을 query의 connection에 연결하고, false이거나 없으면 부모의 connection을 쓴다(INT-87). `many`가 true이면 결과가 collection인 `relations(child)`가 되어 child 행마다 출력 행 하나가 나오고, `alias`는 child의 생성된 alias method(`"memberships"`: `aliasMemberships`)로 결과 이름을 정하며, 결과는 생성된 getter로 읽는다. API unit: coverage-composite-keys-composite-key-rows(DSL-82, INT-87, PRT-12, PRT-40).
   - `model.duplicate_create`는 생성된 모델을 묶는 `as`를 받는다. API: DSL-105(upsert_one_key).
   - `model.update`의 `set` 항목은 `{"arith": {"column": <name>, "operation": "plus" | "minus", "amount": <value>}}`일 수 있으며, 같은 쓰기에서 열에 더한다. API unit: client-model-terminal-write(INT-35).
   - `restore: true`인 `model.update`는 `set`을 생략할 수 있으며, 그 경우 행을 복원만 한다. API unit: restore-soft-deleted-row(INT-38).

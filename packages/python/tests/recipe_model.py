@@ -55,7 +55,17 @@ _COMPOSITE_ORDERS = {
     "account_id": "order_by_account_id_asc",
     "name": "order_by_name_asc",
 }
-_COMPOSITE_GETTERS = {"account_id": "get_account_id", "name": "get_name"}
+_COMPOSITE_GETTERS = {
+    "tenant_id": "get_tenant_id",
+    "account_id": "get_account_id",
+    "name": "get_name",
+}
+# The getters of the CompositeMembership columns that a relation of a CompositeAccount query reads, by recipe column.
+_COMPOSITE_MEMBERSHIP_GETTERS = {
+    "tenant_id": "get_tenant_id",
+    "account_id": "get_account_id",
+    "role": "get_role",
+}
 _LOCKS = {
     "update": "for_update",
     "share": "for_share",
@@ -109,6 +119,94 @@ def model_ops(native, database_value, step_argument):
                     f"CompositeAccount column {column} has no recipe filter"
                 )
         return model
+
+    def composite_membership_set(db, values):
+        model = models.CompositeMembership().connect(db)
+        for column in sorted(values):
+            if column == "tenant_id":
+                model.set_tenant_id(values[column])
+            elif column == "account_id":
+                model.set_account_id(values[column])
+            elif column == "role":
+                model.set_role(values[column])
+            else:
+                raise AssertionError(
+                    f"CompositeMembership column {column} has no recipe setter"
+                )
+        return model
+
+    def composite_membership_filter(db, where):
+        model = models.CompositeMembership().connect(db)
+        for index, column in enumerate(sorted(where)):
+            if index > 0:
+                model.and_()
+            if column == "tenant_id":
+                model.tenant_id(where[column])
+            else:
+                raise AssertionError(
+                    f"CompositeMembership column {column} has no recipe filter"
+                )
+        return model
+
+    def composite_tuples(model, tuples, context, after):
+        """Narrows the chain by the tuples of the composite key through its generated tuple filter, joined by and to the
+        equalities before it when after is true (DSL-82)."""
+        if tuples["columns"] != ["tenant_id", "account_id"]:
+            raise AssertionError(
+                f"CompositeAccount tuple {tuples['columns']} has no recipe filter"
+            )
+        groups = []
+        for tuple_ in tuples["values"]:
+            if len(tuple_) != 2:
+                raise AssertionError(
+                    f"a CompositeAccount tuple has {len(tuple_)} values, not 2"
+                )
+            groups.append([value_of(item, context) for item in tuple_])
+        if after:
+            model.and_()
+        return model.tuple_tenant_id_with_account_id(groups)
+
+    def composite_membership_relation(relation, db):
+        """The CompositeMembership child of a CompositeAccount relation: one match call per pair in the written order,
+        connected to the connection of the query when connect is true (INT-87)."""
+        if relation["model"] != "CompositeMembership":
+            raise AssertionError(
+                f"CompositeAccount relation {relation['model']} has no recipe entry"
+            )
+        child = models.CompositeMembership()
+        for pair in relation["match"]:
+            if pair == ["tenant_id", "tenant_id"]:
+                child = child.match_tenant_id_with_tenant_id()
+            elif pair == ["account_id", "account_id"]:
+                child = child.match_account_id_with_account_id()
+            else:
+                raise AssertionError(
+                    f"CompositeMembership match {pair} has no recipe entry"
+                )
+        alias = relation.get("alias")
+        if alias == "memberships":
+            child = child.alias_memberships()
+        elif alias is not None:
+            raise AssertionError(
+                f"CompositeMembership alias {alias} has no recipe entry"
+            )
+        if relation["connect"]:
+            child = child.connect(db)
+        return child
+
+    def composite_membership_children(row, relation):
+        """The CompositeMembership rows of one parent: through the generated getter of the alias, or of the result name of a
+        relation without one. A parent without a child gives none."""
+        many = relation.get("many", False)
+        if relation.get("alias") == "memberships":
+            result = row.get_memberships()
+        elif many:
+            result = row.get_composite_membership_models()
+        else:
+            result = row.get_composite_membership_model()
+        if result is None:
+            return []
+        return list(result.values()) if many else [result]
 
     def composite_key(db, key):
         return (
@@ -170,6 +268,15 @@ def model_ops(native, database_value, step_argument):
 
     def model_creates(step, context):
         db = connection(step["connection"], context)
+        if step["model"] == "CompositeMembership":
+            rows = [
+                composite_membership_set(db, values_of(row, context))
+                for row in step["rows"]
+            ]
+            count = (
+                models.CompositeMembership().connect(db).creates(rows, step["batch"])
+            )
+            return {"value": {"int": str(count)}}
         rows = [composite_set(db, values_of(row, context)) for row in step["rows"]]
         count = models.CompositeAccount().connect(db).creates(rows, step["batch"])
         return {"value": {"int": str(count)}}
@@ -243,6 +350,16 @@ def model_ops(native, database_value, step_argument):
                 "value": _wrap(
                     chain(db, values_of(step.get("where"), context), []).get_count()
                 )
+            }
+        if step["model"] == "CompositeMembership":
+            return {
+                "value": {
+                    "int": str(
+                        composite_membership_filter(
+                            db, values_of(step.get("where"), context)
+                        ).get_count()
+                    )
+                }
             }
         return {
             "value": {
@@ -330,25 +447,45 @@ def model_ops(native, database_value, step_argument):
                     for row in model.gets().values()
                 ]
             }
-        model = composite_filter(db, values_of(step.get("where"), context))
+        where = values_of(step.get("where"), context)
+        model = composite_filter(db, where)
+        if "tuples" in step:
+            model = composite_tuples(model, step["tuples"], context, bool(where))
         for column in step.get("order", []):
             if column not in _COMPOSITE_ORDERS:
                 raise AssertionError(
                     f"CompositeAccount column {column} has no recipe order"
                 )
             getattr(model, _COMPOSITE_ORDERS[column])()
+        # Each child row of the relation gives one output row; a parent row without a child gives none.
+        relation = step.get("relation")
+        if relation is not None:
+            child = composite_membership_relation(relation, db)
+            model = (
+                model.relations(child)
+                if relation.get("many", False)
+                else model.relation(child)
+            )
         # The lock of a model.query (INT-47): a lock outside a transaction is refused with CONFIG.
         if "lock" in step:
             if step["lock"] not in _LOCKS:
                 raise AssertionError(f"lock {step['lock']} is not a lock of the recipe")
             getattr(model, _LOCKS[step["lock"]])()
-        rows = model.gets().values()
-        return {
-            "rows": [
-                [_column_wrap(row, column) for column in step["columns"]]
-                for row in rows
-            ]
-        }
+        out = []
+        for row in model.gets().values():
+            cells = [_column_wrap(row, column) for column in step["columns"]]
+            if relation is None:
+                out.append(cells)
+                continue
+            for child in composite_membership_children(row, relation):
+                out.append(
+                    cells
+                    + [
+                        _composite_membership_wrap(child, column)
+                        for column in relation["columns"]
+                    ]
+                )
+        return {"rows": out}
 
     def model_arithmetic(step, context):
         db = connection(step["connection"], context)
@@ -377,6 +514,13 @@ def model_ops(native, database_value, step_argument):
                 f"CompositeAccount column {column} has no recipe getter"
             )
         return _wrap(getattr(row, _COMPOSITE_GETTERS[column])())
+
+    def _composite_membership_wrap(row, column):
+        if column not in _COMPOSITE_MEMBERSHIP_GETTERS:
+            raise AssertionError(
+                f"CompositeMembership column {column} has no recipe getter"
+            )
+        return _wrap(getattr(row, _COMPOSITE_MEMBERSHIP_GETTERS[column])())
 
     return {
         "model.connect": model_connect,

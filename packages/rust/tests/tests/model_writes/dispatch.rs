@@ -10,7 +10,7 @@ use polyspec_orm::{Config, Db};
 use polyspec_orm_tests::recipe::{ModelDispatcher, ModelFuture};
 use serde_json::{json, Value};
 
-use crate::model::{connect, Author, CompositeAccount};
+use crate::model::{connect, Author, CompositeAccount, CompositeMembership};
 
 /// The dispatcher of one case: the connections that model.connect opened, by name.
 #[derive(Default)]
@@ -63,6 +63,11 @@ impl ModelDispatcher for Models {
 async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
     match op {
         "model.create" => set_account(db, &step["values"])?.create().await.map(|_| json!({})).map_err(fail),
+        "model.creates" if step["model"] == "CompositeMembership" => {
+            let rows = step["rows"].as_array().into_iter().flatten().map(|row| set_membership(db, row)).collect::<Result<Vec<_>, _>>()?;
+            let count = membership(db).creates(rows, batch(step)?).await.map_err(fail)?;
+            Ok(json!({ "value": { "int": count.to_string() } }))
+        }
         "model.creates" => {
             let rows = step["rows"].as_array().into_iter().flatten().map(|row| set_account(db, row)).collect::<Result<Vec<_>, _>>()?;
             let count = account(db).creates(rows, batch(step)?).await.map_err(fail)?;
@@ -91,6 +96,10 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
         }
         "model.count" if step["model"] == "Author" => {
             let count = author_chain(db, &step["where"], &[])?.get_count().await.map_err(fail)?;
+            Ok(json!({ "value": { "int": count.to_string() } }))
+        }
+        "model.count" if step["model"] == "CompositeMembership" => {
+            let count = filter_membership(db, &step["where"])?.get_count().await.map_err(fail)?;
             Ok(json!({ "value": { "int": count.to_string() } }))
         }
         "model.count" => {
@@ -122,12 +131,26 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
         }
         "model.query" if step["model"] == "Author" => author_query(db, step).await,
         "model.query" => {
-            let mut query = filter_account(db, &step["where"])?;
+            // A query with tuples and no where starts from the whole model; the tuples follow the equalities by and.
+            let has_where = !step["where"].is_null();
+            let mut query = if has_where { filter_account(db, &step["where"])? } else { account(db) };
+            if !step["tuples"].is_null() {
+                query = tuple_account(query, &step["tuples"], has_where)?;
+            }
             for column in step["order"].as_array().into_iter().flatten() {
                 query = match column.as_str() {
+                    Some("tenant_id") => query.order_by_tenant_id_asc(),
                     Some("account_id") => query.order_by_account_id_asc(),
                     other => return Err(format!("CompositeAccount column {other:?} has no recipe order")),
                 };
+            }
+            // The relation of a model.query (INT-87): each child row gives one output row, its columns after the parent's.
+            let relation = &step["relation"];
+            let mut child_columns = None;
+            if !relation.is_null() {
+                let child = membership_relation(relation, db)?;
+                query = if relation["many"].as_bool() == Some(true) { query.relations(child) } else { query.relation(child) };
+                child_columns = Some(names(&relation["columns"]));
             }
             // The lock of a model.query (INT-47): a lock outside a transaction is refused with CONFIG.
             if let Some(lock) = step["lock"].as_str() {
@@ -141,7 +164,22 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
             }
             let collection = query.gets().await.map_err(fail)?;
             let wanted = names(&step["columns"]);
-            let rows = collection.iter().map(|(_, row)| cells(&wanted, |column| composite_cell(row, column))).collect::<Result<Vec<_>, _>>()?;
+            let mut rows = Vec::new();
+            for (_, row) in collection.iter() {
+                let out = wanted.iter().map(|column| composite_cell(row, column)).collect::<Result<Vec<_>, _>>()?;
+                let Some(columns) = &child_columns else {
+                    rows.push(Value::Array(out));
+                    continue;
+                };
+                // A parent with no child row gives none.
+                for child in membership_children(row, relation)? {
+                    let mut cells = out.clone();
+                    for column in columns {
+                        cells.push(membership_cell(child, column)?);
+                    }
+                    rows.push(Value::Array(cells));
+                }
+            }
             Ok(json!({ "rows": rows }))
         }
         "model.arithmetic" => {
@@ -201,6 +239,88 @@ fn filter_account(db: &Db, where_: &Value) -> Result<CompositeAccount, String> {
         query = query.and_account_id(int(value)?);
     }
     Ok(query)
+}
+
+fn membership(db: &Db) -> CompositeMembership {
+    CompositeMembership::new().connect(db)
+}
+
+/// A CompositeMembership with the columns of `values`, which are the setters of the recipe.
+fn set_membership(db: &Db, values: &Value) -> Result<CompositeMembership, String> {
+    let mut row = membership(db);
+    for (column, value) in columns(values)? {
+        row = match column.as_str() {
+            "tenant_id" => row.set_tenant_id(int(value)?),
+            "account_id" => row.set_account_id(int(value)?),
+            "role" => row.set_role(text(value)?),
+            other => return Err(format!("CompositeMembership column {other} has no recipe setter")),
+        };
+    }
+    Ok(row)
+}
+
+/// The CompositeMembership filter of the equalities of `where`, which the recipe names by tenant_id only.
+fn filter_membership(db: &Db, where_: &Value) -> Result<CompositeMembership, String> {
+    let map = columns(where_)?;
+    if let Some(column) = map.keys().find(|column| *column != "tenant_id") {
+        return Err(format!("CompositeMembership column {column} has no recipe filter"));
+    }
+    let mut query = membership(db);
+    if let Some(value) = map.get("tenant_id") {
+        query = query.tenant_id(int(value)?);
+    }
+    Ok(query)
+}
+
+/// The tuple filter of a model.query on CompositeAccount: the tuple method of its composite key, joined by and to the
+/// equalities before it when `after` is set.
+fn tuple_account(query: CompositeAccount, tuples: &Value, after: bool) -> Result<CompositeAccount, String> {
+    let key = names(&tuples["columns"]);
+    if key != ["tenant_id", "account_id"] {
+        return Err(format!("CompositeAccount tuple {key:?} has no recipe filter"));
+    }
+    let mut groups = Vec::new();
+    for tuple in tuples["values"].as_array().into_iter().flatten() {
+        match tuple.as_array().map(Vec::as_slice) {
+            Some([tenant, account]) => groups.push((int(tenant)?, int(account)?)),
+            _ => return Err(format!("a CompositeAccount tuple is not a pair: {tuple}")),
+        }
+    }
+    let query = if after { query.and(()) } else { query };
+    Ok(query.tuple_tenant_id_with_account_id(groups))
+}
+
+/// The CompositeMembership relation of a model.query on CompositeAccount: matched by its pairs in the written order, and
+/// connected to the connection of the query when connect is true.
+fn membership_relation(relation: &Value, db: &Db) -> Result<CompositeMembership, String> {
+    if relation["model"] != "CompositeMembership" {
+        return Err(format!("CompositeAccount relation {} has no recipe entry", relation["model"]));
+    }
+    let mut child = if relation["connect"].as_bool() == Some(true) { membership(db) } else { CompositeMembership::new() };
+    for pair in relation["match"].as_array().into_iter().flatten() {
+        let pair = names(pair);
+        child = match pair.iter().map(String::as_str).collect::<Vec<_>>().as_slice() {
+            ["tenant_id", "tenant_id"] => child.match_tenant_id_with_tenant_id(),
+            ["account_id", "account_id"] => child.match_account_id_with_account_id(),
+            other => return Err(format!("CompositeMembership match {other:?} has no recipe entry")),
+        };
+    }
+    match relation["alias"].as_str() {
+        None => Ok(child),
+        Some("memberships") => Ok(child.alias_memberships()),
+        Some(other) => Err(format!("CompositeMembership alias {other} has no recipe entry")),
+    }
+}
+
+/// The CompositeMembership rows of one parent: through the generated getter of the alias, or of the result name of a
+/// relation without one. A parent without a child gives none.
+fn membership_children<'a>(row: &'a CompositeAccount, relation: &Value) -> Result<Vec<&'a CompositeMembership>, String> {
+    let many = relation["many"].as_bool() == Some(true);
+    Ok(match (relation["alias"].as_str(), many) {
+        (Some("memberships"), _) => row.get_memberships().map_err(fail)?.map(|c| c.models().collect()).unwrap_or_default(),
+        (_, true) => row.get_composite_membership_models().map_err(fail)?.map(|c| c.models().collect()).unwrap_or_default(),
+        _ => row.get_composite_membership_model().map_err(fail)?.into_iter().collect(),
+    })
 }
 
 /// The CompositeAccount row of a key with `tenant_id` and `account_id`, or None when no row has it.
@@ -303,9 +423,19 @@ fn author_cell(row: &Author, column: &str) -> Result<Value, String> {
 
 fn composite_cell(row: &CompositeAccount, column: &str) -> Result<Value, String> {
     match column {
+        "tenant_id" => Ok(json!({ "int": row.get_tenant_id().map_err(fail)?.to_string() })),
         "account_id" => Ok(json!({ "int": row.get_account_id().map_err(fail)?.to_string() })),
         "name" => Ok(json!({ "text": row.get_name().map_err(fail)? })),
         other => Err(format!("CompositeAccount column {other} has no recipe getter")),
+    }
+}
+
+fn membership_cell(row: &CompositeMembership, column: &str) -> Result<Value, String> {
+    match column {
+        "tenant_id" => Ok(json!({ "int": row.get_tenant_id().map_err(fail)?.to_string() })),
+        "account_id" => Ok(json!({ "int": row.get_account_id().map_err(fail)?.to_string() })),
+        "role" => Ok(json!({ "text": row.get_role().map_err(fail)? })),
+        other => Err(format!("CompositeMembership column {other} has no recipe getter")),
     }
 }
 

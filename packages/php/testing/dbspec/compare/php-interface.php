@@ -291,7 +291,10 @@ function dbspec_read_recipe(string $path, string $op): array
  * (sets.<case>.<n>, or hashes.<case>.<name> for a hashes case), its text and its set of other documents. A hashes
  * case's documents are the owned texts of its dbspec.set step, each named by its header.
  *
- * @return array{cases: list<array{id: string, documents: array<string, list<string>>}>, analyses: list<array{0: string, 1: string, 2: array<string, string>}>}
+ * @return array{
+ *     cases: list<array{id: string, documents: array<string, list<string>>}>,
+ *     analyses: list<array{0: string, 1: string, 2: array<string, string>}>
+ * }
  */
 function dbspec_read_set_recipe(string $path, string $kind): array
 {
@@ -436,7 +439,8 @@ function dbspec_write_positions(string $dbspec, array $cases): void
 
 /**
  * Prints each analysis of hashes.json and sets.json (after the recipe documents): its tokens ("| line start end class")
- * and the diagnostics of its analysis, then "syntax/<id>/format" and the formatted text or the diagnostics of the refusal.
+ * and the diagnostics of its analysis, then "syntax/<id>/format" and the formatted text or the diagnostics of the
+ * refusal.
  *
  * @param array<string, mixed> $cases
  */
@@ -636,9 +640,9 @@ function dbspec_plan_recipes(string $plansPath): array
 }
 
 /**
- * With $dbspec, writes the case, invalid, chain, parse and comparison of tests/dbspec/plan-cases.json in this order: the
- * cases section of the file, and the other four from the recipes beside it (dbspec_plan_recipes). The vector file is
- * checked for its shape before output.
+ * With $dbspec, writes the case, invalid, chain, parse and comparison of tests/dbspec/plan-cases.json in this order:
+ * the cases section of the file, and the other four from the recipes beside it (dbspec_plan_recipes). The vector file
+ * is checked for its shape before output.
  */
 function dbspec_write_plans(string $dbspec, string $plansPath): void
 {

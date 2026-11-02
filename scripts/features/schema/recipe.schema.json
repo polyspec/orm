@@ -2984,6 +2984,14 @@
               "connect": {
                 "description": "The related model is connected to the connection of the query; without it the related model takes the connection of its parent (INT-87).",
                 "type": "boolean"
+              },
+              "many": {
+                "description": "relations(child): the result is a collection, one output row per child row (INT-87).",
+                "type": "boolean"
+              },
+              "alias": {
+                "description": "The result name, given through the generated alias method of the child and read through its generated getter.",
+                "$ref": "#/$defs/name"
               }
             }
           },

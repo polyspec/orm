@@ -184,12 +184,12 @@ def check_physical(test, case):
     failures = []
     for dialect in DIALECTS:
         try:
-            check_plan_case(case, dialect, dsns, test.sqlite_dir.name, INDEX[case["id"]])
+            check_plan_case(
+                case, dialect, dsns, test.sqlite_dir.name, INDEX[case["id"]]
+            )
         except Exception as error:  # noqa: BLE001 - one failed run does not stop the others; each is reported below
             failures.append(f"{dialect}.plan.{case['id']}: {error}")
-    test.assertEqual(
-        [], failures, f"{len(failures)} of {len(DIALECTS)} runs failed"
-    )
+    test.assertEqual([], failures, f"{len(failures)} of {len(DIALECTS)} runs failed")
 
 
 load_tests = vector_load_tests(PhysicalCase, cases, check_physical)

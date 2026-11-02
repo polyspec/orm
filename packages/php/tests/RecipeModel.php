@@ -85,6 +85,7 @@ trait RecipeModel
         }
         return match ($s['model']) {
             'CompositeAccount' => self::compositeAccountOp($s, $context, $db),
+            'CompositeMembership' => self::compositeMembershipOp($s, $context, $db),
             'Author' => self::authorOp($s, $context, $db),
             'User' => self::userOp($s, $context, $db),
             'NoteReader' => self::noteReaderOp($s, $context, $db),
@@ -133,7 +134,13 @@ trait RecipeModel
         'account_id' => 'orderByAccountIdAsc',
         'name' => 'orderByNameAsc',
     ];
-    private const COMPOSITE_GETTERS = ['account_id' => 'getAccountId', 'name' => 'getName'];
+    private const COMPOSITE_GETTERS = [
+        'tenant_id' => 'getTenantId', 'account_id' => 'getAccountId', 'name' => 'getName',
+    ];
+    /** The getter methods of the CompositeMembership columns that a relation of CompositeAccount reads. */
+    private const COMPOSITE_MEMBERSHIP_GETTERS = [
+        'tenant_id' => 'getTenantId', 'account_id' => 'getAccountId', 'role' => 'getRole',
+    ];
     /** The lock methods of a model.query, by recipe lock name. */
     private const LOCKS = [
         'update' => 'forUpdate',
@@ -209,11 +216,24 @@ trait RecipeModel
                 $row = (new $CA())($db)->getByTenantIdAndAccountId($key['tenant_id'], $key['account_id']);
                 return ['rows' => $row === null ? [] : [self::compositeAccountCells($row, $s['columns'])]];
             case 'model.query':
-                $model = self::compositeAccountFilter($db, self::modelValues($s['where'], $context));
+                $where = self::modelValues($s['where'] ?? null, $context);
+                $model = self::compositeAccountFilter($db, $where);
+                if (isset($s['tuples'])) {
+                    // The tuples are joined by and() to the equalities of where that come before them (DSL-82).
+                    if ($where !== []) {
+                        $model = $model->and();
+                    }
+                    $model = $model->tupleTenantIdWithAccountId(self::compositeAccountTuples($s['tuples'], $context));
+                }
                 foreach ($s['order'] ?? [] as $column) {
                     $order = self::COMPOSITE_ORDERS[$column]
                         ?? Assert::fail("CompositeAccount column $column has no recipe order");
                     $model = $model->$order();
+                }
+                // The relation of the query (INT-87): each child row gives one output row.
+                if (isset($s['relation'])) {
+                    $child = self::compositeMembershipRelation($s['relation'], $db);
+                    $model = ($s['relation']['many'] ?? false) ? $model->relations($child) : $model->relation($child);
                 }
                 // The lock of a model.query (INT-47): a lock outside a transaction is refused with CONFIG.
                 if (isset($s['lock'])) {
@@ -222,11 +242,84 @@ trait RecipeModel
                 }
                 $rows = [];
                 foreach ($model->gets() as $row) {
-                    $rows[] = self::compositeAccountCells($row, $s['columns']);
+                    $cells = self::compositeAccountCells($row, $s['columns']);
+                    if (!isset($s['relation'])) {
+                        $rows[] = $cells;
+                        continue;
+                    }
+                    // A parent row with no child row is left out of the result.
+                    foreach (self::compositeMembershipChildren($row, $s['relation']) as $child) {
+                        $rows[] = [...$cells, ...self::compositeMembershipCells($child, $s['relation']['columns'])];
+                    }
                 }
                 return ['rows' => $rows];
         }
         Assert::fail("OP_UNKNOWN {$s['op']}");
+    }
+
+    /** The CompositeAccount tuple groups of a model.query: each group holds the key values in the recipe column order. */
+    private static function compositeAccountTuples(array $tuples, array $context): array
+    {
+        if (($tuples['columns'] ?? null) !== ['tenant_id', 'account_id']) {
+            Assert::fail('CompositeAccount tuple ' . implode(',', $tuples['columns'] ?? []) . ' has no recipe filter');
+        }
+        $groups = [];
+        foreach ($tuples['values'] as $tuple) {
+            if (count($tuple) !== 2) {
+                Assert::fail('a CompositeAccount tuple has ' . count($tuple) . ' values, not 2');
+            }
+            $groups[] = [self::modelValue($tuple[0], $context), self::modelValue($tuple[1], $context)];
+        }
+        return $groups;
+    }
+
+    /**
+     * The CompositeMembership relation of a CompositeAccount query: one match call per pair in the written order,
+     * connected to the connection of the query when connect is true (INT-87).
+     */
+    private static function compositeMembershipRelation(
+        array $relation,
+        Db $db,
+    ): \Polyspec\Orm\Tests\Model\CompositeMembership {
+        if (($relation['model'] ?? null) !== 'CompositeMembership') {
+            Assert::fail("CompositeAccount relation {$relation['model']} has no recipe entry");
+        }
+        $child = new \Polyspec\Orm\Tests\Model\CompositeMembership();
+        foreach ($relation['match'] as $pair) {
+            $child = match ($pair) {
+                ['tenant_id', 'tenant_id'] => $child->matchTenantIdWithTenantId(),
+                ['account_id', 'account_id'] => $child->matchAccountIdWithAccountId(),
+                default => Assert::fail('CompositeMembership match ' . implode(',', $pair) . ' has no recipe entry'),
+            };
+        }
+        $alias = $relation['alias'] ?? null;
+        if ($alias === 'memberships') {
+            $child = $child->aliasMemberships();
+        } elseif ($alias !== null) {
+            Assert::fail("CompositeMembership alias $alias has no recipe entry");
+        }
+        if ($relation['connect']) {
+            $child->connect($db);
+        }
+        return $child;
+    }
+
+    /**
+     * The CompositeMembership rows of one parent: through the generated getter of the alias, or of the result name of a
+     * relation without one. A parent without a child gives none.
+     */
+    private static function compositeMembershipChildren(object $row, array $relation): array
+    {
+        $many = $relation['many'] ?? false;
+        $result = match (true) {
+            ($relation['alias'] ?? null) === 'memberships' => $row->getMemberships(),
+            $many => $row->getCompositeMembershipModels(),
+            default => $row->getCompositeMembershipModel(),
+        };
+        if ($result === null) {
+            return [];
+        }
+        return $many ? iterator_to_array($result, false) : [$result];
     }
 
     private static function compositeAccountCells(object $row, array $columns): array
@@ -236,6 +329,62 @@ trait RecipeModel
                 ?? Assert::fail("CompositeAccount column $column has no recipe getter");
             return self::modelWrapper($row->$getter());
         }, $columns);
+    }
+
+    /** The recipe wrappers of the named columns of one CompositeMembership row, in the order of columns. */
+    private static function compositeMembershipCells(object $row, array $columns): array
+    {
+        return array_map(static function (string $column) use ($row): array {
+            $getter = self::COMPOSITE_MEMBERSHIP_GETTERS[$column]
+                ?? Assert::fail("CompositeMembership column $column has no recipe getter");
+            return self::modelWrapper($row->$getter());
+        }, $columns);
+    }
+
+    private static function compositeMembershipSet(Db $db, array $values): \Polyspec\Orm\Tests\Model\CompositeMembership
+    {
+        $model = (new \Polyspec\Orm\Tests\Model\CompositeMembership())($db);
+        foreach ($values as $column => $value) {
+            match ($column) {
+                'tenant_id' => $model->setTenantId($value),
+                'account_id' => $model->setAccountId($value),
+                'role' => $model->setRole($value),
+                default => Assert::fail("CompositeMembership column $column has no recipe setter"),
+            };
+        }
+        return $model;
+    }
+
+    /** Runs the model ops of the composite keys recipe on CompositeMembership: model.creates and model.count by tenant_id. */
+    private static function compositeMembershipOp(array $s, array $context, Db $db): array
+    {
+        switch ($s['op']) {
+            case 'model.creates':
+                $rows = array_map(
+                    static fn (array $row): object => self::compositeMembershipSet(
+                        $db,
+                        self::modelValues($row, $context),
+                    ),
+                    $s['rows'],
+                );
+                $count = (new \Polyspec\Orm\Tests\Model\CompositeMembership())($db)->creates($rows, $s['batch']);
+                return ['value' => ['int' => (string) $count]];
+            case 'model.count':
+                $model = (new \Polyspec\Orm\Tests\Model\CompositeMembership())($db);
+                $first = true;
+                foreach (self::modelValues($s['where'], $context) as $column => $value) {
+                    if ($column !== 'tenant_id') {
+                        Assert::fail("CompositeMembership column $column has no recipe filter");
+                    }
+                    if (!$first) {
+                        $model = $model->and();
+                    }
+                    $first = false;
+                    $model->tenantId($value);
+                }
+                return ['value' => ['int' => (string) $model->getCount()]];
+        }
+        Assert::fail("op {$s['op']} has no CompositeMembership entry");
     }
 
     /** The Author chain of the equalities of where, joined by and() in the order of their column names, then the projection. */

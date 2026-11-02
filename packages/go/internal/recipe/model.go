@@ -55,6 +55,8 @@ func modelOp(s databaseStep, c *databaseContext) (outcome, error) {
 	switch s.Model {
 	case "CompositeAccount":
 		return compositeAccountOp(s, c, db)
+	case "CompositeMembership":
+		return compositeMembershipOp(s, c, db)
 	case "Author":
 		return authorOp(s, c, db)
 	case "User":
@@ -325,6 +327,32 @@ func compositeAccountOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome
 		if err != nil {
 			return outcome{}, err
 		}
+		if s.Tuples != nil {
+			if m, err = compositeAccountTuples(m, s.Tuples, len(filter) > 0, c); err != nil {
+				return outcome{}, err
+			}
+		}
+		for _, column := range s.Order {
+			switch column {
+			case "tenant_id":
+				m = m.OrderByTenantIdAsc()
+			case "account_id":
+				m = m.OrderByAccountIdAsc()
+			default:
+				return outcome{}, fmt.Errorf("CompositeAccount column %s has no recipe order", column)
+			}
+		}
+		var relation *compositeRelation
+		if s.Relation != nil {
+			if relation, err = compositeMembershipRelation(s.Relation, db); err != nil {
+				return outcome{}, err
+			}
+			if relation.many {
+				m = m.Relations(relation.child)
+			} else {
+				m = m.Relation(relation.child)
+			}
+		}
 		// The lock of a model.query (INT-47): a lock outside a transaction is refused with CONFIG.
 		switch s.Lock {
 		case "":
@@ -354,6 +382,8 @@ func compositeAccountOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome
 					v, err = row.GetAccountId()
 				case "name":
 					v, err = row.GetName()
+				case "tenant_id":
+					v, err = row.GetTenantId()
 				default:
 					return outcome{}, fmt.Errorf("CompositeAccount column %s has no recipe getter", column)
 				}
@@ -362,11 +392,243 @@ func compositeAccountOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome
 				}
 				cells = append(cells, wrapperOf(v))
 			}
-			out = append(out, cells)
+			if relation == nil {
+				out = append(out, cells)
+				continue
+			}
+			children, err := relation.children(row)
+			if err != nil {
+				return outcome{}, err
+			}
+			for _, child := range children {
+				more, err := compositeMembershipCells(child, relation.columns)
+				if err != nil {
+					return outcome{}, err
+				}
+				out = append(out, append(slices.Clone(cells), more...))
+			}
 		}
 		return outcome{fields: map[string]any{"rows": out}}, nil
 	}
 	return outcome{}, fmt.Errorf("OP_UNKNOWN %s", s.Op)
+}
+
+// compositeAccountTuples narrows a CompositeAccount chain by the tuples of a model.query through the generated tuple filter
+// of its composite key (DSL-82), joined by and to the equalities that come before it.
+func compositeAccountTuples(m *model.CompositeAccountModel, raw json.RawMessage, after bool, c *databaseContext) (*model.CompositeAccountModel, error) {
+	var tuples struct {
+		Columns []string            `json:"columns"`
+		Values  [][]json.RawMessage `json:"values"`
+	}
+	if err := json.Unmarshal(raw, &tuples); err != nil {
+		return nil, err
+	}
+	if !slices.Equal(tuples.Columns, []string{"tenant_id", "account_id"}) {
+		return nil, fmt.Errorf("CompositeAccount tuple %v has no recipe filter", tuples.Columns)
+	}
+	groups := make([]model.CompositeAccountTenantIdWithAccountId, 0, len(tuples.Values))
+	for _, tuple := range tuples.Values {
+		if len(tuple) != 2 {
+			return nil, fmt.Errorf("a CompositeAccount tuple has %d values, not 2", len(tuple))
+		}
+		tenant, err := wrappedInt64(tuple[0], c)
+		if err != nil {
+			return nil, err
+		}
+		account, err := wrappedInt64(tuple[1], c)
+		if err != nil {
+			return nil, err
+		}
+		groups = append(groups, model.CompositeAccountTenantIdWithAccountId{TenantId: tenant, AccountId: account})
+	}
+	if after {
+		m = m.And()
+	}
+	return m.TupleTenantIdWithAccountId(groups), nil
+}
+
+// wrappedInt64 reads one integer value wrapper of a recipe.
+func wrappedInt64(raw json.RawMessage, c *databaseContext) (int64, error) {
+	values, err := modelValues([]byte(`{"v":`+string(raw)+`}`), c)
+	if err != nil {
+		return 0, err
+	}
+	return int64Of(values["v"], "tuple")
+}
+
+// compositeRelation is the CompositeMembership relation of a CompositeAccount query and the child columns it reads.
+type compositeRelation struct {
+	child   *model.CompositeMembershipModel
+	columns []string
+	many    bool
+	alias   string
+}
+
+// children reads the CompositeMembership rows of one parent row: through the generated getter of the alias, or by the
+// result name of a relation without one (<table>_model, <table>_models). A parent without a child gives none.
+func (r *compositeRelation) children(row *model.CompositeAccountModel) ([]*model.CompositeMembershipModel, error) {
+	switch {
+	case r.alias == "memberships":
+		collection, err := row.GetMemberships()
+		if err != nil {
+			return nil, err
+		}
+		return collection.Slice(), nil
+	case r.many:
+		collection, ok := row.Orm_().Related("composite_membership_models").(*orm.Collection[*model.CompositeMembershipModel])
+		if !ok {
+			return nil, nil
+		}
+		return collection.Slice(), nil
+	}
+	child, ok := row.Orm_().Related("composite_membership_model").(*model.CompositeMembershipModel)
+	if !ok {
+		return nil, nil
+	}
+	return []*model.CompositeMembershipModel{child}, nil
+}
+
+// compositeMembershipRelation reads the relation of a model.query on CompositeAccount: CompositeMembership matched by its
+// composite key, one match call per pair in the written order, connected to the connection of the query when connect is
+// true (INT-87).
+func compositeMembershipRelation(raw json.RawMessage, db *orm.DB) (*compositeRelation, error) {
+	var relation struct {
+		Model   string     `json:"model"`
+		Match   [][]string `json:"match"`
+		Connect bool       `json:"connect"`
+		Many    bool       `json:"many"`
+		Alias   string     `json:"alias"`
+		Columns []string   `json:"columns"`
+	}
+	if err := json.Unmarshal(raw, &relation); err != nil {
+		return nil, err
+	}
+	if relation.Model != "CompositeMembership" {
+		return nil, fmt.Errorf("CompositeAccount relation %s has no recipe entry", relation.Model)
+	}
+	child := model.CompositeMembership()
+	for _, pair := range relation.Match {
+		switch {
+		case slices.Equal(pair, []string{"tenant_id", "tenant_id"}):
+			child = child.MatchTenantIdWithTenantId()
+		case slices.Equal(pair, []string{"account_id", "account_id"}):
+			child = child.MatchAccountIdWithAccountId()
+		default:
+			return nil, fmt.Errorf("CompositeMembership match %v has no recipe entry", pair)
+		}
+	}
+	switch relation.Alias {
+	case "":
+	case "memberships":
+		child = child.AliasMemberships()
+	default:
+		return nil, fmt.Errorf("CompositeMembership alias %s has no recipe entry", relation.Alias)
+	}
+	if relation.Connect {
+		child = child.Connect(db)
+	}
+	return &compositeRelation{child: child, columns: relation.Columns, many: relation.Many, alias: relation.Alias}, nil
+}
+
+// compositeMembershipCells reads the columns of one CompositeMembership row as value wrappers.
+func compositeMembershipCells(row *model.CompositeMembershipModel, columns []string) ([]any, error) {
+	cells := make([]any, 0, len(columns))
+	for _, column := range columns {
+		var v any
+		var err error
+		switch column {
+		case "tenant_id":
+			v, err = row.GetTenantId()
+		case "account_id":
+			v, err = row.GetAccountId()
+		case "role":
+			v, err = row.GetRole()
+		default:
+			return nil, fmt.Errorf("CompositeMembership column %s has no recipe getter", column)
+		}
+		if err != nil {
+			return nil, err
+		}
+		cells = append(cells, wrapperOf(v))
+	}
+	return cells, nil
+}
+
+// compositeMembership is a CompositeMembership model set from the values of a model op.
+func compositeMembership(db *orm.DB, values map[string]any) (*model.CompositeMembershipModel, error) {
+	m := model.CompositeMembership().Connect(db)
+	for _, column := range sortedColumns(values) {
+		v := values[column]
+		var err error
+		switch column {
+		case "tenant_id":
+			var n int64
+			n, err = int64Of(v, column)
+			m.SetTenantId(n)
+		case "account_id":
+			var n int64
+			n, err = int64Of(v, column)
+			m.SetAccountId(n)
+		case "role":
+			var s string
+			s, err = stringOf(v, column)
+			m.SetRole(s)
+		default:
+			return nil, fmt.Errorf("CompositeMembership column %s has no recipe setter", column)
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	return m, nil
+}
+
+// compositeMembershipOp runs the model ops of the composite keys recipe on the CompositeMembership model: model.creates
+// and model.count by tenant_id.
+func compositeMembershipOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, error) {
+	switch s.Op {
+	case "model.creates":
+		var raw []json.RawMessage
+		if err := json.Unmarshal(s.Rows, &raw); err != nil {
+			return outcome{}, err
+		}
+		rows := make([]*model.CompositeMembershipModel, 0, len(raw))
+		for _, row := range raw {
+			values, err := modelValues(row, c)
+			if err != nil {
+				return outcome{}, err
+			}
+			m, err := compositeMembership(db, values)
+			if err != nil {
+				return outcome{}, err
+			}
+			rows = append(rows, m)
+		}
+		n, err := model.CompositeMembership().Connect(db).Creates(rows, s.Batch)
+		return outcome{fields: map[string]any{"value": map[string]any{"int": strconv.FormatInt(n, 10)}}}, err
+	case "model.count":
+		where, err := modelValues(s.Where, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		m := model.CompositeMembership().Connect(db)
+		for i, column := range sortedColumns(where) {
+			if column != "tenant_id" {
+				return outcome{}, fmt.Errorf("CompositeMembership column %s has no recipe filter", column)
+			}
+			n, err := int64Of(where[column], column)
+			if err != nil {
+				return outcome{}, err
+			}
+			if i > 0 {
+				m = m.And()
+			}
+			m = m.TenantId(n)
+		}
+		n, err := m.GetCount()
+		return outcome{fields: map[string]any{"value": map[string]any{"int": strconv.FormatInt(n, 10)}}}, err
+	}
+	return outcome{}, fmt.Errorf("op %s has no CompositeMembership entry", s.Op)
 }
 
 // compositeAccountRows loads the CompositeAccount rows that the key names; an update needs the one row it names.

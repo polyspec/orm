@@ -52,5 +52,4 @@ final class CoverageModelWritesExtensionTest extends TestCase
             }
         }
     }
-
 }

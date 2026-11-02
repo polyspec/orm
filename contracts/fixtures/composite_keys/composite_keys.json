@@ -279,6 +279,8 @@
               ]
             ],
             "connect": false,
+            "many": true,
+            "alias": "memberships",
             "columns": [
               "tenant_id",
               "account_id",
@@ -482,6 +484,8 @@
               ]
             ],
             "connect": true,
+            "many": true,
+            "alias": "memberships",
             "columns": [
               "tenant_id",
               "account_id",
@@ -1436,6 +1440,8 @@
               ]
             ],
             "connect": false,
+            "many": true,
+            "alias": "memberships",
             "columns": [
               "tenant_id",
               "account_id",
@@ -1608,6 +1614,8 @@
               ]
             ],
             "connect": true,
+            "many": true,
+            "alias": "memberships",
             "columns": [
               "tenant_id",
               "account_id",

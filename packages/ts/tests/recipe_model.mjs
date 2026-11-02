@@ -1,7 +1,7 @@
 // The generated-model ops of the recipe helper (docs/spec/feature-coverage.md FCV-4 model ops, FCV-14). Each op calls the
 // generated model that its model name names, through the connection that model.connect bound. A model or a column without
 // an entry here fails the case by name, so no recipe passes on a call that the helper does not make.
-import { Author, CompositeAccount, Db, NoteReader, SharedNote, User } from '../dist/index.js';
+import { Author, CompositeAccount, CompositeMembership, Db, NoteReader, SharedNote, User } from '../dist/index.js';
 
 // The keys that the generated models of the bench set read their encrypted columns with (the native model tests use them).
 const BENCH_KEYS = { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' };
@@ -37,7 +37,9 @@ const ORDERS = { seq: 'orderBySeqAsc', name: 'orderByNameAsc', '-seq': 'orderByS
 /** The helpers of the recipe helper that the model ops use: the value of a field, and the native value of a wrapper. */
 /** The order, getter and lock methods of the CompositeAccount model ops, by recipe column and lock name. */
 const COMPOSITE_ORDERS = { tenant_id: 'orderByTenantIdAsc', account_id: 'orderByAccountIdAsc', name: 'orderByNameAsc' };
-const COMPOSITE_GETTERS = { account_id: 'getAccountId', name: 'getName' };
+const COMPOSITE_GETTERS = { tenant_id: 'getTenantId', account_id: 'getAccountId', name: 'getName' };
+/** The getters of the CompositeMembership columns that a model.query relation reads, by recipe column. */
+const MEMBERSHIP_GETTERS = { tenant_id: 'getTenantId', account_id: 'getAccountId', role: 'getRole' };
 const LOCKS = { update: 'forUpdate', share: 'forShare', update_nowait: 'forUpdateNoWait', share_nowait: 'forShareNoWait' };
 
 export function modelOps({ native, databaseValue, stepArgument }) {
@@ -73,6 +75,52 @@ export function modelOps({ native, databaseValue, stepArgument }) {
       }
     }
     return model;
+  };
+  const membershipSet = (db, values) => {
+    const model = new CompositeMembership().connect(db);
+    for (const column of columnsOf(values)) {
+      switch (column) {
+        case 'tenant_id': model.setTenantId(values[column]); break;
+        case 'account_id': model.setAccountId(values[column]); break;
+        case 'role': model.setRole(values[column]); break;
+        default: throw new Error(`CompositeMembership column ${column} has no recipe setter`);
+      }
+    }
+    return model;
+  };
+  // CompositeMembership filters: the tenant_id equality of the recipe count.
+  const membershipFilter = (db, where) => {
+    const model = new CompositeMembership().connect(db);
+    for (const [index, column] of columnsOf(where).entries()) {
+      if (column !== 'tenant_id') throw new Error(`CompositeMembership column ${column} has no recipe filter`);
+      if (index > 0) model.and();
+      model.tenantId(where[column]);
+    }
+    return model;
+  };
+  // membershipRelation is the CompositeMembership child of a CompositeAccount query: one generated match call per pair in the
+  // written order, connected to the query's connection when connect is true, otherwise left on the parent's (INT-87).
+  const membershipRelation = (db, relation) => {
+    if (relation.model !== 'CompositeMembership') throw new Error(`CompositeAccount relation ${relation.model} has no recipe entry`);
+    let child = new CompositeMembership();
+    for (const pair of relation.match) {
+      if (pair[0] === 'tenant_id' && pair[1] === 'tenant_id') child = child.matchTenantIdWithTenantId();
+      else if (pair[0] === 'account_id' && pair[1] === 'account_id') child = child.matchAccountIdWithAccountId();
+      else throw new Error(`CompositeMembership match ${JSON.stringify(pair)} has no recipe entry`);
+    }
+    if (relation.alias === 'memberships') child = child.aliasMemberships();
+    else if (relation.alias !== undefined) throw new Error(`CompositeMembership alias ${relation.alias} has no recipe entry`);
+    if (relation.connect) child = child.connect(db);
+    return child;
+  };
+  // membershipChildren reads the CompositeMembership rows of one parent: through the generated getter of the alias, or of the
+  // result name of a relation without one. A parent without a child gives none.
+  const membershipChildren = (row, relation) => {
+    const result = relation.alias === 'memberships'
+      ? row.getMemberships()
+      : relation.many ? row.getCompositeMembershipModels() : row.getCompositeMembershipModel();
+    if (result === undefined || result === null) return [];
+    return relation.many ? [...result.values()] : [result];
   };
   const compositeKey = (db, key) => new CompositeAccount().connect(db).getByTenantIdAndAccountId(key.tenant_id, key.account_id);
   const wrap = value => (typeof value === 'bigint' || typeof value === 'number' ? { int: String(value) } : { text: value });
@@ -126,6 +174,10 @@ export function modelOps({ native, databaseValue, stepArgument }) {
     },
     async 'model.creates'(s, context) {
       const db = connection(s.connection, context);
+      if (s.model === 'CompositeMembership') {
+        const rows = s.rows.map(row => membershipSet(db, objectValues(row, context)));
+        return { value: { int: String(await new CompositeMembership().connect(db).creates(rows, s.batch)) } };
+      }
       const rows = s.rows.map(row => compositeSet(db, objectValues(row, context)));
       return { value: { int: String(await new CompositeAccount().connect(db).creates(rows, s.batch)) } };
     },
@@ -182,7 +234,8 @@ export function modelOps({ native, databaseValue, stepArgument }) {
     async 'model.count'(s, context) {
       const db = connection(s.connection, context);
       if (s.model === 'Author') return { value: wrap(await chain(db, objectValues(s.where, context), []).getCount()) };
-      return { value: { int: String(await compositeFilter(db, objectValues(s.where, context)).getCount()) } };
+      const filter = s.model === 'CompositeMembership' ? membershipFilter : compositeFilter;
+      return { value: { int: String(await filter(db, objectValues(s.where, context)).getCount()) } };
     },
     async 'model.get_by'(s, context) {
       const db = connection(s.connection, context);
@@ -231,9 +284,25 @@ export function modelOps({ native, databaseValue, stepArgument }) {
         return { rows: collection.values().map(row => cells(row, s.columns)) };
       }
       const model = compositeFilter(db, objectValues(s.where, context));
+      if (s.tuples !== undefined) {
+        // The tuples narrow the chain through the generated tuple filter of the composite key, joined by and to the equalities before it.
+        const { columns, values } = s.tuples;
+        if (columns.length !== 2 || columns[0] !== 'tenant_id' || columns[1] !== 'account_id') throw new Error(`CompositeAccount tuple ${columns} has no recipe filter`);
+        if (Object.keys(s.where ?? {}).length > 0) model.and();
+        model.tupleTenantIdWithAccountId(values.map(tuple => {
+          if (tuple.length !== 2) throw new Error(`a CompositeAccount tuple has ${tuple.length} values, not 2`);
+          return tuple.map(value => valueOf(value, context));
+        }));
+      }
       for (const column of s.order ?? []) {
         if (COMPOSITE_ORDERS[column] === undefined) throw new Error(`CompositeAccount column ${column} has no recipe order`);
         model[COMPOSITE_ORDERS[column]]();
+      }
+      let child;
+      if (s.relation !== undefined) {
+        child = membershipRelation(db, s.relation);
+        if (s.relation.many) model.relations(child);
+        else model.relation(child);
       }
       // The lock of a model.query (INT-47): a lock outside a transaction is refused with CONFIG.
       if (s.lock !== undefined) {
@@ -241,10 +310,24 @@ export function modelOps({ native, databaseValue, stepArgument }) {
         model[LOCKS[s.lock]]();
       }
       const collection = await model.gets();
-      const rows = collection.values().map(row => s.columns.map(column => {
-        if (COMPOSITE_GETTERS[column] === undefined) throw new Error(`CompositeAccount column ${column} has no recipe getter`);
-        return wrap(row[COMPOSITE_GETTERS[column]]());
-      }));
+      const rows = [];
+      for (const row of collection.values()) {
+        const cells = s.columns.map(column => {
+          if (COMPOSITE_GETTERS[column] === undefined) throw new Error(`CompositeAccount column ${column} has no recipe getter`);
+          return wrap(row[COMPOSITE_GETTERS[column]]());
+        });
+        if (child === undefined) {
+          rows.push(cells);
+          continue;
+        }
+        // Each child row gives one output row, the parent's columns followed by the child's; a parent with no child gives none.
+        for (const member of membershipChildren(row, s.relation)) {
+          rows.push([...cells, ...s.relation.columns.map(column => {
+            if (MEMBERSHIP_GETTERS[column] === undefined) throw new Error(`CompositeMembership column ${column} has no recipe getter`);
+            return wrap(member[MEMBERSHIP_GETTERS[column]]());
+          })]);
+        }
+      }
       return { rows };
     },
     async 'model.arithmetic'(s, context) {

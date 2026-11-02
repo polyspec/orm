@@ -90,6 +90,7 @@ type databaseStep struct {
 	Rows        json.RawMessage `json:"rows"`
 	Batch       int             `json:"batch"`
 	Order       []string        `json:"order"`
+	Tuples      json.RawMessage `json:"tuples"`
 	Relation    json.RawMessage `json:"relation"`
 	Column      string          `json:"column"`
 	Operation   string          `json:"operation"`

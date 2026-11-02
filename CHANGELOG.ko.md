@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 28209d09947f4851625c45102a5d31bfa84b0bc3b770f1d986e9b245f5d56192 -->
+<!-- source-sha256: 6d6a4917081c8cac7bc0046ff6f5d42c27ac859123de660bcdade4f1fca0ab5e -->
 # 변경 이력
 
 ## Unreleased
 
+- composite_keys는 여섯 recipe runner가 세 database에서 실행하는 recipe다: 각 runtime은 model op(CompositeMembership의 model.creates와 model.count, model.query의 tuples, connect·many·alias를 받는 relation)를 생성된 CompositeAccount와 CompositeMembership method로 실행하고, recipe는 memberships relation을 coverage 시험이 읽는 대로 alias 아래 relations(child)의 collection으로 읽는다(T334-3-5-12).
 - Rust의 recipe runner는 packages/rust/tests/src/recipe.rs 하나다. packages/rust/orm/tests 아래 두 번째 runner가 실행하던 planner.compile, ir.validate, dbspec plan op는 그 runner의 op이고, planner, 요청 검증, dbspec plan recipe는 packages/rust/tests/tests의 trial로 실행되며, 두 번째 runner는 지운다. recipe 사례가 아닌 manifest hash 검사는 native 시험 packages/rust/orm/tests/ir_manifest_hash.rs다 (T334-3-25-1).
 - make install이 Go model이 없는 checkout에서도 model을 생성한다. packages/go/models.txt는 bindmodel을, 그것을 import하는 시험을 scan하는 markdownmodel보다 먼저 생성한다 (T334-3-15-3c-11).
 - 둘 이상의 runtime이 바인딩하는 docs/spec/interfaces.md의 binding value unit(INT-1~INT-11, INT-87, INT-88)을 runtime별로 읽었고, database를 읽지 않으면서 여섯 runtime 모두에 공개 호출 하나가 있는 unit은 없다. group-result-exact-i64와 collection-identity-from-fixture는 내부 decode와 key를 시험하므로 FCV-2에 따라 native로 남는다. query-terminal-first-builder-error, native-row-cell-bytes, model-read-null-and-empty-text, coverage-composite-keys-composite-key-rows는 database를 읽으므로 database recipe에 속한다. generated-field-types-follow-runtime-model은 T334-3-17의 generator 출력이다. 이 row에서 변환되는 recipe는 없다 (T334-3-19).
