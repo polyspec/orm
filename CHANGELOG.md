@@ -4,6 +4,7 @@
 ## Unreleased
 
 - The TypeScript read of a stored AES version written as text of digits takes that number as the version, as the Go read path does; other text is `CODEC_DECODE` (COD-53, T334-3-4-1).
+- The Python read of a stored AES version written as text of digits takes that number as the version, as the Go read path does; other text is `CODEC_DECODE` (COD-53, T334-3-4-2).
 - The check runner reads the process table with a 256 MiB buffer and names the error code of a failed listing, so a large table no longer fails a step with SIGTERM (T351).
 - The parity units of the statement runner (INT-150) name `Utils.run` and the frame `run` in all six runtimes, and bind the statement_runner tests on every database (T345-7).
 - The Python runtime makes `utils().run(fn)` public, calling `fn` with the transaction frame of the connection (INT-150, T345-6).
