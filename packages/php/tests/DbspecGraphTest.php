@@ -45,7 +45,7 @@ function graph_core(): Document
     return $core;
 }
 
-/** The plan of the case rename-table-and-column of tests/dbspec/plans.json. */
+/** The plan of the case rename-table-and-column of tests/dbspec/plan-cases.json. */
 function graph_plan_text(): string
 {
     $vectors = plan_vectors();

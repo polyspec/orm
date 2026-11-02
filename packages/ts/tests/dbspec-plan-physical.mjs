@@ -1,5 +1,5 @@
 // dbspec schema plans on MySQL, PostgreSQL and SQLite (docs/spec/plans.md
-// "Verification"). Every case of tests/dbspec/plans.json is applied to an
+// "Verification"). Every case of tests/dbspec/plan-cases.json is applied to an
 // empty database, schema or file: the source rendered by renderDbspec, the
 // before steps and the planSteps steps before finalize (SQLite with foreign
 // keys off, then PRAGMA foreign_key_check returns no row), after which
@@ -60,7 +60,7 @@ async function runSteps(session, dialect, steps) {
   }
 }
 
-const cases = readPlanCases(new URL('tests/dbspec/plans.json', root).pathname);
+const cases = readPlanCases(new URL('tests/dbspec/plan-cases.json', root).pathname);
 assert(cases.length > 0, 'plan cases');
 
 // Requirements: PLN-102.

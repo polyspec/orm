@@ -32,7 +32,7 @@ final class DbspecRunnerTest extends TestCase
         ));
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('plans.json does not chain create-from-empty and rename-table-and-column');
+        $this->expectExceptionMessage('plan-cases.json does not chain create-from-empty and rename-table-and-column');
         \dbspec_apply_runner_plans($vectors);
     }
 
@@ -59,7 +59,7 @@ final class DbspecRunnerTest extends TestCase
                 "$root/tests/dbspec/cases.json",
                 $stressPath,
                 "$root/tests/dbspec/ddl.json",
-                "$root/tests/dbspec/plans.json",
+                "$root/tests/dbspec/plan-cases.json",
                 "$root/tests/dbspec/mermaid.json",
                 "$root/tests/dbspec/syntax.json",
             ];

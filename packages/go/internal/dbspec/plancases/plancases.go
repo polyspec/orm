@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 )
 
 // Case is one case of plan-cases.json: its id, the document lines of its source (nil if the case has no source, which
@@ -97,18 +96,13 @@ func Parse(raw []byte) ([]Case, error) {
 	return cases, nil
 }
 
-// Read reads the cases of the plan-cases.json beside the plans.json at plansPath.
-func Read(plansPath string) ([]Case, error) {
-	raw, err := os.ReadFile(CasesPath(plansPath))
+// Read reads the cases of the plan-cases.json at casesPath.
+func Read(casesPath string) ([]Case, error) {
+	raw, err := os.ReadFile(casesPath)
 	if err != nil {
 		return nil, err
 	}
 	return Parse(raw)
-}
-
-// CasesPath is the plan-cases.json beside the plans.json at plansPath.
-func CasesPath(plansPath string) string {
-	return filepath.Join(filepath.Dir(plansPath), "plan-cases.json")
 }
 
 // ParsePhysical reads the physical records of the plans-physical.json text raw, keyed by case id.

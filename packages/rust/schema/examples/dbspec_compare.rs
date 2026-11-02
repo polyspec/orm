@@ -2,7 +2,7 @@
 //! Prints the results in the line format of tests/dbspec/compare/check.mts. It then prints the positions cases of
 //! cases.json and the analysis and format of each case of syntax.json.
 //!
-//! Usage: `cargo run --release -p polyspec-orm-schema --example dbspec_compare -- <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>`
+//! Usage: `cargo run --release -p polyspec-orm-schema --example dbspec_compare -- <cases.json> <stress document> <ddl.json> <plan-cases.json> <mermaid.json> <syntax.json>`
 
 use polyspec_orm_schema::dbspec::{self, Change, Diagnostic, Dialect, Document, Plan, PlanStep, ReadError, Unsupported};
 use serde_json::Value;
@@ -293,7 +293,7 @@ fn read_ddl(path: &str) -> Result<Vec<HashCase>, String> {
     Ok(list(&open(path, "ddl")?["cases"]).iter().map(hash_case).collect())
 }
 
-/// Reads tests/dbspec/plans.json, whose cases are the recipe plan-cases.json beside it: a case's source is the lines of its
+/// Reads tests/dbspec/plan-cases.json, whose cases are the recipe in that file: a case's source is the lines of its
 /// dbspec.parse step, or none for an empty schema, and its plan is the lines of its dbspec.parse_plan step. Its validation
 /// sections are the recipes beside it (read_plan_recipes).
 fn read_plans(path: &str) -> Result<PlanVectors, String> {
@@ -311,7 +311,7 @@ fn plan_case(id: String, steps: &[Value]) -> Result<PlanCase, String> {
     Ok(PlanCase { id, source, plan })
 }
 
-/// The validation sections of tests/dbspec/plans.json, read from the recipes plan-invalid, plan-chains, plan-parse and
+/// The validation sections of tests/dbspec/plan-cases.json, read from the recipes plan-invalid, plan-chains, plan-parse and
 /// plan-comparisons .json beside it (FCV-3): each case's lines are those that its refs bind by an earlier parse step.
 struct PlanRecipes {
     invalid: Vec<PlanCase>,
@@ -824,7 +824,7 @@ fn run(cases_path: &str, stress_path: &str, ddl_path: &str, plans_path: &str, me
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let [cases, stress, ddl, plans, mermaid, syntax] = args.as_slice() else {
-        eprintln!("usage: dbspec_compare <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>");
+        eprintln!("usage: dbspec_compare <cases.json> <stress document> <ddl.json> <plan-cases.json> <mermaid.json> <syntax.json>");
         return ExitCode::from(2);
     };
     match run(cases, stress, ddl, plans, mermaid, syntax) {

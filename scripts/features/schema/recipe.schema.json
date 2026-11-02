@@ -7,6 +7,8 @@
   "additionalProperties": false,
   "properties": {
     "$schema": { "type": "string", "pattern": "(^|/)recipe\\.schema\\.json$" },
+    "version": { "const": 1, "description": "The version of a recipe that carries its own vector note (tests/dbspec/plan-cases.json)." },
+    "note": { "type": "string", "description": "The note of a recipe that carries its own vector note (tests/dbspec/plan-cases.json)." },
     "requirements": { "$ref": "#/$defs/requirements" },
     "fixture": { "type": "string", "pattern": "(^|/)dbspec-set\\.json$|^none$", "description": "A dbspec-set.json document set, or none: the cases of a recipe with fixture none run on an empty case database (FCV-3)." },
     "seed": { "$ref": "#/$defs/seed" },

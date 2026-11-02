@@ -15,7 +15,7 @@
 // its diagnostics, then "syntax/<id>/format" and the formatted text or the diagnostics of the refusal. Each runner runs twice
 // and all output must match the first Go output.
 //
-// Usage: node tests/dbspec/compare/check.mts <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
+// Usage: node tests/dbspec/compare/check.mts <cases.json> <stress document> <ddl.json> <plan-cases.json> <mermaid.json> <syntax.json>
 // (after the TypeScript build, the debug build of the Rust example, and the build of the PHP extension)
 import { compare, type Output } from './compare.mts';
 import { runRunner, runners, type Runner } from './runners.mts';
@@ -26,7 +26,7 @@ import { COMPUTE, runCase } from '../../testcase.mts';
 const TIMEOUT = 120000;
 const inputs = process.argv.slice(2);
 if (inputs.length !== 6) {
-  console.error('usage: node tests/dbspec/compare/check.mts <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>');
+  console.error('usage: node tests/dbspec/compare/check.mts <cases.json> <stress document> <ddl.json> <plan-cases.json> <mermaid.json> <syntax.json>');
   process.exit(2);
 }
 

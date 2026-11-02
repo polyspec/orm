@@ -1,5 +1,5 @@
 # dbspec schema plans on MySQL, PostgreSQL and SQLite (docs/spec/plans.md "Verification"), with the Python client. Every
-# case of tests/dbspec/plans.json is applied to an empty database, schema or file: the source rendered by render_dbspec,
+# case of tests/dbspec/plan-cases.json is applied to an empty database, schema or file: the source rendered by render_dbspec,
 # the before steps and the plan_steps steps before finalize (SQLite with foreign keys off, then PRAGMA foreign_key_check
 # returns no row), after which introspect_dbspec reads the plan's target with nothing unsupported; without an
 # irreversible step the rollback statements return to the source schema text and the steps run again; then the after

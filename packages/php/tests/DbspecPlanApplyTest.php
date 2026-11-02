@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-// Applies every case of tests/dbspec/plans.json to MySQL, PostgreSQL and
+// Applies every case of tests/dbspec/plan-cases.json to MySQL, PostgreSQL and
 // SQLite through Polyspec\Orm\Dbspec\Dbspec (docs/spec/plans.md "Verification"): a fresh
 // database, schema or file per run renders and applies the source, runs the
 // `before` steps, runs the plan steps before finalize (on SQLite with
@@ -136,7 +136,7 @@ class DbspecPlanApplyTest extends TestCase
                 break;
             }
         }
-        self::assertNotNull($case, 'plans.json includes create-from-empty');
+        self::assertNotNull($case, 'plan-cases.json includes create-from-empty');
         $parsed = Dbspec::parsePlan(dbspec_plan_text($case['plan']));
         $plan = $parsed->plan ?? plan_failure('create-from-empty', $parsed->diagnostics);
         $pdo = new PDO('sqlite::memory:', options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);

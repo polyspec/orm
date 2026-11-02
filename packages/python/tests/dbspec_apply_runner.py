@@ -1,4 +1,4 @@
-# Applies the chain of tests/dbspec/plans.json (create-from-empty and rename-table-and-column) to one database with the
+# Applies the chain of tests/dbspec/plan-cases.json (create-from-empty and rename-table-and-column) to one database with the
 # Python client (docs/spec/plans.md "Apply"), the Python runner of the apply pair comparison (packages/go/internal/dialects
 # TestApplyChainAcrossClients, make dbspec-apply-pairs-check), in the form of packages/ts/testing/dbspec/apply/typescript.mts. The
 # action is apply-first (the first plan), apply (the whole chain), stop (stop after statement 1 of the second plan ran),
@@ -7,7 +7,7 @@
 # "ok", "stopped" or "error <code>". Any other error goes to stderr and the process ends with 1.
 #
 # Usage: python -m packages.python.tests.dbspec_apply_runner <apply-first|apply|stop|recover|rollback>
-#        <mysql|postgres|sqlite> <uri> <plans.json>
+#        <mysql|postgres|sqlite> <uri> <plan-cases.json>
 import sqlite3
 import sys
 import time
@@ -93,7 +93,7 @@ def connect(dialect: str, uri: str):
 
 
 def chain(vectors: str) -> list:
-    """The plans create-from-empty and rename-table-and-column of plans.json, parsed."""
+    """The plans create-from-empty and rename-table-and-column of plan-cases.json, parsed."""
     cases = plan_cases(vectors)
     plans = []
     for case in cases:
@@ -104,7 +104,7 @@ def chain(vectors: str) -> list:
             plans.append(parsed["plan"])
     if len(plans) != 2 or plans[1]["from"] != plans[0]["to"]:
         raise ValueError(
-            "plans.json does not chain create-from-empty and rename-table-and-column"
+            "plan-cases.json does not chain create-from-empty and rename-table-and-column"
         )
     return plans
 
@@ -254,7 +254,7 @@ def main() -> None:
         sys.stderr.write(
             "usage: python -m packages.python.tests.dbspec_apply_runner "
             "<apply-first|apply|stop|recover|rollback|apply-representative|finalize|lock-wait> "
-            "<mysql|postgres|sqlite> <uri> <plans.json>\n"
+            "<mysql|postgres|sqlite> <uri> <plan-cases.json>\n"
         )
         raise SystemExit(2)
     action, dialect, uri, vectors = sys.argv[1:]

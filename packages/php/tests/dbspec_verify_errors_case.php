@@ -13,7 +13,7 @@ use Polyspec\Orm\Dbspec\PlanApply;
 use RuntimeException;
 use Throwable;
 
-/** The create-from-empty plan of tests/dbspec/plans.json. */
+/** The create-from-empty plan of tests/dbspec/plan-cases.json. */
 function verify_errors_plan(): array
 {
     foreach (plan_vectors()['cases'] as $case) {
@@ -24,7 +24,7 @@ function verify_errors_plan(): array
             )];
         }
     }
-    throw new RuntimeException('plans.json has no create-from-empty case');
+    throw new RuntimeException('plan-cases.json has no create-from-empty case');
 }
 
 /**

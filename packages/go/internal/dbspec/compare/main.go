@@ -2,7 +2,7 @@
 // in the line format of tests/dbspec/compare/check.mts. It then prints the positions cases
 // of cases.json and the analysis and format of each case of syntax.json.
 //
-// Usage: go run ./packages/go/internal/dbspec/compare <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
+// Usage: go run ./packages/go/internal/dbspec/compare <cases.json> <stress document> <ddl.json> <plan-cases.json> <mermaid.json> <syntax.json>
 package main
 
 import (
@@ -252,7 +252,7 @@ func writeDiagnostics(out *output, diagnostics []dbspec.Diagnostic) {
 	}
 }
 
-// planVectors is tests/dbspec/plans.json (docs/spec/plans.md): its cases are read from the plan-cases.json beside it, and its
+// planVectors is tests/dbspec/plan-cases.json (docs/spec/plans.md): its cases are read from the file itself, and its
 // four validation sections are read from the recipes beside it (readPlans).
 type planVectors struct {
 	Cases   []planCase  `json:"-"`
@@ -566,7 +566,7 @@ func writeRead(out *output, text string, diagnostics []dbspec.Diagnostic, name s
 
 func main() {
 	if len(os.Args) != 7 {
-		fmt.Fprintln(os.Stderr, "usage: go run ./packages/go/internal/dbspec/compare <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>")
+		fmt.Fprintln(os.Stderr, "usage: go run ./packages/go/internal/dbspec/compare <cases.json> <stress document> <ddl.json> <plan-cases.json> <mermaid.json> <syntax.json>")
 		os.Exit(2)
 	}
 	all, err := readCases(os.Args[1])

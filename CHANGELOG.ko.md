@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f5e5b73143e76339b8e5fcf2a7ea7673d0591fec7eb350dbf4b7fc7d369c542c -->
+<!-- source-sha256: 0e32afdb051c761700067fa9af5e940b10a38c6b0790580bcbfd03c94c335ce5 -->
 # 변경 이력
 
 ## Unreleased
 
+- tests/dbspec/plans.json을 지운다. version과 note는 recipe tests/dbspec/plan-cases.json으로 옮기고, 읽는 코드와 tests/dbspec/schema/plans.schema.json은 그 파일을 바로 읽는다. 빈 하위 클래스인 php-ext의 DbspecPlanTestExtensionTest를 지운다. 그 여섯 시험은 dbspec-php-extension-check/plan이 확장으로 계속 실행한다 (T334-3-17-3).
 - TypeScript recipe test에서 쓰지 않는 import `readDbspecFile`을 뺐다. 그래서 TypeScript 게이트의 lint 단계가 통과한다 (T334-3-17-4).
 - TypeScript 패키지가 bind-check 변환 `fulltextBoolean`과 `transformParam`을 진입점에서 export한다. 다른 runtime과 같으므로 fulltext_boolean 변환은 여섯 runtime 모두에서 공개 호출을 가진다 (T334-3-17-1).
 - tests/dbspec/plans.json의 case 13개는 여섯 runtime에서 recipe tests/dbspec/plan-cases.json으로 실행된다. op dbspec.parse, dbspec.parse_plan, dbspec.emit_plan, dbspec.diff, dbspec.plan_steps로 실행하며 native plan test를 대신한다. before와 after physical record는 tests/dbspec/plans-physical.json으로 옮겼고 case id로 찾는다 (T334-3-16-2-2).
