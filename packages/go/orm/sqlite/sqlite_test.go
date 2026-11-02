@@ -53,13 +53,13 @@ func TestMapErrPreservesSQLiteConstraintContract(t *testing.T) {
 	}
 }
 
-// TestResultCodeNamesMatchErrorsYaml compares result_codes.go, which orm-gen sqlite-codes generates, with the
-// sqlite_result_codes table of docs/spec/errors.yaml: every listed code has its name, and the file holds no other code.
+// TestResultCodeNamesMatchTable compares result_codes.go, which orm-gen sqlite-codes generates, with the
+// sqlite_result_codes table of docs/spec/sqlite-result-codes.yaml: every listed code has its name, and the file holds no other code.
 // A listed code ends a message with its name, and an unlisted one with its number.
 // Requirements: INT-154.
-func TestResultCodeNamesMatchErrorsYaml(t *testing.T) {
+func TestResultCodeNamesMatchTable(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	src, err := os.ReadFile("../../../../docs/spec/errors.yaml")
+	src, err := os.ReadFile("../../../../docs/spec/sqlite-result-codes.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func TestResultCodeNamesMatchErrorsYaml(t *testing.T) {
 		listed[value] = string(m[1])
 	}
 	if len(listed) == 0 {
-		t.Fatal("docs/spec/errors.yaml lists no SQLite result codes")
+		t.Fatal("docs/spec/sqlite-result-codes.yaml lists no SQLite result codes")
 	}
 	for value, name := range listed {
 		if got := resultCodeNames[value]; got != name {
@@ -81,7 +81,7 @@ func TestResultCodeNamesMatchErrorsYaml(t *testing.T) {
 	}
 	for value, name := range resultCodeNames {
 		if _, ok := listed[value]; !ok {
-			t.Errorf("result_codes.go names %d (%s), which errors.yaml does not list", value, name)
+			t.Errorf("result_codes.go names %d (%s), which sqlite-result-codes.yaml does not list", value, name)
 		}
 	}
 	for _, c := range []struct {

@@ -8087,6 +8087,10 @@
     "exported": false,
     "signature": " fn invalid (msg : String) -\u003e Error"
   },
+  "packages/rust/orm/src/sqlite_codes.rs::result_code_suffix": {
+    "exported": false,
+    "signature": "pub (crate) fn result_code_suffix (code : i64) -\u003e String"
+  },
   "packages/rust/orm/src/testing.rs::StatementFault": {
     "exported": false,
     "signature": "pub (crate) struct StatementFault  { code : String , message : String , }"

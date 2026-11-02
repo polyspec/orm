@@ -21103,6 +21103,10 @@
     "exported": false,
     "signature": "func(r *ir.Request) uint64"
   },
+  "packages/go/orm/sqlite/result_codes.go::resultCodeSuffix": {
+    "exported": false,
+    "signature": "func(code int) string"
+  },
   "packages/go/orm/sqlite/sqlite.go::init": {
     "exported": false,
     "signature": "func()"
@@ -21110,6 +21114,10 @@
   "packages/go/orm/sqlite/sqlite.go::mapErr": {
     "exported": false,
     "signature": "func(err error) error"
+  },
+  "packages/go/orm/sqlite/sqlite.go::sqliteCode": {
+    "exported": false,
+    "signature": "func(se *sqlite.Error) string"
   },
   "packages/go/orm/sqlite_lock.go::acquireSQLiteRowLock": {
     "exported": false,

@@ -297,13 +297,13 @@ mod mysql_code_tests {
 #[cfg(test)]
 mod sqlite_code_tests {
     // sqlite_codes.rs, which orm-gen sqlite-codes generates, names every code of the sqlite_result_codes table of
-    // docs/spec/errors.yaml and no other code: every other 16-bit code ends a message with its number.
+    // docs/spec/sqlite-result-codes.yaml and no other code: every other 16-bit code ends a message with its number.
     // Requirements: INT-154.
     #[test]
-    fn result_code_names_match_errors_yaml() {
+    fn result_code_names_match_the_table() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let manifest = std::env::var("CARGO_MANIFEST_DIR").expect("cargo test sets CARGO_MANIFEST_DIR");
-        let yaml = std::fs::read_to_string(format!("{manifest}/../../../docs/spec/errors.yaml")).expect("docs/spec/errors.yaml");
+        let yaml = std::fs::read_to_string(format!("{manifest}/../../../docs/spec/sqlite-result-codes.yaml")).expect("docs/spec/sqlite-result-codes.yaml");
         let mut listed = std::collections::HashMap::new();
         let mut lines = yaml.lines().skip_while(|line| *line != "sqlite_result_codes:");
         while let Some(line) = lines.next() {
@@ -312,7 +312,7 @@ mod sqlite_code_tests {
                 listed.insert(value, name.to_owned());
             }
         }
-        assert!(!listed.is_empty(), "docs/spec/errors.yaml lists no SQLite result codes");
+        assert!(!listed.is_empty(), "docs/spec/sqlite-result-codes.yaml lists no SQLite result codes");
         for code in 0..=0xffff_i64 {
             let want = match listed.get(&code) {
                 Some(name) => format!(" ({name})"),

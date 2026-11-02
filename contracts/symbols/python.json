@@ -1,4 +1,8 @@
 {
+  "packages/python/src/polyspec/orm/_sqlite_codes.py::result_code_suffix": {
+    "exported": true,
+    "signature": "def result_code_suffix(code: int) -\u003e str"
+  },
   "packages/python/src/polyspec/orm/aes.py::AesKeyring": {
     "exported": true,
     "signature": "class AesKeyring"

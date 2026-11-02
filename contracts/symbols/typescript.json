@@ -21451,6 +21451,10 @@
     "exported": true,
     "signature": "export function rollbackFailed(cause: unknown, rollback: unknown): OrmError"
   },
+  "packages/ts/src/sqlite-codes.ts::sqliteResultCodeSuffix": {
+    "exported": true,
+    "signature": "export function sqliteResultCodeSuffix(code: number): string"
+  },
   "packages/ts/src/styled_value.ts::StyledValue": {
     "exported": true,
     "signature": "class StyledValue { private constructor(public readonly kind: 'sql-null' | 'value', private readonly stored?: T); }"

@@ -35,7 +35,7 @@ func main() {
 func usage() {
 	fmt.Fprintln(os.Stderr, "usage: orm-gen gen --set <dbspec-set.json> --lang go --out <directory> [--scan <package pattern>...] [--check]")
 	fmt.Fprintln(os.Stderr, "       orm-gen errors --lang go|php|rust|typescript|python --out <file> [--yaml docs/spec/errors.yaml]")
-	fmt.Fprintln(os.Stderr, "       orm-gen sqlite-codes --lang go|php|php-extension|rust|typescript|python --out <file> [--yaml docs/spec/errors.yaml]")
+	fmt.Fprintln(os.Stderr, "       orm-gen sqlite-codes --lang go|php|php-extension|rust|typescript|python --out <file> [--yaml docs/spec/sqlite-result-codes.yaml]")
 	os.Exit(2)
 }
 

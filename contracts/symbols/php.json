@@ -13523,6 +13523,14 @@
     "exported": false,
     "signature": "private static function extension(): string"
   },
+  "packages/php/src/SqliteCodes.php::Polyspec\\Orm\\SqliteCodes": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\SqliteCodes extends  implements  uses "
+  },
+  "packages/php/src/SqliteCodes.php::Polyspec\\Orm\\SqliteCodes::suffix": {
+    "exported": true,
+    "signature": "public static function suffix(int $code): string"
+  },
   "packages/php/src/StatementEvent.php::Polyspec\\Orm\\StatementEvent": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\StatementEvent extends  implements  uses "

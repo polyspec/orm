@@ -2869,8 +2869,9 @@ install: orm-codes orm-install-php orm-install-rust orm-install-go orm-install-p
 # through php-vendor-check or python-venv-check, so make writes it before the recipe reads it (make repo-check). The file is published
 # by a rename ($(PUBLISH)), since the make processes of several runs write it while others read it. orm-gen runs offline, as every check
 # does: its prerequisite orm-install-go-codes downloads the Go modules that go.sum pins, since a job that installs only one
-# runtime has not downloaded them. The same recipe writes the SQLite result code names of each runtime with orm-gen sqlite-codes
-# (ORM_SQLITE_CODES_<lang>, INT-154); orm-codes-php-extension writes those of the PHP extension.
+# runtime has not downloaded them. The same recipe writes the SQLite result code names of each runtime from
+# docs/spec/sqlite-result-codes.yaml with orm-gen sqlite-codes (ORM_SQLITE_CODES_<lang>, INT-154); orm-codes-php-extension
+# writes those of the PHP extension.
 ORM_CODES_typescript = packages/ts/src/codes.ts
 ORM_SQLITE_CODES_typescript = packages/ts/src/sqlite-codes.ts
 ORM_SQLITE_CODES_php = packages/php/src/SqliteCodes.php
@@ -2884,9 +2885,9 @@ orm-install-go-codes:
 	cd packages/go && $(ONLINE) $(GO) mod download
 orm-codes: orm-codes-typescript orm-codes-php orm-codes-python
 orm-codes-typescript orm-codes-php orm-codes-python: orm-codes-%: orm-install-go-codes
-	$(GENERATE_ONCE) $(CURDIR)/$(dir $(ORM_CODES_$*))orm-codes.key "$(GO_VERSION)" packages/go docs/spec/errors.yaml -- sh -c 'cd packages/go && $(PUBLISH) $(CURDIR)/$(ORM_CODES_$*) $(GO) run ./cmd/orm-gen errors --lang $* --yaml $(CURDIR)/docs/spec/errors.yaml --out @OUT@ && $(PUBLISH) $(CURDIR)/$(ORM_SQLITE_CODES_$*) $(GO) run ./cmd/orm-gen sqlite-codes --lang $* --yaml $(CURDIR)/docs/spec/errors.yaml --out @OUT@'
+	$(GENERATE_ONCE) $(CURDIR)/$(dir $(ORM_CODES_$*))orm-codes.key "$(GO_VERSION)" packages/go docs/spec/errors.yaml docs/spec/sqlite-result-codes.yaml -- sh -c 'cd packages/go && $(PUBLISH) $(CURDIR)/$(ORM_CODES_$*) $(GO) run ./cmd/orm-gen errors --lang $* --yaml $(CURDIR)/docs/spec/errors.yaml --out @OUT@ && $(PUBLISH) $(CURDIR)/$(ORM_SQLITE_CODES_$*) $(GO) run ./cmd/orm-gen sqlite-codes --lang $* --yaml $(CURDIR)/docs/spec/sqlite-result-codes.yaml --out @OUT@'
 orm-codes-php-extension: orm-install-go-codes
-	$(GENERATE_ONCE) $(CURDIR)/packages/php-ext/src/orm-codes.key "$(GO_VERSION)" packages/go docs/spec/errors.yaml -- sh -c 'cd packages/go && $(PUBLISH) $(CURDIR)/$(ORM_SQLITE_CODES_php-extension) $(GO) run ./cmd/orm-gen sqlite-codes --lang php-extension --yaml $(CURDIR)/docs/spec/errors.yaml --out @OUT@'
+	$(GENERATE_ONCE) $(CURDIR)/packages/php-ext/src/orm-codes.key "$(GO_VERSION)" packages/go docs/spec/sqlite-result-codes.yaml -- sh -c 'cd packages/go && $(PUBLISH) $(CURDIR)/$(ORM_SQLITE_CODES_php-extension) $(GO) run ./cmd/orm-gen sqlite-codes --lang php-extension --yaml $(CURDIR)/docs/spec/sqlite-result-codes.yaml --out @OUT@'
 # orm-install-interfaces-typescript installs the TypeScript 6.0.3 that packages/ts/testing/interfaces/typescript.mts reads declarations with
 # (config/toolchain.json exceptions): TypeScript 7.0 ships no JavaScript API of its compiler.
 # install-packages installs the TypeScript of tests/interfaces from its lock, so a fresh make install leaves the extractor with its checker.
