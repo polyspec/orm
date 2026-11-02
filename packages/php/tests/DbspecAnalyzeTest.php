@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-// Syntax analysis and formatting (docs/spec/dbspec.md "Syntax analysis", "Formatting") through the PHP client:
-// focused token cases and the limit stop.
+// Syntax analysis (docs/spec/dbspec.md "Syntax analysis") through the PHP client: the focused case whose text holds an
+// invalid UTF-8 byte, which no recipe text can hold. The limit stop and the other focused cases are recipe cases
+// (analyze-limit-no-tokens and the analyze cases of tests/dbspec/canonical.json and tests/dbspec/invalid.json).
+// Requirements: DBS-134, DBS-135, DBS-138.
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
@@ -37,31 +39,5 @@ class DbspecAnalyzeTest extends TestCase
         $clock = cpuCaseBegin(2.0);
         $this->assertSame($want, self::tokens($text, [$id => $text]), "$id: tokens differ");
         cpuCaseEnd($id, $clock);
-    }
-
-    // R22: a limit stop gives no tokens, whatever was marked before it.
-    public function testLimitNoTokens(): void
-    {
-        $clock = cpuCaseBegin(2.0);
-        $lines = [];
-        for ($i = 1; $i <= 4097; $i++) {
-            $lines[] = "table t$i {";
-            $lines[] = '}';
-        }
-        $limitText = "dbspec 1 d\n" . implode("\n", $lines) . "\n";
-        $analysis = Dbspec::analyze($limitText, ['d' => $limitText]);
-        $this->assertSame([], $analysis->tokens, 'analyze/limit-no-tokens: a limit stop must give no tokens');
-        $this->assertNull($analysis->document, 'analyze/limit-no-tokens: a limit stop must give no document');
-        $this->assertNotSame(
-            [],
-            $analysis->diagnostics,
-            'analyze/limit-no-tokens: a limit stop must give the limit diagnostic'
-        );
-        $this->assertSame(
-            'limit',
-            $analysis->diagnostics[array_key_last($analysis->diagnostics)]->rule,
-            'analyze/limit-no-tokens: the last diagnostic must be the limit'
-        );
-        cpuCaseEnd('analyze/limit-no-tokens', $clock);
     }
 }

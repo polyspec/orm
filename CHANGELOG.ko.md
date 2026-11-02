@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 14dc8f2ee6714a6a11873dfa343cfcce54845a9ce10ae015577681e4cb4ecd38 -->
+<!-- source-sha256: 89946742a448db5f1b713f91a50785d791880e4582fa4cfc7ed48ad2eff357fa -->
 # 변경 이력
 
 ## Unreleased
 
+- recipe가 다루지 않던 native analyze 시험이 recipe 사례가 된다. tests/dbspec/canonical.json의 analyze 사례 여덟 개와 tests/dbspec/invalid.json의 열일곱 개가 packages/rust/schema/tests/dbspec_analyze.rs의 token 사례와 PHP DbspecAnalyzeTest의 focused 사례를 담고, 여섯 runtime 모두에서 실행된다. Rust 파일과 PHP limit 시험은 지우고, PHP 시험은 recipe 텍스트가 담을 수 없는 잘못된 UTF-8 byte를 가진 사례 하나만 남긴다 (T334-3-18-6).
 - make lint-ts가 다시 통과한다: recipe key table script는 guard로 schema를 좁히고, owner 시험은 선언된 owner 목록을 순회한다 (T334-3-17-10)
 - PHP library와 PHP extension이 PRT-67이 받는 T 구분 datetime 문자열을 읽고, PHP 시험이 bind model을 autoload한다 (T334-3-15-3c-10)
 - Rust client가 PRT-67이 받는 T 구분 datetime 문자열을 읽는다 (T334-3-15-3c-9)

@@ -27467,9 +27467,14 @@
           "id": "test_header_only"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_analyze.rs",
-          "id": "token_classes"
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecAnalyzeTest.php",
+          "id": "DbspecAnalyzeTest::testFocused with data set \"analyze/invalid-byte-stop-line\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecAnalyzeTestExtensionTest.php",
+          "id": "DbspecAnalyzeTestExtensionTest::testFocused with data set \"analyze/invalid-byte-stop-line\""
         }
       ]
     },
@@ -29664,8 +29669,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_analyze.rs",
-          "id": "limit_stop_gives_no_tokens"
+          "test": "packages/rust/tests/tests/invalid_none.rs",
+          "id": "invalid_none::analyze-limit-no-tokens"
         }
       ]
     },

@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The native analyze tests that the recipes did not cover are recipe cases: the eight analyze cases of tests/dbspec/canonical.json and the seventeen of tests/dbspec/invalid.json hold the token cases of packages/rust/schema/tests/dbspec_analyze.rs and the focused cases of the PHP DbspecAnalyzeTest, which run in all six runtimes; the Rust file and the PHP limit test are removed, and the PHP test keeps the one case whose text holds an invalid UTF-8 byte, which a recipe text cannot hold (T334-3-18-6).
 - The Rust dbspec analyzer classes a word on a line abandoned with a syntax diagnostic as `word`, as DBS-139 and the other runtimes do; a diagram line inside an open diagram block is read as an entry, not as a new block (T334-3-18-6-1).
 - The target markdown_conformance of packages/rust/tests/Cargo.toml no longer has test = false, so the rust lane's workspace cargo test runs its 56 markdown trials, and make client-pooler-check passes FLOWMARK to that lane as the markdown runners do (T334-3-13).
 - make lint-ts passes again: the recipe key table script narrows its schema with guards, and the owner test iterates the declared owners (T334-3-17-10)
