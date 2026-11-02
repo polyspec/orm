@@ -3,6 +3,10 @@
   "requirements": [
     "CPX-4"
   ],
+  "cases": [
+    {"id": "plan_cache_composite_parameter_order"},
+    {"id": "plan_cache_predicate_fn_parameter_order"}
+  ],
   "request": {
     "ir_version": 1,
     "manifest_hash": "h",

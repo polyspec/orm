@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c8c1ed6101c433cd32576bba1ea3fdd4a64b6347046722c30bb9c6c4b508340d -->
+<!-- source-sha256: fbd5532950325393be3a596948ca8bd36cbcb37df63b65e88a1d3f4fc23a819c -->
 # 변경 이력
 
 ## Unreleased
@@ -7,6 +7,7 @@
 - Rust tests crate는 clippy `-D warnings`를 통과한다: seed reader와 connect step이 금지된 `unwrap_or_default`와 `ok`를 호출하지 않는다 (T326-16).
 - Rust 클라이언트는 plan cache key를 구하기 전에 request의 parameter를 Go client의 walk 순서로 다시 번호 매기므로, 다른 순서로 만들어진 request도 Go와 같은 plan cache slot을 얻는다. `contracts/fixtures/plan_cache_composite.json`의 composite 및 predicate 벡터는 `canonical.rs`에서 시험한다 (T326-15-1).
 - PHP 확장도 PHP 라이브러리와 같은 Go 순서로 predicate의 parameter를 walk하므로, `p`와 `fn`을 함께 가진 predicate의 plan cache slot이 Go client와 같다 (T326-15-3).
+- composite vector의 native plan cache test 다섯 개(Go, PHP, PHP 확장, Python, Rust)는 `contracts/fixtures/plan_cache_composite.json`의 case ID마다 이름 붙은 test 하나를 보고한다. TypeScript test와 같은 형식이므로 parity check가 여섯 runtime 모두에서 두 case를 실행한다 (T326-15-4).
 - PHP 라이브러리는 predicate의 parameter를 키 정렬 순서가 아니라 Go 순서(p, plus_p, minus_p, ps, fn, value, sub)로 walk하므로, `p`와 `fn`을 함께 가진 predicate의 plan cache slot이 Go와 TypeScript client와 같다 (T326-15-2).
 - tests/events/vectors.json의 statement event는 여섯 client 모두에서 MySQL, PostgreSQL, SQLite 위에서 recipe `contracts/fixtures/statement_events/statement_events.json`으로 실행한다. native statement-event suite는 제거했고, server-transaction 시험과 coverage owner는 native로 남는다 (T334-3-5).
 - orm은 모든 생태계에서 ordered-json을 0.0.20으로 고정하며, 각 lock은 자기 package manager로 갱신한다 (T350).

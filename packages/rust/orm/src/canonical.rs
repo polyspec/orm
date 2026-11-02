@@ -227,45 +227,49 @@ mod plan_cache_composite_tests {
         v.as_array().expect("a list of parameter indexes").iter().map(index).collect()
     }
 
-    // Requirements: CPX-4.
-    #[test]
-    fn plan_cache_composite_parameter_order() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let v = vector();
-        let mut request: ir::Request = serde_json::from_value(v["request"].clone()).expect("the composite request parses");
-        let mut ps = params(&v["params"]);
-        canonicalize(&mut request, &mut ps).expect("the composite request canonicalizes");
-        let want = &v["canonical"];
-        assert_eq!(values(&ps), want["params"].as_array().expect("canonical params").clone());
-        assert_eq!(request.n_params, index(&want["n_params"]));
-        match &request.query.limit {
-            Some(ir::Limit::Params { offset_p, count_p }) => assert_eq!((*offset_p, *count_p), (index(&want["limit"]["offset_p"]), index(&want["limit"]["count_p"]))),
-            other => panic!("the root limit is not parameters: {other:?}"),
-        }
-        assert_eq!(request.query.if_parent.as_ref().expect("the parent condition").p, index(&want["if_parent_p"]));
-        assert_eq!(request.set.iter().map(|a| a.p.expect("a set parameter")).collect::<Vec<_>>(), indexes(&want["set_p"]));
-        assert_eq!(request.on_duplicate.iter().map(|a| a.p.expect("an on duplicate parameter")).collect::<Vec<_>>(), indexes(&want["on_duplicate_p"]));
-        let rows: Vec<Vec<usize>> = want["rows"].as_array().expect("canonical rows").iter().map(indexes).collect();
-        assert_eq!(request.rows, rows);
-        assert_eq!(request.optimistic.as_ref().expect("the optimistic column").p, index(&want["optimistic_p"]));
-    }
+    mod plan_cache_composite_parameter_order {
+        use super::*;
 
-    // Requirements: CPX-4.
-    #[test]
-    fn plan_cache_predicate_fn_parameter_order() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let v = vector();
-        let vec = &v["predicate_fn_param"];
-        let mut request: ir::Request = serde_json::from_value(vec["request"].clone()).expect("the predicate request parses");
-        let mut ps = params(&vec["params"]);
-        canonicalize(&mut request, &mut ps).expect("the predicate request canonicalizes");
-        let want = &vec["canonical"];
-        assert_eq!(values(&ps), want["params"].as_array().expect("canonical params").clone());
-        assert_eq!(request.n_params, index(&want["n_params"]));
-        let Some(ir::Item::Pred { pred }) = request.query.where_.as_ref().and_then(|g| g.items.first()) else {
-            panic!("the where group holds no predicate");
-        };
-        assert_eq!(pred.p, Some(index(&want["where_p"])));
-        assert_eq!(pred.r#fn.as_ref().expect("the predicate function").ps, indexes(&want["fn_ps"]));
+        // Requirements: CPX-4.
+        #[test]
+        fn plan_cache_composite_parameter_order() {
+            let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+            let v = vector();
+            let mut request: ir::Request = serde_json::from_value(v["request"].clone()).expect("the composite request parses");
+            let mut ps = params(&v["params"]);
+            canonicalize(&mut request, &mut ps).expect("the composite request canonicalizes");
+            let want = &v["canonical"];
+            assert_eq!(values(&ps), want["params"].as_array().expect("canonical params").clone());
+            assert_eq!(request.n_params, index(&want["n_params"]));
+            match &request.query.limit {
+                Some(ir::Limit::Params { offset_p, count_p }) => assert_eq!((*offset_p, *count_p), (index(&want["limit"]["offset_p"]), index(&want["limit"]["count_p"]))),
+                other => panic!("the root limit is not parameters: {other:?}"),
+            }
+            assert_eq!(request.query.if_parent.as_ref().expect("the parent condition").p, index(&want["if_parent_p"]));
+            assert_eq!(request.set.iter().map(|a| a.p.expect("a set parameter")).collect::<Vec<_>>(), indexes(&want["set_p"]));
+            assert_eq!(request.on_duplicate.iter().map(|a| a.p.expect("an on duplicate parameter")).collect::<Vec<_>>(), indexes(&want["on_duplicate_p"]));
+            let rows: Vec<Vec<usize>> = want["rows"].as_array().expect("canonical rows").iter().map(indexes).collect();
+            assert_eq!(request.rows, rows);
+            assert_eq!(request.optimistic.as_ref().expect("the optimistic column").p, index(&want["optimistic_p"]));
+        }
+
+        // Requirements: CPX-4.
+        #[test]
+        fn plan_cache_predicate_fn_parameter_order() {
+            let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+            let v = vector();
+            let vec = &v["predicate_fn_param"];
+            let mut request: ir::Request = serde_json::from_value(vec["request"].clone()).expect("the predicate request parses");
+            let mut ps = params(&vec["params"]);
+            canonicalize(&mut request, &mut ps).expect("the predicate request canonicalizes");
+            let want = &vec["canonical"];
+            assert_eq!(values(&ps), want["params"].as_array().expect("canonical params").clone());
+            assert_eq!(request.n_params, index(&want["n_params"]));
+            let Some(ir::Item::Pred { pred }) = request.query.where_.as_ref().and_then(|g| g.items.first()) else {
+                panic!("the where group holds no predicate");
+            };
+            assert_eq!(pred.p, Some(index(&want["where_p"])));
+            assert_eq!(pred.r#fn.as_ref().expect("the predicate function").ps, indexes(&want["fn_ps"]));
+        }
     }
 }
