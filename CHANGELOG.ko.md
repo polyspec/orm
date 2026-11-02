@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 05d00d729002c6695e2fcee04aa63062fb3b4e0d8910ca9a2b40604d8cd82e42 -->
+<!-- source-sha256: 901f1b93ad031bc206f7c5d7ac2464fe4123f9d5e83ba24a13905cbb2f1635f2 -->
 # 변경 이력
 
 ## Unreleased
 
+- TypeScript recipe test에서 쓰지 않는 import `readDbspecFile`을 뺐다. 그래서 TypeScript 게이트의 lint 단계가 통과한다 (T334-3-17-4).
 - TypeScript 패키지가 bind-check 변환 `fulltextBoolean`과 `transformParam`을 진입점에서 export한다. 다른 runtime과 같으므로 fulltext_boolean 변환은 여섯 runtime 모두에서 공개 호출을 가진다 (T334-3-17-1).
 - tests/dbspec/plans.json의 case 13개는 여섯 runtime에서 recipe tests/dbspec/plan-cases.json으로 실행된다. op dbspec.parse, dbspec.parse_plan, dbspec.emit_plan, dbspec.diff, dbspec.plan_steps로 실행하며 native plan test를 대신한다. before와 after physical record는 tests/dbspec/plans-physical.json으로 옮겼고 case id로 찾는다 (T334-3-16-2-2).
 - tests/dbspec/plans.json의 검증 네 section(invalid, chains, parse, comparisons)은 여섯 runtime에서 T334-3-2 형식의 recipe 네 개로 실행된다. op dbspec.parse, dbspec.parse_plan, dbspec.diff, dbspec.chain, dbspec.compare로 실행하며 native plan test를 대신하고, compare 도구는 plans.json 곁의 recipe를 읽는다 (T334-3-16-2-1).
