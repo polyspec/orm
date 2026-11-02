@@ -1,10 +1,11 @@
-//! The Rust dbspec for every shared case, stress document, statement vector, plan vector, and Mermaid vector
+//! The Rust dbspec for every shared case, stress document, statement vector, plan vector, and Mermaid recipe
 //! Prints the results in the line format of tests/dbspec/compare/check.mts. It then prints the positions cases of
 //! the recipe files of tests/dbspec and the analysis and format of each analysis of hashes.json and sets.json.
 //!
 //! Usage: `cargo run --release -p polyspec-orm-schema --example dbspec_compare -- <tests/dbspec dir> <stress document> <ddl.json> <plan-cases.json> <mermaid.json>`
 
-use polyspec_orm_schema::dbspec::{Change, Diagnostic, Dialect, Document, Plan, PlanStep, ReadError, Unsupported};
+use polyspec_orm_schema::dbspec::model::DefaultValue;
+use polyspec_orm_schema::dbspec::{self, Change, Diagnostic, Dialect, Document, Plan, PlanStep, ReadError, Unsupported};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::io::{BufWriter, Write};
@@ -90,30 +91,6 @@ struct PlanVectors {
     chains: Vec<ChainCase>,
     parse: Vec<ParseCase>,
     comparisons: Vec<ComparisonCase>,
-}
-
-struct ExportCase {
-    id: String,
-    document: Vec<String>,
-    documents: Documents,
-}
-
-struct ImportCase {
-    id: String,
-    mermaid: Vec<String>,
-    name: String,
-}
-
-struct RoundTripCase {
-    id: String,
-    path: String,
-}
-
-struct MermaidVectors {
-    export: Vec<ExportCase>,
-    import: Vec<ImportCase>,
-    invalid: Vec<ImportCase>,
-    round_trip: Vec<RoundTripCase>,
 }
 
 /// The schemas declare every field that these readers take, so a value of another shape is a defect of the schema.
@@ -404,23 +381,17 @@ fn read_plan_recipes(plans_path: &str) -> Result<PlanRecipes, String> {
     Ok(recipes)
 }
 
-/// Reads tests/dbspec/mermaid.json.
-fn read_mermaid(path: &str) -> Result<MermaidVectors, String> {
-    let v = open(path, "mermaid")?;
-    let import_case = |case: &Value| ImportCase {
-        id: string(&case["id"]),
-        mermaid: lines(&case["mermaid"]),
-        name: case.get("name").and_then(Value::as_str).unwrap_or("imported").to_owned(),
-    };
-    Ok(MermaidVectors {
-        export: list(&v["export"])
-            .iter()
-            .map(|case| ExportCase { id: string(&case["id"]), document: lines(&case["document"]), documents: documents_of(&case["documents"]) })
-            .collect(),
-        import: list(&v["import"]).iter().map(import_case).collect(),
-        invalid: list(&v["invalid"]).iter().map(import_case).collect(),
-        round_trip: list(&v["round_trip"]).iter().map(|case| RoundTripCase { id: string(&case["id"]), path: string(&case["path"]) }).collect(),
-    })
+/// Whether a Mermaid step goes on to the next step of its case, or ends the case after its diagnostics.
+#[derive(PartialEq)]
+enum Flow {
+    Next,
+    End,
+}
+
+/// Reads tests/dbspec/mermaid.json, the recipe of the Mermaid cases (FCV-2), as JSON. Its cases keep their order; its paths are
+/// relative to the recipe file.
+fn read_mermaid(path: &str) -> Result<Vec<Value>, String> {
+    Ok(list(&open(path, "mermaid")?["cases"]).clone())
 }
 
 /// Joins the lines with LF, with CRLF when `crlf`, or alternating CRLF and LF with no line ending on the last line when `mixed`.
@@ -711,61 +682,137 @@ fn write_export(out: &mut impl Write, document: &Document) -> std::io::Result<St
     Ok(text)
 }
 
-/// Prints the document emitted by import and the missing objects, or the diagnostic.
-fn write_import(out: &mut impl Write, text: &str, name: &str) -> std::io::Result<()> {
-    match polyspec_orm_schema::dbspec::import_mermaid(text, name) {
-        Err(diagnostics) => write_plan_diagnostics(out, &diagnostics),
-        Ok((document, dropped)) => {
-            for line in polyspec_orm_schema::dbspec::emit(&document).split('\n') {
-                writeln!(out, "| {line}")?;
-            }
-            write_dropped(out, &dropped)
+/// The tables, columns, primary keys and foreign keys that Mermaid carries, in table-name order, written as lines. Foreign key
+/// actions are left out, since Mermaid does not carry them.
+fn skeleton(document: &Document) -> Vec<String> {
+    let names = |list: &[polyspec_orm_schema::dbspec::model::Name]| list.iter().map(|n| n.text.as_str()).collect::<Vec<_>>().join(", ");
+    let mut tables: Vec<_> = document.tables.iter().collect();
+    tables.sort_by(|a, b| a.name.text.cmp(&b.name.text));
+    let mut out = Vec::new();
+    for t in tables {
+        out.push(format!("table {}", t.name.text));
+        for c in &t.columns {
+            let default = match &c.default {
+                None => "-".to_owned(),
+                Some(DefaultValue::Now) => "now".to_owned(),
+                Some(DefaultValue::Literal(text)) => text.clone(),
+            };
+            out.push(format!("column {} {:?} null={} identity={} default={default}", c.name.text, c.ty, c.nullable, c.identity.is_some()));
+        }
+        for p in &t.primary {
+            out.push(format!("primary key {}", names(&p.columns)));
+        }
+        let mut keys: Vec<_> = t.foreign_keys.iter().collect();
+        keys.sort_by(|a, b| a.name.text.cmp(&b.name.text));
+        for f in keys {
+            out.push(format!("foreign key {} ({}) references {} ({})", f.name.text, names(&f.columns), f.table.text, names(&f.references)));
         }
     }
+    out
 }
 
-/// Prints every export case, import and invalid case, and round trip case. A round trip case is
-/// the export of a document, then `<case>/import`, and the import of that export.
-fn write_mermaid(out: &mut impl Write, mermaid: &MermaidVectors) -> Result<(), String> {
+/// Prints every case of the recipe, in order: its category and id, then the output of each step. An export prints its Mermaid
+/// text and the missing objects; an import prints the emitted document and the missing objects, or its diagnostics; an import
+/// with skeleton_of prints whether its skeleton is that of the file. A step with as binds its Mermaid text, which a ref of a
+/// later import reads. Paths are relative to the directory of the recipe.
+fn write_mermaid(out: &mut impl Write, dir: &Path, cases: &[Value]) -> Result<(), String> {
     let io = |e: std::io::Error| e.to_string();
-    for case in &mermaid.export {
-        writeln!(out, "mermaid/export/{}", case.id).map_err(io)?;
-        let set = case.documents.iter().map(|(name, lines)| (name.clone(), join(lines, false, false))).collect();
-        match polyspec_orm_schema::dbspec::parse(&join(&case.document, false, false), &set).map(|parsed| parsed.document) {
-            Err(diagnostics) => write_plan_diagnostics(out, &diagnostics).map_err(io)?,
-            Ok(document) => {
-                write_export(out, &document).map_err(io)?;
+    for case in cases {
+        let id = case["id"].as_str().unwrap_or_default();
+        let steps = case["steps"].as_array().map(Vec::as_slice).unwrap_or_default();
+        let round_trip = steps.iter().any(|step| step.get("skeleton_of").is_some());
+        let mut texts = BTreeMap::new();
+        for step in steps {
+            let flow = if step["op"] == "dbspec.export_mermaid" {
+                write_export_step(out, dir, id, round_trip, step, &mut texts)?
+            } else {
+                write_import_step(out, dir, id, step, &texts)?
+            };
+            if flow == Flow::End {
+                break;
             }
         }
     }
-    for (kind, cases) in [("import", &mermaid.import), ("invalid", &mermaid.invalid)] {
-        for case in cases {
-            writeln!(out, "mermaid/{kind}/{}", case.id).map_err(io)?;
-            write_import(out, &join(&case.mermaid, false, false), &case.name).map_err(io)?;
-        }
-    }
-    for case in &mermaid.round_trip {
-        let id = &case.id;
-        writeln!(out, "mermaid/round_trip/{id}").map_err(io)?;
-        let path = &case.path;
-        let source = match polyspec_orm_schema::dbspec::read_file(Path::new(path)) {
-            Ok(source) => source,
-            Err(ReadError::Io(e)) => return Err(format!("{path}: {e}")),
+    out.flush().map_err(io)
+}
+
+/// One export step: its Mermaid text and dropped objects, or the diagnostics of its document.
+fn write_export_step(out: &mut impl Write, dir: &Path, id: &str, round_trip: bool, step: &Value, texts: &mut BTreeMap<String, String>) -> Result<Flow, String> {
+    let io = |e: std::io::Error| e.to_string();
+    writeln!(out, "mermaid/{}/{id}", if round_trip { "round_trip" } else { "export" }).map_err(io)?;
+    // The inline text and the other documents of its set, or the .dbs file document (FCV-4).
+    let (source, documents) = match step["document"].as_str() {
+        Some(path) => match dbspec::read_file(&dir.join(path)) {
+            Ok(source) => (source, BTreeMap::new()),
+            Err(ReadError::Io(e)) => return Err(format!("{}: {e}", dir.join(path).display())),
             Err(ReadError::Diagnostics(diagnostics)) => {
                 write_plan_diagnostics(out, &diagnostics).map_err(io)?;
-                continue;
+                return Ok(Flow::End);
             }
-        };
-        match polyspec_orm_schema::dbspec::parse(&source, &BTreeMap::new()).map(|parsed| parsed.document) {
-            Err(diagnostics) => write_plan_diagnostics(out, &diagnostics).map_err(io)?,
-            Ok(document) => {
-                let text = write_export(out, &document).map_err(io)?;
-                writeln!(out, "mermaid/round_trip/{id}/import").map_err(io)?;
-                write_import(out, &text, "imported").map_err(io)?;
-            }
+        },
+        None => (
+            join(&lines(&step["text"]), false, false),
+            step["set"].as_object().into_iter().flatten().map(|(name, text)| (name.clone(), join(&lines(text), false, false))).collect(),
+        ),
+    };
+    let document = match dbspec::parse(&source, &documents) {
+        Ok(parsed) => parsed.document,
+        Err(diagnostics) => {
+            write_plan_diagnostics(out, &diagnostics).map_err(io)?;
+            return Ok(Flow::End);
         }
+    };
+    let text = write_export(out, &document).map_err(io)?;
+    if let Some(name) = step["as"].as_str() {
+        texts.insert(name.to_owned(), text);
     }
-    Ok(())
+    Ok(Flow::Next)
+}
+
+/// One import step: the emitted document and dropped objects, its diagnostics, or with skeleton_of whether the skeleton of the
+/// import is that of the file (MER-13).
+fn write_import_step(out: &mut impl Write, dir: &Path, id: &str, step: &Value, texts: &BTreeMap<String, String>) -> Result<Flow, String> {
+    let io = |e: std::io::Error| e.to_string();
+    let text = match step["mermaid"].as_str() {
+        Some(text) => text.to_owned(),
+        None => step["mermaid"]["ref"].as_str().and_then(|r| r.split('.').next()).and_then(|name| texts.get(name)).cloned().unwrap_or_default(),
+    };
+    let name = step["name"].as_str().unwrap_or_default();
+    let (document, dropped) = match dbspec::import_mermaid(&text, name) {
+        Ok(imported) => imported,
+        Err(diagnostics) => {
+            writeln!(out, "mermaid/invalid/{id}").map_err(io)?;
+            write_plan_diagnostics(out, &diagnostics).map_err(io)?;
+            return Ok(Flow::Next);
+        }
+    };
+    let Some(skeleton_of) = step["skeleton_of"].as_str() else {
+        writeln!(out, "mermaid/import/{id}").map_err(io)?;
+        for line in dbspec::emit(&document).split('\n') {
+            writeln!(out, "| {line}").map_err(io)?;
+        }
+        write_dropped(out, &dropped).map_err(io)?;
+        return Ok(Flow::Next);
+    };
+    writeln!(out, "mermaid/round_trip/{id}/import").map_err(io)?;
+    let source = match dbspec::read_file(&dir.join(skeleton_of)) {
+        Ok(source) => source,
+        Err(ReadError::Io(e)) => return Err(format!("{}: {e}", dir.join(skeleton_of).display())),
+        Err(ReadError::Diagnostics(diagnostics)) => {
+            write_plan_diagnostics(out, &diagnostics).map_err(io)?;
+            return Ok(Flow::End);
+        }
+    };
+    let original = match dbspec::parse(&source, &BTreeMap::new()) {
+        Ok(parsed) => parsed.document,
+        Err(diagnostics) => {
+            write_plan_diagnostics(out, &diagnostics).map_err(io)?;
+            return Ok(Flow::End);
+        }
+    };
+    writeln!(out, "| same_skeleton\t{}", skeleton(&original) == skeleton(&document)).map_err(io)?;
+    write_dropped(out, &dropped).map_err(io)?;
+    Ok(Flow::Next)
 }
 
 fn run(dir: &str, stress_path: &str, ddl_path: &str, plans_path: &str, mermaid_path: &str) -> Result<(), String> {
@@ -828,7 +875,7 @@ fn run(dir: &str, stress_path: &str, ddl_path: &str, plans_path: &str, mermaid_p
         write_render(&mut out, case).map_err(io)?;
     }
     write_plans(&mut out, &read_plans(plans_path)?).map_err(io)?;
-    write_mermaid(&mut out, &read_mermaid(mermaid_path)?)?;
+    write_mermaid(&mut out, Path::new(mermaid_path).parent().unwrap_or(Path::new("")), &read_mermaid(mermaid_path)?)?;
     write_positions(&mut out, &cases.positions).map_err(io)?;
     // The recipe documents come first, in the order canonical, normalize, invalid, then the analyses of sets.json and hashes.json.
     for (kind, list) in [("canonical", &cases.canonical), ("normalize", &cases.normalize), ("invalid", &cases.invalid)] {

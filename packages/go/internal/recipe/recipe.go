@@ -68,15 +68,20 @@ type step struct {
 	Text      []string `json:"text"`
 	// Set holds the other documents of an inline dbspec op, CRLF and Mixed its line endings, Owned and External the texts of
 	// dbspec.parse_set, and Path the file of dbspec.read_file and dbspec.read_bytes.
-	Set      map[string][]string        `json:"set"`
-	CRLF     bool                       `json:"crlf"`
-	Mixed    bool                       `json:"mixed"`
-	Owned    []string                   `json:"owned"`
-	Parsing  map[string]string          `json:"parsing"`
-	External []string                   `json:"external"`
-	Path     string                     `json:"path"`
-	Expect   map[string]json.RawMessage `json:"expect"`
-	Options  json.RawMessage            `json:"options"`
+	Set      map[string][]string `json:"set"`
+	CRLF     bool                `json:"crlf"`
+	Mixed    bool                `json:"mixed"`
+	Owned    []string            `json:"owned"`
+	Parsing  map[string]string   `json:"parsing"`
+	External []string            `json:"external"`
+	Path     string              `json:"path"`
+	// Name, Mermaid and SkeletonOf are the fields of dbspec.import_mermaid: the name of the imported document, its Mermaid
+	// text or a ref to an export, and the .dbs file whose skeleton the import must equal (FCV-4).
+	Name       string                     `json:"name"`
+	Mermaid    json.RawMessage            `json:"mermaid"`
+	SkeletonOf string                     `json:"skeleton_of"`
+	Expect     map[string]json.RawMessage `json:"expect"`
+	Options    json.RawMessage            `json:"options"`
 }
 
 // IRAnswer runs the chain of one ir.answer step on a listener that answers with the answer, or with answers keyed by the op of
@@ -170,6 +175,19 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	case "dbspec.parse_emit", "dbspec.manifest", "dbspec.render", "dbspec.analyze", "dbspec.parse_positions", "dbspec.format",
 		"dbspec.parse_set", "dbspec.set", "dbspec.read_file", "dbspec.read_bytes":
 		return checkDBSpec(s, o.dir, database)
+	case "dbspec.export_mermaid", "dbspec.import_mermaid":
+		got, err := mermaidStep(s, bound, o.dir)
+		if err != nil {
+			return err
+		}
+		if s.As != "" {
+			bound[s.As] = result{cell: got}
+		}
+		expect, ok := s.Expect[database]
+		if !ok {
+			return fmt.Errorf("%s has no expect for %s", s.Op, database)
+		}
+		return checkMermaid(expect, got)
 	}
 	if s.Op == "ir.validate" {
 		return checkValidate(s.Expect[database], validate(model, s.Request))
@@ -457,12 +475,25 @@ func reference(raw json.RawMessage, bound map[string]result) (any, bool, error) 
 	if ref.Ref == nil {
 		return nil, false, nil
 	}
-	r, ok := bound[*ref.Ref]
+	name, field, dotted := strings.Cut(*ref.Ref, ".")
+	r, ok := bound[name]
 	if !ok {
 		return nil, true, fmt.Errorf("ref %s names no bound result", *ref.Ref)
 	}
 	if r.err != nil {
 		return nil, true, fmt.Errorf("ref %s names a failed step: %w", *ref.Ref, r.err)
+	}
+	if dotted {
+		// A dotted ref reads a field of the plain result of a step, such as the mermaid of an export (FCV-4).
+		m, ok := r.cell.(map[string]any)
+		if !ok {
+			return nil, true, fmt.Errorf("ref %s: the result of %s has no fields", *ref.Ref, name)
+		}
+		v, ok := m[field]
+		if !ok {
+			return nil, true, fmt.Errorf("ref %s names no field", *ref.Ref)
+		}
+		return v, true, nil
 	}
 	if r.decoded {
 		return r.styled, true, nil

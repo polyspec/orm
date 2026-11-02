@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 6d6a4917081c8cac7bc0046ff6f5d42c27ac859123de660bcdade4f1fca0ab5e -->
+<!-- source-sha256: 316c80cc3f3d1f9f62130d19c281f435151e51d03de033f60ae48d0dc7f4c5c8 -->
 # 변경 이력
 
 ## Unreleased
 
+- dbspec Mermaid vector(tests/dbspec/mermaid.json)를 recipe 하나로 바꾸었다. 각 runtime은 recipe helper로 그 recipe를 entry 하나에서 실행하고, compare runner도 그것을 읽으며, 네이티브 vector 테스트는 제거했다 (T334-3-21).
 - composite_keys는 여섯 recipe runner가 세 database에서 실행하는 recipe다: 각 runtime은 model op(CompositeMembership의 model.creates와 model.count, model.query의 tuples, connect·many·alias를 받는 relation)를 생성된 CompositeAccount와 CompositeMembership method로 실행하고, recipe는 memberships relation을 coverage 시험이 읽는 대로 alias 아래 relations(child)의 collection으로 읽는다(T334-3-5-12).
 - Rust의 recipe runner는 packages/rust/tests/src/recipe.rs 하나다. packages/rust/orm/tests 아래 두 번째 runner가 실행하던 planner.compile, ir.validate, dbspec plan op는 그 runner의 op이고, planner, 요청 검증, dbspec plan recipe는 packages/rust/tests/tests의 trial로 실행되며, 두 번째 runner는 지운다. recipe 사례가 아닌 manifest hash 검사는 native 시험 packages/rust/orm/tests/ir_manifest_hash.rs다 (T334-3-25-1).
 - make install이 Go model이 없는 checkout에서도 model을 생성한다. packages/go/models.txt는 bindmodel을, 그것을 import하는 시험을 scan하는 markdownmodel보다 먼저 생성한다 (T334-3-15-3c-11).

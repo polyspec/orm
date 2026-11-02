@@ -9,6 +9,13 @@ from pathlib import Path
 import jsonschema_rs
 
 SCHEMAS = Path(__file__).resolve().parents[3] / "tests" / "dbspec" / "schema"
+ROOT_SCHEMA = (
+    Path(__file__).resolve().parents[3]
+    / "scripts"
+    / "features"
+    / "schema"
+    / "recipe.schema.json"
+)
 ARTICLES = {
     "integer": "an integer",
     "object": "an object",
@@ -81,7 +88,9 @@ def problems(error):
 def refusals(value, kind, name):
     """The refusals of a parsed vector file by the schema tests/dbspec/schema/<kind>.schema.json, each
     "<name>: <location> <problem>"; none when the schema accepts it."""
-    return schema_refusals(value, SCHEMAS / f"{kind}.schema.json", name)
+    # The Mermaid vectors are a recipe, checked against the recipe schema of the features (FCV-2).
+    schema = ROOT_SCHEMA if kind == "mermaid" else SCHEMAS / f"{kind}.schema.json"
+    return schema_refusals(value, schema, name)
 
 
 def schema_refusals(value, schema, name):

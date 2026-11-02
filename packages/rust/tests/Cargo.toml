@@ -201,6 +201,12 @@ name = "codec_integer_beyond_i64_none"
 path = "tests/codec_integer_beyond_i64_none.rs"
 harness = false
 
+# Each case of the mermaid recipe, tests/dbspec/mermaid.json, is the trial dbspec_mermaid_none::<case id> (FCV-3).
+[[test]]
+name = "dbspec_mermaid_none"
+path = "tests/dbspec_mermaid_none.rs"
+harness = false
+
 # markdown_conformance runs in the workspace test of the rust lane, which gets FLOWMARK (make client-pooler-check), as
 # markdown-conformance-check/rust gets it. Each case of tests/markdown/cases.json is a libtest-mimic trial named by its id (polyspec_orm_testcase::trial).
 [[test]]

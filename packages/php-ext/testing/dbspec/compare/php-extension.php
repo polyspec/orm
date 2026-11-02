@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 // With the PHP extension polyspec_orm (Polyspec\Orm\Dbspec\Dbspec), all shared cases, stress documents, statement
-// vectors, plan vectors, and Mermaid vector results print in the line format of tests/dbspec/compare/check.mts. The
+// vectors, plan vectors, and Mermaid recipe results print in the line format of tests/dbspec/compare/check.mts. The
 // output is written by the same function as the PHP client's runner (php.php), with the positions cases and the
 // analysis of the recipe files of tests/dbspec.
 //

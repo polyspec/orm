@@ -10,7 +10,7 @@ import { caseTest } from '../testcase.mts';
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { cargoTarget } from '../cargo-target.mts';
 import { INPUTS, root, runRunner, runners, type Runner } from './compare/runners.mts';
 import { readVectors } from './vectors.mts';
@@ -23,20 +23,23 @@ if (stress === undefined || stress === '') throw new Error('DBSPEC_STRESS_DOCUME
 
 const directory = mkdtempSync(join(tmpdir(), 'dbspec-inputs-'));
 after(() => rmSync(directory, { recursive: true, force: true }));
-const missing = join(directory, 'missing.json');
-const folder = join(directory, 'folder');
+// The .dbs names keep the unreadable documents of the round trip step valid against the recipe schema (its path ends in .dbs).
+const missing = join(directory, 'missing.dbs');
+const folder = join(directory, 'folder.dbs');
 mkdirSync(folder);
 
 const vector = (name: string) => join(root, `tests/dbspec/${name}.json`);
 const compareInputs: string[] = [join(root, 'tests/dbspec'), stress, vector('ddl'), vector('plan-cases'), vector('mermaid')];
 
-// Writes the mermaid vector with only the path changed for the round trip case.
+// Writes the Mermaid recipe with only the document file of its first export that has one changed to path. The recipe is
+// copied into the directory of the unreadable path, so the path is written relative to the copy, as the recipe takes its
+// paths.
 function mermaidWithPath(path: string): string {
   const value = readVectors(vector('mermaid'), 'mermaid');
-  const [first] = value.round_trip;
-  assert.ok(first, 'mermaid.json has a round trip case');
-  first.path = path;
-  const file = join(directory, `mermaid-${value.round_trip.length}-${path === missing ? 'missing' : 'folder'}.json`);
+  const step = value.cases.flatMap(c => c.steps).find(s => s.op === 'dbspec.export_mermaid' && s.document !== undefined);
+  assert.ok(step, 'mermaid.json has an export of a document file');
+  step.document = relative(directory, path);
+  const file = join(directory, `mermaid-${path === missing ? 'missing' : 'folder'}.json`);
   writeFileSync(file, JSON.stringify(value, null, 2));
   return file;
 }

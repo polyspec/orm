@@ -102,11 +102,11 @@ caseTest('rust: the stress test passes while preempted', TIMEOUT, async ({ step 
 });
 
 caseTest('rust: the polyspec-orm-schema vector tests pass while preempted', TIMEOUT, async ({ step }) => {
-  const tests = ['dbspec', 'dbspec_rules', 'dbspec_manifest', 'dbspec_render', 'dbspec_runtime', 'dbspec_plan', 'dbspec_mermaid'];
+  const tests = ['dbspec', 'dbspec_rules', 'dbspec_manifest', 'dbspec_render', 'dbspec_runtime', 'dbspec_plan'];
   await passesPreempted(step, 'cargo', ['test', '--locked', '--offline', '-p', 'polyspec-orm-schema', ...tests.flatMap((name) => ['--test', name])], `${root}packages/rust`);
 });
 
-for (const test of ['DbspecTest', 'DbspecRulesTest', 'DbspecManifestTest', 'DbspecRenderTest', 'DbspecMermaidTest', 'DbspecPlanTest', 'DbspecStressTest']) {
+for (const test of ['DbspecTest', 'DbspecRulesTest', 'DbspecManifestTest', 'DbspecRenderTest', 'DbspecMermaidRecipeTest', 'DbspecPlanTest', 'DbspecStressTest']) {
   caseTest(`php: ${test} passes while preempted`, TIMEOUT, async ({ step }) => {
     // The database cases (group database) need the DSNs of the test servers, which this isolated child does not receive; they run in their own
     // database target, so this case excludes them and checks the parse and render code only.

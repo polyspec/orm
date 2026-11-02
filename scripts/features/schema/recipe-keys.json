@@ -480,6 +480,21 @@
       "op",
       "options",
       "schema"
+    ],
+    "dbspec.export_mermaid": [
+      "as",
+      "document",
+      "expect",
+      "op",
+      "set",
+      "text"
+    ],
+    "dbspec.import_mermaid": [
+      "expect",
+      "mermaid",
+      "name",
+      "op",
+      "skeleton_of"
     ]
   }
 }

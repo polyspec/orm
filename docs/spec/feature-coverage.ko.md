@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: f63b4d483ea904f870acba7d2b473695b28ff1af8649a1c31e84dfd50b2be889 -->
+<!-- source-sha256: 5654061d2c130f6287e98508d9135edc919230ab795b8f661a17cc8fb01855eb -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 언어별 테스트 명령을 선언한다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-check`가 실패한다.
@@ -46,6 +46,8 @@
   - `catalog.update_row {snapshot, set}`은 묶인 snapshot의 행을 `set`의 값으로 바꾼다(`update_row`). expect는 `{"rows": [[<value>, ...], ...]}` 또는 `{"error": ...}`이다.
   - `catalog.delete_row {snapshot}`은 묶인 snapshot의 행을 지운다(`delete_row`). expect는 지운 행 수인 `{"value": {"int": ...}}` 또는 `{"error": ...}`이다.
   - `sql.exec {sql, reason}`은 `.dbs`가 선언할 수 없는 DDL, 예를 들어 generated column(DBS-42)이나 dbspec 밖의 native type을 runtime의 native driver로 실행한다. `reason`은 fixture가 그것을 선언할 수 없는 이유를 적고, 그 step은 `expect`가 없다.
+  - `dbspec.export_mermaid {text, set?, as, expect}` 또는 `{document, as, expect}`는 docs/spec/mermaid.md의 export를 실행한다. DBS-169가 이름 붙인 공개 호출(여섯 runtime의 `ExportMermaid`, `Dbspec::exportMermaid`, `export_mermaid`, `exportMermaid`)을 LF와 마지막 LF로 이은 줄 배열인 문서 `text`에 대해 `set`의 다른 문서(`{<name>: [<line>, ...]}`, 각각 같은 방식으로 이음)와 함께 parse해서, 또는 `.dbs` 파일 `document`(recipe 기준 상대 경로)에 대해 실행한다. expect는 `{"value": <subset>}`이며, subset은 `{"mermaid": <text>, "dropped": [[<kind>, <table>, <name>], ...]}` 중 그것이 이름 붙인 key를 담는다. 값은 `ir.answer`처럼 plain JSON이고, 이름 붙인 key만 비교한다. `as`는 결과를 묶고, ref `<name>.mermaid`는 그 text를 읽는다(MER-1부터 MER-6까지).
+  - `dbspec.import_mermaid {mermaid, name, skeleton_of, expect}`는 같은 공개 호출(DBS-169)의 import를 `mermaid` 텍스트, 또는 export의 text를 가리키는 ref에 대해, `name`이라는 문서로 실행한다. 진단이 없으면 결과는 `{"document": <text>, "dropped": [...]}`이며 text는 emit된 문서다. `skeleton_of`(recipe 기준 상대 경로의 `.dbs` 파일)가 있으면 `{"dropped": [...], "same_skeleton": <bool>}`이고, bool은 import의 table, column, primary key, foreign key가 그 파일과 같을 때 true다(MER-13). 진단이 있으면 `{"errors": [[<rule>, <line>, <column>], ...]}`이다(MER-7). expect는 이 키들의 `{"value": <부분집합>}`이며 JSON 값으로 비교한다.
   - `dsn.connect {dsn}`은 case database의 DSN(`"case"`)이나 step의 DSN 문자열을 공개 API의 `Connect`(Go `orm.Connect`, PHP `Orm::connect`, TypeScript `Db.connect`, Python `Db.connect`, Rust `Db::connect`, 여섯 runtime 모두 공개)로 연다. expect는 `{"value": {"text": <driver>}}` 또는 `{"error": <code>}`이며, 연결은 닫는다.
 
   model op는 `model.connect`가 묶는 `connection`(그 `as` 이름, 예를 들어 `db`나 `conn`)을 받고 fixture set의 생성된 model 호출 하나를 이름 기준으로 지정한다. helper는 model을 fixture의 생성된 model(`packages/go`의 `models.txt` 항목과 다른 runtime의 생성된 test model)에서 이름 기준으로 찾으므로 op는 model 코드를 담지 않는다. 각 model op는 `connection`과 `model`을 받으며, `model`은 생성기가 쓰는 model 이름, 예를 들어 `CompositeAccount`나 table `event_probe`의 `EventProbe`다. 묶인 row는 `row`로 이름 짓으며, 이는 `model.get_by`의 `as` 이름이다.

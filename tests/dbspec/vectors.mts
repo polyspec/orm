@@ -40,14 +40,15 @@ export type PlanCase = {
 };
 /** tests/dbspec/plans-physical.json: the database data of each case, keyed by case id. */
 type PlanPhysical = { version: 1; note: string; cases: Record<string, { before: Behavior[]; after: Behavior[] }> };
-/** tests/dbspec/mermaid.json. */
-type MermaidVectors = {
-  version: 1; note: string;
-  export: { id: string; document: Lines; documents: Record<string, Lines>; mermaid: Lines; dropped: [string, string, string][] }[];
-  import: { id: string; mermaid: Lines; document: Lines; dropped: [string, string, string][] }[];
-  invalid: { id: string; name?: string; mermaid: Lines; errors: [string, number, number][] }[];
-  round_trip: { id: string; path: string; imported: [string, string, string][]; dropped: [string, string, string][] }[];
+/** A step of tests/dbspec/mermaid.json (the recipe of the Mermaid ops, FCV-4): the fields its op reads. */
+type MermaidStep = {
+  op: string; text?: string[]; set?: Record<string, string[]>; document?: string; as?: string; mermaid?: string | { ref: string };
+  name?: string; skeleton_of?: string; expect?: Record<string, { value: Record<string, unknown> }>;
 };
+/** A case of tests/dbspec/mermaid.json. */
+export type MermaidCase = { id: string; requirements: string[]; steps: MermaidStep[] };
+/** tests/dbspec/mermaid.json: the recipe of the Mermaid cases, checked against the recipe schema. */
+type MermaidVectors = { requirements: string[]; cases: MermaidCase[] };
 /** The vector files by the name of their schema. */
 type Vectors = { ddl: DdlVectors; plans: PlanVectors; mermaid: MermaidVectors };
 
@@ -157,7 +158,9 @@ export function readVectors<K extends keyof Vectors>(path: string, kind: K): Vec
   const text = readInput(path);
   let vectors: Vectors[K];
   try {
-    vectors = parseJson<Vectors[K]>(text, new URL(`./schema/${kind}.schema.json`, import.meta.url).pathname, path);
+    // The Mermaid vectors are a recipe, so they are checked against the recipe schema of the features (FCV-2).
+    const schema = kind === 'mermaid' ? new URL('../../scripts/features/schema/recipe.schema.json', import.meta.url) : new URL(`./schema/${kind}.schema.json`, import.meta.url);
+    vectors = parseJson<Vectors[K]>(text, schema.pathname, path);
   } catch (error) {
     refuse(path, error);
   }

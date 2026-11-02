@@ -17,21 +17,8 @@ import (
 // to the child go test that runs it.
 func TestFailingCaseFixture(t *testing.T) {
 	testcase.Start(t, testcase.Process)
-	m := loadMermaidVectors(t)
-	export := m.Export[0]
-	export.Mermaid = append(slices.Clone(export.Mermaid), "%% wrong")
-	imported := m.Import[0]
-	imported.Document = append(slices.Clone(imported.Document), "wrong")
-	invalid := m.Invalid[0]
-	invalid.Errors = nil
-	roundTrip := m.RoundTrip[0]
-	roundTrip.Dropped = nil
 	planCase := loadPlanCases(t)[0]
 	planCase.Changes = nil
-	t.Run("export", func(t *testing.T) { checkMermaidExport(t, export) })
-	t.Run("import", func(t *testing.T) { checkMermaidImport(t, imported) })
-	t.Run("invalid", func(t *testing.T) { checkMermaidInvalid(t, invalid) })
-	t.Run("round_trip", func(t *testing.T) { checkMermaidRoundTrip(t, roundTrip) })
 	t.Run("plan", func(t *testing.T) { checkPlanChanges(t, planCase) })
 }
 

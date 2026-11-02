@@ -62,18 +62,16 @@ const mutations: Mutation[] = [
   { file: 'ddl', location: 'cases[0].id', problem: 'is missing', edit: ['delete', '/cases/0/id'] },
   { file: 'plan-cases', location: 'requirements', problem: 'is missing', edit: ['delete', '/requirements'] },
   { file: 'plan-cases', location: 'cases', problem: 'is not a known field', edit: ['set', '/cases', []] },
-  { file: 'mermaid', location: 'round_trip', problem: 'is missing', edit: ['delete', '/round_trip'] },
-  { file: 'mermaid', location: 'export[0].documents', problem: 'is missing', edit: ['delete', '/export/0/documents'] },
-  { file: 'mermaid', location: 'import[0].mermaid', problem: 'is missing', edit: ['delete', '/import/0/mermaid'] },
-  { file: 'mermaid', location: 'invalid[0].mermaid[0]', problem: 'is not a string', edit: ['set', '/invalid/0/mermaid/0', 0] },
+  { file: 'mermaid', location: 'cases', problem: 'is missing', edit: ['delete', '/cases'] },
+  { file: 'mermaid', location: 'cases[0].steps', problem: 'is missing', edit: ['delete', '/cases/0/steps'] },
+  { file: 'mermaid', location: 'cases[0].steps[0].expect', problem: 'is missing', edit: ['delete', '/cases/0/steps/0/expect'] },
+  { file: 'mermaid', location: 'cases[0].id', problem: 'is not a string', edit: ['set', '/cases/0/id', 1] },
   // Every runner reads every vector file through its schema (tests/dbspec/schema), so a rule of the schema that no
   // runner needs for its own output is refused in the same form as the others.
   { file: 'dir', recipe: 'invalid.json', location: 'cases', problem: 'is empty', edit: ['set', '/cases', []] },
   { file: 'ddl', location: 'cases[0].statements', problem: 'is missing', edit: ['delete', '/cases/0/statements'] },
   { file: 'ddl', location: 'extra', problem: 'is not a known field', edit: ['set', '/extra', true] },
   { file: 'plan-cases', location: 'version', problem: 'is not 1', edit: ['set', '/version', 2] },
-  { file: 'mermaid', location: 'export[0].dropped', problem: 'is not an array', edit: ['set', '/export/0/dropped', {}] },
-  { file: 'mermaid', location: 'invalid[0].extra', problem: 'is not a known field', edit: ['set', '/invalid/0/extra', 1] },
   { file: 'dir', recipe: 'hashes.json', location: 'cases', problem: 'is missing', edit: ['delete', '/cases'] },
   { file: 'dir', recipe: 'hashes.json', location: 'cases[0].id', problem: 'is missing', edit: ['delete', '/cases/0/id'] },
   { file: 'dir', recipe: 'hashes.json', location: 'cases[0].extra', problem: 'is not a known field', edit: ['set', '/cases/0/extra', true] },
@@ -82,6 +80,7 @@ const mutations: Mutation[] = [
   { file: 'dir', recipe: 'sets.json', location: 'cases[0].id', problem: 'is missing', edit: ['delete', '/cases/0/id'] },
   { file: 'dir', recipe: 'sets.json', location: 'cases[0].extra', problem: 'is not a known field', edit: ['set', '/cases/0/extra', true] },
   { file: 'dir', recipe: 'sets.json', location: 'extra', problem: 'is not a known field', edit: ['set', '/extra', true] },
+  { file: 'mermaid', location: 'cases[0].steps[0].extra', problem: 'is not a known field', edit: ['set', '/cases/0/steps/0/extra', 1] },
 ];
 
 // edit applies an edit to a parsed vector file: it walks the JSON Pointer to the container of the last segment, which must

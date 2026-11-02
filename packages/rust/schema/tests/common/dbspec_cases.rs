@@ -76,7 +76,7 @@ fn schema_text(kind: &str) -> Result<&'static str, String> {
     match kind {
         "ddl" => Ok(include_str!("../../../../../tests/dbspec/schema/ddl.schema.json")),
         "plans" => Ok(include_str!("../../../../../tests/dbspec/schema/plans.schema.json")),
-        "mermaid" => Ok(include_str!("../../../../../tests/dbspec/schema/mermaid.schema.json")),
+        "mermaid" => Ok(include_str!("../../../../../scripts/features/schema/recipe.schema.json")),
         "recipe" => Ok(include_str!("../../../../../scripts/features/schema/recipe.schema.json")),
         other => Err(format!("tests/dbspec/schema has no schema {other}")),
     }

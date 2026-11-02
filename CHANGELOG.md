@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The dbspec Mermaid vectors (tests/dbspec/mermaid.json) are one recipe: each runtime runs it through its recipe helper in one entry, the compare runners read it, and the native vector tests are removed (T334-3-21).
 - composite_keys is a recipe that the six recipe runners run on the three databases: each runtime runs its model ops (model.creates and model.count of CompositeMembership, the tuples of model.query, and a relation with connect, many and alias) through the generated CompositeAccount and CompositeMembership methods, and the recipe reads the memberships relation as the coverage tests read it, a collection of relations(child) under its alias (T334-3-5-12).
 - Rust has one recipe runner, packages/rust/tests/src/recipe.rs: the planner.compile, ir.validate and dbspec plan ops that a second runner under packages/rust/orm/tests ran are ops of that runner, the planner, request validation and dbspec plan recipes run as trials of packages/rust/tests/tests, and the second runner is removed; the manifest hash check that is no recipe case is the native test packages/rust/orm/tests/ir_manifest_hash.rs (T334-3-25-1).
 - make install generates the Go models in a checkout that has none: packages/go/models.txt generates bindmodel before markdownmodel, whose scanned test imports it (T334-3-15-3c-11).

@@ -89,8 +89,12 @@ function dbspec_vector_leaves(ValidationError $error): array
  */
 function dbspec_vector_refusals(mixed $value, string $kind, string $name): array
 {
+    // The Mermaid vectors are a recipe, checked against the recipe schema of the features (FCV-2).
+    $path = $kind === 'mermaid'
+        ? __DIR__ . '/../../scripts/features/schema/recipe.schema.json'
+        : __DIR__ . "/schema/$kind.schema.json";
     $schema = json_decode(
-        (string) file_get_contents(__DIR__ . "/schema/$kind.schema.json"),
+        (string) file_get_contents($path),
         false,
         512,
         JSON_THROW_ON_ERROR

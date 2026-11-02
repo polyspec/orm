@@ -40,11 +40,6 @@ name = "dbspec_stress"
 path = "tests/dbspec_stress.rs"
 
 [[test]]
-name = "dbspec_mermaid"
-path = "tests/dbspec_mermaid.rs"
-harness = false
-
-[[test]]
 name = "dbspec_render"
 path = "tests/dbspec_render.rs"
 harness = false

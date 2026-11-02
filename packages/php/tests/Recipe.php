@@ -60,6 +60,9 @@ final class Recipe
         'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.read_file', 'dbspec.read_bytes',
     ];
 
+    /** The Mermaid ops (FCV-4), on the public Mermaid calls of Dbspec (DBS-169). */
+    private const MERMAID_OPS = ['dbspec.export_mermaid', 'dbspec.import_mermaid'];
+
     /** @return iterable<string, array{array<string, mixed>}> each case of the recipe at path, relative to the repository root */
     public static function cases(string $path): iterable
     {
@@ -107,6 +110,10 @@ final class Recipe
                 }
                 if (in_array($step['op'], self::DBSPEC_FILE_OPS, true)) {
                     self::dbspecFileStep($step, $path, $database);
+                    continue;
+                }
+                if (in_array($step['op'], self::MERMAID_OPS, true)) {
+                    self::mermaidStep($step, $bound, $path, $database);
                     continue;
                 }
                 self::step($step, $bound, $database);
@@ -935,6 +942,133 @@ final class Recipe
             Assert::fail("cannot read $path");
         }
         return $text;
+    }
+
+    /**
+     * Runs the dbspec.export_mermaid or dbspec.import_mermaid op of step (FCV-4) on the public Mermaid calls
+     * (DBS-169) and checks its plain result against the expect of database, key by key. A step with as binds
+     * the result for a ref.
+     *
+     * @param array<string, array{decoded: bool, value: mixed, error: ?OrmException}> $bound
+     */
+    private static function mermaidStep(array $step, array &$bound, string $path, string $database): void
+    {
+        $got = $step['op'] === 'dbspec.export_mermaid'
+            ? self::exportStep($step, $path)
+            : self::importStep($step, $bound, $path);
+        if (isset($step['as'])) {
+            $bound[$step['as']] = ['decoded' => false, 'value' => $got, 'error' => null];
+        }
+        $expect = $step['expect'][$database] ?? Assert::fail("{$step['op']} has no expect for $database");
+        foreach ($expect['value'] ?? Assert::fail("{$step['op']} has no expect.value for $database") as $key => $want) {
+            if (!array_key_exists($key, $got)) {
+                Assert::fail("the result has no $key: " . json_encode($got));
+            }
+            if ($got[$key] !== $want) {
+                Assert::fail("$key: got " . json_encode($got[$key]) . ', want ' . json_encode($want));
+            }
+        }
+    }
+
+    /** The result of an export step: the Mermaid text and the dropped [kind, table, name] of its document (docs/spec/mermaid.md). */
+    private static function exportStep(array $step, string $path): array
+    {
+        // The inline text and the other documents of its set, or the .dbs file document (FCV-4).
+        [$source, $set] = self::inlineDocument($step);
+        if (isset($step['document'])) {
+            [$source, $set] = [self::readRecipeFile($path, $step['document']), []];
+        }
+        $parsed = Dbspec::parse($source, $set);
+        if ($parsed->document === null) {
+            Assert::fail('parse: ' . json_encode($parsed->diagnostics));
+        }
+        $result = Dbspec::exportMermaid($parsed->document);
+        return ['mermaid' => $result->text, 'dropped' => self::drops($result->dropped)];
+    }
+
+    /**
+     * The result of an import step: the errors as [rule, line, column] when the Mermaid text is invalid; otherwise the
+     * emitted document and the dropped list, or with skeleton_of whether the skeleton of the document equals the one of
+     * the file that skeleton_of names.
+     */
+    private static function importStep(array $step, array $bound, string $path): array
+    {
+        $mermaid = $step['mermaid'];
+        $text = is_string($mermaid) ? $mermaid : self::mermaidReference($mermaid, $bound);
+        $result = Dbspec::importMermaid($text, $step['name'] ?? 'imported');
+        if ($result->diagnostics !== []) {
+            return ['errors' => array_map(
+                static fn($d): array => [$d->rule, $d->line, $d->column],
+                $result->diagnostics
+            )];
+        }
+        if (!isset($step['skeleton_of'])) {
+            return ['document' => Dbspec::emit($result->document), 'dropped' => self::drops($result->dropped)];
+        }
+        $original = Dbspec::parse(self::readRecipeFile($path, $step['skeleton_of']), []);
+        if ($original->document === null) {
+            Assert::fail("parse {$step['skeleton_of']}: " . json_encode($original->diagnostics));
+        }
+        $same = self::mermaidSkeleton($original->document) === self::mermaidSkeleton($result->document);
+        return ['dropped' => self::drops($result->dropped), 'same_skeleton' => $same];
+    }
+
+    /** The text of a file that a step names relative to the recipe file (the document and skeleton_of fields). */
+    private static function readRecipeFile(string $path, string $file): string
+    {
+        $read = Dbspec::readFile(dirname(__DIR__, 3) . '/' . dirname($path) . '/' . $file);
+        if ($read->text === null) {
+            Assert::fail("read $file: " . json_encode($read->diagnostics));
+        }
+        return $read->text;
+    }
+
+    /** The text of a ref, {ref: "<name>.<field>"}, of a bound plain result. */
+    private static function mermaidReference(array $raw, array $bound): string
+    {
+        [$name, $field] = array_pad(explode('.', (string) ($raw['ref'] ?? ''), 2), 2, '');
+        if (!array_key_exists($name, $bound)) {
+            Assert::fail("ref {$raw['ref']} names no bound result");
+        }
+        $value = $bound[$name]['value'][$field] ?? null;
+        if (!is_string($value)) {
+            Assert::fail("ref {$raw['ref']} is not a text");
+        }
+        return $value;
+    }
+
+    /** @param list<\Polyspec\Orm\Dbspec\Unsupported> $dropped */
+    private static function drops(array $dropped): array
+    {
+        return array_map(static fn($u): array => [$u->kind, $u->table, $u->name], $dropped);
+    }
+
+    /**
+     * Writes the tables, columns, primary keys and foreign keys that Mermaid carries, as lines in table
+     * name order. Foreign key actions are not carried by Mermaid, so they are left out.
+     *
+     * @return list<string>
+     */
+    private static function mermaidSkeleton(\Polyspec\Orm\Dbspec\Document $d): array
+    {
+        $tables = $d->tables;
+        usort($tables, static fn($a, $b): int => strcmp($a->name, $b->name));
+        $out = [];
+        foreach ($tables as $t) {
+            $out[] = "table {$t->name}";
+            foreach ($t->columns as $c) {
+                $out[] = "column {$c->name} {$c->type->text()} null=" . ($c->nullable ? 'true' : 'false')
+                    . ' identity=' . ($c->identity ? 'true' : 'false') . ' default=' . ($c->default ?? '-');
+            }
+            $out[] = 'primary key ' . implode(', ', $t->primaryKey->columns);
+            $foreignKeys = $t->foreignKeys;
+            usort($foreignKeys, static fn($a, $b): int => strcmp($a->name, $b->name));
+            foreach ($foreignKeys as $f) {
+                $out[] = "foreign key {$f->name} (" . implode(', ', $f->columns) . ") references {$f->table} ("
+                    . implode(', ', $f->referencedColumns) . ')';
+            }
+        }
+        return $out;
     }
 
     /** Maps the op of step to its call and checks the result against the expect of database. */
