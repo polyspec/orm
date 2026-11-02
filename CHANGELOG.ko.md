@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a38af851d5b200ab1075b8248b3405c4c95768581361e7cd4c5ada308f5243c7 -->
+<!-- source-sha256: ee46ee2527aea8bc7821259e1adf135c05ac03de894160393d34df9d352ec726 -->
 # 변경 이력
 
 ## Unreleased
 
+- Python recipe test에서 쓰지 않는 import `read_dbspec_file`을 뺐다. 그래서 Python 게이트의 ruff 단계가 통과한다 (T334-3-24-1).
 - TypeScript recipe test에서 쓰지 않는 import `readDbspecFile`을 뺐다. 그래서 TypeScript 게이트의 lint 단계가 통과한다 (T334-3-17-4).
 - tests/dbspec/plans.json의 case 13개는 여섯 runtime에서 recipe tests/dbspec/plan-cases.json으로 실행된다. op dbspec.parse, dbspec.parse_plan, dbspec.emit_plan, dbspec.diff, dbspec.plan_steps로 실행하며 native plan test를 대신한다. before와 after physical record는 tests/dbspec/plans-physical.json으로 옮겼고 case id로 찾는다 (T334-3-16-2-2).
 - tests/dbspec/plans.json의 검증 네 section(invalid, chains, parse, comparisons)은 여섯 runtime에서 T334-3-2 형식의 recipe 네 개로 실행된다. op dbspec.parse, dbspec.parse_plan, dbspec.diff, dbspec.chain, dbspec.compare로 실행하며 native plan test를 대신하고, compare 도구는 plans.json 곁의 recipe를 읽는다 (T334-3-16-2-1).

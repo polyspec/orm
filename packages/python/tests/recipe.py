@@ -30,7 +30,6 @@ from polyspec.orm.dbspec import (
     dbspec_manifest,
     parse_dbspec,
     parse_dbspec_set,
-    read_dbspec_file,
     read_dbspec_set,
 )
 from polyspec.orm.dbspec.compare import compare_schemas
