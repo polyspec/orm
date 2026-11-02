@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The parity check of the TypeScript `getReadCount` members is run on a fresh build: a stale `packages/ts/dist` kept by `var/typescript/dist.key` had reported 25 R11 undeclared-public findings for the models other than Author, and after a rebuild `parity --phase api` reports none, the Author declaration staying as it is (T326-17).
 - The Rust tests crate passes clippy with `-D warnings`: its seed reader and its connect step no longer call the disallowed `unwrap_or_default` or `ok` (T326-16).
 - The Rust client renumbers the parameters of a request in the walk order of the Go client before it takes the plan cache key, so a request whose parameters were built in another order gets the Go plan cache slots; the composite and predicate vectors of `contracts/fixtures/plan_cache_composite.json` are tested in `canonical.rs` (T326-15-1).
 - The PHP extension walks the parameters of a predicate in Go's order, the same as the PHP library, so a predicate with both `p` and `fn` gets the plan cache slots of the Go client (T326-15-3).
