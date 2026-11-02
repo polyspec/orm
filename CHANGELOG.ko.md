@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5aa616b98048dcbc3f1a770e6c81148a804320cd1698c4c8fc8914dac9ff9d7b -->
+<!-- source-sha256: f959a6591bcf6af8609e5487bbf8d4df94c14e8e8d997a568b9402883e061186 -->
 # 변경 이력
 
 ## Unreleased
 
+- model_writes feature는 ordered-json text의 반복된 member name을 모든 owner(Go, PHP, php-extension, Rust, TypeScript, Python)와 MySQL, PostgreSQL, SQLite에 선언하므로, 일반 Rust 실행은 ORM_FEATURE_DATABASE 없이 실패하는 대신 선언된 symbol로 이 case를 건너뛴다(T343-2)
 - model_writes feature는 Go owner에서 ordered-json text의 반복된 member name을 선언한다(MySQL, PostgreSQL, SQLite): Go case는 `{"a":1,"b":2,"a":3}`을 Author json 설정으로 저장하고 다시 읽으므로, 다른 owner가 실행하는 case를 Go owner도 실행한다(T343-2-1)
 - generated Go model은 jsontext 값의 반복된 member name을 보존한다: ordered-json 값을 json.Marshaler 분기 전에 원본 text 그대로 취하며, 그 분기는 파싱된 member map을 다시 직렬화했으므로 `{"a":1,"b":2,"a":3}`이 SQLite에서 `{"a":3,"b":2}`로 돌아오지 않는다 (DIA-26) (T343-2-1-1)
 - pooler lane의 Rust test는 ProxySQL이 backend를 위해 유지하는 server connection 수보다 많은 test thread를 실행하지 않는다: 그 수는 한 곳의 선언(PROXYSQL_BACKEND_CONNECTIONS)이며, lane은 backend 수를 pool 크기로 나눈 값을 `--test-threads`로 넘겨서, 고정된 pool이 10000 ms connect timeout을 넘겨 기다리지 않는다 (T343-1)

@@ -1,11 +1,11 @@
-// The unit tests of the client database lanes: the Rust thread cap of the pooler lane (T343-1) and the Go owner
-// of the repeated member name case of model_writes (T343-2-1).
+// The unit tests of the client database lanes: the Rust thread cap of the pooler lane (T343-1), the Go owner of the
+// repeated member name case of model_writes (T343-2-1) and its declaration on every owner (T343-2).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { resolve } from 'node:path';
-import { rustPoolerThreadArguments, rustTargetPoolSize } from './client-db-test.mts';
-import { readFeatures, type NativeCommand } from './features/manifest.mts';
+import { rustDatabaseCoverageSkipArguments, rustPoolerThreadArguments, rustTargetPoolSize } from './client-db-test.mts';
+import { readFeatures, type CoverageOwner, type Language, type NativeCommand } from './features/manifest.mts';
 
 const root = resolve(import.meta.dirname, '..');
 const repeatedMemberCase = 'ordered_json_repeated_member_name';
@@ -40,4 +40,35 @@ test('model_writes Go owner declares the repeated member name case on the three 
     assert.ok(command.cases.includes(repeatedMemberCase), `go ${database} runs the case`);
     assert.equal(command.symbols?.[repeatedMemberCase], 'TestCoverageModelOrderedJsonRepeatedMemberName', `go ${database} symbol`);
   }
+});
+
+test('model_writes declares the repeated member name case on every owner and the Rust skip list (T343-2)', () => {
+  const manifest = readFeatures(root);
+  const feature = manifest.features.find(item => item.id === 'model_writes');
+  assert.ok(feature, 'model_writes is in contracts/features.json');
+  const coverage = feature.coverage;
+  assert.ok(coverage, 'model_writes has a coverage part');
+  assert.ok(coverage.cases.includes(repeatedMemberCase), 'the case is in the coverage cases of model_writes');
+  const symbols: Partial<Record<Language, string>> = {
+    go: 'TestCoverageModelOrderedJsonRepeatedMemberName',
+    php: 'testOrderedJsonRepeatedMemberName',
+    'php-extension': 'testOrderedJsonRepeatedMemberName',
+    rust: 'coverage_model_writes::coverage_ordered_json_repeated_member_name',
+  };
+  assert.deepEqual(Object.keys(coverage.owners).sort(), ['go', 'php', 'php-extension', 'python', 'rust', 'typescript']);
+  for (const language of Object.keys(coverage.owners) as Language[]) {
+    const part: CoverageOwner | undefined = coverage.owners[language];
+    assert.ok(part, `${language} is an owner`);
+    for (const database of ['mysql', 'postgres', 'sqlite'] as const) {
+      const commands: NativeCommand[] | undefined = part.commands[database];
+      assert.equal(commands?.length, 1, `${language} ${database} has one command`);
+      const command: NativeCommand | undefined = commands?.[0];
+      assert.ok(command, `${language} ${database} command`);
+      assert.ok(command.cases.includes(repeatedMemberCase), `${language} ${database} runs the case`);
+      const symbol = symbols[language];
+      if (symbol === undefined) assert.equal(command.symbols, undefined, `${language} ${database} declares no symbols`);
+      else assert.equal(command.symbols?.[repeatedMemberCase], symbol, `${language} ${database} symbol`);
+    }
+  }
+  assert.ok(rustDatabaseCoverageSkipArguments(manifest, root).includes(symbols.rust ?? ''), 'the generic Rust run skips the case');
 });

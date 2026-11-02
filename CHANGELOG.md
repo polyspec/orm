@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The model_writes feature declares the repeated member name of the ordered-json text on every owner (Go, PHP, php-extension, Rust, TypeScript and Python) and on MySQL, PostgreSQL and SQLite, so the generic Rust run skips it by its declared symbol instead of failing without ORM_FEATURE_DATABASE (T343-2)
 - The model_writes feature declares the repeated member name of the ordered-json text on the Go owner (MySQL, PostgreSQL and SQLite): the Go case stores `{"a":1,"b":2,"a":3}` through the Author json setting and reads it back, so the owner runs the case that the other owners run (T343-2-1)
 - The generated Go model keeps a repeated member name of a jsontext value: the ordered-json value is taken as its source text before the json.Marshaler branch, which re-serialised the parsed member map, so `{"a":1,"b":2,"a":3}` no longer comes back as `{"a":3,"b":2}` on SQLite (DIA-26) (T343-2-1-1)
 - The pooler lane of the Rust tests runs no more test threads than the server connections that ProxySQL keeps for its backend: the count is one declaration (PROXYSQL_BACKEND_CONNECTIONS), and the lane passes `--test-threads` of backends divided by the pool size, so a pinned pool no longer waits past the 10000 ms connect timeout (T343-1)
