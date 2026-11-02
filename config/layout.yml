@@ -113,7 +113,6 @@ rules:
       - "!tests/kit/fixture/**"
       # The runners of one language: each drives the client of its language through the shared vectors and writes the
       # form that the TypeScript comparators read, so it is a test of that language.
-      - "!tests/dbspec/cases.php"
       - "!tests/dbspec/vectors.php"
       - "!tests/dbspec/input.php"
       # The symbol extractors of one language read its declarations with its own parser (Go's go/parser, PHP's tokens,

@@ -86,6 +86,16 @@ name = "set_parse_none"
 path = "tests/set_parse_none.rs"
 harness = false
 
+[[test]]
+name = "hashes_none"
+path = "tests/hashes_none.rs"
+harness = false
+
+[[test]]
+name = "sets_none"
+path = "tests/sets_none.rs"
+harness = false
+
 # Each case of the catalog_connection recipe, contracts/fixtures/catalog_connection/catalog_connection.json, is the
 # trial catalog_connection_<database>::<case id> on a case database of its own (FCV-3).
 [[test]]

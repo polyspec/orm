@@ -2,16 +2,9 @@ package dbspec
 
 import (
 	"fmt"
+	"slices"
 	"strings"
-	"testing"
 )
-
-// vectorFile is what the engine tests read from tests/dbspec/cases.json: the hashes and sets cases. The canonical,
-// normalize, invalid, positions and files cases are run by the recipes of tests/dbspec (recipe_*_test.go in package orm).
-type vectorFile struct {
-	Hashes []hashCase
-	Sets   []setCase
-}
 
 type vectorError struct {
 	Line   int
@@ -25,122 +18,6 @@ func joinLines(lines []string, crlf bool) string {
 		end = "\r\n"
 	}
 	return strings.Join(lines, end) + end
-}
-
-func loadVectors(t *testing.T) vectorFile {
-	t.Helper()
-	r, object := readVectorFile(t, "cases.json")
-	vectors, err := decodeCaseVectors(r, object)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return vectors
-}
-
-// decodeCaseVectors reads the sections and fields of cases.json that the engine tests use, and rejects any that are
-// missing or of another type with location. A section or field that the format does not name is refused too.
-func decodeCaseVectors(r vectorReader, object map[string]any) (vectorFile, error) {
-	var v vectorFile
-	if err := r.fields(object, "", []string{"requirements", "version", "note", "hashes", "sets"}); err != nil {
-		return v, err
-	}
-	if err := r.version(object); err != nil {
-		return v, err
-	}
-	if _, err := r.string(object, "", "note"); err != nil {
-		return v, err
-	}
-	var err error
-	if v.Hashes, err = vectorCases(r, object, "hashes", func(c map[string]any, location, id string) (hashCase, error) {
-		h := hashCase{ID: id}
-		if err := r.fields(c, location, []string{"id", "documents", "manifestText", "schemaText", "manifestHash", "schemaHash"}); err != nil {
-			return h, err
-		}
-		var err error
-		if h.Documents, err = r.linesMap(c, location, "documents"); err != nil {
-			return h, err
-		}
-		if h.ManifestText, err = r.linesField(c, location, "manifestText"); err != nil {
-			return h, err
-		}
-		if h.SchemaText, err = r.linesField(c, location, "schemaText"); err != nil {
-			return h, err
-		}
-		if h.ManifestHash, err = r.string(c, location, "manifestHash"); err != nil {
-			return h, err
-		}
-		h.SchemaHash, err = r.string(c, location, "schemaHash")
-		return h, err
-	}); err != nil {
-		return v, err
-	}
-	v.Sets, err = vectorCases(r, object, "sets", func(c map[string]any, location, id string) (setCase, error) {
-		s := setCase{ID: id}
-		if err := r.fields(c, location, []string{"id", "documents", "parsing", "errors"}, "external", "manifest"); err != nil {
-			return s, err
-		}
-		items, err := r.arrayField(c, location, "documents")
-		if err != nil {
-			return s, err
-		}
-		for i, item := range items {
-			lines, err := r.lines(item, fmt.Sprintf("%s[%d]", vectorAt(location, "documents"), i))
-			if err != nil {
-				return s, err
-			}
-			s.Documents = append(s.Documents, lines)
-		}
-		if s.Parsing, err = r.linesMap(c, location, "parsing"); err != nil {
-			return s, err
-		}
-		// external and manifest exist only in cases that have external documents.
-		if _, ok := c["external"]; ok {
-			items, err := r.arrayField(c, location, "external")
-			if err != nil {
-				return s, err
-			}
-			for i, item := range items {
-				lines, err := r.lines(item, fmt.Sprintf("%s[%d]", vectorAt(location, "external"), i))
-				if err != nil {
-					return s, err
-				}
-				s.External = append(s.External, lines)
-			}
-		}
-		if _, ok := c["manifest"]; ok {
-			field, err := r.field(c, location, "manifest")
-			if err != nil {
-				return s, err
-			}
-			object, ok := field.(map[string]any)
-			if !ok {
-				return s, r.fail(vectorAt(location, "manifest"), "is not an object")
-			}
-			at := vectorAt(location, "manifest")
-			if err := r.fields(object, at, []string{"manifestText", "externalText", "schemaText", "created", "manifestHash", "schemaHash"}); err != nil {
-				return s, err
-			}
-			m := &setManifest{}
-			for key, target := range map[string]*[]string{"manifestText": &m.ManifestText, "externalText": &m.ExternalText, "schemaText": &m.SchemaText, "created": &m.Created} {
-				if *target, err = r.linesField(object, at, key); err != nil {
-					return s, err
-				}
-			}
-			if m.ManifestHash, err = r.string(object, at, "manifestHash"); err != nil {
-				return s, err
-			}
-			if m.SchemaHash, err = r.string(object, at, "schemaHash"); err != nil {
-				return s, err
-			}
-			s.Manifest = m
-		}
-		s.Errors, err = r.locatedErrors(c, location, "errors")
-		return s, err
-	})
-	if err != nil {
-		return v, err
-	}
-	return v, err
 }
 
 // emitStable parses the text and emits it, and checks that parsing the emission again and emitting it yields the same
@@ -189,4 +66,29 @@ func expectDiagnostics(text string, set map[string]string, want []vectorError) e
 		return fmt.Errorf("diagnostics = %+v, want %+v (messages %+v)", got, want, diagnostics)
 	}
 	return nil
+}
+
+// parseDocumentSet parses all documents of a case, in document-name order, each
+// against the other documents of the case.
+func parseDocumentSet(docs map[string][]string) ([]*Document, error) {
+	names := make([]string, 0, len(docs))
+	for name := range docs {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	documents := make([]*Document, 0, len(names))
+	for _, name := range names {
+		set := map[string]string{}
+		for other, lines := range docs {
+			if other != name {
+				set[other] = joinLines(lines, false)
+			}
+		}
+		document, _, diagnostics := Parse(joinLines(docs[name], false), set)
+		if err := expectDocument(document, diagnostics); err != nil {
+			return nil, fmt.Errorf("%s: %w", name, err)
+		}
+		documents = append(documents, document)
+	}
+	return documents, nil
 }

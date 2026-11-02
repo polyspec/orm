@@ -1,5 +1,5 @@
 // vectors.mts reads the shared dbspec vector files against their schemas (schema/): tests/dbspec/ddl.json, plans.json,
-// mermaid.json and syntax.json. A runner reads a file that a make target names; a file that cannot be read, is not
+// mermaid.json. A runner reads a file that a make target names; a file that cannot be read, is not
 // JSON or that its schema refuses is written to stderr, "<path>: <reason>" per line, and the runner ends with 1.
 import { errorMessage } from '../errors.mts';
 import { JsonError, parseJson, SchemaError, type SchemaIssue } from '../../scripts/json/schema.mts';
@@ -38,11 +38,8 @@ type MermaidVectors = {
   invalid: { id: string; name?: string; mermaid: Lines; errors: [string, number, number][] }[];
   round_trip: { id: string; path: string; imported: [string, string, string][]; dropped: [string, string, string][] }[];
 };
-/** tests/dbspec/syntax.json. */
-type SyntaxVectors = { version: 1; note: string; cases: { id: string; tokens: [number, number, number, string][] }[] };
-
 /** The vector files by the name of their schema. */
-type Vectors = { ddl: DdlVectors; plans: PlanVectors; mermaid: MermaidVectors; syntax: SyntaxVectors };
+type Vectors = { ddl: DdlVectors; plans: PlanVectors; mermaid: MermaidVectors };
 
 // The compare runners of every language report a refused vector file in one form, "<file>: <location> <problem>", where
 // the location is the dotted path of the value (`canonical[0].documents.shop`) and the problem one of a fixed set

@@ -61,9 +61,9 @@ owner 판정:
        유지한다.
    - **ORES-12** comment 위치는 token에만 있고 `DbspecDocument`에는 없다. token은 highlight에 쓰이고, 선언
      위치는 parse 결과에서 문서와 나란히 있다(T128-3p).
-   - **ORES-13** vector: `tests/dbspec/syntax.json`이 `cases.json`의 canonical, normalize, invalid, sets, hashes
-     case를 다룬다. `files` case(byte)는 readFile과 readBytes에 남는다. vector는 TS로 한 번 생성해
-     검토한 뒤 고정한다; 여섯 구현 모두 정확히 일치해야 한다.
+   - **ORES-13** vector: `tests/dbspec/canonical.json`, `normalize.json`, `invalid.json`, `hashes.json`, `sets.json`
+     다섯 recipe의 analyze step이 모든 문서의 token을 준다. `files` case(byte)는 readFile과 readBytes에 남는다.
+     recipe는 사람이 관리하고 검토하는 데이터이며, 여섯 runtime이 모두 실행해 정확히 일치해야 한다.
 3. **formatting: 여섯 구현 모두의 `format(text, set)` = `emit(parse(text, set))`.**
    - **ORES-14** 진단이 있는 문서는 거절하며, 다시 쓰지 않는다.
    - 불변식:

@@ -328,12 +328,9 @@
         "packages/php/tests/dbspec-php-interface-program.php",
         "packages/php/tests/dbspec_analysis_cases.php",
         "packages/php/tests/dbspec_behaviour.php",
-        "packages/php/tests/dbspec_cases.php",
         "packages/php/tests/dbspec_limit_cases.php",
         "packages/php/tests/dbspec_plan_cases.php",
         "packages/php/tests/dbspec_set_cases.php",
-        "packages/php/tests/dbspec_sets_cases.php",
-        "packages/php/tests/dbspec_syntax_vectors.php",
         "packages/php/tests/dbspec_verify_errors_case.php",
         "packages/php/tests/deadlock_child.php",
         "packages/php/tests/extension_run_guard.php",
@@ -380,10 +377,6 @@
         "pattern": "^    public const (\\w+) = '\\w+';$"
       },
       "internal": [
-        {
-          "glob": "packages/php/tests/DbspecTest.php",
-          "reason": "harness: the strict reader of tests/dbspec/cases.json (hashes and sets envelope), refusing missing and unknown fields; it does not call the PHP dbspec client, the same as the Go and Python cases-reader tests"
-        },
         {
           "glob": "packages/php/tests/DbspecCatalogChecksTest.php",
           "reason": "test: directly exercises the @internal Dbspec\\CatalogChecks adapter; accepted and rejected check introspection remains covered across all clients by dbspec-introspect cases"
@@ -573,10 +566,6 @@
       },
       "internal": [
         {
-          "glob": "packages/php-ext/tests/DbspecTestExtensionTest.php",
-          "reason": "harness: runs the strict reader of tests/dbspec/cases.json through the extension (DbspecTest); it does not call the PHP dbspec client"
-        },
-        {
           "glob": "packages/php-ext/tests/CodecCauseTest.php",
           "reason": "test: injects PHP YAML parser and dumper dependency failures through CodecYamlProbe to verify native wrapper codes and exact cause identity; shared codec vectors cover invalid caller input"
         },
@@ -643,7 +632,6 @@
         "packages/ts/tests/codec_case.mjs",
         "packages/ts/tests/conformance_case.mjs",
         "packages/ts/tests/coverage_case.mjs",
-        "packages/ts/tests/dbspec_case.mjs",
         "packages/ts/tests/introspect_case.mjs",
         "packages/ts/tests/markdown_cases.mjs",
         "packages/ts/tests/mermaid_case.mjs",
@@ -803,10 +791,6 @@
           "reason": "ecosystem: runs the host TypeScript compiler against temporary positive and negative full-text chain type fixtures; runtime full-text behavior is covered by fulltext-search"
         },
         {
-          "glob": "packages/ts/tests/syntax-vectors.mjs",
-          "reason": "harness: regenerates tests/dbspec/syntax.json from its cases and the built TypeScript analyzer to prevent fixture drift; cross-client analyzer results are exercised by dbspec-syntax"
-        },
-        {
           "glob": "packages/ts/tests/dbspec-unicode.mjs",
           "reason": "generated: exhaustively checks the private generated Unicode range table against its own membership predicate; shared syntax vectors cover parser behavior"
         },
@@ -873,10 +857,6 @@
           "reason": "harness: tests the Python feature-coverage runner’s case selection, database iteration and result events; client behavior is exercised by the declared feature owner cases"
         },
         {
-          "glob": "packages/python/tests/test_dbspec_cases_reader.py",
-          "reason": "harness: validates the shared dbspec test-vector envelope consumed by client test runners; it does not call the Python dbspec client"
-        },
-        {
           "glob": "packages/python/tests/test_dbspec_introspect_support.py",
           "reason": "harness: tests the Python introspection fixture statement adapter used by dbspec tests; it does not exercise public introspection behavior"
         },
@@ -887,10 +867,6 @@
         {
           "glob": "packages/python/tests/test_testcase.py",
           "reason": "harness: tests Python testcase discovery, reporting and deadline behavior; it does not exercise ORM client behavior"
-        },
-        {
-          "glob": "packages/python/tests/test_dbspec_syntax_file.py",
-          "reason": "harness: checks that syntax.json and cases.json have corresponding fixture ids; it does not run the Python analyzer"
         },
         {
           "glob": "packages/python/tests/test_python_natives.py",
@@ -923,7 +899,6 @@
         "packages/python/tests/conformance_case.py",
         "packages/python/tests/coverage_case.py",
         "packages/python/tests/dbspec_apply_runner.py",
-        "packages/python/tests/dbspec_cases_reader.py",
         "packages/python/tests/dbspec_introspect_runner.py",
         "packages/python/tests/dbspec_mermaid.py",
         "packages/python/tests/dbspec_plans.py",
@@ -1871,6 +1846,18 @@
             {
               "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
               "id": "a listed file that fails the byte check is a diagnostic and is not in the set"
+            }
+          ]
+        },
+        {
+          "id": "language-sets-repeated-document-name-refusal",
+          "requirements": [
+            "DBS-99"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-language/tests/vectors.test.mjs",
+              "id": "sets repeated-document-name is refused by resolveSet with its name.duplicate diagnostics"
             }
           ]
         }
@@ -3971,43 +3958,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/manifest_test.go",
-          "id": "TestDocumentSets/repeated-document-name"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/dbspec/manifest_test.go",
-          "id": "TestManifestRejectsRepeatedDocumentName"
+          "test": "packages/go/orm/recipe_sets_test.go",
+          "id": "TestRecipeSetsNone/repeated-document-name"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecManifestTest.php",
-          "id": "DbspecManifestTest::testRepeatedName"
+          "test": "packages/php/tests/SetsRecipeTest.php",
+          "id": "SetsRecipeTest::testNone with data set \"repeated-document-name\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecManifestTestExtensionTest.php",
-          "id": "DbspecManifestTestExtensionTest::testRepeatedName"
+          "test": "packages/php-ext/tests/SetsRecipeTestExtensionTest.php",
+          "id": "SetsRecipeTestExtensionTest::testNone with data set \"repeated-document-name\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-sets.mjs",
+          "test": "packages/ts/tests/recipe_sets.mjs",
           "id": "repeated-document-name"
         },
         {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec.mjs",
-          "id": "manifest rejects a repeated document name"
-        },
-        {
           "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_sets.py",
+          "test": "packages/python/tests/recipe_sets.py",
           "id": "repeated-document-name"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_manifest.rs",
-          "id": "set_vectors::repeated-document-name"
+          "test": "packages/rust/tests/tests/sets_none.rs",
+          "id": "sets_none::repeated-document-name"
         }
       ]
     },
@@ -10684,7 +10661,11 @@
         "DBS-129",
         "DBS-130",
         "DBS-131",
-        "DBS-132"
+        "DBS-132",
+        "DBS-133",
+        "ORES-1",
+        "ORES-3",
+        "ORES-13"
       ],
       "file": "tests/dbspec/canonical.json",
       "cases": "$.cases[*].id",
@@ -10742,7 +10723,8 @@
         "DBS-129",
         "DBS-130",
         "DBS-131",
-        "DBS-132"
+        "DBS-132",
+        "ORES-13"
       ],
       "file": "tests/dbspec/normalize.json",
       "cases": "$.cases[*].id",
@@ -10855,7 +10837,20 @@
         "DBS-169",
         "DBS-170",
         "DBS-171",
-        "ORES-56"
+        "ORES-56",
+        "ORES-4",
+        "ORES-5",
+        "DBS-136",
+        "ORES-6",
+        "DBS-137",
+        "ORES-7",
+        "ORES-8",
+        "ORES-9",
+        "DBS-138",
+        "ORES-10",
+        "DBS-139",
+        "ORES-11",
+        "ORES-13"
       ],
       "file": "tests/dbspec/invalid.json",
       "cases": "$.cases[*].id",
@@ -10902,38 +10897,39 @@
         "DBS-100",
         "DBS-102",
         "DBS-103",
-        "DIA-97"
+        "DIA-97",
+        "ORES-13"
       ],
-      "file": "tests/dbspec/cases.json",
-      "cases": "$.hashes[*].id",
+      "file": "tests/dbspec/hashes.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/manifest_test.go",
-          "symbol": "TestManifestVectors"
+          "test": "packages/go/orm/recipe_hashes_test.go",
+          "symbol": "TestRecipeHashesNone"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecManifestTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecManifestTest::testHashes"
+          "test": "packages/php/tests/HashesRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\HashesRecipeTest::testNone"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecManifestTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecManifestTestExtensionTest::testHashes"
+          "test": "packages/php-ext/tests/HashesRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\HashesRecipeTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-hashes.mjs"
+          "test": "packages/ts/tests/recipe_hashes.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_hashes.py"
+          "test": "packages/python/tests/recipe_hashes.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_manifest.rs",
-          "symbol": "manifest_vectors"
+          "test": "packages/rust/tests/tests/hashes_none.rs",
+          "symbol": "hashes_none"
         }
       ]
     },
@@ -10947,38 +10943,39 @@
         "DBS-101",
         "DBS-105",
         "DBS-106",
-        "DBS-168"
+        "DBS-168",
+        "ORES-13"
       ],
-      "file": "tests/dbspec/cases.json",
-      "cases": "$.sets[*].id",
+      "file": "tests/dbspec/sets.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecManifestTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecManifestTestExtensionTest::testSets"
-        },
-        {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/manifest_test.go",
-          "symbol": "TestDocumentSets"
+          "test": "packages/go/orm/recipe_sets_test.go",
+          "symbol": "TestRecipeSetsNone"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecManifestTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecManifestTest::testSets"
+          "test": "packages/php/tests/SetsRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\SetsRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/SetsRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\SetsRecipeTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-sets.mjs"
+          "test": "packages/ts/tests/recipe_sets.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_sets.py"
+          "test": "packages/python/tests/recipe_sets.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_manifest.rs",
-          "symbol": "set_vectors"
+          "test": "packages/rust/tests/tests/sets_none.rs",
+          "symbol": "sets_none"
         }
       ]
     },
@@ -11145,62 +11142,6 @@
           "implementation": "rust",
           "test": "packages/rust/schema/tests/dbspec_set.rs",
           "symbol": "shared_set_file_vectors"
-        }
-      ]
-    },
-    {
-      "id": "dbspec-syntax",
-      "kind": "suite",
-      "requirements": [
-        "DBS-133",
-        "DBS-134",
-        "DBS-135",
-        "DBS-136",
-        "DBS-137",
-        "DBS-138",
-        "DBS-139",
-        "ORES-1",
-        "ORES-3",
-        "ORES-4",
-        "ORES-5",
-        "ORES-6",
-        "ORES-7",
-        "ORES-8",
-        "ORES-9",
-        "ORES-10",
-        "ORES-11",
-        "ORES-13"
-      ],
-      "file": "tests/dbspec/syntax.json",
-      "cases": "$.cases[*].id",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/dbspec/syntax_vectors_test.go",
-          "symbol": "TestSharedSyntaxVectors"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecAnalyzeTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecAnalyzeTest::testSyntax"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecAnalyzeTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecAnalyzeTestExtensionTest::testSyntax"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-syntax.mjs"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_syntax_vectors.py"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec.rs",
-          "symbol": "shared_dbspec_syntax"
         }
       ]
     },

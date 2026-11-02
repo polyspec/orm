@@ -236,6 +236,16 @@ func checkDBSpec(s step, dir, database string) error {
 				}
 			}
 		}
+	case "dbspec.set":
+		var want struct {
+			Diagnostics []setDiagnostic `json:"diagnostics"`
+			Manifest    *setManifest    `json:"manifest"`
+			Created     []string        `json:"created"`
+		}
+		if err := json.Unmarshal(raw, &want); err != nil {
+			return err
+		}
+		return checkSet(s, want.Diagnostics, want.Manifest, want.Created)
 	case "dbspec.read_file", "dbspec.read_bytes":
 		var want struct {
 			Errors []struct {
@@ -398,6 +408,152 @@ func checkTokens(tokens []dbspec.Token, want [][4]any) error {
 	}
 	if len(got) != len(want) || (len(got) > 0 && !reflect.DeepEqual(got, want)) {
 		return fmt.Errorf("tokens:\n got %v\nwant %v", got, want)
+	}
+	return nil
+}
+
+// setDiagnostic is one expected diagnostic of dbspec.set.
+type setDiagnostic struct {
+	Rule   string `json:"rule"`
+	Line   int    `json:"line"`
+	Column int    `json:"column"`
+}
+
+// setManifest is the expected manifest of dbspec.set: its texts and hashes, and external_text when it is given.
+type setManifest struct {
+	ManifestText string  `json:"manifest_text"`
+	ExternalText *string `json:"external_text"`
+	SchemaText   string  `json:"schema_text"`
+	ManifestHash string  `json:"manifest_hash"`
+	SchemaHash   string  `json:"schema_hash"`
+}
+
+// headerName is the name of a document, the third word of its header line.
+func headerName(text string) string {
+	fields := strings.Fields(strings.SplitN(text, "\n", 2)[0])
+	if len(fields) < 3 {
+		return ""
+	}
+	return fields[2]
+}
+
+// splitDocuments splits a manifest or external text into its document texts at each header line.
+func splitDocuments(text string) []string {
+	var out []string
+	for text != "" {
+		end := strings.Index(text, "\ndbspec ")
+		if end < 0 {
+			return append(out, text)
+		}
+		out = append(out, text[:end+1])
+		text = text[end+1:]
+	}
+	return out
+}
+
+// createdTables is the table names that the CREATE TABLE statements create.
+func createdTables(statements []string) []string {
+	var out []string
+	for _, s := range statements {
+		if rest, ok := strings.CutPrefix(s, "CREATE TABLE "); ok {
+			name, _, _ := strings.Cut(rest, " ")
+			out = append(out, strings.Trim(name, "`\""))
+		}
+	}
+	return out
+}
+
+// checkSet runs dbspec.set. The owned texts, then the external texts, are parsed each against the other texts and the
+// parsing texts, and ManifestOf builds the set's manifest. A refused set (diagnostics not empty) expects those diagnostics
+// from ManifestOf and from each dialect of Render, and no statements. A built set expects its texts and hashes when
+// manifest is given, parses its manifest and external texts back as a set without diagnostics, gives the same manifest
+// in the reversed order, and renders non-empty statements in each dialect that create the tables of created.
+func checkSet(s step, diagnostics []setDiagnostic, manifest *setManifest, created []string) error {
+	all := append(slices.Clone(s.Owned), s.External...)
+	documents := make([]*dbspec.Document, 0, len(all))
+	for i, text := range all {
+		set := map[string]string{}
+		for name, other := range s.Parsing {
+			set[name] = other
+		}
+		for j, other := range all {
+			if j != i {
+				set[headerName(other)] = other
+			}
+		}
+		document, _, parseDiagnostics := dbspec.Parse(text, set)
+		if len(parseDiagnostics) > 0 {
+			return fmt.Errorf("document %d: %s", i+1, runtimemodel.DiagnosticsError(parseDiagnostics))
+		}
+		document.External = i >= len(s.Owned)
+		documents = append(documents, document)
+	}
+	built, refusals := dbspec.ManifestOf(documents)
+	if err := sameDiagnostics(diagnostics, refusals); err != nil {
+		return fmt.Errorf("manifest: %w", err)
+	}
+	refused := len(diagnostics) > 0
+	if refused == (built != nil) {
+		return fmt.Errorf("manifest built: %v for %d expected diagnostics", built != nil, len(diagnostics))
+	}
+	for _, dialect := range []dbspec.Dialect{dbspec.DialectMySQL, dbspec.DialectPostgres, dbspec.DialectSQLite} {
+		statements, renderDiagnostics := dbspec.Render(documents, dialect)
+		if refused {
+			if err := sameDiagnostics(diagnostics, renderDiagnostics); err != nil {
+				return fmt.Errorf("render %s: %w", dialect, err)
+			}
+			if len(statements) != 0 {
+				return fmt.Errorf("render %s: %d statements for a refused set", dialect, len(statements))
+			}
+			continue
+		}
+		if len(renderDiagnostics) > 0 || len(statements) == 0 {
+			return fmt.Errorf("render %s: %d statements with %s", dialect, len(statements), runtimemodel.DiagnosticsError(renderDiagnostics))
+		}
+		if created != nil && !slices.Equal(createdTables(statements), created) {
+			return fmt.Errorf("render %s creates %v, want %v", dialect, createdTables(statements), created)
+		}
+	}
+	if refused {
+		return nil
+	}
+	if manifest != nil {
+		for _, field := range []struct{ name, got, want string }{
+			{"manifest_text", built.ManifestText, manifest.ManifestText},
+			{"schema_text", built.SchemaText, manifest.SchemaText},
+			{"manifest_hash", built.ManifestHash, manifest.ManifestHash},
+			{"schema_hash", built.SchemaHash, manifest.SchemaHash},
+		} {
+			if field.got != field.want {
+				return fmt.Errorf("%s:\n%s\nwant\n%s", field.name, field.got, field.want)
+			}
+		}
+		if manifest.ExternalText != nil && built.ExternalText != *manifest.ExternalText {
+			return fmt.Errorf("external_text:\n%s\nwant\n%s", built.ExternalText, *manifest.ExternalText)
+		}
+	}
+	for _, r := range dbspec.ParseSet(splitDocuments(built.ManifestText), splitDocuments(built.ExternalText)) {
+		if len(r.Diagnostics) > 0 {
+			return fmt.Errorf("manifest and external text of %s do not parse back: %v", r.Name, r.Diagnostics)
+		}
+	}
+	slices.Reverse(documents)
+	reversed, _ := dbspec.ManifestOf(documents)
+	if reversed == nil || reversed.ManifestHash != built.ManifestHash || reversed.SchemaHash != built.SchemaHash {
+		return fmt.Errorf("the manifest of the reversed set differs")
+	}
+	return nil
+}
+
+// sameDiagnostics checks that got has the rule, line and column of each expected diagnostic, in order.
+func sameDiagnostics(want []setDiagnostic, got []dbspec.Diagnostic) error {
+	if len(got) != len(want) {
+		return fmt.Errorf("diagnostics %v, want %v", got, want)
+	}
+	for i := range want {
+		if string(got[i].Rule) != want[i].Rule || got[i].Line != want[i].Line || got[i].Column != want[i].Column {
+			return fmt.Errorf("diagnostics %v, want %v", got, want)
+		}
 	}
 	return nil
 }

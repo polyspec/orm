@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Tests;
 
 // Syntax analysis and formatting (docs/spec/dbspec.md "Syntax analysis", "Formatting") through the PHP client:
-// focused token cases, the shared syntax vectors of
-// tests/dbspec/syntax.json, and the limit stop.
+// focused token cases and the limit stop.
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
@@ -64,28 +63,5 @@ class DbspecAnalyzeTest extends TestCase
             'analyze/limit-no-tokens: the last diagnostic must be the limit'
         );
         cpuCaseEnd('analyze/limit-no-tokens', $clock);
-    }
-
-    public static function syntaxCases(): iterable
-    {
-        return dbspec_syntax_sets(dirname(__DIR__, 3), dbspec_read_cases());
-    }
-
-    // The shared syntax vectors: the tokens of every case of tests/dbspec/syntax.json, exactly.
-    // Requirements: ORES-1.
-    #[DataProvider('syntaxCases')]
-    public function testSyntax(?array $want, string $text, array $documents): void
-    {
-        $this->assertNotNull($want, $this->dataName() . ': syntax.json has no tokens for this case');
-        $this->assertSame($want, self::tokens($text, $documents), $this->dataName() . ': tokens differ');
-    }
-
-    public function testSyntaxCasesAreProduced(): void
-    {
-        $this->assertSame(
-            [],
-            dbspec_syntax_unproduced(dirname(__DIR__, 3), dbspec_read_cases()),
-            'syntax.json has cases that the inputs do not produce'
-        );
     }
 }

@@ -231,6 +231,7 @@ fn dbspec_step(step: &Value, dir: &Path, database: &str) -> Result<(), String> {
         }
         "dbspec.format" => dbspec_format(step, want),
         "dbspec.parse_set" => dbspec_parse_set(step, want),
+        "dbspec.set" => dbspec_set(step, want),
         "dbspec.read_file" | "dbspec.read_bytes" => dbspec_read(step, dir, want),
         other => Err(format!("OP_UNKNOWN {other}")),
     }
@@ -346,6 +347,141 @@ fn dbspec_format(step: &Value, want: &Value) -> Result<(), String> {
         Ok(again) => Err(format!("the format of the formatted text differs:\n{again}")),
         Err(diagnostics) => Err(format!("the formatted text is refused: {diagnostics:?}")),
     }
+}
+
+/// The name of a document: the third word of its header line.
+fn header_name(text: &str) -> String {
+    text.split('\n').next().unwrap_or_default().split_whitespace().nth(2).unwrap_or_default().to_owned()
+}
+
+/// The document texts of a manifest or external text: each starts at a line that begins with `dbspec `.
+fn split_documents(text: &str) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for line in text.split_inclusive('\n') {
+        if out.is_empty() || line.starts_with("dbspec ") {
+            out.push(String::new());
+        }
+        out.last_mut().expect("a document").push_str(line);
+    }
+    out
+}
+
+/// The table names that the CREATE TABLE statements create, in statement order.
+fn created_tables(statements: &[String]) -> Vec<String> {
+    statements
+        .iter()
+        .filter_map(|s| s.strip_prefix("CREATE TABLE "))
+        .map(|rest| rest.split(' ').next().unwrap_or_default().trim_matches(|c| c == '`' || c == '"').to_owned())
+        .collect()
+}
+
+/// Checks that the errors have the rule, line and column of each expected diagnostic, in order, each with a message.
+fn same_diagnostics(want: &[Value], got: &[dbspec::Diagnostic]) -> Result<(), String> {
+    let values = diagnostic_values(got);
+    if values != want {
+        return Err(format!("diagnostics = {values:?}, want {want:?}"));
+    }
+    if got.iter().any(|e| e.message.is_empty()) {
+        return Err("a diagnostic has no message".to_owned());
+    }
+    Ok(())
+}
+
+/// The dbspec.set op (the port of checkSet of packages/go/internal/recipe/dbspec.go). The owned texts, then the external
+/// texts, are parsed each against the other texts and the parsing texts, and dbspec::manifest builds the set's manifest.
+/// A refused set (expect diagnostics not empty) expects those diagnostics from the manifest and from each dialect of render,
+/// and no manifest and no statements. A built set expects its texts and hashes when expect.manifest is given, parses its
+/// manifest and external texts back as a set without diagnostics, gives the same hashes in the reversed order, and renders
+/// statements in each dialect that create the tables of expect.created.
+fn dbspec_set(step: &Value, want: &Value) -> Result<(), String> {
+    let owned = strings_of(&step["owned"]);
+    let external = strings_of(&step["external"]);
+    let parsing: BTreeMap<String, String> = step["parsing"]
+        .as_object()
+        .map(|map| map.iter().map(|(name, text)| (name.clone(), text.as_str().unwrap_or_default().to_owned())).collect())
+        .unwrap_or_default();
+    let all: Vec<String> = owned.iter().chain(external.iter()).cloned().collect();
+    let mut documents = Vec::with_capacity(all.len());
+    for (i, text) in all.iter().enumerate() {
+        let mut set = parsing.clone();
+        for (j, other) in all.iter().enumerate() {
+            if j != i {
+                set.insert(header_name(other), other.clone());
+            }
+        }
+        let parsed = dbspec::parse(text, &set).map_err(|errors| format!("document {}: {errors:?}", i + 1))?;
+        let mut document = parsed.document;
+        document.external = i >= owned.len();
+        documents.push(document);
+    }
+    let references: Vec<&Document> = documents.iter().collect();
+    let want_diagnostics: Vec<Value> = want["diagnostics"].as_array().cloned().unwrap_or_default();
+    let refused = !want_diagnostics.is_empty();
+    let built = dbspec::manifest(&references);
+    match &built {
+        Err(errors) => same_diagnostics(&want_diagnostics, errors)?,
+        Ok(_) if refused => return Err("the set has no diagnostics, want the expected ones".to_owned()),
+        Ok(_) => {}
+    }
+    for (name, dialect) in [("mysql", Dialect::MySql), ("postgres", Dialect::Postgres), ("sqlite", Dialect::Sqlite)] {
+        let rendered = dbspec::render(&references, dialect);
+        if refused {
+            match rendered {
+                Err(errors) => same_diagnostics(&want_diagnostics, &errors).map_err(|e| format!("render {name}: {e}"))?,
+                Ok(_) => return Err(format!("render {name}: statements for a refused set")),
+            }
+            continue;
+        }
+        let statements = rendered.map_err(|errors| format!("render {name}: {errors:?}"))?;
+        if statements.is_empty() {
+            return Err(format!("render {name}: no statements"));
+        }
+        if let Some(created) = want["created"].as_array() {
+            let want_created: Vec<String> = created.iter().filter_map(|x| x.as_str().map(str::to_owned)).collect();
+            if created_tables(&statements) != want_created {
+                return Err(format!("tables that {name} creates: {:?}, want {want_created:?}", created_tables(&statements)));
+            }
+        }
+    }
+    if refused {
+        return Ok(());
+    }
+    let manifest = built.map_err(|errors| format!("{errors:?}"))?;
+    let want_manifest = &want["manifest"];
+    if !want_manifest.is_null() {
+        let field = |key: &str| want_manifest[key].as_str().unwrap_or_default();
+        for (key, got, want) in [
+            ("manifest_text", manifest.manifest_text.as_str(), field("manifest_text")),
+            ("schema_text", manifest.schema_text.as_str(), field("schema_text")),
+            ("manifest_hash", manifest.manifest_hash.as_str(), field("manifest_hash")),
+            ("schema_hash", manifest.schema_hash.as_str(), field("schema_hash")),
+        ] {
+            if got != want {
+                return Err(format!("{key}:\n{got}\nwant\n{want}"));
+            }
+        }
+        if let Some(text) = want_manifest["external_text"].as_str() {
+            if manifest.external_text != text {
+                return Err(format!("external_text:\n{}\nwant\n{text}", manifest.external_text));
+            }
+        }
+    }
+    // The manifest and external text parse back as a set without diagnostics (docs/spec/dbspec.md "Manifest and hashes").
+    let owned_texts = split_documents(&manifest.manifest_text);
+    let external_texts = split_documents(&manifest.external_text);
+    let owned_refs: Vec<&str> = owned_texts.iter().map(String::as_str).collect();
+    let external_refs: Vec<&str> = external_texts.iter().map(String::as_str).collect();
+    for r in dbspec::parse_set(&owned_refs, &external_refs) {
+        if !r.diagnostics.is_empty() {
+            return Err(format!("manifest and external text of {:?}: {:?}", r.name, r.diagnostics));
+        }
+    }
+    let reversed: Vec<&Document> = references.iter().rev().copied().collect();
+    let again = dbspec::manifest(&reversed).map_err(|errors| format!("the reversed set: {errors:?}"))?;
+    if again.manifest_hash != manifest.manifest_hash || again.schema_hash != manifest.schema_hash {
+        return Err("the manifest of the reversed set differs".to_owned());
+    }
+    Ok(())
 }
 
 /// The dbspec.parse_set op: the owned and external texts parse as one set, and each result has the expect's name, external

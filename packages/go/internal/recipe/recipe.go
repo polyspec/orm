@@ -59,6 +59,7 @@ type step struct {
 	CRLF     bool                       `json:"crlf"`
 	Mixed    bool                       `json:"mixed"`
 	Owned    []string                   `json:"owned"`
+	Parsing  map[string]string          `json:"parsing"`
 	External []string                   `json:"external"`
 	Path     string                     `json:"path"`
 	Expect   map[string]json.RawMessage `json:"expect"`

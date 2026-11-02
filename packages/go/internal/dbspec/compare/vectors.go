@@ -9,14 +9,24 @@ import (
 // The vector files as their schemas declare them (tests/dbspec/schema); readVectors has checked every field before it
 // decodes one, so these readers check only what a schema cannot state.
 
-type caseFile struct {
-	Hashes []hashCase `json:"hashes"`
-	Sets   []struct {
-		ID        string              `json:"id"`
-		Documents [][]string          `json:"documents"`
-		Parsing   map[string][]string `json:"parsing"`
-		External  [][]string          `json:"external"`
-	} `json:"sets"`
+// setRecipeFile is the part of tests/dbspec/hashes.json and sets.json that the compare tool reads: the owned texts of
+// the set step of each case, and each analyze step with its text and the set it is analyzed against.
+type setRecipeFile struct {
+	Cases []struct {
+		ID    string `json:"id"`
+		Steps []struct {
+			Op    string              `json:"op"`
+			Owned []string            `json:"owned"`
+			Text  []string            `json:"text"`
+			Set   map[string][]string `json:"set"`
+		} `json:"steps"`
+	} `json:"cases"`
+}
+
+// analysis is one analyze step of a set recipe file, with the id that the compare output names it by.
+type analysis struct {
+	id    string
+	input syntaxInput
 }
 
 // recipeFile is the part of a recipe file of tests/dbspec that the compare tool reads: its cases and their steps.
@@ -86,17 +96,11 @@ func readFiles(dir string) ([]fileCase, error) {
 	return files, nil
 }
 
-// readCases reads tests/dbspec/cases.json against its schema, then reads the recipe files of the same directory for
-// the canonical, normalize, invalid, positions and files cases. It refuses a sets document whose header names no
-// document, which the schema cannot state.
-func readCases(path string) (sharedCases, error) {
-	var file caseFile
-	r, err := readVectors(path, "cases", &file)
-	if err != nil {
-		return sharedCases{}, err
-	}
-	dir := filepath.Dir(path)
-	all := sharedCases{Hashes: file.Hashes}
+// readCases reads the recipe files of tests/dbspec in dir: the canonical, normalize, invalid, positions and files cases,
+// the hashes of hashes.json, and the analyses of sets.json and hashes.json in the order of syntax.json.
+func readCases(dir string) (sharedCases, error) {
+	var err error
+	all := sharedCases{}
 	for _, section := range []struct {
 		name string
 		op   string
@@ -116,16 +120,14 @@ func readCases(path string) (sharedCases, error) {
 	if all.Files, err = readFiles(dir); err != nil {
 		return all, err
 	}
-	for i, c := range file.Sets {
-		s := setCase{ID: c.ID, Parsing: c.Parsing}
-		if s.Documents, err = r.namedDocuments(c.Documents, fmt.Sprintf("sets[%d].documents", i)); err != nil {
-			return all, err
-		}
-		if s.External, err = r.namedDocuments(c.External, fmt.Sprintf("sets[%d].external", i)); err != nil {
-			return all, err
-		}
-		all.Sets = append(all.Sets, s)
+	var setAnalyses, hashAnalyses []analysis
+	if all.Hashes, hashAnalyses, err = readSetRecipe(dir, "hashes.json", "hashes"); err != nil {
+		return all, err
 	}
+	if _, setAnalyses, err = readSetRecipe(dir, "sets.json", "sets"); err != nil {
+		return all, err
+	}
+	all.Analyses = append(setAnalyses, hashAnalyses...)
 	return all, nil
 }
 
@@ -153,23 +155,52 @@ func headerName(lines []string) (string, bool) {
 	return words[2], true
 }
 
-// readSyntax reads the case ids of tests/dbspec/syntax.json in file order. The expected tokens are the runtime
-// tests' to check; this runner compares what each client gives.
-func readSyntax(path string) (vectorReader, []string, error) {
-	var file struct {
-		Cases []struct {
-			ID string `json:"id"`
-		} `json:"cases"`
+// readSetRecipe reads tests/dbspec/<name> (hashes.json or sets.json) against the recipe schema. Its analyses are returned
+// in file order with the ids that syntax.json gave them: sets.<case>.<n>, n being the place of the analyzed document in
+// the set, and hashes.<case>.<name>, name being the header name of the analyzed document. A hashes case's documents
+// are the owned texts of its set step, each named by its header.
+func readSetRecipe(dir, name, kind string) ([]hashCase, []analysis, error) {
+	var file setRecipeFile
+	if err := readRecipeFile(filepath.Join(dir, name), &file); err != nil {
+		return nil, nil, err
 	}
-	r, err := readVectors(path, "syntax", &file)
-	if err != nil {
-		return r, nil, err
+	var cases []hashCase
+	var analyses []analysis
+	for _, c := range file.Cases {
+		var documents map[string][]string
+		n := 0
+		for _, step := range c.Steps {
+			switch step.Op {
+			case "dbspec.set":
+				documents = map[string][]string{}
+				for _, text := range step.Owned {
+					lines := strings.Split(strings.TrimSuffix(text, "\n"), "\n")
+					header, ok := headerName(lines)
+					if !ok {
+						return nil, nil, fmt.Errorf("%s: case %s has a document without a header name", name, c.ID)
+					}
+					documents[header] = lines
+				}
+			case "dbspec.analyze":
+				n++
+				set := map[string]string{}
+				for other, lines := range step.Set {
+					set[other] = join(lines, false, false)
+				}
+				in := syntaxInput{Text: join(step.Text, false, false), Documents: set}
+				id := fmt.Sprintf("%s.%s.%d", kind, c.ID, n)
+				if kind == "hashes" {
+					header, _ := headerName(step.Text)
+					id = "hashes." + c.ID + "." + header
+				}
+				analyses = append(analyses, analysis{id: id, input: in})
+			}
+		}
+		if kind == "hashes" {
+			cases = append(cases, hashCase{ID: c.ID, Documents: documents})
+		}
 	}
-	ids := make([]string, len(file.Cases))
-	for i, c := range file.Cases {
-		ids[i] = c.ID
-	}
-	return r, ids, nil
+	return cases, analyses, nil
 }
 
 // readDDL reads the cases of tests/dbspec/ddl.json.

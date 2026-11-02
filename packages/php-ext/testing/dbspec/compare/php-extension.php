@@ -4,23 +4,22 @@ declare(strict_types=1);
 
 // With the PHP extension polyspec_orm (Polyspec\Orm\Dbspec\Dbspec), all shared cases, stress documents, statement
 // vectors, plan vectors, and Mermaid vector results print in the line format of tests/dbspec/compare/check.mts. The
-// output is written by the same function as the PHP client's runner (php.php). It then prints the positions cases of
-// cases.json and the analysis and format of each case of syntax.json.
+// output is written by the same function as the PHP client's runner (php.php), with the positions cases and the analysis of
+// the recipe files of tests/dbspec.
 //
-// Usage: php -d extension=<polyspec_orm library> packages/php-ext/testing/dbspec/compare/php-extension.php <cases.json>
-// <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
+// Usage: php -d extension=<polyspec_orm library> packages/php-ext/testing/dbspec/compare/php-extension.php <tests/dbspec dir>
+// <stress document> <ddl.json> <plans.json> <mermaid.json>
 
 require __DIR__ . '/../../../../../tests/dbspec/input.php';
 require __DIR__ . '/../../../../../vendor-php/autoload.php';
 require __DIR__ . '/../../../../../tests/dbspec/vectors.php';
-require __DIR__ . '/../../../../../tests/dbspec/cases.php';
 require __DIR__ . '/../../../../php/testing/dbspec/compare/php-interface.php';
 
-if ($argc !== 7) {
+if ($argc !== 6) {
     fwrite(
         STDERR,
         "usage: php -d extension=<polyspec_orm library> packages/php-ext/testing/dbspec/compare/php-extension.php "
-        . "<cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>\n"
+        . "<tests/dbspec dir> <stress document> <ddl.json> <plans.json> <mermaid.json>\n"
     );
     exit(2);
 }

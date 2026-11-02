@@ -1,5 +1,5 @@
-// Compares five dbspec implementations (Go, PHP, TypeScript, Rust client, and the PHP extension). The runners of the four clients read the shared case,
-// stress document, statement vectors, plan vectors, and Mermaid vectors, and print for each case its name and its emission: manifest or rendered
+// Compares six dbspec runners (Go, PHP, TypeScript, Python, Rust client, and the PHP extension). The runners read the recipe directory
+// tests/dbspec, the stress document, statement vectors, plan vectors, and Mermaid vectors, and print for each case its name and its emission: manifest or rendered
 // statements ("| " and "= " lines) or diagnostics ("! rule line column"). A stress
 // document re-emitted unchanged prints "= unchanged". A plan case prints the emitted plan, then
 // "<name>/changes" and "| kind table name" lines, then "<name>/<dialect>" and the statements.
@@ -9,14 +9,14 @@
 // end. A Mermaid export case ends with the Mermaid text and the missing objects (without a reason
 // ("= kind<TAB>table<TAB>name") or the document's diagnostics, and import and invalid cases print the emitted
 // document and the missing objects or diagnostics, and a round trip case prints the document's export and then
-// "<name>/import" and the import of that export. Each positions case of positions.json (beside cases.json) prints the declaration positions
-// of its main document ("| kind<TAB>line<TAB>column<TAB>path..." lines) or its diagnostics. Each case of syntax.json
-// prints, from the input of the recipes beside cases.json that its id names, the tokens of the analysis ("| line start end class") and
+// "<name>/import" and the import of that export. Each positions case of positions.json (in the directory) prints the declaration positions
+// of its main document ("| kind<TAB>line<TAB>column<TAB>path..." lines) or its diagnostics. Each analysis of hashes.json and
+// sets.json prints, from its text and set, the tokens of the analysis ("| line start end class") and
 // its diagnostics, then "syntax/<id>/format" and the formatted text or the diagnostics of the refusal. Each runner runs twice
 // and all output must match the first Go output.
 //
-// The document cases are read from the recipe files beside cases.json.
-// Usage: node tests/dbspec/compare/check.mts <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
+// The document cases and the set analyses are read from the recipe files of the tests/dbspec directory.
+// Usage: node tests/dbspec/compare/check.mts <tests/dbspec dir> <stress document> <ddl.json> <plans.json> <mermaid.json>
 // (after the TypeScript build, the debug build of the Rust example, and the build of the PHP extension)
 import { compare, type Output } from './compare.mts';
 import { runRunner, runners, type Runner } from './runners.mts';
@@ -26,8 +26,8 @@ import { COMPUTE, runCase } from '../../testcase.mts';
 // runner reads the stress document and six vector files.
 const TIMEOUT = 120000;
 const inputs = process.argv.slice(2);
-if (inputs.length !== 6) {
-  console.error('usage: node tests/dbspec/compare/check.mts <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>');
+if (inputs.length !== 5) {
+  console.error('usage: node tests/dbspec/compare/check.mts <tests/dbspec dir> <stress document> <ddl.json> <plans.json> <mermaid.json>');
   process.exit(2);
 }
 

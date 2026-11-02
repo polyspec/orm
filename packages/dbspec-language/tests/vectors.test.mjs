@@ -4,6 +4,7 @@
 // of every analyze step of those recipes and of every syntax vector equal the tokens of openDocument after the UTF-16
 // conversion. The documents of a sets case are written as a file tree with their set file and each takes its set from
 // resolveSet, so a case whose documents repeat a name runs too: resolveSet reports the repetition.
+// Requirements: DBS-99.
 //
 // Usage: node --test packages/dbspec-language/tests/vectors.test.mjs (after the build)
 import assert from 'node:assert/strict';
@@ -16,31 +17,17 @@ import { nodeSetHost } from '../dist/cli/host.js';
 import { parseDbspec } from '@polyspec/orm/dbspec';
 import { dbspecManifest } from '@polyspec/orm';
 import { codePointIndex, join, parserLines, utf16Index, vectorsFile } from './helpers.mjs';
-import { readCases } from '../../../tests/dbspec/cases.mts';
 
 // The deadline of one case; each case runs through caseTest so it reports its RUN, PASS or FAIL line.
 const TIMEOUT = 15000;
 const vector = (name, body) => caseTest(name, TIMEOUT, body);
 
 const { openDocument, resolveSet } = language;
-const cases = readCases();
-const syntax = vectorsFile('syntax.json');
+// The hashes and sets recipes: the owned documents of their dbspec.set step, and the analyze steps that give the tokens.
+const hashes = vectorsFile('hashes.json').cases;
+const sets = vectorsFile('sets.json').cases;
 // The document recipes: the cases of canonical, normalize and invalid documents, each with its format and analyze steps.
 const recipes = { canonical: vectorsFile('canonical.json').cases, normalize: vectorsFile('normalize.json').cases, invalid: vectorsFile('invalid.json').cases };
-
-/** The text of a document of a sets or hashes case, joined with the case's line ends. */
-function textOf(c, name) {
-  return join(c.documents[name], c.crlf === true, c.mixed === true);
-}
-
-/** The set of a case for one of its documents: the other documents by name. */
-function setOf(c, name) {
-  const set = {};
-  for (const other of Object.keys(c.documents)) {
-    if (other !== name) set[other] = textOf(c, other);
-  }
-  return set;
-}
 
 /** The set of a map of document name to text for one of its documents: the other documents by name. */
 function othersOf(texts, name) {
@@ -152,9 +139,10 @@ for (const [section, list] of [['canonical', recipes.canonical], ['normalize', r
   }
 }
 
-for (const c of cases.hashes) {
+// A hashes case formats each of its owned documents and keeps the hashes of the set.
+for (const c of hashes) {
   vector(`formatting keeps the hashes and is idempotent: ${c.id}`, () => {
-    checkFormatKeepsHashes(Object.fromEntries(Object.keys(c.documents).map(name => [name, textOf(c, name)])));
+    checkFormatKeepsHashes(Object.fromEntries(stepOf(c, 'dbspec.set').owned.map(text => [nameOf(text), text])));
   });
 }
 
@@ -171,64 +159,84 @@ for (const [section, list] of Object.entries(recipes)) {
   }
 }
 
+/** The name a document text declares in its header line. */
+function nameOf(text) {
+  return text.split('\n')[0].split(' ')[2];
+}
+
 /**
- * Writes the documents of a sets case as a file tree under a new temporary directory: the owned documents
+ * Writes the documents of a built sets case as a file tree under a new temporary directory: the owned documents
  * `set/<place>.dbs` listed in `set/dbspec-set.json`, the external documents `external/<place>.dbs` listed as
  * `../external/<place>.dbs`. Returns the tree root with `/` separators.
  */
-function setTree(c) {
+function setTree(step) {
   const root = mkdtempSync(joinPath(tmpdir(), 'dbspec-language-sets-')).replaceAll('\\', '/');
   mkdirSync(`${root}/set`);
   mkdirSync(`${root}/external`);
-  const documents = c.documents.map((lines, i) => {
-    writeFileSync(`${root}/set/${i + 1}.dbs`, join(lines, false));
+  const documents = step.owned.map((text, i) => {
+    writeFileSync(`${root}/set/${i + 1}.dbs`, text);
     return `${i + 1}.dbs`;
   });
-  const external = (c.external ?? []).map((lines, i) => {
-    writeFileSync(`${root}/external/${i + 1}.dbs`, join(lines, false));
+  const external = (step.external ?? []).map((text, i) => {
+    writeFileSync(`${root}/external/${i + 1}.dbs`, text);
     return `../external/${i + 1}.dbs`;
   });
   writeFileSync(`${root}/set/dbspec-set.json`, JSON.stringify({ schema: 1, documents, external }));
   return root;
 }
 
-/**
- * The text and the set of the document a syntax vector id names: `hashes.<case>.<document>`, and `sets.<case>.<place>`
- * for the document at that 1-based place of a sets case, whose set is the one resolveSet gives from the case's file
- * tree. A repeated document name is the one diagnostic resolveSet gives there: the case's name.duplicate errors at the
- * later documents.
- */
-function syntaxCase(id) {
-  const parts = id.split('.');
-  const group = parts[0];
-  if (group === 'hashes') {
-    const c = cases.hashes.find(x => x.id === parts[1]);
-    assert.ok(c, `hashes case ${parts[1]}`);
-    return { text: join(c.documents[parts[2]], false), set: setOf(c, parts[2]) };
-  }
-  assert.equal(group, 'sets', `syntax vector ${id} names a hashes or sets case`);
-  const c = cases.sets.find(x => x.id === parts.slice(1, -1).join('.'));
-  assert.ok(c, `sets case ${id}`);
-  const place = Number(parts.at(-1));
-  const root = setTree(c);
-  try {
-    const resolved = resolveSet(`${root}/set/${place}.dbs`, nodeSetHost);
-    assert.deepEqual(resolved.errors, []);
-    assert.equal(resolved.setFile, `${root}/set/dbspec-set.json`);
-    const names = c.documents.map(headerName);
-    const repeated = names.flatMap((name, i) => (names.indexOf(name) < i ? [`${root}/set/${i + 1}.dbs`] : []));
-    assert.deepEqual(resolved.diagnostics.map(d => d.path), repeated);
-    assert.deepEqual(resolved.diagnostics.map(d => ({ line: d.line, column: d.column, rule: d.rule })),
-      repeated.length === 0 ? [] : c.errors.filter(e => e.rule === 'name.duplicate'));
-    return { text: join(c.documents[place - 1], false), set: resolved.set };
-  } finally {
-    rmSync(root, { recursive: true, force: true });
+// Every analyze step of a hashes case gives the tokens of its document with the other documents as its set.
+for (const c of hashes) {
+  for (const step of c.steps.filter(x => x.op === 'dbspec.analyze')) {
+    vector(`hashes ${c.id} analyzes to its tokens in UTF-16 (${step.text[0]})`, () => {
+      const { text, set } = stepInput(step);
+      assert.deepEqual(openDocument(text, { set }).tokens, utf16Tokens(text, step.expect.none.tokens));
+    });
   }
 }
 
-for (const s of syntax.cases) {
-  vector(`syntax ${s.id} gives the vector's tokens in UTF-16`, () => {
-    const { text, set } = syntaxCase(s.id);
-    assert.deepEqual(openDocument(text, { set }).tokens, utf16Tokens(text, s.tokens));
+// Every analyze step of a sets case gives the tokens of its document with the set of the step. A built set's owned
+// document also resolves from its file tree to the same set.
+for (const c of sets) {
+  const build = stepOf(c, 'dbspec.set');
+  vector(`sets ${c.id} analyzes to its tokens in UTF-16`, () => {
+    if (build.expect.none.diagnostics === undefined && build.parsing === undefined) {
+      const root = setTree(build);
+      try {
+        const resolved = resolveSet(`${root}/set/1.dbs`, nodeSetHost);
+        assert.deepEqual(resolved.errors, []);
+        assert.equal(resolved.setFile, `${root}/set/dbspec-set.json`);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    }
+    const analyses = c.steps.filter(x => x.op === 'dbspec.analyze');
+    for (const step of analyses) {
+      const { text, set } = stepInput(step);
+      assert.deepEqual(openDocument(text, { set }).tokens, utf16Tokens(text, step.expect.none.tokens));
+    }
+  });
+}
+
+// A refused set whose owned documents repeat a name: resolveSet from each document of its file tree reports the
+// repetition at every later document of the name, with the diagnostics of the set's dbspec.set step. This is the
+// TypeScript language service's refusal (FCV-2: only the language service resolves a set from a file tree).
+for (const c of sets) {
+  const build = stepOf(c, 'dbspec.set');
+  if (!build.expect.none.diagnostics?.some(d => d.rule === 'name.duplicate') || build.parsing !== undefined) continue;
+  vector('sets repeated-document-name is refused by resolveSet with its name.duplicate diagnostics', () => {
+    const root = setTree(build);
+    try {
+      const names = build.owned.map(nameOf);
+      const repeated = names.flatMap((name, i) => (names.indexOf(name) < i ? [`${root}/set/${i + 1}.dbs`] : []));
+      for (const place of names.keys()) {
+        const resolved = resolveSet(`${root}/set/${place + 1}.dbs`, nodeSetHost);
+        assert.deepEqual(resolved.diagnostics.map(d => d.path), repeated, `resolved from document ${place + 1}`);
+        assert.deepEqual(resolved.diagnostics.map(d => ({ line: d.line, column: d.column, rule: d.rule })),
+          build.expect.none.diagnostics, `resolved from document ${place + 1}`);
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 }

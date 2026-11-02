@@ -2,6 +2,7 @@
 # test_<recipe>_<database>.py, takes the load_tests of recipe_tests for the recipe and the database, and each case of the
 # recipe is one test whose steps call the public API of polyspec.orm that each op names. It has no command line and no
 # output of its own.
+import dataclasses
 import json
 import math
 import re
@@ -217,6 +218,109 @@ def _check_refusal(text: str, header_set: dict, want: list) -> None:
                 raise AssertionError(f"diagnostic {d.rule} has no message")
 
 
+def _header_name(text: str) -> str:
+    """The name of a document: the third word of its header line."""
+    fields = text.split("\n", 1)[0].split()
+    return fields[2] if len(fields) >= 3 else ""
+
+
+def _split_documents(text: str) -> list:
+    """Splits a manifest or external text into its document texts at each header line."""
+    return [part for part in re.split(r"(?<=\n)(?=dbspec )", text) if part]
+
+
+def _created_tables(statements: list) -> list:
+    """The table names that the CREATE TABLE statements create, in statement order."""
+    names = []
+    for statement in statements:
+        if statement.startswith("CREATE TABLE "):
+            names.append(statement[len("CREATE TABLE ") :].split(" ")[0].strip("`\""))
+    return names
+
+
+def _same_diagnostics(want: list, got: list) -> None:
+    """Checks that got has the rule, line and column of each expected diagnostic, in order, and a message."""
+    _expect_equal(
+        [{"rule": d.rule, "line": d.line, "column": d.column} for d in got],
+        want,
+        "diagnostics",
+    )
+    for d in got:
+        if not d.message:
+            raise AssertionError(f"diagnostic {d.rule} has no message")
+
+
+def _set(step: dict, expect: dict) -> None:
+    """Runs dbspec.set (the port of checkSet of packages/go/internal/recipe/dbspec.go). The owned texts, then the external
+    texts, are parsed each against the other texts and the parsing texts, and dbspec_manifest builds the set's manifest.
+    A refused set (expect.diagnostics not empty) expects those diagnostics from dbspec_manifest and from each dialect of
+    render_dbspec, and no manifest and no statements. A built set expects its texts and hashes when expect.manifest is
+    given, parses its manifest and external texts back as a set without diagnostics, gives the same hashes in the reversed
+    order, and renders statements in each dialect that create the tables of expect.created."""
+    owned = list(step["owned"])
+    every = owned + list(step.get("external", []))
+    parsing = dict(step.get("parsing", {}))
+    documents = []
+    for index, text in enumerate(every):
+        header_set = dict(parsing)
+        for other_index, other in enumerate(every):
+            if other_index != index:
+                header_set[_header_name(other)] = other
+        document, _positions, diagnostics = parse_dbspec(text, header_set)
+        if document is None:
+            raise AssertionError(
+                f"document {index + 1}: {[d.rule for d in diagnostics]!r}"
+            )
+        if index >= len(owned):
+            document = dataclasses.replace(document, external=True)
+        documents.append(document)
+    want_diagnostics = expect.get("diagnostics", [])
+    refused = len(want_diagnostics) > 0
+    manifest, diagnostics = dbspec_manifest(documents)
+    _same_diagnostics(want_diagnostics, list(diagnostics))
+    _expect_equal(manifest is None, refused, "the manifest is absent exactly when the set is refused")
+    for dialect in ("mysql", "postgres", "sqlite"):
+        rendered = render_dbspec(documents, dialect)
+        if refused:
+            _same_diagnostics(want_diagnostics, list(rendered["diagnostics"]))
+            _expect_equal(rendered["statements"], None, f"{dialect} renders no statements for a refused set")
+            continue
+        if list(rendered["diagnostics"]):
+            raise AssertionError(f"{dialect}: {list(rendered['diagnostics'])!r}")
+        if not rendered["statements"]:
+            raise AssertionError(f"{dialect} renders no statements")
+        if "created" in expect:
+            _expect_equal(
+                _created_tables(rendered["statements"]),
+                expect["created"],
+                f"tables that {dialect} creates",
+            )
+    if refused:
+        return
+    want = expect.get("manifest")
+    if want is not None:
+        _expect_equal(manifest.manifest_text, want["manifest_text"], "manifest_text")
+        _expect_equal(manifest.schema_text, want["schema_text"], "schema_text")
+        _expect_equal(manifest.manifest_hash, want["manifest_hash"], "manifest_hash")
+        _expect_equal(manifest.schema_hash, want["schema_hash"], "schema_hash")
+        if "external_text" in want:
+            _expect_equal(manifest.external_text, want["external_text"], "external_text")
+    # The manifest and external text parse back as a set without diagnostics (docs/spec/dbspec.md "Manifest and hashes").
+    for result in parse_dbspec_set(
+        _split_documents(manifest.manifest_text),
+        _split_documents(manifest.external_text),
+    ):
+        if list(result.diagnostics):
+            raise AssertionError(
+                f"manifest and external text of {result.name}: {list(result.diagnostics)!r}"
+            )
+    reversed_manifest, _diagnostics = dbspec_manifest(list(reversed(documents)))
+    if reversed_manifest is None:
+        raise AssertionError("the reversed set has no manifest")
+    _expect_equal(reversed_manifest.manifest_hash, manifest.manifest_hash, "the reversed set has the manifest hash")
+    _expect_equal(reversed_manifest.schema_hash, manifest.schema_hash, "the reversed set has the schema hash")
+
+
 def _dbspec(step: dict, directory: Path, database: str) -> None:
     """Runs one dbspec op of a step through the public dbspec API and checks the result against the expect of database
     (FCV-4). directory is the directory of the recipe: the paths of a step are relative to it."""
@@ -370,6 +474,8 @@ def _dbspec(step: dict, directory: Path, database: str) -> None:
             "the reader text differs from the file bytes",
         )
         _expect_equal(_emit_stable(text, {}), text, "emission")
+    elif op == "dbspec.set":
+        _set(step, expect)
     else:
         raise AssertionError(f"OP_UNKNOWN {op}")
 

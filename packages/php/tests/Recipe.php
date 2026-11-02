@@ -143,6 +143,114 @@ final class Recipe
         );
     }
 
+    /** The name of a document: the third word of its header line. */
+    private static function headerName(string $text): string
+    {
+        $fields = preg_split('/\s+/', trim(explode("\n", $text, 2)[0])) ?: [];
+
+        return $fields[2] ?? '';
+    }
+
+    /** The table names that the CREATE TABLE statements create, in statement order. */
+    private static function createdTables(array $statements): array
+    {
+        $names = [];
+        foreach ($statements as $statement) {
+            if (str_starts_with($statement, 'CREATE TABLE ')) {
+                $rest = explode(' ', substr($statement, strlen('CREATE TABLE ')), 2)[0];
+                $names[] = trim($rest, '`"');
+            }
+        }
+
+        return $names;
+    }
+
+    /** Checks that the diagnostics have the rule, line and column of each expected diagnostic, in order, each with a message. */
+    private static function sameDiagnostics(array $want, array $got): void
+    {
+        $values = array_map(static fn ($d): array => ['rule' => $d->rule, 'line' => $d->line, 'column' => $d->column], $got);
+        Assert::assertSame($want, $values, 'diagnostics');
+        foreach ($got as $d) {
+            Assert::assertNotSame('', $d->message, "diagnostic {$d->rule} has no message");
+        }
+    }
+
+    /**
+     * Runs dbspec.set (the port of checkSet of packages/go/internal/recipe/dbspec.go). The owned texts, then the external
+     * texts, are parsed each against the other texts and the parsing texts, and Dbspec::manifest builds the set's manifest.
+     * A refused set (expect diagnostics not empty) expects those diagnostics from the manifest and from each dialect of
+     * render, and no manifest and no statements. A built set expects its texts and hashes when expect manifest is given,
+     * parses its manifest and external texts back as a set without diagnostics, gives the same hashes in the reversed
+     * order, and renders statements in each dialect that create the tables of expect created.
+     */
+    private static function dbspecSet(array $step, array $expect): void
+    {
+        $owned = array_values($step['owned'] ?? []);
+        $all = array_merge($owned, array_values($step['external'] ?? []));
+        $parsing = $step['parsing'] ?? [];
+        $documents = [];
+        foreach ($all as $i => $text) {
+            $set = $parsing;
+            foreach ($all as $j => $other) {
+                if ($j !== $i) {
+                    $set[self::headerName($other)] = $other;
+                }
+            }
+            $parsed = Dbspec::parse($text, $set);
+            if ($parsed->document === null) {
+                Assert::fail('document ' . ($i + 1) . ': ' . self::diagnostics($parsed->diagnostics));
+            }
+            $document = $parsed->document;
+            $document->external = $i >= count($owned);
+            $documents[] = $document;
+        }
+        $want = $expect['diagnostics'] ?? [];
+        $refused = $want !== [];
+        $built = Dbspec::manifest($documents);
+        self::sameDiagnostics($want, $built->diagnostics);
+        Assert::assertSame($refused, $built->manifest === null, 'the manifest is absent exactly when the set is refused');
+        foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
+            $rendered = Dbspec::render($documents, $dialect);
+            if ($refused) {
+                self::sameDiagnostics($want, $rendered->diagnostics);
+                Assert::assertNull($rendered->statements, "$dialect renders no statements for a refused set");
+                continue;
+            }
+            if ($rendered->diagnostics !== []) {
+                Assert::fail("$dialect: " . self::diagnostics($rendered->diagnostics));
+            }
+            if (($rendered->statements ?? []) === []) {
+                Assert::fail("$dialect renders no statements");
+            }
+            if (array_key_exists('created', $expect)) {
+                Assert::assertSame($expect['created'], self::createdTables($rendered->statements), "tables that $dialect creates");
+            }
+        }
+        if ($refused) {
+            return;
+        }
+        $manifest = $built->manifest;
+        if (isset($expect['manifest'])) {
+            $want = $expect['manifest'];
+            Assert::assertSame($want['manifest_text'], $manifest->manifestText, 'manifest_text');
+            Assert::assertSame($want['schema_text'], $manifest->schemaText, 'schema_text');
+            Assert::assertSame($want['manifest_hash'], $manifest->manifestHash, 'manifest_hash');
+            Assert::assertSame($want['schema_hash'], $manifest->schemaHash, 'schema_hash');
+            if (array_key_exists('external_text', $want)) {
+                Assert::assertSame($want['external_text'], $manifest->externalText, 'external_text');
+            }
+        }
+        // The manifest and external text parse back as a set without diagnostics (docs/spec/dbspec.md "Manifest and hashes").
+        $split = static fn (string $text): array => $text === '' ? [] : preg_split('/(?<=\n)(?=dbspec )/', $text, -1, PREG_SPLIT_NO_EMPTY);
+        foreach (Dbspec::parseSet($split($manifest->manifestText), $split($manifest->externalText)) as $r) {
+            Assert::assertSame([], $r->diagnostics, "manifest and external text of {$r->name}");
+        }
+        $reversed = Dbspec::manifest(array_reverse($documents));
+        Assert::assertNotNull($reversed->manifest, 'the reversed set has a manifest');
+        Assert::assertSame($manifest->manifestHash, $reversed->manifest->manifestHash, 'the reversed set has the manifest hash');
+        Assert::assertSame($manifest->schemaHash, $reversed->manifest->schemaHash, 'the reversed set has the schema hash');
+    }
+
     /**
      * Runs one dbspec op of a recipe step through the public calls of Dbspec and checks the result against the expect
      * of none (the Go twin is checkDBSpec in packages/go/internal/recipe/dbspec.go; the semantics are the same).
@@ -316,6 +424,9 @@ final class Recipe
                     'the reader text differs from the file bytes'
                 );
                 Assert::assertSame($read->text, self::emitStable($read->text, []), 'emission');
+                return;
+            case 'dbspec.set':
+                self::dbspecSet($step, $expect);
                 return;
             default:
                 Assert::fail("OP_UNKNOWN {$step['op']}");

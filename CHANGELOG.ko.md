@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 54dccf4b0e93c32f28be2cfdd520064c36e77aed3c0a9a62ab7c89b3f082d478 -->
+<!-- source-sha256: d01971c486247b12149dcfe55ef98112e89338a6487a821517aeb97e67f6ee99 -->
 # 변경 이력
 
 ## Unreleased
@@ -69,6 +69,9 @@
 - schema_definition 벡터는 하나의 사본을 유지하도록 tests/dbspec/schema-definition.json recipe로 옮겼고, FCV-4의 여섯 op(dbspec.parse_emit, dbspec.manifest, dbspec.render, dbspec.analyze, dbspec.parse_positions, dbspec.format)이 여섯 runtime 모두에서 이를 실행한다. 네이티브 벡터 테스트는 제거했다. manifest 케이스는 벡터 파일을 두 행에 나누면 사본이 둘이 되므로 T334-3-18-3이 아니라 이 행에서 옮겼다 (T334-3-18-1)
 - DB를 읽지 않는 dbspec suite의 parse vector(canonical, normalize, invalid, positions, set-parse와 byte-order-mark)는 tests/dbspec의 recipe case가 되었고, 여섯 runtime이 FCV-4의 op format, parse_positions, analyze, parse_set으로 실행한다. 대체된 native vector test는 제거했고, cases.json과 syntax.json의 각 datum은 사본을 하나만 둔다 (T334-3-18-2).
 - dbspec-canonical, dbspec-normalize, dbspec-invalid 의 레시피 테스트 파일 18개는 헤더 주석에 단위가 인용하는 요구사항 ID(DBS-133, ORES-1, ORES-3, ORES-13, DBS-136~DBS-139, ORES-4~ORES-11, ORES-13)를 이름으로 적어, parity --phase api의 R15 검사가 그 단위들에서 통과한다 (T334-3-18-5).
+- DB를 읽지 않는 manifest, hash와 set unit(dbspec-hashes, dbspec-sets, dbspec-repeated-document-name)은 tests/dbspec/hashes.json과 tests/dbspec/sets.json의 recipe case가 되었고, 여섯 runtime이 FCV-4의 op dbspec.set과 manifest, hash op으로 실행한다. 대체된 native manifest, hash와 set 벡터 test는 제거했고, 여러 consumer가 읽는 벡터 파일은 datum마다 사본을 하나만 둔다. 반복된 문서 이름의 거부는 파일 트리에서 set을 해석하는 TypeScript만 가능하므로 TypeScript native test(FCV-2)로 남겼다 (T334-3-18-3).
+- TypeScript compare 러너의 join이 recipe 문서의 mixed 형식을 받도록 고쳐 packages/ts 타입 검사가 통과하게 했습니다 (T334-3-18-3-3).
+- repeated-document-name 거부 벡터의 제목을 리터럴로 고쳐, parity 바인딩이 TypeScript 벡터 파일에서 그 제목을 찾도록 했습니다 (T334-3-18-3-2)
 
 ## 0.0.21
 

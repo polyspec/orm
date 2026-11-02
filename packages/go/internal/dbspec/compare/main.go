@@ -2,7 +2,7 @@
 // in the line format of tests/dbspec/compare/check.mts. It then prints the positions cases, the analysis and format of each
 // canonical, normalize and invalid case of the recipe files (in that order), and then of each case of syntax.json.
 //
-// Usage: go run ./packages/go/internal/dbspec/compare <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
+// Usage: go run ./packages/go/internal/dbspec/compare <tests/dbspec dir> <stress document> <ddl.json> <plans.json> <mermaid.json>
 package main
 
 import (
@@ -42,22 +42,14 @@ type sharedCases struct {
 	Invalid   []testCase
 	Hashes    []hashCase
 	Files     []fileCase
-	Sets      []setCase
 	Positions []positionCase
+	Analyses  []analysis
 }
 
 // namedDocument is a document of a sets case with the name of its header.
 type namedDocument struct {
 	Name  string
 	Lines []string
-}
-
-// setCase is a sets case of cases.json.
-type setCase struct {
-	ID        string
-	Documents []namedDocument
-	Parsing   map[string][]string
-	External  []namedDocument
 }
 
 // positionCase is a positions case of cases.json: a main document and the other documents of its set.
@@ -84,32 +76,6 @@ func syntaxInputs(all sharedCases) map[string]syntaxInput {
 		for _, c := range kind.cases {
 			set := documentsExcept(c.Documents, c.Main, func(lines []string) string { return join(lines, c.CRLF, c.Mixed) })
 			inputs[kind.name+"."+c.ID] = syntaxInput{Text: join(c.Documents[c.Main], c.CRLF, c.Mixed), Documents: set}
-		}
-	}
-	for _, c := range all.Sets {
-		every := append(append([]namedDocument{}, c.Documents...), c.External...)
-		for i, d := range c.Documents {
-			set := map[string]string{}
-			for name, lines := range c.Parsing {
-				set[name] = join(lines, false, false)
-			}
-			for j, other := range every {
-				if j != i {
-					set[other.Name] = join(other.Lines, false, false)
-				}
-			}
-			inputs[fmt.Sprintf("sets.%s.%d", c.ID, i+1)] = syntaxInput{Text: join(d.Lines, false, false), Documents: set}
-		}
-	}
-	for _, c := range all.Hashes {
-		for name, lines := range c.Documents {
-			set := map[string]string{}
-			for other, l := range c.Documents {
-				if other != name {
-					set[other] = join(l, false, false)
-				}
-			}
-			inputs["hashes."+c.ID+"."+name] = syntaxInput{Text: join(lines, false, false), Documents: set}
 		}
 	}
 	return inputs
@@ -564,11 +530,12 @@ func writeRead(out *output, text string, diagnostics []dbspec.Diagnostic, name s
 }
 
 func main() {
-	if len(os.Args) != 7 {
-		fmt.Fprintln(os.Stderr, "usage: go run ./packages/go/internal/dbspec/compare <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>")
+	if len(os.Args) != 6 {
+		fmt.Fprintln(os.Stderr, "usage: go run ./packages/go/internal/dbspec/compare <tests/dbspec dir> <stress document> <ddl.json> <plans.json> <mermaid.json>")
 		os.Exit(2)
 	}
-	all, err := readCases(os.Args[1])
+	dir := os.Args[1]
+	all, err := readCases(dir)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -593,7 +560,7 @@ func main() {
 	out.println("stress")
 	write(out, stress, nil, true)
 	for _, c := range all.Files {
-		if err := writeFile(out, c.ID, filepath.Join(filepath.Dir(os.Args[1]), c.Path), c.Path); err != nil {
+		if err := writeFile(out, c.ID, filepath.Join(dir, c.Path), c.Path); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
@@ -626,11 +593,6 @@ func main() {
 		os.Exit(1)
 	}
 	writePositions(out, all.Positions)
-	r, syntax, err := readSyntax(os.Args[6])
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
 	inputs := syntaxInputs(all)
 	for _, kind := range caseKinds(all) {
 		for _, c := range kind.cases {
@@ -638,13 +600,8 @@ func main() {
 			writeSyntax(out, id, inputs[id])
 		}
 	}
-	for i, id := range syntax {
-		input, ok := inputs[id]
-		if !ok {
-			fmt.Fprintln(os.Stderr, r.fail(fmt.Sprintf("cases[%d].id", i), "names no input of the shared cases"))
-			os.Exit(1)
-		}
-		writeSyntax(out, id, input)
+	for _, a := range all.Analyses {
+		writeSyntax(out, a.id, a.input)
 	}
 	if err := out.flush(); err != nil {
 		fmt.Fprintln(os.Stderr, err)

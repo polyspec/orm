@@ -609,6 +609,78 @@ function checkRefusal(text, set, want) {
 // FILE_MESSAGES is the suffix of the message of each file rule, after the name of the file.
 const FILE_MESSAGES = { signature: ' is not a dbspec document', encoding: ' is not valid UTF-8' };
 
+// headerName is the name of a document, the third word of its header line.
+function headerName(text) {
+  return text.split('\n', 1)[0].trim().split(/\s+/)[2] ?? '';
+}
+
+// createdTables is the table names that the CREATE TABLE statements create, in statement order.
+function createdTables(statements) {
+  return statements
+    .filter(s => s.startsWith('CREATE TABLE '))
+    .map(s => s.slice('CREATE TABLE '.length).split(' ')[0].replace(/^[`"]|[`"]$/g, ''));
+}
+
+// sameDiagnostics checks that got has the rule, line and column of each expected diagnostic, in order, and a message.
+function sameDiagnostics(want, got) {
+  assert.deepEqual(got.map(d => ({ rule: d.rule, line: d.line, column: d.column })), want, 'diagnostics');
+  for (const d of got) assert.ok(d.message, `diagnostic ${d.rule} has no message`);
+}
+
+// checkSet runs dbspec.set (the port of checkSet of packages/go/internal/recipe/dbspec.go). The owned texts, then the external
+// texts, are parsed each against the other texts and the parsing texts, and dbspecManifest builds the set's manifest. A refused
+// set (expect.diagnostics not empty) expects those diagnostics from dbspecManifest and from each dialect of renderDbspec, and no manifest
+// and no statements. A built set expects its texts and hashes when expect.manifest is given, parses its manifest and external
+// texts back as a set without diagnostics, gives the same hashes in the reversed order, and renders statements in each dialect
+// that create the tables of expect.created.
+function checkSet(step, expect) {
+  const owned = step.owned;
+  const all = [...owned, ...(step.external ?? [])];
+  const documents = all.map((text, i) => {
+    const set = { ...(step.parsing ?? {}) };
+    all.forEach((other, j) => {
+      if (j !== i) set[headerName(other)] = other;
+    });
+    const parsed = parseDbspec(text, set);
+    assert.deepEqual(parsed.diagnostics, [], `document ${i + 1} parses`);
+    return i >= owned.length ? Object.freeze({ ...parsed.document, external: true }) : parsed.document;
+  });
+  const refused = (expect.diagnostics ?? []).length > 0;
+  const built = dbspecManifest(documents);
+  sameDiagnostics(expect.diagnostics ?? [], built.diagnostics);
+  assert.equal(built.manifest === null, refused, 'the manifest is absent exactly when the set is refused');
+  for (const dialect of ['mysql', 'postgres', 'sqlite']) {
+    const rendered = renderDbspec(documents, dialect);
+    if (refused) {
+      sameDiagnostics(expect.diagnostics, rendered.diagnostics);
+      assert.equal(rendered.statements, null, `${dialect} renders no statements for a refused set`);
+      continue;
+    }
+    assert.deepEqual(rendered.diagnostics, [], `${dialect} renders`);
+    assert.ok(rendered.statements.length > 0, `${dialect} renders statements`);
+    if (expect.created !== undefined) assert.deepEqual(createdTables(rendered.statements), expect.created, `tables that ${dialect} creates`);
+  }
+  if (refused) return;
+  const manifest = built.manifest;
+  if (expect.manifest !== undefined) {
+    const want = expect.manifest;
+    assert.equal(manifest.manifestText, want.manifest_text, 'manifest_text');
+    assert.equal(manifest.schemaText, want.schema_text, 'schema_text');
+    assert.equal(manifest.manifestHash, want.manifest_hash, 'manifest_hash');
+    assert.equal(manifest.schemaHash, want.schema_hash, 'schema_hash');
+    if (want.external_text !== undefined) assert.equal(manifest.externalText, want.external_text, 'external_text');
+  }
+  // The manifest and external text parse back as a set without diagnostics (docs/spec/dbspec.md "Manifest and hashes").
+  const split = text => (text === '' ? [] : text.split(/(?<=\n)(?=dbspec )/));
+  for (const r of parseDbspecSet(split(manifest.manifestText), split(manifest.externalText))) {
+    assert.deepEqual(r.diagnostics, [], `manifest and external text of ${r.name}`);
+  }
+  const reversed = dbspecManifest([...documents].reverse());
+  assert.ok(reversed.manifest !== null, 'the reversed set has a manifest');
+  assert.equal(reversed.manifest.manifestHash, manifest.manifestHash, 'the reversed set has the manifest hash');
+  assert.equal(reversed.manifest.schemaHash, manifest.schemaHash, 'the reversed set has the schema hash');
+}
+
 // checkDbspec runs one dbspec op of a step through the public dbspec API and checks the result against the expect of database.
 // dir is the directory of the recipe: the paths of a step are relative to it (FCV-4).
 async function checkDbspec(step, dir, database) {
@@ -726,6 +798,9 @@ async function checkDbspec(step, dir, database) {
       assert.equal(emitStable(text, {}), text, 'emission');
       break;
     }
+    case 'dbspec.set':
+      checkSet(step, expect);
+      break;
     default:
       throw new Error(`OP_UNKNOWN ${step.op}`);
   }
