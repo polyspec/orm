@@ -20,6 +20,7 @@ import { keepAll, render, run, runLanes, variable, type Command } from './check/
 import { COMMANDS as TYPESCRIPT_COMMANDS, sqliteTest } from './typescript/sqlite-test.mts';
 import { implementationLanguages } from './features/languages.mts';
 import { readFeatures, type FeatureManifest, type NativeCommand } from './features/manifest.mts';
+import { PROXYSQL_BACKEND_CONNECTIONS } from './test-servers.mts';
 
 const root = resolve(import.meta.dirname, '..');
 // The lanes are the declared implementations of config/parity.json, the one language set.
@@ -52,6 +53,19 @@ const PHP_EXTENSION: Command[] = PHP_TESTS.map(test => ({
 // The Python database tests run as modules of packages.python.tests with the Python of the venv (ORM_PYTHON).
 const PYTHON_TESTS = ['mysql_session', 'statement_fault', 'identity_load', 'schema_inspection', 'statement_events', 'install_changed_database', 'mysql_tls', 'connection_config', 'replica', 'connection_utc', 'connection_pool', 'aes_rotation'];
 const PYTHON: Command[] = PYTHON_TESTS.map(test => ({ program: variable('ORM_PYTHON'), args: ['-m', `packages.python.tests.${test}`], cwd: root }));
+/** The value of TARGET_POOL_SIZE, the connection pool of each Rust integration test, read from its declaration (T343-1). */
+export function rustTargetPoolSize(repository: string): number {
+  const source = readFileSync(resolve(repository, 'packages/rust/tests/tests/integration_program/main.rs'), 'utf8');
+  const match = /const TARGET_POOL_SIZE: u32 = (\d+);/.exec(source);
+  if (match === null) throw new Error('client-db-test: TARGET_POOL_SIZE is not declared in the integration program');
+  return Number(match[1]);
+}
+
+/** The libtest arguments of the pooler lane: at most `backends` server connections serve `poolSize` pools at once (T343-1). */
+export function rustPoolerThreadArguments(backends: number, poolSize: number): string[] {
+  return [`--test-threads=${Math.max(1, Math.floor(backends / poolSize))}`];
+}
+
 /** Returns the exact Rust symbols that the database feature matrix owns, for the generic client test run to skip. */
 export function rustDatabaseCoverageSkipArguments(manifest: FeatureManifest, repository: string): string[] {
   const testSymbols = new Set<string>();
@@ -109,6 +123,8 @@ const RUST_TESTS: Command = {
   args: [
     '../../tests/cargo-test.mts', 'workspace-tests', '--', 'cargo', 'test', '--locked', '--workspace', '--features', variable('ORM_RUST_TEST_FEATURES'), '--',
     ...rustDatabaseCoverageSkipArguments(readFeatures(root), root), '--exact',
+    // The pooler lane keeps PROXYSQL_BACKEND_CONNECTIONS server connections, so its Rust tests run no more pools at once than that (T343-1).
+    ...(process.env['ORM_CLIENT_DB_POOLER'] === '1' ? rustPoolerThreadArguments(PROXYSQL_BACKEND_CONNECTIONS, rustTargetPoolSize(root)) : []),
   ],
   cwd: join(root, 'packages/rust'),
   env: { ORM_BUILD_TEST_ROOT: resolve(root, 'packages/rust/build') },

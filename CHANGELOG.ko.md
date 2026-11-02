@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 8763d7b2f436d32ea31141487ddba1657d3adbfbab518cf40d315ddc2f51cafa -->
+<!-- source-sha256: 3cce7043a6929e1babc36389844c93d4c21febfc5fce242766814c9f77167477 -->
 # 변경 이력
 
 ## Unreleased
 
+- pooler lane의 Rust test는 ProxySQL이 backend를 위해 유지하는 server connection 수보다 많은 test thread를 실행하지 않는다: 그 수는 한 곳의 선언(PROXYSQL_BACKEND_CONNECTIONS)이며, lane은 backend 수를 pool 크기로 나눈 값을 `--test-threads`로 넘겨서, 고정된 pool이 10000 ms connect timeout을 넘겨 기다리지 않는다 (T343-1)
 - jsontext 값은 원본 text의 멤버 순서와 반복된 멤버 이름을 유지한다: 쓰기는 파싱한 멤버 map을 다시 직렬화하지 않고 원본 text를 compact하여 저장하며, 읽기는 값이 가진 text를 돌려준다 (DIA-26). Go, TypeScript, Python은 이전에 SQLite, MySQL, PostgreSQL에서 반복된 이름을 하나로 합쳤다 (T332)
 - transaction-retry-on-deadlock parity unit이 Go, Rust, TypeScript, Python binding에서 driver 수준의 deadlock을 실행한다: 두 connection이 두 행을 반대 순서로 MySQL에서 잠그면 한 flow의 첫 시도가 DEADLOCK으로 실패하고, transaction은 재시도되어 둘 다 commit되므로, driver deadlock의 재시도는 PHP만이 아니라 네 runtime에서 시험된다 (T303).
 - complex query와 hot-path 성능 gate의 Python parity binding이 적재할 수 없는 test를 가리키지 않는다: 6ff320c72에서 그 unit들의 실행이 PHP 8.4 아래에서 통과하므로(25 binding, 27 case) T269의 원인은 재현되지 않고, 이 row는 그 unit들을 Verification으로 실행한다 (T269).
