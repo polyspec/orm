@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 07666ff9ad1565daba70a1fa73800e27f20315293e17a38e6c24dd40e0f8bf5f -->
+<!-- source-sha256: 14dc8f2ee6714a6a11873dfa343cfcce54845a9ce10ae015577681e4cb4ecd38 -->
 # 변경 이력
 
 ## Unreleased
@@ -69,8 +69,6 @@
 - Python과 TypeScript generator는 models.py와 models.ts를 원자적으로 쓴다. 내용이 이미 같은 파일은 그대로 두고, 바뀐 파일은 같은 디렉터리의 임시 파일에 쓴 뒤 기존 파일 위로 이름을 바꾸므로, 생성 중에 읽는 테스트가 부분 파일을 읽지 않는다. client-unit-check/orm-gen-python과 client-unit-check/orm-gen-typescript target이 이를 검사한다 (T341-2).
 - packages/php/phpunit.xml.dist로 PHPUnit을 실행하는 make target 예순 개는 php-models를 선행 조건으로 가진다. 부트스트랩이 생성된 모델을 요구하는데 php-vendor-check는 그것을 쓰지 않기 때문이며, repo-check는 그것 없이 이 target을 거부한다 (T341-1).
 - packages/ts/dist를 실행만 하고 빌드하지 않는 일곱 make target(replica-check, session-state-check, native-error-cause-check/typescript-driver와 /typescript-markdown, page-cache-unit-check/typescript, generator-consumer-check/typescript, request-hook-relation-scope-check)은 typescript-build를 선행 조건으로 가지며, repo-check는 그것 없이 빌드 결과를 읽는 target을 거부한다 (T339-5).
-- 문장 runner(INT-150)의 parity unit은 여섯 런타임 모두에서 `Utils.run`과 frame `run`을 이름으로 쓰고, 모든 데이터베이스에서 statement_runner 테스트를 바인딩한다 (T345-7).
-- Python 런타임은 `utils().run(fn)`을 public으로 만들어, 연결의 트랜잭션 frame으로 `fn`을 호출한다 (INT-150, T345-6).
 - check-recipes의 target별 runtime과 database 셀(CR17부터 CR20까지)은 보류한다. kit의 CI 계획(config/ci.json targets.runtimes와 kit-ci-plan)과 중복되기 때문이다. CR17-1(aaa576d45)은 반영되지 않았으며 CR17과 함께 보류한다 (CR17).
 - tests/dbspec/ddl.json의 DDL 동작 테스트는 Go runner만 데이터베이스에서 돌렸다. 이제 PHP, php-extension, TypeScript, Python, Rust runner도 MySQL, PostgreSQL, SQLite에서 동작 단계를 실행하고, DSN이 없으면 이름을 밝히며 실패한다 (CR16-1).
 - 중단된 실행이 남긴 compiler fixture case의 오래된 source 때문에 다음 실행이 EEXIST로 실패하고 디렉터리가 트리에 남았다. 이제 실행은 오래된 source를 덮어쓰고 끝에 임시 디렉터리를 지운다 (CR25).
@@ -167,8 +165,6 @@ SQLite에서 같은 행을 쓰는 두 connection의 잠금 대기는 busy timeou
 - `performance_gate`의 정합성 case(기본키 조회와 100행 목록)는 여섯 runtime이 MySQL, PostgreSQL, SQLite에서 실행하는 recipe(contracts/fixtures/performance_gate/performance_gate.json)가 되었고, 타이밍 gate는 옆에서 도는 test의 부하에 따라 달라지므로 make perf-check에 남는다 (FCV-2, FCV-14) (T334-3-11).
 - catalog 읽기는 boolean 열에 드라이버의 정수를 그대로 돌려줘서, MySQL `tinyint(1)`과 SQLite `BOOLEAN` 열에 쓴 bool이 쓰기 검사(ROW_WRITE_MISMATCH)에서 실패했고, PHP catalog는 PHP false를 빈 문자열로 bind해서 MySQL과 SQLite가 거부했다. 이제 모든 runtime이 boolean 열을 열 타입으로 bool로 읽고, PHP와 PHP extension은 bool을 bool로 bind한다 (DIA-29) (T334-3-11-1).
 - DbspecRenderTest의 preempted 검사는 main CI run 41324077414의 test (feature_verify_other) job에서 DSN 오류 아홉 개로 실패했다. 데이터베이스 DSN 없이 파일 전체를 실행했기 때문이다. testBehaviourPhysical(CR16-1-3)은 이제 group database에 속하고 preempted 실행은 그 group을 제외한다. 물리 케이스는 dbspec-php-check/render에서 여전히 실행된다 (CR55).
-- 중단된 실행이 남긴 compiler fixture case의 오래된 source 때문에 다음 실행이 EEXIST로 실패하고 디렉터리가 트리에 남았다. 이제 실행은 오래된 source를 덮어쓰고 끝에 임시 디렉터리를 지운다 (CR25).
-- 데이터베이스 기능이 실행 데이터베이스에서 recipe로 도는 방식을 spec이 밝힌다: docs/spec/feature-coverage.md의 FCV-8부터 FCV-14까지가 전환, `databases` need와 TEST_ENV로 받는 데이터베이스, 제외 없는 세 데이터베이스, DSN 누락 실패, 사례별 결과, seed 소유, 네이티브 테스트를 정한다 (T334-3-4-0).
 - 여섯 runtime의 스키마 설치 case가 하나의 recipe(`contracts/fixtures/schema_install/schema_install.json`)가 되어 MySQL, PostgreSQL, SQLite에서 돈다. 같은 동작의 네이티브 테스트는 지웠고, register 테스트는 거부 테스트와 hash별 engine 테스트로 나눴으며, SCH-14부터 SCH-17까지는 FCV-2에 따라 네이티브로 남는 case(감사 transaction, load 시점 hash 검사, bench 모델, hash별 engine)를 나타낸다(T334-3-4).
 - drop 단계는 복제본이 적용하지 않은 binary log 정리를 거부하고, 거부 메시지에 복제본 SQL thread의 상태와 마지막 오류를 적는다. 테스트 서버 시작은 SQL thread가 멈춘 MySQL 복제본을 재사용하지 않고, 마지막 오류와 함께 보고한 뒤 다시 시작한다 (G5.55-2).
 - dbspec 텍스트의 format 거부(DBS-141, ORES-14)가 feature coverage-schema-definition-dbspec-format-refusal의 native binding 여섯 개로 돌았고, 각 binding은 schema-definition의 suite case dbspec_format_refusal과 같은 함수였다. binding을 지우고 suite case만 남긴다. set 파일 generator 규칙(ORES-21)은 FCV-2의 runtime별 진입점으로 각 runtime에 native로 남는다 (T334-3-21-1)
