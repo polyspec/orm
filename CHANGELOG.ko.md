@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 97c0fd9c7c3847d8641061da1681a790e2ce67a65bdb6075fa98773630f8eebe -->
+<!-- source-sha256: 4101dd4b87f9578fc1cfce81899c20a3009ba95aa1acda0758a950280572336e -->
 # 변경 이력
 
 ## Unreleased
@@ -7,6 +7,7 @@
 - 여섯 runtime의 recipe loader는 알 수 없는 file, case, op, step 키를 모든 case 실행 전에 이름을 붙여 거부한다. 키 표는 scripts/features/schema/recipe-keys.json이 담고(scripts/features/recipe-keys.mts가 recipe schema에서 생성), 그 표가 담지 않는 recipe 키는 더 이상 조용히 통과하지 않는다 (T334-3-5-6).
 - 55fd126fa가 model_writes recipe로 옮긴 unloaded-update-state-go 검사를 contracts/features.json에서 제거했다. DSL-109의 key 기준 갱신은 그 recipe의 save_updates_the_row_of_its_key case가 덮는다 (T334-3-5-8).
 - 4a669db8a가 CoverageDsnTest.php의 SQLite 최소 버전 test를 어떤 coverage owner에도 두지 않아, contracts/features.json에서 php owner와 php-extension owner의 inputs가 이 파일을 다시 선택한다 (T334-3-5-9).
+- 네 언어 owner test는 statement-events-check/<runtime> owner target을 기대하며, 이는 recipe fixture의 owner 규칙이 네 언어 변경에서 선택하는 target이다. test는 선택된 어느 target도 full-suite가 아님을 함께 확인한다 (T334-3-5-10).
 - tests/events/vectors.json의 statement event는 여섯 client 모두에서 MySQL, PostgreSQL, SQLite 위에서 recipe `contracts/fixtures/statement_events/statement_events.json`으로 실행한다. native statement-event suite는 제거했고, server-transaction 시험과 coverage owner는 native로 남는다 (T334-3-5).
 - orm은 모든 생태계에서 ordered-json을 0.0.20으로 고정하며, 각 lock은 자기 package manager로 갱신한다 (T350).
 - orm은 kit 0.0.92를 고정한다. 그 target은 orm-install-rust-crates의 crate 받기와 맞고, 그 kit이 담은 원칙 사본을 받는다 (T353).

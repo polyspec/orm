@@ -232,7 +232,13 @@ const t42 = [
 
 caseTest('a change across the four clients selects no full-suite target', 5000, async () => {
   // comment-language-check reads every source file (T131), so a source change selects it.
-  assert.deepEqual(targets(selectTargets(inputs, t42)), ['typescript-build-unit-check', 'comment-language-check', 'repo-check', 'go-fmt-check', 'go-vet-check', 'rust-fmt-check', 'catalog-php-extension-surface-check']);
+  // statement-events-check/<runtime> are the owner checks of the recipe fixture (contracts/fixtures/statement_events/**, added by
+  // 4569473b6 in contracts/check-inputs.json), which t42 changes. They are the changed feature's own checks, all of owner scope.
+  const selectedTargets = targets(selectTargets(inputs, t42));
+  assert.deepEqual(selectedTargets, ['typescript-build-unit-check', 'comment-language-check', 'repo-check', 'go-fmt-check', 'go-vet-check', 'rust-fmt-check',
+    'statement-events-check/rust', 'statement-events-check/go', 'statement-events-check/typescript', 'statement-events-check/python', 'statement-events-check/php',
+    'statement-events-check/php-extension', 'catalog-php-extension-surface-check']);
+  for (const target of selectedTargets) assert.notEqual(inputs[target]?.scope, 'suite', `${target} is a full-suite target`);
   const runtimes = ['go', 'php', 'php-extension', 'typescript', 'python', 'rust'];
   const nativeTargets = runtimes.flatMap(runtime => [
     `client-db-${runtime}-check`,
