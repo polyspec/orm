@@ -69,6 +69,7 @@
 - A database feature becomes a recipe in its own commit: request_hook runs its 11 cases on MySQL, PostgreSQL and SQLite in the six clients through make request-hook-check/<client>, bound in config/parity.json. The hand-written tests of the converted cases are removed; the four sub-assertions a step cannot observe stay native, and the unused fail action has its own case (T334-3-4).
 - The parameter chunking runs as a recipe in six clients: `contracts/fixtures/parameter_chunking/parameter_chunking.json`, an IN list of 70300 values written with `sequence` values (FCV-4), runs on MySQL, PostgreSQL and SQLite through `make parameter-chunking-check/<client>`, bound as the suite units `parameter_chunking-mysql`, `-postgres` and `-sqlite`; a `limit` on a split list fails with `IR_INVALID` (PRT-76), and the native probe of the PHP extension stays as PRT-80 (FCV-2) (#T334-3-4).
 - The Rust AES key status and rotation of a recipe model read the entity of the model core, not the static entity of a model type, so a recipe row no longer panics with unreachable code (T334-3-4-4).
+- Rust reads a stored AES version written as text of digits as its number, as COD-53 requires and as the Go read path does; MySQL delivers that text as bytes, which the version read refused with CODEC_DECODE (T334-3-4-5).
 
 ## 0.0.21
 

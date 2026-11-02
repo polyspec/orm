@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4913d203a51b24ea90ffefa909282aae3334084142327a110155f491ed7647d7 -->
+<!-- source-sha256: 6e31c0ccc55ef8c9726a70becdb72bdc469d4091c0cc28a2baf30f28cc734a42 -->
 # 변경 이력
 
 ## Unreleased
@@ -70,6 +70,7 @@
 - 데이터베이스 feature는 자기 commit에서 recipe가 된다: request_hook의 사례 11개를 여섯 client에서 MySQL, PostgreSQL, SQLite로 `make request-hook-check/<client>`를 통해 실행하고 config/parity.json에 묶었다. 손으로 쓴 변환 대상 시험은 제거했고, step이 관찰할 수 없는 하위 검사 네 개는 native로 남겼다 (T334-3-4).
 - 파라미터 분할은 여섯 client에서 recipe로 실행된다: `contracts/fixtures/parameter_chunking/parameter_chunking.json`(`sequence` 값으로 적은 70300개 값의 IN 목록, FCV-4)을 `make parameter-chunking-check/<client>`로 MySQL, PostgreSQL, SQLite에서 실행하며, suite unit `parameter_chunking-mysql`, `-postgres`, `-sqlite`로 바인딩한다. 나뉜 목록의 `limit`은 `IR_INVALID`로 실패하고(PRT-76), PHP extension의 native probe는 PRT-80으로 남는다(FCV-2) (#T334-3-4).
 - Rust의 레시피 모델 AES 키 상태와 회전은 모델 타입의 정적 엔티티가 아니라 모델 core의 엔티티를 읽는다. 그래서 레시피 행이 unreachable 패닉을 내지 않는다 (T334-3-4-4).
+- Rust는 숫자 문자열로 쓰인 저장 AES 버전을 COD-53이 요구하고 Go 읽기 경로가 하듯 그 숫자로 읽는다. MySQL은 그 문자열을 바이트로 돌려주었고, 버전 읽기가 이를 CODEC_DECODE로 거부했다 (T334-3-4-5).
 
 ## 0.0.21
 
