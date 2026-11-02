@@ -8,6 +8,30 @@ const BENCH_KEYS = { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' };
 
 const columnsOf = values => Object.keys(values).sort();
 
+// The Author equality conditions that the recipes name, by column: the condition method of the chain grammar.
+const CONDITIONS = {
+  seq: 'seq',
+  user_seq: 'userSeq',
+  service_seq: 'serviceSeq',
+  service_region_seq: 'serviceRegionSeq',
+  service_member_seq: 'serviceMemberSeq',
+};
+
+// The Author columns that a recipe may read, by column: the method that adds it to the projection, and its getter.
+const COLUMNS = {
+  seq: ['addColumnSeq', 'getSeq'],
+  name: ['addColumnName', 'getName'],
+  user_seq: ['addColumnUserSeq', 'getUserSeq'],
+  service_seq: ['addColumnServiceSeq', 'getServiceSeq'],
+  service_region_seq: ['addColumnServiceRegionSeq', 'getServiceRegionSeq'],
+  service_member_seq: ['addColumnServiceMemberSeq', 'getServiceMemberSeq'],
+  read_count: ['addColumnReadCount', 'getReadCount'],
+};
+
+// The Author orders that a recipe may name, ascending, by column.
+// A name with a leading '-' is descending (FCV-4 model.query).
+const ORDERS = { seq: 'orderBySeqAsc', name: 'orderByNameAsc', '-seq': 'orderBySeqDesc', '-name': 'orderByNameDesc' };
+
 /** The helpers of the recipe helper that the model ops use: the value of a field, and the native value of a wrapper. */
 export function modelOps({ native, databaseValue, stepArgument }) {
   const valueOf = (value, context) => native(databaseValue(stepArgument(value, context), context));
@@ -44,6 +68,39 @@ export function modelOps({ native, databaseValue, stepArgument }) {
   };
   const compositeKey = (db, key) => new CompositeAccount().connect(db).getByTenantIdAndAccountId(key.tenant_id, key.account_id);
   const wrap = value => (typeof value === 'bigint' || typeof value === 'number' ? { int: String(value) } : { text: value });
+
+  // chain applies the equalities of where, ANDed in the order of their column names, then the projection of columns (an empty
+  // list keeps the default columns of the model).
+  const chain = (db, where, columns) => {
+    const model = new Author().connect(db);
+    // The int equalities come first in name order; the bool equality of is_close is andIsClose after them (the chain has no bool
+    // condition that opens it). The equalities are ANDed, so the order of the conditions does not change the rows.
+    const names = Object.keys(where).sort();
+    const ordered = [...names.filter(column => typeof where[column] !== 'boolean'), ...names.filter(column => typeof where[column] === 'boolean')];
+    ordered.forEach((column, index) => {
+      if (typeof where[column] === 'boolean') {
+        if (column !== 'is_close' || index === 0) throw new Error(`Author column ${column}: a bool equality needs the is_close column after an int equality`);
+        model.andIsClose(where[column]);
+        return;
+      }
+      const condition = CONDITIONS[column];
+      if (condition === undefined) throw new Error(`Author column ${column} has no recipe condition`);
+      if (typeof where[column] !== 'number' && typeof where[column] !== 'bigint') throw new Error(`Author column ${column}: want an int wrapper`);
+      if (index > 0) model.and();
+      model[condition](where[column]);
+    });
+    if (columns.length > 0) {
+      model.removeAllColumns();
+      for (const column of columns) {
+        if (COLUMNS[column] === undefined) throw new Error(`Author column ${column} has no recipe column`);
+        model[COLUMNS[column][0]]();
+      }
+    }
+    return model;
+  };
+
+  // rowCells is the recipe wrappers of the named columns of one row, in the order of columns.
+  const cells = (row, columns) => columns.map(column => wrap(row[COLUMNS[column][1]]()));
 
   return {
     async 'model.connect'(s, context) {
@@ -89,6 +146,7 @@ export function modelOps({ native, databaseValue, stepArgument }) {
     },
     async 'model.count'(s, context) {
       const db = connection(s.connection, context);
+      if (s.model === 'Author') return { value: wrap(await chain(db, objectValues(s.where, context), []).getCount()) };
       return { value: { int: String(await compositeFilter(db, objectValues(s.where, context)).getCount()) } };
     },
     async 'model.get_by'(s, context) {
@@ -101,6 +159,11 @@ export function modelOps({ native, databaseValue, stepArgument }) {
         })];
         return { rows: cells };
       }
+      if (s.where !== undefined) {
+        if (s.model !== 'Author') throw new Error(`model ${s.model} has no recipe where`);
+        const found = await chain(db, objectValues(s.where, context), s.columns).get();
+        return { rows: found === null ? [] : [cells(found, s.columns)] };
+      }
       const row = await compositeKey(db, objectValues(s.key, context));
       const rows = row === null ? [] : [s.columns.map(column => {
         if (column !== 'name') throw new Error(`CompositeAccount column ${column} has no recipe getter`);
@@ -110,6 +173,17 @@ export function modelOps({ native, databaseValue, stepArgument }) {
     },
     async 'model.query'(s, context) {
       const db = connection(s.connection, context);
+      if (s.model === 'Author') {
+        const model = chain(db, objectValues(s.where, context), s.columns);
+        for (const column of s.order ?? []) {
+          if (ORDERS[column] === undefined) throw new Error(`Author column ${column} has no recipe order`);
+          model[ORDERS[column]]();
+        }
+        const offset = s.offset ?? 0;
+        if ((s.limit ?? 0) > 0 || offset > 0) model.limit(offset, s.limit ?? 0);
+        const collection = await model.gets();
+        return { rows: collection.values().map(row => cells(row, s.columns)) };
+      }
       const collection = await compositeFilter(db, objectValues(s.where, context)).gets();
       const rows = collection.values().map(row => s.columns.map(column => {
         if (column !== 'name') throw new Error(`CompositeAccount column ${column} has no recipe getter`);

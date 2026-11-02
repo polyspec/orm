@@ -1313,9 +1313,10 @@ final class Catalog
     private function prepareQuery(\PDO $pdo, string $sql, array $args): \PDOStatement
     {
         $statement = $pdo->prepare($sql);
-        // The execute of an array binds a PHP false as the empty string, which MySQL and SQLite refuse for a boolean column.
-        // So when an argument is a bool, every argument is bound by its type: a bool as a bool (DIA-29), which PDO sends as
-        // the boolean of the driver, and the others as text or NULL, as execute binds them.
+        // The execute of an array binds a PHP false as the empty string, which MySQL and SQLite refuse for a boolean
+        // column. So when an argument is a bool, every argument is bound by its type: a bool as a bool (DIA-29), which
+        // PDO
+        // sends as the boolean of the driver, and the others as text or NULL, as execute binds them.
         if (!in_array(true, array_map(is_bool(...), $args), true)) {
             $statement->execute($args);
             return $statement;

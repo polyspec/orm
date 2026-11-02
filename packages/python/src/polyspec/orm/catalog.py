@@ -331,7 +331,9 @@ def _described_boolean(value, column: CatalogColumn, dialect: str):
         return value
     if isinstance(value, int) and value in (0, 1):
         return value == 1
-    raise _error(codes.CATALOG_VALUE, f"column {column.name!r} holds {value!r}, not a boolean")
+    raise _error(
+        codes.CATALOG_VALUE, f"column {column.name!r} holds {value!r}, not a boolean"
+    )
 
 
 def _described_temporal(value, column: CatalogColumn, dialect: str):

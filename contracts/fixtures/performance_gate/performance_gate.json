@@ -1,0 +1,397 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "PERF-1"
+  ],
+  "fixture": "contracts/fixtures/bench/dbspec-set.json",
+  "seed": {
+    "rows": {
+      "user": [
+        {
+          "seq": {
+            "int": "1"
+          },
+          "name": {
+            "text": "user-1"
+          }
+        },
+        {
+          "seq": {
+            "int": "2"
+          },
+          "name": {
+            "text": "user-2"
+          }
+        },
+        {
+          "seq": {
+            "int": "3"
+          },
+          "name": {
+            "text": "user-3"
+          }
+        }
+      ],
+      "service": [
+        {
+          "seq": {
+            "int": "7"
+          },
+          "name": {
+            "text": "service-7"
+          }
+        },
+        {
+          "seq": {
+            "int": "8"
+          },
+          "name": {
+            "text": "service-8"
+          }
+        }
+      ],
+      "service_region": [
+        {
+          "seq": {
+            "int": "1"
+          },
+          "service_seq": {
+            "int": "7"
+          },
+          "name": {
+            "text": "region-1"
+          }
+        },
+        {
+          "seq": {
+            "int": "2"
+          },
+          "service_seq": {
+            "int": "8"
+          },
+          "name": {
+            "text": "region-2"
+          }
+        }
+      ],
+      "service_member": [
+        {
+          "seq": {
+            "int": "1"
+          },
+          "service_seq": {
+            "int": "7"
+          },
+          "user_seq": {
+            "int": "1"
+          }
+        },
+        {
+          "seq": {
+            "int": "2"
+          },
+          "service_seq": {
+            "int": "7"
+          },
+          "user_seq": {
+            "int": "2"
+          }
+        },
+        {
+          "seq": {
+            "int": "3"
+          },
+          "service_seq": {
+            "int": "8"
+          },
+          "user_seq": {
+            "int": "3"
+          }
+        }
+      ],
+      "author": [
+        {
+          "seq": {
+            "int": "42"
+          },
+          "name": {
+            "text": "alpha"
+          },
+          "is_close": {
+            "bool": false
+          },
+          "user_seq": {
+            "int": "1"
+          },
+          "service_seq": {
+            "int": "7"
+          },
+          "service_region_seq": {
+            "int": "1"
+          },
+          "service_member_seq": {
+            "int": "1"
+          },
+          "start_dt": {
+            "datetime": "2024-01-01 00:00:00.000000"
+          },
+          "end_dt": {
+            "datetime": "2024-12-31 23:59:59.000000"
+          }
+        },
+        {
+          "seq": {
+            "int": "43"
+          },
+          "name": {
+            "text": "beta"
+          },
+          "is_close": {
+            "bool": false
+          },
+          "user_seq": {
+            "int": "2"
+          },
+          "service_seq": {
+            "int": "7"
+          },
+          "service_region_seq": {
+            "int": "1"
+          },
+          "service_member_seq": {
+            "int": "2"
+          },
+          "start_dt": {
+            "datetime": "2024-01-01 00:00:00.000000"
+          },
+          "end_dt": {
+            "datetime": "2024-12-31 23:59:59.000000"
+          }
+        },
+        {
+          "seq": {
+            "int": "44"
+          },
+          "name": {
+            "text": "gamma"
+          },
+          "is_close": {
+            "bool": false
+          },
+          "user_seq": {
+            "int": "3"
+          },
+          "service_seq": {
+            "int": "8"
+          },
+          "service_region_seq": {
+            "int": "2"
+          },
+          "service_member_seq": {
+            "int": "3"
+          },
+          "start_dt": {
+            "datetime": "2024-01-01 00:00:00.000000"
+          },
+          "end_dt": {
+            "datetime": "2024-12-31 23:59:59.000000"
+          }
+        },
+        {
+          "seq": {
+            "int": "45"
+          },
+          "name": {
+            "text": "delta"
+          },
+          "is_close": {
+            "bool": true
+          },
+          "user_seq": {
+            "int": "1"
+          },
+          "service_seq": {
+            "int": "7"
+          },
+          "service_region_seq": {
+            "int": "1"
+          },
+          "service_member_seq": {
+            "int": "1"
+          },
+          "start_dt": {
+            "datetime": "2024-01-01 00:00:00.000000"
+          },
+          "end_dt": {
+            "datetime": "2024-12-31 23:59:59.000000"
+          }
+        }
+      ]
+    }
+  },
+  "cases": [
+    {
+      "id": "pk_lookup",
+      "requirements": [
+        "PERF-1"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "seq": {
+              "int": "42"
+            }
+          },
+          "order": [],
+          "columns": [
+            "seq",
+            "name"
+          ],
+          "limit": 1,
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "42"
+                  },
+                  {
+                    "text": "alpha"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "42"
+                  },
+                  {
+                    "text": "alpha"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "42"
+                  },
+                  {
+                    "text": "alpha"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "list_descending",
+      "requirements": [
+        "PERF-1"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "service_seq": {
+              "int": "7"
+            },
+            "is_close": {
+              "bool": false
+            }
+          },
+          "order": [
+            "-seq"
+          ],
+          "columns": [
+            "seq",
+            "name"
+          ],
+          "limit": 100,
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "43"
+                  },
+                  {
+                    "text": "beta"
+                  }
+                ],
+                [
+                  {
+                    "int": "42"
+                  },
+                  {
+                    "text": "alpha"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "43"
+                  },
+                  {
+                    "text": "beta"
+                  }
+                ],
+                [
+                  {
+                    "int": "42"
+                  },
+                  {
+                    "text": "alpha"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "43"
+                  },
+                  {
+                    "text": "beta"
+                  }
+                ],
+                [
+                  {
+                    "int": "42"
+                  },
+                  {
+                    "text": "alpha"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

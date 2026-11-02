@@ -10,6 +10,35 @@ from .models import models
 BENCH_KEYS = {"aesKey": "bench-salt", "blindIndexKey": "bench-blind-index"}
 
 
+# The Author equality conditions that the recipes name, by column: the condition method of the chain grammar.
+CONDITIONS = {
+    "seq": "seq",
+    "user_seq": "user_seq",
+    "service_seq": "service_seq",
+    "service_region_seq": "service_region_seq",
+    "service_member_seq": "service_member_seq",
+}
+
+# The Author columns that a recipe may read, by column: the method that adds it to the projection, and its getter.
+COLUMNS = {
+    "seq": ("add_column_seq", "get_seq"),
+    "name": ("add_column_name", "get_name"),
+    "user_seq": ("add_column_user_seq", "get_user_seq"),
+    "service_seq": ("add_column_service_seq", "get_service_seq"),
+    "service_region_seq": ("add_column_service_region_seq", "get_service_region_seq"),
+    "service_member_seq": ("add_column_service_member_seq", "get_service_member_seq"),
+    "read_count": ("add_column_read_count", "get_read_count"),
+}
+
+# The Author orders that a recipe may name, by column: a name is ascending, and a name with a leading "-" is descending (FCV-4).
+ORDERS = {
+    "seq": "order_by_seq_asc",
+    "name": "order_by_name_asc",
+    "-seq": "order_by_seq_desc",
+    "-name": "order_by_name_desc",
+}
+
+
 def _wrap(value):
     if isinstance(value, bool):
         raise AssertionError(f"no recipe wrapper for {value!r}")
@@ -69,6 +98,40 @@ def model_ops(native, database_value, step_argument):
             .get_by_tenant_id_and_account_id(key["tenant_id"], key["account_id"])
         )
 
+    def chain(db, where, columns):
+        """Applies the equalities of where, ANDed in the order of their column names, then the projection of columns (an
+        empty list keeps the default columns of the model)."""
+        model = models.Author().connect(db)
+        # The int equalities come first in name order; the bool equality of is_close is and_is_close after them (the chain has
+        # no bool condition that opens it). The equalities are ANDed, so the order of the conditions does not change the rows.
+        names = sorted(where)
+        ordered = [c for c in names if not isinstance(where[c], bool)] + [
+            c for c in names if isinstance(where[c], bool)
+        ]
+        for index, column in enumerate(ordered):
+            if isinstance(where[column], bool):
+                if column != "is_close" or index == 0:
+                    raise AssertionError(
+                        f"Author column {column}: a bool equality needs the is_close column after an int equality"
+                    )
+                model.and_is_close(where[column])
+                continue
+            condition = CONDITIONS.get(column)
+            if condition is None:
+                raise AssertionError(f"Author column {column} has no recipe condition")
+            if not isinstance(where[column], int):
+                raise AssertionError(f"Author column {column}: want an int wrapper")
+            if index > 0:
+                model.and_()
+            getattr(model, condition)(where[column])
+        if columns:
+            model.remove_all_columns()
+            for column in columns:
+                if column not in COLUMNS:
+                    raise AssertionError(f"Author column {column} has no recipe column")
+                getattr(model, COLUMNS[column][0])()
+        return model
+
     def model_connect(step, context):
         # The case schema is registered on the connection, as the statement-event ops need it (FCV-4, model.connect).
         options = dict(BENCH_KEYS)
@@ -127,16 +190,25 @@ def model_ops(native, database_value, step_argument):
 
     def model_count(step, context):
         db = connection(step["connection"], context)
+        if step["model"] == "Author":
+            return {"value": _wrap(chain(db, values_of(step.get("where"), context), []).get_count())}
         return {
             "value": {
                 "int": str(
-                    composite_filter(db, values_of(step["where"], context)).get_count()
+                    composite_filter(db, values_of(step.get("where"), context)).get_count()
                 )
             }
         }
 
     def model_get_by(step, context):
         db = connection(step["connection"], context)
+        if "where" in step:
+            if step["model"] != "Author":
+                raise AssertionError(f"model {step['model']} has no recipe where")
+            found = chain(db, values_of(step["where"], context), step["columns"]).get()
+            if found is None:
+                return {"rows": []}
+            return {"rows": [[_wrap(getattr(found, COLUMNS[column][1])()) for column in step["columns"]]]}
         if step["model"] == "Author":
             author = (
                 models.Author()
@@ -156,7 +228,23 @@ def model_ops(native, database_value, step_argument):
 
     def model_query(step, context):
         db = connection(step["connection"], context)
-        rows = composite_filter(db, values_of(step["where"], context)).gets().values()
+        if step["model"] == "Author":
+            model = chain(db, values_of(step.get("where"), context), step["columns"])
+            for column in step.get("order", []):
+                if column not in ORDERS:
+                    raise AssertionError(f"Author column {column} has no recipe order")
+                getattr(model, ORDERS[column])()
+            offset = step.get("offset", 0)
+            limit = step.get("limit", 0)
+            if limit > 0 or offset > 0:
+                model.limit(offset, limit)
+            return {
+                "rows": [
+                    [_wrap(getattr(row, COLUMNS[column][1])()) for column in step["columns"]]
+                    for row in model.gets().values()
+                ]
+            }
+        rows = composite_filter(db, values_of(step.get("where"), context)).gets().values()
         return {
             "rows": [
                 [_column_wrap(row, column) for column in step["columns"]]

@@ -23,6 +23,31 @@ trait RecipeModel
     private const BENCH_AES_KEY = 'bench-salt';
     private const BENCH_BLIND_INDEX_KEY = 'bench-blind-index';
 
+    /** The Author equality conditions that the recipes name, by column: the condition method of the chain grammar. */
+    private const AUTHOR_CONDITIONS = [
+        'seq' => 'seq',
+        'user_seq' => 'userSeq',
+        'service_seq' => 'serviceSeq',
+        'service_region_seq' => 'serviceRegionSeq',
+        'service_member_seq' => 'serviceMemberSeq',
+    ];
+
+    /** The Author columns that a recipe may read, by column: the method that adds it to the projection, and its getter. */
+    private const AUTHOR_COLUMNS = [
+        'seq' => ['addColumnSeq', 'getSeq'],
+        'name' => ['addColumnName', 'getName'],
+        'user_seq' => ['addColumnUserSeq', 'getUserSeq'],
+        'service_seq' => ['addColumnServiceSeq', 'getServiceSeq'],
+        'service_region_seq' => ['addColumnServiceRegionSeq', 'getServiceRegionSeq'],
+        'service_member_seq' => ['addColumnServiceMemberSeq', 'getServiceMemberSeq'],
+        'read_count' => ['addColumnReadCount', 'getReadCount'],
+    ];
+
+    /** The Author orders that a recipe may name, by column: a name is ascending, and a name with a leading "-" is descending (FCV-4). */
+    private const AUTHOR_ORDERS = [
+        'seq' => 'orderBySeqAsc', 'name' => 'orderByNameAsc', '-seq' => 'orderBySeqDesc', '-name' => 'orderByNameDesc',
+    ];
+
     /** Closes the connections that the model ops of the case opened. */
     private static function closeModelConnections(): void
     {
@@ -184,11 +209,96 @@ trait RecipeModel
         }, $columns);
     }
 
+    /** The Author chain of the equalities of where, joined by and() in the order of their column names, then the projection. */
+    private static function authorChain(Db $db, array $where, array $columns): \Polyspec\Orm\Tests\Model\Author
+    {
+        $model = (new \Polyspec\Orm\Tests\Model\Author())($db);
+        $first = true;
+        // The int equalities come first in name order; the bool equality of is_close is andIsClose after them (the
+        // chain
+        // has no bool condition that opens it). The equalities are ANDed, so the order of the conditions does not
+        // change
+        // the rows.
+        $ints = array_filter($where, static fn($value) => !is_bool($value));
+        $bools = array_filter($where, static fn($value) => is_bool($value));
+        ksort($ints);
+        ksort($bools);
+        foreach ([...$ints, ...$bools] as $column => $value) {
+            if (is_bool($value)) {
+                if ($column !== 'is_close' || $first) {
+                    Assert::fail(
+                        "Author column $column: a bool equality needs the is_close column after an int equality"
+                    );
+                }
+                $model = $model->andIsClose($value);
+                continue;
+            }
+            if (!isset(self::AUTHOR_CONDITIONS[$column])) {
+                Assert::fail("Author column $column has no recipe condition");
+            }
+            if (!is_int($value)) {
+                Assert::fail("Author column $column: want an int wrapper");
+            }
+            if (!$first) {
+                $model = $model->and();
+            }
+            $first = false;
+            $method = self::AUTHOR_CONDITIONS[$column];
+            $model->$method($value);
+        }
+        if ($columns !== []) {
+            $model->removeAllColumns();
+            foreach ($columns as $column) {
+                if (!isset(self::AUTHOR_COLUMNS[$column])) {
+                    Assert::fail("Author column $column has no recipe column");
+                }
+                $add = self::AUTHOR_COLUMNS[$column][0];
+                $model->$add();
+            }
+        }
+        return $model;
+    }
+
+    /** The recipe wrappers of the named columns of one row, in the order of columns. */
+    private static function authorCells(object $row, array $columns): array
+    {
+        return array_map(
+            static fn (string $column): array => self::modelWrapper($row->{self::AUTHOR_COLUMNS[$column][1]}()),
+            $columns,
+        );
+    }
+
     private static function authorOp(array $s, array $context, Db $db): array
     {
         $Author = \Polyspec\Orm\Tests\Model\Author::class;
         switch ($s['op']) {
+            case 'model.query':
+                $model = self::authorChain($db, self::modelValues($s['where'] ?? null, $context), $s['columns']);
+                foreach ($s['order'] ?? [] as $column) {
+                    if (!isset(self::AUTHOR_ORDERS[$column])) {
+                        Assert::fail("Author column $column has no recipe order");
+                    }
+                    $order = self::AUTHOR_ORDERS[$column];
+                    $model->$order();
+                }
+                $offset = $s['offset'] ?? 0;
+                $limit = $s['limit'] ?? 0;
+                if ($limit > 0 || $offset > 0) {
+                    $model->limit($offset, $limit);
+                }
+                $rows = [];
+                foreach ($model->gets() as $row) {
+                    $rows[] = self::authorCells($row, $s['columns']);
+                }
+                return ['rows' => $rows];
+            case 'model.count':
+                $count = self::authorChain($db, self::modelValues($s['where'] ?? null, $context), [])->getCount();
+                return ['value' => ['int' => (string) $count]];
             case 'model.get_by':
+                if (isset($s['where'])) {
+                    $row = self::authorChain($db, self::modelValues($s['where'], $context), $s['columns'])->get();
+                    return ['rows' => $row === null ? [] : [self::authorCells($row, $s['columns'])]];
+                }
                 $key = self::modelValues($s['key'], $context);
                 $row = (new $Author())($db)->getBySeq($key['seq']);
                 if ($row === null) {

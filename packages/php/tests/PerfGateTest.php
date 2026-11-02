@@ -96,13 +96,15 @@ final class PerfGateTest extends TestCase
         };
     }
 
-    /** The gate asserts row correctness; a slow measured ratio is only a warning. */
+    /** A slow measured ratio is only a warning; the rows of pk and list100 are checked by performance_gate. */
     #[DataProvider('gates')]
     public function testPerfGate(string $name, ?float $bound): void
     {
         $query = self::query($name);
         $native = self::native(self::$db, $query);
-        self::assertSame(self::clientRows($query), $native(), "$name: client and native rows");
+        // The rows of pk (pk_lookup) and list100 (list_descending) are checked by performance_gate on every database,
+        // so
+        // the native read is not compared with the client read here.
         $wallStarted = hrtime(true);
         $usageStarted = getrusage();
         [$clientNs, $nativeNs, $ratio] = self::pairedRatio(static fn() => self::query($name)->gets(), $native);

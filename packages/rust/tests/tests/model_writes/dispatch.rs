@@ -85,9 +85,21 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
             let rows = filter_account(db, &step["where"])?.gets().await.map_err(fail)?;
             rows.delete(false).await.map(|()| json!({})).map_err(fail)
         }
+        "model.count" if step["model"] == "Author" => {
+            let count = author_chain(db, &step["where"], &[])?.get_count().await.map_err(fail)?;
+            Ok(json!({ "value": { "int": count.to_string() } }))
+        }
         "model.count" => {
             let count = filter_account(db, &step["where"])?.get_count().await.map_err(fail)?;
             Ok(json!({ "value": { "int": count.to_string() } }))
+        }
+        "model.get_by" if step["model"] == "Author" && step.get("where").is_some() => {
+            let wanted = names(&step["columns"]);
+            let rows = match author_chain(db, &step["where"], &wanted)?.get().await.map_err(fail)? {
+                None => Vec::new(),
+                Some(row) => vec![cells(&wanted, |column| author_field(&row, column))?],
+            };
+            Ok(json!({ "rows": rows }))
         }
         "model.get_by" => {
             let wanted = names(&step["columns"]);
@@ -104,6 +116,7 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
             };
             Ok(json!({ "rows": rows }))
         }
+        "model.query" if step["model"] == "Author" => author_query(db, step).await,
         "model.query" => {
             let mut query = filter_account(db, &step["where"])?;
             for column in step["order"].as_array().into_iter().flatten() {
@@ -181,6 +194,89 @@ async fn find_account(db: &Db, key: &Value) -> Result<Option<CompositeAccount>, 
     account(db).get_by_tenant_id_and_account_id(int(&key["tenant_id"])?, int(&key["account_id"])?).await.map_err(fail)
 }
 
+/// The Author chain of the equalities of `where`: the int equalities in name order, joined by and(()), then the bool equality
+/// of is_close, which the generated chain cannot open with; then the projection of `columns`, when it names any.
+fn author_chain(db: &Db, where_: &Value, columns: &[String]) -> Result<Author, String> {
+    let (mut ints, mut bools) = (Vec::new(), Vec::new());
+    for (column, wrapper) in columns_of(where_)? {
+        if wrapper.get("bool").is_some() {
+            bools.push((column.as_str(), wrapper["bool"].as_bool().ok_or_else(|| format!("{wrapper} is not a bool"))?));
+        } else {
+            ints.push((column.as_str(), int(wrapper)?));
+        }
+    }
+    ints.sort_unstable();
+    let mut author = Author::new().connect(db);
+    for (index, &(column, value)) in ints.iter().enumerate() {
+        if !matches!(column, "seq" | "user_seq" | "service_seq" | "service_region_seq" | "service_member_seq") {
+            return Err(format!("Author column {column} has no recipe condition"));
+        }
+        if index > 0 {
+            author = author.and(());
+        }
+        author = match column {
+            "seq" => author.seq(value),
+            "user_seq" => author.user_seq(value),
+            "service_seq" => author.service_seq(value),
+            "service_region_seq" => author.service_region_seq(value),
+            _ => author.service_member_seq(value),
+        };
+    }
+    for (column, value) in bools {
+        if column != "is_close" || ints.is_empty() {
+            return Err(format!("Author column {column}: a bool equality needs the is_close column after an int equality"));
+        }
+        author = author.and_is_close(value);
+    }
+    if !columns.is_empty() {
+        author = author.remove_all_columns();
+        for column in columns {
+            author = match column.as_str() {
+                "seq" => author.add_column_seq(),
+                "name" => author.add_column_name(),
+                other => return Err(format!("Author column {other} has no recipe column")),
+            };
+        }
+    }
+    Ok(author)
+}
+
+/// model.query on the Author model: the chain of `where`, the orders (a leading "-" is descending), the window when limit or
+/// offset is greater than 0, and the projection of `columns`, each cell a recipe wrapper.
+async fn author_query(db: &Db, step: &Value) -> Result<Value, String> {
+    let wanted = names(&step["columns"]);
+    let mut author = author_chain(db, &step["where"], &wanted)?;
+    for order in step["order"].as_array().into_iter().flatten() {
+        author = match order.as_str().unwrap_or_default() {
+            "seq" => author.order_by_seq_asc(),
+            "name" => author.order_by_name_asc(),
+            "-seq" => author.order_by_seq_desc(),
+            "-name" => author.order_by_name_desc(),
+            other => return Err(format!("Author column {other} has no recipe order")),
+        };
+    }
+    let window = |key: &str| match &step[key] {
+        Value::Null => Ok(0),
+        value => value.as_u64().and_then(|n| u32::try_from(n).ok()).ok_or_else(|| format!("{key} is not a count: {value}")),
+    };
+    let (limit, offset) = (window("limit")?, window("offset")?);
+    if limit > 0 || offset > 0 {
+        author = author.limit(offset, limit);
+    }
+    let collection = author.gets().await.map_err(fail)?;
+    let rows = collection.iter().map(|(_, row)| cells(&wanted, |column| author_field(row, column))).collect::<Result<Vec<_>, _>>()?;
+    Ok(json!({ "rows": rows }))
+}
+
+fn author_field(row: &Author, column: &str) -> Result<Value, String> {
+    match column {
+        "seq" => Ok(json!({ "int": row.get_seq().map_err(fail)?.to_string() })),
+        "name" => Ok(json!({ "text": row.get_name().map_err(fail)? })),
+        "read_count" => Ok(json!({ "int": row.get_read_count().map_err(fail)?.to_string() })),
+        other => Err(format!("Author column {other} has no recipe getter")),
+    }
+}
+
 fn author_cell(row: &Author, column: &str) -> Result<Value, String> {
     match column {
         "read_count" => Ok(json!({ "int": row.get_read_count().map_err(fail)?.to_string() })),
@@ -202,6 +298,13 @@ fn cells(columns: &[String], cell: impl Fn(&str) -> Result<Value, String>) -> Re
 
 fn names(array: &Value) -> Vec<String> {
     array.as_array().into_iter().flatten().filter_map(|name| name.as_str().map(str::to_owned)).collect()
+}
+
+fn columns_of(object: &Value) -> Result<Vec<(&String, &Value)>, String> {
+    if object.is_null() {
+        return Ok(Vec::new());
+    }
+    Ok(columns(object)?.iter().collect())
 }
 
 fn columns(object: &Value) -> Result<&serde_json::Map<String, Value>, String> {

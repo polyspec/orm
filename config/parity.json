@@ -9438,6 +9438,123 @@
       ]
     },
     {
+      "id": "performance_gate-mysql",
+      "kind": "suite",
+      "requirements": [
+        "PERF-1"
+      ],
+      "file": "contracts/fixtures/performance_gate/performance_gate.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_performance_gate_test.go",
+          "symbol": "TestRecipePerformanceGateMysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/PerformanceGateRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\PerformanceGateRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PerformanceGateRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\PerformanceGateRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/performance_gate-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_performance_gate_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/performance_gate_mysql.rs",
+          "symbol": "performance_gate_mysql"
+        }
+      ]
+    },
+    {
+      "id": "performance_gate-postgres",
+      "kind": "suite",
+      "requirements": [
+        "PERF-1"
+      ],
+      "file": "contracts/fixtures/performance_gate/performance_gate.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_performance_gate_test.go",
+          "symbol": "TestRecipePerformanceGatePostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/PerformanceGateRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\PerformanceGateRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PerformanceGateRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\PerformanceGateRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/performance_gate-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_performance_gate_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/performance_gate_postgres.rs",
+          "symbol": "performance_gate_postgres"
+        }
+      ]
+    },
+    {
+      "id": "performance_gate-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "PERF-1"
+      ],
+      "file": "contracts/fixtures/performance_gate/performance_gate.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_performance_gate_test.go",
+          "symbol": "TestRecipePerformanceGateSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/PerformanceGateRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\PerformanceGateRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PerformanceGateRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\PerformanceGateRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/performance_gate-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_performance_gate_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/performance_gate_sqlite.rs",
+          "symbol": "performance_gate_sqlite"
+        }
+      ]
+    },
+    {
       "id": "statement_events-mysql",
       "kind": "suite",
       "requirements": [

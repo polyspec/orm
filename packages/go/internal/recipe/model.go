@@ -364,6 +364,109 @@ func compositeAccountRows(db *orm.DB, key map[string]any) ([]*model.CompositeAcc
 	return rows.Slice(), nil
 }
 
+// authorCondition narrows an Author chain by one equality.
+type authorCondition func(*model.AuthorModel) *model.AuthorModel
+
+// authorConditions is the table of the Author equality conditions that the recipes name, by column.
+var authorConditions = map[string]func(v int64) authorCondition{
+	"seq": func(v int64) authorCondition {
+		return func(m *model.AuthorModel) *model.AuthorModel { return m.Seq(v) }
+	},
+	"user_seq": func(v int64) authorCondition {
+		return func(m *model.AuthorModel) *model.AuthorModel { return m.UserSeq(v) }
+	},
+	"service_seq": func(v int64) authorCondition {
+		return func(m *model.AuthorModel) *model.AuthorModel { return m.ServiceSeq(v) }
+	},
+	"service_region_seq": func(v int64) authorCondition {
+		return func(m *model.AuthorModel) *model.AuthorModel { return m.ServiceRegionSeq(v) }
+	},
+	"service_member_seq": func(v int64) authorCondition {
+		return func(m *model.AuthorModel) *model.AuthorModel { return m.ServiceMemberSeq(v) }
+	},
+}
+
+// authorColumns is the table of the Author columns that a recipe may read, by column name.
+var authorColumns = map[string]func(*model.AuthorModel) *model.AuthorModel{
+	"seq":                (*model.AuthorModel).AddColumnSeq,
+	"name":               (*model.AuthorModel).AddColumnName,
+	"user_seq":           (*model.AuthorModel).AddColumnUserSeq,
+	"service_seq":        (*model.AuthorModel).AddColumnServiceSeq,
+	"service_region_seq": (*model.AuthorModel).AddColumnServiceRegionSeq,
+	"service_member_seq": (*model.AuthorModel).AddColumnServiceMemberSeq,
+	"read_count":         (*model.AuthorModel).AddColumnReadCount,
+}
+
+// authorOrders is the table of the Author orders that a recipe may name, by column name: a name is ascending, and a name
+// with a leading "-" is descending (FCV-4 model.query).
+var authorOrders = map[string]func(*model.AuthorModel) *model.AuthorModel{
+	"seq":   func(m *model.AuthorModel) *model.AuthorModel { return m.OrderBySeqAsc() },
+	"name":  func(m *model.AuthorModel) *model.AuthorModel { return m.OrderByNameAsc() },
+	"-seq":  func(m *model.AuthorModel) *model.AuthorModel { return m.OrderBySeqDesc() },
+	"-name": func(m *model.AuthorModel) *model.AuthorModel { return m.OrderByNameDesc() },
+}
+
+// authorChain applies the equalities of where, then the projection of columns (empty keeps the default columns).
+func authorChain(db *orm.DB, where map[string]any, columns []string) (*model.AuthorModel, error) {
+	m := model.Author().Connect(db)
+	// The int equalities come first in name order; each bool equality is AndIsClose after them, because the generated chain
+	// has no bool condition that opens it. The equalities are ANDed, so the order of the conditions does not change the rows.
+	names := sortedColumns(where)
+	ordered := make([]string, 0, len(names))
+	for _, column := range names {
+		if _, isBool := where[column].(bool); !isBool {
+			ordered = append(ordered, column)
+		}
+	}
+	for _, column := range names {
+		if _, isBool := where[column].(bool); isBool {
+			ordered = append(ordered, column)
+		}
+	}
+	for i, column := range ordered {
+		if b, isBool := where[column].(bool); isBool {
+			if column != "is_close" || i == 0 {
+				return nil, fmt.Errorf("Author column %s: a bool equality needs the is_close column after an int equality", column)
+			}
+			m = m.AndIsClose(b)
+			continue
+		}
+		condition, ok := authorConditions[column]
+		if !ok {
+			return nil, fmt.Errorf("Author column %s has no recipe condition", column)
+		}
+		n, ok := where[column].(int64)
+		if !ok {
+			return nil, fmt.Errorf("Author column %s: want an int wrapper", column)
+		}
+		if i > 0 {
+			m = m.And()
+		}
+		m = condition(n)(m)
+	}
+	if len(columns) > 0 {
+		m = m.RemoveAllColumns()
+		for _, column := range columns {
+			add, ok := authorColumns[column]
+			if !ok {
+				return nil, fmt.Errorf("Author column %s has no recipe column", column)
+			}
+			m = add(m)
+		}
+	}
+	return m, nil
+}
+
+// rowCells is the recipe wrappers of the named columns of one Author row, in the order of columns.
+func rowCells(row *model.AuthorModel, columns []string) []any {
+	values := row.ToArray()
+	cells := make([]any, len(columns))
+	for i, column := range columns {
+		cells[i] = wrapperOf(values[column])
+	}
+	return cells
+}
+
 // authorOp runs a model op on the Author model: the seeded read counter that the arithmetic op changes, and its reads.
 func authorOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, error) {
 	filterOf := func(raw []byte) (*model.AuthorModel, error) {
@@ -397,12 +500,69 @@ func authorOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, error) {
 		return m, nil
 	}
 	switch s.Op {
-	case "model.get_by", "model.query":
-		raw := s.Key
-		if s.Op == "model.query" {
-			raw = s.Where
+	case "model.count":
+		where, err := modelValues(s.Where, c)
+		if err != nil {
+			return outcome{}, err
 		}
-		m, err := filterOf(raw)
+		m, err := authorChain(db, where, nil)
+		if err != nil {
+			return outcome{}, err
+		}
+		n, err := m.GetCount()
+		if err != nil {
+			return outcome{}, err
+		}
+		return outcome{fields: map[string]any{"value": wrapperOf(n)}}, nil
+	case "model.query":
+		where, err := modelValues(s.Where, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		m, err := authorChain(db, where, s.Columns)
+		if err != nil {
+			return outcome{}, err
+		}
+		for _, column := range s.Order {
+			order, ok := authorOrders[column]
+			if !ok {
+				return outcome{}, fmt.Errorf("Author column %s has no recipe order", column)
+			}
+			m = order(m)
+		}
+		if s.Limit > 0 || s.Offset > 0 {
+			m = m.Limit(int(s.Offset), s.Limit)
+		}
+		collection, err := m.Gets()
+		if err != nil {
+			return outcome{}, err
+		}
+		rows := []any{}
+		for _, row := range collection.Slice() {
+			rows = append(rows, rowCells(row, s.Columns))
+		}
+		return outcome{fields: map[string]any{"rows": rows}}, nil
+	case "model.get_by":
+		if len(s.Where) > 0 {
+			where, err := modelValues(s.Where, c)
+			if err != nil {
+				return outcome{}, err
+			}
+			m, err := authorChain(db, where, s.Columns)
+			if err != nil {
+				return outcome{}, err
+			}
+			row, err := m.Get()
+			if err != nil {
+				return outcome{}, err
+			}
+			rows := []any{}
+			if row != nil {
+				rows = append(rows, rowCells(row, s.Columns))
+			}
+			return outcome{fields: map[string]any{"rows": rows}}, nil
+		}
+		m, err := filterOf(s.Key)
 		if err != nil {
 			return outcome{}, err
 		}

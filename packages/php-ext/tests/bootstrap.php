@@ -47,6 +47,7 @@ require_once dirname(__DIR__, 2) . '/php/tests/SchemaInstallRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DsnConnectionRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ModelWritesRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/StatementEventsRecipeTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/PerformanceGateRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CodecBytesValueRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CodecOrderedJsonTextTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CodecErrorCauseTest.php';

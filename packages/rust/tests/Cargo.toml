@@ -85,6 +85,23 @@ name = "statement_events_sqlite"
 path = "tests/statement_events_sqlite.rs"
 harness = false
 
+# Each case of the performance_gate recipe, contracts/fixtures/performance_gate/performance_gate.json, is the trial
+# performance_gate_<database>::<case id> on a case database of its own (FCV-3, FCV-4 model.connect and model.query).
+[[test]]
+name = "performance_gate_mysql"
+path = "tests/performance_gate_mysql.rs"
+harness = false
+
+[[test]]
+name = "performance_gate_postgres"
+path = "tests/performance_gate_postgres.rs"
+harness = false
+
+[[test]]
+name = "performance_gate_sqlite"
+path = "tests/performance_gate_sqlite.rs"
+harness = false
+
 [[test]]
 name = "codec_integer_beyond_i64_none"
 path = "tests/codec_integer_beyond_i64_none.rs"

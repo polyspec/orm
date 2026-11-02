@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: 78bb7d0f99294cb3ce6b21376485cb9abf83b288a1122efd7c38c4bb42dc00c0 -->
+<!-- source-sha256: 91975ad0444e0557dedb8becc64835ce083d35f85a1a2ef1e501728ad3c1cfa3 -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 언어별 테스트 명령을 선언한다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-check`가 실패한다.
@@ -44,7 +44,7 @@
   - `model.delete {connection, model, where}` 또는 `{row}`은 column이 `where`와 같은 row, 또는 묶인 row `row`를 읽고 각각에 `Delete`를 호출한다(client-model-terminal-write, INT-37). expect는 `{"error": <code>}`이거나 없다.
   - `model.count {connection, model, where?}`는 `where`의 같음 조건으로 `GetCount`를 호출한다. `where`가 없으면 model의 모든 row 개수를 구한다(client-model-terminal-read). expect는 `{"value": {"int": <count>}}`이다.
   - `model.get_by {connection, model, key | where, columns?}`는 `key` 또는 `where` 중 정확히 하나를 받는다. `key`는 key column의 key 조회 `GetBy`를 호출하고, `where`는 `Where`와 마지막 `Get`을 호출한다(generated-model-query-chain의 Where, client-model-terminal-read의 마지막 Get, INT-29). `expect`가 있으면 `columns`를 읽으며, expect는 `{"rows": [[<value>, ...], ...]}`, 최대 한 row다. `as`가 있으면 row를 묶고, step에는 `expect`가 없을 수 있다.
-  - `model.query {connection, model, where, order, columns}`는 `where`의 같음 조건으로 `Gets`를 호출하고, `order`의 column으로 오름차순 정렬하며 `columns`를 읽는다. expect는 `{"rows": [[<value>, ...], ...]}`이다.
+  - `model.query {connection, model, where, order, columns, limit, offset, expect}`는 `model.connect`가 묶은 연결 `connection`으로 generated model `model`(performance_gate recipe의 fixture Author model)의 행을 고른다. `where`의 각 field는 int 또는 bool wrapper의 동등 조건이며 모두 AND로 묶이고, `order`의 column은 오름차순으로 정렬하되 이름이 `-`로 시작하면 내림차순으로 정렬하며, `limit`이 0보다 크면 `offset`개 행을 건너뛰고 `limit`개 행을 남기고, `columns`의 값을 그 순서대로 읽는다. expect는 `{"rows": [[<value>, ...], ...]}`이며 순서대로 비교한다. 호출은 generated model의 query chain과 `Gets`이며, `config/parity.json`의 API unit `generated-model-query-chain`과 `client-model-terminal-read`이고, 여섯 runtime 모두 public이다. 내림차순은 같은 chain의 `OrderBy<Column>Desc` 호출이며, bool 동등 조건은 `And<Column>` 호출 또는 chain의 첫 조건에 bool 인자를 넣는 호출(Go의 `argBoolEq`)이고, 둘 다 여섯 runtime 모두 public이다.
   - `events.subscribe {connection, as}`는 `connection`에 기록용 subscriber를 등록한다(DB.Subscribe, client-db-subscribe, INT-77). `as`는 subscription을 묶고, step에는 `expect`가 없다.
   - `events.fail_subscriber {connection, kind, as}`는 `connection`에 두 번째 subscriber를 등록하며, 이것은 제거될 때까지 종류 `kind`의 모든 event를 실패시킨다(DB.Subscribe, client-db-subscribe, INT-77). `as`는 subscription을 묶는다.
   - `events.stop_failing {ref}`와 `events.unsubscribe {ref}`는 `ref`가 이름 짓는 subscription을 Subscribe가 반환하는 함수로 제거한다(client-db-subscribe, INT-77).
