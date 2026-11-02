@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `owners.mts --list` exits 0 at HEAD: fixed by T334-3-17-6 (8828d675d), taken with cherry-pick -x (T334-3-14b-3-1).
 - The owner declarations of contracts/features.json name files that exist: the deleted schema test packages/rust/schema/tests/dbspec_plan.rs is removed from its owners, which the recipe runner packages/rust/orm/tests/dbspec_plan_cases.rs replaces, and the Go test TestUnloadedUpdateKeepsAssignedValuesSelectedAndKeyed is restored in packages/go/orm/model_update_state_test.go (T334-3-17-6).
 - The plan vectors file tests/dbspec/plans.json is deleted: its version and note move into the recipe tests/dbspec/plan-cases.json, which the readers and tests/dbspec/schema/plans.schema.json now read directly. The empty php-ext subclass DbspecPlanTestExtensionTest is deleted; its six methods still run with the extension in dbspec-php-extension-check/plan (T334-3-17-3).
 - The TypeScript recipe test drops the unused import `readDbspecFile`, so the lint step of the TypeScript gate passes (T334-3-17-4).
