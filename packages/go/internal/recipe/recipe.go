@@ -395,6 +395,33 @@ func (n node) String() string {
 	return n.kind + "(" + n.text + ")"
 }
 
+// sequenceNodes returns the int nodes of a {"sequence": {"from": N, "count": M}} wrapper (FCV-4), and whether raw is one.
+func sequenceNodes(raw json.RawMessage) ([]node, bool, error) {
+	var w map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &w); err != nil {
+		return nil, false, fmt.Errorf("a recipe value is an object: %w", err)
+	}
+	body, ok := w["sequence"]
+	if !ok {
+		return nil, false, nil
+	}
+	if len(w) != 1 {
+		return nil, true, fmt.Errorf("a sequence wrapper has the sequence key only: %s", raw)
+	}
+	var seq struct {
+		From  int64 `json:"from"`
+		Count int64 `json:"count"`
+	}
+	if err := json.Unmarshal(body, &seq); err != nil || seq.Count < 1 {
+		return nil, true, fmt.Errorf("a sequence needs from and a count of at least 1: %s", body)
+	}
+	out := make([]node, 0, seq.Count)
+	for i := int64(0); i < seq.Count; i++ {
+		out = append(out, node{kind: "int", text: strconv.FormatInt(seq.From+i, 10)})
+	}
+	return out, true, nil
+}
+
 func wrapper(raw json.RawMessage) (node, error) {
 	var w map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &w); err != nil || len(w) != 1 {
@@ -409,6 +436,13 @@ func wrapper(raw json.RawMessage) (node, error) {
 			}
 			n := node{kind: kind}
 			for _, item := range items {
+				// a sequence item adds its integers in place, so one array can hold several ranges (FCV-4).
+				if seq, ok, err := sequenceNodes(item); err != nil {
+					return node{}, err
+				} else if ok {
+					n.items = append(n.items, seq...)
+					continue
+				}
 				child, err := wrapper(item)
 				if err != nil {
 					return node{}, err
@@ -416,6 +450,12 @@ func wrapper(raw json.RawMessage) (node, error) {
 				n.items = append(n.items, child)
 			}
 			return n, nil
+		case "sequence":
+			nodes, _, err := sequenceNodes(raw)
+			if err != nil {
+				return node{}, err
+			}
+			return node{kind: "array", items: nodes}, nil
 		case "object":
 			var pairs [][2]json.RawMessage
 			if err := json.Unmarshal(body, &pairs); err != nil {

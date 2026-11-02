@@ -1,0 +1,2538 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "INT-78",
+    "PRT-2",
+    "PRT-4",
+    "PRT-5",
+    "PRT-6",
+    "PRT-41",
+    "CFG-21",
+    "INT-36",
+    "INT-37",
+    "PLN-16",
+    "DIA-161",
+    "INT-38"
+  ],
+  "fixture": "contracts/fixtures/request_hook/dbspec-set.json",
+  "cases": [
+    {
+      "id": "without_hook",
+      "requirements": [
+        "INT-78"
+      ],
+      "seed": {
+        "rows": {
+          "hook_item": [
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "a1"
+              }
+            },
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "a2"
+              }
+            },
+            {
+              "part": {
+                "text": "b"
+              },
+              "label": {
+                "text": "b1"
+              }
+            }
+          ]
+        }
+      },
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "plain"
+        },
+        {
+          "op": "hook.install",
+          "hooks": [
+            {
+              "action": "scope",
+              "kinds": "reads",
+              "column": "part",
+              "value": {
+                "text": "a"
+              },
+              "nested": false
+            }
+          ],
+          "connection": "db"
+        },
+        {
+          "op": "model.query",
+          "model": "HookItem",
+          "where": {},
+          "columns": [
+            "part",
+            "label"
+          ],
+          "order": [
+            "id"
+          ],
+          "connection": "plain",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ],
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a2"
+                  }
+                ],
+                [
+                  {
+                    "text": "b"
+                  },
+                  {
+                    "text": "b1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ],
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a2"
+                  }
+                ],
+                [
+                  {
+                    "text": "b"
+                  },
+                  {
+                    "text": "b1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ],
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a2"
+                  }
+                ],
+                [
+                  {
+                    "text": "b"
+                  },
+                  {
+                    "text": "b1"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "model": "HookItem",
+          "connection": "plain",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "3"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "3"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "3"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "model": "HookItem",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "2"
+              }
+            }
+          },
+          "connection": "db"
+        }
+      ]
+    },
+    {
+      "id": "read_filter",
+      "requirements": [
+        "INT-78",
+        "PRT-2"
+      ],
+      "seed": {
+        "rows": {
+          "hook_item": [
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "a1"
+              }
+            },
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "a2"
+              }
+            },
+            {
+              "part": {
+                "text": "b"
+              },
+              "label": {
+                "text": "b1"
+              }
+            }
+          ]
+        }
+      },
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "hook.install",
+          "hooks": [
+            {
+              "action": "scope",
+              "kinds": "reads",
+              "column": "part",
+              "value": {
+                "text": "a"
+              },
+              "nested": false
+            }
+          ],
+          "connection": "db"
+        },
+        {
+          "op": "model.query",
+          "model": "HookItem",
+          "where": {},
+          "columns": [
+            "part",
+            "label"
+          ],
+          "order": [
+            "id"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ],
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a2"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ],
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a2"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ],
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a2"
+                  }
+                ]
+              ]
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "model.query",
+          "model": "HookItem",
+          "where": {},
+          "columns": [
+            "part",
+            "label"
+          ],
+          "order": [
+            "id"
+          ],
+          "page": true,
+          "limit": 10,
+          "offset": 0,
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ],
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a2"
+                  }
+                ]
+              ],
+              "total": 2
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ],
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a2"
+                  }
+                ]
+              ],
+              "total": 2
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ],
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a2"
+                  }
+                ]
+              ],
+              "total": 2
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "model.count",
+          "model": "HookItem",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "2"
+              }
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "hook.install",
+          "hooks": [
+            {
+              "action": "scope",
+              "kinds": "reads",
+              "column": "part",
+              "value": {
+                "text": "b"
+              },
+              "nested": false
+            }
+          ],
+          "connection": "db"
+        },
+        {
+          "op": "model.query",
+          "model": "HookItem",
+          "where": {},
+          "columns": [
+            "part",
+            "label"
+          ],
+          "order": [
+            "id"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "b"
+                  },
+                  {
+                    "text": "b1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "b"
+                  },
+                  {
+                    "text": "b1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "b"
+                  },
+                  {
+                    "text": "b1"
+                  }
+                ]
+              ]
+            }
+          },
+          "connection": "db"
+        }
+      ]
+    },
+    {
+      "id": "read_fail",
+      "requirements": [
+        "INT-78"
+      ],
+      "seed": {
+        "rows": {
+          "hook_item": [
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "a1"
+              }
+            },
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "a2"
+              }
+            },
+            {
+              "part": {
+                "text": "b"
+              },
+              "label": {
+                "text": "b1"
+              }
+            }
+          ]
+        }
+      },
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "hook.install",
+          "hooks": [
+            {
+              "action": "fail",
+              "kinds": "reads",
+              "error": "FAULT"
+            }
+          ],
+          "connection": "db"
+        },
+        {
+          "op": "model.query",
+          "model": "HookItem",
+          "where": {},
+          "columns": [
+            "part",
+            "label"
+          ],
+          "order": [
+            "id"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "FAULT"
+            },
+            "postgres": {
+              "error": "FAULT"
+            },
+            "sqlite": {
+              "error": "FAULT"
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "model.count",
+          "model": "HookItem",
+          "expect": {
+            "mysql": {
+              "error": "FAULT"
+            },
+            "postgres": {
+              "error": "FAULT"
+            },
+            "sqlite": {
+              "error": "FAULT"
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "hook.install",
+          "hooks": [
+            {
+              "action": "scope",
+              "kinds": "reads",
+              "column": "part",
+              "value": {
+                "text": "a"
+              },
+              "nested": false
+            }
+          ],
+          "connection": "db"
+        },
+        {
+          "op": "model.count",
+          "model": "HookItem",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "2"
+              }
+            }
+          },
+          "connection": "db"
+        }
+      ]
+    },
+    {
+      "id": "same_handle_child_hook_once",
+      "requirements": [
+        "INT-78",
+        "PRT-2"
+      ],
+      "seed": {
+        "rows": {
+          "hook_item": [
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "a1"
+              }
+            },
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "a2"
+              }
+            },
+            {
+              "part": {
+                "text": "b"
+              },
+              "label": {
+                "text": "b1"
+              }
+            }
+          ],
+          "hook_entry": [
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "parent"
+              },
+              "note": {
+                "text": "n0"
+              }
+            }
+          ]
+        }
+      },
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "hook.install",
+          "hooks": [
+            {
+              "action": "record",
+              "kinds": [
+                "all"
+              ]
+            }
+          ],
+          "connection": "db"
+        },
+        {
+          "op": "model.query",
+          "model": "HookEntry",
+          "where": {},
+          "columns": [
+            "part",
+            "label"
+          ],
+          "order": [
+            "id"
+          ],
+          "relation": {
+            "model": "HookItem",
+            "match": [
+              [
+                "part",
+                "part"
+              ]
+            ],
+            "many": true,
+            "columns": [
+              "part",
+              "label"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "parent"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ],
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "parent"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a2"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "parent"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ],
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "parent"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a2"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "parent"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ],
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "parent"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a2"
+                  }
+                ]
+              ]
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "hook.records",
+          "expect": {
+            "mysql": {
+              "counts": {
+                "hook_entry": 1,
+                "hook_item": 1
+              }
+            },
+            "postgres": {
+              "counts": {
+                "hook_entry": 1,
+                "hook_item": 1
+              }
+            },
+            "sqlite": {
+              "counts": {
+                "hook_entry": 1,
+                "hook_item": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation_scope",
+      "requirements": [
+        "INT-78"
+      ],
+      "seed": {
+        "rows": {
+          "hook_item": [
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "a1"
+              }
+            },
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "a2"
+              }
+            },
+            {
+              "part": {
+                "text": "b"
+              },
+              "label": {
+                "text": "b1"
+              }
+            },
+            {
+              "part": {
+                "text": "b"
+              },
+              "label": {
+                "text": "a1"
+              }
+            }
+          ],
+          "hook_entry": [
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "a1"
+              },
+              "note": {
+                "text": "n0"
+              }
+            },
+            {
+              "part": {
+                "text": "b"
+              },
+              "label": {
+                "text": "b1"
+              },
+              "note": {
+                "text": "n0"
+              }
+            }
+          ]
+        }
+      },
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "model.query",
+          "model": "HookEntry",
+          "columns": [
+            "part",
+            "label"
+          ],
+          "order": [
+            "id"
+          ],
+          "where": {
+            "label": {
+              "text": "a1"
+            }
+          },
+          "relation": {
+            "model": "HookItem",
+            "match": [
+              [
+                "label",
+                "label"
+              ]
+            ],
+            "many": true,
+            "columns": [
+              "part",
+              "label"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ],
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  },
+                  {
+                    "text": "b"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ],
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  },
+                  {
+                    "text": "b"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ],
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  },
+                  {
+                    "text": "b"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ]
+              ]
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "hook.install",
+          "hooks": [
+            {
+              "action": "scope",
+              "kinds": "reads",
+              "column": "part",
+              "value": {
+                "text": "a"
+              },
+              "nested": true
+            }
+          ],
+          "connection": "db"
+        },
+        {
+          "op": "model.query",
+          "model": "HookEntry",
+          "columns": [
+            "part",
+            "label"
+          ],
+          "order": [
+            "id"
+          ],
+          "where": {
+            "label": {
+              "text": "a1"
+            }
+          },
+          "relation": {
+            "model": "HookItem",
+            "match": [
+              [
+                "label",
+                "label"
+              ]
+            ],
+            "many": true,
+            "columns": [
+              "part",
+              "label"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ]
+              ]
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "model.query",
+          "model": "HookEntry",
+          "columns": [
+            "part",
+            "label"
+          ],
+          "order": [
+            "id"
+          ],
+          "where": {
+            "label": {
+              "text": "a1"
+            }
+          },
+          "relation": {
+            "model": "HookItem",
+            "match": [
+              [
+                "label",
+                "label"
+              ]
+            ],
+            "many": false,
+            "columns": [
+              "part",
+              "label"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ]
+              ]
+            }
+          },
+          "connection": "db"
+        }
+      ]
+    },
+    {
+      "id": "insert_assign",
+      "requirements": [
+        "PRT-4",
+        "PRT-5",
+        "PRT-41"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "hook.install",
+          "hooks": [
+            {
+              "action": "assign",
+              "kinds": [
+                "insert"
+              ],
+              "column": "part",
+              "value": {
+                "text": "h"
+              }
+            }
+          ],
+          "connection": "db"
+        },
+        {
+          "op": "model.create",
+          "model": "HookItem",
+          "values": {
+            "label": {
+              "text": "single"
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "model.creates",
+          "model": "HookItem",
+          "rows": [
+            {
+              "label": {
+                "text": "bulk1"
+              }
+            },
+            {
+              "label": {
+                "text": "bulk2"
+              }
+            }
+          ],
+          "batch": 2,
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "2"
+              }
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "model.query",
+          "model": "HookItem",
+          "where": {},
+          "columns": [
+            "part",
+            "label"
+          ],
+          "order": [
+            "id"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "h"
+                  },
+                  {
+                    "text": "single"
+                  }
+                ],
+                [
+                  {
+                    "text": "h"
+                  },
+                  {
+                    "text": "bulk1"
+                  }
+                ],
+                [
+                  {
+                    "text": "h"
+                  },
+                  {
+                    "text": "bulk2"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "h"
+                  },
+                  {
+                    "text": "single"
+                  }
+                ],
+                [
+                  {
+                    "text": "h"
+                  },
+                  {
+                    "text": "bulk1"
+                  }
+                ],
+                [
+                  {
+                    "text": "h"
+                  },
+                  {
+                    "text": "bulk2"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "h"
+                  },
+                  {
+                    "text": "single"
+                  }
+                ],
+                [
+                  {
+                    "text": "h"
+                  },
+                  {
+                    "text": "bulk1"
+                  }
+                ],
+                [
+                  {
+                    "text": "h"
+                  },
+                  {
+                    "text": "bulk2"
+                  }
+                ]
+              ]
+            }
+          },
+          "connection": "db"
+        }
+      ]
+    },
+    {
+      "id": "loaded_row_writes",
+      "requirements": [
+        "CFG-21",
+        "INT-36",
+        "INT-37",
+        "PLN-16"
+      ],
+      "seed": {
+        "rows": {
+          "hook_item": [
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "a1"
+              }
+            },
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "a2"
+              }
+            },
+            {
+              "part": {
+                "text": "b"
+              },
+              "label": {
+                "text": "b1"
+              }
+            }
+          ]
+        }
+      },
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "hook.install",
+          "hooks": [
+            {
+              "action": "scope",
+              "kinds": [
+                "update",
+                "delete"
+              ],
+              "column": "part",
+              "value": {
+                "text": "none"
+              },
+              "nested": false
+            },
+            {
+              "action": "record",
+              "kinds": [
+                "update",
+                "delete"
+              ]
+            }
+          ],
+          "connection": "db"
+        },
+        {
+          "op": "model.get_by",
+          "connection": "db",
+          "model": "HookItem",
+          "where": {
+            "label": {
+              "text": "a1"
+            }
+          },
+          "as": "loaded"
+        },
+        {
+          "op": "model.update",
+          "row": "loaded",
+          "set": {
+            "label": {
+              "text": "changed"
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "model": "HookItem",
+          "where": {},
+          "columns": [
+            "part",
+            "label"
+          ],
+          "order": [
+            "id"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ],
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a2"
+                  }
+                ],
+                [
+                  {
+                    "text": "b"
+                  },
+                  {
+                    "text": "b1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ],
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a2"
+                  }
+                ],
+                [
+                  {
+                    "text": "b"
+                  },
+                  {
+                    "text": "b1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ],
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a2"
+                  }
+                ],
+                [
+                  {
+                    "text": "b"
+                  },
+                  {
+                    "text": "b1"
+                  }
+                ]
+              ]
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "model.delete",
+          "model": "HookItem",
+          "where": {
+            "label": {
+              "text": "a1"
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "model.count",
+          "model": "HookItem",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "3"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "3"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "3"
+              }
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "hook.records",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "update"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "delete"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "update"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "delete"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "update"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "delete"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "hook.install",
+          "hooks": [
+            {
+              "action": "record",
+              "kinds": "every"
+            }
+          ],
+          "connection": "db"
+        },
+        {
+          "op": "transaction",
+          "steps": [
+            {
+              "op": "model.query",
+              "model": "HookItem",
+              "where": {},
+              "columns": [
+                "label"
+              ],
+              "order": [
+                "id"
+              ],
+              "connection": "db",
+              "expect": {
+                "mysql": {
+                  "rows": [
+                    [
+                      {
+                        "text": "a1"
+                      }
+                    ],
+                    [
+                      {
+                        "text": "a2"
+                      }
+                    ],
+                    [
+                      {
+                        "text": "b1"
+                      }
+                    ]
+                  ]
+                },
+                "postgres": {
+                  "rows": [
+                    [
+                      {
+                        "text": "a1"
+                      }
+                    ],
+                    [
+                      {
+                        "text": "a2"
+                      }
+                    ],
+                    [
+                      {
+                        "text": "b1"
+                      }
+                    ]
+                  ]
+                },
+                "sqlite": {
+                  "rows": [
+                    [
+                      {
+                        "text": "a1"
+                      }
+                    ],
+                    [
+                      {
+                        "text": "a2"
+                      }
+                    ],
+                    [
+                      {
+                        "text": "b1"
+                      }
+                    ]
+                  ]
+                }
+              }
+            }
+          ],
+          "connection": "db"
+        },
+        {
+          "op": "hook.records",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "all"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "all"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "all"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "upsert_scope",
+      "requirements": [
+        "INT-78",
+        "PRT-4",
+        "PRT-6"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "hook.install",
+          "hooks": [
+            {
+              "action": "assign",
+              "kinds": [
+                "insert"
+              ],
+              "column": "scope_col",
+              "value": {
+                "text": "a"
+              }
+            }
+          ],
+          "connection": "db"
+        },
+        {
+          "op": "model.duplicate_create",
+          "model": "HookUpsert",
+          "values": {
+            "name": {
+              "text": "k"
+            }
+          },
+          "connection": "db",
+          "duplication": {
+            "hits": {
+              "int": "7"
+            }
+          }
+        },
+        {
+          "op": "model.duplicate_create",
+          "model": "HookUpsert",
+          "values": {
+            "name": {
+              "text": "k"
+            }
+          },
+          "connection": "db",
+          "duplication": {
+            "hits": {
+              "int": "7"
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "model": "HookUpsert",
+          "where": {},
+          "columns": [
+            "scope_col",
+            "name",
+            "hits"
+          ],
+          "order": [
+            "id"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "k"
+                  },
+                  {
+                    "int": "7"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "k"
+                  },
+                  {
+                    "int": "7"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "k"
+                  },
+                  {
+                    "int": "7"
+                  }
+                ]
+              ]
+            }
+          },
+          "connection": "db"
+        }
+      ]
+    },
+    {
+      "id": "restore_key",
+      "requirements": [
+        "DIA-161"
+      ],
+      "seed": {
+        "rows": {
+          "hook_entry": [
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "x"
+              },
+              "note": {
+                "text": "n0"
+              },
+              "deleted_at": {
+                "datetime": "2026-01-01 00:00:00.000000"
+              }
+            },
+            {
+              "part": {
+                "text": "b"
+              },
+              "label": {
+                "text": "x"
+              },
+              "note": {
+                "text": "n0"
+              },
+              "deleted_at": {
+                "datetime": "2026-01-01 00:00:00.000000"
+              }
+            },
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "y"
+              },
+              "note": {
+                "text": "n0"
+              },
+              "deleted_at": {
+                "datetime": "2026-01-01 00:00:00.000000"
+              }
+            }
+          ]
+        }
+      },
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "plain"
+        },
+        {
+          "op": "hook.install",
+          "hooks": [
+            {
+              "action": "scope",
+              "kinds": "reads+restore",
+              "column": "part",
+              "value": {
+                "text": "a"
+              },
+              "nested": false
+            }
+          ],
+          "connection": "db"
+        },
+        {
+          "op": "model.restore",
+          "model": "HookEntry",
+          "values": {
+            "label": {
+              "text": "x"
+            },
+            "note": {
+              "text": "n1"
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "model.query",
+          "model": "HookEntry",
+          "where": {},
+          "columns": [
+            "part",
+            "label",
+            "note"
+          ],
+          "order": [
+            "id"
+          ],
+          "connection": "plain",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "x"
+                  },
+                  {
+                    "text": "n1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "x"
+                  },
+                  {
+                    "text": "n1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "x"
+                  },
+                  {
+                    "text": "n1"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "restore_condition",
+      "requirements": [
+        "DIA-161",
+        "INT-38"
+      ],
+      "seed": {
+        "rows": {
+          "hook_entry": [
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "x"
+              },
+              "note": {
+                "text": "n0"
+              },
+              "deleted_at": {
+                "datetime": "2026-01-01 00:00:00.000000"
+              }
+            },
+            {
+              "part": {
+                "text": "b"
+              },
+              "label": {
+                "text": "x"
+              },
+              "note": {
+                "text": "n0"
+              },
+              "deleted_at": {
+                "datetime": "2026-01-01 00:00:00.000000"
+              }
+            },
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "y"
+              },
+              "note": {
+                "text": "n0"
+              },
+              "deleted_at": {
+                "datetime": "2026-01-01 00:00:00.000000"
+              }
+            }
+          ]
+        }
+      },
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "plain"
+        },
+        {
+          "op": "hook.install",
+          "hooks": [
+            {
+              "action": "scope",
+              "kinds": "reads+restore",
+              "column": "part",
+              "value": {
+                "text": "b"
+              },
+              "nested": false
+            }
+          ],
+          "connection": "db"
+        },
+        {
+          "op": "model.restore",
+          "model": "HookEntry",
+          "values": {
+            "id": {
+              "int": "3"
+            },
+            "note": {
+              "text": "n2"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "NO_ROWS"
+            },
+            "postgres": {
+              "error": "NO_ROWS"
+            },
+            "sqlite": {
+              "error": "NO_ROWS"
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "model.query",
+          "model": "HookEntry",
+          "where": {},
+          "columns": [
+            "part",
+            "label",
+            "note"
+          ],
+          "order": [
+            "id"
+          ],
+          "connection": "plain",
+          "expect": {
+            "mysql": {
+              "rows": []
+            },
+            "postgres": {
+              "rows": []
+            },
+            "sqlite": {
+              "rows": []
+            }
+          }
+        },
+        {
+          "op": "hook.install",
+          "hooks": [
+            {
+              "action": "scope",
+              "kinds": "reads+restore",
+              "column": "part",
+              "value": {
+                "text": "a"
+              },
+              "nested": false
+            }
+          ],
+          "connection": "db"
+        },
+        {
+          "op": "model.restore",
+          "model": "HookEntry",
+          "values": {
+            "id": {
+              "int": "3"
+            },
+            "note": {
+              "text": "n2"
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "model.query",
+          "model": "HookEntry",
+          "where": {},
+          "columns": [
+            "part",
+            "label",
+            "note"
+          ],
+          "order": [
+            "id"
+          ],
+          "connection": "plain",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "y"
+                  },
+                  {
+                    "text": "n2"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "y"
+                  },
+                  {
+                    "text": "n2"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "y"
+                  },
+                  {
+                    "text": "n2"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "restore_no_key",
+      "requirements": [
+        "DIA-161"
+      ],
+      "seed": {
+        "rows": {
+          "hook_entry": [
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "x"
+              },
+              "note": {
+                "text": "n0"
+              },
+              "deleted_at": {
+                "datetime": "2026-01-01 00:00:00.000000"
+              }
+            },
+            {
+              "part": {
+                "text": "b"
+              },
+              "label": {
+                "text": "x"
+              },
+              "note": {
+                "text": "n0"
+              },
+              "deleted_at": {
+                "datetime": "2026-01-01 00:00:00.000000"
+              }
+            },
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "y"
+              },
+              "note": {
+                "text": "n0"
+              },
+              "deleted_at": {
+                "datetime": "2026-01-01 00:00:00.000000"
+              }
+            }
+          ]
+        }
+      },
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "hook.install",
+          "hooks": [
+            {
+              "action": "scope",
+              "kinds": "reads+restore",
+              "column": "part",
+              "value": {
+                "text": "a"
+              },
+              "nested": false
+            }
+          ],
+          "connection": "db"
+        },
+        {
+          "op": "model.restore",
+          "model": "HookEntry",
+          "values": {
+            "note": {
+              "text": "n3"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "IR_INVALID"
+            },
+            "postgres": {
+              "error": "IR_INVALID"
+            },
+            "sqlite": {
+              "error": "IR_INVALID"
+            }
+          },
+          "connection": "db"
+        }
+      ]
+    }
+  ]
+}

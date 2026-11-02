@@ -1784,7 +1784,9 @@ static bool query(vctx *c, HashTable *q, const vat *at, bool is_join, bool is_re
 
 bool validator_construct(zval *self, zval *model)
 {
-    zend_class_entry *ce = zend_lookup_class(zend_string_init(RUNTIME_MODEL, sizeof(RUNTIME_MODEL) - 1, 0));
+    zend_string *class_name = zend_string_init(RUNTIME_MODEL, sizeof(RUNTIME_MODEL) - 1, 0);
+    zend_class_entry *ce = zend_lookup_class(class_name);
+    zend_string_release(class_name);
     if (ce == NULL || Z_TYPE_P(model) != IS_OBJECT || !instanceof_function(Z_OBJCE_P(model), ce)) {
         zend_type_error("Polyspec\\Orm\\Validator::__construct(): Argument #1 ($m) must be of type Polyspec\\Orm\\RuntimeModel, %s given", zend_zval_type_name(model));
         return false;

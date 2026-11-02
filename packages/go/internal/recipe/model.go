@@ -43,7 +43,11 @@ func modelOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return rowOp(s, c)
 	}
 	if s.Op == "model.connect" {
-		db, err := orm.ConnectSchema(c.dsn, c.schema, orm.Config{PoolSize: s.PoolSize, AESKey: benchAESKey, BlindIndexKey: benchBlindIndexKey})
+		cfg, err := connectConfig(s)
+		if err != nil {
+			return outcome{}, err
+		}
+		db, err := orm.ConnectSchema(c.dsn, c.schema, cfg)
 		if err != nil {
 			return outcome{}, err
 		}

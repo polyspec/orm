@@ -1,10 +1,11 @@
 //! The request hook of a connection handle (docs/operations/usage.md "Request hook"): the handle returned by `Db::with_request_hook`
 //! uses the same connection, and its hook receives the request and `RequestParams` for each request of the handle, just before planning.
-//! Runs the shared cases of contracts/fixtures/request_hook.dbs in a SQLite case database (polyspec-orm-case-database,
-//! the file is deleted when it ends or panics): without_hook, read_filter, same_handle_child_hook_once, relation_scope, insert_assign, upsert_scope,
-//! loaded_row_writes, invalid_param, restore_key, restore_condition, restore_no_key, restore_rewritten_key,
-//! restore_hook_set_key. `coverage_request_hook_<case>` runs the same case on the database that feature-check chose,
-//! in that database's case database (docs/spec/feature-coverage.md).
+//! The recipe contracts/fixtures/request_hook/request_hook.json (tests/request_hook_<database>.rs in polyspec-orm-tests) runs the
+//! cases that a declarative step can observe. This file keeps the sub-assertions that a step cannot observe, under their case IDs
+//! (without_hook, read_filter, relation_scope, restore_no_key), and the cases that stay native (reads_params, invalid_param,
+//! restore_rewritten_key, restore_hook_set_key, restore_rewritten_key_set_scope). Each runs in a SQLite case database
+//! (polyspec-orm-case-database, the file is deleted when it ends or panics). `coverage_request_hook_<case>` runs the same case
+//! on the database that feature-check chose, in that database's case database (docs/spec/feature-coverage.md).
 //!
 //! `cargo test -p polyspec-orm --test request_hook -- --exact <case>` runs a SQLite case; a coverage case needs the
 //! database of make feature-check, which runs it by its exact name.
@@ -25,8 +26,10 @@ use polyspec_orm::ir::{Assign, Group, Item, Pred, Query, Request};
 use polyspec_orm::{Core, Db, Entity, Model, Param, RequestParams, Schema};
 use polyspec_orm_case_database::CaseDatabase;
 
-static HOOK_SCHEMA: Schema =
-    Schema::new(include_str!("../../../../contracts/fixtures/request_hook.dbs"), "sha256:b9ee83943930e19f474fe2c98ef5f6facd4ad40551becbdcb81b74ab5f2167ea");
+static HOOK_SCHEMA: Schema = Schema::new(
+    include_str!("../../../../contracts/fixtures/request_hook/request_hook.dbs"),
+    "sha256:b9ee83943930e19f474fe2c98ef5f6facd4ad40551becbdcb81b74ab5f2167ea",
+);
 static HOOK_ITEM: Entity = Entity {
     name: "hook_item",
     schema: &HOOK_SCHEMA,
@@ -47,17 +50,6 @@ const ENTRY_COLUMNS: [&str; 4] = ["id", "part", "label", "note"];
 
 // A row of the soft delete table hook_entry, whose unique key is (part, label).
 model_row!(HookEntry, HOOK_ENTRY, ENTRY_COLUMNS);
-
-static HOOK_UPSERT: Entity = Entity {
-    name: "hook_upsert",
-    schema: &HOOK_SCHEMA,
-    new: polyspec_orm::model::new_boxed::<HookUpsert>,
-    collect: polyspec_orm::model::collect_boxed::<HookUpsert>,
-};
-const UPSERT_COLUMNS: [&str; 4] = ["id", "scope_col", "name", "hits"];
-
-// A row of hook_upsert, whose unique key is (scope_col, name).
-model_row!(HookUpsert, HOOK_UPSERT, UPSERT_COLUMNS);
 
 /// A hook_entry model connected to db with values set.
 fn entry(db: &Db, values: &[(&str, Param)]) -> HookEntry {
@@ -210,75 +202,31 @@ async fn labels(db: &Db) -> Vec<String> {
     out
 }
 
-async fn parts(db: &Db) -> Vec<String> {
-    let rows = polyspec_orm::model::gets(&item(db)).await.expect("gets");
-    let mut out: Vec<String> = rows.models().map(|m| m.value("part").expect("part").as_string().expect("part text")).collect();
-    out.sort();
-    out
-}
-
 async fn count(db: &Db) -> i64 {
     polyspec_orm::model::get_count(item(db).core()).await.expect("count")
 }
 
+/// The root of the hooked handle is the connection in Go; Rust exposes no root, so this checks that a clone of the connection
+/// still reads every row after a handle with a hook is made, which a step cannot observe.
 async fn without_hook_case(driver: &str) {
     let database = CaseDatabase::create(driver).await;
     let db = installed(&database).await;
     seed(&db).await;
-    assert_eq!(labels(&db).await, ["a1", "a2", "b1"]);
-    assert_eq!(count(&db).await, 3);
-    let hooked = db.with_request_hook(read_filter_hook("a"));
-    assert_eq!(count(&hooked).await, 2, "the hooked handle filters");
-    // Even after a handle with a hook is made, the connection and its clones read all rows without the hook.
-    assert_eq!(labels(&db).await, ["a1", "a2", "b1"]);
-    assert_eq!(count(&db).await, 3);
-    assert_eq!(count(&db.clone()).await, 3);
+    let _hooked = db.with_request_hook(read_filter_hook("a"));
+    assert_eq!(count(&db.clone()).await, 3, "a clone of the connection reads all rows without the hook");
     db.close().await;
     database.drop().await;
 }
 
+/// The recipe checks the rows of the hooked reads; this checks that the planned get_query binds the hook's value, which a
+/// step cannot observe.
 async fn read_filter_case(driver: &str) {
     let database = CaseDatabase::create(driver).await;
     let db = installed(&database).await;
     seed(&db).await;
     let hooked = db.with_request_hook(read_filter_hook("a"));
-    assert_eq!(labels(&hooked).await, ["a1", "a2"]);
-    assert_eq!(count(&hooked).await, 2);
-    let page = polyspec_orm::model::gets_page(&item(&hooked), 1, 10).await.expect("page");
-    assert_eq!(page.total_count, 2);
-    assert_eq!(page.items.len(), 2);
-    // Requests of the same shape use one plan, even if the values the hook adds differ.
-    let other = db.with_request_hook(read_filter_hook("b"));
-    assert_eq!(labels(&other).await, ["b1"]);
-    assert_eq!(count(&other).await, 1);
     let statement = polyspec_orm::model::get_query(item(&hooked).core()).await.expect("get_query");
-    assert!(statement.sql.contains("part"), "get_query passes the hook: {}", statement.sql);
-    assert_eq!(statement.binds, vec![Param::from("a")]);
-    db.close().await;
-    database.drop().await;
-}
-
-async fn same_handle_child_hook_once_case(driver: &str) {
-    let database = CaseDatabase::create(driver).await;
-    let db = installed(&database).await;
-    seed(&db).await;
-    let mut parent = entry(&db, &[("part", Param::from("a")), ("label", Param::from("parent"))]);
-    polyspec_orm::model::create(&mut parent).await.expect("create parent");
-
-    let calls = Arc::new(Mutex::new(BTreeMap::<String, usize>::new()));
-    let observed = Arc::clone(&calls);
-    let hooked = db.with_request_hook(move |request: &mut Request, _: &mut RequestParams| {
-        if READS.contains(&request.kind.as_str()) {
-            *observed.lock().expect("hook calls").entry(request.query.entity.clone()).or_default() += 1;
-        }
-        Ok(())
-    });
-    let mut parent = entry(&hooked, &[]);
-    let mut child = item(&hooked);
-    child.core_mut().add_match("part", "part");
-    parent.core_mut().relation(true, child.into_core());
-    polyspec_orm::model::get(&parent).await.expect("get with explicit child relation");
-    assert_eq!(*calls.lock().expect("hook calls"), BTreeMap::from([("hook_entry".to_owned(), 1), ("hook_item".to_owned(), 1)]));
+    assert!(statement.binds.contains(&Param::from("a")), "hooked get_query binds {:?} carry no a", statement.binds);
     db.close().await;
     database.drop().await;
 }
@@ -303,11 +251,10 @@ async fn entries_with_items(handle: &Db, many: bool, mut child: HookItem, label:
     polyspec_orm::model::gets(&parent).await.or_panic(|e| format!("gets with the relation: {e}"))
 }
 
-/// relation() and relations() run under a service scope: a hook that scopes the root of every read and each of its
-/// relation queries reads only the rows of its scope, with a relation child connected to the hooked handle (a request of
-/// its own, which the hook scopes as a root) or not (a relation query of the parent's request). The parent a1 of part a
-/// matches the items labeled a1 of parts a and b by label, and under the scope of part a it attaches only the item of
-/// part a.
+/// relation() and relations() run under a service scope. The recipe checks the scoped relation with the child read on the hooked
+/// connection; this checks the child read on the unhooked connection (a model without a connection of its own), which a step
+/// cannot observe. The parent a1 of part a matches the items labeled a1 of parts a and b by label, and under the scope of part
+/// a it attaches only the item of part a.
 async fn relation_scope_case(driver: &str) {
     let database = CaseDatabase::create(driver).await;
     let db = installed(&database).await;
@@ -318,57 +265,25 @@ async fn relation_scope_case(driver: &str) {
         let mut parent = entry(&db, &[("part", Param::from(part)), ("label", Param::from(label))]);
         polyspec_orm::model::create(&mut parent).await.expect("create entry");
     }
-    let unscoped = entries_with_items(&db, true, unconnected(), Some("a1")).await;
-    let row = unscoped.models().next().expect("the parent a1");
-    let children = row.core().related_many::<HookItem>("hook_item_models").expect("hook_item_models").expect("a relation result");
-    assert_eq!(part_labels(children.models()), ["a/a1", "b/a1"], "{driver}: without the scope the parent a1 matches the items a1 of both parts");
     let scoped = db.with_request_hook(service_scope_hook("a"));
-    for connected in [true, false] {
-        let child = || if connected { item(&scoped) } else { unconnected() };
-        let many = entries_with_items(&scoped, true, child(), None).await;
-        let got: Vec<(String, Vec<String>)> = many
-            .models()
-            .map(|row| {
-                let children = row.core().related_many::<HookItem>("hook_item_models").expect("hook_item_models").expect("a relation result");
-                (text_of(row, "label"), part_labels(children.models()))
-            })
-            .collect();
-        assert_eq!(got, [("a1".to_owned(), vec!["a/a1".to_owned()])], "{driver}: relations() under the scope of part a (child connected: {connected})");
-        let one = entries_with_items(&scoped, false, child(), None).await;
-        let got: Vec<(String, Option<String>)> = one
-            .models()
-            .map(|row| {
-                let attached = row.core().related_one::<HookItem>("hook_item_model").expect("hook_item_model");
-                (text_of(row, "label"), attached.map(|child| text_of(child, "part")))
-            })
-            .collect();
-        assert_eq!(got, [("a1".to_owned(), Some("a".to_owned()))], "{driver}: relation() under the scope of part a (child connected: {connected})");
-    }
-    db.close().await;
-    database.drop().await;
-}
-
-async fn insert_assign_case(driver: &str) {
-    let database = CaseDatabase::create(driver).await;
-    let db = installed(&database).await;
-    let hooked = db.with_request_hook(|request: &mut Request, params: &mut RequestParams| {
-        if request.kind == "insert" {
-            let p = params.add("h");
-            request.set.push(Assign { column: "part".into(), p: Some(p), ..Default::default() });
-            for row in &mut request.rows {
-                let p = params.add("h");
-                row.push(p);
-            }
-        }
-        Ok(())
-    });
-    let mut single = with_values(item(&hooked), &[("label", "one")]);
-    polyspec_orm::model::create(&mut single).await.expect("create");
-    let rows = vec![with_values(unconnected(), &[("label", "two")]), with_values(unconnected(), &[("label", "three")])];
-    let n = polyspec_orm::model::creates(&item(&hooked), rows, 2).await.expect("creates");
-    assert_eq!(n, 2);
-    assert_eq!(labels(&db).await, ["one", "three", "two"]);
-    assert_eq!(parts(&db).await, ["h", "h", "h"]);
+    let many = entries_with_items(&scoped, true, unconnected(), None).await;
+    let got: Vec<(String, Vec<String>)> = many
+        .models()
+        .map(|row| {
+            let children = row.core().related_many::<HookItem>("hook_item_models").expect("hook_item_models").expect("a relation result");
+            (text_of(row, "label"), part_labels(children.models()))
+        })
+        .collect();
+    assert_eq!(got, [("a1".to_owned(), vec!["a/a1".to_owned()])], "{driver}: relations() under the scope of part a (child unconnected)");
+    let one = entries_with_items(&scoped, false, unconnected(), None).await;
+    let got: Vec<(String, Option<String>)> = one
+        .models()
+        .map(|row| {
+            let attached = row.core().related_one::<HookItem>("hook_item_model").expect("hook_item_model");
+            (text_of(row, "label"), attached.map(|child| text_of(child, "part")))
+        })
+        .collect();
+    assert_eq!(got, [("a1".to_owned(), Some("a".to_owned()))], "{driver}: relation() under the scope of part a (child unconnected)");
     db.close().await;
     database.drop().await;
 }
@@ -396,76 +311,6 @@ async fn reads_params_case(driver: &str) {
     database.drop().await;
 }
 
-async fn loaded_row_writes_case(driver: &str) {
-    let database = CaseDatabase::create(driver).await;
-    let db = installed(&database).await;
-    seed(&db).await;
-    let kinds: Arc<Mutex<Vec<String>>> = Arc::default();
-    let seen = kinds.clone();
-    let hooked = db.with_request_hook(move |request: &mut Request, params: &mut RequestParams| {
-        seen.lock().unwrap().push(request.kind.clone());
-        if request.kind == "update" || request.kind == "delete" {
-            let p = params.add("none");
-            and_where(request, part_eq(p));
-        }
-        Ok(())
-    });
-    let rows = polyspec_orm::model::gets(&item(&hooked)).await.expect("gets");
-    let mut row = rows.models().find(|m| m.value("label").is_some_and(|v| v.as_string().or_panic(|e| format!("label: {e}")) == "a1")).expect("a1").clone();
-    row.core_mut().set("label", Param::from("changed"));
-    polyspec_orm::model::update(&mut row, false).await.expect("update");
-    assert_eq!(kinds.lock().unwrap().last().map(String::as_str), Some("update"), "the update of a loaded row passes the hook");
-    assert_eq!(labels(&db).await, ["a1", "a2", "b1"], "the hook predicate kept the update from matching");
-    polyspec_orm::model::delete(&row, false).await.expect("delete");
-    assert_eq!(kinds.lock().unwrap().last().map(String::as_str), Some("delete"), "the delete of a loaded row passes the hook");
-    assert_eq!(count(&db).await, 3, "the hook predicate kept the delete from matching");
-    // A transaction started on a handle with a hook also applies the hook to models without a connection.
-    kinds.lock().unwrap().clear();
-    let n = hooked.transaction(async || polyspec_orm::model::get_count(unconnected().core()).await).await.expect("transaction");
-    assert_eq!(n, 3);
-    assert_eq!(*kinds.lock().unwrap(), ["count"], "the model of the transaction passes the hook");
-    db.close().await;
-    database.drop().await;
-}
-
-/// A hook_upsert model connected to db (or to nothing when db is None) with values set.
-fn upsert_row(db: Option<&Db>, values: &[(&str, Param)]) -> HookUpsert {
-    let mut core = Core::new(&HOOK_UPSERT);
-    if let Some(db) = db {
-        core.connect(db);
-    }
-    let mut m = HookUpsert::from_core(core);
-    for (column, value) in values {
-        m.core_mut().set(column, value.clone());
-    }
-    m
-}
-
-/// The insert of the upsert sets scope_col through the hook, and the conflict key (scope_col, name) is checked after the hook.
-/// The caller sets only name; the update sets hits. The first call inserts and the second updates the row.
-async fn upsert_scope_case(driver: &str) {
-    let database = CaseDatabase::create(driver).await;
-    let db = installed(&database).await;
-    let hooked = db.with_request_hook(|request: &mut Request, params: &mut RequestParams| {
-        if request.kind == "insert" {
-            let p = params.add("a");
-            request.set.push(Assign { column: "scope_col".into(), p: Some(p), ..Default::default() });
-        }
-        Ok(())
-    });
-    for call in 1..=2 {
-        let mut m = upsert_row(Some(&hooked), &[("name", Param::from("k"))]);
-        m.core_mut().duplication(upsert_row(None, &[("hits", Param::from(7_i64))]).into_core());
-        polyspec_orm::model::create(&mut m).await.or_panic(|e| format!("upsert call {call} = {e:?}, want the row inserted or updated"));
-    }
-    let rows = polyspec_orm::model::gets(&upsert_row(Some(&db), &[])).await.expect("gets");
-    let stored: Vec<(String, String, Option<i64>)> =
-        rows.models().map(|m| (text_of(m, "scope_col"), text_of(m, "name"), m.value("hits").map(|v| v.as_i64().or_panic(|e| format!("hits: {e}"))))).collect();
-    assert_eq!(stored, [("a".to_owned(), "k".to_owned(), Some(7))]);
-    db.close().await;
-    database.drop().await;
-}
-
 async fn invalid_param_case(driver: &str) {
     let database = CaseDatabase::create(driver).await;
     let db = installed(&database).await;
@@ -478,36 +323,6 @@ async fn invalid_param_case(driver: &str) {
     });
     let error = polyspec_orm::model::get_count(item(&hooked).core()).await.expect_err("an index outside the parameters");
     assert_invalid_before_statement(&error, &statements);
-    db.close().await;
-    database.drop().await;
-}
-
-/// The set names label and the hook's condition names part: together they cover the unique key.
-async fn restore_key_case(driver: &str) {
-    let database = CaseDatabase::create(driver).await;
-    let db = installed(&database).await;
-    let ids = seed_deleted_entries(&db).await;
-    let hooked = db.with_request_hook(part_scope_hook("a"));
-    let row = polyspec_orm::model::restore(&entry(&hooked, &[("label", Param::from("x")), ("note", Param::from("n1"))])).await.expect("restore");
-    assert_eq!((id_of(&row), text_of(&row, "part"), text_of(&row, "label"), text_of(&row, "note")), (ids["ax"], "a".into(), "x".into(), "n1".into()));
-    assert_eq!(entry_rows(&db).await, vec![(ids["ax"], "n1".to_owned())], "the connection reads only (a, x)");
-    db.close().await;
-    database.drop().await;
-}
-
-/// The set names the primary key; the hook's condition narrows the restore to the rows of its part.
-async fn restore_condition_case(driver: &str) {
-    let database = CaseDatabase::create(driver).await;
-    let db = installed(&database).await;
-    let ids = seed_deleted_entries(&db).await;
-    let values = [("id", Param::I64(ids["ay"])), ("note", Param::from("n2"))];
-    let outside = db.with_request_hook(part_scope_hook("b"));
-    let error = polyspec_orm::model::restore(&entry(&outside, &values)).await.err().expect("a restore outside the hook condition");
-    assert_eq!(error.code(), polyspec_orm::codes::NO_ROWS, "{error}");
-    assert_eq!(entry_rows(&db).await, vec![], "the restore outside the hook condition restores no row");
-    let inside = db.with_request_hook(part_scope_hook("a"));
-    let row = polyspec_orm::model::restore(&entry(&inside, &values)).await.expect("restore");
-    assert_eq!((id_of(&row), text_of(&row, "label"), text_of(&row, "note")), (ids["ay"], "y".into(), "n2".into()));
     db.close().await;
     database.drop().await;
 }
@@ -640,13 +455,6 @@ async fn read_filter() {
     read_filter_case("sqlite").await;
 }
 
-// Requirements: INT-78, PRT-2.
-#[tokio::test]
-async fn same_handle_child_hook_once() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    same_handle_child_hook_once_case("sqlite").await;
-}
-
 // Requirements: INT-78.
 #[tokio::test]
 async fn relation_scope() {
@@ -661,17 +469,11 @@ async fn coverage_request_hook_relation_scope() {
     relation_scope_case(feature_database::selected()).await;
 }
 
+// Requirements: INT-78, PRT-2.
 #[tokio::test]
 async fn coverage_request_hook_read_filter() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     read_filter_case(feature_database::selected()).await;
-}
-
-// Requirements: INT-78, PRT-2.
-#[tokio::test]
-async fn coverage_request_hook_same_handle_child_hook_once() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    same_handle_child_hook_once_case(feature_database::selected()).await;
 }
 
 // Requirements: INT-78.
@@ -679,45 +481,6 @@ async fn coverage_request_hook_same_handle_child_hook_once() {
 async fn reads_params() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     reads_params_case("sqlite").await;
-}
-
-#[tokio::test]
-async fn insert_assign() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    insert_assign_case("sqlite").await;
-}
-
-// Requirements: PRT-4, PRT-5, PRT-41.
-#[tokio::test]
-async fn coverage_request_hook_insert_assign() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    insert_assign_case(feature_database::selected()).await;
-}
-
-#[tokio::test]
-async fn loaded_row_writes() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    loaded_row_writes_case("sqlite").await;
-}
-
-// Requirements: CFG-21, INT-36, INT-37, PLN-16.
-#[tokio::test]
-async fn coverage_request_hook_loaded_row_writes() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    loaded_row_writes_case(feature_database::selected()).await;
-}
-
-#[tokio::test]
-async fn upsert_scope() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    upsert_scope_case("sqlite").await;
-}
-
-// Requirements: INT-78, PRT-4, PRT-6.
-#[tokio::test]
-async fn coverage_request_hook_upsert_scope() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    upsert_scope_case(feature_database::selected()).await;
 }
 
 #[tokio::test]
@@ -731,32 +494,6 @@ async fn invalid_param() {
 async fn coverage_request_hook_invalid_param() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     invalid_param_case(feature_database::selected()).await;
-}
-
-#[tokio::test]
-async fn restore_key() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    restore_key_case("sqlite").await;
-}
-
-// Requirements: DIA-161.
-#[tokio::test]
-async fn coverage_request_hook_restore_key() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    restore_key_case(feature_database::selected()).await;
-}
-
-#[tokio::test]
-async fn restore_condition() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    restore_condition_case("sqlite").await;
-}
-
-// Requirements: DIA-161, INT-38.
-#[tokio::test]
-async fn coverage_request_hook_restore_condition() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    restore_condition_case(feature_database::selected()).await;
 }
 
 #[tokio::test]

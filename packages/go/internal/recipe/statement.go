@@ -90,10 +90,15 @@ func tableCore(db *orm.DB, table string, s *orm.Schema) *orm.Core {
 	return c
 }
 
-// tableModels are the models of the statement-event fixture that have no generated model: each names its table of the
-// fixture schema. A model op on any other model name fails the case by name (model.go).
+// tableModels are the models of the fixtures that have no generated model: each names its table of the fixture schema. A
+// model op on any other model name fails the case by name (model.go).
 var tableModels = map[string]string{
-	"EventProbe": "event_probe",
+	"EventProbe":  "event_probe",
+	"HookItem":    "hook_item",
+	"HookEntry":   "hook_entry",
+	"HookUpsert":  "hook_upsert",
+	"RotRow":      "rot_row",
+	"ChunkAuthor": "chunk_author",
 }
 
 // boundRow records which path made a bound row, the generated or the table path, with its model and the connection it was
@@ -106,6 +111,9 @@ type boundRow struct {
 
 // tableModelOp runs a model op on a table model of the fixture, through the entity of tableEntity.
 func tableModelOp(s databaseStep, c *databaseContext, db *orm.DB, table string) (outcome, error) {
+	if out, handled, err := tableModelRequest(s, c, db, table); handled {
+		return out, err
+	}
 	core := tableCore(db, table, c.schema)
 	switch s.Op {
 	case "model.create":

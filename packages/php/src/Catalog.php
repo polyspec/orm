@@ -412,7 +412,7 @@ final class Catalog
                 return new CatalogResult($raw['names'], $raw['rows']);
             }
             $raw = $this->query($pdo, $sql, $args, $maxRows, $maxBytes);
-            return new CatalogResult($raw['names'], self::convertRows($raw, $raw['types']));
+            return new CatalogResult($raw['names'], self::convertRows($raw, $raw['types'], $this->dialect));
         });
     }
 
@@ -2000,13 +2000,14 @@ final class Catalog
 
     /**
      * Converts the values of a raw result with the native type of each column. Text is a string, binary the bytes,
-     * integers int, floats float, and decimals their plain text. A value that its type does not fit fails explicitly.
+     * integers int, floats float, and decimals their plain text. A value that its type does not fit fails explicitly,
+     * except a SQLite text in an integer column, which SQLite keeps as stored (dynamic typing).
      *
      * @param array{names: list<string>, types: list<string>, rows: list<list<mixed>>} $raw
      * @param list<string> $types
      * @return list<list<mixed>>
      */
-    private static function convertRows(array $raw, array $types): array
+    private static function convertRows(array $raw, array $types, string $dialect): array
     {
         if (count($types) !== count($raw['names'])) {
             throw new OrmException(
@@ -2018,7 +2019,7 @@ final class Catalog
         foreach ($raw['rows'] as $row) {
             $converted = [];
             foreach ($row as $i => $value) {
-                $converted[] = self::value($value, $types[$i]);
+                $converted[] = self::value($value, $types[$i], $dialect);
             }
             $out[] = $converted;
         }
@@ -2035,7 +2036,7 @@ final class Catalog
      */
     private static function describedRows(array $raw, CatalogTableMetadata $metadata, string $dialect): array
     {
-        $rows = self::convertRows($raw, self::nativeTypes($metadata));
+        $rows = self::convertRows($raw, self::nativeTypes($metadata), $dialect);
         foreach ($metadata->columns as $i => $column) {
             if (self::isBooleanColumn($dialect, $column->nativeType)) {
                 // A boolean column is read as a bool by its column type (DIA-29).
@@ -2246,7 +2247,7 @@ final class Catalog
             : $value;
     }
 
-    private static function value(mixed $value, string $nativeType): mixed
+    private static function value(mixed $value, string $nativeType, string $dialect): mixed
     {
         if (is_float($value)) {
             return self::storedFloat($value, $nativeType);
@@ -2261,10 +2262,14 @@ final class Catalog
             'binary', 'decimal' => $value,
             'int' => filter_var($value, FILTER_VALIDATE_INT) !== false
                 ? (int) $value
-                : throw new OrmException(Code::CATALOG_VALUE, "integer of native type \"$nativeType\""),
+                : ($dialect === 'sqlite'
+                    ? $value
+                    : throw new OrmException(Code::CATALOG_VALUE, "integer of native type \"$nativeType\"")),
             'float' => is_numeric($value)
                 ? self::storedFloat((float) $value, $nativeType)
-                : throw new OrmException(Code::CATALOG_VALUE, "float of native type \"$nativeType\""),
+                : ($dialect === 'sqlite'
+                    ? $value
+                    : throw new OrmException(Code::CATALOG_VALUE, "float of native type \"$nativeType\"")),
             default => self::isUtf8($value)
                 ? $value
                 : throw new OrmException(Code::CATALOG_VALUE, "text of native type \"$nativeType\" is not valid UTF-8"),

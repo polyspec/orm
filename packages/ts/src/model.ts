@@ -14,6 +14,7 @@ import { normalizeDecimal } from './decimal.js';
 import { decimalFromScaled } from './decimal.js';
 import { GroupRow, GroupRows } from './group_rows.js';
 import * as codes from './codes.js';
+import { storedVersion } from './aes.js';
 
 
 /** A generated model class. */
@@ -315,7 +316,10 @@ class Assembler {
       if (col.hidden) st.hidden.add(col.name);
       st.addName(col.name);
       const declared = col.column !== '' && col.column === col.name ? fieldOf(schema, col.name) : undefined;
-      if (declared) m.values.set(col.name, convert(columnType(declared), row[col.index], this.db.zone, declared));
+      // The AES version cell is read as a stored version (COD-53): a text of digits is its number, and any other value is CODEC_DECODE.
+      const versionAt = schema.aesVersion !== '' && col.name === schema.aesVersion && row[col.index] != null;
+      const cell = versionAt ? storedVersion(row[col.index]) : row[col.index];
+      if (declared) m.values.set(col.name, convert(columnType(declared), cell, this.db.zone, declared));
       else st.extra.set(col.name, col.type === 'date' || col.type === 'datetime' ? convert(col.type, row[col.index], this.db.zone) : row[col.index]);
     }
     for (const key of asm.key) {

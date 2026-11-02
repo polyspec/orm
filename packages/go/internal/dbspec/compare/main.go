@@ -48,12 +48,6 @@ type sharedCases struct {
 	Analyses  []analysis
 }
 
-// namedDocument is a document of a sets case with the name of its header.
-type namedDocument struct {
-	Name  string
-	Lines []string
-}
-
 // positionCase is a positions case of cases.json: a main document and the other documents of its set.
 type positionCase struct {
 	ID        string

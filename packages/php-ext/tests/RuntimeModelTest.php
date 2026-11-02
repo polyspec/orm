@@ -265,4 +265,24 @@ DBSPEC;
         self::assertTrue(RuntimeModel::numeric(['codec' => [], 'type' => 'decimal']));
         self::assertFalse(RuntimeModel::numeric(['codec' => ['hex'], 'type' => 'i64']));
     }
+
+    // T334-3-4-7: a build releases its model tree when the model is released, so repeated builds of one document set
+    // keep no memory (the model of bench.dbs is about 196 KB; before the fix, 50 builds grew by about 9.8 MB).
+    public function testRepeatedBuildsReleaseTheModelTree(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $documents = RuntimeModel::files(["$root/contracts/fixtures/bench/bench.dbs"]);
+        RuntimeModel::build($documents);
+        $before = memory_get_usage();
+        for ($i = 0; $i < 50; $i++) {
+            $model = RuntimeModel::build($documents);
+            self::assertSame(24, count($model->entities));
+            unset($model);
+        }
+        self::assertLessThan(
+            64 * 1024,
+            memory_get_usage() - $before,
+            'repeated builds of one document set grow memory'
+        );
+    }
 }

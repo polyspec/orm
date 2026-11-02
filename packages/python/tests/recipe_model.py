@@ -3,6 +3,7 @@ generated model that its model name names, through the connection that model.con
 an entry here fails the case by name, so no recipe passes on a call that the helper does not make."""
 
 from polyspec.orm import Db
+from polyspec.orm.aes import AesKeyring
 from polyspec.orm.bind_check import fulltext_boolean
 from polyspec.orm.engine import Engine
 from polyspec.orm.names import ChainKey
@@ -255,6 +256,16 @@ def model_ops(native, database_value, step_argument):
     def model_connect(step, context):
         # The case schema is registered on the connection, as the statement-event ops need it (FCV-4, model.connect).
         options = dict(BENCH_KEYS)
+        # A step with aes_keyring connects with that keyring in place of the bench key (FCV-4, model.connect).
+        if "aes_keyring" in step:
+            raw = step["aes_keyring"]
+            keyring = AesKeyring(
+                {int(version): key for version, key in raw["versions"].items()},
+                raw["current"],
+            )
+            del options["aesKey"]
+            options["aesKeyring"] = keyring
+            options["aesVersion"] = keyring.current_version
         if "pool_size" in step:
             options["poolSize"] = step["pool_size"]
         db = Db.connect_schema(context["dsn"], context["schema"], options)

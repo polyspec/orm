@@ -21,7 +21,7 @@ caseTest('every op of the step enum has a key list that holds the op itself', CO
 caseTest('a key is refused on an op that does not hold it, though another op does', COMPUTE, () => {
   assert.ok(table.step['dsn.connect']?.includes('dsn'));
   assert.ok(!table.step['model.connect']?.includes('dsn'));
-  assert.deepEqual(table.step['model.connect'], ['as', 'op', 'pool_size']);
+  assert.deepEqual(table.step['model.connect'], ['aes_keyring', 'as', 'op', 'pool_size']);
 });
 
 caseTest('a case and a file hold the keys of their schema definitions', COMPUTE, () => {

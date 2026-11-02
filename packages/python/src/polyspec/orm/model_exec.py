@@ -77,6 +77,7 @@ class _Assembler:
         row_state.loaded = True
         core.row = row_state
         schema = builder.ent.entity
+        from polyspec.orm.aes import _stored_version
         from polyspec.orm.database import column_type
 
         for col in asm["columns"]:
@@ -89,8 +90,17 @@ class _Assembler:
                 else None
             )
             if declared is not None:
+                cell = row[col["index"]]
+                # The AES version cell is read as a stored version (COD-53): a text of digits is its number, and any
+                # other value is CODEC_DECODE.
+                if (
+                    schema.aes_version != ""
+                    and col["name"] == schema.aes_version
+                    and cell is not None
+                ):
+                    cell = _stored_version(cell)
                 core.values[col["name"]] = convert(
-                    column_type(declared), row[col["index"]], self.db.zone, declared
+                    column_type(declared), cell, self.db.zone, declared
                 )
             else:
                 extra = row[col["index"]]

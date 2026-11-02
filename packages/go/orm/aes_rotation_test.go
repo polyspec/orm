@@ -71,7 +71,7 @@ func TestRotateAESRowDoesNotReturnPartialResult(t *testing.T) {
 	}
 }
 
-// Requirements: COD-44, COD-47, COD-54, COD-55.
+// Requirements: COD-55 (FCV-2: a rotation row without a selected column, an input that no recipe value can hold, stays native). The keyring constructor refuses an empty key and an undeclared current version with CONFIG.
 func TestAESVersionCodesAreTheSameInEveryClient(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	keys := mustAESKeyring(t, map[int32]string{1: "old", 2: "new"}, 2)
@@ -84,15 +84,8 @@ func TestAESVersionCodesAreTheSameInEveryClient(t *testing.T) {
 		err  func() error
 		code string
 	}{
-		{"undeclared stored version", func() error { _, err := RotateAESRow(row(int32(9)), "aes_key_version", cols, 2, keys); return err }, CodeConfig},
-		{"undeclared read version", func() error { _, err := HostDecodeVersioned("00", []string{"aes"}, 9, keys); return err }, CodeConfig},
 		{"empty key", func() error { _, err := NewAESKeyring(map[int32]string{1: ""}, 1); return err }, CodeConfig},
 		{"current version undeclared", func() error { _, err := NewAESKeyring(map[int32]string{1: "k"}, 2); return err }, CodeConfig},
-		{"stored version not an integer", func() error { _, err := RotateAESRow(row("abc"), "aes_key_version", cols, 2, keys); return err }, CodeCodecDecode},
-		{"stored version zero", func() error { _, err := RotateAESRow(row(int64(0)), "aes_key_version", cols, 2, keys); return err }, CodeCodecDecode},
-		{"stored version above i32", func() error { _, err := RotateAESRow(row(int64(1)<<31), "aes_key_version", cols, 2, keys); return err }, CodeCodecDecode},
-		{"read version not an integer", func() error { _, err := rowVersion("1x"); return err }, CodeCodecDecode},
-		{"read version above i32", func() error { _, err := rowVersion(uint64(1) << 31); return err }, CodeCodecDecode},
 		{"AES column missing from rotation row", func() error {
 			r := row(int32(1))
 			delete(r, "aes_hex_email")
@@ -127,7 +120,8 @@ func assertAESRowDecodeIsInternal(t *testing.T, step *plan.Step, si *scanInfo, w
 	}
 }
 
-// Requirements: COD-44, COD-56.
+// Requirements: COD-56.
+// FCV-2: the case builds a read plan without its version column, an input that no recipe value can hold; it stays native.
 func TestAESReadWithoutVersionColumnIsInternal(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	step := &plan.Step{Assemble: &plan.Assemble{Entity: "user", Columns: []plan.OutCol{{Index: 0, Name: "aes_hex_email", Type: "string"}}}}
@@ -136,66 +130,11 @@ func TestAESReadWithoutVersionColumnIsInternal(t *testing.T) {
 }
 
 // Requirements: COD-48.
+// FCV-2: the case builds a selected row without its version cell, an input that no recipe value can hold; it stays native.
 func TestAESReadRowWithoutVersionCellIsInternal(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	step, si := aesReadStep()
 	assertAESRowDecodeIsInternal(t, step, si, "selected AES row without its version cell")
-}
-
-// Requirements: COD-49, COD-50, COD-51, COD-52, COD-53.
-func TestAESReadStoredVersionCodes(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	cases := []struct {
-		name    string
-		version any
-		want    string
-	}{
-		{"non-integer text", "abc", CodeCodecDecode},
-		{"zero", int32(0), CodeCodecDecode},
-		{"above i32", int64(1) << 31, CodeCodecDecode},
-		{"undeclared integer", int32(9), CodeConfig},
-		{"positive integer text", "1", ""},
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			err := readAESWithStoredVersion(t, "old-key", map[int32]string{1: "old-key", 2: "new-key"}, 2, c.version)
-			if got := ErrorCode(err); got != c.want {
-				t.Fatalf("stored version %#v: code = %q, want %s (err %v)", c.version, got, c.want, err)
-			}
-		})
-	}
-}
-
-// Requirements: COD-44, COD-57.
-func TestAESReadKeyringLacksStoredVersionIsConfig(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	err := readAESWithStoredVersion(t, "single-key", map[int32]string{1: "old-key", 2: "new-key"}, 2, int32(9))
-	if got := ErrorCode(err); got != CodeConfig {
-		t.Fatalf("stored version missing from the keyring: code = %q, want %s (err %v)", got, CodeConfig, err)
-	}
-}
-
-// Requirements: COD-44, COD-58.
-func TestAESReadNullVersionWithAESValueIsCodecDecode(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	err := readAESWithStoredVersion(t, "new-key", map[int32]string{1: "old-key", 2: "new-key"}, 2, nil)
-	if got := ErrorCode(err); got != CodeCodecDecode {
-		t.Fatalf("NULL stored version with an AES value: code = %q, want %s (err %v)", got, CodeCodecDecode, err)
-	}
-}
-
-// Requirements: COD-44, COD-59.
-func TestAESReadNullAESWithNullVersionStaysNull(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	keys := mustAESKeyring(t, map[int32]string{1: "old-key", 2: "new-key"}, 2)
-	step, si := aesReadStep()
-	vals := []any{nil, nil}
-	if err := decodeSelectedRow(vals, si, step, keys); err != nil {
-		t.Fatalf("NULL AES value with NULL version: %v", err)
-	}
-	if vals[0] != nil {
-		t.Fatalf("NULL AES value decoded to %v, want NULL", vals[0])
-	}
 }
 
 // aesReadStep is the step of an assembly with an AES column at index 0 and its version column at index 1.
@@ -216,38 +155,4 @@ func mustAESKeyring(t *testing.T, keys map[int32]string, current int32) AESKeyri
 		t.Fatal(err)
 	}
 	return keyring
-}
-
-func readAESWithStoredVersion(t *testing.T, writeKey string, keys map[int32]string, current int32, version any) error {
-	t.Helper()
-	enc, err := HostEncode("email@example.test", []string{"aes", "hex"}, writeKey)
-	if err != nil {
-		t.Fatal(err)
-	}
-	keyring, err := NewAESKeyring(keys, current)
-	if err != nil {
-		t.Fatal(err)
-	}
-	step, scan := aesReadStep()
-	return decodeSelectedRow([]any{enc, version}, scan, step, keyring)
-}
-
-// Requirements: COD-44, COD-60.
-func TestRotateAESRowLeavesNullAESUnchanged(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	keys := mustAESKeyring(t, map[int32]string{1: "old-key", 2: "new-key"}, 2)
-	cols := []AESRotationColumn{{Name: "aes_hex_email", Styles: []string{"aes", "hex"}}}
-	cases := map[string]map[string]any{
-		"NULL version":  {"aes_key_version": nil, "aes_hex_email": nil},
-		"valid version": {"aes_key_version": int32(1), "aes_hex_email": nil},
-	}
-	for name, row := range cases {
-		got, err := RotateAESRow(row, "aes_key_version", cols, 2, keys)
-		if err != nil {
-			t.Fatalf("%s: %v", name, err)
-		}
-		if !reflect.DeepEqual(got, row) {
-			t.Fatalf("%s: rotated NULL AES row = %v, want unchanged %v", name, got, row)
-		}
-	}
 }

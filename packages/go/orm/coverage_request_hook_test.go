@@ -40,12 +40,6 @@ func TestCoverageRequestHookReadFilter(t *testing.T) {
 	runRequestHookCoverage(t, "read_filter")
 }
 
-// Requirements: INT-78, PRT-2.
-func TestCoverageRequestHookSameHandleChildHookOnce(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	runRequestHookCoverage(t, "same_handle_child_hook_once")
-}
-
 // Requirements: INT-78.
 func TestCoverageRequestHookRelationScope(t *testing.T) {
 	testcase.Start(t, testcase.Database)
@@ -70,40 +64,10 @@ func TestCoverageRequestHookReadsParams(t *testing.T) {
 	t.Fatal("request hook reads_params case is not declared")
 }
 
-// Requirements: PRT-4, PRT-5, PRT-41.
-func TestCoverageRequestHookInsertAssign(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	runRequestHookCoverage(t, "insert_assign")
-}
-
-// Requirements: INT-78, PRT-4, PRT-6.
-func TestCoverageRequestHookUpsertScope(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	runRequestHookCoverage(t, "upsert_scope")
-}
-
-// Requirements: CFG-21, INT-36, INT-37, PLN-16.
-func TestCoverageRequestHookLoadedRowWrites(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	runRequestHookCoverage(t, "loaded_row_writes")
-}
-
 // Requirements: PRT-65.
 func TestCoverageRequestHookInvalidParam(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	runRequestHookCoverage(t, "invalid_param")
-}
-
-// Requirements: DIA-161.
-func TestCoverageRequestHookRestoreKey(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	runRequestHookCoverage(t, "restore_key")
-}
-
-// Requirements: DIA-161, INT-38.
-func TestCoverageRequestHookRestoreCondition(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	runRequestHookCoverage(t, "restore_condition")
 }
 
 // Requirements: DIA-161.

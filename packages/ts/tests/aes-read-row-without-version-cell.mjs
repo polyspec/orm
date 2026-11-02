@@ -1,4 +1,5 @@
 // Requirements: COD-48.
+// FCV-2: the case selects a row without its version cell, an input that no recipe value can hold; it stays native.
 // A selected AES row without its version cell violates the read plan's invariant.
 import { OrmError, AesKeyring } from '../dist/index.js';
 import { decodeAssembly } from '../dist/database.js';

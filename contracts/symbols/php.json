@@ -5405,7 +5405,7 @@
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::convertRows": {
     "exported": false,
-    "signature": "private static function convertRows(array $raw, array $types): array"
+    "signature": "private static function convertRows(array $raw, array $types, string $dialect): array"
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::currentNamespace": {
     "exported": true,
@@ -5721,7 +5721,7 @@
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::value": {
     "exported": false,
-    "signature": "private static function value(mixed $value, string $nativeType): mixed"
+    "signature": "private static function value(mixed $value, string $nativeType, string $dialect): mixed"
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::verifyInsertedRow": {
     "exported": false,

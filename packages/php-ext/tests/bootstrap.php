@@ -64,6 +64,15 @@ require_once dirname(__DIR__, 2) . '/php/tests/CatalogConnectionSqliteOnlyRecipe
 require_once dirname(__DIR__, 2) . '/php/tests/TransactionsRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CompositeKeysRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/GeneratorScanTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/RequestHookMysqlRecipeTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/RequestHookPostgresRecipeTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/RequestHookSqliteRecipeTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/ParameterChunkingMysqlTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/ParameterChunkingPostgresTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/ParameterChunkingSqliteTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/AesRotationMysqlTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/AesRotationPostgresTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/AesRotationSqliteTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CodecBytesValueRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DbspecMermaidRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CodecOrderedJsonTextTest.php';

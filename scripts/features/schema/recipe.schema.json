@@ -417,6 +417,32 @@
               }
             }
           }
+        },
+        {
+          "type": "object",
+          "required": [
+            "sequence"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "sequence": {
+              "type": "object",
+              "required": [
+                "from",
+                "count"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "from": {
+                  "type": "integer"
+                },
+                "count": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
         }
       ]
     },
@@ -745,7 +771,11 @@
             "model.read_bind_cell",
             "generator.generate",
             "dbspec.export_mermaid",
-            "dbspec.import_mermaid"
+            "dbspec.import_mermaid",
+            "hook.install",
+            "hook.records",
+            "utils.aes_rotate",
+            "model.restore"
           ]
         }
       },
@@ -965,6 +995,18 @@
         },
         {
           "$ref": "#/$defs/ops/dbspec.import_mermaid"
+        },
+        {
+          "$ref": "#/$defs/ops/hook.install"
+        },
+        {
+          "$ref": "#/$defs/ops/hook.records"
+        },
+        {
+          "$ref": "#/$defs/ops/utils.aes_rotate"
+        },
+        {
+          "$ref": "#/$defs/ops/model.restore"
         }
       ]
     },
@@ -1230,6 +1272,9 @@
           },
           "as": {
             "$ref": "#/$defs/name"
+          },
+          "aes_keyring": {
+            "$ref": "#/$defs/aesKeyring"
           }
         }
       },
@@ -3067,6 +3112,10 @@
                 }
               }
             }
+          },
+          "page": {
+            "description": "The query reads one page by GetsPage: offset/limit+1 of size limit, with the total of the rows (INT-36).",
+            "type": "boolean"
           }
         },
         "anyOf": [
@@ -3255,6 +3304,7 @@
         "type": "object",
         "required": [
           "op",
+          "connection",
           "model",
           "keyring",
           "expect"
@@ -3264,35 +3314,52 @@
           "op": {
             "const": "utils.aes_status"
           },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
           "model": {
             "$ref": "#/$defs/model"
           },
           "keyring": {
-            "type": "object",
-            "required": [
-              "current",
-              "versions"
-            ],
-            "additionalProperties": false,
-            "properties": {
-              "current": {
-                "type": "integer"
-              },
-              "versions": {
-                "type": "object",
-                "minProperties": 1,
-                "propertyNames": {
-                  "pattern": "^-?[0-9]+$"
-                },
-                "additionalProperties": {
-                  "type": "string",
-                  "minLength": 1
-                }
-              }
-            }
+            "$ref": "#/$defs/aesKeyring"
           },
           "expect": {
-            "$ref": "#/$defs/expect"
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "$ref": "#/$defs/outcomes/value"
+            }
+          }
+        }
+      },
+      "utils.aes_rotate": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "model",
+          "keyring"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "utils.aes_rotate"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "model": {
+            "$ref": "#/$defs/model"
+          },
+          "keyring": {
+            "$ref": "#/$defs/aesKeyring"
+          },
+          "expect": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "$ref": "#/$defs/outcomes/value"
+            }
           }
         }
       },
@@ -4559,6 +4626,104 @@
             "$ref": "#/$defs/expect"
           }
         }
+      },
+      "hook.install": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "hooks"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "hook.install"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "hooks": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/$defs/hook"
+            }
+          }
+        }
+      },
+      "hook.records": {
+        "type": "object",
+        "required": [
+          "op",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "hook.records"
+          },
+          "expect": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/outcomes/value"
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "counts"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "counts": {
+                      "type": "object",
+                      "propertyNames": {
+                        "$ref": "#/$defs/name"
+                      },
+                      "additionalProperties": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "model.restore": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "model",
+          "values"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "model.restore"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "model": {
+            "$ref": "#/$defs/model"
+          },
+          "values": {
+            "$ref": "#/$defs/columnValues"
+          },
+          "expect": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "$ref": "#/$defs/outcomes/error"
+            }
+          }
+        }
       }
     },
     "outcomes": {
@@ -4819,10 +4984,17 @@
                       },
                       {
                         "$ref": "#/$defs/withinValue"
+                      },
+                      {
+                        "$ref": "#/$defs/ref"
                       }
                     ]
                   }
                 }
+              },
+              "total": {
+                "type": "integer",
+                "minimum": 0
               }
             }
           },
@@ -5814,6 +5986,154 @@
       "additionalProperties": {
         "type": "string"
       }
+    },
+    "aesKeyring": {
+      "type": "object",
+      "required": [
+        "current",
+        "versions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "current": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "versions": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "pattern": "^[1-9][0-9]*$"
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "hook": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "action",
+            "kinds",
+            "column",
+            "value",
+            "nested"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "scope"
+            },
+            "kinds": {
+              "$ref": "#/$defs/kinds"
+            },
+            "column": {
+              "$ref": "#/$defs/name"
+            },
+            "value": {
+              "$ref": "#/$defs/argument"
+            },
+            "nested": {
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "action",
+            "kinds",
+            "column",
+            "value"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "assign"
+            },
+            "kinds": {
+              "$ref": "#/$defs/kinds"
+            },
+            "column": {
+              "$ref": "#/$defs/name"
+            },
+            "value": {
+              "$ref": "#/$defs/argument"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "action",
+            "kinds"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "record"
+            },
+            "kinds": {
+              "$ref": "#/$defs/kinds"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "action",
+            "kinds",
+            "error"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "fail"
+            },
+            "kinds": {
+              "$ref": "#/$defs/kinds"
+            },
+            "error": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]*$"
+            }
+          }
+        }
+      ]
+    },
+    "kinds": {
+      "oneOf": [
+        {
+          "enum": [
+            "reads",
+            "reads+restore",
+            "every"
+          ]
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "one",
+              "all",
+              "count",
+              "group_count",
+              "sum",
+              "avg",
+              "paginate",
+              "insert",
+              "update",
+              "delete",
+              "restore"
+            ]
+          }
+        }
+      ]
     }
   }
 }

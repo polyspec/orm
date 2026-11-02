@@ -9,18 +9,12 @@ import { join } from 'node:path';
 import { caseTest, DATABASE } from '../../../tests/testcase.mts';
 import { cases, runOn } from './request_hook_run.mjs';
 
-// Requirements by case of request_hook_run.mjs:
+// Requirements by case of request_hook_run.mjs (the cases that the recipe request_hook does not run, FCV-4):
 // without_hook: INT-78.
 // read_filter: INT-78, PRT-2.
-// same_handle_child_hook_once: INT-78, PRT-2.
 // relation_scope: INT-78.
-// insert_assign: PRT-4, PRT-5, PRT-41.
-// upsert_scope: INT-78, PRT-4, PRT-6.
-// loaded_row_writes: CFG-21, INT-36, INT-37, PLN-16.
-// invalid_param: PRT-65.
-// restore_key: DIA-161.
-// restore_condition: DIA-161, INT-38.
 // restore_no_key: DIA-161.
+// invalid_param: PRT-65.
 // restore_rewritten_key: DIA-161.
 // restore_hook_set_key: DIA-161.
 // restore_rewritten_key_set_scope: DIA-161.

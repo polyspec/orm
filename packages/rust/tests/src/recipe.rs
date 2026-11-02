@@ -1383,7 +1383,8 @@ mod database {
         /// A recipe wrapper: the case database name, a namespace or a count.
         Json(Value),
         Metadata(TableMetadata),
-        Page(TablePage),
+        /// A table page with the JSON fields that its step returns, so that a ref names its rows (`page.rows.0.0`).
+        Page(TablePage, Value),
         Snapshot(RowSnapshot),
     }
 
@@ -1407,7 +1408,7 @@ mod database {
     }
 
     /// The boxed future of a model op or of model.connect: its fields, or the error text, which begins with its code (FCV-4).
-    pub type ModelFuture<'a> = Pin<Box<dyn Future<Output = Result<Value, String>> + Send + 'a>>;
+    pub type ModelFuture<'a> = Pin<Box<dyn Future<Output = Result<Value, String>> + 'a>>;
 
     /// The generated models of a database case (FCV-4). model.connect opens the connection that its step names with `as`;
     /// each model op calls the generated model that its step names, on the connection that its `connection` field names; a
@@ -1424,6 +1425,11 @@ mod database {
         /// The connection `name` that model.connect opened, for the events and transaction ops; none by default.
         fn db(&self, _name: &str) -> Option<Db> {
             None
+        }
+        /// model.connect with aes_keyring: opens the connection with that keyring; a dispatcher without AES models refuses
+        /// it by name.
+        fn connect_keyring<'a>(&'a mut self, name: &'a str, _dsn: &'a str, _pool_size: u32, _keyring: &'a Value) -> ModelFuture<'a> {
+            Box::pin(async move { Err(format!("model.connect {name}: this recipe binds no AES models")) })
         }
     }
 
@@ -1545,6 +1551,13 @@ mod database {
     /// The Schema of a dbspec-set.json through the public dbspec API (docs/spec/dbspec.md "External documents"): the
     /// owned documents parsed with the external ones of the set, and the manifest of the owned documents with the external
     /// text. Each external document is also a schema of its own, which a case installs first, as the bench set does.
+    /// The schema of a fixture set without external documents, for a dispatcher that lives as long as the process.
+    pub(super) fn fixture_schema_of(set_path: &Path) -> &'static Schema {
+        let (schema, external) = fixture_schema(set_path);
+        assert!(external.is_empty(), "{}: a table recipe fixture has no external documents", set_path.display());
+        Box::leak(Box::new(schema))
+    }
+
     fn fixture_schema(set_path: &Path) -> (Schema, Vec<Schema>) {
         let set = match dbspec::read_set(set_path) {
             Ok(set) => set,
@@ -1826,8 +1839,13 @@ mod database {
 
     /// The ops that the model dispatcher of the case runs (FCV-4), by their full names; every other op is a call of the catalog
     /// or of the case connection.
-    const MODEL_OPS: [&str; 11] = [
+    const MODEL_OPS: [&str; 16] = [
         "model.connect",
+        "model.restore",
+        "hook.install",
+        "hook.records",
+        "utils.aes_status",
+        "utils.aes_rotate",
         "model.create",
         "model.creates",
         "model.save",
@@ -2135,7 +2153,7 @@ mod database {
                 }
                 let columns: Vec<&str> = page.result.columns.iter().map(|c| c.name.as_str()).collect();
                 let fields = json!({ "columns": columns, "order_by": page.order_by, "has_more": page.has_more, "rows": rows });
-                Output { fields, bind: Some(Bound::Page(page)) }
+                Output { fields: fields.clone(), bind: Some(Bound::Page(page, fields)) }
             }
             "catalog.read_only_query" => {
                 let sql = sql_field(&step["sql"], context).map_err(fault)?;
@@ -2160,7 +2178,7 @@ mod database {
                 let index = usize::try_from(index).map_err(|e| fault(format!("index {index}: {e}")))?;
                 let reordered: Option<TablePage> = match step.get("page_with") {
                     Some(with) => {
-                        let Bound::Page(page) = bound(&with["page"], context).map_err(fault)? else { return Err(fault("page is not a bound page".into())) };
+                        let Bound::Page(page, _) = bound(&with["page"], context).map_err(fault)? else { return Err(fault("page is not a bound page".into())) };
                         let mut page = page.clone();
                         page.order_by = strings(&with["order_by"]).map_err(fault)?;
                         Some(page)
@@ -2170,7 +2188,7 @@ mod database {
                 let page = match &reordered {
                     Some(page) => page,
                     None => match bound(&step["page"], context).map_err(fault)? {
-                        Bound::Page(page) => page,
+                        Bound::Page(page, _) => page,
                         _ => return Err(fault("page is not a bound page".into())),
                     },
                 };
@@ -2247,13 +2265,17 @@ mod database {
                 _ => return Err(Failure::Step("pool_size is not a count".into())),
             };
             let dsn = context.dsn.clone();
-            context.models.connect(name, &dsn, pool_size).await.map_err(Failure::Call)?;
+            match step.get("aes_keyring") {
+                Some(keyring) => context.models.connect_keyring(name, &dsn, pool_size, keyring).await.map_err(Failure::Call)?,
+                None => context.models.connect(name, &dsn, pool_size).await.map_err(Failure::Call)?,
+            };
             return Ok(Output::fields(json!({})));
         }
-        // A step with `row` and no connection is routed by its bound row, which records the connection it was bound on.
+        // A step with `row` and no connection is routed by its bound row, which records the connection it was bound on;
+        // hook.records reads the records of the case, on no connection.
         let connection = match step["connection"].as_str() {
             Some(name) => name,
-            None if step.get("row").is_some() => "",
+            None if step.get("row").is_some() || op == "hook.records" => "",
             None => return Err(Failure::Step(format!("{op} names no connection and no row"))),
         };
         let resolved = resolve_model_step(step, context).map_err(Failure::Step)?;
@@ -2348,10 +2370,19 @@ mod database {
     fn bound_value(reference: &str, context: &Context<'_>) -> Result<Value, String> {
         let mut path = reference.split('.');
         let head = path.next().unwrap_or_default();
-        let Some(Bound::Json(value)) = context.bound.get(head) else { return Err(format!("no bound recipe value {head}")) };
-        let mut value = value;
+        let mut value = match context.bound.get(head) {
+            Some(Bound::Json(value) | Bound::Page(_, value)) => value,
+            _ => return Err(format!("no bound recipe value {head}")),
+        };
         for key in path {
-            value = value.get(key).ok_or_else(|| format!("bound value {head} has no {reference}"))?;
+            value = match value {
+                Value::Array(items) => {
+                    let at = key.parse::<usize>().map_err(|e| format!("bound value {head}: index {key} of {reference}: {e}"))?;
+                    items.get(at)
+                }
+                _ => value.get(key),
+            }
+            .ok_or_else(|| format!("bound value {head} has no {reference}"))?;
         }
         Ok(value.clone())
     }
@@ -2431,7 +2462,7 @@ mod database {
             "bool" => P::Boolean(body.as_bool().ok_or_else(|| format!("{wrapper} is not a bool"))?),
             "null" => P::Null(match text()?.as_str() {
                 "text" => ParamType::Text,
-                "i64" => ParamType::Integer,
+                "i64" | "int" => ParamType::Integer,
                 "u64" => ParamType::Unsigned,
                 "decimal" => ParamType::Decimal,
                 "bool" => ParamType::Boolean,
@@ -2803,5 +2834,596 @@ mod statement {
             ["error", error],
         ] });
         r.records.push((!e.tables.is_empty(), record));
+    }
+}
+
+/// The table models of a recipe whose fixture generates no models (FCV-4, T334-3-4): the request hook, AES rotation and
+/// parameter chunking recipes. Each model is a table of the fixture whose entity the schema gives; each op calls the public
+/// polyspec_orm API that it names, on the connection that its step names.
+pub use tables::table_trials;
+
+mod tables {
+    use std::collections::{BTreeMap, HashMap};
+    use std::future::Future;
+    use std::pin::Pin;
+    use std::sync::{Arc, Mutex, OnceLock};
+
+    use polyspec_orm::args::Value as ArgValue;
+    use polyspec_orm::core::{Arg, ChainKey};
+    use polyspec_orm::ir::{Assign, Group, Item, Pred, Query, Request};
+    use polyspec_orm::model::{create, creates, delete, get_core, get_count, gets, gets_page, restore, update};
+    use polyspec_orm::{AesKeyring, Config, Core, Db, Entity, Error as OrmError, Model, Param, RequestParams, Schema, Val};
+    use serde_json::{json, Map, Value};
+
+    use super::{database_trials_with_models, ModelDispatcher, ModelFuture};
+
+    /// The models of the table recipes and their tables (FCV-4): a model op on any other model fails by name.
+    const TABLE_MODELS: [(&str, &str); 5] =
+        [("HookItem", "hook_item"), ("HookEntry", "hook_entry"), ("HookUpsert", "hook_upsert"), ("RotRow", "rot_row"), ("ChunkAuthor", "chunk_author")];
+
+    /// The kinds of the read requests (the hook kinds reads and reads+restore).
+    const READS: [&str; 7] = ["one", "all", "count", "group_count", "sum", "avg", "paginate"];
+
+    /// A request that a record action of the installed hook saw: its kind and its table (hook.records).
+    type Record = (String, String);
+
+    /// The trials of a table recipe on `database`, over the fixture set at `fixture` (FCV-3, FCV-4).
+    pub fn table_trials(entry: &str, path: &str, fixture: &str, database: &str) -> Vec<polyspec_orm_testcase::Trial> {
+        let root = polyspec_orm_testcase::manifest_dir().join("../../..");
+        let schema = super::database::fixture_schema_of(&root.join(fixture));
+        if CURRENT.set(schema).is_err() {
+            panic!("{entry}: a trial binary runs one table recipe");
+        }
+        database_trials_with_models(entry, path, database, dispatcher)
+    }
+
+    /// The schema of the trial binary: one table recipe runs per binary.
+    static CURRENT: OnceLock<&'static Schema> = OnceLock::new();
+
+    fn dispatcher() -> Box<dyn ModelDispatcher> {
+        let schema = CURRENT.get().copied().expect("table_trials sets the schema of the binary");
+        Box::new(Tables { schema, connections: HashMap::new(), bases: HashMap::new(), rows: HashMap::new(), entities: HashMap::new(), records: Arc::default() })
+    }
+
+    /// The connections of a case, the base connection of each hooked one, the rows bound by `as`, the entities of the
+    /// tables and the records of the installed hook.
+    struct Tables {
+        schema: &'static Schema,
+        connections: HashMap<String, Db>,
+        bases: HashMap<String, Db>,
+        rows: HashMap<String, TableRow>,
+        entities: HashMap<String, &'static Entity>,
+        records: Arc<Mutex<Vec<Record>>>,
+    }
+
+    /// The row of a table model. One type serves every table: the entity of its core names the table.
+    #[derive(Clone)]
+    struct TableRow {
+        core: Core,
+        values: BTreeMap<String, Val>,
+    }
+
+    impl Model for TableRow {
+        fn entity() -> &'static Entity {
+            unreachable!("a table row has one entity per table, which its core names")
+        }
+        fn core(&self) -> &Core {
+            &self.core
+        }
+        fn core_mut(&mut self) -> &mut Core {
+            &mut self.core
+        }
+        fn from_core(core: Core) -> Self {
+            TableRow { core, values: BTreeMap::new() }
+        }
+        fn into_core(self) -> Core {
+            self.core
+        }
+        fn assign(&mut self, name: &str, value: Val) -> polyspec_orm::Result<bool> {
+            self.values.insert(name.to_owned(), value);
+            Ok(true)
+        }
+        fn value(&self, name: &str) -> Option<Val> {
+            self.values.get(name).cloned()
+        }
+    }
+
+    /// A failure of an orm call, named by its code: the message starts with the code, as the error check reads it.
+    fn orm(error: OrmError) -> String {
+        format!("{}: {error}", error.code())
+    }
+
+    /// A string that lives as long as the process, for the names that polyspec_orm takes as 'static.
+    fn leaked(text: &str) -> &'static str {
+        Box::leak(text.to_owned().into_boxed_str())
+    }
+
+    impl Tables {
+        fn connection(&self, name: &str) -> Result<Db, String> {
+            self.connections.get(name).cloned().ok_or_else(|| format!("no bound connection {name}"))
+        }
+
+        /// The entity of the table of a model, leaked once per table and case.
+        fn entity(&mut self, model: &str) -> Result<&'static Entity, String> {
+            let table =
+                TABLE_MODELS.iter().find(|(name, _)| *name == model).map(|(_, table)| *table).ok_or_else(|| format!("model {model} has no table entry"))?;
+            if let Some(&entity) = self.entities.get(table) {
+                return Ok(entity);
+            }
+            let entity: &'static Entity = Box::leak(Box::new(Entity {
+                name: table,
+                schema: self.schema,
+                new: polyspec_orm::model::new_boxed::<TableRow>,
+                collect: polyspec_orm::model::collect_boxed::<TableRow>,
+            }));
+            self.entities.insert(table.to_owned(), entity);
+            Ok(entity)
+        }
+
+        /// A new row of a model, connected to db, with the values of an object of wrappers set in column order.
+        fn row(&mut self, model: &str, db: &Db, values: &Value) -> Result<TableRow, String> {
+            let mut core = Core::new(self.entity(model)?);
+            core.connect(db);
+            let mut row = TableRow::from_core(core);
+            for (column, value) in pairs(values)? {
+                row.core_mut().set(&column, value);
+            }
+            Ok(row)
+        }
+
+        /// A row of a model on db narrowed by the equalities of a where object.
+        fn filtered(&mut self, model: &str, db: &Db, filter: &Value) -> Result<TableRow, String> {
+            let mut row = self.row(model, db, &Value::Null)?;
+            for (i, (column, value)) in where_pairs(filter)?.into_iter().enumerate() {
+                let key = ChainKey { column: leaked(&column), ..ChainKey::EMPTY };
+                row.core_mut().chain(if i == 0 { "" } else { "and" }, &[key], vec![Arg::Value(value)]);
+            }
+            Ok(row)
+        }
+
+        fn bound_row(&self, step: &Value) -> Result<TableRow, String> {
+            let name = step["row"].as_str().ok_or_else(|| format!("{} names no row", step["op"]))?;
+            self.rows.get(name).cloned().ok_or_else(|| format!("no bound row {name}"))
+        }
+
+        async fn run(&mut self, op: &str, connection: &str, step: &Value) -> Result<Value, String> {
+            if op == "hook.records" {
+                return Ok(self.records());
+            }
+            // model.update and model.delete with `row` run on the connection of the bound row.
+            if matches!(op, "model.update" | "model.delete") && step.get("row").is_some() {
+                let mut row = self.bound_row(step)?;
+                if op == "model.update" {
+                    for (column, value) in pairs(&step["set"])? {
+                        row.core_mut().set(&column, value);
+                    }
+                    update(&mut row, false).await.map_err(orm)?;
+                } else {
+                    delete(&row, false).await.map_err(orm)?;
+                }
+                return Ok(json!({}));
+            }
+            let db = self.connection(connection)?;
+            let model = step["model"].as_str().unwrap_or_default();
+            match op {
+                "hook.install" => {
+                    let actions = hook_actions(&step["hooks"])?;
+                    let base = match self.bases.get(connection) {
+                        Some(base) => base.clone(),
+                        None => db,
+                    };
+                    let records = self.records.clone();
+                    records.lock().expect("the records").clear();
+                    let hooked = base.with_request_hook(move |request: &mut Request, params: &mut RequestParams| run_hook(&actions, &records, request, params));
+                    self.bases.insert(connection.to_owned(), base);
+                    self.connections.insert(connection.to_owned(), hooked);
+                    Ok(json!({}))
+                }
+                "utils.aes_status" | "utils.aes_rotate" => {
+                    let keyring = keyring_of(&step["keyring"])?;
+                    let row = self.row(model, &db, &Value::Null)?;
+                    if op == "utils.aes_rotate" {
+                        let n = db.utils().aes().rotate(&row, &keyring).await.map_err(orm)?;
+                        return Ok(json!({ "value": { "int": n.to_string() } }));
+                    }
+                    let status = db.utils().aes().status(&row, &keyring).await.map_err(orm)?;
+                    let versions: Vec<Value> = status.versions.iter().map(|(version, n)| json!([version.to_string(), { "int": n.to_string() }])).collect();
+                    Ok(json!({ "value": { "object": [
+                        ["current", { "int": status.current.to_string() }],
+                        ["total", { "int": status.total.to_string() }],
+                        ["pending", { "int": status.pending.to_string() }],
+                        ["versions", { "object": versions }],
+                    ] } }))
+                }
+                "model.create" => {
+                    let mut row = self.row(model, &db, &step["values"])?;
+                    create(&mut row).await.map_err(orm)?;
+                    Ok(json!({}))
+                }
+                "model.creates" => {
+                    let all = self.row(model, &db, &Value::Null)?;
+                    let mut rows = Vec::new();
+                    for values in step["rows"].as_array().into_iter().flatten() {
+                        rows.push(self.row(model, &db, values)?);
+                    }
+                    let batch = step["batch"].as_u64().ok_or_else(|| "model.creates names no batch".to_owned())?;
+                    let batch = usize::try_from(batch).map_err(|e| e.to_string())?;
+                    let n = creates(&all, rows, batch).await.map_err(orm)?;
+                    Ok(json!({ "value": { "int": n.to_string() } }))
+                }
+                "model.duplicate_create" => {
+                    let mut row = self.row(model, &db, &step["values"])?;
+                    let other = self.row(model, &db, &step["duplication"])?;
+                    row.core_mut().duplication(other.into_core());
+                    create(&mut row).await.map_err(orm)?;
+                    Ok(json!({}))
+                }
+                "model.restore" => {
+                    let row = self.row(model, &db, &step["values"])?;
+                    restore(&row).await.map_err(orm)?;
+                    Ok(json!({}))
+                }
+                "model.get_by" => {
+                    if step.get("key").is_some() {
+                        return Err("model.get_by with key has no table-model path".into());
+                    }
+                    let filter = self.filtered(model, &db, &step["where"])?;
+                    let row = get_core::<TableRow>(filter.core()).await.map_err(orm)?.ok_or_else(|| OrmError::NoRows.to_string())?;
+                    if let Some(name) = step["as"].as_str() {
+                        self.rows.insert(name.to_owned(), row);
+                    }
+                    Ok(json!({}))
+                }
+                "model.delete" => {
+                    let filter = self.filtered(model, &db, &step["where"])?;
+                    for row in gets(&filter).await.map_err(orm)?.models() {
+                        delete(row, false).await.map_err(orm)?;
+                    }
+                    Ok(json!({}))
+                }
+                "model.count" => {
+                    let filter = self.filtered(model, &db, &step["where"])?;
+                    let n = get_count(filter.core()).await.map_err(orm)?;
+                    Ok(json!({ "value": { "int": n.to_string() } }))
+                }
+                "model.query" => self.query(model, &db, step).await,
+                other => Err(format!("OP_UNKNOWN {other}: the table models bind no such op")),
+            }
+        }
+
+        fn records(&self) -> Value {
+            let records = self.records.lock().expect("the records").clone();
+            let mut counts = Map::new();
+            let mut list = Vec::new();
+            for (kind, entity) in &records {
+                list.push(json!({ "object": [["kind", { "text": kind }], ["entity", { "text": entity }]] }));
+                let n = counts.get(entity).and_then(Value::as_u64).map_or(1, |n| n + 1);
+                counts.insert(entity.clone(), json!(n));
+            }
+            json!({ "value": { "array": list }, "counts": counts })
+        }
+
+        /// A model.query: the rows of the model, or one page of them with its total, and with a relation the parent
+        /// columns followed by the columns of each related row.
+        async fn query(&mut self, model: &str, db: &Db, step: &Value) -> Result<Value, String> {
+            let mut root = self.filtered(model, db, &step["where"])?;
+            for column in names(&step["order"]) {
+                root.core_mut().order_by(&column, false, None);
+            }
+            let relation = match &step["relation"] {
+                Value::Null => None,
+                raw => Some(relation_spec(raw)?),
+            };
+            if let Some(spec) = &relation {
+                let mut child = self.row(&spec.model, db, &Value::Null)?;
+                for (left, right) in &spec.matches {
+                    child.core_mut().add_match(leaked(left), leaked(right));
+                }
+                root.core_mut().relation(spec.many, child.into_core());
+            }
+            let count = |field: &str| -> Result<usize, String> {
+                match step[field].as_u64() {
+                    None => Ok(0),
+                    Some(n) => usize::try_from(n).map_err(|e| e.to_string()),
+                }
+            };
+            let (limit, offset) = (count("limit")?, count("offset")?);
+            let paged = step["page"].as_bool() == Some(true);
+            let (parents, total) = if paged {
+                if limit == 0 {
+                    return Err("a paged model.query needs a limit above 0".into());
+                }
+                let page = u32::try_from(offset / limit + 1).map_err(|e| e.to_string())?;
+                let per_page = u32::try_from(limit).map_err(|e| e.to_string())?;
+                let found = gets_page(&root, page, per_page).await.map_err(orm)?;
+                (found.items.models().cloned().collect::<Vec<_>>(), Some(found.total_count))
+            } else {
+                // limit is the public limit of the statement (FCV-4), so a limit on a split IN list fails with IR_INVALID.
+                if limit > 0 {
+                    root.core_mut().limit(u32::try_from(offset).map_err(|e| e.to_string())?, u32::try_from(limit).map_err(|e| e.to_string())?);
+                }
+                (gets(&root).await.map_err(orm)?.models().cloned().collect::<Vec<TableRow>>(), None)
+            };
+            let columns = names(&step["columns"]);
+            let mut rows = Vec::new();
+            for parent in &parents {
+                let own = project(parent, &columns)?;
+                let Some(spec) = &relation else {
+                    rows.push(Value::Array(own));
+                    continue;
+                };
+                let table = self.entity(&spec.model)?.name;
+                for child in related(parent, table, spec.many)? {
+                    let mut row = own.clone();
+                    row.extend(project(child, &spec.columns)?);
+                    rows.push(Value::Array(row));
+                }
+            }
+            let mut fields = json!({ "rows": rows });
+            if let Some(total) = total {
+                fields["total"] = json!(total);
+            }
+            Ok(fields)
+        }
+    }
+
+    impl ModelDispatcher for Tables {
+        fn connect<'a>(&'a mut self, name: &'a str, dsn: &'a str, pool_size: u32) -> ModelFuture<'a> {
+            Box::pin(async move {
+                let db = Db::connect_schema(dsn, self.schema, pool_size, Config::default()).await.map_err(orm)?;
+                self.bases.remove(name);
+                self.connections.insert(name.to_owned(), db);
+                Ok(json!({}))
+            })
+        }
+
+        fn connect_keyring<'a>(&'a mut self, name: &'a str, dsn: &'a str, pool_size: u32, keyring: &'a Value) -> ModelFuture<'a> {
+            Box::pin(async move {
+                let (keys, current) = keyring_spec(keyring)?;
+                let config = Config { aes_version: current, aes_keys: keys, ..Config::default() };
+                let db = Db::connect_schema(dsn, self.schema, pool_size, config).await.map_err(orm)?;
+                self.bases.remove(name);
+                self.connections.insert(name.to_owned(), db);
+                Ok(json!({}))
+            })
+        }
+
+        fn call<'a>(&'a mut self, op: &'a str, connection: &'a str, step: &'a Value) -> ModelFuture<'a> {
+            Box::pin(async move { self.run(op, connection, step).await })
+        }
+
+        fn db(&self, name: &str) -> Option<Db> {
+            self.connections.get(name).cloned()
+        }
+
+        fn close<'a>(&'a mut self) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>> {
+            Box::pin(async move {
+                self.bases.clear();
+                for (_, db) in self.connections.drain() {
+                    db.close().await;
+                }
+            })
+        }
+    }
+
+    /// The recipe value of a column: the parameter of its wrapper.
+    fn param(wrapper: &Value) -> Result<Param, String> {
+        let (kind, body) = super::kind(wrapper)?;
+        Ok(match kind {
+            "text" => Param::Str(body.as_str().ok_or_else(|| format!("{wrapper} has no text"))?.to_owned()),
+            "int" => Param::I64(body.as_str().ok_or_else(|| format!("{wrapper} has no digits"))?.parse().map_err(|e| format!("int {body}: {e}"))?),
+            "bool" => Param::Bool(body.as_bool().ok_or_else(|| format!("{wrapper} is not a bool"))?),
+            "null" => Param::Null,
+            other => return Err(format!("a table model has no parameter of the wrapper {other}")),
+        })
+    }
+
+    /// The column values of an object, sorted by column name.
+    fn pairs(raw: &Value) -> Result<Vec<(String, Param)>, String> {
+        let Some(map) = raw.as_object() else { return Ok(Vec::new()) };
+        let mut out = map.iter().map(|(column, wrapper)| Ok((column.clone(), param(wrapper)?))).collect::<Result<Vec<_>, String>>()?;
+        out.sort_by(|a, b| a.0.cmp(&b.0));
+        Ok(out)
+    }
+
+    /// The where values of an object, sorted by column name: one parameter, or a list for an array (FCV-4, DSL-46).
+    fn where_pairs(raw: &Value) -> Result<Vec<(String, ArgValue)>, String> {
+        let Some(map) = raw.as_object() else { return Ok(Vec::new()) };
+        let mut out = map
+            .iter()
+            .map(|(column, wrapper)| {
+                let value = if wrapper.get("array").is_some() { ArgValue::List(list_params(wrapper)?) } else { ArgValue::One(param(wrapper)?) };
+                Ok((column.clone(), value))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        out.sort_by(|a, b| a.0.cmp(&b.0));
+        Ok(out)
+    }
+
+    /// The parameters of an array wrapper; an item that is a sequence adds its integers in place (FCV-4).
+    fn list_params(wrapper: &Value) -> Result<Vec<Param>, String> {
+        let items = wrapper["array"].as_array().ok_or_else(|| format!("{wrapper} is no array"))?;
+        let mut out = Vec::new();
+        for item in items {
+            match item.get("sequence") {
+                Some(sequence) => {
+                    let from = sequence["from"].as_i64().ok_or_else(|| format!("{sequence} has no from"))?;
+                    let count = sequence["count"].as_i64().ok_or_else(|| format!("{sequence} has no count"))?;
+                    out.extend((0..count).map(|i| Param::I64(from + i)));
+                }
+                None => out.push(param(item)?),
+            }
+        }
+        Ok(out)
+    }
+
+    /// The names of a JSON array of strings.
+    fn names(raw: &Value) -> Vec<String> {
+        raw.as_array().into_iter().flatten().filter_map(|v| v.as_str().map(str::to_owned)).collect()
+    }
+
+    /// The cells of the columns of a row, each the recipe wrapper of its value.
+    fn project(row: &TableRow, columns: &[String]) -> Result<Vec<Value>, String> {
+        columns
+            .iter()
+            .map(|column| {
+                Ok(match row.value(column).ok_or_else(|| format!("the row has no column {column}"))? {
+                    Val::Str(text) => json!({ "text": text }),
+                    Val::I64(n) => json!({ "int": n.to_string() }),
+                    Val::Bool(b) => json!({ "bool": b }),
+                    Val::Null => json!({ "null": true }),
+                    _ => return Err(format!("the value of {column} has no recipe wrapper")),
+                })
+            })
+            .collect()
+    }
+
+    /// A relation of a model.query (FCV-4): the related model, its match pairs, whether it is a collection, and its columns.
+    struct RelationSpec {
+        model: String,
+        matches: Vec<(String, String)>,
+        many: bool,
+        columns: Vec<String>,
+    }
+
+    fn relation_spec(raw: &Value) -> Result<RelationSpec, String> {
+        let model = raw["model"].as_str().ok_or_else(|| "relation model is not a name".to_owned())?.to_owned();
+        let mut matches = Vec::new();
+        for pair in raw["match"].as_array().into_iter().flatten() {
+            match (pair[0].as_str(), pair[1].as_str()) {
+                (Some(left), Some(right)) => matches.push((left.to_owned(), right.to_owned())),
+                _ => return Err(format!("relation match {pair} is not a pair of names")),
+            }
+        }
+        let many = raw["many"].as_bool().ok_or_else(|| "relation names no many".to_owned())?;
+        Ok(RelationSpec { model, matches, many, columns: names(&raw["columns"]) })
+    }
+
+    /// The rows that a relation read attached to a parent: each row of a collection, or the one row of a single relation.
+    fn related<'a>(parent: &'a TableRow, table: &str, many: bool) -> Result<Vec<&'a TableRow>, String> {
+        if many {
+            let children = parent.core().related_many::<TableRow>(&format!("{table}_models")).map_err(orm)?;
+            let children = children.ok_or_else(|| format!("the rows of {table} were not loaded"))?;
+            return Ok(children.models().collect());
+        }
+        Ok(parent.core().related_one::<TableRow>(&format!("{table}_model")).map_err(orm)?.into_iter().collect())
+    }
+
+    /// One action of hook.install, with its value converted once.
+    #[derive(Clone)]
+    struct HookAction {
+        action: String,
+        kinds: Value,
+        column: String,
+        value: Option<Param>,
+        nested: bool,
+        code: String,
+    }
+
+    fn hook_actions(raw: &Value) -> Result<Vec<HookAction>, String> {
+        let mut out = Vec::new();
+        for hook in raw.as_array().into_iter().flatten() {
+            let action = hook["action"].as_str().ok_or_else(|| format!("hook {hook} names no action"))?.to_owned();
+            let value = match &hook["value"] {
+                Value::Null => None,
+                wrapper => Some(param(wrapper)?),
+            };
+            if matches!(action.as_str(), "scope" | "assign") && (value.is_none() || hook["column"].as_str().is_none()) {
+                return Err(format!("hook action {action} needs a column and a value"));
+            }
+            out.push(HookAction {
+                action,
+                kinds: hook["kinds"].clone(),
+                column: hook["column"].as_str().map(str::to_owned).unwrap_or_default(),
+                value,
+                nested: hook["nested"].as_bool() == Some(true),
+                code: hook["error"].as_str().map(str::to_owned).unwrap_or_default(),
+            });
+        }
+        Ok(out)
+    }
+
+    /// Whether the kinds of a hook action (a list of kinds, or one of the names reads, reads+restore and every) hold kind.
+    fn kind_matches(kinds: &Value, kind: &str) -> bool {
+        match kinds {
+            Value::String(name) => match name.as_str() {
+                "every" => true,
+                "reads" => READS.contains(&kind),
+                "reads+restore" => READS.contains(&kind) || kind == "restore",
+                _ => false,
+            },
+            Value::Array(items) => items.iter().any(|item| item.as_str() == Some(kind)),
+            _ => false,
+        }
+    }
+
+    /// ANDs a predicate into the root where of a query; an existing where is wrapped in one group item.
+    fn and_where(query: &mut Query, mut pred: Pred) {
+        match query.where_.take() {
+            None => query.where_ = Some(Group { items: vec![Item::Pred { pred: Box::new(pred) }], ..Default::default() }),
+            Some(existing) => {
+                pred.conn = "and".into();
+                query.where_ = Some(Group { items: vec![Item::Group { group: existing }, Item::Pred { pred: Box::new(pred) }], ..Default::default() });
+            }
+        }
+    }
+
+    fn equal_pred(column: &str, p: usize) -> Pred {
+        Pred { column: column.into(), op: "eq".into(), p: Some(p), ..Default::default() }
+    }
+
+    /// Scopes the where of a query and of each of its relation queries, nested ones included.
+    fn scope_tree(query: &mut Query, column: &str, value: &Param, params: &mut RequestParams) {
+        let p = params.add(value.clone());
+        and_where(query, equal_pred(column, p));
+        for relation in &mut query.relations {
+            scope_tree(&mut relation.query, column, value, params);
+        }
+    }
+
+    /// Runs the actions of the installed hook on one request, in order.
+    fn run_hook(actions: &[HookAction], records: &Mutex<Vec<Record>>, request: &mut Request, params: &mut RequestParams) -> polyspec_orm::Result<()> {
+        for action in actions {
+            if !kind_matches(&action.kinds, &request.kind) {
+                continue;
+            }
+            match (action.action.as_str(), &action.value) {
+                ("scope", Some(value)) if action.nested => scope_tree(&mut request.query, &action.column, value, params),
+                ("scope", Some(value)) => {
+                    let p = params.add(value.clone());
+                    and_where(&mut request.query, equal_pred(&action.column, p));
+                }
+                ("assign", Some(value)) => {
+                    let p = params.add(value.clone());
+                    request.set.push(Assign { column: action.column.clone(), p: Some(p), ..Default::default() });
+                    for row in &mut request.rows {
+                        let q = params.add(value.clone());
+                        row.push(q);
+                    }
+                }
+                ("record", _) => records.lock().expect("the records").push((request.kind.clone(), request.query.entity.clone())),
+                ("fail", _) => return Err(OrmError::Engine { code: action.code.clone(), msg: format!("request hook refused {}", request.kind) }),
+                (other, _) => return Err(OrmError::Engine { code: "STEP".into(), msg: format!("hook action {other} has no column value") }),
+            }
+        }
+        Ok(())
+    }
+
+    /// The keys and current version of a recipe keyring (scripts/features/schema/recipe.schema.json, $defs/aesKeyring).
+    fn keyring_spec(raw: &Value) -> Result<(BTreeMap<i32, String>, i32), String> {
+        let keys = raw["versions"].as_object().ok_or_else(|| "a keyring has no versions".to_owned())?;
+        let mut map = BTreeMap::new();
+        for (text, key) in keys {
+            let version: i32 = text.parse().map_err(|e| format!("aes key version {text}: {e}"))?;
+            map.insert(version, key.as_str().ok_or_else(|| format!("aes key {text} is not a text"))?.to_owned());
+        }
+        let current = raw["current"].as_i64().ok_or_else(|| "a keyring has no current version".to_owned())?;
+        Ok((map, i32::try_from(current).map_err(|e| e.to_string())?))
+    }
+
+    /// The public keyring of a recipe step, which validates it as the API does.
+    fn keyring_of(raw: &Value) -> Result<AesKeyring, String> {
+        let (keys, current) = keyring_spec(raw)?;
+        AesKeyring::new(keys, current).map_err(orm)
     }
 }

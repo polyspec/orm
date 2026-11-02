@@ -342,11 +342,21 @@ pub fn decode_styled(asm: &crate::plan::Assemble, data: &mut [Vec<Val>], aes_key
 /// The key version a row stores in its version column: a positive 32-bit integer, otherwise CODEC_DECODE (COD-44).
 fn aes_row_version(row: &[Val], index: usize) -> Result<i32> {
     let value = row.get(index).ok_or_else(|| Error::internal(format!("AES version cell index {index} is absent from the selected row")))?;
-    let stored = match value {
-        Val::Str(text) if !text.is_empty() && text.bytes().all(|byte| byte.is_ascii_digit()) => text.parse::<i64>().map_err(|error| Error::Engine {
-            code: crate::codes::CODEC_DECODE.into(),
-            msg: format!("aes version {text:?} is not a positive 32-bit integer: {error}"),
-        })?,
+    // A stored version written as text of digits reads as its number (COD-49, COD-53): MySQL delivers that text as bytes.
+    let digits = match value {
+        Val::Str(text) => Some(text.as_bytes()),
+        Val::Bytes(bytes) => Some(bytes.as_slice()),
+        _ => None,
+    };
+    let stored = match digits {
+        Some(digits) if !digits.is_empty() && digits.iter().all(u8::is_ascii_digit) => {
+            let text = std::str::from_utf8(digits)
+                .map_err(|error| Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("aes version is not text: {error}") })?;
+            text.parse::<i64>().map_err(|error| Error::Engine {
+                code: crate::codes::CODEC_DECODE.into(),
+                msg: format!("aes version {text:?} is not a positive 32-bit integer: {error}"),
+            })?
+        }
         _ => value.as_i64()?,
     };
     let version = i32::try_from(stored).map_err(|error| Error::Engine {

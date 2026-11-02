@@ -3865,16 +3865,6 @@
         "packages/php-ext/src/polyspec_orm.stub.php"
       ]
     },
-    "request-hook-rust-check": {
-      "scope": "owner",
-      "needs": [
-        "rust"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/rust/orm/tests/request_hook.rs"
-      ]
-    },
     "rust-causes-check": {
       "scope": "owner",
       "needs": [
@@ -4113,7 +4103,7 @@
         "packages/php/tests/restore_case.php",
         "packages/php/tests/case_database.php",
         "packages/php/tests/coverage_cases.php",
-        "contracts/fixtures/request_hook.dbs",
+        "contracts/fixtures/request_hook/request_hook.dbs",
         "contracts/fixtures/audit.dbs",
         "contracts/fixtures/audit_columns.dbs",
         "contracts/fixtures/restore.dbs"
@@ -4891,6 +4881,341 @@
         "packages/php/tests/ConstraintsAndRelationsRecipeTest.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeCases.php"
+      ]
+    },
+    "php-ext-memory-check": {
+      "scope": "suite",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases"
+      ]
+    },
+    "request-hook-check/rust": {
+      "scope": "owner",
+      "needs": [
+        "rust",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/request_hook/**",
+        "packages/rust/tests/tests/request_hook_mysql.rs",
+        "packages/rust/tests/tests/request_hook_postgres.rs",
+        "packages/rust/tests/tests/request_hook_sqlite.rs",
+        "packages/rust/tests/src/recipe.rs",
+        "packages/rust/tests/Cargo.toml",
+        "packages/rust/orm/src/db.rs",
+        "packages/rust/orm/src/model.rs",
+        "packages/rust/orm/src/core.rs"
+      ]
+    },
+    "parameter-chunking-check/rust": {
+      "scope": "owner",
+      "needs": [
+        "rust",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/parameter_chunking/**",
+        "packages/rust/tests/tests/parameter_chunking_mysql.rs",
+        "packages/rust/tests/tests/parameter_chunking_postgres.rs",
+        "packages/rust/tests/tests/parameter_chunking_sqlite.rs",
+        "packages/rust/tests/src/recipe.rs",
+        "packages/rust/tests/Cargo.toml",
+        "packages/rust/orm/src/db.rs",
+        "packages/rust/orm/src/model.rs",
+        "packages/rust/orm/src/core.rs"
+      ]
+    },
+    "aes-rotation-check/rust": {
+      "scope": "owner",
+      "needs": [
+        "rust",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/aes_rotation/**",
+        "packages/rust/tests/tests/aes_rotation_mysql.rs",
+        "packages/rust/tests/tests/aes_rotation_postgres.rs",
+        "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+        "packages/rust/tests/src/recipe.rs",
+        "packages/rust/tests/Cargo.toml",
+        "packages/rust/orm/src/db.rs",
+        "packages/rust/orm/src/model.rs",
+        "packages/rust/orm/src/core.rs",
+        "packages/rust/orm/src/utils.rs"
+      ]
+    },
+    "request-hook-check/typescript": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/request_hook/**",
+        "packages/ts/tests/request_hook-mysql.test.mjs",
+        "packages/ts/tests/request_hook-postgres.test.mjs",
+        "packages/ts/tests/request_hook-sqlite.test.mjs",
+        "packages/ts/tests/recipe.mjs",
+        "packages/ts/src/database.ts",
+        "packages/ts/src/model.ts"
+      ]
+    },
+    "parameter-chunking-check/typescript": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/parameter_chunking/**",
+        "packages/ts/tests/parameter_chunking-mysql.test.mjs",
+        "packages/ts/tests/parameter_chunking-postgres.test.mjs",
+        "packages/ts/tests/parameter_chunking-sqlite.test.mjs",
+        "packages/ts/tests/recipe.mjs",
+        "packages/ts/src/database.ts",
+        "packages/ts/src/model.ts"
+      ]
+    },
+    "aes-rotation-check/typescript": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/aes_rotation/**",
+        "packages/ts/tests/aes_rotation-mysql.test.mjs",
+        "packages/ts/tests/aes_rotation-postgres.test.mjs",
+        "packages/ts/tests/aes_rotation-sqlite.test.mjs",
+        "packages/ts/tests/recipe.mjs",
+        "packages/ts/src/database.ts",
+        "packages/ts/src/model.ts",
+        "packages/ts/src/utils.ts",
+        "packages/ts/src/aes.ts"
+      ]
+    },
+    "request-hook-check/python": {
+      "scope": "owner",
+      "needs": [
+        "python",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/request_hook/**",
+        "packages/python/tests/test_request_hook_mysql.py",
+        "packages/python/tests/test_request_hook_postgres.py",
+        "packages/python/tests/test_request_hook_sqlite.py",
+        "packages/python/tests/recipe.py",
+        "packages/python/src/polyspec/orm/database.py",
+        "packages/python/src/polyspec/orm/model.py"
+      ]
+    },
+    "parameter-chunking-check/python": {
+      "scope": "owner",
+      "needs": [
+        "python",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/parameter_chunking/**",
+        "packages/python/tests/test_parameter_chunking_mysql.py",
+        "packages/python/tests/test_parameter_chunking_postgres.py",
+        "packages/python/tests/test_parameter_chunking_sqlite.py",
+        "packages/python/tests/recipe.py",
+        "packages/python/src/polyspec/orm/database.py",
+        "packages/python/src/polyspec/orm/model.py"
+      ]
+    },
+    "aes-rotation-check/python": {
+      "scope": "owner",
+      "needs": [
+        "python",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/aes_rotation/**",
+        "packages/python/tests/test_aes_rotation_mysql.py",
+        "packages/python/tests/test_aes_rotation_postgres.py",
+        "packages/python/tests/test_aes_rotation_sqlite.py",
+        "packages/python/tests/recipe.py",
+        "packages/python/src/polyspec/orm/database.py",
+        "packages/python/src/polyspec/orm/model.py"
+      ]
+    },
+    "request-hook-check/php": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/request_hook/**",
+        "packages/php/tests/RequestHookMysqlRecipeTest.php",
+        "packages/php/tests/RequestHookPostgresRecipeTest.php",
+        "packages/php/tests/RequestHookSqliteRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php",
+        "packages/php/tests/generated_classes.php",
+        "packages/php/tests/bootstrap.php",
+        "packages/php/src/Db.php",
+        "packages/php/src/Model.php"
+      ]
+    },
+    "parameter-chunking-check/php": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/parameter_chunking/**",
+        "packages/php/tests/ParameterChunkingMysqlTest.php",
+        "packages/php/tests/ParameterChunkingPostgresTest.php",
+        "packages/php/tests/ParameterChunkingSqliteTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php",
+        "packages/php/tests/generated_classes.php",
+        "packages/php/tests/bootstrap.php",
+        "packages/php/src/Db.php",
+        "packages/php/src/Model.php"
+      ]
+    },
+    "aes-rotation-check/php": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/aes_rotation/**",
+        "packages/php/tests/AesRotationMysqlTest.php",
+        "packages/php/tests/AesRotationPostgresTest.php",
+        "packages/php/tests/AesRotationSqliteTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php",
+        "packages/php/tests/generated_classes.php",
+        "packages/php/tests/bootstrap.php",
+        "packages/php/src/Db.php",
+        "packages/php/src/Model.php"
+      ]
+    },
+    "request-hook-check/php-extension": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/request_hook/**",
+        "packages/php-ext/tests/RequestHookMysqlRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/RequestHookPostgresRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/bootstrap.php",
+        "packages/php/tests/RequestHookMysqlRecipeTest.php",
+        "packages/php/tests/RequestHookPostgresRecipeTest.php",
+        "packages/php/tests/RequestHookSqliteRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php",
+        "packages/php/tests/request_hook_cases.php",
+        "packages/php-ext/src/db.c",
+        "packages/php-ext/src/model_read.c"
+      ]
+    },
+    "parameter-chunking-check/php-extension": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/parameter_chunking/**",
+        "packages/php-ext/tests/ParameterChunkingMysqlRecipeExtensionTest.php",
+        "packages/php-ext/tests/ParameterChunkingPostgresRecipeExtensionTest.php",
+        "packages/php-ext/tests/ParameterChunkingSqliteRecipeExtensionTest.php",
+        "packages/php-ext/tests/bootstrap.php",
+        "packages/php/tests/ParameterChunkingMysqlTest.php",
+        "packages/php/tests/ParameterChunkingPostgresTest.php",
+        "packages/php/tests/ParameterChunkingSqliteTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php",
+        "packages/php-ext/src/db.c",
+        "packages/php-ext/src/model_read.c"
+      ]
+    },
+    "aes-rotation-check/php-extension": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/aes_rotation/**",
+        "packages/php-ext/tests/AesRotationMysqlRecipeExtensionTest.php",
+        "packages/php-ext/tests/AesRotationPostgresRecipeExtensionTest.php",
+        "packages/php-ext/tests/AesRotationSqliteRecipeExtensionTest.php",
+        "packages/php-ext/tests/bootstrap.php",
+        "packages/php/tests/AesRotationMysqlTest.php",
+        "packages/php/tests/AesRotationPostgresTest.php",
+        "packages/php/tests/AesRotationSqliteTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php",
+        "packages/php-ext/src/db.c",
+        "packages/php-ext/src/model_read.c"
+      ]
+    },
+    "request-hook-check/go": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/request_hook/**",
+        "packages/go/orm/recipe_request_hook_test.go",
+        "packages/go/internal/recipe/recipe.go",
+        "packages/go/internal/recipe/database.go",
+        "packages/go/internal/recipe/requests.go"
+      ]
+    },
+    "parameter-chunking-check/go": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/parameter_chunking/**",
+        "packages/go/orm/recipe_parameter_chunking_test.go",
+        "packages/go/internal/recipe/recipe.go",
+        "packages/go/internal/recipe/database.go",
+        "packages/go/internal/recipe/requests.go"
+      ]
+    },
+    "aes-rotation-check/go": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/aes_rotation/**",
+        "packages/go/orm/recipe_aes_rotation_test.go",
+        "packages/go/internal/recipe/recipe.go",
+        "packages/go/internal/recipe/database.go",
+        "packages/go/internal/recipe/requests.go",
+        "packages/go/orm/aes_rotation.go"
       ]
     }
   },

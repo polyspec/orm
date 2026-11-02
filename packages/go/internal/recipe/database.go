@@ -107,6 +107,11 @@ type databaseStep struct {
 	Fail    bool            `json:"fail"`
 	Kind    string          `json:"kind"`
 	Compare string          `json:"compare"`
+	// The request hook and AES ops (FCV-4): the hooks of hook.install, the keyring of a model.connect and the keyring
+	// that utils.aes_status and utils.aes_rotate take.
+	Hooks      []json.RawMessage `json:"hooks"`
+	AESKeyring *aesKeyringSpec   `json:"aes_keyring"`
+	Keyring    *aesKeyringSpec   `json:"keyring"`
 }
 
 // bound is what a step bound with `as`: the API value that a later argument takes, the fields of its result that a dotted
@@ -116,6 +121,8 @@ type bound struct {
 	fields map[string]any
 	value  any
 	row    *boundRow
+	// hookBase is the connection that model.connect opened, when hook.install bound api to it with a request hook.
+	hookBase *orm.DB
 }
 
 // snapshotOf is a bound row snapshot with the metadata of the page it was taken from, which the Go snapshot keeps
@@ -146,6 +153,8 @@ type databaseContext struct {
 	bound     map[string]bound
 	// closers close the connections that model.connect opened, when the case ends.
 	closers []func() error
+	// records are the requests that a record action of the installed hook saw (hook.records).
+	records []hookRecord
 }
 
 // runDatabase runs every case of the recipe at path on database, each as a subtest on a case database of its own (FCV-3).
@@ -811,13 +820,13 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 	switch s.Op {
 	// The ops of the model connections (FCV-4), by their full names.
 	case "model.connect", "model.create", "model.creates", "model.save", "model.duplicate_create", "model.update",
-		"model.arithmetic", "model.delete", "model.count", "model.get_by", "model.query":
+		"model.arithmetic", "model.delete", "model.count", "model.get_by", "model.query", "model.restore":
 		return modelOp(s, c)
 	}
 	if out, handled, err := statementOp(s, c); handled {
 		return out, err
 	}
-	return outcome{}, fmt.Errorf("OP_UNKNOWN %s", s.Op)
+	return requestOp(s, c)
 }
 
 // connectionOf is the connection that an op names with its connection field, or the case connection when the field is
@@ -994,11 +1003,18 @@ func boundTree(ref string, c *databaseContext) (any, error) {
 		return nil, err
 	}
 	for _, key := range strings.Split(rest, ".") {
-		object, isObject := tree.(map[string]any)
-		if !isObject {
-			return nil, fmt.Errorf("bound value %s has no %s", head, rest)
-		}
-		if tree, ok = object[key]; !ok {
+		switch node := tree.(type) {
+		case map[string]any:
+			if tree, ok = node[key]; !ok {
+				return nil, fmt.Errorf("bound value %s has no %s", head, rest)
+			}
+		case []any:
+			index, err := strconv.Atoi(key)
+			if err != nil || index < 0 || index >= len(node) {
+				return nil, fmt.Errorf("bound value %s has no %s", head, rest)
+			}
+			tree = node[index]
+		default:
 			return nil, fmt.Errorf("bound value %s has no %s", head, rest)
 		}
 	}
@@ -1180,6 +1196,17 @@ func nativeArgument(n node) (any, error) {
 		return n.text == "true", nil
 	case "null":
 		return nil, nil
+	case "array":
+		// An array is the list of an IN filter of a model op (FCV-4, DSL-46).
+		items := make([]any, len(n.items))
+		for i, item := range n.items {
+			v, err := nativeArgument(item)
+			if err != nil {
+				return nil, err
+			}
+			items[i] = v
+		}
+		return items, nil
 	}
 	return nil, fmt.Errorf("unknown recipe wrapper %s", n.kind)
 }

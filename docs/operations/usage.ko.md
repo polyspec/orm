@@ -531,7 +531,7 @@ Python SQL 연결은 `asyncio.Future`인 `future`를 받는 `db.with_future(futu
 - model은 자기가 연결된 handle을 거친다. transaction 안에서 연결이 없는 model은 transaction을 시작한 handle을 거친다. hook이 있는 handle로 읽거나 만든 행은 그 handle을 지키므로, 그 뒤의 `update`, `delete`, `restore`도 hook을 지난다. hook이 있는 handle에서 시작한 transaction은 callback의 model에 hook을 지키며, 그 안에서 연결의 다른 handle에 연결한 model은 그 handle의 hook으로 실행된다.
 - 만든 행은 호출자가 지정한 값을 가진다. hook이 지정한 값은 써지지만 행으로 다시 읽히지 않는다.
 - hook이 없는 handle은 model이 만든 request를 복사하거나 부르는 일 없이 그대로 plan한다.
-- 공유 case `contracts/fixtures/request_hook.dbs`는 모든 client에서 SQLite로 실행된다: hook은 INSERT assignment가 가리키는 값을 읽고 실제 쓰는 값은 바꾸지 않으며, hook이 더한 predicate가 읽기, count, page를 거르고, hook이 더한 assignment를 행 하나의 insert와 여러 행의 insert가 쓰며, 읽은 행의 update와 delete가 hook을 지나고, 매개변수 밖의 index는 statement 전에 `IR_INVALID`로 실패하며, hook이 없는 handle은 모든 행을 읽고, restore는 지정 값과 hook이 더한 조건에서 key를 얻으며, hook이 더한 조건은 그 밖의 행의 restore를 막고, 값과 조건이 어떤 key도 덮지 않는 restore는 statement 전에 `IR_INVALID`로 실패한다.
+- 공유 case `contracts/fixtures/request_hook/request_hook.dbs`는 모든 client에서 SQLite로 실행된다: hook은 INSERT assignment가 가리키는 값을 읽고 실제 쓰는 값은 바꾸지 않으며, hook이 더한 predicate가 읽기, count, page를 거르고, hook이 더한 assignment를 행 하나의 insert와 여러 행의 insert가 쓰며, 읽은 행의 update와 delete가 hook을 지나고, 매개변수 밖의 index는 statement 전에 `IR_INVALID`로 실패하며, hook이 없는 handle은 모든 행을 읽고, restore는 지정 값과 hook이 더한 조건에서 key를 얻으며, hook이 더한 조건은 그 밖의 행의 restore를 막고, 값과 조건이 어떤 key도 덮지 않는 restore는 statement 전에 `IR_INVALID`로 실패한다.
 
 ## 11. 자주 나는 에러
 

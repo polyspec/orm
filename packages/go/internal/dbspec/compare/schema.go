@@ -43,10 +43,6 @@ type vectorReader struct {
 	path string
 }
 
-func (r vectorReader) fail(location, problem string) error {
-	return &vectorError{lines: []string{fmt.Sprintf("%s: %s %s", r.path, location, problem)}}
-}
-
 // readVectors reads the vector file at path, checks it against the schema `name` and decodes it into value.
 func readVectors(path, name string, value any) (vectorReader, error) {
 	directory, err := schemaDirectory()

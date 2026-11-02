@@ -4,6 +4,13 @@
 
 ## Unreleased
 
+- php-ext 메모리 검사는 AES stress 그룹의 test 클래스 14개를 stress 테스트, root_in_chunking과 함께 한 프로세스에서 128M memory_limit 안에 실행하며, 확장이 호출 사이에 메모리를 남기면 실패한다 (T334-3-4-7).
+- php-ext Validator는 생성할 때 찾는 클래스 이름 문자열을 해제하므로 Validator 1000개를 만들어도 메모리가 남지 않는다 (T334-3-4-7-2).
+- php-ext의 RuntimeModel build는 model을 해제할 때 entity tree, column·unique·index key 문자열, entity 이름을 함께 해제하므로 같은 문서 집합의 build를 반복해도 메모리가 남지 않는다 (T334-3-4-7-1).
+- AES version과 rotation code COD-44, COD-47, COD-49부터 COD-54, COD-57부터 COD-60은 여섯 runtime 모두에서 `contracts/fixtures/aes_rotation/aes_rotation.json` recipe로 MySQL, PostgreSQL, SQLite에서 실행된다. recipe가 대체하는 손으로 쓴 test는 지웠고, COD-48, COD-55, COD-56은 FCV-2 사유와 함께 native로 남는다 (T334-3-4-6).
+- TypeScript에서 숫자 문자열로 저장된 AES version은 Go 읽기 경로와 같이 그 숫자를 version으로 읽고, 다른 텍스트는 `CODEC_DECODE`다 (COD-53, T334-3-4-1).
+- Python에서 숫자 문자열로 저장된 AES version은 Go 읽기 경로와 같이 그 숫자를 version으로 읽고, 다른 텍스트는 `CODEC_DECODE`다 (COD-53, T334-3-4-2).
+- PHP 클라이언트와 PHP 확장은 SQLite가 INTEGER 또는 REAL 열에 저장한 텍스트를 `CATALOG_VALUE` 실패가 아니라 그 텍스트로 읽는다 (INT-152, T334-3-4-3).
 - 통합 브랜치에서 make lint-rust가 다시 통과한다: catalog 코드, recipe와 markdown 헬퍼, markdown conformance trial에서 오류를 대체값으로 바꾸던 16개 호출(Result::ok, unwrap_or, unwrap_or_default, unwrap_or_else, let _)이 오류를 다루고, usize에 맞지 않는 읽기 한도는 QUERY_LIMIT_INVALID로 거부한다(T334-3-26).
 - DIA-6은 PostgreSQL이 전문 검색 값을 trim한다고 적었다. 여섯 런타임의 planner는 모두 값을 그대로 bind하며 plainto_tsquery와 websearch_to_tsquery는 둘을 같게 읽으므로, DIA-6은 이제 그렇게 적는다(T334-3-17-2-3).
 - 전문 검색 동작(DSL-32, DSL-33, DIA-6, DIA-187, PRT-75)은 레시피 contracts/fixtures/fulltext_search/fulltext_search.json 하나이며, 각 런타임의 레시피 헬퍼가 op query.search로 MySQL, PostgreSQL, SQLite에서 실행한다. 이 op는 fulltext_boolean 술어의 count를 connection의 dialect에서 컴파일하고 statement와 bind 값을 보고한다: MySQL은 fulltext_boolean 변환 값, PostgreSQL은 텍스트 그대로, SQLite는 OPERATOR_NOT_ALLOWED다. 여섯 네이티브 fulltext 테스트와 그 파리티 단위는 제거했다(T334-3-17-2).
@@ -174,6 +181,10 @@ SQLite에서 같은 행을 쓰는 두 connection의 잠금 대기는 busy timeou
 - GroupRows PHP extension test가 이전 php-ext-build 형식의 build를 가짜로 만들어서 module을 찾지 못했고, test (static)의 makefile-pinned-node-recipes-check가 실패했다. 이제 가짜는 build를 한 번만 하도록 바꾼 리팩터링(CR4)이 php-ext-build에 준 형식을 따른다 (CR52).
 - dbspec PHP extension aggregate의 공유 module 테스트가 T334-3-15-1이 지운 child를 기대해서, test (static)의 makefile-pinned-node-recipes-check가 실패했다. 테스트는 요청 검증이 ir-validate-check로 옮겨진 것을 따른다 (CR53).
 - 물리 DDL 동작과 IR 검증 recipe의 test 파일 여섯 개가 어떤 feature에도 속하지 않아 features 검사가 여섯 CI job에서 실패했다. 물리 DDL test는 이제 schema_definition에, IR 검증 test는 planner에 속한다 (CR54).
+- 데이터베이스 feature는 자기 commit에서 recipe가 된다: request_hook의 사례 11개를 여섯 client에서 MySQL, PostgreSQL, SQLite로 `make request-hook-check/<client>`를 통해 실행하고 config/parity.json에 묶었다. 손으로 쓴 변환 대상 시험은 제거했고, step이 관찰할 수 없는 하위 검사 네 개는 native로 남겼다 (T334-3-4).
+- 파라미터 분할은 여섯 client에서 recipe로 실행된다: `contracts/fixtures/parameter_chunking/parameter_chunking.json`(`sequence` 값으로 적은 70300개 값의 IN 목록, FCV-4)을 `make parameter-chunking-check/<client>`로 MySQL, PostgreSQL, SQLite에서 실행하며, suite unit `parameter_chunking-mysql`, `-postgres`, `-sqlite`로 바인딩한다. 나뉜 목록의 `limit`은 `IR_INVALID`로 실패하고(PRT-76), PHP extension의 native probe는 PRT-80으로 남는다(FCV-2) (#T334-3-4).
+- Rust의 레시피 모델 AES 키 상태와 회전은 모델 타입의 정적 엔티티가 아니라 모델 core의 엔티티를 읽는다. 그래서 레시피 행이 unreachable 패닉을 내지 않는다 (T334-3-4-4).
+- Rust는 숫자 문자열로 쓰인 저장 AES 버전을 COD-53이 요구하고 Go 읽기 경로가 하듯 그 숫자로 읽는다. MySQL은 그 문자열을 바이트로 돌려주었고, 버전 읽기가 이를 CODEC_DECODE로 거부했다 (T334-3-4-5).
 - `performance_gate`의 정합성 case(기본키 조회와 100행 목록)는 여섯 runtime이 MySQL, PostgreSQL, SQLite에서 실행하는 recipe(contracts/fixtures/performance_gate/performance_gate.json)가 되었고, 타이밍 gate는 옆에서 도는 test의 부하에 따라 달라지므로 make perf-check에 남는다 (FCV-2, FCV-14) (T334-3-11).
 - catalog 읽기는 boolean 열에 드라이버의 정수를 그대로 돌려줘서, MySQL `tinyint(1)`과 SQLite `BOOLEAN` 열에 쓴 bool이 쓰기 검사(ROW_WRITE_MISMATCH)에서 실패했고, PHP catalog는 PHP false를 빈 문자열로 bind해서 MySQL과 SQLite가 거부했다. 이제 모든 runtime이 boolean 열을 열 타입으로 bool로 읽고, PHP와 PHP extension은 bool을 bool로 bind한다 (DIA-29) (T334-3-11-1).
 - DbspecRenderTest의 preempted 검사는 main CI run 41324077414의 test (feature_verify_other) job에서 DSN 오류 아홉 개로 실패했다. 데이터베이스 DSN 없이 파일 전체를 실행했기 때문이다. testBehaviourPhysical(CR16-1-3)은 이제 group database에 속하고 preempted 실행은 그 group을 제외한다. 물리 케이스는 dbspec-php-check/render에서 여전히 실행된다 (CR55).

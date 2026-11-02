@@ -51,6 +51,8 @@ from polyspec.orm.dbspec.plan import chain_plans, emit_plan, parse_plan
 from polyspec.orm.dbspec.plan_diff import diff_plan
 from polyspec.orm.dbspec.plan_steps import effect_text, plan_steps
 from polyspec.orm.engine import Engine, model_of_documents, parse_document_set
+from polyspec.orm.aes import AesKeyring
+from polyspec.orm.names import ChainKey
 from polyspec.orm.engine.validate import validate
 from polyspec.orm.styled_value import StyledValue
 
@@ -1316,6 +1318,9 @@ def _run_case_on(
         "db": db,
         "dir": (ROOT / path).parent,
         "closers": closers,
+        "fields": {},
+        "records": [],
+        "hook_bases": {},
     }
     try:
         namespace = catalog.current_namespace()
@@ -1557,7 +1562,21 @@ def _connection_of(step: dict, context: dict) -> Any:
     )
 
 
-TABLE_MODELS = {"EventProbe": "event_probe"}
+TABLE_MODELS = {
+    "EventProbe": "event_probe",
+    "HookItem": "hook_item",
+    "HookEntry": "hook_entry",
+    "HookUpsert": "hook_upsert",
+    "RotRow": "rot_row",
+    "ChunkAuthor": "chunk_author",
+}
+
+
+def _table_of(model: str) -> str:
+    """The table of a table model, or a failure that names the model."""
+    if model not in TABLE_MODELS:
+        raise AssertionError(f"model {model} has no table entry")
+    return TABLE_MODELS[model]
 
 
 # The statement-event ops (FCV-4). A table of the fixture has no generated class here, so its model class is a Model
@@ -1644,8 +1663,104 @@ def _table_model_update(step: dict, context: dict) -> dict:
 
 
 def _table_model_delete(step: dict, context: dict) -> dict:
-    _bound_value(step["row"], context).delete()
+    if "row" in step:
+        _bound_value(step["row"], context).delete()
+        return {}
+    db = _connection_of(step, context)
+    model = _where_all(
+        _new_row(context, db, _table_of(step["model"])),
+        _assignments(step["where"], context),
+    )
+    for row in list(model.gets().values()):
+        row.delete()
     return {}
+
+
+def _where_all(model: Model, where: list) -> Model:
+    """Narrows a table-model chain by the equalities of where, joined by and in column order."""
+    for name, value in where:
+        connector = "and" if model.core.where.items else ""
+        model.core.where_chain(connector, [ChainKey(column=name)], (value,))
+    return model
+
+
+def _table_model_creates(step: dict, context: dict) -> dict:
+    db = _connection_of(step, context)
+    table = _table_of(step["model"])
+    rows = [
+        _set_columns(_new_row(context, db, table), _assignments(values, context))
+        for values in step["rows"]
+    ]
+    return {
+        "value": {"int": str(_new_row(context, db, table).creates(rows, step["batch"]))}
+    }
+
+
+def _table_model_duplicate_create(step: dict, context: dict) -> dict:
+    db = _connection_of(step, context)
+    table = _table_of(step["model"])
+    row = _set_columns(
+        _new_row(context, db, table), _assignments(step["values"], context)
+    )
+    row.duplication(
+        _set_columns(
+            _new_row(context, db, table), _assignments(step["duplication"], context)
+        )
+    )
+    row.create()
+    return {}
+
+
+def _table_model_restore(step: dict, context: dict) -> dict:
+    db = _connection_of(step, context)
+    _set_columns(
+        _new_row(context, db, _table_of(step["model"])),
+        _assignments(step["values"], context),
+    ).restore()
+    return {}
+
+
+def _table_model_query(step: dict, context: dict) -> dict:
+    db = _connection_of(step, context)
+    parent = _where_all(
+        _new_row(context, db, _table_of(step["model"])),
+        _assignments(step["where"], context),
+    )
+    for column in step.get("order") or []:
+        parent.core.order_by(column, False, [])
+    rel = step.get("relation")
+    if rel is not None:
+        child = _new_row(context, db, _table_of(rel["model"]))
+        for left, right in rel["match"]:
+            getattr(child, f"match_{left}_with_{right}")()
+        if rel["many"]:
+            parent.relations(child)
+        else:
+            parent.relation(child)
+    offset = step.get("offset", 0)
+    limit = step.get("limit", 0)
+    paged = step.get("page") is True
+    total = None
+    if paged:
+        if not limit > 0:
+            raise AssertionError("a paged model.query needs a limit above 0")
+        page = parent.gets_page(offset // limit + 1, limit)
+        parents = list(page["items"])
+        total = page["totalCount"]
+    else:
+        # limit is the public limit of the statement (FCV-4), so a limit on a split IN list fails with IR_INVALID.
+        if limit > 0:
+            parent.core.set_limit(offset, limit)
+        parents = list(parent.gets().values())
+    rows = []
+    for row in parents:
+        own = _project(row, step["columns"])
+        if rel is None:
+            rows.append(own)
+            continue
+        for child in _related_rows(row, _table_of(rel["model"]), rel["many"]):
+            rows.append(own + _project(child, rel["columns"]))
+    return {"rows": rows, "total": total} if paged else {"rows": rows}
 
 
 def _table_model_count(step: dict, context: dict) -> dict:
@@ -1723,6 +1838,186 @@ def _event_value(event, numbers: dict) -> dict:
     }
 
 
+def _request_cell(value) -> dict:
+    """The recipe wrapper of a value that a read returns: text and integer values have a wrapper (FCV-4), and NULL is
+    {"null": true}, which the comparison reads by its nullness."""
+    if value is None:
+        return {"null": True}
+    if isinstance(value, str):
+        return {"text": value}
+    if isinstance(value, int) and not isinstance(value, bool):
+        return {"int": str(value)}
+    raise AssertionError(
+        f"a read value {value!r} of type {type(value).__name__} has no recipe wrapper in a request op"
+    )
+
+
+def _project(model: Model, columns: list) -> list:
+    """The cells of the columns of a loaded model."""
+    values = model.to_array()
+    out = []
+    for column in columns:
+        if column not in values:
+            raise AssertionError(f"the row has no column {column}")
+        out.append(_request_cell(values[column]))
+    return out
+
+
+def _related_rows(parent: Model, table: str, many: bool) -> list:
+    """The rows that a relation read attached to a parent: each row of a collection, or the one row of a single relation."""
+    if many:
+        return list(getattr(parent, f"get_{table}_models")().values())
+    child = getattr(parent, f"get_{table}_model")()
+    return [] if child is None else [child]
+
+
+# The request kinds that the name reads covers (FCV-4, hook.install).
+READ_KINDS = ("one", "all", "count", "group_count", "sum", "avg", "paginate")
+
+
+def _kind_matches(kinds, kind: str) -> bool:
+    """Whether a kind list (or one of the names reads, reads+restore, every) holds kind."""
+    if isinstance(kinds, str):
+        if kinds == "every":
+            return True
+        if kinds == "reads":
+            return kind in READ_KINDS
+        if kinds == "reads+restore":
+            return kind in READ_KINDS or kind == "restore"
+        return False
+    return isinstance(kinds, list) and kind in kinds
+
+
+def _equal_pred(add_param, column: str, value) -> dict:
+    return {"column": column, "op": "eq", "p": add_param(value)}
+
+
+def _and_where(query: dict, pred: dict) -> None:
+    """Adds pred to the where of query with and; an existing where is wrapped in one group item."""
+    where = query.get("where")
+    if not where or not where.get("items"):
+        query["where"] = {"items": [{"pred": pred}]}
+        return
+    query["where"] = {"items": [{"group": where}, {"pred": {**pred, "conn": "and"}}]}
+
+
+def _scope_tree(query: dict, column: str, value, add_param) -> None:
+    """Adds column = value to the where of query and of each of its relation queries, nested ones included."""
+    _and_where(query, _equal_pred(add_param, column, value))
+    for relation in query.get("relations") or []:
+        _scope_tree(relation["query"], column, value, add_param)
+
+
+def _install_hook(step: dict, context: dict) -> None:
+    """Binds the connection of step to the connection that model.connect opened with the actions of step as its request
+    hook, in order; a later hook.install on the same connection replaces the hook (FCV-4)."""
+    name = step["connection"]
+    base = context["hook_bases"].get(name) or _bound_value(name, context)
+    hooks = step["hooks"]
+    actions = [
+        {
+            "action": h["action"],
+            "kinds": h["kinds"],
+            "column": h.get("column", ""),
+            "value": _native(
+                _database_value(_step_argument(h["value"], context), context)
+            )
+            if "value" in h
+            else None,
+            "nested": h.get("nested") is True,
+            "code": h.get("error", ""),
+        }
+        for h in hooks
+    ]
+    context["records"] = []
+
+    def hook(query: dict, add_param, params) -> dict:
+        for a in actions:
+            if not _kind_matches(a["kinds"], query["kind"]):
+                continue
+            action = a["action"]
+            if action == "scope":
+                if a["nested"]:
+                    _scope_tree(query, a["column"], a["value"], add_param)
+                else:
+                    _and_where(query, _equal_pred(add_param, a["column"], a["value"]))
+            elif action == "assign":
+                p = add_param(a["value"])
+                query.setdefault("set", []).append({"column": a["column"], "p": p})
+                for row in query.get("rows") or []:
+                    row.append(add_param(a["value"]))
+            elif action == "record":
+                context["records"].append(
+                    {"kind": query["kind"], "entity": query["entity"]}
+                )
+            elif action == "fail":
+                raise OrmError(a["code"], f"request hook refused {query['kind']}")
+            else:
+                raise AssertionError(f"hook action {action} is unknown")
+        return query
+
+    context["hook_bases"][name] = base
+    context["bound"][name] = base.with_request_hook(hook)
+
+
+def _op_hook_install(step: dict, context: dict) -> dict:
+    _install_hook(step, context)
+    return {}
+
+
+def _op_hook_records(_step: dict, context: dict) -> dict:
+    records = context["records"]
+    counts: dict[str, int] = {}
+    for record in records:
+        counts[record["entity"]] = counts.get(record["entity"], 0) + 1
+    listed = [
+        {
+            "object": [
+                ["kind", {"text": record["kind"]}],
+                ["entity", {"text": record["entity"]}],
+            ]
+        }
+        for record in records
+    ]
+    return {"value": {"array": listed}, "counts": counts}
+
+
+def _keyring(raw: dict) -> AesKeyring:
+    """The keyring of a recipe (FCV-4 aesKeyring), by the public constructor."""
+    return AesKeyring(
+        {int(version): key for version, key in raw["versions"].items()}, raw["current"]
+    )
+
+
+def _op_aes_status(step: dict, context: dict) -> dict:
+    keyring = _keyring(step["keyring"])
+    db = _connection_of(step, context)
+    model = _new_row(context, db, _table_of(step["model"]))
+    status = db.utils().aes().status(model, keyring)
+    versions = [
+        [str(version), {"int": str(status.versions[version])}]
+        for version in sorted(status.versions)
+    ]
+    return {
+        "value": {
+            "object": [
+                ["current", {"int": str(status.current)}],
+                ["total", {"int": str(status.total)}],
+                ["pending", {"int": str(status.pending)}],
+                ["versions", {"object": versions}],
+            ]
+        }
+    }
+
+
+def _op_aes_rotate(step: dict, context: dict) -> dict:
+    keyring = _keyring(step["keyring"])
+    db = _connection_of(step, context)
+    model = _new_row(context, db, _table_of(step["model"]))
+    rotated = db.utils().aes().rotate(model, keyring)
+    return {"value": {"int": str(rotated)}}
+
+
 # Each op maps to one call of the public API and returns the fields that its expect compares.
 _DATABASE_OPS = {
     "schema.install": lambda step, context: _op_schema_install(step, context),
@@ -1755,6 +2050,10 @@ _DATABASE_OPS = {
     "events.stop_failing": _op_events_stop,
     "events.unsubscribe": _op_events_stop,
     "events.captured": _op_events_captured,
+    "hook.install": _op_hook_install,
+    "hook.records": _op_hook_records,
+    "utils.aes_status": _op_aes_status,
+    "utils.aes_rotate": _op_aes_rotate,
 }
 
 
@@ -1789,6 +2088,7 @@ def _run_database_step(step: dict, context: dict) -> None:
         return
     if "as" in step:
         context["bound"][step["as"]] = actual.get("bind", actual.get("value"))
+        context["fields"][step["as"]] = actual
     if expected is None:
         return
     if "error" in expected:
@@ -1811,17 +2111,20 @@ def _limits(step: dict) -> tuple:
 
 
 def _bound(ref: str, context: dict) -> Any:
-    """The bound value of {"ref": "<name>"} or {"ref": "<name>.<path>"}."""
+    """The bound value of {"ref": "<name>"}, or the field at {"ref": "<name>.<path>"} of the result of that step (FCV-4):
+    members by name, array items by their decimal index."""
     head, *path = ref.split(".")
     values = context["bound"]
     if head not in values:
         raise AssertionError(f"no bound value {head}")
-    value = values[head]
+    if not path:
+        return values[head]
+    value = context["fields"][head]
     for key in path:
         if isinstance(value, dict) and key in value:
             value = value[key]
-        elif not isinstance(value, dict) and hasattr(value, key):
-            value = getattr(value, key)
+        elif isinstance(value, list) and key.isdigit() and int(key) < len(value):
+            value = value[int(key)]
         else:
             raise AssertionError(f"bound value {head} has no {'.'.join(path)}")
     return value
@@ -1880,7 +2183,25 @@ def _native(wrapper: dict) -> Any:
         return value
     if kind == "null":
         return None
+    # An array is a list of values (an IN list of where); a sequence item adds its integers in place (FCV-4).
+    if kind == "array":
+        return [
+            item
+            for element in value
+            for item in (
+                _sequence_values(element["sequence"])
+                if "sequence" in element
+                else [_native(element)]
+            )
+        ]
+    if kind == "sequence":
+        return _sequence_values(value)
     raise AssertionError(f"unknown recipe wrapper {kind}")
+
+
+def _sequence_values(sequence: dict) -> list:
+    """The integer values from, from + 1, ... of a {"sequence": {"from", "count"}} wrapper (FCV-4)."""
+    return [int(sequence["from"]) + index for index in range(int(sequence["count"]))]
 
 
 def _temporal_kind(native_type: str | None) -> str | None:
@@ -2053,6 +2374,10 @@ _TABLE_OPS = {
     "model.update": _table_model_update,
     "model.delete": _table_model_delete,
     "model.count": _table_model_count,
+    "model.creates": _table_model_creates,
+    "model.duplicate_create": _table_model_duplicate_create,
+    "model.restore": _table_model_restore,
+    "model.query": _table_model_query,
 }
 
 
@@ -2074,7 +2399,7 @@ def _route(step: dict, context: dict) -> str:
 
 
 def _dispatch_model_op(name: str):
-    generated, table = _MODEL_OPS[name], _TABLE_OPS[name]
+    generated, table = _MODEL_OPS.get(name), _TABLE_OPS[name]
 
     def run(step: dict, context: dict) -> dict:
         path = _route(step, context)
@@ -2082,6 +2407,8 @@ def _dispatch_model_op(name: str):
             result = table(step, context)
         elif "row" in step:
             raise AssertionError(f"{name} with row: the generated path binds no row")
+        elif generated is None:
+            raise AssertionError(f"{name} has no generated-model path")
         else:
             result = generated(step, context)
         if "as" in step and "bind" in result:

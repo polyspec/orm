@@ -65,11 +65,15 @@ trait RecipeModel
         if ($s['op'] === 'model.connect') {
             // The case schema is registered on the connection, as the statement-event ops need it
             // (FCV-4, model.connect).
-            $db = Orm::connectSchema(
-                $context['dsn'],
-                $context['schema'],
-                new Config(aesKey: self::BENCH_AES_KEY, blindIndexKey: self::BENCH_BLIND_INDEX_KEY),
-            );
+            // A step with aes_keyring connects with that keyring in place of the bench key (FCV-4, model.connect).
+            $config = isset($s['aes_keyring'])
+                ? new Config(
+                    blindIndexKey: self::BENCH_BLIND_INDEX_KEY,
+                    aesVersion: self::aesKeyring($s['aes_keyring'])->currentVersion,
+                    aesKeys: self::aesKeys($s['aes_keyring']),
+                )
+                : new Config(aesKey: self::BENCH_AES_KEY, blindIndexKey: self::BENCH_BLIND_INDEX_KEY);
+            $db = Orm::connectSchema($context['dsn'], $context['schema'], $config);
             self::$modelConnections[] = $db;
             return ['bind' => $db];
         }

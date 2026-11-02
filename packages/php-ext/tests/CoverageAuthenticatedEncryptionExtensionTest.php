@@ -39,7 +39,7 @@ final class CoverageAuthenticatedEncryptionExtensionTest extends TestCase
         Assert::assertSame($expected['plain'], Codec::hostDecode($envelope, ['aes'], $input['key']));
     }
 
-    // Requirements: COD-48.
+    // Requirements: COD-48. FCV-2: a selected row without its version cell is an input that no recipe value can hold.
     public function testReadRowWithoutVersionCellIsInternal(): void
     {
         Assert::assertTrue((new ReflectionMethod(Codec::class, 'decodeRows'))->isInternal());
@@ -50,31 +50,6 @@ final class CoverageAuthenticatedEncryptionExtensionTest extends TestCase
             self::fail('an AES row missing its selected version cell was accepted');
         } catch (OrmException $error) {
             Assert::assertSame('INTERNAL', $error->code_);
-        }
-    }
-
-    // Requirements: COD-49, COD-50, COD-51, COD-52, COD-53.
-    public function testStoredVersionReadCodes(): void
-    {
-        Assert::assertTrue((new ReflectionMethod(Codec::class, 'decodeRows'))->isInternal());
-        $config = new Config('', '', 2, [1 => 'old-key', 2 => 'new-key']);
-        $cipher = Codec::hostEncode('value', ['aes', 'hex'], 'old-key');
-        $cases = [
-            ['non-integer text', 'abc', 'CODEC_DECODE'],
-            ['zero', 0, 'CODEC_DECODE'],
-            ['above i32', 2147483648, 'CODEC_DECODE'],
-            ['undeclared integer', 9, 'CONFIG'],
-            ['positive integer text', '1', ''],
-        ];
-        foreach ($cases as [$name, $version, $expected]) {
-            $rows = [[$cipher, $version]];
-            $got = '';
-            try {
-                Codec::decodeRows($rows, [[0, ['aes', 'hex'], [], true, 1]], $config);
-            } catch (OrmException $error) {
-                $got = $error->code_;
-            }
-            Assert::assertSame($expected, $got, "stored version $name");
         }
     }
 

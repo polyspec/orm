@@ -11,7 +11,7 @@ import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { BindCell, CORE, Db, OrmError, StyledValue, blindIndex, chainPlans, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
+import { AesKeyring, BindCell, CORE, Db, OrmError, StyledValue, blindIndex, chainPlans, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
 import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, readDbspecBytes } from '../dist/dbspec/entry.js';
 import { exportMermaid, importMermaid } from '../dist/dbspec/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
@@ -424,7 +424,7 @@ async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatab
     const namespace = await catalog.currentNamespace();
     const bound = new Map([['database', { text: caseDatabase.name }]]);
     const classes = schema === undefined ? {} : classesFromModel(registerModel(schema.manifestText, schema.manifestHash, schema.externalText));
-    context = { catalog, namespace, database, dsn: caseDatabase.dsn, bound, rowPaths: new Map(), db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false };
+    context = { catalog, namespace, database, dsn: caseDatabase.dsn, bound, rowPaths: new Map(), db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], hookBases: new Map(), fields: new Map() };
     for (const rows of [recipe.seed?.rows, recipeCase.seed?.rows]) {
       for (const [table, values] of Object.entries(rows ?? {})) {
         const metadata = await catalog.describeTable({ namespace, name: table });
@@ -496,7 +496,16 @@ function bindWrapper(value) {
 }
 
 // Each op maps to one call of the public API and returns the fields that its expect compares.
-const TABLE_MODELS = { EventProbe: 'event_probe' };
+const TABLE_MODELS = {
+  EventProbe: 'event_probe', HookItem: 'hook_item', HookEntry: 'hook_entry', HookUpsert: 'hook_upsert', RotRow: 'rot_row',
+  ChunkAuthor: 'chunk_author',
+};
+
+/** The table of a table model, or a failure that names the model. */
+function tableOf(model) {
+  if (TABLE_MODELS[model] === undefined) throw new Error(`model ${model} has no table entry`);
+  return TABLE_MODELS[model];
+}
 
 /** The bound value that a field names: a plain name, or the {"ref": name} of an argument (FCV-4). */
 const refOf = (field, { bound: values }) => {
@@ -633,6 +642,31 @@ const OPS = {
     if (statement !== undefined) await nativeQuery(context.database, context.dsn, [statement]);
     return {};
   },
+  // The request hook and AES ops of FCV-4 (T334-3-4): each calls the public API of the same name on a bound connection.
+  async 'utils.aes_status'(s, context) {
+    const status = await connectionOf(s, context).utils().aes().status(modelOf(tableOf(s.model), connectionOf(s, context), context), aesKeyring(s.keyring));
+    const versions = [...status.versions.keys()].sort((a, b) => a - b).map(version => [String(version), { int: String(status.versions.get(version)) }]);
+    return { value: { object: [
+      ['current', { int: String(status.current) }],
+      ['total', { int: String(status.total) }],
+      ['pending', { int: String(status.pending) }],
+      ['versions', { object: versions }],
+    ] } };
+  },
+  async 'utils.aes_rotate'(s, context) {
+    const rotated = await connectionOf(s, context).utils().aes().rotate(modelOf(tableOf(s.model), connectionOf(s, context), context), aesKeyring(s.keyring));
+    return { value: { int: String(rotated) } };
+  },
+  'hook.install'(s, context) {
+    installHook(s, context);
+    return {};
+  },
+  'hook.records'(_, context) {
+    const counts = {};
+    for (const record of context.records) counts[record.entity] = (counts[record.entity] ?? 0) + 1;
+    const list = context.records.map(record => ({ object: [['kind', { text: record.kind }], ['entity', { text: record.entity }]] }));
+    return { value: { array: list }, counts };
+  },
 };
 
 // OP_DEADLINE_MS bounds one op: a read that did not stop at its budget (the cross join of the user table) fails instead of running on.
@@ -660,6 +694,8 @@ async function runStep(s, context) {
   }
   if (s.as !== undefined) {
     context.bound.set(s.as, actual.bind ?? actual.value);
+    // A dotted ref reads the fields of the result, as the Go helper does (FCV-4).
+    context.fields.set(s.as, actual);
     // A model op that binds a row records the path that made it, so that a later {row} step routes to it.
     if (actual.bind !== undefined && Object.hasOwn(MODEL_OPS, s.op)) context.rowPaths.set(s.as, routeOf(s, context));
   }
@@ -674,18 +710,28 @@ function sql(field, { database }) {
   return typeof field === 'string' ? field : field[database];
 }
 
+/** The keyring of a recipe (FCV-4 aesKeyring), by the public constructor. */
+function aesKeyring(raw) {
+  return new AesKeyring(aesKeys(raw), raw.current);
+}
+
+function aesKeys(raw) {
+  return new Map(Object.entries(raw.versions).map(([version, key]) => [Number(version), key]));
+}
+
 function limits(s) {
   return { ...(s.max_rows === undefined ? {} : { maxRows: s.max_rows }), ...(s.max_bytes === undefined ? {} : { maxBytes: s.max_bytes }) };
 }
 
-/** A bound value of {"ref": "<name>"} or {"ref": "<name>.<path>"}. */
-function bound(ref, { bound: values }) {
+/** A bound value of {"ref": "<name>"}, the value the step binds, or of {"ref": "<name>.<path>"}, the field at path of its result (FCV-4). */
+function bound(ref, context) {
   const [head, ...path] = ref.split('.');
-  if (!values.has(head)) throw new Error(`no bound value ${head}`);
+  if (!context.bound.has(head)) throw new Error(`no bound value ${head}`);
+  if (path.length === 0) return context.bound.get(head);
   return path.reduce((value, key) => {
     if (value === null || typeof value !== 'object' || !(key in value)) throw new Error(`bound value ${head} has no ${path.join('.')}`);
     return value[key];
-  }, values.get(head));
+  }, context.fields.get(head));
 }
 
 function stepArgument(field, context) {
@@ -726,8 +772,16 @@ function native(wrapper) {
     case 'bytes_hex': return Uint8Array.from(Buffer.from(value, 'hex'));
     case 'bool': return value;
     case 'null': return null;
+    // An array is a list of values (an IN list of where); a sequence item adds its integers in place (FCV-4).
+    case 'array': return value.flatMap(item => ('sequence' in item ? sequenceValues(item.sequence) : [native(item)]));
+    case 'sequence': return sequenceValues(value);
     default: throw new Error(`unknown recipe wrapper ${kind}`);
   }
+}
+
+/** The integer values from, from + 1, ... of a {"sequence": {"from", "count"}} wrapper (FCV-4). */
+function sequenceValues({ from, count }) {
+  return Array.from({ length: count }, (_, index) => native({ int: String(from + index) }));
 }
 
 /** The recipe wrapper of a plain value; a string takes the wrapper of the native type of its column when one is known. */
@@ -1154,8 +1208,67 @@ const TABLE_OPS = {
     return {};
   },
   async 'model.delete'(s, context) {
-    await refOf(s.row, context).delete();
+    if (s.row !== undefined) {
+      await refOf(s.row, context).delete();
+      return {};
+    }
+    const m = modelOf(tableOf(s.model), connectionOf(s, context), context);
+    whereAll(m, assignments(s.where, context));
+    for (const row of (await m.gets()).values()) await row.delete();
     return {};
+  },
+  async 'model.creates'(s, context) {
+    const db = connectionOf(s, context);
+    const rows = s.rows.map(values => filled(modelOf(tableOf(s.model), db, context), values, context));
+    return { value: { int: String(await modelOf(tableOf(s.model), db, context).creates(rows, s.batch)) } };
+  },
+  async 'model.duplicate_create'(s, context) {
+    const db = connectionOf(s, context);
+    const row = filled(modelOf(tableOf(s.model), db, context), s.values, context);
+    row.duplication(filled(modelOf(tableOf(s.model), db, context), s.duplication, context));
+    await row.create();
+    return {};
+  },
+  async 'model.restore'(s, context) {
+    await filled(modelOf(tableOf(s.model), connectionOf(s, context), context), s.values, context).restore();
+    return {};
+  },
+  async 'model.query'(s, context) {
+    const db = connectionOf(s, context);
+    const parent = modelOf(tableOf(s.model), db, context);
+    whereAll(parent, assignments(s.where, context));
+    for (const column of s.order ?? []) parent[CORE].orderBy(column, false, []);
+    const rel = s.relation;
+    if (rel !== undefined) {
+      const child = modelOf(tableOf(rel.model), db, context);
+      for (const [left, right] of rel.match) child[`match${pascal(left)}With${pascal(right)}`]();
+      if (rel.many) parent.relations(child);
+      else parent.relation(child);
+    }
+    const offset = s.offset ?? 0;
+    const paged = s.page === true;
+    let parents;
+    let total;
+    if (paged) {
+      if (!(s.limit > 0)) throw new Error('a paged model.query needs a limit above 0');
+      const page = await parent.getsPage(Math.floor(offset / s.limit) + 1, s.limit);
+      parents = page.items.values();
+      total = page.totalCount;
+    } else {
+      // limit is the public limit of the statement (FCV-4), so a limit on a split IN list fails with IR_INVALID.
+      if (s.limit > 0) parent[CORE].setLimit(offset, s.limit);
+      parents = (await parent.gets()).values();
+    }
+    const rows = [];
+    for (const row of parents) {
+      const own = tableCells(row, s.columns);
+      if (rel === undefined) {
+        rows.push(own);
+        continue;
+      }
+      for (const child of relatedTableRows(row, tableOf(rel.model), rel.many)) rows.push([...own, ...tableCells(child, rel.columns)]);
+    }
+    return paged ? { rows, total } : { rows };
   },
   async 'model.count'(s, context) {
     const m = modelOf(TABLE_MODELS[s.model], connectionOf(s, context), context);
@@ -1164,10 +1277,120 @@ const TABLE_OPS = {
   },
 };
 
+/** The table model m with the column values of an object of recipe wrappers set. */
+function filled(m, values, context) {
+  for (const a of assignments(values, context)) m[CORE].setValue(a.name, a.value);
+  return m;
+}
+
+/** The cells of the columns of a read table row: text and integer values have a recipe wrapper (FCV-4). */
+function tableCells(model, columns) {
+  const values = model.toArray();
+  return columns.map(column => {
+    if (!(column in values)) throw new Error(`the row has no column ${column}`);
+    return cell(values[column]);
+  });
+}
+
+/** The rows that a relation read attached to a parent: each row of a collection, or the one row of a single relation. */
+function relatedTableRows(parent, table, many) {
+  const related = parent[`get${pascal(table)}${many ? 'Models' : 'Model'}`]();
+  if (many) return related.values();
+  return related === null || related === undefined ? [] : [related];
+}
+
+/** The name of a table or column in the chain grammar: hook_item is HookItem. */
+function pascal(name) {
+  return name.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('');
+}
+
 /** Narrows a table-model chain by the equalities of where, joined by and in column order. */
 function whereAll(m, where) {
   if (where.length === 0) return;
   m[CORE].whereChain('', where.map((a, i) => ({ conn: i === 0 ? '' : 'and', op: '', column: a.name, columns: [], compare: '' })), where.map(a => a.value));
+}
+
+function cell(value) {
+  if (value === null) return { null: true };
+  if (typeof value === 'string') return { text: value };
+  if (typeof value === 'bigint') return { int: value.toString() };
+  if (typeof value === 'number' && Number.isInteger(value)) return { int: String(value) };
+  throw new Error(`a read value ${String(value)} of type ${typeof value} has no recipe wrapper in a request op`);
+}
+
+/** Binds the connection of s to the connection that model.connect opened with the actions of s as its request hook, in order;
+ * a later hook.install on the same connection replaces the hook (FCV-4). */
+function installHook(s, context) {
+  const base = context.hookBases.get(s.connection) ?? refOf(s.connection, context);
+  const hooks = s.hooks;
+  const actions = hooks.map(a => ({
+    action: a.action,
+    kinds: a.kinds,
+    column: a.column,
+    value: a.value === undefined ? undefined : native(databaseValue(stepArgument(a.value, context), context)),
+    nested: a.nested === true,
+    code: a.error,
+  }));
+  context.records = [];
+  const hooked = base.withRequestHook((query, addParam) => {
+    for (const a of actions) {
+      if (!kindMatches(a.kinds, query.kind)) continue;
+      switch (a.action) {
+        case 'scope':
+          if (a.nested) scopeTree(query, a.column, a.value, addParam);
+          else andWhere(query, equalPred(addParam, a.column, a.value));
+          break;
+        case 'assign': {
+          const p = addParam(a.value);
+          (query.set ??= []).push({ column: a.column, p });
+          for (const row of query.rows ?? []) row.push(addParam(a.value));
+          break;
+        }
+        case 'record':
+          context.records.push({ kind: query.kind, entity: query.entity });
+          break;
+        case 'fail':
+          throw new OrmError(a.code, `request hook refused ${query.kind}`);
+        default:
+          throw new Error(`hook action ${a.action} is unknown`);
+      }
+    }
+    return query;
+  });
+  context.hookBases.set(s.connection, base);
+  context.bound.set(s.connection, hooked);
+}
+
+const READS = new Set(['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate']);
+
+/** Whether a kind list (or one of the names reads, reads+restore, every) holds kind. */
+function kindMatches(kinds, kind) {
+  if (typeof kinds === 'string') {
+    if (kinds === 'every') return true;
+    if (kinds === 'reads') return READS.has(kind);
+    if (kinds === 'reads+restore') return READS.has(kind) || kind === 'restore';
+    return false;
+  }
+  return Array.isArray(kinds) && kinds.includes(kind);
+}
+
+function equalPred(addParam, column, value) {
+  return { column, op: 'eq', p: addParam(value) };
+}
+
+/** Adds pred to the where of query with and; an existing where is wrapped in one group item. */
+function andWhere(query, pred) {
+  if (query.where === undefined || query.where.items.length === 0) {
+    query.where = { items: [{ pred }] };
+    return;
+  }
+  query.where = { items: [{ group: query.where }, { pred: { ...pred, conn: 'and' } }] };
+}
+
+/** Adds column = value to the where of query and of each of its relation queries, nested ones included. */
+function scopeTree(query, column, value, addParam) {
+  andWhere(query, equalPred(addParam, column, value));
+  for (const relation of query.relations ?? []) scopeTree(relation.query, column, value, addParam);
 }
 
 // The shared model op names dispatch on the model: a table model takes TABLE_OPS, every other model MODEL_OPS (FCV-4).

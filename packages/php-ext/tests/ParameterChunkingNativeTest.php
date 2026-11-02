@@ -16,6 +16,9 @@ use Polyspec\Orm\Tests\Model\CompositeMembership;
 use Polyspec\Orm\Tests\Model\Service;
 use Polyspec\Orm\OrmException;
 
+// PRT-80: the native probe of the PDO statements counts the statements of a split root list, the values each one
+// binds and the memory of the split. A declarative recipe step cannot observe these counts, so these methods stay
+// native (FCV-2).
 #[Small]
 final class ParameterChunkingNativeTest extends TestCase
 {

@@ -1,7 +1,8 @@
-# Runs the shared Db.with_request_hook cases (docs/operations/usage.md "Request hook") on SQLite with contracts/fixtures/request_hook.dbs.
+# Runs the shared Db.with_request_hook cases (docs/operations/usage.md "Request hook") on SQLite with contracts/fixtures/request_hook/request_hook.dbs.
 # The hook receives each request of the handle just before planning, and can add predicates, assignments and parameters.
-# Case names are the same as in the other clients: without_hook, reads_params, read_filter, insert_assign, loaded_row_writes, invalid_param,
-# restore_key, restore_condition, restore_no_key, restore_rewritten_key, restore_hook_set_key.
+# Case names are the same as in the other clients. The recipe contracts/fixtures/request_hook/request_hook.json runs the cases it can
+# observe (test_request_hook_<database>.py); the cases here keep the sub-assertions a step cannot observe, and the whole cases that
+# the recipe does not run: reads_params, invalid_param, restore_rewritten_key, restore_hook_set_key, restore_rewritten_key_set_scope.
 import os
 import tempfile
 import unittest
@@ -62,7 +63,7 @@ def part_scope(value: str):
 
 
 class RequestHookCase(unittest.TestCase):
-    """The models of contracts/fixtures/request_hook.dbs, and a new SQLite database with their schema for each case."""
+    """The models of contracts/fixtures/request_hook/request_hook.dbs, and a new SQLite database with their schema for each case."""
 
     @classmethod
     def setUpClass(cls):
@@ -71,7 +72,7 @@ class RequestHookCase(unittest.TestCase):
         cls.dir = tmp.name
         cls.models = generate_document(
             os.path.join(tmp.name, "models"),
-            ROOT / "contracts" / "fixtures" / "request_hook.dbs",
+            ROOT / "contracts" / "fixtures" / "request_hook" / "request_hook.dbs",
         )
 
     def database(self) -> str:
@@ -100,13 +101,11 @@ class RequestHookTest(RequestHookCase):
 
     # Requirements: INT-78.
     def test_without_hook(self):
-        self.assertEqual(self.labels(self.db), ["a1", "a2", "b1"])
-        self.assertEqual(self.item(self.db).get_count(), 3)
-        self.db.with_request_hook(part_filter("a"))
-        self.assertEqual(
-            self.labels(self.db), ["a1", "a2", "b1"], "the connection keeps no hook"
+        """The hooked handle derives from the connection: its root is the connection. A step cannot observe the root."""
+        hooked = self.db.with_request_hook(part_filter("a"))
+        self.assertIs(
+            hooked.root(), self.db, "the hooked handle's root is the connection"
         )
-        self.assertEqual(self.item(self.db).get_count(), 3)
 
     # Requirements: INT-78.
     def test_reads_params(self):
@@ -130,49 +129,19 @@ class RequestHookTest(RequestHookCase):
         )
         self.assertIn("read", self.labels(self.db))
 
+    # Requirements: INT-78, PRT-2.
     def test_read_filter(self):
+        """The planned get_query of a hooked read binds the value that the hook added. A step cannot observe the binds."""
         hooked = self.db.with_request_hook(part_filter("a"))
-        self.assertEqual(self.labels(hooked), ["a1", "a2"])
-        self.assertEqual(self.item(hooked).get_count(), 2)
-        page = self.item(hooked).gets_page(1, 10)
-        self.assertEqual(page["totalCount"], 2)
-        self.assertEqual(len(page["items"]), 2)
-        self.assertEqual(
-            self.labels(self.db.with_request_hook(part_filter("b"))), ["b1"]
-        )
-
-    def test_same_handle_child_hook_once(self):
-        self.models.HookEntry().connect(self.db).set_part("a").set_label(
-            "parent"
-        ).create()
-        calls = {}
-
-        def hook(request, add_param, params):
-            if request["kind"] in READS:
-                entity = request["entity"]
-                calls[entity] = calls.get(entity, 0) + 1
-            return request
-
-        hooked = self.db.with_request_hook(hook)
-        parent = (
-            self.models.HookEntry()
-            .connect(hooked)
-            .relations(self.item(hooked).match_part_with_part())
-            .get()
-        )
-        self.assertEqual(calls, {"hook_entry": 1, "hook_item": 1})
-        self.assertEqual(
-            sorted(row.get_label() for row in parent.get_hook_item_models()),
-            ["a1", "a2"],
-        )
+        query = self.item(hooked).get_query()
+        self.assertIn("a", query["binds"], "the get_query binds carry the hook's value")
 
     # Requirements: INT-78.
     def test_relation_scope(self):
-        """relation() and relations() run under a service scope: a hook that scopes the root of every read and each of
-        its relation queries reads only the rows of its scope, with a relation child connected to the hooked handle (a
-        request of its own, which the hook scopes as a root) or not (a relation query of the parent's request). The
-        parent a1 of part a matches the items labeled a1 of parts a and b by label, and under the scope of part a it
-        attaches only the item of part a."""
+        """relation() and relations() under a service scope, with a child that has no handle of its own: it reads under the
+        scope of the parent's request. The parent a1 of part a matches the items labeled a1 of parts a and b by label, and under
+        the scope of part a it attaches only the item of part a. A step connects the child to the hooked handle; this checks the
+        child with no handle, which a step cannot observe."""
         self.item(self.db).set_part("b").set_label("a1").create()
         for part, label in (("a", "a1"), ("b", "b1")):
             self.models.HookEntry().connect(self.db).set_part(part).set_label(
@@ -182,122 +151,28 @@ class RequestHookTest(RequestHookCase):
         def parts(rows):
             return sorted(f"{row.get_part()}/{row.get_label()}" for row in rows)
 
-        unscoped = (
-            self.models.HookEntry()
-            .connect(self.db)
-            .label("a1")
-            .relations(self.models.HookItem().match_label_with_label())
-            .get()
-        )
-        self.assertEqual(
-            parts(unscoped.get_hook_item_models()),
-            ["a/a1", "b/a1"],
-            "without the scope the parent a1 matches the items a1 of both parts",
-        )
         scoped = self.db.with_request_hook(service_scope("a"))
-        for child in (lambda: self.item(scoped), lambda: self.models.HookItem()):
-            many = (
-                self.models.HookEntry()
-                .connect(scoped)
-                .relations(child().match_label_with_label())
-                .gets()
-            )
-            self.assertEqual(
-                [(row.get_label(), parts(row.get_hook_item_models())) for row in many],
-                [("a1", ["a/a1"])],
-                "relations() under the scope of part a reads the parent and the items of part a",
-            )
-            one = (
-                self.models.HookEntry()
-                .connect(scoped)
-                .relation(child().match_label_with_label())
-                .gets()
-            )
-            self.assertEqual(
-                [
-                    (row.get_label(), row.get_hook_item_model().get_part())
-                    for row in one
-                ],
-                [("a1", "a")],
-                "relation() under the scope of part a attaches the item of part a",
-            )
-
-    def test_insert_assign(self):
-        def hook(request, add_param, params):
-            if request["kind"] == "insert":
-                request["set"].append({"column": "part", "p": add_param("h")})
-                for row in request.get("rows") or []:
-                    row.append(add_param("h"))
-            return request
-
-        hooked = self.db.with_request_hook(hook)
-        self.item(hooked).set_label("one").create()
-        self.item(hooked).creates(
-            [
-                self.models.HookItem().set_label("bulk1"),
-                self.models.HookItem().set_label("bulk2"),
-            ],
-            2,
+        many = (
+            self.models.HookEntry()
+            .connect(scoped)
+            .relations(self.models.HookItem().match_label_with_label())
+            .gets()
         )
-        stored = {row.get_label(): row.get_part() for row in self.item(self.db).gets()}
         self.assertEqual(
-            {k: v for k, v in stored.items() if v == "h"},
-            {"one": "h", "bulk1": "h", "bulk2": "h"},
+            [(row.get_label(), parts(row.get_hook_item_models())) for row in many],
+            [("a1", ["a/a1"])],
+            "relations() under the scope of part a reads the parent and the items of part a",
         )
-        self.assertEqual(len(stored), 6)
-
-    def test_upsert_scope(self):
-        # The hook sets scope_col on the insert, and the conflict key (scope_col, name) of the upsert is checked after the hook.
-        # The caller sets only name; the update sets hits. The first call inserts and the second updates the row.
-        def hook(request, add_param, params):
-            if request["kind"] == "insert":
-                request["set"].append({"column": "scope_col", "p": add_param("a")})
-            return request
-
-        hooked = self.db.with_request_hook(hook)
-        for _ in range(2):
-            self.models.HookUpsert().connect(hooked).set_name("k").duplication(
-                self.models.HookUpsert().set_hits(7)
-            ).create()
-        rows = [
-            (row.get_scope_col(), row.get_name(), row.get_hits())
-            for row in self.models.HookUpsert().connect(self.db).gets()
-        ]
-        self.assertEqual(
-            rows, [("a", "k", 7)], "the stored row holds scope_col a, name k and hits 7"
+        one = (
+            self.models.HookEntry()
+            .connect(scoped)
+            .relation(self.models.HookItem().match_label_with_label())
+            .gets()
         )
-
-    def test_loaded_row_writes(self):
-        seen = []
-
-        def hook(request, add_param, params):
-            seen.append(request["kind"])
-            if request["kind"] in ("update", "delete"):
-                and_where(
-                    request, {"column": "part", "op": "eq", "p": add_param("none")}
-                )
-            return request
-
-        hooked = self.db.with_request_hook(hook)
-        row = self.item(hooked).get_by_label("a1")
-        self.assertIn("one", seen)
-        row.set_label("changed").update()
-        self.assertIn("update", seen)
         self.assertEqual(
-            self.labels(self.db), ["a1", "a2", "b1"], "the hooked update matched no row"
-        )
-        row.delete()
-        self.assertIn("delete", seen)
-        self.assertEqual(
-            self.item(self.db).get_count(), 3, "the hooked delete matched no row"
-        )
-        seen.clear()
-        count = hooked.transaction(lambda: self.models.HookItem().get_count())
-        self.assertEqual(count, 3)
-        self.assertEqual(
-            seen,
-            ["count"],
-            "a model without a connection runs through the handle of the transaction",
+            [(row.get_label(), row.get_hook_item_model().get_part()) for row in one],
+            [("a1", "a")],
+            "relation() under the scope of part a attaches the item of part a",
         )
 
     def test_invalid_param(self):
@@ -337,44 +212,6 @@ class RequestHookTest(RequestHookCase):
     def entry_rows(self, db) -> list:
         """The (id, note) of every hook_entry row that db reads, which are the rows not deleted."""
         return [(row.get_id(), row.get_note()) for row in self.entry(db).gets()]
-
-    def test_restore_key(self):
-        ids = self.seed_deleted_entries()
-        # The set names label and the hook's condition names part: together they cover the unique key.
-        row = (
-            self.entry(self.db.with_request_hook(part_scope("a")))
-            .set_label("x")
-            .set_note("n1")
-            .restore()
-        )
-        self.assertEqual(
-            (row.get_id(), row.get_part(), row.get_label(), row.get_note()),
-            (ids["ax"], "a", "x", "n1"),
-        )
-        self.assertEqual(self.entry_rows(self.db), [(ids["ax"], "n1")])
-
-    def test_restore_condition(self):
-        ids = self.seed_deleted_entries()
-        # The set names the primary key; the hook's condition narrows the restore to the rows of its part.
-        with self.assertRaises(OrmError) as raised:
-            self.entry(self.db.with_request_hook(part_scope("b"))).set_id(
-                ids["ay"]
-            ).set_note("n2").restore()
-        self.assertEqual(raised.exception.code, "NO_ROWS")
-        self.assertEqual(
-            self.entry_rows(self.db),
-            [],
-            "the restore outside the hook condition restores no row",
-        )
-        row = (
-            self.entry(self.db.with_request_hook(part_scope("a")))
-            .set_id(ids["ay"])
-            .set_note("n2")
-            .restore()
-        )
-        self.assertEqual(
-            (row.get_id(), row.get_label(), row.get_note()), (ids["ay"], "y", "n2")
-        )
 
     def test_restore_no_key(self):
         self.seed_deleted_entries()

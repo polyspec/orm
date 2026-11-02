@@ -25,6 +25,7 @@
       "op"
     ],
     "model.connect": [
+      "aes_keyring",
       "as",
       "op",
       "pool_size"
@@ -292,6 +293,7 @@
       "offset",
       "op",
       "order",
+      "page",
       "relation",
       "tuples",
       "where"
@@ -381,6 +383,7 @@
       "op"
     ],
     "utils.aes_status": [
+      "connection",
       "expect",
       "keyring",
       "model",
@@ -503,6 +506,29 @@
       "name",
       "op",
       "skeleton_of"
+    ],
+    "hook.install": [
+      "connection",
+      "hooks",
+      "op"
+    ],
+    "hook.records": [
+      "expect",
+      "op"
+    ],
+    "utils.aes_rotate": [
+      "connection",
+      "expect",
+      "keyring",
+      "model",
+      "op"
+    ],
+    "model.restore": [
+      "connection",
+      "expect",
+      "model",
+      "op",
+      "values"
     ]
   }
 }

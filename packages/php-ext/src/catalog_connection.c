@@ -576,8 +576,8 @@ static bool cat_bool(zval *v, bool *out)
     return false;
 }
 
-/* An integer of a metadata row: a native integer, or text that holds one (Catalog::intValue). */
-static bool cat_int(zval *v, zend_long *out)
+/* An integer of a metadata row or a cell: a native integer, or text that holds one; false for any other value. */
+static bool cat_parse_int(zval *v, zend_long *out)
 {
     if (Z_TYPE_P(v) == IS_LONG) { *out = Z_LVAL_P(v); return true; }
     if (Z_TYPE_P(v) == IS_STRING) {
@@ -591,6 +591,13 @@ static bool cat_int(zval *v, zend_long *out)
             if (i == n) { *out = neg ? -r : r; return true; }
         }
     }
+    return false;
+}
+
+/* An integer of a metadata row: a native integer, or text that holds one (Catalog::intValue). */
+static bool cat_int(zval *v, zend_long *out)
+{
+    if (cat_parse_int(v, out)) return true;
     db_throw_orm("TABLE_METADATA_INVALID", "expected an integer, got %s", zend_zval_type_name(v));
     return false;
 }
@@ -677,7 +684,7 @@ static void cat_quote(smart_str *out, zend_string *name, const char *dialect)
     smart_str_appends(out, mark);
 }
 
-static bool cat_cell_value(zval *v, zend_string *type, zval *out)
+static bool cat_cell_value(zval *v, zend_string *type, const char *dialect, zval *out)
 {
     if (Z_TYPE_P(v) != IS_STRING) {
         if (Z_TYPE_P(v) == IS_DOUBLE && (strcmp(ZSTR_VAL(type), "REAL") == 0 || strcmp(ZSTR_VAL(type), "FLOAT") == 0
@@ -698,7 +705,15 @@ static bool cat_cell_value(zval *v, zend_string *type, zval *out)
     }
     if (integer) {
         zend_long n;
-        if (!cat_int(v, &n)) return false;
+        if (!cat_parse_int(v, &n)) {
+            /* SQLite keeps a text that is not an integer as stored, in an INTEGER column too (INT-152). */
+            if (strcmp(dialect, "sqlite") == 0) {
+                ZVAL_COPY(out, v);
+                return true;
+            }
+            db_throw_orm("TABLE_METADATA_INVALID", "expected an integer, got %s", zend_zval_type_name(v));
+            return false;
+        }
         ZVAL_LONG(out, n);
         return true;
     }
@@ -1258,7 +1273,7 @@ static bool cat_param(zval *v)
 }
 
 /* Converts the cells of a bounded result with the native type of each column (Catalog::convertRows). */
-static bool cat_convert_rows(zval *rows, zval *types, zval *out)
+static bool cat_convert_rows(zval *rows, zval *types, const char *dialect, zval *out)
 {
     array_init(out);
     zval *row;
@@ -1270,7 +1285,7 @@ static bool cat_convert_rows(zval *rows, zval *types, zval *out)
         ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(row), cell) {
             zval *t = zend_hash_index_find(Z_ARRVAL_P(types), i);
             zval v;
-            if (t == NULL || Z_TYPE_P(t) != IS_STRING || !cat_cell_value(cell, Z_STR_P(t), &v)) {
+            if (t == NULL || Z_TYPE_P(t) != IS_STRING || !cat_cell_value(cell, Z_STR_P(t), dialect, &v)) {
                 zval_ptr_dtor(&converted);
                 zval_ptr_dtor(out);
                 return false;
@@ -1564,7 +1579,7 @@ static bool cat_table_page(zval *db, const char *dialect, zval *pdo, zend_string
     } ZEND_HASH_FOREACH_END();
     zval_ptr_dtor(&rows);
     zval converted;
-    ok = cat_convert_rows(&kept, &native_types, &converted) && cat_described_rows(&converted, &metadata, dialect);
+    ok = cat_convert_rows(&kept, &native_types, dialect, &converted) && cat_described_rows(&converted, &metadata, dialect);
     zval_ptr_dtor(&native_types);
     zval_ptr_dtor(&kept);
     if (!ok) {
@@ -2999,7 +3014,7 @@ static bool cat_lookup(zval *db, const char *dialect, zval *pdo, zval *metadata,
         db_throw_orm("TABLE_PAGE_METADATA_CHANGED", "prepared columns differ from descriptor");
         return false;
     }
-    ok = cat_convert_rows(&raw, &native_types, rows);
+    ok = cat_convert_rows(&raw, &native_types, dialect, rows);
     zval_ptr_dtor(&raw);
     zval_ptr_dtor(&native_types);
     return ok && cat_described_rows(rows, metadata, dialect);
@@ -3321,7 +3336,7 @@ static bool cat_insert_rows(zval *db, const char *dialect, zval *pdo, zval *meta
         db_throw_orm("TABLE_PAGE_METADATA_CHANGED", "prepared columns differ from descriptor");
         return false;
     }
-    bool ok = cat_convert_rows(&raw, &types, rows);
+    bool ok = cat_convert_rows(&raw, &types, dialect, rows);
     zval_ptr_dtor(&types);
     zval_ptr_dtor(&raw);
     return ok && cat_described_rows(rows, metadata, dialect);
@@ -4642,7 +4657,7 @@ ZEND_METHOD(Polyspec_Orm_Catalog, readOnlyQuery)
         return;
     }
     zval_ptr_dtor(&args);
-    bool ok = cat_convert_rows(&rows, &types, &converted);
+    bool ok = cat_convert_rows(&rows, &types, ZSTR_VAL(dialect), &converted);
     zval_ptr_dtor(&rows);
     zval_ptr_dtor(&types);
     if (!ok) {

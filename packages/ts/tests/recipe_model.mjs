@@ -164,7 +164,11 @@ export function modelOps({ native, databaseValue, stepArgument }) {
   return {
     async 'model.connect'(s, context) {
       // The case schema is registered on the connection, as the statement-event ops need it (FCV-4, model.connect).
-      const db = await Db.connectSchema(context.dsn, context.schema, { poolSize: s.pool_size, ...BENCH_KEYS });
+      // A step with aes_keyring connects with that keyring in place of the bench key (FCV-4, model.connect).
+      const keys = s.aes_keyring === undefined
+        ? BENCH_KEYS
+        : { blindIndexKey: BENCH_KEYS.blindIndexKey, aesKeys: new Map(Object.entries(s.aes_keyring.versions).map(([version, key]) => [Number(version), key])), aesVersion: s.aes_keyring.current };
+      const db = await Db.connectSchema(context.dsn, context.schema, { poolSize: s.pool_size, ...keys });
       context.closers.push(() => db.close());
       return { bind: db };
     },

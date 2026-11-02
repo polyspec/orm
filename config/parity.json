@@ -370,7 +370,6 @@
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeCases.php",
         "packages/php/tests/RecipeRecording.php",
-        "packages/php/tests/RecipeRow.php",
         "packages/php/tests/RecipeSubscription.php",
         "packages/php/tests/RecipeModel.php",
         "packages/php/tests/CatalogPostgresTemporalPdo.php",
@@ -517,15 +516,11 @@
         },
         {
           "glob": "packages/php/tests/RecipeRecording.php",
-          "reason": "harness: a helper class of the statement events recipe (RecipeRow, RecipeRecording and RecipeSubscription) that the bootstrap requires; it holds no test, and the recipe cases are bound by the statement_events suite units"
-        },
-        {
-          "glob": "packages/php/tests/RecipeRow.php",
-          "reason": "harness: a helper class of the statement events recipe (RecipeRow, RecipeRecording and RecipeSubscription) that the bootstrap requires; it holds no test, and the recipe cases are bound by the statement_events suite units"
+          "reason": "harness: a helper class of the statement events recipe (RecipeRecording and RecipeSubscription) that the bootstrap requires; it holds no test, and the recipe cases are bound by the statement_events suite units"
         },
         {
           "glob": "packages/php/tests/RecipeSubscription.php",
-          "reason": "harness: a helper class of the statement events recipe (RecipeRow, RecipeRecording and RecipeSubscription) that the bootstrap requires; it holds no test, and the recipe cases are bound by the statement_events suite units"
+          "reason": "harness: a helper class of the statement events recipe (RecipeRecording and RecipeSubscription) that the bootstrap requires; it holds no test, and the recipe cases are bound by the statement_events suite units"
         }
       ]
     },
@@ -2723,80 +2718,191 @@
       ]
     },
     {
-      "id": "aes-read-path-codes",
-      "kind": "feature",
+      "id": "aes_rotation-mysql",
+      "kind": "suite",
       "requirements": [
-        "COD-44"
+        "COD-44",
+        "COD-47",
+        "COD-49",
+        "COD-50",
+        "COD-51",
+        "COD-52",
+        "COD-53",
+        "COD-54",
+        "COD-57",
+        "COD-58",
+        "COD-59",
+        "COD-60"
       ],
+      "file": "contracts/fixtures/aes_rotation/aes_rotation.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/aes_rotation_test.go",
-          "id": "TestAESVersionCodesAreTheSameInEveryClient"
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "symbol": "TestRecipeAesRotationMysql"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::testReadPathCodes"
+          "test": "packages/php/tests/AesRotationMysqlTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\AesRotationMysqlTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/AesVersionCodesTestExtensionTest.php",
-          "id": "AesVersionCodesTestExtensionTest::testReadPathCodes"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_aes_version_codes.py",
-          "id": "test_read_path_codes"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/aes_keys.rs",
-          "id": "aes_read_version_codes_match_the_other_clients"
+          "test": "packages/php-ext/tests/AesRotationMysqlRecipeExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\AesRotationMysqlRecipeExtensionTest::testMysql"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/aes-version-codes.mjs",
-          "id": "aes version codes: read path codes"
+          "test": "packages/ts/tests/aes_rotation-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_aes_rotation_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_mysql.rs",
+          "symbol": "aes_rotation_mysql"
         }
       ]
     },
     {
-      "id": "aes-rotation-path-codes",
-      "kind": "feature",
+      "id": "aes_rotation-postgres",
+      "kind": "suite",
       "requirements": [
-        "COD-47"
+        "COD-44",
+        "COD-47",
+        "COD-49",
+        "COD-50",
+        "COD-51",
+        "COD-52",
+        "COD-53",
+        "COD-54",
+        "COD-57",
+        "COD-58",
+        "COD-59",
+        "COD-60"
       ],
+      "file": "contracts/fixtures/aes_rotation/aes_rotation.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "symbol": "TestRecipeAesRotationPostgres"
+        },
+        {
           "implementation": "php",
-          "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::testRotationCodes"
+          "test": "packages/php/tests/AesRotationPostgresTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\AesRotationPostgresTest::testPostgres"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/AesVersionCodesTestExtensionTest.php",
-          "id": "AesVersionCodesTestExtensionTest::testRotationCodes"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_aes_version_codes.py",
-          "id": "test_rotation_codes"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/aes_rotation_test.go",
-          "id": "TestAESVersionCodesAreTheSameInEveryClient"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/utils.rs",
-          "id": "utils::keyring_tests::rotation_path_uses_read_path_error_codes"
+          "test": "packages/php-ext/tests/AesRotationPostgresRecipeExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\AesRotationPostgresRecipeExtensionTest::testPostgres"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/aes-version-codes.mjs",
-          "id": "aes version codes: rotation path codes"
+          "test": "packages/ts/tests/aes_rotation-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_aes_rotation_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_postgres.rs",
+          "symbol": "aes_rotation_postgres"
+        }
+      ]
+    },
+    {
+      "id": "aes_rotation-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "COD-44",
+        "COD-47",
+        "COD-49",
+        "COD-50",
+        "COD-51",
+        "COD-52",
+        "COD-53",
+        "COD-54",
+        "COD-57",
+        "COD-58",
+        "COD-59",
+        "COD-60"
+      ],
+      "file": "contracts/fixtures/aes_rotation/aes_rotation.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "symbol": "TestRecipeAesRotationSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AesRotationSqliteTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\AesRotationSqliteTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AesRotationSqliteRecipeExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\AesRotationSqliteRecipeExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/aes_rotation-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_aes_rotation_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "symbol": "aes_rotation_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "sqlite-text-in-numeric-column",
+      "kind": "feature",
+      "requirements": [
+        "INT-152"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AesRotationSqliteTest.php",
+          "id": "Polyspec\\Orm\\Tests\\AesRotationSqliteTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AesRotationSqliteRecipeExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\AesRotationSqliteRecipeExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/aes_rotation-sqlite.test.mjs",
+          "id": "read_path_codes"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_aes_rotation_sqlite.py",
+          "id": "read_path_codes"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "id": "aes_rotation_sqlite::read_path_codes"
         }
       ]
     },
@@ -2836,240 +2942,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/aes_keys.rs",
           "id": "aes_read_row_without_version_cell_is_internal"
-        }
-      ]
-    },
-    {
-      "id": "aes-stored-version-text",
-      "kind": "feature",
-      "requirements": [
-        "COD-49"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/aes_rotation_test.go",
-          "id": "TestAESReadStoredVersionCodes"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::testReadPathCodes"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
-          "id": "CoverageAuthenticatedEncryptionExtensionTest::testStoredVersionReadCodes"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/aes-version-codes.mjs",
-          "id": "aes version codes: read: stored version is text that is not an integer"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_aes_version_codes.py",
-          "id": "test_read_path_codes"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/aes_keys.rs",
-          "id": "aes_read_stored_version_codes"
-        }
-      ]
-    },
-    {
-      "id": "aes-stored-version-zero-read",
-      "kind": "feature",
-      "requirements": [
-        "COD-50"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/aes_rotation_test.go",
-          "id": "TestAESReadStoredVersionCodes"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::testReadPathCodes"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
-          "id": "CoverageAuthenticatedEncryptionExtensionTest::testStoredVersionReadCodes"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/aes-version-codes.mjs",
-          "id": "aes version codes: read: stored version is zero"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_aes_version_codes.py",
-          "id": "test_read_path_codes"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/aes_keys.rs",
-          "id": "aes_read_stored_version_codes"
-        }
-      ]
-    },
-    {
-      "id": "aes-stored-version-above-i32",
-      "kind": "feature",
-      "requirements": [
-        "COD-51"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/aes_rotation_test.go",
-          "id": "TestAESReadStoredVersionCodes"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::testReadPathCodes"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
-          "id": "CoverageAuthenticatedEncryptionExtensionTest::testStoredVersionReadCodes"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/aes-version-codes.mjs",
-          "id": "aes version codes: read: stored version is above i32"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_aes_version_codes.py",
-          "id": "test_read_path_codes"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/aes_keys.rs",
-          "id": "aes_read_stored_version_codes"
-        }
-      ]
-    },
-    {
-      "id": "aes-undeclared-key-version",
-      "kind": "feature",
-      "requirements": [
-        "COD-52"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/aes_rotation_test.go",
-          "id": "TestAESReadStoredVersionCodes"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::testReadPathCodes"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
-          "id": "CoverageAuthenticatedEncryptionExtensionTest::testStoredVersionReadCodes"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/aes-version-codes.mjs",
-          "id": "aes version codes: read: stored version is an undeclared integer"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_aes_version_codes.py",
-          "id": "test_read_path_codes"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/aes_keys.rs",
-          "id": "aes_read_stored_version_codes"
-        }
-      ]
-    },
-    {
-      "id": "aes-stored-version-text-decodes",
-      "kind": "feature",
-      "requirements": [
-        "COD-53"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/aes_rotation_test.go",
-          "id": "TestAESReadStoredVersionCodes"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::testReadPathCodes"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
-          "id": "CoverageAuthenticatedEncryptionExtensionTest::testStoredVersionReadCodes"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/aes-version-codes.mjs",
-          "id": "aes version codes: read: stored version written as text decodes"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_aes_version_codes.py",
-          "id": "test_read_path_codes"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/aes_keys.rs",
-          "id": "aes_read_stored_version_codes"
-        }
-      ]
-    },
-    {
-      "id": "aes-rotation-stored-version-zero",
-      "kind": "feature",
-      "requirements": [
-        "COD-54"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/aes-version-codes.mjs",
-          "id": "aes version codes: rotation: stored version is zero"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/aes_rotation_test.go",
-          "id": "TestAESVersionCodesAreTheSameInEveryClient"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::testRotationCodes"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/AesVersionCodesTestExtensionTest.php",
-          "id": "AesVersionCodesTestExtensionTest::testRotationCodes"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_aes_version_codes.py",
-          "id": "test_rotation_codes"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/utils.rs",
-          "id": "utils::keyring_tests::rotation_stored_version_zero_is_codec_decode"
         }
       ]
     },
@@ -3148,162 +3020,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/aes_keys.rs",
           "id": "aes_read_plan_without_version_column_is_internal"
-        }
-      ]
-    },
-    {
-      "id": "aes-keyring-lacks-stored-version",
-      "kind": "feature",
-      "requirements": [
-        "COD-57"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/aes_rotation_test.go",
-          "id": "TestAESReadKeyringLacksStoredVersionIsConfig"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/aes-version-codes.mjs",
-          "id": "aes version codes: read: keyring lacks the stored version is CONFIG, not the single key"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_aes_version_codes.py",
-          "id": "test_read_keyring_lacks_stored_version_is_config"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::testReadKeyringLacksStoredVersionIsConfig"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/AesVersionCodesTestExtensionTest.php",
-          "id": "AesVersionCodesTestExtensionTest::testReadKeyringLacksStoredVersionIsConfig"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/aes_keys.rs",
-          "id": "aes_read_keyring_lacks_stored_version_is_config"
-        }
-      ]
-    },
-    {
-      "id": "aes-null-version-with-aes-value",
-      "kind": "feature",
-      "requirements": [
-        "COD-58"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/aes_rotation_test.go",
-          "id": "TestAESReadNullVersionWithAESValueIsCodecDecode"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/aes-version-codes.mjs",
-          "id": "aes version codes: read: NULL stored version with an AES value is CODEC_DECODE"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_aes_version_codes.py",
-          "id": "test_read_null_version_with_aes_value_is_codec_decode"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::testReadNullVersionWithAesValueIsCodecDecode"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/AesVersionCodesTestExtensionTest.php",
-          "id": "AesVersionCodesTestExtensionTest::testReadNullVersionWithAesValueIsCodecDecode"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/aes_keys.rs",
-          "id": "aes_read_null_version_with_aes_value_is_codec_decode"
-        }
-      ]
-    },
-    {
-      "id": "aes-null-aes-null-version",
-      "kind": "feature",
-      "requirements": [
-        "COD-59"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/aes_rotation_test.go",
-          "id": "TestAESReadNullAESWithNullVersionStaysNull"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/aes-version-codes.mjs",
-          "id": "aes version codes: read: NULL AES value with NULL version stays NULL"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_aes_version_codes.py",
-          "id": "test_read_null_aes_with_null_version_stays_null"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::testReadNullAesWithNullVersionStaysNull"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/AesVersionCodesTestExtensionTest.php",
-          "id": "AesVersionCodesTestExtensionTest::testReadNullAesWithNullVersionStaysNull"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/aes_keys.rs",
-          "id": "aes_read_null_aes_with_null_version_stays_null"
-        }
-      ]
-    },
-    {
-      "id": "aes-rotation-null-aes-unchanged",
-      "kind": "feature",
-      "requirements": [
-        "COD-60"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/aes_rotation_test.go",
-          "id": "TestRotateAESRowLeavesNullAESUnchanged"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/aes-version-codes.mjs",
-          "id": "aes version codes: rotation: NULL AES value is left unchanged with a NULL or a valid version"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_aes_version_codes.py",
-          "id": "test_rotation_null_aes_is_left_unchanged"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::testRotationNullAesIsLeftUnchanged"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/AesVersionCodesTestExtensionTest.php",
-          "id": "AesVersionCodesTestExtensionTest::testRotationNullAesIsLeftUnchanged"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/aes_keys.rs",
-          "id": "aes_rotate_leaves_null_aes_rows_unchanged"
         }
       ]
     },
@@ -5407,145 +5123,6 @@
       ]
     },
     {
-      "id": "coverage-request-hook-insert-assign",
-      "kind": "feature",
-      "requirements": [
-        "PRT-4",
-        "PRT-5",
-        "PRT-41"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookInsertAssign",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookInsertAssign",
-            "FEATURE_PACKAGE=./orm"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testInsertAssign"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::testInsertAssign"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_request_hook.mjs",
-          "id": "insert_assign"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_insert_assign"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "coverage_request_hook_insert_assign",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--test request_hook",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_request_hook_insert_assign"
-          ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/request_hook.mjs",
-          "id": "request-hook/insert_assign"
-        }
-      ]
-    },
-    {
-      "id": "coverage-request-hook-loaded-row-writes",
-      "kind": "feature",
-      "requirements": [
-        "CFG-21",
-        "INT-36",
-        "INT-37",
-        "PLN-16"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookLoadedRowWrites",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookLoadedRowWrites",
-            "FEATURE_PACKAGE=./orm"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testLoadedRowWrites"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::testLoadedRowWrites"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_request_hook.mjs",
-          "id": "loaded_row_writes"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_loaded_row_writes"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "coverage_request_hook_loaded_row_writes",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--test request_hook",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_request_hook_loaded_row_writes"
-          ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/request_hook.mjs",
-          "id": "request-hook/loaded_row_writes"
-        }
-      ]
-    },
-    {
       "id": "coverage-request-hook-invalid-param",
       "kind": "feature",
       "requirements": [
@@ -5609,141 +5186,6 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/request_hook.mjs",
           "id": "request-hook/invalid_param"
-        }
-      ]
-    },
-    {
-      "id": "coverage-request-hook-restore-key",
-      "kind": "feature",
-      "requirements": [
-        "DIA-161"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookRestoreKey",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookRestoreKey",
-            "FEATURE_PACKAGE=./orm"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testRestoreKey"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::testRestoreKey"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_request_hook.mjs",
-          "id": "restore_key"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_restore_key"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "coverage_request_hook_restore_key",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--test request_hook",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_request_hook_restore_key"
-          ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/request_hook.mjs",
-          "id": "request-hook/restore_key"
-        }
-      ]
-    },
-    {
-      "id": "coverage-request-hook-restore-condition",
-      "kind": "feature",
-      "requirements": [
-        "DIA-161",
-        "INT-38"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookRestoreCondition",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookRestoreCondition",
-            "FEATURE_PACKAGE=./orm"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testRestoreCondition"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::testRestoreCondition"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_request_hook.mjs",
-          "id": "restore_condition"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_restore_condition"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "coverage_request_hook_restore_condition",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--test request_hook",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_request_hook_restore_condition"
-          ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/request_hook.mjs",
-          "id": "request-hook/restore_condition"
         }
       ]
     },
@@ -6016,74 +5458,6 @@
       ]
     },
     {
-      "id": "coverage-request-hook-same-handle-child-hook-once",
-      "kind": "feature",
-      "requirements": [
-        "INT-78",
-        "PRT-2"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookSameHandleChildHookOnce",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookSameHandleChildHookOnce",
-            "FEATURE_PACKAGE=./orm"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testSameHandleChildHookOnce"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::testSameHandleChildHookOnce"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_request_hook.mjs",
-          "id": "same_handle_child_hook_once"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_same_handle_child_hook_once"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "coverage_request_hook_same_handle_child_hook_once",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--test request_hook",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_request_hook_same_handle_child_hook_once"
-          ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/request_hook.mjs",
-          "id": "request-hook/same_handle_child_hook_once"
-        }
-      ]
-    },
-    {
       "id": "coverage-request-hook-relation-scope",
       "kind": "feature",
       "requirements": [
@@ -6151,71 +5525,173 @@
       ]
     },
     {
-      "id": "coverage-request-hook-upsert-scope",
-      "kind": "feature",
+      "id": "request_hook-mysql",
+      "kind": "suite",
       "requirements": [
         "INT-78",
+        "PRT-2",
         "PRT-4",
-        "PRT-6"
+        "PRT-5",
+        "PRT-6",
+        "PRT-41",
+        "CFG-21",
+        "INT-36",
+        "INT-37",
+        "PLN-16",
+        "DIA-161",
+        "INT-38",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
       ],
+      "file": "contracts/fixtures/request_hook/request_hook.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookUpsertScope",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookUpsertScope",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "test": "packages/go/orm/recipe_request_hook_test.go",
+          "symbol": "TestRecipeRequestHookMysql"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testUpsertScope"
+          "test": "packages/php/tests/RequestHookMysqlRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\RequestHookMysqlRecipeTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::testUpsertScope"
+          "test": "packages/php-ext/tests/RequestHookMysqlRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\RequestHookMysqlRecipeTestExtensionTest::testMysql"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_request_hook.mjs",
-          "id": "upsert_scope"
+          "test": "packages/ts/tests/request_hook-mysql.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_upsert_scope"
+          "test": "packages/python/tests/test_request_hook_mysql.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "coverage_request_hook_upsert_scope",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--test request_hook",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_request_hook_upsert_scope"
-          ]
+          "test": "packages/rust/tests/tests/request_hook_mysql.rs",
+          "symbol": "request_hook_mysql"
+        }
+      ]
+    },
+    {
+      "id": "request_hook-postgres",
+      "kind": "suite",
+      "requirements": [
+        "INT-78",
+        "PRT-2",
+        "PRT-4",
+        "PRT-5",
+        "PRT-6",
+        "PRT-41",
+        "CFG-21",
+        "INT-36",
+        "INT-37",
+        "PLN-16",
+        "DIA-161",
+        "INT-38",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
+      ],
+      "file": "contracts/fixtures/request_hook/request_hook.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_request_hook_test.go",
+          "symbol": "TestRecipeRequestHookPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RequestHookPostgresRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\RequestHookPostgresRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RequestHookPostgresRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\RequestHookPostgresRecipeTestExtensionTest::testPostgres"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/request_hook.mjs",
-          "id": "request-hook/upsert_scope"
+          "test": "packages/ts/tests/request_hook-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_request_hook_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/request_hook_postgres.rs",
+          "symbol": "request_hook_postgres"
+        }
+      ]
+    },
+    {
+      "id": "request_hook-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "INT-78",
+        "PRT-2",
+        "PRT-4",
+        "PRT-5",
+        "PRT-6",
+        "PRT-41",
+        "CFG-21",
+        "INT-36",
+        "INT-37",
+        "PLN-16",
+        "DIA-161",
+        "INT-38",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
+      ],
+      "file": "contracts/fixtures/request_hook/request_hook.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_request_hook_test.go",
+          "symbol": "TestRecipeRequestHookSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RequestHookSqliteRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\RequestHookSqliteRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\RequestHookSqliteRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/request_hook-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_request_hook_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
+          "symbol": "request_hook_sqlite"
         }
       ]
     },
@@ -26517,72 +25993,143 @@
       ]
     },
     {
-      "id": "coverage-parameter-chunking-root-in-chunking",
-      "kind": "feature",
+      "id": "parameter_chunking-mysql",
+      "kind": "suite",
       "requirements": [
-        "PRT-76",
-        "PLN-44"
+        "PLN-44",
+        "PRT-76"
       ],
+      "file": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_parameter_chunking_test.go",
-          "id": "TestCoverageRootInChunking",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRootInChunking",
-            "FEATURE_PACKAGE=./model"
-          ]
+          "test": "packages/go/orm/recipe_parameter_chunking_test.go",
+          "symbol": "TestRecipeParameterChunkingMysql"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageParameterChunkingTest.php",
-          "id": "CoverageParameterChunkingTest::testRootInChunking"
+          "test": "packages/php/tests/ParameterChunkingMysqlTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ParameterChunkingMysqlTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageParameterChunkingExtensionTest.php",
-          "id": "CoverageParameterChunkingExtensionTest::test_root_in_chunking"
+          "test": "packages/php-ext/tests/ParameterChunkingMysqlRecipeExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ParameterChunkingMysqlRecipeExtensionTest::testMysql"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_parameter_chunking.mjs",
-          "id": "root_in_chunking"
+          "test": "packages/ts/tests/parameter_chunking-mysql.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_parameter_chunking.py",
-          "id": "test_root_in_chunking"
+          "test": "packages/python/tests/test_parameter_chunking_mysql.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_parameter_chunking.rs",
-          "id": "coverage_parameter_chunking::coverage_root_in_chunking",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_parameter_chunking::coverage_root_in_chunking"
-          ]
+          "test": "packages/rust/tests/tests/parameter_chunking_mysql.rs",
+          "symbol": "parameter_chunking_mysql"
+        }
+      ]
+    },
+    {
+      "id": "parameter_chunking-postgres",
+      "kind": "suite",
+      "requirements": [
+        "PLN-44",
+        "PRT-76"
+      ],
+      "file": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_parameter_chunking_test.go",
+          "symbol": "TestRecipeParameterChunkingPostgres"
         },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ParameterChunkingPostgresTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ParameterChunkingPostgresTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ParameterChunkingPostgresRecipeExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ParameterChunkingPostgresRecipeExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/parameter_chunking-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_parameter_chunking_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/parameter_chunking_postgres.rs",
+          "symbol": "parameter_chunking_postgres"
+        }
+      ]
+    },
+    {
+      "id": "parameter_chunking-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "PLN-44",
+        "PRT-76"
+      ],
+      "file": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_parameter_chunking_test.go",
+          "symbol": "TestRecipeParameterChunkingSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ParameterChunkingSqliteTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ParameterChunkingSqliteTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ParameterChunkingSqliteRecipeExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ParameterChunkingSqliteRecipeExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/parameter_chunking-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_parameter_chunking_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/parameter_chunking_sqlite.rs",
+          "symbol": "parameter_chunking_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "coverage-parameter-chunking-native",
+      "kind": "feature",
+      "requirements": [
+        "PRT-80"
+      ],
+      "bindings": [
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/ParameterChunkingNativeTest.php",
           "id": "ParameterChunkingNativeTest::test_root_in_chunks_use_native_model_queries_and_reject_unmergeable_pages"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "parameter_chunking",
+        "part": "owner/php-extension"
+      }
     },
     {
       "id": "complex-query-product-search",

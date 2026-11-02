@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"testing"
 )
 
@@ -52,32 +51,6 @@ func vectorAt(location, key string) string {
 		return key
 	}
 	return location + "." + key
-}
-
-// fields reports a missing required field or an unknown field of object: a field that is
-// neither required nor optional.
-func (r vectorReader) fields(object map[string]any, location string, required []string, optional ...string) error {
-	allowed := map[string]bool{}
-	for _, k := range optional {
-		allowed[k] = true
-	}
-	for _, k := range required {
-		allowed[k] = true
-		if _, ok := object[k]; !ok {
-			return r.fail(vectorAt(location, k), "is missing")
-		}
-	}
-	names := make([]string, 0, len(object))
-	for k := range object {
-		names = append(names, k)
-	}
-	sort.Strings(names)
-	for _, k := range names {
-		if !allowed[k] {
-			return r.fail(vectorAt(location, k), "is not a known field")
-		}
-	}
-	return nil
 }
 
 // field returns the value of the object's key; if the key is missing, it is an error.
@@ -151,14 +124,6 @@ func (r vectorReader) lines(value any, location string) ([]string, error) {
 	return lines, nil
 }
 
-func (r vectorReader) linesField(object map[string]any, location, key string) ([]string, error) {
-	value, err := r.field(object, location, key)
-	if err != nil {
-		return nil, err
-	}
-	return r.lines(value, vectorAt(location, key))
-}
-
 // fieldObject returns the object that the key of object holds; a key that is not an
 // object fails.
 func (r vectorReader) fieldObject(object map[string]any, location, key string) (map[string]any, error) {
@@ -184,63 +149,6 @@ func (r vectorReader) linesMap(object map[string]any, location, key string) (map
 		if out[name], err = r.lines(item, vectorAt(vectorAt(location, key), name)); err != nil {
 			return nil, err
 		}
-	}
-	return out, nil
-}
-
-// triples returns an array of arrays of three strings: [kind, table, name].
-func (r vectorReader) triples(object map[string]any, location, key string) ([][3]string, error) {
-	items, err := r.arrayField(object, location, key)
-	if err != nil {
-		return nil, err
-	}
-	out := make([][3]string, len(items))
-	for i, item := range items {
-		at := fmt.Sprintf("%s[%d]", vectorAt(location, key), i)
-		lines, err := r.lines(item, at)
-		if err != nil {
-			return nil, err
-		}
-		if len(lines) != 3 {
-			return nil, r.fail(at, "does not have 3 strings")
-		}
-		out[i] = [3]string(lines)
-	}
-	return out, nil
-}
-
-// diagnostics returns an array of arrays: [rule, line, column, message] if width is 4, and [rule, line,
-// column] if 3. message is a string or null, and line and column are
-// kept as the numbers decoded for JSON comparison.
-func (r vectorReader) diagnostics(object map[string]any, location, key string, width int) ([][]any, error) {
-	items, err := r.arrayField(object, location, key)
-	if err != nil {
-		return nil, err
-	}
-	out := make([][]any, len(items))
-	for i, item := range items {
-		at := fmt.Sprintf("%s[%d]", vectorAt(location, key), i)
-		parts, err := r.array(item, at)
-		if err != nil {
-			return nil, err
-		}
-		if len(parts) != width {
-			return nil, r.fail(at, fmt.Sprintf("does not have %d items", width))
-		}
-		if _, ok := parts[0].(string); !ok {
-			return nil, r.fail(at+"[0]", "is not a string")
-		}
-		for k := 1; k <= 2; k++ {
-			if _, err := r.integer(parts[k], fmt.Sprintf("%s[%d]", at, k)); err != nil {
-				return nil, err
-			}
-		}
-		if width == 4 {
-			if _, ok := parts[3].(string); !ok && parts[3] != nil {
-				return nil, r.fail(at+"[3]", "is not a string or null")
-			}
-		}
-		out[i] = parts
 	}
 	return out, nil
 }
@@ -283,33 +191,4 @@ func (r vectorReader) version(object map[string]any) error {
 		return r.fail("version", "is not 1")
 	}
 	return nil
-}
-
-// locatedErrors returns an array of {line, column, rule} objects.
-func (r vectorReader) locatedErrors(object map[string]any, location, key string) ([]vectorError, error) {
-	items, err := r.arrayField(object, location, key)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]vectorError, len(items))
-	for i, item := range items {
-		at := fmt.Sprintf("%s[%d]", vectorAt(location, key), i)
-		e, ok := item.(map[string]any)
-		if !ok {
-			return nil, r.fail(at, "is not an object")
-		}
-		if err := r.fields(e, at, []string{"line", "column", "rule"}); err != nil {
-			return nil, err
-		}
-		if out[i].Line, err = r.integerField(e, at, "line"); err != nil {
-			return nil, err
-		}
-		if out[i].Column, err = r.integerField(e, at, "column"); err != nil {
-			return nil, err
-		}
-		if out[i].Rule, err = r.string(e, at, "rule"); err != nil {
-			return nil, err
-		}
-	}
-	return out, nil
 }

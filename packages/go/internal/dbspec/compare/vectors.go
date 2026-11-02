@@ -142,18 +142,6 @@ func readCases(dir string) (sharedCases, error) {
 	return all, nil
 }
 
-func (r vectorReader) namedDocuments(documents [][]string, location string) ([]namedDocument, error) {
-	named := make([]namedDocument, len(documents))
-	for i, lines := range documents {
-		name, ok := headerName(lines)
-		if !ok {
-			return nil, r.fail(fmt.Sprintf("%s[%d][0]", location, i), "has no document name")
-		}
-		named[i] = namedDocument{Name: name, Lines: lines}
-	}
-	return named, nil
-}
-
 // headerName is the third word of the first line, the document name of a dbspec header, split at single spaces.
 func headerName(lines []string) (string, bool) {
 	if len(lines) == 0 {

@@ -196,6 +196,28 @@ name = "catalog_connection_sqlite_only"
 path = "tests/catalog_connection_sqlite_only.rs"
 harness = false
 
+
+# Each case of the request_hook recipe, contracts/fixtures/request_hook/request_hook.json, is the trial request_hook_mysql::<case id>
+# on a case database of its own (FCV-3 and FCV-4).
+[[test]]
+name = "request_hook_mysql"
+path = "tests/request_hook_mysql.rs"
+harness = false
+
+# Each case of the request_hook recipe, contracts/fixtures/request_hook/request_hook.json, is the trial request_hook_postgres::<case id>
+# on a case database of its own (FCV-3 and FCV-4).
+[[test]]
+name = "request_hook_postgres"
+path = "tests/request_hook_postgres.rs"
+harness = false
+
+# Each case of the request_hook recipe, contracts/fixtures/request_hook/request_hook.json, is the trial request_hook_sqlite::<case id>
+# on a case database of its own (FCV-3 and FCV-4).
+[[test]]
+name = "request_hook_sqlite"
+path = "tests/request_hook_sqlite.rs"
+harness = false
+
 [[test]]
 name = "codec_integer_beyond_i64_none"
 path = "tests/codec_integer_beyond_i64_none.rs"
@@ -401,4 +423,43 @@ harness = false
 [[test]]
 name = "fulltext_search_recipe_sqlite"
 path = "tests/fulltext_search_recipe_sqlite.rs"
+harness = false
+
+
+# Each case of the parameter_chunking recipe, contracts/fixtures/parameter_chunking/parameter_chunking.json, is the trial
+# parameter_chunking_mysql::<case id> on a case database of its own (FCV-3 and FCV-4).
+[[test]]
+name = "parameter_chunking_mysql"
+path = "tests/parameter_chunking_mysql.rs"
+harness = false
+
+# Each case of the parameter_chunking recipe is the trial parameter_chunking_postgres::<case id> (FCV-3 and FCV-4).
+[[test]]
+name = "parameter_chunking_postgres"
+path = "tests/parameter_chunking_postgres.rs"
+harness = false
+
+# Each case of the parameter_chunking recipe is the trial parameter_chunking_sqlite::<case id> (FCV-3 and FCV-4).
+[[test]]
+name = "parameter_chunking_sqlite"
+path = "tests/parameter_chunking_sqlite.rs"
+harness = false
+
+# Each case of the aes_rotation recipe, contracts/fixtures/aes_rotation/aes_rotation.json, is the trial aes_rotation_mysql::<case id>
+# on a case database of its own (FCV-3 and FCV-4).
+[[test]]
+name = "aes_rotation_mysql"
+path = "tests/aes_rotation_mysql.rs"
+harness = false
+
+# Each case of the aes_rotation recipe is the trial aes_rotation_postgres::<case id> (FCV-3 and FCV-4).
+[[test]]
+name = "aes_rotation_postgres"
+path = "tests/aes_rotation_postgres.rs"
+harness = false
+
+# Each case of the aes_rotation recipe is the trial aes_rotation_sqlite::<case id> (FCV-3 and FCV-4).
+[[test]]
+name = "aes_rotation_sqlite"
+path = "tests/aes_rotation_sqlite.rs"
 harness = false
