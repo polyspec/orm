@@ -480,9 +480,12 @@
             "properties": {
               "none": {
                 "type": "object",
-                "required": ["value"],
+                "oneOf": [{ "required": ["value"] }, { "required": ["params"] }],
                 "additionalProperties": false,
-                "properties": { "value": { "description": "The result of the chain in the plain JSON form of tests/markdown/README.md, a row, a list, a count, a value or {error, runs}." } }
+                "properties": {
+                  "value": { "description": "The result of the chain in the plain JSON form of tests/markdown/README.md, a row, a list, a count, a value or {error, runs}." },
+                  "params": { "type": "array", "description": "The params of the one request that the listener received (PRT-66, PRT-67), in the JSON form of PRT-67; the now of the message is not compared." }
+                }
               }
             }
           }

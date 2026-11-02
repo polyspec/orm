@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 77a2fb80d951cd5d7516bc7d362016be62d85016cedf774dfc1326e534aed6d2 -->
+<!-- source-sha256: 76d74560f1f94ba9cd60202afc60ed79e470207ea3dc58dc8d8005c210f2f273 -->
 # 변경 이력
 
 ## Unreleased
+
+- recipe의 ir.answer expect는 `{"none": {"params": [...]}}` 형식을 받는다. 이 형식은 listener가 받은 request 하나의 params를 비교하므로(PRT-66, PRT-67), chain의 bind 값과 wire 값을 recipe case로 쓸 수 있다. 여섯 runtime이 각자의 recipe helper에 이를 구현했다 (T334-3-15-5).
 
 - CFG-1, CFG-2, CFG-11, CFG-17, CFG-19, CFG-26의 거부되는 DSN case(UTC가 아닌 timezone, 알 수 없는 scheme, database 이름 없음, 상대 SQLite 경로, VERIFY_IDENTITY와 함께 쓰인 주소 host, 잘못된 SQLite 경로 percent 인코딩)는 하나의 recipe, contracts/fixtures/dsn_reject/dsn_reject.json이 되었고, 모든 runtime이 새 op dsn.connect(FCV-4)로 database 없이 실행한다 (T334-3-23).
 - recipe schema가 model_writes fixture의 model.get_by step을 거부했다. 두 형식 모두 FCV-4가 model.get_by에 주는 rows outcome 대신 일반 expect를 받았다. 이제 두 형식 모두 rows outcome을 받는다 (T334-3-4-9).

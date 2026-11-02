@@ -36,8 +36,9 @@ def accept_markdown_test_connection(listener):
     return conn
 
 
-def start_markdown_test_server_with_answer(answer: str):
-    """A listener that answers connect with {"ok": true} and the next message with answer."""
+def start_markdown_test_server_with_answer(answer: str, sent: list):
+    """A listener that answers connect with {"ok": true} and the next message with answer. The request line is appended
+    to sent, so that a params expect reads the request the chain sends."""
     listener = listen_markdown_test_server()
 
     def serve():
@@ -45,9 +46,12 @@ def start_markdown_test_server_with_answer(answer: str):
         if conn is None:
             return
         with conn, conn.makefile("rb") as lines:
-            for reply in ('{"ok":true}', answer):
-                if not lines.readline():
+            for index, reply in enumerate(('{"ok":true}', answer)):
+                line = lines.readline()
+                if not line:
                     return
+                if index == 1:
+                    sent.append(line.decode())
                 conn.sendall(reply.encode() + b"\n")
             lines.readline()
 
@@ -123,19 +127,22 @@ def release() -> None:
     STATE.clear()
 
 
-def run_chain(name: str, step: dict) -> Any:
-    """Runs the chain name on a listener that answers step, and returns its result as JSON: an orm error is
-    {"error": CODE}. Any other exception of the chain propagates, which fails the case."""
+def run_chain(name: str, step: dict) -> tuple[Any, list, bool]:
+    """Runs the chain name on a listener that answers step, and returns its result as JSON, the request lines the listener
+    received after its connect, and whether the chain failed with an orm error, which is the result {"error": CODE}.
+    Any other exception of the chain propagates, which fails the case."""
     run = STATE["funcs"].get(name)
     if run is None:
         raise AssertionError(f"chain {name} is no markdown conformance case")
+    sent: list = []
+    failed = False
     if "answers" in step:
         listener, thread = start_markdown_test_server_with_keyed_answers(
             step["answers"]
         )
     else:
         listener, thread = start_markdown_test_server_with_answer(
-            json.dumps(step["answer"])
+            json.dumps(step["answer"]), sent
         )
     port = listener.getsockname()[1]
     s = Served(STATE["models"], STATE["workdir"], str(port), TOKEN)
@@ -145,8 +152,9 @@ def run_chain(name: str, step: dict) -> Any:
             got = run(s)
         except OrmError as error:
             got = {"error": error.code}
+            failed = True
     finally:
         s.db.close()
         listener.close()
         thread.join(5)
-    return json.loads(json.dumps(got))
+    return json.loads(json.dumps(got)), sent, failed

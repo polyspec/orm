@@ -76,26 +76,31 @@ pub fn unique() -> u128 {
 /// one request with the case's answer, and the chain's result equals expect (docs/spec/protocol.md section 5, Read).
 /// A case with `answers` instead of `answer` is a transaction: the listener answers every later message with the member
 /// of `answers` named by the op of a control message or the kind of a request, and a message without one IR_INVALID.
-pub fn answer(chain: &str, answer: &Value, answers: &Value) -> Value {
+/// With `params` (an expect of {"params": [...]}), the result is the params of the one request that the listener
+/// received, in the JSON form of PRT-67, instead of the chain's result; a chain that fails returns its error.
+pub fn answer(chain: &str, answer: &Value, answers: &Value, params: bool) -> Value {
     // The chain's future is large in a debug build, so it runs on a thread with a stack of its own (not the trial's).
     let (chain, answer, answers) = (chain.to_owned(), answer.clone(), answers.clone());
-    let thread =
-        std::thread::Builder::new().stack_size(64 << 20).spawn(move || answer_on_thread(&chain, &answer, &answers)).expect("a thread with a 64 MiB stack");
+    let thread = std::thread::Builder::new()
+        .stack_size(64 << 20)
+        .spawn(move || answer_on_thread(&chain, &answer, &answers, params))
+        .expect("a thread with a 64 MiB stack");
     match thread.join() {
         Ok(value) => value,
         Err(panic) => std::panic::resume_unwind(panic),
     }
 }
 
-fn answer_on_thread(chain: &str, answer: &Value, answers: &Value) -> Value {
+fn answer_on_thread(chain: &str, answer: &Value, answers: &Value, params: bool) -> Value {
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().expect("a current-thread runtime");
     let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("a listener");
     let port = listener.local_addr().expect("its address").port();
     let replies = [r#"{"ok":true}"#.to_owned(), answer.to_string()];
     let keyed = answers.as_object().cloned();
-    let server = std::thread::spawn(move || {
+    // The listener returns the line of the request that it answers (the second line), so that a params expect reads it.
+    let server = std::thread::spawn(move || -> Option<String> {
         use std::io::Write;
-        let Ok((conn, _)) = listener.accept() else { return };
+        let Ok((conn, _)) = listener.accept() else { return None };
         let mut writer = conn.try_clone().expect("a second handle");
         let mut lines = std::io::BufReader::new(conn).lines();
         if let Some(keyed) = keyed {
@@ -115,37 +120,56 @@ fn answer_on_thread(chain: &str, answer: &Value, answers: &Value) -> Value {
                         .unwrap_or_else(|| json!({ "error": { "code": "IR_INVALID", "message": format!("the case has no answer for {key}") } }))
                 };
                 if writer.write_all(format!("{reply}\n").as_bytes()).is_err() {
-                    return;
+                    return None;
                 }
             }
-            return;
+            return None;
         }
-        for reply in replies {
-            if !matches!(lines.next(), Some(Ok(_))) {
-                return;
+        let mut request = None;
+        for (i, reply) in replies.into_iter().enumerate() {
+            let Some(Ok(line)) = lines.next() else { return request };
+            if i == 1 {
+                request = Some(line);
             }
             if writer.write_all(format!("{reply}\n").as_bytes()).is_err() {
-                return;
+                return request;
             }
         }
         let _request: Option<std::io::Result<String>> = lines.next();
+        request
     });
     let token = "0123456789abcdef0123456789abcdef".to_owned();
-    let got = runtime.block_on(async {
+    let got: Result<Value, Value> = runtime.block_on(async {
         let dsn = format!("markdown://127.0.0.1:{port}/conformance?token={token}");
         let db = markdown_model::connect(&dsn, 1, Config::default()).await.expect("connect");
         let s = Served { bin: PathBuf::new(), db, dir: PathBuf::new(), corpus: "conformance".to_owned(), port, token };
         let got = match run_case(chain, &s).await {
-            Ok(value) => value,
-            Err(error) => json!({ "error": error.code() }),
+            Ok(value) => Ok(value),
+            Err(error) => Err(json!({ "error": error.code() })),
         };
         s.db.close().await;
         got
     });
-    if let Err(panic) = server.join() {
-        std::panic::resume_unwind(panic);
+    let request = match server.join() {
+        Ok(request) => request,
+        Err(panic) => std::panic::resume_unwind(panic),
+    };
+    match got {
+        Ok(_) if params => request_params(request.as_deref()),
+        Ok(value) => value,
+        Err(error) => error,
     }
-    got
+}
+
+/// The params of the request that a listener received, in the JSON form of PRT-67. A request without params has none, so the
+/// result is an empty list; a listener that received no request is a fault of the case.
+fn request_params(request: Option<&str>) -> Value {
+    let Some(line) = request else { panic!("the listener received no request message") };
+    let message: Value = serde_json::from_str(line).unwrap_or_else(|error| panic!("the request line is not JSON: {error}"));
+    if message.get("request").is_none() {
+        panic!("the listener received no request message");
+    }
+    message.get("params").cloned().unwrap_or_else(|| json!([]))
 }
 
 /// Installs corpus/ as a new corpus, starts that server, and connects to it.

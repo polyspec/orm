@@ -7,8 +7,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
+	"sync"
 	"syscall"
 	"testing"
 
@@ -25,14 +27,18 @@ import (
 func TestRecipeIRAnswersNone(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	chains := conformanceCases()
-	recipe.Run(t, "../../../tests/ir/answers.json", recipe.None, recipe.WithIRAnswer(func(t *testing.T, chain string, answer json.RawMessage, answers map[string]json.RawMessage) (any, error) {
+	recipe.Run(t, "../../../tests/ir/answers.json", recipe.None, recipe.WithIRAnswer(func(t *testing.T, chain string, answer json.RawMessage, answers map[string]json.RawMessage, params bool) (any, error) {
 		testcase.Start(t, testcase.Compute)
 		run := chains[chain]
 		if run == nil {
 			t.Fatalf("chain %s is no markdown conformance case", chain)
 		}
 		dsn := ""
+		var sent *requestLog
 		if answers != nil {
+			if params {
+				return nil, fmt.Errorf("a params expect needs one answer, not answers")
+			}
 			dsn = startMarkdownTestServerWithKeyedAnswers(t, answers)
 		} else {
 			// The fixture is pretty-printed, and the wire takes one message per line, so the answer is compacted.
@@ -40,26 +46,72 @@ func TestRecipeIRAnswersNone(t *testing.T) {
 			if err := json.Compact(&compact, answer); err != nil {
 				t.Fatalf("answer of chain %s: %v", chain, err)
 			}
-			dsn = startMarkdownTestServerWithAnswer(t, compact.String())
+			sent = &requestLog{}
+			dsn = startMarkdownTestServerWithAnswer(t, compact.String(), sent)
 		}
 		db, err := markdownmodel.Connect(dsn, orm.Config{PoolSize: 1})
 		if err != nil {
 			t.Fatal(err)
 		}
 		defer testcase.Close(t, db)
-		return run(&served{db: db})
+		result, err := run(&served{db: db})
+		if params && err == nil {
+			return sent.params(t), nil
+		}
+		return result, err
 	}))
 }
 
+// requestLog keeps the lines that a listener receives after its connect, so that a case checks the request text the chain
+// sends (PRT-66). The listener writes on its goroutine, and the case reads after the chain has answered.
+type requestLog struct {
+	mu    sync.Mutex
+	lines []string
+}
+
+func (l *requestLog) add(line string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.lines = append(l.lines, line)
+}
+
+// params returns the params of the request that the listener received, the message with a request key, in the JSON form of
+// PRT-67. A request without params has none, and the result is an empty list.
+func (l *requestLog) params(t *testing.T) []any {
+	t.Helper()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	for _, line := range l.lines {
+		var msg struct {
+			Request json.RawMessage `json:"request"`
+			Params  []any           `json:"params"`
+		}
+		if json.Unmarshal([]byte(line), &msg) != nil || msg.Request == nil {
+			continue
+		}
+		if msg.Params == nil {
+			return []any{}
+		}
+		return msg.Params
+	}
+	t.Fatalf("the listener received no request message")
+	return nil
+}
+
 // startMarkdownTestServerWithAnswer is the DSN of a listener that writes {"ok": true} for the connect of one connection and, for the next message, the answer.
-func startMarkdownTestServerWithAnswer(t *testing.T, answer string) string {
+// Each line after the connect is also added to sent.
+func startMarkdownTestServerWithAnswer(t *testing.T, answer string, sent *requestLog) string {
 	t.Helper()
 	ln := listenMarkdownTestServer(t)
 	serveMarkdownTestConnection(t, ln, func(conn net.Conn) error {
 		r := bufio.NewReader(conn)
-		for _, line := range []string{`{"ok":true}`, answer} {
-			if _, err := r.ReadString('\n'); err != nil {
+		for i, line := range []string{`{"ok":true}`, answer} {
+			received, err := r.ReadString('\n')
+			if err != nil {
 				return clientEnded(err)
+			}
+			if i > 0 {
+				sent.add(received)
 			}
 			if _, err := conn.Write([]byte(line + "\n")); err != nil {
 				return clientEnded(err)

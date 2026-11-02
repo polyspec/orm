@@ -66,8 +66,9 @@ type step struct {
 
 // IRAnswer runs the chain of one ir.answer step on a listener that answers with the answer, or with answers keyed by the op of
 // a control message or the kind of a request, and returns the result of the chain or its error. It is supplied by the test
-// that owns the chain registry and the listener, since a chain cannot be reached from this package.
-type IRAnswer func(t *testing.T, chain string, answer json.RawMessage, answers map[string]json.RawMessage) (any, error)
+// that owns the chain registry and the listener, since a chain cannot be reached from this package. With params set (the expect
+// of the step is {"params": [...]}, PRT-66), the function returns the params of the request that the listener received instead.
+type IRAnswer func(t *testing.T, chain string, answer json.RawMessage, answers map[string]json.RawMessage, params bool) (any, error)
 
 // Option configures Run.
 type Option func(*options)
@@ -812,19 +813,25 @@ func checkAnswer(t *testing.T, s step, database string, fn IRAnswer) error {
 		return fmt.Errorf("ir.answer has no expect for %s", database)
 	}
 	var outcome struct {
-		Value json.RawMessage `json:"value"`
+		Value  json.RawMessage `json:"value"`
+		Params json.RawMessage `json:"params"`
 	}
 	if err := json.Unmarshal(raw, &outcome); err != nil {
 		return err
 	}
-	if outcome.Value == nil {
-		return fmt.Errorf("ir.answer expect for %s has no value", database)
+	if outcome.Value == nil && outcome.Params == nil {
+		return fmt.Errorf("ir.answer expect for %s has neither value nor params", database)
 	}
-	var want any
-	if err := json.Unmarshal(outcome.Value, &want); err != nil {
+	params := outcome.Params != nil
+	want := outcome.Value
+	if params {
+		want = outcome.Params
+	}
+	var wantValue any
+	if err := json.Unmarshal(want, &wantValue); err != nil {
 		return err
 	}
-	got, err := fn(t, s.Chain, s.Answer, s.Answers)
+	got, err := fn(t, s.Chain, s.Answer, s.Answers, params)
 	if err != nil {
 		code := orm.ErrorCode(err)
 		if code == "" {
@@ -840,8 +847,8 @@ func checkAnswer(t *testing.T, s step, database string, fn IRAnswer) error {
 	if err := json.Unmarshal(body, &actual); err != nil {
 		return err
 	}
-	if !reflect.DeepEqual(actual, want) {
-		return fmt.Errorf("chain %s: got %s, want %s", s.Chain, body, outcome.Value)
+	if !reflect.DeepEqual(actual, wantValue) {
+		return fmt.Errorf("chain %s: got %s, want %s", s.Chain, body, want)
 	}
 	return nil
 }

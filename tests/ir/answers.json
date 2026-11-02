@@ -665,6 +665,41 @@
           }
         }
       ]
+    },
+    {
+      "id": "request_params",
+      "requirements": [
+        "PRT-66",
+        "PRT-67",
+        "PRT-69",
+        "PRT-71",
+        "PRT-72"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "one",
+          "answer": {
+            "rows": [
+              {
+                "id": "P1",
+                "name": "Ann",
+                "email": "ann@example.com",
+                "age": 30,
+                "active": true,
+                "score": "1.50"
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "params": [
+                "P1"
+              ]
+            }
+          }
+        }
+      ]
     }
   ]
 }

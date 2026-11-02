@@ -99,8 +99,17 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str) -> Re
     }
     if step["op"] == "ir.answer" {
         // The chain runs on a listener that answers with the step's answer (or answers), and its value is compared as JSON (FCV-3).
-        let got = markdown::answer(step["chain"].as_str().unwrap_or_default(), &step["answer"], &step["answers"]);
-        let want = &step["expect"][database]["value"];
+        // An expect of {params} compares the params of the request that the listener received instead (PRT-66, PRT-67).
+        let expect = &step["expect"][database];
+        let params = expect.get("params").is_some();
+        if params && step["answers"].is_object() {
+            return Err("a params expect needs one answer, not answers".to_owned());
+        }
+        let present = if params { expect.get("params") } else { expect.get("value") };
+        let Some(want) = present else {
+            return Err(format!("ir.answer expect for {database} has neither value nor params"));
+        };
+        let got = markdown::answer(step["chain"].as_str().unwrap_or_default(), &step["answer"], &step["answers"], params);
         return if markdown::same(&got, want) { Ok(()) } else { Err(format!("got {got}, want {want}")) };
     }
     let styles: Vec<String> = step["styles"].as_array().map(|s| s.iter().filter_map(|x| x.as_str().map(str::to_owned)).collect()).unwrap_or_default();

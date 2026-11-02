@@ -10,7 +10,7 @@ import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { CORE, Db, OrmError, StyledValue, blindIndex, chainPlans, compareSchemas, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitPlan, encode, hostDecode, hostEncode, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel } from '../dist/index.js';
+import { CORE, Db, OrmError, StyledValue, blindIndex, chainPlans, compareSchemas, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitPlan, encode, hostDecode, hostEncode, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecSet, registerModel } from '../dist/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { Engine } from '../dist/index.js';
@@ -814,10 +814,12 @@ async function startMarkdownTestServerWithKeyedAnswers(answers) {
 }
 
 // startMarkdownTestServerWithAnswer is a listener that answers connect with {"ok":true} and the one later request with answer.
-async function startMarkdownTestServerWithAnswer(answer) {
+// The request line is added to sent (PRT-66), so that a params expect reads the request the chain sends.
+async function startMarkdownTestServerWithAnswer(answer, sent) {
   const server = createServer(socket => {
     const replies = ['{"ok":true}', answer];
-    createInterface({ input: socket }).on('line', () => {
+    createInterface({ input: socket }).on('line', line => {
+      if (replies.length === 1) sent.push(line);
       if (replies.length > 0) socket.write(`${replies.shift()}\n`);
     });
     socket.on('error', () => {});
@@ -825,26 +827,43 @@ async function startMarkdownTestServerWithAnswer(answer) {
   return listenMarkdownTestServer(server);
 }
 
+// requestParams returns the params of the request message that a listener received, in the JSON form of PRT-67 (PRT-66).
+function requestParams(sent) {
+  for (const line of sent) {
+    const message = JSON.parse(line);
+    if (message.request !== undefined) return message.params ?? [];
+  }
+  throw new Error('the listener received no request message');
+}
+
 // checkAnswer runs the chain of an ir.answer step on a connection to a listener that answers with the answer or answers of the step,
 // normalizes its result, and compares it with the value of the expect of database. An OrmError from the chain is {error: CODE}.
+// An expect of {params} compares the params of the request that the listener received instead (PRT-66).
 async function checkAnswer(step, database) {
   const expect = step.expect?.[database];
   if (expect === undefined) throw new Error(`ir.answer has no expect for ${database}`);
+  if (expect.value === undefined && expect.params === undefined) throw new Error(`ir.answer expect for ${database} has neither value nor params`);
   const chain = conformanceCases[step.chain];
   if (chain === undefined) throw new Error(`chain ${step.chain} is no markdown conformance case`);
-  const server = step.answers !== undefined ? await startMarkdownTestServerWithKeyedAnswers(step.answers) : await startMarkdownTestServerWithAnswer(JSON.stringify(step.answer));
+  if (expect.params !== undefined && step.answers !== undefined) throw new Error('a params expect needs one answer, not answers');
+  const sent = [];
+  const server = step.answers !== undefined ? await startMarkdownTestServerWithKeyedAnswers(step.answers) : await startMarkdownTestServerWithAnswer(JSON.stringify(step.answer), sent);
   const db = await connect(server.dsn);
   let got;
+  let failed = false;
   try {
     got = normalize(await chain({ db }));
   } catch (error) {
     if (!(error instanceof OrmError)) throw new Error(`${step.chain} failed without an orm code: ${error?.stack ?? error}`, { cause: error });
     got = { error: error.code };
+    failed = true;
   } finally {
     await db.close();
     await server.close();
   }
-  if (!isDeepStrictEqual(got, expect.value)) throw new Error(`got ${JSON.stringify(got)}, want ${JSON.stringify(expect.value)}`);
+  if (expect.params !== undefined && !failed) got = requestParams(sent);
+  const want = expect.params ?? expect.value;
+  if (!isDeepStrictEqual(got, want)) throw new Error(`got ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
 }
 
 // Schema installation (FCV-4). A schema argument is the document set of its files, read from the recipe's directory, parsed
