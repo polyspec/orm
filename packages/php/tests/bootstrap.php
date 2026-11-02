@@ -127,6 +127,7 @@ require_once __DIR__ . '/dbspec_set_cases.php';
 require_once __DIR__ . '/MarkdownTest.php';
 require_once __DIR__ . '/MarkdownConformanceTest.php';
 require_once dirname(__DIR__) . '/markdownmodel/bootstrap.php';
+require_once dirname(__DIR__) . '/bindmodel/bootstrap.php';
 require_once __DIR__ . '/perf_extensions.php';
 require_once __DIR__ . '/PerformanceGateCoverageCase.php';
 require_once __DIR__ . '/hot_path_read_correctness.php';

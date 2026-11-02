@@ -9,6 +9,8 @@
 
 - The Python recipe helper runs the bind step of ir.answer on the generated bind models of tests/bind/dbspec-set.json, through the setter of its slot column and the insert, so bind_time3 and bind_datetime3 of tests/ir/answers.json pass in Python (T334-3-15-3c-5).
 
+- The PHP recipe helper, and the php-ext run that extends it, runs the bind step of ir.answer on the generated bind models of tests/bind/dbspec-set.json, through the setter of its slot column and the insert (T334-3-15-3c-7).
+
 - The refused DSN cases of CFG-1, CFG-2, CFG-11, CFG-17, CFG-19 and CFG-26 (a non-UTC timezone, an unknown scheme, a missing database name, a relative SQLite path, an address host with VERIFY_IDENTITY, a malformed SQLite path) are one recipe, contracts/fixtures/dsn_reject/dsn_reject.json, which every runtime runs without a database through the new op dsn.connect (FCV-4) (T334-3-23).
 - The correctness cases of `performance_gate` (the primary-key read and the list of 100 rows) are a recipe, contracts/fixtures/performance_gate/performance_gate.json, that the six runtimes run on MySQL, PostgreSQL and SQLite; the timing gates stay in make perf-check, because their timing depends on the load of the tests beside them (FCV-2, FCV-14) (T334-3-11).
 - The recipe schema refused the model.get_by steps of the model_writes fixture, because both forms took the generic expect instead of the rows outcome that FCV-4 gives model.get_by; both forms now take the rows outcome (T334-3-4-9).

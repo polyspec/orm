@@ -361,7 +361,11 @@ final class Recipe
             Assert::fail('a params expect needs one answer, not answers');
         }
         $want = $params ? $outcome['params'] : $outcome['value'];
-        $chain = MarkdownConformanceTest::conformanceCases()[$step['chain']] ?? null;
+        $bind = $step['bind'] ?? null;
+        if ($bind !== null && $step['chain'] !== 'slot') {
+            Assert::fail("a bind step names the chain slot, not {$step['chain']}");
+        }
+        $chain = $bind !== null ? self::bindSlotChain($bind) : (MarkdownConformanceTest::conformanceCases()[$step['chain']] ?? null);
         if ($chain === null) {
             Assert::fail("chain {$step['chain']} is no markdown conformance case");
         }
@@ -370,7 +374,9 @@ final class Recipe
             ? start_markdown_test_server(['--keyed', json_encode($step['answers'], $flags)])
             : start_markdown_test_server(['{"ok":true}', json_encode($step['answer'], $flags)]);
         $served = new Served();
-        $served->db = \Polyspec\Orm\Tests\MarkdownModel\connect($server[2], new Config());
+        $served->db = $bind !== null
+            ? \Polyspec\Orm\Tests\BindModel\connect($server[2], new Config())
+            : \Polyspec\Orm\Tests\MarkdownModel\connect($server[2], new Config());
         $failed = false;
         try {
             $got = $chain($served);
@@ -391,6 +397,20 @@ final class Recipe
             $actual,
             'got ' . MarkdownConformanceTest::jsonText($actual) . ', want ' . MarkdownConformanceTest::jsonText($expect)
         );
+    }
+
+    /**
+     * The chain of a bind step (T334-3-15-3c, PRT-67): it writes the bind value into the slot column of the bind model
+     * through its setter and sends the insert, so the request carries the wire value of the slot.
+     */
+    private static function bindSlotChain(array $bind): \Closure
+    {
+        $setter = 'set' . self::studly(explode('_', $bind['column'])[0]) . 'Value';
+        return static function (Served $served) use ($setter, $bind): mixed {
+            $row = (new \Polyspec\Orm\Tests\BindModel\Slots())->connect($served->db);
+            $row->{$setter}($bind['value'])->create();
+            return null;
+        };
     }
 
     /** The params of the request message that a server received, in the JSON form of PRT-67 (PRT-66). */
