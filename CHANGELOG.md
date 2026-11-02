@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- DBS-121a states that a Python generated setter takes `None` for a column that is not nullable and that the insert of that row refuses it with `CODEC_ENCODE`. Its case, `tests/bind/messages-python-null.json`, is the parity unit markdown-message-python-null-vectors, and PRT-67 cites DBS-121a in place of DSL-29, the `LIKE` operator (T334-3-15).
 - The unknown recipe key check runs each runtime as a part of its own through the shared Go and Cargo test runners, the Rust and TypeScript refusal tests report each case, and the check runs in CI as a target of the static group (T334-3-5-6).
 - The request builder of the IR fixture cases is `polyspec_orm::testing::ir_request` (feature `test-faults`): the engine unit tests, the manifest hash test and the Rust recipe helper import it, so no crate names a file of another crate by `#[path]`, and `ir-validate-check/rust` runs its two test binaries as two parts (T334-3-25-1).
 - The PHP extension stub declares the insertRow parameter with a PHPDoc type that the arginfo generator parses (CR47).

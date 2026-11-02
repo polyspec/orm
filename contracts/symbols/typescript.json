@@ -10699,6 +10699,46 @@
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
   },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.getsByDateValue": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) =\u003e Promise\u003cCollection\u003cthis\u003e\u003e"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.getsByDatetime0Value": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) =\u003e Promise\u003cCollection\u003cthis\u003e\u003e"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.getsByDatetime3Value": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) =\u003e Promise\u003cCollection\u003cthis\u003e\u003e"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.getsByDatetime6Value": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) =\u003e Promise\u003cCollection\u003cthis\u003e\u003e"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.getsByI16Value": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cCollection\u003cthis\u003e\u003e"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.getsByI32Value": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cCollection\u003cthis\u003e\u003e"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.getsByI64Value": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cCollection\u003cthis\u003e\u003e"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.getsByTime0Value": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e Promise\u003cCollection\u003cthis\u003e\u003e"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.getsByTime3Value": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e Promise\u003cCollection\u003cthis\u003e\u003e"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.getsByTime6Value": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e Promise\u003cCollection\u003cthis\u003e\u003e"
+  },
   "packages/ts/src/models/bind_fixture/models.ts::Slots#field.i16Value": {
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
@@ -10710,6 +10750,10 @@
   "packages/ts/src/models/bind_fixture/models.ts::Slots#field.i64Value": {
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.lkTextValue": {
+    "exported": true,
+    "signature": "(v0: string) =\u003e this"
   },
   "packages/ts/src/models/bind_fixture/models.ts::Slots#field.seq": {
     "exported": true,

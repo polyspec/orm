@@ -196,7 +196,7 @@ caseTest('all API units have native declarations for their symbols', COMPUTE, as
     'error-code-row-insert-identity-required',
     'error-code-row-insert-unsupported',
   ];
-  assert.equal(ids.length, 178, 'API unit count changed; review the semantic API unit set');
+  assert.equal(ids.length, 179, 'API unit count changed; review the semantic API unit set');
   for (const id of expectedNewApiUnits) {
     assert.ok(ids.includes(id), `API unit count includes the expected semantic contract ${id}`);
   }

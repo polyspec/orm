@@ -824,10 +824,6 @@
       "runner": "python",
       "internal": [
         {
-          "glob": "packages/python/tests/test_bind_messages_python_null_none.py",
-          "reason": "test: the native Python test of assign_null_into_not_null, the one case that only Python holds (FCV-2, DSL-29): the typed setters of the other runtimes take no null, so no suite unit binds it; the file runs tests/bind/messages-python-null.json through the recipe helper"
-        },
-        {
           "glob": "packages/python/tests/chain_answer.py",
           "reason": "harness: the chain runner and the answer listener of the markdown conformance chains that the ir.answer op of tests/ir/answers.json (FCV-4) runs; the cases are bound by the suite unit ir-answers, and the module holds no test of its own"
         },
@@ -1024,6 +1020,7 @@
         "packages/rust/tests/tests/common/or_panic.rs",
         "packages/rust/tests/tests/common/rollback_probe.rs",
         "packages/rust/tests/tests/model_writes/dispatch.rs",
+        "packages/rust/tests/tests/fulltext_search/dispatch.rs",
         "packages/rust/tests/src/model_queries_dispatch.rs",
         "packages/rust/tests/src/constraints_and_relations_dispatch.rs"
       ],
@@ -31198,6 +31195,26 @@
           "owner/php-extension",
           "owner/python"
         ]
+      }
+    },
+    {
+      "id": "markdown-message-python-null-vectors",
+      "kind": "suite",
+      "requirements": [
+        "DBS-121a"
+      ],
+      "file": "tests/bind/messages-python-null.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_bind_messages_python_null_none.py"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "model_writes",
+        "part": "owner/python"
       }
     },
     {

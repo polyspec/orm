@@ -1,5 +1,5 @@
-# The markdown message and control recipe, tests/bind/messages-python-null.json, without a database (docs/spec/feature-coverage.md FCV-3, FCV-4).
-# Requirements: PRT-67.
+# The markdown message recipe of the one case that only Python holds, tests/bind/messages-python-null.json, without a database
+# (docs/spec/feature-coverage.md FCV-2, FCV-4). Requirements: DBS-121a.
 from .recipe import NONE, recipe_tests
 from . import testcase
 

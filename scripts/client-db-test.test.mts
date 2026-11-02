@@ -2,7 +2,7 @@
 // repeated member name case of model_writes (T343-2-1) and its declaration on every owner (T343-2).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { test } from 'node:test';
+import { caseTest, COMPUTE } from '../tests/testcase.mts';
 import { resolve } from 'node:path';
 import { rustDatabaseCoverageSkipArguments, rustPoolerThreadArguments, rustTargetPoolSize } from './client-db-test.mts';
 import { readFeatures, type CoverageOwner, type Language, type NativeCommand } from './features/manifest.mts';
@@ -10,22 +10,22 @@ import { readFeatures, type CoverageOwner, type Language, type NativeCommand } f
 const root = resolve(import.meta.dirname, '..');
 const repeatedMemberCase = 'ordered_json_repeated_member_name';
 
-test('the pooler lane caps the Rust test threads at the backend count per pool', () => {
+caseTest('the pooler lane caps the Rust test threads at the backend count per pool', COMPUTE, () => {
   assert.deepEqual(rustPoolerThreadArguments(4, 4), ['--test-threads=1']);
   assert.deepEqual(rustPoolerThreadArguments(8, 4), ['--test-threads=2']);
   assert.deepEqual(rustPoolerThreadArguments(2, 4), ['--test-threads=1']);
 });
 
-test('the Rust pool size of the integration program is read from its declaration', () => {
+caseTest('the Rust pool size of the integration program is read from its declaration', COMPUTE, () => {
   assert.equal(rustTargetPoolSize(root), 4);
 });
 
-test('model_writes Go owner has a Go test function for the repeated member name case (T343-2-1)', () => {
+caseTest('model_writes Go owner has a Go test function for the repeated member name case (T343-2-1)', COMPUTE, () => {
   const source = readFileSync(resolve(root, 'packages/go/model/coverage_model_writes_test.go'), 'utf8');
   assert.match(source, /^func TestCoverageModelOrderedJsonRepeatedMemberName\(t \*testing\.T\) \{$/m);
 });
 
-test('model_writes Go owner declares the repeated member name case on the three databases (T343-2-1)', () => {
+caseTest('model_writes Go owner declares the repeated member name case on the three databases (T343-2-1)', COMPUTE, () => {
   const feature = readFeatures(root).features.find(item => item.id === 'model_writes');
   const coverage = feature?.coverage;
   assert.ok(coverage, 'model_writes has a coverage part');
@@ -42,7 +42,7 @@ test('model_writes Go owner declares the repeated member name case on the three 
   }
 });
 
-test('model_writes declares the repeated member name case on every owner and the Rust skip list (T343-2)', () => {
+caseTest('model_writes declares the repeated member name case on every owner and the Rust skip list (T343-2)', COMPUTE, () => {
   const manifest = readFeatures(root);
   const feature = manifest.features.find(item => item.id === 'model_writes');
   assert.ok(feature, 'model_writes is in contracts/features.json');
