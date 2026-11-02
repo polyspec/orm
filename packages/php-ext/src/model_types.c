@@ -372,6 +372,41 @@ static bool request_assoc(request_walk *walk, HashTable *input, zval *output)
         zval_ptr_dtor(&keys);
         ZVAL_COPY_VALUE(&keys, &ordered_keys);
     }
+    if (!is_query) {
+        /* A predicate or an assignment (a map with a string column) is walked in Go's field order (canonical.go pred and assign). */
+        zval *column_value = zend_hash_str_find(input, "column", sizeof("column") - 1);
+        if (column_value != NULL) ZVAL_DEREF(column_value);
+        if (column_value != NULL && Z_TYPE_P(column_value) == IS_STRING) {
+            static const char *predicate_order[] = {"p", "plus_p", "minus_p", "ps", "fn", "value", "sub"};
+            size_t order_count = sizeof(predicate_order) / sizeof(predicate_order[0]);
+            zval ordered_keys;
+            array_init_size(&ordered_keys, zend_hash_num_elements(Z_ARRVAL(keys)));
+            for (size_t i = 0; i < order_count; i++) {
+                zend_string *field = zend_string_init(predicate_order[i], strlen(predicate_order[i]), 0);
+                if (zend_hash_exists(input, field)) add_next_index_str(&ordered_keys, field);
+                else zend_string_release(field);
+            }
+            zval *sorted_key;
+            ZEND_HASH_FOREACH_VAL(Z_ARRVAL(keys), sorted_key) {
+                bool scheduled = false;
+                if (Z_TYPE_P(sorted_key) == IS_STRING) {
+                    for (size_t i = 0; i < order_count; i++) {
+                        if (zend_string_equals_cstr(Z_STR_P(sorted_key), predicate_order[i], strlen(predicate_order[i]))) {
+                            scheduled = true;
+                            break;
+                        }
+                    }
+                }
+                if (!scheduled) {
+                    zval copy;
+                    ZVAL_COPY(&copy, sorted_key);
+                    add_next_index_zval(&ordered_keys, &copy);
+                }
+            } ZEND_HASH_FOREACH_END();
+            zval_ptr_dtor(&keys);
+            ZVAL_COPY_VALUE(&keys, &ordered_keys);
+        }
+    }
 
     op_value = zend_hash_str_find(input, "op", sizeof("op") - 1);
     sub_value = zend_hash_str_find(input, "sub", sizeof("sub") - 1);
