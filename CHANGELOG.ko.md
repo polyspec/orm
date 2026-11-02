@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 6e31c0ccc55ef8c9726a70becdb72bdc469d4091c0cc28a2baf30f28cc734a42 -->
+<!-- source-sha256: 3f015aea7b936709d838314a59c36f32a722a482a627e6b4a1a6958a5bd4d795 -->
 # 변경 이력
 
 ## Unreleased
 
+- AES version과 rotation code COD-44, COD-47, COD-49부터 COD-54, COD-57부터 COD-60은 여섯 runtime 모두에서 `contracts/fixtures/aes_rotation/aes_rotation.json` recipe로 MySQL, PostgreSQL, SQLite에서 실행된다. recipe가 대체하는 손으로 쓴 test는 지웠고, COD-48, COD-55, COD-56은 FCV-2 사유와 함께 native로 남는다 (T334-3-4-6).
 - TypeScript에서 숫자 문자열로 저장된 AES version은 Go 읽기 경로와 같이 그 숫자를 version으로 읽고, 다른 텍스트는 `CODEC_DECODE`다 (COD-53, T334-3-4-1).
 - Python에서 숫자 문자열로 저장된 AES version은 Go 읽기 경로와 같이 그 숫자를 version으로 읽고, 다른 텍스트는 `CODEC_DECODE`다 (COD-53, T334-3-4-2).
 - PHP 클라이언트와 PHP 확장은 SQLite가 INTEGER 또는 REAL 열에 저장한 텍스트를 `CATALOG_VALUE` 실패가 아니라 그 텍스트로 읽는다 (INT-151, T334-3-4-3).

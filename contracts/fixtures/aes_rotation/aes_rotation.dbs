@@ -1,0 +1,12 @@
+dbspec 1 aes_rotation
+
+table rot_row {
+  seq i64 identity
+  aes_key_version i32
+  token varchar(255) null
+  primary key (seq)
+  settings {
+    codec token aes hex
+    aes_version aes_key_version
+  }
+}

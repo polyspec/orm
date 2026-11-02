@@ -1,4 +1,4 @@
-# Requirements: COD-44.
+# Requirements: COD-48, COD-55, COD-56 (native, FCV-2); the other AES version codes are recipe cases.
 # The codes of AES key-version failures: an undeclared key version is CONFIG, a stored version that is not a positive
 # 32-bit integer is CODEC_DECODE on the read path and on the rotation path, and an AES column or version column that the
 # client selected but did not get is INTERNAL.
@@ -7,11 +7,12 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 
-from . import testcase
-from polyspec.orm.aes import AesKeyring, _stored_version
+from polyspec.orm.aes import AesKeyring
 from polyspec.orm.codec import host_encode
 from polyspec.orm.database import Db, _decode_assembly
 from polyspec.orm.errors import OrmError
+
+from . import testcase
 
 KEYRING = AesKeyring({1: "old-key", 2: "new-key"}, 2)
 DB = SimpleNamespace(aes_keyring=KEYRING, aes_key="new-key")
@@ -59,29 +60,6 @@ class AesVersionCodesTest(unittest.TestCase):
         self.assertEqual(keyring.current_version, 2)
         self.assertEqual(keyring.versions(), [1, 2, 3])
 
-    # Requirements: COD-49, COD-50, COD-51, COD-52, COD-53.
-    def test_read_path_codes(self):
-        cases = [
-            ("abc", "CODEC_DECODE"),
-            (0, "CODEC_DECODE"),
-            (2**31, "CODEC_DECODE"),
-            (9, "CONFIG"),
-            ("1", ""),
-        ]
-        for stored, want in cases:
-            with self.subTest(stored=stored):
-                row = [CIPHER, stored]
-                got = code_of(lambda: _decode_assembly(row, ASSEMBLE, DB))
-                self.assertEqual(got, want)
-
-    # Requirements: COD-51. Stored versions above the positive i32 range fail decoding.
-    def test_stored_version_accepts_only_positive_i32(self):
-        self.assertEqual(_stored_version("2"), 2)
-        self.assertEqual(_stored_version(2147483647), 2147483647)
-        for bad in ["1x", "", True, -1, 0, 2**31, 1.0, None]:
-            with self.subTest(value=bad):
-                self.assertEqual(code_of(lambda: _stored_version(bad)), "CODEC_DECODE")
-
     # Requirements: COD-56. A read plan cannot infer a missing version column.
     def test_read_plan_without_version_column_is_internal(self):
         no_version = {
@@ -99,48 +77,16 @@ class AesVersionCodesTest(unittest.TestCase):
             code_of(lambda: _decode_assembly(row, ASSEMBLE, DB)), "INTERNAL"
         )
 
-    # Requirements: COD-57. The stored-version keyring entry is required even when a single key could decrypt the value.
-    def test_read_keyring_lacks_stored_version_is_config(self):
-        single = host_encode("value", ["aes", "hex"], "single-key")
-        db = SimpleNamespace(aes_keyring=KEYRING, aes_key="single-key")
-        row = [single, 9]
-        self.assertEqual(code_of(lambda: _decode_assembly(row, ASSEMBLE, db)), "CONFIG")
-
-    # Requirements: COD-58. A non-NULL encrypted value cannot use a NULL stored version.
-    def test_read_null_version_with_aes_value_is_codec_decode(self):
-        row = [CIPHER, None]
-        self.assertEqual(
-            code_of(lambda: _decode_assembly(row, ASSEMBLE, DB)), "CODEC_DECODE"
-        )
-
-    # Requirements: COD-59. A NULL encrypted value with a NULL version stays NULL without version lookup.
-    def test_read_null_aes_with_null_version_stays_null(self):
-        row = [None, None]
-        self.assertEqual(code_of(lambda: _decode_assembly(row, ASSEMBLE, DB)), "")
-        self.assertIsNone(row[0])
-
-    # Requirements: COD-60. Rotation leaves NULL encrypted cells unchanged for either stored version.
-    def test_rotation_null_aes_is_left_unchanged(self):
-        for row in (
-            {"aes_key_version": None, "email": None},
-            {"aes_key_version": 1, "email": None},
-        ):
-            with self.subTest(row=row):
-                got = KEYRING.rotate_row(dict(row), "aes_key_version", [COLUMN], 2)
-                self.assertEqual(got, row)
-
-    # Requirements: COD-47, COD-54, COD-55. Rotation uses the stored-version errors from the read path.
+    # Requirements: COD-55. Rotation requires the AES column and the version column in the row.
     def test_rotation_codes(self):
         cases = [
-            ({"aes_key_version": 0, "email": CIPHER}, "CODEC_DECODE"),
-            ({"aes_key_version": 9, "email": CIPHER}, "CONFIG"),
             ({"aes_key_version": 1}, "INTERNAL"),
             ({"email": CIPHER}, "INTERNAL"),
         ]
         for row, want in cases:
             with self.subTest(row=row):
                 got = code_of(
-                    lambda: KEYRING.rotate_row(row, "aes_key_version", [COLUMN], 2)
+                    lambda r=row: KEYRING.rotate_row(r, "aes_key_version", [COLUMN], 2)
                 )
                 self.assertEqual(got, want)
 

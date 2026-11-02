@@ -12,8 +12,7 @@ use or_panic::OrPanic;
 
 use std::collections::BTreeMap;
 
-use polyspec_orm::db::Pool;
-use polyspec_orm::{Core, Db, Entity, Model, Schema, Val};
+use polyspec_orm::{Db, Entity, Model, Schema, Val};
 
 #[path = "common/secret_config.rs"]
 mod secret_config;
@@ -78,53 +77,14 @@ async fn aes_write_uses_key_of_current_version() {
     std::fs::remove_dir_all(&tmp).unwrap();
 }
 
-/// The codes of a read row's key version (COD-44): an undeclared version is CONFIG, a stored version that is not a
-/// positive 32-bit integer is CODEC_DECODE, and the row is read before any cipher is decoded.
-// Requirements: COD-44.
-#[test]
-fn aes_read_version_codes_match_the_other_clients() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let asm = aes_read_assemble();
-    let keys = keys(&[(1, "old-key"), (2, "new-key")]);
-    let cases = [(Val::Str("abc".into()), "CODEC_DECODE"), (Val::I64(0), "CODEC_DECODE"), (Val::I64(2_147_483_648), "CODEC_DECODE"), (Val::I64(9), "CONFIG")];
-    for (version, want) in cases {
-        let got = decode_error_code(&asm, vec![Val::Str("00".into()), version.clone()], &keys);
-        assert_eq!(got, want, "stored version {version:?}");
-    }
-}
-
-// Requirements: COD-49, COD-50, COD-51, COD-52, COD-53.
-#[test]
-fn aes_read_stored_version_codes() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let asm = aes_read_assemble();
-    let keys = keys(&[(1, "old-key"), (2, "new-key")]);
-    let valid_cipher =
-        polyspec_orm::codec::host_encode(&polyspec_orm::Param::Str("value".into()), &["aes".into(), "hex".into()], "old-key").expect("valid AES fixture");
-    let polyspec_orm::Param::Str(valid_cipher) = valid_cipher else {
-        panic!("AES hex encoding returns text");
-    };
-    let cases = [
-        ("non-integer text", Val::Str("abc".into()), "CODEC_DECODE"),
-        ("zero", Val::I64(0), "CODEC_DECODE"),
-        ("above i32", Val::I64(2_147_483_648), "CODEC_DECODE"),
-        ("undeclared integer", Val::I64(9), "CONFIG"),
-        ("positive integer text", Val::Str("1".into()), ""),
-    ];
-    for (name, version, want) in cases {
-        let value = if want.is_empty() { valid_cipher.clone() } else { "00".into() };
-        let got = decode_error_code(&asm, vec![Val::Str(value), version.clone()], &keys);
-        assert_eq!(got, want, "{name}: stored version {version:?}");
-    }
-}
-
 /// A row of one AES cell without its version decodes with the INTERNAL code under the assemble `asm`.
 fn assert_versionless_row_is_internal(asm: &polyspec_orm::plan::Assemble) {
     let keys = keys(&[(1, "old-key"), (2, "new-key")]);
     assert_eq!(decode_error_code(asm, vec![Val::Str("00".into())], &keys), "INTERNAL");
 }
 
-// Requirements: COD-44, COD-56.
+// Requirements: COD-56.
+// FCV-2: the case builds a read plan without its version column, an input that no recipe value can hold; it stays native.
 #[test]
 fn aes_read_plan_without_version_column_is_internal() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -132,41 +92,11 @@ fn aes_read_plan_without_version_column_is_internal() {
 }
 
 // Requirements: COD-48.
+// FCV-2: the case builds a selected row without its version cell, an input that no recipe value can hold; it stays native.
 #[test]
 fn aes_read_row_without_version_cell_is_internal() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     assert_versionless_row_is_internal(&aes_read_assemble());
-}
-
-// Requirements: COD-44, COD-57.
-#[test]
-fn aes_read_keyring_lacks_stored_version_is_config() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let asm = aes_read_assemble();
-    let keys = keys(&[(1, "old-key"), (2, "new-key")]);
-    let got = decode_error_code(&asm, vec![Val::Str("00".into()), Val::I64(9)], &keys);
-    assert_eq!(got, "CONFIG");
-}
-
-// Requirements: COD-44, COD-58.
-#[test]
-fn aes_read_null_version_with_aes_value_is_codec_decode() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let asm = aes_read_assemble();
-    let keys = keys(&[(1, "old-key"), (2, "new-key")]);
-    let got = decode_error_code(&asm, vec![Val::Str("00".into()), Val::Null], &keys);
-    assert_eq!(got, "CODEC_DECODE");
-}
-
-// Requirements: COD-44, COD-59.
-#[test]
-fn aes_read_null_aes_with_null_version_stays_null() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let asm = aes_read_assemble();
-    let keys = keys(&[(1, "old-key"), (2, "new-key")]);
-    let mut data = vec![vec![Val::Null, Val::Null]];
-    polyspec_orm::row::decode_styled(&asm, &mut data, &keys).expect("NULL AES value with NULL version");
-    assert_eq!(data[0][0], Val::Null);
 }
 
 /// The assembly of an AES column at index 0 read with its version column at index 1.
@@ -231,32 +161,3 @@ static NULL_AES_SECRET: Entity = Entity {
 };
 
 model_row!(NullAesSecret, NULL_AES_SECRET, COLUMNS);
-
-// Requirements: COD-44, COD-60.
-#[tokio::test]
-async fn aes_rotate_leaves_null_aes_rows_unchanged() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    let tmp = std::env::temp_dir().join(format!("orm-rust-aes-null-value-{}", std::process::id()));
-    std::fs::create_dir_all(&tmp).unwrap();
-    let dsn = format!("sqlite://{}", tmp.join("aes-null-value.sqlite").display());
-    let config = polyspec_orm::Config { aes_version: 2, aes_keys: keys(&[(1, "config-key-one"), (2, "config-key-two")]), ..Default::default() };
-    let db = Db::connect(&dsn, 2, config).await.unwrap();
-    db.utils().schema().install(&NULL_AES_SCHEMA).await.unwrap();
-    let Pool::Sqlite(p) = db.pool() else { panic!("the NULL-AES test runs on SQLite") };
-    // One row whose stored version is not declared and one whose version is valid: neither has an AES value.
-    for version in [9_i32, 1] {
-        sqlx::query("INSERT INTO secret_config (aes_key_version, config) VALUES (?, NULL)").bind(version).execute(p).await.unwrap();
-    }
-    let mut core = Core::new(&NULL_AES_SECRET);
-    core.connect(&db);
-    let model = NullAesSecret::from_core(core);
-    let keyring = polyspec_orm::utils::AesKeyring::new(keys(&[(1, "config-key-one"), (2, "config-key-two")]), 2).unwrap();
-    let rotated = db.utils().aes().rotate(&model, &keyring).await.or_panic(|e| format!("rotate with NULL AES values: {e}"));
-    assert_eq!(rotated, 2, "rotated rows");
-    let versions: Vec<i64> = sqlx::query_scalar::<_, i64>("SELECT aes_key_version FROM secret_config ORDER BY seq").fetch_all(p).await.unwrap();
-    assert_eq!(versions, vec![2, 2], "stored versions after rotation");
-    let nulls: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM secret_config WHERE config IS NULL").fetch_one(p).await.unwrap();
-    assert_eq!(nulls, 2, "NULL AES cells after rotation");
-    drop(db);
-    std::fs::remove_dir_all(&tmp).unwrap();
-}

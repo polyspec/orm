@@ -77,6 +77,9 @@ type databaseStep struct {
 	Hooks      []json.RawMessage `json:"hooks"`
 	Steps      []json.RawMessage `json:"steps"`
 	PoolSize   int               `json:"pool_size"`
+	// The AES ops (FCV-4): the keyring of a model.connect and the keyring that aes.status and aes.rotate take.
+	AESKeyring *aesKeyringSpec `json:"aes_keyring"`
+	Keyring    *aesKeyringSpec `json:"keyring"`
 }
 
 // bound is what a step bound with `as`: the API value that a later argument takes, the fields of its result that a dotted
@@ -546,11 +549,18 @@ func boundTree(ref string, c *databaseContext) (any, error) {
 		return nil, err
 	}
 	for _, key := range strings.Split(rest, ".") {
-		object, isObject := tree.(map[string]any)
-		if !isObject {
-			return nil, fmt.Errorf("bound value %s has no %s", head, rest)
-		}
-		if tree, ok = object[key]; !ok {
+		switch node := tree.(type) {
+		case map[string]any:
+			if tree, ok = node[key]; !ok {
+				return nil, fmt.Errorf("bound value %s has no %s", head, rest)
+			}
+		case []any:
+			index, err := strconv.Atoi(key)
+			if err != nil || index < 0 || index >= len(node) {
+				return nil, fmt.Errorf("bound value %s has no %s", head, rest)
+			}
+			tree = node[index]
+		default:
 			return nil, fmt.Errorf("bound value %s has no %s", head, rest)
 		}
 	}

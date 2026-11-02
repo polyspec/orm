@@ -167,6 +167,8 @@ func sortedKeys(m map[string]any) []string {
 // cell is the recipe wrapper of a value that a read returns.
 func cell(v any) (any, error) {
 	switch x := v.(type) {
+	case nil:
+		return map[string]any{"null": true}, nil
 	case string:
 		return map[string]any{"text": x}, nil
 	case int64:
@@ -201,13 +203,68 @@ func requestOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if s.As == "" || s.PoolSize != 0 {
 			return outcome{}, fmt.Errorf("model.connect of a second connection needs as and no pool_size")
 		}
-		conn, err := orm.ConnectSchema(c.dsn, c.schema, orm.Config{})
+		cfg := orm.Config{}
+		if s.AESKeyring != nil {
+			keys, err := s.AESKeyring.keys()
+			if err != nil {
+				return outcome{}, err
+			}
+			cfg = orm.Config{AESKeys: keys, AESVersion: s.AESKeyring.Current, AESKey: keys[s.AESKeyring.Current]}
+		}
+		conn, err := orm.ConnectSchema(c.dsn, c.schema, cfg)
 		if err != nil {
 			return outcome{}, err
 		}
 		c.named[s.As] = conn
 		c.closers = append(c.closers, conn.Close)
 		return outcome{}, nil
+	case "aes.status":
+		keyring, err := s.Keyring.keyring()
+		if err != nil {
+			return outcome{}, err
+		}
+		conn, err := c.connection(s.Connection)
+		if err != nil {
+			return outcome{}, err
+		}
+		core, err := c.core(s.Model, s.Connection, nil)
+		if err != nil {
+			return outcome{}, err
+		}
+		status, err := conn.Utils().Aes().Status(core.Self(), keyring)
+		if err != nil {
+			return outcome{}, err
+		}
+		versions := []any{}
+		for _, version := range keyringVersions(status.Versions) {
+			versions = append(versions, []any{strconv.FormatInt(int64(version), 10),
+				map[string]any{"int": strconv.FormatInt(status.Versions[version], 10)}})
+		}
+		value := map[string]any{"object": []any{
+			[]any{"current", map[string]any{"int": strconv.FormatInt(int64(status.Current), 10)}},
+			[]any{"total", map[string]any{"int": strconv.FormatInt(status.Total, 10)}},
+			[]any{"pending", map[string]any{"int": strconv.FormatInt(status.Pending, 10)}},
+			[]any{"versions", map[string]any{"object": versions}},
+		}}
+		return outcome{fields: map[string]any{"value": value}}, nil
+	case "aes.rotate":
+		keyring, err := s.Keyring.keyring()
+		if err != nil {
+			return outcome{}, err
+		}
+		conn, err := c.connection(s.Connection)
+		if err != nil {
+			return outcome{}, err
+		}
+		core, err := c.core(s.Model, s.Connection, nil)
+		if err != nil {
+			return outcome{}, err
+		}
+		n, err := conn.Utils().Aes().Rotate(core.Self(), keyring)
+		if err != nil {
+			return outcome{}, err
+		}
+		return outcome{fields: map[string]any{"value": map[string]any{"int": strconv.Itoa(n)}}}, nil
 	case "hook.install":
 		return outcome{}, c.installHook(s.Hooks)
 	case "hook.records":
@@ -598,4 +655,46 @@ func scopeTree(q *ir.Query, column string, value any, addParam func(any) int) {
 	for _, rel := range q.Relations {
 		scopeTree(rel.Query, column, value, addParam)
 	}
+}
+
+// aesKeyringSpec is the keyring of the recipe (scripts/features/schema/recipe.schema.json, $defs/aesKeyring): the key text of
+// each declared version, and the current version that new writes use.
+type aesKeyringSpec struct {
+	Keys    map[string]string `json:"keys"`
+	Current int32             `json:"current"`
+}
+
+// keys returns the keys by their version number.
+func (k *aesKeyringSpec) keys() (map[int32]string, error) {
+	out := make(map[int32]string, len(k.Keys))
+	for text, key := range k.Keys {
+		version, err := strconv.ParseInt(text, 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf("aes key version %s: %w", text, err)
+		}
+		out[int32(version)] = key
+	}
+	return out, nil
+}
+
+// keyring is the public keyring of the spec, which validates it as orm.NewAESKeyring does.
+func (k *aesKeyringSpec) keyring() (orm.AESKeyring, error) {
+	if k == nil {
+		return orm.AESKeyring{}, fmt.Errorf("the op needs a keyring")
+	}
+	keys, err := k.keys()
+	if err != nil {
+		return orm.AESKeyring{}, err
+	}
+	return orm.NewAESKeyring(keys, k.Current)
+}
+
+// keyringVersions returns the versions of a status in ascending order.
+func keyringVersions(versions map[int32]int64) []int32 {
+	out := make([]int32, 0, len(versions))
+	for version := range versions {
+		out = append(out, version)
+	}
+	slices.Sort(out)
+	return out
 }

@@ -26,6 +26,7 @@ from polyspec.orm.codec import (
     host_encode,
 )
 from polyspec.orm import Db, Model, OrmError, Schema, connect_catalog
+from polyspec.orm.aes import AesKeyring
 from polyspec.orm.model import RegisteredModel, register_model
 from polyspec.orm.names import ChainKey
 from polyspec.orm.dbspec import dbspec_manifest, parse_dbspec, read_dbspec_file
@@ -464,6 +465,7 @@ def _run_case(
             "database": database,
             "dsn": dsn,
             "bound": {"database": {"text": _database_name(dsn)}},
+            "fields": {},
             "request": request,
         }
         for part, rows in (
@@ -676,7 +678,10 @@ def _loaded_rows(step: dict, context: dict) -> list:
 
 
 def _request_cell(value) -> dict:
-    """The recipe wrapper of a value that a read returns: text and integer values have a wrapper (FCV-4)."""
+    """The recipe wrapper of a value that a read returns: text and integer values have a wrapper (FCV-4), and NULL is
+    {"null": true}, which the comparison reads by its nullness."""
+    if value is None:
+        return {"null": True}
     if isinstance(value, str):
         return {"text": value}
     if isinstance(value, int) and not isinstance(value, bool):
@@ -712,7 +717,15 @@ def _op_model_connect(step: dict, context: dict) -> dict:
         raise AssertionError(
             "model.connect of a second connection needs as and no pool_size"
         )
-    request.named[step["as"]] = Db.connect_schema(request.dsn, request.schema)
+    options = {}
+    if "aes_keyring" in step:
+        keyring = _keyring(step["aes_keyring"])
+        options = {"aesKeyring": keyring, "aesVersion": keyring.current_version}
+    # A name connected again replaces its connection, which is closed here: the case closes every connection it opens.
+    previous = request.named.pop(step["as"], None)
+    if previous is not None:
+        previous.close()
+    request.named[step["as"]] = Db.connect_schema(request.dsn, request.schema, options)
     return {}
 
 
@@ -941,6 +954,44 @@ def _op_transaction(step: dict, context: dict) -> dict:
     return {}
 
 
+def _keyring(raw: dict) -> AesKeyring:
+    """The keyring of a recipe (FCV-4 aesKeyring), by the public constructor."""
+    return AesKeyring(
+        {int(version): key for version, key in raw["keys"].items()}, raw["current"]
+    )
+
+
+def _op_aes_status(step: dict, context: dict) -> dict:
+    request = context["request"]
+    keyring = _keyring(step["keyring"])
+    on = step.get("connection", "")
+    model = _new_model(request, step["model"], on)
+    status = _connection_of(request, on).utils().aes().status(model, keyring)
+    versions = [
+        [str(version), {"int": str(status.versions[version])}]
+        for version in sorted(status.versions)
+    ]
+    return {
+        "value": {
+            "object": [
+                ["current", {"int": str(status.current)}],
+                ["total", {"int": str(status.total)}],
+                ["pending", {"int": str(status.pending)}],
+                ["versions", {"object": versions}],
+            ]
+        }
+    }
+
+
+def _op_aes_rotate(step: dict, context: dict) -> dict:
+    request = context["request"]
+    keyring = _keyring(step["keyring"])
+    on = step.get("connection", "")
+    model = _new_model(request, step["model"], on)
+    rotated = _connection_of(request, on).utils().aes().rotate(model, keyring)
+    return {"value": {"int": str(rotated)}}
+
+
 # Each op maps to one call of the public API and returns the fields that its expect compares.
 _DATABASE_OPS = {
     "catalog.current_namespace": _op_current_namespace,
@@ -965,6 +1016,8 @@ _DATABASE_OPS = {
     "model.update": _op_model_update,
     "model.delete": _op_model_delete,
     "model.restore": _op_model_restore,
+    "aes.status": _op_aes_status,
+    "aes.rotate": _op_aes_rotate,
 }
 
 
@@ -991,6 +1044,7 @@ def _run_database_step(step: dict, context: dict) -> None:
         return
     if "as" in step:
         context["bound"][step["as"]] = actual.get("bind", actual.get("value"))
+        context["fields"][step["as"]] = actual
     if expected is None:
         return
     if "error" in expected:
@@ -1013,17 +1067,20 @@ def _limits(step: dict) -> tuple:
 
 
 def _bound(ref: str, context: dict) -> Any:
-    """The bound value of {"ref": "<name>"} or {"ref": "<name>.<path>"}."""
+    """The bound value of {"ref": "<name>"}, or the field at {"ref": "<name>.<path>"} of the result of that step (FCV-4):
+    members by name, array items by their decimal index."""
     head, *path = ref.split(".")
     values = context["bound"]
     if head not in values:
         raise AssertionError(f"no bound value {head}")
-    value = values[head]
+    if not path:
+        return values[head]
+    value = context["fields"][head]
     for key in path:
         if isinstance(value, dict) and key in value:
             value = value[key]
-        elif not isinstance(value, dict) and hasattr(value, key):
-            value = getattr(value, key)
+        elif isinstance(value, list) and key.isdigit() and int(key) < len(value):
+            value = value[int(key)]
         else:
             raise AssertionError(f"bound value {head} has no {'.'.join(path)}")
     return value

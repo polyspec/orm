@@ -11,6 +11,7 @@ namespace Polyspec\Orm\Tests;
 use PHPUnit\Framework\Assert;
 use Polyspec\OrderedJson\Kind;
 use Polyspec\OrderedJson\Value as OrderedJson;
+use Polyspec\Orm\AesKeyring;
 use Polyspec\Orm\Bytes;
 use Polyspec\Orm\Catalog;
 use Polyspec\Orm\CatalogGridCell;
@@ -532,6 +533,7 @@ final class Recipe
                 'schema' => $schema,
                 'fixture' => dirname(__DIR__, 3) . '/' . $recipe['fixture'],
                 'bound' => ['database' => ['text' => $name]],
+                'fields' => [],
                 'request' => ['base' => $base, 'conn' => $base, 'records' => [], 'inTx' => false],
             ];
             foreach ([$recipe['seed']['rows'] ?? [], $case['seed']['rows'] ?? []] as $rows) {
@@ -582,6 +584,7 @@ final class Recipe
             $context['bound'][$step['as']] = array_key_exists('bind', $actual)
                 ? $actual['bind']
                 : ($actual['value'] ?? null);
+            $context['fields'][$step['as']] = $actual;
         }
         if ($expected === null) {
             return;
@@ -682,10 +685,17 @@ final class Recipe
                 return ['value' => ['int' => (string) $deleted]];
             case 'model.connect':
                 // A second connection of the case, bound to its name as: the schema registered, no pool.
+                // A name connected again replaces its binding; every connection of the case is closed at its end.
                 if (!isset($s['as']) || ($s['pool_size'] ?? 0) !== 0) {
                     Assert::fail('model.connect of a second connection needs as and no pool_size');
                 }
-                $connection = Orm::connectSchema($context['dsn'], $context['schema'], new Config());
+                $config = new Config();
+                if (isset($s['aes_keyring'])) {
+                    self::aesKeyring($s['aes_keyring']);
+                    $keys = self::aesKeys($s['aes_keyring']);
+                    $config = new Config(aesVersion: $s['aes_keyring']['current'], aesKeys: $keys);
+                }
+                $connection = Orm::connectSchema($context['dsn'], $context['schema'], $config);
                 $context['connections'][] = $connection;
                 return ['bind' => $connection];
             case 'hook.install':
@@ -751,6 +761,27 @@ final class Recipe
             case 'model.restore':
                 self::setValues(self::newModel($context, $s), $s['values'] ?? [], $context)->restore();
                 return [];
+            case 'aes.status':
+                $keyring = self::aesKeyring($s['keyring']);
+                $aes = self::connectionOf($context, $s['connection'] ?? '')->utils()->aes();
+                $status = $aes->status(self::newModel($context, $s), $keyring);
+                $versions = $status->versions;
+                ksort($versions);
+                $list = [];
+                foreach ($versions as $version => $count) {
+                    $list[] = [(string) $version, ['int' => (string) $count]];
+                }
+                return ['value' => ['object' => [
+                    ['current', ['int' => (string) $status->current]],
+                    ['total', ['int' => (string) $status->total]],
+                    ['pending', ['int' => (string) $status->pending]],
+                    ['versions', ['object' => $list]],
+                ]]];
+            case 'aes.rotate':
+                $keyring = self::aesKeyring($s['keyring']);
+                $aes = self::connectionOf($context, $s['connection'] ?? '')->utils()->aes();
+                $rotated = $aes->rotate(self::newModel($context, $s), $keyring);
+                return ['value' => ['int' => (string) $rotated]];
             case 'sql.exec':
                 // The native driver of PHP is PDO, opened on the case database.
                 $pdo = case_admin($context['dsn']);
@@ -958,6 +989,9 @@ final class Recipe
     /** The recipe wrapper of a value read by a request op. */
     private static function cellOf(mixed $value): array
     {
+        if ($value === null) {
+            return ['null' => true];
+        }
         if (is_string($value)) {
             return ['text' => $value];
         }
@@ -1055,7 +1089,26 @@ final class Recipe
         }
     }
 
-    /** A bound value of {"ref": "<name>"} or {"ref": "<name>.<path>"}. */
+    /** The keys of a recipe keyring (FCV-4 aesKeyring) as int versions. */
+    private static function aesKeys(array $raw): array
+    {
+        $keys = [];
+        foreach ($raw['keys'] as $version => $key) {
+            $keys[(int) $version] = $key;
+        }
+        return $keys;
+    }
+
+    /** The keyring of a recipe, by the public constructor: a refused keyring fails the step with its code. */
+    private static function aesKeyring(array $raw): AesKeyring
+    {
+        return new AesKeyring(self::aesKeys($raw), $raw['current']);
+    }
+
+    /**
+     * A bound value of {"ref": "<name>"}, the value the step binds, or of {"ref": "<name>.<path>"}, the field at
+     * path of the result of that step (FCV-4).
+     */
     private static function boundValue(string $ref, array $context): mixed
     {
         $path = explode('.', $ref);
@@ -1063,7 +1116,10 @@ final class Recipe
         if (!array_key_exists($head, $context['bound'])) {
             Assert::fail("no bound value $head");
         }
-        $value = $context['bound'][$head];
+        if ($path === []) {
+            return $context['bound'][$head];
+        }
+        $value = $context['fields'][$head];
         foreach ($path as $key) {
             if (is_array($value) && array_key_exists($key, $value)) {
                 $value = $value[$key];

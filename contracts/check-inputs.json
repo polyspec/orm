@@ -1626,6 +1626,25 @@
         "packages/rust/orm/src/core.rs"
       ]
     },
+    "aes-rotation-check/rust": {
+      "scope": "owner",
+      "needs": [
+        "rust",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/aes_rotation/**",
+        "packages/rust/tests/tests/aes_rotation_mysql.rs",
+        "packages/rust/tests/tests/aes_rotation_postgres.rs",
+        "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+        "packages/rust/tests/src/recipe.rs",
+        "packages/rust/tests/Cargo.toml",
+        "packages/rust/orm/src/db.rs",
+        "packages/rust/orm/src/model.rs",
+        "packages/rust/orm/src/core.rs",
+        "packages/rust/orm/src/utils.rs"
+      ]
+    },
     "request-hook-check/typescript": {
       "scope": "owner",
       "needs": [
@@ -1658,6 +1677,24 @@
         "packages/ts/src/model.ts"
       ]
     },
+    "aes-rotation-check/typescript": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/aes_rotation/**",
+        "packages/ts/tests/aes_rotation-mysql.test.mjs",
+        "packages/ts/tests/aes_rotation-postgres.test.mjs",
+        "packages/ts/tests/aes_rotation-sqlite.test.mjs",
+        "packages/ts/tests/recipe.mjs",
+        "packages/ts/src/database.ts",
+        "packages/ts/src/model.ts",
+        "packages/ts/src/utils.ts",
+        "packages/ts/src/aes.ts"
+      ]
+    },
     "request-hook-check/python": {
       "scope": "owner",
       "needs": [
@@ -1685,6 +1722,22 @@
         "packages/python/tests/test_parameter_chunking_mysql.py",
         "packages/python/tests/test_parameter_chunking_postgres.py",
         "packages/python/tests/test_parameter_chunking_sqlite.py",
+        "packages/python/tests/recipe.py",
+        "packages/python/src/polyspec/orm/database.py",
+        "packages/python/src/polyspec/orm/model.py"
+      ]
+    },
+    "aes-rotation-check/python": {
+      "scope": "owner",
+      "needs": [
+        "python",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/aes_rotation/**",
+        "packages/python/tests/test_aes_rotation_mysql.py",
+        "packages/python/tests/test_aes_rotation_postgres.py",
+        "packages/python/tests/test_aes_rotation_sqlite.py",
         "packages/python/tests/recipe.py",
         "packages/python/src/polyspec/orm/database.py",
         "packages/python/src/polyspec/orm/model.py"
@@ -1722,6 +1775,26 @@
         "packages/php/tests/ParameterChunkingMysqlTest.php",
         "packages/php/tests/ParameterChunkingPostgresTest.php",
         "packages/php/tests/ParameterChunkingSqliteTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php",
+        "packages/php/tests/generated_classes.php",
+        "packages/php/tests/bootstrap.php",
+        "packages/php/src/Db.php",
+        "packages/php/src/Model.php"
+      ]
+    },
+    "aes-rotation-check/php": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/aes_rotation/**",
+        "packages/php/tests/AesRotationMysqlTest.php",
+        "packages/php/tests/AesRotationPostgresTest.php",
+        "packages/php/tests/AesRotationSqliteTest.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeCases.php",
         "packages/php/tests/generated_classes.php",
@@ -1771,6 +1844,29 @@
         "packages/php/tests/ParameterChunkingMysqlTest.php",
         "packages/php/tests/ParameterChunkingPostgresTest.php",
         "packages/php/tests/ParameterChunkingSqliteTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php",
+        "packages/php-ext/src/db.c",
+        "packages/php-ext/src/model_read.c"
+      ]
+    },
+    "aes-rotation-check/php-extension": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/aes_rotation/**",
+        "packages/php-ext/tests/AesRotationMysqlRecipeExtensionTest.php",
+        "packages/php-ext/tests/AesRotationPostgresRecipeExtensionTest.php",
+        "packages/php-ext/tests/AesRotationSqliteRecipeExtensionTest.php",
+        "packages/php-ext/tests/bootstrap.php",
+        "packages/php/tests/AesRotationMysqlTest.php",
+        "packages/php/tests/AesRotationPostgresTest.php",
+        "packages/php/tests/AesRotationSqliteTest.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeCases.php",
         "packages/php-ext/src/db.c",
@@ -4578,6 +4674,21 @@
         "packages/go/internal/recipe/recipe.go",
         "packages/go/internal/recipe/database.go",
         "packages/go/internal/recipe/requests.go"
+      ]
+    },
+    "aes-rotation-check/go": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/aes_rotation/**",
+        "packages/go/orm/recipe_aes_rotation_test.go",
+        "packages/go/internal/recipe/recipe.go",
+        "packages/go/internal/recipe/database.go",
+        "packages/go/internal/recipe/requests.go",
+        "packages/go/orm/aes_rotation.go"
       ]
     }
   },

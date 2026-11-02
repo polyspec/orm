@@ -873,7 +873,7 @@ fn external_error(differences: Vec<String>) -> Result<()> {
 
 #[cfg(test)]
 mod keyring_tests {
-    use super::{rotation_columns, rotation_key, row_version, AesKeyring};
+    use super::{rotation_columns, AesKeyring};
     use crate::value::Val;
     use std::collections::BTreeMap;
 
@@ -887,25 +887,8 @@ mod keyring_tests {
         assert_eq!(keyring.current(), 2);
     }
 
-    // Requirements: COD-47. Rotation resolves the stored version through the same declared keyring and decoder codes.
-    #[test]
-    fn rotation_path_uses_read_path_error_codes() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let ring = AesKeyring::new(BTreeMap::from([(1, "old".to_owned()), (2, "new".to_owned())]), 2).unwrap();
-        assert_eq!(rotation_key(Some(&Val::I64(9)), &ring).unwrap_err().code(), crate::codes::CONFIG);
-        assert_eq!(rotation_key(Some(&Val::Str("bad".into())), &ring).unwrap_err().code(), crate::codes::CODEC_DECODE);
-        assert_eq!(row_version(&Val::I64(i64::from(i32::MAX) + 1)).unwrap_err().code(), crate::codes::CODEC_DECODE);
-    }
-
-    // Requirements: COD-54. A zero stored version is invalid during key rotation.
-    #[test]
-    fn rotation_stored_version_zero_is_codec_decode() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let ring = AesKeyring::new(BTreeMap::from([(1, "old".to_owned())]), 1).unwrap();
-        assert_eq!(rotation_key(Some(&Val::I64(0)), &ring).unwrap_err().code(), crate::codes::CODEC_DECODE);
-    }
-
     // Requirements: COD-55. Rotation requires every selected AES column in its row.
+    // FCV-2: the row lacks a selected column, an input that no recipe value can hold; it stays native.
     #[test]
     fn rotation_row_without_aes_column_is_internal() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

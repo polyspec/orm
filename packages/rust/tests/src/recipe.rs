@@ -392,6 +392,7 @@ mod database {
     use std::sync::{Arc, Mutex};
 
     use polyspec_orm::db::{parse_dsn, ConnectOptions};
+    use polyspec_orm::AesKeyring;
     use polyspec_orm::args::Value as ArgValue;
     use polyspec_orm::core::{Arg, ChainKey};
     use polyspec_orm::ir::{Assign, Group, Item, Pred, Query, Request};
@@ -417,7 +418,8 @@ mod database {
         /// A recipe wrapper: the case database name, a namespace or a count.
         Json(Value),
         Metadata(TableMetadata),
-        Page(TablePage),
+        /// A table page with the JSON fields that its step returns, so that a ref names its rows (`page.rows.0.0`).
+        Page(TablePage, Value),
         Snapshot(RowSnapshot),
     }
 
@@ -639,7 +641,7 @@ mod database {
                 }
                 let columns: Vec<&str> = page.result.columns.iter().map(|c| c.name.as_str()).collect();
                 let fields = json!({ "columns": columns, "order_by": page.order_by, "has_more": page.has_more, "rows": rows });
-                Output { fields, bind: Some(Bound::Page(page)) }
+                Output { fields: fields.clone(), bind: Some(Bound::Page(page, fields)) }
             }
             "catalog.read_only_query" => {
                 let sql = sql_field(&step["sql"], context).map_err(fault)?;
@@ -655,7 +657,7 @@ mod database {
                 Output::fields(json!({ "columns": columns, "rows": rows.map_err(fault)? }))
             }
             "catalog.row_snapshot" => {
-                let Bound::Page(page) = bound(&step["page"], context).map_err(fault)? else { return Err(fault("page is not a bound page".into())) };
+                let Bound::Page(page, _) = bound(&step["page"], context).map_err(fault)? else { return Err(fault("page is not a bound page".into())) };
                 let index = step["index"].as_u64().ok_or_else(|| fault("index is not a count".into()))?;
                 let index = usize::try_from(index).map_err(|e| fault(format!("index {index}: {e}")))?;
                 let snapshot = RowSnapshot::from_page(page, index).map_err(Failure::Call)?;
@@ -744,10 +746,16 @@ mod database {
     fn bound_value(reference: &str, context: &Context<'_>) -> Result<Value, String> {
         let mut path = reference.split('.');
         let head = path.next().unwrap_or_default();
-        let Some(Bound::Json(value)) = context.bound.get(head) else { return Err(format!("no bound recipe value {head}")) };
-        let mut value = value;
+        let mut value = match context.bound.get(head) {
+            Some(Bound::Json(value) | Bound::Page(_, value)) => value,
+            _ => return Err(format!("no bound recipe value {head}")),
+        };
         for key in path {
-            value = value.get(key).ok_or_else(|| format!("bound value {head} has no {reference}"))?;
+            value = match value {
+                Value::Array(items) => key.parse::<usize>().ok().and_then(|at| items.get(at)),
+                _ => value.get(key),
+            }
+            .ok_or_else(|| format!("bound value {head} has no {reference}"))?;
         }
         Ok(value.clone())
     }
@@ -805,7 +813,7 @@ mod database {
             "bool" => P::Boolean(body.as_bool().ok_or_else(|| format!("{wrapper} is not a bool"))?),
             "null" => P::Null(match text()?.as_str() {
                 "text" => ParamType::Text,
-                "i64" => ParamType::Integer,
+                "i64" | "int" => ParamType::Integer,
                 "u64" => ParamType::Unsigned,
                 "decimal" => ParamType::Decimal,
                 "bool" => ParamType::Boolean,
@@ -913,8 +921,10 @@ mod database {
     // reference is packages/go/internal/recipe/requests.go; each op calls the public API of polyspec_orm.
 
     /// The ops that the request helper runs.
-    const REQUEST_OPS: [&str; 12] = [
+    const REQUEST_OPS: [&str; 14] = [
         "model.connect",
+        "aes.status",
+        "aes.rotate",
         "hook.install",
         "hook.records",
         "transaction",
@@ -1343,6 +1353,25 @@ mod database {
         }
     }
 
+    /// The keyring of a recipe step (scripts/features/schema/recipe.schema.json, $defs/aesKeyring): the key text of each
+    /// declared version, and the current version. The keys are returned as the public API takes them.
+    fn keyring_spec(raw: &Value) -> Result<(BTreeMap<i32, String>, i32), Failure> {
+        let keys = raw["keys"].as_object().ok_or_else(|| Failure::Step("a keyring has no keys".into()))?;
+        let mut map = BTreeMap::new();
+        for (text, key) in keys {
+            let version: i32 = text.parse().map_err(|e: std::num::ParseIntError| Failure::Step(format!("aes key version {text}: {e}")))?;
+            map.insert(version, key.as_str().unwrap_or_default().to_owned());
+        }
+        let current = raw["current"].as_i64().and_then(|n| i32::try_from(n).ok()).ok_or_else(|| Failure::Step("a keyring has no current version".into()))?;
+        Ok((map, current))
+    }
+
+    /// The public keyring of a recipe step, which validates it as the API does.
+    fn keyring_of(raw: &Value) -> Result<AesKeyring, Failure> {
+        let (keys, current) = keyring_spec(raw)?;
+        AesKeyring::new(keys, current).map_err(orm)
+    }
+
     /// The model ops, the connect, the hook and the records (not the transaction, which runs them).
     async fn plain_op(step: &Value, context: &mut Context<'_>) -> Result<Output, Failure> {
         let schema = context.schema;
@@ -1354,9 +1383,41 @@ mod database {
                 if step.get("pool_size").is_some() {
                     return Err(Failure::Step("model.connect of a second connection takes no pool_size".into()));
                 }
-                let db = Db::connect_schema(&context.dsn, schema, 2, Config::default()).await.map_err(orm)?;
+                let cfg = match &step["aes_keyring"] {
+                    Value::Null => Config::default(),
+                    raw => {
+                        let (keys, current) = keyring_spec(raw)?;
+                        Config { aes_version: current, aes_keys: keys, ..Config::default() }
+                    }
+                };
+                let db = Db::connect_schema(&context.dsn, schema, 2, cfg).await.map_err(orm)?;
                 context.requests.named.insert(alias.to_owned(), db);
                 Ok(Output::fields(json!({})))
+            }
+            "aes.status" => {
+                let keyring = keyring_of(&step["keyring"])?;
+                let on = step_connection(step);
+                let core = model_core(&mut context.requests, schema, model_name(step)?, on)?;
+                let db = context.requests.connection(on)?;
+                let row = RecipeRow::from_core(core);
+                let status = db.utils().aes().status(&row, &keyring).await.map_err(orm)?;
+                let versions: Vec<Value> = status.versions.iter().map(|(version, n)| json!([version.to_string(), { "int": n.to_string() }])).collect();
+                let value = json!({ "object": [
+                    ["current", { "int": status.current.to_string() }],
+                    ["total", { "int": status.total.to_string() }],
+                    ["pending", { "int": status.pending.to_string() }],
+                    ["versions", { "object": versions }],
+                ] });
+                Ok(Output::fields(json!({ "value": value })))
+            }
+            "aes.rotate" => {
+                let keyring = keyring_of(&step["keyring"])?;
+                let on = step_connection(step);
+                let core = model_core(&mut context.requests, schema, model_name(step)?, on)?;
+                let db = context.requests.connection(on)?;
+                let row = RecipeRow::from_core(core);
+                let n = db.utils().aes().rotate(&row, &keyring).await.map_err(orm)?;
+                Ok(Output::fields(json!({ "value": { "int": n.to_string() } })))
             }
             "hook.install" => {
                 let actions = hook_actions(&step["hooks"])?;

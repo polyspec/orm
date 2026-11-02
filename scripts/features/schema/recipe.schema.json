@@ -59,6 +59,15 @@
       "items": { "type": "string", "pattern": "^[A-Z]+-[0-9]+[a-z]?$" }
     },
     "name": { "type": "string", "pattern": "^[a-z_][a-z0-9_]*$" },
+    "aesKeyring": {
+      "type": "object",
+      "required": ["keys", "current"],
+      "additionalProperties": false,
+      "properties": {
+        "keys": { "type": "object", "minProperties": 1, "propertyNames": { "pattern": "^[1-9][0-9]*$" }, "additionalProperties": { "type": "string" } },
+        "current": { "type": "integer", "minimum": 1 }
+      }
+    },
     "seed": {
       "type": "object",
       "required": ["rows"],
@@ -186,7 +195,7 @@
     "step": {
       "type": "object",
       "required": ["op"],
-      "properties": { "op": { "enum": ["model.connect", "codec.decode", "codec.encode", "codec.host_encode", "codec.host_decode", "codec.blind_index", "sql.exec", "ir.validate", "ir.answer", "catalog.current_namespace", "catalog.describe_table", "catalog.table_page", "catalog.read_only_query", "catalog.read_only_grid_query", "catalog.row_snapshot", "catalog.insert_row", "catalog.update_row", "catalog.delete_row", "hook.install", "hook.records", "transaction", "model.create", "model.creates", "model.duplicate_create", "model.query", "model.count", "model.update", "model.delete", "model.restore"] } },
+      "properties": { "op": { "enum": ["model.connect", "codec.decode", "codec.encode", "codec.host_encode", "codec.host_decode", "codec.blind_index", "sql.exec", "ir.validate", "ir.answer", "catalog.current_namespace", "catalog.describe_table", "catalog.table_page", "catalog.read_only_query", "catalog.read_only_grid_query", "catalog.row_snapshot", "catalog.insert_row", "catalog.update_row", "catalog.delete_row", "hook.install", "hook.records", "transaction", "model.create", "model.creates", "model.duplicate_create", "model.query", "model.count", "model.update", "model.delete", "model.restore", "aes.status", "aes.rotate"] } },
       "oneOf": [
         { "$ref": "#/$defs/ops/model.connect" },
         { "$ref": "#/$defs/ops/codec.decode" },
@@ -214,7 +223,8 @@
         { "$ref": "#/$defs/ops/model.count" },
         { "$ref": "#/$defs/ops/model.update" },
         { "$ref": "#/$defs/ops/model.delete" },
-        { "$ref": "#/$defs/ops/model.restore" }
+        { "$ref": "#/$defs/ops/model.restore" },
+        { "$ref": "#/$defs/ops/aes.status" }, { "$ref": "#/$defs/ops/aes.rotate" }
       ]
     },
     "kinds": {
@@ -416,7 +426,32 @@
         "properties": {
           "op": { "const": "model.connect" },
           "pool_size": { "type": "integer", "minimum": 1 },
-          "as": { "$ref": "#/$defs/name" }
+          "as": { "$ref": "#/$defs/name" },
+          "aes_keyring": { "$ref": "#/$defs/aesKeyring" }
+        }
+      },
+      "aes.status": {
+        "type": "object",
+        "required": ["op", "model", "keyring"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "aes.status" },
+          "connection": { "type": "string", "pattern": "^[a-z_][a-z0-9_]*$" },
+          "model": { "$ref": "#/$defs/name" },
+          "keyring": { "$ref": "#/$defs/aesKeyring" },
+          "expect": { "type": "object", "minProperties": 1, "additionalProperties": { "$ref": "#/$defs/model_outcome" } }
+        }
+      },
+      "aes.rotate": {
+        "type": "object",
+        "required": ["op", "model", "keyring"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "aes.rotate" },
+          "connection": { "type": "string", "pattern": "^[a-z_][a-z0-9_]*$" },
+          "model": { "$ref": "#/$defs/name" },
+          "keyring": { "$ref": "#/$defs/aesKeyring" },
+          "expect": { "type": "object", "minProperties": 1, "additionalProperties": { "$ref": "#/$defs/model_outcome" } }
         }
       },
       "codec.decode": {
@@ -1083,7 +1118,7 @@
             "type": "object",
             "required": ["rows"],
             "additionalProperties": false,
-            "properties": { "rows": { "type": "array", "items": { "type": "array", "items": { "$ref": "#/$defs/value" } } } }
+            "properties": { "rows": { "type": "array", "items": { "type": "array", "items": { "oneOf": [{ "$ref": "#/$defs/value" }, { "$ref": "#/$defs/ref" }] } } } }
           },
           {
             "type": "object",

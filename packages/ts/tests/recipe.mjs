@@ -10,7 +10,7 @@ import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { CORE, Db, Model, OrmError, StyledValue, blindIndex, connectCatalog, dbspecManifest, decode, encode, hostDecode, hostEncode, parseDbspec, readDbspecFile, registerModel } from '../dist/index.js';
+import { AesKeyring, CORE, Db, Model, OrmError, StyledValue, blindIndex, connectCatalog, dbspecManifest, decode, encode, hostDecode, hostEncode, parseDbspec, readDbspecFile, registerModel } from '../dist/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { withCaseDatabase } from './case-database.mjs';
@@ -260,7 +260,7 @@ async function runCase({ name, recipe, recipeCase, database, schema, caseDatabas
     await request.start();
     const namespace = await catalog.currentNamespace();
     const bound = new Map([['database', { text: caseDatabase.name }]]);
-    const context = { catalog, namespace, database, dsn: caseDatabase.dsn, bound, request };
+    const context = { catalog, namespace, database, dsn: caseDatabase.dsn, bound, fields: new Map(), request };
     for (const rows of [recipe.seed?.rows, recipeCase.seed?.rows]) {
       for (const [table, values] of Object.entries(rows ?? {})) {
         const metadata = await catalog.describeTable({ namespace, name: table });
@@ -331,8 +331,31 @@ const OPS = {
   // The request ops of FCV-4 (T334-3-4): each calls the public API of the model and the request hook of the same name.
   async 'model.connect'(s, context) {
     if (s.as === undefined || (s.pool_size ?? 0) !== 0) throw new Error('model.connect of a second connection needs as and no pool_size');
-    context.request.named.set(s.as, await Db.connectSchema(context.dsn, context.request.schema));
+    // A name connected again replaces its connection, which is closed here: the runner closes every connection it opens.
+    const previous = context.request.named.get(s.as);
+    if (previous !== undefined) {
+      context.request.named.delete(s.as);
+      await previous.close();
+    }
+    const options = s.aes_keyring === undefined ? {} : { aesKeys: aesKeys(s.aes_keyring), aesVersion: s.aes_keyring.current };
+    context.request.named.set(s.as, await Db.connectSchema(context.dsn, context.request.schema, options));
     return {};
+  },
+  async 'aes.status'(s, context) {
+    const keyring = aesKeyring(s.keyring);
+    const status = await connectionOf(context.request, s.connection).utils().aes().status(newModel(context.request, s.model, s.connection), keyring);
+    const versions = [...status.versions.keys()].sort((a, b) => a - b).map(version => [String(version), { int: String(status.versions.get(version)) }]);
+    return { value: { object: [
+      ['current', { int: String(status.current) }],
+      ['total', { int: String(status.total) }],
+      ['pending', { int: String(status.pending) }],
+      ['versions', { object: versions }],
+    ] } };
+  },
+  async 'aes.rotate'(s, context) {
+    const keyring = aesKeyring(s.keyring);
+    const rotated = await connectionOf(context.request, s.connection).utils().aes().rotate(newModel(context.request, s.model, s.connection), keyring);
+    return { value: { int: String(rotated) } };
   },
   'hook.install'(s, context) {
     installHook(context.request, s.hooks);
@@ -447,8 +470,16 @@ class RequestState {
     this.runtime = registerModel(this.schema.manifestText, this.schema.manifestHash);
   }
 
+  // Every connection is closed even when an earlier close fails; the first failure is then thrown.
   async close() {
-    for (const db of [...this.named.values(), this.base]) if (db !== undefined) await db.close();
+    const dbs = [...this.named.values(), this.base].filter(db => db !== undefined);
+    this.named.clear();
+    this.base = undefined;
+    let failure;
+    for (const db of dbs) {
+      try { await db.close(); } catch (error) { failure ??= error; }
+    }
+    if (failure !== undefined) throw failure;
   }
 }
 
@@ -508,6 +539,7 @@ function project(model, columns) {
 }
 
 function cell(value) {
+  if (value === null) return { null: true };
   if (typeof value === 'string') return { text: value };
   if (typeof value === 'bigint') return { int: value.toString() };
   if (typeof value === 'number' && Number.isInteger(value)) return { int: String(value) };
@@ -608,7 +640,10 @@ async function runStep(s, context) {
     assert.equal(error.code, expected.error, `the error code (${error.message})`);
     return;
   }
-  if (s.as !== undefined) context.bound.set(s.as, actual.bind ?? actual.value);
+  if (s.as !== undefined) {
+    context.bound.set(s.as, actual.bind ?? actual.value);
+    context.fields.set(s.as, actual);
+  }
   if (expected === undefined) return;
   if (expected.error !== undefined) throw new Error(`expected ${expected.error}, and the op succeeded`);
   const compared = Object.fromEntries(Object.keys(expected).map(key => [key, actual[key]]));
@@ -620,18 +655,28 @@ function sql(field, { database }) {
   return typeof field === 'string' ? field : field[database];
 }
 
+/** The keyring of a recipe (FCV-4 aesKeyring), by the public constructor. */
+function aesKeyring(raw) {
+  return new AesKeyring(aesKeys(raw), raw.current);
+}
+
+function aesKeys(raw) {
+  return new Map(Object.entries(raw.keys).map(([version, key]) => [Number(version), key]));
+}
+
 function limits(s) {
   return { ...(s.max_rows === undefined ? {} : { maxRows: s.max_rows }), ...(s.max_bytes === undefined ? {} : { maxBytes: s.max_bytes }) };
 }
 
-/** A bound value of {"ref": "<name>"} or {"ref": "<name>.<path>"}. */
-function bound(ref, { bound: values }) {
+/** A bound value of {"ref": "<name>"}, the value the step binds, or of {"ref": "<name>.<path>"}, the field at path of its result (FCV-4). */
+function bound(ref, context) {
   const [head, ...path] = ref.split('.');
-  if (!values.has(head)) throw new Error(`no bound value ${head}`);
+  if (!context.bound.has(head)) throw new Error(`no bound value ${head}`);
+  if (path.length === 0) return context.bound.get(head);
   return path.reduce((value, key) => {
     if (value === null || typeof value !== 'object' || !(key in value)) throw new Error(`bound value ${head} has no ${path.join('.')}`);
     return value[key];
-  }, values.get(head));
+  }, context.fields.get(head));
 }
 
 function stepArgument(field, context) {

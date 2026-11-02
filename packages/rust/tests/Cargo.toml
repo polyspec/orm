@@ -141,3 +141,22 @@ harness = false
 name = "parameter_chunking_sqlite"
 path = "tests/parameter_chunking_sqlite.rs"
 harness = false
+
+# Each case of the aes_rotation recipe, contracts/fixtures/aes_rotation/aes_rotation.json, is the trial aes_rotation_mysql::<case id>
+# on a case database of its own (FCV-3 and FCV-4).
+[[test]]
+name = "aes_rotation_mysql"
+path = "tests/aes_rotation_mysql.rs"
+harness = false
+
+# Each case of the aes_rotation recipe is the trial aes_rotation_postgres::<case id> (FCV-3 and FCV-4).
+[[test]]
+name = "aes_rotation_postgres"
+path = "tests/aes_rotation_postgres.rs"
+harness = false
+
+# Each case of the aes_rotation recipe is the trial aes_rotation_sqlite::<case id> (FCV-3 and FCV-4).
+[[test]]
+name = "aes_rotation_sqlite"
+path = "tests/aes_rotation_sqlite.rs"
+harness = false
