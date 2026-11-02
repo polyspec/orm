@@ -2717,7 +2717,8 @@
           "model_write_cycle",
           "create_parts",
           "model_write_arithmetic_attributes",
-          "save_key_dispatch"
+          "save_key_dispatch",
+          "ordered_json_repeated_member_name"
         ],
         "owners": {
           "go": {
@@ -2737,13 +2738,15 @@
                     "model_write_cycle",
                     "create_parts",
                     "model_write_arithmetic_attributes",
-                    "save_key_dispatch"
+                    "save_key_dispatch",
+                    "ordered_json_repeated_member_name"
                   ],
                   "symbols": {
                     "model_write_cycle": "TestCoverageModelWriteCycle",
                     "create_parts": "TestCoverageModelCreateParts",
                     "model_write_arithmetic_attributes": "TestCoverageModelArithmeticAttributes",
-                    "save_key_dispatch": "TestCoverageModelSaveKeyDispatch"
+                    "save_key_dispatch": "TestCoverageModelSaveKeyDispatch",
+                    "ordered_json_repeated_member_name": "TestCoverageModelOrderedJsonRepeatedMemberName"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2756,13 +2759,15 @@
                     "model_write_cycle",
                     "create_parts",
                     "model_write_arithmetic_attributes",
-                    "save_key_dispatch"
+                    "save_key_dispatch",
+                    "ordered_json_repeated_member_name"
                   ],
                   "symbols": {
                     "model_write_cycle": "TestCoverageModelWriteCycle",
                     "create_parts": "TestCoverageModelCreateParts",
                     "model_write_arithmetic_attributes": "TestCoverageModelArithmeticAttributes",
-                    "save_key_dispatch": "TestCoverageModelSaveKeyDispatch"
+                    "save_key_dispatch": "TestCoverageModelSaveKeyDispatch",
+                    "ordered_json_repeated_member_name": "TestCoverageModelOrderedJsonRepeatedMemberName"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2775,13 +2780,15 @@
                     "model_write_cycle",
                     "create_parts",
                     "model_write_arithmetic_attributes",
-                    "save_key_dispatch"
+                    "save_key_dispatch",
+                    "ordered_json_repeated_member_name"
                   ],
                   "symbols": {
                     "model_write_cycle": "TestCoverageModelWriteCycle",
                     "create_parts": "TestCoverageModelCreateParts",
                     "model_write_arithmetic_attributes": "TestCoverageModelArithmeticAttributes",
-                    "save_key_dispatch": "TestCoverageModelSaveKeyDispatch"
+                    "save_key_dispatch": "TestCoverageModelSaveKeyDispatch",
+                    "ordered_json_repeated_member_name": "TestCoverageModelOrderedJsonRepeatedMemberName"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
