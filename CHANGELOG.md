@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Rust recipe test helper replaces its disallowed `unwrap_or_default` and `ok` calls with explicit handling, the fix of T326-16 (33953ec5a), so `make lint-rust` passes in the polyspec-orm-tests crate (T334-3-24-3).
 - The Python recipe test drops the unused import `read_dbspec_file`, so the ruff step of the Python gate passes (T334-3-24-1).
 - The TypeScript recipe test drops the unused import `readDbspecFile`, so the lint step of the TypeScript gate passes (T334-3-17-4).
 - The TypeScript package exports the bind-check transforms `fulltextBoolean` and `transformParam` from its entry, as the other runtimes do, so the fulltext_boolean transform has a public call in all six runtimes (T334-3-17-1).

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ee46ee2527aea8bc7821259e1adf135c05ac03de894160393d34df9d352ec726 -->
+<!-- source-sha256: 91394fd5a35f7e30c6da9a244cde59951127cbd77a3d116d1e4240444c418104 -->
 # 변경 이력
 
 ## Unreleased
 
+- Rust recipe test helper의 금지된 `unwrap_or_default`와 `ok` 호출을 명시적 처리로 바꾼다. T326-16(33953ec5a)과 같은 수정이라 polyspec-orm-tests crate에서 `make lint-rust`가 통과한다 (T334-3-24-3).
 - Python recipe test에서 쓰지 않는 import `read_dbspec_file`을 뺐다. 그래서 Python 게이트의 ruff 단계가 통과한다 (T334-3-24-1).
 - TypeScript recipe test에서 쓰지 않는 import `readDbspecFile`을 뺐다. 그래서 TypeScript 게이트의 lint 단계가 통과한다 (T334-3-17-4).
 - tests/dbspec/plans.json의 case 13개는 여섯 runtime에서 recipe tests/dbspec/plan-cases.json으로 실행된다. op dbspec.parse, dbspec.parse_plan, dbspec.emit_plan, dbspec.diff, dbspec.plan_steps로 실행하며 native plan test를 대신한다. before와 after physical record는 tests/dbspec/plans-physical.json으로 옮겼고 case id로 찾는다 (T334-3-16-2-2).
