@@ -176,8 +176,8 @@ async fn run_steps(conn: &mut Conn, db: &str, steps: &[Step]) -> Result<(), Stri
 }
 
 // Requirements: PLN-102.
-// Each case of tests/dbspec/plan-cases.json is one trial, dbspec_plan_apply::<case id> (the recipe harness of
-// unit/dbspec_recipe.rs). A trial runs its case on each of the three databases in turn and fails if any of them fails.
+// Each case of tests/dbspec/plan-cases.json is one trial, dbspec_plan_apply::<case id> (its recipe steps are the
+// dbspec plan ops of the shared runner, packages/rust/tests/src/recipe.rs). A trial runs its case on each of the three databases in turn and fails if any of them fails.
 fn main() {
     let dir = repository().join("tests/dbspec");
     let cases = plan_cases::read_cases(&dir).or_panic(|e| e);

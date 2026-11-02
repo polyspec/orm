@@ -2765,7 +2765,8 @@ ir-validate-check: ir-validate-check/go ir-validate-check/rust ir-validate-check
 ir-validate-check/go:
 	$(GO_TEST) ./packages/go/engine/ir -run 'TestRecipeIRValidateNone' -count=1
 ir-validate-check/rust: lease-tool
-	cd packages/rust && $(CARGO_TEST) ir-validate-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm --test ir_validate
+	cd packages/rust && $(CARGO_TEST) ir-validate-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-tests --test ir_validate_none
+	cd packages/rust && $(CARGO_TEST) ir-validate-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm --test ir_manifest_hash
 ir-validate-check/typescript: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)

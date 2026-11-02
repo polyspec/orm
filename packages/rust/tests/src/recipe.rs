@@ -9,12 +9,25 @@ use std::path::{Path, PathBuf};
 use crate::markdown;
 use polyspec_orm::codec;
 use polyspec_orm::dbspec::{self, Dialect, Document, Position};
+use polyspec_orm::engine;
 use polyspec_orm::ordered_json::{self, Kind};
 use polyspec_orm::{Param, StyledValue, Val};
 use serde_json::{Map, Number, Value};
 
+/// The request builder of the planner and request validation ops, shared with the engine's unit tests (orm/tests/unit/ir_request.rs).
+#[allow(dead_code, reason = "the builder is included whole, and this crate uses only some of its functions")]
+#[path = "../../orm/tests/unit/ir_request.rs"]
+mod ir_request;
+
 /// The database part of a recipe without a database (FCV-3).
 pub const NONE: &str = "none";
+
+/// The schema of the request validation ops: the bench model, whose manifest the requests are checked against.
+const IR_VALIDATE_SCHEMA: &str = "contracts/fixtures/bench/bench.dbs";
+
+/// The dialects of the planner op, each with the name of its expect.
+const PLAN_DIALECTS: [(&str, engine::Dialect); 3] =
+    [("mysql", engine::Dialect::MySql), ("postgres", engine::Dialect::Postgres), ("sqlite", engine::Dialect::Sqlite)];
 
 /// What a step produced: its value, or the code and message of its error.
 type Outcome = Result<Produced, (String, String)>;
@@ -25,6 +38,10 @@ enum Produced {
     Read(Val),
     /// The cell an encode, a host encode or a blind index wrote.
     Written(Param),
+    /// The document that a dbspec parse binds.
+    Document(Document),
+    /// The plan that a dbspec parse_plan binds.
+    Plan(dbspec::Plan),
 }
 
 /// One trial for each case of the recipe at `path`, relative to the repository root, on `database`, named
@@ -103,6 +120,11 @@ fn dsn_connect(step: &Value, database: &str) -> Result<(), String> {
 fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: &Path) -> Result<(), String> {
     match step["op"].as_str().unwrap_or_default() {
         "dsn.connect" => return dsn_connect(step, database),
+        "planner.compile" => return planner_compile(step, database, dir),
+        "ir.validate" => return ir_validate(step, database),
+        "dbspec.parse" | "dbspec.parse_plan" | "dbspec.emit_plan" | "dbspec.plan_steps" | "dbspec.diff" | "dbspec.chain" | "dbspec.compare" => {
+            return dbspec_plan_step(step, bound, database)
+        }
         "dbspec.parse_emit"
         | "dbspec.manifest"
         | "dbspec.render"
@@ -178,6 +200,273 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
                 Err(format!("decoded {got}, want {want}"))
             }
         }
+        Ok(Produced::Document(_) | Produced::Plan(_)) => Err("a dbspec parse value is no codec value".to_owned()),
+    }
+}
+
+/// The JSON form of a statement of a plan, as the planner fixture writes it: its role, sql, bind slots and tables.
+fn planner_statement(step: &polyspec_orm::plan::Step) -> Value {
+    let slots: Vec<Value> = step
+        .bind_slots
+        .iter()
+        .map(|slot| {
+            if slot.from == "parent" {
+                return serde_json::json!({"from": slot.from, "key_types": slot.key_types});
+            }
+            let mut out = serde_json::json!({"from": slot.from, "type": slot.col_type});
+            if slot.from == "param" {
+                out["param"] = serde_json::json!(slot.param);
+            }
+            // A datetime or time slot carries its fraction digits.
+            if slot.col_type == "datetime" || slot.col_type == "time" {
+                out["precision"] = serde_json::json!(slot.precision);
+            }
+            // A varchar param slot carries its length.
+            if slot.from == "param" && slot.col_type == "varchar" {
+                out["length"] = serde_json::json!(slot.length);
+            }
+            // An assignment slot of a non-null column says so.
+            if slot.not_null {
+                out["not_null"] = serde_json::json!(true);
+            }
+            out
+        })
+        .collect();
+    serde_json::json!({"role": step.role, "sql": step.sql, "slots": slots, "tables": step.tables})
+}
+
+/// The planner.compile op (FCV-4): the step builds its request from its JSON with the manifest hash of its schema, compiles it for
+/// each dialect, and checks the plans with the expect of `database`, or the error code that every dialect fails with.
+fn planner_compile(step: &Value, database: &str, dir: &Path) -> Result<(), String> {
+    let want = step["expect"].get(database).ok_or_else(|| format!("planner.compile has no expect for {database}"))?;
+    let schema = step["schema"].as_str().unwrap_or_default();
+    // The schema is named relative to the directory of the recipe, which is absolute, so the path is absolute too.
+    let manifest = ir_request::schema(&dir.join(schema).to_string_lossy());
+    let input = ir_request::request(&step["input"], &manifest.manifest_hash);
+    if let Some(code) = want.get("error").and_then(Value::as_str) {
+        for (name, dialect) in PLAN_DIALECTS {
+            let got = engine::compile(&manifest, dialect, &input).err().map(|error| error.code().to_owned());
+            if got.as_deref() != Some(code) {
+                return Err(format!("{name}: error {got:?}, want {code}"));
+            }
+        }
+        return Ok(());
+    }
+    for (name, dialect) in PLAN_DIALECTS {
+        let plan = engine::compile(&manifest, dialect, &input).map_err(|error| format!("{name}: {error}"))?;
+        let got = Value::Array(plan.steps.iter().map(planner_statement).collect());
+        if got != want["value"][name] {
+            return Err(format!("{name}:\n got {got}\nwant {}", want["value"][name]));
+        }
+    }
+    Ok(())
+}
+
+/// The ir.validate op (FCV-4): the step builds its request from its JSON with the manifest hash of the bench schema, then validates
+/// it. A request shape that the typed request refuses is IR_INVALID. The expect of `database` is {error: CODE}, or {value: {bool:
+/// true}} for an accepted request.
+fn ir_validate(step: &Value, database: &str) -> Result<(), String> {
+    let want = step["expect"].get(database).ok_or_else(|| format!("ir.validate has no expect for {database}"))?;
+    if step["request"].get("manifest_hash").is_some() {
+        return Err("the request already holds manifest_hash".to_owned());
+    }
+    let manifest = ir_request::schema(IR_VALIDATE_SCHEMA);
+    let built = std::panic::catch_unwind(|| ir_request::request(&step["request"], &manifest.manifest_hash));
+    let got: Result<(), String> = match built {
+        Ok(request) => engine::validate(&manifest, &request).map_err(|error| error.code().to_owned()),
+        Err(payload) => {
+            let message = payload.downcast_ref::<String>().cloned().unwrap_or_default();
+            match message.strip_prefix(ir_request::REJECTED) {
+                Some(_) => Err("IR_INVALID".to_owned()),
+                None => std::panic::resume_unwind(payload),
+            }
+        }
+    };
+    match want.get("error").and_then(Value::as_str) {
+        Some(code) if got.as_ref().err().is_some_and(|c| c == code) => Ok(()),
+        Some(code) => Err(format!("got {got:?}, want {code}")),
+        None if want["value"] != serde_json::json!({"bool": true}) => Err(format!("ir.validate expects {{bool true}} or an error, not {}", want["value"])),
+        None if got.is_ok() => Ok(()),
+        None => Err(format!("got {got:?}, want valid")),
+    }
+}
+
+/// The value that the ref of `raw` binds by an earlier step.
+fn bound_value<'a>(raw: &Value, bound: &'a HashMap<String, Outcome>) -> Result<&'a Produced, String> {
+    let name = raw["ref"].as_str().ok_or_else(|| format!("{raw} is not a ref"))?;
+    match bound.get(name) {
+        Some(Ok(value)) => Ok(value),
+        _ => Err(format!("ref {name} binds no value")),
+    }
+}
+
+/// The document that the ref of `raw` binds.
+fn bound_document(raw: &Value, bound: &HashMap<String, Outcome>) -> Result<Document, String> {
+    match bound_value(raw, bound)? {
+        Produced::Document(document) => Ok(document.clone()),
+        _ => Err(format!("ref {raw} binds no document")),
+    }
+}
+
+/// The plan that the ref of `raw` binds.
+fn bound_plan(raw: &Value, bound: &HashMap<String, Outcome>) -> Result<dbspec::Plan, String> {
+    match bound_value(raw, bound)? {
+        Produced::Plan(plan) => Ok(plan.clone()),
+        _ => Err(format!("ref {raw} binds no plan")),
+    }
+}
+
+/// The document of the key of a step, or none when the step has no such key or its value is null.
+fn optional_document(step: &Value, key: &str, bound: &HashMap<String, Outcome>) -> Result<Option<Document>, String> {
+    match step.get(key).filter(|raw| !raw.is_null()) {
+        Some(raw) => bound_document(raw, bound).map(Some),
+        None => Ok(None),
+    }
+}
+
+/// The text of the lines of a step, each ended by LF (the lines joined by LF, then one LF).
+fn plan_text(lines: &Value) -> String {
+    let lines: Vec<&str> = lines.as_array().expect("lines").iter().map(|line| line.as_str().expect("line")).collect();
+    format!("{}\n", lines.join("\n"))
+}
+
+/// The diagnostics as [rule, line, column, message]; the message is kept for rule plan, or for every rule when `every`.
+fn plan_rows(diagnostics: &[dbspec::Diagnostic], every: bool) -> Value {
+    Value::Array(
+        diagnostics
+            .iter()
+            .map(|d| {
+                let message = if every || d.rule == "plan" { Value::from(d.message.clone()) } else { Value::Null };
+                serde_json::json!([d.rule, d.line, d.column, message])
+            })
+            .collect(),
+    )
+}
+
+/// The messages of the diagnostics, each of rule `rule`.
+fn plan_messages(diagnostics: &[dbspec::Diagnostic], rule: &str) -> Result<Value, String> {
+    let mut messages = Vec::with_capacity(diagnostics.len());
+    for d in diagnostics {
+        if d.rule != rule {
+            return Err(format!("diagnostic of rule {}, want {rule}: {}", d.rule, d.message));
+        }
+        messages.push(Value::from(d.message.clone()));
+    }
+    Ok(Value::Array(messages))
+}
+
+/// The object of a plan step (docs/spec/plans.md "Steps"): its statement, its effect as text, and the fields that the step has.
+fn plan_fields(s: &dbspec::PlanStep) -> Value {
+    let mut out = Map::new();
+    out.insert("statement".into(), Value::from(s.statement.clone()));
+    out.insert("effect".into(), Value::from(s.effect.to_string()));
+    if !s.rollback.is_empty() {
+        out.insert("rollback".into(), Value::from(s.rollback.clone()));
+    } else if !s.irreversible.is_empty() {
+        out.insert("irreversible".into(), Value::from(s.irreversible.clone()));
+    }
+    if !s.restore.is_empty() {
+        out.insert("restore".into(), Value::from(s.restore.clone()));
+    }
+    if !s.rollback_restore.is_empty() {
+        out.insert("rollback_restore".into(), Value::from(s.rollback_restore.clone()));
+    }
+    if let Some(e) = s.restore_if.as_ref().filter(|_| !s.restore.is_empty() || !s.rollback_restore.is_empty()) {
+        out.insert("restore_if".into(), Value::from(e.to_string()));
+    }
+    if !s.null_checks.is_empty() {
+        let checks = s
+            .null_checks
+            .iter()
+            .map(|c| Value::Array(vec![c.table.clone().into(), c.column.clone().into(), c.default.clone().map_or(Value::Null, Value::from)]))
+            .collect();
+        out.insert("null_checks".into(), Value::Array(checks));
+    }
+    if s.finalize {
+        out.insert("finalize".into(), Value::Bool(true));
+    }
+    Value::Object(out)
+}
+
+/// The dialect that a name gives (mysql, postgres or sqlite) for a dbspec plan op.
+fn plan_dialect(name: &str) -> Result<Dialect, String> {
+    match name {
+        "mysql" => Ok(Dialect::MySql),
+        "postgres" => Ok(Dialect::Postgres),
+        "sqlite" => Ok(Dialect::Sqlite),
+        other => Err(format!("dialect {other} is not mysql, postgres or sqlite")),
+    }
+}
+
+/// The dbspec plan ops of a recipe step (FCV-4), each through its public dbspec call: parse, parse_plan, emit_plan, plan_steps,
+/// diff, chain and compare. A document or a plan that a step binds with `as` is the value of the ref of a later step. The result
+/// of the step is compared, as JSON, with the expect of `database`.
+fn dbspec_plan_step(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str) -> Result<(), String> {
+    let op = step["op"].as_str().unwrap_or_default();
+    let want = step["expect"].get(database).ok_or_else(|| format!("{op} has no expect for {database}"))?;
+    let binds = step["as"].as_str().map(str::to_owned);
+    let got = match op {
+        "dbspec.parse" => match dbspec::parse(&plan_text(&step["lines"]), &BTreeMap::new()) {
+            Ok(parsed) => {
+                if let Some(name) = binds {
+                    bound.insert(name, Ok(Produced::Document(parsed.document)));
+                }
+                serde_json::json!({"diagnostics": []})
+            }
+            Err(diagnostics) => serde_json::json!({"diagnostics": plan_rows(&diagnostics, false)}),
+        },
+        "dbspec.parse_plan" => match dbspec::parse_plan(&plan_text(&step["lines"])) {
+            Ok(parsed) => {
+                if let Some(name) = binds {
+                    bound.insert(name, Ok(Produced::Plan(parsed)));
+                }
+                serde_json::json!({"diagnostics": []})
+            }
+            Err(diagnostics) => serde_json::json!({"diagnostics": plan_rows(&diagnostics, false)}),
+        },
+        "dbspec.emit_plan" => serde_json::json!({"text": dbspec::emit_plan(&bound_plan(&step["plan"], bound)?)}),
+        "dbspec.plan_steps" => {
+            let source = optional_document(step, "source", bound)?;
+            let plan = bound_plan(&step["plan"], bound)?;
+            let dialect = plan_dialect(step["dialect"].as_str().unwrap_or_default())?;
+            match dbspec::plan_steps(source.as_ref(), &plan, dialect) {
+                Ok(steps) => serde_json::json!({"steps": steps.iter().map(plan_fields).collect::<Vec<Value>>()}),
+                Err(diagnostics) => serde_json::json!({"messages": plan_messages(&diagnostics, "plan")?}),
+            }
+        }
+        "dbspec.diff" => {
+            let source = optional_document(step, "source", bound)?;
+            let plan = bound_plan(&step["plan"], bound)?;
+            match dbspec::diff(source.as_ref(), &plan) {
+                Ok(changes) => serde_json::json!({"changes": changes.iter().map(|c| serde_json::json!([c.kind, c.table, c.name])).collect::<Vec<Value>>()}),
+                Err(diagnostics) => serde_json::json!({"messages": plan_messages(&diagnostics, "plan")?}),
+            }
+        }
+        "dbspec.chain" => {
+            let raw = step["plans"].as_array().ok_or_else(|| "dbspec.chain has no plans".to_owned())?;
+            let plans = raw.iter().map(|raw| bound_plan(raw, bound)).collect::<Result<Vec<dbspec::Plan>, String>>()?;
+            match dbspec::chain(&plans) {
+                Ok(ordered) => serde_json::json!({"order": ordered.iter().map(|p| p.name()).collect::<Vec<&str>>()}),
+                Err(diagnostics) => serde_json::json!({"messages": plan_messages(&diagnostics, "chain")?}),
+            }
+        }
+        "dbspec.compare" => {
+            let source = bound_document(&step["source"], bound)?;
+            let target = bound_document(&step["target"], bound)?;
+            match dbspec::compare_schemas(&source, &target) {
+                Ok(differences) => serde_json::json!({
+                    "differences": differences.iter().map(|d| serde_json::json!([d.kind, d.table, d.name])).collect::<Vec<Value>>(),
+                    "diagnostics": [],
+                }),
+                Err(diagnostics) => serde_json::json!({"differences": [], "diagnostics": plan_rows(&diagnostics, true)}),
+            }
+        }
+        other => return Err(format!("OP_UNKNOWN {other}")),
+    };
+    if got == *want {
+        Ok(())
+    } else {
+        Err(format!("got {got}, want {want}"))
     }
 }
 
@@ -728,6 +1017,7 @@ fn cell(raw: &Value, bound: &HashMap<String, Outcome>) -> Result<Val, String> {
             Produced::Written(Param::Bytes(bytes)) => Val::Bytes(bytes.clone()),
             Produced::Read(read) => read.clone(),
             Produced::Written(other) => return Err(format!("ref {name} is the cell {other:?}")),
+            Produced::Document(_) | Produced::Plan(_) => return Err(format!("ref {name} is a dbspec value")),
         });
     }
     match kind(raw)? {
@@ -744,6 +1034,7 @@ fn param(raw: &Value, bound: &HashMap<String, Outcome>) -> Result<Param, String>
         return match reference(name, bound)? {
             Produced::Written(written) => Ok(written.clone()),
             Produced::Read(read) => Ok(read_param(read.clone())),
+            Produced::Document(_) | Produced::Plan(_) => Err(format!("ref {name} is a dbspec value")),
         };
     }
     match kind(raw)? {
