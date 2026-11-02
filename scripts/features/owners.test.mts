@@ -37,7 +37,7 @@ caseTest('owner-check asks for the complex-query fixture databases only for a se
 caseTest('a changed test selects only the commands that run it', 5000, async () => {
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/orm/mysql_tls_test.go'])), ['dsn_connection/dsn-go', 'dsn_connection/dsn-mysql-tls-go']);
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/orm/register_test.go'])), ['schema_install/install-register-go']);
-  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/php/tests/CoverageDsnTest.php'])), ['dsn_connection/coverage/owner/php', 'dsn_connection/coverage/owner/php-extension']);
+  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/php/tests/DsnConnectionRecipeTest.php'])), ['dsn_connection/coverage/owner/php', 'dsn_connection/coverage/owner/php-extension']);
   assert.ok(selected(await selectOwners(manifest, root, ['contracts/check-inputs.json'])).includes('authenticated_encryption/aes-json-php-extension'));
 });
 
@@ -232,7 +232,7 @@ const t42 = [
 
 caseTest('a change across the four clients selects no full-suite target', 5000, async () => {
   // comment-language-check reads every source file (T131), so a source change selects it.
-  assert.deepEqual(targets(selectTargets(inputs, t42)), ['typescript-build-unit-check', 'comment-language-check', 'repo-check', 'go-fmt-check', 'go-vet-check', 'rust-fmt-check', 'catalog-php-extension-surface-check']);
+  assert.deepEqual(targets(selectTargets(inputs, t42)), ['typescript-build-unit-check', 'comment-language-check', 'repo-check', 'go-fmt-check', 'go-vet-check', 'rust-fmt-check', 'statement-events-check/rust', 'statement-events-check/go', 'statement-events-check/typescript', 'statement-events-check/python', 'statement-events-check/php', 'statement-events-check/php-extension', 'catalog-php-extension-surface-check']);
   const runtimes = ['go', 'php', 'php-extension', 'typescript', 'python', 'rust'];
   const nativeTargets = runtimes.flatMap(runtime => [
     `client-db-${runtime}-check`,
