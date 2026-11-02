@@ -4,7 +4,7 @@
 //
 // Usage: node packages/ts/testing/dbspec/compare/typescript.mts <tests/dbspec dir> <stress document> <ddl.json> <plan-cases.json> <mermaid.json>
 // (after the TypeScript build)
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join as joinPath, resolve as resolvePath } from 'node:path';
 import { readPlanCases, readPlanRecipes, readVectors, vectorProblems, type MermaidCase, type RecipeFile, type RecipeStep } from '../../../../../tests/dbspec/vectors.mts';
 import { parseJson, SchemaError } from '../../../../../scripts/json/schema.mts';
@@ -163,6 +163,12 @@ function main(): void {
   }
 
   const recipeDir = dirPath;
+  // A recipes directory that cannot be read as a directory is refused with its path before any of its files is read.
+  try {
+    readdirSync(recipeDir);
+  } catch (error) {
+    throw new Refusal([`${recipeDir}: ${errorMessage(error)}`]);
+  }
   // join gives the text of a document's lines with its line ends, as the recipes of tests/dbspec write them.
   // A mixed document starts with CRLF, alternates CRLF and LF from its second line, and has no final line ending (recipe.mjs joinText).
   const join = (lines: string[], crlf: boolean, mixed = false): string => {

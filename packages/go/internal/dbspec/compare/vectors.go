@@ -2,7 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -108,10 +111,18 @@ func readFiles(dir string) ([]fileCase, error) {
 }
 
 // readCases reads the recipe files of tests/dbspec in dir: the canonical, normalize, invalid, positions and files cases,
-// the hashes of hashes.json, and the analyses of sets.json and hashes.json in the order of syntax.json.
+// the hashes of hashes.json, and the analyses of sets.json and hashes.json in the order of syntax.json. A dir that cannot be
+// read as a directory is refused as "<dir>: <reason>" before any of its files is read.
 func readCases(dir string) (sharedCases, error) {
-	var err error
 	all := sharedCases{}
+	if _, err := os.ReadDir(dir); err != nil {
+		var pathErr *fs.PathError
+		if errors.As(err, &pathErr) {
+			err = pathErr.Err
+		}
+		return all, fmt.Errorf("%s: %w", dir, err)
+	}
+	var err error
 	for _, section := range []struct {
 		name string
 		op   string

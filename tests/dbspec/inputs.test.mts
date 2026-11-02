@@ -54,8 +54,9 @@ const stressHarness: Runner = { name: 'stress rust', command: join(cargoTarget()
 // inputNames is the name, in INPUTS order, that the input uses in messages.
 const inputNames: Record<string, string> = { dir: 'recipes directory', stress: 'stress document', ddl: 'ddl', plans: 'plans', mermaid: 'mermaid' };
 
-// Each case is the runner, its arguments, and the text naming the unreadable path that must appear on stderr: "<path>: ", or
-// for the recipes directory "<path>/", since a runner reads the recipe files in it and names the first one it cannot read.
+// Each case is the runner, its arguments, and the text naming the unreadable path that must appear on stderr: "<path>: ". The
+// recipes directory given as an empty directory is a directory, so the runner names the first recipe file of it that it
+// cannot read: "<path>/".
 const cases: { name: string; runner: Runner; inputs: string[]; named: string }[] = [];
 for (const unreadable of [missing, folder]) {
   const kind = unreadable === missing ? 'missing' : 'directory';
@@ -65,7 +66,7 @@ for (const unreadable of [missing, folder]) {
       if (!runner.reads.includes(input)) return;
       const inputs = compareInputs.slice();
       inputs[i] = unreadable;
-      const named = input === 'dir' ? `${unreadable}/` : `${unreadable}: `;
+      const named = input === 'dir' && unreadable === folder ? `${unreadable}/` : `${unreadable}: `;
       cases.push({ name: `${runner.name} rejects a ${kind} ${inputNames[input] ?? input}`, runner, inputs, named });
     });
     if (!runner.reads.includes('mermaid')) continue;

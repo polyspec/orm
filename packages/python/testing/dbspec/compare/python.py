@@ -55,6 +55,12 @@ if len(sys.argv) != 6:
     sys.exit(2)
 dir_path, stress_path, ddl_path, plans_path, mermaid_path = sys.argv[1:]
 recipe_dir = dir_path
+# A recipes directory that cannot be read as a directory is refused with its path before any of its files is read.
+try:
+    os.listdir(recipe_dir)
+except OSError as error:
+    print(f"{recipe_dir}: {error.strerror}", file=sys.stderr)
+    sys.exit(1)
 
 out = []
 

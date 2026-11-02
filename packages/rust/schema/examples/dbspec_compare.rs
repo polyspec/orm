@@ -787,6 +787,8 @@ fn write_import_step(out: &mut impl Write, dir: &Path, id: &str, step: &Value, t
 }
 
 fn run(dir: &str, stress_path: &str, ddl_path: &str, plans_path: &str, mermaid_path: &str) -> Result<(), String> {
+    // A recipes directory that cannot be read as a directory is refused with its path before any of its files is read.
+    std::fs::read_dir(dir).map_err(|e| format!("{dir}: {e}"))?;
     let cases = read_shared(dir)?;
     let stress = match polyspec_orm_schema::dbspec::read_file(Path::new(stress_path)) {
         Ok(text) => text,

@@ -341,6 +341,12 @@ function dbspec_read_set_recipe(string $path, string $kind): array
  */
 function dbspec_write_interface(string $dbspec, string $recipeDir, string $stressPath, string $ddlPath): array
 {
+    // A recipes directory that is not a directory is refused with its path before any of its files is read.
+    if (!is_dir($recipeDir)) {
+        $reason = file_exists($recipeDir) ? 'is not a directory' : 'no such directory';
+        fwrite(STDERR, "$recipeDir: $reason\n");
+        exit(1);
+    }
     $cases = [];
     $cases['canonical'] = dbspec_read_recipe($recipeDir . '/canonical.json', 'dbspec.format');
     $cases['normalize'] = dbspec_read_recipe($recipeDir . '/normalize.json', 'dbspec.format');
