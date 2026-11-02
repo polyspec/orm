@@ -10,7 +10,7 @@ import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { CORE, Db, OrmError, StyledValue, blindIndex, chainPlans, compareSchemas, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitPlan, encode, hostDecode, hostEncode, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel } from '../dist/index.js';
+import { CORE, Db, OrmError, StyledValue, blindIndex, chainPlans, compareSchemas, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitPlan, encode, hostDecode, hostEncode, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecSet, registerModel } from '../dist/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { Engine } from '../dist/index.js';
