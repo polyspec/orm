@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0bb565bc8c3090ce7be6610dfafb6f87667e3edb21da6960925e031612d8c338 -->
+<!-- source-sha256: 06a48df1a88325974671f385e6f37aee164d501cab4a2275ce98abde35350ca1 -->
 # 변경 이력
 
 ## Unreleased
 
 - TypeScript에서 숫자 문자열로 저장된 AES version은 Go 읽기 경로와 같이 그 숫자를 version으로 읽고, 다른 텍스트는 `CODEC_DECODE`다 (COD-53, T334-3-4-1).
 - Python에서 숫자 문자열로 저장된 AES version은 Go 읽기 경로와 같이 그 숫자를 version으로 읽고, 다른 텍스트는 `CODEC_DECODE`다 (COD-53, T334-3-4-2).
+- PHP 클라이언트와 PHP 확장은 SQLite가 INTEGER 또는 REAL 열에 저장한 텍스트를 `CATALOG_VALUE` 실패가 아니라 그 텍스트로 읽는다 (INT-151, T334-3-4-3).
 - check runner는 프로세스 표를 256 MiB buffer로 읽고, 실패한 목록은 오류 코드를 밝힌다. 그래서 큰 표가 단계를 SIGTERM으로 실패시키지 않는다 (T351).
 - 문장 runner(INT-150)의 parity unit은 여섯 런타임 모두에서 `Utils.run`과 frame `run`을 이름으로 쓰고, 모든 데이터베이스에서 statement_runner 테스트를 바인딩한다 (T345-7).
 - Python runtime은 `utils().run(fn)`을 public으로 두고, frame의 text가 아닌 statement는 CONFIG로 실패한다 (T345-6).
