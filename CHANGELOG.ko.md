@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 73cd299bd15f3d87f62a4d5e4cb854799b92d896d96ba9277d7ef3bf21bd5e13 -->
+<!-- source-sha256: 9056db49363871139545662a5fcc431704e9a510666a31895a48199717db2135 -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP 라이브러리는 predicate의 parameter를 키 정렬 순서가 아니라 Go 순서(p, plus_p, minus_p, ps, fn, value, sub)로 walk하므로, `p`와 `fn`을 함께 가진 predicate의 plan cache slot이 Go와 TypeScript client와 같다 (T326-15-2).
 - tests/events/vectors.json의 statement event는 여섯 client 모두에서 MySQL, PostgreSQL, SQLite 위에서 recipe `contracts/fixtures/statement_events/statement_events.json`으로 실행한다. native statement-event suite는 제거했고, server-transaction 시험과 coverage owner는 native로 남는다 (T334-3-5).
 - orm은 모든 생태계에서 ordered-json을 0.0.20으로 고정하며, 각 lock은 자기 package manager로 갱신한다 (T350).
 - orm은 kit 0.0.92를 고정한다. 그 target은 orm-install-rust-crates의 crate 받기와 맞고, 그 kit이 담은 원칙 사본을 받는다 (T353).

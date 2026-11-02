@@ -8,11 +8,14 @@ namespace Polyspec\Orm;
  * @internal rewrites a request so that its plan does not depend on the length of an IN list (T169-3, the Go
  * canonicalize of packages/go/orm/canonical.go): an IN list pads to a power of two by repeating its last value,
  * every parameter reference gets a slot of its own in walk order, and a parameter no reference names follows the
- * slots. Map keys are walked in sorted order, so the numbering is the same on every run.
+ * slots. A predicate is walked in Go's field order and other map keys in sorted order, so the numbering is the same
+ * on every run and in every runtime.
  */
 final class CanonicalRequest
 {
     private const MAX_SAFE_INTEGER = 9007199254740991;
+    /** @var list<string> the fields of a predicate or an assignment in Go's walk order (packages/go/orm/canonical.go) */
+    private const PREDICATE_ORDER = ['p', 'plus_p', 'minus_p', 'ps', 'fn', 'value', 'sub'];
     /** @var list<mixed> the canonical parameters */
     private array $out = [];
     /** @var array<int, bool> */
@@ -139,9 +142,7 @@ final class CanonicalRequest
             return $this->query($v, false);
         }
         $in = isset($v['op']) && ($v['op'] === 'in' || $v['op'] === 'not_in') && !isset($v['sub']);
-        $keys = array_keys($v);
-        sort($keys);
-        foreach ($keys as $k) {
+        foreach (self::walkKeys($v) as $k) {
             $x = $v[$k];
             if (($k === 'p' || $k === 'plus_p' || $k === 'minus_p') && is_int($x)) {
                 $v[$k] = $this->index($x);
@@ -154,6 +155,25 @@ final class CanonicalRequest
             }
         }
         return $v;
+    }
+
+    /**
+     * The keys of a map in walk order. A predicate or an assignment (a map with a string column) is walked in the
+     * order of Go's pred and assign: P, PlusP, MinusP, Ps, Fn, Value, Sub; the other keys follow in sorted order.
+     * Any other map is walked in sorted order, so a column function named like a field keeps its place.
+     *
+     * @param array<mixed> $v
+     * @return list<int|string>
+     */
+    private static function walkKeys(array $v): array
+    {
+        $keys = array_keys($v);
+        sort($keys);
+        if (!is_string($v['column'] ?? null)) {
+            return $keys;
+        }
+        $first = array_values(array_filter(self::PREDICATE_ORDER, fn (string $k): bool => array_key_exists($k, $v)));
+        return [...$first, ...array_values(array_diff($keys, $first))];
     }
 
     /** @param array<mixed> $ps */
