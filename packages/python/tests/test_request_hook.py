@@ -11,6 +11,7 @@ from polyspec.orm.database import Db
 from polyspec.orm.errors import OrmError
 from . import testcase
 
+from .recipe import and_where
 from .test_sqlite import generate_document
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -18,15 +19,6 @@ PACKAGE = Path(__file__).resolve().parents[1]
 
 
 READS = ("one", "all", "count", "paginate")
-
-
-def and_where(query: dict, pred: dict) -> None:
-    """Adds pred to the query's where with AND. The existing where is wrapped in one group item."""
-    where = query.get("where")
-    if not where or not where.get("items"):
-        query["where"] = {"items": [{"pred": pred}]}
-        return
-    query["where"] = {"items": [{"group": where}, {"pred": {**pred, "conn": "and"}}]}
 
 
 def part_filter(value: str, kinds=READS):

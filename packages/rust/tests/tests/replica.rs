@@ -8,11 +8,9 @@
 //! direct server DSN because its raw SQLx connection sends a startup parameter that PgBouncer rejects.
 // Requirements: CFG-21, CFG-22, CFG-23, CFG-24, CFG-25.
 
-#[path = "common/model_connect.rs"]
-mod model_connect;
-#[path = "common/rollback_probe.rs"]
-mod rollback_probe;
 use model_connect::{connected, connected_with, with};
+use polyspec_orm_test_support::model_connect;
+use polyspec_orm_test_support::rollback_probe;
 use rollback_probe::{Probe, PROBE_SCHEMA};
 
 #[path = "common/or_panic.rs"]

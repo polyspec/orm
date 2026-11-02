@@ -71,18 +71,11 @@ function utf16Tokens(text, tokens) {
   }));
 }
 
-for (const c of recipes.canonical) {
-  vector(`canonical ${c.id} formats to itself`, () => {
-    const step = stepOf(c, 'dbspec.format');
-    const { text, set } = stepInput(step);
-    const doc = openDocument(text, { set });
-    assert.deepEqual(doc.diagnostics, []);
-    assert.deepEqual(doc.format(), { text: join(step.expect.none.text, false), diagnostics: [] });
-  });
-}
-
-for (const c of recipes.normalize) {
-  vector(`normalize ${c.id} formats to its canonical text`, () => {
+for (const [kind, c, outcome] of [
+  ...recipes.canonical.map(c => ['canonical', c, 'itself']),
+  ...recipes.normalize.map(c => ['normalize', c, 'its canonical text']),
+]) {
+  vector(`${kind} ${c.id} formats to ${outcome}`, () => {
     const step = stepOf(c, 'dbspec.format');
     const { text, set } = stepInput(step);
     const doc = openDocument(text, { set });

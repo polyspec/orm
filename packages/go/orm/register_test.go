@@ -35,12 +35,10 @@ func registerTexts(t *testing.T, names ...string) []string {
 	return texts
 }
 
-// TestRegisterRefusesEditedManifest checks that registering a manifest text that does not hash to the declared hash
-// fails with CONFIG (docs/spec/schema.md SCH-11), on each database. The no-statement part of registration is the
-// schema_install recipe (contracts/fixtures/schema_install/schema_install.json), not this test.
-// Requirements: DBS-104, DBS-119, SCH-11, SCH-15, SCH-17, INT-54.
-func TestRegisterRefusesEditedManifest(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+// onEachRegisterDatabase runs check on a connection to a new database of each kind, with the register fixture schema and the
+// schema of the install/note set.
+func onEachRegisterDatabase(t *testing.T, check func(t *testing.T, db *DB, schema, other *Schema)) {
+	t.Helper()
 	schema := registerFixture(t)
 	note, diagnostics := runtimemodel.LoadDocumentSet(registerTexts(t, "install/note"), nil)
 	if len(diagnostics) > 0 {
@@ -55,13 +53,24 @@ func TestRegisterRefusesEditedManifest(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer testcase.Close(t, db)
-			// The manifest text of another set does not hash to the declared hash.
-			edited := &Schema{Hash: schema.Hash, Text: other.Text}
-			if err := db.Utils().Schema().Register(edited); ErrorCode(err) != CodeConfig {
-				t.Fatalf("register of an edited manifest text = %v, want CONFIG", err)
-			}
+			check(t, db, schema, other)
 		})
 	}
+}
+
+// TestRegisterRefusesEditedManifest checks that registering a manifest text that does not hash to the declared hash
+// fails with CONFIG (docs/spec/schema.md SCH-11), on each database. The no-statement part of registration is the
+// schema_install recipe (contracts/fixtures/schema_install/schema_install.json), not this test.
+// Requirements: DBS-104, DBS-119, SCH-11, SCH-15, SCH-17, INT-54.
+func TestRegisterRefusesEditedManifest(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	onEachRegisterDatabase(t, func(t *testing.T, db *DB, schema, other *Schema) {
+		// The manifest text of another set does not hash to the declared hash.
+		edited := &Schema{Hash: schema.Hash, Text: other.Text}
+		if err := db.Utils().Schema().Register(edited); ErrorCode(err) != CodeConfig {
+			t.Fatalf("register of an edited manifest text = %v, want CONFIG", err)
+		}
+	})
 }
 
 // TestRegisterReusesEnginePerHash checks that a connection that registers two document sets with different manifest
@@ -70,40 +79,26 @@ func TestRegisterRefusesEditedManifest(t *testing.T) {
 // Requirements: SCH-17, SCH-11.
 func TestRegisterReusesEnginePerHash(t *testing.T) {
 	testcase.Start(t, testcase.Database)
-	schema := registerFixture(t)
-	note, diagnostics := runtimemodel.LoadDocumentSet(registerTexts(t, "install/note"), nil)
-	if len(diagnostics) > 0 {
-		t.Fatal(runtimemodel.DiagnosticsError(diagnostics))
-	}
-	other := &Schema{Hash: note.ManifestHash, Text: note.ManifestText}
-	for _, name := range []string{"sqlite", "mysql", "postgres"} {
-		t.Run(name, func(t *testing.T) {
-			dsn := testdb.New(t, name)
-			db, err := Connect(dsn, Config{})
-			if err != nil {
-				t.Fatal(err)
+	onEachRegisterDatabase(t, func(t *testing.T, db *DB, schema, other *Schema) {
+		for _, s := range []*Schema{schema, other, schema, other} {
+			if err := db.Utils().Schema().Register(s); err != nil {
+				t.Fatalf("register of %s: %v", s.Hash, err)
 			}
-			defer testcase.Close(t, db)
-			for _, s := range []*Schema{schema, other, schema, other} {
-				if err := db.Utils().Schema().Register(s); err != nil {
-					t.Fatalf("register of %s: %v", s.Hash, err)
-				}
-			}
-			memberEngine, err := db.engineFor(schema)
-			if err != nil {
-				t.Fatalf("the registered set is not planned: %v", err)
-			}
-			noteEngine, err := db.engineFor(other)
-			if err != nil {
-				t.Fatalf("the second registered set is not planned: %v", err)
-			}
-			if memberEngine == noteEngine || memberEngine.M.ManifestHash != schema.Hash || noteEngine.M.ManifestHash != other.Hash {
-				t.Fatalf("hash-selected engines = %p (%s), %p (%s); want separate engines for %s and %s", memberEngine, memberEngine.M.ManifestHash, noteEngine, noteEngine.M.ManifestHash, schema.Hash, other.Hash)
-			}
-			again, err := db.engineFor(schema)
-			if err != nil || again != memberEngine {
-				t.Fatalf("re-registered set is planned by a new engine: %v", err)
-			}
-		})
-	}
+		}
+		memberEngine, err := db.engineFor(schema)
+		if err != nil {
+			t.Fatalf("the registered set is not planned: %v", err)
+		}
+		noteEngine, err := db.engineFor(other)
+		if err != nil {
+			t.Fatalf("the second registered set is not planned: %v", err)
+		}
+		if memberEngine == noteEngine || memberEngine.M.ManifestHash != schema.Hash || noteEngine.M.ManifestHash != other.Hash {
+			t.Fatalf("hash-selected engines = %p (%s), %p (%s); want separate engines for %s and %s", memberEngine, memberEngine.M.ManifestHash, noteEngine, noteEngine.M.ManifestHash, schema.Hash, other.Hash)
+		}
+		again, err := db.engineFor(schema)
+		if err != nil || again != memberEngine {
+			t.Fatalf("re-registered set is planned by a new engine: %v", err)
+		}
+	})
 }

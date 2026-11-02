@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
-	"strings"
 
 	"github.com/polyspec/orm/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/packages/go/internal/dbspec/skeleton"
 )
 
 // mermaidStep runs the dbspec.export_mermaid or dbspec.import_mermaid op of s (FCV-4) on the public Mermaid calls (DBS-169) and
@@ -69,7 +69,7 @@ func importMermaid(s step, bound map[string]result, dir string) (map[string]any,
 	if len(diagnostics2) > 0 {
 		return nil, fmt.Errorf("parse %s: %v", s.SkeletonOf, diagnostics2)
 	}
-	same := slices.Equal(mermaidSkeleton(original), mermaidSkeleton(d))
+	same := slices.Equal(skeleton.Mermaid(original), skeleton.Mermaid(d))
 	return map[string]any{"dropped": dropsOf(dropped), "same_skeleton": same}, nil
 }
 
@@ -97,34 +97,6 @@ func dropsOf(us []dbspec.Unsupported) []any {
 	out := []any{}
 	for _, u := range us {
 		out = append(out, []any{u.Kind, u.Table, u.Name})
-	}
-	return out
-}
-
-// mermaidSkeleton writes the tables, columns, primary keys and foreign keys that Mermaid carries, in table-name order; foreign key
-// actions are left out, since Mermaid does not carry them.
-func mermaidSkeleton(d *dbspec.Document) []string {
-	tables := slices.Clone(d.Tables)
-	slices.SortFunc(tables, func(a, b dbspec.Table) int { return strings.Compare(a.Name, b.Name) })
-	var out []string
-	for _, t := range tables {
-		out = append(out, "table "+t.Name)
-		for _, c := range t.Columns {
-			dflt := "-"
-			if c.Default != nil {
-				dflt = c.Default.Literal
-				if c.Default.Now {
-					dflt = "now"
-				}
-			}
-			out = append(out, fmt.Sprintf("column %s %s null=%t identity=%t default=%s", c.Name, c.Type, c.Null, c.Identity, dflt))
-		}
-		out = append(out, "primary key "+strings.Join(t.PrimaryKey.Columns, ", "))
-		fks := slices.Clone(t.ForeignKeys)
-		slices.SortFunc(fks, func(a, b dbspec.ForeignKey) int { return strings.Compare(a.Name, b.Name) })
-		for _, f := range fks {
-			out = append(out, "foreign key "+f.Name+" ("+strings.Join(f.Columns, ", ")+") references "+f.Table+" ("+strings.Join(f.References, ", ")+")")
-		}
 	}
 	return out
 }

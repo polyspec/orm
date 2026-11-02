@@ -109,6 +109,38 @@ typedef struct {
     HashTable *used;
 } request_walk;
 
+/* Reorders the array `keys` of the keys of `input`: first the keys of `order` that `input` has, in that order, then the other
+ * keys in their order in `keys`. */
+static void keys_in_order(zval *keys, HashTable *input, const char **order, size_t order_count)
+{
+    zval ordered_keys;
+    array_init_size(&ordered_keys, zend_hash_num_elements(Z_ARRVAL_P(keys)));
+    for (size_t i = 0; i < order_count; i++) {
+        zend_string *field = zend_string_init(order[i], strlen(order[i]), 0);
+        if (zend_hash_exists(input, field)) add_next_index_str(&ordered_keys, field);
+        else zend_string_release(field);
+    }
+    zval *sorted_key;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(keys), sorted_key) {
+        bool scheduled = false;
+        if (Z_TYPE_P(sorted_key) == IS_STRING) {
+            for (size_t i = 0; i < order_count; i++) {
+                if (zend_string_equals_cstr(Z_STR_P(sorted_key), order[i], strlen(order[i]))) {
+                    scheduled = true;
+                    break;
+                }
+            }
+        }
+        if (!scheduled) {
+            zval copy;
+            ZVAL_COPY(&copy, sorted_key);
+            add_next_index_zval(&ordered_keys, &copy);
+        }
+    } ZEND_HASH_FOREACH_END();
+    zval_ptr_dtor(keys);
+    ZVAL_COPY_VALUE(keys, &ordered_keys);
+}
+
 static bool request_node(request_walk *walk, zval *input, zval *output);
 static bool request_index(request_walk *walk, zend_long p, zend_long *result);
 
@@ -344,33 +376,8 @@ static bool request_assoc(request_walk *walk, HashTable *input, zval *output)
             "columns", "on", "where", "joins", "relations", "order", "limit", "if_parent",
             "set", "on_duplicate", "rows", "optimistic",
         };
-        zval ordered_keys;
-        array_init_size(&ordered_keys, zend_hash_num_elements(Z_ARRVAL(keys)));
         size_t order_count = is_root ? sizeof(query_order) / sizeof(query_order[0]) : 8;
-        for (size_t i = 0; i < order_count; i++) {
-            zend_string *field = zend_string_init(query_order[i], strlen(query_order[i]), 0);
-            if (zend_hash_exists(input, field)) add_next_index_str(&ordered_keys, field);
-            else zend_string_release(field);
-        }
-        zval *sorted_key;
-        ZEND_HASH_FOREACH_VAL(Z_ARRVAL(keys), sorted_key) {
-            bool scheduled = false;
-            if (Z_TYPE_P(sorted_key) == IS_STRING) {
-                for (size_t i = 0; i < order_count; i++) {
-                    if (zend_string_equals_cstr(Z_STR_P(sorted_key), query_order[i], strlen(query_order[i]))) {
-                        scheduled = true;
-                        break;
-                    }
-                }
-            }
-            if (!scheduled) {
-                zval copy;
-                ZVAL_COPY(&copy, sorted_key);
-                add_next_index_zval(&ordered_keys, &copy);
-            }
-        } ZEND_HASH_FOREACH_END();
-        zval_ptr_dtor(&keys);
-        ZVAL_COPY_VALUE(&keys, &ordered_keys);
+        keys_in_order(&keys, input, query_order, order_count);
     }
     if (!is_query) {
         /* A predicate or an assignment (a map with a string column) is walked in Go's field order (canonical.go pred and assign). */
@@ -378,33 +385,7 @@ static bool request_assoc(request_walk *walk, HashTable *input, zval *output)
         if (column_value != NULL) ZVAL_DEREF(column_value);
         if (column_value != NULL && Z_TYPE_P(column_value) == IS_STRING) {
             static const char *predicate_order[] = {"p", "plus_p", "minus_p", "ps", "fn", "value", "sub"};
-            size_t order_count = sizeof(predicate_order) / sizeof(predicate_order[0]);
-            zval ordered_keys;
-            array_init_size(&ordered_keys, zend_hash_num_elements(Z_ARRVAL(keys)));
-            for (size_t i = 0; i < order_count; i++) {
-                zend_string *field = zend_string_init(predicate_order[i], strlen(predicate_order[i]), 0);
-                if (zend_hash_exists(input, field)) add_next_index_str(&ordered_keys, field);
-                else zend_string_release(field);
-            }
-            zval *sorted_key;
-            ZEND_HASH_FOREACH_VAL(Z_ARRVAL(keys), sorted_key) {
-                bool scheduled = false;
-                if (Z_TYPE_P(sorted_key) == IS_STRING) {
-                    for (size_t i = 0; i < order_count; i++) {
-                        if (zend_string_equals_cstr(Z_STR_P(sorted_key), predicate_order[i], strlen(predicate_order[i]))) {
-                            scheduled = true;
-                            break;
-                        }
-                    }
-                }
-                if (!scheduled) {
-                    zval copy;
-                    ZVAL_COPY(&copy, sorted_key);
-                    add_next_index_zval(&ordered_keys, &copy);
-                }
-            } ZEND_HASH_FOREACH_END();
-            zval_ptr_dtor(&keys);
-            ZVAL_COPY_VALUE(&keys, &ordered_keys);
+            keys_in_order(&keys, input, predicate_order, sizeof(predicate_order) / sizeof(predicate_order[0]));
         }
     }
 

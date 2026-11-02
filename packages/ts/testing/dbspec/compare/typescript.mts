@@ -63,16 +63,21 @@ type SetCase = { id: string; documents: Record<string, string[]> };
 /** One analysis of a set recipe, with the id that the output names it by. */
 type SetAnalysis = { id: string; input: { text: string; documents: Record<string, string> } };
 
-// readRecipe reads a recipe file of tests/dbspec strictly against the recipe schema, and gives each case with its step of op.
-function readRecipe(path: string, op: string): RecipeCase[] {
-  let file: ParseRecipe;
+// readRecipeFile reads the recipe file at path strictly against the recipe schema; a refusal is written to stderr, one line per
+// problem, and ends with 1.
+function readRecipeFile<T>(path: string): T {
   try {
-    file = parseJson<ParseRecipe>(readInput(path), RECIPE_SCHEMA, path);
+    return parseJson<T>(readInput(path), RECIPE_SCHEMA, path);
   } catch (error) {
     if (error instanceof SchemaError) for (const line of vectorProblems(path, error)) console.error(line);
     else console.error(errorMessage(error));
     process.exit(1);
   }
+}
+
+// readRecipe reads a recipe file of tests/dbspec strictly against the recipe schema, and gives each case with its step of op.
+function readRecipe(path: string, op: string): RecipeCase[] {
+  const file = readRecipeFile<ParseRecipe>(path);
   return file.cases.map((c, index) => {
     const step = c.steps.find(s => s.op === op);
     if (step === undefined) fail(path, `cases[${index}].steps`, `has no ${op} step`);
@@ -89,14 +94,7 @@ function readRecipe(path: string, op: string): RecipeCase[] {
 // ids sets.<case>.<n> (n the place of the analysis in the case) and hashes.<case>.<name> (name the header name of the text).
 // A hashes case's documents are the owned texts of its dbspec.set step, each named by its header.
 function readSetRecipe(path: string, kind: 'hashes' | 'sets'): { cases: SetCase[]; analyses: SetAnalysis[] } {
-  let file: SetRecipeFile;
-  try {
-    file = parseJson<SetRecipeFile>(readInput(path), RECIPE_SCHEMA, path);
-  } catch (error) {
-    if (error instanceof SchemaError) for (const line of vectorProblems(path, error)) console.error(line);
-    else console.error(errorMessage(error));
-    process.exit(1);
-  }
+  const file = readRecipeFile<SetRecipeFile>(path);
   const cases: SetCase[] = [];
   const analyses: SetAnalysis[] = [];
   for (const c of file.cases) {

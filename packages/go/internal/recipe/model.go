@@ -153,33 +153,86 @@ func stringOf(v any, column string) (string, error) {
 	return "", fmt.Errorf("column %s: want a text wrapper, got %T", column, v)
 }
 
+// columnSetter sets one column of a model from the recipe value v of column.
+type columnSetter func(v any, column string) error
+
+// int64Setter is the columnSetter of a model setter of an integer column.
+func int64Setter[R any](set func(int64) R) columnSetter {
+	return func(v any, column string) error {
+		n, err := int64Of(v, column)
+		if err == nil {
+			set(n)
+		}
+		return err
+	}
+}
+
+// stringSetter is the columnSetter of a model setter of a text column.
+func stringSetter[R any](set func(string) R) columnSetter {
+	return func(v any, column string) error {
+		text, err := stringOf(v, column)
+		if err == nil {
+			set(text)
+		}
+		return err
+	}
+}
+
+// setColumns sets each column of values, in column order, with its setter; a column with no setter is refused.
+func setColumns(name string, values map[string]any, setters map[string]columnSetter) error {
+	for _, column := range sortedColumns(values) {
+		set, ok := setters[column]
+		if !ok {
+			return fmt.Errorf("%s column %s has no recipe setter", name, column)
+		}
+		if err := set(values[column], column); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// keyAndSet reads the key and the set of a model.update step.
+func keyAndSet(s databaseStep, c *databaseContext) (map[string]any, map[string]any, error) {
+	key, err := modelValues(s.Key, c)
+	if err != nil {
+		return nil, nil, err
+	}
+	set, err := modelValues(s.Set, c)
+	return key, set, err
+}
+
+// deleteRows deletes each row of rows.
+func deleteRows[R interface{ Delete(...bool) error }](rows []R) (outcome, error) {
+	for _, row := range rows {
+		if err := row.Delete(); err != nil {
+			return outcome{}, err
+		}
+	}
+	return outcome{fields: map[string]any{}}, nil
+}
+
 // compositeAccount is a CompositeAccount model set from the values of a model op.
 func compositeAccount(db *orm.DB, values map[string]any) (*model.CompositeAccountModel, error) {
 	m := model.CompositeAccount().Connect(db)
-	for _, column := range sortedColumns(values) {
-		v := values[column]
-		var err error
-		switch column {
-		case "tenant_id":
-			var n int64
-			n, err = int64Of(v, column)
-			m.SetTenantId(n)
-		case "account_id":
-			var n int64
-			n, err = int64Of(v, column)
-			m.SetAccountId(n)
-		case "name":
-			var s string
-			s, err = stringOf(v, column)
-			m.SetName(s)
-		default:
-			return nil, fmt.Errorf("CompositeAccount column %s has no recipe setter", column)
-		}
-		if err != nil {
-			return nil, err
-		}
+	err := setColumns("CompositeAccount", values, map[string]columnSetter{
+		"tenant_id":  int64Setter(m.SetTenantId),
+		"account_id": int64Setter(m.SetAccountId),
+		"name":       stringSetter(m.SetName),
+	})
+	if err != nil {
+		return nil, err
 	}
 	return m, nil
+}
+
+// compositeAccountWhere is the CompositeAccount chain on db narrowed by the where of s.
+func compositeAccountWhere(s databaseStep, c *databaseContext, db *orm.DB) (*model.CompositeAccountModel, error) {
+	where, err := modelValues(s.Where, c)
+	if err != nil {
+		return nil, err
+	}
+	return compositeAccountFilter(model.CompositeAccount().Connect(db), where)
 }
 
 // compositeAccountFilter narrows a CompositeAccount chain by the equalities of a model op.
@@ -267,11 +320,7 @@ func compositeAccountOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome
 		n, err := model.CompositeAccount().Connect(db).Creates(rows, s.Batch)
 		return outcome{fields: map[string]any{"value": map[string]any{"int": strconv.FormatInt(n, 10)}}}, err
 	case "model.update":
-		key, err := modelValues(s.Key, c)
-		if err != nil {
-			return outcome{}, err
-		}
-		set, err := modelValues(s.Set, c)
+		key, set, err := keyAndSet(s, c)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -292,11 +341,7 @@ func compositeAccountOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome
 		_, err = rows[0].Update()
 		return outcome{fields: map[string]any{}}, err
 	case "model.delete":
-		where, err := modelValues(s.Where, c)
-		if err != nil {
-			return outcome{}, err
-		}
-		m, err := compositeAccountFilter(model.CompositeAccount().Connect(db), where)
+		m, err := compositeAccountWhere(s, c, db)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -304,18 +349,9 @@ func compositeAccountOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome
 		if err != nil {
 			return outcome{}, err
 		}
-		for _, row := range rows.Slice() {
-			if err := row.Delete(); err != nil {
-				return outcome{}, err
-			}
-		}
-		return outcome{fields: map[string]any{}}, nil
+		return deleteRows(rows.Slice())
 	case "model.count":
-		where, err := modelValues(s.Where, c)
-		if err != nil {
-			return outcome{}, err
-		}
-		m, err := compositeAccountFilter(model.CompositeAccount().Connect(db), where)
+		m, err := compositeAccountWhere(s, c, db)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -564,28 +600,13 @@ func compositeMembershipCells(row *model.CompositeMembershipModel, columns []str
 // compositeMembership is a CompositeMembership model set from the values of a model op.
 func compositeMembership(db *orm.DB, values map[string]any) (*model.CompositeMembershipModel, error) {
 	m := model.CompositeMembership().Connect(db)
-	for _, column := range sortedColumns(values) {
-		v := values[column]
-		var err error
-		switch column {
-		case "tenant_id":
-			var n int64
-			n, err = int64Of(v, column)
-			m.SetTenantId(n)
-		case "account_id":
-			var n int64
-			n, err = int64Of(v, column)
-			m.SetAccountId(n)
-		case "role":
-			var s string
-			s, err = stringOf(v, column)
-			m.SetRole(s)
-		default:
-			return nil, fmt.Errorf("CompositeMembership column %s has no recipe setter", column)
-		}
-		if err != nil {
-			return nil, err
-		}
+	err := setColumns("CompositeMembership", values, map[string]columnSetter{
+		"tenant_id":  int64Setter(m.SetTenantId),
+		"account_id": int64Setter(m.SetAccountId),
+		"role":       stringSetter(m.SetRole),
+	})
+	if err != nil {
+		return nil, err
 	}
 	return m, nil
 }
@@ -858,11 +879,7 @@ func authorOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, error) {
 		}
 		return outcome{fields: map[string]any{"rows": rows}}, nil
 	case "model.update":
-		key, err := modelValues(s.Key, c)
-		if err != nil {
-			return outcome{}, err
-		}
-		set, err := modelValues(s.Set, c)
+		key, set, err := keyAndSet(s, c)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -957,12 +974,7 @@ func userOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, error) {
 	if err != nil {
 		return outcome{}, err
 	}
-	for _, row := range rows.Slice() {
-		if err := row.Delete(); err != nil {
-			return outcome{}, err
-		}
-	}
-	return outcome{fields: map[string]any{}}, nil
+	return deleteRows(rows.Slice())
 }
 
 // noteReaderOp runs model.query on the NoteReader model with its relation to the external SharedNote model.

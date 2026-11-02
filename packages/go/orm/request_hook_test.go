@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/packages/go/internal/irwhere"
 	"github.com/polyspec/orm/packages/go/orm"
 )
 
@@ -100,7 +101,7 @@ func seedDeletedEntries(t *testing.T, entry *orm.Entity, db *orm.DB) map[string]
 func partScope(value string) orm.RequestHook {
 	return func(r *ir.Request, addParam func(any) int, params []any) error {
 		if r.Kind == "restore" || slices.Contains(hookReadKinds, r.Kind) {
-			andWhere(&r.Query, partIs(addParam, value))
+			irwhere.And(&r.Query, partIs(addParam, value))
 		}
 		return nil
 	}
@@ -111,7 +112,7 @@ func partScope(value string) orm.RequestHook {
 func serviceScope(value string) orm.RequestHook {
 	var scope func(q *ir.Query, addParam func(any) int)
 	scope = func(q *ir.Query, addParam func(any) int) {
-		andWhere(q, partIs(addParam, value))
+		irwhere.And(q, partIs(addParam, value))
 		for _, rel := range q.Relations {
 			scope(rel.Query, addParam)
 		}
@@ -165,16 +166,6 @@ func seedHookItems(t *testing.T, e *orm.Entity, db *orm.DB) {
 	}
 }
 
-// andWhere adds pred to q's where with and. An existing where is wrapped in one group item.
-func andWhere(q *ir.Query, pred ir.Pred) {
-	if q.Where == nil || len(q.Where.Items) == 0 {
-		q.Where = &ir.Group{Items: []ir.Item{{Pred: &pred}}}
-		return
-	}
-	pred.Conn = "and"
-	q.Where = &ir.Group{Items: []ir.Item{{Group: q.Where}, {Pred: &pred}}}
-}
-
 func partIs(addParam func(any) int, value string) ir.Pred {
 	p := addParam(value)
 	return ir.Pred{Column: "part", Op: "eq", P: &p}
@@ -186,7 +177,7 @@ var hookReadKinds = []string{"one", "all", "count", "group_count", "sum", "avg",
 func partFilter(value string) orm.RequestHook {
 	return func(r *ir.Request, addParam func(any) int, params []any) error {
 		if slices.Contains(hookReadKinds, r.Kind) {
-			andWhere(&r.Query, partIs(addParam, value))
+			irwhere.And(&r.Query, partIs(addParam, value))
 		}
 		return nil
 	}
@@ -306,7 +297,7 @@ var requestHookCases = []struct {
 	{"invalid_param", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
 		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int, params []any) error {
 			p := r.NParams + 5
-			andWhere(&r.Query, ir.Pred{Column: "part", Op: "eq", P: &p})
+			irwhere.And(&r.Query, ir.Pred{Column: "part", Op: "eq", P: &p})
 			return nil
 		})
 		statements := 0

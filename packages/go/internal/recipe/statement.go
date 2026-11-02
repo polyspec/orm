@@ -133,11 +133,7 @@ func tableModelOp(s databaseStep, c *databaseContext, db *orm.DB, table string) 
 		if s.Key != nil {
 			return outcome{}, fmt.Errorf("model.get_by with key has no table-model path")
 		}
-		where, err := assignments(s.Where, c)
-		if err != nil {
-			return outcome{}, err
-		}
-		if err := filterTable(core, where); err != nil {
+		if err := filterWhere(core, s, c); err != nil {
 			return outcome{}, err
 		}
 		m, err := core.Get()
@@ -172,11 +168,7 @@ func tableModelOp(s databaseStep, c *databaseContext, db *orm.DB, table string) 
 		return outcome{fields: map[string]any{}}, nil
 	case "model.count":
 		if s.Where != nil {
-			where, err := assignments(s.Where, c)
-			if err != nil {
-				return outcome{}, err
-			}
-			if err := filterTable(core, where); err != nil {
+			if err := filterWhere(core, s, c); err != nil {
 				return outcome{}, err
 			}
 		}
@@ -187,6 +179,15 @@ func tableModelOp(s databaseStep, c *databaseContext, db *orm.DB, table string) 
 		return outcome{fields: map[string]any{"value": map[string]any{"int": strconv.FormatInt(n, 10)}}}, nil
 	}
 	return outcome{}, fmt.Errorf("model op %s has no table-model path", s.Op)
+}
+
+// filterWhere narrows core by the where of s.
+func filterWhere(core *orm.Core, s databaseStep, c *databaseContext) error {
+	where, err := assignments(s.Where, c)
+	if err != nil {
+		return err
+	}
+	return filterTable(core, where)
 }
 
 // filterTable narrows a table-model chain by the equalities of where, joined by and in column order.

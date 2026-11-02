@@ -5,8 +5,7 @@
 //! case database (polyspec-orm-case-database), and it fails if ORM_TEST_MYSQL_DSN or
 //! ORM_TEST_POSTGRES_DSN is missing.
 
-#[path = "common/model_connect.rs"]
-mod model_connect;
+use polyspec_orm_test_support::model_connect;
 
 use polyspec_orm_test_support::model_row;
 

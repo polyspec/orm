@@ -1,58 +1,26 @@
-//! The generated-model ops of the constraints_and_relations recipe (docs/spec/feature-coverage.md FCV-4): each op calls the
-//! generated model that its step names (Author, User or NoteReader) on the connection that model.connect opened. The three
-//! trial binaries include the models of the bench set as `crate::model` and share this file. A model, a column or an op
-//! without an arm here fails its step by name.
+//! The generated-model ops of the model_queries and constraints_and_relations recipes (docs/spec/feature-coverage.md FCV-4):
+//! each op calls the generated model that its step names (Author, User or NoteReader) on the connection that model.connect
+//! opened. The trial binaries of both recipes include the models of the bench set as `crate::model` and share this file. A
+//! model, a column or an op without an arm here fails its step by name.
 
-use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
-
-use polyspec_orm::{Config, Db};
-use polyspec_orm_tests::recipe::{ModelDispatcher, ModelFuture};
+use polyspec_orm::Db;
+use polyspec_orm_tests::bench_models::{bench_dispatcher, cells, columns, fail, int, names, text, BenchModels};
+use polyspec_orm_tests::recipe::ModelDispatcher;
 use serde_json::{json, Value};
 
-use crate::model::{connect, Author, NoteReader, SharedNote, User};
-
-/// The dispatcher of one case: the connections that model.connect opened, by name.
-#[derive(Default)]
-pub struct Models {
-    connections: HashMap<String, Db>,
-}
+use crate::model::{Author, NoteReader, SharedNote, User, SCHEMA};
 
 /// The factory that the recipe helper calls once for each case.
 pub fn models() -> Box<dyn ModelDispatcher> {
-    Box::new(Models::default())
+    bench_dispatcher(&SCHEMA, BenchSet)
 }
 
-/// The keys that the generated models of the bench set read their encrypted columns with.
-fn bench_config() -> Config {
-    Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), ..Default::default() }
-}
+/// The ops of the model_queries and constraints_and_relations recipes.
+pub struct BenchSet;
 
-impl ModelDispatcher for Models {
-    fn connect<'a>(&'a mut self, name: &'a str, dsn: &'a str, pool_size: u32) -> ModelFuture<'a> {
-        Box::pin(async move {
-            let db = connect(dsn, pool_size, bench_config()).await.map_err(fail)?;
-            self.connections.insert(name.to_owned(), db);
-            Ok(json!({}))
-        })
-    }
-
-    fn call<'a>(&'a mut self, op: &'a str, connection: &'a str, step: &'a Value) -> ModelFuture<'a> {
-        Box::pin(async move {
-            let Some(db) = self.connections.get(connection) else {
-                return Err(format!("model op: connection {connection} is not bound by model.connect"));
-            };
-            run(db, op, step).await
-        })
-    }
-
-    fn close<'a>(&'a mut self) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>> {
-        Box::pin(async move {
-            for (_, db) in self.connections.drain() {
-                db.close().await;
-            }
-        })
+impl BenchModels for BenchSet {
+    async fn run(&self, db: &Db, op: &str, step: &Value) -> Result<Value, String> {
+        run(db, op, step).await
     }
 }
 
@@ -166,10 +134,6 @@ async fn note_reader_op(db: &Db, op: &str, step: &Value) -> Result<Value, String
     }
 }
 
-fn fail(error: polyspec_orm::Error) -> String {
-    error.to_string()
-}
-
 /// The Author filter of the equalities of `where`, ANDed. The generated model has the plain filters user_seq, service_seq
 /// and seq, and the and_ filters and_service_seq and and_seq, but no and_user_seq, so the conditions go in the order
 /// user_seq, service_seq, seq (serde_json sorts the object keys): the first is the plain filter and each later one its
@@ -214,29 +178,7 @@ fn author_cell(row: &Author, column: &str) -> Result<Value, String> {
     }
 }
 
-/// One row of the cells of `columns`, each read by `cell`.
-fn cells(columns: &[String], cell: impl Fn(&str) -> Result<Value, String>) -> Result<Value, String> {
-    columns.iter().map(|column| cell(column)).collect::<Result<Vec<_>, _>>().map(Value::Array)
-}
-
-fn names(array: &Value) -> Vec<String> {
-    array.as_array().into_iter().flatten().filter_map(|name| name.as_str().map(str::to_owned)).collect()
-}
-
 /// The column pairs of a relation match, each a list of two names.
 fn names_of_pairs(array: &Value) -> Vec<Vec<String>> {
     array.as_array().into_iter().flatten().map(names).collect()
-}
-
-fn columns(object: &Value) -> Result<&serde_json::Map<String, Value>, String> {
-    object.as_object().ok_or_else(|| format!("{object} is not an object of columns"))
-}
-
-fn int(wrapper: &Value) -> Result<i64, String> {
-    let digits = wrapper["int"].as_str().ok_or_else(|| format!("{wrapper} is not an int wrapper"))?;
-    digits.parse().map_err(|e: std::num::ParseIntError| format!("{wrapper}: {e}"))
-}
-
-fn text(wrapper: &Value) -> Result<String, String> {
-    wrapper["text"].as_str().map(str::to_owned).ok_or_else(|| format!("{wrapper} is not a text wrapper"))
 }

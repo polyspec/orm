@@ -6,7 +6,7 @@ use polyspec_orm_tests::recipe;
 // The generated models of the bench set, as `crate::model`, which the dispatcher of the model ops calls (FCV-4).
 polyspec_orm::models!();
 
-#[path = "../src/constraints_and_relations_dispatch.rs"]
+#[path = "../src/bench_set_dispatch.rs"]
 mod dispatch;
 
 fn main() {

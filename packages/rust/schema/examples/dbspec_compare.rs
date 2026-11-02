@@ -4,8 +4,8 @@
 //!
 //! Usage: `cargo run --release -p polyspec-orm-schema --example dbspec_compare -- <tests/dbspec dir> <stress document> <ddl.json> <plan-cases.json> <mermaid.json>`
 
-use polyspec_orm_schema::dbspec::model::DefaultValue;
 use polyspec_orm_schema::dbspec::{self, Change, Diagnostic, Dialect, Document, Plan, PlanStep, ReadError, Unsupported};
+use polyspec_orm_test_support::mermaid_skeleton::mermaid_skeleton;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::io::{BufWriter, Write};
@@ -682,35 +682,6 @@ fn write_export(out: &mut impl Write, document: &Document) -> std::io::Result<St
     Ok(text)
 }
 
-/// The tables, columns, primary keys and foreign keys that Mermaid carries, in table-name order, written as lines. Foreign key
-/// actions are left out, since Mermaid does not carry them.
-fn skeleton(document: &Document) -> Vec<String> {
-    let names = |list: &[polyspec_orm_schema::dbspec::model::Name]| list.iter().map(|n| n.text.as_str()).collect::<Vec<_>>().join(", ");
-    let mut tables: Vec<_> = document.tables.iter().collect();
-    tables.sort_by(|a, b| a.name.text.cmp(&b.name.text));
-    let mut out = Vec::new();
-    for t in tables {
-        out.push(format!("table {}", t.name.text));
-        for c in &t.columns {
-            let default = match &c.default {
-                None => "-".to_owned(),
-                Some(DefaultValue::Now) => "now".to_owned(),
-                Some(DefaultValue::Literal(text)) => text.clone(),
-            };
-            out.push(format!("column {} {:?} null={} identity={} default={default}", c.name.text, c.ty, c.nullable, c.identity.is_some()));
-        }
-        for p in &t.primary {
-            out.push(format!("primary key {}", names(&p.columns)));
-        }
-        let mut keys: Vec<_> = t.foreign_keys.iter().collect();
-        keys.sort_by(|a, b| a.name.text.cmp(&b.name.text));
-        for f in keys {
-            out.push(format!("foreign key {} ({}) references {} ({})", f.name.text, names(&f.columns), f.table.text, names(&f.references)));
-        }
-    }
-    out
-}
-
 /// Prints every case of the recipe, in order: its category and id, then the output of each step. An export prints its Mermaid
 /// text and the missing objects; an import prints the emitted document and the missing objects, or its diagnostics; an import
 /// with skeleton_of prints whether its skeleton is that of the file. A step with as binds its Mermaid text, which a ref of a
@@ -810,7 +781,7 @@ fn write_import_step(out: &mut impl Write, dir: &Path, id: &str, step: &Value, t
             return Ok(Flow::End);
         }
     };
-    writeln!(out, "| same_skeleton\t{}", skeleton(&original) == skeleton(&document)).map_err(io)?;
+    writeln!(out, "| same_skeleton\t{}", mermaid_skeleton(&original) == mermaid_skeleton(&document)).map_err(io)?;
     write_dropped(out, &dropped).map_err(io)?;
     Ok(Flow::Next)
 }

@@ -227,7 +227,8 @@ def _import_step(step: dict, bound: dict, directory: Path) -> dict:
         )
     return {
         "dropped": _drops(imported["dropped"]),
-        "same_skeleton": _skeleton(original) == _skeleton(imported["document"]),
+        "same_skeleton": mermaid_skeleton(original)
+        == mermaid_skeleton(imported["document"]),
     }
 
 
@@ -251,9 +252,10 @@ def _diagnostics(diagnostics: list) -> str:
     return ", ".join(f"{d.rule} {d.line} {d.column}" for d in diagnostics)
 
 
-def _skeleton(document: Any) -> list:
+def mermaid_skeleton(document: Any) -> list:
     """The tables, columns, primary keys and foreign keys that Mermaid carries, in table-name order; foreign key actions
-    are left out, since Mermaid does not carry them (the same as the TypeScript helper)."""
+    are left out, since Mermaid does not carry them (the same as the TypeScript helper). The dbspec compare runner
+    (packages/python/testing/dbspec/compare/python.py) checks a Mermaid round trip by it too."""
     out = []
     for t in sorted(document.tables, key=lambda t: t.name):
         out.append(f"table {t.name}")
@@ -386,14 +388,7 @@ def _check_refusal(text: str, header_set: dict, want: list) -> None:
     formatted, diagnostics = format_dbspec(text, header_set)
     _expect_equal(formatted, None, "a document with a diagnostic is not rewritten")
     for got in (list(parsed), list(diagnostics)):
-        _expect_equal(
-            [{"rule": d.rule, "line": d.line, "column": d.column} for d in got],
-            want,
-            "diagnostics",
-        )
-        for d in got:
-            if not d.message:
-                raise AssertionError(f"diagnostic {d.rule} has no message")
+        _same_diagnostics(want, got)
 
 
 def _header_name(text: str) -> str:
@@ -2201,7 +2196,7 @@ def _equal_pred(add_param, column: str, value) -> dict:
     return {"column": column, "op": "eq", "p": add_param(value)}
 
 
-def _and_where(query: dict, pred: dict) -> None:
+def and_where(query: dict, pred: dict) -> None:
     """Adds pred to the where of query with and; an existing where is wrapped in one group item."""
     where = query.get("where")
     if not where or not where.get("items"):
@@ -2212,7 +2207,7 @@ def _and_where(query: dict, pred: dict) -> None:
 
 def _scope_tree(query: dict, column: str, value, add_param) -> None:
     """Adds column = value to the where of query and of each of its relation queries, nested ones included."""
-    _and_where(query, _equal_pred(add_param, column, value))
+    and_where(query, _equal_pred(add_param, column, value))
     for relation in query.get("relations") or []:
         _scope_tree(relation["query"], column, value, add_param)
 
@@ -2249,7 +2244,7 @@ def _install_hook(step: dict, context: dict) -> None:
                 if a["nested"]:
                     _scope_tree(query, a["column"], a["value"], add_param)
                 else:
-                    _and_where(query, _equal_pred(add_param, a["column"], a["value"]))
+                    and_where(query, _equal_pred(add_param, a["column"], a["value"]))
             elif action == "assign":
                 p = add_param(a["value"])
                 query.setdefault("set", []).append({"column": a["column"], "p": p})

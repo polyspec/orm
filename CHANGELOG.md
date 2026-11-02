@@ -101,6 +101,7 @@
 
 A SQLite lock wait between two connections that write the same row ends with `CANCELED` after the busy timeout and is not retried, because SQLite reports no row-lock deadlock: SQLITE_LOCKED (6, 262) is `DRIVER` in every runtime, and transaction_deadlock_retry runs the sqlite case in all six runtimes (PLN-24, CFG-12) (T343-3)
 
+- The duplication check reports no clone again: the recipe, coverage and compare helpers that the merges of integ/recipes copied are shared in each runtime, one database test class for the PHP recipe tests, one dispatcher of the model ops for the Rust recipes, and the Mermaid skeleton and the where narrowing in one place of Go, Python, TypeScript and Rust (CR56).
 - The spec requires the Go generator to generate sets in the order their scans need, refusing a cycle (DSL-157); the parity units bind its tests, the Go test roots hold the moved markdown message test, and the generated condition methods are declared as public API (CR46).
 - The parity unit markdown-message-vectors names the Go test at its moved path, packages/go/bindmessages (CR46).
 - The duplication check no longer reports the two GenerateSets test setups of the generator, and the Rust orm test probe defines parse_set once again (CR45).

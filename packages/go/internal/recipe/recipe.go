@@ -155,20 +155,11 @@ func Run(t *testing.T, path, database string, opts ...Option) {
 	for _, opt := range opts {
 		opt(&o)
 	}
-	src, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := checkKeys(path, src); err != nil {
-		t.Fatal(err)
-	}
-	var f file
-	if err := json.Unmarshal(src, &f); err != nil {
-		t.Fatalf("recipe %s: %v", path, err)
-	}
+	f := readRecipe[file](t, path)
 	// A recipe with an ir.validate step names the schema manifest of its requests, relative to the recipe file (tests/ir/validate.json).
 	var model *runtimemodel.Model
 	if f.Schema != "" {
+		var err error
 		model, err = runtimemodel.LoadFiles(filepath.Join(filepath.Dir(path), f.Schema))
 		if err != nil {
 			t.Fatal(err)
@@ -1205,11 +1196,7 @@ func dbspecEmitPlan(s step, bound map[string]result) (any, error) {
 // dbspecPlanSteps runs dbspec.plan_steps (PlanSteps) on the source and plan that s names, for the dialect of s, and returns
 // {steps: rows} (planStepFields) or, with diagnostics, {messages: ...} of rule plan.
 func dbspecPlanSteps(s step, bound map[string]result) (any, error) {
-	source, err := dbspecDocument(s.Source, bound)
-	if err != nil {
-		return nil, err
-	}
-	plan, err := dbspecPlan(s.Plan, bound)
+	source, plan, err := sourceAndPlan(s, bound)
 	if err != nil {
 		return nil, err
 	}
@@ -1276,11 +1263,7 @@ func planStepFields(s dbspec.PlanStep) map[string]any {
 
 // dbspecDiff runs dbspec.diff (Diff) and returns {changes: rows} or, with diagnostics, {messages: ...} of rule plan.
 func dbspecDiff(s step, bound map[string]result) (any, error) {
-	source, err := dbspecDocument(s.Source, bound)
-	if err != nil {
-		return nil, err
-	}
-	plan, err := dbspecPlan(s.Plan, bound)
+	source, plan, err := sourceAndPlan(s, bound)
 	if err != nil {
 		return nil, err
 	}
@@ -1378,6 +1361,34 @@ func dbspecRef(raw json.RawMessage, bound map[string]result) (any, error) {
 		return nil, fmt.Errorf("ref %s names no bound result", *ref.Ref)
 	}
 	return r.dbspec, nil
+}
+
+// readRecipe reads the recipe at path into a T, after the key check of its file (T334-3-5-6); a read, a key or a JSON error
+// fails t.
+func readRecipe[T any](t *testing.T, path string) T {
+	t.Helper()
+	src, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := checkKeys(path, src); err != nil {
+		t.Fatal(err)
+	}
+	var f T
+	if err := json.Unmarshal(src, &f); err != nil {
+		t.Fatalf("recipe %s: %v", path, err)
+	}
+	return f
+}
+
+// sourceAndPlan reads the source document and the plan that s names.
+func sourceAndPlan(s step, bound map[string]result) (*dbspec.Document, *dbspec.Plan, error) {
+	source, err := dbspecDocument(s.Source, bound)
+	if err != nil {
+		return nil, nil, err
+	}
+	plan, err := dbspecPlan(s.Plan, bound)
+	return source, plan, err
 }
 
 // dbspecDocument is the document that a source or target names; null is the empty schema (nil).

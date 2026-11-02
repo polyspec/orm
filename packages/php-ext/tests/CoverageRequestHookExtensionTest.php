@@ -31,15 +31,7 @@ final class CoverageRequestHookExtensionTest extends CoverageRequestHookTest
     {
         Assert::assertTrue((new ReflectionMethod(Db::class, 'withRequestHook'))->isInternal());
         Assert::assertTrue((new ReflectionClass(Model::class))->isInternal());
-        $path = tempnam(sys_get_temp_dir(), 'orm-php-ext-request-hook-reads-params-');
-        if (!is_string($path)) {
-            throw new \RuntimeException('cannot create the request hook SQLite database file');
-        }
-        try {
-            readsParamsCase('sqlite://' . $path);
-        } finally {
-            unlink($path);
-        }
+        parent::testReadsParams();
     }
 
     // Requirements: INT-78.

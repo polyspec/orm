@@ -28,29 +28,9 @@ func TestCoverageModelWriteCycle(t *testing.T) {
 	const jsonText = `{"b":1,"a":[],"c":{},"n":1.50}`
 	rollback := errors.New("rollback ordered JSON text probe")
 	err := db.Transaction(func() error {
-		row, err := loadSeedAuthor(db, "seed author row 1 is missing")
+		value, err := storeOrderedJSON(db, jsonText)
 		if err != nil {
 			return err
-		}
-		row, err = row.SetJsonSetting(orm.Value(jsontext.Value(jsonText)))
-		if err != nil {
-			return err
-		}
-		stored, err := updateAndReloadAuthor(row, db, "seed author row 1 disappeared after ordered JSON update")
-		if err != nil {
-			return err
-		}
-		styled, err := stored.GetJsonSetting()
-		if err != nil {
-			return err
-		}
-		data, ok := styled.Data()
-		if !ok {
-			return errors.New("ordered JSON text read back as SQL NULL")
-		}
-		value, ok := data.(*orderedjson.Value)
-		if !ok {
-			return fmt.Errorf("ordered JSON value has type %T", data)
 		}
 		actual, err := orderedjson.Stringify(value)
 		if err != nil {
@@ -137,29 +117,9 @@ func TestCoverageModelOrderedJsonRepeatedMemberName(t *testing.T) {
 	const jsonText = `{"a":1,"b":2,"a":3}`
 	rollback := errors.New("rollback ordered JSON repeated member probe")
 	err := db.Transaction(func() error {
-		row, err := loadSeedAuthor(db, "seed author row 1 is missing")
+		value, err := storeOrderedJSON(db, jsonText)
 		if err != nil {
 			return err
-		}
-		row, err = row.SetJsonSetting(orm.Value(jsontext.Value(jsonText)))
-		if err != nil {
-			return err
-		}
-		stored, err := updateAndReloadAuthor(row, db, "seed author row 1 disappeared after ordered JSON update")
-		if err != nil {
-			return err
-		}
-		styled, err := stored.GetJsonSetting()
-		if err != nil {
-			return err
-		}
-		data, ok := styled.Data()
-		if !ok {
-			return errors.New("ordered JSON text read back as SQL NULL")
-		}
-		value, ok := data.(*orderedjson.Value)
-		if !ok {
-			return fmt.Errorf("ordered JSON value has type %T", data)
 		}
 		if actual := value.Raw(); actual != jsonText {
 			return fmt.Errorf("ordered JSON text = %s, want %s", actual, jsonText)
@@ -169,6 +129,36 @@ func TestCoverageModelOrderedJsonRepeatedMemberName(t *testing.T) {
 	if !errors.Is(err, rollback) {
 		t.Fatalf("ordered JSON repeated member transaction = %v, want rollback sentinel", err)
 	}
+}
+
+// storeOrderedJSON writes jsonText to the json_setting column of the seed author and returns the ordered JSON value it reads
+// back.
+func storeOrderedJSON(db *orm.DB, jsonText string) (*orderedjson.Value, error) {
+	row, err := loadSeedAuthor(db, "seed author row 1 is missing")
+	if err != nil {
+		return nil, err
+	}
+	row, err = row.SetJsonSetting(orm.Value(jsontext.Value(jsonText)))
+	if err != nil {
+		return nil, err
+	}
+	stored, err := updateAndReloadAuthor(row, db, "seed author row 1 disappeared after ordered JSON update")
+	if err != nil {
+		return nil, err
+	}
+	styled, err := stored.GetJsonSetting()
+	if err != nil {
+		return nil, err
+	}
+	data, ok := styled.Data()
+	if !ok {
+		return nil, errors.New("ordered JSON text read back as SQL NULL")
+	}
+	value, ok := data.(*orderedjson.Value)
+	if !ok {
+		return nil, fmt.Errorf("ordered JSON value has type %T", data)
+	}
+	return value, nil
 }
 
 func loadSeedAuthor(db *orm.DB, missingMessage string) (*model.AuthorModel, error) {

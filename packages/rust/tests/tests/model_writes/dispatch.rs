@@ -2,60 +2,24 @@
 //! that its step names, on the connection that model.connect opened. The three trial binaries include the models of the
 //! bench set as `crate::model` and share this file. A model, a column or an op without an arm here fails its step by name.
 
-use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
-
-use polyspec_orm::{Config, Db};
-use polyspec_orm_tests::recipe::{ModelDispatcher, ModelFuture};
+use polyspec_orm::Db;
+use polyspec_orm_tests::bench_models::{bench_dispatcher, cells, columns, fail, int, names, text, BenchModels};
+use polyspec_orm_tests::recipe::ModelDispatcher;
 use serde_json::{json, Value};
 
-use crate::model::{connect, Author, CompositeAccount, CompositeMembership};
-
-/// The dispatcher of one case: the connections that model.connect opened, by name.
-#[derive(Default)]
-pub struct Models {
-    connections: HashMap<String, Db>,
-}
+use crate::model::{Author, CompositeAccount, CompositeMembership, SCHEMA};
 
 /// The factory that the recipe helper calls once for each case.
 pub fn models() -> Box<dyn ModelDispatcher> {
-    Box::new(Models::default())
+    bench_dispatcher(&SCHEMA, ModelWrites)
 }
 
-/// The keys that the generated models of the bench set read their encrypted columns with (the native model tests use them).
-fn bench_config() -> Config {
-    Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), ..Default::default() }
-}
+/// The ops of the model_writes recipe.
+pub struct ModelWrites;
 
-impl ModelDispatcher for Models {
-    fn connect<'a>(&'a mut self, name: &'a str, dsn: &'a str, pool_size: u32) -> ModelFuture<'a> {
-        Box::pin(async move {
-            let db = connect(dsn, pool_size, bench_config()).await.map_err(fail)?;
-            self.connections.insert(name.to_owned(), db);
-            Ok(json!({}))
-        })
-    }
-
-    fn call<'a>(&'a mut self, op: &'a str, connection: &'a str, step: &'a Value) -> ModelFuture<'a> {
-        Box::pin(async move {
-            let Some(db) = self.connections.get(connection) else {
-                return Err(format!("model op: connection {connection} is not bound by model.connect"));
-            };
-            run(db, op, step).await
-        })
-    }
-
-    fn db(&self, name: &str) -> Option<Db> {
-        self.connections.get(name).cloned()
-    }
-
-    fn close<'a>(&'a mut self) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>> {
-        Box::pin(async move {
-            for (_, db) in self.connections.drain() {
-                db.close().await;
-            }
-        })
+impl BenchModels for ModelWrites {
+    async fn run(&self, db: &Db, op: &str, step: &Value) -> Result<Value, String> {
+        run(db, op, step).await
     }
 }
 
@@ -200,10 +164,6 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
         }
         other => Err(format!("OP_UNKNOWN {other}")),
     }
-}
-
-fn fail(error: polyspec_orm::Error) -> String {
-    error.to_string()
 }
 
 fn account(db: &Db) -> CompositeAccount {
@@ -439,33 +399,11 @@ fn membership_cell(row: &CompositeMembership, column: &str) -> Result<Value, Str
     }
 }
 
-/// One row of the cells of `columns`, each read by `cell`.
-fn cells(columns: &[String], cell: impl Fn(&str) -> Result<Value, String>) -> Result<Value, String> {
-    columns.iter().map(|column| cell(column)).collect::<Result<Vec<_>, _>>().map(Value::Array)
-}
-
-fn names(array: &Value) -> Vec<String> {
-    array.as_array().into_iter().flatten().filter_map(|name| name.as_str().map(str::to_owned)).collect()
-}
-
 fn columns_of(object: &Value) -> Result<Vec<(&String, &Value)>, String> {
     if object.is_null() {
         return Ok(Vec::new());
     }
     Ok(columns(object)?.iter().collect())
-}
-
-fn columns(object: &Value) -> Result<&serde_json::Map<String, Value>, String> {
-    object.as_object().ok_or_else(|| format!("{object} is not an object of columns"))
-}
-
-fn int(wrapper: &Value) -> Result<i64, String> {
-    let digits = wrapper["int"].as_str().ok_or_else(|| format!("{wrapper} is not an int wrapper"))?;
-    digits.parse().map_err(|e: std::num::ParseIntError| format!("{wrapper}: {e}"))
-}
-
-fn text(wrapper: &Value) -> Result<String, String> {
-    wrapper["text"].as_str().map(str::to_owned).ok_or_else(|| format!("{wrapper} is not a text wrapper"))
 }
 
 fn batch(step: &Value) -> Result<usize, String> {

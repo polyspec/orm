@@ -11,8 +11,7 @@ use polyspec_orm_test_support::model_row;
 #[path = "common/audit_rows.rs"]
 mod audit_rows;
 use polyspec_orm_test_support::feature_database;
-#[path = "common/model_connect.rs"]
-mod model_connect;
+use polyspec_orm_test_support::model_connect;
 #[path = "common/pool_exec.rs"]
 mod pool_exec;
 #[path = "common/restore_rows.rs"]

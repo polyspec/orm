@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 import { codeOf } from './error_code.mjs';
+import { andWhere } from './recipe.mjs';
 
 const fixtureText = await readFile(new URL('../../../contracts/fixtures/request_hook/request_hook.dbs', import.meta.url), 'utf8');
 
@@ -18,15 +19,6 @@ class Entry extends Model {}
 Entry.entity = { model: runtime, entity: runtime.entities.get('hook_entry'), create: core => new Entry(core) };
 
 const READS = new Set(['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate']);
-
-/** Adds pred to where with and. An existing where is wrapped in one group. */
-function andWhere(query, pred) {
-  if (query.where === undefined || query.where.items.length === 0) {
-    query.where = { items: [{ pred }] };
-    return;
-  }
-  query.where = { items: [{ group: query.where }, { pred: { ...pred, conn: 'and' } }] };
-}
 
 /** A hook that reads only the rows of the same part. A request that is not a read is left as is. */
 function partFilter(value) {

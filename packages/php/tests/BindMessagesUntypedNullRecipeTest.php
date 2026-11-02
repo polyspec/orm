@@ -20,12 +20,6 @@ class BindMessagesUntypedNullRecipeTest extends TestCase
         return 'tests/bind/messages-untyped-null.json';
     }
 
-    /** The cases of the recipe: every case runs in each runtime that the recipe is bound to. */
-    public static function cases(): iterable
-    {
-        return Recipe::cases(static::recipe());
-    }
-
     #[DataProvider('cases')]
     public function testNone(array $case): void
     {

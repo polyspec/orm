@@ -1355,7 +1355,7 @@
         "packages/rust/tests/tests/model_queries_mysql.rs",
         "packages/rust/tests/tests/model_queries_postgres.rs",
         "packages/rust/tests/tests/model_queries_sqlite.rs",
-        "packages/rust/tests/src/model_queries_dispatch.rs"
+        "packages/rust/tests/src/bench_set_dispatch.rs"
       ],
       "docs": [
         "docs/spec/dsl.md",

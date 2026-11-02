@@ -6,8 +6,7 @@
 #[path = "common/or_panic.rs"]
 mod or_panic;
 
-#[path = "common/model_connect.rs"]
-mod model_connect;
+use polyspec_orm_test_support::model_connect;
 #[path = "common/restore_rows.rs"]
 mod restore_rows;
 #[path = "common/result_code.rs"]

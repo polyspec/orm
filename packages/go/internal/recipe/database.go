@@ -163,17 +163,7 @@ func runDatabase(t *testing.T, path, database string) {
 	if database != "mysql" && database != "postgres" && database != "sqlite" {
 		t.Fatalf("recipe %s: unknown database %s", path, database)
 	}
-	src, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := checkKeys(path, src); err != nil {
-		t.Fatal(err)
-	}
-	var f databaseFile
-	if err := json.Unmarshal(src, &f); err != nil {
-		t.Fatalf("recipe %s: %v", path, err)
-	}
+	f := readRecipe[databaseFile](t, path)
 	if f.Fixture == "" {
 		t.Fatalf("recipe %s: no fixture, so it has no database", path)
 	}
@@ -186,6 +176,7 @@ func runDatabase(t *testing.T, path, database string) {
 			t.Fatalf("recipe %s: $schema %s does not name %s", path, f.Schema, schemaPath)
 		}
 		root := filepath.Join(filepath.Dir(path), relative)
+		var err error
 		schema, external, err = fixtureSchema(filepath.Join(root, f.Fixture))
 		if err != nil {
 			t.Fatalf("recipe %s: %v", path, err)

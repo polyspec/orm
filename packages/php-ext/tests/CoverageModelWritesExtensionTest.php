@@ -24,21 +24,21 @@ final class CoverageModelWritesExtensionTest extends TestCase
     // Requirements: COD-11, COD-12, COD-15, COD-38, DIA-26.
     public function testModelWriteCycle(): void
     {
-        require_once dirname(__DIR__, 2) . '/php/tests/CoverageModelWritesCase.php';
-        foreach (coverageItemsOf(__FILE__) as $item) {
-            selectCoverageItem($item);
-            [, $dsn] = coverageItem();
-            $db = coverageConnect($dsn);
-            try {
-                \Polyspec\Orm\Tests\CoverageModelWritesCase::orderedJsonTextRoundTrip($db);
-                \Polyspec\Orm\Tests\CoverageModelWritesCase::codecColumnsRoundTrip($db);
-            } finally {
-                $db->close();
-            }
-        }
+        self::onEachCoverageDatabase(static function ($db): void {
+            \Polyspec\Orm\Tests\CoverageModelWritesCase::orderedJsonTextRoundTrip($db);
+            \Polyspec\Orm\Tests\CoverageModelWritesCase::codecColumnsRoundTrip($db);
+        });
     }
     // Requirements: DIA-26, COD-15.
     public function testOrderedJsonRepeatedMemberName(): void
+    {
+        self::onEachCoverageDatabase(static function ($db): void {
+            \Polyspec\Orm\Tests\CoverageModelWritesCase::orderedJsonRepeatedMemberNameRoundTrip($db);
+        });
+    }
+
+    /** Runs `$run` on a connection to the database of each coverage item of this file, and closes the connection. */
+    private static function onEachCoverageDatabase(callable $run): void
     {
         require_once dirname(__DIR__, 2) . '/php/tests/CoverageModelWritesCase.php';
         foreach (coverageItemsOf(__FILE__) as $item) {
@@ -46,7 +46,7 @@ final class CoverageModelWritesExtensionTest extends TestCase
             [, $dsn] = coverageItem();
             $db = coverageConnect($dsn);
             try {
-                \Polyspec\Orm\Tests\CoverageModelWritesCase::orderedJsonRepeatedMemberNameRoundTrip($db);
+                $run($db);
             } finally {
                 $db->close();
             }

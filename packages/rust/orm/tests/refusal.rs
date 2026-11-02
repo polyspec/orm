@@ -7,10 +7,9 @@
 //! (polyspec-orm-case-database). The test fails when ORM_TEST_MYSQL_DSN or
 //! ORM_TEST_POSTGRES_DSN is unset.
 
-use polyspec_orm_test_support::model_row;
-#[path = "common/model_connect.rs"]
-mod model_connect;
 use model_connect::connected;
+use polyspec_orm_test_support::model_connect;
+use polyspec_orm_test_support::model_row;
 
 #[path = "common/or_panic.rs"]
 mod or_panic;

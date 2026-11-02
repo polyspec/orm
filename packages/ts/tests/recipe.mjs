@@ -1374,7 +1374,7 @@ function equalPred(addParam, column, value) {
 }
 
 /** Adds pred to the where of query with and; an existing where is wrapped in one group item. */
-function andWhere(query, pred) {
+export function andWhere(query, pred) {
   if (query.where === undefined || query.where.items.length === 0) {
     query.where = { items: [{ pred }] };
     return;

@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/polyspec/orm/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/packages/go/internal/dbspec/skeleton"
 )
 
 type testCase struct {
@@ -527,7 +528,7 @@ func writeMermaidImport(out *output, s mermaidStep, texts map[string]string, dir
 	if len(diagnostics) > 0 {
 		return fmt.Errorf("parse %s: %v", s.SkeletonOf, diagnostics)
 	}
-	out.printf("| same_skeleton\t%t\n", slices.Equal(mermaidSkeleton(original), mermaidSkeleton(d)))
+	out.printf("| same_skeleton\t%t\n", slices.Equal(skeleton.Mermaid(original), skeleton.Mermaid(d)))
 	writeDropped(out, dropped)
 	return nil
 }
@@ -551,35 +552,6 @@ func mermaidText(raw json.RawMessage, texts map[string]string) (string, error) {
 		return "", fmt.Errorf("mermaid ref %s is not a bound export", ref.Ref)
 	}
 	return text, nil
-}
-
-// mermaidSkeleton writes the tables, columns, primary keys and foreign keys that Mermaid carries, in table-name order; foreign key
-// actions are left out, since Mermaid does not carry them. It is the same as the skeleton of the Go recipe helper
-// (packages/go/internal/recipe/mermaid.go), which this runner cannot import.
-func mermaidSkeleton(d *dbspec.Document) []string {
-	tables := slices.Clone(d.Tables)
-	slices.SortFunc(tables, func(a, b dbspec.Table) int { return strings.Compare(a.Name, b.Name) })
-	var out []string
-	for _, t := range tables {
-		out = append(out, "table "+t.Name)
-		for _, c := range t.Columns {
-			dflt := "-"
-			if c.Default != nil {
-				dflt = c.Default.Literal
-				if c.Default.Now {
-					dflt = "now"
-				}
-			}
-			out = append(out, fmt.Sprintf("column %s %s null=%t identity=%t default=%s", c.Name, c.Type, c.Null, c.Identity, dflt))
-		}
-		out = append(out, "primary key "+strings.Join(t.PrimaryKey.Columns, ", "))
-		fks := slices.Clone(t.ForeignKeys)
-		slices.SortFunc(fks, func(a, b dbspec.ForeignKey) int { return strings.Compare(a.Name, b.Name) })
-		for _, f := range fks {
-			out = append(out, "foreign key "+f.Name+" ("+strings.Join(f.Columns, ", ")+") references "+f.Table+" ("+strings.Join(f.References, ", ")+")")
-		}
-	}
-	return out
 }
 
 // writeFile reads a files case twice: once with path given to dbspec.ReadFile as "files/<id>",

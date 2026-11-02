@@ -4,66 +4,32 @@
 //! model, so that the bind check refuses it with IR_INVALID. The three trial binaries include the models of the bench set as
 //! `crate::model` and share this file.
 
-use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
-
 use polyspec_orm::args::Value as Slot;
 use polyspec_orm::core::{Arg, ChainKey};
-use polyspec_orm::{Config, Db, Dialect, Model, Param};
-use polyspec_orm_tests::recipe::{ModelDispatcher, ModelFuture};
+use polyspec_orm::{Db, Dialect, Model, Param};
+use polyspec_orm_tests::bench_models::{bench_dispatcher, fail, BenchModels};
+use polyspec_orm_tests::recipe::ModelDispatcher;
 use serde_json::{json, Value};
 
-use crate::model::{connect, Author};
-
-/// The dispatcher of one case: the connections that model.connect opened, by name, and the dialect of the case database.
-pub struct Models {
-    connections: HashMap<String, Db>,
-    dialect: Dialect,
-}
+use crate::model::{Author, SCHEMA};
 
 /// The factory that the recipe helper calls once for each case.
 pub fn models(dialect: Dialect) -> Box<dyn ModelDispatcher> {
-    Box::new(Models { connections: HashMap::new(), dialect })
+    bench_dispatcher(&SCHEMA, FulltextSearch { dialect })
 }
 
-/// The keys that the generated models of the bench set read their encrypted columns with (the native model tests use them).
-fn bench_config() -> Config {
-    Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), ..Default::default() }
+/// The query.search op of the fulltext_search recipe, on the dialect of the case database.
+pub struct FulltextSearch {
+    dialect: Dialect,
 }
 
-impl ModelDispatcher for Models {
-    fn connect<'a>(&'a mut self, name: &'a str, dsn: &'a str, pool_size: u32) -> ModelFuture<'a> {
-        Box::pin(async move {
-            let db = connect(dsn, pool_size, bench_config()).await.map_err(fail)?;
-            self.connections.insert(name.to_owned(), db);
-            Ok(json!({}))
-        })
+impl BenchModels for FulltextSearch {
+    async fn run(&self, db: &Db, op: &str, step: &Value) -> Result<Value, String> {
+        match op {
+            "query.search" => search(db, self.dialect, step).await,
+            other => Err(format!("OP_UNKNOWN {other}")),
+        }
     }
-
-    fn call<'a>(&'a mut self, op: &'a str, connection: &'a str, step: &'a Value) -> ModelFuture<'a> {
-        Box::pin(async move {
-            let Some(db) = self.connections.get(connection) else {
-                return Err(format!("model op: connection {connection} is not bound by model.connect"));
-            };
-            match op {
-                "query.search" => search(db, self.dialect, step).await,
-                other => Err(format!("OP_UNKNOWN {other}")),
-            }
-        })
-    }
-
-    fn close<'a>(&'a mut self) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>> {
-        Box::pin(async move {
-            for (_, db) in self.connections.drain() {
-                db.close().await;
-            }
-        })
-    }
-}
-
-fn fail(error: polyspec_orm::Error) -> String {
-    error.to_string()
 }
 
 /// The fields of query.search: the statement of the count and the bind value after the DIA-6 transform.

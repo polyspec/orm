@@ -15,6 +15,17 @@ function dbspec_vector_fail(string $path, string $location, string $problem): ne
     exit(1);
 }
 
+/** The JSON value of the text $text of $path, with objects as objects; a text that is no JSON is written to stderr and ends with 1. */
+function dbspec_decode_input(string $path, string $text): mixed
+{
+    try {
+        return json_decode($text, false, 512, JSON_THROW_ON_ERROR);
+    } catch (JsonException $e) {
+        fwrite(STDERR, "$path: {$e->getMessage()}\n");
+        exit(1);
+    }
+}
+
 /**
  * Reads the vector file at $path against the schema tests/dbspec/schema/$kind.schema.json (tests/dbspec/vectors.php)
  * and returns it with objects as associative arrays; a refusal is written to stderr, one line per problem, and ends
@@ -25,12 +36,7 @@ function dbspec_vector_fail(string $path, string $location, string $problem): ne
 function dbspec_read_vectors(string $path, string $kind): array
 {
     $text = dbspec_read_input($path);
-    try {
-        $value = json_decode($text, false, 512, JSON_THROW_ON_ERROR);
-    } catch (JsonException $e) {
-        fwrite(STDERR, "$path: {$e->getMessage()}\n");
-        exit(1);
-    }
+    $value = dbspec_decode_input($path, $text);
     try {
         dbspec_check_vectors($value, $kind, $path);
     } catch (RuntimeException $e) {
@@ -209,22 +215,16 @@ function dbspec_vector_named_documents(string $path, array $documents, string $a
 }
 
 /**
- * Reads a recipe file of tests/dbspec (canonical.json, normalize.json, invalid.json, positions.json or files.json)
- * against the recipe schema (scripts/features/schema/recipe.schema.json) and returns its cases, each with the step of
- * $op: the main document is the step's text, named "main", with the other documents of its set. A refusal is written to
- * stderr, one line per problem, and ends with 1.
+ * Reads the recipe file $path and checks it against the recipe schema (scripts/features/schema/recipe.schema.json), and
+ * returns the whole file with objects as associative arrays. A refusal is written to stderr, one line per problem, and
+ * ends with 1.
  *
- * @return list<array<string, mixed>>
+ * @return array<string, mixed>
  */
 function dbspec_read_recipe_file(string $path): array
 {
     $text = dbspec_read_input($path);
-    try {
-        $value = json_decode($text, false, 512, JSON_THROW_ON_ERROR);
-    } catch (JsonException $e) {
-        fwrite(STDERR, "$path: {$e->getMessage()}\n");
-        exit(1);
-    }
+    $value = dbspec_decode_input($path, $text);
     $schema = json_decode(
         (string) file_get_contents(dirname(__DIR__, 5) . '/scripts/features/schema/recipe.schema.json'),
         false,

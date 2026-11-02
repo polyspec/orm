@@ -10,35 +10,13 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Medium;
-use PHPUnit\Framework\TestCase;
 
 #[Medium]
-class StatementEventsRecipeTest extends TestCase
+class StatementEventsRecipeTest extends DatabaseRecipeTestCase
 {
-    use RecipeCases;
-
     protected static function recipe(): string
     {
         return 'contracts/fixtures/statement_events/statement_events.json';
-    }
-
-    #[DataProvider('cases')]
-    public function testMysql(array $case): void
-    {
-        $this->runCase($case, 'mysql');
-    }
-
-    #[DataProvider('cases')]
-    public function testPostgres(array $case): void
-    {
-        $this->runCase($case, 'postgres');
-    }
-
-    #[DataProvider('cases')]
-    public function testSqlite(array $case): void
-    {
-        $this->runCase($case, 'sqlite');
     }
 }

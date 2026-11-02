@@ -10,6 +10,7 @@ import sys
 # Run with python -m packages.python.testing.dbspec.compare.python from the root, which puts the root on sys.path; the client and
 # ordered-json are the ones installed into the interpreter.
 from packages.python.tests.dbspec_plans import plan_cases
+from packages.python.tests.recipe import mermaid_skeleton
 from packages.python.tests.dbspec_vectors_reader import (
     VectorError,
     check_schema,
@@ -558,34 +559,6 @@ def mermaid_read(path):
     except OSError as error:
         print(f"{path}: {error}", file=sys.stderr)
         sys.exit(1)
-
-
-# mermaid_skeleton is the tables, columns, primary keys and foreign keys that Mermaid carries, in table-name order; foreign
-# key actions are left out since Mermaid does not carry them (the same as the skeleton of the TypeScript compare runner).
-def mermaid_skeleton(document):
-    out_lines = []
-    for t in sorted(document.tables, key=lambda t: t.name):
-        out_lines.append(f"table {t.name}")
-        for c in t.columns:
-            kind = (c.type.kind, c.type.precision, c.type.scale, c.type.length)
-            dflt = (
-                "-"
-                if c.default is None
-                else "now"
-                if c.default.kind == "now"
-                else c.default.text
-            )
-            out_lines.append(
-                f"column {c.name} {kind} null={c.nullable} "
-                f"identity={c.identity} default={dflt}"
-            )
-        out_lines.append(f"primary key {', '.join(t.primary_key.columns)}")
-        for f in sorted(t.foreign_keys, key=lambda f: f.name):
-            out_lines.append(
-                f"foreign key {f.name} ({', '.join(f.columns)}) "
-                f"references {f.table} ({', '.join(f.references)})"
-            )
-    return out_lines
 
 
 # export_step runs a dbspec.export_mermaid step: its document is the inline text of the step with the other documents of

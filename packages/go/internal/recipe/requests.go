@@ -12,6 +12,7 @@ import (
 	"strconv"
 
 	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/packages/go/internal/irwhere"
 	"github.com/polyspec/orm/packages/go/orm"
 )
 
@@ -85,11 +86,7 @@ func tableModelRequest(s databaseStep, c *databaseContext, db *orm.DB, table str
 		if len(s.Row) > 0 {
 			return outcome{}, false, nil
 		}
-		where, err := assignments(s.Where, c)
-		if err != nil {
-			return outcome{}, true, err
-		}
-		if err := filterTable(core, where); err != nil {
+		if err := filterWhere(core, s, c); err != nil {
 			return outcome{}, true, err
 		}
 		rows, err := orm.Gets[*tableRow](core)
@@ -134,11 +131,7 @@ type tableRelation struct {
 // tableQuery runs a model.query on a table model: the rows of the model, or one page of them with its total, and with a
 // relation the parent columns followed by the columns of each related row.
 func tableQuery(s databaseStep, c *databaseContext, db *orm.DB, core *orm.Core) (outcome, error) {
-	where, err := assignments(s.Where, c)
-	if err != nil {
-		return outcome{}, err
-	}
-	if err := filterTable(core, where); err != nil {
+	if err := filterWhere(core, s, c); err != nil {
 		return outcome{}, err
 	}
 	for _, column := range s.Order {
@@ -375,7 +368,7 @@ func (c *databaseContext) installHook(s databaseStep) (outcome, error) {
 				if a.nested {
 					scopeTree(&r.Query, a.column, a.value, addParam)
 				} else {
-					andWhere(&r.Query, equalPred(addParam, a.column, a.value))
+					irwhere.And(&r.Query, equalPred(addParam, a.column, a.value))
 				}
 			case "assign":
 				p := addParam(a.value)
@@ -427,19 +420,9 @@ func equalPred(addParam func(any) int, column string, value any) ir.Pred {
 	return ir.Pred{Column: column, Op: "eq", P: &p}
 }
 
-// andWhere adds pred to the where of q with and; an existing where is wrapped in one group item.
-func andWhere(q *ir.Query, pred ir.Pred) {
-	if q.Where == nil || len(q.Where.Items) == 0 {
-		q.Where = &ir.Group{Items: []ir.Item{{Pred: &pred}}}
-		return
-	}
-	pred.Conn = "and"
-	q.Where = &ir.Group{Items: []ir.Item{{Group: q.Where}, {Pred: &pred}}}
-}
-
 // scopeTree adds column = value to the where of q and of each of its relation queries, nested ones included.
 func scopeTree(q *ir.Query, column string, value any, addParam func(any) int) {
-	andWhere(q, equalPred(addParam, column, value))
+	irwhere.And(q, equalPred(addParam, column, value))
 	for _, rel := range q.Relations {
 		scopeTree(rel.Query, column, value, addParam)
 	}

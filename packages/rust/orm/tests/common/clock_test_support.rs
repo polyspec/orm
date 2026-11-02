@@ -2,8 +2,7 @@
 
 #[path = "clock_event.rs"]
 mod clock_event;
-#[path = "model_connect.rs"]
-mod model_connect;
+use polyspec_orm_test_support::model_connect;
 #[path = "or_panic.rs"]
 mod or_panic;
 
