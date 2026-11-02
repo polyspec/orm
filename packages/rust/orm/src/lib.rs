@@ -4,6 +4,7 @@
 
 pub mod args;
 mod bind_check;
+mod canonical;
 pub mod codec;
 pub mod codes;
 pub mod collection;

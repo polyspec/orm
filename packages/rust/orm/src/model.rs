@@ -294,6 +294,7 @@ fn batch_fits(driver: &str, parts: &[usize], columns: usize) -> Result<()> {
 /// first value, so no plan holds a bind slot per value of the list;
 /// root_in_parts plans the parts, each within the bind limit.
 async fn split_read_plan(db: &Db, req: &mut Req) -> Result<(Arc<Plan>, usize)> {
+    req.canonicalize()?;
     let target = if req.params.len() > bind_limit(db.driver()) { root_in_target(req) } else { None };
     let Some(target) = target else {
         let plan = db.plan(req).await?;

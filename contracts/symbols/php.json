@@ -5295,6 +5295,10 @@
     "exported": false,
     "signature": "private function query(array $q, bool $root): array"
   },
+  "packages/php/src/CanonicalRequest.php::Polyspec\\Orm\\CanonicalRequest::walkKeys": {
+    "exported": false,
+    "signature": "private static function walkKeys(array $v): array"
+  },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Catalog extends  implements  uses "
