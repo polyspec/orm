@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a8638dfb675b1151fc7023e5b74414deb657feb6ac30d74b153c7daac8eb663a -->
+<!-- source-sha256: 91fbf9ee324885dce2066f6f0936a9f148d124aa0346aa805a0ce7832ff4f321 -->
 # 변경 이력
 
 ## Unreleased
 
+- recipe schema가 model_writes fixture의 model.get_by step을 거부했다. 두 형식 모두 FCV-4가 model.get_by에 주는 rows outcome 대신 일반 expect를 받았다. 이제 두 형식 모두 rows outcome을 받는다 (T334-3-4-9).
+- recipe schema가 schema_install fixture의 schema.install step을 거부했다. {schema} 형식에 expect가 없었는데 FCV-4는 이 형식에 expect를 준다. 이제 schema가 그 expect를 받는다 (T334-3-4-8).
 - tests/dbspec/plans.json의 case 13개는 여섯 runtime에서 recipe tests/dbspec/plan-cases.json으로 실행된다. op dbspec.parse, dbspec.parse_plan, dbspec.emit_plan, dbspec.diff, dbspec.plan_steps로 실행하며 native plan test를 대신한다. before와 after physical record는 tests/dbspec/plans-physical.json으로 옮겼고 case id로 찾는다 (T334-3-16-2-2).
 - tests/dbspec/plans.json의 검증 네 section(invalid, chains, parse, comparisons)은 여섯 runtime에서 T334-3-2 형식의 recipe 네 개로 실행된다. op dbspec.parse, dbspec.parse_plan, dbspec.diff, dbspec.chain, dbspec.compare로 실행하며 native plan test를 대신하고, compare 도구는 plans.json 곁의 recipe를 읽는다 (T334-3-16-2-1).
 - planner compile case 86개는 op `planner.compile`로 여섯 runtime에서 recipe tests/planner/compile.json으로 실행된다. native compile test를 대신하며, param_uses case 다섯 개는 contracts/fixtures/planner.json에 남는다 (T334-3-16-1).
