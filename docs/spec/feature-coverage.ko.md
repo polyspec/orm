@@ -61,6 +61,29 @@
   - `utils.set_local {connection, name, value}`와 `utils.local {connection, name}`(F18)은 transaction 로컬 값을 읽고 쓴다. 없는 name의 `local`은 `NO_ROWS`를 expect한다. API unit: client-utils-set-local(INT-51)과 client-utils-local(INT-51).
   - `utils.aes_status {model, keyring}`(F19)는 모델의 AES 키 버전 상태를 읽는다. API unit: aes-utils-status(INT-60)와 INT-75.
   - `transaction` step 안의 중첩 `transaction` step(F20)은 savepoint다. 안쪽 실패는 바깥 callback이 오류를 돌려주지 않는 한 안쪽 작업만 되돌린다. API unit: coverage-transactions-transaction-savepoint(INT-46).
+  - T334-3-5 1b 단계의 query field와 op. 각 field는 그것을 지정하는 op에서 선택 사항이며 추가만 된다. 각 field는 API unit의 공개 호출에 대응하며, 어떤 field도 SQL을 담지 않는다.
+  - `model.get_by`는 `key`(키 조회, GetBy) 또는 `where`(predicate와 terminal Get) 중 정확히 하나를 받는다. `columns`(이름 목록 또는 `"all"`), `expect`(행 0개 또는 1개의 `{"rows": [...]}` 또는 `{"error": <code>}`), `as`, `lock`, `limit`은 두 형식 모두에서 선택 사항이다. API unit: client-query-base(INT-26); DSL-59.
+  - `model.query`는 `where`, `order`, `columns`(이름 목록 또는 모델의 모든 열을 고르는 `"all"`, DSL-72)를 선택 사항으로 받으며, `as`는 결과를 묶으므로 `as`가 있으면 `expect`는 선택 사항이다. API unit: client-query-base(INT-20부터 INT-26까지).
+  - `model.query`의 `expect`는 `{"page": {"total": <정수>, "pages": <정수>, "rows": [...]}}`일 수 있다. `getsPage`의 page 결과이며 전체 개수와 쪽 수를 담는다(`rows`는 선택 사항). API unit: client-page(INT-64).
+  - `model.count`는 `model.query`와 같이 `joins`를 받는다. API unit: model-connection-and-join-methods(DSL-90부터 DSL-93까지).
+  - join의 `on`은 join이 model relation을 따를 때 선택 사항이다. `as`는 필수이며 `kind`의 기본값은 `inner`다. API unit: model-connection-and-join-methods(DSL-90, DSL-91).
+  - predicate의 key와 `expr`의 column은 joined alias의 `alias.column`일 수 있고, `utils.set_local`의 name도 점을 포함할 수 있다(`ormtest.actor`). API unit: model-connection-and-join-methods(DSL-91, DSL-92), client-utils-set-local(INT-51).
+  - `in`과 `not_in` 목록은 비어 있을 수 있으며, 그 경우 case의 expect는 `{"error": "EMPTY_IN"}`이다. API: DSL-47과 PLN-28.
+  - `{"sub": <subquery>}`는 `expr`이므로 predicate의 열 값이나 `in` 피연산자가 된다. subquery는 `model`을 지정하고 `where`, `order`, `limit`, `agg`를 지정할 수 있으며, `limit`은 호출이 지정할 때만 지정한다. API: coverage-model-scalar-subquery-column(DSL-74), DSL-53과 DSL-54.
+  - `{"outer": <name>}`은 subquery 안에서 바깥 query의 열을 가리키는 `expr`이다(상관 참조). `column`은 subquery 자신의 모델 열을 뜻한다. API: DSL-53과 DSL-54.
+  - `{"expr": <fnCall>, "cmp": {<op>: <expr>}}`는 key가 열 함수인 predicate다(F5). API unit: column-function-generated-alias(DSL-73).
+  - `relations` 항목은 `lock`(`share` 또는 `update`, transaction 안에서만), `order`, `columns`(목록 또는 `"all"`), `relations`(관련 모델의 relation을 중첩한 목록)를 받는다. API unit: client-query-relation(INT-87), client-utils-lock(INT-50), DSL-44.
+  - `model.duplicate_create`는 생성된 모델을 묶는 `as`를 받는다. API: DSL-105(upsert_one_key).
+  - `model.update`의 `set` 항목은 `{"arith": {"column": <name>, "operation": "plus" | "minus", "amount": <value>}}`일 수 있으며, 같은 쓰기에서 열에 더한다. API unit: client-model-terminal-write(INT-35).
+  - `restore: true`인 `model.update`는 `set`을 생략할 수 있으며, 그 경우 행을 복원만 한다. API unit: restore-soft-deleted-row(INT-38).
+  - `model.update`와 `model.delete`의 `revision`의 `value`는 정수 또는 `ref`일 수 있다. API unit: error-code-revision-changed(INT-65)와 DSL-114.
+  - `model.delete`는 `relations`를 받는다. 이는 `model.query`가 받는 행의 적재된 relation이다. `recursive: true`이면 적재된 행을 삭제하되, `delete_lock: true`인 relation의 행은 제외한다. API unit: DSL-111, DSL-87, client-model-terminal-write(INT-37).
+  - `transaction`은 `audit: {"request_id": <text>}`(감사 기록의 요청 ID, DBS-87)와 음이 아닌 정수 `retry`를 받는다. API unit: client-db-transaction(INT-72)과 coverage-audit-triggers-audit-transaction-entry-points(INT-44); `retry`는 PLN-24.
+  - `utils.lock {connection, name}`은 transaction이 끝날 때까지 유지되는 이름 있는 advisory lock을 잡으며, `expect`는 `{"error": <code>}` 또는 생략이다. API unit: client-utils-lock(INT-50).
+  - `utils.aes_status {model, keyring}`는 이름 대신 인라인 `keyring`, `{"current": <정수>, "versions": {"<정수>": <text>}}`를 받는다. API unit: aes-keyring(INT-130)과 aes-utils-status(INT-60).
+  - `model.create`의 `as`, `model.update`의 `row`, `model.delete`의 `row`는 묶인 행을 지정한다. `schema.install`은 `connection`을 받아 그 연결에 recipe fixture를 설치한다(FCV-9). API unit: coverage-model-create-parts(INT-35), client-model-terminal-write(INT-35와 INT-37), client-schema-utils-add-tables-and-columns(INT-56).
+  - 값의 `null`은 `{"null": <type>}`이며 `<type>`은 recipe schema의 열 type 가운데 하나다: `int`, `text`, `date`, `time`, `datetime`, `decimal`, `bytes_hex`, `bool`, `float`. 어휘는 닫혀 있다. API: contains_null(INT-20, PRT-67)과 null_into_not_null(PRT-67, PRT-5)의 타입이 있는 NULL, 그리고 styled value의 null인 COD-20.
+  - `model.create`의 `attached: {<name>: <argument>}`는 열이 아닌 값을 만들어진 행에 붙인다(DSL-101). 이 값은 `INSERT`, `UPDATE`, `SELECT` 문장에 쓰지 않으며, 만들어진 모델이 그 값을 갖는다(DSL-115). API: write_cycle vector(`NewLabel("created")`), DSL-101과 DSL-115. parity unit이 명명하지 않으므로 vector와 requirement로 선언한다.
 
   Rust의 mutation은 cancellation flag, phase publisher, commit permit도 받는다. Rust helper는 설정되지 않은 flag, 아무것도 남기지 않는 publisher, 허용하는 permit을 넘긴다. 각 runtime의 helper는 호출이 돌려준 값을 비교하기 전에 recipe wrapper로 바꾼다.
 

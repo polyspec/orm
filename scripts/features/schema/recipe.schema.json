@@ -278,8 +278,17 @@
           "additionalProperties": false,
           "properties": {
             "null": {
-              "type": "string",
-              "minLength": 1
+              "enum": [
+                "int",
+                "text",
+                "date",
+                "time",
+                "datetime",
+                "decimal",
+                "bytes_hex",
+                "bool",
+                "float"
+              ]
             }
           }
         },
@@ -580,7 +589,8 @@
             "events.captured",
             "utils.set_local",
             "utils.local",
-            "utils.aes_status"
+            "utils.aes_status",
+            "utils.lock"
           ]
         }
       },
@@ -713,6 +723,9 @@
         },
         {
           "$ref": "#/$defs/ops/utils.aes_status"
+        },
+        {
+          "$ref": "#/$defs/ops/utils.lock"
         }
       ]
     },
@@ -771,7 +784,8 @@
             "type": "object",
             "required": [
               "op",
-              "schema"
+              "schema",
+              "expect"
             ],
             "additionalProperties": false,
             "properties": {
@@ -780,6 +794,9 @@
               },
               "schema": {
                 "$ref": "#/$defs/schemaArgument"
+              },
+              "expect": {
+                "$ref": "#/$defs/expect"
               }
             }
           },
@@ -907,6 +924,22 @@
           },
           "expect": {
             "$ref": "#/$defs/expect"
+          },
+          "audit": {
+            "type": "object",
+            "required": [
+              "request_id"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "request_id": {
+                "type": "string"
+              }
+            }
+          },
+          "retry": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       },
@@ -1535,6 +1568,16 @@
           },
           "restore_or_create": {
             "const": true
+          },
+          "attached": {
+            "type": "object",
+            "minProperties": 1,
+            "propertyNames": {
+              "$ref": "#/$defs/name"
+            },
+            "additionalProperties": {
+              "$ref": "#/$defs/argument"
+            }
           }
         }
       },
@@ -1642,6 +1685,9 @@
             "additionalProperties": {
               "$ref": "#/$defs/outcomes/error"
             }
+          },
+          "as": {
+            "$ref": "#/$defs/name"
           }
         }
       },
@@ -1653,8 +1699,25 @@
               "op",
               "connection",
               "model",
-              "key",
-              "set"
+              "key"
+            ],
+            "anyOf": [
+              {
+                "required": [
+                  "set"
+                ],
+                "properties": {
+                  "set": true
+                }
+              },
+              {
+                "required": [
+                  "restore"
+                ],
+                "properties": {
+                  "restore": true
+                }
+              }
             ],
             "additionalProperties": false,
             "properties": {
@@ -1694,7 +1757,14 @@
                     "$ref": "#/$defs/name"
                   },
                   "value": {
-                    "type": "integer"
+                    "oneOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "$ref": "#/$defs/argument"
+                      }
+                    ]
                   }
                 }
               }
@@ -1704,8 +1774,25 @@
             "type": "object",
             "required": [
               "op",
-              "row",
-              "set"
+              "row"
+            ],
+            "anyOf": [
+              {
+                "required": [
+                  "set"
+                ],
+                "properties": {
+                  "set": true
+                }
+              },
+              {
+                "required": [
+                  "restore"
+                ],
+                "properties": {
+                  "restore": true
+                }
+              }
             ],
             "additionalProperties": false,
             "properties": {
@@ -1739,7 +1826,14 @@
                     "$ref": "#/$defs/name"
                   },
                   "value": {
-                    "type": "integer"
+                    "oneOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "$ref": "#/$defs/argument"
+                      }
+                    ]
                   }
                 }
               }
@@ -1838,8 +1932,21 @@
                     "$ref": "#/$defs/name"
                   },
                   "value": {
-                    "type": "integer"
+                    "oneOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "$ref": "#/$defs/argument"
+                      }
+                    ]
                   }
+                }
+              },
+              "relations": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/relation"
                 }
               }
             }
@@ -1879,8 +1986,21 @@
                     "$ref": "#/$defs/name"
                   },
                   "value": {
-                    "type": "integer"
+                    "oneOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "$ref": "#/$defs/argument"
+                      }
+                    ]
                   }
+                }
+              },
+              "relations": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/relation"
                 }
               }
             }
@@ -1911,6 +2031,12 @@
           },
           "expect": {
             "$ref": "#/$defs/expect"
+          },
+          "joins": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/join"
+            }
           }
         }
       },
@@ -1922,9 +2048,7 @@
               "op",
               "connection",
               "model",
-              "key",
-              "columns",
-              "expect"
+              "key"
             ],
             "additionalProperties": false,
             "properties": {
@@ -1941,14 +2065,17 @@
                 "$ref": "#/$defs/assignments"
               },
               "columns": {
-                "type": "array",
-                "minItems": 1,
-                "items": {
-                  "$ref": "#/$defs/name"
-                }
+                "$ref": "#/$defs/columnChoice"
+              },
+              "as": {
+                "$ref": "#/$defs/name"
               },
               "expect": {
-                "$ref": "#/$defs/expect"
+                "type": "object",
+                "minProperties": 1,
+                "additionalProperties": {
+                  "$ref": "#/$defs/outcomes/rows"
+                }
               },
               "lock": {
                 "$ref": "#/$defs/lockMode"
@@ -1981,17 +2108,17 @@
                 "$ref": "#/$defs/predicate"
               },
               "columns": {
-                "type": "array",
-                "minItems": 1,
-                "items": {
-                  "$ref": "#/$defs/name"
-                }
+                "$ref": "#/$defs/columnChoice"
               },
               "as": {
                 "$ref": "#/$defs/name"
               },
               "expect": {
-                "$ref": "#/$defs/expect"
+                "type": "object",
+                "minProperties": 1,
+                "additionalProperties": {
+                  "$ref": "#/$defs/outcomes/rows"
+                }
               },
               "lock": {
                 "$ref": "#/$defs/lockMode"
@@ -2008,11 +2135,7 @@
         "required": [
           "op",
           "connection",
-          "model",
-          "where",
-          "order",
-          "columns",
-          "expect"
+          "model"
         ],
         "additionalProperties": false,
         "properties": {
@@ -2032,7 +2155,7 @@
             "$ref": "#/$defs/orderList"
           },
           "columns": {
-            "$ref": "#/$defs/columnList"
+            "$ref": "#/$defs/columnChoice"
           },
           "expect": {
             "type": "object",
@@ -2053,9 +2176,15 @@
                       "$ref": "#/$defs/compileValue"
                     }
                   }
+                },
+                {
+                  "$ref": "#/$defs/pageOutcome"
                 }
               ]
             }
+          },
+          "as": {
+            "$ref": "#/$defs/name"
           },
           "limit": {
             "$ref": "#/$defs/limit"
@@ -2215,7 +2344,7 @@
             "$ref": "#/$defs/name"
           },
           "name": {
-            "$ref": "#/$defs/name"
+            "$ref": "#/$defs/qualifiedName"
           },
           "value": {
             "$ref": "#/$defs/argument"
@@ -2239,7 +2368,7 @@
             "$ref": "#/$defs/name"
           },
           "name": {
-            "$ref": "#/$defs/name"
+            "$ref": "#/$defs/qualifiedName"
           },
           "expect": {
             "$ref": "#/$defs/expect"
@@ -2263,6 +2392,50 @@
             "$ref": "#/$defs/model"
           },
           "keyring": {
+            "type": "object",
+            "required": [
+              "current",
+              "versions"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "current": {
+                "type": "integer"
+              },
+              "versions": {
+                "type": "object",
+                "minProperties": 1,
+                "propertyNames": {
+                  "pattern": "^-?[0-9]+$"
+                },
+                "additionalProperties": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "utils.lock": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "name"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "utils.lock"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "name": {
             "$ref": "#/$defs/name"
           },
           "expect": {
@@ -2531,7 +2704,14 @@
         "$ref": "#/$defs/name"
       },
       "additionalProperties": {
-        "$ref": "#/$defs/argument"
+        "oneOf": [
+          {
+            "$ref": "#/$defs/argument"
+          },
+          {
+            "$ref": "#/$defs/arithValue"
+          }
+        ]
       }
     },
     "expectations": {
@@ -2654,12 +2834,36 @@
           "additionalProperties": false,
           "properties": {
             "column": {
-              "$ref": "#/$defs/name"
+              "$ref": "#/$defs/qualifiedName"
             }
           }
         },
         {
           "$ref": "#/$defs/fnCall"
+        },
+        {
+          "type": "object",
+          "required": [
+            "outer"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "outer": {
+              "$ref": "#/$defs/name"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "sub"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "sub": {
+              "$ref": "#/$defs/subquery"
+            }
+          }
         }
       ]
     },
@@ -2737,7 +2941,7 @@
           "type": "object",
           "minProperties": 1,
           "propertyNames": {
-            "$ref": "#/$defs/name"
+            "$ref": "#/$defs/qualifiedName"
           },
           "additionalProperties": {
             "oneOf": [
@@ -2771,7 +2975,6 @@
                     },
                     {
                       "type": "array",
-                      "minItems": 1,
                       "items": {
                         "$ref": "#/$defs/expr"
                       }
@@ -2783,6 +2986,56 @@
                 }
               }
             ]
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "expr",
+            "cmp"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "expr": {
+              "$ref": "#/$defs/fnCall"
+            },
+            "cmp": {
+              "type": "object",
+              "minProperties": 1,
+              "propertyNames": {
+                "enum": [
+                  "eq",
+                  "ne",
+                  "gt",
+                  "ge",
+                  "lt",
+                  "le",
+                  "in",
+                  "not_in",
+                  "between",
+                  "like",
+                  "binary_like",
+                  "is_null",
+                  "not_null"
+                ]
+              },
+              "additionalProperties": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/expr"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/expr"
+                    }
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              }
+            }
           }
         }
       ]
@@ -2882,10 +3135,7 @@
     "subquery": {
       "type": "object",
       "required": [
-        "model",
-        "where",
-        "order",
-        "limit"
+        "model"
       ],
       "additionalProperties": false,
       "properties": {
@@ -2934,18 +3184,6 @@
                 {
                   "type": "object",
                   "required": [
-                    "sub"
-                  ],
-                  "additionalProperties": false,
-                  "properties": {
-                    "sub": {
-                      "$ref": "#/$defs/subquery"
-                    }
-                  }
-                },
-                {
-                  "type": "object",
-                  "required": [
                     "blind_index"
                   ],
                   "additionalProperties": false,
@@ -2987,8 +3225,6 @@
       "type": "object",
       "required": [
         "model",
-        "on",
-        "kind",
         "as"
       ],
       "additionalProperties": false,
@@ -3055,6 +3291,21 @@
         },
         "delete_lock": {
           "type": "boolean"
+        },
+        "lock": {
+          "$ref": "#/$defs/lockMode"
+        },
+        "order": {
+          "$ref": "#/$defs/orderList"
+        },
+        "columns": {
+          "$ref": "#/$defs/columnChoice"
+        },
+        "relations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/relation"
+          }
         }
       }
     },
@@ -3098,6 +3349,89 @@
           "additionalProperties": false,
           "properties": {
             "seconds": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "qualifiedName": {
+      "type": "string",
+      "pattern": "^[a-z_][a-z0-9_]*(\\.[a-z_][a-z0-9_]*)*$",
+      "description": "A name, or a dotted name: alias.column of a joined model (FCV-4 query fields) or a dotted local name (utils.set_local)."
+    },
+    "columnChoice": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/columnList"
+        },
+        {
+          "const": "all"
+        }
+      ]
+    },
+    "arithValue": {
+      "type": "object",
+      "required": [
+        "arith"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "arith": {
+          "type": "object",
+          "required": [
+            "column",
+            "operation",
+            "amount"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "column": {
+              "$ref": "#/$defs/name"
+            },
+            "operation": {
+              "enum": [
+                "plus",
+                "minus"
+              ]
+            },
+            "amount": {
+              "$ref": "#/$defs/value"
+            }
+          }
+        }
+      }
+    },
+    "pageOutcome": {
+      "type": "object",
+      "required": [
+        "page"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "type": "object",
+          "required": [
+            "total",
+            "pages"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/value"
+                }
+              }
+            },
+            "total": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "pages": {
               "type": "integer",
               "minimum": 0
             }
