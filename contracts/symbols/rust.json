@@ -8785,7 +8785,7 @@
   },
   "packages/rust/orm/src/utils.rs::AesUtils \u003c '_ \u003e::spec": {
     "exported": false,
-    "signature": " fn spec \u003c M : Model \u003e (\u0026 self , _m : \u0026 M) -\u003e Result \u003c AesSpec \u003e"
+    "signature": " fn spec \u003c M : Model \u003e (\u0026 self , m : \u0026 M) -\u003e Result \u003c AesSpec \u003e"
   },
   "packages/rust/orm/src/utils.rs::AesUtils \u003c '_ \u003e::status": {
     "exported": true,
