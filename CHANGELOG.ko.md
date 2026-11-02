@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 43ad67f090160d4ec98728eb695560c2f0ae22447fe71283b16d5d6aab44f593 -->
+<!-- source-sha256: 03731d5f264a8b6f84378ff7ca82ee3dab60bc8c5b48c7d6b2ed5e07255d591c -->
 # 변경 이력
 
 ## Unreleased
@@ -21,6 +21,7 @@
 - Python recipe helper가 ir.answer의 bind step을 tests/bind/dbspec-set.json에서 생성한 bind model에서 실행한다. 그 slot column의 setter와 insert를 거치므로 tests/ir/answers.json의 bind_time3과 bind_datetime3이 Python에서 통과한다 (T334-3-15-3c-5).
 - recipe의 ir.answer expect는 `{"none": {"params": [...]}}` 형식을 받는다. 이 형식은 listener가 받은 request 하나의 params를 비교하므로(PRT-66, PRT-67), chain의 bind 값과 wire 값을 recipe case로 쓸 수 있다. 여섯 runtime이 각자의 recipe helper에 이를 구현했다 (T334-3-15-5).
 - PHP recipe helper와 이를 상속하는 php-ext 실행이 ir.answer의 bind step을 tests/bind/dbspec-set.json에서 생성한 bind model에서 실행한다. 그 slot column의 setter와 insert를 거친다 (T334-3-15-3c-7).
+- packages/rust/tests/Cargo.toml의 target markdown_conformance에서 test = false를 뺐으므로 rust lane의 workspace cargo test가 markdown trial 56개를 실행하며, make client-pooler-check는 markdown runner처럼 그 lane에 FLOWMARK를 넘긴다 (T334-3-13).
 - CFG-1, CFG-2, CFG-11, CFG-17, CFG-19, CFG-26의 거부되는 DSN case(UTC가 아닌 timezone, 알 수 없는 scheme, database 이름 없음, 상대 SQLite 경로, VERIFY_IDENTITY와 함께 쓰인 주소 host, 잘못된 SQLite 경로 percent 인코딩)는 하나의 recipe, contracts/fixtures/dsn_reject/dsn_reject.json이 되었고, 모든 runtime이 새 op dsn.connect(FCV-4)로 database 없이 실행한다 (T334-3-23).
 - recipe schema가 model_writes fixture의 model.get_by step을 거부했다. 두 형식 모두 FCV-4가 model.get_by에 주는 rows outcome 대신 일반 expect를 받았다. 이제 두 형식 모두 rows outcome을 받는다 (T334-3-4-9).
 - recipe schema가 schema_install fixture의 schema.install step을 거부했다. {schema} 형식에 expect가 없었는데 FCV-4는 이 형식에 expect를 준다. 이제 schema가 그 expect를 받는다 (T334-3-4-8).

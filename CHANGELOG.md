@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The target markdown_conformance of packages/rust/tests/Cargo.toml no longer has test = false, so the rust lane's workspace cargo test runs its 56 markdown trials, and make client-pooler-check passes FLOWMARK to that lane as the markdown runners do (T334-3-13).
 - make lint-ts passes again: the recipe key table script narrows its schema with guards, and the owner test iterates the declared owners (T334-3-17-10)
 - The Rust build crate tests the column name rules of the model syntax through Builder: a reserved method name and an operator or connector segment are rejected by the generator, and the parity units bind that test instead of the in-module tests of the private manifest module (T334-3-17-7).
 - The Go generator test of the stored column name rule calls the exported Generate, the public path that orm-gen uses, instead of the unexported generateGo, and the unit model-new-output-name-rejects-stored-column binds it (T334-3-17-8).
