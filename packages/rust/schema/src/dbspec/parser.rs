@@ -1622,7 +1622,7 @@ impl Parser {
         let comments = self.comments();
         let mut cursor = Cursor::new(tokens);
         // The table name is checked once the line is a whole entry, as in Go: a line abandoned with a syntax diagnostic, such
-        // as a diagram header inside an open diagram block, reports that diagnostic alone (DBS-139).
+        // as a diagram header inside an open diagram block, reports that diagnostic alone.
         let Some(table) = self.word(&mut cursor, |_| Class::Name) else { return };
         if self.expect(&mut cursor, "at").is_none() {
             return;

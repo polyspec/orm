@@ -7,7 +7,8 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// Requirements: DSL-109.
+// The update of an unloaded row keeps the assigned columns selected and the key values of its key, so the row
+// written by the update reads back as written.
 func TestUnloadedUpdateKeepsAssignedValuesSelectedAndKeyed(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	ent := &runtimemodel.Entity{Name: "account", PK: []string{"seq"}}

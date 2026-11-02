@@ -77,7 +77,7 @@ pub fn unique() -> u128 {
 /// A case with `answers` instead of `answer` is a transaction: the listener answers every later message with the member
 /// of `answers` named by the op of a control message or the kind of a request, and a message without one IR_INVALID.
 /// With `params` (an expect of {"params": [...]}), the result is the params of the one request that the listener
-/// received, in the JSON form of PRT-67, instead of the chain's result; a chain that fails returns its error.
+/// received, in the JSON form of the params of docs/spec/protocol.md, instead of the chain's result; a chain that fails returns its error.
 /// A step with a `bind` runs the slot insert of `recipe::bind_slot` on the slots model instead of the chain (T334-3-15-3c).
 pub fn answer(chain: &str, bind: &Value, answer: &Value, answers: &Value, params: bool) -> Value {
     // The chain's future is large in a debug build, so it runs on a thread with a stack of its own (not the trial's).
@@ -169,7 +169,7 @@ fn answer_on_thread(chain: &str, bind: &Value, answer: &Value, answers: &Value, 
     }
 }
 
-/// The params of the request that a listener received, in the JSON form of PRT-67. A request without params has none, so the
+/// The params of the request that a listener received, in the JSON form of the params of docs/spec/protocol.md. A request without params has none, so the
 /// result is an empty list; a listener that received no request is a fault of the case.
 fn request_params(request: Option<&str>) -> Value {
     let Some(line) = request else { panic!("the listener received no request message") };

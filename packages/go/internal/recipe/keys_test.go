@@ -13,6 +13,9 @@ func recipeWith(top, steps string) string {
 	return `{"$schema":"` + testSchema + `",` + top + `"cases":[{"id":"c","requirements":[],"steps":[` + steps + `]}]}`
 }
 
+// TestCheckKeysAcceptsAndRefusesByName checks that the loader refuses each unknown file, case, op or step key by name and
+// accepts a recipe whose keys the table holds.
+// Requirements: FCV-4.
 func TestCheckKeysAcceptsAndRefusesByName(t *testing.T) {
 	const file = `"fixture":"none",`
 	for _, tc := range []struct {
@@ -42,6 +45,9 @@ func TestCheckKeysAcceptsAndRefusesByName(t *testing.T) {
 	}
 }
 
+// TestLoadKeyTableNamesTheSchemaTable checks that the key table read beside the schema of the recipe holds the keys of
+// its ops.
+// Requirements: FCV-4.
 func TestLoadKeyTableNamesTheSchemaTable(t *testing.T) {
 	table, err := loadKeyTable("recipe.json", testSchema)
 	if err != nil {

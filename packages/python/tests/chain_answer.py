@@ -132,7 +132,7 @@ def release() -> None:
 
 
 def _bind_run(bind: dict):
-    """The chain of a bind step (T334-3-15-3c, PRT-67): it writes the bind value into the slot column of the bind models through
+    """The chain of a bind step (T334-3-15-3c): it writes the bind value into the slot column of the bind models through
     its setter and sends the insert, so the request carries the wire value of the slot."""
     setter = f"set_{bind['column'].split('_')[0]}_value"
 

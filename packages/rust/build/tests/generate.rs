@@ -121,7 +121,9 @@ fn column_names_of_the_model_rules_are_rejected_through_the_builder() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     for (column, reason) in [
         ("create", "column name is a reserved method name: create"),
+        ("delete", "column name is a reserved method name: delete"),
         ("restore", "column name is a reserved method name: restore"),
+        ("random", "column name is a reserved method name: random"),
         ("price_gt_limit", "column name may not contain the segment \"gt\": price_gt_limit"),
         ("with_tax", "column name may not contain the segment \"with\": with_tax"),
     ] {
@@ -131,6 +133,8 @@ fn column_names_of_the_model_rules_are_rejected_through_the_builder() {
     }
     let document = "dbspec 1 names\n\ntable item {\n  seq i64 identity\n  min_price i32\n  primary key (seq)\n}\n";
     generate_with_document(document, "fn main() {}").expect("a column name that only contains a rule word as text is accepted");
+    let document = "dbspec 1 names\n\ntable item {\n  seq i64 identity\n  restored_at i32\n  primary key (seq)\n}\n";
+    generate_with_document(document, "fn main() {}").expect("a column name that only begins with a method name is accepted");
 }
 
 #[test]

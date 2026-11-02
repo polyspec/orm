@@ -228,7 +228,6 @@ func TestCatalogDescribedBool(t *testing.T) {
 	}
 }
 
-
 // Requirements: INT-103.
 //
 // go-sql-driver/mysql returns time.Time{} for the zero date 0000-00-00 (parseDateTime). MySQL's DATE and DATETIME range

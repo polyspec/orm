@@ -125,32 +125,3 @@ pub fn check_column_name(n: &str) -> Result<(), String> {
     }
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::check_column_name;
-
-    // A column with the same name as a fixed model method would collide with the generated method, so it is rejected.
-    #[test]
-    // The test of DSL-127, PLN-22 (docs/spec).
-    fn reserved_method_names_are_not_columns() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        for name in ["create", "delete", "restore", "random"] {
-            let error = check_column_name(name).expect_err(name);
-            assert!(error.contains("reserved method name"), "{name}: {error}");
-        }
-        assert_eq!(check_column_name("restored_at"), Ok(()));
-    }
-
-    // A column name that holds an operator or connector segment is rejected; one that only contains it as text is not.
-    #[test]
-    // The test of DSL-130 (docs/spec).
-    fn operator_and_connector_segments_are_not_in_column_names() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        for (name, segment) in [("price_gt_limit", "gt"), ("with_tax", "with")] {
-            let error = check_column_name(name).expect_err(name);
-            assert_eq!(error, format!("column name may not contain the segment {segment:?}: {name}"));
-        }
-        assert_eq!(check_column_name("min_price"), Ok(()));
-    }
-}

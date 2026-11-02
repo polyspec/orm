@@ -37,7 +37,8 @@
         "packages/go/bench/coverage_process_cpu_windows_test.go",
         "packages/go/bench/gate_helpers_test.go",
         "packages/go/internal/dialects/runner_environment_physical_test.go",
-        "packages/go/engine/dbspec/vectors_test.go"
+        "packages/go/engine/dbspec/vectors_test.go",
+        "packages/go/internal/dialects/servers_test.go"
       ],
       "args": [
         "-tags",
@@ -249,6 +250,10 @@
         {
           "glob": "packages/go/engine/dbspec/literal_test.go",
           "reason": "test: directly checks the Go engine's CanonicalLiteral helper; public default literal parsing and diagnostics are exercised by the six-client dbspec-canonical and dbspec-invalid vectors"
+        },
+        {
+          "glob": "packages/go/orm/model_update_state_test.go",
+          "reason": "test: a unit test of the private update state of Core (the selected columns and the key values that retainUpdateState keeps after an update of an unloaded row), reached inside package orm, not a behaviour of the contract; its owner is unloaded-update-state-go, while the public update behaviour remains covered by the model_writes cases (K313)"
         }
       ]
     },
@@ -369,7 +374,9 @@
         "packages/php/tests/RecipeSubscription.php",
         "packages/php/tests/RecipeModel.php",
         "packages/php/tests/CatalogPostgresTemporalPdo.php",
-        "packages/php/tests/CatalogPostgresTemporalCases.php"
+        "packages/php/tests/CatalogPostgresTemporalCases.php",
+        "packages/php/tests/RecipeKeys.php",
+        "packages/php/tests/dbspec_cases.php"
       ],
       "symbols": {
         "extractor": "php",
@@ -668,7 +675,8 @@
         "packages/ts/tests/generator_scan.mjs",
         "packages/ts/tests/markdown-read-db.mjs",
         "packages/ts/tests/recipe.mjs",
-        "packages/ts/tests/recipe_model.mjs"
+        "packages/ts/tests/recipe_model.mjs",
+        "packages/ts/tests/recipe_keys.mjs"
       ],
       "args": [
         "--conditions=orm-test"
@@ -932,7 +940,8 @@
         "packages/python/tests/coverage_performance_gate.py",
         "packages/python/tests/recipe.py",
         "packages/python/tests/statement_events.py",
-        "packages/python/tests/recipe_model.py"
+        "packages/python/tests/recipe_model.py",
+        "packages/python/tests/recipe_keys.py"
       ],
       "command": "packages/python/.venv/bin/python",
       "env": [],
@@ -43296,6 +43305,175 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/transactions_sqlite.rs",
           "symbol": "transactions_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "recipe-unknown-keys",
+      "kind": "feature",
+      "requirements": [
+        "FCV-4"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/internal/recipe/keys_test.go",
+          "id": "TestCheckKeysAcceptsAndRefusesByName"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/internal/recipe/keys_test.go",
+          "id": "TestLoadKeyTableNamesTheSchemaTable"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RecipeKeysTest.php",
+          "id": "RecipeKeysTest::testARecipeWhoseKeysTheTableHoldsIsAccepted"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RecipeKeysTest.php",
+          "id": "RecipeKeysTest::testAnUnknownFileKeyIsRefusedByName"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RecipeKeysTest.php",
+          "id": "RecipeKeysTest::testAnUnknownCaseKeyIsRefusedByNameWithItsCase"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RecipeKeysTest.php",
+          "id": "RecipeKeysTest::testAnUnknownOpIsRefusedByNameWithItsStep"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RecipeKeysTest.php",
+          "id": "RecipeKeysTest::testAStepKeyAnotherOpHoldsIsRefusedOnTheOpThatDoesNotHoldIt"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RecipeKeysTest.php",
+          "id": "RecipeKeysTest::testARecipeWithNoSchemaIsRefusedSinceItNamesNoKeyTable"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RecipeKeysExtensionTest.php",
+          "id": "RecipeKeysExtensionTest::testARecipeWhoseKeysTheTableHoldsIsAccepted"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RecipeKeysExtensionTest.php",
+          "id": "RecipeKeysExtensionTest::testAnUnknownFileKeyIsRefusedByName"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RecipeKeysExtensionTest.php",
+          "id": "RecipeKeysExtensionTest::testAnUnknownCaseKeyIsRefusedByNameWithItsCase"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RecipeKeysExtensionTest.php",
+          "id": "RecipeKeysExtensionTest::testAnUnknownOpIsRefusedByNameWithItsStep"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RecipeKeysExtensionTest.php",
+          "id": "RecipeKeysExtensionTest::testAStepKeyAnotherOpHoldsIsRefusedOnTheOpThatDoesNotHoldIt"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RecipeKeysExtensionTest.php",
+          "id": "RecipeKeysExtensionTest::testARecipeWithNoSchemaIsRefusedSinceItNamesNoKeyTable"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/recipe_keys.test.mjs",
+          "id": "a recipe whose file, case and step keys the table holds is accepted"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/recipe_keys.test.mjs",
+          "id": "an unknown file key is refused by name"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/recipe_keys.test.mjs",
+          "id": "an unknown case key is refused by name, with its case"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/recipe_keys.test.mjs",
+          "id": "an unknown op is refused by name, with its step"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/recipe_keys.test.mjs",
+          "id": "a step key that another op holds is refused on the op that does not hold it"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/recipe_keys.test.mjs",
+          "id": "a recipe with no $schema is refused, since it names no key table"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_recipe_keys.py",
+          "id": "test_a_recipe_whose_keys_the_table_holds_is_accepted"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_recipe_keys.py",
+          "id": "test_an_unknown_file_key_is_refused_by_name"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_recipe_keys.py",
+          "id": "test_an_unknown_case_key_is_refused_by_name_with_its_case"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_recipe_keys.py",
+          "id": "test_an_unknown_op_is_refused_by_name_with_its_step"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_recipe_keys.py",
+          "id": "test_a_step_key_another_op_holds_is_refused_on_the_op_that_does_not_hold_it"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_recipe_keys.py",
+          "id": "test_a_recipe_with_no_schema_is_refused_since_it_names_no_key_table"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/recipe_keys.rs",
+          "id": "recipe_keys::tests::a_recipe_whose_keys_the_table_holds_is_accepted"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/recipe_keys.rs",
+          "id": "recipe_keys::tests::an_unknown_file_key_is_refused_by_name"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/recipe_keys.rs",
+          "id": "recipe_keys::tests::an_unknown_case_key_is_refused_by_name_with_its_case"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/recipe_keys.rs",
+          "id": "recipe_keys::tests::an_unknown_op_is_refused_by_name_with_its_step"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/recipe_keys.rs",
+          "id": "recipe_keys::tests::a_step_key_another_op_holds_is_refused_on_the_op_that_does_not_hold_it"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/recipe_keys.rs",
+          "id": "recipe_keys::tests::a_recipe_with_no_schema_is_refused_since_it_names_no_key_table"
         }
       ]
     },
