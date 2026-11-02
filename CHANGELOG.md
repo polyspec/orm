@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The php-ext build of a RuntimeModel releases its entity tree, its column, unique and index key strings and its entity names when the model is released, so repeated builds keep no memory (T334-3-4-7-1).
 - The AES version and rotation codes COD-44, COD-47, COD-49 to COD-54 and COD-57 to COD-60 run as the recipe `contracts/fixtures/aes_rotation/aes_rotation.json` in all six runtimes on MySQL, PostgreSQL and SQLite; the hand-written tests that the recipe replaces are removed, and COD-48, COD-55 and COD-56 stay native with an FCV-2 reason (T334-3-4-6).
 - The TypeScript read of a stored AES version written as text of digits takes that number as the version, as the Go read path does; other text is `CODEC_DECODE` (COD-53, T334-3-4-1).
 - The Python read of a stored AES version written as text of digits takes that number as the version, as the Go read path does; other text is `CODEC_DECODE` (COD-53, T334-3-4-2).

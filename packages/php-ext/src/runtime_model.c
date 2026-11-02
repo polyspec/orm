@@ -248,7 +248,9 @@ static void table_entity(const table *t, zval *out, bool external) {
             add_assoc_long(&col, "precision", c->type->p[0]);
         else if (str_eqc(c->type->name, "varchar") && c->type->np)
             add_assoc_long(&col, "length", c->type->p[0]);
-        zend_hash_update(Z_ARRVAL(cols), str_zend(c->name), &col);
+        zend_string *key = str_zend(c->name);
+        zend_hash_update(Z_ARRVAL(cols), key, &col);
+        zend_string_release(key);
     }
     add_assoc_zval(out, "columns", &cols);
     zval unique, indexes;
@@ -261,7 +263,9 @@ static void table_entity(const table *t, zval *out, bool external) {
     for (size_t i = 0; i < t->uniques.n; i++) {
         zval a;
         zv_strs(&a, &ukeys[i]->columns);
-        zend_hash_update(Z_ARRVAL(unique), str_zend(ukeys[i]->name), &a);
+        zend_string *key = str_zend(ukeys[i]->name);
+        zend_hash_update(Z_ARRVAL(unique), key, &a);
+        zend_string_release(key);
     }
     xindex **ixs = dbs_alloc((t->indexes.n ? t->indexes.n : 1) * sizeof(*ixs));
     for (size_t i = 0; i < t->indexes.n; i++)
@@ -273,13 +277,16 @@ static void table_entity(const table *t, zval *out, bool external) {
             PUSH(a, ixs[i]->columns.v[q].name);
         zval z;
         zv_strs(&z, &a);
-        zend_hash_update(Z_ARRVAL(indexes), str_zend(ixs[i]->name), &z);
+        zend_string *key = str_zend(ixs[i]->name);
+        zend_hash_update(Z_ARRVAL(indexes), key, &z);
+        zend_string_release(key);
     }
     add_assoc_zval(out, "unique", &unique);
     add_assoc_zval(out, "indexes", &indexes);
     if (external)
         add_assoc_bool(out, "external", true);
 }
+/* entities is moved into out: obj_put takes the reference of the zval, so the caller owns nothing after the call. */
 static void construct_model(zval *out, str hash, str manifest, zval *entities, str external) {
     object_init_ex(out, polyspec_runtime_model_ce);
     zval v;
@@ -287,8 +294,7 @@ static void construct_model(zval *out, str hash, str manifest, zval *entities, s
     obj_put(out, "manifestHash", &v);
     ZVAL_STR(&v, str_zend(manifest));
     obj_put(out, "manifestText", &v);
-    ZVAL_COPY(&v, entities);
-    obj_put(out, "entities", &v);
+    obj_put(out, "entities", entities);
     ZVAL_STR(&v, str_zend(external));
     obj_put(out, "externalText", &v);
 }
@@ -344,7 +350,6 @@ static void build_docs(documentv *docs, zval *out) {
                 orm_error("SCHEMA_INVALID", duplicate);
                 return;
             }
-            Z_TRY_ADDREF_P(name);
             zend_hash_update(Z_ARRVAL(ents), Z_STR_P(name), &e);
         }
     }
