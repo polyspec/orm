@@ -31,6 +31,8 @@ function dbspec_apply_runner_plans(array $vectors): array
 function dbspec_apply_runner_run(array $argv): int
 {
     [, $action, $dialect, $uri, $vectorsPath] = $argv;
+    // An unreadable plans file is refused with its path and reason, as every input of the runners is.
+    dbspec_read_input($vectorsPath);
     try {
         $vectors = plan_vectors_at($vectorsPath);
     } catch (JsonException $e) {

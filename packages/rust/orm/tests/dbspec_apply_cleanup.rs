@@ -33,7 +33,7 @@ const CASE_DEADLINE: Duration = Duration::from_secs(20);
 
 /// create-from-empty from tests/dbspec/plan-cases.json.
 fn create_from_empty() -> Vec<Plan> {
-    let cases = plan_cases::read_cases(&polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec")).or_panic(|e| e);
+    let cases = plan_cases::read_cases(&polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/plan-cases.json")).or_panic(|e| e);
     let case = cases.iter().find(|c| c.id == "create-from-empty").expect("create-from-empty case");
     vec![parse_plan(&case.plan).or_panic(|e| format!("create-from-empty: {e:?}"))]
 }

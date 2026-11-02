@@ -49,7 +49,7 @@ fn code(result: &Result<(), ApplyError>) -> Option<&'static str> {
 /// create-from-empty from tests/dbspec/plan-cases.json, and the chain starting from its target
 /// rename-table-and-column.
 fn apply_chain() -> Vec<Plan> {
-    let cases = plan_cases::read_cases(&repository().join("tests/dbspec")).or_panic(|e| e);
+    let cases = plan_cases::read_cases(&repository().join("tests/dbspec/plan-cases.json")).or_panic(|e| e);
     let plans: Vec<Plan> = cases
         .iter()
         .filter(|c| matches!(c.id.as_str(), "create-from-empty" | "rename-table-and-column"))
@@ -292,10 +292,10 @@ fn counts(chain: &[Plan]) -> Counts {
 
 /// A chain made of the first plan base that creates the case's source and the case's plan.
 fn case_chain(id: &str) -> Vec<Plan> {
-    let dir = repository().join("tests/dbspec");
-    let cases = plan_cases::read_cases(&dir).or_panic(|e| e);
+    let path = repository().join("tests/dbspec/plan-cases.json");
+    let cases = plan_cases::read_cases(&path).or_panic(|e| e);
     let case = cases.iter().find(|c| c.id == id).unwrap_or_else(|| panic!("plan-cases.json has no case {id}"));
-    let source = plan_sources::read_sources(&dir).or_panic(|e| e).remove(id).flatten().unwrap_or_else(|| panic!("{id} has no source"));
+    let source = plan_sources::read_sources(&path).or_panic(|e| e).remove(id).flatten().unwrap_or_else(|| panic!("{id} has no source"));
     let base = parse_plan(&format!("dbplan 1 base\nfrom empty\n\n{source}")).or_panic(|e| format!("{id} base: {e:?}"));
     let plan = parse_plan(&case.plan).or_panic(|e| format!("{id}: {e:?}"));
     assert_eq!(plan.from(), Some(base.to()), "the source of {id} does not start its plan");

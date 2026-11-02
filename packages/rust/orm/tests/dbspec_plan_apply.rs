@@ -180,8 +180,8 @@ async fn run_steps(conn: &mut Conn, db: &str, steps: &[Step]) -> Result<(), Stri
 // dbspec plan ops of the shared runner, packages/rust/tests/src/recipe.rs). A trial runs its case on each of the three databases in turn and fails if any of them fails.
 fn main() {
     let dir = repository().join("tests/dbspec");
-    let cases = plan_cases::read_cases(&dir).or_panic(|e| e);
-    let sources = plan_sources::read_sources(&dir).or_panic(|e| e);
+    let cases = plan_cases::read_cases(&dir.join("plan-cases.json")).or_panic(|e| e);
+    let sources = plan_sources::read_sources(&dir.join("plan-cases.json")).or_panic(|e| e);
     let physical = plan_physical::read_physical(&dir).or_panic(|e| e);
     assert!(!cases.is_empty(), "tests/dbspec/plan-cases.json has no cases");
     let trials = cases

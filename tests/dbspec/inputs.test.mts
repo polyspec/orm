@@ -54,8 +54,9 @@ const stressHarness: Runner = { name: 'stress rust', command: join(cargoTarget()
 // inputNames is the name, in INPUTS order, that the input uses in messages.
 const inputNames: Record<string, string> = { dir: 'recipes directory', stress: 'stress document', ddl: 'ddl', plans: 'plans', mermaid: 'mermaid' };
 
-// Each case is the runner, its arguments, and the unreadable path that must appear on stderr.
-const cases: { name: string; runner: Runner; inputs: string[]; unreadable: string }[] = [];
+// Each case is the runner, its arguments, and the text naming the unreadable path that must appear on stderr: "<path>: ", or
+// for the recipes directory "<path>/", since a runner reads the recipe files in it and names the first one it cannot read.
+const cases: { name: string; runner: Runner; inputs: string[]; named: string }[] = [];
 for (const unreadable of [missing, folder]) {
   const kind = unreadable === missing ? 'missing' : 'directory';
   // The runner accepts only the inputs it reads (reads in runners.mts).
@@ -64,18 +65,19 @@ for (const unreadable of [missing, folder]) {
       if (!runner.reads.includes(input)) return;
       const inputs = compareInputs.slice();
       inputs[i] = unreadable;
-      cases.push({ name: `${runner.name} rejects a ${kind} ${inputNames[input] ?? input}`, runner, inputs, unreadable });
+      const named = input === 'dir' ? `${unreadable}/` : `${unreadable}: `;
+      cases.push({ name: `${runner.name} rejects a ${kind} ${inputNames[input] ?? input}`, runner, inputs, named });
     });
     if (!runner.reads.includes('mermaid')) continue;
     const inputs = compareInputs.slice();
     inputs[INPUTS.indexOf('mermaid')] = mermaidWithPath(unreadable);
-    cases.push({ name: `${runner.name} rejects a ${kind} round trip document`, runner, inputs, unreadable });
+    cases.push({ name: `${runner.name} rejects a ${kind} round trip document`, runner, inputs, named: `${unreadable}: ` });
   }
   for (const runner of applyRunners) {
     const uri = `sqlite://${join(directory, 'apply.sqlite')}`;
-    cases.push({ name: `${runner.name} rejects a ${kind} plans file`, runner, inputs: ['apply', 'sqlite', uri, unreadable], unreadable });
+    cases.push({ name: `${runner.name} rejects a ${kind} plans file`, runner, inputs: ['apply', 'sqlite', uri, unreadable], named: `${unreadable}: ` });
   }
-  cases.push({ name: `${stressHarness.name} rejects a ${kind} document`, runner: stressHarness, inputs: [unreadable], unreadable });
+  cases.push({ name: `${stressHarness.name} rejects a ${kind} document`, runner: stressHarness, inputs: [unreadable], named: `${unreadable}: ` });
 }
 
 // A stress document without a signature is not parsed; it is rejected with "<path> is not a dbspec document".
@@ -100,6 +102,6 @@ for (const c of cases) {
     const result = await runRunner(c.runner, c.inputs, TIMEOUT);
     assert.equal(result.signal, null, `ended by ${result.signal}`);
     assert.notEqual(result.code, 0, `exited 0; stderr: ${result.stderr}`);
-    assert.ok(result.stderr.includes(`${c.unreadable}: `), `stderr does not name ${c.unreadable}: ${result.stderr}`);
+    assert.ok(result.stderr.includes(c.named), `stderr does not name ${c.named}: ${result.stderr}`);
   });
 }

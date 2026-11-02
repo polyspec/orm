@@ -9,7 +9,7 @@ pub struct PlanCase {
     pub plan: String,
 }
 
-/// The cases of tests/dbspec/plan-cases.json in `dir`, in the recipe's order.
-pub fn read_cases(dir: &Path) -> Result<Vec<PlanCase>, String> {
-    Ok(recipe_cases(dir)?.into_iter().map(|(id, _, plan)| PlanCase { id, plan }).collect())
+/// The cases of the plan-cases.json at `path` (tests/dbspec/plan-cases.json), in the recipe's order.
+pub fn read_cases(path: &Path) -> Result<Vec<PlanCase>, String> {
+    Ok(recipe_cases(path)?.into_iter().map(|(id, _, plan)| PlanCase { id, plan }).collect())
 }

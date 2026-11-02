@@ -9,10 +9,10 @@ fn joined(value: &Value) -> Result<String, String> {
     lines.iter().map(|line| line.as_str().map(|l| format!("{l}\n")).ok_or_else(|| format!("{line} is not a line"))).collect()
 }
 
-/// The id, source (None for an empty schema) and plan text of each case of tests/dbspec/plan-cases.json in `dir`.
-pub fn recipe_cases(dir: &Path) -> Result<Vec<(String, Option<String>, String)>, String> {
-    let path = dir.join("plan-cases.json");
-    let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+/// The id, source (None for an empty schema) and plan text of each case of the plan-cases.json at `path`
+/// (tests/dbspec/plan-cases.json).
+pub fn recipe_cases(path: &Path) -> Result<Vec<(String, Option<String>, String)>, String> {
+    let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
     let recipe: Value = serde_json::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))?;
     let cases = recipe["cases"].as_array().ok_or("plan-cases.json has no cases")?;
     cases

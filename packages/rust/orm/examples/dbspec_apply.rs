@@ -192,15 +192,10 @@ fn combine_cleanup(result: Result<String, String>, cleanup: Result<(), String>) 
     }
 }
 
-/// The plan cases of the recipe of the plan-cases.json at the path (tests/dbspec/plan-cases.json).
-fn dir_beside(path: &str) -> &Path {
-    Path::new(path).parent().unwrap_or(Path::new("."))
-}
-
-/// create-from-empty and rename-table-and-column from the plan cases beside the path.
+/// create-from-empty and rename-table-and-column from the plan cases of the plan-cases.json at the path.
 fn chain(path: &str) -> Result<Vec<Plan>, String> {
     let mut plans = Vec::new();
-    for c in plan_cases::read_cases(dir_beside(path))?.iter().filter(|c| matches!(c.id.as_str(), "create-from-empty" | "rename-table-and-column")) {
+    for c in plan_cases::read_cases(Path::new(path))?.iter().filter(|c| matches!(c.id.as_str(), "create-from-empty" | "rename-table-and-column")) {
         plans.push(parse_plan(&c.plan).map_err(|e| format!("{}: {e:?}", c.id))?);
     }
     if plans.len() != 2 || plans[1].from() != Some(plans[0].to()) {
@@ -210,9 +205,9 @@ fn chain(path: &str) -> Result<Vec<Plan>, String> {
 }
 
 fn representative_chain(path: &str) -> Result<Vec<Plan>, String> {
-    let cases = plan_cases::read_cases(dir_beside(path))?;
+    let cases = plan_cases::read_cases(Path::new(path))?;
     let case = cases.iter().find(|c| c.id == "representative").ok_or("plan-cases.json has no representative case")?;
-    let sources = plan_sources::read_sources(dir_beside(path))?;
+    let sources = plan_sources::read_sources(Path::new(path))?;
     let source = sources.get("representative").and_then(|s| s.as_ref()).ok_or("representative has no source lines")?;
     let plans = vec![
         parse_plan(&format!("dbplan 1 base\nfrom empty\n\n{source}")).map_err(|e| format!("representative source: {e:?}"))?,

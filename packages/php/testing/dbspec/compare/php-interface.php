@@ -646,9 +646,11 @@ function dbspec_plan_recipes(string $plansPath): array
  */
 function dbspec_write_plans(string $dbspec, string $plansPath): void
 {
+    // The plans file is read against its schema first, so an unreadable or refused file is refused as every input is.
+    $vectors = dbspec_read_vectors($plansPath, 'plans');
     $cases = plan_vectors_at($plansPath)['cases'];
     // The cases of the read cases replace the recipe cases of the file: the left operand of + keeps its keys.
-    $plans = ['cases' => $cases] + dbspec_plan_recipes($plansPath) + dbspec_read_vectors($plansPath, 'plans');
+    $plans = ['cases' => $cases] + dbspec_plan_recipes($plansPath) + $vectors;
     foreach ($plans['cases'] as $case) {
         echo "plans/cases/{$case['id']}\n";
         $input = dbspec_case_plan($dbspec, $case);
