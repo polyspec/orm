@@ -301,6 +301,9 @@
   "cases": [
     {
       "id": "constraint_errors",
+      "requirements": [
+        "CFG-33"
+      ],
       "steps": [
         {
           "op": "model.connect",
@@ -532,6 +535,9 @@
     },
     {
       "id": "external_relation",
+      "requirements": [
+        "INT-87"
+      ],
       "steps": [
         {
           "op": "model.connect",

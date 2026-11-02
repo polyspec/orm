@@ -1,0 +1,371 @@
+{
+  "schema": 1,
+  "file": [
+    "$schema",
+    "cases",
+    "fixture",
+    "requirements",
+    "schema",
+    "seed"
+  ],
+  "case": [
+    "id",
+    "install",
+    "requirements",
+    "seed",
+    "steps"
+  ],
+  "step": {
+    "dsn.connect": [
+      "dsn",
+      "expect",
+      "op"
+    ],
+    "model.connect": [
+      "as",
+      "op",
+      "pool_size"
+    ],
+    "codec.decode": [
+      "as",
+      "expect",
+      "op",
+      "raw",
+      "styles"
+    ],
+    "codec.encode": [
+      "as",
+      "expect",
+      "op",
+      "styles",
+      "value"
+    ],
+    "codec.host_encode": [
+      "as",
+      "expect",
+      "key",
+      "op",
+      "styles",
+      "value"
+    ],
+    "codec.host_decode": [
+      "as",
+      "expect",
+      "key",
+      "op",
+      "raw",
+      "styles"
+    ],
+    "codec.blind_index": [
+      "expect",
+      "key",
+      "op",
+      "value"
+    ],
+    "sql.exec": [
+      "op",
+      "reason",
+      "sql"
+    ],
+    "ir.validate": [
+      "expect",
+      "op",
+      "request"
+    ],
+    "ir.answer": [
+      "answer",
+      "answers",
+      "chain",
+      "expect",
+      "op"
+    ],
+    "catalog.current_namespace": [
+      "as",
+      "expect",
+      "op"
+    ],
+    "catalog.describe_table": [
+      "as",
+      "expect",
+      "op",
+      "table"
+    ],
+    "catalog.table_page": [
+      "as",
+      "columns",
+      "expect",
+      "limit",
+      "offset",
+      "op",
+      "table"
+    ],
+    "catalog.read_only_query": [
+      "expect",
+      "max_bytes",
+      "max_rows",
+      "op",
+      "sql"
+    ],
+    "catalog.read_only_grid_query": [
+      "expect",
+      "max_bytes",
+      "max_rows",
+      "op",
+      "sql"
+    ],
+    "catalog.row_snapshot": [
+      "as",
+      "index",
+      "op",
+      "page"
+    ],
+    "catalog.insert_row": [
+      "expect",
+      "metadata",
+      "op",
+      "values"
+    ],
+    "catalog.update_row": [
+      "expect",
+      "op",
+      "set",
+      "snapshot"
+    ],
+    "catalog.delete_row": [
+      "expect",
+      "op",
+      "snapshot"
+    ],
+    "schema.install": [
+      "connection",
+      "expect",
+      "op",
+      "schema"
+    ],
+    "schema.register": [
+      "expect",
+      "op",
+      "schema"
+    ],
+    "schema.connect": [
+      "expect",
+      "op",
+      "schema"
+    ],
+    "schema.add_tables_and_columns": [
+      "expect",
+      "op",
+      "schema"
+    ],
+    "statements.count": [
+      "expect",
+      "op",
+      "steps"
+    ],
+    "transaction": [
+      "audit",
+      "connection",
+      "expect",
+      "fail",
+      "op",
+      "retry",
+      "steps"
+    ],
+    "model.create": [
+      "as",
+      "attached",
+      "connection",
+      "expect",
+      "model",
+      "op",
+      "restore_or_create",
+      "values"
+    ],
+    "model.creates": [
+      "batch",
+      "connection",
+      "expect",
+      "model",
+      "op",
+      "rows"
+    ],
+    "model.save": [
+      "connection",
+      "expect",
+      "model",
+      "op",
+      "values"
+    ],
+    "model.duplicate_create": [
+      "as",
+      "connection",
+      "duplication",
+      "expect",
+      "model",
+      "op",
+      "values"
+    ],
+    "model.update": [
+      "connection",
+      "expect",
+      "key",
+      "model",
+      "op",
+      "optimistic",
+      "restore",
+      "revision",
+      "row",
+      "set"
+    ],
+    "model.arithmetic": [
+      "amount",
+      "column",
+      "connection",
+      "expect",
+      "key",
+      "model",
+      "op",
+      "operation"
+    ],
+    "model.delete": [
+      "connection",
+      "expect",
+      "lock",
+      "model",
+      "op",
+      "recursive",
+      "relations",
+      "revision",
+      "row",
+      "where"
+    ],
+    "model.count": [
+      "connection",
+      "expect",
+      "joins",
+      "model",
+      "op",
+      "where"
+    ],
+    "model.get_by": [
+      "as",
+      "columns",
+      "connection",
+      "expect",
+      "key",
+      "limit",
+      "lock",
+      "model",
+      "op",
+      "where"
+    ],
+    "model.query": [
+      "columns",
+      "connection",
+      "expect",
+      "limit",
+      "model",
+      "offset",
+      "op",
+      "order",
+      "relation",
+      "where"
+    ],
+    "events.subscribe": [
+      "as",
+      "connection",
+      "op"
+    ],
+    "events.fail_subscriber": [
+      "as",
+      "connection",
+      "kind",
+      "op"
+    ],
+    "events.stop_failing": [
+      "op",
+      "ref"
+    ],
+    "events.unsubscribe": [
+      "op",
+      "ref"
+    ],
+    "events.captured": [
+      "compare",
+      "expect",
+      "op",
+      "ref"
+    ],
+    "planner.compile": [
+      "expect",
+      "input",
+      "op",
+      "schema"
+    ],
+    "dbspec.parse": [
+      "as",
+      "expect",
+      "lines",
+      "op"
+    ],
+    "dbspec.parse_plan": [
+      "as",
+      "expect",
+      "lines",
+      "op"
+    ],
+    "dbspec.diff": [
+      "expect",
+      "op",
+      "plan",
+      "source"
+    ],
+    "dbspec.chain": [
+      "expect",
+      "op",
+      "plans"
+    ],
+    "dbspec.compare": [
+      "expect",
+      "op",
+      "source",
+      "target"
+    ],
+    "dbspec.emit_plan": [
+      "expect",
+      "op",
+      "plan"
+    ],
+    "dbspec.plan_steps": [
+      "dialect",
+      "expect",
+      "op",
+      "plan",
+      "source"
+    ],
+    "utils.set_local": [
+      "connection",
+      "name",
+      "op",
+      "value"
+    ],
+    "utils.local": [
+      "connection",
+      "expect",
+      "name",
+      "op"
+    ],
+    "utils.aes_status": [
+      "expect",
+      "keyring",
+      "model",
+      "op"
+    ],
+    "utils.lock": [
+      "connection",
+      "expect",
+      "name",
+      "op"
+    ]
+  }
+}

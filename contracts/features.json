@@ -848,7 +848,10 @@
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
-            }
+            },
+            "inputs": [
+              "packages/php/tests/CoverageDsnTest.php"
+            ]
           },
           "php-extension": {
             "part": "packages/php-ext/tests",
@@ -897,7 +900,8 @@
               ]
             },
             "inputs": [
-              "packages/php/tests/DsnConnectionRecipeTest.php"
+              "packages/php/tests/DsnConnectionRecipeTest.php",
+              "packages/php/tests/CoverageDsnTest.php"
             ]
           },
           "rust": {

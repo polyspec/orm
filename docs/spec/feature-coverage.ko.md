@@ -51,6 +51,49 @@
   - `events.fail_subscriber {connection, kind, as}`는 `connection`에 두 번째 subscriber를 등록하며, 이것은 제거될 때까지 종류 `kind`의 모든 event를 실패시킨다(DB.Subscribe, client-db-subscribe, INT-77). `as`는 subscription을 묶는다.
   - `events.stop_failing {ref}`와 `events.unsubscribe {ref}`는 `ref`가 이름 짓는 subscription을 Subscribe가 반환하는 함수로 제거한다(client-db-subscribe, INT-77).
   - `events.captured {ref, compare?, expect}`는 subscription `ref`가 기록한 statement event를 기록된 순서대로 `expect`와 비교한다. 그 값은 `{"value": [<event>, ...]}`이며, 각 event는 여섯 field의 객체다: `sql`, `binds`, `kind`, `tables`, `transaction`(case 안에서 처음 나타난 순서로 1부터 다시 번호를 매기고, transaction 밖이면 `null`), `error`(statement의 error code, 없으면 `null`). INT-91의 일곱째 field `elapsed`는 음수가 아닌지만 확인하고 비교하지 않는다. `compare`는 기본값 `all` 또는 `tables`이며, `tables`는 table 이름을 가진 event만 비교한다.
+  - 정규 op의 query 필드(T334-3-5). 각 필드는 그것을 명명한 op에 선택적으로, 덧붙여 더한다. 필드는 각 runtime의 public builder를 구동하며, 각 runtime은 그것을 API unit이 명명한 public call에 대응시킨다. 어떤 필드도 SQL을 싣지 않고, 어떤 runtime에도 두 번째 interpreter가 없다. 언어별 chain 메서드 이름은 native로 남고 chain 메서드 검사가 확인한다.
+  - `model.count`, `model.get_by`(그 `where` 형식), `model.delete`, `model.query`의 `where`는 predicate다: 그룹 `{"and": [<predicate>, ...]}` 또는 `{"or": [...]}`; `{"not": <predicate>}`; composite key용 `{"tuple": [[<column>, ...], [[<expr>, ...], ...]]}`; 또는 leaf `{<column>: {<op>: <expr>}}`이며 `<op>`는 `eq`, `ne`, `gt`, `ge`, `lt`, `le`, `in`, `not_in`, `between`, `like`(contains), `binary_like`(contains_binary), `is_null`, `not_null` 중 하나다. 동등 leaf `{<column>: <value>}`는 바뀌지 않는다. `expr`는 값 wrapper, `{"column": <name>}`(column 참조), `null` 또는 `{"fn": ...}`(F5)다. API unit: generated-model-query-chain(INT-29)과 client-query-base(INT-20부터 INT-26까지).
+  - `model.query`의 `order`는 `[{"column" | "expr": <expr>, "dir": "asc" | "desc"}]`이며, NULL 위치는 방언의 것을 따른다. API unit: generated-model-query-chain과 client-query-base.
+  - `model.query`와 `model.get_by`의 `limit`는 `{"offset": <정수>, "count": <정수>}`이며, `getsPage(page, size)`는 offset `(page - 1) * size`인 limit다. API unit: client-page(INT-64)와 error-code-query-limit-invalid.
+  - `model.query`의 `columns` 항목은 column 이름 또는 `{"expr": <expr>, "as": <name>}`이며, `<expr>`는 column, `{"sub": <subquery>}`(`where`, `order`, count 1의 `limit`과 선택적 aggregate를 가진 scalar subquery), `{"blind_index": {"value": <text>, "key": <key>}}`(COD-4의 blind index) 또는 `{"fn": ...}`다. API unit: coverage-model-scalar-subquery-column과 client-query-base.
+  - `{"fn": <name>, "args": [<expr>, ...]}`(F5)의 name은 `year`, `month`, `day_of_week`, `days_ago`, `days_later`, `months_ago`, `months_later`, `seconds_ago`, `now` 중 하나다. API unit: clock-now-condition(DSL-137, DIA-56).
+  - `model.query`의 `aggregate`는 `{"agg": "sum" | "avg" | "count", "column": <name>, "group_by": [<name>, ...]}`이며, 결과는 group마다 값 하나를 갖는다. API unit: client-model-terminal-read(INT-29).
+  - `model.query`의 `joins`는 `[{"model": <name>, "on": <predicate>, "kind": "inner" | "left", "as": <name>}]`이며, soft delete된 join 행은 그 `ON` 조건에서 제외된다(DBS-67). API unit: model-connection-and-join-methods.
+  - `model.query`의 `relations`는 `[{"model": <name>, "match": [[<parent column>, <child column>], ...], "as": <name>, "group_limit": <정수>, "key_by": <column>, "possible": <predicate>, "parent_node": <boolean>, "flatten": <boolean>, "delete_lock": <boolean>}]`이며, 각각 root의 relation 하나다. API unit: client-query-relation(INT-87)과 DIA-167.
+  - `model.get_by`, `model.query`, `model.delete`의 `lock`은 `"share"` 또는 `"update"`이며, transaction 안에서만 허용된다. API unit: client-utils-lock(INT-50).
+  - `model.query`의 `compile: true`는 실행하지 않고 각 database에서 그 문장이 보낼 SQL 텍스트와 바인드 값을 돌려준다. 그 expect는 database마다 `{"value": {"text": <sql>, "binds": [<value>, ...]}}`다. API: DSL-65와 DSL-68(getQuery).
+  - `model.update`의 `restore: true`와 `model.create`의 `restore_or_create: true`(F11). API unit: restore-soft-deleted-row(INT-38).
+  - `model.update`와 `model.delete`의 `revision: {"column": <name>, "value": <정수>}`(F12)는 column이 `value`를 가질 때만 일치한다. 어긋나면 `REVISION_CHANGED`로 실패한다. API unit: error-code-revision-changed(INT-65)와 DSL-114.
+  - `model.update`의 `optimistic: true`(F13)는 `updated_ts`가 읽은 값을 가질 때만 일치하며, 아니면 `OPTIMISTIC_LOCK`으로 실패하고, 행에 새 갱신 시각이 없으면 `CONFIG`로 실패한다. API unit: error-code-optimistic-lock(INT-65), DSL-107과 DSL-155.
+  - `model.delete`의 `recursive: true`(F14)는 적재한 relation 행을 재귀적으로 삭제하되 `delete_lock`으로 표시한 relation은 제외한다. API: DSL-111.
+  - `model.update`와 `model.delete`의 `affected` expect(F15)는 `{"value": {"int": <개수>}}`이며, 쓰기가 바꾼 행의 수다. API unit: client-model-terminal-write(INT-35와 INT-37).
+  - 시간 창 expect(F16): `{"within": {"seconds": <정수>}}`은 step 결과의 시각 값에 대한 expect 형식 하나다. 값이 database의 현재 시각과 `seconds` 이하의 절댓값 차이이면 통과한다. database의 현재 시각은 expect를 검사할 때 같은 연결에서 읽으며, 어떤 runtime도 값을 자기 벽시계와 비교하지 않는다. API: DSL-137(clock-now-condition).
+  - `utils.set_local {connection, name, value}`와 `utils.local {connection, name}`(F18)은 transaction 로컬 값을 읽고 쓴다. 없는 name의 `local`은 `NO_ROWS`를 expect한다. API unit: client-utils-set-local(INT-51)과 client-utils-local(INT-51).
+  - `utils.aes_status {model, keyring}`(F19)는 모델의 AES 키 버전 상태를 읽는다. API unit: aes-utils-status(INT-60)와 INT-75.
+  - `transaction` step 안의 중첩 `transaction` step(F20)은 savepoint다. 안쪽 실패는 바깥 callback이 오류를 돌려주지 않는 한 안쪽 작업만 되돌린다. API unit: coverage-transactions-transaction-savepoint(INT-46).
+  - T334-3-5 1b 단계의 query field와 op. 각 field는 그것을 지정하는 op에서 선택 사항이며 추가만 된다. 각 field는 API unit의 공개 호출에 대응하며, 어떤 field도 SQL을 담지 않는다.
+  - `model.get_by`는 `key`(키 조회, GetBy) 또는 `where`(predicate와 terminal Get) 중 정확히 하나를 받는다. `columns`(이름 목록 또는 `"all"`), `expect`(행 0개 또는 1개의 `{"rows": [...]}` 또는 `{"error": <code>}`), `as`, `lock`, `limit`은 두 형식 모두에서 선택 사항이다. API unit: client-query-base(INT-26); DSL-59.
+  - `model.query`는 `where`, `order`, `columns`(이름 목록 또는 모델의 모든 열을 고르는 `"all"`, DSL-72)를 선택 사항으로 받으며, `as`는 결과를 묶으므로 `as`가 있으면 `expect`는 선택 사항이다. API unit: client-query-base(INT-20부터 INT-26까지).
+  - `model.query`의 `expect`는 `{"page": {"total": <정수>, "pages": <정수>, "rows": [...]}}`일 수 있다. `getsPage`의 page 결과이며 전체 개수와 쪽 수를 담는다(`rows`는 선택 사항). API unit: client-page(INT-64).
+  - `model.count`는 `model.query`와 같이 `joins`를 받는다. API unit: model-connection-and-join-methods(DSL-90부터 DSL-93까지).
+  - join의 `on`은 join이 model relation을 따를 때 선택 사항이다. `as`는 필수이며 `kind`의 기본값은 `inner`다. API unit: model-connection-and-join-methods(DSL-90, DSL-91).
+  - predicate의 key와 `expr`의 column은 joined alias의 `alias.column`일 수 있고, `utils.set_local`의 name도 점을 포함할 수 있다(`ormtest.actor`). API unit: model-connection-and-join-methods(DSL-91, DSL-92), client-utils-set-local(INT-51).
+  - `in`과 `not_in` 목록은 비어 있을 수 있으며, 그 경우 case의 expect는 `{"error": "EMPTY_IN"}`이다. API: DSL-47과 PLN-28.
+  - `{"sub": <subquery>}`는 `expr`이므로 predicate의 열 값이나 `in` 피연산자가 된다. subquery는 `model`을 지정하고 `where`, `order`, `limit`, `agg`를 지정할 수 있으며, `limit`은 호출이 지정할 때만 지정한다. API: coverage-model-scalar-subquery-column(DSL-74), DSL-53과 DSL-54.
+  - `{"outer": <name>}`은 subquery 안에서 바깥 query의 열을 가리키는 `expr`이다(상관 참조). `column`은 subquery 자신의 모델 열을 뜻한다. API: DSL-53과 DSL-54.
+  - `{"expr": <fnCall>, "cmp": {<op>: <expr>}}`는 key가 열 함수인 predicate다(F5). API unit: column-function-generated-alias(DSL-73).
+  - `relations` 항목은 `lock`(`share` 또는 `update`, transaction 안에서만), `order`, `columns`(목록 또는 `"all"`), `relations`(관련 모델의 relation을 중첩한 목록)를 받는다. API unit: client-query-relation(INT-87), client-utils-lock(INT-50), DSL-44.
+  - `model.duplicate_create`는 생성된 모델을 묶는 `as`를 받는다. API: DSL-105(upsert_one_key).
+  - `model.update`의 `set` 항목은 `{"arith": {"column": <name>, "operation": "plus" | "minus", "amount": <value>}}`일 수 있으며, 같은 쓰기에서 열에 더한다. API unit: client-model-terminal-write(INT-35).
+  - `restore: true`인 `model.update`는 `set`을 생략할 수 있으며, 그 경우 행을 복원만 한다. API unit: restore-soft-deleted-row(INT-38).
+  - `model.update`와 `model.delete`의 `revision`의 `value`는 정수 또는 `ref`일 수 있다. API unit: error-code-revision-changed(INT-65)와 DSL-114.
+  - `model.delete`는 `relations`를 받는다. 이는 `model.query`가 받는 행의 적재된 relation이다. `recursive: true`이면 적재된 행을 삭제하되, `delete_lock: true`인 relation의 행은 제외한다. API unit: DSL-111, DSL-87, client-model-terminal-write(INT-37).
+  - `transaction`은 `audit: {"request_id": <text>}`(감사 기록의 요청 ID, DBS-87)와 음이 아닌 정수 `retry`를 받는다. API unit: client-db-transaction(INT-72)과 coverage-audit-triggers-audit-transaction-entry-points(INT-44); `retry`는 PLN-24.
+  - `utils.lock {connection, name}`은 transaction이 끝날 때까지 유지되는 이름 있는 advisory lock을 잡으며, `expect`는 `{"error": <code>}` 또는 생략이다. API unit: client-utils-lock(INT-50).
+  - `utils.aes_status {model, keyring}`는 이름 대신 인라인 `keyring`, `{"current": <정수>, "versions": {"<정수>": <text>}}`를 받는다. API unit: aes-keyring(INT-130)과 aes-utils-status(INT-60).
+  - `model.create`의 `as`, `model.update`의 `row`, `model.delete`의 `row`는 묶인 행을 지정한다. `schema.install`은 `connection`을 받아 그 연결에 recipe fixture를 설치한다(FCV-9). API unit: coverage-model-create-parts(INT-35), client-model-terminal-write(INT-35와 INT-37), client-schema-utils-add-tables-and-columns(INT-56).
+  - 값의 `null`은 `{"null": <type>}`이며 `<type>`은 recipe schema의 열 type 가운데 하나다: `int`, `text`, `date`, `time`, `datetime`, `decimal`, `bytes_hex`, `bool`, `float`. 어휘는 닫혀 있다. API: contains_null(INT-20, PRT-67)과 null_into_not_null(PRT-67, PRT-5)의 타입이 있는 NULL, 그리고 styled value의 null인 COD-20.
+  - `model.create`의 `attached: {<name>: <argument>}`는 열이 아닌 값을 만들어진 행에 붙인다(DSL-101). 이 값은 `INSERT`, `UPDATE`, `SELECT` 문장에 쓰지 않으며, 만들어진 모델이 그 값을 갖는다(DSL-115). API: write_cycle vector(`NewLabel("created")`), DSL-101과 DSL-115. parity unit이 명명하지 않으므로 vector와 requirement로 선언한다.
 
   Rust의 mutation은 cancellation flag, phase publisher, commit permit도 받는다. Rust helper는 설정되지 않은 flag, 아무것도 남기지 않는 publisher, 허용하는 permit을 넘긴다. 각 runtime의 helper는 호출이 돌려준 값을 비교하기 전에 recipe wrapper로 바꾼다.
 
@@ -62,6 +105,7 @@
 
 - **FCV-5** `scripts/features/coverage.test.mts`의 테스트는 필요한 차원을 하나씩 바꾸고 만들어 낸 JSON 성공, 누락된 소유자, 사용자, 테스트 경로, client, 데이터베이스, 사례, 반복 실행, 상태 비교 또는 선언되지 않은 결과에서 실패를 요구한다. 주장한 모든 동작에 현재 실행 증거가 생길 때까지 `make feature-check`는 실패한다. 검사기 자체 테스트가 성공해도 client 동작의 완료를 주장하지 않는다.
 - **FCV-6** `make feature-coverage`는 `make orm-check`처럼 모든 기능의 coverage를 한 번 실행하고, `make feature-check`는 그것을 모든 검증 명령과 함께 실행한다. `.runtime/servers/env`의 test 환경 아래에서 `node scripts/features/coverage.mts --feature <id>`는 그 기능의 coverage spec만 실행한다: 소유자와 사용자를 데이터베이스마다 두 번. `<id>`는 `scripts/features/check.mts --feature`처럼 `contracts/features.json`의 기능 `id`다. 없는 id는 아무것도 실행하지 않는 대신 고를 수 있는 id 목록과 함께 실패한다. 예를 들어 `node scripts/features/coverage.mts --feature dsn_connection`은 DSN 연결 기능만 실행한다. DSN 기능은 세 데이터베이스에서 다섯 client의 읽기 전용 소유 사례와 Go client와 Rust client 부분의 생성 모델 사용 사례를 실행한다. 선택한 URI는 `ORM_FEATURE_DSN`으로 전달하고 검사기는 두 실행의 전후 데이터베이스 상태를 읽는다.
+
 
 ## Database 기능의 recipe화 {#database-recipes}
 

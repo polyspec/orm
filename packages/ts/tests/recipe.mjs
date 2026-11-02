@@ -15,6 +15,7 @@ import { connect } from '../dist/models/markdown_fixture/models.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { Engine } from '../dist/index.js';
 import { withCaseDatabase } from './case-database.mjs';
+import { checkKeys } from './recipe_keys.mjs';
 import { modelOps } from './recipe_model.mjs';
 import { classesFromModel } from './registered_models.mjs';
 import { nativeQuery } from './coverage_case.mjs';
@@ -30,6 +31,7 @@ export const NONE = 'none';
 export function runRecipe(path, database) {
   if (database !== NONE) return databaseRecipe(path, database);
   const text = readFileSync(path, 'utf8');
+  checkKeys(path, text);
   const recipe = JSON.parse(text);
   const literal = parseJson(text);
   // An ir.validate step checks its request against the schema of the recipe, which the recipe names relative to its own file.
@@ -261,7 +263,9 @@ const DATABASES = new Set(['mysql', 'postgres', 'sqlite']);
 // databaseRecipe registers one test per case of the recipe at path on the database (FCV-3).
 async function databaseRecipe(path, database) {
   if (!DATABASES.has(database)) throw new Error(`recipe ${path}: unknown database ${database}`);
-  const recipe = JSON.parse(await readFile(resolve(root, path), 'utf8'));
+  const text = await readFile(resolve(root, path), 'utf8');
+  checkKeys(path, text);
+  const recipe = JSON.parse(text);
   const name = path;
   if (recipe.fixture === undefined) throw new Error(`recipe ${name}: no fixture, so it has no database`);
   // A fixture of none runs every case on an empty case database; the helper never infers it (FCV-3).

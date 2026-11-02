@@ -3,6 +3,10 @@
 
 ## Unreleased
 
+- Every recipe loader of the six runtimes refuses an unknown file, case, op or step key by name before any case runs, from the key table that scripts/features/schema/recipe-keys.json holds (generated from the recipe schema by scripts/features/recipe-keys.mts); a recipe key that the table does not hold no longer passes silently (T334-3-5-6).
+- The stale unloaded-update-state-go check, whose Go test 55fd126fa had moved into the model_writes recipe, is removed from contracts/features.json; the save_updates_the_row_of_its_key case of that recipe covers its DSL-109 keyed update (T334-3-5-8).
+- The owner selection of packages/php/tests/CoverageDsnTest.php again names the php and php-extension coverage parts of dsn_connection, since 4a669db8a left the file's SQLite minimum-version test with no owner (contracts/features.json, the php owner inputs and the php-extension owner inputs) (T334-3-5-9).
+- The four-client owner test expects the statement-events-check/<runtime> owner targets, which the recipe fixture's owner rule selects for a change of the four-client set; the test also asserts that none of them is a full-suite target (T334-3-5-10).
 - The codec test files of T334-3-14 and T334-3-14b are off the coverage owners of authenticated_encryption (commit 13f388644); their owner check now selects no coverage part, and their feature verifications remain (T334-3-14b-3).
 - The owner test cases of scripts/features/owners.test.mts match the current owner declarations: the DSN case reads packages/php/tests/DsnConnectionRecipeTest.php, which T334-3-4 made the PHP owner test (CoverageDsnTest.php left the owners), and the four-client case lists the six statement-events-check owner targets that the manifest selects (T334-3-14b-3-2).
 - `owners.mts --list` exits 0 at HEAD: fixed by T334-3-17-6 (8828d675d), taken with cherry-pick -x (T334-3-14b-3-1).

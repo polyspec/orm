@@ -229,6 +229,11 @@
   "cases": [
     {
       "id": "count_by_user",
+      "requirements": [
+        "DSL-60",
+        "INT-16",
+        "INT-33"
+      ],
       "steps": [
         {
           "op": "model.connect",
@@ -266,6 +271,11 @@
     },
     {
       "id": "count_by_two_conditions",
+      "requirements": [
+        "DSL-60",
+        "INT-16",
+        "INT-33"
+      ],
       "steps": [
         {
           "op": "model.connect",
@@ -306,6 +316,11 @@
     },
     {
       "id": "get_by_missing_key",
+      "requirements": [
+        "DSL-58",
+        "INT-16",
+        "INT-29"
+      ],
       "steps": [
         {
           "op": "model.connect",
@@ -340,6 +355,12 @@
     },
     {
       "id": "get_by_key_with_columns",
+      "requirements": [
+        "DSL-58",
+        "DSL-76",
+        "INT-16",
+        "INT-29"
+      ],
       "steps": [
         {
           "op": "model.connect",
@@ -412,6 +433,13 @@
     },
     {
       "id": "query_filter_order_and_page",
+      "requirements": [
+        "DSL-57",
+        "DSL-99",
+        "INT-16",
+        "INT-30",
+        "PLN-11"
+      ],
       "steps": [
         {
           "op": "model.connect",
@@ -608,6 +636,13 @@
     },
     {
       "id": "query_two_conditions_in_order",
+      "requirements": [
+        "DSL-57",
+        "DSL-99",
+        "INT-16",
+        "INT-30",
+        "PLN-11"
+      ],
       "steps": [
         {
           "op": "model.connect",
@@ -700,6 +735,12 @@
     },
     {
       "id": "query_projection_keeps_only_named_columns",
+      "requirements": [
+        "DSL-57",
+        "DSL-76",
+        "INT-16",
+        "INT-30"
+      ],
       "steps": [
         {
           "op": "model.connect",
