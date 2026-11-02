@@ -39622,7 +39622,9 @@
             "@polyspec/orm!Request_2#optimistic:member",
             "@polyspec/orm!Request_2#rows:member",
             "@polyspec/orm!Request_2#set:member",
-            "@polyspec/orm!Request_2:interface"
+            "@polyspec/orm!Request_2:interface",
+            "@polyspec/orm!fulltextBoolean:function(1)",
+            "@polyspec/orm!transformParam:function(1)"
           ]
         }
       ]
