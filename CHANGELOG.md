@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- DIA-6 said that PostgreSQL trims the full-text value; the planners of all six runtimes bind it as it is, which plainto_tsquery and websearch_to_tsquery read the same, and DIA-6 now says so (T334-3-17-2-3).
 - The fulltext search behaviour (DSL-32, DSL-33, DIA-6, DIA-187, PRT-75) is one recipe, contracts/fixtures/fulltext_search/fulltext_search.json, run on MySQL, PostgreSQL and SQLite by the recipe helper of each runtime through the op query.search, which compiles the count of a fulltext_boolean predicate on the dialect of the connection and reports the statement and the value it binds: the fulltext_boolean transform on MySQL, the text as it is on PostgreSQL, and OPERATOR_NOT_ALLOWED on SQLite. The six native fulltext tests and their parity unit are removed (T334-3-17-2).
 - The dbspec Mermaid vectors (tests/dbspec/mermaid.json) are one recipe: each runtime runs it through its recipe helper in one entry, the compare runners read it, and the native vector tests are removed (T334-3-21).
 - composite_keys is a recipe that the six recipe runners run on the three databases: each runtime runs its model ops (model.creates and model.count of CompositeMembership, the tuples of model.query, and a relation with connect, many and alias) through the generated CompositeAccount and CompositeMembership methods, and the recipe reads the memberships relation as the coverage tests read it, a collection of relations(child) under its alias (T334-3-5-12).
