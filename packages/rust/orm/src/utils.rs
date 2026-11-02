@@ -578,10 +578,11 @@ pub struct AesUtils<'a> {
 }
 
 impl AesUtils<'_> {
-    fn spec<M: Model>(&self, _m: &M) -> Result<AesSpec> {
+    fn spec<M: Model>(&self, m: &M) -> Result<AesSpec> {
         self.u.db.unsupported_on_markdown("aes rotation")?;
-        let name = M::entity().name;
-        let ent = M::entity().entity_schema()?;
+        let entity = m.core().entity();
+        let name = entity.name;
+        let ent = entity.entity_schema()?;
         let columns: Vec<(String, Vec<String>)> =
             ent.fields.iter().filter(|c| c.aes()).map(|c| (c.name.clone(), c.codec.iter().filter(|s| *s == "aes" || *s == "hex").cloned().collect())).collect();
         let Some(version) = ent.aes_version.clone().filter(|_| !columns.is_empty()) else {
