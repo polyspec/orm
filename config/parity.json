@@ -14248,6 +14248,78 @@
       ]
     },
     {
+      "id": "transaction-retry-on-deadlock-sqlite",
+      "kind": "feature",
+      "requirements": [
+        "PLN-24"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_transactions_test.go",
+          "id": "TestCoverageTransactionDeadlockRetry",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageTransactionDeadlockRetry",
+            "FEATURE_PACKAGE=./model"
+          ]
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testDeadlockRetry"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
+          "id": "ModelTestExtensionTest::testDeadlockRetry"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_transactions.mjs",
+          "id": "transaction_deadlock_retry"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_transactions.py",
+          "id": "test_transaction_deadlock_retry",
+          "command": [
+            "env",
+            "ORM_FEATURE_DATABASE=sqlite",
+            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
+            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
+            "-m",
+            "unittest",
+            "-v",
+            "tests.coverage_transactions.CoverageTest.test_transaction_deadlock_retry"
+          ]
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
+          "id": "coverage_transactions::coverage_transaction_deadlock_retry",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test integration",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_transactions::coverage_transaction_deadlock_retry"
+          ]
+        }
+      ]
+    },
+    {
       "id": "transaction-concurrent-use-and-flow-isolation",
       "kind": "feature",
       "requirements": [

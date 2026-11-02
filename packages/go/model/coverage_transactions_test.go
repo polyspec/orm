@@ -300,11 +300,53 @@ func setAccountName(db *orm.DB, account int64, name string) error {
 // TestCoverageTransactionDeadlockRetry runs PLN-24 on the driver. Two connections lock two rows in opposite order, and
 // each flow holds its first row before either takes its second, so the database aborts one flow with its deadlock error.
 // The ORM maps that driver error to DEADLOCK and retries the transaction, and both transactions commit.
+// sqliteLockedWriterFails runs PLN-24 on SQLite, which has no row-lock deadlock. The holder keeps the write lock of a
+// composite_account row while the other connection writes the same row: that write waits for busy_timeout and fails
+// with CANCELED (SQLITE_BUSY). CANCELED is not retried, so the callback runs once, and the holder's commit stands.
+func sqliteLockedWriterFails(t *testing.T, db, other *orm.DB) {
+	t.Helper()
+	if _, err := model.CompositeAccount().Connect(db).SetTenantId(transactionTenant).SetAccountId(7).SetName("seed").Create(); err != nil {
+		t.Fatal(err)
+	}
+	attempts := 0
+	var blocked error
+	err := db.Transaction(func() error {
+		if err := setAccountName(db, 7, "holder"); err != nil {
+			return err
+		}
+		blocked = other.Transaction(func() error {
+			attempts++
+			return setAccountName(other, 7, "other")
+		}, orm.Isolation(orm.ReadCommitted), orm.Retry(3))
+		return nil
+	}, orm.Isolation(orm.ReadCommitted))
+	if err != nil {
+		t.Fatalf("holder transaction did not commit: %v", err)
+	}
+	if code := orm.ErrorCode(blocked); code != orm.CodeCanceled {
+		t.Fatalf("the second writer = %s, want CANCELED after busy_timeout: %v", code, blocked)
+	}
+	if attempts != 0 {
+		t.Fatalf("attempts = %d, want 0: BEGIN waits for busy_timeout, the callback never starts, nothing is retried", attempts)
+	}
+	row := must(model.CompositeAccount().Connect(db).GetByTenantIdAndAccountId(transactionTenant, 7))
+	if name := readColumn(t, row.GetName); name != "holder" {
+		t.Fatalf("committed name = %q, want holder", name)
+	}
+	if err := row.Delete(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestCoverageTransactionDeadlockRetry(t *testing.T) {
 	testcase.Start(t, testcase.Database)
-	db, _, _ := connectFeature(t)
+	db, driverName, _ := connectFeature(t)
 	other, _, _ := connectFeature(t)
 	requireNoTransactionRows(t, db)
+	if driverName == "sqlite" {
+		sqliteLockedWriterFails(t, db, other)
+		return
+	}
 	for _, account := range []int64{7, 8} {
 		if _, err := model.CompositeAccount().Connect(db).SetTenantId(transactionTenant).SetAccountId(account).SetName("seed").Create(); err != nil {
 			t.Fatal(err)

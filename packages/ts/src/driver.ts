@@ -226,7 +226,7 @@ export function driverError(name: DriverName, error: unknown): OrmError {
   const foreignKey = source.code === 'ER_NO_REFERENCED_ROW_2' || source.code === 'ER_ROW_IS_REFERENCED_2' || source.code === '23503' || source.errcode === 787 ||
     // SQLite reports an FK violation of a RESTRICT action as CONSTRAINT_TRIGGER (1811). The 1811 of a trigger RAISE is DRIVER.
     (source.errcode === 1811 && message.includes('FOREIGN KEY constraint failed'));
-  const deadlock = source.code === 'ER_LOCK_DEADLOCK' || source.code === '40P01' || source.code === '40001' || source.errcode === 6 || source.errcode === 262;
+  const deadlock = source.code === 'ER_LOCK_DEADLOCK' || source.code === '40P01' || source.code === '40001';
   // MySQL 1290/1792, PostgreSQL 25006, and SQLite READONLY (8) with its
   // extended codes report a write the read-only server or connection rejects.
   const readOnly = source.code === 'ER_OPTION_PREVENTS_STATEMENT' || source.code === 'ER_CANT_EXECUTE_IN_READ_ONLY_TRANSACTION' || source.code === '25006' || (typeof source.errcode === 'number' && (source.errcode & 0xff) === 8);

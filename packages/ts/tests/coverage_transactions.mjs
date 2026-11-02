@@ -7,12 +7,6 @@ import { runCases, withCleanup } from './coverage_case.mjs';
 
 const tenant = 990003;
 
-// Each database the deadlock case does not run on, with its reason. SQLite serializes its writers and reports a conflicting
-// write as SQLITE_BUSY rather than a row-lock deadlock, so PLN-24 names only MySQL and PostgreSQL.
-const deadlockExclusions = {
-  sqlite: { reason: 'SQLite has no row-lock deadlock: writers serialize and a conflicting write fails with SQLITE_BUSY' },
-};
-
 /** Opens the selected database, runs the case and removes every row of the tenant afterwards. */
 async function withTenant({ driver, dsn }, body) {
   const db = await connect(dsn);
@@ -23,6 +17,38 @@ async function withTenant({ driver, dsn }, body) {
       await (await new CompositeAccount().connect(db).tenantId(tenant).gets()).delete();
     });
   } finally { await db.close(); }
+}
+
+// SQLite has no row-lock deadlock. The holder keeps the write lock of a composite_account row while another connection
+// writes the same row: that write waits for busy_timeout and fails with CANCELED (SQLITE_BUSY). CANCELED is not retried,
+// so the callback runs once, and the holder's commit stands.
+async function sqliteLockedWriterFails(item) {
+  await withTenant(item, async db => {
+    const other = await connect(item.dsn);
+    try {
+      await new CompositeAccount().connect(db).setTenantId(tenant).setAccountId(7).setName('seed').create();
+      let attempts = 0;
+      let blocked = null;
+      await db.transaction(async () => {
+        const holder = await new CompositeAccount().connect(db).getByTenantIdAndAccountId(tenant, 7);
+        await holder.setName('holder').update();
+        try {
+          await other.transaction(async () => {
+            attempts++;
+            const row = await new CompositeAccount().connect(other).getByTenantIdAndAccountId(tenant, 7);
+            await row.setName('other').update();
+          }, { isolation: 'read_committed', retry: 3 });
+        } catch (error) {
+          blocked = error;
+        }
+      }, { isolation: 'read_committed' });
+      assert.ok(blocked instanceof OrmError && blocked.code === codes.CANCELED, `the second writer waits for busy_timeout: ${blocked}`);
+      assert.equal(attempts, 0, 'CANCELED is not retried: BEGIN waits for busy_timeout, the callback never starts, nothing is retried');
+      assert.equal((await new CompositeAccount().connect(db).getByTenantIdAndAccountId(tenant, 7)).getName(), 'holder', 'the holder commits its row');
+    } finally {
+      await other.close();
+    }
+  });
 }
 
 const exists = async (db, account) => await new CompositeAccount().connect(db).tenantId(tenant).andAccountId(account).getCount() === 1;
@@ -198,7 +224,7 @@ await runCases('coverage_transactions.mjs', {
   },
   // Requirements: PLN-24.
   async transaction_deadlock_retry(item) {
-    if (Object.hasOwn(deadlockExclusions, item.driver)) return;
+    if (item.driver === 'sqlite') return sqliteLockedWriterFails(item);
     await withTenant(item, async db => {
       const other = await connect(item.dsn);
       try {

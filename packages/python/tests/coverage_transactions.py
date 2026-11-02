@@ -490,10 +490,44 @@ def set_account_name(conn, account_id, name):
     row.set_name(name).update()
 
 
+def sqlite_locked_writer_fails(item, db):
+    """PLN-24 on SQLite, which has no row-lock deadlock. The holder keeps the write lock of a row while another connection
+    writes it: that write waits for busy_timeout and fails with CANCELED (SQLITE_BUSY). CANCELED is not retried, so the
+    callback runs once, and the holder's commit stands."""
+    other = models.connect(item[1])
+    try:
+        models.CompositeAccount().connect(db).set_tenant_id(TENANT).set_account_id(7).set_name("seed").create()
+        attempts = []
+        blocked = []
+
+        def holder():
+            set_account_name(db, 7, "holder")
+
+            def second():
+                attempts.append(1)
+                set_account_name(other, 7, "other")
+
+            try:
+                other.transaction(second, {"isolation": "read_committed", "retry": 3})
+            except OrmError as error:
+                blocked.append(error)
+
+        db.transaction(holder, {"isolation": "read_committed"})
+        assert len(blocked) == 1 and blocked[0].code == codes.CANCELED, f"the second writer waits for busy_timeout: {blocked}"
+        assert attempts == [], "CANCELED is not retried: BEGIN waits for busy_timeout, the callback never starts, nothing is retried"
+        row = models.CompositeAccount().connect(db).get_by_tenant_id_and_account_id(TENANT, 7)
+        assert row.get_name() == "holder", "the holder commits its row"
+    finally:
+        other.close()
+
+
 def transaction_deadlock_retry(item):
     """PLN-24 on the driver: two connections lock two rows in opposite order. Each flow holds its first row before
     either takes its second, so the database aborts one flow with its deadlock error; the ORM retries that flow and both
     transactions commit."""
+
+    if item[0] == "sqlite":
+        return with_tenant(item, lambda db: sqlite_locked_writer_fails(item, db))
 
     def body(db):
         other = models.connect(item[1])

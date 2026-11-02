@@ -6,6 +6,7 @@ namespace Polyspec\Orm\Extension\Tests;
 
 use Polyspec\Orm\Tests\ModelTest;
 
+// Requirements: PLN-24.
 // Requirements: CFG-21, CFG-22, CFG-23, CFG-24, CFG-25, COD-8, DBS-118.
 // Requirements: DSL-115, DSL-155, DSL-60, INT-131, INT-51, INT-57, INT-59.
 // Requirements: INT-60, INT-75, PLN-10, PLN-12, PLN-14, PLN-23, PLN-27.

@@ -48,7 +48,7 @@ ORM은 Go·PHP·Rust·TypeScript·Python에서 하나의 모델 기반 쿼리 �
 
 - **PLN-22** 생성기는 예약 메서드(`and`, `or`, `get`, `gets`, `limit`, `alias`, `connect`, `create`, `update`, `delete`, `save`)와 같거나 예약 접두어(`and`, `or`, `get`, `set`, `new`, `plus`, `minus`, `orderBy`, `groupBy`, 연산자 접두어)로 시작하는 컬럼 명칭을 거부한다.
 - **PLN-23** 조건은 트리로 저장한다. 종단 작업은 빌더를 바꾸지 않으므로 두 번째 종단 작업도 같은 SQL 문장을 만든다.
-- **PLN-24** 드라이버 교착 오류에 대해 교착 재시도를 실행한다.
+- **PLN-24** 드라이버 교착 오류에 대해 교착 재시도를 실행한다. SQLite에서 다른 connection이 잡은 lock을 기다리는 write는 CFG-12의 busy timeout 뒤 `CANCELED`로 멈추며, SQLite는 row-lock 교착을 보고하지 않으므로 transaction을 다시 실행하지 않는다.
 - **PLN-25** 조인 인덱스 힌트는 조인한 테이블에 적용한다. 모든 조인의 집계와 정렬을 반영한다. 관계 키 기본값은 부모 키를 사용한다. `possible<Col>`은 조인한 부모 행을 읽는다.
 - **PLN-26** `minus<Col>`은 음수를 저장하지 않는다. `plus<Col>`과 `minus<Col>`은 값을 바인드한다. 쓰기 후 속성 변경 기록을 비운다.
 - **PLN-27** `update(true)`는 현재 속성 값이 아니라 조회한 `updated_ts` 저장 값을 비교한다.

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f959a6591bcf6af8609e5487bbf8d4df94c14e8e8d997a568b9402883e061186 -->
+<!-- source-sha256: aa9df7a2abfab342c115cef03283330d1f9da91f98a07d8f7902a1ec5695266c -->
 # 변경 이력
 
 ## Unreleased
 
+SQLite에서 같은 행을 쓰는 두 connection의 잠금 대기는 busy timeout 뒤 `CANCELED`로 끝나고 재시도되지 않는다. SQLite는 row-lock 교착을 보고하지 않으므로 SQLITE_LOCKED(6, 262)는 모든 runtime에서 `DRIVER`이며, transaction_deadlock_retry는 여섯 runtime 모두에서 sqlite case를 실행한다 (PLN-24, CFG-12) (T343-3)
 - model_writes feature는 ordered-json text의 반복된 member name을 모든 owner(Go, PHP, php-extension, Rust, TypeScript, Python)와 MySQL, PostgreSQL, SQLite에 선언하므로, 일반 Rust 실행은 ORM_FEATURE_DATABASE 없이 실패하는 대신 선언된 symbol로 이 case를 건너뛴다(T343-2)
 - model_writes feature는 Go owner에서 ordered-json text의 반복된 member name을 선언한다(MySQL, PostgreSQL, SQLite): Go case는 `{"a":1,"b":2,"a":3}`을 Author json 설정으로 저장하고 다시 읽으므로, 다른 owner가 실행하는 case를 Go owner도 실행한다(T343-2-1)
 - generated Go model은 jsontext 값의 반복된 member name을 보존한다: ordered-json 값을 json.Marshaler 분기 전에 원본 text 그대로 취하며, 그 분기는 파싱된 member map을 다시 직렬화했으므로 `{"a":1,"b":2,"a":3}`이 SQLite에서 `{"a":3,"b":2}`로 돌아오지 않는다 (DIA-26) (T343-2-1-1)

@@ -668,8 +668,6 @@ def _sqlite_code(error: sqlite3.Error) -> str:
         number == 1811 and "FOREIGN KEY constraint failed" in str(error)
     ):
         return codes.FOREIGN_KEY
-    if number in (6, 262):
-        return codes.DEADLOCK
     # SQLITE_READONLY (8) and its extended codes are writes rejected by a read-only connection or by query_only.
     if (number & 0xFF) == 8:
         return codes.READ_ONLY

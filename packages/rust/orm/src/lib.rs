@@ -184,17 +184,7 @@ impl From<sqlx::Error> for Error {
                     },
                     None => return Error::Engine { code: codes::DRIVER.into(), msg: format!("sqlite reported no extended result code: {}", s.message()) },
                 };
-                match (n & 0xff, n) {
-                    (6, _) => Some((codes::DEADLOCK, s.message().to_owned())),
-                    (_, 2067) | (_, 1555) => Some((codes::DUPLICATE_KEY, s.message().to_owned())),
-                    (_, 787) => Some((codes::FOREIGN_KEY, s.message().to_owned())),
-                    // An FK violation from a RESTRICT action arrives as CONSTRAINT_TRIGGER (1811). The 1811 from a trigger RAISE is DRIVER.
-                    (_, 1811) if s.message().contains("FOREIGN KEY constraint failed") => Some((codes::FOREIGN_KEY, s.message().to_owned())),
-                    (_, 275) => Some((codes::CONSTRAINT, s.message().to_owned())),
-                    (5, _) | (9, _) => Some((codes::CANCELED, s.message().to_owned())),
-                    (8, _) => Some((codes::READ_ONLY, s.message().to_owned())),
-                    _ => Some((codes::DRIVER, s.message().to_owned())),
-                }
+                Some((sqlite_extended_code(n, s.message()), s.message().to_owned()))
             } else {
                 None
             };
@@ -247,6 +237,20 @@ impl Error {
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Reports SQLITE_BUSY or one of its extended codes.
+/// The ORM code of a SQLite extended result code `n`, from the message of the driver error.
+fn sqlite_extended_code(n: i64, message: &str) -> &'static str {
+    match (n & 0xff, n) {
+        (_, 2067) | (_, 1555) => codes::DUPLICATE_KEY,
+        (_, 787) => codes::FOREIGN_KEY,
+        // An FK violation from a RESTRICT action arrives as CONSTRAINT_TRIGGER (1811). The 1811 from a trigger RAISE is DRIVER.
+        (_, 1811) if message.contains("FOREIGN KEY constraint failed") => codes::FOREIGN_KEY,
+        (_, 275) => codes::CONSTRAINT,
+        (5, _) | (9, _) => codes::CANCELED,
+        (8, _) => codes::READ_ONLY,
+        _ => codes::DRIVER,
+    }
+}
+
 pub(crate) fn sqlite_busy(e: &sqlx::Error) -> Result<bool> {
     use sqlx::error::DatabaseError as _;
     // An error that is not a SQLite database error has no code, so it is not busy.
@@ -289,6 +293,19 @@ mod mysql_code_tests {
     fn mysql_lock_wait_timeout_is_canceled() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         assert_eq!(mysql_code(1205), Some(codes::CANCELED));
+    }
+}
+
+#[cfg(test)]
+mod sqlite_code_tests {
+    use super::*;
+
+    // Requirements: PLN-24.
+    #[test]
+    fn sqlite_locked_is_driver_not_deadlock() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        assert_eq!(sqlite_extended_code(6, "database table is locked"), codes::DRIVER);
+        assert_eq!(sqlite_extended_code(262, "database table is locked"), codes::DRIVER);
     }
 }
 

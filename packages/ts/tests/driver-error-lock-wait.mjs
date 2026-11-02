@@ -24,6 +24,15 @@ caseTest('driver-error/native-cause/mysql', COMPUTE, () => {
   assert.strictEqual(mapped.cause, source);
 });
 
+// Requirements: PLN-24.
+caseTest('driver-error/sqlite-locked/sqlite', COMPUTE, () => {
+  const source = Object.assign(new Error('database table is locked'), { code: 'SQLITE_LOCKED', errcode: 6 });
+  const mapped = driverError('sqlite', source);
+  assert.equal(mapped.code, 'DRIVER');
+  assert.notEqual(mapped.code, 'DEADLOCK');
+  assert.match(mapped.message, /sqlite: database table is locked/);
+});
+
 async function withReservedSqliteSession(file, exercise) {
   const directory = mkdtempSync(join(tmpdir(), 'orm-ts-sqlite-cancel-'));
   const dsn = `sqlite://${join(directory, file)}`;

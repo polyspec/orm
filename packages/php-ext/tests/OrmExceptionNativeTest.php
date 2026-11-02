@@ -592,4 +592,16 @@ PHP);
         }
         proc_close($process);
     }
+
+    // Requirements: PLN-24.
+    public function testSqliteLockedIsDriverNotDeadlock(): void
+    {
+        foreach ([6, 262] as $number) {
+            $message = 'database table is locked';
+            $driverError = new \PDOException($message);
+            $driverError->errorInfo = ['HY000', $number, $message];
+            $error = OrmException::fromDriver($driverError, 'sqlite', new \PDO('sqlite::memory:'));
+            Assert::assertSame(Code::DRIVER, $error->code_, "SQLITE_LOCKED {$number} maps to {$error->code_}");
+        }
+    }
 }
