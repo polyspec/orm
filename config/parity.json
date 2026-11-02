@@ -2534,6 +2534,26 @@
           ]
         }
       ]
+    },
+    {
+      "files": [
+        "packages/php/tests/ComposerExtensionsTest.php"
+      ],
+      "reason": "harness: checks that packages/php/composer.json declares every PHP extension that packages/php/src names, by reflection on the PHP that runs the test; it verifies the package manifest, as tests/repo verifies repository policy, rather than client behavior.",
+      "units": [
+        {
+          "id": "php-composer-declares-used-extensions",
+          "requirements": [
+            "INT-156"
+          ],
+          "bindings": [
+            {
+              "test": "packages/php/tests/ComposerExtensionsTest.php",
+              "id": "testEveryUsedExtensionIsDeclared"
+            }
+          ]
+        }
+      ]
     }
   ],
   "requirements": {

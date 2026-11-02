@@ -7,6 +7,7 @@ namespace Polyspec\Orm\Tests;
 // Checks that packages/php/composer.json declares every PHP extension that the library source uses: each class and
 // function that packages/php/src names is resolved by reflection to its extension, which require or suggest of
 // composer.json lists as ext-<name>. The extensions that every PHP build holds are not declared.
+// Requirements: INT-156.
 
 use PhpParser\Node;
 use PhpParser\NodeTraverser;
