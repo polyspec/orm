@@ -725,7 +725,8 @@
             "catalog.reconnect",
             "catalog.revision",
             "catalog.row_cells",
-            "model.read_bind_cell"
+            "model.read_bind_cell",
+            "generator.generate"
           ]
         }
       },
@@ -933,6 +934,9 @@
         },
         {
           "$ref": "#/$defs/ops/model.read_bind_cell"
+        },
+        {
+          "$ref": "#/$defs/ops/generator.generate"
         }
       ]
     },
@@ -4155,6 +4159,139 @@
             }
           }
         }
+      },
+      "generator.generate": {
+        "type": "object",
+        "required": [
+          "op",
+          "schema",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "generator.generate"
+          },
+          "schema": {
+            "type": "string",
+            "pattern": "\\.dbs$",
+            "description": "The .dbs manifest of the generation, relative to the recipe file."
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "used": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "\\.dbs$"
+                },
+                "description": "Other document sets that the generation uses, relative to the recipe file."
+              },
+              "sources": {
+                "type": "object",
+                "description": "The scanned sources of each runtime language, each a tree of path to text.",
+                "additionalProperties": false,
+                "properties": {
+                  "go": {
+                    "$ref": "#/$defs/sourceTree"
+                  },
+                  "php": {
+                    "$ref": "#/$defs/sourceTree"
+                  },
+                  "typescript": {
+                    "$ref": "#/$defs/sourceTree"
+                  },
+                  "python": {
+                    "$ref": "#/$defs/sourceTree"
+                  },
+                  "rust": {
+                    "$ref": "#/$defs/sourceTree"
+                  }
+                }
+              }
+            }
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "oneOf": [
+                  {
+                    "required": [
+                      "value"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "value": {
+                        "type": "object",
+                        "required": [
+                          "includes",
+                          "excludes"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                          "includes": {
+                            "type": "array",
+                            "uniqueItems": true,
+                            "items": {
+                              "type": "string",
+                              "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)?$"
+                            }
+                          },
+                          "excludes": {
+                            "type": "array",
+                            "uniqueItems": true,
+                            "items": {
+                              "type": "string",
+                              "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)?$"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "required": [
+                      "error"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "error": {
+                        "type": "string",
+                        "pattern": "^[A-Z][A-Z0-9_]*$"
+                      },
+                      "position": {
+                        "type": "object",
+                        "required": [
+                          "line"
+                        ],
+                        "additionalProperties": false,
+                        "description": "The source position of a file that does not parse (DSL-152): its line, and its column where the parser gives one.",
+                        "properties": {
+                          "line": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "column": {
+                            "type": "integer",
+                            "minimum": 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
       }
     },
     "outcomes": {
@@ -5402,6 +5539,13 @@
           "postgres",
           "sqlite"
         ]
+      }
+    },
+    "sourceTree": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "string"
       }
     }
   }

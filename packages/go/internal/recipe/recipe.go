@@ -76,6 +76,7 @@ type step struct {
 	External []string                   `json:"external"`
 	Path     string                     `json:"path"`
 	Expect   map[string]json.RawMessage `json:"expect"`
+	Options  json.RawMessage            `json:"options"`
 }
 
 // IRAnswer runs the chain of one ir.answer step on a listener that answers with the answer, or with answers keyed by the op of
@@ -162,6 +163,8 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	switch s.Op {
 	case "planner.compile":
 		return checkPlanner(o.dir, s, database)
+	case "generator.generate":
+		return checkGenerator(t, o.dir, s, database)
 	case "dbspec.parse", "dbspec.parse_plan", "dbspec.emit_plan", "dbspec.diff", "dbspec.plan_steps", "dbspec.chain", "dbspec.compare":
 		return dbspecStep(s, bound, database)
 	case "dbspec.parse_emit", "dbspec.manifest", "dbspec.render", "dbspec.analyze", "dbspec.parse_positions", "dbspec.format",

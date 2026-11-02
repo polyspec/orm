@@ -473,6 +473,12 @@
       "expect",
       "op",
       "seq"
+    ],
+    "generator.generate": [
+      "expect",
+      "op",
+      "options",
+      "schema"
     ]
   }
 }

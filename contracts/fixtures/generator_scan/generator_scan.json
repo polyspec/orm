@@ -1,0 +1,246 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "DSL-44",
+    "DSL-151",
+    "DSL-152"
+  ],
+  "cases": [
+    {
+      "id": "imported-set",
+      "requirements": [
+        "DSL-151"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "names.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "other/other.go": "package other\n\nimport \"example.com/ormexample/othermodel\"\n\nfunc Load() *othermodel.ProductModel {\n\treturn othermodel.Product().Relation(othermodel.Brand().MatchBrandSeqWithSeq().AliasStore())\n}\n\nfunc Store(p *othermodel.ProductModel) (any, error) { return p.GetStore() }\n",
+                "example/example.go": "package example\n\nimport \"example.com/ormexample/model\"\n\nfunc Cheap() *model.ProductModel { return model.Product().LtPrice(1) }\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [],
+                "excludes": [
+                  "product.store",
+                  "product.match_brand_seq_with_seq"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "reassigned-variable",
+      "requirements": [
+        "DSL-151"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "names.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport \"example.com/ormexample/model\"\n\nfunc Page(limit *int) *model.ProductModel {\n\tpage := model.Product().AddAllColumns()\n\tconditions := 0\n\tif limit != nil {\n\t\tif conditions == 0 {\n\t\t\tpage = page.GtPrice(*limit)\n\t\t} else {\n\t\t\tpage = page.AndGtPrice(*limit)\n\t\t}\n\t\tconditions++\n\t}\n\tif limit != nil {\n\t\tif conditions == 0 {\n\t\t\tpage = page.LtPrice(*limit)\n\t\t} else {\n\t\t\tpage = page.AndLtPrice(*limit)\n\t\t}\n\t}\n\treturn page\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "product.gt_price",
+                  "product.and_gt_price",
+                  "product.lt_price",
+                  "product.and_lt_price"
+                ],
+                "excludes": []
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "unparsable-file",
+      "requirements": [
+        "DSL-152"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "names.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nconst X = 1\n",
+                "example/broken.go": "package example\n\nfunc (\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "GENERATOR_SCAN_PARSE",
+              "position": {
+                "line": 3
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "alias-match-getter",
+      "requirements": [
+        "DSL-44"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "names.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport \"example.com/ormexample/model\"\n\nfunc Load() *model.ProductModel {\n\treturn model.Product().\n\t\tRelation(model.Brand().MatchBrandSeqWithSeq().AliasMatch()).\n\t\tRelation(model.Brand().MatchBrandSeqWithSeq().AliasJoin())\n}\n\nfunc Match(p *model.ProductModel) (*model.BrandModel, error) { return p.GetMatch() }\n\nfunc Join(p *model.ProductModel) (*model.BrandModel, error) { return p.GetJoin() }\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "product.match",
+                  "product.join"
+                ],
+                "excludes": []
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "nested-alias-getter",
+      "requirements": [
+        "DSL-44"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "names.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport \"example.com/ormexample/model\"\n\nfunc Load() *model.ProductModel {\n\treturn model.Product().\n\t\tRelation(model.Brand().MatchBrandSeqWithSeq().AliasStore().\n\t\t\tRelation(model.Product().MatchSeqWithBrandSeq().AliasMatch()))\n}\n\nfunc Match(p *model.ProductModel) (*model.ProductModel, error) {\n\tstore, err := p.GetStore()\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\treturn store.GetMatch()\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "brand.match"
+                ],
+                "excludes": []
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "unattached-getter",
+      "requirements": [
+        "DSL-44"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "names.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport \"example.com/ormexample/model\"\n\nfunc Load() *model.ProductModel {\n\treturn model.Product().Relation(model.Brand().MatchBrandSeqWithSeq().AliasStore())\n}\n\nfunc Ghost(p *model.ProductModel) (*model.BrandModel, error) { return p.GetGhost() }\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "GENERATOR_SCAN_UNATTACHED"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "external-getter",
+      "requirements": [
+        "DSL-44"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "member.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport \"example.com/ormexample/model\"\n\nfunc Load() *model.ExtPostModel {\n\treturn model.ExtPost().Relation(model.ExtAudit().MatchAccountSeqWithSeq())\n}\n\nfunc Audit(row *model.ExtPostModel) (*model.ExtAuditModel, error) { return row.GetExtAuditModel() }\n"
+              }
+            },
+            "used": [
+              "core.dbs"
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "ext_post.ext_audit_model"
+                ],
+                "excludes": []
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "scope-binding",
+      "requirements": [
+        "DSL-151"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "names.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport \"example.com/ormexample/model\"\n\nfunc Scoped() (int, error) {\n\trow := model.Product().Relation(model.Brand().MatchBrandSeqWithSeq().AliasStore())\n\tif _, err := row.GetStore(); err != nil {\n\t\treturn 0, err\n\t}\n\tcount := func() (int, error) {\n\t\trow := model.Brand().Relations(model.Product().MatchSeqWithBrandSeq())\n\t\tproducts, err := row.GetProductModels()\n\t\tif err != nil {\n\t\t\treturn 0, err\n\t\t}\n\t\treturn products.Len(), nil\n\t}\n\treturn count()\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "product.store",
+                  "brand.product_models"
+                ],
+                "excludes": []
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
