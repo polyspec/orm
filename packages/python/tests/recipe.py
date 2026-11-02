@@ -418,7 +418,9 @@ def _database_recipe_tests(path: str, database: str):
         raise ValueError(f"recipe {path}: no fixture, so it has no database")
     # A fixture of none runs every case on an empty case database; the helper never infers it (FCV-3).
     schema, install_first = (
-        (None, []) if recipe["fixture"] == NONE else _fixture_schema(ROOT / recipe["fixture"])
+        (None, [])
+        if recipe["fixture"] == NONE
+        else _fixture_schema(ROOT / recipe["fixture"])
     )
 
     def check(test: unittest.TestCase, case: dict) -> None:
@@ -628,6 +630,8 @@ def _op_dsn_connect(step: dict, context: dict) -> dict:
         return {"value": {"text": db.driver}}
     finally:
         db.close()
+
+
 def _bound_value(field, context: dict) -> Any:
     """The bound value that a field names: a plain name, or the {"ref": name} of an argument (FCV-4)."""
     return _bound(field if isinstance(field, str) else field["ref"], context)
@@ -635,7 +639,11 @@ def _bound_value(field, context: dict) -> Any:
 
 def _connection_of(step: dict, context: dict) -> Any:
     """The connection that an op names with its connection field, or the case connection when the field is absent."""
-    return context["db"] if "connection" not in step else _bound_value(step["connection"], context)
+    return (
+        context["db"]
+        if "connection" not in step
+        else _bound_value(step["connection"], context)
+    )
 
 
 TABLE_MODELS = {"EventProbe": "event_probe"}
@@ -733,7 +741,6 @@ def _table_model_count(step: dict, context: dict) -> dict:
     db = _connection_of(step, context)
     count = _new_row(context, db, TABLE_MODELS[step["model"]]).get_count()
     return {"value": {"int": str(count)}}
-
 
 
 def _op_events_subscribe(step: dict, context: dict) -> dict:
@@ -1115,7 +1122,9 @@ def _route(step: dict, context: dict) -> str:
         name = step["row"] if isinstance(step["row"], str) else step["row"]["ref"]
         paths = context.get("row_paths", {})
         if name not in paths:
-            raise AssertionError(f"{step['op']} names row {name}, which no bound row holds")
+            raise AssertionError(
+                f"{step['op']} names row {name}, which no bound row holds"
+            )
         return paths[name]
     return "table" if step.get("model") in TABLE_MODELS else "generated"
 

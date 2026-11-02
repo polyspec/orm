@@ -31,8 +31,8 @@ use Polyspec\Orm\StatementEvent;
 use Polyspec\Orm\Tests\StatementEventsCase\EventProbe;
 
 /**
- * The model of contracts/fixtures/statement_events/statement_events.dbs is created once in a temporary directory of this process and
- * autoloaded. The directory is removed when the process ends.
+ * The model of contracts/fixtures/statement_events/statement_events.dbs is created once in a temporary
+ * directory of this process and autoloaded. The directory is removed when the process ends.
  */
 function statementEventsModels(): void
 {

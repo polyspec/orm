@@ -538,7 +538,8 @@ final class Recipe
     ): void {
         $db = Orm::connect($dsn, new Config());
         try {
-            // A case with install: false installs nothing before its steps; its steps install the schema themselves (FCV-4).
+            // A case with install: false installs nothing before its steps; its steps install the
+            // schema themselves (FCV-4).
             if ($schema !== null && ($case['install'] ?? true) !== false) {
                 foreach ([...$installFirst, $schema] as $shared) {
                     $db->utils()->schema()->install($shared);
@@ -946,7 +947,8 @@ final class Recipe
                     'row' => self::rowRecord($s, $context),
                 ];
             case 'model.update':
-                self::setColumns(self::boundValue($s['row'], $context), self::assignments($s['set'], $context))->update();
+                self::setColumns(self::boundValue($s['row'], $context), self::assignments($s['set'], $context))
+                    ->update();
                 return [];
             case 'model.delete':
                 self::boundValue($s['row'], $context)->delete();
@@ -959,8 +961,8 @@ final class Recipe
     }
 
     /**
-     * The record of a bound row (coordinator ruling on row routing): the path that made it, its model and the connection
-     * it was made on. A model op of the {row} form runs on this path and connection.
+     * The record of a bound row (coordinator ruling on row routing): the path that made it, its model and
+     * the connection it was made on. A model op of the {row} form runs on this path and connection.
      */
     private static function rowRecord(array $s, array $context): array
     {

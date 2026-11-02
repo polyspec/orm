@@ -34,7 +34,7 @@
   - `model.update {connection, model, key, set}` 또는 `{row, set}`은 key column이 `key` 값을 가진 row, 또는 묶인 row `row`를 읽고, `set`의 할당을 그 entity로 쓰고 `Update`를 호출한다(client-model-terminal-write, INT-35). expect는 `{"error": <code>}`이거나 없다.
   - `model.arithmetic {connection, model, key, column, operation, amount}`는 `key`의 row를 읽고, `operation`(`plus` 또는 `minus`, PLN-26)을 `column`에 `amount`만큼 적용하고 `Update`를 호출한다. expect는 `{"error": <code>}`이거나 없다.
   - `model.delete {connection, model, where}` 또는 `{row}`은 column이 `where`와 같은 row, 또는 묶인 row `row`를 읽고 각각에 `Delete`를 호출한다(client-model-terminal-write, INT-37). expect는 `{"error": <code>}`이거나 없다.
-  - `model.count {connection, model, where?}`는 `where`의 같음 조건으로 `GetCount`를 호출한다. `where`가 없으면 model의 모든 row를 센다(client-model-terminal-read). expect는 `{"value": {"int": <count>}}`이다.
+  - `model.count {connection, model, where?}`는 `where`의 같음 조건으로 `GetCount`를 호출한다. `where`가 없으면 model의 모든 row 개수를 구한다(client-model-terminal-read). expect는 `{"value": {"int": <count>}}`이다.
   - `model.get_by {connection, model, key | where, columns?}`는 `key` 또는 `where` 중 정확히 하나를 받는다. `key`는 key column의 key 조회 `GetBy`를 호출하고, `where`는 `Where`와 마지막 `Get`을 호출한다(generated-model-query-chain의 Where, client-model-terminal-read의 마지막 Get, INT-29). `expect`가 있으면 `columns`를 읽으며, expect는 `{"rows": [[<value>, ...], ...]}`, 최대 한 row다. `as`가 있으면 row를 묶고, step에는 `expect`가 없을 수 있다.
   - `model.query {connection, model, where, order, columns}`는 `where`의 같음 조건으로 `Gets`를 호출하고, `order`의 column으로 오름차순 정렬하며 `columns`를 읽는다. expect는 `{"rows": [[<value>, ...], ...]}`이다.
   - `events.subscribe {connection, as}`는 `connection`에 기록용 subscriber를 등록한다(DB.Subscribe, client-db-subscribe, INT-77). `as`는 subscription을 묶고, step에는 `expect`가 없다.

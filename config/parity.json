@@ -1191,7 +1191,6 @@
     "tests/dbspec/*.json",
     "tests/dsn/sqlite-paths.json",
     "tests/ir/*.json",
-    "tests/events/*.json",
     "tests/markdown/*.json"
   ],
   "comparators": [

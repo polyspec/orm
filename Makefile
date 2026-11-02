@@ -2794,7 +2794,7 @@ statement-events-check/python: lease-tool python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_statement_events_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_statement_events_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_statement_events_sqlite
-statement-events-check/php: lease-tool php-vendor-check
+statement-events-check/php: lease-tool php-vendor-check php-models
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/StatementEventsRecipeTest.php
 statement-events-check/php-extension: lease-tool php-vendor-check build-php-ext
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php

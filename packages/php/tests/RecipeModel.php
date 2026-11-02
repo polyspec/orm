@@ -36,7 +36,8 @@ trait RecipeModel
     private static function modelOp(array $s, array $context): array
     {
         if ($s['op'] === 'model.connect') {
-            // The case schema is registered on the connection, as the statement-event ops need it (FCV-4, model.connect).
+            // The case schema is registered on the connection, as the statement-event ops need it
+            // (FCV-4, model.connect).
             $db = Orm::connectSchema(
                 $context['dsn'],
                 $context['schema'],
