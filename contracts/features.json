@@ -4714,7 +4714,6 @@
         "coverage-schema-definition-dbspec-render-ddl",
         "coverage-schema-definition-dbspec-analyze-tokens",
         "coverage-schema-definition-dbspec-format",
-        "coverage-schema-definition-dbspec-format-refusal",
         "coverage-schema-definition-dbspec-parse-positions",
         "dbspec-introspect-query-count",
         "dbspec-introspect-round-trip",

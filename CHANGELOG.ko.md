@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 77a2fb80d951cd5d7516bc7d362016be62d85016cedf774dfc1326e534aed6d2 -->
+<!-- source-sha256: 7a9f27d6a2c49c8a3489269584092ac1de4b96471929ad0c0a89cc20bc5a938b -->
 # 변경 이력
 
 ## Unreleased
@@ -102,6 +102,8 @@
 - 중단된 실행이 남긴 compiler fixture case의 오래된 source 때문에 다음 실행이 EEXIST로 실패하고 디렉터리가 트리에 남았다. 이제 실행은 오래된 source를 덮어쓰고 끝에 임시 디렉터리를 지운다 (CR25).
 - 데이터베이스 기능이 실행 데이터베이스에서 recipe로 도는 방식을 spec이 밝힌다: docs/spec/feature-coverage.md의 FCV-8부터 FCV-14까지가 전환, `databases` need와 TEST_ENV로 받는 데이터베이스, 제외 없는 세 데이터베이스, DSN 누락 실패, 사례별 결과, seed 소유, 네이티브 테스트를 정한다 (T334-3-4-0).
 - 여섯 runtime의 스키마 설치 case가 하나의 recipe(`contracts/fixtures/schema_install/schema_install.json`)가 되어 MySQL, PostgreSQL, SQLite에서 돈다. 같은 동작의 네이티브 테스트는 지웠고, register 테스트는 거부 테스트와 hash별 engine 테스트로 나눴으며, SCH-14부터 SCH-17까지는 FCV-2에 따라 네이티브로 남는 case(감사 transaction, load 시점 hash 검사, bench 모델, hash별 engine)를 나타낸다(T334-3-4).
+- dbspec 텍스트의 format 거부(DBS-141, ORES-14)가 feature coverage-schema-definition-dbspec-format-refusal의 native binding 여섯 개로 돌았고, 각 binding은 schema-definition의 suite case dbspec_format_refusal과 같은 함수였다. binding을 지우고 suite case만 남긴다. set 파일 generator 규칙(ORES-21)은 FCV-2의 runtime별 진입점으로 각 runtime에 native로 남는다 (T334-3-21-1)
+
 
 ## 0.0.21
 

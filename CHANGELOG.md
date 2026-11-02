@@ -102,6 +102,8 @@
 - A leftover source of a compiler fixture case, from an interrupted run, made the next run fail with EEXIST and left its directory in the tree. The run now overwrites a stale source and removes its scratch directory at the end (CR25).
 - The spec states how a database feature runs as a recipe on the run databases: FCV-8 to FCV-14 of docs/spec/feature-coverage.md give the conversion, the databases from the `databases` need and TEST_ENV, the three databases with no exclusion, the failure of a missing DSN, the per-case result, the seed ownership and the native tests (T334-3-4-0).
 - The catalog read returned the driver's integer for a boolean column, so a bool written to a MySQL `tinyint(1)` or SQLite `BOOLEAN` column failed its write check (ROW_WRITE_MISMATCH), and the PHP catalog bound a PHP false as the empty string, which MySQL and SQLite refuse. Every runtime now reads a boolean column as a bool by its column type, and PHP and the PHP extension bind a bool as a bool (DIA-29) (T334-3-11-1).
+- The format refusal of a dbspec text (DBS-141, ORES-14) ran through six native bindings of the feature coverage-schema-definition-dbspec-format-refusal, each the same function as the suite case dbspec_format_refusal of schema-definition; the bindings are removed and the suite case stands alone, and the set-file generator rule (ORES-21) stays native in each runtime as an FCV-2 runtime-specific entry (T334-3-21-1)
+
 
 ## 0.0.21
 
