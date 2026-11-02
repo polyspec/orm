@@ -67,6 +67,7 @@
 - The preempted test of DbspecRenderTest failed in test (feature_verify_other) of main CI run 41324077414 with nine DSN errors, because it ran the whole file without the database DSNs. testBehaviourPhysical (CR16-1-3) now carries the group database, which the preempted run excludes; the physical cases still run in dbspec-php-check/render (CR55).
 - The schema_definition vectors moved into the recipe tests/dbspec/schema-definition.json with one copy of each datum; six ops of FCV-4 (dbspec.parse_emit, dbspec.manifest, dbspec.render, dbspec.analyze, dbspec.parse_positions, dbspec.format) run them in every runtime, and the native vector tests were removed. The manifest case moved in this row, not in T334-3-18-3, because splitting one vector file across two rows would leave two copies (T334-3-18-1)
 - The parse vectors of the dbspec suites that read no database (canonical, normalize, invalid, positions, set-parse and the byte-order-mark) are cases of the recipes in tests/dbspec, run by every runtime through the FCV-4 ops format, parse_positions, analyze and parse_set; the native vector tests they replaced are removed, and each datum of cases.json and syntax.json has one copy (T334-3-18-2).
+- The header comments of the 18 recipe test files of dbspec-canonical, dbspec-normalize and dbspec-invalid name the requirements their units cite (DBS-133, ORES-1, ORES-3, ORES-13, DBS-136 to DBS-139, ORES-4 to ORES-11 and ORES-13), so the R15 check of parity --phase api passes for those units (T334-3-18-5).
 
 ## 0.0.21
 

@@ -6,6 +6,7 @@
 // Requirements: DBS-68, DBS-73, DBS-74, DBS-75, DBS-76, DBS-77, DBS-78, DBS-79, DBS-80, DBS-81, DBS-82, DBS-83, DBS-84,
 // Requirements: DBS-85, DBS-88, DBS-89, DBS-90, DBS-91, DBS-92, DBS-122, DBS-123, DBS-124, DBS-125, DBS-126, DBS-127,
 // Requirements: DBS-128, DBS-129, DBS-130, DBS-131, DBS-132.
+// Requirements: DBS-133, ORES-1, ORES-3, ORES-13.
 declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
