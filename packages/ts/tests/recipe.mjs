@@ -1031,10 +1031,14 @@ Object.assign(OPS, {
     return { count };
   },
   async transaction(s, context) {
+    // The options of the transaction (INT-46): a nested transaction that names one is refused with CONFIG.
+    const options = { retry: 0 };
+    if (s.isolation !== undefined) options.isolation = s.isolation;
+    if (s.read_only === true) options.readOnly = true;
     await connectionOf(s, context).transaction(async () => {
       await runNested(s.steps, context);
       if (s.fail) throw callbackError;
-    }, { retry: 0 });
+    }, options);
     return okValue;
   },
 });

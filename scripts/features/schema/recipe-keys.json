@@ -180,7 +180,9 @@
       "connection",
       "expect",
       "fail",
+      "isolation",
       "op",
+      "read_only",
       "retry",
       "steps"
     ],
@@ -277,6 +279,7 @@
       "connection",
       "expect",
       "limit",
+      "lock",
       "model",
       "offset",
       "op",

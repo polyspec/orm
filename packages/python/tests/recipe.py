@@ -1902,7 +1902,13 @@ def _op_transaction(step: dict, context: dict) -> dict:
         if step.get("fail"):
             raise CallbackError("the transaction callback failed")
 
-    _connection_of(step, context).transaction(run, {"retry": 0})
+    # The options of the transaction (INT-46): a nested transaction that names one is refused with CONFIG.
+    options = {"retry": 0}
+    if "isolation" in step:
+        options["isolation"] = step["isolation"]
+    if step.get("read_only") is True:
+        options["readOnly"] = True
+    _connection_of(step, context).transaction(run, options)
     return {"value": {"bool": True}}
 
 

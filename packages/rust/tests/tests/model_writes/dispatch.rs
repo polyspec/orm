@@ -46,6 +46,10 @@ impl ModelDispatcher for Models {
         })
     }
 
+    fn db(&self, name: &str) -> Option<Db> {
+        self.connections.get(name).cloned()
+    }
+
     fn close<'a>(&'a mut self) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>> {
         Box::pin(async move {
             for (_, db) in self.connections.drain() {
@@ -123,6 +127,16 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
                 query = match column.as_str() {
                     Some("account_id") => query.order_by_account_id_asc(),
                     other => return Err(format!("CompositeAccount column {other:?} has no recipe order")),
+                };
+            }
+            // The lock of a model.query (INT-47): a lock outside a transaction is refused with CONFIG.
+            if let Some(lock) = step["lock"].as_str() {
+                query = match lock {
+                    "update" => query.for_update(),
+                    "share" => query.for_share(),
+                    "update_nowait" => query.for_update_no_wait(),
+                    "share_nowait" => query.for_share_no_wait(),
+                    other => return Err(format!("lock {other} is not a lock of the recipe")),
                 };
             }
             let collection = query.gets().await.map_err(fail)?;
@@ -289,6 +303,7 @@ fn author_cell(row: &Author, column: &str) -> Result<Value, String> {
 
 fn composite_cell(row: &CompositeAccount, column: &str) -> Result<Value, String> {
     match column {
+        "account_id" => Ok(json!({ "int": row.get_account_id().map_err(fail)?.to_string() })),
         "name" => Ok(json!({ "text": row.get_name().map_err(fail)? })),
         other => Err(format!("CompositeAccount column {other} has no recipe getter")),
     }

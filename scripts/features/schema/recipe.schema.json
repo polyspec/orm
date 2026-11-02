@@ -1147,6 +1147,15 @@
           "retry": {
             "type": "integer",
             "minimum": 0
+          },
+          "isolation": {
+            "description": "The isolation level of the transaction; a nested transaction that names one is refused with CONFIG.",
+            "type": "string",
+            "minLength": 1
+          },
+          "read_only": {
+            "description": "A read-only transaction; a nested transaction that names it is refused with CONFIG.",
+            "type": "boolean"
           }
         }
       },
@@ -2977,6 +2986,15 @@
             "additionalProperties": {
               "$ref": "#/$defs/outcomes/rows"
             }
+          },
+          "lock": {
+            "description": "The row lock of the query; outside a transaction it is refused with CONFIG.",
+            "enum": [
+              "update",
+              "share",
+              "update_nowait",
+              "share_nowait"
+            ]
           }
         }
       },

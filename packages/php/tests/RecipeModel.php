@@ -127,6 +127,21 @@ trait RecipeModel
         return $model;
     }
 
+    /** The order and getter methods of the CompositeAccount model ops, by recipe column. */
+    private const COMPOSITE_ORDERS = [
+        'tenant_id' => 'orderByTenantIdAsc',
+        'account_id' => 'orderByAccountIdAsc',
+        'name' => 'orderByNameAsc',
+    ];
+    private const COMPOSITE_GETTERS = ['account_id' => 'getAccountId', 'name' => 'getName'];
+    /** The lock methods of a model.query, by recipe lock name. */
+    private const LOCKS = [
+        'update' => 'forUpdate',
+        'share' => 'forShare',
+        'update_nowait' => 'forUpdateNoWait',
+        'share_nowait' => 'forShareNoWait',
+    ];
+
     /** The CompositeAccount chain of the equalities of where, joined by and(). */
     private static function compositeAccountFilter(Db $db, array $where): \Polyspec\Orm\Tests\Model\CompositeAccount
     {
@@ -194,8 +209,19 @@ trait RecipeModel
                 $row = (new $CA())($db)->getByTenantIdAndAccountId($key['tenant_id'], $key['account_id']);
                 return ['rows' => $row === null ? [] : [self::compositeAccountCells($row, $s['columns'])]];
             case 'model.query':
+                $model = self::compositeAccountFilter($db, self::modelValues($s['where'], $context));
+                foreach ($s['order'] ?? [] as $column) {
+                    $order = self::COMPOSITE_ORDERS[$column]
+                        ?? Assert::fail("CompositeAccount column $column has no recipe order");
+                    $model = $model->$order();
+                }
+                // The lock of a model.query (INT-47): a lock outside a transaction is refused with CONFIG.
+                if (isset($s['lock'])) {
+                    $lock = self::LOCKS[$s['lock']] ?? Assert::fail("lock {$s['lock']} is not a lock of the recipe");
+                    $model = $model->$lock();
+                }
                 $rows = [];
-                foreach (self::compositeAccountFilter($db, self::modelValues($s['where'], $context))->gets() as $row) {
+                foreach ($model->gets() as $row) {
                     $rows[] = self::compositeAccountCells($row, $s['columns']);
                 }
                 return ['rows' => $rows];
@@ -206,10 +232,9 @@ trait RecipeModel
     private static function compositeAccountCells(object $row, array $columns): array
     {
         return array_map(static function (string $column) use ($row): array {
-            if ($column !== 'name') {
-                Assert::fail("CompositeAccount column $column has no recipe getter");
-            }
-            return self::modelWrapper($row->getName());
+            $getter = self::COMPOSITE_GETTERS[$column]
+                ?? Assert::fail("CompositeAccount column $column has no recipe getter");
+            return self::modelWrapper($row->$getter());
         }, $columns);
     }
 

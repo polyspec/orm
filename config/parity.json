@@ -43120,6 +43120,180 @@
           "symbol": "catalog_connection_sqlite_only"
         }
       ]
+    },
+    {
+      "id": "transactions-mysql",
+      "kind": "suite",
+      "requirements": [
+        "DSL-118",
+        "DSL-119",
+        "DSL-123",
+        "DSL-125",
+        "DSL-126",
+        "INT-40",
+        "INT-41",
+        "INT-42",
+        "INT-43",
+        "INT-45",
+        "INT-46",
+        "INT-47",
+        "INT-48",
+        "PLN-13",
+        "PLN-16",
+        "PLN-17",
+        "PLN-20",
+        "PLN-21",
+        "PLN-24",
+        "PLN-44"
+      ],
+      "file": "contracts/fixtures/transactions/transactions.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_transactions_test.go",
+          "symbol": "TestRecipeTransactionsMysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/TransactionsRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\TransactionsRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\TransactionsRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/transactions-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_transactions_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/transactions_mysql.rs",
+          "symbol": "transactions_mysql"
+        }
+      ]
+    },
+    {
+      "id": "transactions-postgres",
+      "kind": "suite",
+      "requirements": [
+        "DSL-118",
+        "DSL-119",
+        "DSL-123",
+        "DSL-125",
+        "DSL-126",
+        "INT-40",
+        "INT-41",
+        "INT-42",
+        "INT-43",
+        "INT-45",
+        "INT-46",
+        "INT-47",
+        "INT-48",
+        "PLN-13",
+        "PLN-16",
+        "PLN-17",
+        "PLN-20",
+        "PLN-21",
+        "PLN-24",
+        "PLN-44"
+      ],
+      "file": "contracts/fixtures/transactions/transactions.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_transactions_test.go",
+          "symbol": "TestRecipeTransactionsPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/TransactionsRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\TransactionsRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\TransactionsRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/transactions-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_transactions_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/transactions_postgres.rs",
+          "symbol": "transactions_postgres"
+        }
+      ]
+    },
+    {
+      "id": "transactions-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "DSL-118",
+        "DSL-119",
+        "DSL-123",
+        "DSL-125",
+        "DSL-126",
+        "INT-40",
+        "INT-41",
+        "INT-42",
+        "INT-43",
+        "INT-45",
+        "INT-46",
+        "INT-47",
+        "INT-48",
+        "PLN-13",
+        "PLN-16",
+        "PLN-17",
+        "PLN-20",
+        "PLN-21",
+        "PLN-24",
+        "PLN-44"
+      ],
+      "file": "contracts/fixtures/transactions/transactions.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_transactions_test.go",
+          "symbol": "TestRecipeTransactionsSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/TransactionsRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\TransactionsRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\TransactionsRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/transactions-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_transactions_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/transactions_sqlite.rs",
+          "symbol": "transactions_sqlite"
+        }
+      ]
     }
   ],
   "errors": {

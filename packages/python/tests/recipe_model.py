@@ -49,6 +49,21 @@ def _wrap(value):
     return {"text": value}
 
 
+# The order, getter and lock methods of the CompositeAccount model ops, by recipe column and lock name.
+_COMPOSITE_ORDERS = {
+    "tenant_id": "order_by_tenant_id_asc",
+    "account_id": "order_by_account_id_asc",
+    "name": "order_by_name_asc",
+}
+_COMPOSITE_GETTERS = {"account_id": "get_account_id", "name": "get_name"}
+_LOCKS = {
+    "update": "for_update",
+    "share": "for_share",
+    "update_nowait": "for_update_no_wait",
+    "share_nowait": "for_share_no_wait",
+}
+
+
 def model_ops(native, database_value, step_argument):
     """The model op table of the recipe helper; the helpers are the recipe value conversions it shares with the catalog ops."""
 
@@ -82,7 +97,9 @@ def model_ops(native, database_value, step_argument):
 
     def composite_filter(db, where):
         model = models.CompositeAccount().connect(db)
-        for column in sorted(where):
+        for index, column in enumerate(sorted(where)):
+            if index > 0:
+                model.and_()
             if column == "tenant_id":
                 model.tenant_id(where[column])
             elif column == "account_id":
@@ -313,9 +330,19 @@ def model_ops(native, database_value, step_argument):
                     for row in model.gets().values()
                 ]
             }
-        rows = (
-            composite_filter(db, values_of(step.get("where"), context)).gets().values()
-        )
+        model = composite_filter(db, values_of(step.get("where"), context))
+        for column in step.get("order", []):
+            if column not in _COMPOSITE_ORDERS:
+                raise AssertionError(
+                    f"CompositeAccount column {column} has no recipe order"
+                )
+            getattr(model, _COMPOSITE_ORDERS[column])()
+        # The lock of a model.query (INT-47): a lock outside a transaction is refused with CONFIG.
+        if "lock" in step:
+            if step["lock"] not in _LOCKS:
+                raise AssertionError(f"lock {step['lock']} is not a lock of the recipe")
+            getattr(model, _LOCKS[step["lock"]])()
+        rows = model.gets().values()
         return {
             "rows": [
                 [_column_wrap(row, column) for column in step["columns"]]
@@ -345,11 +372,11 @@ def model_ops(native, database_value, step_argument):
         return {}
 
     def _column_wrap(row, column):
-        if column != "name":
+        if column not in _COMPOSITE_GETTERS:
             raise AssertionError(
                 f"CompositeAccount column {column} has no recipe getter"
             )
-        return _wrap(row.get_name())
+        return _wrap(getattr(row, _COMPOSITE_GETTERS[column])())
 
     return {
         "model.connect": model_connect,

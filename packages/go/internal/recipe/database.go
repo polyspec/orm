@@ -93,7 +93,11 @@ type databaseStep struct {
 	Relation    json.RawMessage `json:"relation"`
 	Column      string          `json:"column"`
 	Operation   string          `json:"operation"`
-	Amount      json.RawMessage `json:"amount"`
+	// The lock of a model.query and the options of a transaction.
+	Lock      string          `json:"lock"`
+	Isolation string          `json:"isolation"`
+	ReadOnly  bool            `json:"read_only"`
+	Amount    json.RawMessage `json:"amount"`
 	// The event fields (FCV-4): the subscription ref or the bound row, the kind that a failing subscriber refuses, the
 	// compare mode of the captured events, and whether a transaction callback fails after its steps.
 	Ref     json.RawMessage `json:"ref"`
@@ -750,6 +754,14 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if err != nil {
 			return outcome{}, err
 		}
+		// The options of the transaction (INT-46): a nested transaction that names one is refused with CONFIG.
+		options := []orm.TransactionOption{orm.Retry(0)}
+		if s.Isolation != "" {
+			options = append(options, orm.Isolation(orm.IsolationLevel(s.Isolation)))
+		}
+		if s.ReadOnly {
+			options = append(options, orm.ReadOnly())
+		}
 		err = db.Transaction(func() error {
 			if err := runNested(s.Steps, c); err != nil {
 				return err
@@ -758,7 +770,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 				return errCallback
 			}
 			return nil
-		}, orm.Retry(0))
+		}, options...)
 		if err != nil {
 			return outcome{}, err
 		}

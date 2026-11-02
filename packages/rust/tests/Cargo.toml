@@ -297,4 +297,20 @@ harness = false
 [[test]]
 name = "dsn_reject_none"
 path = "tests/dsn_reject_none.rs"
+
+# Each case of the transactions recipe, contracts/fixtures/transactions/transactions.json, is the trial
+# transactions_<database>::<case id> on a case database of its own (FCV-3, FCV-4).
+[[test]]
+name = "transactions_mysql"
+path = "tests/transactions_mysql.rs"
+harness = false
+
+[[test]]
+name = "transactions_postgres"
+path = "tests/transactions_postgres.rs"
+harness = false
+
+[[test]]
+name = "transactions_sqlite"
+path = "tests/transactions_sqlite.rs"
 harness = false

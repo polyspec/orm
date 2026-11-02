@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 03731d5f264a8b6f84378ff7ca82ee3dab60bc8c5b48c7d6b2ed5e07255d591c -->
+<!-- source-sha256: 07666ff9ad1565daba70a1fa73800e27f20315293e17a38e6c24dd40e0f8bf5f -->
 # 변경 이력
 
 ## Unreleased
@@ -182,6 +182,7 @@ SQLite에서 같은 행을 쓰는 두 connection의 잠금 대기는 busy timeou
 - TypeScript compare 러너의 join이 recipe 문서의 mixed 형식을 받도록 고쳐 packages/ts 타입 검사가 통과하게 했습니다 (T334-3-18-3-3).
 - repeated-document-name 거부 벡터의 제목을 리터럴로 고쳐, parity 바인딩이 TypeScript 벡터 파일에서 그 제목을 찾도록 했습니다 (T334-3-18-3-2)
 - Rust catalog는 tool 질의의 statement와 column 오류의 code를 오류 텍스트 앞에 둔다(INT-124, INT-125): TOOL_QUERY_STATEMENT와 TOOL_QUERY_COLUMNS가 driver 접두어 error occurred while decoding 뒤에 놓이지 않는다 (T334-3-3-5)
+- transactions recipe(contracts/fixtures/transactions/transactions.json)는 mysql, postgres, sqlite에서 여섯 runtime 모두로 model 쓰기와 읽기, callback commit과 rollback, savepoint, 행 잠금, 중첩 옵션 오류를 실행한다. FCV-4의 model op와 transaction op를 쓰며, parity unit transactions-mysql, transactions-postgres, transactions-sqlite를 둔다 (T334-3-4).
 
 ## 0.0.21
 

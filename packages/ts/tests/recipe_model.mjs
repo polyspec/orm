@@ -35,6 +35,11 @@ const COLUMNS = {
 const ORDERS = { seq: 'orderBySeqAsc', name: 'orderByNameAsc', '-seq': 'orderBySeqDesc', '-name': 'orderByNameDesc' };
 
 /** The helpers of the recipe helper that the model ops use: the value of a field, and the native value of a wrapper. */
+/** The order, getter and lock methods of the CompositeAccount model ops, by recipe column and lock name. */
+const COMPOSITE_ORDERS = { tenant_id: 'orderByTenantIdAsc', account_id: 'orderByAccountIdAsc', name: 'orderByNameAsc' };
+const COMPOSITE_GETTERS = { account_id: 'getAccountId', name: 'getName' };
+const LOCKS = { update: 'forUpdate', share: 'forShare', update_nowait: 'forUpdateNoWait', share_nowait: 'forShareNoWait' };
+
 export function modelOps({ native, databaseValue, stepArgument }) {
   const valueOf = (value, context) => native(databaseValue(stepArgument(value, context), context));
   const objectValues = (object, context) => Object.fromEntries(Object.entries(object ?? {}).map(([k, v]) => [k, valueOf(v, context)]));
@@ -56,10 +61,11 @@ export function modelOps({ native, databaseValue, stepArgument }) {
     }
     return model;
   };
-  // CompositeAccount filters: the equality of its key columns, as the generated model names them.
+  // CompositeAccount filters: the equality of its key columns, as the generated model names them, joined by and().
   const compositeFilter = (db, where) => {
     const model = new CompositeAccount().connect(db);
-    for (const column of columnsOf(where)) {
+    for (const [index, column] of columnsOf(where).entries()) {
+      if (index > 0) model.and();
       switch (column) {
         case 'tenant_id': model.tenantId(where[column]); break;
         case 'account_id': model.accountId(where[column]); break;
@@ -224,10 +230,20 @@ export function modelOps({ native, databaseValue, stepArgument }) {
         const collection = await model.gets();
         return { rows: collection.values().map(row => cells(row, s.columns)) };
       }
-      const collection = await compositeFilter(db, objectValues(s.where, context)).gets();
+      const model = compositeFilter(db, objectValues(s.where, context));
+      for (const column of s.order ?? []) {
+        if (COMPOSITE_ORDERS[column] === undefined) throw new Error(`CompositeAccount column ${column} has no recipe order`);
+        model[COMPOSITE_ORDERS[column]]();
+      }
+      // The lock of a model.query (INT-47): a lock outside a transaction is refused with CONFIG.
+      if (s.lock !== undefined) {
+        if (LOCKS[s.lock] === undefined) throw new Error(`lock ${s.lock} is not a lock of the recipe`);
+        model[LOCKS[s.lock]]();
+      }
+      const collection = await model.gets();
       const rows = collection.values().map(row => s.columns.map(column => {
-        if (column !== 'name') throw new Error(`CompositeAccount column ${column} has no recipe getter`);
-        return wrap(row.getName());
+        if (COMPOSITE_GETTERS[column] === undefined) throw new Error(`CompositeAccount column ${column} has no recipe getter`);
+        return wrap(row[COMPOSITE_GETTERS[column]]());
       }));
       return { rows };
     },

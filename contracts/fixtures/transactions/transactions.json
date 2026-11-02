@@ -1,0 +1,652 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "DSL-118",
+    "DSL-119",
+    "DSL-123",
+    "DSL-125",
+    "DSL-126",
+    "INT-40",
+    "INT-41",
+    "INT-42",
+    "INT-43",
+    "INT-45",
+    "INT-46",
+    "INT-47",
+    "INT-48",
+    "PLN-13",
+    "PLN-16",
+    "PLN-17",
+    "PLN-20",
+    "PLN-21",
+    "PLN-24",
+    "PLN-44"
+  ],
+  "fixture": "contracts/fixtures/bench/dbspec-set.json",
+  "cases": [
+    {
+      "id": "model_write_outside_transaction_is_config",
+      "requirements": [
+        "INT-45",
+        "PLN-13"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "connection"
+        },
+        {
+          "op": "model.query",
+          "connection": "connection",
+          "model": "CompositeAccount",
+          "where": {
+            "tenant_id": {
+              "int": "990001"
+            },
+            "account_id": {
+              "int": "1"
+            }
+          },
+          "order": [
+            "account_id"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": []
+            },
+            "postgres": {
+              "rows": []
+            },
+            "sqlite": {
+              "rows": []
+            }
+          },
+          "columns": [
+            "account_id"
+          ]
+        },
+        {
+          "op": "model.query",
+          "connection": "connection",
+          "model": "CompositeAccount",
+          "where": {
+            "tenant_id": {
+              "int": "990001"
+            },
+            "account_id": {
+              "int": "1"
+            }
+          },
+          "order": [
+            "account_id"
+          ],
+          "lock": "update",
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          },
+          "columns": [
+            "account_id"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "callback_success_commits",
+      "requirements": [
+        "DSL-118",
+        "PLN-16",
+        "PLN-44"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "connection"
+        },
+        {
+          "op": "transaction",
+          "connection": "connection",
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "connection",
+              "model": "CompositeAccount",
+              "values": {
+                "tenant_id": {
+                  "int": "990002"
+                },
+                "account_id": {
+                  "int": "1"
+                },
+                "name": {
+                  "text": "committed"
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "connection",
+          "model": "CompositeAccount",
+          "where": {
+            "tenant_id": {
+              "int": "990002"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "1"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "callback_failure_rolls_back",
+      "requirements": [
+        "DSL-118",
+        "INT-45",
+        "PLN-20"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "connection"
+        },
+        {
+          "op": "transaction",
+          "connection": "connection",
+          "fail": true,
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "connection",
+              "model": "CompositeAccount",
+              "values": {
+                "tenant_id": {
+                  "int": "990003"
+                },
+                "account_id": {
+                  "int": "2"
+                },
+                "name": {
+                  "text": "rolled"
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "error": "CALLBACK"
+            },
+            "postgres": {
+              "error": "CALLBACK"
+            },
+            "sqlite": {
+              "error": "CALLBACK"
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "connection",
+          "model": "CompositeAccount",
+          "where": {
+            "tenant_id": {
+              "int": "990003"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "0"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "0"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "0"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "savepoint_failure_rolls_back_only_the_inner_transaction",
+      "requirements": [
+        "DSL-119",
+        "DSL-123",
+        "DSL-125",
+        "DSL-126",
+        "INT-40",
+        "INT-41",
+        "INT-42",
+        "INT-43",
+        "PLN-17",
+        "PLN-21",
+        "PLN-24"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "connection"
+        },
+        {
+          "op": "transaction",
+          "connection": "connection",
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "connection",
+              "model": "CompositeAccount",
+              "values": {
+                "tenant_id": {
+                  "int": "990004"
+                },
+                "account_id": {
+                  "int": "2"
+                },
+                "name": {
+                  "text": "outer"
+                }
+              }
+            },
+            {
+              "op": "transaction",
+              "connection": "connection",
+              "fail": true,
+              "steps": [
+                {
+                  "op": "model.create",
+                  "connection": "connection",
+                  "model": "CompositeAccount",
+                  "values": {
+                    "tenant_id": {
+                      "int": "990004"
+                    },
+                    "account_id": {
+                      "int": "3"
+                    },
+                    "name": {
+                      "text": "inner"
+                    }
+                  }
+                }
+              ],
+              "expect": {
+                "mysql": {
+                  "error": "CALLBACK"
+                },
+                "postgres": {
+                  "error": "CALLBACK"
+                },
+                "sqlite": {
+                  "error": "CALLBACK"
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "connection",
+          "model": "CompositeAccount",
+          "where": {
+            "tenant_id": {
+              "int": "990004"
+            },
+            "account_id": {
+              "int": "2"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "1"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "connection",
+          "model": "CompositeAccount",
+          "where": {
+            "tenant_id": {
+              "int": "990004"
+            },
+            "account_id": {
+              "int": "3"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "0"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "0"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "0"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "nested_options_are_config",
+      "requirements": [
+        "DSL-125",
+        "INT-46",
+        "PLN-24"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "connection"
+        },
+        {
+          "op": "transaction",
+          "connection": "connection",
+          "steps": [
+            {
+              "op": "transaction",
+              "connection": "connection",
+              "isolation": "serializable",
+              "steps": [
+                {
+                  "op": "model.create",
+                  "connection": "connection",
+                  "model": "CompositeAccount",
+                  "values": {
+                    "tenant_id": {
+                      "int": "990006"
+                    },
+                    "account_id": {
+                      "int": "1"
+                    },
+                    "name": {
+                      "text": "refused"
+                    }
+                  }
+                }
+              ],
+              "expect": {
+                "mysql": {
+                  "error": "CONFIG"
+                },
+                "postgres": {
+                  "error": "CONFIG"
+                },
+                "sqlite": {
+                  "error": "CONFIG"
+                }
+              }
+            },
+            {
+              "op": "transaction",
+              "connection": "connection",
+              "read_only": true,
+              "steps": [
+                {
+                  "op": "model.create",
+                  "connection": "connection",
+                  "model": "CompositeAccount",
+                  "values": {
+                    "tenant_id": {
+                      "int": "990006"
+                    },
+                    "account_id": {
+                      "int": "2"
+                    },
+                    "name": {
+                      "text": "refused"
+                    }
+                  }
+                }
+              ],
+              "expect": {
+                "mysql": {
+                  "error": "CONFIG"
+                },
+                "postgres": {
+                  "error": "CONFIG"
+                },
+                "sqlite": {
+                  "error": "CONFIG"
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "connection",
+          "model": "CompositeAccount",
+          "where": {
+            "tenant_id": {
+              "int": "990006"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "0"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "0"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "0"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_lock_inside_transaction_is_accepted",
+      "requirements": [
+        "INT-47",
+        "INT-48",
+        "PLN-44"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "connection"
+        },
+        {
+          "op": "transaction",
+          "connection": "connection",
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "connection",
+              "model": "CompositeAccount",
+              "values": {
+                "tenant_id": {
+                  "int": "990005"
+                },
+                "account_id": {
+                  "int": "1"
+                },
+                "name": {
+                  "text": "locked"
+                }
+              }
+            },
+            {
+              "op": "model.query",
+              "connection": "connection",
+              "model": "CompositeAccount",
+              "where": {
+                "tenant_id": {
+                  "int": "990005"
+                },
+                "account_id": {
+                  "int": "1"
+                }
+              },
+              "order": [
+                "account_id"
+              ],
+              "lock": "update",
+              "expect": {
+                "mysql": {
+                  "rows": [
+                    [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  ]
+                },
+                "postgres": {
+                  "rows": [
+                    [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  ]
+                },
+                "sqlite": {
+                  "rows": [
+                    [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  ]
+                }
+              },
+              "columns": [
+                "account_id"
+              ]
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

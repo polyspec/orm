@@ -1302,6 +1302,48 @@ mod database {
         Ok(())
     }
 
+    /// A transaction step with isolation or read_only: its steps run in db.transaction with those options, the form
+    /// that carries them, and the case state is reached through a lock, since that callback may be called again.
+    async fn transaction_with_options(
+        db: &Db,
+        step: &Value,
+        steps: &[Value],
+        fail: bool,
+        catalog: &mut Option<CatalogConnection>,
+        context: &mut Context<'_>,
+    ) -> Result<Output, Failure> {
+        let state = tokio::sync::Mutex::new((catalog, context));
+        let callback = async || {
+            let mut guard = state.lock().await;
+            let (catalog, context) = &mut *guard;
+            for nested in steps {
+                Box::pin(run_step(catalog, nested, context)).await.map_err(polyspec_orm::Error::Config)?;
+            }
+            if fail {
+                return Err(polyspec_orm::Error::Config(CALLBACK_FAILED.to_owned()));
+            }
+            Ok(())
+        };
+        let mut transaction = db.transaction(callback).retry(0);
+        if let Some(level) = step["isolation"].as_str() {
+            transaction = transaction.isolation(match level {
+                "read_uncommitted" => polyspec_orm::Isolation::ReadUncommitted,
+                "read_committed" => polyspec_orm::Isolation::ReadCommitted,
+                "repeatable_read" => polyspec_orm::Isolation::RepeatableRead,
+                "serializable" => polyspec_orm::Isolation::Serializable,
+                other => return Err(Failure::Step(format!("isolation {other} is not a level of the recipe"))),
+            });
+        }
+        if step["read_only"].as_bool() == Some(true) {
+            transaction = transaction.read_only();
+        }
+        match transaction.await {
+            Ok(()) => Ok(Output::fields(ok_value())),
+            Err(polyspec_orm::Error::Config(message)) if message == CALLBACK_FAILED => Err(Failure::Call(format!("{CALLBACK}: {message}"))),
+            Err(error) => Err(orm(error)),
+        }
+    }
+
     /// The value of an op that returns without error (FCV-4).
     fn ok_value() -> Value {
         json!({ "value": { "bool": true } })
@@ -1560,6 +1602,11 @@ mod database {
                 };
                 let steps: Vec<Value> = step["steps"].as_array().cloned().unwrap_or_default();
                 let fail = step["fail"].as_bool().unwrap_or(false);
+                // The options of the transaction (INT-46) take the db.transaction form, the one that carries them; a
+                // nested transaction that names one is refused with CONFIG.
+                if step.get("isolation").is_some() || step["read_only"].as_bool() == Some(true) {
+                    return transaction_with_options(&db, step, &steps, fail, catalog, context).await;
+                }
                 db.transaction_once(|| async move {
                     for nested in &steps {
                         Box::pin(run_step(catalog, nested, context)).await?;

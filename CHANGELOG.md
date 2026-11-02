@@ -91,6 +91,7 @@
 
 A SQLite lock wait between two connections that write the same row ends with `CANCELED` after the busy timeout and is not retried, because SQLite reports no row-lock deadlock: SQLITE_LOCKED (6, 262) is `DRIVER` in every runtime, and transaction_deadlock_retry runs the sqlite case in all six runtimes (PLN-24, CFG-12) (T343-3)
 
+- The transactions recipe, contracts/fixtures/transactions/transactions.json, runs the model writes and reads, the callback commit and rollback, the savepoint, the row lock and the nested option errors on mysql, postgres and sqlite in all six runtimes, through the model ops and the transaction op of FCV-4, with the parity units transactions-mysql, transactions-postgres and transactions-sqlite (T334-3-4).
 - The Go described read refuses the MySQL zero date 0000-00-00 as INT-103 states, as its grid read does: a DATE or DATETIME zero date fails with GRID_TEMPORAL_VALUE instead of reading as 0001-01-01 (T334-3-3-6-1)
 - The PHP and PHP extension described reads check their temporal text as INT-103 states: a text that is not in the dbspec form fails with GRID_TEMPORAL_VALUE, and an SQLite text must have the fraction digits that its dbspec CHECK fixes; Go, TypeScript, Python and Rust cut the described page before the sentinel row is converted (T334-3-3-7)
 - The Rust described read of a SQLite DATETIME column with no CHECK takes precision 0 as INT-103 states, so a non-zero fraction fails GRID_TEMPORAL_PRECISION instead of being read (T334-3-3-7-3)

@@ -1513,6 +1513,10 @@ final class Recipe
                             throw new CallbackFailed('the transaction callback failed');
                         }
                     },
+                    // The options of the transaction (INT-46): a nested transaction that names one is refused with
+                    // CONFIG.
+                    isolation: $s['isolation'] ?? '',
+                    readOnly: ($s['read_only'] ?? false) === true,
                     retry: 0,
                 );
                 return ['value' => ['bool' => true]];

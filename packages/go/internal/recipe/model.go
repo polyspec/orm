@@ -325,17 +325,33 @@ func compositeAccountOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome
 		if err != nil {
 			return outcome{}, err
 		}
+		// The lock of a model.query (INT-47): a lock outside a transaction is refused with CONFIG.
+		switch s.Lock {
+		case "":
+		case "update":
+			m = m.ForUpdate()
+		case "share":
+			m = m.ForShare()
+		case "update_nowait":
+			m = m.ForUpdateNoWait()
+		case "share_nowait":
+			m = m.ForShareNoWait()
+		default:
+			return outcome{}, fmt.Errorf("lock %q is not a lock of the recipe", s.Lock)
+		}
 		rows, err := m.Gets()
 		if err != nil {
 			return outcome{}, err
 		}
-		var out [][]any
+		out := [][]any{}
 		for _, row := range rows.Slice() {
 			var cells []any
 			for _, column := range s.Columns {
 				var v any
 				var err error
 				switch column {
+				case "account_id":
+					v, err = row.GetAccountId()
 				case "name":
 					v, err = row.GetName()
 				default:
