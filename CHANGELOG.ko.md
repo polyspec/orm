@@ -47,6 +47,7 @@
 - PHP 라이브러리는 predicate의 parameter를 키 정렬 순서가 아니라 Go 순서(p, plus_p, minus_p, ps, fn, value, sub)로 walk하므로, `p`와 `fn`을 함께 가진 predicate의 plan cache slot이 Go와 TypeScript client와 같다 (T326-15-2).
 - tests/events/vectors.json의 statement event는 여섯 client 모두에서 MySQL, PostgreSQL, SQLite 위에서 recipe `contracts/fixtures/statement_events/statement_events.json`으로 실행한다. native statement-event suite는 제거했고, server-transaction 시험과 coverage owner는 native로 남는다 (T334-3-5).
 - orm은 모든 생태계에서 ordered-json을 0.0.20으로 고정하며, 각 lock은 자기 package manager로 갱신한다 (T350).
+- Rust dbspec 분석기는 syntax 진단으로 포기된 줄의 단어를 DBS-139와 다른 runtime처럼 `word`로 분류한다. 열린 diagram 블록 안의 diagram 줄은 새 블록이 아니라 항목으로 읽는다 (T334-3-18-6-1).
 - orm은 kit 0.0.92를 고정한다. 그 target은 orm-install-rust-crates의 crate 받기와 맞고, 그 kit이 담은 원칙 사본을 받는다 (T353).
 - contracts/check-inputs.json에 dbspec-php-check/render가 선언되어 있지 않아 make run-databases가 물리 DDL 케이스를 실행하는 target을 거부했고, CI의 데이터베이스 실행이 그 케이스를 다루지 못했다. 형제 target dbspec-plan-php-check와 같은 형태로 선언했다 (CR55-1).
 - check runner는 프로세스 표를 256 MiB buffer로 읽고, 실패한 목록은 오류 코드를 밝힌다. 그래서 큰 표가 단계를 SIGTERM으로 실패시키지 않는다 (T351).
@@ -153,6 +154,12 @@ SQLite에서 같은 행을 쓰는 두 connection의 잠금 대기는 busy timeou
 - `make interface-record`는 `make interface-check`와 같은 checker와 lease 환경으로 interface 심볼 스냅샷과 manifest 해시를 기록한다. `LANGUAGE=<name>`이면 한 언어만 기록하므로, transaction statement gate로 바뀐 Rust DbInner 스냅샷을 make 밖이 아니라 make로 재생성한다 (#T343-4-1)
 - transaction 중복 문장 테스트는 첫 문장을 transaction connection 안에서 `testing::hold_next_statement`로 붙잡고, 첫 문장이 그 지점에 도달한 뒤에야 둘째 문장을 시도한다. 그래서 두 future가 겹치는지에 따라 달라지지 않고 모든 schedule에서 둘째 문장이 CONFIG로 거부된다 (#T343-4)
 - 물리 plan case의 네이티브 test 여섯 개는 case마다 결과를 하나씩 내지 않았고, tests/dbspec/plans-physical.json의 물리 기록은 어떤 suite unit에도 속하지 않았다. 이제 unit은 case를 단위로 한 suite이며, 각 runtime이 모든 case를 보고한다 (T334-3-17-5).
+- schema_definition 벡터는 하나의 사본을 유지하도록 tests/dbspec/schema-definition.json recipe로 옮겼고, FCV-4의 여섯 op(dbspec.parse_emit, dbspec.manifest, dbspec.render, dbspec.analyze, dbspec.parse_positions, dbspec.format)이 여섯 runtime 모두에서 이를 실행한다. 네이티브 벡터 테스트는 제거했다. manifest 케이스는 벡터 파일을 두 행에 나누면 사본이 둘이 되므로 T334-3-18-3이 아니라 이 행에서 옮겼다 (T334-3-18-1)
+- DB를 읽지 않는 dbspec suite의 parse vector(canonical, normalize, invalid, positions, set-parse와 byte-order-mark)는 tests/dbspec의 recipe case가 되었고, 여섯 runtime이 FCV-4의 op format, parse_positions, analyze, parse_set으로 실행한다. 대체된 native vector test는 제거했고, cases.json과 syntax.json의 각 datum은 사본을 하나만 둔다 (T334-3-18-2).
+- dbspec-canonical, dbspec-normalize, dbspec-invalid 의 레시피 테스트 파일 18개는 헤더 주석에 단위가 인용하는 요구사항 ID(DBS-133, ORES-1, ORES-3, ORES-13, DBS-136~DBS-139, ORES-4~ORES-11, ORES-13)를 이름으로 적어, parity --phase api의 R15 검사가 그 단위들에서 통과한다 (T334-3-18-5).
+- DB를 읽지 않는 manifest, hash와 set unit(dbspec-hashes, dbspec-sets, dbspec-repeated-document-name)은 tests/dbspec/hashes.json과 tests/dbspec/sets.json의 recipe case가 되었고, 여섯 runtime이 FCV-4의 op dbspec.set과 manifest, hash op으로 실행한다. 대체된 native manifest, hash와 set 벡터 test는 제거했고, 여러 consumer가 읽는 벡터 파일은 datum마다 사본을 하나만 둔다. 반복된 문서 이름의 거부는 파일 트리에서 set을 해석하는 TypeScript만 가능하므로 TypeScript native test(FCV-2)로 남겼다 (T334-3-18-3).
+- TypeScript compare 러너의 join이 recipe 문서의 mixed 형식을 받도록 고쳐 packages/ts 타입 검사가 통과하게 했습니다 (T334-3-18-3-3).
+- repeated-document-name 거부 벡터의 제목을 리터럴로 고쳐, parity 바인딩이 TypeScript 벡터 파일에서 그 제목을 찾도록 했습니다 (T334-3-18-3-2)
 
 ## 0.0.21
 

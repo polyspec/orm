@@ -36,18 +36,8 @@ symlink = "=0.1.0"
 # These test targets run a shared vector file with one libtest-mimic trial per case id
 # (polyspec_orm_testcase::trial), so their harness is libtest-mimic.
 [[test]]
-name = "dbspec"
-path = "tests/dbspec.rs"
-harness = false
-
-[[test]]
 name = "dbspec_stress"
 path = "tests/dbspec_stress.rs"
-
-[[test]]
-name = "dbspec_manifest"
-path = "tests/dbspec_manifest.rs"
-harness = false
 
 [[test]]
 name = "dbspec_mermaid"
@@ -62,11 +52,6 @@ harness = false
 [[test]]
 name = "dbspec_set"
 path = "tests/dbspec_set.rs"
-harness = false
-
-[[test]]
-name = "dbspec_set_parse"
-path = "tests/dbspec_set_parse.rs"
 harness = false
 
 [[test]]

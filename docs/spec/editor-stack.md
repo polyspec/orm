@@ -65,9 +65,10 @@ Owner rulings:
    - **ORES-12** Comment positions live only in the tokens, never in `DbspecDocument`. Tokens serve
      highlighting; declaration positions are in the parse result beside the document
      (T128-3p).
-   - **ORES-13** Vectors: `tests/dbspec/syntax.json` covers the canonical, normalize, invalid, sets and
-     hashes cases of `cases.json`. `files` cases (bytes) stay with readFile and readBytes.
-     The vectors are generated once from TS, reviewed, then fixed; all six match them exactly.
+   - **ORES-13** Vectors: the analyze steps of the five recipes `tests/dbspec/canonical.json`,
+     `normalize.json`, `invalid.json`, `hashes.json` and `sets.json` give the tokens of every document.
+     `files` cases (bytes) stay with readFile and readBytes. The recipes are reviewed data, held by hand;
+     all six runtimes run them and match them exactly.
 3. **Formatting: `format(text, set)` = `emit(parse(text, set))` in all six.**
    - **ORES-14** A document with diagnostics is refused, never rewritten.
    - Invariants:

@@ -106,7 +106,7 @@ export function readsComplexQueryFixtures(owners: Owner[], targets: string[], de
 }
 
 // inputMatcher returns a function that matches the declared input pattern, and the file that a declared fixture data file (JSON, dbspec document) writes (e.g.
-// contracts/fixtures/audit.dbs rendered by contracts/fixtures/schema_definition.json, and the Rust source that contracts/symbols/rust.json
+// contracts/fixtures/audit.dbs rendered by tests/dbspec/schema-definition.json, and the Rust source that contracts/symbols/rust.json
 // writes). A file that a written file writes again is not followed: only the data declared by that unit is its input.
 // Comments and strings in source code are not input declarations. When matched, it returns the reason (path or
 // "<path> (named by <input>)"), otherwise undefined.

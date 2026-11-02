@@ -56,12 +56,11 @@ final class DbspecRunnerTest extends TestCase
         try {
             self::assertSame(16, file_put_contents($stressPath, "dbspec 1 stress\n"));
             $inputs = [
-                "$root/tests/dbspec/cases.json",
+                "$root/tests/dbspec",
                 $stressPath,
                 "$root/tests/dbspec/ddl.json",
                 "$root/tests/dbspec/plan-cases.json",
                 "$root/tests/dbspec/mermaid.json",
-                "$root/tests/dbspec/syntax.json",
             ];
             $program = dbspec_php_interface_program($root, [
                 'dbspec_write_comparison(Polyspec\\Orm\\Dbspec\\Dbspec::class, ' . var_export($inputs, true) . ');',

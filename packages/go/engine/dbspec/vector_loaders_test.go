@@ -21,7 +21,6 @@ func TestVectorLoadersRejectMalformedVectors(t *testing.T) {
 	decoders := map[string]func(vectorReader, map[string]any) error{
 		"plan-cases.json": decodePlanVectors,
 		"mermaid.json":    func(r vectorReader, o map[string]any) error { _, err := decodeMermaidVectors(r, o); return err },
-		"cases.json":      func(r vectorReader, o map[string]any) error { _, err := decodeCaseVectors(r, o); return err },
 		"ddl.json":        func(r vectorReader, o map[string]any) error { _, err := decodeDDLVectors(r, o); return err },
 	}
 	mutations := []struct {
@@ -34,29 +33,6 @@ func TestVectorLoadersRejectMalformedVectors(t *testing.T) {
 			asFixture[[]any](vectorCaseOf(o, "invalid", 0)["errors"])[0] = []any{"mermaid", 1.0}
 		}},
 		{"mermaid.json", "round_trip[0].path", "is not a string", func(o map[string]any) { vectorCaseOf(o, "round_trip", 0)["path"] = 1.0 }},
-		{"cases.json", "normalize[0].canonical", "is missing", func(o map[string]any) { delete(vectorCaseOf(o, "normalize", 0), "canonical") }},
-		{"cases.json", "invalid[0].errors[0].rule", "is missing", func(o map[string]any) {
-			delete(asFixture[map[string]any](asFixture[[]any](vectorCaseOf(o, "invalid", 0)["errors"])[0]), "rule")
-		}},
-		{"cases.json", "hashes[0].schemaHash", "is not a string", func(o map[string]any) { vectorCaseOf(o, "hashes", 0)["schemaHash"] = 1.0 }},
-		{"cases.json", "sets", "is missing", func(o map[string]any) { delete(o, "sets") }},
-		{"cases.json", "note", "is missing", func(o map[string]any) { delete(o, "note") }},
-		{"cases.json", "extra", "is not a known field", func(o map[string]any) { o["extra"] = []any{} }},
-		{"cases.json", "canonical[0].extra", "is not a known field", func(o map[string]any) { vectorCaseOf(o, "canonical", 0)["extra"] = true }},
-		{"cases.json", "normalize[0].extra", "is not a known field", func(o map[string]any) { vectorCaseOf(o, "normalize", 0)["extra"] = true }},
-		{"cases.json", "invalid[0].errors[0].extra", "is not a known field", func(o map[string]any) {
-			asFixture[map[string]any](asFixture[[]any](vectorCaseOf(o, "invalid", 0)["errors"])[0])["extra"] = 1.0
-		}},
-		{"cases.json", "hashes[0].extra", "is not a known field", func(o map[string]any) { vectorCaseOf(o, "hashes", 0)["extra"] = true }},
-		{"cases.json", "sets[0].extra", "is not a known field", func(o map[string]any) { vectorCaseOf(o, "sets", 0)["extra"] = true }},
-		{"cases.json", "sets[3].manifest.extra", "is not a known field", func(o map[string]any) {
-			asFixture[map[string]any](vectorCaseOf(o, "sets", 3)["manifest"])["extra"] = []any{}
-		}},
-		{"cases.json", "files[0].extra", "is not a known field", func(o map[string]any) { vectorCaseOf(o, "files", 0)["extra"] = true }},
-		{"cases.json", "positions[0].extra", "is not a known field", func(o map[string]any) { vectorCaseOf(o, "positions", 0)["extra"] = true }},
-		{"cases.json", "positions[0].positions[0].extra", "is not a known field", func(o map[string]any) {
-			asFixture[map[string]any](asFixture[[]any](vectorCaseOf(o, "positions", 0)["positions"])[0])["extra"] = 1.0
-		}},
 		{"ddl.json", "cases[0].statements", "is missing", func(o map[string]any) { delete(vectorCaseOf(o, "cases", 0), "statements") }},
 	}
 	for _, m := range mutations {

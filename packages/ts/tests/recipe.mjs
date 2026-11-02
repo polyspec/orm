@@ -10,7 +10,8 @@ import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { CORE, Db, OrmError, StyledValue, blindIndex, chainPlans, compareSchemas, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitPlan, encode, hostDecode, hostEncode, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecSet, registerModel } from '../dist/index.js';
+import { CORE, Db, OrmError, StyledValue, blindIndex, chainPlans, compareSchemas, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
+import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, readDbspecBytes } from '../dist/dbspec/entry.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { connect as connectBind, Slots as BindSlots } from '../dist/models/bind_fixture/models.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
@@ -37,6 +38,7 @@ export function runRecipe(path, database) {
   const literal = parseJson(text);
   // An ir.validate step checks its request against the schema of the recipe, which the recipe names relative to its own file.
   const schema = recipe.schema === undefined ? undefined : validationModel(resolve(root, dirname(path), recipe.schema));
+  const dir = resolve(root, dirname(path));
   for (const [caseIndex, recipeCase] of recipe.cases.entries()) {
     caseTest(recipeCase.id, COMPUTE, async () => {
       const bound = new Map();
@@ -47,6 +49,7 @@ export function runRecipe(path, database) {
           else if (dbspecOps.includes(step.op)) checkDbspec(step, bound, database);
           else if (step.op === 'ir.answer') await checkAnswer(step, database);
           else if (step.op === 'dsn.connect') await checkDsnConnect(step, database);
+          else if (dbspecFileOps.includes(step.op)) await checkDbspecFiles(step, dir, database);
           else run(step, bound, database);
         } catch (error) {
           throw new Error(`recipe ${path} case ${recipeCase.id} step ${index} (${step.op}) on ${database}: ${error.message}`, { cause: error });
@@ -1023,3 +1026,267 @@ Object.assign(OPS, {
     return { value: { array: records.map(eventObject) } };
   },
 });
+
+// readDocuments reads the .dbs files that paths name relative to dir, and parses each with the set of the headers of the files
+// (FCV-4). It returns the text of each file and its parsed document, in the order of paths.
+async function readDocuments(dir, paths) {
+  const texts = [];
+  const set = {};
+  for (const path of paths) {
+    const text = await readFile(resolve(dir, path), 'utf8');
+    const fields = text.split('\n', 1)[0].trim().split(/\s+/);
+    if (fields.length !== 3 || fields[0] !== 'dbspec') throw new Error(`${path} has no dbspec header`);
+    set[fields[2]] = text;
+    texts.push(text);
+  }
+  const documents = texts.map((text, i) => {
+    const parsed = parseDbspec(text, set);
+    if (parsed.diagnostics.length > 0) throw new Error(`${paths[i]}: ${JSON.stringify(parsed.diagnostics)}`);
+    return parsed.document;
+  });
+  return { texts, documents };
+}
+
+// joinText joins lines with LF, or with CRLF when crlf is set, with a final line ending. A mixed document starts with CRLF,
+// alternates CRLF and LF from its second line, and has no final line ending.
+function joinText(lines, crlf, mixed) {
+  if (mixed) return lines.map((line, i) => (i === 0 ? '' : i % 2 === 1 ? '\r\n' : '\n') + line).join('');
+  const end = crlf ? '\r\n' : '\n';
+  return lines.join(end) + end;
+}
+
+// inlineDocument returns the text of a step and the set of its other documents, joined with the step's line endings.
+function inlineDocument(step) {
+  const crlf = step.crlf === true;
+  const mixed = step.mixed === true;
+  const set = {};
+  for (const [name, lines] of Object.entries(step.set ?? {})) set[name] = joinText(lines, crlf, mixed);
+  return { text: joinText(step.text, crlf, mixed), set };
+}
+
+// emitStable parses text with the set, emits it, and checks that the emission parses and emits to itself.
+function emitStable(text, set) {
+  const parsed = parseDbspec(text, set);
+  assert.deepEqual(parsed.diagnostics, [], 'the text parses');
+  const first = emitDbspec(parsed.document);
+  const again = parseDbspec(first, set);
+  assert.deepEqual(again.diagnostics, [], 'the emission parses');
+  assert.equal(emitDbspec(again.document), first, 'the emission is idempotent');
+  return first;
+}
+
+// checkRefusal checks that parse refuses text with exactly the diagnostics of want, and that format returns no text
+// and the same diagnostics.
+function checkRefusal(text, set, want) {
+  const parsed = parseDbspec(text, set);
+  assert.ok(!parsed.document, 'Parse returned a document for an invalid source');
+  const formatted = formatDbspec(text, set);
+  assert.equal(formatted.text, null, 'a document with a diagnostic is not rewritten');
+  for (const got of [parsed.diagnostics, formatted.diagnostics]) {
+    assert.deepEqual(got.map(d => ({ rule: d.rule, line: d.line, column: d.column })), want, 'diagnostics');
+    for (const d of got) assert.ok(d.message, `diagnostic ${d.rule} has no message`);
+  }
+}
+
+// FILE_MESSAGES is the suffix of the message of each file rule, after the name of the file.
+const FILE_MESSAGES = { signature: ' is not a dbspec document', encoding: ' is not valid UTF-8' };
+
+// headerName is the name of a document, the third word of its header line.
+function headerName(text) {
+  return text.split('\n', 1)[0].trim().split(/\s+/)[2] ?? '';
+}
+
+// createdTables is the table names that the CREATE TABLE statements create, in statement order.
+function createdTables(statements) {
+  return statements
+    .filter(s => s.startsWith('CREATE TABLE '))
+    .map(s => s.slice('CREATE TABLE '.length).split(' ')[0].replace(/^[`"]|[`"]$/g, ''));
+}
+
+// sameDiagnostics checks that got has the rule, line and column of each expected diagnostic, in order, and a message.
+function sameDiagnostics(want, got) {
+  assert.deepEqual(got.map(d => ({ rule: d.rule, line: d.line, column: d.column })), want, 'diagnostics');
+  for (const d of got) assert.ok(d.message, `diagnostic ${d.rule} has no message`);
+}
+
+// checkSet runs dbspec.set (the port of checkSet of packages/go/internal/recipe/dbspec.go). The owned texts, then the external
+// texts, are parsed each against the other texts and the parsing texts, and dbspecManifest builds the set's manifest. A refused
+// set (expect.diagnostics not empty) expects those diagnostics from dbspecManifest and from each dialect of renderDbspec, and no manifest
+// and no statements. A built set expects its texts and hashes when expect.manifest is given, parses its manifest and external
+// texts back as a set without diagnostics, gives the same hashes in the reversed order, and renders statements in each dialect
+// that create the tables of expect.created.
+function checkSet(step, expect) {
+  const owned = step.owned;
+  const all = [...owned, ...(step.external ?? [])];
+  const documents = all.map((text, i) => {
+    const set = { ...step.parsing };
+    all.forEach((other, j) => {
+      if (j !== i) set[headerName(other)] = other;
+    });
+    const parsed = parseDbspec(text, set);
+    assert.deepEqual(parsed.diagnostics, [], `document ${i + 1} parses`);
+    return i >= owned.length ? Object.freeze({ ...parsed.document, external: true }) : parsed.document;
+  });
+  const refused = (expect.diagnostics ?? []).length > 0;
+  const built = dbspecManifest(documents);
+  sameDiagnostics(expect.diagnostics ?? [], built.diagnostics);
+  assert.equal(built.manifest === null, refused, 'the manifest is absent exactly when the set is refused');
+  for (const dialect of ['mysql', 'postgres', 'sqlite']) {
+    const rendered = renderDbspec(documents, dialect);
+    if (refused) {
+      sameDiagnostics(expect.diagnostics, rendered.diagnostics);
+      assert.equal(rendered.statements, null, `${dialect} renders no statements for a refused set`);
+      continue;
+    }
+    assert.deepEqual(rendered.diagnostics, [], `${dialect} renders`);
+    assert.ok(rendered.statements.length > 0, `${dialect} renders statements`);
+    if (expect.created !== undefined) assert.deepEqual(createdTables(rendered.statements), expect.created, `tables that ${dialect} creates`);
+  }
+  if (refused) return;
+  const manifest = built.manifest;
+  if (expect.manifest !== undefined) {
+    const want = expect.manifest;
+    assert.equal(manifest.manifestText, want.manifest_text, 'manifest_text');
+    assert.equal(manifest.schemaText, want.schema_text, 'schema_text');
+    assert.equal(manifest.manifestHash, want.manifest_hash, 'manifest_hash');
+    assert.equal(manifest.schemaHash, want.schema_hash, 'schema_hash');
+    if (want.external_text !== undefined) assert.equal(manifest.externalText, want.external_text, 'external_text');
+  }
+  // The manifest and external text parse back as a set without diagnostics (docs/spec/dbspec.md "Manifest and hashes").
+  const split = text => (text === '' ? [] : text.split(/(?<=\n)(?=dbspec )/));
+  for (const r of parseDbspecSet(split(manifest.manifestText), split(manifest.externalText))) {
+    assert.deepEqual(r.diagnostics, [], `manifest and external text of ${r.name}`);
+  }
+  const reversed = dbspecManifest([...documents].reverse());
+  assert.ok(reversed.manifest !== null, 'the reversed set has a manifest');
+  assert.equal(reversed.manifest.manifestHash, manifest.manifestHash, 'the reversed set has the manifest hash');
+  assert.equal(reversed.manifest.schemaHash, manifest.schemaHash, 'the reversed set has the schema hash');
+}
+
+// dbspecFileOps are the dbspec ops whose documents are files relative to the recipe, which checkDbspecFiles runs.
+const dbspecFileOps = ['dbspec.parse_emit', 'dbspec.manifest', 'dbspec.render', 'dbspec.analyze', 'dbspec.parse_positions', 'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.read_file', 'dbspec.read_bytes'];
+
+// checkDbspecFiles runs one dbspec op of a step through the public dbspec API and checks the result against the expect of database.
+// dir is the directory of the recipe: the paths of a step are relative to it (FCV-4).
+async function checkDbspecFiles(step, dir, database) {
+  const expect = step.expect?.[database];
+  if (expect === undefined) throw new Error(`${step.op} has no expect for ${database}`);
+  switch (step.op) {
+    case 'dbspec.parse_emit': {
+      const { texts, documents } = await readDocuments(dir, step.documents);
+      const identical = documents.every((document, i) => emitDbspec(document) === texts[i]);
+      assert.equal(identical, expect.identical, 'emit identical');
+      break;
+    }
+    case 'dbspec.manifest': {
+      const { documents } = await readDocuments(dir, step.documents);
+      const { manifest, diagnostics } = dbspecManifest(documents);
+      assert.deepEqual(diagnostics, [], 'the document set has a manifest');
+      assert.ok(expect.manifest_hash, 'the expect names a manifest hash');
+      assert.equal(manifest.manifestHash, expect.manifest_hash, 'manifest hash');
+      break;
+    }
+    case 'dbspec.render': {
+      const { documents } = await readDocuments(dir, step.documents);
+      for (const dialect of ['mysql', 'postgres', 'sqlite']) {
+        const rendered = renderDbspec(documents, dialect);
+        assert.deepEqual(rendered.diagnostics, [], `${dialect} renders`);
+        assert.ok(expect[dialect]?.length > 0, `${dialect} expects statements`);
+        assert.deepEqual(rendered.statements, expect[dialect], `${dialect} statements`);
+      }
+      break;
+    }
+    case 'dbspec.analyze': {
+      if (step.document === undefined) {
+        const { text, set } = inlineDocument(step);
+        const analysis = analyzeDbspec(text, set);
+        assert.deepEqual(analysis.tokens.map(t => [t.line, t.start, t.end, t.class]), expect.tokens ?? [], 'tokens');
+        break;
+      }
+      const text = await readFile(resolve(dir, step.document), 'utf8');
+      const analysis = analyzeDbspec(text, {});
+      const parsed = parseDbspec(text, {});
+      assert.deepEqual(analysis.diagnostics, [], 'the analysis has no diagnostic');
+      assert.equal(emitDbspec(analysis.document), emitDbspec(parsed.document), 'the analysis holds the parsed document');
+      assert.deepEqual(analysis.positions, parsed.positions, 'the analysis holds the positions of the parse');
+      assert.ok(expect.tokens?.length > 0, 'the expect names tokens');
+      assert.deepEqual(analysis.tokens.map(t => [t.line, t.start, t.end, t.class]), expect.tokens, 'tokens');
+      break;
+    }
+    case 'dbspec.parse_positions': {
+      const { text, set } = step.document === undefined ? inlineDocument(step) : { text: await readFile(resolve(dir, step.document), 'utf8'), set: {} };
+      const parsed = parseDbspec(text, set);
+      assert.deepEqual(parsed.diagnostics, [], 'the document parses');
+      assert.ok(expect.positions?.length > 0, 'the expect names positions');
+      assert.deepEqual(parsed.positions.map(p => ({ kind: p.kind, path: [...p.path], line: p.line, column: p.column })), expect.positions, 'positions');
+      break;
+    }
+    case 'dbspec.format': {
+      assert.ok(step.text?.length > 0, 'dbspec.format has no text');
+      const { text, set } = inlineDocument(step);
+      if (expect.diagnostics !== undefined) {
+        assert.ok(expect.diagnostics.length > 0, 'the expect names diagnostics');
+        checkRefusal(text, set, expect.diagnostics);
+        break;
+      }
+      const expected = `${expect.text.join('\n')}\n`;
+      assert.equal(emitStable(text, set), expected, 'emission');
+      const formatted = formatDbspec(text, set);
+      assert.deepEqual(formatted.diagnostics, [], 'the text formats');
+      assert.equal(formatted.text, expected, 'formatted text');
+      assert.equal(formatDbspec(formatted.text, set).text, formatted.text, 'a formatted text is its own format');
+      break;
+    }
+    case 'dbspec.parse_set': {
+      // The Node entry and the browser-safe entry both parse the set, and each must give the expected documents.
+      for (const [entry, parse] of [['node', parseDbspecSet], ['browser', parseDbspecSetBrowser]]) {
+        const got = parse(step.owned, step.external ?? []);
+        assert.equal(got.length, expect.documents.length, `${entry}: one result per text`);
+        got.forEach((d, i) => {
+          const want = expect.documents[i];
+          assert.equal(d.name ?? '', want.name, `${entry}: documents[${i}].name`);
+          assert.equal(d.external, want.external, `${entry}: documents[${i}].external`);
+          assert.equal(d.document !== null, want.parsed, `${entry}: documents[${i}] parsed`);
+          assert.equal(d.diagnostics.length, want.diagnostics.length, `${entry}: documents[${i}] diagnostic count`);
+          want.diagnostics.forEach((w, k) => {
+            const x = d.diagnostics[k];
+            assert.deepEqual([x.rule, x.line, x.column], [w.rule, w.line, w.column], `${entry}: documents[${i}] diagnostic ${k}`);
+            if (w.message !== undefined) assert.equal(x.message, w.message, `${entry}: documents[${i}] diagnostic ${k} message`);
+          });
+        });
+      }
+      break;
+    }
+    case 'dbspec.read_file':
+    case 'dbspec.read_bytes': {
+      const want = expect.errors ?? [];
+      const path = resolve(dir, step.path);
+      let name = path;
+      let read;
+      if (step.op === 'dbspec.read_file') read = readDbspecFile(path);
+      else {
+        name = step.path;
+        read = readDbspecBytes(name, readFileSync(path));
+      }
+      const { text, diagnostics } = read;
+      if (want.length > 0) {
+        assert.equal(text, null, 'the reader returned text with diagnostics');
+        assert.equal(diagnostics.length, want.length, 'diagnostic count');
+        diagnostics.forEach((d, i) => {
+          assert.equal(d.message, name + FILE_MESSAGES[d.rule], `message ${i}`);
+          assert.deepEqual([d.rule, d.line, d.column], [want[i].rule, want[i].line, want[i].column], `diagnostic ${i}`);
+        });
+        break;
+      }
+      assert.deepEqual(diagnostics, [], 'no diagnostic');
+      assert.equal(text, readFileSync(path, 'utf8'), 'the reader text differs from the file bytes');
+      assert.equal(emitStable(text, {}), text, 'emission');
+      break;
+    }
+    case 'dbspec.set':
+      checkSet(step, expect);
+      break;
+    default:
+      throw new Error(`OP_UNKNOWN ${step.op}`);
+  }
+}

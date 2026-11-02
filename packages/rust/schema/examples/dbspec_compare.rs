@@ -1,10 +1,10 @@
 //! The Rust dbspec for every shared case, stress document, statement vector, plan vector, and Mermaid vector
 //! Prints the results in the line format of tests/dbspec/compare/check.mts. It then prints the positions cases of
-//! cases.json and the analysis and format of each case of syntax.json.
+//! the recipe files of tests/dbspec and the analysis and format of each analysis of hashes.json and sets.json.
 //!
-//! Usage: `cargo run --release -p polyspec-orm-schema --example dbspec_compare -- <cases.json> <stress document> <ddl.json> <plan-cases.json> <mermaid.json> <syntax.json>`
+//! Usage: `cargo run --release -p polyspec-orm-schema --example dbspec_compare -- <tests/dbspec dir> <stress document> <ddl.json> <plan-cases.json> <mermaid.json>`
 
-use polyspec_orm_schema::dbspec::{self, Change, Diagnostic, Dialect, Document, Plan, PlanStep, ReadError, Unsupported};
+use polyspec_orm_schema::dbspec::{Change, Diagnostic, Dialect, Document, Plan, PlanStep, ReadError, Unsupported};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::io::{BufWriter, Write};
@@ -35,22 +35,16 @@ struct SharedCases {
     invalid: Vec<TestCase>,
     hashes: Vec<HashCase>,
     files: Vec<FileCase>,
-    sets: Vec<SetCase>,
     positions: Vec<PositionCase>,
+    /// The analyses of sets.json then hashes.json: each id, its text and the other documents of its set.
+    analyses: Vec<Analysis>,
 }
 
-/// A document of a sets case with the name of its header.
-struct NamedDocument {
-    name: String,
-    lines: Vec<String>,
-}
-
-/// A sets case: its documents, the documents that its parse declares beside them, and its external documents.
-struct SetCase {
+/// One analysis of a set recipe: its id, its text and the set of other documents.
+struct Analysis {
     id: String,
-    documents: Vec<NamedDocument>,
-    parsing: Documents,
-    external: Vec<NamedDocument>,
+    text: String,
+    set: BTreeMap<String, String>,
 }
 
 /// A positions case: a main document and the other documents of its set.
@@ -130,11 +124,7 @@ const DECLARED: &str = "the schema of the vector file declares this value";
 fn open(path: &str, kind: &str) -> Result<Value, String> {
     let text = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
     let value: Value = serde_json::from_str(&text).map_err(|e| format!("{path}: {e}"))?;
-    if kind == "cases" {
-        dbspec_cases::check_cases(&value, path)?;
-    } else {
-        dbspec_cases::check_vectors(&value, kind, path)?;
-    }
+    dbspec_cases::check_vectors(&value, kind, path)?;
     Ok(value)
 }
 
@@ -155,98 +145,127 @@ fn lines(value: &Value) -> Vec<String> {
 }
 
 /// An object of line arrays by name.
-fn documents(value: &Value) -> Documents {
+fn documents_of(value: &Value) -> Documents {
     value.as_object().expect(DECLARED).iter().map(|(name, item)| (name.clone(), lines(item))).collect()
 }
 
 fn hash_case(case: &Value) -> HashCase {
-    HashCase { id: string(&case["id"]), documents: documents(&case["documents"]) }
+    HashCase { id: string(&case["id"]), documents: documents_of(&case["documents"]) }
 }
 
-/// Names each document of a sets case by its header; a header that names no document is refused.
-fn named_documents(path: &str, value: Option<&Value>, location: &str) -> Result<Vec<NamedDocument>, String> {
-    let mut named = Vec::new();
-    for (i, item) in value.map(list).into_iter().flatten().enumerate() {
-        let lines = lines(item);
-        let text = lines.join("\n");
-        let name = dbspec::parse_set(&[&text], &[]).remove(0).name.ok_or_else(|| fail(path, &format!("{location}[{i}][0]"), "has no document name"))?;
-        named.push(NamedDocument { name, lines });
-    }
-    Ok(named)
+/// The header name of a dbspec document: the third word of its first line, split at single spaces.
+fn header_name(lines: &[String]) -> Option<String> {
+    lines.first().and_then(|line| line.split(' ').nth(2)).map(String::from)
 }
 
-/// tests/dbspec/cases.json, read against its schema (tests/common/dbspec_cases.rs): a missing section or field, or one
-/// that the format does not name, is refused.
-fn read_cases(path: &str) -> Result<SharedCases, String> {
-    let v = open(path, "cases")?;
-    let test_case = |case: &Value| TestCase {
-        id: string(&case["id"]),
-        main: string(&case["main"]),
-        documents: documents(&case["documents"]),
-        crlf: case.get("crlf").is_some_and(|flag| flag.as_bool().expect(DECLARED)),
-        mixed: case.get("mixed").is_some_and(|flag| flag.as_bool().expect(DECLARED)),
-    };
-    let mut sets = Vec::new();
-    for (i, case) in list(&v["sets"]).iter().enumerate() {
-        sets.push(SetCase {
-            id: string(&case["id"]),
-            documents: named_documents(path, case.get("documents"), &format!("sets[{i}].documents"))?,
-            parsing: documents(&case["parsing"]),
-            external: named_documents(path, case.get("external"), &format!("sets[{i}].external"))?,
-        });
+/// Reads hashes.json or sets.json against the recipe schema. Its analyses come in file order with the ids
+/// sets.<case>.<n> (n the place of the analysis in the case) and hashes.<case>.<name> (name the header name of its text).
+/// A hashes case's documents are the owned texts of its dbspec.set step, each named by its header.
+fn read_set_recipe(path: &str, kind: &str) -> Result<(Vec<HashCase>, Vec<Analysis>), String> {
+    let value = open_recipe(path)?;
+    let mut cases = Vec::new();
+    let mut analyses = Vec::new();
+    for case in list(&value["cases"]) {
+        let id = string(&case["id"]);
+        let mut documents = Documents::new();
+        let mut n = 0;
+        for step in list(&case["steps"]) {
+            match step["op"].as_str() {
+                Some("dbspec.set") => {
+                    documents = Documents::new();
+                    for owned in step.get("owned").map(list).into_iter().flatten() {
+                        let owned = string(owned);
+                        let body = owned.strip_suffix('\n').unwrap_or(owned.as_str());
+                        let lines: Vec<String> = body.split('\n').map(String::from).collect();
+                        let name = header_name(&lines).ok_or_else(|| fail(path, &format!("cases.{id}"), "has a document without a header name"))?;
+                        documents.insert(name, lines);
+                    }
+                }
+                Some("dbspec.analyze") => {
+                    n += 1;
+                    let lines = lines(&step["text"]);
+                    let ident = if kind == "hashes" { format!("hashes.{id}.{}", header_name(&lines).unwrap_or_default()) } else { format!("sets.{id}.{n}") };
+                    let set = step.get("set").map(documents_of).unwrap_or_default().iter().map(|(name, l)| (name.clone(), join(l, false, false))).collect();
+                    analyses.push(Analysis { id: ident, text: join(&lines, false, false), set });
+                }
+                _ => {}
+            }
+        }
+        if kind == "hashes" {
+            cases.push(HashCase { id, documents });
+        }
     }
+    Ok((cases, analyses))
+}
+
+/// Reads the shared document cases of the tests/dbspec directory `dir` and the set analyses of its hashes.json and sets.json.
+fn read_shared(dir: &str) -> Result<SharedCases, String> {
+    let at = |name: &str| Path::new(dir).join(name).display().to_string();
+    let (hashes, hash_analyses) = read_set_recipe(&at("hashes.json"), "hashes")?;
+    let (_, set_analyses) = read_set_recipe(&at("sets.json"), "sets")?;
     Ok(SharedCases {
-        canonical: list(&v["canonical"]).iter().map(test_case).collect(),
-        normalize: list(&v["normalize"]).iter().map(test_case).collect(),
-        invalid: list(&v["invalid"]).iter().map(test_case).collect(),
-        hashes: list(&v["hashes"]).iter().map(hash_case).collect(),
-        files: list(&v["files"]).iter().map(|case| FileCase { id: string(&case["id"]), path: string(&case["path"]) }).collect(),
-        sets,
-        positions: list(&v["positions"])
-            .iter()
-            .map(|case| PositionCase { id: string(&case["id"]), main: string(&case["main"]), documents: documents(&case["documents"]) })
+        canonical: read_recipe(&at("canonical.json"), "dbspec.format")?,
+        normalize: read_recipe(&at("normalize.json"), "dbspec.format")?,
+        invalid: read_recipe(&at("invalid.json"), "dbspec.format")?,
+        hashes,
+        files: read_files(&at("files.json"))?,
+        positions: read_recipe(&at("positions.json"), "dbspec.parse_positions")?
+            .into_iter()
+            .map(|case| PositionCase { id: case.id, main: case.main, documents: case.documents })
             .collect(),
+        analyses: set_analyses.into_iter().chain(hash_analyses).collect(),
     })
 }
 
-/// The case ids of tests/dbspec/syntax.json in file order. The expected
-/// tokens are the runtime tests' to check; this runner compares what each client gives.
-fn read_syntax(path: &str) -> Result<Vec<String>, String> {
-    Ok(list(&open(path, "syntax")?["cases"]).iter().map(|case| string(&case["id"])).collect())
+/// Reads a recipe file of tests/dbspec against the recipe schema (scripts/features/schema/recipe.schema.json).
+fn open_recipe(path: &str) -> Result<Value, String> {
+    let text = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
+    let value: Value = serde_json::from_str(&text).map_err(|e| format!("{path}: {e}"))?;
+    dbspec_cases::check_vectors(&value, "recipe", path)?;
+    Ok(value)
 }
 
-/// The input of every analysis that syntax.json names, by its id, as scripts/dbspec/syntax-vectors.mts derives it
-/// from cases.json: the main document of each canonical, normalize and invalid case ("<section>.<id>"), each document
-/// of a sets case with the parsing documents and the other documents of the case by header name ("sets.<id>.<place>",
-/// 1-based), and each document of a hashes case with the others ("hashes.<id>.<name>").
-fn syntax_inputs(cases: &SharedCases) -> BTreeMap<String, (String, BTreeMap<String, String>)> {
-    let mut inputs = BTreeMap::new();
-    for (kind, list) in [("canonical", &cases.canonical), ("normalize", &cases.normalize), ("invalid", &cases.invalid)] {
-        for case in list {
-            let set =
-                case.documents.iter().filter(|(name, _)| **name != case.main).map(|(name, lines)| (name.clone(), join(lines, case.crlf, case.mixed))).collect();
-            inputs.insert(format!("{kind}.{}", case.id), (join(&case.documents[&case.main], case.crlf, case.mixed), set));
-        }
-    }
-    for case in &cases.sets {
-        let every: Vec<&NamedDocument> = case.documents.iter().chain(&case.external).collect();
-        for (i, document) in case.documents.iter().enumerate() {
-            let mut set: BTreeMap<String, String> = case.parsing.iter().map(|(name, lines)| (name.clone(), join(lines, false, false))).collect();
-            for (j, other) in every.iter().enumerate() {
-                if j != i {
-                    set.insert(other.name.clone(), join(&other.lines, false, false));
+/// Gives each case of a recipe file with its step of `op`: the main document is the step's text, named "main", beside
+/// the other documents of its set (the set of the step), and the line ends of the step.
+fn read_recipe(path: &str, op: &str) -> Result<Vec<TestCase>, String> {
+    let value = open_recipe(path)?;
+    let mut cases = Vec::new();
+    for (i, case) in list(&value["cases"]).iter().enumerate() {
+        let step =
+            list(&case["steps"]).iter().find(|step| step["op"] == op).ok_or_else(|| fail(path, &format!("cases[{i}].steps"), &format!("has no {op} step")))?;
+        let mut documents: Documents = BTreeMap::new();
+        documents.insert("main".to_string(), step.get("text").map(lines).unwrap_or_default());
+        if let Some(set) = step.get("set") {
+            for (name, item) in set.as_object().expect(DECLARED) {
+                if name == "main" {
+                    return Err(fail(path, &format!("cases[{i}].steps"), "names a document main, which is the main document"));
                 }
+                documents.insert(name.clone(), lines(item));
             }
-            inputs.insert(format!("sets.{}.{}", case.id, i + 1), (join(&document.lines, false, false), set));
         }
+        cases.push(TestCase {
+            id: string(&case["id"]),
+            main: "main".to_string(),
+            documents,
+            crlf: step.get("crlf").is_some_and(|flag| flag.as_bool().expect(DECLARED)),
+            mixed: step.get("mixed").is_some_and(|flag| flag.as_bool().expect(DECLARED)),
+        });
     }
-    for case in &cases.hashes {
-        for (name, lines) in &case.documents {
-            let set = case.documents.iter().filter(|(other, _)| *other != name).map(|(other, l)| (other.clone(), join(l, false, false))).collect();
-            inputs.insert(format!("hashes.{}.{name}", case.id), (join(lines, false, false), set));
-        }
+    Ok(cases)
+}
+
+/// Gives the files cases of tests/dbspec/files.json: each names the file of its dbspec.read_file step by its path.
+fn read_files(path: &str) -> Result<Vec<FileCase>, String> {
+    let value = open_recipe(path)?;
+    let mut files = Vec::new();
+    for (i, case) in list(&value["cases"]).iter().enumerate() {
+        let step = list(&case["steps"])
+            .iter()
+            .find(|step| step["op"] == "dbspec.read_file")
+            .ok_or_else(|| fail(path, &format!("cases[{i}].steps"), "has no dbspec.read_file step"))?;
+        files.push(FileCase { id: string(&case["id"]), path: string(&step["path"]) });
     }
-    inputs
+    Ok(files)
 }
 
 /// Prints the declaration positions of the main document of each positions case, as
@@ -396,7 +415,7 @@ fn read_mermaid(path: &str) -> Result<MermaidVectors, String> {
     Ok(MermaidVectors {
         export: list(&v["export"])
             .iter()
-            .map(|case| ExportCase { id: string(&case["id"]), document: lines(&case["document"]), documents: documents(&case["documents"]) })
+            .map(|case| ExportCase { id: string(&case["id"]), document: lines(&case["document"]), documents: documents_of(&case["documents"]) })
             .collect(),
         import: list(&v["import"]).iter().map(import_case).collect(),
         invalid: list(&v["invalid"]).iter().map(import_case).collect(),
@@ -749,8 +768,8 @@ fn write_mermaid(out: &mut impl Write, mermaid: &MermaidVectors) -> Result<(), S
     Ok(())
 }
 
-fn run(cases_path: &str, stress_path: &str, ddl_path: &str, plans_path: &str, mermaid_path: &str, syntax_path: &str) -> Result<(), String> {
-    let cases = read_cases(cases_path)?;
+fn run(dir: &str, stress_path: &str, ddl_path: &str, plans_path: &str, mermaid_path: &str) -> Result<(), String> {
+    let cases = read_shared(dir)?;
     let stress = match polyspec_orm_schema::dbspec::read_file(Path::new(stress_path)) {
         Ok(text) => text,
         Err(ReadError::Io(e)) => return Err(format!("{stress_path}: {e}")),
@@ -776,9 +795,8 @@ fn run(cases_path: &str, stress_path: &str, ddl_path: &str, plans_path: &str, me
     // The files case passes the path to read_file and reads it as "files/<id>"; it passes the file bytes and the case path to read_bytes
     // given by name and reads it as "files/<id>/bytes", then prints the diagnostic and its message, or the emission if there is none.
     // The name before a message is written as "<name>".
-    let directory = Path::new(cases_path).parent().unwrap_or(Path::new(""));
     for case in &cases.files {
-        let path = directory.join(&case.path);
+        let path = Path::new(dir).join(&case.path);
         let shown = path.display().to_string();
         let raw = std::fs::read(&path).map_err(|e| format!("{shown}: {e}"))?;
         let reads = [
@@ -812,22 +830,27 @@ fn run(cases_path: &str, stress_path: &str, ddl_path: &str, plans_path: &str, me
     write_plans(&mut out, &read_plans(plans_path)?).map_err(io)?;
     write_mermaid(&mut out, &read_mermaid(mermaid_path)?)?;
     write_positions(&mut out, &cases.positions).map_err(io)?;
-    let ids = read_syntax(syntax_path)?;
-    let inputs = syntax_inputs(&cases);
-    for (i, id) in ids.iter().enumerate() {
-        let (text, set) = inputs.get(id).ok_or_else(|| fail(syntax_path, &format!("cases[{i}].id"), "names no input of the shared cases"))?;
-        write_syntax(&mut out, id, text, set).map_err(io)?;
+    // The recipe documents come first, in the order canonical, normalize, invalid, then the analyses of sets.json and hashes.json.
+    for (kind, list) in [("canonical", &cases.canonical), ("normalize", &cases.normalize), ("invalid", &cases.invalid)] {
+        for case in list {
+            let set: BTreeMap<String, String> =
+                case.documents.iter().filter(|(name, _)| **name != case.main).map(|(name, lines)| (name.clone(), join(lines, case.crlf, case.mixed))).collect();
+            write_syntax(&mut out, &format!("{kind}.{}", case.id), &join(&case.documents[&case.main], case.crlf, case.mixed), &set).map_err(io)?;
+        }
+    }
+    for analysis in &cases.analyses {
+        write_syntax(&mut out, &analysis.id, &analysis.text, &analysis.set).map_err(io)?;
     }
     out.flush().map_err(io)
 }
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let [cases, stress, ddl, plans, mermaid, syntax] = args.as_slice() else {
-        eprintln!("usage: dbspec_compare <cases.json> <stress document> <ddl.json> <plan-cases.json> <mermaid.json> <syntax.json>");
+    let [dir, stress, ddl, plans, mermaid] = args.as_slice() else {
+        eprintln!("usage: dbspec_compare <tests/dbspec dir> <stress document> <ddl.json> <plan-cases.json> <mermaid.json>");
         return ExitCode::from(2);
     };
-    match run(cases, stress, ddl, plans, mermaid, syntax) {
+    match run(dir, stress, ddl, plans, mermaid) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
             eprintln!("{error}");

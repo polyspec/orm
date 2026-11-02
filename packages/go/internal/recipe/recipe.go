@@ -54,7 +54,6 @@ type step struct {
 	Answers map[string]json.RawMessage `json:"answers"`
 	Bind    json.RawMessage            `json:"bind"`
 	DSN     string                     `json:"dsn"`
-	Expect  map[string]json.RawMessage `json:"expect"`
 	Schema  string                     `json:"schema"`
 	Input   json.RawMessage            `json:"input"`
 	Lines   []string                   `json:"lines"`
@@ -63,6 +62,20 @@ type step struct {
 	Source  json.RawMessage            `json:"source"`
 	Target  json.RawMessage            `json:"target"`
 	Dialect string                     `json:"dialect"`
+	// Documents and Document name the .dbs files of the dbspec ops, relative to the recipe file; Text is the lines of a document text.
+	Documents []string `json:"documents"`
+	Document  string   `json:"document"`
+	Text      []string `json:"text"`
+	// Set holds the other documents of an inline dbspec op, CRLF and Mixed its line endings, Owned and External the texts of
+	// dbspec.parse_set, and Path the file of dbspec.read_file and dbspec.read_bytes.
+	Set      map[string][]string        `json:"set"`
+	CRLF     bool                       `json:"crlf"`
+	Mixed    bool                       `json:"mixed"`
+	Owned    []string                   `json:"owned"`
+	Parsing  map[string]string          `json:"parsing"`
+	External []string                   `json:"external"`
+	Path     string                     `json:"path"`
+	Expect   map[string]json.RawMessage `json:"expect"`
 }
 
 // IRAnswer runs the chain of one ir.answer step on a listener that answers with the answer, or with answers keyed by the op of
@@ -78,6 +91,8 @@ type Option func(*options)
 
 type options struct {
 	irAnswer IRAnswer
+	// dir is the directory of the recipe file, which the dbspec ops resolve their documents against.
+	dir string
 }
 
 // WithIRAnswer supplies the function that runs the chain of each ir.answer step of a recipe without a database.
@@ -103,7 +118,7 @@ func Run(t *testing.T, path, database string, opts ...Option) {
 		runDatabase(t, path, database)
 		return
 	}
-	var o options
+	o := options{dir: filepath.Dir(path)}
 	for _, opt := range opts {
 		opt(&o)
 	}
@@ -134,7 +149,7 @@ func Run(t *testing.T, path, database string, opts ...Option) {
 				if err := json.Unmarshal(raw, &s); err != nil {
 					t.Fatalf("recipe %s case %s step %d on %s: %v", path, c.ID, index, database, err)
 				}
-				if err := run(t, s, bound, database, model, o, filepath.Dir(path)); err != nil {
+				if err := run(t, s, bound, database, model, o); err != nil {
 					t.Fatalf("recipe %s case %s step %d (%s) on %s: %v", path, c.ID, index, s.Op, database, err)
 				}
 			}
@@ -143,13 +158,15 @@ func Run(t *testing.T, path, database string, opts ...Option) {
 }
 
 // run maps the op of s to its call and checks the result against the expect of database.
-func run(t *testing.T, s step, bound map[string]result, database string, model *runtimemodel.Model, o options, dir string) error {
-	if s.Op == "planner.compile" {
-		return checkPlanner(dir, s, database)
-	}
+func run(t *testing.T, s step, bound map[string]result, database string, model *runtimemodel.Model, o options) error {
 	switch s.Op {
+	case "planner.compile":
+		return checkPlanner(o.dir, s, database)
 	case "dbspec.parse", "dbspec.parse_plan", "dbspec.emit_plan", "dbspec.diff", "dbspec.plan_steps", "dbspec.chain", "dbspec.compare":
 		return dbspecStep(s, bound, database)
+	case "dbspec.parse_emit", "dbspec.manifest", "dbspec.render", "dbspec.analyze", "dbspec.parse_positions", "dbspec.format",
+		"dbspec.parse_set", "dbspec.set", "dbspec.read_file", "dbspec.read_bytes":
+		return checkDBSpec(s, o.dir, database)
 	}
 	if s.Op == "ir.validate" {
 		return checkValidate(s.Expect[database], validate(model, s.Request))

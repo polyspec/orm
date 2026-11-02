@@ -1,5 +1,5 @@
-// Six dbspec compare runners. The Go, PHP, TypeScript, Python, Rust, and PHP extension runners all read <cases.json> <stress document>
-// <ddl.json> <plan-cases.json> <mermaid.json> <syntax.json> (reads). Each runner follows the
+// Six dbspec compare runners. All six read <tests/dbspec dir> <stress document> <ddl.json> <plan-cases.json> <mermaid.json>; the document cases
+// and the set analyses are the recipe files of the directory. Each runner follows the
 // line format of tests/dbspec/compare/check.mts, and if an input cannot be read or a vector is missing or of another type, it writes to stderr an error stating the location
 // error and exits nonzero. The TypeScript runner requires the TypeScript build, and the Rust runner requires dbspec_compare
 // example's debug build, and the PHP extension runner requires the polyspec_orm extension (POLYSPEC_ORM_EXTENSION) that make built.
@@ -11,7 +11,7 @@ import { cargoTarget } from '../../cargo-target.mts';
 export const root = fileURLToPath(new URL('../../../', import.meta.url));
 
 // INPUTS is the name and order of the inputs that runRunner receives.
-export const INPUTS = ['cases', 'stress', 'ddl', 'plans', 'mermaid', 'syntax'];
+export const INPUTS = ['dir', 'stress', 'ddl', 'plans', 'mermaid'];
 
 // phpExtension is the path of the polyspec_orm extension that make dbspec-compare-check built into that run's directory.
 function phpExtension() {

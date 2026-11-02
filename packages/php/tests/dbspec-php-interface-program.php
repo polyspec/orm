@@ -11,7 +11,6 @@ function dbspec_php_interface_program(string $root, array $statements): string
         'require ' . var_export("$root/vendor-php/autoload.php", true) . ';',
         'require ' . var_export("$root/tests/dbspec/input.php", true) . ';',
         'require ' . var_export("$root/tests/dbspec/vectors.php", true) . ';',
-        'require ' . var_export("$root/tests/dbspec/cases.php", true) . ';',
         'require ' . var_export("$root/packages/php/tests/dbspec_plan_cases.php", true) . ';',
         'require ' . var_export("$root/packages/php/testing/dbspec/compare/php-interface.php", true) . ';',
         ...$statements,

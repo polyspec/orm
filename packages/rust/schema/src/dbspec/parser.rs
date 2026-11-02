@@ -815,20 +815,6 @@ impl Parser {
         true
     }
 
-    /// A `table` or `diagram` line inside a block: the block lacks its `}`.
-    fn unclosed(&mut self, tokens: &[Token]) -> bool {
-        let opens = (tokens[0].is("table") || tokens[0].is("diagram")) && tokens.len() > 1 && tokens.last().is_some_and(|t| t.is("{"));
-        if opens {
-            self.report_open_blocks();
-            match self.context {
-                Context::Diagram => self.close_diagram(),
-                _ => self.close_table(),
-            }
-            self.top_line(tokens);
-        }
-        opens
-    }
-
     fn table_line(&mut self, tokens: &[Token]) {
         if self.closing(tokens) {
             self.close_table();
@@ -1633,12 +1619,11 @@ impl Parser {
             self.close_diagram();
             return;
         }
-        if self.unclosed(tokens) {
-            return;
-        }
         let comments = self.comments();
         let mut cursor = Cursor::new(tokens);
-        let Some(table) = self.name(&mut cursor) else { return };
+        // The table name is checked once the line is a whole entry, as in Go: a line abandoned with a syntax diagnostic, such
+        // as a diagram header inside an open diagram block, reports that diagnostic alone (DBS-139).
+        let Some(table) = self.word(&mut cursor, |_| Class::Name) else { return };
         if self.expect(&mut cursor, "at").is_none() {
             return;
         }
@@ -1671,6 +1656,7 @@ impl Parser {
         if self.end(&cursor).is_none() {
             return;
         }
+        self.check_name(&table.text, table.pos);
         let diagram_name = self.diagram.as_ref().map_or_else(String::new, |d| d.name.text.clone());
         self.declare("diagram_entry", vec![diagram_name, table.text.clone()], table.pos);
         if let Some(diagram) = self.diagram.as_mut() {

@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Tests;
 
 // Syntax analysis and formatting (docs/spec/dbspec.md "Syntax analysis", "Formatting") through the PHP client:
-// focused token cases, the shared cases of tests/dbspec/cases.json, the shared syntax vectors of
-// tests/dbspec/syntax.json, and the limit stop.
+// focused token cases and the limit stop.
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
@@ -64,93 +63,5 @@ class DbspecAnalyzeTest extends TestCase
             'analyze/limit-no-tokens: the last diagnostic must be the limit'
         );
         cpuCaseEnd('analyze/limit-no-tokens', $clock);
-    }
-
-    public static function sharedCases(): iterable
-    {
-        $cases = dbspec_read_cases();
-        foreach (['canonical', 'normalize', 'invalid'] as $kind) {
-            yield from dbspec_case_sets($kind, $cases[$kind]);
-        }
-    }
-
-    // The shared cases: analyze returns the parse result unchanged, and format of each canonical or normalize case
-    // gives its canonical text; an invalid case is refused with its diagnostics (docs/spec/dbspec.md "Formatting").
-    #[DataProvider('sharedCases')]
-    public function testShared(string $kind, array $case): void
-    {
-        $id = "$kind/" . $case['id'];
-        $clock = cpuCaseBegin(2.0);
-        $texts = dbspec_documents($case['documents'], $case['crlf'] ?? false, $case['mixed'] ?? false);
-        $text = $texts[$case['main']];
-        $parsed = Dbspec::parse($text, $texts);
-        $analysis = Dbspec::analyze($text, $texts);
-        $this->assertEquals(
-            $parsed->diagnostics,
-            $analysis->diagnostics,
-            "analyze/$id: the parse result is not returned unchanged"
-        );
-        $this->assertEquals(
-            $parsed->positions,
-            $analysis->positions,
-            "analyze/$id: the parse result is not returned unchanged"
-        );
-        $this->assertSame(
-            $parsed->document === null,
-            $analysis->document === null,
-            "analyze/$id: the parse result is not returned unchanged"
-        );
-        if ($parsed->document !== null) {
-            $this->assertSame(
-                Dbspec::emit($parsed->document),
-                Dbspec::emit($analysis->document),
-                "analyze/$id: the document differs from parse"
-            );
-        }
-        $format = Dbspec::format($text, $texts);
-        if ($kind === 'invalid') {
-            $this->assertNull($format->text, "format/$id: an invalid document was formatted");
-            $got = array_map(
-                static fn($d): array => ['line' => $d->line, 'column' => $d->column, 'rule' => $d->rule],
-                $format->diagnostics
-            );
-            $want = dbspec_error_locations($case['errors']);
-            $this->assertSame($want, $got, "format/$id: diagnostics differ");
-        } else {
-            $want = $kind === 'canonical' ? implode(
-                "\n",
-                $case['documents'][$case['main']]
-            ) . "\n" : implode("\n", $case['canonical']) . "\n";
-            $this->assertSame([], $format->diagnostics, "format/$id: diagnostics");
-            $this->assertSame($want, $format->text, "format/$id: text differs from the canonical text");
-            $formatted = $texts;
-            $formatted[$case['main']] = $format->text;
-            $again = Dbspec::format($format->text, $formatted);
-            $this->assertSame($format->text, $again->text, "format/$id: format is not idempotent");
-        }
-        cpuCaseEnd("analyze/$id", $clock);
-    }
-
-    public static function syntaxCases(): iterable
-    {
-        return dbspec_syntax_sets(dirname(__DIR__, 3), dbspec_read_cases());
-    }
-
-    // The shared syntax vectors: the tokens of every case of tests/dbspec/syntax.json, exactly.
-    // Requirements: ORES-1.
-    #[DataProvider('syntaxCases')]
-    public function testSyntax(?array $want, string $text, array $documents): void
-    {
-        $this->assertNotNull($want, $this->dataName() . ': syntax.json has no tokens for this case');
-        $this->assertSame($want, self::tokens($text, $documents), $this->dataName() . ': tokens differ');
-    }
-
-    public function testSyntaxCasesAreProduced(): void
-    {
-        $this->assertSame(
-            [],
-            dbspec_syntax_unproduced(dirname(__DIR__, 3), dbspec_read_cases()),
-            'syntax.json has cases that the inputs do not produce'
-        );
     }
 }

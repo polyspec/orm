@@ -369,6 +369,70 @@
       "expect",
       "name",
       "op"
+    ],
+    "dbspec.parse_emit": [
+      "documents",
+      "expect",
+      "op"
+    ],
+    "dbspec.manifest": [
+      "documents",
+      "expect",
+      "op"
+    ],
+    "dbspec.render": [
+      "documents",
+      "expect",
+      "op"
+    ],
+    "dbspec.analyze": [
+      "crlf",
+      "document",
+      "expect",
+      "mixed",
+      "op",
+      "set",
+      "text"
+    ],
+    "dbspec.parse_positions": [
+      "crlf",
+      "document",
+      "expect",
+      "mixed",
+      "op",
+      "set",
+      "text"
+    ],
+    "dbspec.format": [
+      "crlf",
+      "expect",
+      "mixed",
+      "op",
+      "set",
+      "text"
+    ],
+    "dbspec.parse_set": [
+      "expect",
+      "external",
+      "op",
+      "owned"
+    ],
+    "dbspec.set": [
+      "expect",
+      "external",
+      "op",
+      "owned",
+      "parsing"
+    ],
+    "dbspec.read_file": [
+      "expect",
+      "op",
+      "path"
+    ],
+    "dbspec.read_bytes": [
+      "expect",
+      "op",
+      "path"
     ]
   }
 }

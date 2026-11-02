@@ -28,7 +28,7 @@ const folder = join(directory, 'folder');
 mkdirSync(folder);
 
 const vector = (name: string) => join(root, `tests/dbspec/${name}.json`);
-const compareInputs: string[] = [vector('cases'), stress, vector('ddl'), vector('plans'), vector('mermaid'), vector('syntax')];
+const compareInputs: string[] = [join(root, 'tests/dbspec'), stress, vector('ddl'), vector('plan-cases'), vector('mermaid')];
 
 // Writes the mermaid vector with only the path changed for the round trip case.
 function mermaidWithPath(path: string): string {
@@ -49,7 +49,7 @@ const applyRunners: Runner[] = [
 ];
 const stressHarness: Runner = { name: 'stress rust', command: join(cargoTarget(), 'debug/examples/dbspec_stress'), args: [] };
 // inputNames is the name, in INPUTS order, that the input uses in messages.
-const inputNames: Record<string, string> = { cases: 'cases', stress: 'stress document', ddl: 'ddl', plans: 'plans', mermaid: 'mermaid', syntax: 'syntax' };
+const inputNames: Record<string, string> = { dir: 'recipes directory', stress: 'stress document', ddl: 'ddl', plans: 'plans', mermaid: 'mermaid' };
 
 // Each case is the runner, its arguments, and the unreadable path that must appear on stderr.
 const cases: { name: string; runner: Runner; inputs: string[]; unreadable: string }[] = [];

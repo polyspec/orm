@@ -717,16 +717,15 @@ dbspec-introspect-compare-check: go-test-check
 dbspec-introspect-compare-bench:
 	$(MAKE) --no-print-directory dbspec-introspect-compare-check DBSPEC_INTROSPECT_TABLES=2000 DBSPEC_INTROSPECT_PROFILE=release
 
-# dbspec-compare-check runs the Go, PHP, TypeScript, and Rust dbspec runners and the PHP extension polyspec_orm runner over tests/dbspec/cases.json,
-# the stress document (DBSPEC_COMPARE_TABLES tables), tests/dbspec/ddl.json, tests/dbspec/plan-cases.json, tests/dbspec/mermaid.json,
-# and tests/dbspec/syntax.json,
+# dbspec-compare-check runs the Go, PHP, TypeScript, Python, and Rust dbspec runners and the PHP extension polyspec_orm runner over the directory tests/dbspec
+# (its recipe files), the stress document (DBSPEC_COMPARE_TABLES tables), tests/dbspec/ddl.json, tests/dbspec/plan-cases.json and tests/dbspec/mermaid.json,
 # each twice; the two runs' outputs fail at the first differing case. The runs also print the declaration positions of
-# the positions cases of cases.json and, for each case of syntax.json, the tokens and the format of the input of
-# cases.json that its id names. The PHP extension is built in this run's directory
+# the positions cases of positions.json and, for each analysis of hashes.json and sets.json, the tokens and the format of its text and set.
+# The document cases are the recipes (canonical, normalize, invalid, positions, files, hashes and sets .json), which every runner reads through the recipe schema. The PHP extension is built in this run's directory
 # (PHP_EXTENSION_LIBRARY). Before that, every runner must
 # reject, with an error that gives the position, a vector that omits a section or field or changes a type, and compare,
 # apply, and the Rust stress runner must reject a missing or directory input, with its path. A runner also refuses a section
-# or field of cases.json that the format does not name: every runner reads its vector files through the JSON Schemas of
+# or field of a recipe file that the format does not name: every runner reads its vector files through the JSON Schemas of
 # tests/dbspec/schema with a validator of its ecosystem and reports a refusal in one form. The runner
 # is a debug build that shares the test build and its dependencies. dbspec-compare-bench runs the same target with a 2000-table
 # document.
@@ -819,11 +818,10 @@ python-interface-unit-check: python-venv-check
 python-coverage-case-check: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.coverage_case_test
 # dbspec-python-check is the Python verification of schema_definition (contracts/features.json schema-python): the shared
-# vectors of tests/dbspec (cases.json and its files, ddl.json, plan-cases.json and its SQLite apply chain, mermaid.json, syntax.json, show-create.json and
-# set-files.json) and the unit tests of syntax analysis, formatting and the set reader.
+# vectors of tests/dbspec (the recipe files, ddl.json, plan-cases.json and its SQLite apply chain, mermaid.json, show-create.json and
+# set-files.json), the hashes and sets recipes, and the unit tests of syntax analysis, formatting and the set reader.
 .PHONY: dbspec-python-check
 dbspec-python-check: python-venv-check
-	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_cases
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_ddl
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_apply
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_render_physical
@@ -841,7 +839,7 @@ dbspec-compare-check/runners: dbspec-compare-check/prepare
 dbspec-compare-check/inputs: dbspec-compare-check/prepare
 	CARGO_TARGET_DIR=$(RUN_TARGET) POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PHP_MODE=extension ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) $(NODE) --test tests/dbspec/inputs.test.mts
 dbspec-compare-check/compare: dbspec-compare-check/prepare
-	CARGO_TARGET_DIR=$(RUN_TARGET) POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PHP_MODE=extension ORM_PYTHON=$(PYTHON_VENV)/bin/python $(NODE) tests/dbspec/compare/check.mts tests/dbspec/cases.json $(DBSPEC_COMPARE_DOCUMENT) tests/dbspec/ddl.json tests/dbspec/plan-cases.json tests/dbspec/mermaid.json tests/dbspec/syntax.json
+	CARGO_TARGET_DIR=$(RUN_TARGET) POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PHP_MODE=extension ORM_PYTHON=$(PYTHON_VENV)/bin/python $(NODE) tests/dbspec/compare/check.mts tests/dbspec $(DBSPEC_COMPARE_DOCUMENT) tests/dbspec/ddl.json tests/dbspec/plan-cases.json tests/dbspec/mermaid.json
 
 dbspec-compare-bench:
 	$(MAKE) --no-print-directory dbspec-compare-check DBSPEC_COMPARE_TABLES=2000
@@ -879,14 +877,14 @@ dbspec-stress-bench/rust: dbspec-stress-bench/prepare
 .PHONY: dbspec-rust-check/documents dbspec-rust-check/set dbspec-rust-check/apply-cleanup dbspec-rust-check/unicode dbspec-rust-check/show-create dbspec-rust-check/render-physical
 dbspec-rust-check: dbspec-rust-check/documents dbspec-rust-check/set dbspec-rust-check/apply-cleanup dbspec-rust-check/unicode dbspec-rust-check/show-create dbspec-rust-check/render-physical
 dbspec-rust-check/documents:
-	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_analyze --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_model --test dbspec_mermaid -- --nocapture
-	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_analyze --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_model --test dbspec_mermaid -- --nocapture
+	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_analyze --test dbspec_rules --test dbspec_render --test dbspec_runtime --test dbspec_model --test dbspec_mermaid -- --nocapture
+	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_analyze --test dbspec_rules --test dbspec_render --test dbspec_runtime --test dbspec_model --test dbspec_mermaid -- --nocapture
 # dbspec-rust-check/set runs every file tree case of tests/dbspec/set-files.json through the set reader
 # dbspec::read_set, every case of tests/dbspec/set-parse.json through dbspec::parse_set, and its unit cases of the normal form, the nested JSON and the schema value.
 dbspec-rust-check/set: dbspec-rust-check/set/vectors dbspec-rust-check/set/unit
 .PHONY: dbspec-rust-check/set/vectors dbspec-rust-check/set/unit
 dbspec-rust-check/set/vectors:
-	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --test dbspec_set --test dbspec_set_parse -- --nocapture
+	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --test dbspec_set -- --nocapture
 dbspec-rust-check/set/unit:
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm-schema --lib dbspec::set
 # dbspec-rust-check/unicode checks that the Unicode word rune table written by Go (unicode_word.rs) matches the ranges at every code point.
@@ -942,8 +940,6 @@ rust-send-savepoint-check/test:
 dbspec-php-check: dbspec-php-check/documents dbspec-php-check/graph dbspec-php-check/behaviour dbspec-php-check/show-create-introspect dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode dbspec-php-check/show-create dbspec-php-check/analyze dbspec-php-check/set dbspec-php-check/set-parse
 .PHONY: dbspec-php-check/documents dbspec-php-check/graph dbspec-php-check/behaviour dbspec-php-check/show-create-introspect dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode dbspec-php-check/show-create dbspec-php-check/analyze dbspec-php-check/set dbspec-php-check/set-parse
 dbspec-php-check/documents: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecTest.php
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecCatalogRowsTest.php
 # dbspec-php-check/graph checks that a document, document set, plan list or unsupported list whose array holds another type is a TypeError.
 dbspec-php-check/graph: php-vendor-check php-models
@@ -959,8 +955,8 @@ dbspec-php-check/rules: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRulesTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRulesTest.php
 dbspec-php-check/manifest: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecManifestTest.php
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecManifestTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/HashesRecipeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/SetsRecipeTest.php
 dbspec-php-check/render: php-vendor-check php-models
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRenderTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRenderTest.php
@@ -978,7 +974,7 @@ dbspec-php-check/unicode: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecUnicodeTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecUnicodeTest.php
 # dbspec-php-check/show-create checks that MysqlCatalog::createChecks reads every case of tests/dbspec/show-create.json with the expected body.
-# dbspec-php-check/analyze checks syntax analysis and format with focused cases and every case of cases.json (docs/spec/dbspec.md "Syntax analysis", "Formatting").
+# dbspec-php-check/analyze checks syntax analysis and format with focused cases and the analyze steps of the recipes (docs/spec/dbspec.md "Syntax analysis", "Formatting").
 dbspec-php-check/analyze: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecAnalyzeTest.php
 dbspec-php-check/show-create: php-vendor-check php-models
@@ -988,10 +984,10 @@ dbspec-php-check/show-create: php-vendor-check php-models
 dbspec-php-check/set: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecSetTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/SetReaderDiagnosticsTest.php
-# dbspec-php-check/set-parse runs Dbspec::parseSet on every case of tests/dbspec/set-parse.json (docs/spec/dbspec.md
-# "Parsing a set").
+# dbspec-php-check/set-parse runs DbspecSetParseRecipeTest: every case of tests/dbspec/set-parse.json through Dbspec::parseSet
+# (docs/spec/dbspec.md "Parsing a set").
 dbspec-php-check/set-parse: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecSetParseTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecSetParseRecipeTest.php
 
 .PHONY: dbspec-php-extension-check
 # dbspec-php-extension-check checks the PHP extension polyspec_orm (packages/php-ext), which implements the PHP client's dbspec surface and
@@ -1202,13 +1198,12 @@ dbspec-php-extension-check/statement-event: php-vendor-check dbspec-php-extensio
 PHP_EXTENSION_DYNAMIC_MODULES = $(shell $(KIT_TOOLS)/bin/php -n -r 'echo extension_loaded("pdo") ? "" : "pdo";')
 dbspec-php-extension-check/declarations: php-vendor-check dbspec-php-extension-check/prepare
 	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES='$(PHP_EXTENSION_DYNAMIC_MODULES)' POLYSPEC_ORM_EXTENSION="$(PHP_EXTENSION_LIBRARY)" $(RUN_TESTS) phpunit --php-extension "$(PHP_EXTENSION_LIBRARY)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DeclarationsTest.php
-# dbspec-php-extension-check/vectors runs DbspecTest with the extension: the canonical, normalize, invalid, files, positions, bytes and arguments cases of tests/dbspec/cases.json, introspection and apply on SQLite.
+# dbspec-php-extension-check/vectors runs DbspecTest with the extension: the canonical, normalize, invalid, files, positions, bytes and arguments cases of the recipes (tests/dbspec/canonical.json, normalize.json, invalid.json, files.json, positions.json), introspection and apply on SQLite.
 dbspec-php-extension-check/vectors: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecTest.php
-	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecTest.php
-# dbspec-php-extension-check/sets runs DbspecManifestTest with the extension: the hashes and sets cases of tests/dbspec/cases.json.
+# dbspec-php-extension-check/sets runs the hashes and sets recipes with the extension: tests/dbspec/hashes.json and sets.json.
 dbspec-php-extension-check/sets: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecManifestTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/HashesRecipeTestExtensionTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/SetsRecipeTestExtensionTest.php
 # dbspec-php-extension-check/render runs DbspecRenderTest with the extension: the statements of tests/dbspec/ddl.json.
 dbspec-php-extension-check/render: php-vendor-check dbspec-php-extension-check/prepare
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/DbspecRenderTest.php
@@ -1219,14 +1214,14 @@ dbspec-php-extension-check/graph: php-vendor-check dbspec-php-extension-check/pr
 dbspec-php-extension-check/behaviour: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecBehaviourTest.php
 	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecBehaviourNativeTest.php
-# dbspec-php-extension-check/schema-definition runs CoverageSchemaDefinitionTest with the extension: the cases of contracts/fixtures/schema_definition.json.
+# dbspec-php-extension-check/schema-definition runs SchemaDefinitionRecipeTestExtensionTest with the extension: the cases of tests/dbspec/schema-definition.json.
 dbspec-php-extension-check/schema-definition: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/SchemaDefinitionRecipeTestExtensionTest.php
 
 # dbspec-php-extension-check/stress-canonical runs the exact large canonical round-trip owner with the native parser.
 dbspec-php-extension-check/stress-canonical: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecStressCanonicalNativeTest.php
-# dbspec-php-extension-check/analyze runs DbspecAnalyzeTest with the extension: the syntax analysis and format of the focused cases, of tests/dbspec/syntax.json and of the limit errors; DbspecRulesNativeTest checks the global column and foreign-key limits through the native parser.
+# dbspec-php-extension-check/analyze runs DbspecAnalyzeTest with the extension: the syntax analysis and format of the focused cases and of the limit errors, the analyze steps of the recipes (hashes.json, sets.json) run in their own recipe tests; DbspecRulesNativeTest checks the global column and foreign-key limits through the native parser.
 dbspec-php-extension-check/analyze: php-vendor-check dbspec-php-extension-check/prepare
 	@set -eu; \
 	run_dir="$(RUN_DIR)"; \
@@ -1268,9 +1263,9 @@ dbspec-php-extension-check/aes: php-vendor-check dbspec-php-extension-check/prep
 # dbspec-php-extension-check/hostcodec runs the whole HostcodecTest with the extension: the AES v2 envelope and its key checks.
 dbspec-php-extension-check/hostcodec: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_TESTS) packages/php/tests/HostcodecTest.php
-# dbspec-php-extension-check/set-parse runs DbspecSetParseTest with the extension: Dbspec::parseSet on every case of tests/dbspec/set-parse.json.
+# dbspec-php-extension-check/set-parse runs DbspecSetParseRecipeTestExtensionTest with the extension: every case of tests/dbspec/set-parse.json.
 dbspec-php-extension-check/set-parse: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecSetParseTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecSetParseRecipeTestExtensionTest.php
 # dbspec-php-extension-check/planner runs the planner suites with the extension: the native-owner CoveragePlannerExtensionTest
 # (the compile recipe tests/planner/compile.json), InsertPartsTest (contracts/fixtures/insert_parts.json) and IrAnswersTest
 # (the recipe tests/ir/answers.json).
@@ -2562,7 +2557,7 @@ ts-min-check: lease-tool orm-codes-typescript
 dbspec-ts-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	$(NODE) --test packages/ts/tests/browser-entry.mjs packages/ts/tests/dbspec.mjs packages/ts/tests/dbspec-canonical.mjs packages/ts/tests/dbspec-normalize.mjs packages/ts/tests/dbspec-positions.mjs packages/ts/tests/dbspec-invalid.mjs packages/ts/tests/dbspec-files.mjs packages/ts/tests/dbspec-hashes.mjs packages/ts/tests/dbspec-sets.mjs packages/ts/tests/dbspec-set.mjs packages/ts/tests/dbspec-set-edges.mjs packages/ts/tests/dbspec-set-parse.mjs packages/ts/tests/dbspec-analyze.mjs packages/ts/tests/dbspec-syntax.mjs packages/ts/tests/syntax-vectors.mjs packages/ts/tests/dbspec-rules.mjs packages/ts/tests/dbspec-render.mjs packages/ts/tests/dbspec-render-dialect.mjs packages/ts/tests/dbspec-plan.mjs packages/ts/tests/dbspec-plan-cases.mjs packages/ts/tests/dbspec-plan-invalid.mjs packages/ts/tests/dbspec-plan-chains.mjs packages/ts/tests/dbspec-plan-parse.mjs packages/ts/tests/dbspec-plan-comparisons.mjs packages/ts/tests/dbspec-mermaid-export.mjs packages/ts/tests/dbspec-mermaid-import.mjs packages/ts/tests/dbspec-mermaid-invalid.mjs packages/ts/tests/dbspec-mermaid-round-trip.mjs packages/ts/tests/dbspec-apply-cleanup.mjs packages/ts/tests/dbspec-unicode.mjs packages/ts/tests/dbspec-show-create.mjs packages/ts/tests/dbspec-show-create-introspect.mjs
+	$(NODE) --test packages/ts/tests/browser-entry.mjs packages/ts/tests/recipe_canonical.mjs packages/ts/tests/recipe_normalize.mjs packages/ts/tests/recipe_positions.mjs packages/ts/tests/recipe_invalid.mjs packages/ts/tests/recipe_files.mjs packages/ts/tests/dbspec-set.mjs packages/ts/tests/dbspec-set-edges.mjs packages/ts/tests/recipe_set_parse.mjs packages/ts/tests/recipe_hashes.mjs packages/ts/tests/recipe_sets.mjs packages/ts/tests/dbspec-analyze.mjs packages/ts/tests/dbspec-rules.mjs packages/ts/tests/dbspec-render.mjs packages/ts/tests/dbspec-render-dialect.mjs packages/ts/tests/dbspec-plan.mjs packages/ts/tests/dbspec-plan-cases.mjs packages/ts/tests/dbspec-plan-invalid.mjs packages/ts/tests/dbspec-plan-chains.mjs packages/ts/tests/dbspec-plan-parse.mjs packages/ts/tests/dbspec-plan-comparisons.mjs packages/ts/tests/dbspec-mermaid-export.mjs packages/ts/tests/dbspec-mermaid-import.mjs packages/ts/tests/dbspec-mermaid-invalid.mjs packages/ts/tests/dbspec-mermaid-round-trip.mjs packages/ts/tests/dbspec-apply-cleanup.mjs packages/ts/tests/dbspec-unicode.mjs packages/ts/tests/dbspec-show-create.mjs packages/ts/tests/dbspec-show-create-introspect.mjs
 	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/dbspec-render-physical.mjs
 
 # dbspec-language-check builds the TypeScript client and @polyspec/dbspec-language, and checks that the language service's module graph does not reach
@@ -2645,7 +2640,7 @@ orm-install-cli-check: lease-tool orm-codes-typescript
 	$(NPM) run --workspace @polyspec/dbspec-language build
 	$(ONLINE) $(NODE) --test tests/cli/install-cli.test.mts
 
-# dbspec-go-check runs all tests of the Go dbspec engine package (packages/go/engine/dbspec): the shared vectors of tests/dbspec/cases.json,
+# dbspec-go-check runs all tests of the Go dbspec engine package (packages/go/engine/dbspec): the shared vectors of the recipes of tests/dbspec (hashes.json and sets.json),
 # its own rule cases, manifest, statements, plans, comparisons, Mermaid vectors, apply cleanup errors,
 # the case harness, and that it rejects, with the position, every missing or wrongly typed field of every vector file. The stress
 # document (TestStressDocument, build tag bench) is run by make bench.

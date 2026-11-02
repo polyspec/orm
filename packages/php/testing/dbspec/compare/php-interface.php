@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Reads the vectors and writes the output shared by the dbspec compare runners (php.php, php-extension.php). The output
 // functions take a Dbspec class (Polyspec\Orm\Dbspec\Dbspec or the extension's Polyspec\Orm\Dbspec\Native\Dbspec) and
-// write in the line format of tests/dbspec/compare/check.mts: dbspec_write_interface writes the shared cases, stress
+// write in the line format of tests/dbspec/compare/check.mts: dbspec_write_interface writes the recipe cases, stress
 // documents, file reads, manifest and statement vectors, dbspec_write_plans writes the plan vectors, and
 // dbspec_write_mermaid writes the Mermaid vectors. The two classes have the same methods and result shape.
 
@@ -32,7 +32,7 @@ function dbspec_read_vectors(string $path, string $kind): array
         exit(1);
     }
     try {
-        $kind === 'cases' ? dbspec_check_cases($value, $path) : dbspec_check_vectors($value, $kind, $path);
+        dbspec_check_vectors($value, $kind, $path);
     } catch (RuntimeException $e) {
         fwrite(STDERR, $e->getMessage() . "\n");
         exit(1);
@@ -209,6 +209,126 @@ function dbspec_vector_named_documents(string $path, array $documents, string $a
 }
 
 /**
+ * Reads a recipe file of tests/dbspec (canonical.json, normalize.json, invalid.json, positions.json or files.json)
+ * against the recipe schema (scripts/features/schema/recipe.schema.json) and returns its cases, each with the step of
+ * $op: the main document is the step's text, named "main", with the other documents of its set. A refusal is written to
+ * stderr, one line per problem, and ends with 1.
+ *
+ * @return list<array<string, mixed>>
+ */
+function dbspec_read_recipe_file(string $path): array
+{
+    $text = dbspec_read_input($path);
+    try {
+        $value = json_decode($text, false, 512, JSON_THROW_ON_ERROR);
+    } catch (JsonException $e) {
+        fwrite(STDERR, "$path: {$e->getMessage()}\n");
+        exit(1);
+    }
+    $schema = json_decode(
+        (string) file_get_contents(dirname(__DIR__, 5) . '/scripts/features/schema/recipe.schema.json'),
+        false,
+        512,
+        JSON_THROW_ON_ERROR
+    );
+    $validator = new \Opis\JsonSchema\Validator(max_errors: PHP_INT_MAX, stop_at_first_error: false);
+    $error = $validator->validate($value, $schema)->error();
+    if ($error !== null) {
+        foreach (dbspec_vector_leaves($error) as $leaf) {
+            foreach (dbspec_vector_problems($leaf) as $problem) {
+                fwrite(STDERR, "$path: $problem\n");
+            }
+        }
+        exit(1);
+    }
+    return json_decode($text, true, 512, JSON_THROW_ON_ERROR);
+}
+
+/**
+ * Reads a recipe file of tests/dbspec (canonical.json, normalize.json, invalid.json, positions.json or files.json)
+ * against the recipe schema (scripts/features/schema/recipe.schema.json) and returns its cases, each with the step of
+ * $op: the main document is the step's text, named "main", with the other documents of its set. A refusal is written to
+ * stderr, one line per problem, and ends with 1.
+ *
+ * @return list<array<string, mixed>>
+ */
+function dbspec_read_recipe(string $path, string $op): array
+{
+    $file = dbspec_read_recipe_file($path);
+    $cases = [];
+    foreach ($file['cases'] as $i => $case) {
+        $step = null;
+        foreach ($case['steps'] as $candidate) {
+            if ($candidate['op'] === $op) {
+                $step = $candidate;
+                break;
+            }
+        }
+        if ($step === null) {
+            dbspec_vector_fail($path, "cases[$i].steps", "has no $op step");
+        }
+        $documents = ['main' => $step['text'] ?? []];
+        foreach ($step['set'] ?? [] as $name => $lines) {
+            if ($name === 'main') {
+                dbspec_vector_fail($path, "cases[$i].steps", 'names a document main, which is the main document');
+            }
+            $documents[$name] = $lines;
+        }
+        $cases[] = [
+            'id' => $case['id'],
+            'main' => 'main',
+            'documents' => $documents,
+            'crlf' => ($step['crlf'] ?? false) === true,
+            'mixed' => ($step['mixed'] ?? false) === true,
+            'path' => $step['path'] ?? '',
+        ];
+    }
+    return $cases;
+}
+
+/**
+ * Reads hashes.json or sets.json against the recipe schema. Its analyses come in file order, each with its id
+ * (sets.<case>.<n>, or hashes.<case>.<name> for a hashes case), its text and its set of other documents. A hashes
+ * case's documents are the owned texts of its dbspec.set step, each named by its header.
+ *
+ * @return array{cases: list<array{id: string, documents: array<string, list<string>>}>, analyses: list<array{0: string, 1: string, 2: array<string, string>}>}
+ */
+function dbspec_read_set_recipe(string $path, string $kind): array
+{
+    $file = dbspec_read_recipe_file($path);
+    $cases = [];
+    $analyses = [];
+    foreach ($file['cases'] as $case) {
+        $documents = [];
+        $n = 0;
+        foreach ($case['steps'] as $step) {
+            if ($step['op'] === 'dbspec.set') {
+                $documents = [];
+                foreach ($step['owned'] ?? [] as $text) {
+                    $lines = explode("\n", str_ends_with($text, "\n") ? substr($text, 0, -1) : $text);
+                    $documents[(string) dbspec_header_name($lines)] = $lines;
+                }
+            } elseif ($step['op'] === 'dbspec.analyze') {
+                $n++;
+                $lines = $step['text'];
+                $id = $kind === 'hashes'
+                    ? "hashes.{$case['id']}." . (dbspec_header_name($lines) ?? '')
+                    : "sets.{$case['id']}.$n";
+                $set = [];
+                foreach ($step['set'] ?? [] as $other => $otherLines) {
+                    $set[$other] = dbspec_join($otherLines, false, false);
+                }
+                $analyses[] = [$id, dbspec_join($lines, false, false), $set];
+            }
+        }
+        if ($kind === 'hashes') {
+            $cases[] = ['id' => $case['id'], 'documents' => $documents];
+        }
+    }
+    return ['cases' => $cases, 'analyses' => $analyses];
+}
+
+/**
  * With $dbspec, writes the canonical, normalize, invalid, stress document, and files cases of tests/dbspec/cases.json,
  * the hashes case, and the tests/dbspec/ddl.json rendering, in this order. The vector file is checked before output
  * its shape, and an invalid vector is reported with its location to stderr and exits with 1. It returns the cases it
@@ -216,28 +336,18 @@ function dbspec_vector_named_documents(string $path, array $documents, string $a
  *
  * @return array<string, list<array<string, mixed>>>
  */
-function dbspec_write_interface(string $dbspec, string $casesPath, string $stressPath, string $ddlPath): array
+function dbspec_write_interface(string $dbspec, string $recipeDir, string $stressPath, string $ddlPath): array
 {
-    // cases.json is read against its schema (tests/dbspec/cases.php): a missing or unknown section or field is refused.
-    $cases = dbspec_read_vectors($casesPath, 'cases');
-    foreach (['canonical', 'normalize', 'invalid'] as $kind) {
-        $cases[$kind] = array_map(
-            static fn(array $case): array => $case + ['crlf' => false, 'mixed' => false],
-            $cases[$kind]
-        );
-    }
-    foreach ($cases['sets'] as $i => $case) {
-        $cases['sets'][$i]['documents'] = dbspec_vector_named_documents(
-            $casesPath,
-            $case['documents'],
-            "sets[$i].documents"
-        );
-        $cases['sets'][$i]['external'] = dbspec_vector_named_documents(
-            $casesPath,
-            $case['external'] ?? [],
-            "sets[$i].external"
-        );
-    }
+    $cases = [];
+    $cases['canonical'] = dbspec_read_recipe($recipeDir . '/canonical.json', 'dbspec.format');
+    $cases['normalize'] = dbspec_read_recipe($recipeDir . '/normalize.json', 'dbspec.format');
+    $cases['invalid'] = dbspec_read_recipe($recipeDir . '/invalid.json', 'dbspec.format');
+    $cases['positions'] = dbspec_read_recipe($recipeDir . '/positions.json', 'dbspec.parse_positions');
+    $cases['files'] = dbspec_read_recipe($recipeDir . '/files.json', 'dbspec.read_file');
+    $hashes = dbspec_read_set_recipe($recipeDir . '/hashes.json', 'hashes');
+    $sets = dbspec_read_set_recipe($recipeDir . '/sets.json', 'sets');
+    $cases['hashes'] = $hashes['cases'];
+    $cases['analyses'] = [...$sets['analyses'], ...$hashes['analyses']];
 
     $stress = dbspec_read_document($dbspec, $stressPath);
     foreach (['canonical', 'normalize', 'invalid'] as $kind) {
@@ -260,7 +370,7 @@ function dbspec_write_interface(string $dbspec, string $casesPath, string $stres
     // file bytes and the case path as the name, as "files/<id>/bytes", and writes the diagnostic and its message
     // or, if there is none, the emission. The name before the message is written as "<name>".
     foreach ($cases['files'] as $case) {
-        $path = dirname($casesPath) . '/' . $case['path'];
+        $path = $recipeDir . '/' . $case['path'];
         try {
             $reads = [
                 "files/{$case['id']}" => [$path, $dbspec::readFile($path)],
@@ -325,78 +435,28 @@ function dbspec_write_positions(string $dbspec, array $cases): void
 }
 
 /**
- * The input of every analysis that syntax.json names, by its id, as scripts/dbspec/syntax-vectors.mts derives it from
- * cases.json: the main document of each canonical, normalize and invalid case ("<section>.<id>"), each document of a
- * sets case with the parsing documents and the other documents of the case by header name ("sets.<id>.<place>",
- * 1-based), and each document of a hashes case with the others ("hashes.<id>.<name>").
+ * Prints each analysis of hashes.json and sets.json (after the recipe documents): its tokens ("| line start end class")
+ * and the diagnostics of its analysis, then "syntax/<id>/format" and the formatted text or the diagnostics of the refusal.
  *
- * @param array<string, list<array<string, mixed>>> $cases
- * @return array<string, array{0: string, 1: array<string, string>}>
+ * @param array<string, mixed> $cases
  */
-function dbspec_compare_syntax_inputs(array $cases): array
+function dbspec_write_syntax(string $dbspec, array $cases): void
 {
-    $inputs = [];
+    $ids = [];
     foreach (['canonical', 'normalize', 'invalid'] as $kind) {
         foreach ($cases[$kind] as $case) {
+            $dbspecId = "$kind.{$case['id']}";
+            $text = dbspec_join($case['documents'][$case['main']], $case['crlf'], $case['mixed']);
             $set = [];
             foreach ($case['documents'] as $name => $lines) {
                 if ($name !== $case['main']) {
                     $set[$name] = dbspec_join($lines, $case['crlf'], $case['mixed']);
                 }
             }
-            $inputs["$kind.{$case['id']}"] = [
-                dbspec_join($case['documents'][$case['main']], $case['crlf'], $case['mixed']),
-                $set
-            ];
+            $ids[] = [$dbspecId, $text, $set];
         }
     }
-    foreach ($cases['sets'] as $case) {
-        $every = [...$case['documents'], ...$case['external']];
-        foreach ($case['documents'] as $i => $document) {
-            $set = [];
-            foreach ($case['parsing'] as $name => $lines) {
-                $set[$name] = dbspec_join($lines, false, false);
-            }
-            foreach ($every as $j => $other) {
-                if ($j !== $i) {
-                    $set[$other['name']] = dbspec_join($other['lines'], false, false);
-                }
-            }
-            $inputs["sets.{$case['id']}." . ($i + 1)] = [dbspec_join($document['lines'], false, false), $set];
-        }
-    }
-    foreach ($cases['hashes'] as $case) {
-        foreach ($case['documents'] as $name => $lines) {
-            $set = [];
-            foreach ($case['documents'] as $other => $otherLines) {
-                if ($other !== $name) {
-                    $set[$other] = dbspec_join($otherLines, false, false);
-                }
-            }
-            $inputs["hashes.{$case['id']}.$name"] = [dbspec_join($lines, false, false), $set];
-        }
-    }
-    return $inputs;
-}
-
-/**
- * Prints each case of syntax.json: its tokens ("| line start end class") and the diagnostics of its analysis, then
- * "syntax/<id>/format" and the formatted text or the diagnostics of the refusal. The expected tokens of the file are
- * the runtime tests' to check; this runner compares what each client gives.
- *
- * @param array<string, list<array<string, mixed>>> $cases
- */
-function dbspec_write_syntax(string $dbspec, array $cases, string $syntaxPath): void
-{
-    $ids = dbspec_read_vectors($syntaxPath, 'syntax')['cases'];
-    $inputs = dbspec_compare_syntax_inputs($cases);
-    foreach ($ids as $i => ['id' => $id]) {
-        if (!array_key_exists($id, $inputs)) {
-            dbspec_vector_fail($syntaxPath, "cases[$i].id", 'names no input of the shared cases');
-        }
-    }
-    foreach ($ids as ['id' => $id]) {
-        [$text, $set] = $inputs[$id];
+    foreach ([...$ids, ...$cases['analyses']] as [$id, $text, $set]) {
         echo "syntax/$id\n";
         $analysis = $dbspec::analyze($text, $set);
         foreach ($analysis->tokens as $t) {
@@ -421,7 +481,7 @@ function dbspec_write_comparison(string $dbspec, array $inputs): void
     dbspec_write_plans($dbspec, $inputs[3]);
     dbspec_write_mermaid($dbspec, $inputs[4]);
     dbspec_write_positions($dbspec, $cases);
-    dbspec_write_syntax($dbspec, $cases, $inputs[5]);
+    dbspec_write_syntax($dbspec, $cases);
 }
 
 /** Writes one step as a statement line and its attribute lines (tests/dbspec/compare/check.mts). */
@@ -583,7 +643,8 @@ function dbspec_plan_recipes(string $plansPath): array
 function dbspec_write_plans(string $dbspec, string $plansPath): void
 {
     $cases = plan_vectors_at($plansPath)['cases'];
-    $plans = dbspec_read_vectors($plansPath, 'plans') + ['cases' => $cases] + dbspec_plan_recipes($plansPath);
+    // The cases of the read cases replace the recipe cases of the file: the left operand of + keeps its keys.
+    $plans = ['cases' => $cases] + dbspec_plan_recipes($plansPath) + dbspec_read_vectors($plansPath, 'plans');
     foreach ($plans['cases'] as $case) {
         echo "plans/cases/{$case['id']}\n";
         $input = dbspec_case_plan($dbspec, $case);

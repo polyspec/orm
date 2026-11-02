@@ -2,6 +2,7 @@
 # test_<recipe>_<database>.py, takes the load_tests of recipe_tests for the recipe and the database, and each case of the
 # recipe is one test whose steps call the public API of polyspec.orm that each op names. It has no command line and no
 # output of its own.
+import dataclasses
 import json
 import math
 import re
@@ -31,10 +32,16 @@ from polyspec.orm.codec import (
     host_encode,
 )
 from polyspec.orm.dbspec import (
+    analyze_dbspec,
     dbspec_manifest,
+    emit_dbspec,
+    format_dbspec,
     parse_dbspec,
     parse_dbspec_set,
+    read_dbspec_bytes,
+    read_dbspec_file,
     read_dbspec_set,
+    render_dbspec,
 )
 from polyspec.orm.dbspec.compare import compare_schemas
 from polyspec.orm.dbspec.plan import chain_plans, emit_plan, parse_plan
@@ -119,6 +126,9 @@ def recipe_tests(path: str, database: str):
                 if step["op"] == "dsn.connect":
                     _dsn_connect(step, database)
                     continue
+                if step["op"] in _DBSPEC_FILE_OPS:
+                    _dbspec_files(step, ROOT / Path(path).parent, database)
+                    continue
                 _run(step, bound, database)
             except AssertionError as error:
                 raise AssertionError(
@@ -159,6 +169,390 @@ def _request_params(sent: list) -> list:
         if "request" in message:
             return message.get("params", [])
     raise AssertionError("the listener received no request message")
+
+
+def _expect_equal(got, want, what: str) -> None:
+    """Raises with both values when they differ; an assert statement would vanish under python -O."""
+    if got != want:
+        raise AssertionError(f"{what}: got {got!r}, want {want!r}")
+
+
+def _read_documents(directory: Path, paths: list) -> tuple:
+    """Reads the .dbs files that paths name relative to directory, and parses each with the set of the headers of the files
+    (FCV-4). Returns the text of each file and its parsed document, in the order of paths."""
+    texts = []
+    header_set = {}
+    for path in paths:
+        # The bytes are decoded as they are, so a line ending survives into the emit comparison.
+        text = (directory / path).read_bytes().decode("utf-8")
+        fields = text.split("\n", 1)[0].split()
+        if len(fields) != 3 or fields[0] != "dbspec":
+            raise AssertionError(f"{path} has no dbspec header")
+        header_set[fields[2]] = text
+        texts.append(text)
+    documents = []
+    for path, text in zip(paths, texts):
+        document, _positions, diagnostics = parse_dbspec(text, header_set)
+        if list(diagnostics):
+            raise AssertionError(f"{path}: {list(diagnostics)!r}")
+        documents.append(document)
+    return texts, documents
+
+
+_FILE_MESSAGES = {
+    "signature": " is not a dbspec document",
+    "encoding": " is not valid UTF-8",
+}
+
+
+def _join_text(lines: list, crlf: bool, mixed: bool) -> str:
+    """Joins lines with LF, or with CRLF when crlf is set, with a final line ending. A mixed document starts with CRLF,
+    alternates CRLF and LF from its second line, and has no final line ending."""
+    if mixed:
+        return "".join(
+            ("" if i == 0 else ("\r\n" if i % 2 == 1 else "\n")) + line
+            for i, line in enumerate(lines)
+        )
+    end = "\r\n" if crlf else "\n"
+    return end.join(lines) + end
+
+
+def _inline_document(step: dict) -> tuple:
+    """Returns the text of a step and the set of its other documents, joined with the step's line endings (FCV-4)."""
+    crlf = step.get("crlf") is True
+    mixed = step.get("mixed") is True
+    header_set = {
+        name: _join_text(lines, crlf, mixed)
+        for name, lines in step.get("set", {}).items()
+    }
+    return _join_text(step["text"], crlf, mixed), header_set
+
+
+def _emit_stable(text: str, header_set: dict) -> str:
+    """Parses text with the set, emits it, and checks that the emission parses and emits to itself."""
+    document, _positions, diagnostics = parse_dbspec(text, header_set)
+    if list(diagnostics):
+        raise AssertionError(f"the text does not parse: {list(diagnostics)!r}")
+    first = emit_dbspec(document)
+    again, _positions, diagnostics = parse_dbspec(first, header_set)
+    if list(diagnostics):
+        raise AssertionError(f"the emission does not parse: {list(diagnostics)!r}")
+    _expect_equal(emit_dbspec(again), first, "the emission is idempotent")
+    return first
+
+
+def _check_refusal(text: str, header_set: dict, want: list) -> None:
+    """Checks that parse refuses text with exactly the diagnostics of want, and that format returns no text and the
+    same diagnostics."""
+    document, _positions, parsed = parse_dbspec(text, header_set)
+    if document is not None:
+        raise AssertionError("Parse returned a document for an invalid source")
+    formatted, diagnostics = format_dbspec(text, header_set)
+    _expect_equal(formatted, None, "a document with a diagnostic is not rewritten")
+    for got in (list(parsed), list(diagnostics)):
+        _expect_equal(
+            [{"rule": d.rule, "line": d.line, "column": d.column} for d in got],
+            want,
+            "diagnostics",
+        )
+        for d in got:
+            if not d.message:
+                raise AssertionError(f"diagnostic {d.rule} has no message")
+
+
+def _header_name(text: str) -> str:
+    """The name of a document: the third word of its header line."""
+    fields = text.split("\n", 1)[0].split()
+    return fields[2] if len(fields) >= 3 else ""
+
+
+def _split_documents(text: str) -> list:
+    """Splits a manifest or external text into its document texts at each header line."""
+    return [part for part in re.split(r"(?<=\n)(?=dbspec )", text) if part]
+
+
+def _created_tables(statements: list) -> list:
+    """The table names that the CREATE TABLE statements create, in statement order."""
+    names = []
+    for statement in statements:
+        if statement.startswith("CREATE TABLE "):
+            names.append(statement[len("CREATE TABLE ") :].split(" ")[0].strip('`"'))
+    return names
+
+
+def _same_diagnostics(want: list, got: list) -> None:
+    """Checks that got has the rule, line and column of each expected diagnostic, in order, and a message."""
+    _expect_equal(
+        [{"rule": d.rule, "line": d.line, "column": d.column} for d in got],
+        want,
+        "diagnostics",
+    )
+    for d in got:
+        if not d.message:
+            raise AssertionError(f"diagnostic {d.rule} has no message")
+
+
+def _set(step: dict, expect: dict) -> None:
+    """Runs dbspec.set (the port of checkSet of packages/go/internal/recipe/dbspec.go). The owned texts, then the external
+    texts, are parsed each against the other texts and the parsing texts, and dbspec_manifest builds the set's manifest.
+    A refused set (expect.diagnostics not empty) expects those diagnostics from dbspec_manifest and from each dialect of
+    render_dbspec, and no manifest and no statements. A built set expects its texts and hashes when expect.manifest is
+    given, parses its manifest and external texts back as a set without diagnostics, gives the same hashes in the reversed
+    order, and renders statements in each dialect that create the tables of expect.created."""
+    owned = list(step["owned"])
+    every = owned + list(step.get("external", []))
+    parsing = dict(step.get("parsing", {}))
+    documents = []
+    for index, text in enumerate(every):
+        header_set = dict(parsing)
+        for other_index, other in enumerate(every):
+            if other_index != index:
+                header_set[_header_name(other)] = other
+        document, _positions, diagnostics = parse_dbspec(text, header_set)
+        if document is None:
+            raise AssertionError(
+                f"document {index + 1}: {[d.rule for d in diagnostics]!r}"
+            )
+        if index >= len(owned):
+            document = dataclasses.replace(document, external=True)
+        documents.append(document)
+    want_diagnostics = expect.get("diagnostics", [])
+    refused = len(want_diagnostics) > 0
+    manifest, diagnostics = dbspec_manifest(documents)
+    _same_diagnostics(want_diagnostics, list(diagnostics))
+    _expect_equal(
+        manifest is None,
+        refused,
+        "the manifest is absent exactly when the set is refused",
+    )
+    for dialect in ("mysql", "postgres", "sqlite"):
+        rendered = render_dbspec(documents, dialect)
+        if refused:
+            _same_diagnostics(want_diagnostics, list(rendered["diagnostics"]))
+            _expect_equal(
+                rendered["statements"],
+                None,
+                f"{dialect} renders no statements for a refused set",
+            )
+            continue
+        if list(rendered["diagnostics"]):
+            raise AssertionError(f"{dialect}: {list(rendered['diagnostics'])!r}")
+        if not rendered["statements"]:
+            raise AssertionError(f"{dialect} renders no statements")
+        if "created" in expect:
+            _expect_equal(
+                _created_tables(rendered["statements"]),
+                expect["created"],
+                f"tables that {dialect} creates",
+            )
+    if refused:
+        return
+    want = expect.get("manifest")
+    if want is not None:
+        _expect_equal(manifest.manifest_text, want["manifest_text"], "manifest_text")
+        _expect_equal(manifest.schema_text, want["schema_text"], "schema_text")
+        _expect_equal(manifest.manifest_hash, want["manifest_hash"], "manifest_hash")
+        _expect_equal(manifest.schema_hash, want["schema_hash"], "schema_hash")
+        if "external_text" in want:
+            _expect_equal(
+                manifest.external_text, want["external_text"], "external_text"
+            )
+    # The manifest and external text parse back as a set without diagnostics (docs/spec/dbspec.md "Manifest and hashes").
+    for result in parse_dbspec_set(
+        _split_documents(manifest.manifest_text),
+        _split_documents(manifest.external_text),
+    ):
+        if list(result.diagnostics):
+            raise AssertionError(
+                f"manifest and external text of {result.name}: {list(result.diagnostics)!r}"
+            )
+    reversed_manifest, _diagnostics = dbspec_manifest(list(reversed(documents)))
+    if reversed_manifest is None:
+        raise AssertionError("the reversed set has no manifest")
+    _expect_equal(
+        reversed_manifest.manifest_hash,
+        manifest.manifest_hash,
+        "the reversed set has the manifest hash",
+    )
+    _expect_equal(
+        reversed_manifest.schema_hash,
+        manifest.schema_hash,
+        "the reversed set has the schema hash",
+    )
+
+
+# The dbspec ops whose documents are files relative to the recipe, which _dbspec_files runs.
+_DBSPEC_FILE_OPS = (
+    "dbspec.parse_emit",
+    "dbspec.manifest",
+    "dbspec.render",
+    "dbspec.analyze",
+    "dbspec.parse_positions",
+    "dbspec.format",
+    "dbspec.parse_set",
+    "dbspec.set",
+    "dbspec.read_file",
+    "dbspec.read_bytes",
+)
+
+
+def _dbspec_files(step: dict, directory: Path, database: str) -> None:
+    """Runs one dbspec op of a step through the public dbspec API and checks the result against the expect of database
+    (FCV-4). directory is the directory of the recipe: the paths of a step are relative to it."""
+    op = step["op"]
+    expect = step.get("expect", {}).get(database)
+    if expect is None:
+        raise AssertionError(f"{op} has no expect for {database}")
+    if op == "dbspec.parse_emit":
+        texts, documents = _read_documents(directory, step["documents"])
+        identical = all(emit_dbspec(d) == t for d, t in zip(documents, texts))
+        _expect_equal(identical, expect["identical"], "emit identical")
+    elif op == "dbspec.manifest":
+        _texts, documents = _read_documents(directory, step["documents"])
+        manifest, diagnostics = dbspec_manifest(documents)
+        if list(diagnostics):
+            raise AssertionError(
+                f"the document set has no manifest: {list(diagnostics)!r}"
+            )
+        if not expect.get("manifest_hash"):
+            raise AssertionError("the expect names no manifest hash")
+        _expect_equal(manifest.manifest_hash, expect["manifest_hash"], "manifest hash")
+    elif op == "dbspec.render":
+        _texts, documents = _read_documents(directory, step["documents"])
+        for dialect in ("mysql", "postgres", "sqlite"):
+            rendered = render_dbspec(documents, dialect)
+            if list(rendered["diagnostics"]):
+                raise AssertionError(f"{dialect}: {list(rendered['diagnostics'])!r}")
+            if not expect.get(dialect):
+                raise AssertionError(f"{dialect} expects no statements")
+            _expect_equal(
+                rendered["statements"], expect[dialect], f"{dialect} statements"
+            )
+    elif op == "dbspec.analyze":
+        if "document" not in step:
+            text, header_set = _inline_document(step)
+            analysis = analyze_dbspec(text, header_set)
+            tokens = [[t.line, t.start, t.end, t.token_class] for t in analysis.tokens]
+            _expect_equal(tokens, expect.get("tokens", []), "tokens")
+        else:
+            text = (directory / step["document"]).read_bytes().decode("utf-8")
+            analysis = analyze_dbspec(text, {})
+            parsed_document, positions, _diagnostics = parse_dbspec(text, {})
+            if list(analysis.diagnostics):
+                raise AssertionError(
+                    f"the analysis has a diagnostic: {list(analysis.diagnostics)!r}"
+                )
+            _expect_equal(
+                emit_dbspec(analysis.document),
+                emit_dbspec(parsed_document),
+                "the analysis holds the parsed document",
+            )
+            _expect_equal(
+                analysis.positions,
+                positions,
+                "the analysis holds the positions of the parse",
+            )
+            if not expect.get("tokens"):
+                raise AssertionError("the expect names no tokens")
+            tokens = [[t.line, t.start, t.end, t.token_class] for t in analysis.tokens]
+            _expect_equal(tokens, expect["tokens"], "tokens")
+    elif op == "dbspec.parse_positions":
+        if "document" in step:
+            text = (directory / step["document"]).read_bytes().decode("utf-8")
+            header_set = {}
+        else:
+            text, header_set = _inline_document(step)
+        _document, positions, diagnostics = parse_dbspec(text, header_set)
+        if list(diagnostics):
+            raise AssertionError(f"the document does not parse: {list(diagnostics)!r}")
+        if not expect.get("positions"):
+            raise AssertionError("the expect names no positions")
+        got = [
+            {"kind": p.kind, "path": list(p.path), "line": p.line, "column": p.column}
+            for p in positions
+        ]
+        _expect_equal(got, expect["positions"], "positions")
+    elif op == "dbspec.format":
+        if not step.get("text"):
+            raise AssertionError("dbspec.format has no text")
+        text, header_set = _inline_document(step)
+        if "diagnostics" in expect:
+            if not expect["diagnostics"]:
+                raise AssertionError("the expect names no diagnostics")
+            _check_refusal(text, header_set, expect["diagnostics"])
+            return
+        expected = "\n".join(expect["text"]) + "\n"
+        _expect_equal(_emit_stable(text, header_set), expected, "emission")
+        formatted, diagnostics = format_dbspec(text, header_set)
+        if list(diagnostics):
+            raise AssertionError(f"the text does not format: {list(diagnostics)!r}")
+        _expect_equal(formatted, expected, "formatted text")
+        _expect_equal(
+            format_dbspec(formatted, header_set)[0],
+            formatted,
+            "a formatted text is its own format",
+        )
+    elif op == "dbspec.parse_set":
+        got = parse_dbspec_set(step["owned"], step.get("external", []))
+        _expect_equal(len(got), len(expect["documents"]), "one result per text")
+        for i, (d, want) in enumerate(zip(got, expect["documents"])):
+            _expect_equal(d.name, want["name"], f"documents[{i}].name")
+            _expect_equal(d.external, want["external"], f"documents[{i}].external")
+            _expect_equal(
+                d.document is not None, want["parsed"], f"documents[{i}] parsed"
+            )
+            _expect_equal(
+                len(d.diagnostics),
+                len(want["diagnostics"]),
+                f"documents[{i}] diagnostic count",
+            )
+            for k, w in enumerate(want["diagnostics"]):
+                x = d.diagnostics[k]
+                _expect_equal(
+                    [x.rule, x.line, x.column],
+                    [w["rule"], w["line"], w["column"]],
+                    f"documents[{i}] diagnostic {k}",
+                )
+                if "message" in w:
+                    _expect_equal(
+                        x.message,
+                        w["message"],
+                        f"documents[{i}] diagnostic {k} message",
+                    )
+    elif op in ("dbspec.read_file", "dbspec.read_bytes"):
+        want = expect.get("errors", [])
+        path = directory / step["path"]
+        if op == "dbspec.read_file":
+            name = str(path)
+            text, diagnostics = read_dbspec_file(name)
+        else:
+            name = step["path"]
+            text, diagnostics = read_dbspec_bytes(name, path.read_bytes())
+        if want:
+            _expect_equal(text, None, "the reader returned text with diagnostics")
+            _expect_equal(len(diagnostics), len(want), "diagnostic count")
+            for i, d in enumerate(diagnostics):
+                _expect_equal(d.message, name + _FILE_MESSAGES[d.rule], f"message {i}")
+                _expect_equal(
+                    [d.rule, d.line, d.column],
+                    [want[i]["rule"], want[i]["line"], want[i]["column"]],
+                    f"diagnostic {i}",
+                )
+            return
+        if list(diagnostics):
+            raise AssertionError(
+                f"the reader returns diagnostics: {list(diagnostics)!r}"
+            )
+        _expect_equal(
+            text,
+            path.read_bytes().decode("utf-8"),
+            "the reader text differs from the file bytes",
+        )
+        _expect_equal(_emit_stable(text, {}), text, "emission")
+    elif op == "dbspec.set":
+        _set(step, expect)
+    else:
+        raise AssertionError(f"OP_UNKNOWN {op}")
 
 
 def _validation_model(schema: Path):

@@ -126,10 +126,6 @@
       "kind": "policy",
       "reason": "the TypeScript port of the Python comment tokenizer (KSTD-5-21), which the comments check runs; the repository has no Python tool, and no ecosystem tool reads the comments of Python sources as this repository does"
     },
-    "scripts/dbspec/syntax-vectors.mts": {
-      "kind": "policy",
-      "reason": "writes the token vectors of the dbspec cases from the TypeScript analyzer, so every implementation of the dbspec language is held to them; no ecosystem tool knows dbspec"
-    },
     "scripts/decimal-bench-sqlite.mts": {
       "kind": "policy",
       "reason": "prepares the exact-decimal SQLite bench database of this repository under its lease"

@@ -26,8 +26,7 @@
         "packages/php/tests/bootstrap.php",
         "packages/php-ext/tests/bootstrap.php",
         "packages/php-ext/tests/DeclarationsTest.php",
-        "packages/php-ext/tests/declarations_functions.php",
-        "Makefile"
+        "packages/php-ext/tests/declarations_functions.php"
       ]
     },
     "collection-get-phpstan-check": {
@@ -2276,8 +2275,7 @@
       "inputs": [
         "Makefile",
         "packages/php/tests/DbspecIntrospectTest.php",
-        "packages/php/tests/DbspecCatalogChecksTest.php",
-        "packages/php/tests/dbspec_cases.php"
+        "packages/php/tests/DbspecCatalogChecksTest.php"
       ]
     },
     "dbspec-introspect-php-extension-check": {
@@ -2291,7 +2289,6 @@
       ],
       "inputs": [
         "packages/php/tests/DbspecIntrospectTest.php",
-        "packages/php/tests/dbspec_cases.php",
         "packages/php-ext/src/introspect.c"
       ]
     },
@@ -2773,10 +2770,14 @@
         "packages/dbspec-language/**",
         "packages/ts/src/dbspec/**",
         "packages/ts/tsconfig.build.json",
-        "tests/dbspec/cases.json",
-        "tests/dbspec/cases.mts",
+        "tests/dbspec/hashes.json",
+        "tests/dbspec/sets.json",
+        "tests/dbspec/canonical.json",
+        "tests/dbspec/normalize.json",
+        "tests/dbspec/invalid.json",
+        "tests/dbspec/positions.json",
+        "tests/dbspec/files.json",
         "tests/dbspec/schema/**",
-        "tests/dbspec/syntax.json",
         "tests/editor/**",
         "scripts/typescript/build.mts"
       ]
@@ -2792,8 +2793,7 @@
       "inputs": [
         "packages/php/tests/DbspecPlanApplyTest.php",
         "packages/php/tests/DbspecPlanReaderTest.php",
-        "packages/php/tests/dbspec_plan_cases.php",
-        "packages/php/tests/dbspec_cases.php"
+        "packages/php/tests/dbspec_plan_cases.php"
       ]
     },
     "dbspec-php-check/set": {
@@ -2818,7 +2818,6 @@
       "inputs": [
         "packages/php/tests/DbspecRenderTest.php",
         "packages/php/tests/DbspecTimedCases.php",
-        "packages/php/tests/dbspec_cases.php",
         "tests/dbspec/ddl.json"
       ]
     },
@@ -2832,7 +2831,6 @@
       ],
       "inputs": [
         "packages/php/tests/DbspecApplyTest.php",
-        "packages/php/tests/dbspec_cases.php",
         "tests/dbspec/stress.mts"
       ]
     },
@@ -2865,8 +2863,14 @@
         "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
         "packages/php-ext/tests/bootstrap.php",
         "packages/php-ext/src/**",
-        "tests/dbspec/cases.json",
-        "contracts/fixtures/schema_definition.json",
+        "tests/dbspec/hashes.json",
+        "tests/dbspec/sets.json",
+        "tests/dbspec/canonical.json",
+        "tests/dbspec/normalize.json",
+        "tests/dbspec/invalid.json",
+        "tests/dbspec/positions.json",
+        "tests/dbspec/files.json",
+        "tests/dbspec/schema-definition.json",
         "packages/php-ext/tests/DbspecStressCanonicalNativeTest.php",
         "packages/php/tests/DbspecStressTestSupport.php",
         "tests/dbspec/stress.mts"
@@ -3290,7 +3294,6 @@
       ],
       "inputs": [
         "packages/php/tests/DbspecApplyTest.php",
-        "packages/php/tests/dbspec_cases.php",
         "packages/php-ext/src/apply.c",
         "tests/dbspec/stress.mts"
       ]
@@ -3638,7 +3641,13 @@
         "packages/python/testing/interfaces/python.py",
         "packages/python/testing/conformance/runner_python.py",
         "tests/dbspec/show-create.json",
-        "tests/dbspec/cases.json",
+        "tests/dbspec/hashes.json",
+        "tests/dbspec/sets.json",
+        "tests/dbspec/canonical.json",
+        "tests/dbspec/normalize.json",
+        "tests/dbspec/invalid.json",
+        "tests/dbspec/positions.json",
+        "tests/dbspec/files.json",
         "contracts/fixtures/planner.json",
         "tests/planner/compile.json",
         "tests/ir/validate.json",

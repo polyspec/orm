@@ -1,0 +1,158 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "DBS-4",
+    "DBS-155",
+    "DBS-171"
+  ],
+  "cases": [
+    {
+      "id": "dbschema-project",
+      "requirements": [
+        "DBS-4",
+        "DBS-155",
+        "DBS-171"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.read_file",
+          "path": "files/dbschema.dbs",
+          "expect": {
+            "none": {
+              "errors": [
+                {
+                  "line": 1,
+                  "column": 1,
+                  "rule": "signature"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "op": "dbspec.read_bytes",
+          "path": "files/dbschema.dbs",
+          "expect": {
+            "none": {
+              "errors": [
+                {
+                  "line": 1,
+                  "column": 1,
+                  "rule": "signature"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "empty-file",
+      "requirements": [
+        "DBS-4",
+        "DBS-155",
+        "DBS-171"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.read_file",
+          "path": "files/empty.dbs",
+          "expect": {
+            "none": {
+              "errors": [
+                {
+                  "line": 1,
+                  "column": 1,
+                  "rule": "signature"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "op": "dbspec.read_bytes",
+          "path": "files/empty.dbs",
+          "expect": {
+            "none": {
+              "errors": [
+                {
+                  "line": 1,
+                  "column": 1,
+                  "rule": "signature"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "invalid-utf8-file",
+      "requirements": [
+        "DBS-4",
+        "DBS-155",
+        "DBS-171"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.read_file",
+          "path": "files/invalid-utf8.dbs",
+          "expect": {
+            "none": {
+              "errors": [
+                {
+                  "line": 3,
+                  "column": 8,
+                  "rule": "encoding"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "op": "dbspec.read_bytes",
+          "path": "files/invalid-utf8.dbs",
+          "expect": {
+            "none": {
+              "errors": [
+                {
+                  "line": 3,
+                  "column": 8,
+                  "rule": "encoding"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "document-file",
+      "requirements": [
+        "DBS-4",
+        "DBS-155",
+        "DBS-171"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.read_file",
+          "path": "files/shop.dbs",
+          "expect": {
+            "none": {
+              "errors": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.read_bytes",
+          "path": "files/shop.dbs",
+          "expect": {
+            "none": {
+              "errors": []
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
