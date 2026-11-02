@@ -100,34 +100,15 @@ function dbspec_syntax_join(array $lines, bool $crlf, bool $mixed = false): stri
 }
 
 /**
- * The analyses the vectors need, in the order of the generator: the canonical, normalize and invalid cases, then the
- * sets documents and the hashes documents. Each is [id, text, documents], the documents being the other documents.
+ * The analyses the vectors need, in the order of the generator: the sets documents and the hashes documents
+ * (the canonical, normalize and invalid cases are syntax inputs of their recipes, tests/dbspec/*.json).
+ * Each is [id, text, documents], the documents being the other documents.
  *
  * @return list<array{0:string,1:string,2:array<string,string>}>
  */
 function dbspec_syntax_inputs(array $cases): array
 {
     $inputs = [];
-    foreach (['canonical', 'normalize', 'invalid'] as $section) {
-        foreach ($cases[$section] as $c) {
-            if (!isset($c['documents'][$c['main']])) {
-                throw new RuntimeException("$section/{$c['id']}: the main document {$c['main']} is missing");
-            }
-            $crlf = ($c['crlf'] ?? false) === true;
-            $mixed = ($c['mixed'] ?? false) === true;
-            $documents = [];
-            foreach ($c['documents'] as $name => $lines) {
-                if ($name !== $c['main']) {
-                    $documents[$name] = dbspec_syntax_join($lines, $crlf, $mixed);
-                }
-            }
-            $inputs[] = [
-                "$section.{$c['id']}",
-                dbspec_syntax_join($c['documents'][$c['main']], $crlf, $mixed),
-                $documents
-            ];
-        }
-    }
     foreach ($cases['sets'] as $c) {
         foreach ($c['documents'] as $i => $lines) {
             $documents = [];

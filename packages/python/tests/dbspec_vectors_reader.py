@@ -81,7 +81,13 @@ def problems(error):
 def refusals(value, kind, name):
     """The refusals of a parsed vector file by the schema tests/dbspec/schema/<kind>.schema.json, each
     "<name>: <location> <problem>"; none when the schema accepts it."""
-    with open(SCHEMAS / f"{kind}.schema.json", encoding="utf-8") as handle:
+    return schema_refusals(value, SCHEMAS / f"{kind}.schema.json", name)
+
+
+def schema_refusals(value, schema, name):
+    """The refusals of a parsed file by the JSON Schema at the path schema, each "<name>: <location> <problem>"; none when
+    the schema accepts it."""
+    with open(schema, encoding="utf-8") as handle:
         validator = jsonschema_rs.validator_for(json.load(handle))
     lines = []
     for error in validator.iter_errors(value):
@@ -96,6 +102,14 @@ def refusals(value, kind, name):
 def check_vectors(value, kind, name):
     """Checks a parsed vector file against the schema kind and returns it; a refusal raises a VectorError."""
     lines = refusals(value, kind, name)
+    if lines:
+        raise VectorError("\n".join(lines))
+    return value
+
+
+def check_schema(value, schema, name):
+    """Checks a parsed file against the JSON Schema at the path schema and returns it; a refusal raises a VectorError."""
+    lines = schema_refusals(value, schema, name)
     if lines:
         raise VectorError("\n".join(lines))
     return value

@@ -1,25 +1,21 @@
-# The checks of the shared dbspec cases of tests/dbspec/cases.json (the same checks as the dbspec tests of the other
-# clients) and the unit tests of the parse positions. Each section of cases.json runs from its own module,
-# test_dbspec_<section>.py, one test for each case of that section only, named by the case id.
+# The checks of the shared dbspec cases that remain in tests/dbspec/cases.json (the same checks as the dbspec tests of the
+# other clients): the manifest hashes and the document sets. Each section runs from its own module, test_dbspec_<section>.py,
+# one test for each case of that section, named by the case id. The document cases (canonical, normalize, invalid,
+# positions, files and set-parse) run from their recipes (recipe_<section>.py), and the unit tests of the parse positions
+# are here too.
 # Run: python -m packages.python.tests.dbspec_cases
 import dataclasses
 import unittest
-from pathlib import Path
 
 
 from polyspec.orm.dbspec import (
     DbspecPosition,
     dbspec_manifest,
-    emit_dbspec,
-    format_dbspec,
     parse_dbspec,
-    read_dbspec_file,
 )
 from polyspec.orm.engine.model import RuntimeModel
 from polyspec.orm.errors import OrmError
 from . import testcase
-
-ROOT = Path(__file__).resolve().parents[3]
 
 
 def text_of(case, lines, as_input: bool = True) -> str:
@@ -45,83 +41,9 @@ def documents_of(case) -> dict:
     return {name: text_of(case, lines) for name, lines in case["documents"].items()}
 
 
-def others_of(case, documents: dict) -> dict:
-    return {k: v for k, v in documents.items() if k != case["main"]}
-
-
 def check_failures(test: unittest.TestCase, failures: list) -> None:
     if failures:
         test.fail("\n".join(failures))
-
-
-def format_failures(case, expected: str) -> list:
-    """format is emit(parse): the case formats to its canonical text, and formatting twice changes nothing."""
-    documents = documents_of(case)
-    others = others_of(case, documents)
-    formatted, diagnostics = format_dbspec(documents[case["main"]], others)
-    if formatted is None:
-        return [f"{case['id']}: refused {error_lines(diagnostics)}"]
-    failures = []
-    if formatted != expected:
-        failures.append(
-            f"{case['id']}: format differs\n--- want\n{expected}\n--- got\n{formatted}"
-        )
-    again, _ = format_dbspec(formatted, others)
-    if again != formatted:
-        failures.append(f"{case['id']}: format is not idempotent")
-    return failures
-
-
-def emit_failures(case, expected: str) -> list:
-    documents = documents_of(case)
-    document, _positions, diagnostics = parse_dbspec(
-        documents[case["main"]], others_of(case, documents)
-    )
-    if document is None:
-        return [f"{case['id']}: parse {error_lines(diagnostics)}"]
-    emitted = emit_dbspec(document)
-    if emitted != expected:
-        return [f"{case['id']}: emit differs\n--- want\n{expected}\n--- got\n{emitted}"]
-    return []
-
-
-def check_canonical(test: unittest.TestCase, case) -> None:
-    expected = documents_of(case)[case["main"]]
-    check_failures(
-        test, emit_failures(case, expected) + format_failures(case, expected)
-    )
-
-
-def check_normalize(test: unittest.TestCase, case) -> None:
-    expected = text_of(case, case["canonical"], as_input=False)
-    check_failures(
-        test, emit_failures(case, expected) + format_failures(case, expected)
-    )
-
-
-def check_invalid(test: unittest.TestCase, case) -> None:
-    failures = []
-    documents = documents_of(case)
-    others = others_of(case, documents)
-    expected = [(e["line"], e["column"], e["rule"]) for e in case["errors"]]
-    document, _positions, diagnostics = parse_dbspec(documents[case["main"]], others)
-    if document is not None:
-        failures.append(f"{case['id']}: parsed an invalid document")
-    else:
-        found = [(d.line, d.column, d.rule) for d in diagnostics]
-        if found != expected:
-            failures.append(
-                f"{case['id']}: want {expected} got {found} "
-                f"({error_lines(diagnostics)})"
-            )
-    # format refuses an invalid case with its diagnostics.
-    formatted, diagnostics = format_dbspec(documents[case["main"]], others)
-    found = [(d.line, d.column, d.rule) for d in diagnostics]
-    if formatted is not None or found != expected:
-        failures.append(
-            f"{case['id']}: want refusal {expected} got {formatted!r} {found}"
-        )
-    check_failures(test, failures)
 
 
 def check_hashes(test: unittest.TestCase, case) -> None:
@@ -224,29 +146,6 @@ def check_sets(test: unittest.TestCase, case) -> None:
                     f"{value}\n--- got\n{getattr(manifest, field)}"
                 )
     check_failures(test, failures)
-
-
-def check_positions(test: unittest.TestCase, case) -> None:
-    want = [
-        (p["kind"], tuple(p["path"]), p["line"], p["column"]) for p in case["positions"]
-    ]
-    documents = documents_of(case)
-    document, positions, diagnostics = parse_dbspec(
-        documents[case["main"]], others_of(case, documents)
-    )
-    if document is None:
-        test.fail(f"{case['id']}: parse {error_lines(diagnostics)}")
-    found = [(p.kind, p.path, p.line, p.column) for p in positions]
-    if found != want:
-        test.fail(f"{case['id']}: positions want\n{want}\n--- got\n{found}")
-
-
-def check_files(test: unittest.TestCase, case) -> None:
-    text, diagnostics = read_dbspec_file(str(ROOT / "tests" / "dbspec" / case["path"]))
-    found = [(d.line, d.column, d.rule) for d in diagnostics]
-    expected = [(e["line"], e["column"], e["rule"]) for e in case["errors"]]
-    if found != expected:
-        test.fail(f"{case['id']}: want {expected} got {found}")
 
 
 class DbspecPositionTest(unittest.TestCase):

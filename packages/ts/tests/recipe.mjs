@@ -10,8 +10,8 @@ import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { Db, OrmError, StyledValue, blindIndex, connectCatalog, dbspecManifest, decode, emitDbspec, encode, hostDecode, hostEncode, parseDbspec, readDbspecFile, registerModel, renderDbspec } from '../dist/index.js';
-import { analyzeDbspec, formatDbspec } from '../dist/dbspec/entry.js';
+import { Db, OrmError, StyledValue, blindIndex, connectCatalog, dbspecManifest, decode, emitDbspec, encode, hostDecode, hostEncode, parseDbspec, parseDbspecSet as parseDbspecSetNode, readDbspecFile, registerModel, renderDbspec } from '../dist/index.js';
+import { analyzeDbspec, formatDbspec, parseDbspecSet, readDbspecBytes } from '../dist/dbspec/entry.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { withCaseDatabase } from './case-database.mjs';
@@ -565,6 +565,50 @@ async function readDocuments(dir, paths) {
   return { texts, documents };
 }
 
+// joinText joins lines with LF, or with CRLF when crlf is set, with a final line ending. A mixed document starts with CRLF,
+// alternates CRLF and LF from its second line, and has no final line ending.
+function joinText(lines, crlf, mixed) {
+  if (mixed) return lines.map((line, i) => (i === 0 ? '' : i % 2 === 1 ? '\r\n' : '\n') + line).join('');
+  const end = crlf ? '\r\n' : '\n';
+  return lines.join(end) + end;
+}
+
+// inlineDocument returns the text of a step and the set of its other documents, joined with the step's line endings.
+function inlineDocument(step) {
+  const crlf = step.crlf === true;
+  const mixed = step.mixed === true;
+  const set = {};
+  for (const [name, lines] of Object.entries(step.set ?? {})) set[name] = joinText(lines, crlf, mixed);
+  return { text: joinText(step.text, crlf, mixed), set };
+}
+
+// emitStable parses text with the set, emits it, and checks that the emission parses and emits to itself.
+function emitStable(text, set) {
+  const parsed = parseDbspec(text, set);
+  assert.deepEqual(parsed.diagnostics, [], 'the text parses');
+  const first = emitDbspec(parsed.document);
+  const again = parseDbspec(first, set);
+  assert.deepEqual(again.diagnostics, [], 'the emission parses');
+  assert.equal(emitDbspec(again.document), first, 'the emission is idempotent');
+  return first;
+}
+
+// checkRefusal checks that parse refuses text with exactly the diagnostics of want, and that format returns no text
+// and the same diagnostics.
+function checkRefusal(text, set, want) {
+  const parsed = parseDbspec(text, set);
+  assert.ok(!parsed.document, 'Parse returned a document for an invalid source');
+  const formatted = formatDbspec(text, set);
+  assert.equal(formatted.text, null, 'a document with a diagnostic is not rewritten');
+  for (const got of [parsed.diagnostics, formatted.diagnostics]) {
+    assert.deepEqual(got.map(d => ({ rule: d.rule, line: d.line, column: d.column })), want, 'diagnostics');
+    for (const d of got) assert.ok(d.message, `diagnostic ${d.rule} has no message`);
+  }
+}
+
+// FILE_MESSAGES is the suffix of the message of each file rule, after the name of the file.
+const FILE_MESSAGES = { signature: ' is not a dbspec document', encoding: ' is not valid UTF-8' };
+
 // checkDbspec runs one dbspec op of a step through the public dbspec API and checks the result against the expect of database.
 // dir is the directory of the recipe: the paths of a step are relative to it (FCV-4).
 async function checkDbspec(step, dir, database) {
@@ -596,6 +640,12 @@ async function checkDbspec(step, dir, database) {
       break;
     }
     case 'dbspec.analyze': {
+      if (step.document === undefined) {
+        const { text, set } = inlineDocument(step);
+        const analysis = analyzeDbspec(text, set);
+        assert.deepEqual(analysis.tokens.map(t => [t.line, t.start, t.end, t.class]), expect.tokens ?? [], 'tokens');
+        break;
+      }
       const text = await readFile(resolve(dir, step.document), 'utf8');
       const analysis = analyzeDbspec(text, {});
       const parsed = parseDbspec(text, {});
@@ -607,8 +657,8 @@ async function checkDbspec(step, dir, database) {
       break;
     }
     case 'dbspec.parse_positions': {
-      const text = await readFile(resolve(dir, step.document), 'utf8');
-      const parsed = parseDbspec(text, {});
+      const { text, set } = step.document === undefined ? inlineDocument(step) : { text: await readFile(resolve(dir, step.document), 'utf8'), set: {} };
+      const parsed = parseDbspec(text, set);
       assert.deepEqual(parsed.diagnostics, [], 'the document parses');
       assert.ok(expect.positions?.length > 0, 'the expect names positions');
       assert.deepEqual(parsed.positions.map(p => ({ kind: p.kind, path: [...p.path], line: p.line, column: p.column })), expect.positions, 'positions');
@@ -616,16 +666,64 @@ async function checkDbspec(step, dir, database) {
     }
     case 'dbspec.format': {
       assert.ok(step.text?.length > 0, 'dbspec.format has no text');
-      const formatted = formatDbspec(`${step.text.join('\n')}\n`, {});
+      const { text, set } = inlineDocument(step);
       if (expect.diagnostics !== undefined) {
-        assert.equal(formatted.text, null, 'a document with a diagnostic is not rewritten');
         assert.ok(expect.diagnostics.length > 0, 'the expect names diagnostics');
-        assert.deepEqual(formatted.diagnostics.map(d => ({ rule: d.rule, line: d.line, column: d.column })), expect.diagnostics, 'diagnostics');
+        checkRefusal(text, set, expect.diagnostics);
         break;
       }
+      const expected = `${expect.text.join('\n')}\n`;
+      assert.equal(emitStable(text, set), expected, 'emission');
+      const formatted = formatDbspec(text, set);
       assert.deepEqual(formatted.diagnostics, [], 'the text formats');
-      assert.equal(formatted.text, `${expect.text.join('\n')}\n`, 'formatted text');
-      assert.equal(formatDbspec(formatted.text, {}).text, formatted.text, 'a formatted text is its own format');
+      assert.equal(formatted.text, expected, 'formatted text');
+      assert.equal(formatDbspec(formatted.text, set).text, formatted.text, 'a formatted text is its own format');
+      break;
+    }
+    case 'dbspec.parse_set': {
+      // The Node entry and the browser-safe entry both parse the set, and each must give the expected documents.
+      for (const [entry, parse] of [['node', parseDbspecSetNode], ['browser', parseDbspecSet]]) {
+        const got = parse(step.owned, step.external ?? []);
+        assert.equal(got.length, expect.documents.length, `${entry}: one result per text`);
+        got.forEach((d, i) => {
+          const want = expect.documents[i];
+          assert.equal(d.name ?? '', want.name, `${entry}: documents[${i}].name`);
+          assert.equal(d.external, want.external, `${entry}: documents[${i}].external`);
+          assert.equal(d.document !== null, want.parsed, `${entry}: documents[${i}] parsed`);
+          assert.equal(d.diagnostics.length, want.diagnostics.length, `${entry}: documents[${i}] diagnostic count`);
+          want.diagnostics.forEach((w, k) => {
+            const x = d.diagnostics[k];
+            assert.deepEqual([x.rule, x.line, x.column], [w.rule, w.line, w.column], `${entry}: documents[${i}] diagnostic ${k}`);
+            if (w.message !== undefined) assert.equal(x.message, w.message, `${entry}: documents[${i}] diagnostic ${k} message`);
+          });
+        });
+      }
+      break;
+    }
+    case 'dbspec.read_file':
+    case 'dbspec.read_bytes': {
+      const want = expect.errors ?? [];
+      const path = resolve(dir, step.path);
+      let name = path;
+      let read;
+      if (step.op === 'dbspec.read_file') read = readDbspecFile(path);
+      else {
+        name = step.path;
+        read = readDbspecBytes(name, readFileSync(path));
+      }
+      const { text, diagnostics } = read;
+      if (want.length > 0) {
+        assert.equal(text, null, 'the reader returned text with diagnostics');
+        assert.equal(diagnostics.length, want.length, 'diagnostic count');
+        diagnostics.forEach((d, i) => {
+          assert.equal(d.message, name + FILE_MESSAGES[d.rule], `message ${i}`);
+          assert.deepEqual([d.rule, d.line, d.column], [want[i].rule, want[i].line, want[i].column], `diagnostic ${i}`);
+        });
+        break;
+      }
+      assert.deepEqual(diagnostics, [], 'no diagnostic');
+      assert.equal(text, readFileSync(path, 'utf8'), 'the reader text differs from the file bytes');
+      assert.equal(emitStable(text, {}), text, 'emission');
       break;
     }
     default:

@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1c5994480a28ecc5a2bd6f96813060f58afb9ae487fe4a294f1080bf6df0875a -->
+<!-- source-sha256: 47f50404ead9b78c1899ac02f97c1e751802258600a5b35be03ae30f91e3965d -->
 # 변경 이력
 
 ## Unreleased
@@ -67,6 +67,7 @@
 - 물리 DDL 동작과 IR 검증 recipe의 test 파일 여섯 개가 어떤 feature에도 속하지 않아 features 검사가 여섯 CI job에서 실패했다. 물리 DDL test는 이제 schema_definition에, IR 검증 test는 planner에 속한다 (CR54).
 - DbspecRenderTest의 preempted 검사는 main CI run 41324077414의 test (feature_verify_other) job에서 DSN 오류 아홉 개로 실패했다. 데이터베이스 DSN 없이 파일 전체를 실행했기 때문이다. testBehaviourPhysical(CR16-1-3)은 이제 group database에 속하고 preempted 실행은 그 group을 제외한다. 물리 케이스는 dbspec-php-check/render에서 여전히 실행된다 (CR55).
 - schema_definition 벡터는 하나의 사본을 유지하도록 tests/dbspec/schema-definition.json recipe로 옮겼고, FCV-4의 여섯 op(dbspec.parse_emit, dbspec.manifest, dbspec.render, dbspec.analyze, dbspec.parse_positions, dbspec.format)이 여섯 runtime 모두에서 이를 실행한다. 네이티브 벡터 테스트는 제거했다. manifest 케이스는 벡터 파일을 두 행에 나누면 사본이 둘이 되므로 T334-3-18-3이 아니라 이 행에서 옮겼다 (T334-3-18-1)
+- DB를 읽지 않는 dbspec suite의 parse vector(canonical, normalize, invalid, positions, set-parse와 byte-order-mark)는 tests/dbspec의 recipe case가 되었고, 여섯 runtime이 FCV-4의 op format, parse_positions, analyze, parse_set으로 실행한다. 대체된 native vector test는 제거했고, cases.json과 syntax.json의 각 datum은 사본을 하나만 둔다 (T334-3-18-2).
 
 ## 0.0.21
 

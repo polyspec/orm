@@ -2,8 +2,7 @@
 //! jsonschema crate, the schemas that the TypeScript runner reads them with (tests/dbspec/vectors.mts). A refused file
 //! is reported in the form that every compare runner shares (tests/dbspec/compare/runners.test.mts): one
 //! "<file>: <location> <problem>" line per refusal, where the location is the dotted path of the value
-//! (`canonical[0].documents.shop`). tests/dbspec/cases.json is read against its schema, and check_cases also refuses a
-//! case whose main document is not one of its documents, which the schema cannot state. The tests and the
+//! (`sets[0].manifest.extra`). tests/dbspec/cases.json is read against its schema. The tests and the
 //! dbspec_compare example include this file.
 
 use jsonschema::error::{TypeKind, ValidationErrorKind};
@@ -80,6 +79,7 @@ fn schema_text(kind: &str) -> Result<&'static str, String> {
         "plans" => Ok(include_str!("../../../../../tests/dbspec/schema/plans.schema.json")),
         "mermaid" => Ok(include_str!("../../../../../tests/dbspec/schema/mermaid.schema.json")),
         "syntax" => Ok(include_str!("../../../../../tests/dbspec/schema/syntax.schema.json")),
+        "recipe" => Ok(include_str!("../../../../../scripts/features/schema/recipe.schema.json")),
         other => Err(format!("tests/dbspec/schema has no schema {other}")),
     }
 }
@@ -87,7 +87,11 @@ fn schema_text(kind: &str) -> Result<&'static str, String> {
 /// Checks the parsed vector file `value` against the schema tests/dbspec/schema/`kind`.schema.json; a refusal is an
 /// error holding one "<name>: <location> <problem>" line per problem.
 pub fn check_vectors(value: &Value, kind: &str, name: &str) -> Result<(), String> {
-    let place = format!("tests/dbspec/schema/{kind}.schema.json");
+    let place = if kind == "recipe" {
+        "scripts/features/schema/recipe.schema.json".to_string()
+    } else {
+        format!("tests/dbspec/schema/{kind}.schema.json")
+    };
     let schema: Value = serde_json::from_str(schema_text(kind)?).map_err(|e| format!("{place}: {e}"))?;
     let validator = jsonschema::validator_for(&schema).map_err(|e| format!("{place}: {e}"))?;
     let mut lines: Vec<String> = Vec::new();
@@ -106,16 +110,8 @@ pub fn check_vectors(value: &Value, kind: &str, name: &str) -> Result<(), String
     }
 }
 
-/// Checks the parsed cases.json `value`; `name` names the file in the errors.
+/// Checks the parsed cases.json `value`; `name` names the file in the errors. cases.json keeps the hashes and the sets; the
+/// document cases are in the recipes.
 pub fn check_cases(value: &Value, name: &str) -> Result<(), String> {
-    check_vectors(value, "cases", name)?;
-    for section in ["canonical", "normalize", "invalid", "positions"] {
-        for (i, case) in value[section].as_array().into_iter().flatten().enumerate() {
-            let main = case["main"].as_str().unwrap_or_default();
-            if !case["documents"].as_object().is_some_and(|documents| documents.contains_key(main)) {
-                return Err(format!("{name}: {section}[{i}].documents.{main} is missing"));
-            }
-        }
-    }
-    Ok(())
+    check_vectors(value, "cases", name)
 }

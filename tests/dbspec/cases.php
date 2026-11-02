@@ -12,13 +12,6 @@ declare(strict_types=1);
 function dbspec_check_cases(stdClass $value, string $name = 'tests/dbspec/cases.json'): void
 {
     dbspec_check_vectors($value, 'cases', $name);
-    foreach (['canonical', 'normalize', 'invalid', 'positions'] as $section) {
-        foreach ($value->$section as $i => $case) {
-            if (!property_exists($case->documents, $case->main)) {
-                throw new RuntimeException("$name: {$section}[$i].documents.{$case->main} is missing");
-            }
-        }
-    }
 }
 
 /**

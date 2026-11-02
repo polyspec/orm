@@ -179,13 +179,8 @@ fn named_documents(path: &str, value: Option<&Value>, location: &str) -> Result<
 /// that the format does not name, is refused.
 fn read_cases(path: &str) -> Result<SharedCases, String> {
     let v = open(path, "cases")?;
-    let test_case = |case: &Value| TestCase {
-        id: string(&case["id"]),
-        main: string(&case["main"]),
-        documents: documents(&case["documents"]),
-        crlf: case.get("crlf").is_some_and(|flag| flag.as_bool().expect(DECLARED)),
-        mixed: case.get("mixed").is_some_and(|flag| flag.as_bool().expect(DECLARED)),
-    };
+    let dir = Path::new(path).parent().unwrap_or(Path::new(""));
+    let at = |name: &str| dir.join(name).display().to_string();
     let mut sets = Vec::new();
     for (i, case) in list(&v["sets"]).iter().enumerate() {
         sets.push(SetCase {
@@ -196,17 +191,70 @@ fn read_cases(path: &str) -> Result<SharedCases, String> {
         });
     }
     Ok(SharedCases {
-        canonical: list(&v["canonical"]).iter().map(test_case).collect(),
-        normalize: list(&v["normalize"]).iter().map(test_case).collect(),
-        invalid: list(&v["invalid"]).iter().map(test_case).collect(),
+        canonical: read_recipe(&at("canonical.json"), "dbspec.format")?,
+        normalize: read_recipe(&at("normalize.json"), "dbspec.format")?,
+        invalid: read_recipe(&at("invalid.json"), "dbspec.format")?,
         hashes: list(&v["hashes"]).iter().map(hash_case).collect(),
-        files: list(&v["files"]).iter().map(|case| FileCase { id: string(&case["id"]), path: string(&case["path"]) }).collect(),
+        files: read_files(&at("files.json"))?,
         sets,
-        positions: list(&v["positions"])
-            .iter()
-            .map(|case| PositionCase { id: string(&case["id"]), main: string(&case["main"]), documents: documents(&case["documents"]) })
+        positions: read_recipe(&at("positions.json"), "dbspec.parse_positions")?
+            .into_iter()
+            .map(|case| PositionCase { id: case.id, main: case.main, documents: case.documents })
             .collect(),
     })
+}
+
+/// Reads a recipe file of tests/dbspec against the recipe schema (scripts/features/schema/recipe.schema.json).
+fn open_recipe(path: &str) -> Result<Value, String> {
+    let text = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
+    let value: Value = serde_json::from_str(&text).map_err(|e| format!("{path}: {e}"))?;
+    dbspec_cases::check_vectors(&value, "recipe", path)?;
+    Ok(value)
+}
+
+/// Gives each case of a recipe file with its step of `op`: the main document is the step's text, named "main", beside
+/// the other documents of its set (the set of the step), and the line ends of the step.
+fn read_recipe(path: &str, op: &str) -> Result<Vec<TestCase>, String> {
+    let value = open_recipe(path)?;
+    let mut cases = Vec::new();
+    for (i, case) in list(&value["cases"]).iter().enumerate() {
+        let step = list(&case["steps"])
+            .iter()
+            .find(|step| step["op"] == op)
+            .ok_or_else(|| fail(path, &format!("cases[{i}].steps"), &format!("has no {op} step")))?;
+        let mut documents: Documents = BTreeMap::new();
+        documents.insert("main".to_string(), step.get("text").map(lines).unwrap_or_default());
+        if let Some(set) = step.get("set") {
+            for (name, item) in set.as_object().expect(DECLARED) {
+                if name == "main" {
+                    return Err(fail(path, &format!("cases[{i}].steps"), "names a document main, which is the main document"));
+                }
+                documents.insert(name.clone(), lines(item));
+            }
+        }
+        cases.push(TestCase {
+            id: string(&case["id"]),
+            main: "main".to_string(),
+            documents,
+            crlf: step.get("crlf").is_some_and(|flag| flag.as_bool().expect(DECLARED)),
+            mixed: step.get("mixed").is_some_and(|flag| flag.as_bool().expect(DECLARED)),
+        });
+    }
+    Ok(cases)
+}
+
+/// Gives the files cases of tests/dbspec/files.json: each names the file of its dbspec.read_file step by its path.
+fn read_files(path: &str) -> Result<Vec<FileCase>, String> {
+    let value = open_recipe(path)?;
+    let mut files = Vec::new();
+    for (i, case) in list(&value["cases"]).iter().enumerate() {
+        let step = list(&case["steps"])
+            .iter()
+            .find(|step| step["op"] == "dbspec.read_file")
+            .ok_or_else(|| fail(path, &format!("cases[{i}].steps"), "has no dbspec.read_file step"))?;
+        files.push(FileCase { id: string(&case["id"]), path: string(&step["path"]) });
+    }
+    Ok(files)
 }
 
 /// The case ids of tests/dbspec/syntax.json in file order. The expected
@@ -742,6 +790,14 @@ fn run(cases_path: &str, stress_path: &str, ddl_path: &str, plans_path: &str, me
     write_positions(&mut out, &cases.positions).map_err(io)?;
     let ids = read_syntax(syntax_path)?;
     let inputs = syntax_inputs(&cases);
+    // The recipe documents come first, in the order canonical, normalize, invalid, then the cases of syntax.json.
+    for (kind, list) in [("canonical", &cases.canonical), ("normalize", &cases.normalize), ("invalid", &cases.invalid)] {
+        for case in list {
+            let id = format!("{kind}.{}", case.id);
+            let (text, set) = &inputs[&id];
+            write_syntax(&mut out, &id, text, set).map_err(io)?;
+        }
+    }
     for (i, id) in ids.iter().enumerate() {
         let (text, set) = inputs.get(id).ok_or_else(|| fail(syntax_path, &format!("cases[{i}].id"), "names no input of the shared cases"))?;
         write_syntax(&mut out, id, text, set).map_err(io)?;

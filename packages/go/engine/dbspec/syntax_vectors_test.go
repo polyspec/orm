@@ -93,30 +93,13 @@ func loadSyntaxVectors(t *testing.T) map[string][]Token {
 	return out
 }
 
-// syntaxInputs lists the analyses of tests/dbspec/syntax.json as its generator
-// builds them (scripts/dbspec/syntax-vectors.mts, vectorInputs).
+// syntaxInputs lists the analyses of the sets and hashes of tests/dbspec/syntax.json as its generator
+// builds them (scripts/dbspec/syntax-vectors.mts, vectorInputs). The canonical, normalize and invalid tokens are
+// analyze steps of the recipes in tests/dbspec.
 func syntaxInputs(t *testing.T) []syntaxInput {
 	t.Helper()
 	vectors := loadVectors(t)
 	var inputs []syntaxInput
-	for _, section := range []struct {
-		name  string
-		cases []vectorCase
-	}{{"canonical", vectors.Canonical}, {"normalize", vectors.Normalize}, {"invalid", vectors.Invalid}} {
-		for _, c := range section.cases {
-			main, ok := c.Documents[c.Main]
-			if !ok {
-				t.Fatalf("%s/%s: the main document %s is missing", section.name, c.ID, c.Main)
-			}
-			documents := map[string]string{}
-			for name, lines := range c.Documents {
-				if name != c.Main {
-					documents[name] = c.join(lines)
-				}
-			}
-			inputs = append(inputs, syntaxInput{id: section.name + "." + c.ID, text: c.join(main), documents: documents})
-		}
-	}
 	for _, c := range vectors.Sets {
 		all := append(append([][]string{}, c.Documents...), c.External...)
 		for i, lines := range c.Documents {

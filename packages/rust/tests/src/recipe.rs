@@ -163,7 +163,6 @@ fn positions_json(positions: &[Position]) -> Vec<Value> {
 fn dbspec_step(step: &Value, dir: &Path, database: &str) -> Result<(), String> {
     let op = step["op"].as_str().unwrap_or_default();
     let Some(want) = step["expect"].get(database) else { return Err(format!("{op} has no expect for {database}")) };
-    let no_defaults = BTreeMap::new();
     match op {
         "dbspec.parse_emit" => {
             let want_identical = want["identical"].as_bool().ok_or("expect identical is not a bool")?;
@@ -199,71 +198,234 @@ fn dbspec_step(step: &Value, dir: &Path, database: &str) -> Result<(), String> {
             Ok(())
         }
         "dbspec.analyze" => {
-            let want_tokens = want["tokens"].as_array().cloned().unwrap_or_default();
-            let text = step_document(step, dir)?;
-            let analysis = dbspec::analyze(&text, &no_defaults);
-            let parsed = dbspec::parse(&text, &no_defaults).map_err(|errors| format!("{errors:?}"))?;
-            if !analysis.diagnostics.is_empty() {
-                return Err(format!("{:?}", analysis.diagnostics));
-            }
+            // An empty token list is a result (a text that stops at a limit has none), so the expect must state the list.
+            let want_tokens = want["tokens"].as_array().cloned().ok_or("dbspec.analyze has no tokens expect")?;
+            let (text, set) = step_source(step, dir)?;
+            let analysis = dbspec::analyze(&text, &set);
+            // The analysis carries the parse result unchanged: its document, positions and diagnostics are those of the parse,
+            // which is refused for an invalid text, so the analysis of that text gives its diagnostics.
+            let (parsed_document, parsed_positions, parsed_diagnostics) = match dbspec::parse(&text, &set) {
+                Ok(parsed) => (Some(dbspec::emit(&parsed.document)), Some(positions_json(&parsed.positions)), Vec::new()),
+                Err(errors) => (None, None, errors),
+            };
+            let analysis_document = analysis.document.as_ref().map(dbspec::emit);
             let analysis_positions = analysis.positions.as_deref().map(positions_json);
-            if analysis.document.as_ref().map(dbspec::emit) != Some(dbspec::emit(&parsed.document))
-                || analysis_positions != Some(positions_json(&parsed.positions))
-            {
-                return Err("the analysis differs from the parse".to_owned());
+            if analysis_document != parsed_document || analysis_positions != parsed_positions || diagnostic_values(&analysis.diagnostics) != diagnostic_values(&parsed_diagnostics) {
+                return Err(format!("the analysis differs from the parse: {:?}", analysis.diagnostics));
             }
             let got: Vec<Value> = analysis.tokens.iter().map(|t| serde_json::json!([t.line, t.start, t.end, t.class])).collect();
-            if want_tokens.is_empty() || got != want_tokens {
+            if got != want_tokens {
                 return Err(format!("tokens:\n got {got:?}\nwant {want_tokens:?}"));
             }
             Ok(())
         }
         "dbspec.parse_positions" => {
-            let want_positions = want["positions"].as_array().cloned().unwrap_or_default();
-            let text = step_document(step, dir)?;
-            let parsed = dbspec::parse(&text, &no_defaults).map_err(|errors| format!("{errors:?}"))?;
+            let want_positions = want["positions"].as_array().cloned().ok_or("dbspec.parse_positions has no positions expect")?;
+            let (text, set) = step_source(step, dir)?;
+            let parsed = dbspec::parse(&text, &set).map_err(|errors| format!("{errors:?}"))?;
             let got = positions_json(&parsed.positions);
-            if got.is_empty() || got != want_positions {
+            if got != want_positions {
                 return Err(format!("positions:\n got {got:?}\nwant {want_positions:?}"));
             }
             Ok(())
         }
         "dbspec.format" => dbspec_format(step, want),
+        "dbspec.parse_set" => dbspec_parse_set(step, want),
+        "dbspec.read_file" | "dbspec.read_bytes" => dbspec_read(step, dir, want),
         other => Err(format!("OP_UNKNOWN {other}")),
     }
 }
 
-/// The dbspec.format op: the text of the step, its lines joined with LF and a final LF, formats to the expect's text and
-/// the formatted text formats to itself, or the text is refused with the expect's diagnostics and no text is written.
+/// The lines of a JSON array of strings.
+fn lines_of(value: &Value) -> Vec<&str> {
+    value.as_array().map(|lines| lines.iter().filter_map(Value::as_str).collect()).unwrap_or_default()
+}
+
+/// The strings of a JSON array.
+fn strings_of(value: &Value) -> Vec<String> {
+    value.as_array().map(|items| items.iter().filter_map(|x| x.as_str().map(str::to_owned)).collect()).unwrap_or_default()
+}
+
+/// The lines joined with the line ends of a case: LF, CRLF when `crlf`, or alternating CRLF and LF with no line end on the
+/// last line when `mixed`. This is the spelling of `join` in scripts/dbspec/syntax-vectors.mts.
+fn joined_lines(lines: &[&str], crlf: bool, mixed: bool) -> String {
+    let mut text = String::new();
+    for (index, line) in lines.iter().enumerate() {
+        text.push_str(line);
+        if mixed {
+            if index + 1 < lines.len() {
+                text.push_str(if index % 2 == 0 { "\r\n" } else { "\n" });
+            }
+        } else {
+            text.push_str(if crlf { "\r\n" } else { "\n" });
+        }
+    }
+    text
+}
+
+/// The text of a step and the set of its other documents, each joined with the line ends of the step.
+fn inline_text(step: &Value) -> (String, BTreeMap<String, String>) {
+    let crlf = step["crlf"].as_bool() == Some(true);
+    let mixed = step["mixed"].as_bool() == Some(true);
+    let mut set = BTreeMap::new();
+    if let Some(documents) = step["set"].as_object() {
+        for (name, lines) in documents {
+            set.insert(name.clone(), joined_lines(&lines_of(lines), crlf, mixed));
+        }
+    }
+    (joined_lines(&lines_of(&step["text"]), crlf, mixed), set)
+}
+
+/// The text and the set of a dbspec step: inline when the step has text, else the document file of the step.
+fn step_source(step: &Value, dir: &Path) -> Result<(String, BTreeMap<String, String>), String> {
+    if step["text"].is_array() {
+        return Ok(inline_text(step));
+    }
+    Ok((step_document(step, dir)?, BTreeMap::new()))
+}
+
+/// Parses the text with the set, emits it, and checks that the emission parses and emits to itself. The emission is the result.
+fn emit_stable(text: &str, set: &BTreeMap<String, String>) -> Result<String, String> {
+    let parsed = dbspec::parse(text, set).map_err(|errors| format!("the text is refused: {errors:?}"))?;
+    let first = dbspec::emit(&parsed.document);
+    let again = dbspec::parse(&first, set).map_err(|errors| format!("the emission is refused: {errors:?}"))?;
+    if dbspec::emit(&again.document) != first {
+        return Err("the emission is not idempotent".to_owned());
+    }
+    Ok(first)
+}
+
+/// The diagnostics as the expect writes them: the rule, line and column of each.
+fn diagnostic_values(diagnostics: &[dbspec::Diagnostic]) -> Vec<Value> {
+    diagnostics.iter().map(|d| serde_json::json!({"rule": d.rule, "line": d.line, "column": d.column})).collect()
+}
+
+/// A refused text: parse and format both refuse it with the expect's diagnostics, each with a message, and no document or text.
+fn check_refusal(text: &str, set: &BTreeMap<String, String>, want: &[Value]) -> Result<(), String> {
+    let parse_errors = match dbspec::parse(text, set) {
+        Ok(_) => return Err("a document with a diagnostic parsed".to_owned()),
+        Err(errors) => errors,
+    };
+    let format_errors = match dbspec::format(text, set) {
+        Ok(rewritten) => return Err(format!("a document with a diagnostic was rewritten:\n{rewritten}")),
+        Err(errors) => errors,
+    };
+    for errors in [&parse_errors, &format_errors] {
+        let got = diagnostic_values(errors);
+        if got.is_empty() || got != want {
+            return Err(format!("diagnostics = {got:?}, want {want:?}"));
+        }
+        if errors.iter().any(|e| e.message.is_empty()) {
+            return Err("a diagnostic has no message".to_owned());
+        }
+    }
+    Ok(())
+}
+
+/// The dbspec.format op: the text of the step formats to the expect's text, and the emission of the text is that text too,
+/// and the formatted text formats to itself; or the text is refused with the expect's diagnostics.
 fn dbspec_format(step: &Value, want: &Value) -> Result<(), String> {
-    let lines: Vec<&str> = step["text"].as_array().map(|t| t.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
-    if lines.is_empty() {
+    if lines_of(&step["text"]).is_empty() {
         return Err("dbspec.format has no text".to_owned());
     }
-    let text = format!("{}\n", lines.join("\n"));
-    let formatted = dbspec::format(&text, &BTreeMap::new());
+    let (text, set) = inline_text(step);
     if let Some(want_diagnostics) = want["diagnostics"].as_array() {
-        let diagnostics = match formatted {
-            Ok(rewritten) => return Err(format!("a document with a diagnostic was rewritten:\n{rewritten}")),
-            Err(diagnostics) => diagnostics,
-        };
-        let got: Vec<Value> = diagnostics.iter().map(|d| serde_json::json!({"rule": d.rule, "line": d.line, "column": d.column})).collect();
-        if got.is_empty() || got != *want_diagnostics {
-            return Err(format!("diagnostics = {got:?}, want {want_diagnostics:?}"));
-        }
-        return Ok(());
+        return check_refusal(&text, &set, want_diagnostics);
     }
-    let formatted = formatted.map_err(|diagnostics| format!("{diagnostics:?}"))?;
-    let want_lines: Vec<&str> = want["text"].as_array().map(|t| t.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
-    let want_text = format!("{}\n", want_lines.join("\n"));
-    if formatted != want_text {
-        return Err(format!("formatted text:\n{formatted}\nwant\n{want_text}"));
+    let expected = joined_lines(&lines_of(&want["text"]), false, false);
+    let emitted = emit_stable(&text, &set)?;
+    if emitted != expected {
+        return Err(format!("emission:\n{emitted}\nwant\n{expected}"));
     }
-    match dbspec::format(&formatted, &BTreeMap::new()) {
+    let formatted = dbspec::format(&text, &set).map_err(|diagnostics| format!("{diagnostics:?}"))?;
+    if formatted != expected {
+        return Err(format!("formatted text:\n{formatted}\nwant\n{expected}"));
+    }
+    match dbspec::format(&formatted, &set) {
         Ok(again) if again == formatted => Ok(()),
         Ok(again) => Err(format!("the format of the formatted text differs:\n{again}")),
         Err(diagnostics) => Err(format!("the formatted text is refused: {diagnostics:?}")),
     }
+}
+
+/// The dbspec.parse_set op: the owned and external texts parse as one set, and each result has the expect's name, external
+/// mark, parsed flag and diagnostics (with its message where the expect states one).
+fn dbspec_parse_set(step: &Value, want: &Value) -> Result<(), String> {
+    let owned = strings_of(&step["owned"]);
+    let external = strings_of(&step["external"]);
+    let owned: Vec<&str> = owned.iter().map(String::as_str).collect();
+    let external: Vec<&str> = external.iter().map(String::as_str).collect();
+    let got = dbspec::parse_set(&owned, &external);
+    let want_documents = want["documents"].as_array().cloned().unwrap_or_default();
+    if got.len() != want_documents.len() {
+        return Err(format!("{} results, want {}", got.len(), want_documents.len()));
+    }
+    for (index, (g, w)) in got.iter().zip(&want_documents).enumerate() {
+        let name = g.name.clone().unwrap_or_default();
+        let want_external = w["external"].as_bool() == Some(true);
+        let want_parsed = w["parsed"].as_bool() == Some(true);
+        if name != w["name"].as_str().unwrap_or_default() || g.external != want_external || g.document.is_some() != want_parsed {
+            return Err(format!("document {index}: name {name:?}, external {}, parsed {}", g.external, g.document.is_some()));
+        }
+        let want_diagnostics = w["diagnostics"].as_array().cloned().unwrap_or_default();
+        if g.diagnostics.len() != want_diagnostics.len() {
+            return Err(format!("document {index}: diagnostics {:?}, want {want_diagnostics:?}", g.diagnostics));
+        }
+        for (k, (d, x)) in g.diagnostics.iter().zip(&want_diagnostics).enumerate() {
+            let same = d.rule == x["rule"].as_str().unwrap_or_default() && d.line as u64 == x["line"].as_u64().unwrap_or(u64::MAX) && d.column as u64 == x["column"].as_u64().unwrap_or(u64::MAX);
+            let same_message = x.get("message").is_none_or(|m| d.message == m.as_str().unwrap_or_default());
+            if !same || !same_message {
+                return Err(format!("document {index} diagnostic {k}: {d:?}, want {x}"));
+            }
+        }
+    }
+    Ok(())
+}
+
+/// The dbspec.read_file and dbspec.read_bytes ops: a file with errors gives the expect's diagnostics, each with the message of
+/// its rule; a file without errors gives its bytes as text, which parse and emit unchanged.
+fn dbspec_read(step: &Value, dir: &Path, want: &Value) -> Result<(), String> {
+    let want_errors = want["errors"].as_array().cloned().unwrap_or_default();
+    let path = step["path"].as_str().unwrap_or_default();
+    let full = dir.join(path);
+    let (name, read) = if step["op"] == "dbspec.read_file" {
+        (full.display().to_string(), dbspec::read_file(&full))
+    } else {
+        let bytes = std::fs::read(&full).map_err(|error| format!("{path}: {error}"))?;
+        (path.to_owned(), dbspec::read_bytes(path, bytes).map_err(dbspec::ReadError::Diagnostics))
+    };
+    if !want_errors.is_empty() {
+        let errors = match read {
+            Err(dbspec::ReadError::Diagnostics(errors)) => errors,
+            Ok(_) => return Err("the reader returned text with diagnostics".to_owned()),
+            Err(dbspec::ReadError::Io(error)) => return Err(format!("{name}: {error}")),
+        };
+        let got = diagnostic_values(&errors);
+        if got != want_errors {
+            return Err(format!("diagnostics = {got:?}, want {want_errors:?}"));
+        }
+        for error in &errors {
+            let suffix = if error.rule == "signature" { " is not a dbspec document" } else { " is not valid UTF-8" };
+            if error.message != format!("{name}{suffix}") {
+                return Err(format!("message {:?}, want {name}{suffix}", error.message));
+            }
+        }
+        return Ok(());
+    }
+    let text = match read {
+        Ok(text) => text,
+        Err(dbspec::ReadError::Diagnostics(errors)) => return Err(format!("unexpected diagnostics {errors:?}")),
+        Err(dbspec::ReadError::Io(error)) => return Err(format!("{name}: {error}")),
+    };
+    let bytes = std::fs::read(&full).map_err(|error| format!("{path}: {error}"))?;
+    if text.as_bytes() != bytes.as_slice() {
+        return Err("the reader text differs from the file bytes".to_owned());
+    }
+    let emitted = emit_stable(&text, &BTreeMap::new())?;
+    if emitted != text {
+        return Err(format!("the file text emits as:\n{emitted}"));
+    }
+    Ok(())
 }
 
 /// The cell form of a value a host decode read.

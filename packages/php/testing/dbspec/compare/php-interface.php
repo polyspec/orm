@@ -209,6 +209,71 @@ function dbspec_vector_named_documents(string $path, array $documents, string $a
 }
 
 /**
+ * Reads a recipe file of tests/dbspec (canonical.json, normalize.json, invalid.json, positions.json or files.json)
+ * against the recipe schema (scripts/features/schema/recipe.schema.json) and returns its cases, each with the step of
+ * $op: the main document is the step's text, named "main", with the other documents of its set. A refusal is written to
+ * stderr, one line per problem, and ends with 1.
+ *
+ * @return list<array<string, mixed>>
+ */
+function dbspec_read_recipe(string $path, string $op): array
+{
+    $text = dbspec_read_input($path);
+    try {
+        $value = json_decode($text, false, 512, JSON_THROW_ON_ERROR);
+    } catch (JsonException $e) {
+        fwrite(STDERR, "$path: {$e->getMessage()}\n");
+        exit(1);
+    }
+    $schema = json_decode(
+        (string) file_get_contents(dirname(__DIR__, 5) . '/scripts/features/schema/recipe.schema.json'),
+        false,
+        512,
+        JSON_THROW_ON_ERROR
+    );
+    $validator = new \Opis\JsonSchema\Validator(max_errors: PHP_INT_MAX, stop_at_first_error: false);
+    $error = $validator->validate($value, $schema)->error();
+    if ($error !== null) {
+        foreach (dbspec_vector_leaves($error) as $leaf) {
+            foreach (dbspec_vector_problems($leaf) as $problem) {
+                fwrite(STDERR, "$path: $problem\n");
+            }
+        }
+        exit(1);
+    }
+    $file = json_decode($text, true, 512, JSON_THROW_ON_ERROR);
+    $cases = [];
+    foreach ($file['cases'] as $i => $case) {
+        $step = null;
+        foreach ($case['steps'] as $candidate) {
+            if ($candidate['op'] === $op) {
+                $step = $candidate;
+                break;
+            }
+        }
+        if ($step === null) {
+            dbspec_vector_fail($path, "cases[$i].steps", "has no $op step");
+        }
+        $documents = ['main' => $step['text'] ?? []];
+        foreach ($step['set'] ?? [] as $name => $lines) {
+            if ($name === 'main') {
+                dbspec_vector_fail($path, "cases[$i].steps", 'names a document main, which is the main document');
+            }
+            $documents[$name] = $lines;
+        }
+        $cases[] = [
+            'id' => $case['id'],
+            'main' => 'main',
+            'documents' => $documents,
+            'crlf' => ($step['crlf'] ?? false) === true,
+            'mixed' => ($step['mixed'] ?? false) === true,
+            'path' => $step['path'] ?? '',
+        ];
+    }
+    return $cases;
+}
+
+/**
  * With $dbspec, writes the canonical, normalize, invalid, stress document, and files cases of tests/dbspec/cases.json,
  * the hashes case, and the tests/dbspec/ddl.json rendering, in this order. The vector file is checked before output
  * its shape, and an invalid vector is reported with its location to stderr and exits with 1. It returns the cases it
@@ -220,12 +285,12 @@ function dbspec_write_interface(string $dbspec, string $casesPath, string $stres
 {
     // cases.json is read against its schema (tests/dbspec/cases.php): a missing or unknown section or field is refused.
     $cases = dbspec_read_vectors($casesPath, 'cases');
-    foreach (['canonical', 'normalize', 'invalid'] as $kind) {
-        $cases[$kind] = array_map(
-            static fn(array $case): array => $case + ['crlf' => false, 'mixed' => false],
-            $cases[$kind]
-        );
-    }
+    $recipeDir = dirname($casesPath);
+    $cases['canonical'] = dbspec_read_recipe($recipeDir . '/canonical.json', 'dbspec.format');
+    $cases['normalize'] = dbspec_read_recipe($recipeDir . '/normalize.json', 'dbspec.format');
+    $cases['invalid'] = dbspec_read_recipe($recipeDir . '/invalid.json', 'dbspec.format');
+    $cases['positions'] = dbspec_read_recipe($recipeDir . '/positions.json', 'dbspec.parse_positions');
+    $cases['files'] = dbspec_read_recipe($recipeDir . '/files.json', 'dbspec.read_file');
     foreach ($cases['sets'] as $i => $case) {
         $cases['sets'][$i]['documents'] = dbspec_vector_named_documents(
             $casesPath,
@@ -395,7 +460,14 @@ function dbspec_write_syntax(string $dbspec, array $cases, string $syntaxPath): 
             dbspec_vector_fail($syntaxPath, "cases[$i].id", 'names no input of the shared cases');
         }
     }
-    foreach ($ids as ['id' => $id]) {
+    // The recipe documents come first, in the order canonical, normalize, invalid, then the cases of syntax.json.
+    $recipeIds = [];
+    foreach (['canonical', 'normalize', 'invalid'] as $kind) {
+        foreach ($cases[$kind] as $case) {
+            $recipeIds[] = ['id' => "$kind.{$case['id']}"];
+        }
+    }
+    foreach ([...$recipeIds, ...$ids] as ['id' => $id]) {
         [$text, $set] = $inputs[$id];
         echo "syntax/$id\n";
         $analysis = $dbspec::analyze($text, $set);

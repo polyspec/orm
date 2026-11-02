@@ -9,8 +9,8 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// These cases cover rules and canonical forms that tests/dbspec/cases.json
-// does not cover yet. Each document is written with LF line ends.
+// These cases cover rules and canonical forms that the recipes of tests/dbspec
+// do not cover yet. Each document is written with LF line ends.
 
 type ruleCase struct {
 	id     string

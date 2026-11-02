@@ -1,12 +1,12 @@
 // dbspec_case.mjs holds the shared vectors of tests/dbspec/cases.json for the TypeScript client: the reader, the
 // helpers and one function per section that registers each case of that section as a top-level test named by its id.
+// The sections that remain in cases.json are hashes and sets; the document cases (canonical, normalize, invalid,
+// positions, files and set-parse) run from their recipes in tests/dbspec/*.json (recipe_<section>.mjs).
 // Each binding file of config/parity.json (dbspec-<section>.mjs) calls one of them, so a file runs one suite.
 import { caseTest } from '../../../tests/testcase.mts';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { join } from '../../../tests/dbspec/join.mjs';
-import { dbspecManifest, emitDbspec, formatDbspec, parseDbspec, parseDbspecSet, readDbspecBytes, readDbspecFile, renderDbspec } from '../dist/dbspec/index.js';
+import { dbspecManifest, parseDbspec, parseDbspecSet, renderDbspec } from '../dist/dbspec/index.js';
 import { readCases } from '../../../tests/dbspec/cases.mts';
 
 export const root = new URL('../../../', import.meta.url);
@@ -23,12 +23,6 @@ export function vector(name, body) {
 
 export { join };
 
-function documentSet(c) {
-  const set = {};
-  for (const [name, lines] of Object.entries(c.documents)) if (name !== c.main) set[name] = join(lines, c.crlf === true, c.mixed === true);
-  return set;
-}
-
 export function parsed(text, set) {
   const result = parseDbspec(text, set);
   assert.deepEqual(result.diagnostics, [], 'diagnostics of a valid document');
@@ -36,101 +30,9 @@ export function parsed(text, set) {
   return result.document;
 }
 
-assert(cases.canonical.length > 0 && cases.normalize.length > 0 && cases.invalid.length > 0);
-const ids = [...cases.canonical, ...cases.normalize, ...cases.invalid, ...cases.sets, ...cases.files].map(c => c.id);
+assert(cases.hashes.length > 0 && cases.sets.length > 0);
+const ids = [...cases.hashes, ...cases.sets].map(c => c.id);
 assert.equal(new Set(ids).size, ids.length, 'unique case ids');
-
-
-// canonicalCases registers the cases of its section.
-export function canonicalCases() {
-  for (const c of cases.canonical) {
-    vector(c.id, () => {
-      const text = join(c.documents[c.main], c.crlf === true, c.mixed === true);
-      const set = documentSet(c);
-      const emitted = emitDbspec(parsed(text, set));
-      assert.equal(emitted, text);
-      assert.equal(emitDbspec(parsed(emitted, set)), emitted);
-      assert.equal(formatDbspec(text, set).text, text);
-    });
-  }
-}
-
-// normalizeCases registers the cases of its section.
-export function normalizeCases() {
-  for (const c of cases.normalize) {
-    vector(c.id, () => {
-      const text = join(c.documents[c.main], c.crlf === true, c.mixed === true);
-      const set = documentSet(c);
-      const canonical = join(c.canonical, false);
-      const emitted = emitDbspec(parsed(text, set));
-      assert.equal(emitted, canonical);
-      assert.equal(emitDbspec(parsed(emitted, set)), emitted);
-      assert.equal(formatDbspec(text, set).text, canonical);
-      assert.equal(formatDbspec(canonical, set).text, canonical);
-    });
-  }
-}
-
-// positionCases registers the cases of its section.
-export function positionCases() {
-  for (const c of cases.positions) {
-    vector(c.id, () => {
-      const text = join(c.documents[c.main], false);
-      const result = parseDbspec(text, documentSet(c));
-      assert.deepEqual(result.diagnostics, [], 'diagnostics of a valid document');
-      assert.deepEqual(result.positions, c.positions);
-    });
-  }
-}
-
-// invalidCases registers the cases of its section.
-export function invalidCases() {
-  for (const c of cases.invalid) {
-    vector(c.id, () => {
-      const text = join(c.documents[c.main], c.crlf === true, c.mixed === true);
-      const result = parseDbspec(text, documentSet(c));
-      assert.equal(result.document, null);
-      assert.deepEqual(result.diagnostics.map(d => ({ line: d.line, column: d.column, rule: d.rule })), c.errors);
-      const formatted = formatDbspec(text, documentSet(c));
-      assert.equal(formatted.text, null);
-      assert.deepEqual(formatted.diagnostics.map(d => ({ line: d.line, column: d.column, rule: d.rule })), c.errors);
-      for (const d of result.diagnostics) {
-        assert.deepEqual(Object.keys(d).sort(), ['column', 'line', 'message', 'rule']);
-        assert.equal(typeof d.message, 'string');
-        assert(d.message.length > 0);
-      }
-    });
-  }
-}
-
-// fileCases registers the cases of its section.
-export function fileCases() {
-  // files cases are read twice: with readDbspecFile given the path and with readDbspecBytes
-  // given the file bytes and the case path as name. Bytes without the signature give one
-  // "<name> is not a dbspec document" diagnostic, bytes that are not UTF-8 one
-  // "<name> is not valid UTF-8" diagnostic, and no text; any other file gives its bytes,
-  // which parse and emit unchanged.
-  const fileMessages = { signature: ' is not a dbspec document', encoding: ' is not valid UTF-8' };
-  assert(cases.files.length > 0, 'files cases');
-  for (const c of cases.files) {
-    const path = fileURLToPath(new URL(`tests/dbspec/${c.path}`, root));
-    const readers = { file: [path, () => readDbspecFile(path)], bytes: [c.path, () => readDbspecBytes(c.path, readFileSync(path))] };
-    vector(c.id, () => {
-      for (const [kind, [name, read]] of Object.entries(readers)) {
-        const result = read();
-        if (c.errors.length > 0) {
-          assert.equal(result.text, null, kind);
-          assert.deepEqual(result.diagnostics.map(d => ({ line: d.line, column: d.column, rule: d.rule })), c.errors, kind);
-          for (const d of result.diagnostics) assert.equal(d.message, name + fileMessages[d.rule], kind);
-          continue;
-        }
-        assert.deepEqual(result.diagnostics, [], kind);
-        assert.equal(result.text, readFileSync(path, 'utf8'), kind);
-        assert.equal(emitDbspec(parsed(result.text, {})), result.text, kind);
-      }
-    });
-  }
-}
 
 // hashCases registers the cases of its section.
 export function hashCases() {

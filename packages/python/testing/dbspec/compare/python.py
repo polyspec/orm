@@ -10,7 +10,11 @@ import sys
 # Run with python -m packages.python.testing.dbspec.compare.python from the root, which puts the root on sys.path; the client and
 # ordered-json are the ones installed into the interpreter.
 from packages.python.tests.dbspec_cases_reader import check_cases as check_shared_cases
-from packages.python.tests.dbspec_vectors_reader import VectorError, check_vectors
+from packages.python.tests.dbspec_vectors_reader import (
+    VectorError,
+    check_schema,
+    check_vectors,
+)
 
 ROOT = os.path.normpath(
     os.path.join(
@@ -87,6 +91,52 @@ def read_vectors(path, kind):
     return value
 
 
+RECIPE_SCHEMA = os.path.join(
+    ROOT, "scripts", "features", "schema", "recipe.schema.json"
+)
+
+
+# read_recipe reads a recipe file of tests/dbspec against the recipe schema (scripts/features/schema/recipe.schema.json) and
+# gives each case with its step of op, as a case of the shared cases: its main document is the text of the step, named
+# "main", with its other documents and its line ends. A refusal is written to stderr, one line per problem, and ends with 1.
+def read_recipe(path, op):
+    try:
+        value = json.loads(read_text(path))
+    except json.JSONDecodeError as error:
+        print(f"{path}: {error}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        check_schema(value, RECIPE_SCHEMA, path)
+    except VectorError as error:
+        print(error, file=sys.stderr)
+        sys.exit(1)
+    cases = []
+    for index, c in enumerate(value["cases"]):
+        step = next((s for s in c["steps"] if s["op"] == op), None)
+        if step is None:
+            fail(path, f"cases[{index}].steps", f"has no {op} step")
+        documents = {"main": step.get("text", [])}
+        for name, ls in step.get("set", {}).items():
+            if name == "main":
+                fail(
+                    path,
+                    f"cases[{index}].steps",
+                    "names a document main, which is the main document",
+                )
+            documents[name] = ls
+        cases.append(
+            {
+                "id": c["id"],
+                "main": "main",
+                "documents": documents,
+                "crlf": step.get("crlf") is True,
+                "mixed": step.get("mixed") is True,
+                "path": step.get("path", ""),
+            }
+        )
+    return cases
+
+
 # header_name is the third word of the first line, the document name of a dbspec header, split at single spaces.
 def header_name(ls):
     words = ls[0].split(" ") if ls else []
@@ -159,8 +209,22 @@ def read_document(path):
 
 shared = read_vectors(cases_path, "cases")
 check_set_names(cases_path, shared)
+recipe_dir = os.path.dirname(cases_path)
+recipes = {
+    "canonical": read_recipe(
+        os.path.join(recipe_dir, "canonical.json"), "dbspec.format"
+    ),
+    "normalize": read_recipe(
+        os.path.join(recipe_dir, "normalize.json"), "dbspec.format"
+    ),
+    "invalid": read_recipe(os.path.join(recipe_dir, "invalid.json"), "dbspec.format"),
+}
+positions = read_recipe(
+    os.path.join(recipe_dir, "positions.json"), "dbspec.parse_positions"
+)
+files = read_recipe(os.path.join(recipe_dir, "files.json"), "dbspec.read_file")
 for kind in ["canonical", "normalize", "invalid"]:
-    for c in shared[kind]:
+    for c in recipes[kind]:
         main, docs = case_inputs(c)
         out.append(f"{kind}/{c['id']}")
         write(main, docs, False)
@@ -171,8 +235,8 @@ write(read_document(stress_path), {}, True)
 # For files cases, path is given to read_dbspec_file as "files/<id>", and the file bytes are given to read_dbspec_bytes
 # with the case path as name, read as "files/<id>/bytes", and prints the diagnostic and its message, or otherwise
 # the emission. The name before a message is written as "<name>".
-for c in shared["files"]:
-    path = os.path.normpath(os.path.join(os.path.dirname(cases_path), c["path"]))
+for c in files:
+    path = os.path.normpath(os.path.join(recipe_dir, c["path"]))
     try:
         reads = [
             (f"files/{c['id']}", path, read_dbspec_file(path)),
@@ -453,7 +517,7 @@ for c in mermaid["round_trip"]:
 
 # The declaration positions of the main document of each positions case, as "| kind<TAB>line<TAB>column<TAB>path..."
 # lines, or its diagnostics.
-for c in shared["positions"]:
+for c in positions:
     out.append(f"positions/{c['id']}")
     docs = {
         name: join(ls, False, False)
@@ -477,9 +541,6 @@ for c in shared["positions"]:
 # ("hashes.<id>.<name>").
 def syntax_inputs():
     inputs = {}
-    for kind in ["canonical", "normalize", "invalid"]:
-        for c in shared[kind]:
-            inputs[f"{kind}.{c['id']}"] = case_inputs(c)
     for c in shared["sets"]:
         every = c["documents"] + c.get("external", [])
         for i, ls in enumerate(c["documents"]):
@@ -503,19 +564,26 @@ def syntax_inputs():
 
 # Each case of syntax.json prints its tokens ("| line start end class") and the diagnostics of its analysis, then
 # "syntax/<id>/format" and the formatted text or the diagnostics of the refusal.
-inputs = syntax_inputs()
-for i, c in enumerate(read_vectors(syntax_path, "syntax")["cases"]):
-    if c["id"] not in inputs:
-        fail(syntax_path, f"cases[{i}].id", "names no input of the shared cases")
-    text, docs = inputs[c["id"]]
-    out.append(f"syntax/{c['id']}")
+def write_syntax(syntax_id, text, docs):
+    out.append(f"syntax/{syntax_id}")
     analysis = analyze_dbspec(text, docs)
     out.extend(f"| {t.line} {t.start} {t.end} {t.token_class}" for t in analysis.tokens)
     out.extend(diagnostic_line(d) for d in analysis.diagnostics)
-    out.append(f"syntax/{c['id']}/format")
+    out.append(f"syntax/{syntax_id}/format")
     formatted, diagnostics = format_dbspec(text, docs)
     out.extend(diagnostic_line(d) for d in diagnostics)
     if formatted is not None:
         out.extend(f"| {line}" for line in formatted.split("\n"))
+
+
+# The recipe documents come first, in the order canonical, normalize, invalid, and then the cases of syntax.json.
+for kind in ["canonical", "normalize", "invalid"]:
+    for c in recipes[kind]:
+        write_syntax(f"{kind}.{c['id']}", *case_inputs(c))
+inputs = syntax_inputs()
+for i, c in enumerate(read_vectors(syntax_path, "syntax")["cases"]):
+    if c["id"] not in inputs:
+        fail(syntax_path, f"cases[{i}].id", "names no input of the shared cases")
+    write_syntax(c["id"], *inputs[c["id"]])
 
 sys.stdout.buffer.write(("\n".join(out) + "\n").encode("utf-8"))

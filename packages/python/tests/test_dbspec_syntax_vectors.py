@@ -1,5 +1,6 @@
-# The shared token vectors of tests/dbspec/syntax.json: every runtime matches them exactly. The inputs are
-# built as scripts/dbspec/syntax-vectors.mts vectorInputs builds them, and every case must be present.
+# The shared token vectors of tests/dbspec/syntax.json (its sets and hashes cases): every runtime matches them exactly.
+# The inputs are built as scripts/dbspec/syntax-vectors.mts vectorInputs builds them, and every case must be present.
+# The tokens of the canonical, normalize and invalid documents are the analyze steps of their recipes.
 # Requirements: ORES-1.
 import json
 import unittest
@@ -12,7 +13,6 @@ from .vector_case import VectorCase, vector_tests
 from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
-SECTIONS = ("canonical", "normalize", "invalid")
 
 
 def join(lines, crlf, mixed=False):
@@ -34,21 +34,6 @@ def header_name(lines):
 def vector_inputs(cases):
     """The (id, text, documents) of every analysis the vectors need, in file order (mirrors vectorInputs)."""
     inputs = []
-    for section in SECTIONS:
-        for case in cases[section]:
-            main = case["documents"][case["main"]]
-            documents = {
-                name: join(lines, case.get("crlf") is True, case.get("mixed") is True)
-                for name, lines in case["documents"].items()
-                if name != case["main"]
-            }
-            inputs.append(
-                (
-                    f"{section}.{case['id']}",
-                    join(main, case.get("crlf") is True, case.get("mixed") is True),
-                    documents,
-                )
-            )
     for case in cases["sets"]:
         everything = case["documents"] + case.get("external", [])
         for i, lines in enumerate(case["documents"]):

@@ -53,6 +53,39 @@ name = "schema_definition_none"
 path = "tests/schema_definition_none.rs"
 harness = false
 
+# Each case of the dbspec format recipes, tests/dbspec/canonical.json, normalize.json and invalid.json, is the trial
+# <entry>::<case id> (FCV-3). Each case of the dbspec parse recipe, positions.json, of the file recipe, files.json, and of
+# the set recipe, set-parse.json, is the trial <entry>::<case id> too.
+[[test]]
+name = "canonical_none"
+path = "tests/canonical_none.rs"
+harness = false
+
+[[test]]
+name = "normalize_none"
+path = "tests/normalize_none.rs"
+harness = false
+
+[[test]]
+name = "invalid_none"
+path = "tests/invalid_none.rs"
+harness = false
+
+[[test]]
+name = "positions_none"
+path = "tests/positions_none.rs"
+harness = false
+
+[[test]]
+name = "files_none"
+path = "tests/files_none.rs"
+harness = false
+
+[[test]]
+name = "set_parse_none"
+path = "tests/set_parse_none.rs"
+harness = false
+
 # Each case of the catalog_connection recipe, contracts/fixtures/catalog_connection/catalog_connection.json, is the
 # trial catalog_connection_<database>::<case id> on a case database of its own (FCV-3).
 [[test]]

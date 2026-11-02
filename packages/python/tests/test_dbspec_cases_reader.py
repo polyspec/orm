@@ -1,5 +1,5 @@
 # The reader of tests/dbspec/cases.json (dbspec_cases_reader.py) refuses a missing or an unknown section or field of
-# every section, naming it, as the readers of the other runtimes do.
+# every section it keeps, naming it, as the readers of the other runtimes do.
 import json
 import unittest
 from pathlib import Path
@@ -22,21 +22,7 @@ class DbspecCasesReaderTest(unittest.TestCase):
         mutations = (
             ("note", "is missing", lambda v: v.pop("note")),
             ("extra", "is not a known field", lambda v: v.update(extra=[])),
-            (
-                "canonical[0].extra",
-                "is not a known field",
-                lambda v: v["canonical"][0].update(extra=True),
-            ),
-            (
-                "normalize[0].canonical",
-                "is missing",
-                lambda v: v["normalize"][0].pop("canonical"),
-            ),
-            (
-                "invalid[0].errors[0].extra",
-                "is not a known field",
-                lambda v: v["invalid"][0]["errors"][0].update(extra=1),
-            ),
+            ("canonical", "is not a known field", lambda v: v.update(canonical=[])),
             (
                 "hashes[0].extra",
                 "is not a known field",
@@ -51,17 +37,6 @@ class DbspecCasesReaderTest(unittest.TestCase):
                 f"sets[{manifest}].manifest.extra",
                 "is not a known field",
                 lambda v: v["sets"][manifest]["manifest"].update(extra=[]),
-            ),
-            ("files[0].errors", "is missing", lambda v: v["files"][0].pop("errors")),
-            (
-                "positions[0].positions[0].extra",
-                "is not a known field",
-                lambda v: v["positions"][0]["positions"][0].update(extra=1),
-            ),
-            (
-                "positions[0].positions[0].line",
-                "is not an integer",
-                lambda v: v["positions"][0]["positions"][0].update(line=True),
             ),
         )
         for location, problem, change in mutations:

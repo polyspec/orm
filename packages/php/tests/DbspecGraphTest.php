@@ -20,7 +20,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
-// The document of the canonical case every-line-kind of tests/dbspec/cases.json.
+// The document of the canonical case every-line-kind of tests/dbspec/canonical.json.
 const GRAPH_TEXT = "dbspec 1 shop\n\nuse core { users }\n\ntable orders {\n  id i64 identity\n  user_id i64\n  "
     . "status varchar(32) default 'pending'\n  total decimal(13,2) default 0.00\n  coupon_code varchar(32) null\n  "
     . "placed_at datetime(6) default now\n  primary key (id)\n  unique uq_orders_coupon (coupon_code)\n  index "

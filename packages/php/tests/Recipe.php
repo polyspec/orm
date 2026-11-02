@@ -185,6 +185,11 @@ final class Recipe
                 }
                 return;
             case 'dbspec.analyze':
+                if (!array_key_exists('document', $step)) {
+                    [$text, $set] = self::inlineDocument($step);
+                    self::checkTokens(Dbspec::analyze($text, $set)->tokens, $expect['tokens'] ?? []);
+                    return;
+                }
                 $text = self::dbspecText($dir, $step['document']);
                 $analysis = Dbspec::analyze($text, []);
                 $parsed = Dbspec::parse($text, []);
@@ -197,18 +202,16 @@ final class Recipe
                 if (!$same) {
                     Assert::fail('the analysis differs from the parse');
                 }
-                $tokens = array_map(
-                    static fn(object $t): array => [$t->line, $t->start, $t->end, $t->class],
-                    $analysis->tokens
-                );
-                $want = $expect['tokens'] ?? [];
-                if ($want === [] || $tokens !== $want) {
-                    Assert::fail('tokens ' . json_encode($tokens));
-                }
+                self::checkTokens($analysis->tokens, $expect['tokens'] ?? []);
                 return;
             case 'dbspec.parse_positions':
-                $parsed = Dbspec::parse(self::dbspecText($dir, $step['document']), []);
-                if ($parsed->diagnostics !== []) {
+                if (array_key_exists('document', $step)) {
+                    $parsed = Dbspec::parse(self::dbspecText($dir, $step['document']), []);
+                } else {
+                    [$text, $set] = self::inlineDocument($step);
+                    $parsed = Dbspec::parse($text, $set);
+                }
+                if ($parsed->document === null) {
                     Assert::fail(self::diagnostics($parsed->diagnostics));
                 }
                 $got = array_map(
@@ -227,37 +230,190 @@ final class Recipe
                 if (($step['text'] ?? []) === []) {
                     Assert::fail('dbspec.format has no text');
                 }
-                $result = Dbspec::format(implode("\n", $step['text']) . "\n", []);
+                [$text, $set] = self::inlineDocument($step);
                 if (array_key_exists('diagnostics', $expect)) {
-                    if ($result->text !== null) {
-                        Assert::fail("a document with a diagnostic was rewritten: {$result->text}");
-                    }
-                    $got = array_map(
-                        static fn(object $d): array => [$d->rule, $d->line, $d->column],
-                        $result->diagnostics
-                    );
-                    $want = array_map(
-                        static fn(array $d): array => [$d['rule'], $d['line'], $d['column']],
-                        $expect['diagnostics']
-                    );
-                    if ($got === [] || $got !== $want) {
-                        Assert::fail('diagnostics ' . json_encode($got));
-                    }
+                    self::checkRefusal($text, $set, $expect['diagnostics']);
                     return;
                 }
+                $expected = implode("\n", $expect['text'] ?? []) . "\n";
+                $emitted = self::emitStable($text, $set);
+                if ($emitted !== $expected) {
+                    Assert::fail("emission {$emitted}, want $expected");
+                }
+                $result = Dbspec::format($text, $set);
                 if ($result->diagnostics !== []) {
                     Assert::fail(self::diagnostics($result->diagnostics));
                 }
-                $want = implode("\n", $expect['text'] ?? []) . "\n";
-                if ($result->text !== $want) {
-                    Assert::fail("formatted text {$result->text}, want $want");
+                if ($result->text !== $expected) {
+                    Assert::fail("formatted text {$result->text}, want $expected");
                 }
-                if (Dbspec::format($result->text, [])->text !== $result->text) {
+                if (Dbspec::format($result->text, $set)->text !== $result->text) {
                     Assert::fail('the format of the formatted text differs');
                 }
                 return;
+            case 'dbspec.parse_set':
+                $got = Dbspec::parseSet(array_values($step['owned'] ?? []), array_values($step['external'] ?? []));
+                $want = $expect['documents'] ?? [];
+                Assert::assertSame(count($want), count($got), 'one result per text');
+                foreach ($got as $i => $d) {
+                    $w = $want[$i];
+                    Assert::assertSame($w['name'], $d->name, "documents[$i].name");
+                    Assert::assertSame($w['external'], $d->external, "documents[$i].external");
+                    Assert::assertSame($w['parsed'], $d->document !== null, "documents[$i].parsed");
+                    Assert::assertSame(
+                        count($w['diagnostics']),
+                        count($d->diagnostics),
+                        "documents[$i] diagnostic count"
+                    );
+                    foreach ($w['diagnostics'] as $k => $wd) {
+                        $x = $d->diagnostics[$k];
+                        Assert::assertSame(
+                            [$wd['rule'], $wd['line'], $wd['column']],
+                            [$x->rule, $x->line, $x->column],
+                            "documents[$i] diagnostic $k"
+                        );
+                        if (isset($wd['message'])) {
+                            Assert::assertSame($wd['message'], $x->message, "documents[$i] diagnostic $k message");
+                        }
+                    }
+                }
+                return;
+            case 'dbspec.read_file':
+            case 'dbspec.read_bytes':
+                $want = $expect['errors'] ?? [];
+                $full = "$dir/" . $step['path'];
+                $name = $full;
+                if ($step['op'] === 'dbspec.read_file') {
+                    $read = Dbspec::readFile($full);
+                } else {
+                    $name = $step['path'];
+                    $read = Dbspec::readBytes($name, (string) file_get_contents($full));
+                }
+                if ($want !== []) {
+                    Assert::assertNull($read->text, 'the reader returned text with diagnostics');
+                    Assert::assertSame(count($want), count($read->diagnostics), 'diagnostic count');
+                    foreach ($read->diagnostics as $i => $d) {
+                        $suffix = match ($d->rule) {
+                            'signature' => ' is not a dbspec document',
+                            'encoding' => ' is not valid UTF-8',
+                            default => Assert::fail("no message for {$d->rule}"),
+                        };
+                        Assert::assertSame($name . $suffix, $d->message, "message $i");
+                        Assert::assertSame(
+                            [$want[$i]['rule'], $want[$i]['line'], $want[$i]['column']],
+                            [$d->rule, $d->line, $d->column],
+                            "diagnostic $i"
+                        );
+                    }
+                    return;
+                }
+                if ($read->diagnostics !== []) {
+                    Assert::fail(self::diagnostics($read->diagnostics));
+                }
+                Assert::assertSame(
+                    (string) file_get_contents($full),
+                    $read->text,
+                    'the reader text differs from the file bytes'
+                );
+                Assert::assertSame($read->text, self::emitStable($read->text, []), 'emission');
+                return;
             default:
                 Assert::fail("OP_UNKNOWN {$step['op']}");
+        }
+    }
+
+    /**
+     * The text and the set of a step, joined with its line endings (the Go twin is inlineDocument): a mixed document
+     * starts with CRLF, alternates CRLF and LF from its second line, and has no final line ending.
+     *
+     * @return array{string, array<string, string>}
+     */
+    private static function inlineDocument(array $step): array
+    {
+        $crlf = ($step['crlf'] ?? false) === true;
+        $mixed = ($step['mixed'] ?? false) === true;
+        $set = [];
+        foreach ($step['set'] ?? [] as $name => $lines) {
+            $set[$name] = self::joinText($lines, $crlf, $mixed);
+        }
+        return [self::joinText($step['text'] ?? [], $crlf, $mixed), $set];
+    }
+
+    /** @param list<string> $lines */
+    private static function joinText(array $lines, bool $crlf, bool $mixed): string
+    {
+        if ($mixed) {
+            $text = '';
+            foreach ($lines as $i => $line) {
+                if ($i > 0) {
+                    $text .= $i % 2 === 1 ? "\r\n" : "\n";
+                }
+                $text .= $line;
+            }
+            return $text;
+        }
+        $end = $crlf ? "\r\n" : "\n";
+        return implode($end, $lines) . $end;
+    }
+
+    /** Parses text with the set, emits it, and checks that the emission parses and emits to itself (the Go twin is emitStable). */
+    private static function emitStable(string $text, array $set): string
+    {
+        $parsed = Dbspec::parse($text, $set);
+        if ($parsed->document === null) {
+            Assert::fail('the text parses: ' . self::diagnostics($parsed->diagnostics));
+        }
+        $first = Dbspec::emit($parsed->document);
+        $again = Dbspec::parse($first, $set);
+        if ($again->document === null) {
+            Assert::fail('the emission parses: ' . self::diagnostics($again->diagnostics));
+        }
+        if (Dbspec::emit($again->document) !== $first) {
+            Assert::fail('the emission is not idempotent');
+        }
+        return $first;
+    }
+
+    /**
+     * Checks that parse refuses text with exactly the diagnostics of want, and that format returns no text and the same
+     * diagnostics (the Go twin is checkRefusal).
+     *
+     * @param list<array{rule: string, line: int, column: int}> $want
+     */
+    private static function checkRefusal(string $text, array $set, array $want): void
+    {
+        $parsed = Dbspec::parse($text, $set);
+        if ($parsed->document !== null) {
+            Assert::fail('Parse returned a document for an invalid source');
+        }
+        $formatted = Dbspec::format($text, $set);
+        if ($formatted->text !== null) {
+            Assert::fail("a document with a diagnostic was rewritten: {$formatted->text}");
+        }
+        foreach ([$parsed->diagnostics, $formatted->diagnostics] as $got) {
+            $rows = array_map(
+                static fn(object $d): array => ['rule' => $d->rule, 'line' => $d->line, 'column' => $d->column],
+                $got
+            );
+            $expect = array_map(
+                static fn(array $d): array => ['rule' => $d['rule'], 'line' => $d['line'], 'column' => $d['column']],
+                $want
+            );
+            if ($expect === [] || $rows !== $expect) {
+                Assert::fail('diagnostics ' . json_encode($rows));
+            }
+            foreach ($got as $d) {
+                Assert::assertNotSame('', $d->message, "diagnostic {$d->rule} has no message");
+            }
+        }
+    }
+
+    /** Compares the tokens of an analysis with the tokens of a case, as line, start, end and class. */
+    private static function checkTokens(array $tokens, array $want): void
+    {
+        $got = array_map(static fn(object $t): array => [$t->line, $t->start, $t->end, $t->class], $tokens);
+        if ($got !== $want) {
+            Assert::fail('tokens ' . json_encode($got));
         }
     }
 

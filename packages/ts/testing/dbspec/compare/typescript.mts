@@ -1,6 +1,6 @@
 // TypeScript side of every shared case, stress document, statement vector, plan vector, and Mermaid vector:
 // dbspec results are printed in the line format of tests/dbspec/compare/check.mts. It then prints the positions cases of
-// cases.json and the analysis and format of each case of syntax.json.
+// the recipe files beside cases.json and the analysis and format of each case of syntax.json.
 //
 // Usage: node packages/ts/testing/dbspec/compare/typescript.mts <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
 // (after the TypeScript build)
@@ -9,7 +9,7 @@ import { dirname, join as joinPath } from 'node:path';
 import { parseCases, type Cases } from '../../../../../tests/dbspec/cases.mts';
 import { readVectors, vectorProblems } from '../../../../../tests/dbspec/vectors.mts';
 import { join, vectorInputs } from '../../../../../scripts/dbspec/syntax-vectors.mts';
-import { SchemaError } from '../../../../../scripts/json/schema.mts';
+import { parseJson, SchemaError } from '../../../../../scripts/json/schema.mts';
 import { errorMessage } from '../../../../../tests/errors.mts';
 import { readInput } from '../../../../../tests/dbspec/input.mts';
 import {
@@ -72,6 +72,35 @@ function readShared(path: string): Cases {
   return cases;
 }
 
+const RECIPE_SCHEMA = new URL('../../../../../scripts/features/schema/recipe.schema.json', import.meta.url).pathname;
+
+/** A case of a recipe file: its documents by name (main is the text of the step) and its line ends. */
+type RecipeCase = { id: string; documents: Record<string, string[]>; crlf: boolean; mixed: boolean; path: string };
+type RecipeStep = { op: string; text?: string[]; set?: Record<string, string[]>; path?: string; crlf?: boolean; mixed?: boolean };
+type RecipeFile = { cases: { id: string; steps: RecipeStep[] }[] };
+
+// readRecipe reads a recipe file of tests/dbspec strictly against the recipe schema, and gives each case with its step of op.
+function readRecipe(path: string, op: string): RecipeCase[] {
+  let file: RecipeFile;
+  try {
+    file = parseJson<RecipeFile>(readInput(path), RECIPE_SCHEMA, path);
+  } catch (error) {
+    if (error instanceof SchemaError) for (const line of vectorProblems(path, error)) console.error(line);
+    else console.error(errorMessage(error));
+    process.exit(1);
+  }
+  return file.cases.map((c, index) => {
+    const step = c.steps.find(s => s.op === op);
+    if (step === undefined) fail(path, `cases[${index}].steps`, `has no ${op} step`);
+    const documents: Record<string, string[]> = { main: step.text ?? [] };
+    for (const [name, lines] of Object.entries(step.set ?? {})) {
+      if (name === 'main') fail(path, `cases[${index}].steps`, 'names a document main, which is the main document');
+      documents[name] = lines;
+    }
+    return { id: c.id, documents, crlf: step.crlf === true, mixed: step.mixed === true, path: step.path ?? '' };
+  });
+}
+
 const out: string[] = [];
 const DIALECTS: readonly DbspecDialect[] = ['mysql', 'postgres', 'sqlite'];
 
@@ -118,12 +147,16 @@ function readDocument(path: string): string {
 }
 
 const shared = readShared(casesPath);
-for (const kind of ['canonical', 'normalize', 'invalid'] as const) {
-  for (const c of shared[kind]) {
-    const crlf = c.crlf === true;
-    const mixed = c.mixed === true;
+const recipeDir = dirname(casesPath);
+const canonical = readRecipe(joinPath(recipeDir, 'canonical.json'), 'dbspec.format');
+const normalize = readRecipe(joinPath(recipeDir, 'normalize.json'), 'dbspec.format');
+const invalid = readRecipe(joinPath(recipeDir, 'invalid.json'), 'dbspec.format');
+const positions = readRecipe(joinPath(recipeDir, 'positions.json'), 'dbspec.parse_positions');
+const files = readRecipe(joinPath(recipeDir, 'files.json'), 'dbspec.read_file');
+for (const [kind, cases] of [['canonical', canonical], ['normalize', normalize], ['invalid', invalid]] as const) {
+  for (const c of cases) {
     out.push(`${kind}/${c.id}`);
-    write(join(c.documents[c.main] ?? [], crlf, mixed), others(c.documents, c.main, crlf, mixed), false);
+    write(join(c.documents.main ?? [], c.crlf, c.mixed), others(c.documents, 'main', c.crlf, c.mixed), false);
   }
 }
 out.push('stress');
@@ -131,8 +164,8 @@ write(readDocument(stressPath), {}, true);
 // The files case passes the path to readDbspecFile as "files/<id>", and passes the file bytes to readDbspecBytes
 // with the case path as name as "files/<id>/bytes", and reads the diagnostic and its message, or otherwise
 // the emission is printed. The name before the message is written as "<name>".
-for (const c of shared.files) {
-  const path = joinPath(dirname(casesPath), c.path);
+for (const c of files) {
+  const path = joinPath(recipeDir, c.path);
   let reads: [string, string, DbspecReadResult][];
   try {
     reads = [[`files/${c.id}`, path, readDbspecFile(path)], [`files/${c.id}/bytes`, c.path, readDbspecBytes(c.path, readFileSync(path))]];
@@ -388,9 +421,9 @@ for (const c of mermaid.round_trip) {
 }
 // The declaration positions of the main document of each positions case, as "| kind<TAB>line<TAB>column<TAB>path..."
 // lines, or its diagnostics.
-for (const c of shared.positions) {
+for (const c of positions) {
   out.push(`positions/${c.id}`);
-  const result = parseDbspec(join(c.documents[c.main] ?? [], false), others(c.documents, c.main));
+  const result = parseDbspec(join(c.documents.main ?? [], false), others(c.documents, 'main'));
   for (const d of result.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
   for (const p of result.positions ?? []) out.push(`| ${[p.kind, p.line, p.column, ...p.path].join('\t')}`);
 }
@@ -400,17 +433,29 @@ for (const c of shared.positions) {
 
 // Each case of syntax.json prints its tokens ("| line start end class") and the diagnostics of its analysis, then
 // "syntax/<id>/format" and the formatted text or the diagnostics of the refusal.
+// writeSyntax prints the tokens of the analysis of one input ("| line start end class" and its diagnostics), then
+// "syntax/<id>/format" and the formatted text or the diagnostics of the refusal.
+function writeSyntax(id: string, input: { text: string; documents: Record<string, string> }): void {
+  out.push(`syntax/${id}`);
+  const analysis = analyzeDbspec(input.text, input.documents);
+  for (const t of analysis.tokens) out.push(`| ${t.line} ${t.start} ${t.end} ${t.class}`);
+  for (const d of analysis.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
+  out.push(`syntax/${id}/format`);
+  const formatted = formatDbspec(input.text, input.documents);
+  for (const d of formatted.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
+  if (formatted.text !== null) for (const line of formatted.text.split('\n')) out.push(`| ${line}`);
+}
+
+// The recipe documents come first, in the order canonical, normalize, invalid, and then the cases of syntax.json.
+for (const [kind, cases] of [['canonical', canonical], ['normalize', normalize], ['invalid', invalid]] as const) {
+  for (const c of cases) {
+    writeSyntax(`${kind}.${c.id}`, { text: join(c.documents.main ?? [], c.crlf, c.mixed), documents: others(c.documents, 'main', c.crlf, c.mixed) });
+  }
+}
 const inputs = new Map(vectorInputs(shared).map(input => [input.id, input]));
 readVectors(syntaxPath, 'syntax').cases.forEach((c, i) => {
   const input = inputs.get(c.id);
   if (input === undefined) fail(syntaxPath, `cases[${i}].id`, 'names no input of the shared cases');
-  out.push(`syntax/${c.id}`);
-  const analysis = analyzeDbspec(input.text, input.documents);
-  for (const t of analysis.tokens) out.push(`| ${t.line} ${t.start} ${t.end} ${t.class}`);
-  for (const d of analysis.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
-  out.push(`syntax/${c.id}/format`);
-  const formatted = formatDbspec(input.text, input.documents);
-  for (const d of formatted.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
-  if (formatted.text !== null) for (const line of formatted.text.split('\n')) out.push(`| ${line}`);
+  writeSyntax(c.id, input);
 });
 process.stdout.write(out.join('\n') + '\n');

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 )
 
@@ -9,54 +10,111 @@ import (
 // decodes one, so these readers check only what a schema cannot state.
 
 type caseFile struct {
-	Canonical []documentCase `json:"canonical"`
-	Normalize []documentCase `json:"normalize"`
-	Invalid   []documentCase `json:"invalid"`
-	Hashes    []hashCase     `json:"hashes"`
-	Files     []fileCase     `json:"files"`
-	Sets      []struct {
+	Hashes []hashCase `json:"hashes"`
+	Sets   []struct {
 		ID        string              `json:"id"`
 		Documents [][]string          `json:"documents"`
 		Parsing   map[string][]string `json:"parsing"`
 		External  [][]string          `json:"external"`
 	} `json:"sets"`
-	Positions []documentCase `json:"positions"`
 }
 
-type documentCase struct {
-	ID        string              `json:"id"`
-	Main      string              `json:"main"`
-	Documents map[string][]string `json:"documents"`
-	CRLF      bool                `json:"crlf"`
-	Mixed     bool                `json:"mixed"`
+// recipeFile is the part of a recipe file of tests/dbspec that the compare tool reads: its cases and their steps.
+type recipeFile struct {
+	Cases []struct {
+		ID    string       `json:"id"`
+		Steps []recipeStep `json:"steps"`
+	} `json:"cases"`
 }
 
-// readCases reads tests/dbspec/cases.json against its schema, then refuses a case whose main document is not one of
-// its documents and a sets document whose header names no document, which the schema cannot state.
+type recipeStep struct {
+	Op    string              `json:"op"`
+	Text  []string            `json:"text"`
+	Set   map[string][]string `json:"set"`
+	Path  string              `json:"path"`
+	CRLF  bool                `json:"crlf"`
+	Mixed bool                `json:"mixed"`
+}
+
+// readRecipe reads the cases of one recipe file of tests/dbspec/<name>. Each case has one step of op, which holds the
+// input that the compare tool runs: the main text and the other documents of its set. The recipe runners check the
+// rest of each case.
+func readRecipe(dir, name, op string) ([]testCase, error) {
+	var file recipeFile
+	if err := readRecipeFile(filepath.Join(dir, name), &file); err != nil {
+		return nil, err
+	}
+	var cases []testCase
+	for _, c := range file.Cases {
+		var found *recipeStep
+		for i := range c.Steps {
+			if c.Steps[i].Op == op {
+				found = &c.Steps[i]
+				break
+			}
+		}
+		if found == nil {
+			return nil, fmt.Errorf("%s: case %s has no %s step", name, c.ID, op)
+		}
+		documents := map[string][]string{"main": found.Text}
+		for other, lines := range found.Set {
+			if other == "main" {
+				return nil, fmt.Errorf("%s: case %s names a document main, which is the main document", name, c.ID)
+			}
+			documents[other] = lines
+		}
+		cases = append(cases, testCase{ID: c.ID, Main: "main", Documents: documents, CRLF: found.CRLF, Mixed: found.Mixed})
+	}
+	return cases, nil
+}
+
+// readFiles reads the files cases of tests/dbspec/files.json: each names a file by its path (read_file step), relative to tests/dbspec.
+func readFiles(dir string) ([]fileCase, error) {
+	var file recipeFile
+	if err := readRecipeFile(filepath.Join(dir, "files.json"), &file); err != nil {
+		return nil, err
+	}
+	var files []fileCase
+	for _, c := range file.Cases {
+		for _, s := range c.Steps {
+			if s.Op == "dbspec.read_file" {
+				files = append(files, fileCase{ID: c.ID, Path: s.Path})
+				break
+			}
+		}
+	}
+	return files, nil
+}
+
+// readCases reads tests/dbspec/cases.json against its schema, then reads the recipe files of the same directory for
+// the canonical, normalize, invalid, positions and files cases. It refuses a sets document whose header names no
+// document, which the schema cannot state.
 func readCases(path string) (sharedCases, error) {
 	var file caseFile
 	r, err := readVectors(path, "cases", &file)
 	if err != nil {
 		return sharedCases{}, err
 	}
+	dir := filepath.Dir(path)
+	all := sharedCases{Hashes: file.Hashes}
 	for _, section := range []struct {
-		name  string
-		cases []documentCase
-	}{{"canonical", file.Canonical}, {"normalize", file.Normalize}, {"invalid", file.Invalid}, {"positions", file.Positions}} {
-		for i, c := range section.cases {
-			if _, ok := c.Documents[c.Main]; !ok {
-				return sharedCases{}, r.fail(fmt.Sprintf("%s[%d].documents.%s", section.name, i, c.Main), "is missing")
-			}
+		name string
+		op   string
+		into *[]testCase
+	}{{"canonical.json", "dbspec.format", &all.Canonical}, {"normalize.json", "dbspec.format", &all.Normalize}, {"invalid.json", "dbspec.format", &all.Invalid}} {
+		if *section.into, err = readRecipe(dir, section.name, section.op); err != nil {
+			return all, err
 		}
 	}
-	all := sharedCases{Hashes: file.Hashes, Files: file.Files}
-	for _, section := range []struct {
-		cases []documentCase
-		into  *[]testCase
-	}{{file.Canonical, &all.Canonical}, {file.Normalize, &all.Normalize}, {file.Invalid, &all.Invalid}} {
-		for _, c := range section.cases {
-			*section.into = append(*section.into, testCase(c))
-		}
+	positions, err := readRecipe(dir, "positions.json", "dbspec.parse_positions")
+	if err != nil {
+		return all, err
+	}
+	for _, c := range positions {
+		all.Positions = append(all.Positions, positionCase{ID: c.ID, Main: c.Main, Documents: c.Documents})
+	}
+	if all.Files, err = readFiles(dir); err != nil {
+		return all, err
 	}
 	for i, c := range file.Sets {
 		s := setCase{ID: c.ID, Parsing: c.Parsing}
@@ -68,13 +126,9 @@ func readCases(path string) (sharedCases, error) {
 		}
 		all.Sets = append(all.Sets, s)
 	}
-	for _, c := range file.Positions {
-		all.Positions = append(all.Positions, positionCase{ID: c.ID, Main: c.Main, Documents: c.Documents})
-	}
 	return all, nil
 }
 
-// namedDocuments names each document of a sets case by its header; a header that names no document is refused.
 func (r vectorReader) namedDocuments(documents [][]string, location string) ([]namedDocument, error) {
 	named := make([]namedDocument, len(documents))
 	for i, lines := range documents {

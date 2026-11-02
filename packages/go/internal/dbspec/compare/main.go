@@ -1,6 +1,6 @@
 // Command go prints the Go dbspec results for all shared cases, stress documents, statement vectors, plan vectors, and Mermaid vectors
-// in the line format of tests/dbspec/compare/check.mts. It then prints the positions cases
-// of cases.json and the analysis and format of each case of syntax.json.
+// in the line format of tests/dbspec/compare/check.mts. It then prints the positions cases, the analysis and format of each
+// canonical, normalize and invalid case of the recipe files (in that order), and then of each case of syntax.json.
 //
 // Usage: go run ./packages/go/internal/dbspec/compare <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
 package main
@@ -632,6 +632,12 @@ func main() {
 		os.Exit(1)
 	}
 	inputs := syntaxInputs(all)
+	for _, kind := range caseKinds(all) {
+		for _, c := range kind.cases {
+			id := kind.name + "." + c.ID
+			writeSyntax(out, id, inputs[id])
+		}
+	}
 	for i, id := range syntax {
 		input, ok := inputs[id]
 		if !ok {

@@ -50,10 +50,18 @@ type step struct {
 	Answer  json.RawMessage            `json:"answer"`
 	Answers map[string]json.RawMessage `json:"answers"`
 	// Documents and Document name the .dbs files of the dbspec ops, relative to the recipe file; Text is the lines of a document text.
-	Documents []string                   `json:"documents"`
-	Document  string                     `json:"document"`
-	Text      []string                   `json:"text"`
-	Expect    map[string]json.RawMessage `json:"expect"`
+	Documents []string `json:"documents"`
+	Document  string   `json:"document"`
+	Text      []string `json:"text"`
+	// Set holds the other documents of an inline dbspec op, CRLF and Mixed its line endings, Owned and External the texts of
+	// dbspec.parse_set, and Path the file of dbspec.read_file and dbspec.read_bytes.
+	Set      map[string][]string        `json:"set"`
+	CRLF     bool                       `json:"crlf"`
+	Mixed    bool                       `json:"mixed"`
+	Owned    []string                   `json:"owned"`
+	External []string                   `json:"external"`
+	Path     string                     `json:"path"`
+	Expect   map[string]json.RawMessage `json:"expect"`
 }
 
 // IRAnswer runs the chain of one ir.answer step on a listener that answers with the answer, or with answers keyed by the op of

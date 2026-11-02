@@ -9,12 +9,13 @@
 // end. A Mermaid export case ends with the Mermaid text and the missing objects (without a reason
 // ("= kind<TAB>table<TAB>name") or the document's diagnostics, and import and invalid cases print the emitted
 // document and the missing objects or diagnostics, and a round trip case prints the document's export and then
-// "<name>/import" and the import of that export. Each positions case of cases.json prints the declaration positions
+// "<name>/import" and the import of that export. Each positions case of positions.json (beside cases.json) prints the declaration positions
 // of its main document ("| kind<TAB>line<TAB>column<TAB>path..." lines) or its diagnostics. Each case of syntax.json
-// prints, from the input of cases.json that its id names, the tokens of the analysis ("| line start end class") and
+// prints, from the input of the recipes beside cases.json that its id names, the tokens of the analysis ("| line start end class") and
 // its diagnostics, then "syntax/<id>/format" and the formatted text or the diagnostics of the refusal. Each runner runs twice
 // and all output must match the first Go output.
 //
+// The document cases are read from the recipe files beside cases.json.
 // Usage: node tests/dbspec/compare/check.mts <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
 // (after the TypeScript build, the debug build of the Rust example, and the build of the PHP extension)
 import { compare, type Output } from './compare.mts';

@@ -118,19 +118,6 @@ func (r vectorReader) integerField(object map[string]any, location, key string) 
 	return r.integer(value, vectorAt(location, key))
 }
 
-// flag returns false if the key is missing, and otherwise the value, after checking that it is a boolean.
-func (r vectorReader) flag(object map[string]any, location, key string) (bool, error) {
-	value, ok := object[key]
-	if !ok {
-		return false, nil
-	}
-	b, ok := value.(bool)
-	if !ok {
-		return false, r.fail(vectorAt(location, key), "is not a boolean")
-	}
-	return b, nil
-}
-
 func (r vectorReader) array(value any, location string) ([]any, error) {
 	items, ok := value.([]any)
 	if !ok {

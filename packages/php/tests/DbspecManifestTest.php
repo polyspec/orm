@@ -84,7 +84,10 @@ class DbspecManifestTest extends TestCase
             'ob_start();',
             '$documents = dbspec_parse_document_set(Polyspec\\Orm\\Dbspec\\Dbspec::class, $valid);',
             '$validOutput = ob_get_clean();',
-            '$invalid = $cases[\'invalid\'][0];',
+            // The missing-header case of tests/dbspec/invalid.json, which is a recipe case now.
+            '$invalid = [\'id\' => \'missing-header\', '
+            . '\'documents\' => [\'shop\' => ['
+            . '\'table users {\', \'  id i64 identity\', \'  primary key (id)\', \'}\']]];',
             'ob_start();',
             '$rejected = dbspec_parse_document_set('
                 . 'Polyspec\\Orm\\Dbspec\\Dbspec::class, $invalid, "render/{$invalid[\'id\']}\\n");',

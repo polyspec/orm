@@ -1,14 +1,14 @@
-// dbspec analyze and format. analyzeDbspec gives the parse result unchanged with the tokens of the text, and the tokens of
-// every shared case are those of tests/dbspec/syntax.json exactly (dbspec-syntax.mjs). formatDbspec formats the canonical and normalize cases to
-// their canonical text, refuses the invalid cases with their diagnostics, and is idempotent.
+// dbspec analyze. analyzeDbspec gives the tokens of the header line, and tests/dbspec/syntax.json is the output of the
+// generator (scripts/dbspec/syntax-vectors.mts) over the sets and hashes cases; its cases run in dbspec-syntax.mjs.
+// The tokens and the format of the canonical, normalize and invalid documents run from their recipes (recipe_<section>.mjs).
 //
 // Usage: node --test packages/ts/tests/dbspec-analyze.mjs (after the build)
 import { caseTest } from '../../../tests/testcase.mts';
 import { vectorRegistrar } from '../../../tests/vector-registrar.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { analyzeDbspec, formatDbspec } from '../dist/dbspec/index.js';
-import { generate, join, render, vectorInputs } from '../../../scripts/dbspec/syntax-vectors.mts';
+import { analyzeDbspec } from '../dist/dbspec/index.js';
+import { generate, render, vectorInputs } from '../../../scripts/dbspec/syntax-vectors.mts';
 import { readCases } from '../../../tests/dbspec/cases.mts';
 
 const root = new URL('../../../', import.meta.url);
@@ -27,41 +27,8 @@ vector('analyze header line tokens', () => {
   );
 });
 
-// syntax.json is the output of the generator (scripts/dbspec/syntax-vectors.mts) over the shared cases; its cases run
-// in dbspec-syntax.mjs.
+// syntax.json is the output of the generator (scripts/dbspec/syntax-vectors.mts) over the shared cases.
 const syntaxText = readFileSync(new URL('tests/dbspec/syntax.json', root), 'utf8');
 vector('syntax.json is the generator output', () => {
   assert.equal(syntaxText, render(generate(analyzeDbspec, vectorInputs(cases))));
 });
-
-// formatDbspec: canonical cases emit unchanged, normalize cases emit their canonical lines, invalid cases are refused.
-for (const c of cases.canonical) {
-  vector(`format canonical ${c.id}`, () => {
-    const text = join(c.documents[c.main], c.crlf === true, c.mixed === true);
-    const set = Object.fromEntries(Object.entries(c.documents).filter(([name]) => name !== c.main).map(([name, lines]) => [name, join(lines, c.crlf === true, c.mixed === true)]));
-    const formatted = formatDbspec(text, set);
-    assert.deepEqual(formatted, { text, diagnostics: [] });
-    assert.deepEqual(formatDbspec(formatted.text, set), formatted, 'formatting is idempotent');
-  });
-}
-
-for (const c of cases.normalize) {
-  vector(`format normalize ${c.id}`, () => {
-    const text = join(c.documents[c.main], c.crlf === true, c.mixed === true);
-    const set = Object.fromEntries(Object.entries(c.documents).filter(([name]) => name !== c.main).map(([name, lines]) => [name, join(lines, c.crlf === true, c.mixed === true)]));
-    const canonical = join(c.canonical, false);
-    const formatted = formatDbspec(text, set);
-    assert.deepEqual(formatted, { text: canonical, diagnostics: [] });
-    assert.deepEqual(formatDbspec(formatted.text, set), formatted, 'formatting is idempotent');
-  });
-}
-
-for (const c of cases.invalid) {
-  vector(`format refuses invalid ${c.id}`, () => {
-    const text = join(c.documents[c.main], c.crlf === true, c.mixed === true);
-    const set = Object.fromEntries(Object.entries(c.documents).filter(([name]) => name !== c.main).map(([name, lines]) => [name, join(lines, c.crlf === true, c.mixed === true)]));
-    const formatted = formatDbspec(text, set);
-    assert.equal(formatted.text, null);
-    assert.deepEqual(formatted.diagnostics.map(d => ({ line: d.line, column: d.column, rule: d.rule })), c.errors);
-  });
-}

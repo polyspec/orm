@@ -26,6 +26,7 @@
       ],
       "support": [
         "packages/go/engine/dbspec/vector_reader_test.go",
+        "packages/go/engine/dbspec/vectors_test.go",
         "packages/go/model/coverage_helpers_test.go",
         "packages/go/orm/coverage_fixture_test.go",
         "packages/go/orm/failing_driver_test.go",
@@ -331,7 +332,6 @@
         "packages/php/tests/dbspec_limit_cases.php",
         "packages/php/tests/dbspec_plan_cases.php",
         "packages/php/tests/dbspec_set_cases.php",
-        "packages/php/tests/dbspec_set_parse_cases.php",
         "packages/php/tests/dbspec_sets_cases.php",
         "packages/php/tests/dbspec_syntax_vectors.php",
         "packages/php/tests/dbspec_verify_errors_case.php",
@@ -380,6 +380,10 @@
         "pattern": "^    public const (\\w+) = '\\w+';$"
       },
       "internal": [
+        {
+          "glob": "packages/php/tests/DbspecTest.php",
+          "reason": "harness: the strict reader of tests/dbspec/cases.json (hashes and sets envelope), refusing missing and unknown fields; it does not call the PHP dbspec client, the same as the Go and Python cases-reader tests"
+        },
         {
           "glob": "packages/php/tests/DbspecCatalogChecksTest.php",
           "reason": "test: directly exercises the @internal Dbspec\\CatalogChecks adapter; accepted and rejected check introspection remains covered across all clients by dbspec-introspect cases"
@@ -568,6 +572,10 @@
         "pattern": "^    public const (?:string )?(\\w+) = '\\1';$"
       },
       "internal": [
+        {
+          "glob": "packages/php-ext/tests/DbspecTestExtensionTest.php",
+          "reason": "harness: runs the strict reader of tests/dbspec/cases.json through the extension (DbspecTest); it does not call the PHP dbspec client"
+        },
         {
           "glob": "packages/php-ext/tests/CodecCauseTest.php",
           "reason": "test: injects PHP YAML parser and dumper dependency failures through CodecYamlProbe to verify native wrapper codes and exact cause identity; shared codec vectors cover invalid caller input"
@@ -3900,22 +3908,22 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/parseset_test.go",
-          "id": "TestParseSetVectors/byte-order-mark"
+          "test": "packages/go/orm/recipe_set_parse_test.go",
+          "id": "TestRecipeSetParseNone/byte-order-mark"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecSetParseTest.php",
-          "id": "DbspecSetParseTest::testByteOrderMark"
+          "test": "packages/php/tests/DbspecSetParseRecipeTest.php",
+          "id": "DbspecSetParseRecipeTest::testNone with data set \"byte-order-mark\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecSetParseTestExtensionTest.php",
-          "id": "DbspecSetParseTestExtensionTest::testByteOrderMark"
+          "test": "packages/php-ext/tests/DbspecSetParseRecipeTestExtensionTest.php",
+          "id": "DbspecSetParseRecipeTestExtensionTest::testNone with data set \"byte-order-mark\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-set-parse.mjs",
+          "test": "packages/ts/tests/recipe_set_parse.mjs",
           "id": "byte-order-mark"
         },
         {
@@ -3925,13 +3933,13 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_set_parse.py",
+          "test": "packages/python/tests/recipe_set_parse.py",
           "id": "byte-order-mark"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_set_parse.rs",
-          "id": "shared_set_parse_vectors::byte-order-mark"
+          "test": "packages/rust/tests/tests/set_parse_none.rs",
+          "id": "set_parse_none::byte-order-mark"
         }
       ]
     },
@@ -10678,36 +10686,36 @@
         "DBS-131",
         "DBS-132"
       ],
-      "file": "tests/dbspec/cases.json",
-      "cases": "$.canonical[*].id",
+      "file": "tests/dbspec/canonical.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/vectors_test.go",
-          "symbol": "TestCanonicalVectors"
+          "test": "packages/go/orm/recipe_canonical_test.go",
+          "symbol": "TestRecipeCanonicalNone"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecTest::testCanonical"
+          "test": "packages/php/tests/DbspecCanonicalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecCanonicalRecipeTest::testNone"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecTestExtensionTest::testCanonical"
+          "test": "packages/php-ext/tests/DbspecCanonicalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecCanonicalRecipeTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-canonical.mjs"
+          "test": "packages/ts/tests/recipe_canonical.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_canonical.py"
+          "test": "packages/python/tests/recipe_canonical.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec.rs",
-          "symbol": "shared_dbspec_vectors::canonical"
+          "test": "packages/rust/tests/tests/canonical_none.rs",
+          "symbol": "canonical_none"
         }
       ]
     },
@@ -10736,36 +10744,36 @@
         "DBS-131",
         "DBS-132"
       ],
-      "file": "tests/dbspec/cases.json",
-      "cases": "$.normalize[*].id",
+      "file": "tests/dbspec/normalize.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/vectors_test.go",
-          "symbol": "TestNormalizeVectors"
+          "test": "packages/go/orm/recipe_normalize_test.go",
+          "symbol": "TestRecipeNormalizeNone"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecTest::testNormalize"
+          "test": "packages/php/tests/DbspecNormalizeRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecNormalizeRecipeTest::testNone"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecTestExtensionTest::testNormalize"
+          "test": "packages/php-ext/tests/DbspecNormalizeRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecNormalizeRecipeTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-normalize.mjs"
+          "test": "packages/ts/tests/recipe_normalize.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_normalize.py"
+          "test": "packages/python/tests/recipe_normalize.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec.rs",
-          "symbol": "shared_dbspec_vectors::normalize"
+          "test": "packages/rust/tests/tests/normalize_none.rs",
+          "symbol": "normalize_none"
         }
       ]
     },
@@ -10849,36 +10857,36 @@
         "DBS-171",
         "ORES-56"
       ],
-      "file": "tests/dbspec/cases.json",
-      "cases": "$.invalid[*].id",
+      "file": "tests/dbspec/invalid.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/vectors_test.go",
-          "symbol": "TestInvalidVectors"
+          "test": "packages/go/orm/recipe_invalid_test.go",
+          "symbol": "TestRecipeInvalidNone"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecTest::testInvalid"
+          "test": "packages/php/tests/DbspecInvalidRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecInvalidRecipeTest::testNone"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecTestExtensionTest::testInvalid"
+          "test": "packages/php-ext/tests/DbspecInvalidRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecInvalidRecipeTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-invalid.mjs"
+          "test": "packages/ts/tests/recipe_invalid.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_invalid.py"
+          "test": "packages/python/tests/recipe_invalid.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec.rs",
-          "symbol": "shared_dbspec_vectors::invalid"
+          "test": "packages/rust/tests/tests/invalid_none.rs",
+          "symbol": "invalid_none"
         }
       ]
     },
@@ -10982,36 +10990,36 @@
         "DBS-155",
         "DBS-171"
       ],
-      "file": "tests/dbspec/cases.json",
-      "cases": "$.files[*].id",
+      "file": "tests/dbspec/files.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/vectors_test.go",
-          "symbol": "TestFileVectors"
+          "test": "packages/go/orm/recipe_files_test.go",
+          "symbol": "TestRecipeFilesNone"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecTest::testFiles"
+          "test": "packages/php/tests/DbspecFilesRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecFilesRecipeTest::testNone"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecTestExtensionTest::testFiles"
+          "test": "packages/php-ext/tests/DbspecFilesRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecFilesRecipeTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-files.mjs"
+          "test": "packages/ts/tests/recipe_files.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_files.py"
+          "test": "packages/python/tests/recipe_files.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec.rs",
-          "symbol": "shared_dbspec_files"
+          "test": "packages/rust/tests/tests/files_none.rs",
+          "symbol": "files_none"
         }
       ]
     },
@@ -11039,36 +11047,36 @@
         "ORES-69",
         "ORES-71"
       ],
-      "file": "tests/dbspec/cases.json",
-      "cases": "$.positions[*].id",
+      "file": "tests/dbspec/positions.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/vectors_test.go",
-          "symbol": "TestPositionVectors"
+          "test": "packages/go/orm/recipe_positions_test.go",
+          "symbol": "TestRecipePositionsNone"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecTest::testPositions"
+          "test": "packages/php/tests/DbspecPositionsRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecPositionsRecipeTest::testNone"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecTestExtensionTest::testPositions"
+          "test": "packages/php-ext/tests/DbspecPositionsRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecPositionsRecipeTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-positions.mjs"
+          "test": "packages/ts/tests/recipe_positions.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_positions.py"
+          "test": "packages/python/tests/recipe_positions.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec.rs",
-          "symbol": "shared_dbspec_vectors::positions"
+          "test": "packages/rust/tests/tests/positions_none.rs",
+          "symbol": "positions_none"
         }
       ]
     },
@@ -12219,31 +12227,31 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/parseset_test.go",
-          "symbol": "TestParseSetVectors"
+          "test": "packages/go/orm/recipe_set_parse_test.go",
+          "symbol": "TestRecipeSetParseNone"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecSetParseTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecSetParseTest::testSetParse"
+          "test": "packages/php/tests/DbspecSetParseRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecSetParseRecipeTest::testNone"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecSetParseTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecSetParseTestExtensionTest::testSetParse"
+          "test": "packages/php-ext/tests/DbspecSetParseRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecSetParseRecipeTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-set-parse.mjs"
+          "test": "packages/ts/tests/recipe_set_parse.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_set_parse.py"
+          "test": "packages/python/tests/recipe_set_parse.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_set_parse.rs",
-          "symbol": "shared_set_parse_vectors"
+          "test": "packages/rust/tests/tests/set_parse_none.rs",
+          "symbol": "set_parse_none"
         }
       ]
     },
@@ -41803,7 +41811,9 @@
             "@polyspec/orm!emitDbspec:function(1)",
             "@polyspec/orm!externalDifferences:function(1)",
             "@polyspec/orm!formatDbspec:function(1)",
-            "@polyspec/orm!parseDbspec:function(1)"
+            "@polyspec/orm!parseDbspec:function(1)",
+            "@polyspec/orm!readDbspecBytes:function(1)",
+            "@polyspec/orm!readDbspecFile:function(1)"
           ]
         }
       ]

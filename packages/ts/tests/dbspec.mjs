@@ -1,5 +1,5 @@
 // dbspec checks beside the shared vectors: the manifest refuses a repeated document name, and the reader of
-// tests/dbspec/cases.json refuses missing and unknown fields. The vectors themselves run in dbspec-<section>.mjs.
+// tests/dbspec/cases.json refuses missing and unknown fields. The vectors themselves run in dbspec-<section>.mjs and the recipes.
 //
 // Usage: node --test packages/ts/tests/dbspec.mjs (after the build)
 import assert from 'node:assert/strict';
@@ -16,7 +16,7 @@ vector('manifest rejects a repeated document name', () => {
   assert.deepEqual(result.diagnostics.map(d => [d.rule, d.line, d.column]), [['name.duplicate', 1, 10]]);
 });
 
-// The reader of cases.json refuses a missing or an unknown section or field of every section, naming it.
+// The reader of cases.json refuses a missing or an unknown section or field of the sections it keeps, naming it.
 vector('cases.json reader refuses missing and unknown fields', () => {
   const text = readFileSync(new URL('tests/dbspec/cases.json', root), 'utf8');
   const manifest = cases.sets.findIndex(c => Object.hasOwn(c, 'manifest'));
@@ -24,16 +24,10 @@ vector('cases.json reader refuses missing and unknown fields', () => {
   const mutations = [
     ['/ ', 'missingProperty":"note', v => delete v.note],
     ['/ ', 'additionalProperty":"extra', v => (v.extra = [])],
-    ['/canonical/0 ', 'unevaluatedProperty":"extra', v => (v.canonical[0].extra = true)],
-    ['/normalize/0 ', 'missingProperty":"canonical', v => delete v.normalize[0].canonical],
-    ['/invalid/0/errors/0 ', 'additionalProperty":"extra', v => (v.invalid[0].errors[0].extra = 1)],
+    ['/ ', 'additionalProperty":"canonical', v => (v.canonical = [])],
     ['/hashes/0 ', 'additionalProperty":"extra', v => (v.hashes[0].extra = true)],
     ['/sets/0 ', 'additionalProperty":"extra', v => (v.sets[0].extra = true)],
     [`/sets/${manifest}/manifest `, 'additionalProperty":"extra', v => (v.sets[manifest].manifest.extra = [])],
-    ['/files/0 ', 'missingProperty":"errors', v => delete v.files[0].errors],
-    ['/positions/0/positions/0 ', 'additionalProperty":"extra', v => (v.positions[0].positions[0].extra = 1)],
-    ['/positions/0/positions/0/line ', 'must be integer', v => (v.positions[0].positions[0].line = true)],
-    ['/canonical/0/documents ', "required property 'absent', the main document of the case", v => (v.canonical[0].main = 'absent')],
   ];
   for (const [pointer, problem, change] of mutations) {
     const value = JSON.parse(text);

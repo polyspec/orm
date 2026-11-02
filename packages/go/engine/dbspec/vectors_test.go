@@ -2,50 +2,15 @@ package dbspec
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
-	"time"
-
-	"github.com/polyspec/orm/packages/go/testcase"
 )
 
+// vectorFile is what the engine tests read from tests/dbspec/cases.json: the hashes and sets cases. The canonical,
+// normalize, invalid, positions and files cases are run by the recipes of tests/dbspec (recipe_*_test.go in package orm).
 type vectorFile struct {
-	Canonical []vectorCase
-	Normalize []vectorCase
-	Invalid   []vectorCase
-	Hashes    []hashCase
-	Sets      []setCase
-	Files     []fileCase
-	Positions []positionCase
-}
-
-// positionCase is a positions case of cases.json: the declaration positions that Parse returns for its main document
-// (docs/spec/dbspec.md "Declaration positions").
-type positionCase struct {
-	ID        string
-	Documents map[string][]string
-	Main      string
-	Positions []Position
-}
-
-// fileCase is the files case of cases.json. path is a path relative to cases.json.
-type fileCase struct {
-	ID     string
-	Path   string
-	Errors []vectorError
-}
-
-type vectorCase struct {
-	ID        string
-	CRLF      bool
-	Mixed     bool
-	Documents map[string][]string
-	Main      string
-	Canonical []string
-	Errors    []vectorError
+	Hashes []hashCase
+	Sets   []setCase
 }
 
 type vectorError struct {
@@ -62,41 +27,6 @@ func joinLines(lines []string, crlf bool) string {
 	return strings.Join(lines, end) + end
 }
 
-// join joins a case document's lines with LF, with CRLF, or, for a mixed case, starting with CRLF and alternating CRLF and LF,
-// without a final line ending.
-func (c vectorCase) join(lines []string) string {
-	if !c.Mixed {
-		return joinLines(lines, c.CRLF)
-	}
-	var b strings.Builder
-	for i, line := range lines {
-		if i > 0 {
-			if i%2 == 1 {
-				b.WriteString("\r\n")
-			} else {
-				b.WriteString("\n")
-			}
-		}
-		b.WriteString(line)
-	}
-	return b.String()
-}
-
-// documentSet returns the main text and the declared document set, that is, all documents of the case other than main.
-func (c vectorCase) documentSet() (string, map[string]string, error) {
-	main, ok := c.Documents[c.Main]
-	if !ok {
-		return "", nil, fmt.Errorf("main document %q is not listed", c.Main)
-	}
-	set := map[string]string{}
-	for name, lines := range c.Documents {
-		if name != c.Main {
-			set[name] = c.join(lines)
-		}
-	}
-	return c.join(main), set, nil
-}
-
 func loadVectors(t *testing.T) vectorFile {
 	t.Helper()
 	r, object := readVectorFile(t, "cases.json")
@@ -104,24 +34,14 @@ func loadVectors(t *testing.T) vectorFile {
 	if err != nil {
 		t.Fatal(err)
 	}
-	seen := map[string]bool{}
-	for _, group := range [][]vectorCase{vectors.Canonical, vectors.Normalize, vectors.Invalid} {
-		for _, c := range group {
-			if c.ID == "" || seen[c.ID] {
-				t.Fatalf("case id %q is empty or repeated", c.ID)
-			}
-			seen[c.ID] = true
-		}
-	}
 	return vectors
 }
 
-// decodeCaseVectors reads all sections and fields of cases.json, and rejects any that are missing or of another type
-// with location. A normalize case has canonical, and an invalid case has errors,
-// and crlf and mixed are false when absent. A section or field that the format does not name is refused too.
+// decodeCaseVectors reads the sections and fields of cases.json that the engine tests use, and rejects any that are
+// missing or of another type with location. A section or field that the format does not name is refused too.
 func decodeCaseVectors(r vectorReader, object map[string]any) (vectorFile, error) {
 	var v vectorFile
-	if err := r.fields(object, "", []string{"requirements", "version", "note", "canonical", "normalize", "invalid", "hashes", "sets", "files", "positions"}); err != nil {
+	if err := r.fields(object, "", []string{"requirements", "version", "note", "hashes", "sets"}); err != nil {
 		return v, err
 	}
 	if err := r.version(object); err != nil {
@@ -130,56 +50,7 @@ func decodeCaseVectors(r vectorReader, object map[string]any) (vectorFile, error
 	if _, err := r.string(object, "", "note"); err != nil {
 		return v, err
 	}
-	readCase := func(canonical, errors bool) func(c map[string]any, location, id string) (vectorCase, error) {
-		required := []string{"id", "documents", "main"}
-		if canonical {
-			required = append(required, "canonical")
-		}
-		if errors {
-			required = append(required, "errors")
-		}
-		return func(c map[string]any, location, id string) (vectorCase, error) {
-			vc := vectorCase{ID: id}
-			if err := r.fields(c, location, required, "crlf", "mixed"); err != nil {
-				return vc, err
-			}
-			var err error
-			if vc.Main, err = r.string(c, location, "main"); err != nil {
-				return vc, err
-			}
-			if vc.Documents, err = r.linesMap(c, location, "documents"); err != nil {
-				return vc, err
-			}
-			if _, ok := vc.Documents[vc.Main]; !ok {
-				return vc, r.fail(vectorAt(vectorAt(location, "documents"), vc.Main), "is missing")
-			}
-			if vc.CRLF, err = r.flag(c, location, "crlf"); err != nil {
-				return vc, err
-			}
-			if vc.Mixed, err = r.flag(c, location, "mixed"); err != nil {
-				return vc, err
-			}
-			if canonical {
-				if vc.Canonical, err = r.linesField(c, location, "canonical"); err != nil {
-					return vc, err
-				}
-			}
-			if errors {
-				vc.Errors, err = r.locatedErrors(c, location, "errors")
-			}
-			return vc, err
-		}
-	}
 	var err error
-	if v.Canonical, err = vectorCases(r, object, "canonical", readCase(false, false)); err != nil {
-		return v, err
-	}
-	if v.Normalize, err = vectorCases(r, object, "normalize", readCase(true, false)); err != nil {
-		return v, err
-	}
-	if v.Invalid, err = vectorCases(r, object, "invalid", readCase(false, true)); err != nil {
-		return v, err
-	}
 	if v.Hashes, err = vectorCases(r, object, "hashes", func(c map[string]any, location, id string) (hashCase, error) {
 		h := hashCase{ID: id}
 		if err := r.fields(c, location, []string{"id", "documents", "manifestText", "schemaText", "manifestHash", "schemaHash"}); err != nil {
@@ -269,65 +140,6 @@ func decodeCaseVectors(r vectorReader, object map[string]any) (vectorFile, error
 	if err != nil {
 		return v, err
 	}
-	if v.Positions, err = vectorCases(r, object, "positions", func(c map[string]any, location, id string) (positionCase, error) {
-		pc := positionCase{ID: id}
-		if err := r.fields(c, location, []string{"id", "documents", "main", "positions"}); err != nil {
-			return pc, err
-		}
-		var err error
-		if pc.Main, err = r.string(c, location, "main"); err != nil {
-			return pc, err
-		}
-		if pc.Documents, err = r.linesMap(c, location, "documents"); err != nil {
-			return pc, err
-		}
-		if _, ok := pc.Documents[pc.Main]; !ok {
-			return pc, r.fail(vectorAt(vectorAt(location, "documents"), pc.Main), "is missing")
-		}
-		items, err := r.arrayField(c, location, "positions")
-		if err != nil {
-			return pc, err
-		}
-		for i, item := range items {
-			at := fmt.Sprintf("%s[%d]", vectorAt(location, "positions"), i)
-			object, ok := item.(map[string]any)
-			if !ok {
-				return pc, r.fail(at, "is not an object")
-			}
-			if err := r.fields(object, at, []string{"kind", "path", "line", "column"}); err != nil {
-				return pc, err
-			}
-			var p Position
-			if p.Kind, err = r.string(object, at, "kind"); err != nil {
-				return pc, err
-			}
-			if p.Path, err = r.linesField(object, at, "path"); err != nil {
-				return pc, err
-			}
-			if p.Line, err = r.integerField(object, at, "line"); err != nil {
-				return pc, err
-			}
-			if p.Column, err = r.integerField(object, at, "column"); err != nil {
-				return pc, err
-			}
-			pc.Positions = append(pc.Positions, p)
-		}
-		return pc, nil
-	}); err != nil {
-		return v, err
-	}
-	v.Files, err = vectorCases(r, object, "files", func(c map[string]any, location, id string) (fileCase, error) {
-		f := fileCase{ID: id}
-		if err := r.fields(c, location, []string{"id", "path", "errors"}); err != nil {
-			return f, err
-		}
-		var err error
-		if f.Path, err = r.string(c, location, "path"); err != nil {
-			return f, err
-		}
-		f.Errors, err = r.locatedErrors(c, location, "errors")
-		return f, err
-	})
 	return v, err
 }
 
@@ -359,179 +171,6 @@ func expectDocument(document *Document, diagnostics []Diagnostic) error {
 	return nil
 }
 
-// TestCanonicalVectors, TestNormalizeVectors and TestInvalidVectors check the
-// canonical, normalize and invalid cases of tests/dbspec/cases.json, one suite each.
-// Requirements: ORES-19.
-func TestCanonicalVectors(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	runVectorCases(t, loadVectors(t).Canonical, func(c vectorCase, text string, set map[string]string) error {
-		want := joinLines(c.Documents[c.Main], false)
-		if err := emitEquals(text, set, want); err != nil {
-			return err
-		}
-		formatted, diagnostics := Format(text, set)
-		if len(diagnostics) != 0 || formatted != want {
-			return fmt.Errorf("Format = %q diagnostics %+v, want %q", formatted, diagnostics, want)
-		}
-		return nil
-	})
-}
-
-// Requirements: ORES-15, ORES-17, ORES-19.
-func TestNormalizeVectors(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	runVectorCases(t, loadVectors(t).Normalize, func(c vectorCase, text string, set map[string]string) error {
-		want := joinLines(c.Canonical, false)
-		if err := emitEquals(text, set, want); err != nil {
-			return err
-		}
-		formatted, diagnostics := Format(text, set)
-		if len(diagnostics) != 0 {
-			return fmt.Errorf("Format returned diagnostics %+v", diagnostics)
-		}
-		if formatted != want {
-			return fmt.Errorf("Format differs:\ngot:\n%s\nwant:\n%s", formatted, want)
-		}
-		again, diagnostics := Format(formatted, set)
-		if len(diagnostics) != 0 || again != formatted {
-			return fmt.Errorf("Format is not idempotent: got %q diagnostics %+v", again, diagnostics)
-		}
-		return nil
-	})
-}
-
-func TestInvalidVectors(t *testing.T) {
-	// Requirements: ORES-19.
-	testcase.Start(t, testcase.Compute)
-	runVectorCases(t, loadVectors(t).Invalid, func(c vectorCase, text string, set map[string]string) error {
-		if err := expectDiagnostics(text, set, c.Errors); err != nil {
-			return err
-		}
-		formatted, diagnostics := Format(text, set)
-		if formatted != "" {
-			return fmt.Errorf("Format returned text for an invalid document")
-		}
-		got := make([]vectorError, len(diagnostics))
-		for i, d := range diagnostics {
-			got[i] = vectorError{Line: d.Line, Column: d.Column, Rule: d.Rule}
-		}
-		if fmt.Sprint(got) != fmt.Sprint(c.Errors) {
-			return fmt.Errorf("Format diagnostics = %+v, want %+v", got, c.Errors)
-		}
-		return nil
-	})
-}
-
-// TestPositionVectors requires Parse to return exactly the declaration positions of every positions case
-// (docs/spec/dbspec.md "Declaration positions").
-// Requirements: ORES-72.
-func TestPositionVectors(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	vectors := loadVectors(t)
-	if len(vectors.Positions) == 0 {
-		t.Fatal("tests/dbspec/cases.json has no positions cases")
-	}
-	for _, c := range vectors.Positions {
-		t.Run(c.ID, func(t *testing.T) {
-			set := map[string]string{}
-			for name, lines := range c.Documents {
-				if name != c.Main {
-					set[name] = joinLines(lines, false)
-				}
-			}
-			_, positions, diagnostics := Parse(joinLines(c.Documents[c.Main], false), set)
-			if len(diagnostics) != 0 {
-				t.Fatalf("diagnostics %+v", diagnostics)
-			}
-			if !reflect.DeepEqual(positions, c.Positions) {
-				t.Fatalf("positions =\n%+v\nwant\n%+v", positions, c.Positions)
-			}
-		})
-	}
-}
-
-// TestFileVectors reads each files case by passing the path to ReadFile, and reads it with ReadBytes
-// using the case path as the name. Both readers give the same rule and location, and each message uses
-// the name it received.
-func TestFileVectors(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	vectors := loadVectors(t)
-	if len(vectors.Files) == 0 {
-		t.Fatal("files cases are missing")
-	}
-	root := repositoryRoot(t)
-	for _, c := range vectors.Files {
-		path := filepath.Join(root, "tests", "dbspec", c.Path)
-		readers := []struct {
-			kind, name string
-			read       func() (string, []Diagnostic, error)
-		}{
-			{"file", path, func() (string, []Diagnostic, error) { return ReadFile(path) }},
-			{"bytes", c.Path, func() (string, []Diagnostic, error) {
-				raw, err := os.ReadFile(path)
-				if err != nil {
-					return "", nil, err
-				}
-				text, diagnostics := ReadBytes(c.Path, raw)
-				return text, diagnostics, nil
-			}},
-		}
-		t.Run(c.ID, func(t *testing.T) {
-			for _, reader := range readers {
-				runTimed(t, c.ID+" "+reader.kind, 5*time.Second, func() error {
-					text, diagnostics, err := reader.read()
-					if err != nil {
-						return err
-					}
-					return expectFileRead(path, reader.name, text, diagnostics, c.Errors)
-				})
-			}
-		})
-	}
-}
-
-// fileMessages is the message that the file reader and the byte check use for each rule.
-var fileMessages = map[string]string{RuleSignature: " is not a dbspec document", RuleEncoding: " is not valid UTF-8"}
-
-// expectFileRead compares one reader's result with the files case. If there are errors, only the diagnostics are compared, without text;
-// if there are none, the parsed text, which equals the file bytes, must be emitted unchanged.
-func expectFileRead(path, name, text string, diagnostics []Diagnostic, want []vectorError) error {
-	if len(want) > 0 {
-		if text != "" {
-			return fmt.Errorf("the reader returned text with diagnostics")
-		}
-		got := make([]vectorError, len(diagnostics))
-		for i, d := range diagnostics {
-			if message := name + fileMessages[d.Rule]; d.Message != message {
-				return fmt.Errorf("message = %q, want %q", d.Message, message)
-			}
-			got[i] = vectorError{Line: d.Line, Column: d.Column, Rule: d.Rule}
-		}
-		if fmt.Sprint(got) != fmt.Sprint(want) {
-			return fmt.Errorf("diagnostics = %+v, want %+v", got, want)
-		}
-		return nil
-	}
-	if len(diagnostics) != 0 {
-		return fmt.Errorf("unexpected diagnostics %+v", diagnostics)
-	}
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-	if text != string(raw) {
-		return fmt.Errorf("the reader text differs from the file bytes")
-	}
-	got, err := emitStable(text, nil)
-	if err != nil {
-		return err
-	}
-	if got != text {
-		return fmt.Errorf("emission differs:\ngot:\n%s\nwant:\n%s", got, text)
-	}
-	return nil
-}
-
 // expectDiagnostics parses the text and compares the rule, line, and column of every diagnostic, in order,
 // with want.
 func expectDiagnostics(text string, set map[string]string, want []vectorError) error {
@@ -550,33 +189,4 @@ func expectDiagnostics(text string, set map[string]string, want []vectorError) e
 		return fmt.Errorf("diagnostics = %+v, want %+v (messages %+v)", got, want, diagnostics)
 	}
 	return nil
-}
-
-// emitEquals checks that the emission of text, with the documents of set, is want.
-func emitEquals(text string, set map[string]string, want string) error {
-	got, err := emitStable(text, set)
-	if err != nil {
-		return err
-	}
-	if got != want {
-		return fmt.Errorf("emission differs:\ngot:\n%s\nwant:\n%s", got, want)
-	}
-	return nil
-}
-
-// runVectorCases runs check on the text and the documents of each case, as a
-// subtest named by the case id under a deadline.
-func runVectorCases(t *testing.T, cases []vectorCase, check func(c vectorCase, text string, set map[string]string) error) {
-	t.Helper()
-	for _, c := range cases {
-		t.Run(c.ID, func(t *testing.T) {
-			runTimed(t, c.ID, 5*time.Second, func() error {
-				text, set, err := c.documentSet()
-				if err != nil {
-					return err
-				}
-				return check(c, text, set)
-			})
-		})
-	}
 }
