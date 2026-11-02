@@ -13596,7 +13596,9 @@
       ],
       "parity": [
         "complex-query-product-search",
-        "fulltext-search"
+        "fulltext-search-recipe-mysql",
+        "fulltext-search-recipe-postgres",
+        "fulltext-search-recipe-sqlite"
       ],
       "fixtures": [
         "contracts/fixtures/complex_query/complex_query.dbs",
@@ -13609,14 +13611,20 @@
         "packages/ts/tests/coverage_complex_query.mjs",
         "packages/python/tests/coverage_complex_query.py",
         "packages/rust/tests/tests/integration/coverage_complex_query.rs",
-        "packages/go/engine/fulltext_search_test.go",
-        "packages/php/tests/FulltextSearchTest.php",
-        "packages/ts/tests/fulltext-search.mjs",
-        "packages/python/tests/fulltext_search.py",
-        "packages/rust/orm/tests/fulltext_search.rs",
+        "packages/go/orm/recipe_fulltext_search_test.go",
+        "packages/php/tests/FulltextSearchRecipeTest.php",
+        "packages/php-ext/tests/FulltextSearchRecipeTestExtensionTest.php",
+        "packages/ts/tests/fulltext-search-recipe-mysql.test.mjs",
+        "packages/ts/tests/fulltext-search-recipe-postgres.test.mjs",
+        "packages/ts/tests/fulltext-search-recipe-sqlite.test.mjs",
+        "packages/python/tests/test_fulltext_search_recipe_mysql.py",
+        "packages/python/tests/test_fulltext_search_recipe_postgres.py",
+        "packages/python/tests/test_fulltext_search_recipe_sqlite.py",
+        "packages/rust/tests/tests/fulltext_search_recipe_mysql.rs",
+        "packages/rust/tests/tests/fulltext_search_recipe_postgres.rs",
+        "packages/rust/tests/tests/fulltext_search_recipe_sqlite.rs",
         "packages/ts/tests/complex-query.mjs",
-        "packages/rust/orm/src/request.rs",
-        "packages/php-ext/tests/FulltextSearchTestExtensionTest.php"
+        "packages/rust/orm/src/request.rs"
       ],
       "docs": [
         "docs/spec/complex-query.md",
@@ -13654,7 +13662,6 @@
           "command": "make complex-query-typescript-unit-check",
           "shard": "other",
           "inputs": [
-            "packages/ts/tests/fulltext-search.mjs",
             "packages/ts/tests/fulltext-chain-types.mjs",
             "packages/ts/tests/paginate-order.mjs"
           ]

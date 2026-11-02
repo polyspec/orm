@@ -3556,7 +3556,6 @@ typescript-package-entry-check: typescript-build
 complex-query-typescript-unit-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	$(NODE) packages/ts/tests/fulltext-search.mjs
 	$(NODE) packages/ts/tests/fulltext-chain-types.mjs
 	$(NODE) packages/ts/tests/paginate-order.mjs
 

@@ -628,7 +628,9 @@ const OPS = {
     return { value: { int: String(await context.catalog.deleteRow(stepArgument(s.snapshot, context))) } };
   },
   async 'sql.exec'(s, context) {
-    await nativeQuery(context.database, context.dsn, [sql(s.sql, context)]);
+    // An object form runs only on the databases whose key it holds (FCV-4): an absent key runs nothing.
+    const statement = typeof s.sql === 'string' ? s.sql : s.sql[context.database];
+    if (statement !== undefined) await nativeQuery(context.database, context.dsn, [statement]);
     return {};
   },
 };

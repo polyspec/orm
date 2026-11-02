@@ -1521,7 +1521,14 @@ def _op_delete_row(step: dict, context: dict) -> dict:
 
 
 def _op_sql_exec(step: dict, context: dict) -> dict:
-    native_query(context["database"], context["dsn"], [_sql(step["sql"], context)])
+    # An object form runs only on the databases whose key it holds (FCV-4): an absent key runs nothing.
+    statement = (
+        step["sql"]
+        if isinstance(step["sql"], str)
+        else step["sql"].get(context["database"])
+    )
+    if statement is not None:
+        native_query(context["database"], context["dsn"], [statement])
     return {}
 
 

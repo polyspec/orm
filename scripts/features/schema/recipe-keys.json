@@ -71,6 +71,14 @@
       "reason",
       "sql"
     ],
+    "query.search": [
+      "columns",
+      "connection",
+      "expect",
+      "model",
+      "op",
+      "text"
+    ],
     "ir.validate": [
       "expect",
       "op",

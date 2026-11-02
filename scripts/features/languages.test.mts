@@ -62,7 +62,7 @@ caseTest('feature ownership distinguishes declared implementation-internal tests
   assert.equal(isImplementationInternalTest('go', 'packages/go/orm/split_plan_test.go', internal), true);
   assert.equal(isImplementationInternalTest('typescript', 'packages/ts/tests/split-plan.test.mjs', internal), true);
   assert.equal(isImplementationInternalTest('python', 'packages/python/tests/test_split_plan.py', internal), true);
-  assert.equal(isImplementationInternalTest('go', 'packages/go/engine/fulltext_search_test.go', internal), false);
+  assert.equal(isImplementationInternalTest('go', 'packages/go/orm/recipe_fulltext_search_test.go', internal), false);
   assert.equal(isImplementationInternalTest('python', 'packages/python/tests/coverage_complex_query.py', internal), false);
 });
 

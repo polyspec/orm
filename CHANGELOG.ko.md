@@ -1,9 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 316c80cc3f3d1f9f62130d19c281f435151e51d03de033f60ae48d0dc7f4c5c8 -->
+<!-- source-sha256: 5cba36c30dbebecab63e467918f3d3247f002499e5dcc201683adc9dc5b08def -->
 # 변경 이력
 
 ## Unreleased
 
+- 전문 검색 동작(DSL-32, DSL-33, DIA-6, DIA-187, PRT-75)은 레시피 contracts/fixtures/fulltext_search/fulltext_search.json 하나이며, 각 런타임의 레시피 헬퍼가 op query.search로 MySQL, PostgreSQL, SQLite에서 실행한다. 이 op는 fulltext_boolean 술어의 count를 connection의 dialect에서 컴파일하고 statement와 bind 값을 보고한다: MySQL은 fulltext_boolean 변환 값, PostgreSQL은 텍스트 그대로, SQLite는 OPERATOR_NOT_ALLOWED다. 여섯 네이티브 fulltext 테스트와 그 파리티 단위는 제거했다(T334-3-17-2).
+- fulltext 레시피의 Go query.search가 외부 문서 없이 케이스 스키마를 적재했고 모델 이름 Author를 entity로 넘겨서 Go의 네 케이스가 모두 실패했다. engine.Load가 외부 문서 텍스트를 받아 runtimemodel.LoadSet으로 적재하며, 레시피는 스키마의 외부 문서와 entity author를 넘긴다 (T334-3-17-2-1).
+- php-extension bootstrap이 자신의 extension test가 상속하는 fulltext 레시피 test를 적재하지 않아, php-extension의 fulltext 레시피 case가 모두 exit 255로 끝났다. bootstrap은 이제 packages/php/tests/FulltextSearchRecipeTest.php를 require한다 (T334-3-17-2-2).
 - dbspec Mermaid vector(tests/dbspec/mermaid.json)를 recipe 하나로 바꾸었다. 각 runtime은 recipe helper로 그 recipe를 entry 하나에서 실행하고, compare runner도 그것을 읽으며, 네이티브 vector 테스트는 제거했다 (T334-3-21).
 - composite_keys는 여섯 recipe runner가 세 database에서 실행하는 recipe다: 각 runtime은 model op(CompositeMembership의 model.creates와 model.count, model.query의 tuples, connect·many·alias를 받는 relation)를 생성된 CompositeAccount와 CompositeMembership method로 실행하고, recipe는 memberships relation을 coverage 시험이 읽는 대로 alias 아래 relations(child)의 collection으로 읽는다(T334-3-5-12).
 - Rust의 recipe runner는 packages/rust/tests/src/recipe.rs 하나다. packages/rust/orm/tests 아래 두 번째 runner가 실행하던 planner.compile, ir.validate, dbspec plan op는 그 runner의 op이고, planner, 요청 검증, dbspec plan recipe는 packages/rust/tests/tests의 trial로 실행되며, 두 번째 runner는 지운다. recipe 사례가 아닌 manifest hash 검사는 native 시험 packages/rust/orm/tests/ir_manifest_hash.rs다 (T334-3-25-1).

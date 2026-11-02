@@ -1846,8 +1846,12 @@ mod database {
             Some(expect) => Some(resolve_refs(&expect[context.database], context)?),
         };
         let want_error = expected.as_ref().and_then(|e| e.get("error")).and_then(Value::as_str).map(str::to_owned);
-        let dispatched =
-            if step["op"].as_str().is_some_and(|op| MODEL_OPS.contains(&op)) { model_call(step, context).await } else { call(catalog, step, context).await };
+        // query.search runs on the generated models of the dispatcher too, as the model ops do (FCV-4).
+        let dispatched = if step["op"].as_str().is_some_and(|op| MODEL_OPS.contains(&op) || op == "query.search") {
+            model_call(step, context).await
+        } else {
+            call(catalog, step, context).await
+        };
         let output = match dispatched {
             Ok(output) => output,
             Err(Failure::Step(message)) => return Err(message),
@@ -2212,9 +2216,11 @@ mod database {
                 let deleted = live(catalog)?.delete_row(snapshot, cancellation, publish, permit).await.map_err(Failure::Call)?;
                 Output::fields(json!({ "value": { "int": deleted.to_string() } }))
             }
+            // sql.exec (FCV-4): a string runs on every database; an object runs only where its key is present.
             "sql.exec" => {
-                let sql = sql_field(&step["sql"], context).map_err(fault)?;
-                native_exec(&context.dsn, sql).await.map_err(Failure::Call)?;
+                if let Some(sql) = sql_entry(&step["sql"], context).map_err(fault)? {
+                    native_exec(&context.dsn, sql).await.map_err(Failure::Call)?;
+                }
                 Output::fields(json!({}))
             }
             // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
@@ -2299,6 +2305,19 @@ mod database {
         match bound(field, context)? {
             Bound::Snapshot(snapshot) => Ok(snapshot),
             _ => Err("snapshot is not a bound snapshot".into()),
+        }
+    }
+
+    /// The SQL of a sql.exec field for the case database: a string, or the entry of the database when the object has its key.
+    /// An absent key is None, so the step runs nothing on that database.
+    fn sql_entry<'a>(field: &'a Value, context: &Context<'_>) -> Result<Option<&'a str>, String> {
+        if let Some(text) = field.as_str() {
+            return Ok(Some(text));
+        }
+        let entries = field.as_object().ok_or_else(|| format!("{field} is neither a string nor an object of the databases"))?;
+        match entries.get(context.database) {
+            None => Ok(None),
+            Some(text) => text.as_str().map(Some).ok_or_else(|| format!("{text} is no SQL for {}", context.database)),
         }
     }
 

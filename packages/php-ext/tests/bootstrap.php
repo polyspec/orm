@@ -36,6 +36,7 @@ require_once dirname(__DIR__, 2) . '/php/tests/CoverageSchemaDefinitionTest.php'
 require_once dirname(__DIR__, 2) . '/php/tests/Recipe.php';
 require_once dirname(__DIR__, 2) . '/php/tests/RecipeKeysTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CodecRecipeTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/FulltextSearchRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/IrValidateRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/PlannerCompileTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DbspecPlanCasesTest.php';
@@ -111,7 +112,6 @@ require_once dirname(__DIR__, 2) . '/php/tests/DbspecRenderTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DbspecSetTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DbspecShowCreateIntrospectTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DsnTest.php';
-require_once dirname(__DIR__, 2) . '/php/tests/FulltextSearchTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/GroupRowsTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/HostcodecTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/InsertPartsTest.php';

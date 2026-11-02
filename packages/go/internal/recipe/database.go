@@ -60,6 +60,7 @@ type databaseStep struct {
 	Limit    int             `json:"limit"`
 	Offset   int64           `json:"offset"`
 	Columns  []string        `json:"columns"`
+	Text     string          `json:"text"`
 	SQL      json.RawMessage `json:"sql"`
 	MaxRows  int             `json:"max_rows"`
 	MaxBytes int             `json:"max_bytes"`
@@ -777,9 +778,12 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		return okOutcome(), nil
 	case "sql.exec":
-		statement, err := databaseText(s.SQL, c)
+		statement, present, err := sqlExecText(s.SQL, c)
 		if err != nil {
 			return outcome{}, err
+		}
+		if !present {
+			return okOutcome(), nil
 		}
 		raw := testdb.Open(c.t, c.database, c.dsn)
 		defer testcase.Close(c.t, raw)
@@ -787,6 +791,8 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, err
 		}
 		return outcome{fields: map[string]any{}}, nil
+	case "query.search":
+		return searchOp(s, c)
 	// dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step, opened with Connect.
 	case "dsn.connect":
 		var dsn string
@@ -919,6 +925,21 @@ func databaseText(raw json.RawMessage, c *databaseContext) (string, error) {
 		return "", fmt.Errorf("the SQL field has no entry for %s", c.database)
 	}
 	return text, nil
+}
+
+// sqlExecText is the text of a sql.exec field for the case database. A string runs on every database; an object runs
+// only where its key is present, so an absent key reports present false and the step runs nothing (FCV-4).
+func sqlExecText(raw json.RawMessage, c *databaseContext) (string, bool, error) {
+	var text string
+	if err := json.Unmarshal(raw, &text); err == nil {
+		return text, true, nil
+	}
+	var entries map[string]string
+	if err := json.Unmarshal(raw, &entries); err != nil {
+		return "", false, fmt.Errorf("a SQL field is a string or an object of the databases: %s", raw)
+	}
+	text, present := entries[c.database]
+	return text, present, nil
 }
 
 // refName is the name of a {"ref": ...} field, or "" for another field.

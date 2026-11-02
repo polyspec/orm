@@ -1827,10 +1827,16 @@ final class Recipe
                 }
                 return ['value' => $body === null ? ['null' => 'text'] : ['text' => $body]];
             case 'sql.exec':
-                // The native driver of PHP is PDO, opened on the case database.
-                $pdo = case_admin($context['dsn']);
-                $pdo->exec(self::sqlField($s['sql'], $context));
+                // An object form runs only on the databases whose key it holds (FCV-4): an absent key runs nothing.
+                $statement = is_string($s['sql']) ? $s['sql'] : ($s['sql'][$context['database']] ?? null);
+                if ($statement !== null) {
+                    // The native driver of PHP is PDO, opened on the case database.
+                    $pdo = case_admin($context['dsn']);
+                    $pdo->exec($statement);
+                }
                 return [];
+            case 'query.search':
+                return self::querySearch($s, $context);
             // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
             case 'dsn.connect':
                 $dsn = $s['dsn'] === 'case' ? $context['dsn'] : $s['dsn'];
@@ -1932,6 +1938,29 @@ final class Recipe
     private static function sqlField(string|array $field, array $context): string
     {
         return is_string($field) ? $field : $field[$context['database']];
+    }
+
+    /**
+     * query.search (FCV-4, PRT-75): the count of a fulltext_boolean chain over the columns, through the fulltext
+     * chain of the model. The request is compiled on the dialect of the case connection (DIA-187 refuses SQLite), and
+     * its bind values are those of the statement: the DIA-6 transform on MySQL, which refuses a blank text with
+     * IR_INVALID, and the text as it is on PostgreSQL.
+     */
+    private static function querySearch(array $s, array $context): array
+    {
+        if ($s['model'] !== 'Author') {
+            Assert::fail("model {$s['model']} has no query.search entry");
+        }
+        $db = self::connectionOf($s, $context);
+        $chain = 'fulltextBoolean'
+            . implode('With', array_map(static fn(string $c): string => ucfirst($c), $s['columns']));
+        $author = (new \Polyspec\Orm\Tests\Model\Author())->connect($db)->{$chain}($s['text']);
+        $request = (new \ReflectionMethod(Model::class, 'build'))->invoke($author, 'count', $db);
+        $statement = $db->statement($request);
+        return [
+            'sql' => $statement['sql'],
+            'params' => array_map(static fn(mixed $v): array => ['text' => $v], $statement['binds']),
+        ];
     }
 
     /** The connection that an op names, or the case connection when the op names none (FCV-4). */

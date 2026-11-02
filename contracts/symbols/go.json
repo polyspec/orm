@@ -4657,7 +4657,7 @@
   },
   "packages/go/engine/engine.go::Load": {
     "exported": true,
-    "signature": "func(manifestText, dialectName string) (*Engine, error)"
+    "signature": "func(manifestText, externalText, dialectName string) (*Engine, error)"
   },
   "packages/go/engine/engine.go::New": {
     "exported": true,

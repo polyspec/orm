@@ -1,0 +1,228 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "DSL-32",
+    "DSL-33",
+    "DIA-6",
+    "DIA-187",
+    "PRT-75"
+  ],
+  "fixture": "contracts/fixtures/bench/dbspec-set.json",
+  "cases": [
+    {
+      "id": "normalize_alpha_beta",
+      "requirements": [
+        "DSL-32",
+        "DSL-33",
+        "DIA-6",
+        "DIA-187",
+        "PRT-75"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "CREATE FULLTEXT INDEX ft_author_name_description ON author (name, description)"
+          },
+          "reason": "dbspec has no fulltext form (docs/spec/dbspec.md:500), so the MySQL FULLTEXT index is created natively; PostgreSQL and SQLite need no index"
+        },
+        {
+          "op": "query.search",
+          "connection": "db",
+          "model": "Author",
+          "columns": [
+            "name",
+            "description"
+          ],
+          "text": "alpha beta",
+          "expect": {
+            "mysql": {
+              "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE MATCH (`a`.`name`, `a`.`description`) AGAINST (? IN BOOLEAN MODE)",
+              "params": [
+                {
+                  "text": "+alpha +beta*"
+                }
+              ]
+            },
+            "postgres": {
+              "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE to_tsvector('simple', coalesce(\"a\".\"name\", '') || ' ' || coalesce(\"a\".\"description\", '')) @@ websearch_to_tsquery('simple', $1)",
+              "params": [
+                {
+                  "text": "alpha beta"
+                }
+              ]
+            },
+            "sqlite": {
+              "error": "OPERATOR_NOT_ALLOWED"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "normalize_quotes_and_operators",
+      "requirements": [
+        "DSL-32",
+        "DSL-33",
+        "DIA-6",
+        "DIA-187",
+        "PRT-75"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "CREATE FULLTEXT INDEX ft_author_name_description ON author (name, description)"
+          },
+          "reason": "dbspec has no fulltext form (docs/spec/dbspec.md:500), so the MySQL FULLTEXT index is created natively; PostgreSQL and SQLite need no index"
+        },
+        {
+          "op": "query.search",
+          "connection": "db",
+          "model": "Author",
+          "columns": [
+            "name",
+            "description"
+          ],
+          "text": "  +a  (b) \"c\"  ",
+          "expect": {
+            "mysql": {
+              "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE MATCH (`a`.`name`, `a`.`description`) AGAINST (? IN BOOLEAN MODE)",
+              "params": [
+                {
+                  "text": "+a +b +c*"
+                }
+              ]
+            },
+            "postgres": {
+              "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE to_tsvector('simple', coalesce(\"a\".\"name\", '') || ' ' || coalesce(\"a\".\"description\", '')) @@ websearch_to_tsquery('simple', $1)",
+              "params": [
+                {
+                  "text": "  +a  (b) \"c\"  "
+                }
+              ]
+            },
+            "sqlite": {
+              "error": "OPERATOR_NOT_ALLOWED"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "normalize_tilde",
+      "requirements": [
+        "DSL-32",
+        "DSL-33",
+        "DIA-6",
+        "DIA-187",
+        "PRT-75"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "CREATE FULLTEXT INDEX ft_author_name_description ON author (name, description)"
+          },
+          "reason": "dbspec has no fulltext form (docs/spec/dbspec.md:500), so the MySQL FULLTEXT index is created natively; PostgreSQL and SQLite need no index"
+        },
+        {
+          "op": "query.search",
+          "connection": "db",
+          "model": "Author",
+          "columns": [
+            "name",
+            "description"
+          ],
+          "text": "one ~ two",
+          "expect": {
+            "mysql": {
+              "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE MATCH (`a`.`name`, `a`.`description`) AGAINST (? IN BOOLEAN MODE)",
+              "params": [
+                {
+                  "text": "+one +two*"
+                }
+              ]
+            },
+            "postgres": {
+              "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE to_tsvector('simple', coalesce(\"a\".\"name\", '') || ' ' || coalesce(\"a\".\"description\", '')) @@ websearch_to_tsquery('simple', $1)",
+              "params": [
+                {
+                  "text": "one ~ two"
+                }
+              ]
+            },
+            "sqlite": {
+              "error": "OPERATOR_NOT_ALLOWED"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "blank_text",
+      "requirements": [
+        "DSL-32",
+        "DSL-33",
+        "DIA-6",
+        "DIA-187",
+        "PRT-75"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "CREATE FULLTEXT INDEX ft_author_name_description ON author (name, description)"
+          },
+          "reason": "dbspec has no fulltext form (docs/spec/dbspec.md:500), so the MySQL FULLTEXT index is created natively; PostgreSQL and SQLite need no index"
+        },
+        {
+          "op": "query.search",
+          "connection": "db",
+          "model": "Author",
+          "columns": [
+            "name",
+            "description"
+          ],
+          "text": "  \t ",
+          "expect": {
+            "mysql": {
+              "error": "IR_INVALID"
+            },
+            "postgres": {
+              "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE to_tsvector('simple', coalesce(\"a\".\"name\", '') || ' ' || coalesce(\"a\".\"description\", '')) @@ websearch_to_tsquery('simple', $1)",
+              "params": [
+                {
+                  "text": "  \t "
+                }
+              ]
+            },
+            "sqlite": {
+              "error": "OPERATOR_NOT_ALLOWED"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

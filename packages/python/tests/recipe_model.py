@@ -3,6 +3,9 @@ generated model that its model name names, through the connection that model.con
 an entry here fails the case by name, so no recipe passes on a call that the helper does not make."""
 
 from polyspec.orm import Db
+from polyspec.orm.bind_check import fulltext_boolean
+from polyspec.orm.engine import Engine
+from polyspec.orm.names import ChainKey
 
 from .models import models
 
@@ -522,8 +525,38 @@ def model_ops(native, database_value, step_argument):
             )
         return _wrap(getattr(row, _COMPOSITE_MEMBERSHIP_GETTERS[column])())
 
+    def query_search(step, context):
+        """query.search (FCV-4, PRT-75): a count with a fulltext_boolean chain key over the columns. The statement is compiled
+        with the engine of the case dialect (DIA-187 refuses SQLite); a blank text runs on the case connection, where the bind
+        check refuses it with IR_INVALID (DIA-6)."""
+        db = connection(step["connection"], context)
+        if step["model"] != "Author":
+            raise AssertionError(f"model {step['model']} has no query.search entry")
+        author = models.Author().connect(db)
+        author.core.where_chain(
+            "",
+            [ChainKey(op="fulltext_boolean", columns=tuple(step["columns"]))],
+            [step["text"]],
+        )
+        built = author.core.build("count")
+        plan = Engine(author.core.ent.model.runtime, context["database"]).compile(
+            built.finish()
+        )
+        # The value is the one the statement binds: the transform that the plan declares for its slot (DIA-6 declares
+        # fulltext_boolean on MySQL only; PostgreSQL binds the text as it is).
+        slots = plan["steps"][0]["bind_slots"]
+        boolean = bool(slots) and slots[0]["transform"] == "fulltext_boolean"
+        value = fulltext_boolean(step["text"]) if boolean else step["text"]
+        if boolean and value == "":
+            author.get_count()
+            raise AssertionError(
+                "query.search ran a blank text without a bind-check error"
+            )
+        return {"sql": plan["steps"][0]["sql"], "params": [{"text": value}]}
+
     return {
         "model.connect": model_connect,
+        "query.search": query_search,
         "model.create": model_create,
         "model.creates": model_creates,
         "model.save": model_save,

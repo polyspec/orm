@@ -758,7 +758,6 @@
         "packages/ts/tests/complex-query.mjs",
         "packages/ts/tests/complex-query-support.mjs",
         "packages/ts/tests/complex-query.types.ts",
-        "packages/ts/tests/fulltext-search.mjs",
         "packages/ts/tests/fulltext-chain-types.mjs",
         "packages/ts/tests/paginate-order.mjs",
         "packages/ts/tests/typecheck.ts"

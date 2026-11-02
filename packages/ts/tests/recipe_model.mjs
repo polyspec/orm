@@ -1,7 +1,7 @@
 // The generated-model ops of the recipe helper (docs/spec/feature-coverage.md FCV-4 model ops, FCV-14). Each op calls the
 // generated model that its model name names, through the connection that model.connect bound. A model or a column without
 // an entry here fails the case by name, so no recipe passes on a call that the helper does not make.
-import { Author, CompositeAccount, CompositeMembership, Db, NoteReader, SharedNote, User } from '../dist/index.js';
+import { Author, CompositeAccount, CompositeMembership, CORE, Db, Engine, fulltextBoolean, NoteReader, SharedNote, User } from '../dist/index.js';
 
 // The keys that the generated models of the bench set read their encrypted columns with (the native model tests use them).
 const BENCH_KEYS = { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' };
@@ -236,6 +236,26 @@ export function modelOps({ native, databaseValue, stepArgument }) {
       if (s.model === 'Author') return { value: wrap(await chain(db, objectValues(s.where, context), []).getCount()) };
       const filter = s.model === 'CompositeMembership' ? membershipFilter : compositeFilter;
       return { value: { int: String(await filter(db, objectValues(s.where, context)).getCount()) } };
+    },
+    // query.search (FCV-4, PRT-75): a count with a fulltext_boolean chain key over the columns. The statement is compiled with
+    // the engine of the case dialect (DIA-187 refuses SQLite); a blank text runs on the case connection, where the bind check
+    // refuses it with IR_INVALID (DIA-6).
+    async 'query.search'(s, context) {
+      const db = connection(s.connection, context);
+      if (s.model !== 'Author') throw new Error(`model ${s.model} has no query.search entry`);
+      const author = new Author().connect(db);
+      author[CORE].whereChain('', [{ conn: '', op: 'fulltext_boolean', column: '', columns: s.columns, compare: '' }], [s.text]);
+      const built = author[CORE].build('count');
+      const plan = new Engine(Author.entity.model, context.database).compile(built.finish());
+      // The value is the one the statement binds: the transform that the plan declares for its slot (DIA-6 declares
+      // fulltext_boolean on MySQL only; PostgreSQL binds the text as it is).
+      const boolean = plan.steps[0].bind_slots[0]?.transform === 'fulltext_boolean';
+      const value = boolean ? fulltextBoolean(s.text) : s.text;
+      if (boolean && value === '') {
+        await author.getCount();
+        throw new Error('query.search ran a blank text without a bind-check error');
+      }
+      return { sql: plan.steps[0].sql, params: [{ text: value }] };
     },
     async 'model.get_by'(s, context) {
       const db = connection(s.connection, context);

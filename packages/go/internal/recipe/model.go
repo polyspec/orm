@@ -11,6 +11,9 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/polyspec/orm/packages/go/engine"
+	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/packages/go/engine/plan"
 	"github.com/polyspec/orm/packages/go/model"
 	"github.com/polyspec/orm/packages/go/orm"
 )
@@ -995,4 +998,71 @@ func noteReaderOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, erro
 		rows = append(rows, []any{wrapperOf(parent["seq"]), wrapperOf(child.ToArray()["title"])})
 	}
 	return outcome{fields: map[string]any{"rows": rows}}, nil
+}
+
+// searchEntity is the runtime-model entity of the model Author: an entity without an `entity` setting is named by its table
+// (runtimemodel.Entity.Name), and the IR looks entities up by that name (ir.go query).
+const searchEntity = "author"
+
+// searchOp is query.search (FCV-4, PRT-75): the IR of a count with a fulltext_boolean predicate over the columns of the
+// model. The request is compiled with the engine of the case dialect, which refuses SQLite (DIA-187), and the expect is
+// the statement text and the bind value after the DIA-6 transform. A text with no term is run on the case connection
+// through the generated model, so that the bind check refuses it with IR_INVALID.
+func searchOp(s databaseStep, c *databaseContext) (outcome, error) {
+	if s.Model != "Author" {
+		return outcome{}, fmt.Errorf("model %s has no query.search entry", s.Model)
+	}
+	bound, ok := c.bound[s.Connection]
+	db, isDB := bound.api.(*orm.DB)
+	if !ok || !isDB {
+		return outcome{}, fmt.Errorf("query.search: connection %q is not bound by model.connect", s.Connection)
+	}
+	if c.schema == nil {
+		return outcome{}, fmt.Errorf("query.search needs the schema of the case")
+	}
+	e, err := engine.Load(c.schema.Text, c.schema.External, c.database)
+	if err != nil {
+		return outcome{}, err
+	}
+	position := 0
+	request, err := json.Marshal(ir.Request{
+		IRVersion:    ir.Version,
+		ManifestHash: c.schema.Hash,
+		Kind:         "count",
+		Query: ir.Query{
+			Entity: searchEntity,
+			Where:  &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Op: "fulltext_boolean", Cols: s.Columns, P: &position}}}},
+		},
+		NParams: 1,
+	})
+	if err != nil {
+		return outcome{}, err
+	}
+	out, err := e.Compile(request)
+	if err != nil {
+		return outcome{}, err
+	}
+	var compiled plan.Plan
+	if err := json.Unmarshal(out, &compiled); err != nil {
+		return outcome{}, err
+	}
+	if len(compiled.Steps) != 1 {
+		return outcome{}, fmt.Errorf("query.search compiled %d statements, want 1", len(compiled.Steps))
+	}
+	// The value is the one the statement binds: the transform that the plan declares for its slot (DIA-6 declares
+	// fulltext_boolean on MySQL only; PostgreSQL binds the text as it is).
+	boolean := len(compiled.Steps[0].BindSlots) > 0 && compiled.Steps[0].BindSlots[0].Transform == "fulltext_boolean"
+	value := s.Text
+	if boolean {
+		value = plan.FulltextBoolean(s.Text)
+	}
+	if boolean && value == "" {
+		m := model.Author().Connect(db)
+		m.Orm_().Where("", []orm.ChainKey{{Op: "fulltext_boolean", Columns: s.Columns}}, s.Text)
+		if _, err := m.GetCount(); err != nil {
+			return outcome{}, err
+		}
+		return outcome{}, fmt.Errorf("query.search ran a blank text without a bind-check error")
+	}
+	return outcome{fields: map[string]any{"sql": compiled.Steps[0].SQL, "params": []any{wrapperOf(value)}}}, nil
 }
