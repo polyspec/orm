@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from urllib.parse import urlsplit, parse_qsl
 
 from polyspec.orm import codes
+from polyspec.orm._sqlite_codes import result_code_suffix
 from polyspec.orm.codec import blind_index, decode as codec_decode, host_encode
 from polyspec.orm.clock import wall_micros
 from polyspec.orm.canonical import canonical_request
@@ -697,7 +698,10 @@ def _driver_error(
     if driver == "sqlite":
         if not isinstance(error, sqlite3.Error):
             return error
-        return OrmError(_sqlite_code(error), f"sqlite: {error}", error)
+        # The message ends with the name of the extended result code (INT-154).
+        number = getattr(error, "sqlite_errorcode", None)
+        suffix = result_code_suffix(number) if isinstance(number, int) else ""
+        return OrmError(_sqlite_code(error), f"sqlite: {error}{suffix}", error)
     if driver == "mysql":
         import pymysql
 

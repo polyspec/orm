@@ -561,6 +561,9 @@ final class Recipe
                 throw $error;
             }
             Assert::assertSame($expected['error'], $error->code_, "the error code ({$error->getMessage()})");
+            if (isset($expected['message_suffix'])) {
+                Assert::assertStringEndsWith($expected['message_suffix'], $error->getMessage(), 'the error message');
+            }
             return;
         }
         if (isset($step['as'])) {

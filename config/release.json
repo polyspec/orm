@@ -24,7 +24,8 @@
           "kind": "make",
           "target": "orm-codes-php",
           "outputs": [
-            "src/Code.php"
+            "src/Code.php",
+            "src/SqliteCodes.php"
           ]
         }
       ]
@@ -41,7 +42,8 @@
           "target": "php-ext-sources",
           "outputs": [
             "src/polyspec_orm_arginfo.h",
-            "src/native/sqlite_cancel.c"
+            "src/native/sqlite_cancel.c",
+            "src/sqlite_codes.h"
           ]
         }
       ]
@@ -57,7 +59,8 @@
           "kind": "make",
           "target": "orm-codes-python",
           "outputs": [
-            "src/polyspec/orm/codes.py"
+            "src/polyspec/orm/codes.py",
+            "src/polyspec/orm/_sqlite_codes.py"
           ]
         }
       ]

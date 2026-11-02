@@ -1109,6 +1109,14 @@ static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool list
     if (!orm_set_attribute(&pdo, "PDO::ATTR_ERRMODE", "PDO::ERRMODE_EXCEPTION")) goto pdo_fail;
     if (zend_string_equals_literal(Z_STR_P(driver), "sqlite")) {
         zval server_version, attr;
+        /* The driver reports the extended result code, whose name ends the message of an error (INT-154). */
+        zval extended, set_result;
+        if (!orm_constant("Pdo\\Sqlite::ATTR_EXTENDED_RESULT_CODES", &attr)) goto pdo_fail;
+        ZVAL_TRUE(&extended);
+        bool set_extended = pdo_call(&pdo, "setAttribute", &set_result, 2, &attr, &extended);
+        zval_ptr_dtor(&attr);
+        if (!set_extended) goto pdo_fail;
+        zval_ptr_dtor(&set_result);
         if (!orm_constant("PDO::ATTR_SERVER_VERSION", &attr)) goto pdo_fail;
         bool got_version = pdo_call(&pdo, "getAttribute", &server_version, 1, &attr, NULL);
         zval_ptr_dtor(&attr);

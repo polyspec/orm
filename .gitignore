@@ -41,6 +41,7 @@
 /packages/ts/src/orm-codes.key
 /packages/php/src/orm-codes.key
 /packages/python/src/polyspec/orm/orm-codes.key
+/packages/php-ext/src/orm-codes.key
 /packages/python/tests/models/python-models.key
 __pycache__/
 *.pyc
@@ -84,10 +85,15 @@ go.work.sum
 # The arginfo header and the copy of the SQLite cancel callback of the PHP extension are build output (make php-ext-sources).
 /packages/php-ext/src/polyspec_orm_arginfo.h
 /packages/php-ext/src/native/sqlite_cancel.c
-# The error code constants of TypeScript, PHP and Python are build output (make orm-codes).
+# The error code constants of TypeScript, PHP and Python, and the SQLite result code names of these and of the PHP extension, are
+# build output (make orm-codes, orm-codes-php-extension).
 /packages/ts/src/codes.ts
 /packages/php/src/Code.php
 /packages/python/src/polyspec/orm/codes.py
+/packages/ts/src/sqlite-codes.ts
+/packages/php/src/SqliteCodes.php
+/packages/python/src/polyspec/orm/_sqlite_codes.py
+/packages/php-ext/src/sqlite_codes.h
 # The link declaration of the development links (kit K869); make link reads it.
 /.links
 # The cache of ruff, which make lint-python writes at the root of the checkout

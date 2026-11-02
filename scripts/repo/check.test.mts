@@ -702,10 +702,11 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
     'the full install still prepares the TypeScript checker used by the interface extractor');
   assert.match(workflow, /id: interfaces-typescript\n        if: \$\{\{ !cancelled\(\) && steps\.group-needs\.outputs\.interfaces-typescript == 'true' \}\}\n        run: make orm-install-interfaces-typescript/);
   assert.match(workflow, /id: parity-symbols\n        if: \$\{\{ !cancelled\(\) && steps\.group-needs\.outputs\.parity-symbols == 'true' \}\}\n        run: make kit-install-symbols EXTRACTORS="go php"/);
-  // The PHP extension setup that every job runs writes the copy of the SQLite cancel callback that the build compiles (T290); the
-  // build runs the gen_stub.php of the PHP itself, so the setup installs no arginfo generator (kit K930).
-  assert.match(makefile, /^orm-install-php-extension-tools: \$\(PHP_EXT_SQLITE_CANCEL\)\n\t\$\(NODE\) scripts\/ci\/php-extension-tools\.mts\n(?!\t)/m,
-    'PHP extension setup writes the copy of the SQLite cancel callback and installs no arginfo generator');
+  // The PHP extension setup that every job runs writes the copy of the SQLite cancel callback that the build compiles (T290) and
+  // the SQLite result code names that it includes (INT-154); the build runs the gen_stub.php of the PHP itself, so the setup
+  // installs no arginfo generator (kit K930).
+  assert.match(makefile, /^orm-install-php-extension-tools: \$\(PHP_EXT_SQLITE_CANCEL\) orm-codes-php-extension\n\t\$\(NODE\) scripts\/ci\/php-extension-tools\.mts\n(?!\t)/m,
+    'PHP extension setup writes the copy of the SQLite cancel callback and the SQLite result code names, and installs no arginfo generator');
   const matrixWorkflow = workflow.split('\n  docs:')[0] ?? '';
   assert.equal((matrixWorkflow.match(/id: go-lease-modules/g) ?? []).length, 1, 'every group installs the shared runner dependency in its own job');
   assert.match(workflow, /id: go-lease-modules\n        if: \$\{\{ !cancelled\(\) \}\}\n        run: make orm-install-go-lease/);

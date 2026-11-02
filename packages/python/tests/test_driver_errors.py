@@ -70,7 +70,10 @@ class SqliteDriverErrorTest(unittest.TestCase):
         self.assertEqual(error.code, code, str(error))
         self.assertIsInstance(error.cause, sqlite3.Error)
         self.assertEqual(str(error), f"{code}: sqlite: {message}")
-        self.assertEqual(str(error), f"{code}: sqlite: {error.cause}")
+        # The driver text comes first, and the name of the extended result code ends it (INT-154).
+        self.assertTrue(
+            str(error).startswith(f"{code}: sqlite: {error.cause} ("), str(error)
+        )
         # The event of a failed statement carries the ORM error that the caller receives.
         failed = [event.error for event in self.events if event.error is not None]
         self.assertEqual(len(failed), 1)
@@ -82,28 +85,30 @@ class SqliteDriverErrorTest(unittest.TestCase):
         self.assert_driver_error(
             lambda: self.parent("a").create(),
             "DUPLICATE_KEY",
-            "UNIQUE constraint failed: parent.name",
+            "UNIQUE constraint failed: parent.name (SQLITE_CONSTRAINT_UNIQUE)",
         )
 
     def test_a_missing_parent_row_is_foreign_key(self):
         self.assert_driver_error(
             lambda: self.models.Child().connect(self.db).set_parent_seq(99).create(),
             "FOREIGN_KEY",
-            "FOREIGN KEY constraint failed",
+            "FOREIGN KEY constraint failed (SQLITE_CONSTRAINT_FOREIGNKEY)",
         )
 
     def test_a_restricted_delete_is_foreign_key(self):
         created = self.parent("kept").create()
         self.models.Child().connect(self.db).set_parent_seq(created.get_seq()).create()
         self.assert_driver_error(
-            lambda: created.delete(), "FOREIGN_KEY", "FOREIGN KEY constraint failed"
+            lambda: created.delete(),
+            "FOREIGN_KEY",
+            "FOREIGN KEY constraint failed (SQLITE_CONSTRAINT_TRIGGER)",
         )
 
     def test_a_check_violation_is_constraint(self):
         self.assert_driver_error(
             lambda: self.parent("zero", 0).create(),
             "CONSTRAINT",
-            "CHECK constraint failed: ck_parent_amount",
+            "CHECK constraint failed: ck_parent_amount (SQLITE_CONSTRAINT_CHECK)",
         )
 
     def test_a_write_in_a_read_only_transaction_is_read_only(self):
@@ -112,7 +117,7 @@ class SqliteDriverErrorTest(unittest.TestCase):
                 lambda: self.parent("ro").create(), {"readOnly": True, "retry": 0}
             ),
             "READ_ONLY",
-            "attempt to write a readonly database",
+            "attempt to write a readonly database (SQLITE_READONLY)",
         )
 
     def test_a_write_that_a_trigger_refuses_is_driver(self):
@@ -123,7 +128,9 @@ class SqliteDriverErrorTest(unittest.TestCase):
             )
         conn.close()
         self.assert_driver_error(
-            lambda: self.parent("refused").create(), "DRIVER", "parent refused"
+            lambda: self.parent("refused").create(),
+            "DRIVER",
+            "parent refused (SQLITE_CONSTRAINT_TRIGGER)",
         )
 
     # Requirements: CFG-12.
@@ -139,7 +146,9 @@ class SqliteDriverErrorTest(unittest.TestCase):
         try:
             holder.execute("BEGIN IMMEDIATE")
             self.assert_driver_error(
-                lambda: self.parent("busy").create(), "CANCELED", "database is locked"
+                lambda: self.parent("busy").create(),
+                "CANCELED",
+                "database is locked (SQLITE_BUSY)",
             )
         finally:
             holder.execute("ROLLBACK")

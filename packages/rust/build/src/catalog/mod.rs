@@ -157,5 +157,6 @@ pub(super) fn catalog_query_error(error: sqlx::Error) -> String {
             return format!("{}:{detail}", polyspec_orm::codes::CATALOG_VALUE);
         }
     }
-    error.to_string()
+    // A driver error carries the code of the error catalog, as every client reports it.
+    polyspec_orm::Error::from(error).to_string()
 }

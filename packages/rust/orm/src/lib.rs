@@ -22,6 +22,7 @@ pub mod plan;
 mod request;
 pub mod row;
 pub mod schema;
+mod sqlite_codes;
 #[cfg(feature = "test-faults")]
 pub mod testing;
 pub mod tx;
@@ -170,7 +171,6 @@ impl From<sqlx::Error> for Error {
                     _ => Some((codes::DRIVER, msg())),
                 }
             } else if let Some(s) = d.try_downcast_ref::<sqlx::sqlite::SqliteError>() {
-                // sqlx reports the extended result code as text
                 // sqlx reports the extended result code as text; a code that is missing or not a number is an explicit error with its text.
                 let n: i64 = match s.code() {
                     Some(text) => match text.parse() {
@@ -184,17 +184,19 @@ impl From<sqlx::Error> for Error {
                     },
                     None => return Error::Engine { code: codes::DRIVER.into(), msg: format!("sqlite reported no extended result code: {}", s.message()) },
                 };
-                match (n & 0xff, n) {
-                    (6, _) => Some((codes::DEADLOCK, s.message().to_owned())),
-                    (_, 2067) | (_, 1555) => Some((codes::DUPLICATE_KEY, s.message().to_owned())),
-                    (_, 787) => Some((codes::FOREIGN_KEY, s.message().to_owned())),
+                // The message ends with the name of the extended result code (INT-154).
+                let code = match (n & 0xff, n) {
+                    (6, _) => codes::DEADLOCK,
+                    (_, 2067) | (_, 1555) => codes::DUPLICATE_KEY,
+                    (_, 787) => codes::FOREIGN_KEY,
                     // An FK violation from a RESTRICT action arrives as CONSTRAINT_TRIGGER (1811). The 1811 from a trigger RAISE is DRIVER.
-                    (_, 1811) if s.message().contains("FOREIGN KEY constraint failed") => Some((codes::FOREIGN_KEY, s.message().to_owned())),
-                    (_, 275) => Some((codes::CONSTRAINT, s.message().to_owned())),
-                    (5, _) | (9, _) => Some((codes::CANCELED, s.message().to_owned())),
-                    (8, _) => Some((codes::READ_ONLY, s.message().to_owned())),
-                    _ => Some((codes::DRIVER, s.message().to_owned())),
-                }
+                    (_, 1811) if s.message().contains("FOREIGN KEY constraint failed") => codes::FOREIGN_KEY,
+                    (_, 275) => codes::CONSTRAINT,
+                    (5, _) | (9, _) => codes::CANCELED,
+                    (8, _) => codes::READ_ONLY,
+                    _ => codes::DRIVER,
+                };
+                Some((code, format!("{}{}", s.message(), sqlite_codes::result_code_suffix(n))))
             } else {
                 None
             };
@@ -289,6 +291,35 @@ mod mysql_code_tests {
     fn mysql_lock_wait_timeout_is_canceled() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         assert_eq!(mysql_code(1205), Some(codes::CANCELED));
+    }
+}
+
+#[cfg(test)]
+mod sqlite_code_tests {
+    // sqlite_codes.rs, which orm-gen sqlite-codes generates, names every code of the sqlite_result_codes table of
+    // docs/spec/errors.yaml and no other code: every other 16-bit code ends a message with its number.
+    // Requirements: INT-154.
+    #[test]
+    fn result_code_names_match_errors_yaml() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let manifest = std::env::var("CARGO_MANIFEST_DIR").expect("cargo test sets CARGO_MANIFEST_DIR");
+        let yaml = std::fs::read_to_string(format!("{manifest}/../../../docs/spec/errors.yaml")).expect("docs/spec/errors.yaml");
+        let mut listed = std::collections::HashMap::new();
+        let mut lines = yaml.lines().skip_while(|line| *line != "sqlite_result_codes:");
+        while let Some(line) = lines.next() {
+            if let Some(name) = line.strip_prefix("  - name: ") {
+                let value = lines.next().and_then(|line| line.strip_prefix("    value: ")).expect("value line").parse::<i64>().expect("integer value");
+                listed.insert(value, name.to_owned());
+            }
+        }
+        assert!(!listed.is_empty(), "docs/spec/errors.yaml lists no SQLite result codes");
+        for code in 0..=0xffff_i64 {
+            let want = match listed.get(&code) {
+                Some(name) => format!(" ({name})"),
+                None => format!(" (SQLite result code {code})"),
+            };
+            assert_eq!(super::sqlite_codes::result_code_suffix(code), want, "result code {code}");
+        }
     }
 }
 

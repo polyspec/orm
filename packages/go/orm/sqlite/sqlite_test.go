@@ -4,6 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"os"
+	"regexp"
+	"strconv"
 	"testing"
 
 	_ "modernc.org/sqlite"
@@ -47,5 +50,46 @@ func TestMapErrPreservesSQLiteConstraintContract(t *testing.T) {
 				t.Fatal("mapped error must be the ORM error boundary, not the driver error")
 			}
 		})
+	}
+}
+
+// TestResultCodeNamesMatchErrorsYaml compares result_codes.go, which orm-gen sqlite-codes generates, with the
+// sqlite_result_codes table of docs/spec/errors.yaml: every listed code has its name, and the file holds no other code.
+// A listed code ends a message with its name, and an unlisted one with its number.
+// Requirements: INT-154.
+func TestResultCodeNamesMatchErrorsYaml(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	src, err := os.ReadFile("../../../../docs/spec/errors.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	listed := map[int]string{}
+	for _, m := range regexp.MustCompile(`(?m)^  - name: (SQLITE_\w+)\n    value: (\d+)$`).FindAllSubmatch(src, -1) {
+		value, err := strconv.Atoi(string(m[2]))
+		if err != nil {
+			t.Fatal(err)
+		}
+		listed[value] = string(m[1])
+	}
+	if len(listed) == 0 {
+		t.Fatal("docs/spec/errors.yaml lists no SQLite result codes")
+	}
+	for value, name := range listed {
+		if got := resultCodeNames[value]; got != name {
+			t.Errorf("result code %d: got %q, want %q", value, got, name)
+		}
+	}
+	for value, name := range resultCodeNames {
+		if _, ok := listed[value]; !ok {
+			t.Errorf("result_codes.go names %d (%s), which errors.yaml does not list", value, name)
+		}
+	}
+	for _, c := range []struct {
+		code int
+		want string
+	}{{257, " (SQLITE_ERROR_MISSING_COLLSEQ)"}, {5130, " (SQLITE_IOERR_SHMLOCK)"}, {65535, " (SQLite result code 65535)"}} {
+		if got := resultCodeSuffix(c.code); got != c.want {
+			t.Errorf("resultCodeSuffix(%d) = %q, want %q", c.code, got, c.want)
+		}
 	}
 }

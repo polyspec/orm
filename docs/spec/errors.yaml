@@ -169,3 +169,233 @@ codes:
     origin: driver
   - code: DRIVER                  # any other driver error, such as a write that a trigger refuses: MySQL 1644 / PostgreSQL P0001 / SQLite 1811 of a trigger RAISE
     origin: driver
+# The SQLite result codes, primary and extended, of the sqlite3.h result code lists (SQLite 3.54.1). SQLite has no API
+# that names a code, so `orm-gen sqlite-codes --lang go|php|php-extension|rust|typescript|python` writes this table into
+# each runtime, which ends a SQLite driver error message with the name of its extended result code (INT-154).
+sqlite_result_codes:
+  - name: SQLITE_OK
+    value: 0
+  - name: SQLITE_OK_LOAD_PERMANENTLY
+    value: 256
+  - name: SQLITE_OK_SYMLINK
+    value: 512
+  - name: SQLITE_ERROR
+    value: 1
+  - name: SQLITE_ERROR_MISSING_COLLSEQ
+    value: 257
+  - name: SQLITE_ERROR_RETRY
+    value: 513
+  - name: SQLITE_ERROR_SNAPSHOT
+    value: 769
+  - name: SQLITE_ERROR_RESERVESIZE
+    value: 1025
+  - name: SQLITE_ERROR_KEY
+    value: 1281
+  - name: SQLITE_ERROR_UNABLE
+    value: 1537
+  - name: SQLITE_INTERNAL
+    value: 2
+  - name: SQLITE_PERM
+    value: 3
+  - name: SQLITE_ABORT
+    value: 4
+  - name: SQLITE_ABORT_ROLLBACK
+    value: 516
+  - name: SQLITE_BUSY
+    value: 5
+  - name: SQLITE_BUSY_RECOVERY
+    value: 261
+  - name: SQLITE_BUSY_SNAPSHOT
+    value: 517
+  - name: SQLITE_BUSY_TIMEOUT
+    value: 773
+  - name: SQLITE_LOCKED
+    value: 6
+  - name: SQLITE_LOCKED_SHAREDCACHE
+    value: 262
+  - name: SQLITE_LOCKED_VTAB
+    value: 518
+  - name: SQLITE_NOMEM
+    value: 7
+  - name: SQLITE_READONLY
+    value: 8
+  - name: SQLITE_READONLY_RECOVERY
+    value: 264
+  - name: SQLITE_READONLY_CANTLOCK
+    value: 520
+  - name: SQLITE_READONLY_ROLLBACK
+    value: 776
+  - name: SQLITE_READONLY_DBMOVED
+    value: 1032
+  - name: SQLITE_READONLY_CANTINIT
+    value: 1288
+  - name: SQLITE_READONLY_DIRECTORY
+    value: 1544
+  - name: SQLITE_INTERRUPT
+    value: 9
+  - name: SQLITE_IOERR
+    value: 10
+  - name: SQLITE_IOERR_READ
+    value: 266
+  - name: SQLITE_IOERR_SHORT_READ
+    value: 522
+  - name: SQLITE_IOERR_WRITE
+    value: 778
+  - name: SQLITE_IOERR_FSYNC
+    value: 1034
+  - name: SQLITE_IOERR_DIR_FSYNC
+    value: 1290
+  - name: SQLITE_IOERR_TRUNCATE
+    value: 1546
+  - name: SQLITE_IOERR_FSTAT
+    value: 1802
+  - name: SQLITE_IOERR_UNLOCK
+    value: 2058
+  - name: SQLITE_IOERR_RDLOCK
+    value: 2314
+  - name: SQLITE_IOERR_DELETE
+    value: 2570
+  - name: SQLITE_IOERR_BLOCKED
+    value: 2826
+  - name: SQLITE_IOERR_NOMEM
+    value: 3082
+  - name: SQLITE_IOERR_ACCESS
+    value: 3338
+  - name: SQLITE_IOERR_CHECKRESERVEDLOCK
+    value: 3594
+  - name: SQLITE_IOERR_LOCK
+    value: 3850
+  - name: SQLITE_IOERR_CLOSE
+    value: 4106
+  - name: SQLITE_IOERR_DIR_CLOSE
+    value: 4362
+  - name: SQLITE_IOERR_SHMOPEN
+    value: 4618
+  - name: SQLITE_IOERR_SHMSIZE
+    value: 4874
+  - name: SQLITE_IOERR_SHMLOCK
+    value: 5130
+  - name: SQLITE_IOERR_SHMMAP
+    value: 5386
+  - name: SQLITE_IOERR_SEEK
+    value: 5642
+  - name: SQLITE_IOERR_DELETE_NOENT
+    value: 5898
+  - name: SQLITE_IOERR_MMAP
+    value: 6154
+  - name: SQLITE_IOERR_GETTEMPPATH
+    value: 6410
+  - name: SQLITE_IOERR_CONVPATH
+    value: 6666
+  - name: SQLITE_IOERR_VNODE
+    value: 6922
+  - name: SQLITE_IOERR_AUTH
+    value: 7178
+  - name: SQLITE_IOERR_BEGIN_ATOMIC
+    value: 7434
+  - name: SQLITE_IOERR_COMMIT_ATOMIC
+    value: 7690
+  - name: SQLITE_IOERR_ROLLBACK_ATOMIC
+    value: 7946
+  - name: SQLITE_IOERR_DATA
+    value: 8202
+  - name: SQLITE_IOERR_CORRUPTFS
+    value: 8458
+  - name: SQLITE_IOERR_IN_PAGE
+    value: 8714
+  - name: SQLITE_IOERR_BADKEY
+    value: 8970
+  - name: SQLITE_IOERR_CODEC
+    value: 9226
+  - name: SQLITE_CORRUPT
+    value: 11
+  - name: SQLITE_CORRUPT_VTAB
+    value: 267
+  - name: SQLITE_CORRUPT_SEQUENCE
+    value: 523
+  - name: SQLITE_CORRUPT_INDEX
+    value: 779
+  - name: SQLITE_NOTFOUND
+    value: 12
+  - name: SQLITE_FULL
+    value: 13
+  - name: SQLITE_CANTOPEN
+    value: 14
+  - name: SQLITE_CANTOPEN_NOTEMPDIR
+    value: 270
+  - name: SQLITE_CANTOPEN_ISDIR
+    value: 526
+  - name: SQLITE_CANTOPEN_FULLPATH
+    value: 782
+  - name: SQLITE_CANTOPEN_CONVPATH
+    value: 1038
+  - name: SQLITE_CANTOPEN_DIRTYWAL
+    value: 1294
+  - name: SQLITE_CANTOPEN_SYMLINK
+    value: 1550
+  - name: SQLITE_PROTOCOL
+    value: 15
+  - name: SQLITE_EMPTY
+    value: 16
+  - name: SQLITE_SCHEMA
+    value: 17
+  - name: SQLITE_TOOBIG
+    value: 18
+  - name: SQLITE_CONSTRAINT
+    value: 19
+  - name: SQLITE_CONSTRAINT_CHECK
+    value: 275
+  - name: SQLITE_CONSTRAINT_COMMITHOOK
+    value: 531
+  - name: SQLITE_CONSTRAINT_FOREIGNKEY
+    value: 787
+  - name: SQLITE_CONSTRAINT_FUNCTION
+    value: 1043
+  - name: SQLITE_CONSTRAINT_NOTNULL
+    value: 1299
+  - name: SQLITE_CONSTRAINT_PRIMARYKEY
+    value: 1555
+  - name: SQLITE_CONSTRAINT_TRIGGER
+    value: 1811
+  - name: SQLITE_CONSTRAINT_UNIQUE
+    value: 2067
+  - name: SQLITE_CONSTRAINT_VTAB
+    value: 2323
+  - name: SQLITE_CONSTRAINT_ROWID
+    value: 2579
+  - name: SQLITE_CONSTRAINT_PINNED
+    value: 2835
+  - name: SQLITE_CONSTRAINT_DATATYPE
+    value: 3091
+  - name: SQLITE_MISMATCH
+    value: 20
+  - name: SQLITE_MISUSE
+    value: 21
+  - name: SQLITE_NOLFS
+    value: 22
+  - name: SQLITE_AUTH
+    value: 23
+  - name: SQLITE_AUTH_USER
+    value: 279
+  - name: SQLITE_FORMAT
+    value: 24
+  - name: SQLITE_RANGE
+    value: 25
+  - name: SQLITE_NOTADB
+    value: 26
+  - name: SQLITE_NOTICE
+    value: 27
+  - name: SQLITE_NOTICE_RECOVER_WAL
+    value: 283
+  - name: SQLITE_NOTICE_RECOVER_ROLLBACK
+    value: 539
+  - name: SQLITE_NOTICE_RBU
+    value: 795
+  - name: SQLITE_WARNING
+    value: 28
+  - name: SQLITE_WARNING_AUTOINDEX
+    value: 284
+  - name: SQLITE_ROW
+    value: 100
+  - name: SQLITE_DONE
+    value: 101

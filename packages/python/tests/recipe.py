@@ -604,6 +604,11 @@ def _run_database_step(step: dict, context: dict) -> None:
             raise AssertionError(
                 f"error code {error.code} ({error}), want {expected['error']}"
             ) from error
+        suffix = expected.get("message_suffix")
+        if suffix is not None and not str(error).endswith(suffix):
+            raise AssertionError(
+                f"error message {str(error)!r} does not end with {suffix!r}"
+            ) from error
         return
     if "as" in step:
         context["bound"][step["as"]] = actual.get("bind", actual.get("value"))

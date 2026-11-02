@@ -24,35 +24,40 @@ func init() {
 	orm.RegisterSQLiteVersion(sqlite3.SQLITE_VERSION)
 }
 
-// mapErr names the conditions that docs/spec/errors.yaml maps, and the executor
-// reports the remaining driver errors as DRIVER. SQLITE_BUSY reports a lock that another connection
-// still held when the busy_timeout wait ended, so it is CANCELED.
+// mapErr names the conditions that docs/spec/errors.yaml maps, and reports the remaining SQLite errors as DRIVER.
+// SQLITE_BUSY reports a lock that another connection still held when the busy_timeout wait ended, so it is CANCELED.
+// Every message ends with the name of the extended result code (INT-154).
 func mapErr(err error) error {
 	var se *sqlite.Error
 	if !errors.As(err, &se) {
 		return err
 	}
+	return &ir.Error{Code: sqliteCode(se), Msg: se.Error() + resultCodeSuffix(se.Code())}
+}
+
+// sqliteCode is the code of the error catalog for a SQLite error.
+func sqliteCode(se *sqlite.Error) string {
 	if se.Code()&0xff == 5 { // SQLITE_BUSY and its extended forms
-		return &ir.Error{Code: orm.CodeCanceled, Msg: se.Error()}
+		return orm.CodeCanceled
 	}
 	switch se.Code() {
 	case 6, 262: // SQLITE_LOCKED / SQLITE_LOCKED_SHAREDCACHE
-		return &ir.Error{Code: orm.CodeDeadlock, Msg: se.Error()}
+		return orm.CodeDeadlock
 	case 2067, 1555: // SQLITE_CONSTRAINT_UNIQUE / _PRIMARYKEY
-		return &ir.Error{Code: orm.CodeDuplicateKey, Msg: se.Error()}
+		return orm.CodeDuplicateKey
 	case 787: // SQLITE_CONSTRAINT_FOREIGNKEY
-		return &ir.Error{Code: orm.CodeForeignKey, Msg: se.Error()}
+		return orm.CodeForeignKey
 	case 1811: // SQLITE_CONSTRAINT_TRIGGER: a RESTRICT action is an FK error, and a trigger RAISE is DRIVER
 		if strings.Contains(se.Error(), "FOREIGN KEY constraint failed") {
-			return &ir.Error{Code: orm.CodeForeignKey, Msg: se.Error()}
+			return orm.CodeForeignKey
 		}
 	case 275: // SQLITE_CONSTRAINT_CHECK
-		return &ir.Error{Code: orm.CodeConstraint, Msg: se.Error()}
+		return orm.CodeConstraint
 	case 9: // SQLITE_INTERRUPT: the statement was cancelled
-		return &ir.Error{Code: orm.CodeCanceled, Msg: se.Error()}
+		return orm.CodeCanceled
 	}
 	if se.Code()&0xff == 8 { // SQLITE_READONLY and its extended forms
-		return &ir.Error{Code: orm.CodeReadOnly, Msg: se.Error()}
+		return orm.CodeReadOnly
 	}
-	return err
+	return orm.CodeDriver
 }

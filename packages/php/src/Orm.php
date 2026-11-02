@@ -93,6 +93,8 @@ final class Orm
                 : \PDO::connect($pdoDsn, $user, $password, $options);
             $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
             if ($driver === 'sqlite') {
+                // The driver reports the extended result code, whose name ends the message of an error (INT-154).
+                $pdo->setAttribute(\Pdo\Sqlite::ATTR_EXTENDED_RESULT_CODES, true);
                 // The version of the SQLite library that pdo_sqlite linked. It does not send a statement that
                 // asks for it.
                 $version = (string) $pdo->getAttribute(\PDO::ATTR_SERVER_VERSION);

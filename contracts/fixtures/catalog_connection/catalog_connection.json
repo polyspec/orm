@@ -2529,6 +2529,30 @@
           }
         }
       ]
+    },
+    {
+      "id": "sqlite_extended_code_names",
+      "requirements": [
+        "INT-154"
+      ],
+      "steps": [
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT 'a' < 'b' COLLATE nosuch",
+          "expect": {
+            "mysql": {
+              "error": "DRIVER"
+            },
+            "postgres": {
+              "error": "DRIVER"
+            },
+            "sqlite": {
+              "error": "DRIVER",
+              "message_suffix": " (SQLITE_ERROR_MISSING_COLLSEQ)"
+            }
+          }
+        }
+      ]
     }
   ]
 }

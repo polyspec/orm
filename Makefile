@@ -2869,17 +2869,24 @@ install: orm-codes orm-install-php orm-install-rust orm-install-go orm-install-p
 # through php-vendor-check or python-venv-check, so make writes it before the recipe reads it (make repo-check). The file is published
 # by a rename ($(PUBLISH)), since the make processes of several runs write it while others read it. orm-gen runs offline, as every check
 # does: its prerequisite orm-install-go-codes downloads the Go modules that go.sum pins, since a job that installs only one
-# runtime has not downloaded them.
+# runtime has not downloaded them. The same recipe writes the SQLite result code names of each runtime with orm-gen sqlite-codes
+# (ORM_SQLITE_CODES_<lang>, INT-154); orm-codes-php-extension writes those of the PHP extension.
 ORM_CODES_typescript = packages/ts/src/codes.ts
+ORM_SQLITE_CODES_typescript = packages/ts/src/sqlite-codes.ts
+ORM_SQLITE_CODES_php = packages/php/src/SqliteCodes.php
+ORM_SQLITE_CODES_python = packages/python/src/polyspec/orm/_sqlite_codes.py
+ORM_SQLITE_CODES_php-extension = packages/php-ext/src/sqlite_codes.h
 PHP_EXT_SQLITE_CANCEL = packages/php-ext/src/native/sqlite_cancel.c
 ORM_CODES_php = packages/php/src/Code.php
 ORM_CODES_python = packages/python/src/polyspec/orm/codes.py
-.PHONY: orm-codes orm-codes-typescript orm-codes-php orm-codes-python orm-install-go-codes
+.PHONY: orm-codes orm-codes-typescript orm-codes-php orm-codes-python orm-codes-php-extension orm-install-go-codes
 orm-install-go-codes:
 	cd packages/go && $(ONLINE) $(GO) mod download
 orm-codes: orm-codes-typescript orm-codes-php orm-codes-python
 orm-codes-typescript orm-codes-php orm-codes-python: orm-codes-%: orm-install-go-codes
-	$(GENERATE_ONCE) $(CURDIR)/$(dir $(ORM_CODES_$*))orm-codes.key "$(GO_VERSION)" packages/go docs/spec/errors.yaml -- sh -c 'cd packages/go && $(PUBLISH) $(CURDIR)/$(ORM_CODES_$*) $(GO) run ./cmd/orm-gen errors --lang $* --yaml $(CURDIR)/docs/spec/errors.yaml --out @OUT@'
+	$(GENERATE_ONCE) $(CURDIR)/$(dir $(ORM_CODES_$*))orm-codes.key "$(GO_VERSION)" packages/go docs/spec/errors.yaml -- sh -c 'cd packages/go && $(PUBLISH) $(CURDIR)/$(ORM_CODES_$*) $(GO) run ./cmd/orm-gen errors --lang $* --yaml $(CURDIR)/docs/spec/errors.yaml --out @OUT@ && $(PUBLISH) $(CURDIR)/$(ORM_SQLITE_CODES_$*) $(GO) run ./cmd/orm-gen sqlite-codes --lang $* --yaml $(CURDIR)/docs/spec/errors.yaml --out @OUT@'
+orm-codes-php-extension: orm-install-go-codes
+	$(GENERATE_ONCE) $(CURDIR)/packages/php-ext/src/orm-codes.key "$(GO_VERSION)" packages/go docs/spec/errors.yaml -- sh -c 'cd packages/go && $(PUBLISH) $(CURDIR)/$(ORM_SQLITE_CODES_php-extension) $(GO) run ./cmd/orm-gen sqlite-codes --lang php-extension --yaml $(CURDIR)/docs/spec/errors.yaml --out @OUT@'
 # orm-install-interfaces-typescript installs the TypeScript 6.0.3 that packages/ts/testing/interfaces/typescript.mts reads declarations with
 # (config/toolchain.json exceptions): TypeScript 7.0 ships no JavaScript API of its compiler.
 # install-packages installs the TypeScript of tests/interfaces from its lock, so a fresh make install leaves the extractor with its checker.
@@ -2972,7 +2979,7 @@ orm-install-server-programs:
 # PHP on PATH (scripts/ci/php-extension-tools.mts), and writes the copy of the SQLite cancel callback that the build compiles; every
 # job that builds the extension runs it (T290). The build runs the gen_stub.php of that PHP itself, so nothing installs the arginfo
 # generator (kit K930).
-orm-install-php-extension-tools: $(PHP_EXT_SQLITE_CANCEL)
+orm-install-php-extension-tools: $(PHP_EXT_SQLITE_CANCEL) orm-codes-php-extension
 	$(NODE) scripts/ci/php-extension-tools.mts
 # The extension compiles native/sqlite_cancel.c (packages/php-ext/src/config.m4), whose one source is the PHP library's
 # packages/php/src/native/sqlite_cancel.c: the copy is build output and never tracked (P34). kit's build-php-ext takes it as a
@@ -2989,7 +2996,7 @@ build-php-ext: php-ext-sources
 packages/php-ext/src/polyspec_orm_arginfo.h: packages/php-ext/src/polyspec_orm.stub.php
 	$(NODE) scripts/php/php-ext-arginfo.mts
 .PHONY: php-ext-sources
-php-ext-sources: packages/php-ext/src/polyspec_orm_arginfo.h $(PHP_EXT_SQLITE_CANCEL)
+php-ext-sources: packages/php-ext/src/polyspec_orm_arginfo.h $(PHP_EXT_SQLITE_CANCEL) orm-codes-php-extension
 # php-ext-build is the one build of the PHP extension: it writes PHP_EXT_OUT in PHP_EXT_MODE (release or native-test) after php-ext-sources,
 # which writes the sources that build.sh reads and refuses when stale or missing. scripts/php/php-ext-build.mts builds each source and mode
 # once into var/php-ext/build/<key>/ under a holder lock, and copies that build to PHP_EXT_OUT, so the sites of one run do not compile it again
