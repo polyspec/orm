@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0d3435708f64a56ebaa84a29b86b7ef5ec1500ae4d26173d939be9f96c774a6a -->
+<!-- source-sha256: 58a9f5e482b327fdb2d3baea207920e4d7ffd273a9202a7dfb3d8059ea54963d -->
 # 변경 이력
 
 ## Unreleased
 
+- scripts/features/owners.test.mts의 두 case가 현재 owner 선언과 맞는다: DSN case는 T334-3-4가 PHP owner test로 만든 packages/php/tests/DsnConnectionRecipeTest.php를 읽고(CoverageDsnTest.php는 owner에서 빠졌다), 네 client case는 manifest가 고르는 statement-events-check owner target 여섯 개를 든다 (T334-3-14b-3-2).
 - `owners.mts --list`가 HEAD에서 exit 0으로 끝난다. T334-3-17-6(8828d675d)이 고쳤고, cherry-pick -x로 가져왔다 (T334-3-14b-3-1).
 - contracts/features.json의 owner 선언이 실제 파일을 가리키게 한다. 지운 schema test packages/rust/schema/tests/dbspec_plan.rs는 owner에서 빼고, 그 case를 대신 실행하는 recipe 실행기 packages/rust/orm/tests/dbspec_plan_cases.rs를 가리킨다. Go test TestUnloadedUpdateKeepsAssignedValuesSelectedAndKeyed는 packages/go/orm/model_update_state_test.go에 되살린다 (T334-3-17-6).
 - CFG-1, CFG-2, CFG-11, CFG-17, CFG-19, CFG-26의 거부되는 DSN case(UTC가 아닌 timezone, 알 수 없는 scheme, database 이름 없음, 상대 SQLite 경로, VERIFY_IDENTITY와 함께 쓰인 주소 host, 잘못된 SQLite 경로 percent 인코딩)는 하나의 recipe, contracts/fixtures/dsn_reject/dsn_reject.json이 되었고, 모든 runtime이 새 op dsn.connect(FCV-4)로 database 없이 실행한다 (T334-3-23).
