@@ -53,11 +53,12 @@ caseTest('the check runner accepts component target names and rejects malformed 
   }
 });
 
+// The dialect facts are go tests of go-test-check (T334-3-6-3), so that target declares their MySQL privilege fixture.
 caseTest('dialect facts declares the isolated MySQL privilege fixture as a setup need', COMPUTE, () => {
   const inputs: unknown = JSON.parse(readFileSync(join(repo, 'contracts/check-inputs.json'), 'utf8'));
   if (!isRecord(inputs) || !isRecord(inputs.targets)) throw new Error('contracts/check-inputs.json has no targets object');
-  const target = inputs.targets['dialect-facts-check'];
-  if (!isRecord(target) || !isStringArray(target.needs)) throw new Error('dialect-facts-check has no needs list');
+  const target = inputs.targets['go-test-check'];
+  if (!isRecord(target) || !isStringArray(target.needs)) throw new Error('go-test-check has no needs list');
   const needs = target.needs;
   assert.ok(needs.includes('mysql-privilege-server'));
   assert.ok(NEEDS.includes('mysql-privilege-server'));
@@ -107,7 +108,12 @@ caseTest('the canonical parity target declares every client and fixture setup ne
   const parity = inputs.targets['parity-check'];
   if (!isRecord(parity) || !isStringArray(parity.needs)) throw new Error('parity-check has no needs list');
   assert.deepEqual(parity.needs, ['go', 'rust', 'php', 'composer', 'python', 'node-modules', 'interfaces-typescript', 'parity-symbols', 'php-extension-tools', 'databases', 'complex-query', 'flowmark', 'go-lease']);
-  for (const phase of ['parity-api-check', 'parity-bindings-go-check', 'parity-bindings-php-check', 'parity-bindings-php-extension-check', 'parity-bindings-typescript-check', 'parity-bindings-python-check', 'parity-bindings-rust-check'])
+  // The API phase runs through the database wrapper, which runs only declared targets, so it is declared with the scope and needs
+  // of parity-check (T274); it is no target of CHECK_TARGETS (KSTD-5-115). The binding phases are not declared.
+  const api = inputs.targets['parity-api-check'];
+  if (!isRecord(api) || !isStringArray(api.needs)) throw new Error('parity-api-check has no needs list');
+  assert.deepEqual([api.scope, api.needs], [parity.scope, parity.needs], 'parity-api-check declares the scope and needs of parity-check');
+  for (const phase of ['parity-bindings-go-check', 'parity-bindings-php-check', 'parity-bindings-php-extension-check', 'parity-bindings-typescript-check', 'parity-bindings-python-check', 'parity-bindings-rust-check'])
     assert.equal(Object.hasOwn(inputs.targets, phase), false, `${phase} is not a second suite target`);
   const comparison = inputs.targets['conformance-check'];
   if (!isRecord(comparison) || !isStringArray(comparison.needs)) throw new Error('conformance-check has no needs list');
@@ -471,8 +477,8 @@ const PARTS = {
   'repo-check': ['unit', 'run'],
   'testcase-check': ['go', 'node', 'runners', 'rust'], 'ts-check': ['hold', 'types', 'test'],
   'rust-check': ['check', 'clippy', 'clippy-live-db', 'clippy-test-faults'], 'rust-fmt-check': ['clients', 'bench', 'interfaces'],
-  'fuzz-check': ['engine-ir', 'clients-go-orm'], 'dialect-facts-check': ['probes', 'facts'], 'feature-unit-check': ['docs', 'coverage', 'owners', 'select'],
-  'client-unit-check': ['dsn', 'markdown', 'relation-keys', 'code-catalog', 'hostcodec', 'insert-parts', 'engine', 'runtime-model', 'orm-gen', 'model-methods',
+  'fuzz-check': ['engine-ir', 'clients-go-orm'], 'feature-unit-check': ['docs', 'coverage', 'owners', 'select'],
+  'client-unit-check': ['dsn', 'markdown', 'relation-keys', 'code-catalog', 'hostcodec', 'insert-parts', 'engine', 'runtime-model', 'orm-gen', 'orm-gen-python', 'orm-gen-typescript', 'model-methods',
     'client-generics', 'perf-extensions', 'dbspec-runners'],
 };
 

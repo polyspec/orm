@@ -7,7 +7,7 @@
 .PHONY: client-db-go-check client-db-php-check client-db-php-extension-check client-db-typescript-check client-db-python-check client-db-rust-check
 .PHONY: feature-coverage/go/mysql feature-coverage/go/postgres feature-coverage/go/sqlite feature-coverage/php/mysql feature-coverage/php/postgres feature-coverage/php/sqlite feature-coverage/php-extension/mysql feature-coverage/php-extension/postgres feature-coverage/php-extension/sqlite feature-coverage/typescript/mysql feature-coverage/typescript/postgres feature-coverage/typescript/sqlite feature-coverage/python/mysql feature-coverage/python/postgres feature-coverage/python/sqlite feature-coverage/rust/mysql feature-coverage/rust/postgres feature-coverage/rust/sqlite feature-performance-check
 # It is an independent part of the target that does not stop at a failure (scripts/check/run.mts runs it with make -k).
-.PHONY: comment-language-check/unit comment-language-check/run repo-check/unit repo-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces fuzz-check/engine-ir fuzz-check/clients-go-orm dialect-facts-check/probes dialect-facts-check/facts feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select testcase-check/go testcase-check/node testcase-check/runners testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/code-catalog client-unit-check/hostcodec client-unit-check/insert-parts client-unit-check/engine client-unit-check/runtime-model php-gen-unit-check client-unit-check/orm-gen client-unit-check/model-methods client-unit-check/client-generics client-unit-check/perf-extensions client-unit-check/dbspec-runners
+.PHONY: comment-language-check/unit comment-language-check/run repo-check/unit repo-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces fuzz-check/engine-ir fuzz-check/clients-go-orm feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select testcase-check/go testcase-check/node testcase-check/runners testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/code-catalog client-unit-check/hostcodec client-unit-check/insert-parts client-unit-check/engine client-unit-check/runtime-model php-gen-unit-check client-unit-check/orm-gen client-unit-check/model-methods client-unit-check/client-generics client-unit-check/perf-extensions client-unit-check/dbspec-runners
 .PHONY: aes-json-php-extension-check aes-rotation-php-extension-check php-ext-memory-check
 .PHONY: request-hook-php-extension-check
 .PHONY: t182-php-extension-model-check t182-php-extension-schema-check
@@ -1961,13 +1961,11 @@ python-identity-load-check: python-venv-check
 python-schema-inspection-check: python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.schema_inspection
 
-# dialect-facts-check runs the schema dialect probes of packages/go/internal/dialects against
-# the MySQL and PostgreSQL servers of TEST_ENV and a SQLite file per probe,
-# and records which SQLite openers keep a DSN query in the file name.
-dialect-facts-check: dialect-facts-check/probes dialect-facts-check/facts
-dialect-facts-check/probes:
+# dialect-facts-check runs the citation tests of the schema dialect probes of packages/go/internal/dialects: each probe has an ID
+# and cites the dialect spec. The probes themselves (TestDialectFacts), which run against the MySQL and PostgreSQL servers of
+# TEST_ENV and a SQLite file per probe, are go tests of go-test-check, which builds what they need (T334-3-6-3).
+dialect-facts-check:
 	$(GO_TEST) ./packages/go/internal/dialects -run '^(TestProbeIDs|TestProbeCitations)$$' -count=1
-dialect-facts-check/facts: go-test-check
 
 conformance-counter-check:
 	$(WITH_TEST_ENV) node --test tests/conformance/check/counters.physical.test.mts

@@ -21,13 +21,14 @@ caseTest('Rust workspace dispatch skips only the database cases owned by the fea
   assert.equal(args.length % 2, 0);
   const skipped = new Set(args.filter((_, index) => index % 2 === 1));
   assert.ok(skipped.has('coverage_request_hook_insert_assign'));
-  assert.ok(skipped.has('coverage_catalog_read'));
-  assert.ok(skipped.has('coverage_catalog_connection::coverage_catalog_read'));
-  assert.ok(skipped.has('coverage_catalog_read_budgets'));
-  assert.ok(skipped.has('coverage_catalog_connection::coverage_catalog_read_budgets'));
+  // The catalog_connection and schema_install recipes replaced their native coverage tests (T334-3-3-2, T334-3-4): the feature
+  // matrix owns their recipe binaries, one per database.
+  for (const database of ['mysql', 'postgres', 'sqlite']) {
+    assert.ok(skipped.has(`catalog_connection_${database}`));
+    assert.ok(skipped.has(`schema_install_${database}`));
+  }
   assert.ok(skipped.has('coverage_group_rows_db::coverage_group_rows_db'));
   assert.ok(skipped.has('coverage_complex_query::coverage_complex_query_product_search'));
-  assert.ok(skipped.has('coverage_schema_install::coverage_schema_install_external_documents'));
   assert.ok(!skipped.has('coverage_'));
   assert.ok(!skipped.has('coverage_request_hook_'));
   const rustCommand = CLIENT_DB_COMMANDS.find(command => command.includes('tests/cargo-test.mts workspace-tests'));
@@ -324,7 +325,7 @@ esac
       } else {
         assert.equal(result.status, 1, result.stdout + result.stderr);
         assert.ok(!ran.some(line => line.includes('PURGE')), ran.join('\n'));
-        assert.match(result.stderr, /the replica did not apply the primary's binary log up to binlog.000012:157 \(SOURCE_POS_WAIT returned NULL\); the binary logs are kept/);
+        assert.match(result.stderr, /the replica did not apply the primary's binary log up to binlog.000012:157 \(SOURCE_POS_WAIT returned NULL\); Replica_SQL_Running: absent; Last_SQL_Error: absent; the binary logs are kept/);
       }
     } finally {
       rmSync(base, { recursive: true, force: true });

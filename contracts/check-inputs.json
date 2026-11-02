@@ -2124,17 +2124,12 @@
     "dialect-facts-check": {
       "scope": "owner",
       "needs": [
-        "go",
-        "databases",
-        "mysql-privilege-server"
+        "go"
       ],
       "inputs": [
         "packages/go/internal/dialects/probe.go",
         "packages/go/internal/dialects/probe_test.go",
         "packages/go/internal/dialects/probes_*.go",
-        "packages/go/internal/dialects/facts_physical_test.go",
-        "packages/go/internal/dialects/sqlite_filename_physical_test.go",
-        "packages/go/internal/dialects/servers_test.go",
         "docs/spec/dialects.md",
         "docs/spec/dialects.ko.md"
       ]
