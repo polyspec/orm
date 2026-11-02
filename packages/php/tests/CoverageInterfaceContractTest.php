@@ -6,6 +6,8 @@ namespace Polyspec\Orm\Tests;
 
 // interface_contract feature coverage: runs
 // `node tests/interfaces/check/main.mts -language php` at the repository root and requires exit code 0.
+// Rule: R6 (config/parity.json binds this test under the roots of packages/php;
+// the check runs from it as the ledger requires).
 
 
 use PHPUnit\Framework\Assert;

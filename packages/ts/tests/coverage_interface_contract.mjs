@@ -1,5 +1,6 @@
 // interface_contract coverage: from the repository root, runs `node tests/interfaces/check/main.mts -language typescript`
 // to check that the TypeScript client has every symbol of the shared interface contract.
+// Rule: R6 (config/parity.json binds this test under the roots of packages/ts; the check runs from it as the ledger requires).
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { repositoryRoot, runCases } from './coverage_case.mjs';

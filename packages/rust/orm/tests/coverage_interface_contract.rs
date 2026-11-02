@@ -1,5 +1,6 @@
 //! interface_contract: runs `node tests/interfaces/check/main.mts -language rust` from the repository root
 //! and requires exit 0.
+//! Rule: R6 (config/parity.json binds this test under the roots of packages/rust; the check runs from it as the ledger requires).
 #[path = "common/or_panic.rs"]
 mod or_panic;
 use or_panic::OrPanic;

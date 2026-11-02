@@ -1,6 +1,7 @@
 # interface_contract coverage: `node tests/interfaces/check/main.mts -language python` from the repository root finds
 # every symbol of the common interface contract in the Python client, as the interface_contract coverage of Go, PHP,
 # TypeScript and Rust does for its client.
+# Rule: R6 (config/parity.json binds this test under the roots of packages/python; the check runs from it as the ledger requires).
 import os
 import subprocess
 import sys

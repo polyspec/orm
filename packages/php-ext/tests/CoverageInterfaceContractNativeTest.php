@@ -7,6 +7,11 @@ namespace Polyspec\Orm\Extension\Tests;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 
+// The runtime half of the php-extension interface contract: it checks that the loaded polyspec_orm
+// extension registers every exported symbol of contracts/symbols/php-extension.json, with the owner
+// and the internal flags that the manifest records. The declaration half is the interface checker
+// (`-language php-extension`, tests/interfaces/check/main.mts), which checks the declarations of the
+// extension source against the same manifest. Together the two check the contract.
 final class CoverageInterfaceContractNativeTest extends TestCase
 {
     // Requirements: INT-17, INT-18, INT-19, INT-57, INT-61, INT-64.
