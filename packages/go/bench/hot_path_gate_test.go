@@ -1,8 +1,6 @@
-//go:build perfgate
-
-// The hot-path gate tests are timing-sensitive, so they build only with the tag perfgate, which make perf-check
-// (scripts/perf-test.mts) gives when it runs them against the seeded bench database; a go test without the tag
-// does not select them.
+// The hot-path gate tests time the client against the native statements on the seeded bench database. They are
+// untagged, so the normal go test runs them; make perf-check (scripts/perf-test.mts) selects them by name for its
+// measurement, and a ratio above its bound is a warning, never a failure.
 package bench
 
 import (

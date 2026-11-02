@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The timing gates of packages/go/bench (TestHotPathGate) and the stress document test of packages/go/engine/dbspec (TestStressDocument) carried the build tags perfgate and bench, so the normal `go test` left them out. They carry no tag now, the stress test builds only on unix, which its CPU clock needs, and the `-tags bench` runs of the Makefile and the `-tags perfgate` run of perf-test are gone (T334-3-6-5).
 - The Go tests of packages/go/markdownmodel, packages/go/decimalmodel and examples carried the build tags markdown, decimalphysical and examples, so the normal go test left them out. Their files carry no tag now, and the targets that run them (markdown-conformance-check, ir-answers-check, decimal-physical-check, example-check) keep their -run lists without the -tags flag (T334-3-6-4).
 - The physical Go tests of packages/go/internal/dialects and packages/go/engine ran only under the build tag `physical`, which the hand-kept `-run` lists of the Makefile selected, so the normal `go test` left them out. They carry no tag now and run in go-test-check, which builds and exports what they need; `servers.go` is `servers_test.go`, and the MySQL DSN helper moved to probes_mysql.go, because a production package cannot import a `_test.go` file (T334-3-6-3).
 - The workspace `cargo test` left out the markdown_conformance trials (`test = false`), so no run of the rust lane checked the flowmark conformance cases. It runs in the workspace test now, with FLOWMARK passed by client-pooler-check (T334-3-13).

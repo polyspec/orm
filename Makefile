@@ -859,8 +859,8 @@ dbspec-stress-bench/prepare:
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT))
 	$(PUBLISH) $(DBSPEC_STRESS_DOCUMENT) node tests/dbspec/stress.mts
 dbspec-stress-bench/go: dbspec-stress-bench/prepare
-	$(GO_TEST) -tags bench ./packages/go/engine/dbspec -run '^TestStressDocument$$' -count=1
-	$(GO_TEST) -tags bench ./packages/go/engine/dbspec -run '^TestStressDocument$$' -count=1
+	$(GO_TEST) ./packages/go/engine/dbspec -run '^TestStressDocument$$' -count=1
+	$(GO_TEST) ./packages/go/engine/dbspec -run '^TestStressDocument$$' -count=1
 dbspec-stress-bench/php: php-vendor-check dbspec-stress-bench/prepare php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecStressTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecStressTest.php
@@ -3110,7 +3110,7 @@ timing-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT)) $(dir $(TIMING_GO_DBSPEC_TEST))
 	$(PUBLISH) $(DBSPEC_STRESS_DOCUMENT) node tests/dbspec/stress.mts
-	$(RUN_LONG) go-build/dbspec-test -- $(PUBLISH) $(TIMING_GO_DBSPEC_TEST) go test -c -tags bench -o @OUT@ ./packages/go/engine/dbspec
+	$(RUN_LONG) go-build/dbspec-test -- $(PUBLISH) $(TIMING_GO_DBSPEC_TEST) go test -c -o @OUT@ ./packages/go/engine/dbspec
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/dbspec_stress --cwd packages/rust -- $(CARGO_COPY) release/examples/dbspec_stress -- $(CARGO_SIBLINGS) build --release --locked --offline -p polyspec-orm-schema --example dbspec_stress
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/orm-schema-tests --cwd packages/rust -- $(CARGO_LEASED) cargo test --locked --offline -p polyspec-orm-schema --no-run
 	$(RUN_LONG) typescript-build -- npm run typescript:build
