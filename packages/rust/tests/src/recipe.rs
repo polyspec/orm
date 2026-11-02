@@ -1052,7 +1052,7 @@ mod database {
                     "case" => context.dsn.as_str(),
                     text => text,
                 };
-                let driver = connect_driver(dsn).await.map_err(|(_, message)| Failure::Call(message))?;
+                let driver = crate::recipe::connect_driver(dsn).await.map_err(|(_, message)| Failure::Call(message))?;
                 Output::fields(json!({ "value": { "text": driver } }))
             }
             other => return Err(fault(format!("OP_UNKNOWN {other}"))),
