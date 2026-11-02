@@ -341,8 +341,30 @@ export function stopEarlierStart(p: Paths): void {
   rmSync(p.dir, { recursive: true, force: true });
 }
 
-const allRunning = (p: Paths): boolean => pidRunning(p.mysqlPid) && pidRunning(p.mysqlReplicaPid) && postgresRunning(p.postgresData) &&
-  postgresRunning(p.postgresReplicaData) && pidRunning(p.proxysqlPid) && pidRunning(p.pgbouncerPid);
+// replicaSqlStopped reads the SQL thread of the MySQL replica on port (SHOW REPLICA STATUS). It returns undefined while the
+// thread runs, and otherwise the state and the last error that say why it stopped (G5.55-2): a replica whose thread
+// stopped applies nothing, and its process still runs.
+export function replicaSqlStopped(port: number, env: NodeJS.ProcessEnv = process.env): string | undefined {
+  const status = spawnSync('mysql', ['--no-defaults', '--protocol=TCP', '-h', '127.0.0.1', '-P', String(port), '-u', 'root', '-e', 'SHOW REPLICA STATUS\\G'],
+    { encoding: 'utf8', env });
+  if (status.status !== 0) return `replica status unavailable (mysql exited with ${status.status ?? status.signal})`;
+  const field = (name: string): string => status.stdout.split('\n')
+    .find(line => line.trim().startsWith(`${name}:`))?.split(':').slice(1).join(':').trim() ?? 'absent';
+  const running = field('Replica_SQL_Running');
+  if (running === 'Yes') return undefined;
+  return `Replica_SQL_Running: ${running}; Last_SQL_Error: ${field('Last_SQL_Error') || 'none'}`;
+}
+
+// allRunning judges the running servers of <p> by their processes and by the SQL thread of the MySQL replica, which
+// runs on a live process after it stopped on an error. A stopped thread is reported, and the start then restarts the servers.
+const allRunning = (p: Paths): boolean => {
+  if (!(pidRunning(p.mysqlPid) && pidRunning(p.mysqlReplicaPid) && postgresRunning(p.postgresData) &&
+    postgresRunning(p.postgresReplicaData) && pidRunning(p.proxysqlPid) && pidRunning(p.pgbouncerPid))) return false;
+  const stopped = replicaSqlStopped(environmentPorts(readFileSync(p.env, 'utf8'), p.env).mysqlReplica);
+  if (stopped === undefined) return true;
+  console.error(`test-servers: the MySQL replica is stopped, ${stopped}; the servers are started again`);
+  return false;
+};
 
 // socketDir makes the socket folder, owned by this user and naming this checkout. A folder left by this checkout is
 // reused; one another checkout or user owns is refused.

@@ -2,7 +2,7 @@
 // their paths as STOP_PROCESS and LEASE.
 import assert from 'node:assert/strict';
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, watch, writeFileSync } from 'node:fs';
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, watch, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'node:net';
@@ -642,5 +642,34 @@ caseTest('startLogged resolves when the ready line is written at once, before it
     await startLogged(dir, 'early', 'ready-at-once', process.execPath, ['-e', "console.log('ready-at-once'); setInterval(() => {}, 1000)"], isolatedEnvironment(), 10_000);
   } finally {
     cleanupStartedChild(dir, 'early');
+  }
+});
+
+// The replica SQL thread check of the start (G5.55-2). A fake mysql on PATH answers SHOW REPLICA STATUS: a running thread is
+// not reported, and a stopped one is named with its state and its last error. No server is started.
+const replicaStatus = (status: string): string => `#!/bin/sh
+case "$*" in
+  *"SHOW REPLICA STATUS"*) printf '${status}\\n' ;;
+esac
+exit 0
+`;
+
+caseTest('the start reports a stopped MySQL replica SQL thread with its last error, and accepts a running one', COMPUTE, () => {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'replica-sql-')));
+  const savedPath = process.env.PATH;
+  try {
+    const bin = join(dir, 'bin');
+    mkdirSync(bin);
+    writeFileSync(join(bin, 'mysql'), replicaStatus('Replica_IO_Running: Yes\\nReplica_SQL_Running: No\\nLast_SQL_Error: Error 1114 The table is full'));
+    chmodSync(join(bin, 'mysql'), 0o755);
+    process.env.PATH = `${bin}:${savedPath ?? ''}`;
+    const stopped = servers.replicaSqlStopped(3306);
+    assert.match(stopped ?? '', /Replica_SQL_Running: No/);
+    assert.match(stopped ?? '', /Error 1114 The table is full/);
+    writeFileSync(join(bin, 'mysql'), replicaStatus('Replica_IO_Running: Yes\\nReplica_SQL_Running: Yes\\nLast_SQL_Error: '));
+    assert.equal(servers.replicaSqlStopped(3306), undefined);
+  } finally {
+    process.env.PATH = savedPath;
+    rmSync(dir, { recursive: true, force: true });
   }
 });

@@ -185,11 +185,21 @@ function dropDeadRuns(servers: Record<string, string>, env: NodeJS.ProcessEnv): 
   return true;
 }
 
+// replicaState gives the SQL thread state and the last error of the replica (SHOW REPLICA STATUS), which name the cause when
+// SOURCE_POS_WAIT returns NULL (G5.55-2). A replica whose status cannot be read is named as such.
+function replicaState(replica: string, env: NodeJS.ProcessEnv): string {
+  const status = mysqlAt(replica, ['-e', 'SHOW REPLICA STATUS\\G'], env);
+  if (status.status !== 0) return 'replica status unavailable';
+  const field = (name: string): string => status.stdout.split('\n')
+    .find(line => line.trim().startsWith(`${name}:`))?.split(':').slice(1).join(':').trim() ?? 'absent';
+  return `Replica_SQL_Running: ${field('Replica_SQL_Running')}; Last_SQL_Error: ${field('Last_SQL_Error') || 'none'}`;
+}
+
 // purgeBinlogs purges the binary logs of the MySQL primary and replica up to the file each writes now. Only the replica
 // reads the binary logs of the test servers, so they are purged only after the replica applied the primary up to its
 // position now. It is safe for other runs of the shared servers: what is purged the replica applied, and the file in use
 // stays. relay_log_purge removes the relay logs the replica applied, so FLUSH RELAY LOGS closes the file in use.
-function purgeBinlogs(serversPath: string, servers: Record<string, string>, env: NodeJS.ProcessEnv): boolean {
+export function purgeBinlogs(serversPath: string, servers: Record<string, string>, env: NodeJS.ProcessEnv): boolean {
   const replica = env['ORM_TEST_MYSQL_REPLICA_DSN'];
   if (!replica) {
     console.error(`databases: ${serversPath} names no ORM_TEST_MYSQL_REPLICA_DSN; run make orm-test-servers to rewrite it`);
@@ -207,7 +217,7 @@ function purgeBinlogs(serversPath: string, servers: Record<string, string>, env:
   if (waited.status !== 0) return false;
   const applied = waited.stdout.trim();
   if (applied === '-1' || applied === 'NULL' || applied === '') {
-    console.error(`databases: the replica did not apply the primary's binary log up to ${file}:${position} (SOURCE_POS_WAIT returned ${applied || 'nothing'}); the binary logs are kept`);
+    console.error(`databases: the replica did not apply the primary's binary log up to ${file}:${position} (SOURCE_POS_WAIT returned ${applied || 'nothing'}); ${replicaState(replica, env)}; the binary logs are kept`);
     return false;
   }
   if (mysqlAt(primary, ['-e', `PURGE BINARY LOGS TO '${file}'`], env).status !== 0) return false;
