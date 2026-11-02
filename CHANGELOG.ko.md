@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: cc200f00d152f294c94f7382eabf7f759124843e598d20ba32761257cbf97e19 -->
+<!-- source-sha256: 8141ddd63a681a8ccbd6ebea085432227e56953592eb4f92e852932f13dc7be2 -->
 # 변경 이력
 
 ## Unreleased
@@ -79,6 +79,7 @@
 - recipe schema에 비유한 binary64 wrapper `{"f64": "NaN" | "Infinity" | "-Infinity"}`를 더했고, 여섯 recipe helper가 각각 그 수의 host 값으로 바꾼다. 유한한 수는 `float` wrapper를 그대로 쓴다 (T334-3-15-3b).
 - slot fixture `tests/bind/slots.dbs`에 bind chain이 이름 붙이는 time4, time5, datetime3, datetime4, datetime5 열을 더했고, 새 열마다 생성된 Go model에 setter가 있다 (#T334-3-15-3c-1).
 - `tests/ir/answers.json`의 bind case는 insert에 count가 아니라 PRT-70의 write answer `{affected, keys}`로 답하므로, client의 INTERNAL이 case 결과가 되지 않는다 (#T334-3-15-3c-3).
+- Go client는 offset 없는 `T` 구분자의 PRT-67 client datetime 텍스트(예: `2024-01-02T03:04:05.5`)를 받는다(`packages/go/orm/collection.go`의 `AsTime`). 그래서 그 텍스트의 datetime bind가 CODEC_ENCODE로 실패하지 않는다 (#T334-3-15-3c-2).
 - Rust runner는 공유 DDL vector의 behavior step을 MySQL, PostgreSQL, SQLite에서 실행하고, 서버 DSN이 빠지면 그 이름을 대며 실패한다. 전에는 rendered statement만 만들었다 (CR16-1-2).
 - TypeScript, Python, Rust의 physical DDL behavior 시험이 config/parity.json에 binding이 없어 parity-declarations-check가 binding 없는 test로 보고했다. 이 시험들을 DIA-113을 인용하는 feature unit dbspec-render-physical로 선언하고, 각 시험이 그 요구사항을 이름으로 적는다 (CR16-1-5).
 - duplication check가 공용 test 코드의 clone 세 개를 찾았다. PgsqlStatementAdapter와 CatalogAnswerStatement의 PHP fetchAll은 trait FetchesAllRows가 되었고, Rust dbspec test의 parse_set은 probe 모듈 tests/common/dbspec_probe.rs에 있으며, TypeScript의 within helper는 둘이 함께 쓰는 tests/deadline.mjs에 있다 (CR27).
