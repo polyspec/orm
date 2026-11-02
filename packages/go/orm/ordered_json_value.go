@@ -53,6 +53,16 @@ func orderedJSONReflect(reflectValue reflect.Value) (*orderedjson.Value, error) 
 	if (reflectValue.Kind() == reflect.Interface || reflectValue.Kind() == reflect.Pointer) && reflectValue.IsNil() {
 		return orderedjson.Null(), nil
 	}
+	// An ordered-json value is taken as it is before the json.Marshaler check: its MarshalJSON
+	// re-serialises the parsed member map, which collapses a repeated member name (DIA-26).
+	if reflectValue.CanInterface() {
+		if value, ok := reflectValue.Interface().(*orderedjson.Value); ok {
+			if value == nil {
+				return orderedjson.Null(), nil
+			}
+			return value, nil
+		}
+	}
 	if reflectValue.CanInterface() {
 		if marshaler, ok := reflectValue.Interface().(json.Marshaler); ok {
 			body, err := marshaler.MarshalJSON()
@@ -64,14 +74,6 @@ func orderedJSONReflect(reflectValue reflect.Value) (*orderedjson.Value, error) 
 				return nil, codecErr(CodeCodecEncode, "json: custom marshaler returned invalid JSON: %v", err)
 			}
 			return parsed, nil
-		}
-	}
-	if reflectValue.CanInterface() {
-		if value, ok := reflectValue.Interface().(*orderedjson.Value); ok {
-			if value == nil {
-				return orderedjson.Null(), nil
-			}
-			return value, nil
 		}
 	}
 	if reflectValue.Kind() == reflect.Interface || reflectValue.Kind() == reflect.Pointer {
