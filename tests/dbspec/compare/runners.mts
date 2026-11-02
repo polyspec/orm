@@ -59,7 +59,7 @@ export type Runner = { name: string; readonly command: string; readonly args: st
 /** The end of a runner: its exit code or signal and its output. */
 export type RunnerResult = { code: number | null; signal: NodeJS.Signals | null; stdout: string; stderr: string };
 
-export function runRunner(runner: Runner, inputs: string[], timeout: number): Promise<RunnerResult> {
+export function runRunner(runner: Runner, inputs: string[], timeout: number, pace = 0): Promise<RunnerResult> {
   const reads = runner.reads;
   if (reads && inputs.length !== INPUTS.length) throw new Error(`runRunner gives a compare runner the ${INPUTS.length} inputs ${INPUTS.join(', ')}; given ${inputs.length}; pass all six, and the runner takes those its reads names`);
   const args = reads ? reads.map(name => inputs[INPUTS.indexOf(name)] ?? '') : inputs;
@@ -68,7 +68,14 @@ export function runRunner(runner: Runner, inputs: string[], timeout: number): Pr
     const out: Buffer[] = [];
     const err: Buffer[] = [];
     child.stdout.on('data', (chunk: Buffer) => out.push(chunk));
-    child.stderr.on('data', (chunk: Buffer) => err.push(chunk));
+    child.stderr.on('data', (chunk: Buffer) => {
+      err.push(chunk);
+      // A pace reads stderr as a busy reader does: it waits that many milliseconds after each chunk.
+      if (pace > 0) {
+        child.stderr.pause();
+        setTimeout(() => child.stderr.resume(), pace);
+      }
+    });
     child.on('error', reject);
     child.on('close', (code, signal) => {
       resolve({ code, signal, stdout: Buffer.concat(out).toString('utf8'), stderr: Buffer.concat(err).toString('utf8') });

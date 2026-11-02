@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join as joinPath, resolve as resolvePath } from 'node:path';
 import { readPlanCases, readPlanRecipes, readVectors, vectorProblems, type MermaidCase, type RecipeFile, type RecipeStep } from '../../../../../tests/dbspec/vectors.mts';
 import { parseJson, SchemaError } from '../../../../../scripts/json/schema.mts';
-import { errorMessage } from '../../../../../tests/errors.mts';
+import { errorMessage, Refusal, runRefusing } from '../../../../../tests/errors.mts';
 import { readInput } from '../../../../../tests/dbspec/input.mts';
 import {
   analyzeDbspec,
@@ -38,525 +38,522 @@ import {
   type DbspecUnsupported,
 } from '../../../dist/dbspec/index.js';
 
-const [dirPath, stressPath, ddlPath, plansPath, mermaidPath] = process.argv.slice(2);
-if (dirPath === undefined || stressPath === undefined || ddlPath === undefined || plansPath === undefined || mermaidPath === undefined || process.argv.length !== 7) {
-  console.error('usage: node packages/ts/testing/dbspec/compare/typescript.mts <tests/dbspec dir> <stress document> <ddl.json> <plan-cases.json> <mermaid.json>');
-  process.exit(2);
-}
-
-// fail writes the position and the problem of the vector file to stderr and exits with 1.
-function fail(path: string, location: string, problem: string): never {
-  console.error(`${path}: ${location} ${problem}`);
-  process.exit(1);
-}
-
-const RECIPE_SCHEMA = new URL('../../../../../scripts/features/schema/recipe.schema.json', import.meta.url).pathname;
-
-/** A case of a recipe file: its documents by name (main is the text of the step) and its line ends. */
-type RecipeCase = { id: string; documents: Record<string, string[]>; crlf: boolean; mixed: boolean; path: string };
-type ParseStep = { op: string; text?: string[]; set?: Record<string, string[]>; path?: string; crlf?: boolean; mixed?: boolean };
-type ParseRecipe = { cases: { id: string; steps: ParseStep[] }[] };
-type SetStep = { op: string; owned?: string[]; text?: string[]; set?: Record<string, string[]> };
-type SetRecipeFile = { cases: { id: string; steps: SetStep[] }[] };
-/** A hashes case: its documents by header name, as its dbspec.set step owns them. */
-type SetCase = { id: string; documents: Record<string, string[]> };
-/** One analysis of a set recipe, with the id that the output names it by. */
-type SetAnalysis = { id: string; input: { text: string; documents: Record<string, string> } };
-
-// readRecipeFile reads the recipe file at path strictly against the recipe schema; a refusal is written to stderr, one line per
-// problem, and ends with 1.
-function readRecipeFile<T>(path: string): T {
-  try {
-    return parseJson<T>(readInput(path), RECIPE_SCHEMA, path);
-  } catch (error) {
-    if (error instanceof SchemaError) for (const line of vectorProblems(path, error)) console.error(line);
-    else console.error(errorMessage(error));
-    process.exit(1);
+// main runs the cases; a refused input ends the run through runRefusing, once stderr has taken every line of the refusal.
+function main(): void {
+  const [dirPath, stressPath, ddlPath, plansPath, mermaidPath] = process.argv.slice(2);
+  if (dirPath === undefined || stressPath === undefined || ddlPath === undefined || plansPath === undefined || mermaidPath === undefined || process.argv.length !== 7) {
+    throw new Refusal(['usage: node packages/ts/testing/dbspec/compare/typescript.mts <tests/dbspec dir> <stress document> <ddl.json> <plan-cases.json> <mermaid.json>'], 2);
   }
-}
 
-// readRecipe reads a recipe file of tests/dbspec strictly against the recipe schema, and gives each case with its step of op.
-function readRecipe(path: string, op: string): RecipeCase[] {
-  const file = readRecipeFile<ParseRecipe>(path);
-  return file.cases.map((c, index) => {
-    const step = c.steps.find(s => s.op === op);
-    if (step === undefined) fail(path, `cases[${index}].steps`, `has no ${op} step`);
-    const documents: Record<string, string[]> = { main: step.text ?? [] };
-    for (const [name, lines] of Object.entries(step.set ?? {})) {
-      if (name === 'main') fail(path, `cases[${index}].steps`, 'names a document main, which is the main document');
-      documents[name] = lines;
+  // fail refuses the vector file with the position and the problem, with exit code 1.
+  function fail(path: string, location: string, problem: string): never {
+    throw new Refusal([`${path}: ${location} ${problem}`]);
+  }
+
+  const RECIPE_SCHEMA = new URL('../../../../../scripts/features/schema/recipe.schema.json', import.meta.url).pathname;
+
+  /** A case of a recipe file: its documents by name (main is the text of the step) and its line ends. */
+  type RecipeCase = { id: string; documents: Record<string, string[]>; crlf: boolean; mixed: boolean; path: string };
+  type ParseStep = { op: string; text?: string[]; set?: Record<string, string[]>; path?: string; crlf?: boolean; mixed?: boolean };
+  type ParseRecipe = { cases: { id: string; steps: ParseStep[] }[] };
+  type SetStep = { op: string; owned?: string[]; text?: string[]; set?: Record<string, string[]> };
+  type SetRecipeFile = { cases: { id: string; steps: SetStep[] }[] };
+  /** A hashes case: its documents by header name, as its dbspec.set step owns them. */
+  type SetCase = { id: string; documents: Record<string, string[]> };
+  /** One analysis of a set recipe, with the id that the output names it by. */
+  type SetAnalysis = { id: string; input: { text: string; documents: Record<string, string> } };
+
+  // readRecipeFile reads the recipe file at path strictly against the recipe schema; a refusal is written to stderr, one line per
+  // problem, and ends with 1.
+  function readRecipeFile<T>(path: string): T {
+    try {
+      return parseJson<T>(readInput(path), RECIPE_SCHEMA, path);
+    } catch (error) {
+      throw new Refusal(error instanceof SchemaError ? vectorProblems(path, error) : [errorMessage(error)]);
     }
-    return { id: c.id, documents, crlf: step.crlf === true, mixed: step.mixed === true, path: step.path ?? '' };
-  });
-}
+  }
 
-// readSetRecipe reads hashes.json or sets.json strictly against the recipe schema. Its analyses come in file order with the
-// ids sets.<case>.<n> (n the place of the analysis in the case) and hashes.<case>.<name> (name the header name of the text).
-// A hashes case's documents are the owned texts of its dbspec.set step, each named by its header.
-function readSetRecipe(path: string, kind: 'hashes' | 'sets'): { cases: SetCase[]; analyses: SetAnalysis[] } {
-  const file = readRecipeFile<SetRecipeFile>(path);
-  const cases: SetCase[] = [];
-  const analyses: SetAnalysis[] = [];
-  for (const c of file.cases) {
-    let documents: Record<string, string[]> = {};
-    let n = 0;
-    for (const step of c.steps) {
-      if (step.op === 'dbspec.set') {
-        documents = {};
-        for (const text of step.owned ?? []) {
-          const lines = text.replace(/\n$/, '').split('\n');
-          const name = lines[0]?.split(' ')[2];
-          if (name === undefined) fail(path, `cases.${c.id}`, 'has a document without a header name');
-          documents[name] = lines;
+  // readRecipe reads a recipe file of tests/dbspec strictly against the recipe schema, and gives each case with its step of op.
+  function readRecipe(path: string, op: string): RecipeCase[] {
+    const file = readRecipeFile<ParseRecipe>(path);
+    return file.cases.map((c, index) => {
+      const step = c.steps.find(s => s.op === op);
+      if (step === undefined) fail(path, `cases[${index}].steps`, `has no ${op} step`);
+      const documents: Record<string, string[]> = { main: step.text ?? [] };
+      for (const [name, lines] of Object.entries(step.set ?? {})) {
+        if (name === 'main') fail(path, `cases[${index}].steps`, 'names a document main, which is the main document');
+        documents[name] = lines;
+      }
+      return { id: c.id, documents, crlf: step.crlf === true, mixed: step.mixed === true, path: step.path ?? '' };
+    });
+  }
+
+  // readSetRecipe reads hashes.json or sets.json strictly against the recipe schema. Its analyses come in file order with the
+  // ids sets.<case>.<n> (n the place of the analysis in the case) and hashes.<case>.<name> (name the header name of the text).
+  // A hashes case's documents are the owned texts of its dbspec.set step, each named by its header.
+  function readSetRecipe(path: string, kind: 'hashes' | 'sets'): { cases: SetCase[]; analyses: SetAnalysis[] } {
+    const file = readRecipeFile<SetRecipeFile>(path);
+    const cases: SetCase[] = [];
+    const analyses: SetAnalysis[] = [];
+    for (const c of file.cases) {
+      let documents: Record<string, string[]> = {};
+      let n = 0;
+      for (const step of c.steps) {
+        if (step.op === 'dbspec.set') {
+          documents = {};
+          for (const text of step.owned ?? []) {
+            const lines = text.replace(/\n$/, '').split('\n');
+            const name = lines[0]?.split(' ')[2];
+            if (name === undefined) fail(path, `cases.${c.id}`, 'has a document without a header name');
+            documents[name] = lines;
+          }
+        } else if (step.op === 'dbspec.analyze') {
+          n++;
+          const id = kind === 'hashes' ? `hashes.${c.id}.${step.text?.[0]?.split(' ')[2] ?? ''}` : `sets.${c.id}.${n}`;
+          const set = Object.fromEntries(Object.entries(step.set ?? {}).map(([other, lines]) => [other, join(lines, false)]));
+          analyses.push({ id, input: { text: join(step.text ?? [], false), documents: set } });
         }
-      } else if (step.op === 'dbspec.analyze') {
-        n++;
-        const id = kind === 'hashes' ? `hashes.${c.id}.${step.text?.[0]?.split(' ')[2] ?? ''}` : `sets.${c.id}.${n}`;
-        const set = Object.fromEntries(Object.entries(step.set ?? {}).map(([other, lines]) => [other, join(lines, false)]));
-        analyses.push({ id, input: { text: join(step.text ?? [], false), documents: set } });
+      }
+      if (kind === 'hashes') cases.push({ id: c.id, documents });
+    }
+    return { cases, analyses };
+  }
+
+  const out: string[] = [];
+  const DIALECTS: readonly DbspecDialect[] = ['mysql', 'postgres', 'sqlite'];
+
+  // documentOf is the document of a parse without diagnostics; the parse gives a document exactly when it reports none.
+  function documentOf(result: { document: DbspecDocument | null; diagnostics: readonly unknown[] }): DbspecDocument | null {
+    if (result.diagnostics.length > 0) return null;
+    if (result.document === null) throw new Error('parseDbspec reported no diagnostic and no document');
+    return result.document;
+  }
+
+  // others is the documents of a case other than name, each joined with its line ends.
+  function others(documents: Record<string, string[]>, name: string, crlf = false, mixed = false): Record<string, string> {
+    return Object.fromEntries(Object.entries(documents).filter(([other]) => other !== name).map(([other, lines]) => [other, join(lines, crlf, mixed)]));
+  }
+
+  // write prints the diagnostic of the text, or otherwise its emission.
+  function write(text: string, set: Record<string, string>, stress: boolean): void {
+    const result = parseDbspec(text, set);
+    const document = documentOf(result);
+    if (document === null) {
+      for (const d of result.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
+      return;
+    }
+    const emitted = emitDbspec(document);
+    if (stress) out.push(emitted === text ? '= unchanged' : '= changed');
+    else for (const line of emitted.split('\n')) out.push(`| ${line}`);
+  }
+
+  // readDocument reads the dbspec document file at path with readDbspecFile. A file that cannot be read
+  // is reported as "<path>: <reason>", and a file without a signature writes its diagnostic message to stderr and exits with 1.
+  function readDocument(path: string): string {
+    let read: DbspecReadResult;
+    try {
+      read = readDbspecFile(path);
+    } catch (error) {
+      throw new Refusal([`${path}: ${errorMessage(error)}`]);
+    }
+    if (read.text === null) {
+      throw new Refusal(read.diagnostics.map(d => d.message));
+    }
+    return read.text;
+  }
+
+  const recipeDir = dirPath;
+  // join gives the text of a document's lines with its line ends, as the recipes of tests/dbspec write them.
+  // A mixed document starts with CRLF, alternates CRLF and LF from its second line, and has no final line ending (recipe.mjs joinText).
+  const join = (lines: string[], crlf: boolean, mixed = false): string => {
+    if (mixed) return lines.map((line, i) => (i === 0 ? '' : i % 2 === 1 ? '\r\n' : '\n') + line).join('');
+    return lines.join(crlf ? '\r\n' : '\n') + (crlf ? '\r\n' : '\n');
+  };
+
+  const hashesRecipe = readSetRecipe(joinPath(recipeDir, 'hashes.json'), 'hashes');
+  const setsRecipe = readSetRecipe(joinPath(recipeDir, 'sets.json'), 'sets');
+  const canonical = readRecipe(joinPath(recipeDir, 'canonical.json'), 'dbspec.format');
+  const normalize = readRecipe(joinPath(recipeDir, 'normalize.json'), 'dbspec.format');
+  const invalid = readRecipe(joinPath(recipeDir, 'invalid.json'), 'dbspec.format');
+  const positions = readRecipe(joinPath(recipeDir, 'positions.json'), 'dbspec.parse_positions');
+  const files = readRecipe(joinPath(recipeDir, 'files.json'), 'dbspec.read_file');
+  for (const [kind, cases] of [['canonical', canonical], ['normalize', normalize], ['invalid', invalid]] as const) {
+    for (const c of cases) {
+      out.push(`${kind}/${c.id}`);
+      write(join(c.documents.main ?? [], c.crlf, c.mixed), others(c.documents, 'main', c.crlf, c.mixed), false);
+    }
+  }
+  out.push('stress');
+  write(readDocument(stressPath), {}, true);
+  // The files case passes the path to readDbspecFile as "files/<id>", and passes the file bytes to readDbspecBytes
+  // with the case path as name as "files/<id>/bytes", and reads the diagnostic and its message, or otherwise
+  // the emission is printed. The name before the message is written as "<name>".
+  for (const c of files) {
+    const path = joinPath(recipeDir, c.path);
+    let reads: [string, string, DbspecReadResult][];
+    try {
+      reads = [[`files/${c.id}`, path, readDbspecFile(path)], [`files/${c.id}/bytes`, c.path, readDbspecBytes(c.path, readFileSync(path))]];
+    } catch (error) {
+      throw new Refusal([`${path}: ${errorMessage(error)}`]);
+    }
+    for (const [label, name, read] of reads) {
+      out.push(label);
+      if (read.text !== null) {
+        write(read.text, {}, false);
+        continue;
+      }
+      for (const d of read.diagnostics) {
+        out.push(`! ${d.rule} ${d.line} ${d.column}`);
+        out.push(`= ${d.message.startsWith(name) ? '<name>' + d.message.slice(name.length) : d.message}`);
       }
     }
-    if (kind === 'hashes') cases.push({ id: c.id, documents });
   }
-  return { cases, analyses };
-}
 
-const out: string[] = [];
-const DIALECTS: readonly DbspecDialect[] = ['mysql', 'postgres', 'sqlite'];
-
-// documentOf is the document of a parse without diagnostics; the parse gives a document exactly when it reports none.
-function documentOf(result: { document: DbspecDocument | null; diagnostics: readonly unknown[] }): DbspecDocument | null {
-  if (result.diagnostics.length > 0) return null;
-  if (result.document === null) throw new Error('parseDbspec reported no diagnostic and no document');
-  return result.document;
-}
-
-// others is the documents of a case other than name, each joined with its line ends.
-function others(documents: Record<string, string[]>, name: string, crlf = false, mixed = false): Record<string, string> {
-  return Object.fromEntries(Object.entries(documents).filter(([other]) => other !== name).map(([other, lines]) => [other, join(lines, crlf, mixed)]));
-}
-
-// write prints the diagnostic of the text, or otherwise its emission.
-function write(text: string, set: Record<string, string>, stress: boolean): void {
-  const result = parseDbspec(text, set);
-  const document = documentOf(result);
-  if (document === null) {
-    for (const d of result.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
-    return;
-  }
-  const emitted = emitDbspec(document);
-  if (stress) out.push(emitted === text ? '= unchanged' : '= changed');
-  else for (const line of emitted.split('\n')) out.push(`| ${line}`);
-}
-
-// readDocument reads the dbspec document file at path with readDbspecFile. A file that cannot be read
-// is reported as "<path>: <reason>", and a file without a signature writes its diagnostic message to stderr and exits with 1.
-function readDocument(path: string): string {
-  let read: DbspecReadResult;
-  try {
-    read = readDbspecFile(path);
-  } catch (error) {
-    console.error(`${path}: ${errorMessage(error)}`);
-    process.exit(1);
-  }
-  if (read.text === null) {
-    console.error(read.diagnostics.map(d => d.message).join('\n'));
-    process.exit(1);
-  }
-  return read.text;
-}
-
-const recipeDir = dirPath;
-// join gives the text of a document's lines with its line ends, as the recipes of tests/dbspec write them.
-// A mixed document starts with CRLF, alternates CRLF and LF from its second line, and has no final line ending (recipe.mjs joinText).
-const join = (lines: string[], crlf: boolean, mixed = false): string => {
-  if (mixed) return lines.map((line, i) => (i === 0 ? '' : i % 2 === 1 ? '\r\n' : '\n') + line).join('');
-  return lines.join(crlf ? '\r\n' : '\n') + (crlf ? '\r\n' : '\n');
-};
-
-const hashesRecipe = readSetRecipe(joinPath(recipeDir, 'hashes.json'), 'hashes');
-const setsRecipe = readSetRecipe(joinPath(recipeDir, 'sets.json'), 'sets');
-const canonical = readRecipe(joinPath(recipeDir, 'canonical.json'), 'dbspec.format');
-const normalize = readRecipe(joinPath(recipeDir, 'normalize.json'), 'dbspec.format');
-const invalid = readRecipe(joinPath(recipeDir, 'invalid.json'), 'dbspec.format');
-const positions = readRecipe(joinPath(recipeDir, 'positions.json'), 'dbspec.parse_positions');
-const files = readRecipe(joinPath(recipeDir, 'files.json'), 'dbspec.read_file');
-for (const [kind, cases] of [['canonical', canonical], ['normalize', normalize], ['invalid', invalid]] as const) {
-  for (const c of cases) {
-    out.push(`${kind}/${c.id}`);
-    write(join(c.documents.main ?? [], c.crlf, c.mixed), others(c.documents, 'main', c.crlf, c.mixed), false);
-  }
-}
-out.push('stress');
-write(readDocument(stressPath), {}, true);
-// The files case passes the path to readDbspecFile as "files/<id>", and passes the file bytes to readDbspecBytes
-// with the case path as name as "files/<id>/bytes", and reads the diagnostic and its message, or otherwise
-// the emission is printed. The name before the message is written as "<name>".
-for (const c of files) {
-  const path = joinPath(recipeDir, c.path);
-  let reads: [string, string, DbspecReadResult][];
-  try {
-    reads = [[`files/${c.id}`, path, readDbspecFile(path)], [`files/${c.id}/bytes`, c.path, readDbspecBytes(c.path, readFileSync(path))]];
-  } catch (error) {
-    console.error(`${path}: ${errorMessage(error)}`);
-    process.exit(1);
-  }
-  for (const [label, name, read] of reads) {
-    out.push(label);
-    if (read.text !== null) {
-      write(read.text, {}, false);
-      continue;
+  // parseDocuments parses the documents of a case in name order. It returns the diagnostics of the first document that is
+  // not valid, in place of the documents.
+  function parseDocuments(c: { documents: Record<string, string[]> }): { documents: DbspecDocument[] } | { diagnostics: readonly DbspecDiagnostic[] } {
+    const documents: DbspecDocument[] = [];
+    for (const name of Object.keys(c.documents).sort()) {
+      const result = parseDbspec(join(c.documents[name] ?? [], false), others(c.documents, name));
+      const document = documentOf(result);
+      if (document === null) return { diagnostics: result.diagnostics };
+      documents.push(document);
     }
-    for (const d of read.diagnostics) {
-      out.push(`! ${d.rule} ${d.line} ${d.column}`);
-      out.push(`= ${d.message.startsWith(name) ? '<name>' + d.message.slice(name.length) : d.message}`);
+    return { documents };
+  }
+
+  // writeManifest prints the hash and text of the case's document set, or the diagnostic of a document or set.
+  function writeManifest(c: { documents: Record<string, string[]> }): void {
+    const parsed = parseDocuments(c);
+    if ('diagnostics' in parsed) {
+      for (const d of parsed.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
+      return;
+    }
+    const documents = parsed.documents;
+    const result = dbspecManifest(documents);
+    if (result.diagnostics.length > 0) {
+      for (const d of result.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
+      return;
+    }
+    const m = result.manifest;
+    if (m === null) throw new Error('dbspecManifest reported no diagnostic and no manifest');
+    out.push(`= manifestHash ${m.manifestHash}`, `= schemaHash ${m.schemaHash}`, '= manifestText');
+    for (const line of m.manifestText.split('\n')) out.push(`| ${line}`);
+    out.push('= schemaText');
+    for (const line of m.schemaText.split('\n')) out.push(`| ${line}`);
+  }
+
+  for (const c of hashesRecipe.cases) {
+    out.push(`hashes/${c.id}`);
+    writeManifest(c);
+  }
+
+  // writeRender prints the statements of the case's document set for each dialect, or
+  // the diagnostic of a document or set.
+  function writeRender(c: { documents: Record<string, string[]>; id: string }): void {
+    const parsed = parseDocuments(c);
+    if ('diagnostics' in parsed) {
+      out.push(`render/${c.id}`);
+      for (const d of parsed.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
+      return;
+    }
+    const documents = parsed.documents;
+    for (const dialect of DIALECTS) {
+      out.push(`render/${c.id}/${dialect}`);
+      const result = renderDbspec(documents, dialect);
+      for (const d of result.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
+      for (const s of result.statements ?? []) out.push(`| ${s}`);
     }
   }
-}
 
-// parseDocuments parses the documents of a case in name order. It returns the diagnostics of the first document that is
-// not valid, in place of the documents.
-function parseDocuments(c: { documents: Record<string, string[]> }): { documents: DbspecDocument[] } | { diagnostics: readonly DbspecDiagnostic[] } {
-  const documents: DbspecDocument[] = [];
-  for (const name of Object.keys(c.documents).sort()) {
-    const result = parseDbspec(join(c.documents[name] ?? [], false), others(c.documents, name));
+  for (const c of readVectors(ddlPath, 'ddl').cases) writeRender(c);
+
+  // writeStep writes one step as a statement line and its attribute lines (tests/dbspec/compare/check.mts).
+  function writeStep(s: DbspecPlanStep): void {
+    out.push(`| ${s.statement}`);
+    if (s.finalize) out.push('  finalize');
+    else if (s.rollback !== '') out.push(`  rollback: ${s.rollback}`);
+    else out.push(`  irreversible: ${s.irreversible}`);
+    out.push(`  effect: ${effectText(s.effect)}`);
+    if (s.restore !== '') out.push(`  restore: ${s.restore}`);
+    if (s.rollbackRestore !== '') out.push(`  rollback_restore: ${s.rollbackRestore}`);
+    if (s.restore !== '' || s.rollbackRestore !== '') {
+      if (s.restoreIf === null) throw new Error(`the step ${s.statement} restores without its condition`);
+      out.push(`  restore_if: ${effectText(s.restoreIf)}`);
+    }
+    for (const c of s.nullChecks) out.push(`  null_check: ${c.table} ${c.column} ${c.default ?? 'none'}`);
+  }
+
+  // writePlanDiagnostics prints the diagnostics. Plan, chain, and compare diagnostics all
+  // end with a message that every client shares, while schema diagnostics of the target or source do not.
+  function writePlanDiagnostics(diagnostics: readonly DbspecDiagnostic[]): void {
+    for (const d of diagnostics) {
+      out.push(['plan', 'chain', 'compare'].includes(d.rule) ? `! ${d.rule} ${d.line} ${d.column} ${d.message}` : `! ${d.rule} ${d.line} ${d.column}`);
+    }
+  }
+
+  // planSource returns the source schema of the plan case, null for an empty schema,
+  // or undefined if it printed a diagnostic.
+  function planSource(lines: string[] | null): DbspecDocument | null | undefined {
+    if (lines === null) return null;
+    const result = parseDbspec(join(lines, false), {});
     const document = documentOf(result);
-    if (document === null) return { diagnostics: result.diagnostics };
-    documents.push(document);
-  }
-  return { documents };
-}
-
-// writeManifest prints the hash and text of the case's document set, or the diagnostic of a document or set.
-function writeManifest(c: { documents: Record<string, string[]> }): void {
-  const parsed = parseDocuments(c);
-  if ('diagnostics' in parsed) {
-    for (const d of parsed.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
-    return;
-  }
-  const documents = parsed.documents;
-  const result = dbspecManifest(documents);
-  if (result.diagnostics.length > 0) {
-    for (const d of result.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
-    return;
-  }
-  const m = result.manifest;
-  if (m === null) throw new Error('dbspecManifest reported no diagnostic and no manifest');
-  out.push(`= manifestHash ${m.manifestHash}`, `= schemaHash ${m.schemaHash}`, '= manifestText');
-  for (const line of m.manifestText.split('\n')) out.push(`| ${line}`);
-  out.push('= schemaText');
-  for (const line of m.schemaText.split('\n')) out.push(`| ${line}`);
-}
-
-for (const c of hashesRecipe.cases) {
-  out.push(`hashes/${c.id}`);
-  writeManifest(c);
-}
-
-// writeRender prints the statements of the case's document set for each dialect, or
-// the diagnostic of a document or set.
-function writeRender(c: { documents: Record<string, string[]>; id: string }): void {
-  const parsed = parseDocuments(c);
-  if ('diagnostics' in parsed) {
-    out.push(`render/${c.id}`);
-    for (const d of parsed.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
-    return;
-  }
-  const documents = parsed.documents;
-  for (const dialect of DIALECTS) {
-    out.push(`render/${c.id}/${dialect}`);
-    const result = renderDbspec(documents, dialect);
-    for (const d of result.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
-    for (const s of result.statements ?? []) out.push(`| ${s}`);
-  }
-}
-
-for (const c of readVectors(ddlPath, 'ddl').cases) writeRender(c);
-
-// writeStep writes one step as a statement line and its attribute lines (tests/dbspec/compare/check.mts).
-function writeStep(s: DbspecPlanStep): void {
-  out.push(`| ${s.statement}`);
-  if (s.finalize) out.push('  finalize');
-  else if (s.rollback !== '') out.push(`  rollback: ${s.rollback}`);
-  else out.push(`  irreversible: ${s.irreversible}`);
-  out.push(`  effect: ${effectText(s.effect)}`);
-  if (s.restore !== '') out.push(`  restore: ${s.restore}`);
-  if (s.rollbackRestore !== '') out.push(`  rollback_restore: ${s.rollbackRestore}`);
-  if (s.restore !== '' || s.rollbackRestore !== '') {
-    if (s.restoreIf === null) throw new Error(`the step ${s.statement} restores without its condition`);
-    out.push(`  restore_if: ${effectText(s.restoreIf)}`);
-  }
-  for (const c of s.nullChecks) out.push(`  null_check: ${c.table} ${c.column} ${c.default ?? 'none'}`);
-}
-
-// writePlanDiagnostics prints the diagnostics. Plan, chain, and compare diagnostics all
-// end with a message that every client shares, while schema diagnostics of the target or source do not.
-function writePlanDiagnostics(diagnostics: readonly DbspecDiagnostic[]): void {
-  for (const d of diagnostics) {
-    out.push(['plan', 'chain', 'compare'].includes(d.rule) ? `! ${d.rule} ${d.line} ${d.column} ${d.message}` : `! ${d.rule} ${d.line} ${d.column}`);
-  }
-}
-
-// planSource returns the source schema of the plan case, null for an empty schema,
-// or undefined if it printed a diagnostic.
-function planSource(lines: string[] | null): DbspecDocument | null | undefined {
-  if (lines === null) return null;
-  const result = parseDbspec(join(lines, false), {});
-  const document = documentOf(result);
-  if (document === null) {
-    writePlanDiagnostics(result.diagnostics);
-    return undefined;
-  }
-  return document;
-}
-
-// writeChanges prints each change as "| kind table name".
-function writeChanges(changes: readonly DbspecChange[]): void {
-  for (const c of changes) out.push(`| ${c.kind} ${c.table} ${c.name}`);
-}
-
-function writeEmittedPlan(plan: DbspecPlan): void {
-  for (const line of emitPlan(plan).split('\n')) out.push(`| ${line}`);
-}
-
-// planCase writes the header of a plan case and returns its source and parsed plan. It returns undefined when the case has
-// no source, or when its plan does not parse; the diagnostics of that plan are written then.
-function planCase(header: string, c: { source: string[] | null; plan: string[] }): { source: DbspecDocument | null; plan: DbspecPlan } | undefined {
-  out.push(header);
-  const source = planSource(c.source);
-  if (source === undefined) return undefined;
-  const parsed = parsePlan(join(c.plan, false));
-  if (parsed.plan === null) {
-    writePlanDiagnostics(parsed.diagnostics);
-    return undefined;
-  }
-  return { source, plan: parsed.plan };
-}
-
-readVectors(plansPath, 'plans'); // plan-cases.json is checked against its schema; its cases are read below.
-// The cases of plan-cases.json, with their physical records; the validation sections are the recipes beside it (tests/dbspec/plan-*.json). Each step names its schema text
-// or plan by a ref, which an earlier dbspec.parse or dbspec.parse_plan step of the same case binds; null is the empty schema.
-const recipes = readPlanRecipes(plansPath);
-type Lines = string[];
-
-// boundLines maps the as of each dbspec.parse or dbspec.parse_plan step of a case to its lines.
-function boundLines(steps: RecipeStep[]): Map<string, Lines> {
-  const bound = new Map<string, Lines>();
-  for (const s of steps) if ((s.op === 'dbspec.parse' || s.op === 'dbspec.parse_plan') && s.as !== undefined) bound.set(s.as, s.lines ?? []);
-  return bound;
-}
-
-// namedLines returns the lines that a ref names, or null for the empty schema of a null field.
-function namedLines(raw: { ref: string } | null | undefined, bound: Map<string, Lines>): Lines | null {
-  if (raw === null) return null;
-  if (raw === undefined) throw new Error('a recipe step names no schema or plan');
-  const lines = bound.get(raw.ref);
-  if (lines === undefined) throw new Error(`ref ${raw.ref} names no parsed schema or plan`);
-  return lines;
-}
-
-// requiredLines is namedLines for a field that must name lines.
-function requiredLines(raw: { ref: string } | null | undefined, bound: Map<string, Lines>): Lines {
-  const lines = namedLines(raw, bound);
-  if (lines === null) throw new Error('a recipe step names the empty schema where lines are needed');
-  return lines;
-}
-
-// recipeCases returns the steps of one op in each case of the recipe, with the bound lines of the case.
-function recipeCases<T>(recipe: RecipeFile, op: string, read: (step: RecipeStep, bound: Map<string, Lines>, id: string) => T): T[] {
-  return recipe.cases.flatMap(c => {
-    const bound = boundLines(c.steps);
-    return c.steps.filter(s => s.op === op).map(s => read(s, bound, c.id));
-  });
-}
-const recipeInvalid = recipeCases(recipes.invalid, 'dbspec.diff', (s, bound, id) => ({ id, source: namedLines(s.source, bound), plan: requiredLines(s.plan, bound) }));
-const recipeChains = recipeCases(recipes.chains, 'dbspec.chain', (s, bound, id) => ({ id, plans: (s.plans ?? []).map(r => requiredLines(r, bound)) }));
-const recipeParse = recipeCases(recipes.parse, 'dbspec.parse_plan', (s, _bound, id) => ({ id, plan: s.lines ?? [] }));
-const recipeComparisons = recipeCases(recipes.comparisons, 'dbspec.compare', (s, bound, id) => ({ id, source: requiredLines(s.source, bound), target: requiredLines(s.target, bound) }));
-for (const c of readPlanCases(plansPath)) {
-  const planned = planCase(`plans/cases/${c.id}`, c);
-  if (planned === undefined) continue;
-  const { source, plan } = planned;
-  writeEmittedPlan(plan);
-  out.push(`plans/cases/${c.id}/changes`);
-  const diff = diffPlan(source, plan);
-  writePlanDiagnostics(diff.diagnostics);
-  writeChanges(diff.changes ?? []);
-  for (const dialect of DIALECTS) {
-    out.push(`plans/cases/${c.id}/${dialect}`);
-    const result = planSteps(source, plan, dialect);
-    writePlanDiagnostics(result.diagnostics);
-    for (const s of result.steps ?? []) writeStep(s);
-  }
-}
-for (const c of recipeInvalid) {
-  const planned = planCase(`plans/invalid/${c.id}`, c);
-  if (planned === undefined) continue;
-  const diff = diffPlan(planned.source, planned.plan);
-  writePlanDiagnostics(diff.diagnostics);
-  writeChanges(diff.changes ?? []);
-}
-for (const c of recipeChains) {
-  out.push(`plans/chains/${c.id}`);
-  const parsed = c.plans.map(lines => parsePlan(join(lines, false)));
-  for (const p of parsed) writePlanDiagnostics(p.diagnostics);
-  const chained = parsed.flatMap(p => (p.plan === null ? [] : [p.plan]));
-  if (chained.length !== parsed.length) continue;
-  const chain = chainPlans(chained);
-  writePlanDiagnostics(chain.diagnostics);
-  for (const p of chain.plans ?? []) out.push(`| ${p.name}`);
-}
-for (const c of recipeParse) {
-  out.push(`plans/parse/${c.id}`);
-  const parsed = parsePlan(join(c.plan, false));
-  if (parsed.plan === null) writePlanDiagnostics(parsed.diagnostics);
-  else writeEmittedPlan(parsed.plan);
-}
-for (const c of recipeComparisons) {
-  out.push(`plans/comparisons/${c.id}`);
-  const source = parseDbspec(join(c.source, false), {});
-  writePlanDiagnostics(source.diagnostics);
-  const target = parseDbspec(join(c.target, false), {});
-  writePlanDiagnostics(target.diagnostics);
-  if (source.document === null || target.document === null) continue;
-  const result = compareSchemas(source.document, target.document);
-  writePlanDiagnostics(result.diagnostics);
-  for (const d of result.differences ?? []) out.push(`| ${d.kind} ${d.table} ${d.name}`);
-}
-// writeDropped prints what the export or import dropped as "= kind<TAB>table<TAB>name".
-// The reason is not compared.
-function writeDropped(dropped: readonly DbspecUnsupported[]): void {
-  for (const u of dropped) out.push(`= ${u.kind}\t${u.table}\t${u.name}`);
-}
-
-// writeExport prints the document's Mermaid text and the missing objects.
-function writeExport(document: DbspecDocument): string {
-  const { mermaid, dropped } = exportMermaid(document);
-  for (const line of mermaid.split('\n')) out.push(`| ${line}`);
-  writeDropped(dropped);
-  return mermaid;
-}
-
-// skeleton writes the tables, columns, primary keys and foreign keys that Mermaid carries, in table-name order; foreign key
-// actions are left out, since Mermaid does not carry them.
-function skeleton(document: DbspecDocument): string[] {
-  const byName = (a: { name: string }, b: { name: string }) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
-  const lines: string[] = [];
-  for (const t of [...document.tables].sort(byName)) {
-    lines.push(`table ${t.name}`);
-    for (const c of t.columns) {
-      const dflt = c.default === null ? '-' : c.default.kind === 'now' ? 'now' : c.default.text;
-      lines.push(`column ${c.name} ${JSON.stringify(c.type)} null=${c.nullable} identity=${c.identity} default=${dflt}`);
+    if (document === null) {
+      writePlanDiagnostics(result.diagnostics);
+      return undefined;
     }
-    lines.push(`primary key ${t.primaryKey.columns.join(', ')}`);
-    for (const f of [...t.foreignKeys].sort(byName)) {
-      lines.push(`foreign key ${f.name} (${f.columns.join(', ')}) references ${f.table} (${f.references.join(', ')})`);
+    return document;
+  }
+
+  // writeChanges prints each change as "| kind table name".
+  function writeChanges(changes: readonly DbspecChange[]): void {
+    for (const c of changes) out.push(`| ${c.kind} ${c.table} ${c.name}`);
+  }
+
+  function writeEmittedPlan(plan: DbspecPlan): void {
+    for (const line of emitPlan(plan).split('\n')) out.push(`| ${line}`);
+  }
+
+  // planCase writes the header of a plan case and returns its source and parsed plan. It returns undefined when the case has
+  // no source, or when its plan does not parse; the diagnostics of that plan are written then.
+  function planCase(header: string, c: { source: string[] | null; plan: string[] }): { source: DbspecDocument | null; plan: DbspecPlan } | undefined {
+    out.push(header);
+    const source = planSource(c.source);
+    if (source === undefined) return undefined;
+    const parsed = parsePlan(join(c.plan, false));
+    if (parsed.plan === null) {
+      writePlanDiagnostics(parsed.diagnostics);
+      return undefined;
+    }
+    return { source, plan: parsed.plan };
+  }
+
+  readVectors(plansPath, 'plans'); // plan-cases.json is checked against its schema; its cases are read below.
+  // The cases of plan-cases.json, with their physical records; the validation sections are the recipes beside it (tests/dbspec/plan-*.json). Each step names its schema text
+  // or plan by a ref, which an earlier dbspec.parse or dbspec.parse_plan step of the same case binds; null is the empty schema.
+  const recipes = readPlanRecipes(plansPath);
+  type Lines = string[];
+
+  // boundLines maps the as of each dbspec.parse or dbspec.parse_plan step of a case to its lines.
+  function boundLines(steps: RecipeStep[]): Map<string, Lines> {
+    const bound = new Map<string, Lines>();
+    for (const s of steps) if ((s.op === 'dbspec.parse' || s.op === 'dbspec.parse_plan') && s.as !== undefined) bound.set(s.as, s.lines ?? []);
+    return bound;
+  }
+
+  // namedLines returns the lines that a ref names, or null for the empty schema of a null field.
+  function namedLines(raw: { ref: string } | null | undefined, bound: Map<string, Lines>): Lines | null {
+    if (raw === null) return null;
+    if (raw === undefined) throw new Error('a recipe step names no schema or plan');
+    const lines = bound.get(raw.ref);
+    if (lines === undefined) throw new Error(`ref ${raw.ref} names no parsed schema or plan`);
+    return lines;
+  }
+
+  // requiredLines is namedLines for a field that must name lines.
+  function requiredLines(raw: { ref: string } | null | undefined, bound: Map<string, Lines>): Lines {
+    const lines = namedLines(raw, bound);
+    if (lines === null) throw new Error('a recipe step names the empty schema where lines are needed');
+    return lines;
+  }
+
+  // recipeCases returns the steps of one op in each case of the recipe, with the bound lines of the case.
+  function recipeCases<T>(recipe: RecipeFile, op: string, read: (step: RecipeStep, bound: Map<string, Lines>, id: string) => T): T[] {
+    return recipe.cases.flatMap(c => {
+      const bound = boundLines(c.steps);
+      return c.steps.filter(s => s.op === op).map(s => read(s, bound, c.id));
+    });
+  }
+  const recipeInvalid = recipeCases(recipes.invalid, 'dbspec.diff', (s, bound, id) => ({ id, source: namedLines(s.source, bound), plan: requiredLines(s.plan, bound) }));
+  const recipeChains = recipeCases(recipes.chains, 'dbspec.chain', (s, bound, id) => ({ id, plans: (s.plans ?? []).map(r => requiredLines(r, bound)) }));
+  const recipeParse = recipeCases(recipes.parse, 'dbspec.parse_plan', (s, _bound, id) => ({ id, plan: s.lines ?? [] }));
+  const recipeComparisons = recipeCases(recipes.comparisons, 'dbspec.compare', (s, bound, id) => ({ id, source: requiredLines(s.source, bound), target: requiredLines(s.target, bound) }));
+  for (const c of readPlanCases(plansPath)) {
+    const planned = planCase(`plans/cases/${c.id}`, c);
+    if (planned === undefined) continue;
+    const { source, plan } = planned;
+    writeEmittedPlan(plan);
+    out.push(`plans/cases/${c.id}/changes`);
+    const diff = diffPlan(source, plan);
+    writePlanDiagnostics(diff.diagnostics);
+    writeChanges(diff.changes ?? []);
+    for (const dialect of DIALECTS) {
+      out.push(`plans/cases/${c.id}/${dialect}`);
+      const result = planSteps(source, plan, dialect);
+      writePlanDiagnostics(result.diagnostics);
+      for (const s of result.steps ?? []) writeStep(s);
     }
   }
-  return lines;
-}
-
-// readMermaidFile reads a .dbs file of the recipe; a file that cannot be read is written to stderr, "<path>: <reason>", and ends
-// with 1, as the other vector inputs are refused.
-function readMermaidFile(path: string): DbspecReadResult {
-  try {
-    return readDbspecFile(path);
-  } catch (error) {
-    console.error(`${path}: ${errorMessage(error)}`);
-    process.exit(1);
+  for (const c of recipeInvalid) {
+    const planned = planCase(`plans/invalid/${c.id}`, c);
+    if (planned === undefined) continue;
+    const diff = diffPlan(planned.source, planned.plan);
+    writePlanDiagnostics(diff.diagnostics);
+    writeChanges(diff.changes ?? []);
   }
-}
+  for (const c of recipeChains) {
+    out.push(`plans/chains/${c.id}`);
+    const parsed = c.plans.map(lines => parsePlan(join(lines, false)));
+    for (const p of parsed) writePlanDiagnostics(p.diagnostics);
+    const chained = parsed.flatMap(p => (p.plan === null ? [] : [p.plan]));
+    if (chained.length !== parsed.length) continue;
+    const chain = chainPlans(chained);
+    writePlanDiagnostics(chain.diagnostics);
+    for (const p of chain.plans ?? []) out.push(`| ${p.name}`);
+  }
+  for (const c of recipeParse) {
+    out.push(`plans/parse/${c.id}`);
+    const parsed = parsePlan(join(c.plan, false));
+    if (parsed.plan === null) writePlanDiagnostics(parsed.diagnostics);
+    else writeEmittedPlan(parsed.plan);
+  }
+  for (const c of recipeComparisons) {
+    out.push(`plans/comparisons/${c.id}`);
+    const source = parseDbspec(join(c.source, false), {});
+    writePlanDiagnostics(source.diagnostics);
+    const target = parseDbspec(join(c.target, false), {});
+    writePlanDiagnostics(target.diagnostics);
+    if (source.document === null || target.document === null) continue;
+    const result = compareSchemas(source.document, target.document);
+    writePlanDiagnostics(result.diagnostics);
+    for (const d of result.differences ?? []) out.push(`| ${d.kind} ${d.table} ${d.name}`);
+  }
+  // writeDropped prints what the export or import dropped as "= kind<TAB>table<TAB>name".
+  // The reason is not compared.
+  function writeDropped(dropped: readonly DbspecUnsupported[]): void {
+    for (const u of dropped) out.push(`= ${u.kind}\t${u.table}\t${u.name}`);
+  }
 
-// mermaidCase prints one case of tests/dbspec/mermaid.json: its category and id, then the output of each step, in order. An
-// export prints its Mermaid text and the missing objects; an import prints the emitted document and the missing objects, or its
-// diagnostics; an import with skeleton_of prints whether the skeleton of its document is that of the file. A step with as binds
-// its Mermaid text, which a ref of a later import reads.
-function mermaidCase(c: MermaidCase): void {
-  const roundTrip = c.steps.some(step => step.skeleton_of !== undefined);
-  const texts = new Map<string, string>();
-  for (const step of c.steps) {
-    if (step.op === 'dbspec.export_mermaid') {
-      out.push(`mermaid/${roundTrip ? 'round_trip' : 'export'}/${c.id}`);
-      // The inline text and the other documents of its set, or the .dbs file document (FCV-4).
-      let source = join(step.text ?? [], false);
-      let set = Object.fromEntries(Object.entries(step.set ?? {}).map(([name, lines]) => [name, join(lines, false)]));
-      if (step.document !== undefined) {
-        const read = readMermaidFile(resolvePath(mermaidDir, step.document));
+  // writeExport prints the document's Mermaid text and the missing objects.
+  function writeExport(document: DbspecDocument): string {
+    const { mermaid, dropped } = exportMermaid(document);
+    for (const line of mermaid.split('\n')) out.push(`| ${line}`);
+    writeDropped(dropped);
+    return mermaid;
+  }
+
+  // skeleton writes the tables, columns, primary keys and foreign keys that Mermaid carries, in table-name order; foreign key
+  // actions are left out, since Mermaid does not carry them.
+  function skeleton(document: DbspecDocument): string[] {
+    const byName = (a: { name: string }, b: { name: string }) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+    const lines: string[] = [];
+    for (const t of [...document.tables].sort(byName)) {
+      lines.push(`table ${t.name}`);
+      for (const c of t.columns) {
+        const dflt = c.default === null ? '-' : c.default.kind === 'now' ? 'now' : c.default.text;
+        lines.push(`column ${c.name} ${JSON.stringify(c.type)} null=${c.nullable} identity=${c.identity} default=${dflt}`);
+      }
+      lines.push(`primary key ${t.primaryKey.columns.join(', ')}`);
+      for (const f of [...t.foreignKeys].sort(byName)) {
+        lines.push(`foreign key ${f.name} (${f.columns.join(', ')}) references ${f.table} (${f.references.join(', ')})`);
+      }
+    }
+    return lines;
+  }
+
+  // readMermaidFile reads a .dbs file of the recipe; a file that cannot be read is written to stderr, "<path>: <reason>", and ends
+  // with 1, as the other vector inputs are refused.
+  function readMermaidFile(path: string): DbspecReadResult {
+    try {
+      return readDbspecFile(path);
+    } catch (error) {
+      throw new Refusal([`${path}: ${errorMessage(error)}`]);
+    }
+  }
+
+  // mermaidCase prints one case of tests/dbspec/mermaid.json: its category and id, then the output of each step, in order. An
+  // export prints its Mermaid text and the missing objects; an import prints the emitted document and the missing objects, or its
+  // diagnostics; an import with skeleton_of prints whether the skeleton of its document is that of the file. A step with as binds
+  // its Mermaid text, which a ref of a later import reads.
+  function mermaidCase(c: MermaidCase): void {
+    const roundTrip = c.steps.some(step => step.skeleton_of !== undefined);
+    const texts = new Map<string, string>();
+    for (const step of c.steps) {
+      if (step.op === 'dbspec.export_mermaid') {
+        out.push(`mermaid/${roundTrip ? 'round_trip' : 'export'}/${c.id}`);
+        // The inline text and the other documents of its set, or the .dbs file document (FCV-4).
+        let source = join(step.text ?? [], false);
+        let set = Object.fromEntries(Object.entries(step.set ?? {}).map(([name, lines]) => [name, join(lines, false)]));
+        if (step.document !== undefined) {
+          const read = readMermaidFile(resolvePath(mermaidDir, step.document));
+          if (read.text === null) {
+            writePlanDiagnostics(read.diagnostics);
+            return;
+          }
+          [source, set] = [read.text, {}];
+        }
+        const parsed = parseDbspec(source, set);
+        if (parsed.document === null) {
+          writePlanDiagnostics(parsed.diagnostics);
+          return;
+        }
+        const mermaid = writeExport(parsed.document);
+        if (step.as !== undefined) texts.set(step.as, mermaid);
+        continue;
+      }
+      const text = typeof step.mermaid === 'string' ? step.mermaid : texts.get(step.mermaid?.ref.split('.')[0] ?? '') ?? '';
+      const result = importMermaid(text, step.name ?? '');
+      if (result.document === null) {
+        out.push(`mermaid/invalid/${c.id}`);
+        writePlanDiagnostics(result.diagnostics);
+        continue;
+      }
+      if (step.skeleton_of !== undefined) {
+        out.push(`mermaid/round_trip/${c.id}/import`);
+        const read = readMermaidFile(resolvePath(mermaidDir, step.skeleton_of));
         if (read.text === null) {
           writePlanDiagnostics(read.diagnostics);
           return;
         }
-        [source, set] = [read.text, {}];
+        const original = parseDbspec(read.text, {});
+        if (original.document === null) {
+          writePlanDiagnostics(original.diagnostics);
+          return;
+        }
+        const same = JSON.stringify(skeleton(original.document)) === JSON.stringify(skeleton(result.document));
+        out.push(`| same_skeleton\t${same}`);
+        writeDropped(result.dropped);
+        continue;
       }
-      const parsed = parseDbspec(source, set);
-      if (parsed.document === null) {
-        writePlanDiagnostics(parsed.diagnostics);
-        return;
-      }
-      const mermaid = writeExport(parsed.document);
-      if (step.as !== undefined) texts.set(step.as, mermaid);
-      continue;
-    }
-    const text = typeof step.mermaid === 'string' ? step.mermaid : texts.get(step.mermaid?.ref.split('.')[0] ?? '') ?? '';
-    const result = importMermaid(text, step.name ?? '');
-    if (result.document === null) {
-      out.push(`mermaid/invalid/${c.id}`);
-      writePlanDiagnostics(result.diagnostics);
-      continue;
-    }
-    if (step.skeleton_of !== undefined) {
-      out.push(`mermaid/round_trip/${c.id}/import`);
-      const read = readMermaidFile(resolvePath(mermaidDir, step.skeleton_of));
-      if (read.text === null) {
-        writePlanDiagnostics(read.diagnostics);
-        return;
-      }
-      const original = parseDbspec(read.text, {});
-      if (original.document === null) {
-        writePlanDiagnostics(original.diagnostics);
-        return;
-      }
-      const same = JSON.stringify(skeleton(original.document)) === JSON.stringify(skeleton(result.document));
-      out.push(`| same_skeleton\t${same}`);
+      out.push(`mermaid/import/${c.id}`);
+      for (const line of emitDbspec(result.document).split('\n')) out.push(`| ${line}`);
       writeDropped(result.dropped);
-      continue;
     }
-    out.push(`mermaid/import/${c.id}`);
-    for (const line of emitDbspec(result.document).split('\n')) out.push(`| ${line}`);
-    writeDropped(result.dropped);
   }
-}
 
-// The Mermaid recipe (tests/dbspec/mermaid.json): its paths are relative to its own directory.
-const mermaidDir = dirname(mermaidPath);
-for (const c of readVectors(mermaidPath, 'mermaid').cases) mermaidCase(c);
-// The declaration positions of the main document of each positions case, as "| kind<TAB>line<TAB>column<TAB>path..."
-// lines, or its diagnostics.
-for (const c of positions) {
-  out.push(`positions/${c.id}`);
-  const result = parseDbspec(join(c.documents.main ?? [], false), others(c.documents, 'main'));
-  for (const d of result.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
-  for (const p of result.positions ?? []) out.push(`| ${[p.kind, p.line, p.column, ...p.path].join('\t')}`);
-}
-
-// writeSyntax prints the tokens of the analysis of one input ("| line start end class" and its diagnostics), then
-// "syntax/<id>/format" and the formatted text or the diagnostics of the refusal.
-function writeSyntax(id: string, input: { text: string; documents: Record<string, string> }): void {
-  out.push(`syntax/${id}`);
-  const analysis = analyzeDbspec(input.text, input.documents);
-  for (const t of analysis.tokens) out.push(`| ${t.line} ${t.start} ${t.end} ${t.class}`);
-  for (const d of analysis.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
-  out.push(`syntax/${id}/format`);
-  const formatted = formatDbspec(input.text, input.documents);
-  for (const d of formatted.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
-  if (formatted.text !== null) for (const line of formatted.text.split('\n')) out.push(`| ${line}`);
-}
-
-// The recipe documents come first, in the order canonical, normalize, invalid, and then the analyses of sets.json and hashes.json.
-for (const [kind, cases] of [['canonical', canonical], ['normalize', normalize], ['invalid', invalid]] as const) {
-  for (const c of cases) {
-    writeSyntax(`${kind}.${c.id}`, { text: join(c.documents.main ?? [], c.crlf, c.mixed), documents: others(c.documents, 'main', c.crlf, c.mixed) });
+  // The Mermaid recipe (tests/dbspec/mermaid.json): its paths are relative to its own directory.
+  const mermaidDir = dirname(mermaidPath);
+  for (const c of readVectors(mermaidPath, 'mermaid').cases) mermaidCase(c);
+  // The declaration positions of the main document of each positions case, as "| kind<TAB>line<TAB>column<TAB>path..."
+  // lines, or its diagnostics.
+  for (const c of positions) {
+    out.push(`positions/${c.id}`);
+    const result = parseDbspec(join(c.documents.main ?? [], false), others(c.documents, 'main'));
+    for (const d of result.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
+    for (const p of result.positions ?? []) out.push(`| ${[p.kind, p.line, p.column, ...p.path].join('\t')}`);
   }
+
+  // writeSyntax prints the tokens of the analysis of one input ("| line start end class" and its diagnostics), then
+  // "syntax/<id>/format" and the formatted text or the diagnostics of the refusal.
+  function writeSyntax(id: string, input: { text: string; documents: Record<string, string> }): void {
+    out.push(`syntax/${id}`);
+    const analysis = analyzeDbspec(input.text, input.documents);
+    for (const t of analysis.tokens) out.push(`| ${t.line} ${t.start} ${t.end} ${t.class}`);
+    for (const d of analysis.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
+    out.push(`syntax/${id}/format`);
+    const formatted = formatDbspec(input.text, input.documents);
+    for (const d of formatted.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
+    if (formatted.text !== null) for (const line of formatted.text.split('\n')) out.push(`| ${line}`);
+  }
+
+  // The recipe documents come first, in the order canonical, normalize, invalid, and then the analyses of sets.json and hashes.json.
+  for (const [kind, cases] of [['canonical', canonical], ['normalize', normalize], ['invalid', invalid]] as const) {
+    for (const c of cases) {
+      writeSyntax(`${kind}.${c.id}`, { text: join(c.documents.main ?? [], c.crlf, c.mixed), documents: others(c.documents, 'main', c.crlf, c.mixed) });
+    }
+  }
+  for (const a of [...setsRecipe.analyses, ...hashesRecipe.analyses]) writeSyntax(a.id, a.input);
+  process.stdout.write(out.join('\n') + '\n');
 }
-for (const a of [...setsRecipe.analyses, ...hashesRecipe.analyses]) writeSyntax(a.id, a.input);
-process.stdout.write(out.join('\n') + '\n');
+
+runRefusing(main);

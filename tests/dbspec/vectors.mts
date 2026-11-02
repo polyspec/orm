@@ -4,7 +4,7 @@
 // The validation sections of plan-cases.json are recipes beside it (plan-invalid, plan-chains, plan-parse and plan-comparisons .json);
 // readVectors checks that each exists and parses, and readPlanRecipes reads them.
 import { dirname, join } from 'node:path';
-import { errorMessage } from '../errors.mts';
+import { errorMessage, Refusal } from '../errors.mts';
 import { JsonError, parseJson, SchemaError, type SchemaIssue } from '../../scripts/json/schema.mts';
 import { readInput } from './input.mts';
 
@@ -84,12 +84,11 @@ export function vectorProblems(path: string, error: SchemaError): string[] {
   return error.issues.map(issue => `${path}: ${problem(issue)}`);
 }
 
-/** refuse writes why the file at path cannot be read as a vector file or a recipe, and ends with 1. */
+/** refuse throws the Refusal that says why the file at path cannot be read as a vector file or a recipe, with exit code 1. */
 function refuse(path: string, error: unknown): never {
-  if (error instanceof SchemaError) for (const line of vectorProblems(path, error)) console.error(line);
-  else if (error instanceof JsonError) console.error(error.message);
-  else console.error(`${path}: ${errorMessage(error)}`);
-  process.exit(1);
+  if (error instanceof SchemaError) throw new Refusal(vectorProblems(path, error));
+  if (error instanceof JsonError) throw new Refusal([error.message]);
+  throw new Refusal([`${path}: ${errorMessage(error)}`]);
 }
 
 /** readRecipe reads the recipe at path against the recipe schema; any failure is written to stderr and ends with 1. */

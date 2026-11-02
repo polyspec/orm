@@ -166,3 +166,18 @@ refusals.forEach((refusal, index) => {
     });
   }
 });
+
+// A runner writes the whole refusal to a reader that takes stderr slowly. The schema refusal of a recipe step is over 100 KiB,
+// more than a pipe holds, and a runner that ended before stderr had taken it cut the refusal short: the TypeScript runner did
+// through process.exit, on a machine busy enough that the test read the pipe late.
+const slow = inputsWith('slow-reader', { file: 'dir', recipe: 'normalize.json', location: 'cases[0].steps[0].crlf', edits: [['set', '/cases/0/steps/0/crlf', 'true']] });
+for (const runner of runners.filter(runner => runner.reads.includes('dir'))) {
+  // Requirements: PAR-2.
+  caseTest(`${runner.name} writes its whole refusal to a reader that reads slowly`, TIMEOUT, async () => {
+    const fast = await runRunner(runner, slow.inputs, TIMEOUT);
+    const paced = await runRunner(runner, slow.inputs, TIMEOUT, 100);
+    assert.notEqual(paced.code, 0, `${runner.name} exited 0`);
+    assert.ok(fast.stderr.includes(`${slow.path}: ${slow.location} is not a boolean`), `${runner.name} stderr: ${fast.stderr}`);
+    assert.equal(paced.stderr.length, fast.stderr.length, `${runner.name}: a slow reader got ${paced.stderr.length} of the ${fast.stderr.length} bytes of the refusal`);
+  });
+}

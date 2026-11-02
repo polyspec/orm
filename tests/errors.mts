@@ -23,3 +23,29 @@ export function execFailure(error: unknown): ExecFailure {
   const killed = 'killed' in error && error.killed === true;
   return { code, killed, stdout, stderr };
 }
+
+/** A refusal of the input of a script: the lines it writes to stderr and the exit code it ends with. */
+export class Refusal extends Error {
+  lines: string[];
+  code: number;
+  constructor(lines: string[], code = 1) {
+    super(lines.join('\n'));
+    this.lines = lines;
+    this.code = code;
+  }
+}
+
+/**
+ * runRefusing runs main and writes the lines of a Refusal it throws to stderr, with the exit code of the refusal. The process
+ * then ends on its own, after stderr has taken every line: process.exit right after console.error drops what a reader of the
+ * pipe has not read yet, since Node writes a pipe asynchronously (a refusal of the recipe schema is over 100 KiB).
+ */
+export function runRefusing(main: () => void): void {
+  try {
+    main();
+  } catch (error) {
+    if (!(error instanceof Refusal)) throw error;
+    for (const line of error.lines) console.error(line);
+    process.exitCode = error.code;
+  }
+}
