@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 20dfd581699a455a4ec4939692c492b8d266b861270a7e4d2779d50ec922f4ab -->
+<!-- source-sha256: 1e39157a1981699f9f0f18bf242ffd72c8c6cce9a5ee797ed537cf9c7f39a257 -->
 # 변경 이력
 
 ## Unreleased
 
+- php-ext Validator는 생성할 때 찾는 클래스 이름 문자열을 해제하므로 Validator 1000개를 만들어도 메모리가 남지 않는다 (T334-3-4-7-2).
 - php-ext의 RuntimeModel build는 model을 해제할 때 entity tree, column·unique·index key 문자열, entity 이름을 함께 해제하므로 같은 문서 집합의 build를 반복해도 메모리가 남지 않는다 (T334-3-4-7-1).
 - AES version과 rotation code COD-44, COD-47, COD-49부터 COD-54, COD-57부터 COD-60은 여섯 runtime 모두에서 `contracts/fixtures/aes_rotation/aes_rotation.json` recipe로 MySQL, PostgreSQL, SQLite에서 실행된다. recipe가 대체하는 손으로 쓴 test는 지웠고, COD-48, COD-55, COD-56은 FCV-2 사유와 함께 native로 남는다 (T334-3-4-6).
 - TypeScript에서 숫자 문자열로 저장된 AES version은 Go 읽기 경로와 같이 그 숫자를 version으로 읽고, 다른 텍스트는 `CODEC_DECODE`다 (COD-53, T334-3-4-1).
