@@ -863,15 +863,7 @@ final class Catalog
                         $cells[] = self::mysqlGridCell($value, $fields[$i]);
                     }
                     return $cells;
-                },
-                // mysqli returns numbers as text; a number costs 8 bytes, as a value of any other driver does.
-                static fn (array $row): array => array_map(
-                    static fn (mixed $value, int $i): int => is_string($value) && !self::numericField($fields[$i])
-                        ? strlen($value)
-                        : 8,
-                    $row,
-                    array_keys($row)
-                )
+                }
             );
         } catch (\Throwable $stop) {
             if ($stop instanceof OrmException && $stop->code_ === Code::CATALOG_LIMIT) {
@@ -890,15 +882,6 @@ final class Catalog
         }
         $result->free();
         return new CatalogResult($names, $rows);
-    }
-
-    /** Whether a MySQL field holds an integer or a float, which mysqli returns as text. */
-    private static function numericField(object $field): bool
-    {
-        return in_array((int) $field->type, [
-            MYSQLI_TYPE_TINY, MYSQLI_TYPE_SHORT, MYSQLI_TYPE_LONG, MYSQLI_TYPE_LONGLONG, MYSQLI_TYPE_INT24,
-            MYSQLI_TYPE_FLOAT, MYSQLI_TYPE_DOUBLE,
-        ], true);
     }
 
     /** The grid cell of one MySQL value, by the type, the UNSIGNED flag and the charset of its field (mysqli). */
@@ -1374,8 +1357,9 @@ final class Catalog
     }
 
     /**
-     * Fetches rows within the shared row and byte budgets. The transform runs after both limits are checked for the
-     * current row, in fetch order, so grid conversion errors keep their original precedence.
+     * Fetches rows within the shared row and byte budgets. The row limit is checked before a row is converted; the
+     * transform then converts the row, and the byte budget counts its converted cells (INT-115): a grid cell by
+     * gridCellSize, the text of a decimal or temporal cell rather than the driver value it came from.
      *
      * @param \Closure(): (list<mixed>|false) $fetch
      * @param int $maxRows
@@ -1387,8 +1371,7 @@ final class Catalog
         \Closure $fetch,
         int $maxRows,
         int $maxBytes,
-        ?\Closure $transform = null,
-        ?\Closure $sizes = null
+        ?\Closure $transform = null
     ): array {
         $rows = [];
         $budget = 0;
@@ -1396,18 +1379,30 @@ final class Catalog
             if (count($rows) === $maxRows) {
                 throw new OrmException(Code::CATALOG_LIMIT, "result has more than $maxRows rows");
             }
-            // $sizes gives the bytes of each value of a row whose values the driver returns as text (MySQL numbers).
-            $cellSizes = $sizes !== null ? $sizes($row) : array_map(
-                static fn (mixed $value): int => is_string($value) ? strlen($value) : 8,
-                $row
-            );
-            $budget += array_sum($cellSizes);
+            $cells = $transform === null ? $row : $transform($row);
+            foreach ($cells as $cell) {
+                $budget += $cell instanceof CatalogGridCell
+                    ? self::gridCellSize($cell)
+                    : (is_string($cell) ? strlen($cell) : 8);
+            }
             if ($budget > $maxBytes) {
                 throw new OrmException(Code::CATALOG_LIMIT, "result has more than $maxBytes bytes of values");
             }
-            $rows[] = $transform === null ? $row : $transform($row);
+            $rows[] = $cells;
         }
         return $rows;
+    }
+
+    /**
+     * The bytes that a grid cell counts against a result budget (INT-115): the bytes of a text, decimal, date, time,
+     * datetime or binary cell and 8 for every other cell, null included.
+     */
+    private static function gridCellSize(CatalogGridCell $cell): int
+    {
+        return match ($cell->kind) {
+            'text', 'decimal', 'date', 'time', 'datetime', 'binary' => strlen((string) $cell->value),
+            default => 8,
+        };
     }
 
     /**

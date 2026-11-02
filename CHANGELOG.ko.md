@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- Go, PHP, PHP extension, Python의 grid query byte budget은 TypeScript와 Rust처럼 변환된 cell을 센다 (INT-115): driver 값이 아니라 time cell 12:34:56.500000의 15바이트를 센다 (T334-3-3-9).
 - `make dialect-facts-check`는 dialect probe의 인용 시험을 실행한다. probe 자체는 필요한 것을 build하고 선언하는 `go-test-check`의 go 시험이므로, 이 target은 더 이상 빈 part로 그것을 전달하지 않는다 (T334-3-6-3).
 - DBS-121a는 Python 생성 setter가 nullable이 아닌 컬럼에 `None`을 받고 그 row의 insert가 `CODEC_ENCODE`로 거부함을 적는다. 그 case인 `tests/bind/messages-python-null.json`은 parity unit markdown-message-python-null-vectors이며, PRT-67은 `LIKE` 연산자인 DSL-29 대신 DBS-121a를 인용한다 (T334-3-15).
 - 알 수 없는 recipe 키 검사는 공용 Go·Cargo 시험 runner로 runtime마다 자기 part를 실행하고, Rust와 TypeScript 거부 시험은 각 case를 보고하며, 이 검사는 static group의 target으로 CI에서 실행된다 (T334-3-5-6).

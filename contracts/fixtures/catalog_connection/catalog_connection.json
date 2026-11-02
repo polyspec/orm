@@ -2333,6 +2333,130 @@
       ]
     },
     {
+      "id": "converted_cell_budgets",
+      "requirements": [
+        "INT-115"
+      ],
+      "steps": [
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": {
+            "mysql": "SELECT CAST('12:34:56.5' AS TIME(6)) AS value",
+            "postgres": "SELECT '12:34:56.5'::time AS value",
+            "sqlite": "SELECT '12:34:56.500000' AS value"
+          },
+          "max_bytes": 15,
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "time": "12:34:56.500000"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "time": "12:34:56.500000"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "12:34:56.500000"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": {
+            "mysql": "SELECT CAST('12:34:56.5' AS TIME(6)) AS value",
+            "postgres": "SELECT '12:34:56.5'::time AS value",
+            "sqlite": "SELECT '12:34:56.500000' AS value"
+          },
+          "max_bytes": 14,
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_LIMIT"
+            },
+            "postgres": {
+              "error": "CATALOG_LIMIT"
+            },
+            "sqlite": {
+              "error": "CATALOG_LIMIT"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": {
+            "mysql": "SELECT CAST(1.50 AS DECIMAL(10,2)) AS value",
+            "postgres": "SELECT 1.50::numeric(10,2) AS value",
+            "sqlite": "SELECT '1.50' AS value"
+          },
+          "max_bytes": 4,
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "decimal": "1.50"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "decimal": "1.50"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "1.50"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": {
+            "mysql": "SELECT CAST(1.50 AS DECIMAL(10,2)) AS value",
+            "postgres": "SELECT 1.50::numeric(10,2) AS value",
+            "sqlite": "SELECT '1.50' AS value"
+          },
+          "max_bytes": 3,
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_LIMIT"
+            },
+            "postgres": {
+              "error": "CATALOG_LIMIT"
+            },
+            "sqlite": {
+              "error": "CATALOG_LIMIT"
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "grid_zero_date",
       "requirements": [
         "INT-103"

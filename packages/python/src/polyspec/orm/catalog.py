@@ -1062,6 +1062,16 @@ def _pg_text_datetime(text: str) -> GridCell:
     return GridCell("datetime", f"{date_part} {_pg_text_time(clock)}")
 
 
+def _budget_size(value) -> int:
+    """The bytes that one cell counts against a result budget (INT-115): the UTF-8 bytes of a text, decimal or temporal
+    cell, the length of a binary cell and 8 for every other cell, None included."""
+    if isinstance(value, str):
+        return len(value.encode("utf-8"))
+    if isinstance(value, bytes):
+        return len(value)
+    return 8
+
+
 def _grid_cell(value, dialect: str, code, unsigned: bool) -> GridCell:
     """The grid cell of one driver value. code is the native type code of the column (MySQL field type, PostgreSQL type OID;
     None for SQLite) and unsigned tells a MySQL UNSIGNED integer column."""
@@ -1225,7 +1235,14 @@ class _Session:
                             codes.CATALOG_LIMIT, f"result has more than {max_rows} rows"
                         )
                     converted = (
-                        list(row)
+                        # A grid cell is made as its row is read, so the budget counts the cell (INT-115): the text of a
+                        # decimal or temporal cell, not the driver value it came from.
+                        [
+                            _grid_cell(
+                                value, self.dialect, type_codes[index], unsigned[index]
+                            )
+                            for index, value in enumerate(row)
+                        ]
                         if grid
                         else [
                             _check_value(
@@ -1255,12 +1272,8 @@ class _Session:
                         ]
                     )
                     for value in converted:
-                        budget += (
-                            len(value.encode("utf-8"))
-                            if isinstance(value, str)
-                            else len(value)
-                            if isinstance(value, bytes)
-                            else 8
+                        budget += _budget_size(
+                            value.value if isinstance(value, GridCell) else value
                         )
                     if max_bytes is not None and budget > max_bytes:
                         raise _error(
@@ -1750,14 +1763,7 @@ class CatalogConnection:
         def work(session: _Session) -> CatalogQueryResult:
             if grid:
                 raw = session.run(query, values, rows_budget, bytes_budget, grid=True)
-                cells = [
-                    [
-                        _grid_cell(value, self._dialect, raw.codes[i], raw.unsigned[i])
-                        for i, value in enumerate(row)
-                    ]
-                    for row in raw.rows
-                ]
-                return CatalogQueryResult(columns=raw.names, rows=cells)
+                return CatalogQueryResult(columns=raw.names, rows=raw.rows)
             raw = session.run(query, values, rows_budget, bytes_budget)
             return CatalogQueryResult(columns=raw.names, rows=raw.rows)
 

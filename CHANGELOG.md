@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The byte budget of a grid query counts its converted cells in Go, PHP, the PHP extension and Python, as TypeScript and Rust do (INT-115): the 15 bytes of the time cell 12:34:56.500000, not the driver value it came from (T334-3-3-9).
 - `make dialect-facts-check` runs the citation tests of the dialect probes; the probes themselves are go tests of `go-test-check`, which builds and declares what they need, so the target no longer forwards to it with an empty part (T334-3-6-3).
 - DBS-121a states that a Python generated setter takes `None` for a column that is not nullable and that the insert of that row refuses it with `CODEC_ENCODE`. Its case, `tests/bind/messages-python-null.json`, is the parity unit markdown-message-python-null-vectors, and PRT-67 cites DBS-121a in place of DSL-29, the `LIKE` operator (T334-3-15).
 - The unknown recipe key check runs each runtime as a part of its own through the shared Go and Cargo test runners, the Rust and TypeScript refusal tests report each case, and the check runs in CI as a target of the static group (T334-3-5-6).

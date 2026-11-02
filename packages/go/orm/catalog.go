@@ -277,8 +277,15 @@ type catalogRaw struct {
 	rows  [][]any
 }
 
-// queryRaw reads a bounded result. It fails when the result has more than maxRows rows or more than maxBytes of values.
-func (s *catalogSession) queryRaw(query string, args []any, maxRows int, maxBytes int) (raw catalogRaw, err error) {
+// queryRaw reads a bounded result. It fails when the result has more than maxRows rows or more than maxBytes of values,
+// each driver value counted by catalogSize.
+func (s *catalogSession) queryRaw(query string, args []any, maxRows int, maxBytes int) (catalogRaw, error) {
+	return s.querySized(query, args, maxRows, maxBytes, func(value any, _ string) (int, error) { return catalogSize(value), nil })
+}
+
+// querySized reads a bounded result like queryRaw, with size giving the bytes that each value of a column of its native
+// type counts against maxBytes; an error of size ends the read with that error.
+func (s *catalogSession) querySized(query string, args []any, maxRows int, maxBytes int, size func(value any, native string) (int, error)) (raw catalogRaw, err error) {
 	// The query has its own context: a budget that ends the read cancels it, so that closing the rows does not read the rest
 	// of a result the server still streams (a cross join of the bench table would otherwise run to its end).
 	qctx, cancel := context.WithCancel(s.ctx)
@@ -328,8 +335,13 @@ func (s *catalogSession) queryRaw(query string, args []any, maxRows int, maxByte
 		if err := rows.Scan(pointers...); err != nil {
 			return catalogRaw{}, mapDriverErrContext(err, s.ctx)
 		}
-		for _, value := range values {
-			budget += catalogSize(value)
+		for i, value := range values {
+			n, err := size(value, raw.types[i])
+			if err != nil {
+				stopped = true
+				return catalogRaw{}, err
+			}
+			budget += n
 		}
 		if budget > maxBytes {
 			stopped = true

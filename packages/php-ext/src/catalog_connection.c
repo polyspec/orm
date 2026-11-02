@@ -264,10 +264,17 @@ static void cat_cursor_close_keep(zval *pdo)
     if (had) EG(exception) = Z_OBJ(saved);
 }
 
+static zend_long cat_grid_cells_size(zval *cells);
+
+/* Converts one fetched row into the cells that a bounded read keeps, by the native types of its columns; it returns false
+ * with the exception thrown. */
+typedef bool (*cat_row_convert)(zval *row, zval *types, zval *cells);
+
 /* A PostgreSQL read without parameters through a cursor, in chunks of 256 rows: a budget stop leaves the rest of the
- * result unread and closes the cursor. */
+ * result unread and closes the cursor. With convert, each row is converted as it is read and the byte budget counts its
+ * cells (INT-115), the text of a decimal or temporal grid cell rather than the driver value it came from. */
 static bool cat_cursor_query(zval *db, zval *pdo, const char *sql, zend_long max_rows, zend_long max_bytes,
-                             zval *names, zval *types, zval *rows)
+                             zval *names, zval *types, zval *rows, cat_row_convert convert)
 {
     zval q, r;
     zend_string *declare = zend_strpprintf(0, "DECLARE %s NO SCROLL CURSOR FOR %s", CAT_CURSOR, sql);
@@ -310,7 +317,33 @@ static bool cat_cursor_query(zval *db, zval *pdo, const char *sql, zend_long max
             }
             if (Z_TYPE(row) == IS_FALSE) break;
             fetched++;
-            int limit = cat_bound_row(rows, &row, max_rows, max_bytes, &budget);
+            int limit;
+            if (convert == NULL) {
+                limit = cat_bound_row(rows, &row, max_rows, max_bytes, &budget);
+            } else if ((zend_long)zend_hash_num_elements(Z_ARRVAL_P(rows)) == max_rows) {
+                zval_ptr_dtor(&row);
+                limit = 1;
+            } else {
+                zval cells;
+                bool made = convert(&row, types, &cells);
+                zval_ptr_dtor(&row);
+                if (!made) {
+                    /* The conversion error is the one reported and stays pending through the close; names and rows
+                     * stay the caller's, as after a read. */
+                    zval_ptr_dtor(&st);
+                    cat_cursor_close_keep(pdo);
+                    zval_ptr_dtor(types);
+                    return false;
+                }
+                budget += cat_grid_cells_size(&cells);
+                if (budget > max_bytes) {
+                    zval_ptr_dtor(&cells);
+                    limit = 2;
+                } else {
+                    add_next_index_zval(rows, &cells);
+                    limit = 0;
+                }
+            }
             if (limit != 0) {
                 zval_ptr_dtor(&st);
                 cat_cursor_close_quiet(pdo);
@@ -453,7 +486,7 @@ static bool cat_query_body(zval *db, zval *pdo, const char *sql, zval *args, zen
     bool mysql = Z_TYPE(driver) == IS_STRING && zend_string_equals_literal(Z_STR_P(&driver), "mysql");
     zval_ptr_dtor(&driver);
     if (postgres && zend_hash_num_elements(Z_ARRVAL_P(args)) == 0) {
-        return cat_cursor_query(db, pdo, sql, max_rows, max_bytes, names, types, rows);
+        return cat_cursor_query(db, pdo, sql, max_rows, max_bytes, names, types, rows, NULL);
     }
     zend_long connection_id = 0;
     if (mysql && !cat_mysql_connection_id(pdo, &connection_id)) goto driver;
@@ -2169,63 +2202,80 @@ static void cat_grid_native_row(zval *row, zval *fields)
     }
 }
 
-/* Applies the same row and byte budget to every Catalog grid driver before converting its row. */
-static bool cat_grid_budget(zval *rows, zval *row, zend_long max_rows, zend_long max_bytes, zend_long *budget)
+/* The bytes that the grid cells of one row count against a result budget (INT-115): the bytes of a text, decimal, date,
+ * time, datetime or binary cell and 8 for every other cell, null included. */
+static zend_long cat_grid_cells_size(zval *cells)
+{
+    zend_long size = 0;
+    zval *cell;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(cells), cell) {
+        zval rk, rv;
+        zval *kind = catalog_prop(cell, "kind", &rk);
+        zval *value = catalog_prop(cell, "value", &rv);
+        bool textual = Z_TYPE_P(kind) == IS_STRING && Z_TYPE_P(value) == IS_STRING
+            && (zend_string_equals_literal(Z_STR_P(kind), "text") || zend_string_equals_literal(Z_STR_P(kind), "decimal")
+                || zend_string_equals_literal(Z_STR_P(kind), "date") || zend_string_equals_literal(Z_STR_P(kind), "time")
+                || zend_string_equals_literal(Z_STR_P(kind), "datetime") || zend_string_equals_literal(Z_STR_P(kind), "binary"));
+        size += textual ? (zend_long)Z_STRLEN_P(value) : 8;
+    } ZEND_HASH_FOREACH_END();
+    return size;
+}
+
+/* The row budget of every Catalog grid driver, checked before a row is converted; a row past it is released. */
+static bool cat_grid_row_limit(zval *rows, zval *row, zend_long max_rows)
 {
     if (zend_hash_num_elements(Z_ARRVAL_P(rows)) == (uint32_t)max_rows) {
         zval_ptr_dtor(row);
         db_throw_orm("CATALOG_LIMIT", "result has more than %ld rows", (long)max_rows);
         return false;
     }
-    zval *value;
-    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(row), value) {
-        *budget += Z_TYPE_P(value) == IS_STRING ? (zend_long)Z_STRLEN_P(value) : 8;
-    } ZEND_HASH_FOREACH_END();
+    return true;
+}
+
+/* The byte budget of every Catalog grid driver, counted on the converted cells of a row (INT-115); cells past it are
+ * released. */
+static bool cat_grid_cells_budget(zval *cells, zend_long max_bytes, zend_long *budget)
+{
+    *budget += cat_grid_cells_size(cells);
     if (*budget > max_bytes) {
-        zval_ptr_dtor(row);
+        zval_ptr_dtor(cells);
         db_throw_orm("CATALOG_LIMIT", "result has more than %ld bytes of values", (long)max_bytes);
         return false;
     }
     return true;
 }
 
+/* The grid cells of one PostgreSQL row, by the native type of each column, as the buffered read converts them. */
+static bool cat_grid_postgres_row(zval *row, zval *types, zval *cells)
+{
+    array_init(cells);
+    zend_ulong i = 0;
+    zval *value;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(row), value) {
+        zval *native = zend_hash_index_find(Z_ARRVAL_P(types), i);
+        zval cell;
+        if (!cat_grid_pdo_cell(value, "postgres", Z_STRVAL_P(native), false, &cell)) {
+            zval_ptr_dtor(cells);
+            return false;
+        }
+        add_next_index_zval(cells, &cell);
+        i++;
+    } ZEND_HASH_FOREACH_END();
+    return true;
+}
+
 /* The PDO grid query of PostgreSQL and SQLite: one bounded statement, each cell typed by its column or by its value. */
-/* A PostgreSQL grid read without parameters: the cursor reads the raw rows within the budget, and each row becomes its cells
- * by the native type of its column, as the buffered read converts them. */
+/* A PostgreSQL grid read without parameters: the cursor converts each row into its cells as it reads it, within the budget. */
 static bool cat_grid_pdo_cursor(zval *db, zval *pdo, zval *sql, zend_long max_rows, zend_long max_bytes, zval *names, zval *rows)
 {
-    zval types, raw;
+    zval types;
     array_init(&types);
-    array_init(&raw);
-    if (!cat_cursor_query(db, pdo, Z_STRVAL_P(sql), max_rows, max_bytes, names, &types, &raw)) {
-        zval_ptr_dtor(&types);
-        zval_ptr_dtor(&raw);
-        return false;
-    }
     zval_ptr_dtor(rows);
     array_init(rows);
-    zval *row;
-    ZEND_HASH_FOREACH_VAL(Z_ARRVAL(raw), row) {
-        zval cells;
-        array_init(&cells);
-        zend_ulong i = 0;
-        zval *value;
-        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(row), value) {
-            zval *native = zend_hash_index_find(Z_ARRVAL(types), i);
-            zval cell;
-            if (!cat_grid_pdo_cell(value, "postgres", Z_STRVAL_P(native), false, &cell)) {
-                zval_ptr_dtor(&cells);
-                zval_ptr_dtor(&types);
-                zval_ptr_dtor(&raw);
-                return false;
-            }
-            add_next_index_zval(&cells, &cell);
-            i++;
-        } ZEND_HASH_FOREACH_END();
-        add_next_index_zval(rows, &cells);
-    } ZEND_HASH_FOREACH_END();
+    if (!cat_cursor_query(db, pdo, Z_STRVAL_P(sql), max_rows, max_bytes, names, &types, rows, cat_grid_postgres_row)) {
+        return false;
+    }
     zval_ptr_dtor(&types);
-    zval_ptr_dtor(&raw);
     return true;
 }
 
@@ -2278,7 +2328,7 @@ static bool cat_grid_pdo(zval *db, const char *dialect, zval *pdo, zval *sql, zv
             goto fail_natives;
         }
         if (Z_TYPE(row) == IS_FALSE) break;
-        if (!cat_grid_budget(rows, &row, max_rows, max_bytes, &budget)) goto fail_natives;
+        if (!cat_grid_row_limit(rows, &row, max_rows)) goto fail_natives;
         zval cells;
         array_init(&cells);
         for (zend_ulong i = 0; i < zend_hash_num_elements(Z_ARRVAL(row)); i++) {
@@ -2326,6 +2376,7 @@ static bool cat_grid_pdo(zval *db, const char *dialect, zval *pdo, zval *sql, zv
             add_next_index_zval(&cells, &cell);
         }
         zval_ptr_dtor(&row);
+        if (!cat_grid_cells_budget(&cells, max_bytes, &budget)) goto fail_natives;
         add_next_index_zval(rows, &cells);
     }
     for (zend_long i = 0; i < ncols; i++) zend_string_release(natives[i]);
@@ -2412,6 +2463,31 @@ static void cat_mysqli_grid_error(void)
 }
 
 /* The MySQL grid query on the grid connection: one read-only transaction, a prepared statement, and the flags of its fields. */
+/* Ends a streamed MySQL grid read that a budget stopped, with its CATALOG_LIMIT pending: the query is killed by its thread
+ * id and its unbuffered result freed before the rollback. The thread id is read on a stop only. */
+static void cat_grid_mysqli_stop(zval *owner, zval *link, zval *result, bool streamed)
+{
+    if (!streamed) return;
+    zval rv_id;
+    zval *id = zend_read_property(Z_OBJCE_P(link), Z_OBJ_P(link), "thread_id", sizeof("thread_id") - 1, true, &rv_id);
+    zend_long thread_id = id != NULL && Z_TYPE_P(id) == IS_LONG ? Z_LVAL_P(id) : 0;
+    if (thread_id <= 0) return;
+    zval limit;
+    ZVAL_OBJ(&limit, EG(exception));
+    EG(exception) = NULL;
+    if (cat_kill_thread(owner, thread_id)) {
+        zval freed;
+        if (pdo_call(result, "free", &freed, 0, NULL, NULL)) {
+            zval_ptr_dtor(&freed);
+        } else {
+            zend_clear_exception();
+        }
+        EG(exception) = Z_OBJ(limit);
+    } else {
+        zval_ptr_dtor(&limit);
+    }
+}
+
 static bool cat_grid_mysqli(zval *owner, zval *link, zval *sql, zval *args, zend_long max_rows, zend_long max_bytes, zval *names, zval *rows)
 {
     array_init(names);
@@ -2479,28 +2555,8 @@ static bool cat_grid_mysqli(zval *owner, zval *link, zval *sql, zval *args, zend
         if (!pdo_call(&result, "fetch_row", &row, 0, NULL, NULL)) goto abort_fields;
         if (Z_TYPE(row) == IS_NULL) break;
         if (streamed) cat_grid_native_row(&row, &fields);
-        if (!cat_grid_budget(rows, &row, max_rows, max_bytes, &budget)) {
-            /* The thread id is read on a stop only: a read that does not stop never needs it. */
-            zval rv_id;
-            zval *id = streamed ? zend_read_property(Z_OBJCE_P(link), Z_OBJ_P(link), "thread_id", sizeof("thread_id") - 1, true, &rv_id) : NULL;
-            zend_long thread_id = id != NULL && Z_TYPE_P(id) == IS_LONG ? Z_LVAL_P(id) : 0;
-            if (streamed && thread_id > 0) {
-                /* The stop is the pending CATALOG_LIMIT: the query is killed and its unbuffered result freed before the rollback. */
-                zval limit;
-                ZVAL_OBJ(&limit, EG(exception));
-                EG(exception) = NULL;
-                if (cat_kill_thread(owner, thread_id)) {
-                    zval freed;
-                    if (pdo_call(&result, "free", &freed, 0, NULL, NULL)) {
-                        zval_ptr_dtor(&freed);
-                    } else {
-                        zend_clear_exception();
-                    }
-                    EG(exception) = Z_OBJ(limit);
-                } else {
-                    zval_ptr_dtor(&limit);
-                }
-            }
+        if (!cat_grid_row_limit(rows, &row, max_rows)) {
+            cat_grid_mysqli_stop(owner, link, &result, streamed);
             goto abort_fields;
         }
         zval cells;
@@ -2523,6 +2579,10 @@ static bool cat_grid_mysqli(zval *owner, zval *link, zval *sql, zval *args, zend
             i++;
         } ZEND_HASH_FOREACH_END();
         zval_ptr_dtor(&row);
+        if (!cat_grid_cells_budget(&cells, max_bytes, &budget)) {
+            cat_grid_mysqli_stop(owner, link, &result, streamed);
+            goto abort_fields;
+        }
         add_next_index_zval(rows, &cells);
     }
     zval_ptr_dtor(&fields);

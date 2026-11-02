@@ -69,21 +69,24 @@ func (c *CatalogConnection) ReadOnlyGridQuery(ctx context.Context, query string,
 			statement = catalogSQLiteRawQuery(query, len(names))
 			columns = names
 		}
-		raw, err := s.queryRaw(statement, args, maxRows, maxBytes)
+		// Each value is converted to its grid cell as it is read, and the budget counts the cell (INT-115): the text of a
+		// decimal or temporal cell, not the driver value it came from.
+		var cells []CatalogGridCell
+		raw, err := s.querySized(statement, args, maxRows, maxBytes, func(value any, native string) (int, error) {
+			cell, err := catalogGridCell(value, native, c.dialect)
+			if err != nil {
+				return 0, err
+			}
+			cells = append(cells, cell)
+			return catalogGridCellSize(cell), nil
+		})
 		if err != nil {
 			return CatalogGridResult{}, err
 		}
 		rows := make([][]CatalogGridCell, 0, len(raw.rows))
-		for _, row := range raw.rows {
-			cells := make([]CatalogGridCell, len(row))
-			for i, value := range row {
-				cell, err := catalogGridCell(value, raw.types[i], c.dialect)
-				if err != nil {
-					return CatalogGridResult{}, err
-				}
-				cells[i] = cell
-			}
-			rows = append(rows, cells)
+		for i := range raw.rows {
+			width := len(raw.names)
+			rows = append(rows, cells[i*width:(i+1)*width])
 		}
 		if columns == nil {
 			columns = raw.names
@@ -135,6 +138,19 @@ var (
 	catalogGridTimeRE     = regexp.MustCompile(`^([0-9]{2,3}):([0-9]{2}):([0-9]{2})(?:\.([0-9]{1,6}))?$`)
 	catalogGridDateTimeRE = regexp.MustCompile(`^([0-9]{4}-[0-9]{2}-[0-9]{2}) ([0-9]{2,3}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,6})?)$`)
 )
+
+// catalogGridCellSize is the bytes that a grid cell counts against a result budget (INT-115): the UTF-8 bytes of a text,
+// decimal or temporal cell, the length of a binary cell and 8 for every other cell, null included.
+func catalogGridCellSize(cell CatalogGridCell) int {
+	switch v := cell.Value.(type) {
+	case string:
+		return len(v)
+	case []byte:
+		return len(v)
+	default:
+		return 8
+	}
+}
 
 // catalogGridCell is the grid cell of one driver value with the native type name that the driver reports for its column.
 // SQLite has no native type names of its storage classes, so its cells follow the storage class of each value.
