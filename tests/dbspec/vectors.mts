@@ -1,7 +1,7 @@
-// vectors.mts reads the shared dbspec vector files against their schemas (schema/): tests/dbspec/ddl.json, plans.json,
+// vectors.mts reads the shared dbspec vector files against their schemas (schema/): tests/dbspec/ddl.json, plan-cases.json,
 // mermaid.json and syntax.json. A runner reads a file that a make target names; a file that cannot be read, is not
 // JSON or that its schema refuses is written to stderr, "<path>: <reason>" per line, and the runner ends with 1.
-// The validation sections of plans.json are recipes beside it (plan-invalid, plan-chains, plan-parse and plan-comparisons .json);
+// The validation sections of plan-cases.json are recipes beside it (plan-invalid, plan-chains, plan-parse and plan-comparisons .json);
 // readVectors checks that each exists and parses, and readPlanRecipes reads them.
 import { dirname, join } from 'node:path';
 import { errorMessage } from '../errors.mts';
@@ -25,14 +25,14 @@ export type RecipeStep = {
 };
 /** A recipe file. */
 export type RecipeFile = { requirements: string[]; cases: { id: string; steps: RecipeStep[] }[] };
-/** The validation sections of plans.json, each a recipe beside it. */
+/** The validation sections of plan-cases.json, each a recipe beside it. */
 export type PlanRecipes = { invalid: RecipeFile; chains: RecipeFile; parse: RecipeFile; comparisons: RecipeFile };
 /** A step of a plan in one dialect. */
 type PlanStep = {
   statement: string; effect: string; rollback?: string; irreversible?: string; finalize?: true; restore?: string; restore_if?: string;
   rollback_restore?: string; null_checks?: [string, string, string | null][];
 };
-/** tests/dbspec/plans.json: its note and the requirement ids. Its cases are the recipe plan-cases.json (readPlanCases). */
+/** tests/dbspec/plan-cases.json: its note and the requirement ids. Its cases are the recipe plan-cases.json (readPlanCases). */
 type PlanVectors = { version: 1; note: string; requirements: string[] };
 /** A case of plan-cases.json with its physical records from plans-physical.json, as the plan readers use it. */
 export type PlanCase = {
@@ -104,7 +104,7 @@ function readRecipe(path: string): RecipeFile {
   }
 }
 
-/** readPlanRecipes reads the four recipes of the validation sections beside the plans.json at plansPath; a failure ends with 1. */
+/** readPlanRecipes reads the four recipes of the validation sections of the plan-cases.json at plansPath; a failure ends with 1. */
 export function readPlanRecipes(plansPath: string): PlanRecipes {
   const beside = (section: string) => join(dirname(plansPath), `plan-${section}.json`);
   return {
@@ -115,7 +115,7 @@ export function readPlanRecipes(plansPath: string): PlanRecipes {
   };
 }
 
-/** readPlanPhysical reads plans-physical.json beside plansPath against its schema; a failure ends with 1. */
+/** readPlanPhysical reads plans-physical.json of plansPath against its schema; a failure ends with 1. */
 function readPlanPhysical(plansPath: string): PlanPhysical {
   const path = join(dirname(plansPath), 'plans-physical.json');
   const text = readInput(path);
@@ -126,12 +126,12 @@ function readPlanPhysical(plansPath: string): PlanPhysical {
   }
 }
 
-/** readPlanCases reads the cases of plan-cases.json beside plansPath, each with its physical records; a failure ends with 1. */
-export function readPlanCases(plansPath: string): PlanCase[] {
-  const recipePath = join(dirname(plansPath), 'plan-cases.json');
+/** readPlanCases reads the cases of plan-cases.json of plansPath, each with its physical records; a failure ends with 1. */
+export function readPlanCases(casesPath: string): PlanCase[] {
+  const recipePath = casesPath;
   const recipe = readRecipe(recipePath);
-  const physicalPath = join(dirname(plansPath), 'plans-physical.json');
-  const physical = readPlanPhysical(plansPath).cases;
+  const physicalPath = join(dirname(casesPath), 'plans-physical.json');
+  const physical = readPlanPhysical(casesPath).cases;
   return recipe.cases.map(c => {
     let source: Lines | null = null;
     let plan: Lines = [];

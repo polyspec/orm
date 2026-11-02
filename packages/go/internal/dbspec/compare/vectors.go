@@ -132,7 +132,7 @@ func readDDL(path string) ([]hashCase, error) {
 	return file.Cases, err
 }
 
-// readPlans checks tests/dbspec/plans.json against its schema, reads the cases from plan-cases.json beside it, and reads the
+// readPlans checks tests/dbspec/plan-cases.json against its schema, reads the cases from the file itself, and reads the
 // validation sections from the four recipes beside it (plan-invalid, plan-chains, plan-parse, and plan-comparisons .json).
 // A null source is the empty schema.
 func readPlans(path string) (planVectors, error) {

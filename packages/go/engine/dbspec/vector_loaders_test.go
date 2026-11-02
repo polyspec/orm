@@ -19,16 +19,16 @@ func vectorCaseOf(object map[string]any, key string, index int) map[string]any {
 func TestVectorLoadersRejectMalformedVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	decoders := map[string]func(vectorReader, map[string]any) error{
-		"plans.json":   decodePlanVectors,
-		"mermaid.json": func(r vectorReader, o map[string]any) error { _, err := decodeMermaidVectors(r, o); return err },
-		"cases.json":   func(r vectorReader, o map[string]any) error { _, err := decodeCaseVectors(r, o); return err },
-		"ddl.json":     func(r vectorReader, o map[string]any) error { _, err := decodeDDLVectors(r, o); return err },
+		"plan-cases.json": decodePlanVectors,
+		"mermaid.json":    func(r vectorReader, o map[string]any) error { _, err := decodeMermaidVectors(r, o); return err },
+		"cases.json":      func(r vectorReader, o map[string]any) error { _, err := decodeCaseVectors(r, o); return err },
+		"ddl.json":        func(r vectorReader, o map[string]any) error { _, err := decodeDDLVectors(r, o); return err },
 	}
 	mutations := []struct {
 		file, location, problem string
 		change                  func(o map[string]any)
 	}{
-		{"plans.json", "version", "is missing", func(o map[string]any) { delete(o, "version") }},
+		{"plan-cases.json", "version", "is missing", func(o map[string]any) { delete(o, "version") }},
 		{"mermaid.json", "export[0].dropped", "is missing", func(o map[string]any) { delete(vectorCaseOf(o, "export", 0), "dropped") }},
 		{"mermaid.json", "invalid[0].errors[0]", "does not have 3 items", func(o map[string]any) {
 			asFixture[[]any](vectorCaseOf(o, "invalid", 0)["errors"])[0] = []any{"mermaid", 1.0}

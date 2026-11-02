@@ -4,7 +4,7 @@ import { readPlanCases } from '../../../tests/dbspec/vectors.mts';
 import { DbspecApplyError, applyPlans, parsePlan } from '../dist/dbspec/index.js';
 
 const root = new URL('../../../', import.meta.url);
-const plans = readPlanCases(new URL('tests/dbspec/plans.json', root).pathname)
+const plans = readPlanCases(new URL('tests/dbspec/plan-cases.json', root).pathname)
   .filter(testCase => testCase.id === 'create-from-empty')
   .map(testCase => parsePlan(testCase.plan.join('\n') + '\n').plan);
 assert.equal(plans.length, 1);

@@ -108,6 +108,11 @@ path = "tests/dbspec_plan_cases.rs"
 harness = false
 
 [[test]]
+name = "dbspec_plan_apply"
+path = "tests/dbspec_plan_apply.rs"
+harness = false
+
+[[test]]
 name = "dbspec_plan_comparisons"
 path = "tests/dbspec_plan_comparisons.rs"
 harness = false

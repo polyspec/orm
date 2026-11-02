@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-// Applies the plans.json chains through Polyspec\Orm\Dbspec\Dbspec::apply, ::recover,
+// Applies the plan-cases.json chains through Polyspec\Orm\Dbspec\Dbspec::apply, ::recover,
 // ::rollback and ::finalize on MySQL, PostgreSQL and SQLite (docs/spec/plans.md
 // "Apply"): the chain of create-from-empty and rename-table-and-column with
 // its history, events and a second apply without events; drift; the lock of
@@ -146,7 +146,7 @@ const HIDDEN_LEFT = [
 ];
 
 /**
- * The scenarios of the chains of tests/dbspec/plans.json, made once: 'scenarios' is a list of [name, dialects, closure
+ * The scenarios of the chains of tests/dbspec/plan-cases.json, made once: 'scenarios' is a list of [name, dialects, closure
  * (Closure(): PDO $session, PDO $pdo, string $db)], 'runs' the number of runs they make, 'pooler' the transaction
  * pooler scenarios by name.
  *
@@ -172,7 +172,7 @@ function apply_scenarios(): array
         $parse('rename-table-and-column', implode("\n", $cases['rename-table-and-column']['plan']) . "\n"),
     ];
     if ($plans[1]->from !== $plans[0]->to) {
-        throw new RuntimeException('plans.json does not chain create-from-empty and rename-table-and-column');
+        throw new RuntimeException('plan-cases.json does not chain create-from-empty and rename-table-and-column');
     }
     /**
      * The first plan base that builds the case's source, and the chain of the case's plan.

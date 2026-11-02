@@ -51,7 +51,7 @@ func dbspecLanguages() []string {
 
 // TestApplyChainAcrossClients checks, for every ordered pair, whether a chain applied by one client is continued
 // by another client (docs/spec/plans.md "Apply"). On three databases
-// client A applies the first plan of the tests/dbspec/plans.json chain and client B applies the rest;
+// client A applies the first plan of the tests/dbspec/plan-cases.json chain and client B applies the rest;
 // the history rows and the introspected schema text afterward must equal the expected ones. When A stops
 // partway, B must reject the interrupted apply and finish it with recover, and when it stops again
 // an apply, B must roll it back with rollback.
@@ -76,7 +76,7 @@ func TestApplyChainAcrossClients(t *testing.T) {
 	if len(diagnostics) > 0 {
 		t.Fatal(diagnostics)
 	}
-	vectors := filepath.Join(root, "tests", "dbspec", "plans.json")
+	vectors := filepath.Join(root, "tests", "dbspec", "plan-cases.json")
 	goRunner := filepath.Join(t.TempDir(), "apply-go")
 	// The Go runner build has the testcase.Process deadline (it takes minutes when the build cache is empty).
 	building, cancelBuild := context.WithTimeout(context.Background(), testcase.Process)

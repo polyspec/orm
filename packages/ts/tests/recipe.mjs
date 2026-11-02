@@ -717,7 +717,7 @@ function dbspecParse(step, bound) {
   return { diagnostics: parseRows(result.diagnostics, false) };
 }
 
-// dbspecPlanSteps runs planSteps for one dialect and returns {steps}, the plans.json objects of its steps, or fails on diagnostics.
+// dbspecPlanSteps runs planSteps for one dialect and returns {steps}, the plan-cases.json objects of its steps, or fails on diagnostics.
 function dbspecPlanSteps(step, bound) {
   const result = planSteps(dbspecDocument(step.source, bound), dbspecPlan(step.plan, bound), step.dialect);
   if (result.diagnostics.length > 0) throw new Error(`plan steps: ${result.diagnostics.map(d => d.message).join('; ')}`);

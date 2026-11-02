@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4a960185333a706f8e8845e91a087c91d33263ad4d66749d16449651a9672990 -->
+<!-- source-sha256: 8e38cccf519f0312bec88187357f51ff02ab56ce57c314aeb2a5f5c677a6b569 -->
 # 변경 이력
 
 ## Unreleased
@@ -23,6 +23,11 @@
 - CFG-1, CFG-2, CFG-11, CFG-17, CFG-19, CFG-26의 거부되는 DSN case(UTC가 아닌 timezone, 알 수 없는 scheme, database 이름 없음, 상대 SQLite 경로, VERIFY_IDENTITY와 함께 쓰인 주소 host, 잘못된 SQLite 경로 percent 인코딩)는 하나의 recipe, contracts/fixtures/dsn_reject/dsn_reject.json이 되었고, 모든 runtime이 새 op dsn.connect(FCV-4)로 database 없이 실행한다 (T334-3-23).
 - recipe schema가 model_writes fixture의 model.get_by step을 거부했다. 두 형식 모두 FCV-4가 model.get_by에 주는 rows outcome 대신 일반 expect를 받았다. 이제 두 형식 모두 rows outcome을 받는다 (T334-3-4-9).
 - recipe schema가 schema_install fixture의 schema.install step을 거부했다. {schema} 형식에 expect가 없었는데 FCV-4는 이 형식에 expect를 준다. 이제 schema가 그 expect를 받는다 (T334-3-4-8).
+- tests/dbspec/plans.json을 지운다. version과 note는 recipe tests/dbspec/plan-cases.json으로 옮기고, 읽는 코드와 tests/dbspec/schema/plans.schema.json은 그 파일을 바로 읽는다. 빈 하위 클래스인 php-ext의 DbspecPlanTestExtensionTest를 지운다. 그 여섯 시험은 dbspec-php-extension-check/plan이 확장으로 계속 실행한다 (T334-3-17-3).
+- TypeScript recipe test에서 쓰지 않는 import `readDbspecFile`을 뺐다. 그래서 TypeScript 게이트의 lint 단계가 통과한다 (T334-3-17-4).
+- Rust 빌드 crate가 모델 문법의 열 이름 규칙을 Builder로 시험한다. 예약된 메서드 이름과 연산자 또는 연결 세그먼트는 생성기가 거부하며, parity unit은 private manifest 모듈의 모듈 내부 테스트 대신 그 시험에 바인딩한다 (T334-3-17-7).
+- Go generator의 저장 열 이름 규칙 test가 unexported generateGo 대신 exported Generate를 호출한다. orm-gen이 쓰는 공개 경로이며, unit model-new-output-name-rejects-stored-column이 이 test에 바인딩한다 (T334-3-17-8).
+- TypeScript 패키지가 bind-check 변환 `fulltextBoolean`과 `transformParam`을 진입점에서 export한다. 다른 runtime과 같으므로 fulltext_boolean 변환은 여섯 runtime 모두에서 공개 호출을 가진다 (T334-3-17-1).
 - tests/dbspec/plans.json의 case 13개는 여섯 runtime에서 recipe tests/dbspec/plan-cases.json으로 실행된다. op dbspec.parse, dbspec.parse_plan, dbspec.emit_plan, dbspec.diff, dbspec.plan_steps로 실행하며 native plan test를 대신한다. before와 after physical record는 tests/dbspec/plans-physical.json으로 옮겼고 case id로 찾는다 (T334-3-16-2-2).
 - tests/dbspec/plans.json의 검증 네 section(invalid, chains, parse, comparisons)은 여섯 runtime에서 T334-3-2 형식의 recipe 네 개로 실행된다. op dbspec.parse, dbspec.parse_plan, dbspec.diff, dbspec.chain, dbspec.compare로 실행하며 native plan test를 대신하고, compare 도구는 plans.json 곁의 recipe를 읽는다 (T334-3-16-2-1).
 - planner compile case 86개는 op `planner.compile`로 여섯 runtime에서 recipe tests/planner/compile.json으로 실행된다. native compile test를 대신하며, param_uses case 다섯 개는 contracts/fixtures/planner.json에 남는다 (T334-3-16-1).
@@ -145,6 +150,7 @@ SQLite에서 같은 행을 쓰는 두 connection의 잠금 대기는 busy timeou
 - dbspec 텍스트의 format 거부(DBS-141, ORES-14)가 feature coverage-schema-definition-dbspec-format-refusal의 native binding 여섯 개로 돌았고, 각 binding은 schema-definition의 suite case dbspec_format_refusal과 같은 함수였다. binding을 지우고 suite case만 남긴다. set 파일 generator 규칙(ORES-21)은 FCV-2의 runtime별 진입점으로 각 runtime에 native로 남는다 (T334-3-21-1)
 - `make interface-record`는 `make interface-check`와 같은 checker와 lease 환경으로 interface 심볼 스냅샷과 manifest 해시를 기록한다. `LANGUAGE=<name>`이면 한 언어만 기록하므로, transaction statement gate로 바뀐 Rust DbInner 스냅샷을 make 밖이 아니라 make로 재생성한다 (#T343-4-1)
 - transaction 중복 문장 테스트는 첫 문장을 transaction connection 안에서 `testing::hold_next_statement`로 붙잡고, 첫 문장이 그 지점에 도달한 뒤에야 둘째 문장을 시도한다. 그래서 두 future가 겹치는지에 따라 달라지지 않고 모든 schedule에서 둘째 문장이 CONFIG로 거부된다 (#T343-4)
+- 물리 plan case의 네이티브 test 여섯 개는 case마다 결과를 하나씩 내지 않았고, tests/dbspec/plans-physical.json의 물리 기록은 어떤 suite unit에도 속하지 않았다. 이제 unit은 case를 단위로 한 suite이며, 각 runtime이 모든 case를 보고한다 (T334-3-17-5).
 
 ## 0.0.21
 

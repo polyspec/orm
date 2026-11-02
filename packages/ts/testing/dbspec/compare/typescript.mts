@@ -2,7 +2,7 @@
 // dbspec results are printed in the line format of tests/dbspec/compare/check.mts. It then prints the positions cases of
 // cases.json and the analysis and format of each case of syntax.json.
 //
-// Usage: node packages/ts/testing/dbspec/compare/typescript.mts <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
+// Usage: node packages/ts/testing/dbspec/compare/typescript.mts <cases.json> <stress document> <ddl.json> <plan-cases.json> <mermaid.json> <syntax.json>
 // (after the TypeScript build)
 import { readFileSync } from 'node:fs';
 import { dirname, join as joinPath } from 'node:path';
@@ -42,7 +42,7 @@ import {
 
 const [casesPath, stressPath, ddlPath, plansPath, mermaidPath, syntaxPath] = process.argv.slice(2);
 if (casesPath === undefined || stressPath === undefined || ddlPath === undefined || plansPath === undefined || mermaidPath === undefined || syntaxPath === undefined) {
-  console.error('usage: node packages/ts/testing/dbspec/compare/typescript.mts <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>');
+  console.error('usage: node packages/ts/testing/dbspec/compare/typescript.mts <cases.json> <stress document> <ddl.json> <plan-cases.json> <mermaid.json> <syntax.json>');
   process.exit(2);
 }
 
@@ -272,8 +272,8 @@ function planCase(header: string, c: { source: string[] | null; plan: string[] }
   return { source, plan: parsed.plan };
 }
 
-readVectors(plansPath, 'plans'); // plans.json is checked against its schema; its cases are read below.
-// The cases of plan-cases.json beside plans.json, with their physical records; the validation sections are the recipes beside it (tests/dbspec/plan-*.json). Each step names its schema text
+readVectors(plansPath, 'plans'); // plan-cases.json is checked against its schema; its cases are read below.
+// The cases of plan-cases.json, with their physical records; the validation sections are the recipes beside it (tests/dbspec/plan-*.json). Each step names its schema text
 // or plan by a ref, which an earlier dbspec.parse or dbspec.parse_plan step of the same case binds; null is the empty schema.
 const recipes = readPlanRecipes(plansPath);
 type Lines = string[];

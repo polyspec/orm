@@ -1,11 +1,11 @@
-// The chain of plans.json (tests/dbspec/plans.json) (create-from-empty and
+// The chain of plan-cases.json (tests/dbspec/plan-cases.json) (create-from-empty and
 // rename-table-and-column) is applied to one database with the TypeScript client
 // (docs/spec/plans.md "Apply"). The action is apply-first (first plan only), apply (the whole chain),
 // stop (stops after statement 1 of the second plan runs), recover (finishes an interrupted plan),
 // or rollback (reverts the last plan in history). One of these. stdout gets one result line: "ok", "stopped", or
 // "error <code>". Any other error is written to stderr and the process exits with 1.
 //
-// Usage: node packages/ts/testing/dbspec/apply/typescript.mts <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>
+// Usage: node packages/ts/testing/dbspec/apply/typescript.mts <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plan-cases.json>
 import { DatabaseSync } from 'node:sqlite';
 import type mysql from 'mysql2/promise';
 import pg from 'pg';
@@ -22,7 +22,7 @@ const CONNECTION_RULES = {
 
 const [action, dialect, uri, vectorsPath, ...rest] = process.argv.slice(2);
 if (action === undefined || dialect === undefined || uri === undefined || vectorsPath === undefined || rest.length > 0) {
-  console.error('usage: node packages/ts/testing/dbspec/apply/typescript.mts <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>');
+  console.error('usage: node packages/ts/testing/dbspec/apply/typescript.mts <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plan-cases.json>');
   process.exit(2);
 }
 const url = new URL(uri);
@@ -35,7 +35,7 @@ const plans = readPlanCases(vectorsPath)
     return parsed.plan;
   });
 const [first, second] = plans;
-if (plans.length !== 2 || first === undefined || second === undefined || second.from !== first.to) throw new Error('plans.json does not chain create-from-empty and rename-table-and-column');
+if (plans.length !== 2 || first === undefined || second === undefined || second.from !== first.to) throw new Error('plan-cases.json does not chain create-from-empty and rename-table-and-column');
 
 /** An open connection of one dialect, the statement runner of the connection rules and its close. */
 type Opened =

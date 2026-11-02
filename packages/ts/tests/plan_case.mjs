@@ -12,7 +12,7 @@ export const root = new URL('../../../', import.meta.url);
 const TIMEOUT = 5000;
 
 // cases are the plan cases of plan-cases.json with their physical records (readPlanCases).
-export const cases = readPlanCases(new URL('tests/dbspec/plans.json', root).pathname);
+export const cases = readPlanCases(new URL('tests/dbspec/plan-cases.json', root).pathname);
 
 // vector runs one case with its own deadline and reports its start, result
 // and elapsed time.

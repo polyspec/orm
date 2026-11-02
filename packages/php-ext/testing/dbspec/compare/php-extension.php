@@ -8,7 +8,7 @@ declare(strict_types=1);
 // cases.json and the analysis and format of each case of syntax.json.
 //
 // Usage: php -d extension=<polyspec_orm library> packages/php-ext/testing/dbspec/compare/php-extension.php <cases.json>
-// <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
+// <stress document> <ddl.json> <plan-cases.json> <mermaid.json> <syntax.json>
 
 require __DIR__ . '/../../../../../tests/dbspec/input.php';
 require __DIR__ . '/../../../../../vendor-php/autoload.php';
@@ -21,7 +21,7 @@ if ($argc !== 7) {
     fwrite(
         STDERR,
         "usage: php -d extension=<polyspec_orm library> packages/php-ext/testing/dbspec/compare/php-extension.php "
-        . "<cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>\n"
+        . "<cases.json> <stress document> <ddl.json> <plan-cases.json> <mermaid.json> <syntax.json>\n"
     );
     exit(2);
 }

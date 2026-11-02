@@ -502,7 +502,7 @@ function dbspec_emitted_plan(string $dbspec, object $plan): void
 }
 
 /**
- * The validation sections of plans.json as the compare reads them: the recipes beside plansPath (plan-invalid,
+ * The validation sections of plan-cases.json as the compare reads them: the recipes of plansPath (plan-invalid,
  * plan-chains, plan-parse and plan-comparisons .json) give the lines of each case in the shape of the section that
  * each replaces. A ref that binds no lines fails the run.
  *
@@ -576,7 +576,7 @@ function dbspec_plan_recipes(string $plansPath): array
 }
 
 /**
- * With $dbspec, writes the case, invalid, chain, parse and comparison of tests/dbspec/plans.json in this order: the
+ * With $dbspec, writes the case, invalid, chain, parse and comparison of tests/dbspec/plan-cases.json in this order: the
  * cases section of the file, and the other four from the recipes beside it (dbspec_plan_recipes). The vector file is
  * checked for its shape before output.
  */

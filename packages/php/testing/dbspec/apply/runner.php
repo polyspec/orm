@@ -22,7 +22,7 @@ function dbspec_apply_runner_plans(array $vectors): array
         }
     }
     if (count($plans) !== 2 || $plans[1]->from !== $plans[0]->to) {
-        throw new RuntimeException('plans.json does not chain create-from-empty and rename-table-and-column');
+        throw new RuntimeException('plan-cases.json does not chain create-from-empty and rename-table-and-column');
     }
     return $plans;
 }
@@ -104,13 +104,13 @@ function dbspec_apply_runner_lock_wait(string $dialect, string $uri, array $vect
         }
     }
     if ($representative === null) {
-        throw new RuntimeException('plans.json has no representative case');
+        throw new RuntimeException('plan-cases.json has no representative case');
     }
     $sourceText = implode("\n", ['dbplan 1 base', 'from empty', '', ...$representative['source']]) . "\n";
     $source = Dbspec::parsePlan($sourceText)->plan;
     $target = Dbspec::parsePlan(implode("\n", $representative['plan']) . "\n")->plan;
     if ($source === null || $target === null || $target->from !== $source->to) {
-        throw new RuntimeException('plans.json does not form the representative lock-wait plan');
+        throw new RuntimeException('plan-cases.json does not form the representative lock-wait plan');
     }
 
     [, $pdoDsn, $user, $password] = Orm::parseDsn($uri);

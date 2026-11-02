@@ -1,7 +1,7 @@
 //! Plan chains applied to MySQL, PostgreSQL and SQLite through
 //! `polyspec_orm::dbspec::apply`, `recover`, `rollback` and `finalize` (docs/spec/plans.md,
 //! "Apply"): the chain of create-from-empty and rename-table-and-column of
-//! tests/dbspec/plans.json with its history and a second apply without
+//! tests/dbspec/plan-cases.json with its history and a second apply without
 //! events, drift, the lock of a second session, an apply to a second
 //! database, schema or file while the first holds its lock, the empty chain,
 //! an unlock that released nothing on PostgreSQL, a failed verification; for

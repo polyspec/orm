@@ -31,7 +31,6 @@ use polyspec_orm_schema::dbspec::{self, parse_plan, plan_steps, Document};
 use serde_json::Value;
 use sqlx::{AssertSqlSafe, Row, SqlSafeStr, TypeInfo, ValueRef};
 use std::collections::BTreeMap;
-use std::time::{Duration, Instant};
 
 /// One step in the tests/dbspec/ddl.json format: `query` and `want`, the `sql` that must fail,
 /// or the `sql` to run. If `dialects` is given, it runs only on those databases.
@@ -177,106 +176,113 @@ async fn run_steps(conn: &mut Conn, db: &str, steps: &[Step]) -> Result<(), Stri
 }
 
 // Requirements: PLN-102.
-#[tokio::test]
-async fn plan_apply() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    let started = Instant::now();
+// Each case of tests/dbspec/plan-cases.json is one trial, dbspec_plan_apply::<case id> (the recipe harness of
+// unit/dbspec_recipe.rs). A trial runs its case on each of the three databases in turn and fails if any of them fails.
+fn main() {
     let dir = repository().join("tests/dbspec");
     let cases = plan_cases::read_cases(&dir).or_panic(|e| e);
     let sources = plan_sources::read_sources(&dir).or_panic(|e| e);
     let physical = plan_physical::read_physical(&dir).or_panic(|e| e);
     assert!(!cases.is_empty(), "tests/dbspec/plan-cases.json has no cases");
+    let trials = cases
+        .into_iter()
+        .enumerate()
+        .map(|(index, case)| {
+            let source_text = sources.get(&case.id).cloned().flatten();
+            let record = physical.get(&case.id).map(|r| (r.before.clone(), r.after.clone()));
+            let name = format!("dbspec_plan_apply::{}", case.id);
+            polyspec_orm_testcase::trial(name, polyspec_orm_testcase::DATABASE, move || {
+                let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().expect("tokio runtime");
+                runtime.block_on(run_case(index, &case, source_text, record)).or_panic(|e| e);
+            })
+        })
+        .collect();
+    polyspec_orm_testcase::run(trials);
+}
+
+async fn run_case(index: usize, case: &plan_cases::PlanCase, source_text: Option<String>, record: Option<(Value, Value)>) -> Result<(), String> {
+    let case_id = case.id.as_str();
+    let plan = parse_plan(&case.plan).or_panic(|e| format!("{case_id}: {e:?}"));
+    let (before_json, after_json) = record.ok_or_else(|| format!("{case_id}: no physical record in plans-physical.json"))?;
+    let source: Option<Document> =
+        source_text.as_deref().map(|text| dbspec::parse(text, &BTreeMap::new()).map(|parsed| parsed.document).or_panic(|e| format!("{case_id}: {e:?}")));
     let mut servers = Servers::open("plan").await;
     let mut failures = Vec::new();
-    let mut runs = 0;
-    for case in &cases {
-        let case_id = case.id.as_str();
-        let plan = parse_plan(&case.plan).or_panic(|e| format!("{case_id}: {e:?}"));
-        let source: Option<Document> = sources
-            .get(case_id)
-            .and_then(|text| text.as_ref())
-            .map(|text| dbspec::parse(text, &BTreeMap::new()).map(|parsed| parsed.document).or_panic(|e| format!("{case_id}: {e:?}")));
-        for (db, dialect) in DIALECTS {
-            let setup = match &source {
-                None => Vec::new(),
-                Some(source) => dbspec::render(&[source], dialect).or_panic(|e| format!("{case_id}: {e:?}")),
-            };
-            let steps_of = plan_steps(source.as_ref(), &plan, dialect).or_panic(|e| format!("{case_id}: {e:?}"));
-            let reversible = steps_of.iter().all(|s| s.finalize || !s.rollback.is_empty());
-            let want = plan.schema_text().to_owned();
-            let source_text = source.as_ref().map(|d| dbspec::manifest(&[d]).expect("source manifest").schema_text).unwrap_or_default();
-            let id = format!("{db}.plan.{}", case_id.replace('-', "_"));
-            runs += 1;
-            let record = physical.get(case_id).unwrap_or_else(|| panic!("{case_id}: no physical record in plans-physical.json"));
-            let (before, after) = (steps(&record.before), steps(&record.after));
-            polyspec_orm_testcase::step(format_args!("{id}: {} steps, reversible {reversible}", steps_of.len()));
-            let result = run_probe(&mut servers, &id, db, runs, |conn| {
-                Box::pin(async move {
-                    let forward: Vec<String> = steps_of.iter().take_while(|s| !s.finalize).map(|s| s.statement.clone()).collect();
-                    let again: Vec<String> = steps_of
-                        .iter()
-                        .take_while(|s| !s.finalize)
-                        .map(|s| if s.restore.is_empty() { s.statement.clone() } else { s.restore.clone() })
-                        .collect();
-                    // A rollback that reverts all the way recreates the old table, along with the added columns that hid it.
-                    let back: Vec<String> = steps_of
-                        .iter()
-                        .rev()
-                        .filter(|s| !s.finalize)
-                        .map(|s| if s.rollback_restore.is_empty() { s.rollback.clone() } else { s.rollback_restore.clone() })
-                        .collect();
-                    let finalize: Vec<String> = steps_of.iter().filter(|s| s.finalize).map(|s| s.statement.clone()).collect();
-                    conn.exec_all(&connection_rules(db).iter().map(|s| (*s).to_owned()).collect::<Vec<_>>()).await?;
-                    conn.exec_all(&setup).await?;
-                    run_steps(conn, db, &before).await?;
-                    // SQLite turns off foreign keys while it rebuilds the table, and checks them afterwards.
-                    if db == "sqlite" {
-                        conn.exec("PRAGMA foreign_keys = OFF").await?;
-                        conn.exec("PRAGMA legacy_alter_table = OFF").await?;
-                    }
-                    conn.exec_all(&forward).await?;
+    for (dialect_index, (db, dialect)) in DIALECTS.into_iter().enumerate() {
+        let setup = match &source {
+            None => Vec::new(),
+            Some(source) => dbspec::render(&[source], dialect).or_panic(|e| format!("{case_id}: {e:?}")),
+        };
+        let steps_of = plan_steps(source.as_ref(), &plan, dialect).or_panic(|e| format!("{case_id}: {e:?}"));
+        let reversible = steps_of.iter().all(|s| s.finalize || !s.rollback.is_empty());
+        let want = plan.schema_text().to_owned();
+        let source_schema = source.as_ref().map(|d| dbspec::manifest(&[d]).expect("source manifest").schema_text).unwrap_or_default();
+        let before = steps(&before_json);
+        let after = steps(&after_json);
+        let id = format!("{db}.plan.{}", case_id.replace('-', "_"));
+        let probe_index = index * DIALECTS.len() + dialect_index + 1;
+        polyspec_orm_testcase::step(format_args!("{id}: {} steps, reversible {reversible}", steps_of.len()));
+        let result = run_probe(&mut servers, &id, db, probe_index, |conn| {
+            Box::pin(async move {
+                let forward: Vec<String> = steps_of.iter().take_while(|s| !s.finalize).map(|s| s.statement.clone()).collect();
+                let again: Vec<String> =
+                    steps_of.iter().take_while(|s| !s.finalize).map(|s| if s.restore.is_empty() { s.statement.clone() } else { s.restore.clone() }).collect();
+                // A rollback that reverts all the way recreates the old table, along with the added columns that hid it.
+                let back: Vec<String> = steps_of
+                    .iter()
+                    .rev()
+                    .filter(|s| !s.finalize)
+                    .map(|s| if s.rollback_restore.is_empty() { s.rollback.clone() } else { s.rollback_restore.clone() })
+                    .collect();
+                let finalize: Vec<String> = steps_of.iter().filter(|s| s.finalize).map(|s| s.statement.clone()).collect();
+                conn.exec_all(&connection_rules(db).iter().map(|s| (*s).to_owned()).collect::<Vec<_>>()).await?;
+                conn.exec_all(&setup).await?;
+                run_steps(conn, db, &before).await?;
+                // SQLite turns off foreign keys while it rebuilds the table, and checks them afterwards.
+                if db == "sqlite" {
+                    conn.exec("PRAGMA foreign_keys = OFF").await?;
+                    conn.exec("PRAGMA legacy_alter_table = OFF").await?;
+                }
+                conn.exec_all(&forward).await?;
+                foreign_key_check(conn, db).await?;
+                schema_is(conn, "applied", &want).await?;
+                if reversible {
+                    conn.exec_all(&back).await?;
                     foreign_key_check(conn, db).await?;
-                    schema_is(conn, "applied", &want).await?;
-                    if reversible {
-                        conn.exec_all(&back).await?;
-                        foreign_key_check(conn, db).await?;
-                        schema_is(conn, "rolled back", &source_text).await?;
-                        conn.exec_all(&again).await?;
-                        foreign_key_check(conn, db).await?;
-                        schema_is(conn, "applied again", &want).await?;
-                    }
-                    if db == "sqlite" {
-                        conn.exec("PRAGMA foreign_keys = ON").await?;
-                    }
-                    run_steps(conn, db, &after).await?;
-                    // Finalize also runs with SQLite foreign keys turned off, as apply does.
-                    if db == "sqlite" {
-                        conn.exec("PRAGMA foreign_keys = OFF").await?;
-                    }
-                    conn.exec_all(&finalize).await?;
-                    if db == "sqlite" {
-                        conn.exec("PRAGMA foreign_keys = ON").await?;
-                    }
-                    schema_is(conn, "finalized", &want).await?;
-                    let hidden = value(conn, hidden_left(db)).await?;
-                    if hidden != "0" {
-                        return Err(format!("{hidden} hidden tables or columns remain after finalize"));
-                    }
-                    Ok(())
-                })
+                    schema_is(conn, "rolled back", &source_schema).await?;
+                    conn.exec_all(&again).await?;
+                    foreign_key_check(conn, db).await?;
+                    schema_is(conn, "applied again", &want).await?;
+                }
+                if db == "sqlite" {
+                    conn.exec("PRAGMA foreign_keys = ON").await?;
+                }
+                run_steps(conn, db, &after).await?;
+                // Finalize also runs with SQLite foreign keys turned off, as apply does.
+                if db == "sqlite" {
+                    conn.exec("PRAGMA foreign_keys = OFF").await?;
+                }
+                conn.exec_all(&finalize).await?;
+                if db == "sqlite" {
+                    conn.exec("PRAGMA foreign_keys = ON").await?;
+                }
+                schema_is(conn, "finalized", &want).await?;
+                let hidden = value(conn, hidden_left(db)).await?;
+                if hidden != "0" {
+                    return Err(format!("{hidden} hidden tables or columns remain after finalize"));
+                }
+                Ok(())
             })
-            .await;
-            if let Err(e) = result {
-                failures.push(format!("{id}: {e}"));
-            }
+        })
+        .await;
+        if let Err(e) = result {
+            failures.push(format!("{id}: {e}"));
         }
     }
     servers.close().await;
-    assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
-    assert_eq!(runs, cases.len() * DIALECTS.len(), "plan runs");
-    // Applying plans to three databases takes a few seconds on the development machine (8 s measured in T27, including build). Five minutes means it has stalled.
-    if started.elapsed() >= Duration::from_secs(300) {
-        polyspec_orm_testcase::warning(format_args!("plan apply exceeded 300s"));
+    if failures.is_empty() {
+        Ok(())
+    } else {
+        Err(format!("{} failures:\n{}", failures.len(), failures.join("\n")))
     }
-    polyspec_orm_testcase::step(format_args!("dbspec plan apply: {runs} runs of {} cases on three databases in {:?}", cases.len(), started.elapsed()));
 }

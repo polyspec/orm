@@ -2,7 +2,7 @@
 # dbspec results in the line format of tests/dbspec/compare/check.mts. It then prints the positions cases of
 # cases.json and the analysis and format of each case of syntax.json.
 #
-# Usage: python3 -m packages.python.testing.dbspec.compare.python <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
+# Usage: python3 -m packages.python.testing.dbspec.compare.python <cases.json> <stress document> <ddl.json> <plan-cases.json> <mermaid.json> <syntax.json>
 import json
 import os
 import sys
@@ -45,7 +45,7 @@ except ImportError as error:
 
 if len(sys.argv) != 7:
     print(
-        "usage: python3 -m packages.python.testing.dbspec.compare.python <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>",
+        "usage: python3 -m packages.python.testing.dbspec.compare.python <cases.json> <stress document> <ddl.json> <plan-cases.json> <mermaid.json> <syntax.json>",
         file=sys.stderr,
     )
     sys.exit(2)
@@ -320,7 +320,7 @@ def write_emitted_plan(plan):
     out.extend(f"| {line}" for line in emit_plan(plan).split("\n"))
 
 
-# read_recipe reads the cases of a recipe file beside the plans.json at plans_path; a file that does not parse is written to
+# read_recipe reads the cases of a recipe file of the plan-cases.json at plans_path; a file that does not parse is written to
 # stderr and ends with 1.
 def read_recipe(plans_path, name):
     path = os.path.join(os.path.dirname(plans_path), name)
@@ -365,9 +365,9 @@ def comparison_inputs(case):
 
 
 plans = read_vectors(plans_path, "plans")
-# The cases are the recipe plan-cases.json beside plans.json, with their physical records (dbspec_plans).
+# The cases are the recipe plan-cases.json, with their physical records (dbspec_plans).
 plans["cases"] = plan_cases(plans_path)
-# The four validation sections are the recipes beside plans.json (tests/dbspec/plan-<section>.json), read here as the inputs
+# The four validation sections are the recipes beside that file (tests/dbspec/plan-<section>.json), read here as the inputs
 # of the same checks: each recipe case gives the lines of its documents and plans, bound by the steps' as names.
 plans["invalid"] = [
     invalid_inputs(c) for c in read_recipe(plans_path, "plan-invalid.json")

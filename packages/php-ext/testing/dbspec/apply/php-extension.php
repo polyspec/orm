@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-// Applies the chain of plans.json (tests/dbspec/plans.json), create-from-empty and
+// Applies the chain of plan-cases.json (tests/dbspec/plan-cases.json), create-from-empty and
 // rename-table-and-column, to one database with the PHP extension polyspec_orm (Polyspec\Orm\Dbspec)
 // (docs/spec/plans.md "Apply"). action is one of apply-first (first plan only), apply (whole chain),
 // stop (stops after statement 1 of the second plan runs), recover (finishes the interrupted plan),
@@ -13,7 +13,7 @@ declare(strict_types=1);
 // The DSN is converted to PDO arguments with the PHP client's Orm::parseDsn.
 //
 // Usage: php -d extension=<polyspec_orm library> packages/php-ext/testing/dbspec/apply/php-extension.php
-// <apply-first|apply|stop|recover|rollback|lock-wait> <mysql|postgres|sqlite> <uri> <plans.json>
+// <apply-first|apply|stop|recover|rollback|lock-wait> <mysql|postgres|sqlite> <uri> <plan-cases.json>
 
 require __DIR__ . '/../../../../../vendor-php/autoload.php';
 require __DIR__ . '/../../../../../tests/dbspec/input.php';
@@ -24,7 +24,7 @@ if ($argc !== 5) {
     fwrite(
         STDERR,
         "usage: php -d extension=<polyspec_orm library> packages/php-ext/testing/dbspec/apply/php-extension.php "
-        . "<apply-first|apply|stop|recover|rollback|lock-wait> <mysql|postgres|sqlite> <uri> <plans.json>\n"
+        . "<apply-first|apply|stop|recover|rollback|lock-wait> <mysql|postgres|sqlite> <uri> <plan-cases.json>\n"
     );
     exit(2);
 }

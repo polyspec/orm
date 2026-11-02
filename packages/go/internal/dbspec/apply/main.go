@@ -1,4 +1,4 @@
-// Command go applies the chain of plans.json (tests/dbspec/plans.json; its cases are the plan-cases.json beside it,
+// Command go applies the chain of plan-cases.json (tests/dbspec/plan-cases.json; its cases are read from that file,
 // create-from-empty and rename-table-and-column) to one database with the Go engine
 // (docs/spec/plans.md "Apply"). action is one of the following:
 //
@@ -11,7 +11,7 @@
 // stdout gets one result line: "ok" on success, "stopped" when stop halted, apply
 // error is "error <code>". Other errors are written to stderr and exit with 1.
 //
-// Usage: go run ./packages/go/internal/dbspec/apply <apply-first|apply|stop|recover|rollback|lock-wait> <mysql|postgres|sqlite> <uri> <plans.json>
+// Usage: go run ./packages/go/internal/dbspec/apply <apply-first|apply|stop|recover|rollback|lock-wait> <mysql|postgres|sqlite> <uri> <plan-cases.json>
 package main
 
 import (
@@ -44,7 +44,7 @@ var errStop = errors.New("stop")
 
 func main() {
 	if len(os.Args) != 5 {
-		fmt.Fprintln(os.Stderr, "usage: go run ./packages/go/internal/dbspec/apply <apply-first|apply|stop|recover|rollback|lock-wait> <mysql|postgres|sqlite> <uri> <plans.json>")
+		fmt.Fprintln(os.Stderr, "usage: go run ./packages/go/internal/dbspec/apply <apply-first|apply|stop|recover|rollback|lock-wait> <mysql|postgres|sqlite> <uri> <plan-cases.json>")
 		os.Exit(2)
 	}
 	action, dialect, uri, vectors := os.Args[1], os.Args[2], os.Args[3], os.Args[4]
@@ -279,7 +279,7 @@ func unjoined(err error) bool {
 	return !joined
 }
 
-// chain is create-from-empty and rename-table-and-column of the plan-cases.json beside the plans.json at path.
+// chain is create-from-empty and rename-table-and-column of the plan-cases.json at path.
 func chain(path string) ([]*dbspec.Plan, error) {
 	cases, err := plancases.Read(path)
 	if err != nil {
@@ -297,7 +297,7 @@ func chain(path string) ([]*dbspec.Plan, error) {
 		plans = append(plans, p)
 	}
 	if len(plans) != 2 || plans[1].From != plans[0].To {
-		return nil, errors.New("plans.json does not chain create-from-empty and rename-table-and-column")
+		return nil, errors.New("plan-cases.json does not chain create-from-empty and rename-table-and-column")
 	}
 	return plans, nil
 }
@@ -324,5 +324,5 @@ func representativeChain(path string) ([]*dbspec.Plan, error) {
 		}
 		return []*dbspec.Plan{source, target}, nil
 	}
-	return nil, errors.New("plans.json has no representative case")
+	return nil, errors.New("plan-cases.json has no representative case")
 }

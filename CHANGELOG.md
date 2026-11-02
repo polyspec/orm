@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The Rust build crate tests the column name rules of the model syntax through Builder: a reserved method name and an operator or connector segment are rejected by the generator, and the parity units bind that test instead of the in-module tests of the private manifest module (T334-3-17-7).
+- The Go generator test of the stored column name rule calls the exported Generate, the public path that orm-gen uses, instead of the unexported generateGo, and the unit model-new-output-name-rejects-stored-column binds it (T334-3-17-8).
 - The PHP library and the PHP extension read the datetime text with a T separator that PRT-67 accepts, and the PHP tests autoload the bind models (T334-3-15-3c-10)
 - The Rust client reads the datetime text with a T separator that PRT-67 accepts (T334-3-15-3c-9)
 - The Rust recipe helper runs the bind step of ir.answer on the generated bind model, through the slot column setter and the insert (T334-3-15-3c-8)
@@ -44,6 +46,10 @@
 - The recipe schema refused the model.get_by steps of the model_writes fixture, because both forms took the generic expect instead of the rows outcome that FCV-4 gives model.get_by; both forms now take the rows outcome (T334-3-4-9).
 - The recipe schema refused the schema.install step of the schema_install fixture, because its {schema} form had no expect although FCV-4 gives it one; the schema now takes that expect (T334-3-4-8).
 - The catalog read returned the driver's integer for a boolean column, so a bool written to a MySQL `tinyint(1)` or SQLite `BOOLEAN` column failed its write check (ROW_WRITE_MISMATCH), and the PHP catalog bound a PHP false as the empty string, which MySQL and SQLite refuse. Every runtime now reads a boolean column as a bool by its column type, and PHP and the PHP extension bind a bool as a bool (DIA-29) (T334-3-11-1).
+- The owner declarations of contracts/features.json name files that exist: the deleted schema test packages/rust/schema/tests/dbspec_plan.rs is removed from its owners, which the recipe runner packages/rust/orm/tests/dbspec_plan_cases.rs replaces, and the Go test TestUnloadedUpdateKeepsAssignedValuesSelectedAndKeyed is restored in packages/go/orm/model_update_state_test.go (T334-3-17-6).
+- The plan vectors file tests/dbspec/plans.json is deleted: its version and note move into the recipe tests/dbspec/plan-cases.json, which the readers and tests/dbspec/schema/plans.schema.json now read directly. The empty php-ext subclass DbspecPlanTestExtensionTest is deleted; its six methods still run with the extension in dbspec-php-extension-check/plan (T334-3-17-3).
+- The TypeScript recipe test drops the unused import `readDbspecFile`, so the lint step of the TypeScript gate passes (T334-3-17-4).
+- The TypeScript package exports the bind-check transforms `fulltextBoolean` and `transformParam` from its entry, as the other runtimes do, so the fulltext_boolean transform has a public call in all six runtimes (T334-3-17-1).
 - The 13 cases of tests/dbspec/plans.json run as the recipe tests/dbspec/plan-cases.json through the ops dbspec.parse, dbspec.parse_plan, dbspec.emit_plan, dbspec.diff and dbspec.plan_steps in the six runtimes, in place of the native plan tests; the before and after physical records moved to tests/dbspec/plans-physical.json, keyed by case id (T334-3-16-2-2).
 - The four validation suites of tests/dbspec/plans.json (invalid, chains, parse, comparisons) run as four recipes of the T334-3-2 format in the six runtimes, through the ops dbspec.parse, dbspec.parse_plan, dbspec.diff, dbspec.chain and dbspec.compare, in place of the native plan tests; the compare tools read the recipes beside plans.json (T334-3-16-2-1).
 - The planner compile cases (86) run as the recipe tests/planner/compile.json through the op `planner.compile` in the six runtimes, in place of the native compile tests; the five param_uses cases stay in contracts/fixtures/planner.json (T334-3-16-1).
@@ -83,6 +89,7 @@
 
 A SQLite lock wait between two connections that write the same row ends with `CANCELED` after the busy timeout and is not retried, because SQLite reports no row-lock deadlock: SQLITE_LOCKED (6, 262) is `DRIVER` in every runtime, and transaction_deadlock_retry runs the sqlite case in all six runtimes (PLN-24, CFG-12) (T343-3)
 
+- The six native tests of the physical plan cases did not report one result per case, and the physical records of tests/dbspec/plans-physical.json belonged to no suite unit, so the parity check did not declare them. The unit is now a suite on its cases, and each runtime reports every case (T334-3-17-5).
 - The model_writes feature declares the repeated member name of the ordered-json text on every owner (Go, PHP, php-extension, Rust, TypeScript and Python) and on MySQL, PostgreSQL and SQLite, so the generic Rust run skips it by its declared symbol instead of failing without ORM_FEATURE_DATABASE (T343-2)
 - The model_writes feature declares the repeated member name of the ordered-json text on the Go owner (MySQL, PostgreSQL and SQLite): the Go case stores `{"a":1,"b":2,"a":3}` through the Author json setting and reads it back, so the owner runs the case that the other owners run (T343-2-1)
 - The generated Go model keeps a repeated member name of a jsontext value: the ordered-json value is taken as its source text before the json.Marshaler branch, which re-serialised the parsed member map, so `{"a":1,"b":2,"a":3}` no longer comes back as `{"a":3,"b":2}` on SQLite (DIA-26) (T343-2-1-1)

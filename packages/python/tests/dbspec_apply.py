@@ -1,4 +1,4 @@
-# Applies the chain of the shared plan case (tests/dbspec/plans.json) to SQLite
+# Applies the chain of the shared plan case (tests/dbspec/plan-cases.json) to SQLite
 # (docs/spec/plans.md "Apply"). Applies only the first plan, applies the whole chain, and the second
 # plan stops after statement 1 and resumes, then reverts the last plan. MySQL and
 # PostgreSQL are checked by conformance and the apply order-pair comparison (dbspec_apply_runner.py, make dbspec-apply-pairs-check).
@@ -55,7 +55,7 @@ class Conn:
 
 
 def chain() -> list:
-    """The create-from-empty and rename-table-and-column chains from plans.json."""
+    """The create-from-empty and rename-table-and-column chains from plan-cases.json."""
     cases = plan_cases()
     plans = []
     for case_id in ("create-from-empty", "rename-table-and-column"):
@@ -212,7 +212,7 @@ class DbspecApplyTest(unittest.TestCase):
             raise RuntimeError(
                 f"ORM_TEST_{dialect.upper()}_DSN is required; pass TEST_ENV"
             )
-        vectors = str(ROOT / "tests" / "dbspec" / "plans.json")
+        vectors = str(ROOT / "tests" / "dbspec" / "plan-cases.json")
         with tempfile.TemporaryDirectory(prefix="dbspec-apply-lock-wait-") as tmp:
             name = f"dbspec_apply_lock_wait_{os.getpid()}_{index}"
             with case_database(dialect, name, dsns[dialect], tmp) as connection:

@@ -7,7 +7,7 @@ declare(strict_types=1);
 // and compare tools take their cases from here; the file is read once per process.
 
 /**
- * The vectors of the plans.json at plansPath: its version, and its cases, which are the recipe plan-cases.json beside
+ * The vectors of the plan-cases.json at plansPath: its version, and its cases, which are the recipe in that file,
  * it, each with its before and after records from plans-physical.json. The validation sections are recipes beside it
  * (plan-invalid, plan-chains, plan-parse and plan-comparisons .json), run by the recipe helper, so they are not read
  * here.
@@ -17,10 +17,9 @@ declare(strict_types=1);
 function plan_vectors_at(string $plansPath): array
 {
     $dir = dirname($plansPath);
-    $meta = json_decode(file_get_contents($plansPath), true, 512, JSON_THROW_ON_ERROR);
-    $recipe = json_decode(file_get_contents($dir . '/plan-cases.json'), true, 512, JSON_THROW_ON_ERROR);
+    $recipe = json_decode(file_get_contents($plansPath), true, 512, JSON_THROW_ON_ERROR);
     $physical = json_decode(file_get_contents($dir . '/plans-physical.json'), true, 512, JSON_THROW_ON_ERROR)['cases'];
-    if ($meta['version'] !== 1 || ($recipe['cases'] ?? []) === []) {
+    if ($recipe['version'] !== 1 || ($recipe['cases'] ?? []) === []) {
         throw new RuntimeException("$plansPath has no version 1 plan cases");
     }
     $cases = [];
@@ -46,14 +45,14 @@ function plan_vectors_at(string $plansPath): array
 }
 
 /**
- * The vectors of tests/dbspec/plans.json (plan_vectors_at of the repository's file), read once per process.
+ * The vectors of tests/dbspec/plan-cases.json (plan_vectors_at of the repository's file), read once per process.
  *
  * @return array{version: int, cases: list<array<string, mixed>>}
  */
 function plan_vectors(): array
 {
     static $vectors = null;
-    return $vectors ??= plan_vectors_at(dirname(__DIR__, 3) . '/tests/dbspec/plans.json');
+    return $vectors ??= plan_vectors_at(dirname(__DIR__, 3) . '/tests/dbspec/plan-cases.json');
 }
 
 /** @param list<string> $lines */

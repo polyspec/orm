@@ -1,5 +1,5 @@
 // dbspec schema plans on MySQL, PostgreSQL and SQLite (docs/spec/plans.md
-// "Verification"). Every case of tests/dbspec/plans.json is applied to an
+// "Verification"). Every case of tests/dbspec/plan-cases.json is applied to an
 // empty database, schema or file: the source rendered by renderDbspec, the
 // before steps and the planSteps steps before finalize (SQLite with foreign
 // keys off, then PRAGMA foreign_key_check returns no row), after which
@@ -33,9 +33,9 @@ if (!mysqlDSN || !postgresDSN) throw new Error('ORM_TEST_MYSQL_DSN and ORM_TEST_
 const text = lines => lines.join('\n') + '\n';
 
 // vector runs one case with its own deadline and reports its start, result
-// and elapsed time.
+// and elapsed time. A case runs its dialects in turn, so its deadline is TIMEOUT for each dialect.
 function vector(name, body) {
-  caseTest(name, TIMEOUT, body);
+  caseTest(name, TIMEOUT * DIALECTS.length, body);
 }
 
 const withDatabase = createDbspecPhysicalDatabaseRunner({ namePrefix: 'plan', mysqlDSN, postgresDSN });
@@ -60,13 +60,13 @@ async function runSteps(session, dialect, steps) {
   }
 }
 
-const cases = readPlanCases(new URL('tests/dbspec/plans.json', root).pathname);
+const cases = readPlanCases(new URL('tests/dbspec/plan-cases.json', root).pathname);
 assert(cases.length > 0, 'plan cases');
-let runs = 0;
 
+// Requirements: PLN-102.
 for (const c of cases) {
-  for (const dialect of DIALECTS) {
-    vector(`${dialect}.plan.${c.id}`, async () => {
+  vector(c.id, async () => {
+    for (const dialect of DIALECTS) {
       const parsed = parsePlan(text(c.plan));
       assert.deepEqual(parsed.diagnostics, [], 'plan diagnostics');
       const target = dbspecManifest([parsed.plan.schema]).manifest.schemaText;
@@ -134,13 +134,6 @@ for (const c of cases) {
         }[dialect];
         assert.equal(await firstValue(session, hidden), '0', 'hidden tables and columns after finalize');
       });
-      runs++;
-    });
-  }
+    }
+  });
 }
-
-// Requirements: PLN-102.
-vector('every plan case runs on every dialect', () => {
-  assert.equal(runs, cases.length * DIALECTS.length);
-  console.log(`plan runs: ${runs} (${cases.length} cases on ${DIALECTS.length} dialects)`);
-});

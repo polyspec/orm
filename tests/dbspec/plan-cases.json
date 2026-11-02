@@ -1,5 +1,7 @@
 {
   "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "version": 1,
+  "note": "The cases of the plan vectors are this recipe, and their database data is tests/dbspec/plans-physical.json keyed by case id. The validation sections are the recipes plan-invalid.json, plan-chains.json, plan-parse.json and plan-comparisons.json, beside this file.",
   "requirements": [
     "PLN-45",
     "PLN-46",

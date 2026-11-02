@@ -14,6 +14,14 @@
       "type": "string",
       "pattern": "(^|/)recipe\\.schema\\.json$"
     },
+    "version": {
+      "const": 1,
+      "description": "The version of a recipe that carries its own vector note (tests/dbspec/plan-cases.json)."
+    },
+    "note": {
+      "type": "string",
+      "description": "The note of a recipe that carries its own vector note (tests/dbspec/plan-cases.json)."
+    },
     "requirements": {
       "$ref": "#/$defs/requirements"
     },

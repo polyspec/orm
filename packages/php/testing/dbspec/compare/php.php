@@ -6,7 +6,7 @@ declare(strict_types=1);
 // results, written in the line format of tests/dbspec/compare/check.mts. It then prints the positions cases of
 // cases.json and the analysis and format of each case of syntax.json.
 //
-// Usage: php packages/php/testing/dbspec/compare/php.php <cases.json> <stress document> <ddl.json> <plans.json>
+// Usage: php packages/php/testing/dbspec/compare/php.php <cases.json> <stress document> <ddl.json> <plan-cases.json>
 // <mermaid.json> <syntax.json>
 
 require __DIR__ . '/../../../../../vendor-php/autoload.php';
@@ -20,7 +20,7 @@ if ($argc !== 7) {
     fwrite(
         STDERR,
         "usage: php packages/php/testing/dbspec/compare/php.php <cases.json> <stress document> <ddl.json> "
-        . "<plans.json> <mermaid.json> <syntax.json>\n"
+        . "<plan-cases.json> <mermaid.json> <syntax.json>\n"
     );
     exit(2);
 }

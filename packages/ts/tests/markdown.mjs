@@ -11,10 +11,19 @@ import { Db, OrmError } from '../dist/index.js';
 import { parseDsn } from '../dist/driver.js';
 import { beginLine, markdownParam } from '../dist/markdown.js';
 import { checkAssign, checkParam, transformParam } from '../dist/bind_check.js';
+import * as publicIndex from '../dist/index.js';
 import { readFileSync } from 'node:fs';
 
 const token = '0123456789abcdef0123456789abcdef';
 const connectLine = `{"op":"connect","corpus":"tracker","token":"${token}"}`;
+
+// D1 (T334-3-17-1): the bind-check transforms that Go, PHP, Python and Rust call publicly are public from the package entry.
+if (typeof publicIndex.fulltextBoolean !== 'function' || typeof publicIndex.transformParam !== 'function') {
+  throw new Error('D1: packages/ts/src/index.ts does not export fulltextBoolean and transformParam');
+}
+if (publicIndex.transformParam('fulltext_boolean', 'alpha beta') !== '+alpha +beta*') {
+  throw new Error('D1: the public transformParam does not transform fulltext_boolean');
+}
 
 /**
  * A fake server that records the messages of one connection and writes the answers from answers in order. received holds the lines

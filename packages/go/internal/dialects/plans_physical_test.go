@@ -20,7 +20,7 @@ var hiddenLeft = map[string]string{
 	"sqlite":   "SELECT COUNT(*) FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type = 'table' AND (m.name LIKE 'dbspec$%' OR p.name LIKE 'dbspec$%')",
 }
 
-// planStep is the step object of plans.json (docs/spec/plans.md "Steps").
+// planStep is the step object of plan-cases.json (docs/spec/plans.md "Steps").
 type planStep struct {
 	Statement    string `json:"statement"`
 	Rollback     string `json:"rollback"`
@@ -51,144 +51,144 @@ func TestPlanApply(t *testing.T) {
 	servers := openTestServers(t, mysqlDSN, postgresDSN, "plan"+strconv.Itoa(os.Getpid()))
 	index := 0
 	for _, c := range cases {
-		record, ok := physical[c.ID]
-		if !ok {
-			t.Fatalf("%s: no physical record in plans-physical.json", c.ID)
-		}
-		var before, after []ddlStep
-		if err := json.Unmarshal(record.Before, &before); err != nil {
-			t.Fatalf("%s before: %v", c.ID, err)
-		}
-		if err := json.Unmarshal(record.After, &after); err != nil {
-			t.Fatalf("%s after: %v", c.ID, err)
-		}
-		p, diagnostics := dbspec.ParsePlan(strings.Join(c.Plan, "\n") + "\n")
-		if len(diagnostics) > 0 {
-			t.Fatalf("%s: %v", c.ID, diagnostics)
-		}
-		target, _ := dbspec.ManifestOf([]*dbspec.Document{p.Schema})
-		var source []*dbspec.Document
-		sourceText := ""
-		if c.Source != nil {
-			d, _, diagnostics := dbspec.Parse(strings.Join(c.Source, "\n")+"\n", nil)
+		t.Run(c.ID, func(t *testing.T) {
+			record, ok := physical[c.ID]
+			if !ok {
+				t.Fatalf("%s: no physical record in plans-physical.json", c.ID)
+			}
+			var before, after []ddlStep
+			if err := json.Unmarshal(record.Before, &before); err != nil {
+				t.Fatalf("%s before: %v", c.ID, err)
+			}
+			if err := json.Unmarshal(record.After, &after); err != nil {
+				t.Fatalf("%s after: %v", c.ID, err)
+			}
+			p, diagnostics := dbspec.ParsePlan(strings.Join(c.Plan, "\n") + "\n")
 			if len(diagnostics) > 0 {
 				t.Fatalf("%s: %v", c.ID, diagnostics)
 			}
-			source = []*dbspec.Document{d}
-			m, _ := dbspec.ManifestOf(source)
-			sourceText = m.SchemaText
-		}
-		for _, db := range []string{"mysql", "postgres", "sqlite"} {
-			var setup []string
-			if source != nil {
-				setup, diagnostics = dbspec.Render(source, dbspec.Dialect(db))
+			target, _ := dbspec.ManifestOf([]*dbspec.Document{p.Schema})
+			var source []*dbspec.Document
+			sourceText := ""
+			if c.Source != nil {
+				d, _, diagnostics := dbspec.Parse(strings.Join(c.Source, "\n")+"\n", nil)
 				if len(diagnostics) > 0 {
 					t.Fatalf("%s: %v", c.ID, diagnostics)
 				}
+				source = []*dbspec.Document{d}
+				m, _ := dbspec.ManifestOf(source)
+				sourceText = m.SchemaText
 			}
-			var planSteps []planStep
-			if raw, ok := c.Steps[db]; ok {
-				if err := json.Unmarshal(raw, &planSteps); err != nil {
-					t.Fatalf("%s %s steps: %v", c.ID, db, err)
+			for _, db := range []string{"mysql", "postgres", "sqlite"} {
+				var setup []string
+				if source != nil {
+					setup, diagnostics = dbspec.Render(source, dbspec.Dialect(db))
+					if len(diagnostics) > 0 {
+						t.Fatalf("%s: %v", c.ID, diagnostics)
+					}
 				}
-			}
-			reversible := true
-			for _, s := range planSteps {
-				if !s.Finalize && s.Rollback == "" {
-					reversible = false
+				var planSteps []planStep
+				if raw, ok := c.Steps[db]; ok {
+					if err := json.Unmarshal(raw, &planSteps); err != nil {
+						t.Fatalf("%s %s steps: %v", c.ID, db, err)
+					}
 				}
-			}
-			steps := func(e *Env, steps []ddlStep) {
-				runDDLSteps(e, db, steps)
-			}
-			// schemaIs checks that the introspected schema text is want.
-			schemaIs := func(e *Env, what, want string) {
-				if e.Err != nil {
-					return
-				}
-				document, unsupported, err := dbspec.Introspect(e.Ctx, e.Conn, dbspec.Dialect(db), "introspected")
-				if err != nil {
-					e.fail("introspect %s: %v", what, err)
-					return
-				}
-				if len(unsupported) > 0 {
-					e.fail("unsupported %s: %+v", what, unsupported)
-					return
-				}
-				got := schemaTextOf(document)
-				if got != want {
-					e.fail("%s schema text differs\n--- want\n%s--- got\n%s", what, want, got)
-				}
-			}
-			// forward runs the steps before finalize. If it is restore, the step with the restore statement
-			// runs it (there is an added column that rollback hid).
-			forward := func(e *Env, restore bool) {
+				reversible := true
 				for _, s := range planSteps {
-					if s.Finalize {
-						break
-					}
-					if restore && s.Restore != "" {
-						e.Exec(s.Restore)
-					} else {
-						e.Exec(s.Statement)
+					if !s.Finalize && s.Rollback == "" {
+						reversible = false
 					}
 				}
-				if db == "sqlite" {
-					e.Want("SELECT COUNT(*) FROM pragma_foreign_key_check", "0")
+				steps := func(e *Env, steps []ddlStep) {
+					runDDLSteps(e, db, steps)
 				}
-			}
-			probe := Probe{ID: db + ".plan." + strings.ReplaceAll(c.ID, "-", "_"), DB: db, Fact: "plan " + c.ID + " applies, rolls back and reaches its target", Run: func(e *Env) {
-				e.Exec(connectionRules[db]...)
-				e.Exec(setup...)
-				steps(e, before)
-				// SQLite turns off foreign keys while re-creating a table, and checks them afterward.
-				if db == "sqlite" {
-					e.Exec("PRAGMA foreign_keys = OFF", "PRAGMA legacy_alter_table = OFF")
+				// schemaIs checks that the introspected schema text is want.
+				schemaIs := func(e *Env, what, want string) {
+					if e.Err != nil {
+						return
+					}
+					document, unsupported, err := dbspec.Introspect(e.Ctx, e.Conn, dbspec.Dialect(db), "introspected")
+					if err != nil {
+						e.fail("introspect %s: %v", what, err)
+						return
+					}
+					if len(unsupported) > 0 {
+						e.fail("unsupported %s: %+v", what, unsupported)
+						return
+					}
+					got := schemaTextOf(document)
+					if got != want {
+						e.fail("%s schema text differs\n--- want\n%s--- got\n%s", what, want, got)
+					}
 				}
-				forward(e, false)
-				schemaIs(e, "applied", target.SchemaText)
-				if reversible {
-					for i := len(planSteps) - 1; i >= 0; i-- {
-						switch {
-						case planSteps[i].Finalize:
-						case planSteps[i].RollbackRestore != "":
-							e.Exec(planSteps[i].RollbackRestore)
-						default:
-							e.Exec(planSteps[i].Rollback)
+				// forward runs the steps before finalize. If it is restore, the step with the restore statement
+				// runs it (there is an added column that rollback hid).
+				forward := func(e *Env, restore bool) {
+					for _, s := range planSteps {
+						if s.Finalize {
+							break
+						}
+						if restore && s.Restore != "" {
+							e.Exec(s.Restore)
+						} else {
+							e.Exec(s.Statement)
 						}
 					}
 					if db == "sqlite" {
 						e.Want("SELECT COUNT(*) FROM pragma_foreign_key_check", "0")
 					}
-					schemaIs(e, "rolled back", sourceText)
-					forward(e, true)
-					schemaIs(e, "applied again", target.SchemaText)
 				}
-				if db == "sqlite" {
-					e.Exec("PRAGMA foreign_keys = ON")
-				}
-				steps(e, after)
-				// finalize also turns off SQLite foreign keys and runs, as apply does. Hidden tables
-				// can reference each other.
-				if db == "sqlite" {
-					e.Exec("PRAGMA foreign_keys = OFF")
-				}
-				for _, s := range planSteps {
-					if s.Finalize {
-						e.Exec(s.Statement)
+				probe := Probe{ID: db + ".plan." + strings.ReplaceAll(c.ID, "-", "_"), DB: db, Fact: "plan " + c.ID + " applies, rolls back and reaches its target", Run: func(e *Env) {
+					e.Exec(connectionRules[db]...)
+					e.Exec(setup...)
+					steps(e, before)
+					// SQLite turns off foreign keys while re-creating a table, and checks them afterward.
+					if db == "sqlite" {
+						e.Exec("PRAGMA foreign_keys = OFF", "PRAGMA legacy_alter_table = OFF")
 					}
-				}
-				if db == "sqlite" {
-					e.Want("SELECT COUNT(*) FROM pragma_foreign_key_check", "0")
-					e.Exec("PRAGMA foreign_keys = ON")
-				}
-				schemaIs(e, "finalized", target.SchemaText)
-				e.Want(hiddenLeft[db], "0")
-			}}
-			index++
-			t.Run(probe.ID, func(t *testing.T) {
+					forward(e, false)
+					schemaIs(e, "applied", target.SchemaText)
+					if reversible {
+						for i := len(planSteps) - 1; i >= 0; i-- {
+							switch {
+							case planSteps[i].Finalize:
+							case planSteps[i].RollbackRestore != "":
+								e.Exec(planSteps[i].RollbackRestore)
+							default:
+								e.Exec(planSteps[i].Rollback)
+							}
+						}
+						if db == "sqlite" {
+							e.Want("SELECT COUNT(*) FROM pragma_foreign_key_check", "0")
+						}
+						schemaIs(e, "rolled back", sourceText)
+						forward(e, true)
+						schemaIs(e, "applied again", target.SchemaText)
+					}
+					if db == "sqlite" {
+						e.Exec("PRAGMA foreign_keys = ON")
+					}
+					steps(e, after)
+					// finalize also turns off SQLite foreign keys and runs, as apply does. Hidden tables
+					// can reference each other.
+					if db == "sqlite" {
+						e.Exec("PRAGMA foreign_keys = OFF")
+					}
+					for _, s := range planSteps {
+						if s.Finalize {
+							e.Exec(s.Statement)
+						}
+					}
+					if db == "sqlite" {
+						e.Want("SELECT COUNT(*) FROM pragma_foreign_key_check", "0")
+						e.Exec("PRAGMA foreign_keys = ON")
+					}
+					schemaIs(e, "finalized", target.SchemaText)
+					e.Want(hiddenLeft[db], "0")
+				}}
+				index++
 				runProbeCase(t, servers, probe, index, fmt.Sprintf("%d steps, reversible %v", len(planSteps), reversible))
-			})
-		}
+			}
+		})
 	}
 }

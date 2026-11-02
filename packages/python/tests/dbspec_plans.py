@@ -9,13 +9,13 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 def plan_cases(plans_path: Path | str | None = None) -> list:
-    """The cases of plan-cases.json beside plans.json (default: tests/dbspec/plans.json), each with its physical records."""
+    """The cases of plan-cases.json (default: tests/dbspec/plan-cases.json), each with its physical records."""
     plans = (
         Path(plans_path)
         if plans_path is not None
-        else ROOT / "tests" / "dbspec" / "plans.json"
+        else ROOT / "tests" / "dbspec" / "plan-cases.json"
     )
-    recipe = json.loads((plans.parent / "plan-cases.json").read_text())
+    recipe = json.loads(plans.read_text())
     physical = json.loads((plans.parent / "plans-physical.json").read_text())["cases"]
     cases = []
     for rc in recipe["cases"]:

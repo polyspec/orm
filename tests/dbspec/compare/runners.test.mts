@@ -143,10 +143,10 @@ caseTest('the unchanged vectors run in every runner', TIMEOUT, async () => {
   }
 });
 
-// plans.json holds the note and the requirements. Its cases are the recipe plan-cases.json, and its physical records are
+// plan-cases.json holds the note and the requirements. Its cases are the recipe plan-cases.json, and its physical records are
 // plans-physical.json; the validation sections are recipes beside it. Their shape is the recipe schema's
 // (scripts/features/schema/recipe.schema.json), which readPlanCases checks in every runner, and the plans mutations above cover
-// plans.json itself.
+// plan-cases.json itself.
 // The runner rejects invalid vectors in the vector files it reads (reads in runners.mts).
 mutations.forEach((mutation, index) => {
   const { path, location, inputs } = inputsWith(index, mutation);

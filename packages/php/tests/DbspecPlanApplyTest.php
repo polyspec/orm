@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-// Applies every case of tests/dbspec/plans.json to MySQL, PostgreSQL and
+// Applies every case of tests/dbspec/plan-cases.json to MySQL, PostgreSQL and
 // SQLite through Polyspec\Orm\Dbspec\Dbspec (docs/spec/plans.md "Verification"): a fresh
 // database, schema or file per run renders and applies the source, runs the
 // `before` steps, runs the plan steps before finalize (on SQLite with
@@ -136,7 +136,7 @@ class DbspecPlanApplyTest extends TestCase
                 break;
             }
         }
-        self::assertNotNull($case, 'plans.json includes create-from-empty');
+        self::assertNotNull($case, 'plan-cases.json includes create-from-empty');
         $parsed = Dbspec::parsePlan(dbspec_plan_text($case['plan']));
         $plan = $parsed->plan ?? plan_failure('create-from-empty', $parsed->diagnostics);
         $pdo = new PDO('sqlite::memory:', options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
@@ -160,15 +160,21 @@ class DbspecPlanApplyTest extends TestCase
     public static function planCases(): iterable
     {
         foreach (plan_vectors()['cases'] as $case) {
-            foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
-                yield "plan/$dialect/{$case['id']}" => [$case, $dialect];
-            }
+            yield $case['id'] => [$case];
         }
     }
 
     // Requirements: PLN-102.
     #[DataProvider('planCases')]
-    public function testPlan(array $case, string $dialect): void
+    public function testPlan(array $case): void
+    {
+        foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
+            $this->applyPlan($case, $dialect);
+        }
+    }
+
+    // applyPlan applies one case to one dialect: the source, the steps, the rollback and the finalize, checked at each step.
+    private function applyPlan(array $case, string $dialect): void
     {
         $parsed = Dbspec::parsePlan(dbspec_plan_text($case['plan']));
         $plan = $parsed->plan ?? plan_failure($case['id'], $parsed->diagnostics);

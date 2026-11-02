@@ -4,9 +4,11 @@
     "$schema",
     "cases",
     "fixture",
+    "note",
     "requirements",
     "schema",
-    "seed"
+    "seed",
+    "version"
   ],
   "case": [
     "id",

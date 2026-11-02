@@ -587,13 +587,13 @@ typescript-conditional-entry-helper-check:
 typescript-database-case-fixture-helper-check: typescript-build
 	$(RUN_TESTS) node -- --test packages/ts/tests/database-case-fixture.test.mjs
 
-# dbspec-plan-check applies the steps of every case of tests/dbspec/plans.json to MySQL, PostgreSQL, and SQLite,
+# dbspec-plan-check applies the steps of every case of tests/dbspec/plan-cases.json to MySQL, PostgreSQL, and SQLite,
 # and requires the plan's target, the source via rollback statements, the target after applying again, and the target after finalize, and
 # no hidden names (docs/spec/plans.md "Verification").
 .PHONY: dbspec-plan-check
 dbspec-plan-check:
 
-# dbspec-plan-python-check applies every case of tests/dbspec/plans.json to MySQL, PostgreSQL and SQLite with the Python client (packages/python/tests/dbspec_plan_physical.py).
+# dbspec-plan-python-check applies every case of tests/dbspec/plan-cases.json to MySQL, PostgreSQL and SQLite with the Python client (packages/python/tests/dbspec_plan_physical.py).
 .PHONY: dbspec-plan-python-check
 dbspec-plan-python-check: python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_plan_physical
@@ -660,7 +660,7 @@ dbspec-apply-pairs-check: go-test-check
 dbspec-apply-rust-check:
 	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) dbspec-apply-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply -- --nocapture
 
-# dbspec-plan-ts-check builds the TypeScript client and applies every case of tests/dbspec/plans.json to MySQL, PostgreSQL, and SQLite
+# dbspec-plan-ts-check builds the TypeScript client and applies every case of tests/dbspec/plan-cases.json to MySQL, PostgreSQL, and SQLite
 # with its renderDbspec, planSteps, and introspectDbspec.
 .PHONY: dbspec-plan-ts-check
 dbspec-plan-ts-check: lease-tool orm-codes-typescript
@@ -718,7 +718,7 @@ dbspec-introspect-compare-bench:
 	$(MAKE) --no-print-directory dbspec-introspect-compare-check DBSPEC_INTROSPECT_TABLES=2000 DBSPEC_INTROSPECT_PROFILE=release
 
 # dbspec-compare-check runs the Go, PHP, TypeScript, and Rust dbspec runners and the PHP extension polyspec_orm runner over tests/dbspec/cases.json,
-# the stress document (DBSPEC_COMPARE_TABLES tables), tests/dbspec/ddl.json, tests/dbspec/plans.json, tests/dbspec/mermaid.json,
+# the stress document (DBSPEC_COMPARE_TABLES tables), tests/dbspec/ddl.json, tests/dbspec/plan-cases.json, tests/dbspec/mermaid.json,
 # and tests/dbspec/syntax.json,
 # each twice; the two runs' outputs fail at the first differing case. The runs also print the declaration positions of
 # the positions cases of cases.json and, for each case of syntax.json, the tokens and the format of the input of
@@ -819,7 +819,7 @@ python-interface-unit-check: python-venv-check
 python-coverage-case-check: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.coverage_case_test
 # dbspec-python-check is the Python verification of schema_definition (contracts/features.json schema-python): the shared
-# vectors of tests/dbspec (cases.json and its files, ddl.json, plans.json and its SQLite apply chain, mermaid.json, syntax.json, show-create.json and
+# vectors of tests/dbspec (cases.json and its files, ddl.json, plan-cases.json and its SQLite apply chain, mermaid.json, syntax.json, show-create.json and
 # set-files.json) and the unit tests of syntax analysis, formatting and the set reader.
 .PHONY: dbspec-python-check
 dbspec-python-check: python-venv-check
@@ -841,7 +841,7 @@ dbspec-compare-check/runners: dbspec-compare-check/prepare
 dbspec-compare-check/inputs: dbspec-compare-check/prepare
 	CARGO_TARGET_DIR=$(RUN_TARGET) POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PHP_MODE=extension ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) $(NODE) --test tests/dbspec/inputs.test.mts
 dbspec-compare-check/compare: dbspec-compare-check/prepare
-	CARGO_TARGET_DIR=$(RUN_TARGET) POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PHP_MODE=extension ORM_PYTHON=$(PYTHON_VENV)/bin/python $(NODE) tests/dbspec/compare/check.mts tests/dbspec/cases.json $(DBSPEC_COMPARE_DOCUMENT) tests/dbspec/ddl.json tests/dbspec/plans.json tests/dbspec/mermaid.json tests/dbspec/syntax.json
+	CARGO_TARGET_DIR=$(RUN_TARGET) POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PHP_MODE=extension ORM_PYTHON=$(PYTHON_VENV)/bin/python $(NODE) tests/dbspec/compare/check.mts tests/dbspec/cases.json $(DBSPEC_COMPARE_DOCUMENT) tests/dbspec/ddl.json tests/dbspec/plan-cases.json tests/dbspec/mermaid.json tests/dbspec/syntax.json
 
 dbspec-compare-bench:
 	$(MAKE) --no-print-directory dbspec-compare-check DBSPEC_COMPARE_TABLES=2000
@@ -936,7 +936,7 @@ rust-send-savepoint-check/test:
 
 .PHONY: dbspec-php-check
 # dbspec-php-check runs twice each: the shared dbspec vectors, the PHP rules, the statement vectors of tests/dbspec/ddl.json,
-# the plan vectors of tests/dbspec/plans.json, the Mermaid vectors of tests/dbspec/mermaid.json, and the apply cleanup errors injected through a wrapped SQLite
+# the plan vectors of tests/dbspec/plan-cases.json, the Mermaid vectors of tests/dbspec/mermaid.json, and the apply cleanup errors injected through a wrapped SQLite
 # connection, each twice. The stress document is run by make
 # bench.
 dbspec-php-check: dbspec-php-check/documents dbspec-php-check/graph dbspec-php-check/behaviour dbspec-php-check/show-create-introspect dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode dbspec-php-check/show-create dbspec-php-check/analyze dbspec-php-check/set dbspec-php-check/set-parse
@@ -1234,7 +1234,7 @@ dbspec-php-extension-check/analyze: php-vendor-check dbspec-php-extension-check/
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecAnalyzeTest.php; \
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecAnalyzeTest.php; \
 	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecRulesNativeTest.php
-# dbspec-php-extension-check/plan runs DbspecPlanTest with the extension: the plan vectors of tests/dbspec/plans.json.
+# dbspec-php-extension-check/plan runs DbspecPlanTest with the extension: the plan vectors of tests/dbspec/plan-cases.json.
 dbspec-php-extension-check/plan: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecPlanTest.php
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecPlanTest.php
@@ -1246,7 +1246,7 @@ dbspec-php-extension-check/mermaid: php-vendor-check dbspec-php-extension-check/
 dbspec-php-extension-check/apply-cleanup: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecApplyCleanupTest.php
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecApplyCleanupTest.php
-# dbspec-php-extension-check/plan-apply runs DbspecPlanApplyTest with the extension: every plan case of tests/dbspec/plans.json applied to MySQL, PostgreSQL and SQLite.
+# dbspec-php-extension-check/plan-apply runs DbspecPlanApplyTest with the extension: every plan case of tests/dbspec/plan-cases.json applied to MySQL, PostgreSQL and SQLite.
 dbspec-php-extension-check/plan-apply: php-vendor-check dbspec-php-extension-check/prepare
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/DbspecPlanApplyTest.php
 # dbspec-php-extension-check/show-create runs DbspecShowCreateIntrospectTest with the extension: introspection of the canned MySQL catalog of tests/dbspec/show-create.json.

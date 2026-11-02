@@ -1,6 +1,6 @@
 // dbspec plan apply on MySQL, PostgreSQL and SQLite (docs/spec/plans.md "Apply"):
 // the chain of create-from-empty and rename-table-and-column of
-// tests/dbspec/plans.json with its history and a second apply, drift, the
+// tests/dbspec/plan-cases.json with its history and a second apply, drift, the
 // lock of a second session, an apply to a second database, schema or file
 // while the first holds its lock, the empty chain, an unlock that released
 // nothing on PostgreSQL, a verify failure, for every step of the
@@ -55,15 +55,15 @@ async function stressPlan() {
   return parse('stress', `dbplan 1 stress\nfrom empty\n\n${schema}`);
 }
 
-const cases = new Map(readPlanCases(new URL('tests/dbspec/plans.json', root).pathname).map(c => [c.id, c]));
+const cases = new Map(readPlanCases(new URL('tests/dbspec/plan-cases.json', root).pathname).map(c => [c.id, c]));
 function parse(id, text) {
   const parsed = parsePlan(text);
   assert.deepEqual(parsed.diagnostics, [], `${id} diagnostics`);
   return parsed.plan;
 }
-// plans is create-from-empty from plans.json and rename-table-and-column, which starts from its target.
+// plans is create-from-empty from plan-cases.json and rename-table-and-column, which starts from its target.
 const plans = ['create-from-empty', 'rename-table-and-column'].map(id => parse(id, cases.get(id).plan.join('\n') + '\n'));
-assert(plans[1].from === plans[0].to, 'plans.json does not chain create-from-empty and rename-table-and-column');
+assert(plans[1].from === plans[0].to, 'plan-cases.json does not chain create-from-empty and rename-table-and-column');
 // caseChain is a chain made of the first plan base that creates the case's source, and the case's plan.
 function caseChain(id) {
   const c = cases.get(id);

@@ -1,11 +1,11 @@
-//! Applies the chain of the plan cases beside plans.json (tests/dbspec/plan-cases.json) (create-from-empty and
+//! Applies the chain of the plan cases of plan-cases.json (tests/dbspec/plan-cases.json) (create-from-empty and
 //! rename-table-and-column) to one database with the Rust client
 //! (docs/spec/plans.md "Apply"). The action is apply-first (first plan only), apply (whole chain),
 //! stop (halts after statement 1 of the second plan runs), recover (continues an interrupted plan
 //! to the end), rollback (reverts the last plan in history). One result line goes to stdout: "ok", "stopped", or
 //! "error <code>". Any other error is written to stderr and the process exits with 1.
 //!
-//! Usage: dbspec_apply <apply-first|apply|stop|recover|rollback|lock-wait> <mysql|postgres|sqlite> <uri> <plans.json>
+//! Usage: dbspec_apply <apply-first|apply|stop|recover|rollback|lock-wait> <mysql|postgres|sqlite> <uri> <plan-cases.json>
 
 use chrono::{DateTime, TimeZone, Utc};
 use polyspec_orm::dbspec::{
@@ -29,7 +29,7 @@ use apply_stop::{record_steps, EventError, Stop};
 async fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let [action, dialect, uri, vectors] = args.as_slice() else {
-        eprintln!("usage: dbspec_apply <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>");
+        eprintln!("usage: dbspec_apply <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plan-cases.json>");
         std::process::exit(2);
     };
     match run(action, dialect, uri, vectors).await {
@@ -192,7 +192,7 @@ fn combine_cleanup(result: Result<String, String>, cleanup: Result<(), String>) 
     }
 }
 
-/// The plan cases of the recipe beside the plans.json at the path (tests/dbspec/plan-cases.json).
+/// The plan cases of the recipe of the plan-cases.json at the path (tests/dbspec/plan-cases.json).
 fn dir_beside(path: &str) -> &Path {
     Path::new(path).parent().unwrap_or(Path::new("."))
 }

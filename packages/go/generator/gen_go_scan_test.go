@@ -88,7 +88,7 @@ func Brands() *model.ProductModel {
 }
 
 // Requirements: DSL-116.
-func TestStoredColumnNameIsNotGeneratedAsNewMethod(t *testing.T) {
+func TestStoredColumnNameIsRejectedThroughExportedGenerate(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	write := scannedModule(t)
 	write("example/example.go", `package example
@@ -98,10 +98,10 @@ import "example.com/ormexample/model"
 func Invalid() *model.ProductModel { return model.Product().NewName("x") }
 `)
 	m := namesManifest(t, namesDiagram)
-	if err := generateGo(m, "model", "", nil); err != nil {
+	if err := Generate(Options{Model: m, OutputDir: "model"}); err != nil {
 		t.Fatal(err)
 	}
-	err := generateGo(m, "model", "", []string{"./..."})
+	err := Generate(Options{Model: m, OutputDir: "model", Scan: []string{"./..."}})
 	if err == nil || !strings.Contains(err.Error(), "Name is a column; use SetName") {
 		t.Fatalf("stored-column NewName call error = %v, want column rejection", err)
 	}

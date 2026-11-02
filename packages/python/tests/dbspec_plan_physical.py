@@ -1,5 +1,5 @@
 # dbspec schema plans on MySQL, PostgreSQL and SQLite (docs/spec/plans.md "Verification"), with the Python client. Every
-# case of tests/dbspec/plans.json is applied to an empty database, schema or file: the source rendered by render_dbspec,
+# case of tests/dbspec/plan-cases.json is applied to an empty database, schema or file: the source rendered by render_dbspec,
 # the before steps and the plan_steps steps before finalize (SQLite with foreign keys off, then PRAGMA foreign_key_check
 # returns no row), after which introspect_dbspec reads the plan's target with nothing unsupported; without an
 # irreversible step the rollback statements return to the source schema text and the steps run again; then the after
@@ -7,11 +7,11 @@
 # The same checks as packages/ts/tests/dbspec-plan-physical.mjs. make dbspec-plan-python-check runs this file.
 import os
 import tempfile
-import unittest
 
 from . import testcase
 from .dbspec_introspect import CONNECTION_RULES, case_database
 from .dbspec_plans import plan_cases
+from .vector_case import VectorCase, vector_load_tests
 from .runner_connect import Adapter
 
 from polyspec.orm.dbspec import dbspec_manifest, parse_dbspec, render_dbspec
@@ -151,8 +151,14 @@ def check_plan_case(case, dialect, dsns, sqlite_dir, index):
         )
 
 
-class DbspecPlanPhysicalTest(unittest.TestCase):
-    """Every case of tests/dbspec/plans.json runs on every dialect; the failures of all runs are reported together."""
+# The plan cases, one unittest case each, named by its case id (vector_case.py). A case runs on each of the three dialects in turn.
+cases = plan_cases()
+INDEX = {case["id"]: index for index, case in enumerate(cases)}
+
+
+# Requirements: PLN-94, PLN-102.
+class PhysicalCase(VectorCase):
+    """A plan case run by check_physical. The SQLite files of its runs live in one directory of the class."""
 
     @classmethod
     def setUpClass(cls):
@@ -162,34 +168,31 @@ class DbspecPlanPhysicalTest(unittest.TestCase):
     def tearDownClass(cls):
         cls.sqlite_dir.cleanup()
 
-    # Requirements: PLN-94, PLN-102.
-    def test_every_plan_case_runs_on_every_dialect(self):
-        cases = plan_cases()
-        self.assertTrue(cases, "plan cases")
-        dsns = {
-            "mysql": os.environ.get("ORM_TEST_MYSQL_DSN"),
-            "postgres": os.environ.get("ORM_TEST_POSTGRES_DSN"),
-            "sqlite": None,
-        }
-        for dialect in ("mysql", "postgres"):
-            if not dsns[dialect]:
-                raise SystemExit(
-                    f"ORM_TEST_{dialect.upper()}_DSN is required; pass TEST_ENV"
-                )
-        failures = []
-        runs = 0
-        for index, case in enumerate(cases):
-            for dialect in DIALECTS:
-                try:
-                    check_plan_case(case, dialect, dsns, self.sqlite_dir.name, index)
-                    runs += 1
-                except Exception as error:  # noqa: BLE001 - one failed run does not stop the others; each is reported below
-                    failures.append(f"{dialect}.plan.{case['id']}: {error}")
-        self.assertEqual(
-            [], failures, f"{len(failures)} of {len(cases) * len(DIALECTS)} runs failed"
-        )
-        self.assertEqual(len(cases) * len(DIALECTS), runs)
 
+def check_physical(test, case):
+    """One plan case on every dialect; the failures of all of its runs are reported together."""
+    dsns = {
+        "mysql": os.environ.get("ORM_TEST_MYSQL_DSN"),
+        "postgres": os.environ.get("ORM_TEST_POSTGRES_DSN"),
+        "sqlite": None,
+    }
+    for dialect in ("mysql", "postgres"):
+        if not dsns[dialect]:
+            raise SystemExit(
+                f"ORM_TEST_{dialect.upper()}_DSN is required; pass TEST_ENV"
+            )
+    failures = []
+    for dialect in DIALECTS:
+        try:
+            check_plan_case(case, dialect, dsns, test.sqlite_dir.name, INDEX[case["id"]])
+        except Exception as error:  # noqa: BLE001 - one failed run does not stop the others; each is reported below
+            failures.append(f"{dialect}.plan.{case['id']}: {error}")
+    test.assertEqual(
+        [], failures, f"{len(failures)} of {len(DIALECTS)} runs failed"
+    )
+
+
+load_tests = vector_load_tests(PhysicalCase, cases, check_physical)
 
 if __name__ == "__main__":
     testcase.main()

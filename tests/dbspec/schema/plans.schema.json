@@ -1,15 +1,20 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "tests/dbspec/plans.json",
-  "description": "The plan vectors file: its note and the requirement ids (docs/spec) that the plan recipes of tests/dbspec test. The cases are the recipe plan-cases.json, their database data is plans-physical.json, and the validation sections are the recipes beside this file.",
+  "title": "tests/dbspec/plan-cases.json",
+  "description": "The plan cases file: its version, its note and the requirement ids (docs/spec) that the plan cases test. The cases are the recipe in this file, their database data is plans-physical.json, and the validation sections are the recipes beside this file.",
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "$schema",
     "requirements",
     "version",
-    "note"
+    "note",
+    "cases"
   ],
   "properties": {
+    "$schema": {
+      "type": "string"
+    },
     "version": {
       "const": 1
     },
@@ -25,6 +30,11 @@
         "type": "string",
         "pattern": "^[A-Z]+-[0-9]+$"
       }
+    },
+    "cases": {
+      "description": "The cases, each a recipe case (scripts/features/schema/recipe.schema.json); the recipe reader checks each one.",
+      "type": "array",
+      "minItems": 1
     }
   }
 }
