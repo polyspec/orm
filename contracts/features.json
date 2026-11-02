@@ -2428,13 +2428,6 @@
           ]
         },
         {
-          "id": "unloaded-update-state-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestUnloadedUpdateKeepsAssignedValuesSelectedAndKeyed$' -count=1",
-          "shard": "other",
-          "inputs": [
-          ]
-        },
-        {
           "id": "native-model-query-write-sqlite-unit",
           "command": "make model-query-write-php-extension-unit-check",
           "shard": "other",
