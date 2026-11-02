@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 13c73a92e66f0e8551ddf8c49625e70cb9627010b41aa188f1b1918fdf7b4ab5 -->
+<!-- source-sha256: 05d00d729002c6695e2fcee04aa63062fb3b4e0d8910ca9a2b40604d8cd82e42 -->
 # 변경 이력
 
 ## Unreleased
 
+- TypeScript 패키지가 bind-check 변환 `fulltextBoolean`과 `transformParam`을 진입점에서 export한다. 다른 runtime과 같으므로 fulltext_boolean 변환은 여섯 runtime 모두에서 공개 호출을 가진다 (T334-3-17-1).
 - tests/dbspec/plans.json의 case 13개는 여섯 runtime에서 recipe tests/dbspec/plan-cases.json으로 실행된다. op dbspec.parse, dbspec.parse_plan, dbspec.emit_plan, dbspec.diff, dbspec.plan_steps로 실행하며 native plan test를 대신한다. before와 after physical record는 tests/dbspec/plans-physical.json으로 옮겼고 case id로 찾는다 (T334-3-16-2-2).
 - tests/dbspec/plans.json의 검증 네 section(invalid, chains, parse, comparisons)은 여섯 runtime에서 T334-3-2 형식의 recipe 네 개로 실행된다. op dbspec.parse, dbspec.parse_plan, dbspec.diff, dbspec.chain, dbspec.compare로 실행하며 native plan test를 대신하고, compare 도구는 plans.json 곁의 recipe를 읽는다 (T334-3-16-2-1).
 - planner compile case 86개는 op `planner.compile`로 여섯 runtime에서 recipe tests/planner/compile.json으로 실행된다. native compile test를 대신하며, param_uses case 다섯 개는 contracts/fixtures/planner.json에 남는다 (T334-3-16-1).

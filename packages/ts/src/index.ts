@@ -47,3 +47,4 @@ export type { ChainKey } from './names.js';
 export { orm, ColumnFunction, ValueFunction } from './values.js';
 export * from './models/models.js';
 export * as codes from './codes.js';
+export { fulltextBoolean, transformParam } from './bind_check.js';
