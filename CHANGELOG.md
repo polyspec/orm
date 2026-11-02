@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The Rust tests crate passes clippy with `-D warnings`: its seed reader and its connect step no longer call the disallowed `unwrap_or_default` or `ok` (T326-16).
+- The Rust client renumbers the parameters of a request in the walk order of the Go client before it takes the plan cache key, so a request whose parameters were built in another order gets the Go plan cache slots; the composite and predicate vectors of `contracts/fixtures/plan_cache_composite.json` are tested in `canonical.rs` (T326-15-1).
 - The PHP extension walks the parameters of a predicate in Go's order, the same as the PHP library, so a predicate with both `p` and `fn` gets the plan cache slots of the Go client (T326-15-3).
 - The PHP library walks the parameters of a predicate in Go's order (p, plus_p, minus_p, ps, fn, value, sub) instead of sorted key order, so a predicate with both `p` and `fn` gets the plan cache slots of the Go and TypeScript clients (T326-15-2).
 - The statement events of `tests/events/vectors.json` run as the recipe `contracts/fixtures/statement_events/statement_events.json` in all six clients on MySQL, PostgreSQL and SQLite. The native statement-event suite is removed; the server-transaction tests and the coverage owners stay native (T334-3-5).
