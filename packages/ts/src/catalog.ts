@@ -956,6 +956,14 @@ class Session {
     await this.session.control(sql, [], noop);
   }
 
+  /**
+   * Whether ROLLBACK has a transaction to end. SQLite rolls a transaction back by itself after some errors, such as RAISE(ROLLBACK) or
+   * an I/O error, and a ROLLBACK then fails with "no transaction is active" (INT-155).
+   */
+  public get open(): boolean {
+    return this.dialect !== 'sqlite' || this.session.inTransaction?.() !== false;
+  }
+
   /** Returns the connection to the pool, or closes it when discard is set. */
   public release(discard: boolean): void {
     this.session.release(discard);
@@ -1199,7 +1207,7 @@ export class CatalogConnection {
       if (this.dialect === 'sqlite') {
         // SQLite keeps its one connection when a session is released, so end any transaction left by the unknown COMMIT.
         try {
-          await session.control('ROLLBACK');
+          if (session.open) await session.control('ROLLBACK');
         } catch (rollbackError) {
           rollback = driverError(this.dialect, rollbackError);
           message += `; rollback failed: ${rollback.message}`;
@@ -1220,7 +1228,7 @@ export class CatalogConnection {
     let failure: OrmError | undefined = error === undefined ? undefined : driverError(this.dialect, error);
     if (!session.stopped || this.dialect === 'sqlite') {
       try {
-        await session.control('ROLLBACK');
+        if (session.open) await session.control('ROLLBACK');
       } catch (rollbackError) {
         const rolled = driverError(this.dialect, rollbackError);
         failure = failure === undefined

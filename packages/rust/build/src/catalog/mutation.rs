@@ -230,7 +230,7 @@ impl CatalogConnection {
                 format!("UPDATE {} SET {sets} WHERE {}", qualified(&descriptor, &self.dialect)?, predicate(&descriptor, &self.dialect, changes.len() + 1)?);
             let mut bound = params;
             bound.extend(keys);
-            let affected = connection.exec(&sql, &bound).await.map_err(|e| e.to_string())?;
+            let affected = connection.exec(&sql, &bound).await.map_err(super::catalog_query_error)?;
             // MySQL may report zero changed rows for an exact no-op; post-read is authoritative.
             if affected > 1 || (affected == 0 && self.dialect != "mysql") {
                 return Err("ROW_WRITE_MISMATCH: unexpected affected row count".into());

@@ -297,8 +297,8 @@ mod mysql_code_tests {
 #[cfg(test)]
 mod sqlite_code_tests {
     // sqlite_codes.rs, which orm-gen sqlite-codes generates, names every code of the sqlite_result_codes table of
-    // docs/spec/sqlite-result-codes.yaml and no other code: every other 16-bit code ends a message with its number.
-    // Requirements: INT-154.
+    // docs/spec/sqlite-result-codes.yaml and no other code: every other 16-bit code ends a message with its number. It
+    // checks the generator against its table; the recipe case sqlite_extended_code_names tests the messages.
     #[test]
     fn result_code_names_match_the_table() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

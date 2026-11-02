@@ -99,7 +99,22 @@ function checkRollback(error, subject) {
   }
 }
 
-/** The callback of a transaction fails and the rollback fails. */
+/**
+ * Checks the error of a transaction that the rollback_probe trigger ended: SQLite rolled it back by itself, so the error is the
+ * trigger's, with no rollback failure stacked on it, and no row stayed (INT-155).
+ */
+async function checkSQLiteRolledBack(db, error) {
+  check(error instanceof OrmError && error.code === 'DRIVER', `transaction code ${error?.code}: ${error?.message}`);
+  check(error?.rollback === undefined, `transaction keeps no rollback error: ${error?.rollback?.message}`);
+  const message = String(error?.message);
+  check(message.includes('rollback probe ended the transaction') && message.endsWith(' (SQLITE_CONSTRAINT_TRIGGER)'), `transaction error ${message} is not the trigger's`);
+  check(await new RollbackProbe().connect(db).getCount() === 0, 'the trigger rolled the transaction back and the connection serves later requests');
+}
+
+/**
+ * The session of a transaction ends behind the client. On MySQL and PostgreSQL the server ends it, so the callback fails and the
+ * rollback fails (CFG-15); on SQLite the trigger makes SQLite roll the transaction back, so the trigger's error is reported (INT-155).
+ */
 async function rollbackFailed(driver, dsn) {
   const db = await connect(driver, dsn);
   try {
@@ -108,20 +123,21 @@ async function rollbackFailed(driver, dsn) {
       await endSession(driver, dsn);
       await probe(db, 'end').create();
     }, { retry: 0 }));
-    checkRollback(error, 'transaction');
-    if (driver !== 'sqlite') {
-      // The next statement and rollback on a session the server has ended are connection-lost errors.
-      check(error?.cause?.code === 'CONNECTION_LOST', `the callback error is CONNECTION_LOST: ${error?.cause?.code} ${error?.cause?.message}`);
-      check(error?.rollback?.code === 'CONNECTION_LOST', `the rollback error is CONNECTION_LOST: ${error?.rollback?.code} ${error?.rollback?.message}`);
-    }
     if (driver === 'sqlite') {
-      check(String(error?.cause?.message).includes('rollback probe ended the transaction'), `callback error ${error?.cause?.message}`);
-      check(await new RollbackProbe().connect(db).getCount() === 0, 'the trigger rolled the transaction back and the connection serves later requests');
+      await checkSQLiteRolledBack(db, error);
+      return;
     }
+    checkRollback(error, 'transaction');
+    // The next statement and rollback on a session the server has ended are connection-lost errors.
+    check(error?.cause?.code === 'CONNECTION_LOST', `the callback error is CONNECTION_LOST: ${error?.cause?.code} ${error?.cause?.message}`);
+    check(error?.rollback?.code === 'CONNECTION_LOST', `the rollback error is CONNECTION_LOST: ${error?.rollback?.code} ${error?.rollback?.message}`);
   } finally { await db.close(); }
 }
 
-/** The callback of a savepoint fails and the savepoint rollback fails, and then the transaction rollback fails. */
+/**
+ * The session ends inside a savepoint. On MySQL and PostgreSQL the savepoint rollback and then the transaction rollback fail
+ * (CFG-15); on SQLite the trigger's error is reported (INT-155).
+ */
 async function savepointRollbackFailed(driver, dsn) {
   const db = await connect(driver, dsn);
   try {
@@ -133,9 +149,12 @@ async function savepointRollbackFailed(driver, dsn) {
         await probe(db, 'end').create();
       });
     }, { retry: 0 }));
+    if (driver === 'sqlite') {
+      await checkSQLiteRolledBack(db, error);
+      return;
+    }
     checkRollback(error, 'transaction');
     checkRollback(error?.cause, 'savepoint');
-    if (driver === 'sqlite') check(await new RollbackProbe().connect(db).getCount() === 0, 'the trigger rolled the transaction back and the connection serves later requests');
   } finally { await db.close(); }
 }
 
@@ -179,7 +198,7 @@ async function rollbackFault(driver, dsn) {
   } finally { await db.close(); }
 }
 
-// Requirements: CFG-15.
+// Requirements: CFG-15, INT-155.
 const cases = { rollback_failed: rollbackFailed, savepoint_rollback_failed: savepointRollbackFailed, rollback_fault: rollbackFault };
 registerDatabaseCases({
   feature: 'rollback', cases, deadline: CASE_DEADLINE_MS, withDatabase: withCaseDatabase,

@@ -2160,7 +2160,7 @@ class Db:
         def control(kind: str, sql: str) -> None:
             if self.driver == "markdown":
                 savepoint_markdown(frame, kind, name)
-            else:
+            elif kind == "savepoint" or not self._sqlite_rolled_back(frame):
                 frame.run(sql, [], kind, faultable=False)
 
         def rollback(error):
@@ -2470,6 +2470,12 @@ class Db:
         if connection is not None and frame.pooled:
             self._shared.pool.release(connection, broken or frame.lost)
 
+    def _sqlite_rolled_back(self, frame: TxFrame) -> bool:
+        """Whether SQLite rolled the transaction back by itself, as it does after RAISE(ROLLBACK) or an I/O error. The
+        transaction then has neither savepoints nor anything to roll back, and a ROLLBACK would fail with "no transaction is
+        active" on top of the error that ended it (INT-155)."""
+        return self.driver == "sqlite" and not frame.connection.in_transaction()
+
     def _finish(self, frame: TxFrame, commit: bool) -> None:
         if frame.finished:
             return
@@ -2509,7 +2515,8 @@ class Db:
             if commit and not errors:
                 frame.run("COMMIT", [], "commit", faultable=False)
                 return
-            frame.run(codes.ROLLBACK, [], "rollback", faultable=False)
+            if not self._sqlite_rolled_back(frame):
+                frame.run(codes.ROLLBACK, [], "rollback", faultable=False)
         except BaseException as error:
             if commit:
                 raise rollback_failed(errors[0] if errors else error, error) from None
@@ -2535,7 +2542,7 @@ class Db:
             # A SQL connection sends that statement; a markdown connection sends a control message of the same name.
             if self.driver == "markdown":
                 savepoint_markdown(frame, kind, name)
-            else:
+            elif kind == "savepoint" or not self._sqlite_rolled_back(frame):
                 frame.run(sql, [], kind, faultable=False)
 
         try:

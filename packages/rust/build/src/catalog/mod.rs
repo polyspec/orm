@@ -139,7 +139,7 @@ impl CatalogConnection {
     }
 }
 async fn finish_read_only<T>(connection: &mut Conn, result: Result<T, String>) -> Result<T, String> {
-    let cleanup = connection.exec("ROLLBACK", &[]).await.map_err(|error| error.to_string());
+    let cleanup = connection.rollback().await.map_err(|error| error.to_string());
     match (result, cleanup) {
         (result, Ok(_)) => result,
         (Ok(_), Err(error)) => Err(format!("QUERY_READ_ONLY_CLEANUP: {error}")),

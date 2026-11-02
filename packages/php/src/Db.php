@@ -1055,7 +1055,8 @@ final class Db
             // A failed COMMIT may have ended the transaction on the server, so only the remaining transaction is
             // rolled back. A transaction whose work failed is always rolled back, and a rollback that fails
             // because the driver or server already ended the transaction or connection is reported too.
-            if (!$commit || $this->handle()->inTransaction()) {
+            // SQLite may also have rolled the transaction back by itself after an error (INT-155).
+            if ((!$commit && $this->driver !== 'sqlite') || $this->handle()->inTransaction()) {
                 $this->control(StatementEvent::ROLLBACK, $frame->number, 'ROLLBACK');
             }
         } catch (OrmException $e) {
@@ -1229,6 +1230,10 @@ final class Db
         };
         if ($this->md !== null) {
             $this->markdownSession()->call(['op' => $op, 'name' => $name]);
+            return;
+        }
+        // A transaction that SQLite rolled back by itself took its savepoints with it (INT-155).
+        if ($kind !== StatementEvent::SAVEPOINT && $this->driver === 'sqlite' && !$this->handle()->inTransaction()) {
             return;
         }
         $this->control($kind, $frame->number, $statement);

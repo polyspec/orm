@@ -9,8 +9,9 @@ namespace Polyspec\Orm\Tests;
 // OrmException with the code ROLLBACK that keeps the callback error as its
 // previous exception and the rollback error as its rollback. The callback
 // runs only model calls. On SQLite a trigger of the test fixture raises
-// ROLLBACK when a row labeled `end` is inserted, which ends the transaction,
-// so the client's ROLLBACK finds no transaction. On MySQL and PostgreSQL a
+// ROLLBACK when a row labeled `end` is inserted, which ends the transaction;
+// the client then sends no ROLLBACK and reports the trigger's error alone
+// (INT-155). On MySQL and PostgreSQL a
 // test connection ends the server session that holds the transaction, so the
 // next statement and the rollback fail; that connection reaches the server
 // through ORM_TEST_MYSQL_SERVER_DSN or ORM_TEST_POSTGRES_SERVER_DSN (the server
@@ -161,16 +162,55 @@ class RollbackTest extends TestCase
         (new RollbackProbe())($db)->setLabel('end')->create();
     }
 
-    /** The callback of a transaction fails and the rollback fails. */
+    /**
+     * Checks the error of a transaction that the rollback_probe trigger ended: SQLite rolled it back by itself, so the
+     * error is the trigger's, with no rollback failure stacked on it, and no row stayed (INT-155).
+     */
+    private static function checkSqliteRolledBack(Db $db, ?Throwable $e): void
+    {
+        $e = self::checkedOrmException($e, 'transaction');
+        if ($e !== null) {
+            self::check($e->code_ === Code::DRIVER, "transaction code {$e->code_}: {$e->getMessage()}");
+            self::check($e->rollback === null, 'transaction keeps no rollback error: ' . $e->getMessage());
+            self::check(
+                str_contains($e->getMessage(), 'rollback probe ended the transaction')
+                    && str_ends_with($e->getMessage(), ' (SQLITE_CONSTRAINT_TRIGGER)'),
+                "transaction error {$e->getMessage()} is not the trigger's"
+            );
+        }
+        self::check(
+            (new RollbackProbe())($db)->getCount() === 0,
+            'the trigger rolled the transaction back and the connection serves later requests'
+        );
+    }
+
+    /** On SQLite, checks the transaction that the trigger ended and closes the connection; elsewhere it does nothing. */
+    private static function endedBySqlite(Db $db, ?Throwable $e): bool
+    {
+        if ($db->driver() !== 'sqlite') {
+            return false;
+        }
+        self::checkSqliteRolledBack($db, $e);
+        $db->close();
+        return true;
+    }
+
+    /**
+     * The session of a transaction ends behind the client. On MySQL and PostgreSQL the server ends it, so the callback
+     * fails and the rollback fails (CFG-15); on SQLite the trigger makes SQLite roll the transaction back, so the
+     * trigger's error is reported (INT-155).
+     */
     private static function rollbackFailed(string $dsn): void
     {
         $db = self::connect($dsn);
-        $driver = $db->driver();
         $e = self::raised(fn() => $db->transaction(function () use ($db, $dsn): void {
             self::writeAroundSessionEnd($db, $dsn, 'kept');
         }, retry: 0));
+        if (self::endedBySqlite($db, $e)) {
+            return;
+        }
         self::checkRollback($e, 'transaction');
-        if ($driver !== 'sqlite' && $e instanceof OrmException) {
+        if ($e instanceof OrmException) {
             // A next statement and a rollback on a session the server ended fail with a lost-connection error.
             $callback = $e->getPrevious();
             self::check(
@@ -184,39 +224,28 @@ class RollbackTest extends TestCase
                 )
             );
         }
-        if ($driver === 'sqlite' && $e instanceof OrmException && $e->getPrevious() !== null) {
-            self::check(
-                str_contains($e->getPrevious()->getMessage(), 'rollback probe ended the transaction'),
-                'callback error ' . $e->getPrevious()->getMessage()
-            );
-            self::check(
-                (new RollbackProbe())($db)->getCount() === 0,
-                'the trigger rolled the transaction back and the connection serves later requests'
-            );
-        }
         $db->close();
     }
 
-    /** The callback of a savepoint fails and the savepoint rollback fails, and then the transaction rollback fails. */
+    /**
+     * The session ends inside a savepoint. On MySQL and PostgreSQL the savepoint rollback and then the transaction
+     * rollback fail (CFG-15); on SQLite the trigger's error is reported (INT-155).
+     */
     private static function savepointRollbackFailed(string $dsn): void
     {
         $db = self::connect($dsn);
-        $driver = $db->driver();
         $e = self::raised(fn() => $db->transaction(function () use ($db, $dsn): void {
             (new RollbackProbe())($db)->setLabel('kept')->create();
             $db->transaction(function () use ($db, $dsn): void {
                 self::writeAroundSessionEnd($db, $dsn, 'nested');
             });
         }, retry: 0));
+        if (self::endedBySqlite($db, $e)) {
+            return;
+        }
         self::checkRollback($e, 'transaction');
         $inner = $e instanceof OrmException ? $e->getPrevious() : null;
         self::checkRollback($inner, 'savepoint');
-        if ($driver === 'sqlite') {
-            self::check(
-                (new RollbackProbe())($db)->getCount() === 0,
-                'the trigger rolled the transaction back and the connection serves later requests'
-            );
-        }
         $db->close();
     }
 

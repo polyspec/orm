@@ -1403,9 +1403,12 @@ class CatalogConnection:
         return "BEGIN" if read_only else "BEGIN IMMEDIATE"
 
     def _end(self, session: _Session, error: BaseException | None) -> None:
-        """Rolls the session back and closes it. A failed rollback is reported with the error that ended the session."""
+        """Rolls the session back and closes it. A failed rollback is reported with the error that ended the session. SQLite
+        rolls a transaction back by itself after some errors, such as RAISE(ROLLBACK) or an I/O error; then no ROLLBACK is
+        sent, so the error is the one that ended the session (INT-155)."""
         try:
-            session.run("ROLLBACK")
+            if self._dialect != "sqlite" or session.raw.in_transaction:
+                session.run("ROLLBACK")
         except Exception as rollback_error:
             session.close()
             raise _error(

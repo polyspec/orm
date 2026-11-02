@@ -2553,6 +2553,109 @@
           }
         }
       ]
+    },
+    {
+      "id": "trigger_refused_insert",
+      "requirements": [
+        "INT-155"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE refused_row (seq INTEGER PRIMARY KEY, name TEXT NOT NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "CREATE TRIGGER refused_row_insert BEFORE INSERT ON refused_row FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'refused'",
+            "postgres": "CREATE FUNCTION refused_row_refuse() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RAISE EXCEPTION 'refused'; END$$",
+            "sqlite": "CREATE TRIGGER refused_row_insert BEFORE INSERT ON refused_row BEGIN SELECT RAISE(ROLLBACK, 'refused'); END"
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "CREATE TRIGGER refused_row_insert BEFORE INSERT ON refused_row FOR EACH ROW EXECUTE FUNCTION refused_row_refuse()",
+            "sqlite": "SELECT 1"
+          }
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "refused_row",
+          "as": "refused"
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "refused"
+          },
+          "values": {
+            "seq": {
+              "int": "1"
+            },
+            "name": {
+              "text": "first"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "ROW_MUTATION_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "DRIVER"
+            },
+            "sqlite": {
+              "error": "DRIVER",
+              "message_suffix": " (SQLITE_CONSTRAINT_TRIGGER)"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "refused_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "name"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": []
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": []
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": []
+            }
+          }
+        }
+      ]
     }
   ]
 }

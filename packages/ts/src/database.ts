@@ -1073,7 +1073,8 @@ export class Db {
         }
       }
       try {
-        await frame.run('rollback', [], codes.ROLLBACK);
+        // SQLite may have rolled the transaction back by itself after an error (INT-155); then there is nothing to roll back.
+        if (this.driver !== 'sqlite' || session.inTransaction?.() !== false) await frame.run('rollback', [], codes.ROLLBACK);
       } catch (rollback) {
         if (!subscriberError(rollback)) discard = true;
         if (commit) throw rollbackFailed(failure, rollback);
@@ -1128,6 +1129,8 @@ export class Db {
       await frame.md.call(savepointLine(kind, name), frame.db.signal);
       return;
     }
+    // A transaction that SQLite rolled back by itself took its savepoints with it (INT-155).
+    if (kind !== 'savepoint' && this.driver === 'sqlite' && frame.session.inTransaction?.() === false) return;
     const statement = kind === 'savepoint' ? `SAVEPOINT ${name}` : kind === 'release' ? `RELEASE SAVEPOINT ${name}` : `ROLLBACK TO SAVEPOINT ${name}`;
     await frame.run(kind, [], statement);
   }

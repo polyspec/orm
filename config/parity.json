@@ -7698,13 +7698,14 @@
       "id": "connection-rollback-failed-reports-both-errors",
       "kind": "feature",
       "requirements": [
-        "CFG-15"
+        "CFG-15",
+        "INT-155"
       ],
       "bindings": [
         {
           "implementation": "go",
           "test": "packages/go/orm/rollback_test.go",
-          "id": "TestRollbackFailedSQLite"
+          "id": "TestSQLiteRolledBackTransaction"
         },
         {
           "implementation": "go",
@@ -7787,13 +7788,14 @@
       "id": "connection-savepoint-rollback-failed-reports-both-errors",
       "kind": "feature",
       "requirements": [
-        "CFG-15"
+        "CFG-15",
+        "INT-155"
       ],
       "bindings": [
         {
           "implementation": "go",
           "test": "packages/go/orm/rollback_test.go",
-          "id": "TestSavepointRollbackFailedSQLite"
+          "id": "TestSQLiteRolledBackSavepoint"
         },
         {
           "implementation": "go",
@@ -9685,6 +9687,8 @@
         "INT-117",
         "INT-123",
         "INT-136",
+        "INT-154",
+        "INT-155",
         "SCH-6a"
       ],
       "file": "contracts/fixtures/catalog_connection/catalog_connection.json",
@@ -9735,6 +9739,8 @@
         "INT-117",
         "INT-123",
         "INT-136",
+        "INT-154",
+        "INT-155",
         "SCH-6a"
       ],
       "file": "contracts/fixtures/catalog_connection/catalog_connection.json",
@@ -9785,6 +9791,8 @@
         "INT-117",
         "INT-123",
         "INT-136",
+        "INT-154",
+        "INT-155",
         "SCH-6a"
       ],
       "file": "contracts/fixtures/catalog_connection/catalog_connection.json",

@@ -17501,7 +17501,7 @@
   },
   "packages/go/orm/catalog.go::catalogSession": {
     "exported": false,
-    "signature": "type catalogSession struct { ctx context.Context conn *sql.Conn dialect string }"
+    "signature": "type catalogSession struct { ctx context.Context conn *sql.Conn dialect string rollbacks *rollbackWatch }"
   },
   "packages/go/orm/catalog.go::catalogSession#field.conn": {
     "exported": false,
@@ -17514,6 +17514,10 @@
   "packages/go/orm/catalog.go::catalogSession#field.dialect": {
     "exported": false,
     "signature": "string"
+  },
+  "packages/go/orm/catalog.go::catalogSession#field.rollbacks": {
+    "exported": false,
+    "signature": "*rollbackWatch"
   },
   "packages/go/orm/catalog.go::catalogSession.discard": {
     "exported": false,
@@ -19275,6 +19279,10 @@
     "exported": true,
     "signature": "func(name, sqlDriver string, mapErr func(error) error)"
   },
+  "packages/go/orm/db.go::RegisterSQLiteRollbackHook": {
+    "exported": true,
+    "signature": "func(hook func(driverConn any, fn func()) error)"
+  },
   "packages/go/orm/db.go::RegisterSQLiteVersion": {
     "exported": true,
     "signature": "func(version string)"
@@ -19454,6 +19462,10 @@
   "packages/go/orm/db.go::quoteText": {
     "exported": false,
     "signature": "func(s string) string"
+  },
+  "packages/go/orm/db.go::registeredSQLiteRollbackHook": {
+    "exported": false,
+    "signature": "func() func(driverConn any, fn func()) error"
   },
   "packages/go/orm/decimal.go::Core.DecodeDecimal": {
     "exported": true,
@@ -21115,6 +21127,10 @@
     "exported": false,
     "signature": "func(err error) error"
   },
+  "packages/go/orm/sqlite/sqlite.go::rollbackHook": {
+    "exported": false,
+    "signature": "func(driverConn any, fn func()) error"
+  },
   "packages/go/orm/sqlite/sqlite.go::sqliteCode": {
     "exported": false,
     "signature": "func(se *sqlite.Error) string"
@@ -21130,6 +21146,30 @@
   "packages/go/orm/sqlite_lock.go::sqliteBusy": {
     "exported": false,
     "signature": "func(err error) bool"
+  },
+  "packages/go/orm/sqlite_rollback.go::rollbackWatch": {
+    "exported": false,
+    "signature": "type rollbackWatch struct { rolled atomic.Bool set bool }"
+  },
+  "packages/go/orm/sqlite_rollback.go::rollbackWatch#field.rolled": {
+    "exported": false,
+    "signature": "atomic.Bool"
+  },
+  "packages/go/orm/sqlite_rollback.go::rollbackWatch#field.set": {
+    "exported": false,
+    "signature": "bool"
+  },
+  "packages/go/orm/sqlite_rollback.go::rollbackWatch.open": {
+    "exported": false,
+    "signature": "receiver=*rollbackWatch func() bool"
+  },
+  "packages/go/orm/sqlite_rollback.go::rollbackWatch.stop": {
+    "exported": false,
+    "signature": "receiver=*rollbackWatch func(conn *sql.Conn) error"
+  },
+  "packages/go/orm/sqlite_rollback.go::watchRollback": {
+    "exported": false,
+    "signature": "func(conn *sql.Conn) (*rollbackWatch, error)"
   },
   "packages/go/orm/sqlite_time.go::DB.bindTimeValue": {
     "exported": false,
@@ -21433,7 +21473,7 @@
   },
   "packages/go/orm/tx.go::txConn": {
     "exported": false,
-    "signature": "type txConn struct { db *DB conn *sql.Conn md *mdSession number int64 ctx context.Context cancel context.CancelFunc busy atomic.Bool finished atomic.Bool savepoints int stmMu sync.Mutex stmts map[string]*sql.Stmt locals map[string]string locks []string unclean bool readOnly bool isolation IsolationLevel sqliteMode bool audit *auditRecord pendingAudit *auditInsert inserted map[string]map[int64]struct{} }"
+    "signature": "type txConn struct { db *DB conn *sql.Conn md *mdSession number int64 ctx context.Context cancel context.CancelFunc busy atomic.Bool finished atomic.Bool savepoints int stmMu sync.Mutex stmts map[string]*sql.Stmt locals map[string]string locks []string unclean bool readOnly bool isolation IsolationLevel sqliteMode bool rollbacks *rollbackWatch audit *auditRecord pendingAudit *auditInsert inserted map[string]map[int64]struct{} }"
   },
   "packages/go/orm/tx.go::txConn#field.audit": {
     "exported": false,
@@ -21494,6 +21534,10 @@
   "packages/go/orm/tx.go::txConn#field.readOnly": {
     "exported": false,
     "signature": "bool"
+  },
+  "packages/go/orm/tx.go::txConn#field.rollbacks": {
+    "exported": false,
+    "signature": "*rollbackWatch"
   },
   "packages/go/orm/tx.go::txConn#field.savepoints": {
     "exported": false,

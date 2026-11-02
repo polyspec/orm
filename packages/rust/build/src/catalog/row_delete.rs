@@ -13,7 +13,7 @@ impl CatalogConnection {
         let result = async {
             let descriptor = lock_original(&mut connection, original, &self.dialect, &keys, &cancellation, &publish).await?;
             let sql = format!("DELETE FROM {} WHERE {}", qualified(&descriptor, &self.dialect)?, predicate(&descriptor, &self.dialect, 1)?);
-            let affected = connection.exec(&sql, &keys).await.map_err(|e| e.to_string())?;
+            let affected = connection.exec(&sql, &keys).await.map_err(super::catalog_query_error)?;
             if affected != 1 {
                 return Err("ROW_WRITE_MISMATCH: expected exactly one deleted row".into());
             }

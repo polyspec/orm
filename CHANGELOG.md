@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- A transaction or savepoint that SQLite rolled back by itself, after `RAISE(ROLLBACK)`, an I/O error or a full disk, reports the error that ended it, in every runtime and in the catalog connection. The client no longer sends a ROLLBACK, ROLLBACK TO SAVEPOINT or RELEASE SAVEPOINT that SQLite answers with `cannot rollback - no transaction is active`, so limepie no longer logs a rollback failure stacked on a disk I/O error (INT-155, T356). The Rust catalog connection also reports a driver error of a row write with its code, as the other runtimes do.
 - A SQLite driver error message ends with the name of its extended result code in every runtime, for example `no such collation sequence: nosuch (SQLITE_ERROR_MISSING_COLLSEQ)` (INT-154). A disk I/O error now tells SQLITE_IOERR_SHMLOCK from _FSYNC or _SHORT_READ, where the message named only the primary meaning (limepie S-908). The names are the table of docs/spec/sqlite-result-codes.yaml, which `orm-gen sqlite-codes` writes into each runtime. The PHP client and the PHP extension turn on the extended result codes of pdo_sqlite, and a Rust catalog query error carries its error code (T355).
 - The PHP dbspec parser reads an ASCII character of a word without the Unicode table, as the Go reference does: one parse of the bench document takes 6.1 ms instead of 14.7 ms, which php-fpm pays on every request that builds its runtime model (T354).
 - orm pins kit 0.0.92, whose targets match the crate fetch of orm-install-rust-crates, and takes the principles it ships (T353).

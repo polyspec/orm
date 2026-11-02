@@ -71,6 +71,8 @@ type txConn struct {
 	readOnly   bool
 	isolation  IsolationLevel
 	sqliteMode bool
+	// rollbacks learns that SQLite rolled the transaction back by itself; it is nil on MySQL and PostgreSQL.
+	rollbacks *rollbackWatch
 	// audit is the audit record this transaction (unit of work) inserted before its first
 	// write of an audited table. The audit table's insert and update write that key to the audit
 	// column. Until that write, and in a transaction without audit values, it is nil.
@@ -674,6 +676,11 @@ func (d *DB) begin(o txOptions) (*txConn, error) {
 		}
 	}
 	if d.driver == "sqlite" {
+		watch, err := watchRollback(conn)
+		t.rollbacks = watch
+		if err != nil {
+			return nil, t.rollbackAfter(err)
+		}
 		if err := t.beginSQLiteMode(); err != nil {
 			return nil, t.rollbackAfter(err)
 		}
@@ -709,6 +716,7 @@ func (t *txConn) rollback() error {
 	errs := []error{t.finishSQLiteMode(), t.releaseLocks(), t.clearLocals()}
 	t.finished.Store(true)
 	errs = append(errs, t.closeStatements(), t.rollbackNative())
+	errs = append(errs, t.rollbacks.stop(t.conn))
 	if t.unclean || errors.Join(errs...) != nil {
 		errs = append(errs, t.closeSession())
 	}
@@ -742,6 +750,10 @@ func (t *txConn) commitNative() error {
 }
 
 func (t *txConn) rollbackNative() error {
+	// SQLite may have rolled the transaction back by itself after an error (INT-155); then there is nothing to roll back.
+	if !t.rollbacks.open() {
+		return nil
+	}
 	_, err := t.run().exec(t.ctx, KindRollback, nil, "ROLLBACK")
 	return err
 }
@@ -776,7 +788,7 @@ func (t *txConn) commit() error {
 		// After a failed COMMIT the session state is unknown, so the connection is discarded.
 		err = errors.Join(err, t.closeSession())
 	}
-	err = errors.Join(stmtErr, err)
+	err = errors.Join(stmtErr, err, t.rollbacks.stop(t.conn))
 	if closeErr := t.conn.Close(); closeErr != nil {
 		err = errors.Join(err, closeErr)
 	}
@@ -911,6 +923,10 @@ func (t *txConn) rollbackSavepoint(name string) error {
 // the server of the closed connection) rolled back the whole transaction, so the savepoint also ended and this is not a failure. Other
 // failures are reported.
 func (t *txConn) endSavepoint(kind, name string) error {
+	// A transaction that SQLite rolled back by itself took its savepoints with it (INT-155).
+	if !t.rollbacks.open() {
+		return nil
+	}
 	var err error
 	if t.md != nil {
 		err = t.savepointMarkdown(kind, name)

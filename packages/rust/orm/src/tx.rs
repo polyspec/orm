@@ -239,6 +239,12 @@ impl TxShared {
         if let TxInner::Markdown(session) = inner {
             return session.call(&MdControl { op, read_only: false, name: Some(name) }).await.map(drop);
         }
+        // A transaction that SQLite rolled back by itself took its savepoints with it (INT-155).
+        if let TxInner::Sqlite(t) = inner {
+            if kind != KIND_SAVEPOINT && !crate::db::sqlite_in_transaction(t).await? {
+                return Ok(());
+            }
+        }
         raw_on(&self.db, inner, Sent::bare(kind, &[], Some(self.number), &statement)).await
     }
 }
@@ -1083,7 +1089,10 @@ async fn end(tx: &TxShared, inner: TxInner, kind: &str, sql: &str, clean: bool) 
             }
         }
         TxInner::Sqlite(mut t) => {
-            events::raw(&tx.db, &mut *t, s).await?;
+            // SQLite may have rolled the transaction back by itself after an error (INT-155); then there is nothing to roll back.
+            if kind != KIND_ROLLBACK || crate::db::sqlite_in_transaction(&mut t).await? {
+                events::raw(&tx.db, &mut *t, s).await?;
+            }
             if clean {
                 t.completed();
             }

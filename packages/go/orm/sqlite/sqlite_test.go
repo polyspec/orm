@@ -55,8 +55,8 @@ func TestMapErrPreservesSQLiteConstraintContract(t *testing.T) {
 
 // TestResultCodeNamesMatchTable compares result_codes.go, which orm-gen sqlite-codes generates, with the
 // sqlite_result_codes table of docs/spec/sqlite-result-codes.yaml: every listed code has its name, and the file holds no other code.
-// A listed code ends a message with its name, and an unlisted one with its number.
-// Requirements: INT-154.
+// A listed code ends a message with its name, and an unlisted one with its number. It checks the generator against its
+// table; the recipe case sqlite_extended_code_names tests the messages in every runtime.
 func TestResultCodeNamesMatchTable(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	src, err := os.ReadFile("../../../../docs/spec/sqlite-result-codes.yaml")
