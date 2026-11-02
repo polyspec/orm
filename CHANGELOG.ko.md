@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 58a9f5e482b327fdb2d3baea207920e4d7ffd273a9202a7dfb3d8059ea54963d -->
+<!-- source-sha256: c956bb2145c10d5d93759c08ef768399622d3906d3af056d76fd21dac16be8df -->
 # 변경 이력
 
 ## Unreleased
 
+- T334-3-14와 T334-3-14b의 codec 시험 파일은 authenticated_encryption의 coverage owner에서 빠졌다(13f388644). 이제 그 owner 검사는 coverage part를 고르지 않고, 이 파일들의 feature 검증은 그대로 남는다 (T334-3-14b-3).
 - scripts/features/owners.test.mts의 두 case가 현재 owner 선언과 맞는다: DSN case는 T334-3-4가 PHP owner test로 만든 packages/php/tests/DsnConnectionRecipeTest.php를 읽고(CoverageDsnTest.php는 owner에서 빠졌다), 네 client case는 manifest가 고르는 statement-events-check owner target 여섯 개를 든다 (T334-3-14b-3-2).
 - `owners.mts --list`가 HEAD에서 exit 0으로 끝난다. T334-3-17-6(8828d675d)이 고쳤고, cherry-pick -x로 가져왔다 (T334-3-14b-3-1).
 - contracts/features.json의 owner 선언이 실제 파일을 가리키게 한다. 지운 schema test packages/rust/schema/tests/dbspec_plan.rs는 owner에서 빼고, 그 case를 대신 실행하는 recipe 실행기 packages/rust/orm/tests/dbspec_plan_cases.rs를 가리킨다. Go test TestUnloadedUpdateKeepsAssignedValuesSelectedAndKeyed는 packages/go/orm/model_update_state_test.go에 되살린다 (T334-3-17-6).
