@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e21334ec69ab23ec4a8eca4e58ee5a19059331882b294fc62b76b73521a18a17 -->
+<!-- source-sha256: 28209d09947f4851625c45102a5d31bfa84b0bc3b770f1d986e9b245f5d56192 -->
 # 변경 이력
 
 ## Unreleased
 
+- Rust의 recipe runner는 packages/rust/tests/src/recipe.rs 하나다. packages/rust/orm/tests 아래 두 번째 runner가 실행하던 planner.compile, ir.validate, dbspec plan op는 그 runner의 op이고, planner, 요청 검증, dbspec plan recipe는 packages/rust/tests/tests의 trial로 실행되며, 두 번째 runner는 지운다. recipe 사례가 아닌 manifest hash 검사는 native 시험 packages/rust/orm/tests/ir_manifest_hash.rs다 (T334-3-25-1).
 - make install이 Go model이 없는 checkout에서도 model을 생성한다. packages/go/models.txt는 bindmodel을, 그것을 import하는 시험을 scan하는 markdownmodel보다 먼저 생성한다 (T334-3-15-3c-11).
 - 둘 이상의 runtime이 바인딩하는 docs/spec/interfaces.md의 binding value unit(INT-1~INT-11, INT-87, INT-88)을 runtime별로 읽었고, database를 읽지 않으면서 여섯 runtime 모두에 공개 호출 하나가 있는 unit은 없다. group-result-exact-i64와 collection-identity-from-fixture는 내부 decode와 key를 시험하므로 FCV-2에 따라 native로 남는다. query-terminal-first-builder-error, native-row-cell-bytes, model-read-null-and-empty-text, coverage-composite-keys-composite-key-rows는 database를 읽으므로 database recipe에 속한다. generated-field-types-follow-runtime-model은 T334-3-17의 generator 출력이다. 이 row에서 변환되는 recipe는 없다 (T334-3-19).
 - tests/dbspec/canonical.json과 tests/dbspec/invalid.json의 analyze 사례가 compare runner가 요구하는 dbspec.format step을 가지며, 텍스트에 primary key 없는 table이 있는 네 개는 invalid 사례가 된다. 멈추게 하는 error 뒤에는 어느 runtime도 문서 전체에 대해 판정하는 규칙의 diagnostic을 보고하지 않는다(DBS-144). PHP library와 PHP extension은 limit stop 전에 읽은 table의 key와 column 규칙을 더 이상 보고하지 않는다. Rust parser는 최상위 줄의 잘못된 문자를 Go처럼 그 줄의 유일한 syntax diagnostic으로 보고한다 (T334-3-18-6-2).

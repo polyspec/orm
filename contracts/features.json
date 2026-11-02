@@ -4834,7 +4834,7 @@
         "packages/rust/orm/tests/dbspec_apply.rs",
         "packages/rust/orm/tests/dbspec_introspect.rs",
         "packages/rust/orm/tests/dbspec_plan_apply.rs",
-        "packages/rust/orm/tests/dbspec_plan_cases.rs",
+        "packages/rust/tests/tests/dbspec_plan_cases_none.rs",
         "packages/ts/tests/dbspec-apply-physical.mjs",
         "packages/ts/tests/dbspec-introspect.mjs",
         "packages/ts/tests/dbspec-introspect-round-trip.mjs",
@@ -6468,7 +6468,8 @@
         "packages/go/engine/ir/params_test.go",
         "packages/rust/orm/tests/unit/param_uses.rs",
         "packages/ts/tests/param-uses.mjs",
-        "packages/rust/orm/tests/ir_validate.rs",
+        "packages/rust/tests/tests/ir_validate_none.rs",
+        "packages/rust/orm/tests/ir_manifest_hash.rs",
         "packages/php/tests/IrValidateRecipeTest.php",
         "packages/php-ext/tests/IrValidateRecipeTestExtensionTest.php",
         "packages/rust/orm/tests/unit/ir_request.rs",
@@ -6615,11 +6616,12 @@
         },
         {
           "id": "planner-rust-validate",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts planner-rust-validate -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test ir_validate",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts planner-rust-validate -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test ir_validate_none --test ir_manifest_hash",
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/src/engine/validate.rs",
-            "packages/rust/orm/tests/ir_validate.rs",
+            "packages/rust/tests/tests/ir_validate_none.rs",
+            "packages/rust/orm/tests/ir_manifest_hash.rs",
             "packages/rust/orm/tests/unit/ir_request.rs",
             "tests/ir/validate.json"
           ]
@@ -7177,7 +7179,7 @@
             "part": "packages/rust/orm",
             "tests": [
               "packages/rust/orm/tests/unit/coverage_planner.rs",
-              "packages/rust/orm/tests/planner.rs"
+              "packages/rust/tests/tests/planner_compile_none.rs"
             ],
             "inputs": [
               "contracts/fixtures/planner.json",
@@ -7207,7 +7209,7 @@
                 },
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/orm/tests/planner.rs",
+                  "test": "packages/rust/tests/tests/planner_compile_none.rs",
                   "cases": [
                     "planner_statement",
                     "planner_count",

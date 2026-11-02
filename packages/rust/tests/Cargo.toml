@@ -337,3 +337,42 @@ harness = false
 name = "generator_scan_none"
 path = "tests/generator_scan_none.rs"
 harness = false
+
+# Each case of the planner compile recipe, tests/planner/compile.json, is the trial planner_compile_none::<case id> (FCV-3).
+[[test]]
+name = "planner_compile_none"
+path = "tests/planner_compile_none.rs"
+harness = false
+
+# Each case of the request validation recipe, tests/ir/validate.json, is the trial ir_validate_none::<case id> (FCV-3), with the native trial manifest_hash_mismatch.
+[[test]]
+name = "ir_validate_none"
+path = "tests/ir_validate_none.rs"
+harness = false
+
+# Each case of the dbspec plan recipes, tests/dbspec/plan-cases.json, plan-invalid.json, plan-chains.json, plan-parse.json and
+# plan-comparisons.json, is the trial <entry>::<case id> (FCV-3).
+[[test]]
+name = "dbspec_plan_cases_none"
+path = "tests/dbspec_plan_cases_none.rs"
+harness = false
+
+[[test]]
+name = "dbspec_plan_invalid_none"
+path = "tests/dbspec_plan_invalid_none.rs"
+harness = false
+
+[[test]]
+name = "dbspec_plan_chains_none"
+path = "tests/dbspec_plan_chains_none.rs"
+harness = false
+
+[[test]]
+name = "dbspec_plan_parse_none"
+path = "tests/dbspec_plan_parse_none.rs"
+harness = false
+
+[[test]]
+name = "dbspec_plan_comparisons_none"
+path = "tests/dbspec_plan_comparisons_none.rs"
+harness = false

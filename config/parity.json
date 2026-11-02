@@ -972,7 +972,6 @@
         "packages/rust/orm/tests/common/audit_rows.rs",
         "packages/rust/orm/tests/common/dbspec_probe.rs",
         "packages/rust/orm/tests/common/restore_rows.rs",
-        "packages/rust/orm/tests/unit/dbspec_recipe.rs",
         "packages/rust/orm/tests/unit/ir_request.rs",
         "packages/rust/schema/tests/common/dbspec_cases.rs",
         "packages/rust/tests/build.rs",
@@ -8770,7 +8769,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/planner.rs",
+          "test": "packages/rust/tests/tests/planner_compile_none.rs",
           "symbol": "planner_compile_none"
         }
       ]
@@ -8859,7 +8858,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/planner.rs",
+          "test": "packages/rust/tests/tests/planner_compile_none.rs",
           "id": "planner_compile_none::planner_joined_child_conditions_grouped"
         }
       ]
@@ -8948,17 +8947,17 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/planner.rs",
+          "test": "packages/rust/tests/tests/planner_compile_none.rs",
           "id": "planner_compile_none::planner_rejects_upsert_primary_and_unique_key"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/planner.rs",
+          "test": "packages/rust/tests/tests/planner_compile_none.rs",
           "id": "planner_compile_none::planner_rejects_upsert_unique_key_not_assigned"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/planner.rs",
+          "test": "packages/rust/tests/tests/planner_compile_none.rs",
           "id": "planner_compile_none::planner_rejects_upsert_without_a_key"
         },
         {
@@ -10037,7 +10036,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/ir_validate.rs",
+          "test": "packages/rust/tests/tests/ir_validate_none.rs",
           "id": "ir_validate_none::col_op_bool_order"
         },
         {
@@ -10109,7 +10108,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/ir_validate.rs",
+          "test": "packages/rust/tests/tests/ir_validate_none.rs",
           "symbol": "ir_validate_none"
         }
       ]
@@ -11722,7 +11721,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_plan_cases.rs",
+          "test": "packages/rust/tests/tests/dbspec_plan_cases_none.rs",
           "symbol": "dbspec_plan_cases_none"
         }
       ]
@@ -11793,7 +11792,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_plan_invalid.rs",
+          "test": "packages/rust/tests/tests/dbspec_plan_invalid_none.rs",
           "symbol": "dbspec_plan_invalid_none"
         }
       ]
@@ -11864,7 +11863,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_plan_chains.rs",
+          "test": "packages/rust/tests/tests/dbspec_plan_chains_none.rs",
           "symbol": "dbspec_plan_chains_none"
         }
       ]
@@ -11936,7 +11935,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_plan_parse.rs",
+          "test": "packages/rust/tests/tests/dbspec_plan_parse_none.rs",
           "symbol": "dbspec_plan_parse_none"
         }
       ]
@@ -12007,7 +12006,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_plan_comparisons.rs",
+          "test": "packages/rust/tests/tests/dbspec_plan_comparisons_none.rs",
           "symbol": "dbspec_plan_comparisons_none"
         }
       ]
@@ -17686,7 +17685,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/ir_validate.rs",
+          "test": "packages/rust/orm/tests/ir_manifest_hash.rs",
           "id": "manifest_hash_mismatch"
         }
       ]
