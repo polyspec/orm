@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: 81619ad26e0777c2282223081f8a5bb9de27b25a872466e4e9c07fc8ce0d810a -->
+<!-- source-sha256: 0a0619079b5e85f714aaf20ac364a78b9332e6ab55f89b6b706fa3d2f7fabd35 -->
 # dbspec
 
 [English](dbspec.md)
@@ -444,7 +444,7 @@ vector는 `tests/dbspec/syntax.json`이다: `cases.json`의 canonical, normalize
 
 ## 한도와 error {#limits-and-errors}
 
-- **DBS-144** 문서는 최대 32 MiB, table 4096개, column 120000개, foreign key 20000개이며, 할당 전에 확인한다. error는 `SCHEMA_INVALID`이고, 문제 token의 1부터 세는 줄과 열, 아래 규칙, message를 갖는다. 열의 단위는 Unicode code point다. 멈추게 하는 error(`encoding`, `header`, `limit`)는 그 전에 찾은 diagnostic 뒤에 보고한다. diagnostic은 줄, 열, 아래 규칙 표의 순서로 정렬한다. 이름 규칙에 맞지 않는 header 이름은 `name.format`이며 parse는 계속한다. table, constraint, setting 전체에 대한 규칙의 위치는 그 이름이나 keyword token이고, 다른 규칙의 위치는 규칙을 어긴 token이다.
+- **DBS-144** 문서는 최대 32 MiB, table 4096개, column 120000개, foreign key 20000개이며, 할당 전에 확인한다. error는 `SCHEMA_INVALID`이고, 문제 token의 1부터 세는 줄과 열, 아래 규칙, message를 갖는다. 열의 단위는 Unicode code point다. 멈추게 하는 error(`encoding`, `header`, `limit`)는 그 전에 찾은 diagnostic 뒤에 보고한다. 멈춘 문서는 온전한 문서가 아니므로, 문서 전체에 대해 판정하는 규칙(`name.duplicate`, `column`, `key`, `foreign_key`, `use`, `diagram`)은 그 문서에서 diagnostic을 내지 않는다. diagnostic은 줄, 열, 아래 규칙 표의 순서로 정렬한다. 이름 규칙에 맞지 않는 header 이름은 `name.format`이며 parse는 계속한다. table, constraint, setting 전체에 대한 규칙의 위치는 그 이름이나 keyword token이고, 다른 규칙의 위치는 규칙을 어긴 token이다.
 
 - **DBS-145** foreign key: index, `set_null`, type, column 수, 참조 key 규칙은 constraint 이름, 모르는 column이나 대상은 그 token
 - **DBS-146** key: 16 column과 640자 한도는 key 이름이나 `primary`

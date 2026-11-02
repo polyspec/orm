@@ -609,10 +609,14 @@ impl Parser {
         }
         let mut tokens = tokenize(line, number);
         // A line of the top level with a bad character is still read without it (Go's lexRecover), so that a
-        // table header keeps its table; the bad character is reported once.
+        // table header keeps its table; the bad character is reported once, and it is the syntax diagnostic of its
+        // line: a syntax failure that the rest of the line then gives is not reported, as Go's cursor reports its
+        // lexical error in place of its first failure.
+        let mut lexical = None;
         if matches!(self.context, Context::Top) {
             if let Some(bad) = tokens.iter().find(|t| t.kind == Kind::Invalid).copied() {
                 self.report(err(bad.pos, "syntax", format!("'{}' is not allowed here", bad.text)));
+                lexical = Some(self.diags.len());
                 tokens.retain(|t| t.kind != Kind::Invalid);
                 if tokens.is_empty() {
                     return;
@@ -656,6 +660,13 @@ impl Parser {
             Context::Table => self.table_line(&tokens),
             Context::Settings => self.setting_line(&tokens),
             Context::Diagram => self.diagram_line(&tokens),
+        }
+        if let Some(after) = lexical {
+            let mut index = 0;
+            self.diags.retain(|d| {
+                index += 1;
+                index <= after || d.rule != "syntax" || d.pos.line != number
+            });
         }
     }
 

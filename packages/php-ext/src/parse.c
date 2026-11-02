@@ -3639,6 +3639,14 @@ static void analysis_tokens(parser *p, str source, dtokv *out)
     }
 }
 
+/* The rules judged on the whole document (docs/spec/dbspec.md DBS-144): a stopped document gives none of them,
+ * though this parser judges some of them as it reads a table. */
+static bool document_rule(str rule)
+{
+    return str_eqc(rule, "name.duplicate") || str_eqc(rule, "column") || str_eqc(rule, "key") ||
+        str_eqc(rule, "foreign_key") || str_eqc(rule, "use") || str_eqc(rule, "diagram");
+}
+
 static document *run(parser *p, str source, diags *out, dposv *pos, dtokv *tokens)
 {
     p->marking = tokens != NULL;
@@ -3646,6 +3654,13 @@ static document *run(parser *p, str source, diags *out, dposv *pos, dtokv *token
     diag stopd = {0};
     if (stopped) {
         stopd = p->diagnostics.v[--p->diagnostics.n];
+        size_t kept = 0;
+        for (size_t i = 0; i < p->diagnostics.n; i++) {
+            if (!document_rule(p->diagnostics.v[i].rule)) {
+                p->diagnostics.v[kept++] = p->diagnostics.v[i];
+            }
+        }
+        p->diagnostics.n = kept;
     }
     /* A limit error gives no tokens, whatever was read before it (R22). */
     if (tokens != NULL && !(stopped && str_eqc(stopd.rule, "limit"))) {

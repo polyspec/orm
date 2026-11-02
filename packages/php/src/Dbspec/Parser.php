@@ -33,6 +33,11 @@ final class Parser
     /** The rule table of docs/spec/dbspec.md, in its order, which orders diagnostics at one position. */
     private const RULES = ['header', 'syntax', 'order', 'name.format', 'name.length', 'name.duplicate', 'type',
         'column', 'key', 'foreign_key', 'check', 'setting', 'use', 'diagram', 'limit', 'encoding'];
+    /**
+     * The rules judged on the whole document (docs/spec/dbspec.md DBS-144): a stopped document gives none of them,
+     * though this parser judges some of them as it reads a table.
+     */
+    private const DOCUMENT_RULES = ['name.duplicate', 'column', 'key', 'foreign_key', 'use', 'diagram'];
     public const RESERVED = ['dbspec', 'use', 'table', 'diagram', 'primary', 'unique', 'index', 'foreign',
         'check', 'settings', 'null', 'identity', 'default', 'true', 'false', 'and', 'or', 'not', 'in', 'between',
         'is'];
@@ -246,6 +251,10 @@ final class Parser
             $this->read($source);
         } catch (ParseStop) {
             $stop = array_pop($this->diagnostics);
+            $this->diagnostics = array_values(array_filter(
+                $this->diagnostics,
+                static fn(array $d): bool => !in_array($d[0], self::DOCUMENT_RULES, true),
+            ));
         }
         $tokens = $withTokens && ($stop === null || $stop[0] !== 'limit') ? $this->syntaxTokens($source) : [];
         if ($this->diagnostics === [] && $stop === null) {
