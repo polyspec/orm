@@ -76,29 +76,34 @@ mod tests {
 
     #[test]
     fn a_recipe_whose_keys_the_table_holds_is_accepted() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         assert_eq!(check_keys(PATH, &recipe("", "", STEP)), Ok(()));
     }
 
     #[test]
     fn an_unknown_file_key_is_refused_by_name() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let error = check_keys(PATH, &recipe(r#""bogus": 1, "#, "", STEP)).unwrap_err();
         assert_eq!(error, format!("recipe {PATH}: unknown key bogus"));
     }
 
     #[test]
     fn an_unknown_case_key_is_refused_by_name_with_its_case() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let error = check_keys(PATH, &recipe("", r#""bogus": 1, "#, STEP)).unwrap_err();
         assert_eq!(error, format!("recipe {PATH} case case-under-test: unknown key bogus"));
     }
 
     #[test]
     fn an_unknown_op_is_refused_by_name_with_its_step() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let error = check_keys(PATH, &recipe("", "", r#"{"op": "no.such.op"}"#)).unwrap_err();
         assert_eq!(error, format!("recipe {PATH} case case-under-test step 0: unknown op no.such.op"));
     }
 
     #[test]
     fn a_step_key_another_op_holds_is_refused_on_the_op_that_does_not_hold_it() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let step = r#"{"op": "dsn.connect", "dsn": "case", "pool_size": 2}"#;
         let error = check_keys(PATH, &recipe("", "", step)).unwrap_err();
         assert_eq!(error, format!("recipe {PATH} case case-under-test step 0 (dsn.connect): unknown key pool_size"));
@@ -106,6 +111,7 @@ mod tests {
 
     #[test]
     fn a_recipe_with_no_schema_is_refused_since_it_names_no_key_table() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let error = check_keys(PATH, r#"{"cases": []}"#).unwrap_err();
         assert_eq!(error, format!("recipe {PATH}: no $schema names the recipe key table"));
     }

@@ -4238,6 +4238,32 @@
         "packages/rust/orm/src/testing/ir_request.rs"
       ]
     },
+    "recipe-unknown-key-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "python",
+        "node-modules",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "scripts/features/schema/recipe.schema.json",
+        "scripts/features/schema/recipe-keys.json",
+        "packages/go/internal/recipe/keys.go",
+        "packages/go/internal/recipe/keys_test.go",
+        "packages/ts/tests/recipe_keys.mjs",
+        "packages/ts/tests/recipe_keys.test.mjs",
+        "packages/python/tests/recipe_keys.py",
+        "packages/python/tests/test_recipe_keys.py",
+        "packages/php/tests/RecipeKeys.php",
+        "packages/php/tests/RecipeKeysTest.php",
+        "packages/php-ext/tests/RecipeKeysExtensionTest.php",
+        "packages/rust/tests/src/recipe_keys.rs"
+      ]
+    },
     "dbspec-stress-rust-check": {
       "scope": "owner",
       "needs": [
