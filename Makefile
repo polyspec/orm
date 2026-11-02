@@ -1832,12 +1832,19 @@ aes-rotation-php-extension-check: php-vendor-check php-models orm-install-php-ex
 
 # The php-ext unit tests that run before the AES rotation stress test, the stress test and root_in_chunking, in one process at the
 # memory_limit of the gate (the php default, 128M). The stress test exhausts it after these classes (T334-3-4-7).
-PHP_EXT_MEMORY_CASES = ^(Polyspec\\Orm\\Extension\\Tests\\CoverageNativeFixtureExtensionTest::|Polyspec\\Orm\\Tests\\CoveragePerformanceGateExtensionPostgresTest::|Polyspec\\Orm\\Tests\\CoveragePerformanceGateExtensionSqliteTest::|Polyspec\\Orm\\Tests\\CoveragePerformanceGateExtensionTest::|Polyspec\\Orm\\Tests\\CoveragePlannerExtensionTest::|Polyspec\\Orm\\Tests\\CoverageRequestHookExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\CoverageSchemaDefinitionExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\CoverageSchemaInstallNativeTest::|Polyspec\\Orm\\Tests\\CoverageStatementEventsTest::|Polyspec\\Orm\\Extension\\Tests\\CoverageStatementRunnerExtensionTest::|Polyspec\\Orm\\Tests\\CoverageTransactionsExtensionTest::|Polyspec\\Orm\\Tests\\Cpx5DuplicateRelationNativeTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecAnalyzeTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecApplyCleanupTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecApplyTestExtensionTest::testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks|Polyspec\\Orm\\Extension\\Tests\\ParameterChunkingMysqlRecipeExtensionTest::testMysql with data set "root_in_chunking")
+PHP_EXT_MEMORY_CASES = ^(Polyspec\\Orm\\Extension\\Tests\\CoverageNativeFixtureExtensionTest::|Polyspec\\Orm\\Tests\\CoveragePerformanceGateExtensionTest::|Polyspec\\Orm\\Tests\\CoveragePlannerExtensionTest::|Polyspec\\Orm\\Tests\\CoverageRequestHookExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\CoverageSchemaDefinitionExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\CoverageSchemaInstallNativeTest::|Polyspec\\Orm\\Tests\\CoverageStatementEventsTest::|Polyspec\\Orm\\Extension\\Tests\\CoverageStatementRunnerExtensionTest::|Polyspec\\Orm\\Tests\\CoverageTransactionsExtensionTest::|Polyspec\\Orm\\Tests\\Cpx5DuplicateRelationNativeTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecAnalyzeTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecApplyCleanupTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecApplyTestExtensionTest::testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks|Polyspec\\Orm\\Extension\\Tests\\ParameterChunkingMysqlRecipeExtensionTest::testMysql with data set "root_in_chunking")
+PHP_EXT_MEMORY_GATE_POSTGRES = ^(Polyspec\\Orm\\Tests\\CoveragePerformanceGateExtensionPostgresTest::)
+PHP_EXT_MEMORY_GATE_SQLITE = ^(Polyspec\\Orm\\Tests\\CoveragePerformanceGateExtensionSqliteTest::)
 
-# The memory check of T334-3-4-7: the gate's own test-php-ext run with the CASES above, with the servers env of the run.
+# The memory check of T334-3-4-7 runs the group of PHP_EXT_MEMORY_CASES in one php-ext process, so its memory accumulates as the 128M
+# memory_limit of the gate. The gate classes assert that ORM_FEATURE_DATABASE is their own driver (PerformanceGateCoverageCase), so one
+# process cannot run them all: the mysql gate runs with the group, and the Postgres and SQLite gates run in one process each, with the
+# DSN of their database from the TEST_ENV of this run (BENCH_POSTGRES_DSN, BENCH_SQLITE_DSN), as perf-check does for mysql.
 .PHONY: php-ext-memory-check
 php-ext-memory-check: php-vendor-check orm-install-php-extension-tools
-	$(WITH_TEST_ENV) $(MAKE) --no-print-directory test-php-ext CASES='$(PHP_EXT_MEMORY_CASES)'
+	$(WITH_TEST_ENV) export ORM_FEATURE_DSN="$$ORM_BENCH_MYSQL_DSN" ORM_FEATURE_DATABASE=mysql && $(MAKE) --no-print-directory test-php-ext CASES='$(PHP_EXT_MEMORY_CASES)'
+	$(WITH_TEST_ENV) export ORM_FEATURE_DSN="$$BENCH_POSTGRES_DSN" ORM_FEATURE_DATABASE=postgres && $(MAKE) --no-print-directory test-php-ext CASES='$(PHP_EXT_MEMORY_GATE_POSTGRES)'
+	$(WITH_TEST_ENV) export ORM_FEATURE_DSN="$$BENCH_SQLITE_DSN" ORM_FEATURE_DATABASE=sqlite && $(MAKE) --no-print-directory test-php-ext CASES='$(PHP_EXT_MEMORY_GATE_SQLITE)'
 
 # complex-query-rust-check runs the shared CPX-2 fixture against its preseeded MySQL, PostgreSQL, and SQLite owner databases.
 .PHONY: complex-query-rust-check/mysql complex-query-rust-check/postgres complex-query-rust-check/sqlite

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1e39157a1981699f9f0f18bf242ffd72c8c6cce9a5ee797ed537cf9c7f39a257 -->
+<!-- source-sha256: 25414d47efb8545fffe5f751acfceb51ddb9484a09b46eb43610d099a95ffe97 -->
 # 변경 이력
 
 ## Unreleased
 
+- php-ext 메모리 검사는 AES stress 그룹의 test 클래스 14개를 stress 테스트, root_in_chunking과 함께 한 프로세스에서 128M memory_limit 안에 실행하며, 확장이 호출 사이에 메모리를 남기면 실패한다 (T334-3-4-7).
 - php-ext Validator는 생성할 때 찾는 클래스 이름 문자열을 해제하므로 Validator 1000개를 만들어도 메모리가 남지 않는다 (T334-3-4-7-2).
 - php-ext의 RuntimeModel build는 model을 해제할 때 entity tree, column·unique·index key 문자열, entity 이름을 함께 해제하므로 같은 문서 집합의 build를 반복해도 메모리가 남지 않는다 (T334-3-4-7-1).
 - AES version과 rotation code COD-44, COD-47, COD-49부터 COD-54, COD-57부터 COD-60은 여섯 runtime 모두에서 `contracts/fixtures/aes_rotation/aes_rotation.json` recipe로 MySQL, PostgreSQL, SQLite에서 실행된다. recipe가 대체하는 손으로 쓴 test는 지웠고, COD-48, COD-55, COD-56은 FCV-2 사유와 함께 native로 남는다 (T334-3-4-6).

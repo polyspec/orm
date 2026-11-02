@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The php-ext memory check runs the 14 test classes of the AES stress group with the stress test and root_in_chunking in one process under the 128M memory_limit, and it fails when the extension keeps memory across calls (T334-3-4-7).
 - A php-ext Validator releases the class-name string it looks up when it is constructed, so 1000 Validators keep no memory (T334-3-4-7-2).
 - The php-ext build of a RuntimeModel releases its entity tree, its column, unique and index key strings and its entity names when the model is released, so repeated builds keep no memory (T334-3-4-7-1).
 - The AES version and rotation codes COD-44, COD-47, COD-49 to COD-54 and COD-57 to COD-60 run as the recipe `contracts/fixtures/aes_rotation/aes_rotation.json` in all six runtimes on MySQL, PostgreSQL and SQLite; the hand-written tests that the recipe replaces are removed, and COD-48, COD-55 and COD-56 stay native with an FCV-2 reason (T334-3-4-6).
