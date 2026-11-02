@@ -1543,6 +1543,15 @@
         "databases"
       ]
     },
+    "php-ext-memory-check": {
+      "scope": "suite",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases"
+      ]
+    },
     "complex-query-rust-check": {
       "scope": "suite",
       "needs": [
