@@ -2284,6 +2284,12 @@ interface-check/self-test: php-vendor-check lease-tool typescript-build interfac
 	$(READ_TYPESCRIPT)
 	ORM_PYTHON=$(PYTHON_VENV)/bin/python PATH="$(HOME)/.cargo/bin:$(PATH)" $(NODE) tests/interfaces/check/main.mts --self-test
 
+# interface-record writes the symbol snapshots and manifest hashes that interface-check compares, with the same checker and leases; LANGUAGE=<name> records one language.
+.PHONY: interface-record
+interface-record: php-vendor-check lease-tool typescript-build interface-typescript-check python-venv-check
+	$(READ_TYPESCRIPT)
+	ORM_PYTHON=$(PYTHON_VENV)/bin/python PATH="$(HOME)/.cargo/bin:$(PATH)" $(NODE) tests/interfaces/check/main.mts --record $(if $(LANGUAGE),-language $(LANGUAGE),)
+
 # go-model-check fails when the Go models that orm-install-go wrote differ from what the entries of GO_MODELS_FILE generate (orm-gen gen --check).
 go-model-check:
 	$(RUN_LONG) go-model -- sh -c 'cd packages/go && while IFS= read -r entry; do case "$$entry" in ""|"#"*) continue ;; esac; $(GO) run ./cmd/orm-gen gen --check --lang go $$entry || exit 1; done < $(CURDIR)/$(GO_MODELS_FILE)'

@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: aa9df7a2abfab342c115cef03283330d1f9da91f98a07d8f7902a1ec5695266c -->
+<!-- source-sha256: a88503ed54c857caebfafa29769e4ab70c83600f07afdbffc62d353f46d5ddc8 -->
 # 변경 이력
 
 ## Unreleased
@@ -67,6 +67,7 @@ SQLite에서 같은 행을 쓰는 두 connection의 잠금 대기는 busy timeou
 - GroupRows PHP extension test가 이전 php-ext-build 형식의 build를 가짜로 만들어서 module을 찾지 못했고, test (static)의 makefile-pinned-node-recipes-check가 실패했다. 이제 가짜는 build를 한 번만 하도록 바꾼 리팩터링(CR4)이 php-ext-build에 준 형식을 따른다 (CR52).
 - dbspec PHP extension aggregate의 공유 module 테스트가 T334-3-15-1이 지운 child를 기대해서, test (static)의 makefile-pinned-node-recipes-check가 실패했다. 테스트는 요청 검증이 ir-validate-check로 옮겨진 것을 따른다 (CR53).
 - 물리 DDL 동작과 IR 검증 recipe의 test 파일 여섯 개가 어떤 feature에도 속하지 않아 features 검사가 여섯 CI job에서 실패했다. 물리 DDL test는 이제 schema_definition에, IR 검증 test는 planner에 속한다 (CR54).
+- `make interface-record`는 `make interface-check`와 같은 checker와 lease 환경으로 interface 심볼 스냅샷과 manifest 해시를 기록한다. `LANGUAGE=<name>`이면 한 언어만 기록하므로, transaction statement gate로 바뀐 Rust DbInner 스냅샷을 make 밖이 아니라 make로 재생성한다 (#T343-4-1)
 
 ## 0.0.21
 
