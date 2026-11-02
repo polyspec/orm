@@ -34,10 +34,11 @@ func New(m *runtimemodel.Model, dialectName string) (*Engine, error) {
 	return &Engine{M: m, P: &planner.Planner{M: m, D: d}}, nil
 }
 
-// Load returns the dialect's engine, built as a runtime model from the manifest text.
-// Malformed manifest text is SCHEMA_INVALID.
-func Load(manifestText, dialectName string) (*Engine, error) {
-	m, diagnostics := runtimemodel.Load(manifestText)
+// Load returns the dialect's engine, built as a runtime model from the manifest text and the external document text
+// (runtimemodel.LoadSet; the external text is empty when the set has no external document).
+// Malformed text is SCHEMA_INVALID.
+func Load(manifestText, externalText, dialectName string) (*Engine, error) {
+	m, diagnostics := runtimemodel.LoadSet(manifestText, externalText)
 	if len(diagnostics) > 0 {
 		return nil, &ir.Error{Code: "SCHEMA_INVALID", Msg: runtimemodel.DiagnosticsError(diagnostics)}
 	}

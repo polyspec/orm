@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f358ae082de0cd969f55b53b61703c666b0ccff2966ea5ebd22c1e5c9e291782 -->
+<!-- source-sha256: 0b7d6117d9ecda34aba892ebaa2fad688aabb0ef507bd800b1ee5c54a9f24eff -->
 # 변경 이력
 
 ## Unreleased
@@ -105,6 +105,7 @@
 - 여섯 runtime의 스키마 설치 case가 하나의 recipe(`contracts/fixtures/schema_install/schema_install.json`)가 되어 MySQL, PostgreSQL, SQLite에서 돈다. 같은 동작의 네이티브 테스트는 지웠고, register 테스트는 거부 테스트와 hash별 engine 테스트로 나눴으며, SCH-14부터 SCH-17까지는 FCV-2에 따라 네이티브로 남는 case(감사 transaction, load 시점 hash 검사, bench 모델, hash별 engine)를 나타낸다(T334-3-4).
 - 물리 plan case의 네이티브 test 여섯 개는 case마다 결과를 하나씩 내지 않았고, tests/dbspec/plans-physical.json의 물리 기록은 어떤 suite unit에도 속하지 않았다. 이제 unit은 case를 단위로 한 suite이며, 각 runtime이 모든 case를 보고한다 (T334-3-17-5).
 
+- fulltext 레시피의 Go query.search가 외부 문서 없이 케이스 스키마를 적재했고 모델 이름 Author를 entity로 넘겨서 Go의 네 케이스가 모두 실패했다. engine.Load가 외부 문서 텍스트를 받아 runtimemodel.LoadSet으로 적재하며, 레시피는 스키마의 외부 문서와 entity author를 넘긴다 (T334-3-17-2-1).
 ## 0.0.21
 
 - client-statement-runner는 statement runner의 Rust 기호를 두 공개 경로, 곧 crate root re-export와 정의 module 모두에 선언한다: `polyspec_orm::Utils::run`과 `polyspec_orm::utils::Utils::run`, `polyspec_orm::TxFrame::run`과 `polyspec_orm::tx::TxFrame::run` (T346-11).

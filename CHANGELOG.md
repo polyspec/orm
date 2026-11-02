@@ -104,6 +104,7 @@
 - The spec states how a database feature runs as a recipe on the run databases: FCV-8 to FCV-14 of docs/spec/feature-coverage.md give the conversion, the databases from the `databases` need and TEST_ENV, the three databases with no exclusion, the failure of a missing DSN, the per-case result, the seed ownership and the native tests (T334-3-4-0).
 - The six native tests of the physical plan cases did not report one result per case, and the physical records of tests/dbspec/plans-physical.json belonged to no suite unit, so the parity check did not declare them. The unit is now a suite on its cases, and each runtime reports every case (T334-3-17-5).
 
+- The Go query.search of the fulltext recipe loaded the case schema without its external documents and passed the model name Author as the entity, so the four Go cases failed. engine.Load takes the external text and loads it with runtimemodel.LoadSet, and the recipe passes the external documents of the schema and the entity author (T334-3-17-2-1).
 ## 0.0.21
 
 - client-statement-runner declares each Rust symbol of the statement runner at both public paths, the crate-root re-export and the module of its definition: `polyspec_orm::Utils::run` and `polyspec_orm::utils::Utils::run`, `polyspec_orm::TxFrame::run` and `polyspec_orm::tx::TxFrame::run` (T346-11).

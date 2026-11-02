@@ -568,7 +568,7 @@ func TestAllColumnsSelectAESVersionOnce(t *testing.T) {
 func TestLoad(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	m := benchModel(t)
-	e, err := Load(m.ManifestText, "postgres")
+	e, err := Load(m.ManifestText, "", "postgres")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -578,7 +578,7 @@ func TestLoad(t *testing.T) {
 	if p := compile(t, e, `"kind":"all","entity":"author"`); len(p.Steps) == 0 {
 		t.Error("the loaded engine compiled no step")
 	}
-	if _, err := Load("not a manifest", "postgres"); err == nil {
+	if _, err := Load("not a manifest", "", "postgres"); err == nil {
 		t.Fatal("Load of malformed manifest text succeeded")
 	} else if e := (*ir.Error)(nil); !errors.As(err, &e) || e.Code != "SCHEMA_INVALID" {
 		t.Errorf("Load of malformed manifest text = %v, want SCHEMA_INVALID", err)
