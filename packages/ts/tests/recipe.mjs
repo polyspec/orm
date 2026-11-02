@@ -12,6 +12,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { CORE, Db, OrmError, StyledValue, blindIndex, chainPlans, compareSchemas, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitPlan, encode, hostDecode, hostEncode, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecSet, registerModel } from '../dist/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
+import { connect as connectBind, Slots as BindSlots } from '../dist/models/bind_fixture/models.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { Engine } from '../dist/index.js';
 import { withCaseDatabase } from './case-database.mjs';
@@ -836,6 +837,19 @@ function requestParams(sent) {
   throw new Error('the listener received no request message');
 }
 
+// bindSlotChain is the chain of a bind step (T334-3-15-3c, PRT-67): it writes the bind value into the slot column of the bind_fixture
+// model through its setter and sends the insert, so the request carries the wire value of the slot.
+function bindSlotChain(bind) {
+  const prefix = bind.column.slice(0, bind.column.indexOf('_'));
+  const setter = `set${prefix[0].toUpperCase()}${prefix.slice(1)}Value`;
+  return async ({ db }) => {
+    const row = new BindSlots().connect(db);
+    row[setter](bind.value);
+    await row.create();
+    return null;
+  };
+}
+
 // checkAnswer runs the chain of an ir.answer step on a connection to a listener that answers with the answer or answers of the step,
 // normalizes its result, and compares it with the value of the expect of database. An OrmError from the chain is {error: CODE}.
 // An expect of {params} compares the params of the request that the listener received instead (PRT-66).
@@ -843,12 +857,13 @@ async function checkAnswer(step, database) {
   const expect = step.expect?.[database];
   if (expect === undefined) throw new Error(`ir.answer has no expect for ${database}`);
   if (expect.value === undefined && expect.params === undefined) throw new Error(`ir.answer expect for ${database} has neither value nor params`);
-  const chain = conformanceCases[step.chain];
+  if (step.bind !== undefined && step.chain !== 'slot') throw new Error(`a bind step names the chain slot, not ${step.chain}`);
+  const chain = step.bind !== undefined ? bindSlotChain(step.bind) : conformanceCases[step.chain];
   if (chain === undefined) throw new Error(`chain ${step.chain} is no markdown conformance case`);
   if (expect.params !== undefined && step.answers !== undefined) throw new Error('a params expect needs one answer, not answers');
   const sent = [];
   const server = step.answers !== undefined ? await startMarkdownTestServerWithKeyedAnswers(step.answers) : await startMarkdownTestServerWithAnswer(JSON.stringify(step.answer), sent);
-  const db = await connect(server.dsn);
+  const db = await (step.bind !== undefined ? connectBind : connect)(server.dsn);
   let got;
   let failed = false;
   try {
