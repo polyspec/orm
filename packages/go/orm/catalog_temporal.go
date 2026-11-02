@@ -101,7 +101,11 @@ func catalogDescribedTemporal(value any, column CatalogColumn, dialect string) (
 			return text, nil
 		}
 		if !declared {
-			return nil, catalogErr(CodeGridTemporalPrecision, "column %q has no dbspec CHECK that fixes its fraction digits", column.Name)
+			// INT-103 and DIA-24: a SQLite DATETIME with no CHECK has precision 0. A CHECK-less TIME stays a refusal (T334-3-3-8).
+			if kind != "datetime" {
+				return nil, catalogErr(CodeGridTemporalPrecision, "column %q has no dbspec CHECK that fixes its fraction digits", column.Name)
+			}
+			precision = 0
 		}
 		if digits != precision {
 			return nil, catalogErr(CodeGridTemporalPrecision, "column %q holds %d fraction digits; its dbspec CHECK fixes %d", column.Name, digits, precision)

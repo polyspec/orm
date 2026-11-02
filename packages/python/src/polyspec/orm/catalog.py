@@ -354,10 +354,13 @@ def _described_temporal(value, column: CatalogColumn, dialect: str):
         if kind == "date":
             return value
         if not declared:
-            raise _error(
-                codes.GRID_TEMPORAL_PRECISION,
-                f"column {column.name!r} has no dbspec CHECK that fixes its fraction digits",
-            )
+            # INT-103 and DIA-24: a SQLite DATETIME with no CHECK has precision 0. A CHECK-less TIME stays a refusal (T334-3-3-8).
+            if kind != "datetime":
+                raise _error(
+                    codes.GRID_TEMPORAL_PRECISION,
+                    f"column {column.name!r} has no dbspec CHECK that fixes its fraction digits",
+                )
+            precision = 0
         if digits != precision:
             raise _error(
                 codes.GRID_TEMPORAL_PRECISION,

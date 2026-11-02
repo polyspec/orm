@@ -523,10 +523,12 @@ function sqliteTemporal(plain: CatalogValue, described: CatalogColumn): CatalogV
     throw err(CODE_TEMPORAL_VALUE, `${described.name} holds a value that is not a dbspec ${kind}`);
   }
   if (kind === 'date') return plain;
-  if (described.checkPrecision === null) throw err(CODE_TEMPORAL_PRECISION, `${described.name} has no dbspec CHECK that fixes its fraction digits`);
+  // INT-103 and DIA-24: a SQLite DATETIME with no CHECK has precision 0. A CHECK-less TIME stays a refusal (T334-3-3-8).
+  const fixed = described.checkPrecision ?? (kind === 'datetime' ? 0 : null);
+  if (fixed === null) throw err(CODE_TEMPORAL_PRECISION, `${described.name} has no dbspec CHECK that fixes its fraction digits`);
   const digits = fractionDigits(plain);
-  if (digits !== described.checkPrecision) {
-    throw err(CODE_TEMPORAL_PRECISION, `${described.name} holds ${digits} fraction digits; its dbspec CHECK fixes ${described.checkPrecision}`);
+  if (digits !== fixed) {
+    throw err(CODE_TEMPORAL_PRECISION, `${described.name} holds ${digits} fraction digits; its dbspec CHECK fixes ${fixed}`);
   }
   return plain;
 }

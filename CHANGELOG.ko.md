@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 05c97a29e2bb6196133e7963a4313723d54ca604a2b3ea0ebe413962eeabd0a6 -->
+<!-- source-sha256: 0b886d7ae67efa41e29c765b447d5ba74928ef16627aaf4d8f78d59f773eed34 -->
 # 변경 이력
 
 ## Unreleased
 
+- Go, TypeScript, Python의 CHECK가 없는 SQLite DATETIME 열의 기술된 읽기는 INT-103대로 precision 0을 쓴다: 소수부가 없는 텍스트는 dbspec 텍스트로 읽히고, 0이 아닌 소수부는 GRID_TEMPORAL_PRECISION으로 실패한다 (T334-3-3-7-2)
 - PHP의 기술된 table page 읽기는 행을 변환한 뒤에야 limit까지 자르므로, limit을 넘는 sentinel 행(LIMIT limit+1 읽기의 마지막 행)의 값이 page를 실패시켰다. 이제 page를 먼저 자르므로 그 행은 읽히지 않는다: catalog_connection recipe의 case described_temporal_text가 모든 runtime에서 SQLite page를 읽는다 (T334-3-3-7-1).
 - MySQL 영날짜 0000-00-00을 grid 조회가 읽으면 모든 runtime이 INT-103대로 GRID_TEMPORAL_VALUE로 실패한다: Go는 0001-01-01을, Rust는 NULL을(sqlx-mysql이 영날짜를 NULL로 본다), Python은 그 텍스트를 반환했다 (T334-3-3-4).
 - catalog_connection recipe가 MySQL YEAR grid 값의 셀을 INT-103대로 명시한다: YEAR는 orm이 시간 의미를 선언하지 않는 정수값 type이므로 모든 runtime이 그 grid 읽기를 CATALOG_VALUE로 거부하며, 명세 문장이 이를 적는다 (T334-3-3-3).
