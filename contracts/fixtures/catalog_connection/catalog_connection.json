@@ -2207,6 +2207,53 @@
       ]
     },
     {
+      "id": "grid_zero_date",
+      "requirements": [
+        "INT-103"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "a DATE column that holds the zero date 0000-00-00, which the session sql_mode of INT-101 refuses on insert: INSERT IGNORE stores it with a warning",
+          "sql": "CREATE TABLE grid_zero_date (id BIGINT NOT NULL PRIMARY KEY, d DATE NULL, dt DATETIME NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "sql": "INSERT IGNORE INTO grid_zero_date VALUES (1, '0000-00-00', '0000-00-00 00:00:00')"
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "mysql"
+          ],
+          "sql": "SELECT d FROM grid_zero_date WHERE id = 1",
+          "expect": {
+            "mysql": {
+              "error": "GRID_TEMPORAL_VALUE"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "mysql"
+          ],
+          "sql": "SELECT dt FROM grid_zero_date WHERE id = 1",
+          "expect": {
+            "mysql": {
+              "error": "GRID_TEMPORAL_VALUE"
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "temporal_default_precision",
       "requirements": [
         "INT-101",

@@ -219,6 +219,12 @@ func catalogGridSQLite(value any, refuse func(string, ...any) (CatalogGridCell, 
 // catalogGridTimeValue is the grid cell of a driver time value: a MySQL DATE, DATETIME or a PostgreSQL DATE, TIMESTAMP. The
 // wall clock of the value is the dbspec text, in UTC for the connection time zone of the driver.
 func catalogGridTimeValue(v time.Time, native, dialect string, refuse func(string, ...any) (CatalogGridCell, error), cell func(CatalogGridKind, any) (CatalogGridCell, error)) (CatalogGridCell, error) {
+	if dialect == "mysql" && v.IsZero() {
+		// go-sql-driver/mysql returns time.Time{} for the zero date 0000-00-00. MySQL's DATE and DATETIME range starts at
+		// 1000-01-01 (MySQL 8.4 Reference Manual, "The DATE, DATETIME, and TIMESTAMP Types"), so 0001-01-01 is no MySQL
+		// value: this is the zero date, which INT-103 refuses as a date outside 0001-01-01 to 9999-12-31.
+		return catalogGridTemporalRefusal(fmt.Errorf("MySQL zero date 0000-00-00 is outside 0001-01-01 to 9999-12-31"))
+	}
 	date, err := catalogGridDate(v.Year(), int(v.Month()), v.Day())
 	if err != nil {
 		return refuse("%v", err)

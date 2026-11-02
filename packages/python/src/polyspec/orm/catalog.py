@@ -1080,6 +1080,9 @@ def _grid_cell(value, dialect: str, code, unsigned: bool) -> GridCell:
                     clock // 3600, clock // 60 % 60, clock % 60, micros % 1000000
                 ),
             )
+        if code in (_MYSQL_DATE, _MYSQL_DATETIME) and isinstance(value, str):
+            # pymysql returns a date outside 0001-01-01 to 9999-12-31, such as the zero date, as its text (INT-103).
+            raise _refuse_temporal("MySQL date outside 0001-01-01 to 9999-12-31")
         if code in (_MYSQL_DECIMAL, _MYSQL_NEWDECIMAL) and isinstance(value, str):
             return GridCell("decimal", value)
         if isinstance(value, int) and not isinstance(value, bool) and unsigned:

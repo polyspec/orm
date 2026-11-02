@@ -88,7 +88,16 @@ fn datetime_text(value: NaiveDateTime) -> Result<String, sqlx::Error> {
 /// `TIME` accepts only a time of day; an interval that is negative or 24 hours or more is rejected.
 pub(super) fn mysql_temporal(row: &sqlx::mysql::MySqlRow, index: usize) -> Result<Option<GridCell>, sqlx::Error> {
     use sqlx::{Column, Row, TypeInfo};
-    Ok(Some(match row.columns()[index].type_info().name() {
+    let name = row.columns()[index].type_info().name();
+    if matches!(name, "DATE" | "DATETIME") {
+        // sqlx-mysql's is_null treats a zero DATE or DATETIME as NULL (sqlx-mysql src/value.rs), so the typed decode below
+        // would return a NULL cell for 0000-00-00. The raw value keeps its bytes: a zero date is the length prefix 0 of the
+        // binary protocol, and it is refused as INT-103 states. A true NULL has no bytes and is read by the typed decode.
+        if row.try_get_unchecked::<Vec<u8>, _>(index).is_ok_and(|bytes| bytes.first() == Some(&0)) {
+            return Err(temporal_error("zero date 0000-00-00 is outside 0001-01-01 to 9999-12-31"));
+        }
+    }
+    Ok(Some(match name {
         "DATE" => match row.try_get::<Option<NaiveDate>, _>(index)? {
             Some(date) => GridCell::Date(date_text(date)?),
             None => GridCell::Null,

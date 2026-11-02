@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f1b8e51d6bc71c85f92454c0b3cb8d4dad4e04c31bb65e8821fe257a7cd67e6c -->
+<!-- source-sha256: 410141adf4ee3790e5d1095d77e2eb87393b90a91976eed53c0112360c64d45d -->
 # 변경 이력
 
 ## Unreleased
 
+- MySQL 영날짜 0000-00-00을 grid 조회가 읽으면 모든 runtime이 INT-103대로 GRID_TEMPORAL_VALUE로 실패한다: Go는 0001-01-01을, Rust는 NULL을(sqlx-mysql이 영날짜를 NULL로 본다), Python은 그 텍스트를 반환했다 (T334-3-3-4).
 - catalog_connection recipe가 MySQL YEAR grid 값의 셀을 INT-103대로 명시한다: YEAR는 orm이 시간 의미를 선언하지 않는 정수값 type이므로 모든 runtime이 그 grid 읽기를 CATALOG_VALUE로 거부하며, 명세 문장이 이를 적는다 (T334-3-3-3).
 - catalog_connection recipe의 native 확인이 여섯 runtime에 명시된다: TypeScript와 Rust의 정수 및 중복 키 오류는 자기 코드를 유지하고(INT-123, CFG-33), CHECK가 없는 temporal 열의 Rust grid는 선언된 정밀도만 유지하며(DIA-24), coverage 기대는 recipe 진입 메서드를 가리키고 SCH-3에 묶인다 (T334-3-3-2).
 - 옛 runtime test의 나머지 catalog_connection 확인이 recipe case가 되었고, 여섯 runtime의 옛 coverage test는 제거되었다. python recipe는 실행이 끝나면 bench 모델 디렉터리를 지운다(T334-3-3-2).

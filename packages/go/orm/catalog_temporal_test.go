@@ -178,3 +178,38 @@ func TestCatalogDescribedTemporalText(t *testing.T) {
 		})
 	}
 }
+
+// Requirements: INT-103.
+//
+// go-sql-driver/mysql returns time.Time{} for the zero date 0000-00-00 (parseDateTime). MySQL's DATE and DATETIME range
+// starts at 1000-01-01 (MySQL 8.4 Reference Manual, "The DATE, DATETIME, and TIMESTAMP Types"), so 0001-01-01 is never a
+// MySQL value and a time.Time{} read from a MySQL temporal column is the zero date, which INT-103 refuses.
+func TestCatalogGridTemporalZeroDate(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	for _, test := range []struct {
+		name    string
+		value   time.Time
+		native  string
+		dialect string
+		want    any
+		code    string
+	}{
+		{name: "MySQL zero DATE", value: time.Time{}, native: "DATE", dialect: "mysql", code: "GRID_TEMPORAL_VALUE"},
+		{name: "MySQL zero DATETIME", value: time.Time{}, native: "DATETIME", dialect: "mysql", code: "GRID_TEMPORAL_VALUE"},
+		{name: "MySQL DATE at the start of its range", value: time.Date(1000, time.January, 1, 0, 0, 0, 0, time.UTC), native: "DATE", dialect: "mysql", want: "1000-01-01"},
+		{name: "PostgreSQL DATE at 0001-01-01", value: time.Time{}, native: "DATE", dialect: "postgres", want: "0001-01-01"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := catalogGridCell(test.value, test.native, test.dialect)
+			if test.code != "" {
+				if ErrorCode(err) != test.code {
+					t.Fatalf("catalogGridCell = %#v, %v; want %s", got, err, test.code)
+				}
+				return
+			}
+			if err != nil || !reflect.DeepEqual(got.Value, test.want) {
+				t.Fatalf("catalogGridCell = %#v, %v; want %#v", got, err, test.want)
+			}
+		})
+	}
+}
