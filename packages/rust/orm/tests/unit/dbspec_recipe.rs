@@ -2,7 +2,7 @@
 //! the four entries plan_invalid, plan_chains, plan_parse and plan_comparisons. Each dbspec op maps to one public call of
 //! `polyspec_orm::dbspec`, and its result is compared with the `none` part of its expect as JSON.
 
-use polyspec_orm::dbspec::{chain, compare_schemas, diff, parse, parse_plan, Diagnostic, Document, Plan};
+use polyspec_orm::dbspec::{chain, compare_schemas, diff, emit_plan, parse, parse_plan, plan_steps, Diagnostic, Dialect, Document, Plan, PlanStep};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
@@ -66,6 +66,49 @@ fn plan<'b>(raw: &Value, bound: &'b HashMap<String, Bound>) -> &'b Plan {
     }
 }
 
+/// The object of a plan step (docs/spec/plans.md "Steps"): its statement, its effect as text, and the fields that the step has.
+fn step_fields(s: &PlanStep) -> Value {
+    let mut out = serde_json::Map::new();
+    out.insert("statement".into(), Value::from(s.statement.clone()));
+    out.insert("effect".into(), Value::from(s.effect.to_string()));
+    if !s.rollback.is_empty() {
+        out.insert("rollback".into(), Value::from(s.rollback.clone()));
+    } else if !s.irreversible.is_empty() {
+        out.insert("irreversible".into(), Value::from(s.irreversible.clone()));
+    }
+    if !s.restore.is_empty() {
+        out.insert("restore".into(), Value::from(s.restore.clone()));
+    }
+    if !s.rollback_restore.is_empty() {
+        out.insert("rollback_restore".into(), Value::from(s.rollback_restore.clone()));
+    }
+    if let Some(e) = s.restore_if.as_ref().filter(|_| !s.restore.is_empty() || !s.rollback_restore.is_empty()) {
+        out.insert("restore_if".into(), Value::from(e.to_string()));
+    }
+    if !s.null_checks.is_empty() {
+        let checks = s
+            .null_checks
+            .iter()
+            .map(|c| Value::Array(vec![c.table.clone().into(), c.column.clone().into(), c.default.clone().map_or(Value::Null, Value::from)]))
+            .collect();
+        out.insert("null_checks".into(), Value::Array(checks));
+    }
+    if s.finalize {
+        out.insert("finalize".into(), Value::Bool(true));
+    }
+    Value::Object(out)
+}
+
+/// The dialect that a name gives (mysql, postgres or sqlite).
+fn dialect(name: &str) -> Dialect {
+    match name {
+        "mysql" => Dialect::MySql,
+        "postgres" => Dialect::Postgres,
+        "sqlite" => Dialect::Sqlite,
+        other => panic!("dialect {other} is not mysql, postgres or sqlite"),
+    }
+}
+
 /// Runs one dbspec step and returns its result in the form of its expect.
 fn run_step(step: &Value, bound: &mut HashMap<String, Bound>) -> Value {
     let op = step["op"].as_str().expect("op");
@@ -89,6 +132,14 @@ fn run_step(step: &Value, bound: &mut HashMap<String, Bound>) -> Value {
             }
             Err(diagnostics) => json!({"diagnostics": rows(&diagnostics, false)}),
         },
+        "dbspec.emit_plan" => json!({"text": emit_plan(plan(&step["plan"], bound))}),
+        "dbspec.plan_steps" => {
+            let source = step.get("source").filter(|raw| !raw.is_null()).map(|raw| document(raw, bound));
+            match plan_steps(source, plan(&step["plan"], bound), dialect(step["dialect"].as_str().expect("dialect"))) {
+                Ok(steps) => json!({"steps": steps.iter().map(step_fields).collect::<Vec<Value>>()}),
+                Err(diagnostics) => json!({"messages": messages(&diagnostics, "plan")}),
+            }
+        }
         "dbspec.diff" => {
             let source = step.get("source").filter(|raw| !raw.is_null()).map(|raw| document(raw, bound));
             match diff(source, plan(&step["plan"], bound)) {

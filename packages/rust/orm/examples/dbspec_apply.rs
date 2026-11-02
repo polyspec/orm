@@ -1,4 +1,4 @@
-//! Applies the chain from plans.json (tests/dbspec/plans.json) (create-from-empty and
+//! Applies the chain of the plan cases beside plans.json (tests/dbspec/plan-cases.json) (create-from-empty and
 //! rename-table-and-column) to one database with the Rust client
 //! (docs/spec/plans.md "Apply"). The action is apply-first (first plan only), apply (whole chain),
 //! stop (halts after statement 1 of the second plan runs), recover (continues an interrupted plan
@@ -11,11 +11,17 @@ use chrono::{DateTime, TimeZone, Utc};
 use polyspec_orm::dbspec::{
     apply, parse_plan, recover, rollback, ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, CatalogQuerier, CatalogValue, Dialect, Plan,
 };
-use serde_json::Value;
 use sqlx::Connection;
+use std::path::Path;
 
 #[path = "../tests/common/apply_stop.rs"]
 mod apply_stop;
+#[path = "../tests/common/plan_cases.rs"]
+mod plan_cases;
+#[path = "../tests/common/plan_recipe.rs"]
+mod plan_recipe;
+#[path = "../tests/common/plan_sources.rs"]
+mod plan_sources;
 
 use apply_stop::{record_steps, EventError, Stop};
 
@@ -186,49 +192,31 @@ fn combine_cleanup(result: Result<String, String>, cleanup: Result<(), String>) 
     }
 }
 
-/// create-from-empty and rename-table-and-column from plans.json at the path.
+/// The plan cases of the recipe beside the plans.json at the path (tests/dbspec/plan-cases.json).
+fn dir_beside(path: &str) -> &Path {
+    Path::new(path).parent().unwrap_or(Path::new("."))
+}
+
+/// create-from-empty and rename-table-and-column from the plan cases beside the path.
 fn chain(path: &str) -> Result<Vec<Plan>, String> {
-    let text = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
-    let vectors: Value = serde_json::from_str(&text).map_err(|e| format!("{path}: {e}"))?;
     let mut plans = Vec::new();
-    for c in vectors["cases"].as_array().ok_or("plans.json has no cases")? {
-        if !matches!(c["id"].as_str(), Some("create-from-empty" | "rename-table-and-column")) {
-            continue;
-        }
-        let lines = c["plan"].as_array().ok_or("a plan case has no plan lines")?;
-        let mut source = String::new();
-        for line in lines {
-            source.push_str(line.as_str().ok_or("a plan line is not text")?);
-            source.push('\n');
-        }
-        plans.push(parse_plan(&source).map_err(|e| format!("{}: {e:?}", c["id"]))?);
+    for c in plan_cases::read_cases(dir_beside(path))?.iter().filter(|c| matches!(c.id.as_str(), "create-from-empty" | "rename-table-and-column")) {
+        plans.push(parse_plan(&c.plan).map_err(|e| format!("{}: {e:?}", c.id))?);
     }
     if plans.len() != 2 || plans[1].from() != Some(plans[0].to()) {
-        return Err("plans.json does not chain create-from-empty and rename-table-and-column".to_owned());
+        return Err("plan-cases.json does not chain create-from-empty and rename-table-and-column".to_owned());
     }
     Ok(plans)
 }
 
 fn representative_chain(path: &str) -> Result<Vec<Plan>, String> {
-    let text = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
-    let vectors: Value = serde_json::from_str(&text).map_err(|e| format!("{path}: {e}"))?;
-    let case =
-        vectors["cases"].as_array().and_then(|cases| cases.iter().find(|c| c["id"] == "representative")).ok_or("plans.json has no representative case")?;
-    let source_lines = case["source"].as_array().ok_or("representative has no source lines")?;
-    let mut source = String::from("dbplan 1 base\nfrom empty\n\n");
-    for line in source_lines {
-        source.push_str(line.as_str().ok_or("representative source line is not text")?);
-        source.push('\n');
-    }
-    let target_lines = case["plan"].as_array().ok_or("representative has no plan lines")?;
-    let mut target = String::new();
-    for line in target_lines {
-        target.push_str(line.as_str().ok_or("representative plan line is not text")?);
-        target.push('\n');
-    }
+    let cases = plan_cases::read_cases(dir_beside(path))?;
+    let case = cases.iter().find(|c| c.id == "representative").ok_or("plan-cases.json has no representative case")?;
+    let sources = plan_sources::read_sources(dir_beside(path))?;
+    let source = sources.get("representative").and_then(|s| s.as_ref()).ok_or("representative has no source lines")?;
     let plans = vec![
-        parse_plan(&source).map_err(|e| format!("representative source: {e:?}"))?,
-        parse_plan(&target).map_err(|e| format!("representative plan: {e:?}"))?,
+        parse_plan(&format!("dbplan 1 base\nfrom empty\n\n{source}")).map_err(|e| format!("representative source: {e:?}"))?,
+        parse_plan(&case.plan).map_err(|e| format!("representative plan: {e:?}"))?,
     ];
     if plans[1].from() != Some(plans[0].to()) {
         return Err("representative plans do not chain".to_owned());

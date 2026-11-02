@@ -5,7 +5,7 @@ from polyspec.orm.dbspec.render import render_dbspec
 from polyspec.orm.dbspec.plan import parse_plan
 from polyspec.orm.dbspec.plan_steps import plan_steps
 from .dbspec_ddl import DATA, parse_set
-from .dbspec_plans import section_cases
+from .dbspec_plans import plan_cases
 from . import testcase
 
 
@@ -19,7 +19,7 @@ class RenderDialectTest(unittest.TestCase):
 
     # Requirements: DBS-174.
     def test_plan_steps_reject_unknown_dialect_before_writing_statements(self):
-        case = section_cases("cases")[0]
+        case = plan_cases()[0]
         parsed = parse_plan("\n".join(case["plan"]) + "\n")
         self.assertIsNotNone(parsed["plan"], parsed["diagnostics"])
         with self.assertRaisesRegex(TypeError, "oracle"):

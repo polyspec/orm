@@ -20,16 +20,21 @@ use or_panic::OrPanic;
 mod dbspec_apply_support;
 #[path = "common/dbspec_probe.rs"]
 mod dbspec_probe;
+#[path = "common/plan_cases.rs"]
+mod plan_cases;
+#[path = "common/plan_recipe.rs"]
+mod plan_recipe;
+#[path = "common/plan_sources.rs"]
+mod plan_sources;
 
 use dbspec_apply_support::apply_stop::record_steps;
 use dbspec_apply_support::{fixed_now, quiet, EventError, Stop};
-use dbspec_probe::{connection_rules, lines, repository, require_dsn, run_probe, Conn, Servers, Session, DIALECTS};
+use dbspec_probe::{connection_rules, repository, require_dsn, run_probe, Conn, Servers, Session, DIALECTS};
 use polyspec_orm::db::{parse_dsn, ConnectOptions};
 use polyspec_orm::dbspec::{
     self, apply, finalize, parse_plan, plan_steps, recover, rollback, ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, CatalogQuerier, CatalogValue,
     Dialect, Plan,
 };
-use serde_json::Value;
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
@@ -41,19 +46,16 @@ fn code(result: &Result<(), ApplyError>) -> Option<&'static str> {
     result.as_ref().err().and_then(ApplyError::code)
 }
 
-/// create-from-empty from tests/dbspec/plans.json, and the chain starting from its target
+/// create-from-empty from tests/dbspec/plan-cases.json, and the chain starting from its target
 /// rename-table-and-column.
 fn apply_chain() -> Vec<Plan> {
-    let path = repository().join("tests/dbspec/plans.json");
-    let vectors: Value = serde_json::from_str(&std::fs::read_to_string(path).expect("plans.json")).expect("plans.json");
-    let plans: Vec<Plan> = vectors["cases"]
-        .as_array()
-        .expect("plan cases")
+    let cases = plan_cases::read_cases(&repository().join("tests/dbspec")).or_panic(|e| e);
+    let plans: Vec<Plan> = cases
         .iter()
-        .filter(|c| matches!(c["id"].as_str(), Some("create-from-empty" | "rename-table-and-column")))
-        .map(|c| parse_plan(&lines(&c["plan"])).or_panic(|e| format!("{}: {e:?}", c["id"])))
+        .filter(|c| matches!(c.id.as_str(), "create-from-empty" | "rename-table-and-column"))
+        .map(|c| parse_plan(&c.plan).or_panic(|e| format!("{}: {e:?}", c.id)))
         .collect();
-    assert!(plans.len() == 2 && plans[1].from() == Some(plans[0].to()), "plans.json does not chain create-from-empty and rename-table-and-column");
+    assert!(plans.len() == 2 && plans[1].from() == Some(plans[0].to()), "plan-cases.json does not chain create-from-empty and rename-table-and-column");
     plans
 }
 
@@ -290,11 +292,12 @@ fn counts(chain: &[Plan]) -> Counts {
 
 /// A chain made of the first plan base that creates the case's source and the case's plan.
 fn case_chain(id: &str) -> Vec<Plan> {
-    let path = repository().join("tests/dbspec/plans.json");
-    let vectors: Value = serde_json::from_str(&std::fs::read_to_string(path).expect("plans.json")).expect("plans.json");
-    let case = vectors["cases"].as_array().expect("plan cases").iter().find(|c| c["id"] == id).unwrap_or_else(|| panic!("plans.json has no case {id}"));
-    let base = parse_plan(&format!("dbplan 1 base\nfrom empty\n\n{}", lines(&case["source"]))).or_panic(|e| format!("{id} base: {e:?}"));
-    let plan = parse_plan(&lines(&case["plan"])).or_panic(|e| format!("{id}: {e:?}"));
+    let dir = repository().join("tests/dbspec");
+    let cases = plan_cases::read_cases(&dir).or_panic(|e| e);
+    let case = cases.iter().find(|c| c.id == id).unwrap_or_else(|| panic!("plan-cases.json has no case {id}"));
+    let source = plan_sources::read_sources(&dir).or_panic(|e| e).remove(id).flatten().unwrap_or_else(|| panic!("{id} has no source"));
+    let base = parse_plan(&format!("dbplan 1 base\nfrom empty\n\n{source}")).or_panic(|e| format!("{id} base: {e:?}"));
+    let plan = parse_plan(&case.plan).or_panic(|e| format!("{id}: {e:?}"));
     assert_eq!(plan.from(), Some(base.to()), "the source of {id} does not start its plan");
     vec![base, plan]
 }

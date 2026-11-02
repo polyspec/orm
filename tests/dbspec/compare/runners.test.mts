@@ -23,9 +23,9 @@ const files = ['cases', 'ddl', 'plans', 'mermaid', 'syntax'];
 const vectors = Object.fromEntries(files.map(name => [name, readFileSync(join(root, `tests/dbspec/${name}.json`), 'utf8')]));
 const directory = mkdtempSync(join(tmpdir(), 'dbspec-compare-runners-'));
 after(() => rmSync(directory, { recursive: true, force: true }));
-// The runners read the validation sections of a plans file from the recipes beside it, so the altered plans files of this
-// directory have the recipes beside them too.
-for (const section of ['invalid', 'chains', 'parse', 'comparisons']) writeFileSync(join(directory, `plan-${section}.json`), readFileSync(join(root, `tests/dbspec/plan-${section}.json`), 'utf8'));
+// The runners read the cases and the validation sections of a plans file from the recipes beside it, and the physical records
+// from plans-physical.json, so the altered plans files of this directory have those beside them too.
+for (const name of ['plan-cases.json', 'plan-invalid.json', 'plan-chains.json', 'plan-parse.json', 'plan-comparisons.json', 'plans-physical.json']) writeFileSync(join(directory, name), readFileSync(join(root, `tests/dbspec/${name}`), 'utf8'));
 
 // The shared cases name the main document of each case and the sets cases with external documents or a manifest; the
 // mutations that need them read them from the cases.
@@ -79,7 +79,8 @@ const mutations: Mutation[] = [
   { file: 'cases', location: 'positions[0].positions[0].extra', problem: 'is not a known field', edit: ['set', '/positions/0/positions/0/extra', 1] },
   { file: 'ddl', location: 'cases', problem: 'is missing', edit: ['delete', '/cases'] },
   { file: 'ddl', location: 'cases[0].id', problem: 'is missing', edit: ['delete', '/cases/0/id'] },
-  { file: 'plans', location: 'cases[0].source', problem: 'is missing', edit: ['delete', '/cases/0/source'] },
+  { file: 'plans', location: 'requirements', problem: 'is missing', edit: ['delete', '/requirements'] },
+  { file: 'plans', location: 'cases', problem: 'is not a known field', edit: ['set', '/cases', []] },
   { file: 'mermaid', location: 'round_trip', problem: 'is missing', edit: ['delete', '/round_trip'] },
   { file: 'mermaid', location: 'export[0].documents', problem: 'is missing', edit: ['delete', '/export/0/documents'] },
   { file: 'mermaid', location: 'import[0].mermaid', problem: 'is missing', edit: ['delete', '/import/0/mermaid'] },
@@ -94,7 +95,6 @@ const mutations: Mutation[] = [
   { file: 'cases', location: 'version', problem: 'is not 1', edit: ['set', '/version', 2] },
   { file: 'ddl', location: 'cases[0].statements', problem: 'is missing', edit: ['delete', '/cases/0/statements'] },
   { file: 'ddl', location: 'extra', problem: 'is not a known field', edit: ['set', '/extra', true] },
-  { file: 'plans', location: 'cases[0].steps', problem: 'is missing', edit: ['delete', '/cases/0/steps'] },
   { file: 'plans', location: 'version', problem: 'is not 1', edit: ['set', '/version', 2] },
   { file: 'mermaid', location: 'export[0].dropped', problem: 'is not an array', edit: ['set', '/export/0/dropped', {}] },
   { file: 'mermaid', location: 'invalid[0].extra', problem: 'is not a known field', edit: ['set', '/invalid/0/extra', 1] },
@@ -143,9 +143,10 @@ caseTest('the unchanged vectors run in every runner', TIMEOUT, async () => {
   }
 });
 
-// The validation sections of plans.json (invalid, chains, parse and comparisons) are recipes beside it now, and their shape is
-// the recipe schema's (scripts/features/schema/recipe.schema.json), which no runner reads; the plans mutations above cover the
-// cases section that plans.json still holds.
+// plans.json holds the note and the requirements. Its cases are the recipe plan-cases.json, and its physical records are
+// plans-physical.json; the validation sections are recipes beside it. Their shape is the recipe schema's
+// (scripts/features/schema/recipe.schema.json), which readPlanCases checks in every runner, and the plans mutations above cover
+// plans.json itself.
 // The runner rejects invalid vectors in the vector files it reads (reads in runners.mts).
 mutations.forEach((mutation, index) => {
   const { path, location, inputs } = inputsWith(index, mutation);

@@ -2742,7 +2742,10 @@
         "databases"
       ],
       "inputs": [
-        "packages/rust/orm/tests/dbspec_plan_apply.rs"
+        "packages/rust/orm/tests/dbspec_plan_apply.rs",
+        "packages/rust/orm/tests/common/plan_cases.rs",
+        "tests/dbspec/plan-cases.json",
+        "tests/dbspec/plans-physical.json"
       ]
     },
     "ts-model-check": {
@@ -3301,6 +3304,8 @@
       ],
       "inputs": [
         "packages/rust/orm/tests/dbspec_apply.rs",
+        "packages/rust/orm/tests/common/plan_cases.rs",
+        "tests/dbspec/plan-cases.json",
         "tests/dbspec/stress.mts"
       ]
     },

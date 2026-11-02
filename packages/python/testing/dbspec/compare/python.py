@@ -10,6 +10,7 @@ import sys
 # Run with python -m packages.python.testing.dbspec.compare.python from the root, which puts the root on sys.path; the client and
 # ordered-json are the ones installed into the interpreter.
 from packages.python.tests.dbspec_cases_reader import check_cases as check_shared_cases
+from packages.python.tests.dbspec_plans import plan_cases
 from packages.python.tests.dbspec_vectors_reader import VectorError, check_vectors
 
 ROOT = os.path.normpath(
@@ -364,6 +365,8 @@ def comparison_inputs(case):
 
 
 plans = read_vectors(plans_path, "plans")
+# The cases are the recipe plan-cases.json beside plans.json, with their physical records (dbspec_plans).
+plans["cases"] = plan_cases(plans_path)
 # The four validation sections are the recipes beside plans.json (tests/dbspec/plan-<section>.json), read here as the inputs
 # of the same checks: each recipe case gives the lines of its documents and plans, bound by the steps' as names.
 plans["invalid"] = [

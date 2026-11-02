@@ -19,7 +19,7 @@ func vectorCaseOf(object map[string]any, key string, index int) map[string]any {
 func TestVectorLoadersRejectMalformedVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	decoders := map[string]func(vectorReader, map[string]any) error{
-		"plans.json":   func(r vectorReader, o map[string]any) error { _, err := decodePlanVectors(r, o); return err },
+		"plans.json":   decodePlanVectors,
 		"mermaid.json": func(r vectorReader, o map[string]any) error { _, err := decodeMermaidVectors(r, o); return err },
 		"cases.json":   func(r vectorReader, o map[string]any) error { _, err := decodeCaseVectors(r, o); return err },
 		"ddl.json":     func(r vectorReader, o map[string]any) error { _, err := decodeDDLVectors(r, o); return err },
@@ -29,13 +29,6 @@ func TestVectorLoadersRejectMalformedVectors(t *testing.T) {
 		change                  func(o map[string]any)
 	}{
 		{"plans.json", "version", "is missing", func(o map[string]any) { delete(o, "version") }},
-		{"plans.json", "cases[0].changes", "is missing", func(o map[string]any) { delete(vectorCaseOf(o, "cases", 0), "changes") }},
-		{"plans.json", "cases[0].steps.mysql", "is not an array", func(o map[string]any) {
-			asFixture[map[string]any](vectorCaseOf(o, "cases", 0)["steps"])["mysql"] = "CREATE TABLE"
-		}},
-		{"plans.json", "cases[0].steps.mysql[0]", "has the unknown key statements", func(o map[string]any) {
-			asFixture[map[string]any](asFixture[[]any](asFixture[map[string]any](vectorCaseOf(o, "cases", 0)["steps"])["mysql"])[0])["statements"] = "CREATE TABLE"
-		}},
 		{"mermaid.json", "export[0].dropped", "is missing", func(o map[string]any) { delete(vectorCaseOf(o, "export", 0), "dropped") }},
 		{"mermaid.json", "invalid[0].errors[0]", "does not have 3 items", func(o map[string]any) {
 			asFixture[[]any](vectorCaseOf(o, "invalid", 0)["errors"])[0] = []any{"mermaid", 1.0}

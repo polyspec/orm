@@ -1,21 +1,18 @@
-import json
 import sqlite3
 import unittest
-from pathlib import Path
 
+from packages.python.tests.dbspec_plans import plan_cases
 from packages.python.tests.testcase import COMPUTE
 from polyspec.orm.dbspec.apply import DbspecApplyError, apply_plans, rollback_plans
 from polyspec.orm.dbspec.plan import parse_plan
 
-ROOT = Path(__file__).resolve().parents[3]
 MASTER_QUERY = """SELECT type, name, tbl_name, IFNULL(sql, '') FROM sqlite_master
 WHERE name NOT LIKE 'sqlite_%' AND tbl_name NOT LIKE 'dbspec$%' ORDER BY type, name"""
 NOW = 1_700_000_000_000_000
 
 
 def create_from_empty():
-    data = json.loads((ROOT / "tests" / "dbspec" / "plans.json").read_text())
-    case = next(c for c in data["cases"] if c["id"] == "create-from-empty")
+    case = next(c for c in plan_cases() if c["id"] == "create-from-empty")
     parsed = parse_plan("\n".join(case["plan"]) + "\n")
     assert parsed["plan"] is not None, parsed["diagnostics"][:1]
     return [parsed["plan"]]

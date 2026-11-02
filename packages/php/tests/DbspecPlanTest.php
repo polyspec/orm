@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-// The plan cases of tests/dbspec/plans.json through Polyspec\Orm\Dbspec\Dbspec (docs/spec/plans.md): every case's
-// canonical emission, changes and steps of three dialects, and the unknown dialect rule. The validation sections are
-// the recipes tests/dbspec/plan-{invalid,chains,parse,comparisons}.json, run by Recipe::run with no database.
+// The native plan checks beside tests/dbspec/plan-cases.json (its cases run as the recipe in DbspecPlanCasesTest): the
+// comparison harness of the PHP compare, and the unknown dialect rule (DBS-174), which no public call accepts.
 
 use InvalidArgumentException;
 use PDO;
@@ -20,41 +19,6 @@ use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
-
-// CPU time baseline (seconds).
-const PLAN_CASE_CPU_SECONDS = 5.0;
-
-/**
- * The plans.json object of the step (docs/spec/plans.md "Steps"). Keys are in name order.
- *
- * @return array<string, mixed>
- */
-function step_fields(PlanStep $s): array
-{
-    $out = ['statement' => $s->statement, 'effect' => $s->effect->text()];
-    if ($s->rollback !== '') {
-        $out['rollback'] = $s->rollback;
-    } elseif ($s->irreversible !== '') {
-        $out['irreversible'] = $s->irreversible;
-    }
-    if ($s->restore !== '') {
-        $out['restore'] = $s->restore;
-    }
-    if ($s->rollbackRestore !== '') {
-        $out['rollback_restore'] = $s->rollbackRestore;
-    }
-    if ($s->restore !== '' || $s->rollbackRestore !== '') {
-        $out['restore_if'] = $s->restoreIf?->text();
-    }
-    if ($s->nullChecks !== []) {
-        $out['null_checks'] = array_map(static fn($c): array => [$c->table, $c->column, $c->default], $s->nullChecks);
-    }
-    if ($s->finalize) {
-        $out['finalize'] = true;
-    }
-    ksort($out);
-    return $out;
-}
 
 /** @param ?list<string> $lines */
 function plan_source(string $id, ?array $lines): ?Document
@@ -107,63 +71,6 @@ class DbspecPlanTest extends TestCase
         self::assertTrue($result[4], 'case plan input is returned');
         self::assertSame($result[0], $result[5], 'case helper returns the same plan');
         self::assertSame('', $result[6], 'valid case input has no diagnostic output');
-    }
-
-    public static function casesCases(): iterable
-    {
-        foreach (plan_vectors()['cases'] as $case) {
-            yield $case['id'] => [$case];
-        }
-    }
-
-    #[DataProvider('casesCases')]
-    // Requirements: PLN-73, PLN-74, PLN-75, PLN-76, PLN-77, PLN-78, PLN-79, PLN-80, PLN-81, PLN-82, PLN-83.
-    public function testCase(array $case): void
-    {
-        $caseStarted = cpuCaseBegin(PLAN_CASE_CPU_SECONDS);
-        $id = "plan/{$case['id']}";
-
-        $source = plan_source($id, $case['source'] ?? null);
-        $plan = plan_of($id, $case['plan']);
-        $emitted = Dbspec::emitPlan($plan);
-        Assert::assertSame(
-            dbspec_plan_text($case['plan']),
-            $emitted,
-            "$id: emitPlan differs\n--- want\n" . dbspec_plan_text($case['plan']) . "--- got\n$emitted"
-        );
-        $diff = Dbspec::diff($source, $plan);
-        $changes = $diff->changes ?? throw new RuntimeException(
-            "$id: diff diagnostics " . plan_diagnostics($diff->diagnostics)
-        );
-        $got = array_map(static fn(Change $c): array => [$c->kind, $c->table, $c->name], $changes);
-        Assert::assertSame(
-            $case['changes'],
-            $got,
-            "$id: changes\nwant " . json_encode($case['changes']) . "\ngot  " . json_encode($got)
-        );
-        foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
-            $want = $case['steps'][$dialect] ?? throw new RuntimeException("$id: no $dialect steps");
-            $result = Dbspec::planSteps($source, $plan, $dialect);
-            $steps = $result->steps ?? throw new RuntimeException(
-                "$id/$dialect: diagnostics " . plan_diagnostics($result->diagnostics)
-            );
-            for ($i = 0; $i < max(count($steps), count($want)); $i++) {
-                $got = isset($steps[$i]) ? step_fields($steps[$i]) : null;
-                $expected = $want[$i] ?? null;
-                if ($expected !== null) {
-                    ksort($expected);
-                }
-                Assert::assertSame(
-                    $expected,
-                    $got,
-                    "$id/$dialect: step $i differs\n--- want\n" . json_encode(
-                        $expected,
-                        JSON_UNESCAPED_SLASHES
-                    ) . "\n--- got\n" . json_encode($got, JSON_UNESCAPED_SLASHES)
-                );
-            }
-        }
-        cpuCaseEnd($id, $caseStarted);
     }
 
     // Requirements: DBS-174.

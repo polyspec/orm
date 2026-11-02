@@ -75,13 +75,12 @@ const failingCaseFixture = "dbspecfixture"
 func failingCaseNames(t *testing.T) []string {
 	t.Helper()
 	m := loadMermaidVectors(t)
-	p := loadPlanVectors(t)
 	return []string{
 		m.Export[0].ID,
 		m.Import[0].ID,
 		m.Invalid[0].ID,
 		m.RoundTrip[0].ID,
-		p.Cases[0].ID,
+		loadPlanCases(t)[0].ID,
 	}
 }
 

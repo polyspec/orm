@@ -1,4 +1,4 @@
-//! Every case of tests/dbspec/plans.json applied to MySQL, PostgreSQL and
+//! Every case of tests/dbspec/plan-cases.json applied to MySQL, PostgreSQL and
 //! SQLite through the Rust client (docs/spec/plans.md, "Verification"): the source
 //! rendered by `dbspec::render`, the `before` steps and the `dbspec::plan_steps`
 //! steps before finalize, after which `polyspec_orm::dbspec::introspect` reads the
@@ -14,8 +14,19 @@ use or_panic::OrPanic;
 
 #[path = "common/dbspec_probe.rs"]
 mod dbspec_probe;
+#[path = "common/json_strings.rs"]
+mod json_strings;
+#[path = "common/plan_cases.rs"]
+mod plan_cases;
+#[path = "common/plan_physical.rs"]
+mod plan_physical;
+#[path = "common/plan_recipe.rs"]
+mod plan_recipe;
+#[path = "common/plan_sources.rs"]
+mod plan_sources;
 
-use dbspec_probe::{connection_rules, lines, repository, run_probe, strings, Conn, Servers, DIALECTS};
+use dbspec_probe::{connection_rules, repository, run_probe, Conn, Servers, DIALECTS};
+use json_strings::strings;
 use polyspec_orm_schema::dbspec::{self, parse_plan, plan_steps, Document};
 use serde_json::Value;
 use sqlx::{AssertSqlSafe, Row, SqlSafeStr, TypeInfo, ValueRef};
@@ -170,18 +181,21 @@ async fn run_steps(conn: &mut Conn, db: &str, steps: &[Step]) -> Result<(), Stri
 async fn plan_apply() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let started = Instant::now();
-    let path = repository().join("tests/dbspec/plans.json");
-    let vectors: Value = serde_json::from_str(&std::fs::read_to_string(path).expect("plans.json")).expect("plans.json");
-    let cases = vectors["cases"].as_array().expect("plan cases");
-    assert!(!cases.is_empty(), "tests/dbspec/plans.json has no cases");
+    let dir = repository().join("tests/dbspec");
+    let cases = plan_cases::read_cases(&dir).or_panic(|e| e);
+    let sources = plan_sources::read_sources(&dir).or_panic(|e| e);
+    let physical = plan_physical::read_physical(&dir).or_panic(|e| e);
+    assert!(!cases.is_empty(), "tests/dbspec/plan-cases.json has no cases");
     let mut servers = Servers::open("plan").await;
     let mut failures = Vec::new();
     let mut runs = 0;
-    for case in cases {
-        let case_id = case["id"].as_str().expect("id");
-        let plan = parse_plan(&lines(&case["plan"])).or_panic(|e| format!("{case_id}: {e:?}"));
-        let source: Option<Document> = (!case["source"].is_null())
-            .then(|| dbspec::parse(&lines(&case["source"]), &BTreeMap::new()).map(|parsed| parsed.document).or_panic(|e| format!("{case_id}: {e:?}")));
+    for case in &cases {
+        let case_id = case.id.as_str();
+        let plan = parse_plan(&case.plan).or_panic(|e| format!("{case_id}: {e:?}"));
+        let source: Option<Document> = sources
+            .get(case_id)
+            .and_then(|text| text.as_ref())
+            .map(|text| dbspec::parse(text, &BTreeMap::new()).map(|parsed| parsed.document).or_panic(|e| format!("{case_id}: {e:?}")));
         for (db, dialect) in DIALECTS {
             let setup = match &source {
                 None => Vec::new(),
@@ -193,7 +207,8 @@ async fn plan_apply() {
             let source_text = source.as_ref().map(|d| dbspec::manifest(&[d]).expect("source manifest").schema_text).unwrap_or_default();
             let id = format!("{db}.plan.{}", case_id.replace('-', "_"));
             runs += 1;
-            let (before, after) = (steps(&case["before"]), steps(&case["after"]));
+            let record = physical.get(case_id).unwrap_or_else(|| panic!("{case_id}: no physical record in plans-physical.json"));
+            let (before, after) = (steps(&record.before), steps(&record.after));
             polyspec_orm_testcase::step(format_args!("{id}: {} steps, reversible {reversible}", steps_of.len()));
             let result = run_probe(&mut servers, &id, db, runs, |conn| {
                 Box::pin(async move {

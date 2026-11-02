@@ -14,9 +14,9 @@
 //
 // Usage: ORM_TEST_MYSQL_SERVER_DSN=... ORM_TEST_POSTGRES_SERVER_DSN=... ORM_TEST_PGBOUNCER_DSN=... node --test packages/ts/tests/dbspec-apply-physical.mjs (after the build)
 import { caseTest, warning } from '../../../tests/testcase.mts';
+import { readPlanCases } from '../../../tests/dbspec/vectors.mts';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import pg from 'pg';
@@ -55,7 +55,7 @@ async function stressPlan() {
   return parse('stress', `dbplan 1 stress\nfrom empty\n\n${schema}`);
 }
 
-const cases = new Map(JSON.parse(readFileSync(new URL('tests/dbspec/plans.json', root), 'utf8')).cases.map(c => [c.id, c]));
+const cases = new Map(readPlanCases(new URL('tests/dbspec/plans.json', root).pathname).map(c => [c.id, c]));
 function parse(id, text) {
   const parsed = parsePlan(text);
   assert.deepEqual(parsed.diagnostics, [], `${id} diagnostics`);

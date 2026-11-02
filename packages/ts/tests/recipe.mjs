@@ -10,7 +10,7 @@ import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { CORE, Db, OrmError, StyledValue, blindIndex, chainPlans, compareSchemas, connectCatalog, dbspecManifest, decode, diffPlan, encode, hostDecode, hostEncode, parseDbspec, parseDbspecSet, parsePlan, readDbspecFile, readDbspecSet, registerModel } from '../dist/index.js';
+import { CORE, Db, OrmError, StyledValue, blindIndex, chainPlans, compareSchemas, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitPlan, encode, hostDecode, hostEncode, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel } from '../dist/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { Engine } from '../dist/index.js';
@@ -641,7 +641,7 @@ function checkPlanner(step, recipeDir, database) {
 }
 
 // dbspecOps are the ops of the schema and plan calls (FCV-4), which checkDbspec runs without a database.
-const dbspecOps = ['dbspec.parse', 'dbspec.parse_plan', 'dbspec.diff', 'dbspec.chain', 'dbspec.compare'];
+const dbspecOps = ['dbspec.parse', 'dbspec.parse_plan', 'dbspec.emit_plan', 'dbspec.diff', 'dbspec.plan_steps', 'dbspec.chain', 'dbspec.compare'];
 
 // checkDbspec runs one dbspec op through the public call that FCV-4 names, binds the result of its as for a later ref, and checks
 // what the call returned, as JSON, with the expect of database. A null source is the empty schema of diffPlan.
@@ -655,8 +655,14 @@ function checkDbspec(step, bound, database) {
     case 'dbspec.parse_plan':
       got = dbspecParse(step, bound);
       break;
+    case 'dbspec.emit_plan':
+      got = { text: emitPlan(dbspecPlan(step.plan, bound)) };
+      break;
     case 'dbspec.diff':
       got = dbspecDiff(step, bound);
+      break;
+    case 'dbspec.plan_steps':
+      got = dbspecPlanSteps(step, bound);
       break;
     case 'dbspec.chain':
       got = dbspecChain(step, bound);
@@ -676,6 +682,26 @@ function dbspecParse(step, bound) {
   const value = step.op === 'dbspec.parse' ? result.document : result.plan;
   if (step.as !== undefined) bound.set(step.as, { dbspec: value });
   return { diagnostics: parseRows(result.diagnostics, false) };
+}
+
+// dbspecPlanSteps runs planSteps for one dialect and returns {steps}, the plans.json objects of its steps, or fails on diagnostics.
+function dbspecPlanSteps(step, bound) {
+  const result = planSteps(dbspecDocument(step.source, bound), dbspecPlan(step.plan, bound), step.dialect);
+  if (result.diagnostics.length > 0) throw new Error(`plan steps: ${result.diagnostics.map(d => d.message).join('; ')}`);
+  return { steps: result.steps.map(stepFields) };
+}
+
+// stepFields is the object of one step as docs/spec/plans.md "Steps" writes it.
+function stepFields(s) {
+  const out = { statement: s.statement, effect: effectText(s.effect) };
+  if (s.rollback !== '') out.rollback = s.rollback;
+  else if (s.irreversible !== '') out.irreversible = s.irreversible;
+  if (s.restore !== '') out.restore = s.restore;
+  if (s.rollbackRestore !== '') out.rollback_restore = s.rollbackRestore;
+  if (s.restore !== '' || s.rollbackRestore !== '') out.restore_if = effectText(s.restoreIf);
+  if (s.nullChecks.length > 0) out.null_checks = s.nullChecks.map(c => [c.table, c.column, c.default]);
+  if (s.finalize) out.finalize = true;
+  return out;
 }
 
 // dbspecDiff runs diffPlan and returns {changes} or, with diagnostics, {messages} of rule plan.

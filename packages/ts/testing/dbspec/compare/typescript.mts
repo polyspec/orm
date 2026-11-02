@@ -7,7 +7,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join as joinPath } from 'node:path';
 import { parseCases, type Cases } from '../../../../../tests/dbspec/cases.mts';
-import { readPlanRecipes, readVectors, vectorProblems, type RecipeFile, type RecipeStep } from '../../../../../tests/dbspec/vectors.mts';
+import { readPlanCases, readPlanRecipes, readVectors, vectorProblems, type RecipeFile, type RecipeStep } from '../../../../../tests/dbspec/vectors.mts';
 import { join, vectorInputs } from '../../../../../scripts/dbspec/syntax-vectors.mts';
 import { SchemaError } from '../../../../../scripts/json/schema.mts';
 import { errorMessage } from '../../../../../tests/errors.mts';
@@ -272,8 +272,8 @@ function planCase(header: string, c: { source: string[] | null; plan: string[] }
   return { source, plan: parsed.plan };
 }
 
-const plans = readVectors(plansPath, 'plans');
-// The validation sections of plans.json are the recipes beside it (tests/dbspec/plan-*.json). Each step names its schema text
+readVectors(plansPath, 'plans'); // plans.json is checked against its schema; its cases are read below.
+// The cases of plan-cases.json beside plans.json, with their physical records; the validation sections are the recipes beside it (tests/dbspec/plan-*.json). Each step names its schema text
 // or plan by a ref, which an earlier dbspec.parse or dbspec.parse_plan step of the same case binds; null is the empty schema.
 const recipes = readPlanRecipes(plansPath);
 type Lines = string[];
@@ -312,7 +312,7 @@ const recipeInvalid = recipeCases(recipes.invalid, 'dbspec.diff', (s, bound, id)
 const recipeChains = recipeCases(recipes.chains, 'dbspec.chain', (s, bound, id) => ({ id, plans: (s.plans ?? []).map(r => requiredLines(r, bound)) }));
 const recipeParse = recipeCases(recipes.parse, 'dbspec.parse_plan', (s, _bound, id) => ({ id, plan: s.lines ?? [] }));
 const recipeComparisons = recipeCases(recipes.comparisons, 'dbspec.compare', (s, bound, id) => ({ id, source: requiredLines(s.source, bound), target: requiredLines(s.target, bound) }));
-for (const c of plans.cases) {
+for (const c of readPlanCases(plansPath)) {
   const planned = planCase(`plans/cases/${c.id}`, c);
   if (planned === undefined) continue;
   const { source, plan } = planned;

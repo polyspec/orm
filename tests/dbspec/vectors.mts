@@ -20,7 +20,8 @@ type DdlVectors = {
 /** A step of a recipe (scripts/features/schema/recipe.schema.json); a ref is {ref: name} and null is the empty schema. */
 export type RecipeStep = {
   op: string; as?: string; lines?: Lines; source?: { ref: string } | null; target?: { ref: string } | null; plan?: { ref: string };
-  plans?: { ref: string }[]; expect?: Record<string, unknown>;
+  plans?: { ref: string }[]; dialect?: 'mysql' | 'postgres' | 'sqlite';
+  expect?: { none?: { text?: string; changes?: Lines[]; steps?: PlanStep[] } };
 };
 /** A recipe file. */
 export type RecipeFile = { requirements: string[]; cases: { id: string; steps: RecipeStep[] }[] };
@@ -31,11 +32,14 @@ type PlanStep = {
   statement: string; effect: string; rollback?: string; irreversible?: string; finalize?: true; restore?: string; restore_if?: string;
   rollback_restore?: string; null_checks?: [string, string, string | null][];
 };
-/** tests/dbspec/plans.json: its cases section (the other sections are the recipes of readPlanRecipes). */
-type PlanVectors = {
-  version: 1; note: string;
-  cases: { id: string; source: Lines | null; plan: Lines; changes: Lines[]; steps: Record<'mysql' | 'postgres' | 'sqlite', PlanStep[]>; before: Behavior[]; after: Behavior[] }[];
+/** tests/dbspec/plans.json: its note and the requirement ids. Its cases are the recipe plan-cases.json (readPlanCases). */
+type PlanVectors = { version: 1; note: string; requirements: string[] };
+/** A case of plan-cases.json with its physical records from plans-physical.json, as the plan readers use it. */
+export type PlanCase = {
+  id: string; source: Lines | null; plan: Lines; changes: Lines[]; steps: Record<'mysql' | 'postgres' | 'sqlite', PlanStep[]>; before: Behavior[]; after: Behavior[];
 };
+/** tests/dbspec/plans-physical.json: the database data of each case, keyed by case id. */
+type PlanPhysical = { version: 1; note: string; cases: Record<string, { before: Behavior[]; after: Behavior[] }> };
 /** tests/dbspec/mermaid.json. */
 type MermaidVectors = {
   version: 1; note: string;
@@ -109,6 +113,46 @@ export function readPlanRecipes(plansPath: string): PlanRecipes {
     parse: readRecipe(beside('parse')),
     comparisons: readRecipe(beside('comparisons')),
   };
+}
+
+/** readPlanPhysical reads plans-physical.json beside plansPath against its schema; a failure ends with 1. */
+function readPlanPhysical(plansPath: string): PlanPhysical {
+  const path = join(dirname(plansPath), 'plans-physical.json');
+  const text = readInput(path);
+  try {
+    return parseJson<PlanPhysical>(text, new URL('./schema/plans-physical.schema.json', import.meta.url).pathname, path);
+  } catch (error) {
+    refuse(path, error);
+  }
+}
+
+/** readPlanCases reads the cases of plan-cases.json beside plansPath, each with its physical records; a failure ends with 1. */
+export function readPlanCases(plansPath: string): PlanCase[] {
+  const recipePath = join(dirname(plansPath), 'plan-cases.json');
+  const recipe = readRecipe(recipePath);
+  const physicalPath = join(dirname(plansPath), 'plans-physical.json');
+  const physical = readPlanPhysical(plansPath).cases;
+  return recipe.cases.map(c => {
+    let source: Lines | null = null;
+    let plan: Lines = [];
+    let changes: Lines[] | undefined;
+    const steps: Partial<Record<'mysql' | 'postgres' | 'sqlite', PlanStep[]>> = {};
+    for (const s of c.steps) {
+      if (s.op === 'dbspec.parse' && s.as === 'source') source = s.lines ?? null;
+      else if (s.op === 'dbspec.parse_plan') plan = s.lines ?? [];
+      else if (s.op === 'dbspec.diff') changes = s.expect?.none?.changes;
+      else if (s.op === 'dbspec.plan_steps' && s.dialect !== undefined) {
+        const dialectSteps = s.expect?.none?.steps;
+        if (dialectSteps !== undefined) steps[s.dialect] = dialectSteps;
+      }
+    }
+    const record = physical[c.id];
+    if (changes === undefined) refuse(recipePath, new Error(`case ${c.id} has no dbspec.diff changes`));
+    const { mysql, postgres, sqlite } = steps;
+    if (mysql === undefined || postgres === undefined || sqlite === undefined) refuse(recipePath, new Error(`case ${c.id} has no plan steps of every dialect`));
+    if (record === undefined) refuse(physicalPath, new Error(`case ${c.id} has no physical record`));
+    return { id: c.id, source, plan, changes, steps: { mysql, postgres, sqlite }, before: record.before, after: record.after };
+  });
 }
 
 /** readVectors reads the vector file at path against the schema `kind`; any failure is written to stderr and ends with 1. */

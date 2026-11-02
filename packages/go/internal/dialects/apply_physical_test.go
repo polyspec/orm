@@ -19,7 +19,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// planCaseText is the source and plan text of the tests/dbspec/plans.json case.
+// planCaseText is the source and plan text of the tests/dbspec/plan-cases.json case.
 type planCaseText struct {
 	Source []string `json:"source"`
 	Plan   []string `json:"plan"`
@@ -27,7 +27,7 @@ type planCaseText struct {
 
 func planCases(t *testing.T) map[string]planCaseText {
 	t.Helper()
-	cases, err := plancases.Parse(readDBSpecFile(t, "plans.json"))
+	cases, err := plancases.Parse(readDBSpecFile(t, "plan-cases.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func parsePlan(t *testing.T, text string) *dbspec.Plan {
 	return p
 }
 
-// applyChain is the create-from-empty of tests/dbspec/plans.json and the rename-table-and-column
+// applyChain is the create-from-empty of tests/dbspec/plan-cases.json and the rename-table-and-column
 // starting from its target.
 func applyChain(t *testing.T) []*dbspec.Plan {
 	t.Helper()
@@ -57,7 +57,7 @@ func applyChain(t *testing.T) []*dbspec.Plan {
 		parsePlan(t, strings.Join(cases["rename-table-and-column"].Plan, "\n")+"\n"),
 	}
 	if plans[1].From != plans[0].To {
-		t.Fatalf("plans.json does not chain create-from-empty and rename-table-and-column")
+		t.Fatalf("plan-cases.json does not chain create-from-empty and rename-table-and-column")
 	}
 	return plans
 }

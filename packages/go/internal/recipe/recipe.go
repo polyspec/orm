@@ -60,6 +60,7 @@ type step struct {
 	Plans   []json.RawMessage          `json:"plans"`
 	Source  json.RawMessage            `json:"source"`
 	Target  json.RawMessage            `json:"target"`
+	Dialect string                     `json:"dialect"`
 }
 
 // IRAnswer runs the chain of one ir.answer step on a listener that answers with the answer, or with answers keyed by the op of
@@ -139,7 +140,7 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 		return checkPlanner(dir, s, database)
 	}
 	switch s.Op {
-	case "dbspec.parse", "dbspec.parse_plan", "dbspec.diff", "dbspec.chain", "dbspec.compare":
+	case "dbspec.parse", "dbspec.parse_plan", "dbspec.emit_plan", "dbspec.diff", "dbspec.plan_steps", "dbspec.chain", "dbspec.compare":
 		return dbspecStep(s, bound, database)
 	}
 	if s.Op == "ir.validate" {
@@ -986,8 +987,12 @@ func dbspecStep(s step, bound map[string]result, database string) error {
 	switch s.Op {
 	case "dbspec.parse", "dbspec.parse_plan":
 		got, err = dbspecParse(s, bound)
+	case "dbspec.emit_plan":
+		got, err = dbspecEmitPlan(s, bound)
 	case "dbspec.diff":
 		got, err = dbspecDiff(s, bound)
+	case "dbspec.plan_steps":
+		got, err = dbspecPlanSteps(s, bound)
 	case "dbspec.chain":
 		got, err = dbspecChain(s, bound)
 	case "dbspec.compare":
@@ -1034,6 +1039,87 @@ func dbspecParse(s step, bound map[string]result) (any, error) {
 		}
 	}
 	return map[string]any{"diagnostics": parseRows(diagnostics, false)}, nil
+}
+
+// dbspecEmitPlan runs dbspec.emit_plan (EmitPlan) on the plan that s names and returns {text: the emitted plan}.
+func dbspecEmitPlan(s step, bound map[string]result) (any, error) {
+	p, err := dbspecPlan(s.Plan, bound)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{"text": dbspec.EmitPlan(p)}, nil
+}
+
+// dbspecPlanSteps runs dbspec.plan_steps (PlanSteps) on the source and plan that s names, for the dialect of s, and returns
+// {steps: rows} (planStepFields) or, with diagnostics, {messages: ...} of rule plan.
+func dbspecPlanSteps(s step, bound map[string]result) (any, error) {
+	source, err := dbspecDocument(s.Source, bound)
+	if err != nil {
+		return nil, err
+	}
+	plan, err := dbspecPlan(s.Plan, bound)
+	if err != nil {
+		return nil, err
+	}
+	dialect, err := dialectOf(s.Dialect)
+	if err != nil {
+		return nil, err
+	}
+	steps, diagnostics := dbspec.PlanSteps(source, plan, dialect)
+	if len(diagnostics) > 0 {
+		messages, err := messagesOf(diagnostics, dbspec.RulePlan)
+		return map[string]any{"messages": messages}, err
+	}
+	rows := make([]map[string]any, 0, len(steps))
+	for _, st := range steps {
+		rows = append(rows, planStepFields(st))
+	}
+	return map[string]any{"steps": rows}, nil
+}
+
+// dialectOf is the dialect that a name gives; PlanSteps panics on any other name, so the recipe refuses it first.
+func dialectOf(name string) (dbspec.Dialect, error) {
+	switch d := dbspec.Dialect(name); d {
+	case dbspec.DialectMySQL, dbspec.DialectPostgres, dbspec.DialectSQLite:
+		return d, nil
+	}
+	return "", fmt.Errorf("dialect %q is not mysql, postgres or sqlite", name)
+}
+
+// planStepFields is the object of a plan step (docs/spec/plans.md "Steps"): its statement, its effect as text, and the
+// fields that the step has.
+func planStepFields(s dbspec.PlanStep) map[string]any {
+	out := map[string]any{"statement": s.Statement, "effect": s.Effect.String()}
+	switch {
+	case s.Rollback != "":
+		out["rollback"] = s.Rollback
+	case s.Irreversible != "":
+		out["irreversible"] = s.Irreversible
+	}
+	if s.Restore != "" {
+		out["restore"] = s.Restore
+	}
+	if s.RollbackRestore != "" {
+		out["rollback_restore"] = s.RollbackRestore
+	}
+	if s.Restore != "" || s.RollbackRestore != "" {
+		out["restore_if"] = s.RestoreIf.String()
+	}
+	if len(s.NullChecks) > 0 {
+		checks := make([]any, 0, len(s.NullChecks))
+		for _, c := range s.NullChecks {
+			var def any
+			if c.HasDefault {
+				def = c.Default
+			}
+			checks = append(checks, []any{c.Table, c.Column, def})
+		}
+		out["null_checks"] = checks
+	}
+	if s.Finalize {
+		out["finalize"] = true
+	}
+	return out
 }
 
 // dbspecDiff runs dbspec.diff (Diff) and returns {changes: rows} or, with diagnostics, {messages: ...} of rule plan.

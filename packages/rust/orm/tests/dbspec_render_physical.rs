@@ -10,8 +10,11 @@ use or_panic::OrPanic;
 
 #[path = "common/dbspec_probe.rs"]
 mod dbspec_probe;
+#[path = "common/json_lines.rs"]
+mod json_lines;
 
-use dbspec_probe::{connection_rules, lines, parse_set, run_probe, Servers, DIALECTS};
+use dbspec_probe::{connection_rules, parse_set, run_probe, Servers, DIALECTS};
+use json_lines::lines;
 use polyspec_orm_schema::dbspec::{self, Document};
 use serde_json::Value;
 use std::collections::BTreeMap;

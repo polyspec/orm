@@ -32,7 +32,7 @@ function dbspec_apply_runner_run(array $argv): int
 {
     [, $action, $dialect, $uri, $vectorsPath] = $argv;
     try {
-        $vectors = json_decode(dbspec_read_input($vectorsPath), true, 512, JSON_THROW_ON_ERROR);
+        $vectors = plan_vectors_at($vectorsPath);
     } catch (JsonException $e) {
         fwrite(STDERR, "$vectorsPath: {$e->getMessage()}\n");
         return 1;

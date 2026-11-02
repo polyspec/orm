@@ -1,5 +1,5 @@
-// Command go applies the chain of plans.json (tests/dbspec/plans.json; create-from-empty and
-// rename-table-and-column) to one database with the Go engine
+// Command go applies the chain of plans.json (tests/dbspec/plans.json; its cases are the plan-cases.json beside it,
+// create-from-empty and rename-table-and-column) to one database with the Go engine
 // (docs/spec/plans.md "Apply"). action is one of the following:
 //
 //   - apply-first: applies only the first plan of the chain.
@@ -279,7 +279,7 @@ func unjoined(err error) bool {
 	return !joined
 }
 
-// chain is create-from-empty and rename-table-and-column from the plans.json at path.
+// chain is create-from-empty and rename-table-and-column of the plan-cases.json beside the plans.json at path.
 func chain(path string) ([]*dbspec.Plan, error) {
 	cases, err := plancases.Read(path)
 	if err != nil {

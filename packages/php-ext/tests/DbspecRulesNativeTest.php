@@ -19,9 +19,13 @@ final class DbspecRulesNativeTest extends TestCase
     // Requirements: DBS-174.
     public function testNativePlanStepsRejectUnknownDialect(): void
     {
-        $path = dirname(__DIR__, 3) . '/tests/dbspec/plans.json';
-        $vectors = json_decode(file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
-        $text = implode("\n", $vectors['cases'][0]['plan']) . "\n";
+        $recipePath = dirname(__DIR__, 3) . '/tests/dbspec/plan-cases.json';
+        $recipe = json_decode(file_get_contents($recipePath), true, 512, JSON_THROW_ON_ERROR);
+        $planLines = array_values(array_filter(
+            $recipe['cases'][0]['steps'],
+            static fn(array $step): bool => $step['op'] === 'dbspec.parse_plan'
+        ))[0]['lines'];
+        $text = implode("\n", $planLines) . "\n";
         $plan = Dbspec::parsePlan($text);
         self::assertNotNull($plan->plan, json_encode($plan->diagnostics, JSON_THROW_ON_ERROR));
         $this->expectException(InvalidArgumentException::class);

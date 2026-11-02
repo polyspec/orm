@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
+import { readPlanCases } from '../../../tests/dbspec/vectors.mts';
 import { DbspecApplyError, applyPlans, parsePlan } from '../dist/dbspec/index.js';
 
 const root = new URL('../../../', import.meta.url);
-const plans = JSON.parse(readFileSync(new URL('tests/dbspec/plans.json', root), 'utf8'))
-  .cases.filter(testCase => testCase.id === 'create-from-empty')
+const plans = readPlanCases(new URL('tests/dbspec/plans.json', root).pathname)
+  .filter(testCase => testCase.id === 'create-from-empty')
   .map(testCase => parsePlan(testCase.plan.join('\n') + '\n').plan);
 assert.equal(plans.length, 1);
 

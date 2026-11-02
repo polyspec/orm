@@ -5,13 +5,13 @@
 # irreversible step the rollback statements return to the source schema text and the steps run again; then the after
 # steps and the finalize steps run, the target is read again and no dbspec$ table or column remains.
 # The same checks as packages/ts/tests/dbspec-plan-physical.mjs. make dbspec-plan-python-check runs this file.
-import json
 import os
 import tempfile
 import unittest
 
 from . import testcase
-from .dbspec_introspect import CONNECTION_RULES, ROOT, case_database
+from .dbspec_introspect import CONNECTION_RULES, case_database
+from .dbspec_plans import plan_cases
 from .runner_connect import Adapter
 
 from polyspec.orm.dbspec import dbspec_manifest, parse_dbspec, render_dbspec
@@ -164,8 +164,7 @@ class DbspecPlanPhysicalTest(unittest.TestCase):
 
     # Requirements: PLN-94, PLN-102.
     def test_every_plan_case_runs_on_every_dialect(self):
-        data = json.loads((ROOT / "tests" / "dbspec" / "plans.json").read_text())
-        cases = data["cases"]
+        cases = plan_cases()
         self.assertTrue(cases, "plan cases")
         dsns = {
             "mysql": os.environ.get("ORM_TEST_MYSQL_DSN"),

@@ -136,8 +136,7 @@ func testSQLConn(t *testing.T, db *sql.DB) *sql.Conn {
 
 func applyTestPlans(t *testing.T) []*Plan {
 	t.Helper()
-	v := loadPlanVectors(t)
-	for _, c := range v.Cases {
+	for _, c := range loadPlanCases(t) {
 		if c.ID == "create-from-empty" {
 			p, diagnostics := ParsePlan(strings.Join(c.Plan, "\n") + "\n")
 			if len(diagnostics) > 0 {
@@ -146,7 +145,7 @@ func applyTestPlans(t *testing.T) []*Plan {
 			return []*Plan{p}
 		}
 	}
-	t.Fatal("plans.json has no create-from-empty case")
+	t.Fatal("plan-cases.json has no create-from-empty case")
 	return nil
 }
 

@@ -17,8 +17,14 @@ mod json_trials;
 
 #[path = "common/dbspec_probe.rs"]
 mod dbspec_probe;
+#[path = "common/json_lines.rs"]
+mod json_lines;
+#[path = "common/json_strings.rs"]
+mod json_strings;
 
-use dbspec_probe::{connection_rules, lines, parse_set, repository, run_probe, strings, Servers, DIALECTS};
+use dbspec_probe::{connection_rules, parse_set, repository, run_probe, Servers, DIALECTS};
+use json_lines::lines;
+use json_strings::strings;
 use polyspec_orm_schema::dbspec::{self, Document};
 use polyspec_orm_testcase::Trial;
 use serde_json::Value;

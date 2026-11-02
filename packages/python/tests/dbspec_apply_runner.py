@@ -8,7 +8,6 @@
 #
 # Usage: python -m packages.python.tests.dbspec_apply_runner <apply-first|apply|stop|recover|rollback>
 #        <mysql|postgres|sqlite> <uri> <plans.json>
-import json
 import sqlite3
 import sys
 import time
@@ -25,6 +24,7 @@ from polyspec.orm.dbspec.apply import (
 )
 from polyspec.orm.dbspec.plan import parse_plan
 from polyspec.orm.placeholders import for_mysql, for_postgres
+from .dbspec_plans import plan_cases
 from .runner_connect import mysql_connect
 
 # The statements every client runs on a new connection (packages/go/internal/dialects connectionRules).
@@ -94,8 +94,7 @@ def connect(dialect: str, uri: str):
 
 def chain(vectors: str) -> list:
     """The plans create-from-empty and rename-table-and-column of plans.json, parsed."""
-    with open(vectors, encoding="utf-8") as handle:
-        cases = json.load(handle)["cases"]
+    cases = plan_cases(vectors)
     plans = []
     for case in cases:
         if case["id"] in ("create-from-empty", "rename-table-and-column"):
@@ -112,9 +111,7 @@ def chain(vectors: str) -> list:
 
 def representative_chain(vectors: str) -> list:
     """A source plan followed by the shared representative plan with hidden objects to finalize."""
-    with open(vectors, encoding="utf-8") as handle:
-        cases = json.load(handle)["cases"]
-    case = next(item for item in cases if item["id"] == "representative")
+    case = next(item for item in plan_cases(vectors) if item["id"] == "representative")
     source = parse_plan(
         "\n".join(["dbplan 1 base", "from empty", "", *case["source"]]) + "\n"
     )

@@ -204,7 +204,7 @@
     "step": {
       "type": "object",
       "required": ["op"],
-      "properties": { "op": { "enum": ["dsn.connect", "model.connect", "codec.decode", "codec.encode", "codec.host_encode", "codec.host_decode", "codec.blind_index", "sql.exec", "ir.validate", "ir.answer", "catalog.current_namespace", "catalog.describe_table", "catalog.table_page", "catalog.read_only_query", "catalog.read_only_grid_query", "catalog.row_snapshot", "catalog.insert_row", "catalog.update_row", "catalog.delete_row", "schema.install", "schema.register", "schema.connect", "schema.add_tables_and_columns", "statements.count", "transaction", "model.create", "model.creates", "model.save", "model.duplicate_create", "model.update", "model.arithmetic", "model.delete", "model.count", "model.get_by", "model.query", "events.subscribe", "events.fail_subscriber", "events.stop_failing", "events.unsubscribe", "events.captured", "planner.compile", "dbspec.parse", "dbspec.parse_plan", "dbspec.diff", "dbspec.chain", "dbspec.compare"] } },
+      "properties": { "op": { "enum": ["dsn.connect", "model.connect", "codec.decode", "codec.encode", "codec.host_encode", "codec.host_decode", "codec.blind_index", "sql.exec", "ir.validate", "ir.answer", "catalog.current_namespace", "catalog.describe_table", "catalog.table_page", "catalog.read_only_query", "catalog.read_only_grid_query", "catalog.row_snapshot", "catalog.insert_row", "catalog.update_row", "catalog.delete_row", "schema.install", "schema.register", "schema.connect", "schema.add_tables_and_columns", "statements.count", "transaction", "model.create", "model.creates", "model.save", "model.duplicate_create", "model.update", "model.arithmetic", "model.delete", "model.count", "model.get_by", "model.query", "events.subscribe", "events.fail_subscriber", "events.stop_failing", "events.unsubscribe", "events.captured", "planner.compile", "dbspec.parse", "dbspec.parse_plan", "dbspec.diff", "dbspec.chain", "dbspec.compare", "dbspec.emit_plan", "dbspec.plan_steps"] } },
       "oneOf": [
         { "$ref": "#/$defs/ops/dsn.connect" },
         { "$ref": "#/$defs/ops/model.connect" },
@@ -213,7 +213,7 @@
         { "$ref": "#/$defs/ops/codec.host_encode" },
         { "$ref": "#/$defs/ops/codec.host_decode" },
         { "$ref": "#/$defs/ops/codec.blind_index" },
-        { "$ref": "#/$defs/ops/sql.exec" }, { "$ref": "#/$defs/ops/ir.validate" }, { "$ref": "#/$defs/ops/ir.answer" }, { "$ref": "#/$defs/ops/planner.compile" }, { "$ref": "#/$defs/ops/dbspec.parse" }, { "$ref": "#/$defs/ops/dbspec.parse_plan" }, { "$ref": "#/$defs/ops/dbspec.diff" }, { "$ref": "#/$defs/ops/dbspec.chain" }, { "$ref": "#/$defs/ops/dbspec.compare" },
+        { "$ref": "#/$defs/ops/sql.exec" }, { "$ref": "#/$defs/ops/ir.validate" }, { "$ref": "#/$defs/ops/ir.answer" }, { "$ref": "#/$defs/ops/planner.compile" }, { "$ref": "#/$defs/ops/dbspec.parse" }, { "$ref": "#/$defs/ops/dbspec.parse_plan" }, { "$ref": "#/$defs/ops/dbspec.emit_plan" }, { "$ref": "#/$defs/ops/dbspec.diff" }, { "$ref": "#/$defs/ops/dbspec.plan_steps" }, { "$ref": "#/$defs/ops/dbspec.chain" }, { "$ref": "#/$defs/ops/dbspec.compare" },
         { "$ref": "#/$defs/ops/catalog.current_namespace" },
         { "$ref": "#/$defs/ops/catalog.describe_table" },
         { "$ref": "#/$defs/ops/catalog.table_page" },
@@ -405,6 +405,28 @@
             { "type": "object", "required": ["changes"], "additionalProperties": false, "properties": { "changes": { "$ref": "#/$defs/dbspecChanges" } } },
             { "type": "object", "required": ["messages"], "additionalProperties": false, "properties": { "messages": { "type": "array", "items": { "type": "string" } } } }
           ] } } }
+        }
+      },
+      "dbspec.emit_plan": {
+        "type": "object",
+        "required": ["op", "plan", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "dbspec.emit_plan" },
+          "plan": { "$ref": "#/$defs/ref" },
+          "expect": { "type": "object", "required": ["none"], "additionalProperties": false, "properties": { "none": { "type": "object", "required": ["text"], "additionalProperties": false, "properties": { "text": { "type": "string", "description": "The plan text of EmitPlan: the lines of the plan, each ended by a newline." } } } } }
+        }
+      },
+      "dbspec.plan_steps": {
+        "type": "object",
+        "required": ["op", "source", "plan", "dialect", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "dbspec.plan_steps" },
+          "source": { "oneOf": [{ "$ref": "#/$defs/ref" }, { "type": "null" }], "description": "The schema the plan changes; null is the empty schema." },
+          "plan": { "$ref": "#/$defs/ref" },
+          "dialect": { "enum": ["mysql", "postgres", "sqlite"] },
+          "expect": { "type": "object", "required": ["none"], "additionalProperties": false, "properties": { "none": { "type": "object", "required": ["steps"], "additionalProperties": false, "properties": { "steps": { "type": "array", "items": { "type": "object" }, "description": "The steps of PlanSteps in order, each the object of docs/spec/plans.md (Steps)." } } } } }
         }
       },
       "dbspec.chain": {

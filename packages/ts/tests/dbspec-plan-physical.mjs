@@ -10,8 +10,8 @@
 //
 // Usage: ORM_TEST_MYSQL_DSN=... ORM_TEST_POSTGRES_DSN=... node --test packages/ts/tests/dbspec-plan-physical.mjs (after the build)
 import { caseTest } from '../../../tests/testcase.mts';
+import { readPlanCases } from '../../../tests/dbspec/vectors.mts';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { dbspecManifest, introspectDbspec, parseDbspec, parsePlan, planSteps, renderDbspec } from '../dist/dbspec/index.js';
 import { createDbspecPhysicalDatabaseRunner } from './dbspec-physical-database.mjs';
 
@@ -60,7 +60,7 @@ async function runSteps(session, dialect, steps) {
   }
 }
 
-const cases = JSON.parse(readFileSync(new URL('tests/dbspec/plans.json', root), 'utf8')).cases;
+const cases = readPlanCases(new URL('tests/dbspec/plans.json', root).pathname);
 assert(cases.length > 0, 'plan cases');
 let runs = 0;
 

@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/packages/go/internal/dbspec/plancases"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
@@ -33,7 +34,7 @@ type planStep struct {
 	Finalize        bool   `json:"finalize"`
 }
 
-// TestPlanApply applies each case of tests/dbspec/plans.json to three databases:
+// TestPlanApply applies each case of tests/dbspec/plan-cases.json to three databases:
 // it renders and applies the source, runs the before steps and the plan steps before finalize to check the target,
 // checks the source with rollback statements if there are no irreversible steps, then re-applies,
 // and after running the after steps and the finalize step, checks the target and that no hidden names remain.
@@ -41,23 +42,28 @@ type planStep struct {
 func TestPlanApply(t *testing.T) {
 	testcase.Group(t)
 	mysqlDSN, postgresDSN := testDSNs(t)
-	raw := readDBSpecFile(t, "plans.json")
-	var vectors struct {
-		Cases []struct {
-			ID     string                `json:"id"`
-			Source []string              `json:"source"`
-			Plan   []string              `json:"plan"`
-			Steps  map[string][]planStep `json:"steps"`
-			Before []ddlStep             `json:"before"`
-			After  []ddlStep             `json:"after"`
-		} `json:"cases"`
+	cases, err := plancases.Parse(readDBSpecFile(t, "plan-cases.json"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	if err := json.Unmarshal(raw, &vectors); err != nil {
+	physical, err := plancases.ParsePhysical(readDBSpecFile(t, "plans-physical.json"))
+	if err != nil {
 		t.Fatal(err)
 	}
 	servers := openTestServers(t, mysqlDSN, postgresDSN, "plan"+strconv.Itoa(os.Getpid()))
 	index := 0
-	for _, c := range vectors.Cases {
+	for _, c := range cases {
+		record, ok := physical[c.ID]
+		if !ok {
+			t.Fatalf("%s: no physical record in plans-physical.json", c.ID)
+		}
+		var before, after []ddlStep
+		if err := json.Unmarshal(record.Before, &before); err != nil {
+			t.Fatalf("%s before: %v", c.ID, err)
+		}
+		if err := json.Unmarshal(record.After, &after); err != nil {
+			t.Fatalf("%s after: %v", c.ID, err)
+		}
 		p, diagnostics := dbspec.ParsePlan(strings.Join(c.Plan, "\n") + "\n")
 		if len(diagnostics) > 0 {
 			t.Fatalf("%s: %v", c.ID, diagnostics)
@@ -82,7 +88,12 @@ func TestPlanApply(t *testing.T) {
 					t.Fatalf("%s: %v", c.ID, diagnostics)
 				}
 			}
-			planSteps := c.Steps[db]
+			var planSteps []planStep
+			if raw, ok := c.Steps[db]; ok {
+				if err := json.Unmarshal(raw, &planSteps); err != nil {
+					t.Fatalf("%s %s steps: %v", c.ID, db, err)
+				}
+			}
 			reversible := true
 			for _, s := range planSteps {
 				if !s.Finalize && s.Rollback == "" {
@@ -131,7 +142,7 @@ func TestPlanApply(t *testing.T) {
 			probe := Probe{ID: db + ".plan." + strings.ReplaceAll(c.ID, "-", "_"), DB: db, Fact: "plan " + c.ID + " applies, rolls back and reaches its target", Run: func(e *Env) {
 				e.Exec(connectionRules[db]...)
 				e.Exec(setup...)
-				steps(e, c.Before)
+				steps(e, before)
 				// SQLite turns off foreign keys while re-creating a table, and checks them afterward.
 				if db == "sqlite" {
 					e.Exec("PRAGMA foreign_keys = OFF", "PRAGMA legacy_alter_table = OFF")
@@ -158,7 +169,7 @@ func TestPlanApply(t *testing.T) {
 				if db == "sqlite" {
 					e.Exec("PRAGMA foreign_keys = ON")
 				}
-				steps(e, c.After)
+				steps(e, after)
 				// finalize also turns off SQLite foreign keys and runs, as apply does. Hidden tables
 				// can reference each other.
 				if db == "sqlite" {

@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/../../../../../vendor-php/autoload.php';
 require __DIR__ . '/../../../../../tests/dbspec/input.php';
+require __DIR__ . '/../../../tests/dbspec_plan_cases.php';
 require __DIR__ . '/runner.php';
 
 if ($argc !== 5) {

@@ -293,23 +293,22 @@ fn read_ddl(path: &str) -> Result<Vec<HashCase>, String> {
     Ok(list(&open(path, "ddl")?["cases"]).iter().map(hash_case).collect())
 }
 
-/// Reads tests/dbspec/plans.json. source is null, meaning an empty schema, or a line array. Its validation sections are the
-/// recipes beside it (read_plan_recipes).
+/// Reads tests/dbspec/plans.json, whose cases are the recipe plan-cases.json beside it: a case's source is the lines of its
+/// dbspec.parse step, or none for an empty schema, and its plan is the lines of its dbspec.parse_plan step. Its validation
+/// sections are the recipes beside it (read_plan_recipes).
 fn read_plans(path: &str) -> Result<PlanVectors, String> {
-    let v = open(path, "plans")?;
-    let plan_case = |case: &Value| PlanCase {
-        id: string(&case["id"]),
-        source: if case["source"].is_null() { None } else { Some(lines(&case["source"])) },
-        plan: lines(&case["plan"]),
-    };
+    open(path, "plans")?;
+    let dir = Path::new(path).parent().unwrap_or(Path::new("."));
+    let cases = recipe_cases(dir, "cases")?.into_iter().map(|(id, steps, _)| plan_case(id, &steps)).collect::<Result<_, _>>()?;
     let recipes = read_plan_recipes(path)?;
-    Ok(PlanVectors {
-        cases: list(&v["cases"]).iter().map(plan_case).collect(),
-        invalid: recipes.invalid,
-        chains: recipes.chains,
-        parse: recipes.parse,
-        comparisons: recipes.comparisons,
-    })
+    Ok(PlanVectors { cases, invalid: recipes.invalid, chains: recipes.chains, parse: recipes.parse, comparisons: recipes.comparisons })
+}
+
+/// The plan case of a recipe case: its source and plan lines, read from its dbspec.parse and dbspec.parse_plan steps.
+fn plan_case(id: String, steps: &[Value]) -> Result<PlanCase, String> {
+    let source = steps.iter().find(|s| s["op"] == "dbspec.parse").map(|s| lines(&s["lines"]));
+    let plan = steps.iter().find(|s| s["op"] == "dbspec.parse_plan").map(|s| lines(&s["lines"])).ok_or_else(|| format!("{id}: no dbspec.parse_plan step"))?;
+    Ok(PlanCase { id, source, plan })
 }
 
 /// The validation sections of tests/dbspec/plans.json, read from the recipes plan-invalid, plan-chains, plan-parse and
@@ -376,7 +375,11 @@ fn read_plan_recipes(plans_path: &str) -> Result<PlanRecipes, String> {
     }
     for (id, steps, bound) in recipe_cases(dir, "comparisons")? {
         for step in steps.iter().filter(|s| s["op"] == "dbspec.compare") {
-            recipes.comparisons.push(ComparisonCase { id: id.clone(), source: bound_lines(&step["source"], &bound)?, target: bound_lines(&step["target"], &bound)? });
+            recipes.comparisons.push(ComparisonCase {
+                id: id.clone(),
+                source: bound_lines(&step["source"], &bound)?,
+                target: bound_lines(&step["target"], &bound)?,
+            });
         }
     }
     Ok(recipes)

@@ -3,7 +3,6 @@
 # plan stops after statement 1 and resumes, then reverts the last plan. MySQL and
 # PostgreSQL are checked by conformance and the apply order-pair comparison (dbspec_apply_runner.py, make dbspec-apply-pairs-check).
 # Run: make dbspec-python-check
-import json
 import os
 import psycopg
 import sqlite3
@@ -26,6 +25,7 @@ from polyspec.orm.dbspec.plan import parse_plan
 from polyspec.orm.dbspec.plan_steps import plan_steps
 from .dbspec_apply_runner import Adapter as ApplyAdapter, run_lock_wait
 from .dbspec_introspect import CONNECTION_RULES, case_database
+from .dbspec_plans import plan_cases
 from .runner_connect import mysql_connect
 from . import testcase
 
@@ -56,10 +56,10 @@ class Conn:
 
 def chain() -> list:
     """The create-from-empty and rename-table-and-column chains from plans.json."""
-    data = json.loads((ROOT / "tests" / "dbspec" / "plans.json").read_text())
+    cases = plan_cases()
     plans = []
     for case_id in ("create-from-empty", "rename-table-and-column"):
-        case = next(c for c in data["cases"] if c["id"] == case_id)
+        case = next(c for c in cases if c["id"] == case_id)
         result = parse_plan("\n".join(case["plan"]) + "\n")
         assert result["plan"] is not None, result["diagnostics"][:1]
         plans.append(result["plan"])
@@ -68,8 +68,7 @@ def chain() -> list:
 
 def representative_chain() -> list:
     """The shared plan case with dropped tables and columns that finalize removes."""
-    data = json.loads((ROOT / "tests" / "dbspec" / "plans.json").read_text())
-    case = next(c for c in data["cases"] if c["id"] == "representative")
+    case = next(c for c in plan_cases() if c["id"] == "representative")
     source = parse_plan(
         "\n".join(["dbplan 1 base", "from empty", "", *case["source"]]) + "\n"
     )

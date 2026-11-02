@@ -24,6 +24,7 @@ use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Dbspec\Diagnostic;
 use Polyspec\Orm\Dbspec\Difference;
 use Polyspec\Orm\Dbspec\Plan;
+use Polyspec\Orm\Dbspec\PlanStep;
 use Polyspec\Orm\Engine;
 use Polyspec\Orm\Model;
 use Polyspec\Orm\Orm;
@@ -243,10 +244,48 @@ final class Recipe
                 ),
                 'diagnostics' => self::dbspecRows($result->diagnostics, true),
             ];
+        } elseif ($op === 'dbspec.emit_plan') {
+            $got = ['text' => Dbspec::emitPlan(self::dbspecBound($step['plan'], $bound))];
+        } elseif ($op === 'dbspec.plan_steps') {
+            $source = ($step['source'] ?? null) === null ? null : self::dbspecBound($step['source'], $bound);
+            $result = Dbspec::planSteps($source, self::dbspecBound($step['plan'], $bound), $step['dialect']);
+            $steps = $result->steps ?? Assert::fail('plan steps: ' . self::diagnostics($result->diagnostics));
+            $got = ['steps' => array_map(static fn(PlanStep $s): array => self::planStepFields($s), $steps)];
         } else {
             Assert::fail("OP_UNKNOWN $op");
         }
         Assert::assertSame(self::sortedKeys($expect), self::sortedKeys($got), "$op: result differs from the expect");
+    }
+
+    /** The object of one step as docs/spec/plans.md "Steps" writes it, keys in name order. */
+    private static function planStepFields(PlanStep $s): array
+    {
+        $out = ['statement' => $s->statement, 'effect' => $s->effect->text()];
+        if ($s->rollback !== '') {
+            $out['rollback'] = $s->rollback;
+        } elseif ($s->irreversible !== '') {
+            $out['irreversible'] = $s->irreversible;
+        }
+        if ($s->restore !== '') {
+            $out['restore'] = $s->restore;
+        }
+        if ($s->rollbackRestore !== '') {
+            $out['rollback_restore'] = $s->rollbackRestore;
+        }
+        if ($s->restore !== '' || $s->rollbackRestore !== '') {
+            $out['restore_if'] = $s->restoreIf?->text();
+        }
+        if ($s->nullChecks !== []) {
+            $out['null_checks'] = array_map(
+                static fn($c): array => [$c->table, $c->column, $c->default],
+                $s->nullChecks
+            );
+        }
+        if ($s->finalize) {
+            $out['finalize'] = true;
+        }
+        ksort($out);
+        return $out;
     }
 
     /** The text of lines, each ended by LF, as a dbspec or plan text (Parse and ParsePlan of the lines + "\n"). */

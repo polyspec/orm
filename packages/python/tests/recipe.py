@@ -34,8 +34,9 @@ from polyspec.orm.dbspec import (
     read_dbspec_set,
 )
 from polyspec.orm.dbspec.compare import compare_schemas
-from polyspec.orm.dbspec.plan import chain_plans, parse_plan
+from polyspec.orm.dbspec.plan import chain_plans, emit_plan, parse_plan
 from polyspec.orm.dbspec.plan_diff import diff_plan
+from polyspec.orm.dbspec.plan_steps import effect_text, plan_steps
 from polyspec.orm.engine import Engine, model_of_documents, parse_document_set
 from polyspec.orm.engine.validate import validate
 from polyspec.orm.styled_value import StyledValue
@@ -218,7 +219,9 @@ def _plan(step: dict, recipe_dir: Path, database: str) -> None:
 _DBSPEC_OPS = (
     "dbspec.parse",
     "dbspec.parse_plan",
+    "dbspec.emit_plan",
     "dbspec.diff",
+    "dbspec.plan_steps",
     "dbspec.chain",
     "dbspec.compare",
 )
@@ -238,6 +241,17 @@ def _dbspec(step: dict, bound: dict, database: str) -> None:
         if "as" in step:
             bound[step["as"]] = value
         got = {"diagnostics": _rows(diagnostics, False)}
+    elif op == "dbspec.emit_plan":
+        got = {"text": emit_plan(_dbspec_value(step["plan"], bound, "plan"))}
+    elif op == "dbspec.plan_steps":
+        result = plan_steps(
+            _dbspec_document(step["source"], bound),
+            _dbspec_value(step["plan"], bound, "plan"),
+            step["dialect"],
+        )
+        if result["diagnostics"]:
+            raise AssertionError(f"{op}: {result['diagnostics'][:1]}")
+        got = {"steps": [_plan_step_fields(s) for s in result["steps"]]}
     elif op == "dbspec.diff":
         result = diff_plan(
             _dbspec_document(step["source"], bound),
@@ -258,7 +272,7 @@ def _dbspec(step: dict, bound: dict, database: str) -> None:
             got = {"messages": _messages(result["diagnostics"], "chain")}
         else:
             got = {"order": [plan["name"] for plan in result["plans"]]}
-    else:
+    elif op == "dbspec.compare":
         result = compare_schemas(
             _dbspec_document(step["source"], bound),
             _dbspec_document(step["target"], bound),
@@ -274,6 +288,28 @@ def _dbspec(step: dict, bound: dict, database: str) -> None:
         raise AssertionError(f"{op} has no expect for {database}")
     if got != expect:
         raise AssertionError(f"{op}: got {json.dumps(got)}, want {json.dumps(expect)}")
+
+
+def _plan_step_fields(s: dict) -> dict:
+    """The object of one step as docs/spec/plans.md "Steps" writes it (the steps of a plan-cases.json expect)."""
+    out = {"statement": s["statement"], "effect": effect_text(s["effect"])}
+    if s["rollback"] != "":
+        out["rollback"] = s["rollback"]
+    if s["irreversible"] != "":
+        out["irreversible"] = s["irreversible"]
+    if s["restore"] != "":
+        out["restore"] = s["restore"]
+    if s["rollback_restore"] != "":
+        out["rollback_restore"] = s["rollback_restore"]
+    if s["restore_if"] is not None:
+        out["restore_if"] = effect_text(s["restore_if"])
+    if s["null_checks"]:
+        out["null_checks"] = [
+            [n["table"], n["column"], n["default"]] for n in s["null_checks"]
+        ]
+    if s["finalize"]:
+        out["finalize"] = True
+    return out
 
 
 def _dbspec_value(raw: dict, bound: dict, what: str) -> Any:

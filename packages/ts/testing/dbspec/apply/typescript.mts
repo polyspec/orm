@@ -11,7 +11,7 @@ import type mysql from 'mysql2/promise';
 import pg from 'pg';
 import { DbspecApplyError, applyPlans, parsePlan, recoverPlans, rollbackPlans, type DbspecApplyHandler, type DbspecPlan } from '../../../dist/dbspec/index.js';
 import { connectMysql } from '../connect.mts';
-import { readVectors } from '../../../../../tests/dbspec/vectors.mts';
+import { readPlanCases } from '../../../../../tests/dbspec/vectors.mts';
 
 // The statements that every client runs on a new connection (packages/go/internal/dialects connectionRules).
 const CONNECTION_RULES = {
@@ -27,8 +27,8 @@ if (action === undefined || dialect === undefined || uri === undefined || vector
 }
 const url = new URL(uri);
 
-const plans = readVectors(vectorsPath, 'plans')
-  .cases.filter(c => c.id === 'create-from-empty' || c.id === 'rename-table-and-column')
+const plans = readPlanCases(vectorsPath)
+  .filter(c => c.id === 'create-from-empty' || c.id === 'rename-table-and-column')
   .map(c => {
     const parsed = parsePlan(c.plan.join('\n') + '\n');
     if (parsed.plan === null) throw new Error(`${c.id}: ${JSON.stringify(parsed.diagnostics)}`);

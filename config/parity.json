@@ -11515,23 +11515,23 @@
         "PLN-87",
         "PLN-88"
       ],
-      "file": "tests/dbspec/plans.json",
+      "file": "tests/dbspec/plan-cases.json",
       "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/plan_test.go",
-          "symbol": "TestPlanVectors"
+          "test": "packages/go/orm/recipe_dbspec_plan_cases_test.go",
+          "symbol": "TestRecipeDbspecPlanCases"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecPlanTest::testCase"
+          "test": "packages/php/tests/DbspecPlanCasesTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecPlanCasesTest::testNone"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecPlanTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecPlanTestExtensionTest::testCase"
+          "test": "packages/php-ext/tests/DbspecPlanCasesTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecPlanCasesTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
@@ -11543,8 +11543,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_plan.rs",
-          "symbol": "plan_vectors::cases"
+          "test": "packages/rust/orm/tests/dbspec_plan_cases.rs",
+          "symbol": "dbspec_plan_cases_none"
         }
       ]
     },

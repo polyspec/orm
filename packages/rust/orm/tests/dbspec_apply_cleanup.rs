@@ -10,6 +10,10 @@
 #[path = "common/or_panic.rs"]
 mod or_panic;
 use or_panic::OrPanic;
+#[path = "common/plan_cases.rs"]
+mod plan_cases;
+#[path = "common/plan_recipe.rs"]
+mod plan_recipe;
 #[macro_use]
 #[path = "common/dbspec_apply_support.rs"]
 mod dbspec_apply_support;
@@ -19,7 +23,6 @@ use polyspec_orm::dbspec::{
     apply, effect_holds, effect_query, parse_plan, rollback, ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, CatalogQuerier, CatalogValue, Dialect,
     Effect, Plan,
 };
-use serde_json::Value;
 use sqlx::{Connection, SqliteConnection};
 use std::collections::HashMap;
 use std::future::Future;
@@ -28,13 +31,11 @@ use std::time::Duration;
 /// The deadline of one case.
 const CASE_DEADLINE: Duration = Duration::from_secs(20);
 
-/// create-from-empty from tests/dbspec/plans.json.
+/// create-from-empty from tests/dbspec/plan-cases.json.
 fn create_from_empty() -> Vec<Plan> {
-    let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/plans.json");
-    let vectors: Value = serde_json::from_str(&std::fs::read_to_string(path).expect("plans.json")).expect("plans.json");
-    let case = vectors["cases"].as_array().expect("plan cases").iter().find(|c| c["id"] == "create-from-empty").expect("create-from-empty case");
-    let text: String = case["plan"].as_array().expect("plan lines").iter().map(|l| format!("{}\n", l.as_str().expect("plan line"))).collect();
-    vec![parse_plan(&text).or_panic(|e| format!("create-from-empty: {e:?}"))]
+    let cases = plan_cases::read_cases(&polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec")).or_panic(|e| e);
+    let case = cases.iter().find(|c| c.id == "create-from-empty").expect("create-from-empty case");
+    vec![parse_plan(&case.plan).or_panic(|e| format!("create-from-empty: {e:?}"))]
 }
 
 /// Wraps a real SQLite connection so that when the `fail` statement runs, its message

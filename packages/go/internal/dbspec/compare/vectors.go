@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/polyspec/orm/packages/go/internal/dbspec/plancases"
 )
 
 // The vector files as their schemas declare them (tests/dbspec/schema); readVectors has checked every field before it
@@ -130,15 +132,27 @@ func readDDL(path string) ([]hashCase, error) {
 	return file.Cases, err
 }
 
-// readPlans reads the cases of tests/dbspec/plans.json, and the validation sections from the four recipes beside it
-// (plan-invalid, plan-chains, plan-parse, and plan-comparisons .json). A null source is the empty schema.
+// readPlans checks tests/dbspec/plans.json against its schema, reads the cases from plan-cases.json beside it, and reads the
+// validation sections from the four recipes beside it (plan-invalid, plan-chains, plan-parse, and plan-comparisons .json).
+// A null source is the empty schema.
 func readPlans(path string) (planVectors, error) {
 	var plans planVectors
-	if _, err := readVectors(path, "plans", &plans); err != nil {
+	if _, err := readVectors(path, "plans", &struct{}{}); err != nil {
 		return plans, err
 	}
+	cases, err := plancases.Read(path)
+	if err != nil {
+		return plans, err
+	}
+	for _, c := range cases {
+		pc := planCase{ID: c.ID, Plan: c.Plan}
+		if c.Source != nil {
+			source := c.Source
+			pc.Source = &source
+		}
+		plans.Cases = append(plans.Cases, pc)
+	}
 	dir := filepath.Dir(path)
-	var err error
 	if plans.Invalid, err = readInvalidRecipe(filepath.Join(dir, "plan-invalid.json")); err != nil {
 		return plans, err
 	}

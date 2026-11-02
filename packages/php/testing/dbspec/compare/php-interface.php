@@ -582,7 +582,8 @@ function dbspec_plan_recipes(string $plansPath): array
  */
 function dbspec_write_plans(string $dbspec, string $plansPath): void
 {
-    $plans = dbspec_read_vectors($plansPath, 'plans') + dbspec_plan_recipes($plansPath);
+    $cases = plan_vectors_at($plansPath)['cases'];
+    $plans = dbspec_read_vectors($plansPath, 'plans') + ['cases' => $cases] + dbspec_plan_recipes($plansPath);
     foreach ($plans['cases'] as $case) {
         echo "plans/cases/{$case['id']}\n";
         $input = dbspec_case_plan($dbspec, $case);

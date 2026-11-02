@@ -14,6 +14,7 @@ require __DIR__ . '/../../../../../tests/dbspec/input.php';
 require __DIR__ . '/../../../../../vendor-php/autoload.php';
 require __DIR__ . '/../../../../../tests/dbspec/vectors.php';
 require __DIR__ . '/../../../../../tests/dbspec/cases.php';
+require __DIR__ . '/../../../../php/tests/dbspec_plan_cases.php';
 require __DIR__ . '/../../../../php/testing/dbspec/compare/php-interface.php';
 
 if ($argc !== 7) {

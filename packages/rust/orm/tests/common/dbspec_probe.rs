@@ -6,7 +6,6 @@
 use polyspec_orm::db::{parse_dsn, ConnectOptions};
 use polyspec_orm::dbspec::{introspect, ApplyConnection, CatalogQuerier, IntrospectError};
 use polyspec_orm_schema::dbspec::{self, CatalogValue, Dialect, Document, Introspection};
-use serde_json::Value;
 use sqlx::{AssertSqlSafe, Connection, MySqlConnection, PgConnection, Row, SqlSafeStr, SqliteConnection};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -401,12 +400,4 @@ pub async fn run_probe<T>(
     }
     drop(probe);
     result
-}
-
-pub fn lines(value: &Value) -> String {
-    strings(value).iter().map(|l| format!("{l}\n")).collect()
-}
-
-pub fn strings(value: &Value) -> Vec<String> {
-    value.as_array().expect("strings").iter().map(|s| s.as_str().expect("string").to_owned()).collect()
 }
