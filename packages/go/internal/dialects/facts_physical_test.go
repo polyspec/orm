@@ -1,5 +1,3 @@
-//go:build physical
-
 package dialects
 
 import (

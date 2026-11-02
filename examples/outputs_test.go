@@ -1,5 +1,3 @@
-//go:build examples
-
 package examples_test
 
 import (

@@ -1,5 +1,3 @@
-//go:build markdown
-
 package markdownmodel_test
 
 import (
