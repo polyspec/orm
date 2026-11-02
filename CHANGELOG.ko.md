@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5c2f3740d3fddf8acce49143e3837544cfcfc9b432bec331790f26abf0ac4118 -->
+<!-- source-sha256: f1b8e51d6bc71c85f92454c0b3cb8d4dad4e04c31bb65e8821fe257a7cd67e6c -->
 # 변경 이력
 
 ## Unreleased
 
+- catalog_connection recipe가 MySQL YEAR grid 값의 셀을 INT-103대로 명시한다: YEAR는 orm이 시간 의미를 선언하지 않는 정수값 type이므로 모든 runtime이 그 grid 읽기를 CATALOG_VALUE로 거부하며, 명세 문장이 이를 적는다 (T334-3-3-3).
 - catalog_connection recipe의 native 확인이 여섯 runtime에 명시된다: TypeScript와 Rust의 정수 및 중복 키 오류는 자기 코드를 유지하고(INT-123, CFG-33), CHECK가 없는 temporal 열의 Rust grid는 선언된 정밀도만 유지하며(DIA-24), coverage 기대는 recipe 진입 메서드를 가리키고 SCH-3에 묶인다 (T334-3-3-2).
 - 옛 runtime test의 나머지 catalog_connection 확인이 recipe case가 되었고, 여섯 runtime의 옛 coverage test는 제거되었다. python recipe는 실행이 끝나면 bench 모델 디렉터리를 지운다(T334-3-3-2).
 - PHP extension stub에서 Catalog::insertRow와 updateRow의 values 매개변수를 설명이 붙은 `array`로 선언한다. stub 생성기(gen_stub)가 공백이 든 제네릭 타입을 거부해 php-extension lane 빌드가 실패했고, PHP 8.4 빌드가 다시 통과한다(T334-3-3-2-10).

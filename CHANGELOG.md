@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The catalog_connection recipe states the cell of a MySQL YEAR grid value as INT-103 does: YEAR is an integer-valued type with no temporal meaning that orm declares, so every runtime refuses its grid read with CATALOG_VALUE, and the spec sentence names it (T334-3-3-3).
 - - The catalog_connection recipe's native checks are stated for the six runtimes: the TypeScript and Rust integer and duplicate-key errors keep their codes (INT-123, CFG-33), the Rust grid of a temporal column without a CHECK keeps only the declared precision (DIA-24), and the coverage expectations name the recipe entry methods and bind SCH-3 (T334-3-3-2).
 - The catalog_connection recipe holds the other assertions of the old runtime tests as cases, the old coverage tests of the six runtimes are removed, and the python recipe removes its bench model directory at exit (T334-3-3-2).
 - The PHP extension stub declares the values parameter of Catalog::insertRow and updateRow as `array` with its description, because the stub generator refuses a generic type with a space (gen_stub) and the php-extension lane failed to build on it; the PHP 8.4 build passes again (T334-3-3-2-10).
