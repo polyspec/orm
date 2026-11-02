@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 77a2fb80d951cd5d7516bc7d362016be62d85016cedf774dfc1326e534aed6d2 -->
+<!-- source-sha256: 22787bf078a12828b88910b40205b40305c8c91de71b5e360124bebdab32d43b -->
 # 변경 이력
 
 ## Unreleased
 
+- contracts/features.json의 owner 선언이 실제 파일을 가리키게 한다. 지운 schema test packages/rust/schema/tests/dbspec_plan.rs는 owner에서 빼고, 그 case를 대신 실행하는 recipe 실행기 packages/rust/orm/tests/dbspec_plan_cases.rs를 가리킨다. Go test TestUnloadedUpdateKeepsAssignedValuesSelectedAndKeyed는 packages/go/orm/model_update_state_test.go에 되살린다 (T334-3-17-6).
 - CFG-1, CFG-2, CFG-11, CFG-17, CFG-19, CFG-26의 거부되는 DSN case(UTC가 아닌 timezone, 알 수 없는 scheme, database 이름 없음, 상대 SQLite 경로, VERIFY_IDENTITY와 함께 쓰인 주소 host, 잘못된 SQLite 경로 percent 인코딩)는 하나의 recipe, contracts/fixtures/dsn_reject/dsn_reject.json이 되었고, 모든 runtime이 새 op dsn.connect(FCV-4)로 database 없이 실행한다 (T334-3-23).
 - recipe schema가 model_writes fixture의 model.get_by step을 거부했다. 두 형식 모두 FCV-4가 model.get_by에 주는 rows outcome 대신 일반 expect를 받았다. 이제 두 형식 모두 rows outcome을 받는다 (T334-3-4-9).
 - recipe schema가 schema_install fixture의 schema.install step을 거부했다. {schema} 형식에 expect가 없었는데 FCV-4는 이 형식에 expect를 준다. 이제 schema가 그 expect를 받는다 (T334-3-4-8).

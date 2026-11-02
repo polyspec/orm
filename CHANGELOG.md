@@ -3,6 +3,10 @@
 
 ## Unreleased
 
+- The owner declarations of contracts/features.json name files that exist: the deleted schema test packages/rust/schema/tests/dbspec_plan.rs is removed from its owners, which the recipe runner packages/rust/orm/tests/dbspec_plan_cases.rs replaces, and the Go test TestUnloadedUpdateKeepsAssignedValuesSelectedAndKeyed is restored in packages/go/orm/model_update_state_test.go (T334-3-17-6).
+- The plan vectors file tests/dbspec/plans.json is deleted: its version and note move into the recipe tests/dbspec/plan-cases.json, which the readers and tests/dbspec/schema/plans.schema.json now read directly. The empty php-ext subclass DbspecPlanTestExtensionTest is deleted; its six methods still run with the extension in dbspec-php-extension-check/plan (T334-3-17-3).
+- The TypeScript recipe test drops the unused import `readDbspecFile`, so the lint step of the TypeScript gate passes (T334-3-17-4).
+- The TypeScript package exports the bind-check transforms `fulltextBoolean` and `transformParam` from its entry, as the other runtimes do, so the fulltext_boolean transform has a public call in all six runtimes (T334-3-17-1).
 - The refused DSN cases of CFG-1, CFG-2, CFG-11, CFG-17, CFG-19 and CFG-26 (a non-UTC timezone, an unknown scheme, a missing database name, a relative SQLite path, an address host with VERIFY_IDENTITY, a malformed SQLite path) are one recipe, contracts/fixtures/dsn_reject/dsn_reject.json, which every runtime runs without a database through the new op dsn.connect (FCV-4) (T334-3-23).
 - The correctness cases of `performance_gate` (the primary-key read and the list of 100 rows) are a recipe, contracts/fixtures/performance_gate/performance_gate.json, that the six runtimes run on MySQL, PostgreSQL and SQLite; the timing gates stay in make perf-check, because their timing depends on the load of the tests beside them (FCV-2, FCV-14) (T334-3-11).
 - The recipe schema refused the model.get_by steps of the model_writes fixture, because both forms took the generic expect instead of the rows outcome that FCV-4 gives model.get_by; both forms now take the rows outcome (T334-3-4-9).

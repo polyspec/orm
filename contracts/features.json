@@ -2432,6 +2432,9 @@
           "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestUnloadedUpdateKeepsAssignedValuesSelectedAndKeyed$' -count=1",
           "shard": "other",
           "inputs": [
+            "packages/go/orm/model_update_state_test.go",
+            "packages/go/orm/core.go",
+            "packages/go/orm/model.go"
           ]
         },
         {
@@ -4777,7 +4780,6 @@
         "packages/rust/schema/tests/dbspec_manifest.rs",
         "packages/rust/schema/tests/dbspec_mermaid.rs",
         "packages/rust/schema/tests/dbspec_model.rs",
-        "packages/rust/schema/tests/dbspec_plan.rs",
         "packages/rust/schema/tests/dbspec_render.rs",
         "packages/rust/schema/tests/dbspec_rules.rs",
         "packages/rust/schema/tests/dbspec_runtime.rs",
@@ -4785,6 +4787,7 @@
         "packages/rust/orm/tests/dbspec_apply.rs",
         "packages/rust/orm/tests/dbspec_introspect.rs",
         "packages/rust/orm/tests/dbspec_plan_apply.rs",
+        "packages/rust/orm/tests/dbspec_plan_cases.rs",
         "packages/ts/tests/dbspec-apply-physical.mjs",
         "packages/ts/tests/dbspec-introspect.mjs",
         "packages/ts/tests/dbspec-introspect-round-trip.mjs",
@@ -5052,7 +5055,6 @@
             "packages/rust/schema/tests/dbspec_manifest.rs",
             "packages/rust/schema/tests/dbspec_render.rs",
             "packages/rust/schema/tests/dbspec_runtime.rs",
-            "packages/rust/schema/tests/dbspec_plan.rs",
             "packages/rust/schema/tests/dbspec_model.rs",
             "packages/rust/schema/tests/dbspec_mermaid.rs",
             "packages/rust/schema/tests/dbspec_analyze.rs",
@@ -14605,10 +14607,9 @@
         "packages/rust/schema/tests/common/json_lines.rs"
       ],
       "tests": [
-        "packages/rust/schema/tests/dbspec_mermaid.rs",
-        "packages/rust/schema/tests/dbspec_plan.rs"
+        "packages/rust/schema/tests/dbspec_mermaid.rs"
       ],
-      "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mts rust-dbspec-lines-helper --cwd packages/rust -- \"$LEASE\" run \"$CARGO_LEASES\" exclusive --wait -- cargo test --no-run -p polyspec-orm-schema --test dbspec_mermaid --test dbspec_plan --locked --offline"
+      "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mts rust-dbspec-lines-helper --cwd packages/rust -- \"$LEASE\" run \"$CARGO_LEASES\" exclusive --wait -- cargo test --no-run -p polyspec-orm-schema --test dbspec_mermaid --locked --offline"
     },
     {
       "id": "dbspec-vector-line-join",
