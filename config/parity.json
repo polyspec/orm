@@ -32340,7 +32340,7 @@
         {
           "implementation": "go",
           "test": "packages/go/generator/gen_go_scan_test.go",
-          "id": "TestStoredColumnNameIsNotGeneratedAsNewMethod"
+          "id": "TestStoredColumnNameIsRejectedThroughExportedGenerate"
         },
         {
           "implementation": "php",
