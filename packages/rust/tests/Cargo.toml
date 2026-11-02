@@ -26,8 +26,6 @@ path = "../../../examples/complex/rust/main.rs"
 name = "demo"
 path = "../../../examples/thin-slice/rust/main.rs"
 
-# markdown_conformance needs the flowmark server, so it is left out of every test in the workspace, and make
-# Runs markdown-conformance-check/rust with FLOWMARK and --test markdown_conformance.
 # One libtest-mimic trial per conformance vector of each dialect (polyspec_orm_testcase::trial). Its trials read the
 # seeded bench databases of the run (BENCH_*_DSN), which make orm-check and the runner of a run give.
 [[test]]
@@ -107,11 +105,11 @@ name = "codec_integer_beyond_i64_none"
 path = "tests/codec_integer_beyond_i64_none.rs"
 harness = false
 
+# markdown_conformance runs in the workspace test of the rust lane, which gets FLOWMARK (make client-pooler-check), as
+# markdown-conformance-check/rust gets it. Each case of tests/markdown/cases.json is a libtest-mimic trial named by its id (polyspec_orm_testcase::trial).
 [[test]]
 name = "markdown_conformance"
 path = "tests/markdown_conformance.rs"
-test = false
-# Each case of tests/markdown/cases.json is a libtest-mimic trial named by its id (polyspec_orm_testcase::trial).
 harness = false
 
 [dependencies]
