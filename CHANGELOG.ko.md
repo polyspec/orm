@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- packages/go/bench의 timing gate(TestHotPathGate)와 packages/go/engine/dbspec의 stress document test(TestStressDocument)는 build tag perfgate, bench를 달고 있어서 평범한 `go test`가 이것들을 빼 두었다. 이제 tag가 없으며, stress test는 CPU clock이 필요해서 unix에서만 빌드되고, Makefile의 `-tags bench` 실행과 perf-test의 `-tags perfgate` 실행은 없어졌다 (T334-3-6-5).
+- packages/go/markdownmodel, packages/go/decimalmodel, examples의 Go test는 build tag markdown, decimalphysical, examples를 달고 있어서 평범한 `go test`가 이것들을 빼 두었다. 이제 이 파일들은 tag가 없으며, 이 test를 실행하는 target(markdown-conformance-check, ir-answers-check, decimal-physical-check, example-check)은 `-tags` 없이 `-run` 목록을 유지한다 (T334-3-6-4).
 - packages/go/internal/dialects와 packages/go/engine의 physical Go test는 build tag `physical` 아래에서만 실행되었고, 그 tag는 Makefile이 손으로 유지하는 `-run` 목록으로 골랐다. 그래서 평범한 `go test`가 이것들을 빼 두었다. 이제 그 test들은 tag가 없으며 go-test-check에서 실행되고, go-test-check가 필요한 것을 build하고 export한다. `servers.go`는 `servers_test.go`가 되었고, MySQL DSN helper는 production package가 `_test.go` 파일을 import할 수 없으므로 probes_mysql.go로 옮겨졌다 (T334-3-6-3).
 - CFG-1, CFG-2, CFG-11, CFG-17, CFG-19, CFG-26의 거부되는 DSN case(UTC가 아닌 timezone, 알 수 없는 scheme, database 이름 없음, 상대 SQLite 경로, VERIFY_IDENTITY와 함께 쓰인 주소 host, 잘못된 SQLite 경로 percent 인코딩)는 하나의 recipe, contracts/fixtures/dsn_reject/dsn_reject.json이 되었고, 모든 runtime이 새 op dsn.connect(FCV-4)로 database 없이 실행한다 (T334-3-23).
 - recipe schema가 model_writes fixture의 model.get_by step을 거부했다. 두 형식 모두 FCV-4가 model.get_by에 주는 rows outcome 대신 일반 expect를 받았다. 이제 두 형식 모두 rows outcome을 받는다 (T334-3-4-9).
