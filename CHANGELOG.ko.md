@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 410141adf4ee3790e5d1095d77e2eb87393b90a91976eed53c0112360c64d45d -->
+<!-- source-sha256: 81e5f94b52afb479e748119cc99103011e031363e7d7a9e45a0edb4737be0db3 -->
 # 변경 이력
 
 ## Unreleased
@@ -75,6 +75,7 @@
 - GroupRows PHP extension test가 이전 php-ext-build 형식의 build를 가짜로 만들어서 module을 찾지 못했고, test (static)의 makefile-pinned-node-recipes-check가 실패했다. 이제 가짜는 build를 한 번만 하도록 바꾼 리팩터링(CR4)이 php-ext-build에 준 형식을 따른다 (CR52).
 - dbspec PHP extension aggregate의 공유 module 테스트가 T334-3-15-1이 지운 child를 기대해서, test (static)의 makefile-pinned-node-recipes-check가 실패했다. 테스트는 요청 검증이 ir-validate-check로 옮겨진 것을 따른다 (CR53).
 - 물리 DDL 동작과 IR 검증 recipe의 test 파일 여섯 개가 어떤 feature에도 속하지 않아 features 검사가 여섯 CI job에서 실패했다. 물리 DDL test는 이제 schema_definition에, IR 검증 test는 planner에 속한다 (CR54).
+- Rust catalog는 tool 질의의 statement와 column 오류의 code를 오류 텍스트 앞에 둔다(INT-124, INT-125): TOOL_QUERY_STATEMENT와 TOOL_QUERY_COLUMNS가 driver 접두어 error occurred while decoding 뒤에 놓이지 않는다 (T334-3-3-5)
 
 ## 0.0.21
 

@@ -33,6 +33,10 @@ mod test_fixtures;
 #[path = "../../tests/unit/catalog_value.rs"]
 mod value_tests;
 
+#[cfg(test)]
+#[path = "../../tests/unit/catalog_tool_errors.rs"]
+mod tool_error_tests;
+
 pub struct CatalogConnection {
     connection: Conn,
     pool: Pool,
@@ -217,6 +221,12 @@ pub(super) fn catalog_query_error(error: sqlx::Error) -> String {
         }
         if let Some(detail) = detail.strip_prefix("TOOL_QUERY_TEMPORAL:") {
             return format!("{}:{detail}", polyspec_orm::codes::GRID_TEMPORAL_VALUE);
+        }
+        // INT-124 and INT-125: the tool's column and statement errors keep their own codes as the head of the text.
+        for code in [polyspec_orm::codes::TOOL_QUERY_STATEMENT, polyspec_orm::codes::TOOL_QUERY_COLUMNS] {
+            if let Some(detail) = detail.strip_prefix(code).and_then(|rest| rest.strip_prefix(':')) {
+                return format!("{code}:{detail}");
+            }
         }
     }
     let text = error.to_string();

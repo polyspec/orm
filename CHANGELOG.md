@@ -74,6 +74,7 @@
 - The GroupRows PHP extension test faked the build of the older php-ext-build form, so its module was not found and makefile-pinned-node-recipes-check failed in test (static). The fake now follows the form that the build-once refactor (CR4) gave php-ext-build (CR52).
 - The shared-module test of the dbspec PHP extension aggregate asserted a child that T334-3-15-1 had removed, so makefile-pinned-node-recipes-check failed in test (static). The test now follows the move of request validation to ir-validate-check (CR53).
 - Six test files of the physical DDL behaviour and the IR validate recipe belonged to no feature, so the features check failed in six CI jobs. The physical DDL tests now belong to schema_definition and the IR validate tests to planner (CR54).
+- The Rust catalog keeps the codes of the tool's statement and column errors at the head of its error text, as INT-124 and INT-125 state: TOOL_QUERY_STATEMENT and TOOL_QUERY_COLUMNS no longer follow the driver prefix error occurred while decoding (T334-3-3-5)
 
 ## 0.0.21
 

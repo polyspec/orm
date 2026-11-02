@@ -1220,6 +1220,23 @@
         "packages/rust/build/tests/unit/catalog_value.rs"
       ]
     },
+    "catalog-tool-errors-rust-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "rust",
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/rust/Cargo.toml",
+        "packages/rust/Cargo.lock",
+        "packages/rust/build/Cargo.toml",
+        "packages/rust/build/src/catalog/mod.rs",
+        "packages/rust/build/src/tool_db.rs",
+        "packages/rust/build/tests/unit/catalog_tool_errors.rs"
+      ]
+    },
     "column-function-metadata-check": {
       "scope": "owner",
       "needs": [
