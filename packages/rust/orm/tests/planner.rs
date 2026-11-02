@@ -68,7 +68,10 @@ fn check_step(case: &str, step: &Value) {
         return;
     }
     for (name, dialect) in DIALECTS {
-        let plan = compile(&manifest, dialect, &input).unwrap_or_else(|error| panic!("{case}: {name}: {error}"));
+        let plan = match compile(&manifest, dialect, &input) {
+            Ok(plan) => plan,
+            Err(error) => panic!("{case}: {name}: {error}"),
+        };
         let got = Value::Array(plan.steps.iter().map(statement).collect());
         assert_eq!(got, expect["value"][name], "{case}: {name}");
     }

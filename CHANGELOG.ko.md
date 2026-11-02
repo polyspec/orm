@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 91394fd5a35f7e30c6da9a244cde59951127cbd77a3d116d1e4240444c418104 -->
+<!-- source-sha256: 8a26696bf7951a7f7a897b210d547d7d4165ebe1e7a969d8a4f78b0810a8800d -->
 # 변경 이력
 
 ## Unreleased
 
+- Rust planner compile test의 금지된 `unwrap_or_else`를 같은 panic 메시지를 쓰는 `match`로 바꾼다. 그래서 planner 테스트에서 clippy의 금지 메서드 검사가 통과한다 (T334-3-24-2).
 - Rust recipe test helper의 금지된 `unwrap_or_default`와 `ok` 호출을 명시적 처리로 바꾼다. T326-16(33953ec5a)과 같은 수정이라 polyspec-orm-tests crate에서 `make lint-rust`가 통과한다 (T334-3-24-3).
 - Python recipe test에서 쓰지 않는 import `read_dbspec_file`을 뺐다. 그래서 Python 게이트의 ruff 단계가 통과한다 (T334-3-24-1).
 - TypeScript recipe test에서 쓰지 않는 import `readDbspecFile`을 뺐다. 그래서 TypeScript 게이트의 lint 단계가 통과한다 (T334-3-17-4).
