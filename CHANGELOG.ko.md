@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 76d74560f1f94ba9cd60202afc60ed79e470207ea3dc58dc8d8005c210f2f273 -->
+<!-- source-sha256: 50469f84296cd0bb58a560d0124b5128685608e1d6dcddd0ae84a0e992753d30 -->
 # 변경 이력
 
 ## Unreleased
@@ -77,6 +77,7 @@
 - 읽기 answer 사례 `contracts/fixtures/ir_answers.json`은 `tests/ir/answers.json`으로 옮겨져, 여섯 runtime 모두 데이터베이스 없이 실행하는 `ir.answer` op(FCV-4)의 recipe가 된다. 각 사례는 markdown chain을 answer를 돌려주는 listener 위에서 실행한다. 대체되는 native answer test는 제거되고, parity unit ir-answers는 여섯 recipe entry에 묶인다 (#T334-3-15-2).
 - bind vector의 slot 픽스처 `tests/bind/slots.dbs`와 그 set `tests/bind/dbspec-set.json`은 `tests/bind/vectors.json`의 parameter slot마다 컬럼 하나를 가진 테이블 하나를 둔다. 모델은 모델을 쓰는 make 대상이 생성한다(Go와 PHP는 모델 목록, TypeScript는 빌드, Python은 `bind-python-models`, Rust는 tests crate의 build script). `make bind-models-check`가 이를 검사한다 (T334-3-15-3a).
 - recipe schema에 비유한 binary64 wrapper `{"f64": "NaN" | "Infinity" | "-Infinity"}`를 더했고, 여섯 recipe helper가 각각 그 수의 host 값으로 바꾼다. 유한한 수는 `float` wrapper를 그대로 쓴다 (T334-3-15-3b).
+- slot fixture `tests/bind/slots.dbs`에 bind chain이 이름 붙이는 time4, time5, datetime3, datetime4, datetime5 열을 더했고, 새 열마다 생성된 Go model에 setter가 있다 (#T334-3-15-3c-1).
 - Rust runner는 공유 DDL vector의 behavior step을 MySQL, PostgreSQL, SQLite에서 실행하고, 서버 DSN이 빠지면 그 이름을 대며 실패한다. 전에는 rendered statement만 만들었다 (CR16-1-2).
 - TypeScript, Python, Rust의 physical DDL behavior 시험이 config/parity.json에 binding이 없어 parity-declarations-check가 binding 없는 test로 보고했다. 이 시험들을 DIA-113을 인용하는 feature unit dbspec-render-physical로 선언하고, 각 시험이 그 요구사항을 이름으로 적는다 (CR16-1-5).
 - duplication check가 공용 test 코드의 clone 세 개를 찾았다. PgsqlStatementAdapter와 CatalogAnswerStatement의 PHP fetchAll은 trait FetchesAllRows가 되었고, Rust dbspec test의 parse_set은 probe 모듈 tests/common/dbspec_probe.rs에 있으며, TypeScript의 within helper는 둘이 함께 쓰는 tests/deadline.mjs에 있다 (CR27).
