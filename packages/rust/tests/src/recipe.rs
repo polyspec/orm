@@ -1895,13 +1895,13 @@ mod database {
             connection.close().await;
             return Ok(());
         }
-        let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or_default();
+        let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_err(|e| Failure::Step(e.to_string()))?.as_nanos();
         let directory = std::env::temp_dir().join(format!("orm_recipe_absent_{}_{nanos}", std::process::id()));
         std::fs::create_dir_all(&directory).map_err(|e| Failure::Step(e.to_string()))?;
         let path = directory.join("absent.sqlite");
         let outcome = CatalogConnection::connect(&format!("sqlite://{}", path.display())).await;
         let created = path.exists();
-        let _ = std::fs::remove_dir_all(&directory);
+        std::fs::remove_dir_all(&directory).map_err(|e| Failure::Step(e.to_string()))?;
         if created {
             return Err(Failure::Step("the connect created the SQLite file".into()));
         }

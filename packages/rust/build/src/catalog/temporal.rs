@@ -145,8 +145,8 @@ fn declared_digit(lower: &str, base: &str, suffix: &str) -> Option<Option<usize>
         return Some(None);
     }
     let digits = rest.strip_prefix('(')?.strip_suffix(')')?;
-    match digits {
-        "0" | "1" | "2" | "3" | "4" | "5" | "6" => digits.parse().ok().map(Some),
+    match digits.parse::<usize>() {
+        Ok(precision) if digits.len() == 1 && precision <= 6 => Some(Some(precision)),
         _ => None,
     }
 }

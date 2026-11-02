@@ -174,7 +174,7 @@ impl CatalogConnection {
             return;
         }
         if let Ok(mut killer) = Conn::acquire(&self.pool).await {
-            let _ = killer.exec(&format!("KILL QUERY {thread}"), &[]).await;
+            let _killed: Result<_, _> = killer.exec(&format!("KILL QUERY {thread}"), &[]).await;
         }
     }
     pub async fn close(self) {
@@ -205,7 +205,7 @@ fn read_limits(max_rows: Option<i64>, max_bytes: Option<i64>) -> Result<crate::t
     let count = |value: Option<i64>, otherwise: usize| match value {
         None => Ok(otherwise),
         Some(n) if n < 0 => Err(format!("{}: limits must not be negative", polyspec_orm::codes::QUERY_LIMIT_INVALID)),
-        Some(n) => Ok(usize::try_from(n).unwrap_or(usize::MAX)),
+        Some(n) => usize::try_from(n).map_err(|error| format!("{}: {error}", polyspec_orm::codes::QUERY_LIMIT_INVALID)),
     };
     Ok(crate::tool_db::QueryLimits { max_rows: count(max_rows, default.max_rows)?, max_bytes: count(max_bytes, default.max_bytes)? })
 }

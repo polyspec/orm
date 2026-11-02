@@ -173,7 +173,10 @@ fn answer_on_thread(chain: &str, bind: &Value, answer: &Value, answers: &Value, 
 /// result is an empty list; a listener that received no request is a fault of the case.
 fn request_params(request: Option<&str>) -> Value {
     let Some(line) = request else { panic!("the listener received no request message") };
-    let message: Value = serde_json::from_str(line).unwrap_or_else(|error| panic!("the request line is not JSON: {error}"));
+    let message: Value = match serde_json::from_str(line) {
+        Ok(message) => message,
+        Err(error) => panic!("the request line is not JSON: {error}"),
+    };
     if message.get("request").is_none() {
         panic!("the listener received no request message");
     }

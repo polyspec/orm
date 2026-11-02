@@ -5,7 +5,7 @@
 
 use std::collections::BTreeSet;
 use std::path::PathBuf;
-use std::sync::{Mutex, PoisonError};
+use std::sync::Mutex;
 
 use polyspec_orm_tests::markdown::{self, Scratch, Served, Server};
 use serde_json::{json, Value};
@@ -100,7 +100,11 @@ fn start() -> Shared {
 
 /// Runs one case of cases.json on the shared server, which the first case starts.
 fn markdown_conformance_case(id: &str, expect: &Value) {
-    let mut guard = SHARED.lock().unwrap_or_else(PoisonError::into_inner);
+    // A trial fails by a panic, which poisons the lock; the next trial takes the server and reports the stopped case.
+    let mut guard = match SHARED.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
     let shared = guard.get_or_insert_with(start);
     if let Some(stopped) = &shared.stopped {
         panic!("not run: {stopped} failed, and this case reads the corpus state it leaves");
@@ -125,7 +129,11 @@ fn main() {
         })
         .collect();
     polyspec_orm_testcase::run_in_order_then(trials, || {
-        if let Some(shared) = SHARED.lock().unwrap_or_else(PoisonError::into_inner).take() {
+        let mut guard = match SHARED.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        if let Some(shared) = guard.take() {
             shared.runtime.block_on(shared.served.db.close());
         }
     });
@@ -134,8 +142,14 @@ fn main() {
 /// The cases from cases.json: returns each id and expect in order. Fails if an id is empty or duplicated.
 fn load_cases() -> Vec<(String, Value)> {
     let path = markdown::conformance_dir().join("cases.json");
-    let doc: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display())))
-        .unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    let text = match std::fs::read_to_string(&path) {
+        Ok(text) => text,
+        Err(e) => panic!("{}: {e}", path.display()),
+    };
+    let doc: Value = match serde_json::from_str(&text) {
+        Ok(doc) => doc,
+        Err(e) => panic!("{}: {e}", path.display()),
+    };
     let mut seen = BTreeSet::new();
     let mut out = Vec::new();
     for case in doc["cases"].as_array().unwrap_or_else(|| panic!("{}: no cases", path.display())) {
@@ -149,15 +163,20 @@ fn load_cases() -> Vec<(String, Value)> {
 /// The flowmark binary that FLOWMARK points to. Accepts the pinned module version or a clean build of its exact revision.
 fn pinned_flowmark() -> PathBuf {
     let version = markdown::conformance_dir().join("flowmark.version");
-    let pin = std::fs::read_to_string(&version).unwrap_or_else(|e| panic!("{}: {e}", version.display())).trim().to_owned();
-    let bin = std::env::var("FLOWMARK").unwrap_or_default();
-    assert!(
-        !bin.is_empty(),
-        "FLOWMARK is not set; run make markdown-conformance-check, which passes the path of the flowmark {pin} pinned in tests/markdown/flowmark.version"
-    );
-    let bytes = std::fs::read(&bin).unwrap_or_else(|e| {
-        panic!("FLOWMARK {bin}: {e}; run make orm-install-flowmark, which installs the flowmark {pin} pinned in tests/markdown/flowmark.version")
-    });
+    let pin = match std::fs::read_to_string(&version) {
+        Ok(text) => text.trim().to_owned(),
+        Err(e) => panic!("{}: {e}", version.display()),
+    };
+    let bin = match std::env::var("FLOWMARK") {
+        Ok(bin) if !bin.is_empty() => bin,
+        unset => panic!(
+            "FLOWMARK is not set ({unset:?}); run make markdown-conformance-check, which passes the path of the flowmark {pin} pinned in tests/markdown/flowmark.version"
+        ),
+    };
+    let bytes = match std::fs::read(&bin) {
+        Ok(bytes) => bytes,
+        Err(e) => panic!("FLOWMARK {bin}: {e}; run make orm-install-flowmark, which installs the flowmark {pin} pinned in tests/markdown/flowmark.version"),
+    };
     let main = main_module(&bytes).unwrap_or_else(|| {
         panic!("FLOWMARK {bin} is no Go build; run make orm-install-flowmark, which installs the flowmark {pin} pinned in tests/markdown/flowmark.version")
     });
@@ -185,7 +204,8 @@ fn main_module(binary: &[u8]) -> Option<GoBuildInfo> {
     const END: [u8; 16] = [0xf9, 0x32, 0x43, 0x31, 0x86, 0x18, 0x20, 0x72, 0x00, 0x82, 0x42, 0x10, 0x41, 0x16, 0xd8, 0xf2];
     let start = binary.windows(START.len()).position(|w| w == START)? + START.len();
     let end = start + binary[start..].windows(END.len()).position(|w| w == END)?;
-    let text = std::str::from_utf8(&binary[start..end]).ok()?;
+    // Text that is not UTF-8 between the markers is no Go build info.
+    let Ok(text) = std::str::from_utf8(&binary[start..end]) else { return None };
     let mut path = None;
     let mut version = None;
     let mut revision = None;

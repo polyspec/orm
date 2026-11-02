@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: cead9e5bab13b82474392a809fd42e324ba025761cdfc4b1628df6bab9f080f1 -->
+<!-- source-sha256: 8d4f7cb33d413401e9f44119827a104b202b6a6a645e8e1cb96a4f918bb33709 -->
 # 변경 이력
 
 ## Unreleased
 
+- 통합 브랜치에서 make lint-rust가 다시 통과한다: catalog 코드, recipe와 markdown 헬퍼, markdown conformance trial에서 오류를 대체값으로 바꾸던 16개 호출(Result::ok, unwrap_or, unwrap_or_default, unwrap_or_else, let _)이 오류를 다루고, usize에 맞지 않는 읽기 한도는 QUERY_LIMIT_INVALID로 거부한다(T334-3-26).
 - DIA-6은 PostgreSQL이 전문 검색 값을 trim한다고 적었다. 여섯 런타임의 planner는 모두 값을 그대로 bind하며 plainto_tsquery와 websearch_to_tsquery는 둘을 같게 읽으므로, DIA-6은 이제 그렇게 적는다(T334-3-17-2-3).
 - 전문 검색 동작(DSL-32, DSL-33, DIA-6, DIA-187, PRT-75)은 레시피 contracts/fixtures/fulltext_search/fulltext_search.json 하나이며, 각 런타임의 레시피 헬퍼가 op query.search로 MySQL, PostgreSQL, SQLite에서 실행한다. 이 op는 fulltext_boolean 술어의 count를 connection의 dialect에서 컴파일하고 statement와 bind 값을 보고한다: MySQL은 fulltext_boolean 변환 값, PostgreSQL은 텍스트 그대로, SQLite는 OPERATOR_NOT_ALLOWED다. 여섯 네이티브 fulltext 테스트와 그 파리티 단위는 제거했다(T334-3-17-2).
 - fulltext 레시피의 Go query.search가 외부 문서 없이 케이스 스키마를 적재했고 모델 이름 Author를 entity로 넘겨서 Go의 네 케이스가 모두 실패했다. engine.Load가 외부 문서 텍스트를 받아 runtimemodel.LoadSet으로 적재하며, 레시피는 스키마의 외부 문서와 entity author를 넘긴다 (T334-3-17-2-1).

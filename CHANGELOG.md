@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- make lint-rust passes again on the integration branch: 16 calls of the catalog code, the recipe and markdown helpers and the markdown conformance trials that turned an error into a fallback (Result::ok, unwrap_or, unwrap_or_default, unwrap_or_else, let _) handle the error, and a read limit that does not fit usize is refused with QUERY_LIMIT_INVALID (T334-3-26).
 - DIA-6 said that PostgreSQL trims the full-text value; the planners of all six runtimes bind it as it is, which plainto_tsquery and websearch_to_tsquery read the same, and DIA-6 now says so (T334-3-17-2-3).
 - The fulltext search behaviour (DSL-32, DSL-33, DIA-6, DIA-187, PRT-75) is one recipe, contracts/fixtures/fulltext_search/fulltext_search.json, run on MySQL, PostgreSQL and SQLite by the recipe helper of each runtime through the op query.search, which compiles the count of a fulltext_boolean predicate on the dialect of the connection and reports the statement and the value it binds: the fulltext_boolean transform on MySQL, the text as it is on PostgreSQL, and OPERATOR_NOT_ALLOWED on SQLite. The six native fulltext tests and their parity unit are removed (T334-3-17-2).
 - The dbspec Mermaid vectors (tests/dbspec/mermaid.json) are one recipe: each runtime runs it through its recipe helper in one entry, the compare runners read it, and the native vector tests are removed (T334-3-21).
