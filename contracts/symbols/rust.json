@@ -7515,13 +7515,17 @@
     "exported": false,
     "signature": " async fn write (ex : \u0026 Executor , conn : \u0026 Option \u003c Db \u003e , req : \u0026 mut Req) -\u003e Result \u003c (Val , u64) \u003e"
   },
+  "packages/rust/orm/src/model.rs::write_after_hook": {
+    "exported": false,
+    "signature": " async fn write_after_hook (ex : \u0026 Executor , conn : \u0026 Option \u003c Db \u003e , req : \u0026 mut Req , after : impl FnOnce (\u0026 Req) -\u003e Result \u003c () \u003e) -\u003e Result \u003c (Val , u64) \u003e"
+  },
   "packages/rust/orm/src/model.rs::write_req": {
     "exported": false,
     "signature": " fn write_req (c : \u0026 Core , kind : \u0026 str) -\u003e Req"
   },
   "packages/rust/orm/src/model.rs::write_request": {
     "exported": false,
-    "signature": " async fn write_request (ex : \u0026 Executor , conn : \u0026 Option \u003c Db \u003e , req : \u0026 mut Req) -\u003e Result \u003c (Val , u64) \u003e"
+    "signature": " async fn write_request (ex : \u0026 Executor , conn : \u0026 Option \u003c Db \u003e , req : \u0026 mut Req , after : impl FnOnce (\u0026 Req) -\u003e Result \u003c () \u003e) -\u003e Result \u003c (Val , u64) \u003e"
   },
   "packages/rust/orm/src/plan.rs::Assemble": {
     "exported": true,

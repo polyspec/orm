@@ -9,6 +9,7 @@
 - 알 수 없는 recipe 키 검사는 공용 Go·Cargo 시험 runner로 runtime마다 자기 part를 실행하고, Rust와 TypeScript 거부 시험은 각 case를 보고하며, 이 검사는 static group의 target으로 CI에서 실행된다 (T334-3-5-6).
 - IR fixture case의 요청 builder는 `polyspec_orm::testing::ir_request`(feature `test-faults`)다. engine 단위 시험, manifest hash 시험, Rust recipe helper가 이를 import하므로 어떤 crate도 다른 crate의 파일을 `#[path]`로 가리키지 않으며, `ir-validate-check/rust`는 두 시험 binary를 두 part로 실행한다 (T334-3-25-1).
 - PHP extension stub의 insertRow parameter는 arginfo 생성기가 읽는 PHPDoc type으로 선언한다 (CR47).
+- Rust restore는 planner가 parameter를 재번호하기 전, request hook이 남긴 요청에서 key를 읽는다. 그래서 hook이 label 뒤에 key를 set해도 다시 그 행을 복원한다 (T326-15-1-1).
 - duplication 검사가 다시 중복을 보고하지 않는다: integ/recipes의 merge가 복사한 recipe·coverage·compare helper를 각 runtime이 공유한다. PHP recipe 시험은 database 시험 class 하나를, Rust recipe는 model op dispatcher 하나를 쓰고, Go·Python·TypeScript·Rust의 Mermaid skeleton과 where 좁히기는 한 곳에 있다 (CR56).
 - spec은 Go generator가 각 scan이 필요로 하는 순서로 set을 생성하고 순환을 거부하도록 요구한다 (DSL-157). parity unit이 그 시험을 연결하고, Go 테스트 루트가 옮겨진 markdown message 시험을 포함하며, 생성된 condition 메서드를 public API로 선언한다 (CR46).
 - parity unit markdown-message-vectors는 옮겨진 Go 시험의 경로 packages/go/bindmessages를 가리킨다 (CR46).

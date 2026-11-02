@@ -1040,7 +1040,12 @@ fn validate_host_value(styles: &[String], value: &Param) -> Result<()> {
 /// the generated identity; on the markdown executor, the first key it replied with (an integer for identity, text for key_prefix keys).
 /// Null if there is no key.
 async fn write(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<(Val, u64)> {
-    let written = write_request(ex, conn, req).await;
+    write_after_hook(ex, conn, req, |_| Ok(())).await
+}
+
+/// write, with `after` run on the request as the request hook left it, before the planner renumbers its parameters.
+async fn write_after_hook(ex: &Executor, conn: &Option<Db>, req: &mut Req, after: impl FnOnce(&Req) -> Result<()>) -> Result<(Val, u64)> {
+    let written = write_request(ex, conn, req, after).await;
     if let (Ok((key, _)), Executor::Tx(t)) = (&written, ex) {
         record_inserted(t, req, key);
     }
@@ -1051,8 +1056,9 @@ async fn write(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<(Val, 
     written
 }
 
-async fn write_request(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<(Val, u64)> {
+async fn write_request(ex: &Executor, conn: &Option<Db>, req: &mut Req, after: impl FnOnce(&Req) -> Result<()>) -> Result<(Val, u64)> {
     hook_request(conn, ex, req)?;
+    after(req)?;
     let db = ex.db().clone();
     if db.is_markdown() {
         let (keys, affected) = markdown_write(ex, req).await?;
@@ -1503,13 +1509,20 @@ async fn restore_step<M: Model>(m: &M) -> Result<(u64, Core)> {
         req.ir.set.push(a);
     }
     req.ir.n_params = req.params.len();
-    let (_, restored) = write(&ex, &c.conn, &mut req).await?;
-    // req is the request as the hook left it, so its key is the key the planner picked.
-    let key = crate::engine::validate::restore_key(&ent, &req.ir)?.key;
+    // The key is read from the request as the hook left it, before the planner renumbers its parameters.
+    let mut key_values = Vec::new();
+    let (_, restored) = write_after_hook(&ex, &c.conn, &mut req, |hooked| {
+        for column in crate::engine::validate::restore_key(&ent, &hooked.ir)?.key {
+            let value = restore_key_value(&own, hooked, &column)?;
+            key_values.push((column, value));
+        }
+        Ok(())
+    })
+    .await?;
     let mut q = Core::new(c.ent);
     q.conn = c.conn.clone();
-    for (i, column) in key.iter().enumerate() {
-        q.add_eq(if i == 0 { "" } else { "and" }, column, restore_key_value(&own, &req, column)?);
+    for (i, (column, value)) in key_values.into_iter().enumerate() {
+        q.add_eq(if i == 0 { "" } else { "and" }, &column, value);
     }
     Ok((restored, q))
 }
