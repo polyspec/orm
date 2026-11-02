@@ -17,47 +17,60 @@ export type KeyTable = {
   step: { [op: string]: string[] };
 };
 
+// node narrows a value of the schema to an object, or names where the schema holds something else.
+function node(value: unknown, where: string): Node {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) throw new Error(`recipe schema: ${where} is not an object`);
+  return Object.fromEntries(Object.entries(value));
+}
+
+// strings narrows a value of the schema to a list of texts.
+function strings(value: unknown, where: string): string[] {
+  if (!Array.isArray(value) || !value.every(item => typeof item === 'string')) throw new Error(`recipe schema: ${where} is not a list of texts`);
+  return value.filter(item => typeof item === 'string');
+}
+
 // pointer resolves a local JSON pointer (#/a/b) of the schema.
 function pointer(schema: Node, ref: string): Node {
   if (!ref.startsWith('#/')) throw new Error(`recipe schema: ${ref} is not a local reference`);
-  let node: unknown = schema;
+  let current: Node = schema;
   for (const raw of ref.slice(2).split('/')) {
     const key = raw.replaceAll('~1', '/').replaceAll('~0', '~');
-    if (node === null || typeof node !== 'object' || !(key in node)) throw new Error(`recipe schema: ${ref} does not resolve`);
-    node = (node as Node)[key];
+    if (!(key in current)) throw new Error(`recipe schema: ${ref} does not resolve`);
+    current = node(current[key], ref);
   }
-  return node as Node;
+  return current;
 }
 
 // keysOf collects the property names of a schema node, through its references and its oneOf, anyOf and allOf members.
-function keysOf(schema: Node, node: Node, names: Set<string>): Set<string> {
-  if (typeof node.$ref === 'string') return keysOf(schema, pointer(schema, node.$ref), names);
-  const properties = node.properties;
-  if (properties !== null && typeof properties === 'object') for (const name of Object.keys(properties)) names.add(name);
+function keysOf(schema: Node, at: Node, names: Set<string>): Set<string> {
+  if (typeof at.$ref === 'string') return keysOf(schema, pointer(schema, at.$ref), names);
+  if (at.properties !== undefined) for (const name of Object.keys(node(at.properties, 'properties'))) names.add(name);
   for (const combinator of ['oneOf', 'anyOf', 'allOf'] as const) {
-    const members = node[combinator];
-    if (Array.isArray(members)) for (const member of members) keysOf(schema, member as Node, names);
+    const members = at[combinator];
+    if (Array.isArray(members)) for (const member of members) keysOf(schema, node(member, combinator), names);
   }
   return names;
 }
 
 // keyTable derives the table from the schema: the file keys, the case keys, and per op the keys of its variants and its op.
 export function keyTable(schema: Node): KeyTable {
-  const defs = schema.$defs as { [name: string]: Node };
-  const ops = defs.ops as { [op: string]: Node };
-  const stepDef = defs.step;
-  const caseDef = defs.case;
-  if (stepDef === undefined || caseDef === undefined) throw new Error('recipe schema: $defs holds no step or case');
-  const stepOps = ((stepDef.properties as Node).op as { enum: string[] }).enum;
+  const defs = node(schema.$defs, '$defs');
+  const ops = node(defs.ops, '$defs.ops');
+  if (defs.step === undefined || defs.case === undefined) throw new Error('recipe schema: $defs holds no step or case');
+  const stepDef = node(defs.step, '$defs.step');
+  const caseDef = node(defs.case, '$defs.case');
+  const stepOps = strings(node(node(stepDef.properties, '$defs.step.properties').op, '$defs.step.properties.op').enum, 'the op enum of step');
   const step: { [op: string]: string[] } = {};
   for (const op of stepOps) {
     if (!(op in ops)) throw new Error(`recipe schema: op ${op} has no $defs.ops entry`);
-    const variant = ops[op];
-    if (variant === undefined) throw new Error(`recipe schema: op ${op} has no $defs.ops entry`);
-    step[op] = [...keysOf(schema, variant, new Set(['op']))].sort();
+    step[op] = [...keysOf(schema, node(ops[op], `$defs.ops.${op}`), new Set(['op']))].sort();
   }
-  for (const member of (stepDef.oneOf as Node[])) {
-    const op = String((member.$ref as string).split('/').pop());
+  const members: unknown = stepDef.oneOf;
+  if (!Array.isArray(members)) throw new Error('recipe schema: $defs.step holds no oneOf list');
+  for (const member of members) {
+    const ref = node(member, 'a oneOf member of step').$ref;
+    if (typeof ref !== 'string') throw new Error('recipe schema: a oneOf member of step has no $ref');
+    const op = String(ref.split('/').pop());
     if (!stepOps.includes(op)) throw new Error(`recipe schema: the oneOf of step names ${op}, which its op enum lacks`);
   }
   for (const op of Object.keys(ops)) {
@@ -65,10 +78,15 @@ export function keyTable(schema: Node): KeyTable {
   }
   return {
     schema: 1,
-    file: Object.keys(schema.properties as Node).sort(),
-    case: Object.keys((caseDef.properties as Node)).sort(),
+    file: Object.keys(node(schema.properties, 'properties')).sort(),
+    case: Object.keys(node(caseDef.properties, '$defs.case.properties')).sort(),
     step,
   };
+}
+
+// readSchema reads the recipe schema as an object.
+export function readSchema(): Node {
+  return node(JSON.parse(readFileSync(schemaFile, 'utf8')), schemaFile);
 }
 
 // render is the tracked text of a table.
@@ -77,8 +95,7 @@ export function render(table: KeyTable): string {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const schema = JSON.parse(readFileSync(schemaFile, 'utf8')) as Node;
-  const text = render(keyTable(schema));
+  const text = render(keyTable(readSchema()));
   if (process.argv.includes('--check')) {
     const tracked = readFileSync(keysFile, 'utf8');
     if (tracked !== text) {

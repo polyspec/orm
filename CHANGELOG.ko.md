@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 8e38cccf519f0312bec88187357f51ff02ab56ce57c314aeb2a5f5c677a6b569 -->
+<!-- source-sha256: 43ad67f090160d4ec98728eb695560c2f0ae22447fe71283b16d5d6aab44f593 -->
 # 변경 이력
 
 ## Unreleased
 
+- make lint-ts가 다시 통과한다: recipe key table script는 guard로 schema를 좁히고, owner 시험은 선언된 owner 목록을 순회한다 (T334-3-17-10)
 - PHP library와 PHP extension이 PRT-67이 받는 T 구분 datetime 문자열을 읽고, PHP 시험이 bind model을 autoload한다 (T334-3-15-3c-10)
 - Rust client가 PRT-67이 받는 T 구분 datetime 문자열을 읽는다 (T334-3-15-3c-9)
 - constraints_and_relations 데이터베이스 기능의 constraint_errors와 external_relation case는 mysql, postgres, sqlite의 recipe contracts/fixtures/constraints_and_relations/constraints_and_relations.json이며, 여섯 runtime의 helper가 실행한다. 외래 키 위반 삭제는 user 행을 바꾸지 않고, CHECK와 unique 위반은 CONSTRAINT와 DUPLICATE_KEY로 실패하며, NoteReader 관계는 SharedNote 행을 읽으므로 이 확인들은 native test에서 빠진다. native test에는 immutable_write가 남는다. 이는 driver 오류 사슬로 확인하며 runtime에 따라 다르고(catalog는 MySQL에서 trigger가 걸린 table을 설계상 거부한다, ROW_MUTATION_UNSUPPORTED), soft_delete_restore는 audited transaction과 생성된 restore entity가 필요하므로 통합 branch에서 audit_triggers가 전환할 때까지 native로 남는다. 복합 키 행도 native로 남는다 (T334-3-4)

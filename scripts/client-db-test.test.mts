@@ -55,8 +55,9 @@ test('model_writes declares the repeated member name case on every owner and the
     'php-extension': 'testOrderedJsonRepeatedMemberName',
     rust: 'coverage_model_writes::coverage_ordered_json_repeated_member_name',
   };
-  assert.deepEqual(Object.keys(coverage.owners).sort(), ['go', 'php', 'php-extension', 'python', 'rust', 'typescript']);
-  for (const language of Object.keys(coverage.owners) as Language[]) {
+  const owners: readonly Language[] = ['go', 'php', 'php-extension', 'python', 'rust', 'typescript'];
+  assert.deepEqual(Object.keys(coverage.owners).sort(), owners);
+  for (const language of owners) {
     const part: CoverageOwner | undefined = coverage.owners[language];
     assert.ok(part, `${language} is an owner`);
     for (const database of ['mysql', 'postgres', 'sqlite'] as const) {
