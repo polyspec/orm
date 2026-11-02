@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a88503ed54c857caebfafa29769e4ab70c83600f07afdbffc62d353f46d5ddc8 -->
+<!-- source-sha256: 617f541d5cd752d4391bcbafaf81048a3a7864e96e3cfbe1f7cd7508ccc2f5e0 -->
 # 변경 이력
 
 ## Unreleased
@@ -68,6 +68,7 @@ SQLite에서 같은 행을 쓰는 두 connection의 잠금 대기는 busy timeou
 - dbspec PHP extension aggregate의 공유 module 테스트가 T334-3-15-1이 지운 child를 기대해서, test (static)의 makefile-pinned-node-recipes-check가 실패했다. 테스트는 요청 검증이 ir-validate-check로 옮겨진 것을 따른다 (CR53).
 - 물리 DDL 동작과 IR 검증 recipe의 test 파일 여섯 개가 어떤 feature에도 속하지 않아 features 검사가 여섯 CI job에서 실패했다. 물리 DDL test는 이제 schema_definition에, IR 검증 test는 planner에 속한다 (CR54).
 - `make interface-record`는 `make interface-check`와 같은 checker와 lease 환경으로 interface 심볼 스냅샷과 manifest 해시를 기록한다. `LANGUAGE=<name>`이면 한 언어만 기록하므로, transaction statement gate로 바뀐 Rust DbInner 스냅샷을 make 밖이 아니라 make로 재생성한다 (#T343-4-1)
+- transaction 중복 문장 테스트는 첫 문장을 transaction connection 안에서 `testing::hold_next_statement`로 붙잡고, 첫 문장이 그 지점에 도달한 뒤에야 둘째 문장을 시도한다. 그래서 두 future가 겹치는지에 따라 달라지지 않고 모든 schedule에서 둘째 문장이 CONFIG로 거부된다 (#T343-4)
 
 ## 0.0.21
 

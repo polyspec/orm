@@ -67,6 +67,7 @@ A SQLite lock wait between two connections that write the same row ends with `CA
 - The shared-module test of the dbspec PHP extension aggregate asserted a child that T334-3-15-1 had removed, so makefile-pinned-node-recipes-check failed in test (static). The test now follows the move of request validation to ir-validate-check (CR53).
 - Six test files of the physical DDL behaviour and the IR validate recipe belonged to no feature, so the features check failed in six CI jobs. The physical DDL tests now belong to schema_definition and the IR validate tests to planner (CR54).
 - `make interface-record` records the interface symbol snapshots and manifest hashes with the checker and lease environment of `make interface-check`; `LANGUAGE=<name>` records one language, so the Rust DbInner snapshot changed by the transaction statement gate is regenerated through make and no longer outside it (#T343-4-1)
+- The overlapping-statements test of a transaction holds its first statement inside the transaction connection with `testing::hold_next_statement`, and attempts the second only after the first has reached the hold, so the second statement is refused with CONFIG on every schedule, instead of depending on whether the two futures happened to overlap (#T343-4)
 
 ## 0.0.21
 

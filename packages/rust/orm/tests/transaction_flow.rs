@@ -50,15 +50,23 @@ async fn overlapping_statements_on_the_transaction_connection_return_config() {
     let codes = db
         .transaction(async || {
             let (first, second) = (service(None), service(None));
-            let (a, b) = tokio::join!(polyspec_orm::model::get_count(first.core()), polyspec_orm::model::get_count(second.core()));
+            // The first statement is held inside the transaction connection, and the second is attempted only after the
+            // first has reached the hold, so the overlap happens on every schedule and the second is refused.
+            let hold = polyspec_orm::testing::hold_next_statement(&db);
+            let held = polyspec_orm::model::get_count(first.core());
+            let attempt = async {
+                hold.reached().await;
+                let second = polyspec_orm::model::get_count(second.core()).await;
+                hold.release();
+                second
+            };
+            let (a, b) = tokio::join!(held, attempt);
             Ok([a, b].map(|r| r.err().map(|e| e.code().to_owned())))
         })
         .retry(0)
         .await
         .unwrap();
     db.close().await;
-    assert!(
-        codes.iter().any(|c| c.as_deref() == Some(polyspec_orm::codes::CONFIG)),
-        "two overlapping statements of one transaction gave {codes:?}, without CONFIG"
-    );
+    assert_eq!(codes[0], None, "the held statement of the transaction gave {codes:?}");
+    assert_eq!(codes[1].as_deref(), Some(polyspec_orm::codes::CONFIG), "the overlapping statement of the transaction gave {codes:?}, not CONFIG");
 }
