@@ -78,12 +78,13 @@ pub fn unique() -> u128 {
 /// of `answers` named by the op of a control message or the kind of a request, and a message without one IR_INVALID.
 /// With `params` (an expect of {"params": [...]}), the result is the params of the one request that the listener
 /// received, in the JSON form of PRT-67, instead of the chain's result; a chain that fails returns its error.
-pub fn answer(chain: &str, answer: &Value, answers: &Value, params: bool) -> Value {
+/// A step with a `bind` runs the slot insert of `recipe::bind_slot` on the slots model instead of the chain (T334-3-15-3c).
+pub fn answer(chain: &str, bind: &Value, answer: &Value, answers: &Value, params: bool) -> Value {
     // The chain's future is large in a debug build, so it runs on a thread with a stack of its own (not the trial's).
-    let (chain, answer, answers) = (chain.to_owned(), answer.clone(), answers.clone());
+    let (chain, bind, answer, answers) = (chain.to_owned(), bind.clone(), answer.clone(), answers.clone());
     let thread = std::thread::Builder::new()
         .stack_size(64 << 20)
-        .spawn(move || answer_on_thread(&chain, &answer, &answers, params))
+        .spawn(move || answer_on_thread(&chain, &bind, &answer, &answers, params))
         .expect("a thread with a 64 MiB stack");
     match thread.join() {
         Ok(value) => value,
@@ -91,7 +92,7 @@ pub fn answer(chain: &str, answer: &Value, answers: &Value, params: bool) -> Val
     }
 }
 
-fn answer_on_thread(chain: &str, answer: &Value, answers: &Value, params: bool) -> Value {
+fn answer_on_thread(chain: &str, bind: &Value, answer: &Value, answers: &Value, params: bool) -> Value {
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().expect("a current-thread runtime");
     let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("a listener");
     let port = listener.local_addr().expect("its address").port();
@@ -141,6 +142,13 @@ fn answer_on_thread(chain: &str, answer: &Value, answers: &Value, params: bool) 
     let token = "0123456789abcdef0123456789abcdef".to_owned();
     let got: Result<Value, Value> = runtime.block_on(async {
         let dsn = format!("markdown://127.0.0.1:{port}/conformance?token={token}");
+        // A bind step writes the slots model, so its connection carries the schema of tests/bind/dbspec-set.json (its hash).
+        if !bind.is_null() {
+            return match crate::recipe::bind_slot(&dsn, bind).await {
+                Ok(()) => Ok(Value::Null),
+                Err(error) => Err(json!({ "error": error.code() })),
+            };
+        }
         let db = markdown_model::connect(&dsn, 1, Config::default()).await.expect("connect");
         let s = Served { bin: PathBuf::new(), db, dir: PathBuf::new(), corpus: "conformance".to_owned(), port, token };
         let got = match run_case(chain, &s).await {

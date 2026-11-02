@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: aa18dd54c24b3cbecd0b427dcee08f9cdef0a9653c2c6369f2a8a9561529d69d -->
+<!-- source-sha256: f5e4283a0e07294b8b6170faa2876c199b39103fd9ddcbd9bbd58737689d2ca0 -->
 # 변경 이력
 
 ## Unreleased
 
+- Rust recipe helper가 ir.answer의 bind step을 생성 bind model에서 slot column setter와 insert로 실행한다 (T334-3-15-3c-8)
 - TypeScript recipe helper가 ir.answer의 bind step을 bind_fixture model에서 실행한다. 그 slot column의 setter와 insert를 거치므로 tests/ir/answers.json의 bind_time3과 bind_datetime3이 TypeScript에서 통과한다 (T334-3-15-3c-4).
 
 - Python recipe helper가 ir.answer의 bind step을 tests/bind/dbspec-set.json에서 생성한 bind model에서 실행한다. 그 slot column의 setter와 insert를 거치므로 tests/ir/answers.json의 bind_time3과 bind_datetime3이 Python에서 통과한다 (T334-3-15-3c-5).

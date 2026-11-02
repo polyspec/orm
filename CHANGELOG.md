@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Rust recipe helper runs the bind step of ir.answer on the generated bind model, through the slot column setter and the insert (T334-3-15-3c-8)
 - The ir.answer expect of the recipe takes a params form, `{"none": {"params": [...]}}`, which compares the params of the one request that the listener received (PRT-66, PRT-67), so a chain's bound and wire values can be recipe cases; the six runtimes implement it in their recipe helpers (T334-3-15-5).
 
 - The TypeScript recipe helper runs the bind step of ir.answer on the bind_fixture model, through the setter of its slot column and the insert, so bind_time3 and bind_datetime3 of tests/ir/answers.json pass in TypeScript (T334-3-15-3c-4).
