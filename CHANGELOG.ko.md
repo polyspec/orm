@@ -1,10 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f97c21307643c2fe33a9f26d4b840832084e80069925773da8f103d33b02b817 -->
+<!-- source-sha256: 492f5bb2c8ce6bbfcc4150ce688ef15af997ebda6eba0c41e2bf5a498a001384 -->
 # 변경 이력
 
 ## Unreleased
 
 - contracts/features.json의 owner 선언이 실제 파일을 가리키게 한다. 지운 schema test packages/rust/schema/tests/dbspec_plan.rs는 owner에서 빼고, 그 case를 대신 실행하는 recipe 실행기 packages/rust/orm/tests/dbspec_plan_cases.rs를 가리킨다. Go test TestUnloadedUpdateKeepsAssignedValuesSelectedAndKeyed는 packages/go/orm/model_update_state_test.go에 되살린다 (T334-3-17-6).
+- `contracts/features.json`의 `model_writes` feature에 있는 오래된 entry `unloaded-update-state-go`는 통합 branch가 받는다. 통합 branch는 `T334-3-17-6`(`8828d675d`)과 같은 수정을 받는다 (T326-18).
 - TypeScript `getReadCount` member의 parity check는 새로 build한 결과로 본다: `var/typescript/dist.key`가 남긴 오래된 `packages/ts/dist`는 Author 외 model 25개에 대해 R11 undeclared-public 25건을 보고했고, 다시 build하면 `parity --phase api`는 보고하지 않으며 Author 선언은 그대로 남는다 (T326-17).
 - Rust tests crate는 clippy `-D warnings`를 통과한다: seed reader와 connect step이 금지된 `unwrap_or_default`와 `ok`를 호출하지 않는다 (T326-16).
 - Rust 클라이언트는 plan cache key를 구하기 전에 request의 parameter를 Go client의 walk 순서로 다시 번호 매기므로, 다른 순서로 만들어진 request도 Go와 같은 plan cache slot을 얻는다. `contracts/fixtures/plan_cache_composite.json`의 composite 및 predicate 벡터는 `canonical.rs`에서 시험한다 (T326-15-1).
