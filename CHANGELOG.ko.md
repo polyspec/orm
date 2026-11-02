@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 81e5f94b52afb479e748119cc99103011e031363e7d7a9e45a0edb4737be0db3 -->
+<!-- source-sha256: 05c97a29e2bb6196133e7963a4313723d54ca604a2b3ea0ebe413962eeabd0a6 -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP의 기술된 table page 읽기는 행을 변환한 뒤에야 limit까지 자르므로, limit을 넘는 sentinel 행(LIMIT limit+1 읽기의 마지막 행)의 값이 page를 실패시켰다. 이제 page를 먼저 자르므로 그 행은 읽히지 않는다: catalog_connection recipe의 case described_temporal_text가 모든 runtime에서 SQLite page를 읽는다 (T334-3-3-7-1).
 - MySQL 영날짜 0000-00-00을 grid 조회가 읽으면 모든 runtime이 INT-103대로 GRID_TEMPORAL_VALUE로 실패한다: Go는 0001-01-01을, Rust는 NULL을(sqlx-mysql이 영날짜를 NULL로 본다), Python은 그 텍스트를 반환했다 (T334-3-3-4).
 - catalog_connection recipe가 MySQL YEAR grid 값의 셀을 INT-103대로 명시한다: YEAR는 orm이 시간 의미를 선언하지 않는 정수값 type이므로 모든 runtime이 그 grid 읽기를 CATALOG_VALUE로 거부하며, 명세 문장이 이를 적는다 (T334-3-3-3).
 - catalog_connection recipe의 native 확인이 여섯 runtime에 명시된다: TypeScript와 Rust의 정수 및 중복 키 오류는 자기 코드를 유지하고(INT-123, CFG-33), CHECK가 없는 temporal 열의 Rust grid는 선언된 정밀도만 유지하며(DIA-24), coverage 기대는 recipe 진입 메서드를 가리키고 SCH-3에 묶인다 (T334-3-3-2).

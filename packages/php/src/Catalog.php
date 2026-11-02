@@ -304,11 +304,12 @@ final class Catalog
             if (!self::samePageDescriptor($this->describe($pdo, $ref), $metadata)) {
                 throw new OrmException(Code::TABLE_PAGE_METADATA_CHANGED, 'descriptor changed during read');
             }
-            $rows = self::describedRows($raw, $metadata, $this->dialect);
-            $hasMore = count($rows) > $limit;
+            // The sentinel row is cut before conversion, so a value past the page is never read.
+            $hasMore = count($raw['rows']) > $limit;
             if ($hasMore) {
-                $rows = array_slice($rows, 0, $limit);
+                $raw['rows'] = array_slice($raw['rows'], 0, $limit);
             }
+            $rows = self::describedRows($raw, $metadata, $this->dialect);
             return new CatalogTablePage(
                 $metadata,
                 new CatalogResult(self::columnNames($metadata), $rows),
