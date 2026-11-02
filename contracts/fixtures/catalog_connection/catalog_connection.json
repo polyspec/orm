@@ -1269,6 +1269,131 @@
       ]
     },
     {
+      "id": "described_temporal_text",
+      "requirements": [
+        "INT-103"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "a described DATETIME column with no CHECK takes any stored text, so a text that is not a dbspec datetime, or has a non-zero digit past its precision 0, is a described read the library must refuse; a TIME column whose CHECK fixes 3 digits names its precision",
+          "sql": "CREATE TABLE described_text (seq INTEGER PRIMARY KEY, dt DATETIME, t3 TIME NOT NULL CHECK (length(\"t3\") = 12 AND substr(\"t3\", 1, 8) IS time(substr(\"t3\", 1, 8)) AND substr(\"t3\", 9, 1) = '.' AND substr(\"t3\", 10) GLOB '[0-9][0-9][0-9]'))"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "sql": "INSERT INTO described_text VALUES (1, '2026-10-22 01:02:03', '12:34:56.500'), (2, 'abc', '00:00:00.000'), (3, '2026-10-22 01:02:03.5', '00:00:00.000'), (4, '2026-10-22 01:02:03', '23:59:59.999')"
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "sqlite"
+          ],
+          "table": "described_text",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "dt",
+            "t3"
+          ],
+          "expect": {
+            "sqlite": {
+              "columns": [
+                "seq",
+                "dt",
+                "t3"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "datetime": "2026-10-22 01:02:03"
+                  },
+                  {
+                    "time": "12:34:56.500"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "sqlite"
+          ],
+          "table": "described_text",
+          "limit": 1,
+          "offset": 1,
+          "columns": [
+            "dt"
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "GRID_TEMPORAL_VALUE"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "sqlite"
+          ],
+          "table": "described_text",
+          "limit": 1,
+          "offset": 2,
+          "columns": [
+            "dt"
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "GRID_TEMPORAL_PRECISION"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "sqlite"
+          ],
+          "table": "described_text",
+          "limit": 1,
+          "offset": 3,
+          "columns": [
+            "t3"
+          ],
+          "expect": {
+            "sqlite": {
+              "columns": [
+                "seq",
+                "dt",
+                "t3"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "time": "23:59:59.999"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "grid_declared_columns",
       "requirements": [
         "INT-103",
