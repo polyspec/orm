@@ -34,6 +34,9 @@ pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testc
         Ok(text) => text,
         Err(error) => panic!("recipe {path}: {error}"),
     };
+    if let Err(error) = crate::recipe_keys::check_keys(path, &text) {
+        panic!("{error}");
+    }
     let recipe: Value = match serde_json::from_str(&text) {
         Ok(recipe) => recipe,
         Err(error) => panic!("recipe {path}: {error}"),
@@ -511,6 +514,13 @@ mod database {
     pub fn database_trials_with_models(entry: &str, path: &str, database: &str, models: fn() -> Box<dyn ModelDispatcher>) -> Vec<polyspec_orm_testcase::Trial> {
         assert!(DATABASES.contains(&database), "recipe {path}: unknown database {database}");
         let root = polyspec_orm_testcase::manifest_dir().join("../../..");
+        let text = match std::fs::read_to_string(root.join(path)) {
+            Ok(text) => text,
+            Err(error) => panic!("recipe {path}: {error}"),
+        };
+        if let Err(error) = crate::recipe_keys::check_keys(path, &text) {
+            panic!("{error}");
+        }
         let (mut recipe, ordered) = read_recipe(&root.join(path));
         // serde_json sorts the keys of an object, so the order of the seed tables comes from the document (seed_order).
         recipe["seed_order"] = json!(seed_order(member(&ordered, "seed")));

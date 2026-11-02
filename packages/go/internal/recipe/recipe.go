@@ -93,6 +93,9 @@ func Run(t *testing.T, path, database string, opts ...Option) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := checkKeys(path, src); err != nil {
+		t.Fatal(err)
+	}
 	var f file
 	if err := json.Unmarshal(src, &f); err != nil {
 		t.Fatalf("recipe %s: %v", path, err)

@@ -141,6 +141,9 @@ func runDatabase(t *testing.T, path, database string) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := checkKeys(path, src); err != nil {
+		t.Fatal(err)
+	}
 	var f databaseFile
 	if err := json.Unmarshal(src, &f); err != nil {
 		t.Fatalf("recipe %s: %v", path, err)

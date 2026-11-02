@@ -38,6 +38,7 @@ from polyspec.orm.styled_value import StyledValue
 from . import chain_answer, testcase
 from .case_database import case_database
 from .coverage_case import native_query
+from .recipe_keys import check_keys
 from .recipe_model import model_ops
 from .markdown_conformance import same
 from .vector_case import VectorCase, vector_load_tests
@@ -80,7 +81,9 @@ def recipe_tests(path: str, database: str):
     """The load_tests protocol of an entry: one test for each case of the recipe at path, relative to the repository root."""
     if database != NONE:
         return _database_recipe_tests(path, database)
-    recipe = json.loads((ROOT / path).read_text(encoding="utf-8"))
+    text = (ROOT / path).read_text(encoding="utf-8")
+    check_keys(path, text)
+    recipe = json.loads(text)
     # An ir.validate step checks its request against the schema of the recipe, which the recipe names relative to its own file.
     model = (
         _validation_model(ROOT / Path(path).parent / recipe["schema"])
@@ -413,7 +416,9 @@ def _database_recipe_tests(path: str, database: str):
     """The load_tests protocol of an entry of a recipe with a fixture: one test for each case on the database."""
     if database not in DATABASES:
         raise ValueError(f"recipe {path}: unknown database {database}")
-    recipe = json.loads((ROOT / path).read_text(encoding="utf-8"))
+    text = (ROOT / path).read_text(encoding="utf-8")
+    check_keys(path, text)
+    recipe = json.loads(text)
     if "fixture" not in recipe:
         raise ValueError(f"recipe {path}: no fixture, so it has no database")
     # A fixture of none runs every case on an empty case database; the helper never infers it (FCV-3).

@@ -44,7 +44,9 @@ final class Recipe
     /** @return iterable<string, array{array<string, mixed>}> each case of the recipe at path, relative to the repository root */
     public static function cases(string $path): iterable
     {
-        $recipe = json_decode(file_get_contents(dirname(__DIR__, 3) . '/' . $path), true, 512, JSON_THROW_ON_ERROR);
+        $text = (string) file_get_contents(dirname(__DIR__, 3) . '/' . $path);
+        RecipeKeys::check($path, $text);
+        $recipe = json_decode($text, true, 512, JSON_THROW_ON_ERROR);
         foreach ($recipe['cases'] as $case) {
             yield $case['id'] => [$case];
         }

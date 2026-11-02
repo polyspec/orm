@@ -2,3 +2,4 @@
 
 pub mod markdown;
 pub mod recipe;
+pub mod recipe_keys;

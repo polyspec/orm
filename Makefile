@@ -1458,6 +1458,20 @@ feature-unit-check/owners:
 feature-unit-check/select: lease-tool
 	$(RUN_TESTS) node -- scripts/features/select.test.mts scripts/features/typescript-lease.test.mts
 
+# recipe-keys-check checks that the key table of the recipe format is the one its schema makes, and runs the unit tests of the
+# generator (T334-3-5-6). recipe-unknown-key-check runs the refusal test of every runner's loader, which must run at least one test.
+.PHONY: recipe-keys-check recipe-unknown-key-check
+recipe-keys-check:
+	$(NODE) scripts/features/recipe-keys.mts --check
+	$(RUN_TESTS) node -- scripts/features/recipe-keys.test.mts
+recipe-unknown-key-check: recipe-keys-check
+	cd packages/go && go test -count=1 -run 'TestCheckKeys|TestLoadKeyTable' ./internal/recipe/
+	$(RUN_TESTS) node -- packages/ts/tests/recipe_keys.test.mjs
+	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_recipe_keys
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RecipeKeysTest.php
+	PATH="$(HOME)/.cargo/bin:$(PATH)" cargo test --locked --offline --manifest-path packages/rust/Cargo.toml -p polyspec-orm-tests --lib recipe_keys
+	@set -eu; run_dir="$(abspath .runtime/run)/recipe-unknown-key-php-extension-check-$$PPID"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/RecipeKeysExtensionTest.php
+
 # feature-go-unit runs one native Go test of a feature for one database, as a parity binding names it: the make variables
 # FEATURE_DATABASE, FEATURE_DSN_ENV, FEATURE_TEST and FEATURE_PACKAGE are passed by config/parity.json. The binding runs from
 # the package that holds the test and names this target through the checkout root, so the path does not depend on that directory.
