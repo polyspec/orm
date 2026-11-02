@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The PHP extension stub declares the insertRow parameter with a PHPDoc type that the arginfo generator parses (CR47).
 - The php-ext memory check runs the 14 test classes of the AES stress group with the stress test and root_in_chunking in one process under the 128M memory_limit, and it fails when the extension keeps memory across calls (T334-3-4-7).
 - A php-ext Validator releases the class-name string it looks up when it is constructed, so 1000 Validators keep no memory (T334-3-4-7-2).
 - The php-ext build of a RuntimeModel releases its entity tree, its column, unique and index key strings and its entity names when the model is released, so repeated builds keep no memory (T334-3-4-7-1).

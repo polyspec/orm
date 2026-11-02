@@ -2,12 +2,17 @@
 <!-- source-sha256: 8d4f7cb33d413401e9f44119827a104b202b6a6a645e8e1cb96a4f918bb33709 -->
 # 변경 이력
 
+## Unreleased
+
+- PHP extension stub의 insertRow parameter는 arginfo 생성기가 읽는 PHPDoc type으로 선언한다 (CR47).
 - spec은 Go generator가 각 scan이 필요로 하는 순서로 set을 생성하고 순환을 거부하도록 요구한다 (DSL-157). parity unit이 그 시험을 연결하고, Go 테스트 루트가 옮겨진 markdown message 시험을 포함하며, 생성된 condition 메서드를 public API로 선언한다 (CR46).
 - parity unit markdown-message-vectors는 옮겨진 Go 시험의 경로 packages/go/bindmessages를 가리킨다 (CR46).
 - duplication 검사가 generator의 GenerateSets 시험 설정 두 벌을 더 이상 보고하지 않으며, Rust orm 시험 probe는 parse_set을 한 번만 정의한다 (CR45).
 - repo check 시험 "the Go model build regenerates models"은 Go model set을 순서대로 만든 뒤 make go-models가 실행하는 orm-gen sets 호출을 확인한다 (CR44).
-## Unreleased
-
+- Python recipe 시험의 chain 경로 case 필터를 ruff format이 쓰는 형태로 고쳤다 (CR43).
+- TypeScript client는 markdownParam을 더 이상 export하지 않는다. markdown.ts만 쓰며, knip이 unused export로 보고했다 (CR42).
+- 착륙한 recipe row의 interface snapshot을 다시 기록했다. Go, PHP extension, PHP, Rust, TypeScript symbol snapshot과 manifest hash가 tree를 따른다 (CR41).
+- kit 0.0.92 docs rules가 거부하는 계획과 spec의 단어를 check-recipes, execution, kit-standard 행의 Task와 Deliverables 칸과 docs/spec/schema.ko.md에서 두 언어의 뜻을 같게 바꾼다 (CR40).
 - php-ext 메모리 검사는 AES stress 그룹의 test 클래스 14개를 stress 테스트, root_in_chunking과 함께 한 프로세스에서 128M memory_limit 안에 실행하며, 확장이 호출 사이에 메모리를 남기면 실패한다 (T334-3-4-7).
 - php-ext Validator는 생성할 때 찾는 클래스 이름 문자열을 해제하므로 Validator 1000개를 만들어도 메모리가 남지 않는다 (T334-3-4-7-2).
 - php-ext의 RuntimeModel build는 model을 해제할 때 entity tree, column·unique·index key 문자열, entity 이름을 함께 해제하므로 같은 문서 집합의 build를 반복해도 메모리가 남지 않는다 (T334-3-4-7-1).
