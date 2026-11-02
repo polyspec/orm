@@ -906,7 +906,8 @@ class Session {
   /**
    * Streams one statement and converts each row as it arrives. The stream stops at the first row past maxRows or past maxBytes, and
    * the read then fails with CATALOG_LIMIT; no row past the budget is converted or kept. Each cell is counted by its converted size
-   * (sizeOf and gridSize). A conversion error stops the stream and is thrown after it.
+   * (sizeOf and gridSize). A conversion error stops the stream and is thrown after it. With keep, the first keep rows are
+   * converted and the row after them is not: the stream stops there and past reports it, as the sentinel row of a page does.
    */
   public async collect<T>(
     sql: string,
@@ -914,15 +915,20 @@ class Session {
     maxRows: number,
     maxBytes: number,
     convert: (value: unknown, column: DriverColumn, index: number) => { cell: T; size: number },
-  ): Promise<{ columns: DriverColumn[]; rows: T[][] }> {
+    keep?: number,
+  ): Promise<{ columns: DriverColumn[]; rows: T[][]; past: boolean }> {
     const bound = checkParams(params, CODE_PARAM);
-    const out: { columns: DriverColumn[]; rows: T[][] } = { columns: [], rows: [] };
+    const out: { columns: DriverColumn[]; rows: T[][]; past: boolean } = { columns: [], rows: [], past: false };
     let bytes = 0;
     let overflow: string | undefined;
     let failure: unknown;
     const sink: RowSink = {
       columns: columns => { out.columns = columns; },
       row: values => {
+        if (keep !== undefined && out.rows.length >= keep) {
+          out.past = true;
+          return false;
+        }
         if (out.rows.length >= maxRows) {
           overflow = `result has more than ${maxRows} rows`;
           return false;
@@ -1294,15 +1300,15 @@ export class CatalogConnection {
       if (metadata.primaryKey.length > 0) sql += ` ORDER BY ${quoteList(metadata.primaryKey, this.dialect)}`;
       // One extra row is the sentinel that reports hasMore; the stream stops at that row.
       sql += ` LIMIT ${limit + 1} OFFSET ${offset}`;
-      const raw = await session.collect<CatalogValue>(sql, [], limit + 1, PAGE_BYTES, (value, column, index) => describedCell(value, column, metadata.columns[index], this.dialect));
+      // The sentinel row is not converted: the page keeps limit rows and reports the row after them.
+      const raw = await session.collect<CatalogValue>(sql, [], limit + 1, PAGE_BYTES, (value, column, index) => describedCell(value, column, metadata.columns[index], this.dialect), limit);
       if (raw.columns.length !== metadata.columns.length || raw.columns.some((column, index) => column.name !== metadata.columns[index]?.name)) {
         throw err(CODE_PAGE_CHANGED, 'prepared columns differ from descriptor');
       }
       const after = await session.describe(table);
       if (!sameDescriptor(after, metadata)) throw err(CODE_PAGE_CHANGED, 'descriptor changed during read');
-      let rows = raw.rows;
-      const hasMore = rows.length > limit;
-      if (hasMore) rows = rows.slice(0, limit);
+      const rows = raw.rows;
+      const hasMore = raw.past;
       return {
         metadata,
         result: { columns: metadata.columns.map(column => ({ ...column })), rows },

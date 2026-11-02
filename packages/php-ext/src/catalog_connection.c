@@ -1515,24 +1515,33 @@ static bool cat_table_page(zval *db, const char *dialect, zval *pdo, zend_string
         zval nrv, *native = catalog_prop(column, "nativeType", &nrv);
         add_next_index_str(&native_types, zend_string_copy(Z_STR_P(native)));
     } ZEND_HASH_FOREACH_END();
-    zval converted;
-    ok = cat_convert_rows(&rows, &native_types, &converted) && cat_described_rows(&converted, &metadata, dialect);
-    zval_ptr_dtor(&native_types);
+    /* The sentinel row is cut before conversion, so a value past the page is never read. */
+    bool has_more = zend_hash_num_elements(Z_ARRVAL(rows)) > (uint32_t)limit;
+    zval kept;
+    array_init(&kept);
+    zend_ulong taken = 0;
+    zval *raw_row;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL(rows), raw_row) {
+        if (taken == (zend_ulong)limit) break;
+        Z_TRY_ADDREF_P(raw_row);
+        add_next_index_zval(&kept, raw_row);
+        taken++;
+    } ZEND_HASH_FOREACH_END();
     zval_ptr_dtor(&rows);
+    zval converted;
+    ok = cat_convert_rows(&kept, &native_types, &converted) && cat_described_rows(&converted, &metadata, dialect);
+    zval_ptr_dtor(&native_types);
+    zval_ptr_dtor(&kept);
     if (!ok) {
         zval_ptr_dtor(&metadata);
         return false;
     }
-    bool has_more = zend_hash_num_elements(Z_ARRVAL(converted)) > (uint32_t)limit;
     zval page_rows;
     array_init(&page_rows);
-    zend_ulong taken = 0;
     zval *row;
     ZEND_HASH_FOREACH_VAL(Z_ARRVAL(converted), row) {
-        if (taken == (zend_ulong)limit) break;
         Z_TRY_ADDREF_P(row);
         add_next_index_zval(&page_rows, row);
-        taken++;
     } ZEND_HASH_FOREACH_END();
     zval_ptr_dtor(&converted);
     zval column_names;

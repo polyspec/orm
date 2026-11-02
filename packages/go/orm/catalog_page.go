@@ -78,13 +78,14 @@ func (c *CatalogConnection) TablePage(ctx context.Context, table CatalogTableRef
 		if !sameDescriptor(after, metadata) {
 			return CatalogTablePage{}, catalogErr(catalogCodePageChanged, "descriptor changed during read")
 		}
+		// The sentinel row is cut before conversion, so a value past the page is never read.
+		hasMore := len(raw.rows) > limit
+		if hasMore {
+			raw.rows = raw.rows[:limit]
+		}
 		rows, err := catalogConvertDescribed(raw, metadata, c.dialect)
 		if err != nil {
 			return CatalogTablePage{}, err
-		}
-		hasMore := len(rows) > limit
-		if hasMore {
-			rows = rows[:limit]
 		}
 		return CatalogTablePage{
 			Metadata: metadata,

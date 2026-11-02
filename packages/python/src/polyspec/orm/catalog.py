@@ -749,6 +749,7 @@ class _Raw:
     codes: list = field(default_factory=list)
     unsigned: list = field(default_factory=list)
     insert_id: int | None = None
+    past: bool = False
 
 
 def _descriptor(metadata: CatalogTableMetadata) -> list:
@@ -1135,9 +1136,11 @@ class _Session:
         max_bytes=None,
         grid=False,
         described: CatalogTableMetadata | None = None,
+        keep: int | None = None,
     ) -> _Raw:
         """Runs one statement. described is the descriptor of a read of a table's columns in physical order: its date, time
-        and datetime cells become their dbspec text at the declared precision of their column."""
+        and datetime cells become their dbspec text at the declared precision of their column. With keep, the first keep
+        rows are converted and kept, and a row after them is not converted: past reports it, as the sentinel row of a page."""
         if self.dialect == "sqlite":
             text, args = sql, tuple(params)
         elif self.dialect == "mysql":
@@ -1164,6 +1167,7 @@ class _Session:
         unsigned: list = []
         budget = 0
         stopped = False
+        past = False
         try:
             if (grid or described is not None) and self.dialect == "postgres":
                 # Grid cells and the cells of a described table read PostgreSQL date, time and timestamp values as their
@@ -1195,6 +1199,9 @@ class _Session:
                 else:
                     unsigned = [False] * len(names)
                 for row in _stream_rows(cursor, cursor_name):
+                    if keep is not None and len(rows) == keep:
+                        past = True
+                        continue
                     if max_rows is not None and len(rows) == max_rows:
                         raise _error(
                             codes.CATALOG_LIMIT, f"result has more than {max_rows} rows"
@@ -1258,7 +1265,7 @@ class _Session:
                     cursor.close()
             else:
                 cursor.close()
-        return _Raw(names, rows, affected, type_codes, unsigned, insert_id)
+        return _Raw(names, rows, affected, type_codes, unsigned, insert_id, past)
 
     def _stop_read(self, cursor, cursor_name) -> None:
         """Ends a read that a budget stopped on the server: MySQL kills the running statement by its thread id on a
@@ -1625,15 +1632,17 @@ class CatalogConnection:
                 query += " ORDER BY " + _quote_list(metadata.primary_key, self.dialect)
             # One extra row is the sentinel that reports has_more.
             query += f" LIMIT {limit + 1} OFFSET {offset}"
-            raw = session.run(query, [], limit + 1, PAGE_BYTES, described=metadata)
+            # The sentinel row is not converted: the page keeps limit rows and reports the row after them.
+            raw = session.run(
+                query, [], limit + 1, PAGE_BYTES, described=metadata, keep=limit
+            )
             _same_names(raw.names, metadata.columns)
             if session.describe(ref) != metadata:
                 raise _error(
                     codes.TABLE_PAGE_METADATA_CHANGED, "descriptor changed during read"
                 )
             rows = raw.rows
-            has_more = len(rows) > limit
-            rows = rows[:limit]
+            has_more = raw.past
             return CatalogTablePage(
                 metadata=metadata,
                 result=CatalogResult(columns=list(metadata.columns), rows=rows),

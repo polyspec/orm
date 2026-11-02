@@ -251,6 +251,24 @@ pub(super) async fn read(
     Ok(result)
 }
 
+/// Reads a page of at most keep rows. The row after them is the sentinel that reports more rows: it is cut before the
+/// precision of the cells is converted, so its value is never read, and the returned flag reports it.
+pub(super) async fn read_page(
+    connection: &mut Conn,
+    metadata: &TableMetadata,
+    dialect: &str,
+    sql: &str,
+    limits: QueryLimits,
+    keep: usize,
+) -> Result<(GridQueryResult, bool), String> {
+    let mut result = connection.grid_query_bounded(sql, &[], limits).await.map_err(super::catalog_query_error)?;
+    let has_more = result.rows.len() > keep;
+    result.rows.truncate(keep);
+    let checks = sqlite_check_precisions(connection, metadata, dialect).await?;
+    declared_precision(metadata, dialect, &checks, &mut result)?;
+    Ok((result, has_more))
+}
+
 #[cfg(test)]
 mod tests {
     use super::{fraction, precision};
