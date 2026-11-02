@@ -4,6 +4,9 @@
 
 ## Unreleased
 
+- tests/dbspec/plans.json의 case 13개는 여섯 runtime에서 recipe tests/dbspec/plan-cases.json으로 실행된다. op dbspec.parse, dbspec.parse_plan, dbspec.emit_plan, dbspec.diff, dbspec.plan_steps로 실행하며 native plan test를 대신한다. before와 after physical record는 tests/dbspec/plans-physical.json으로 옮겼고 case id로 찾는다 (T334-3-16-2-2).
+- tests/dbspec/plans.json의 검증 네 section(invalid, chains, parse, comparisons)은 여섯 runtime에서 T334-3-2 형식의 recipe 네 개로 실행된다. op dbspec.parse, dbspec.parse_plan, dbspec.diff, dbspec.chain, dbspec.compare로 실행하며 native plan test를 대신하고, compare 도구는 plans.json 곁의 recipe를 읽는다 (T334-3-16-2-1).
+- planner compile case 86개는 op `planner.compile`로 여섯 runtime에서 recipe tests/planner/compile.json으로 실행된다. native compile test를 대신하며, param_uses case 다섯 개는 contracts/fixtures/planner.json에 남는다 (T334-3-16-1).
 - tests/events/vectors.json의 statement event는 여섯 client 모두에서 MySQL, PostgreSQL, SQLite 위에서 recipe `contracts/fixtures/statement_events/statement_events.json`으로 실행한다. native statement-event suite는 제거했고, server-transaction 시험과 coverage owner는 native로 남는다 (T334-3-5).
 - orm은 모든 생태계에서 ordered-json을 0.0.20으로 고정하며, 각 lock은 자기 package manager로 갱신한다 (T350).
 - orm은 kit 0.0.92를 고정한다. 그 target은 orm-install-rust-crates의 crate 받기와 맞고, 그 kit이 담은 원칙 사본을 받는다 (T353).
