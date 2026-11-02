@@ -107,11 +107,14 @@
             "dist": {
                 "type": "path",
                 "url": "packages/php",
-                "reference": "568fecb66e5bec8243b604e58a25ba299125ba3a"
+                "reference": "6f2b8be0e982929cec6fbf82fcc8ea827c8f7891"
             },
             "require": {
                 "composer-runtime-api": "^2.2",
+                "ext-ctype": "*",
+                "ext-filter": "*",
                 "ext-json": "*",
+                "ext-mbstring": "*",
                 "ext-pdo": "*",
                 "ext-zlib": "*",
                 "nikic/php-parser": "^5.9.0",
@@ -120,7 +123,9 @@
                 "purrphp/yaml": "1.0.0-p3"
             },
             "suggest": {
+                "ext-mysqli": "mysql:// catalog grid queries, whose UNSIGNED and binary cells pdo_mysql column metadata does not report",
                 "ext-openssl": "host-side AES on PostgreSQL and SQLite (aes columns)",
+                "ext-pcntl": "delivery of process signals while a postgres:// query waits",
                 "ext-pdo_mysql": "mysql:// DSNs",
                 "ext-pdo_pgsql": "postgres:// PDO handle type and DSNs",
                 "ext-pdo_sqlite": "sqlite:// DSNs",
@@ -141,6 +146,7 @@
                 "psr-4": {
                     "Polyspec\\Orm\\Tests\\Model\\": "gen/",
                     "Polyspec\\Orm\\Tests\\MarkdownModel\\": "markdownmodel/",
+                    "Polyspec\\Orm\\Tests\\BindModel\\": "bindmodel/",
                     "Polyspec\\Orm\\Tests\\ComplexModel\\": "complexmodel/"
                 }
             },

@@ -2164,7 +2164,9 @@
       ],
       "inputs": [
         "packages/php/composer.json",
+        "packages/php/src/**",
         "packages/php/testing/Faults.php",
+        "packages/php/tests/ComposerExtensionsTest.php",
         "packages/php/tests/PackageEntryPointTest.php"
       ]
     },

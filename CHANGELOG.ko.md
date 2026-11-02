@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- packages/php/composer.json은 library가 쓰는 모든 PHP extension을 선언한다: ext-ctype, ext-filter, ext-mbstring은 require, ext-mysqli(MySQL catalog grid query)와 ext-pcntl은 suggest; ComposerExtensionsTest는 packages/php/src의 각 class와 함수를 그 extension으로 풀어 composer.json이 적지 않은 것이 있으면 실패한다 (T334-3-3-14).
 - Go, PHP, PHP extension, Python의 grid query byte budget은 TypeScript와 Rust처럼 변환된 cell을 센다 (INT-115): driver 값이 아니라 time cell 12:34:56.500000의 15바이트를 센다 (T334-3-3-9).
 - `make dialect-facts-check`는 dialect probe의 인용 시험을 실행한다. probe 자체는 필요한 것을 build하고 선언하는 `go-test-check`의 go 시험이므로, 이 target은 더 이상 빈 part로 그것을 전달하지 않는다 (T334-3-6-3).
 - DBS-121a는 Python 생성 setter가 nullable이 아닌 컬럼에 `None`을 받고 그 row의 insert가 `CODEC_ENCODE`로 거부함을 적는다. 그 case인 `tests/bind/messages-python-null.json`은 parity unit markdown-message-python-null-vectors이며, PRT-67은 `LIKE` 연산자인 DSL-29 대신 DBS-121a를 인용한다 (T334-3-15).

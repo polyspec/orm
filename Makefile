@@ -3715,6 +3715,7 @@ go-package-entry-check:
 
 php-package-entry-check: php-vendor-check php-models
 	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/PackageEntryPointTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ComposerExtensionsTest.php
 
 php-extension-package-entry-check: php-vendor-check php-models
 	@set -eu; \
