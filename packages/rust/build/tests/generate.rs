@@ -116,6 +116,24 @@ fn stored_column_name_is_rejected_as_an_output_name() {
 }
 
 #[test]
+// Requirements: DSL-127, DSL-130, PLN-22.
+fn column_names_of_the_model_rules_are_rejected_through_the_builder() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    for (column, reason) in [
+        ("create", "column name is a reserved method name: create"),
+        ("restore", "column name is a reserved method name: restore"),
+        ("price_gt_limit", "column name may not contain the segment \"gt\": price_gt_limit"),
+        ("with_tax", "column name may not contain the segment \"with\": with_tax"),
+    ] {
+        let document = format!("dbspec 1 names\n\ntable item {{\n  seq i64 identity\n  {column} i32\n  primary key (seq)\n}}\n");
+        let error = generate_with_document(&document, "fn main() {}").expect_err(column);
+        assert!(error.contains(&format!("item.{column}: {reason}")), "{column}: {error}");
+    }
+    let document = "dbspec 1 names\n\ntable item {\n  seq i64 identity\n  min_price i32\n  primary key (seq)\n}\n";
+    generate_with_document(document, "fn main() {}").expect("a column name that only contains a rule word as text is accepted");
+}
+
+#[test]
 // Requirements: DSL-33, PRT-75.
 fn generates_fulltext_boolean_methods_for_multiple_columns() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

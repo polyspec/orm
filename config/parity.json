@@ -13558,8 +13558,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/build/src/manifest.rs",
-          "id": "manifest::tests::reserved_method_names_are_not_columns"
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "column_names_of_the_model_rules_are_rejected_through_the_builder"
         }
       ]
     },
@@ -13597,8 +13597,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/build/src/manifest.rs",
-          "id": "manifest::tests::operator_and_connector_segments_are_not_in_column_names"
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "column_names_of_the_model_rules_are_rejected_through_the_builder"
         }
       ]
     },

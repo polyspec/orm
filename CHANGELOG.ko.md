@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0fa2dbe1240a1bcb9167b0befde623f29fd64e12aa106d1ea7a677e452283c30 -->
+<!-- source-sha256: 4f367fb7dc5d28d077a52585528ab054747484bf949c4f334b38b1fcf615a6e7 -->
 # 변경 이력
 
 ## Unreleased
@@ -7,6 +7,7 @@
 - contracts/features.json의 owner 선언이 실제 파일을 가리키게 한다. 지운 schema test packages/rust/schema/tests/dbspec_plan.rs는 owner에서 빼고, 그 case를 대신 실행하는 recipe 실행기 packages/rust/orm/tests/dbspec_plan_cases.rs를 가리킨다. Go test TestUnloadedUpdateKeepsAssignedValuesSelectedAndKeyed는 packages/go/orm/model_update_state_test.go에 되살린다 (T334-3-17-6).
 - tests/dbspec/plans.json을 지운다. version과 note는 recipe tests/dbspec/plan-cases.json으로 옮기고, 읽는 코드와 tests/dbspec/schema/plans.schema.json은 그 파일을 바로 읽는다. 빈 하위 클래스인 php-ext의 DbspecPlanTestExtensionTest를 지운다. 그 여섯 시험은 dbspec-php-extension-check/plan이 확장으로 계속 실행한다 (T334-3-17-3).
 - TypeScript recipe test에서 쓰지 않는 import `readDbspecFile`을 뺐다. 그래서 TypeScript 게이트의 lint 단계가 통과한다 (T334-3-17-4).
+- Rust 빌드 crate가 모델 문법의 열 이름 규칙을 Builder로 시험한다. 예약된 메서드 이름과 연산자 또는 연결 세그먼트는 생성기가 거부하며, parity unit은 private manifest 모듈의 모듈 내부 테스트 대신 그 시험에 바인딩한다 (T334-3-17-7).
 - TypeScript 패키지가 bind-check 변환 `fulltextBoolean`과 `transformParam`을 진입점에서 export한다. 다른 runtime과 같으므로 fulltext_boolean 변환은 여섯 runtime 모두에서 공개 호출을 가진다 (T334-3-17-1).
 - tests/dbspec/plans.json의 case 13개는 여섯 runtime에서 recipe tests/dbspec/plan-cases.json으로 실행된다. op dbspec.parse, dbspec.parse_plan, dbspec.emit_plan, dbspec.diff, dbspec.plan_steps로 실행하며 native plan test를 대신한다. before와 after physical record는 tests/dbspec/plans-physical.json으로 옮겼고 case id로 찾는다 (T334-3-16-2-2).
 - tests/dbspec/plans.json의 검증 네 section(invalid, chains, parse, comparisons)은 여섯 runtime에서 T334-3-2 형식의 recipe 네 개로 실행된다. op dbspec.parse, dbspec.parse_plan, dbspec.diff, dbspec.chain, dbspec.compare로 실행하며 native plan test를 대신하고, compare 도구는 plans.json 곁의 recipe를 읽는다 (T334-3-16-2-1).
