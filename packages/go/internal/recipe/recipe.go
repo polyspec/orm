@@ -52,6 +52,7 @@ type step struct {
 	Chain   string                     `json:"chain"`
 	Answer  json.RawMessage            `json:"answer"`
 	Answers map[string]json.RawMessage `json:"answers"`
+	Bind    json.RawMessage            `json:"bind"`
 	DSN     string                     `json:"dsn"`
 	Expect  map[string]json.RawMessage `json:"expect"`
 	Schema  string                     `json:"schema"`
@@ -68,7 +69,9 @@ type step struct {
 // a control message or the kind of a request, and returns the result of the chain or its error. It is supplied by the test
 // that owns the chain registry and the listener, since a chain cannot be reached from this package. With params set (the expect
 // of the step is {"params": [...]}, PRT-66), the function returns the params of the request that the listener received instead.
-type IRAnswer func(t *testing.T, chain string, answer json.RawMessage, answers map[string]json.RawMessage, params bool) (any, error)
+// With bind set (the step's bind field, T334-3-15-3c), the chain binds the bind value to the slot column the field names, and
+// the function runs the chain of that bind value.
+type IRAnswer func(t *testing.T, chain string, answer json.RawMessage, answers map[string]json.RawMessage, bind json.RawMessage, params bool) (any, error)
 
 // Option configures Run.
 type Option func(*options)
@@ -831,7 +834,7 @@ func checkAnswer(t *testing.T, s step, database string, fn IRAnswer) error {
 	if err := json.Unmarshal(want, &wantValue); err != nil {
 		return err
 	}
-	got, err := fn(t, s.Chain, s.Answer, s.Answers, params)
+	got, err := fn(t, s.Chain, s.Answer, s.Answers, s.Bind, params)
 	if err != nil {
 		code := orm.ErrorCode(err)
 		if code == "" {

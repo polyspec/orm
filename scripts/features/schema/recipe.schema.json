@@ -473,6 +473,16 @@
           "chain": { "type": "string", "pattern": "^[a-z_][a-z0-9_]*$", "description": "The case of tests/markdown/cases.json that the chain runs (tests/markdown/README.md)." },
           "answer": { "description": "The answer of the chain's one request, as the case gives it (docs/spec/protocol.md section 5, Read)." },
           "answers": { "type": "object", "description": "The answers of a transaction chain keyed by the op of each control message and the kind of each request." },
+          "bind": {
+            "type": "object",
+            "required": ["column", "value"],
+            "additionalProperties": false,
+            "description": "The bind field of a slot step (FCV-4 ir.answer, T334-3-15-3c): the chain is slot, which writes the value into the column of tests/bind/slots.dbs that the column names and sends the insert. The column gives the type and the precision of the slot.",
+            "properties": {
+              "column": { "type": "string", "pattern": "^(time|datetime)[0-6]_value$", "description": "A time or datetime column of tests/bind/slots.dbs; its precision is the digit of the name." },
+              "value": { "type": "string", "description": "The client value as text, such as 10:00:00.123 or 2024-01-02T03:04:05.5 (PRT-67)." }
+            }
+          },
           "expect": {
             "type": "object",
             "required": ["none"],
