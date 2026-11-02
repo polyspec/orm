@@ -116,6 +116,8 @@ type catalogSession struct {
 	ctx     context.Context
 	conn    *sql.Conn
 	dialect string
+	// rollbacks learns that SQLite rolled the transaction back by itself; it is nil on MySQL and PostgreSQL.
+	rollbacks *rollbackWatch
 }
 
 // begin opens a session with a read-only transaction or a writable one. A SQLite read-only session sets query_only first.
@@ -135,6 +137,13 @@ func (c *CatalogConnection) begin(ctx context.Context, readOnly bool) (*catalogS
 	}
 	if _, err := conn.ExecContext(ctx, catalogBegin(c.dialect, readOnly)); err != nil {
 		return nil, s.discard(mapDriverErrContext(err, ctx))
+	}
+	if c.dialect == "sqlite" {
+		watch, err := watchRollback(conn)
+		s.rollbacks = watch
+		if err != nil {
+			return nil, s.end(err)
+		}
 	}
 	return s, nil
 }
@@ -167,8 +176,12 @@ func (s *catalogSession) discard(err error) error {
 	return err
 }
 
-// end rolls the session back, discards its connection and returns err joined with a failed rollback.
+// end rolls the session back, discards its connection and returns err joined with a failed rollback. A transaction that
+// SQLite already rolled back by itself is not rolled back again (INT-155).
 func (s *catalogSession) end(err error) error {
+	if !s.rollbacks.open() {
+		return s.discard(err)
+	}
 	if _, rollbackErr := s.conn.ExecContext(s.ctx, "ROLLBACK"); rollbackErr != nil {
 		mapped := mapDriverErrContext(rollbackErr, s.ctx)
 		err = errors.Join(err, &ir.Error{

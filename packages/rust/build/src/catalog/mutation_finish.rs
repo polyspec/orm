@@ -7,7 +7,7 @@ pub(super) async fn finish<T: Send + 'static>(mut connection: Conn, result: Resu
     let value = match result {
         Ok(value) => value,
         Err(error) => {
-            if connection.exec("ROLLBACK", &[]).await.is_err() {
+            if connection.rollback().await.is_err() {
                 publish(MutationPhase::Indeterminate);
                 return Err("ROW_ROLLBACK_FAILED: rollback acknowledgement failed".into());
             }
@@ -24,7 +24,7 @@ pub(super) async fn finish<T: Send + 'static>(mut connection: Conn, result: Resu
                 Ok(value)
             }
             Err(error) if explicitly_rejected(&error) => {
-                if connection.exec("ROLLBACK", &[]).await.is_err() {
+                if connection.rollback().await.is_err() {
                     publish(MutationPhase::Indeterminate);
                     return Err(format!("ROW_COMMIT_INDETERMINATE: rejection cleanup unconfirmed; do not retry: {error}"));
                 }

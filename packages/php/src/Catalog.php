@@ -1302,17 +1302,29 @@ final class Catalog
     private function rollback(\PDO $pdo, \Throwable $cause): never
     {
         try {
-            $pdo->exec('ROLLBACK');
+            $this->endTransaction($pdo);
         } catch (\PDOException $e) {
             throw OrmException::rollback($cause, $this->db->driverError($e));
         }
         throw $cause;
     }
 
+    /**
+     * Sends ROLLBACK when the transaction is still open. SQLite rolls a transaction back by itself after some
+     * errors, such as RAISE(ROLLBACK) or an I/O error, and a ROLLBACK then fails with "no transaction is active"
+     * (INT-155).
+     */
+    private function endTransaction(\PDO $pdo): void
+    {
+        if ($this->dialect !== 'sqlite' || $pdo->inTransaction()) {
+            $pdo->exec('ROLLBACK');
+        }
+    }
+
     private function endRead(\PDO $pdo): void
     {
         try {
-            $pdo->exec('ROLLBACK');
+            $this->endTransaction($pdo);
         } catch (\PDOException $e) {
             throw new OrmException(
                 Code::ROW_ROLLBACK_FAILED,
@@ -1345,7 +1357,7 @@ final class Catalog
         $message = 'commit outcome unknown; do not retry: ' . $mapped->getMessage();
         $rollback = null;
         try {
-            $pdo->exec('ROLLBACK');
+            $this->endTransaction($pdo);
         } catch (\PDOException $rollbackFailure) {
             $rollback = $this->db->driverError($rollbackFailure);
             $message .= '; rollback failed: ' . $rollback->getMessage();

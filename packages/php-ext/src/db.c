@@ -5041,6 +5041,27 @@ static void savepoint_control(zval *self, zval *frame, const char *kind, const c
         zval_ptr_dtor(&r);
         return;
     }
+    /* A transaction that SQLite rolled back by itself took its savepoints with it (INT-155). */
+    if (strcmp(kind, "savepoint") != 0 && is_str(rd(self, "driver"), "sqlite")) {
+        zval pdo;
+        if (!handle_pdo(self, &pdo)) {
+            *ok = false;
+            return;
+        }
+        zval r;
+        bool asked = mcall(&pdo, "inTransaction", &r, 0, NULL);
+        bool open = asked && zend_is_true(&r);
+        if (asked) zval_ptr_dtor(&r);
+        zval_ptr_dtor(&pdo);
+        if (!asked) {
+            *ok = false;
+            return;
+        }
+        if (!open) {
+            *ok = true;
+            return;
+        }
+    }
     zval fnum;
     frame_number(frame, &fnum);
     *ok = control_stmt(self, kind, &fnum, statement);
@@ -5215,7 +5236,8 @@ static bool finish_tx(zval *self, zval *frame, bool commit)
     bool attempted = false;
     bool rolled = true;
     zval pdo;
-    if (!commit) {
+    /* SQLite may also have rolled the transaction back by itself after an error (INT-155), so it is asked too. */
+    if (!commit && !is_str(rd(self, "driver"), "sqlite")) {
         attempted = true;
     } else if (handle_pdo(self, &pdo)) {
         zval r;

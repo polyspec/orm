@@ -290,6 +290,16 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
 /// (tests/dsn/mysql-session.json, docs/spec/config.md "Runtime connection").
 const MYSQL_SQL_MODE: &str = "STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION";
 
+/// Whether a SQLite connection is inside a transaction. SQLite rolls a transaction back by itself after some errors, such
+/// as `RAISE(ROLLBACK)` or an I/O error, and a ROLLBACK then fails with "no transaction is active"; so a transaction is
+/// rolled back only while this is true (INT-155). sqlx exposes no such state, so it is read from `sqlite3_get_autocommit`.
+#[allow(unsafe_code, reason = "sqlx exposes no autocommit state, so it is read through the C function sqlite3_get_autocommit on the raw handle")]
+pub async fn sqlite_in_transaction(connection: &mut sqlx::SqliteConnection) -> std::result::Result<bool, sqlx::Error> {
+    let mut handle = connection.lock_handle().await?;
+    // SAFETY: the locked handle is an open connection that no other caller uses until the lock is dropped.
+    Ok(unsafe { libsqlite3_sys::sqlite3_get_autocommit(handle.as_raw_handle().as_ptr()) } == 0)
+}
+
 /// The connection pool of a database, or of the flowmark server connections of
 /// a markdown corpus.
 #[derive(Clone)]

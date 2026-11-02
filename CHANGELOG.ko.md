@@ -4,6 +4,9 @@
 
 ## Unreleased
 
+- SQLite가 `RAISE(ROLLBACK)`, I/O 오류, 가득 찬 disk 뒤에 스스로 rollback한 transaction이나 savepoint는 모든 runtime과 catalog connection에서 그것을 끝낸 오류를 보고한다. client는 SQLite가 `cannot rollback - no transaction is active`로 답하는 ROLLBACK, ROLLBACK TO SAVEPOINT, RELEASE SAVEPOINT를 더는 보내지 않으므로, limepie는 disk I/O 오류 위에 쌓인 rollback 실패를 더는 기록하지 않는다 (INT-155, T356). Rust catalog connection도 다른 runtime처럼 행 쓰기의 driver 오류를 code와 함께 보고한다.
+- SQLite driver 오류 message는 모든 runtime에서 그 extended result code의 이름으로 끝난다. 예: `no such collation sequence: nosuch (SQLITE_ERROR_MISSING_COLLSEQ)` (INT-154). 이제 disk I/O error에서 SQLITE_IOERR_SHMLOCK과 _FSYNC, _SHORT_READ를 구별할 수 있다. 전에는 message가 primary 의미만 말했다(limepie S-908). 이름은 docs/spec/sqlite-result-codes.yaml의 표이며, `orm-gen sqlite-codes`가 각 runtime에 쓴다. PHP client와 PHP extension은 pdo_sqlite의 extended result code를 켜고, Rust catalog query 오류는 error code를 가진다 (T355).
+- PHP dbspec parser는 Go 기준처럼 단어의 ASCII 문자를 Unicode 표 없이 읽는다: bench 문서 한 번 parse가 14.7 ms에서 6.1 ms가 되며, php-fpm은 runtime model을 만드는 모든 요청에서 이 비용을 낸다 (T354).
 - catalog read_only_query는 모든 runtime에서 MySQL과 PostgreSQL의 date, time, datetime을 그 grid cell의 텍스트로 돌려준다 (INT-153): SELECT 12:34:56.5::time은 12:34:56.500000을 준다. 전에는 Go, TypeScript, PHP, PHP extension이 12:34:56.5를 주고, Python은 MySQL datetime에서 실패했으며, Rust는 TIME을 CATALOG_VALUE로 거부했다; byte budget은 그 텍스트를 센다 (T334-3-3-12).
 - packages/php/composer.json은 library가 쓰는 모든 PHP extension을 선언한다: ext-ctype, ext-filter, ext-mbstring은 require, ext-mysqli(MySQL catalog grid query)와 ext-pcntl은 suggest; ComposerExtensionsTest는 packages/php/src의 각 class와 함수를 그 extension으로 풀어 composer.json이 적지 않은 것이 있으면 실패한다 (T334-3-3-14).
 - Go, PHP, PHP extension, Python의 grid query byte budget은 TypeScript와 Rust처럼 변환된 cell을 센다 (INT-115): driver 값이 아니라 time cell 12:34:56.500000의 15바이트를 센다 (T334-3-3-9).

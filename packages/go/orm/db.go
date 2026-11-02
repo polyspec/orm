@@ -471,7 +471,24 @@ var (
 	errMappers = map[string]func(error) error{"mysql": mapMySQLErr}
 	// sqliteVersion is the library version that the SQLite driver package registered.
 	sqliteVersion string
+	// sqliteRollbackHook is the function that the SQLite driver package registered to set or clear the rollback hook of a
+	// driver connection.
+	sqliteRollbackHook func(driverConn any, fn func()) error
 )
+
+// RegisterSQLiteRollbackHook registers the function that sets fn as the rollback hook of a SQLite driver connection, or
+// clears the hook for a nil fn. The SQLite driver package calls it from init (INT-155).
+func RegisterSQLiteRollbackHook(hook func(driverConn any, fn func()) error) {
+	driverMu.Lock()
+	defer driverMu.Unlock()
+	sqliteRollbackHook = hook
+}
+
+func registeredSQLiteRollbackHook() func(driverConn any, fn func()) error {
+	driverMu.Lock()
+	defer driverMu.Unlock()
+	return sqliteRollbackHook
+}
 
 // RegisterSQLiteVersion registers the version of the SQLite library that the
 // SQLite driver package links. The SQLite driver package calls it from init.

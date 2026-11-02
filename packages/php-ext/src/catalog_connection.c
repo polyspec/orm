@@ -63,6 +63,23 @@ static bool cat_try_exec(zval *pdo, const char *sql)
     return ok;
 }
 
+/* Sends ROLLBACK when the transaction is still open (Catalog::endTransaction). SQLite rolls a transaction back by itself after
+ * some errors, such as RAISE(ROLLBACK) or an I/O error, and a ROLLBACK then fails with "no transaction is active" (INT-155). */
+static bool cat_try_rollback(zval *pdo)
+{
+    zend_string *name = zend_string_init("Pdo\\Sqlite", sizeof("Pdo\\Sqlite") - 1, 0);
+    zend_class_entry *sqlite_ce = zend_lookup_class_ex(name, NULL, ZEND_FETCH_CLASS_NO_AUTOLOAD);
+    zend_string_release(name);
+    if (sqlite_ce != NULL && Z_TYPE_P(pdo) == IS_OBJECT && instanceof_function(Z_OBJCE_P(pdo), sqlite_ce)) {
+        zval open;
+        if (!pdo_call(pdo, "inTransaction", &open, 0, NULL, NULL)) return false;
+        bool in_transaction = zend_is_true(&open);
+        zval_ptr_dtor(&open);
+        if (!in_transaction) return true;
+    }
+    return cat_try_exec(pdo, "ROLLBACK");
+}
+
 static bool cat_grid_link(zval *self, zval *link);
 static bool cat_call_n(zval *obj, const char *name, zval *ret, uint32_t argc, zval *argv);
 static bool cat_open_mysqli(zval *self, zval *link);
@@ -689,7 +706,7 @@ static void cat_abort(zval *db, zval *pdo)
     zval cause;
     ZVAL_OBJ(&cause, EG(exception));
     EG(exception) = NULL;
-    if (cat_try_exec(pdo, "ROLLBACK")) {
+    if (cat_try_rollback(pdo)) {
         EG(exception) = Z_OBJ(cause);
         return;
     }
@@ -710,7 +727,7 @@ static void cat_abort(zval *db, zval *pdo)
 /* Ends a successful read session with ROLLBACK; a failure is ROW_ROLLBACK_FAILED with the driver error as its previous error. */
 static bool cat_end_read(zval *db, zval *pdo)
 {
-    if (cat_try_exec(pdo, "ROLLBACK")) {
+    if (cat_try_rollback(pdo)) {
         return true;
     }
     zval previous, mapped, message, args[3], ex;
@@ -2737,7 +2754,7 @@ static bool cat_begin_write(zval *db, const char *dialect, zval *pdo)
 /* Throws the cause (owned) after a ROLLBACK. A failed ROLLBACK throws OrmException::rollback(cause, rollback error) (Catalog::rollback). */
 static void cat_rollback_throw(zval *db, zval *pdo, zval *cause)
 {
-    if (cat_try_exec(pdo, "ROLLBACK")) {
+    if (cat_try_rollback(pdo)) {
         zend_throw_exception_object(cause);
         return;
     }
@@ -2802,7 +2819,7 @@ static bool cat_commit(zval *db, zval *pdo)
     zval rollback;
     ZVAL_NULL(&rollback);
     zend_string *text = zend_strpprintf(0, "commit outcome unknown; do not retry: %s", Z_STRVAL(message));
-    if (!cat_try_exec(pdo, "ROLLBACK")) {
+    if (!cat_try_rollback(pdo)) {
         zval rb_native, rb_mapped, rb_message;
         ZVAL_OBJ(&rb_native, EG(exception));
         EG(exception) = NULL;

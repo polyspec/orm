@@ -190,7 +190,7 @@ impl CatalogConnection {
     }
 }
 async fn finish_read_only<T>(connection: &mut Conn, result: Result<T, String>) -> Result<T, String> {
-    let cleanup = connection.exec("ROLLBACK", &[]).await.map_err(|error| error.to_string());
+    let cleanup = connection.rollback().await.map_err(|error| error.to_string());
     match (result, cleanup) {
         (result, Ok(_)) => result,
         (Ok(_), Err(error)) => Err(format!("QUERY_READ_ONLY_CLEANUP: {error}")),
@@ -229,21 +229,17 @@ pub(super) fn catalog_query_error(error: sqlx::Error) -> String {
             }
         }
     }
-    let text = error.to_string();
+    let error = polyspec_orm::Error::from(error);
     // A write that the read-only server refuses is the query that fails, as the write of a read query is refused before it runs.
-    if polyspec_orm::Error::from(error).code() == polyspec_orm::codes::READ_ONLY {
+    if error.code() == polyspec_orm::codes::READ_ONLY {
         return format!("{}: the database rejected a read-only query", polyspec_orm::codes::QUERY_READ_ONLY);
     }
-    text
+    // A driver error carries the code of the error catalog, as every client reports it.
+    error.to_string()
 }
 
-/// The error text of a catalog write. A driver error that the catalog lists keeps its code as the text's head, as the
-/// other runtimes return it (CFG-33: a violated unique key is DUPLICATE_KEY); every other driver error is DRIVER.
+/// The error text of a catalog write: the driver error with the code of the error catalog as its head, as the other
+/// runtimes return it (CFG-33: a violated unique key is DUPLICATE_KEY; an error the catalog does not list is DRIVER).
 pub(super) fn catalog_write_error(error: sqlx::Error) -> String {
-    let text = error.to_string();
-    let code = polyspec_orm::Error::from(error).code().to_owned();
-    if code == polyspec_orm::codes::DRIVER {
-        return text;
-    }
-    format!("{code}: {text}")
+    polyspec_orm::Error::from(error).to_string()
 }

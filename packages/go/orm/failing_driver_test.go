@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -53,6 +54,26 @@ func (d failingDriver) Open(name string) (driver.Conn, error) {
 }
 
 type failingConn struct{ driver.Conn }
+
+// The hooks of a SQLite connection reach the wrapped connection, so that the executor learns that SQLite rolled a
+// transaction back by itself (INT-155).
+func (c failingConn) hooks() sqlite.HookRegisterer {
+	hooks, ok := c.Conn.(sqlite.HookRegisterer)
+	if !ok {
+		panic(fmt.Sprintf("the wrapped connection %T registers no SQLite hooks", c.Conn))
+	}
+	return hooks
+}
+
+func (c failingConn) RegisterPreUpdateHook(fn sqlite.PreUpdateHookFn) {
+	c.hooks().RegisterPreUpdateHook(fn)
+}
+
+func (c failingConn) RegisterCommitHook(fn sqlite.CommitHookFn) { c.hooks().RegisterCommitHook(fn) }
+
+func (c failingConn) RegisterRollbackHook(fn sqlite.RollbackHookFn) {
+	c.hooks().RegisterRollbackHook(fn)
+}
 
 func (c failingConn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
 	if statementRejected(query) {

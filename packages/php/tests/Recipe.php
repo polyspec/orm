@@ -1761,6 +1761,9 @@ final class Recipe
                 throw $error;
             }
             Assert::assertSame($expected['error'], $error->code_, "the error code ({$error->getMessage()})");
+            if (isset($expected['message_suffix'])) {
+                Assert::assertStringEndsWith($expected['message_suffix'], $error->getMessage(), 'the error message');
+            }
             return;
         } catch (CallbackFailed $failure) {
             // The step ends with its failed callback, so an enclosing transaction goes on (FCV-4).

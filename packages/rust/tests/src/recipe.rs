@@ -2121,8 +2121,12 @@ mod database {
             Err(Failure::Step(message)) => return Err(message),
             Err(Failure::Call(message)) => {
                 let Some(want) = want_error else { return Err(format!("unexpected error {message}")) };
+                let suffix = expected.as_ref().and_then(|e| e.get("message_suffix")).and_then(Value::as_str);
                 return match error_code(&message) {
-                    Some(code) if code == want.as_str() => Ok(()),
+                    Some(code) if code == want.as_str() => match suffix {
+                        Some(suffix) if !message.ends_with(suffix) => Err(format!("error message {message:?} does not end with {suffix:?}")),
+                        _ => Ok(()),
+                    },
                     Some(code) => Err(format!("error code {code} ({message}), want {want}")),
                     None => Err(format!("error without a code ({message}), want {want}")),
                 };

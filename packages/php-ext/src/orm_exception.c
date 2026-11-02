@@ -5,6 +5,7 @@
 #include "Zend/zend_interfaces.h"
 #include "Zend/zend_smart_str.h"
 #include <string.h>
+#include "sqlite_codes.h"
 
 static zend_string *mysql_code(zend_long number, bool has_number, zend_string *state);
 static zend_string *postgres_code(zend_string *state);
@@ -360,6 +361,15 @@ ZEND_METHOD(Polyspec_Orm_OrmException, fromDriver)
     }
     zend_string *message = zval_get_string(&message_rv);
     zval_ptr_dtor(&message_rv);
+    if (zend_string_equals_literal(driver, "sqlite") && has_number) {
+        // The message ends with the name of the extended result code (INT-154).
+        const char *name = sqlite_result_code_name(number);
+        zend_string *named = name != NULL
+            ? zend_strpprintf(0, "%s (%s)", ZSTR_VAL(message), name)
+            : zend_strpprintf(0, "%s (SQLite result code " ZEND_LONG_FMT ")", ZSTR_VAL(message), number);
+        zend_string_release(message);
+        message = named;
+    }
     zend_string_release(driver_message);
     zval_ptr_dtor(&error_info_copy);
     zend_class_entry *ce = zend_get_called_scope(execute_data);

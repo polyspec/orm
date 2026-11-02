@@ -19,6 +19,7 @@ from urllib.parse import urlsplit
 
 import psycopg
 from polyspec.orm.database import Db
+from polyspec.orm.errors import OrmError
 
 from . import testcase
 from .case_database import case_database
@@ -126,8 +127,24 @@ class RollbackTest(unittest.TestCase):
     def check_rollback(self, error, subject: str):
         check_rollback(self, error, subject)
 
+    def check_sqlite_rolled_back(self, db, error) -> None:
+        """Checks the error of a transaction that the rollback_probe trigger ended: SQLite rolled it back by itself, so the
+        error is the trigger's, with no rollback failure stacked on it, and no row stayed (INT-155)."""
+        self.assertIsInstance(error, OrmError)
+        self.assertEqual(error.code, "DRIVER", str(error))
+        self.assertIsNone(getattr(error, "rollback", None), str(error))
+        self.assertIn("rollback probe ended the transaction", str(error))
+        self.assertTrue(str(error).endswith(" (SQLITE_CONSTRAINT_TRIGGER)"), str(error))
+        self.assertEqual(
+            self.count(db),
+            0,
+            "the trigger rolled the transaction back and the connection serves later requests",
+        )
+
     def rollback_failed(self, dialect: str) -> None:
-        """The callback of a transaction fails and the rollback fails."""
+        """The session of a transaction ends behind the client. On MySQL and PostgreSQL the server ends it, so the callback
+        fails and the rollback fails (CFG-15); on SQLite the trigger makes SQLite roll the transaction back, so the
+        trigger's error is reported (INT-155)."""
 
         def body(db, dsn):
             def ended():
@@ -136,15 +153,10 @@ class RollbackTest(unittest.TestCase):
                 self.probe(db, "end").create()
 
             error = self.raised(lambda: db.transaction(ended, {"retry": 0}))
-            self.check_rollback(error, "transaction")
             if dialect == "sqlite":
-                self.assertIn("rollback probe ended the transaction", str(error.cause))
-                self.assertEqual(
-                    self.count(db),
-                    0,
-                    "the trigger rolled the transaction back and the connection serves later requests",
-                )
+                self.check_sqlite_rolled_back(db, error)
                 return
+            self.check_rollback(error, "transaction")
             # The next statement and the rollback on a session the server ended are connection-lost errors.
             self.assertEqual(
                 getattr(error.cause, "code", None),
@@ -160,7 +172,8 @@ class RollbackTest(unittest.TestCase):
         self.run_case(dialect, body)
 
     def savepoint_rollback_failed(self, dialect: str) -> None:
-        """The callback of a savepoint fails and the savepoint rollback fails, and then the transaction rollback fails."""
+        """The session ends inside a savepoint. On MySQL and PostgreSQL the savepoint rollback and then the transaction
+        rollback fail (CFG-15); on SQLite the trigger's error is reported (INT-155)."""
 
         def body(db, dsn):
             def nested():
@@ -173,17 +186,11 @@ class RollbackTest(unittest.TestCase):
                 db.transaction(nested)
 
             error = self.raised(lambda: db.transaction(outer, {"retry": 0}))
+            if dialect == "sqlite":
+                self.check_sqlite_rolled_back(db, error)
+                return
             self.check_rollback(error, "transaction")
             self.check_rollback(error.cause, "savepoint")
-            if dialect == "sqlite":
-                self.assertIn(
-                    "rollback probe ended the transaction", str(error.cause.cause)
-                )
-                self.assertEqual(
-                    self.count(db),
-                    0,
-                    "the trigger rolled the transaction back and the connection serves later requests",
-                )
 
         self.run_case(dialect, body)
 

@@ -35,7 +35,7 @@ class _TransactionRecordingConnection:
 
     def execute(self, sql: str, values):
         self.statements.append(sql)
-        if sql == "BEGIN IMMEDIATE":
+        if sql in ("BEGIN", "BEGIN IMMEDIATE"):
             self.transaction = True
         elif sql == "ROLLBACK" or sql == "COMMIT":
             self.transaction = False
@@ -173,25 +173,16 @@ class RollbackFaultTest(unittest.TestCase):
         self.assertIsNone(
             committed, "a committed transaction with an armed fault raises nothing"
         )
-        callback = RuntimeError("rollback fault callback failed")
-
-        def failing():
-            self.probe("rolled back").create()
-            raise callback
-
-        error = self.raised(lambda: self.db.transaction(failing, {"retry": 0}))
-        self.check_rollback(error, "transaction")
-        self.assertIs(error.cause, callback)
-        self.assertIsInstance(error.rollback, OrmError)
+        error, run = self.failed_rollback("rolled back")
         self.assertEqual(error.rollback.code, "FAULT")
         self.assertEqual(str(error.rollback), f"FAULT: {FAULT_MESSAGE}")
         self.assertEqual(
             self.count(), 1, "the faulted rollback keeps only the committed row"
         )
-        again = self.raised(lambda: self.db.transaction(failing, {"retry": 0}))
+        again = self.raised(run)
         self.assertIs(
             again,
-            callback,
+            error.cause,
             "the transaction after the consumed fault raises the callback error",
         )
         self.assertEqual(self.count(), 1)
@@ -222,29 +213,47 @@ class RollbackFaultTest(unittest.TestCase):
         self.check_rollback(error, "transaction")
         self.assertEqual(error.rollback.code, "FAULT")
 
+    def failed_rollback(self, label: str):
+        """Runs a transaction that creates the row label and then fails, and returns its ROLLBACK error, after checking
+        that it keeps the callback error and a rollback error, with the function that runs that transaction again."""
+        callback = RuntimeError("rollback callback failed")
+
+        def failing():
+            self.probe(label).create()
+            raise callback
+
+        def run():
+            return self.db.transaction(failing, {"retry": 0})
+
+        error = self.raised(run)
+        self.check_rollback(error, "transaction")
+        self.assertIs(error.cause, callback)
+        self.assertIsInstance(error.rollback, OrmError)
+        return error, run
+
     # Requirements: INT-72.
     def test_a_failed_rollback_reports_the_callback_error_and_the_rollback_error(self):
-        with sqlite3.connect(self.path) as conn:
-            conn.execute(
-                "CREATE TRIGGER rollback_probe_end BEFORE INSERT ON rollback_probe WHEN NEW.label = 'end' "
-                "BEGIN SELECT RAISE(ROLLBACK, 'rollback probe ended the transaction'); END"
-            )
-        conn.close()
+        # SQLite's authorizer refuses the ROLLBACK of the transaction, so the rollback fails while the transaction is
+        # still open. A trigger's RAISE(ROLLBACK) does not serve here: SQLite then ends the transaction itself, and the
+        # client sends no ROLLBACK (INT-155).
+        raw = self.db._shared.pool._idle[0].connection
+        refused = []
 
-        def ended():
-            self.probe("kept").create()
-            self.probe("end").create()
+        def authorize(action, first, second, database, source):
+            if (
+                action == sqlite3.SQLITE_TRANSACTION
+                and first == "ROLLBACK"
+                and not refused
+            ):
+                refused.append(first)
+                return sqlite3.SQLITE_DENY
+            return sqlite3.SQLITE_OK
 
-        error = self.raised(lambda: self.db.transaction(ended, {"retry": 0}))
-        self.check_rollback(error, "transaction")
-        self.assertIsInstance(error.cause, OrmError)
-        self.assertIn("rollback probe ended the transaction", str(error.cause))
-        self.assertIsInstance(error.rollback, OrmError)
-        self.assertEqual(
-            self.count(),
-            0,
-            "the trigger rolled the transaction back and the connection serves later requests",
-        )
+        raw.set_authorizer(authorize)
+        self.addCleanup(raw.set_authorizer, None)
+        error, _ = self.failed_rollback("kept")
+        self.assertIn("not authorized", str(error.rollback))
+        self.assertEqual(refused, ["ROLLBACK"])
 
     # Requirements: DIA-181, PLN-17.
     def test_a_failed_savepoint_rollback_and_transaction_rollback_report_both(self):

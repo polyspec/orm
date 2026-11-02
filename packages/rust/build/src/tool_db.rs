@@ -413,6 +413,18 @@ impl Conn {
         })
     }
 
+    /// Rolls the transaction back. A SQLite transaction that SQLite already
+    /// rolled back by itself, after `RAISE(ROLLBACK)` or an I/O error, is not
+    /// rolled back again: that ROLLBACK would fail (INT-155).
+    pub async fn rollback(&mut self) -> Result<(), sqlx::Error> {
+        if let Conn::Sqlite(c) = self {
+            if !polyspec_orm::db::sqlite_in_transaction(c).await? {
+                return Ok(());
+            }
+        }
+        self.exec("ROLLBACK", &[]).await.map(|_| ())
+    }
+
     /// Runs a statement and returns the affected rows. A statement without
     /// binds is sent as written.
     pub async fn exec(&mut self, sql: &str, params: &[P]) -> Result<u64, sqlx::Error> {

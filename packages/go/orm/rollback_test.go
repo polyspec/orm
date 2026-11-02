@@ -132,14 +132,6 @@ func rollbackFailed(t *testing.T, driver string) {
 			t.Errorf("the rollback error is %v, want CONNECTION_LOST", rollback)
 		}
 	}
-	if driver == "sqlite" {
-		if !strings.Contains(callback.Error(), "rollback probe ended the transaction") {
-			t.Fatalf("callback error %v", callback)
-		}
-		if n, err := model().GetCount(); err != nil || n != 0 {
-			t.Fatalf("after the failed rollback: %d rows, %v", n, err)
-		}
-	}
 }
 
 // savepointRollbackFailed makes the callback of a savepoint whose rollback fails
@@ -159,22 +151,48 @@ func savepointRollbackFailed(t *testing.T, driver string) {
 		})
 	}, orm.Retry(0))
 	callback := checkRollback(t, err, "transaction")
-	nested := checkRollback(t, callback, "savepoint")
-	if driver == "sqlite" {
-		if !strings.Contains(nested.Error(), "rollback probe ended the transaction") {
-			t.Fatalf("savepoint callback error %v", nested)
-		}
-		if n, err := model().GetCount(); err != nil || n != 0 {
-			t.Fatalf("after the failed rollback: %d rows, %v", n, err)
-		}
+	if checkRollback(t, callback, "savepoint") == nil {
+		t.Fatal("the savepoint error keeps no callback error")
 	}
 }
 
-// Requirements: CFG-15.
-func TestRollbackFailedSQLite(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	rollbackFailed(t, "sqlite")
+// checkSQLiteRolledBack checks the error of a transaction that the rollback_probe trigger ended: SQLite rolled it back
+// by itself, so the error is the trigger's, with no rollback failure stacked on it, and no row stayed (INT-155).
+func checkSQLiteRolledBack(t *testing.T, err error, model func() *orm.Core) {
+	t.Helper()
+	var coded *orm.Error
+	if !errors.As(err, &coded) || coded.Code != orm.CodeDriver {
+		t.Fatalf("transaction = %v, want DRIVER", err)
+	}
+	if !strings.Contains(coded.Msg, "rollback probe ended the transaction") || !strings.HasSuffix(coded.Msg, " (SQLITE_CONSTRAINT_TRIGGER)") {
+		t.Fatalf("transaction error %q is not the trigger's", coded.Msg)
+	}
+	if n, err := model().GetCount(); err != nil || n != 0 {
+		t.Fatalf("after the transaction SQLite rolled back: %d rows, %v", n, err)
+	}
 }
+
+// Requirements: INT-155.
+func TestSQLiteRolledBackTransaction(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	db, model, end := rollbackFixture(t, "sqlite")
+	checkSQLiteRolledBack(t, probeTransaction(db, model, end), model)
+}
+
+// Requirements: INT-155.
+func TestSQLiteRolledBackSavepoint(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	db, model, _ := rollbackFixture(t, "sqlite")
+	err := db.Transaction(func() error {
+		if err := probeCreate(model, "kept"); err != nil {
+			return err
+		}
+		return db.Transaction(func() error { return probeCreate(model, "end") })
+	}, orm.Retry(0))
+	checkSQLiteRolledBack(t, err, model)
+}
+
+// Requirements: CFG-15.
 func TestRollbackFailedMySQL(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	rollbackFailed(t, "mysql")
@@ -182,10 +200,6 @@ func TestRollbackFailedMySQL(t *testing.T) {
 func TestRollbackFailedPostgres(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	rollbackFailed(t, "postgres")
-}
-func TestSavepointRollbackFailedSQLite(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	savepointRollbackFailed(t, "sqlite")
 }
 func TestSavepointRollbackFailedMySQL(t *testing.T) {
 	testcase.Start(t, testcase.Database)

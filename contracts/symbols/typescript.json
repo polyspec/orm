@@ -495,6 +495,10 @@
     "exported": false,
     "signature": "public async plainRows(sql: string, params: readonly unknown[], maxRows: number, maxBytes: number): Promise\u003c{ columns: DriverColumn[]; rows: CatalogValue[][]; }\u003e"
   },
+  "packages/ts/src/catalog.ts::Session.queryRows": {
+    "exported": false,
+    "signature": "public async queryRows(sql: string, params: readonly unknown[], maxRows: number, maxBytes: number): Promise\u003c{ columns: DriverColumn[]; rows: CatalogValue[][]; }\u003e"
+  },
   "packages/ts/src/catalog.ts::Session.rawRows": {
     "exported": false,
     "signature": "public async rawRows(sql: string, params: readonly unknown[], maxRows: number, maxBytes: number): Promise\u003c{ columns: DriverColumn[]; rows: unknown[][]; }\u003e"
@@ -22082,6 +22086,10 @@
   "packages/ts/src/runtime_error.ts::rollbackFailed": {
     "exported": true,
     "signature": "export function rollbackFailed(cause: unknown, rollback: unknown): OrmError"
+  },
+  "packages/ts/src/sqlite-codes.ts::sqliteResultCodeSuffix": {
+    "exported": true,
+    "signature": "export function sqliteResultCodeSuffix(code: number): string"
   },
   "packages/ts/src/styled_value.ts::StyledValue": {
     "exported": true,

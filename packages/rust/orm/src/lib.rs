@@ -23,6 +23,7 @@ pub mod plan;
 mod request;
 pub mod row;
 pub mod schema;
+mod sqlite_codes;
 #[cfg(feature = "test-faults")]
 pub mod testing;
 pub mod tx;
@@ -171,7 +172,6 @@ impl From<sqlx::Error> for Error {
                     _ => Some((codes::DRIVER, msg())),
                 }
             } else if let Some(s) = d.try_downcast_ref::<sqlx::sqlite::SqliteError>() {
-                // sqlx reports the extended result code as text
                 // sqlx reports the extended result code as text; a code that is missing or not a number is an explicit error with its text.
                 let n: i64 = match s.code() {
                     Some(text) => match text.parse() {
@@ -185,7 +185,8 @@ impl From<sqlx::Error> for Error {
                     },
                     None => return Error::Engine { code: codes::DRIVER.into(), msg: format!("sqlite reported no extended result code: {}", s.message()) },
                 };
-                Some((sqlite_extended_code(n, s.message()), s.message().to_owned()))
+                // The message ends with the name of the extended result code (INT-154).
+                Some((sqlite_extended_code(n, s.message()), format!("{}{}", s.message(), sqlite_codes::result_code_suffix(n))))
             } else {
                 None
             };
@@ -307,6 +308,32 @@ mod sqlite_code_tests {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         assert_eq!(sqlite_extended_code(6, "database table is locked"), codes::DRIVER);
         assert_eq!(sqlite_extended_code(262, "database table is locked"), codes::DRIVER);
+    }
+
+    // sqlite_codes.rs, which orm-gen sqlite-codes generates, names every code of the sqlite_result_codes table of
+    // docs/spec/sqlite-result-codes.yaml and no other code: every other 16-bit code ends a message with its number. It
+    // checks the generator against its table; the recipe case sqlite_extended_code_names tests the messages.
+    #[test]
+    fn result_code_names_match_the_table() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let manifest = std::env::var("CARGO_MANIFEST_DIR").expect("cargo test sets CARGO_MANIFEST_DIR");
+        let yaml = std::fs::read_to_string(format!("{manifest}/../../../docs/spec/sqlite-result-codes.yaml")).expect("docs/spec/sqlite-result-codes.yaml");
+        let mut listed = std::collections::HashMap::new();
+        let mut lines = yaml.lines().skip_while(|line| *line != "sqlite_result_codes:");
+        while let Some(line) = lines.next() {
+            if let Some(name) = line.strip_prefix("  - name: ") {
+                let value = lines.next().and_then(|line| line.strip_prefix("    value: ")).expect("value line").parse::<i64>().expect("integer value");
+                listed.insert(value, name.to_owned());
+            }
+        }
+        assert!(!listed.is_empty(), "docs/spec/sqlite-result-codes.yaml lists no SQLite result codes");
+        for code in 0..=0xffff_i64 {
+            let want = match listed.get(&code) {
+                Some(name) => format!(" ({name})"),
+                None => format!(" (SQLite result code {code})"),
+            };
+            assert_eq!(super::sqlite_codes::result_code_suffix(code), want, "result code {code}");
+        }
     }
 }
 

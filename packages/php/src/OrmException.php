@@ -80,7 +80,9 @@ final class OrmException extends \RuntimeException
             },
             default => self::mysqlCode($num, $state),
         };
-        return new self($code, $e->getMessage(), $e);
+        // A SQLite message ends with the name of the extended result code (INT-154).
+        $suffix = $driver === 'sqlite' && is_int($num) ? SqliteCodes::suffix($num) : '';
+        return new self($code, $e->getMessage() . $suffix, $e);
     }
 
     /** The code of a MySQL error by its error number, or by its SQLSTATE when the number is not known. */

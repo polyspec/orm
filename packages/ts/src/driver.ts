@@ -7,6 +7,7 @@ import type { FieldPacket } from 'mysql2';
 import pg from 'pg';
 import { PostgresListener } from './listen.js';
 import { OrmError } from './runtime_error.js';
+import { sqliteResultCodeSuffix } from './sqlite-codes.js';
 import { parseMarkdownDsn, type MarkdownDsn } from './markdown.js';
 import * as codes from './codes.js';
 
@@ -213,7 +214,9 @@ export function driverError(name: DriverName, error: unknown): OrmError {
     fatal: property(error, 'fatal') === true,
   };
   const text = property(error, 'message');
-  const message = typeof text === 'string' ? text : errorText(error);
+  // A SQLite message ends with the name of its extended result code (INT-154).
+  const suffix = name === 'sqlite' && source.errcode !== undefined ? sqliteResultCodeSuffix(source.errcode) : '';
+  const message = (typeof text === 'string' ? text : errorText(error)) + suffix;
   if (connectionLost(name, source)) return new OrmError(codes.CONNECTION_LOST, `${name}: ${message}`, error);
   const lockNotAvailable = source.code === 'ER_LOCK_NOWAIT' || source.errcode === 3572 || source.code === '55P03';
   // MySQL 1205 (a lock wait timeout) is the expiry of the write bound of CFG-6, and MySQL 1317/3024, PostgreSQL 57014,

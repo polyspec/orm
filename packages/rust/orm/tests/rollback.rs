@@ -3,7 +3,8 @@
 //! with the code ROLLBACK, which keeps the callback error and the rollback
 //! error. The callback runs only model calls. On SQLite a trigger of the test
 //! fixture raises ROLLBACK when a row labeled `end` is inserted, which ends
-//! the transaction, so the client's ROLLBACK finds no transaction. On MySQL
+//! the transaction; the client then sends no ROLLBACK and reports the
+//! trigger's error alone (INT-155). On MySQL
 //! and PostgreSQL a test connection ends the server session that holds the
 //! transaction, so the next statement and the rollback fail; that connection
 //! reaches the server through ORM_TEST_MYSQL_SERVER_DSN or
@@ -126,7 +127,23 @@ fn check_rollback<'e>(driver: &str, error: &'e polyspec_orm::Error, subject: &st
     callback
 }
 
-/// The callback of a transaction fails and the rollback fails.
+/// Checks the error of a transaction that the rollback_probe trigger ended:
+/// SQLite rolled it back by itself, so the error is the trigger's, with no
+/// rollback failure stacked on it, and no row stayed (INT-155).
+async fn check_sqlite_rolled_back(db: &Db, error: &polyspec_orm::Error) {
+    assert_eq!(error.code(), polyspec_orm::codes::DRIVER, "sqlite: transaction = {error}");
+    let text = error.to_string();
+    assert!(
+        text.contains("rollback probe ended the transaction") && text.ends_with(" (SQLITE_CONSTRAINT_TRIGGER)"),
+        "sqlite: transaction error {text} is not the trigger's"
+    );
+    assert_eq!(polyspec_orm::model::get_count(connected::<RollbackProbe>(db).core()).await.unwrap(), 0, "the connection serves later requests");
+}
+
+/// The session of a transaction ends behind the client. On MySQL and
+/// PostgreSQL the server ends it, so the callback fails and the rollback
+/// fails (CFG-15); on SQLite the trigger makes SQLite roll the transaction
+/// back, so the trigger's error is reported (INT-155).
 async fn rollback_failed(driver: &str, dsn: &str, session: &str) {
     let db = installed(driver, dsn).await;
     let error = db
@@ -137,22 +154,21 @@ async fn rollback_failed(driver: &str, dsn: &str, session: &str) {
         })
         .await
         .expect_err("transaction");
-    let callback = check_rollback(driver, &error, "transaction");
-    if driver != "sqlite" {
+    if driver == "sqlite" {
+        check_sqlite_rolled_back(&db, &error).await;
+    } else {
+        let callback = check_rollback(driver, &error, "transaction");
         // The next statement and rollback on a session the server ended are lost-connection errors.
         let polyspec_orm::Error::Rollback { rollback, .. } = &error else { unreachable!() };
         assert_eq!(callback.code(), polyspec_orm::codes::CONNECTION_LOST, "{driver}: the callback error is {callback}");
         assert_eq!(rollback.code(), polyspec_orm::codes::CONNECTION_LOST, "{driver}: the rollback error is {rollback}");
     }
-    if driver == "sqlite" {
-        assert!(callback.to_string().contains("rollback probe ended the transaction"), "callback error {callback}");
-        assert_eq!(polyspec_orm::model::get_count(connected::<RollbackProbe>(&db).core()).await.unwrap(), 0, "the connection serves later requests");
-    }
     db.close().await;
 }
 
-/// The callback of a savepoint fails and the savepoint rollback fails, and
-/// then the transaction rollback fails.
+/// The session ends inside a savepoint. On MySQL and PostgreSQL the
+/// savepoint rollback and then the transaction rollback fail (CFG-15); on
+/// SQLite the trigger's error is reported (INT-155).
 async fn savepoint_rollback_failed(driver: &str, dsn: &str, session: &str) {
     let db = installed(driver, dsn).await;
     let error = db
@@ -167,10 +183,11 @@ async fn savepoint_rollback_failed(driver: &str, dsn: &str, session: &str) {
         })
         .await
         .expect_err("transaction");
-    let callback = check_rollback(driver, &error, "transaction");
-    check_rollback(driver, callback, "savepoint");
     if driver == "sqlite" {
-        assert_eq!(polyspec_orm::model::get_count(connected::<RollbackProbe>(&db).core()).await.unwrap(), 0, "the connection serves later requests");
+        check_sqlite_rolled_back(&db, &error).await;
+    } else {
+        let callback = check_rollback(driver, &error, "transaction");
+        check_rollback(driver, callback, "savepoint");
     }
     db.close().await;
 }

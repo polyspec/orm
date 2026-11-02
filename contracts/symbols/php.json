@@ -5341,7 +5341,7 @@
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::boundedRows": {
     "exported": false,
-    "signature": "private function boundedRows(Closure $fetch, int $maxRows, int $maxBytes, ?Closure $transform=null, ?Closure $sizes=null): array"
+    "signature": "private function boundedRows(Closure $fetch, int $maxRows, int $maxBytes, ?Closure $transform=null): array"
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::bufferedQueryAttribute": {
     "exported": false,
@@ -5417,7 +5417,7 @@
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::cursorQuery": {
     "exported": false,
-    "signature": "private function cursorQuery(PDO $pdo, string $sql, int $maxRows, int $maxBytes): array"
+    "signature": "private function cursorQuery(PDO $pdo, string $sql, int $maxRows, int $maxBytes, ?Closure $convert=null): array"
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::cursorRead": {
     "exported": false,
@@ -5471,6 +5471,10 @@
     "exported": false,
     "signature": "private function endRead(PDO $pdo): void"
   },
+  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::endTransaction": {
+    "exported": false,
+    "signature": "private function endTransaction(PDO $pdo): void"
+  },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::exceedsDeclaredCapacity": {
     "exported": false,
     "signature": "private static function exceedsDeclaredCapacity(Polyspec\\Orm\\CatalogColumn $column, string $value): bool"
@@ -5494,6 +5498,10 @@
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::gridCell": {
     "exported": false,
     "signature": "private static function gridCell(mixed $value, string $dialect, string $native, bool $unsigned, bool $binary): Polyspec\\Orm\\CatalogGridCell"
+  },
+  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::gridCellSize": {
+    "exported": false,
+    "signature": "private static function gridCellSize(Polyspec\\Orm\\CatalogGridCell $cell): int"
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::gridQuery": {
     "exported": false,
@@ -5591,10 +5599,6 @@
     "exported": false,
     "signature": "private static function nativeTypes(Polyspec\\Orm\\CatalogTableMetadata $metadata): array"
   },
-  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::numericField": {
-    "exported": false,
-    "signature": "private static function numericField(object $field): bool"
-  },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::openMysqli": {
     "exported": false,
     "signature": "private function openMysqli(): mysqli"
@@ -5613,7 +5617,11 @@
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::query": {
     "exported": false,
-    "signature": "private function query(PDO $pdo, string $sql, array $args, int $maxRows, int $maxBytes): array"
+    "signature": "private function query(PDO $pdo, string $sql, array $args, int $maxRows, int $maxBytes, ?Closure $convert=null): array"
+  },
+  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::queryValue": {
+    "exported": false,
+    "signature": "private function queryValue(mixed $value, string $native): mixed"
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::quote": {
     "exported": false,
@@ -13594,6 +13602,14 @@
   "packages/php/src/SqliteCancellation.php::Polyspec\\Orm\\SqliteCancellation::extension": {
     "exported": false,
     "signature": "private static function extension(): string"
+  },
+  "packages/php/src/SqliteCodes.php::Polyspec\\Orm\\SqliteCodes": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\SqliteCodes extends  implements  uses "
+  },
+  "packages/php/src/SqliteCodes.php::Polyspec\\Orm\\SqliteCodes::suffix": {
+    "exported": true,
+    "signature": "public static function suffix(int $code): string"
   },
   "packages/php/src/StatementEvent.php::Polyspec\\Orm\\StatementEvent": {
     "exported": true,

@@ -370,6 +370,9 @@ func runDatabaseStep(s databaseStep, c *databaseContext) error {
 		if code != want {
 			return fmt.Errorf("error %q (%w), want %v", code, err, want)
 		}
+		if suffix, ok := expected["message_suffix"].(string); ok && !strings.HasSuffix(err.Error(), suffix) {
+			return fmt.Errorf("error message %q does not end with %q", err.Error(), suffix)
+		}
 		return nil
 	}
 	if s.As != "" {

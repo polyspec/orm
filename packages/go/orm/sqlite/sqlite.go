@@ -10,6 +10,7 @@ package sqlite
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	sqlite "modernc.org/sqlite"
@@ -22,20 +23,32 @@ import (
 func init() {
 	orm.RegisterDriver("sqlite", "sqlite", mapErr)
 	orm.RegisterSQLiteVersion(sqlite3.SQLITE_VERSION)
+	orm.RegisterSQLiteRollbackHook(rollbackHook)
 }
 
-// mapErr names the conditions that docs/spec/errors.yaml maps, and the executor
-// reports the remaining driver errors as DRIVER. SQLITE_BUSY reports a lock that another connection
-// still held when the busy_timeout wait ended, so it is CANCELED.
+// rollbackHook sets fn as the rollback hook of a modernc connection, or clears it for a nil fn.
+func rollbackHook(driverConn any, fn func()) error {
+	hooks, ok := driverConn.(sqlite.HookRegisterer)
+	if !ok {
+		return fmt.Errorf("sqlite: driver connection %T registers no hooks", driverConn)
+	}
+	hooks.RegisterRollbackHook(fn)
+	return nil
+}
+
+// mapErr names the conditions that docs/spec/errors.yaml maps, and reports the remaining SQLite errors as DRIVER.
+// SQLITE_BUSY reports a lock that another connection still held when the busy_timeout wait ended, so it is CANCELED.
+// Every message ends with the name of the extended result code (INT-154).
 func mapErr(err error) error {
 	var se *sqlite.Error
 	if !errors.As(err, &se) {
 		return err
 	}
-	if code := sqliteCode(se.Code(), se.Error()); code != "" {
-		return &ir.Error{Code: code, Msg: se.Error()}
+	code := sqliteCode(se.Code(), se.Error())
+	if code == "" {
+		code = orm.CodeDriver
 	}
-	return err
+	return &ir.Error{Code: code, Msg: se.Error() + resultCodeSuffix(se.Code())}
 }
 
 // sqliteCode is the ORM code of a SQLite extended result code n, or "" when the executor reports the error as DRIVER.
