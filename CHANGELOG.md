@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The Go described read refuses the MySQL zero date 0000-00-00 as INT-103 states, as its grid read does: a DATE or DATETIME zero date fails with GRID_TEMPORAL_VALUE instead of reading as 0001-01-01 (T334-3-3-6-1)
+- The PHP and PHP extension described reads check their temporal text as INT-103 states: a text that is not in the dbspec form fails with GRID_TEMPORAL_VALUE, and an SQLite text must have the fraction digits that its dbspec CHECK fixes; Go, TypeScript, Python and Rust cut the described page before the sentinel row is converted (T334-3-3-7)
 - The Rust described read of a SQLite DATETIME column with no CHECK takes precision 0 as INT-103 states, so a non-zero fraction fails GRID_TEMPORAL_PRECISION instead of being read (T334-3-3-7-3)
 - The Go, TypeScript and Python described read of a SQLite DATETIME column with no CHECK takes precision 0 as INT-103 states, so a whole-second text reads as its dbspec text and a non-zero fraction fails with GRID_TEMPORAL_PRECISION (T334-3-3-7-2)
 - The PHP described read of a page cuts the sentinel row (the row past the limit of the LIMIT limit+1 read) before it converts the rows, so a page of one row no longer fails GRID_TEMPORAL_VALUE on the next row, which is never read: the catalog_connection recipe case described_temporal_text reads its SQLite pages in every runtime (T334-3-3-7-1).

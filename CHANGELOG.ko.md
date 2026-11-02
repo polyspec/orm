@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ebedafc909b062a5f993bfe46eddab2bdc6fb08219cee9a2fcc3ea82351fd74b -->
+<!-- source-sha256: bbd5d93b8b9594acc3a519be8b3e9a76f919b9dfdcc610ad351a03a9f79cd99e -->
 # 변경 이력
 
 ## Unreleased
 
+- Go의 기술된 읽기는 MySQL 영날짜 0000-00-00을 INT-103대로 거부한다(grid 읽기와 같다): 영날짜 DATE와 DATETIME은 0001-01-01로 읽히는 대신 GRID_TEMPORAL_VALUE로 실패한다 (T334-3-3-6-1)
+- PHP와 PHP 확장의 기술된 읽기는 temporal 텍스트를 INT-103대로 검사한다: dbspec 형식이 아닌 텍스트는 GRID_TEMPORAL_VALUE로 실패하고, SQLite 텍스트는 dbspec CHECK가 고정한 소수부 자릿수를 가져야 한다. Go, TypeScript, Python, Rust는 sentinel 행을 변환하기 전에 기술된 page를 자른다 (T334-3-3-7)
 - Rust의 CHECK가 없는 SQLite DATETIME 열의 기술된 읽기는 INT-103대로 precision 0을 쓴다: 0이 아닌 소수부는 GRID_TEMPORAL_PRECISION으로 실패한다 (T334-3-3-7-3)
 - Go, TypeScript, Python의 CHECK가 없는 SQLite DATETIME 열의 기술된 읽기는 INT-103대로 precision 0을 쓴다: 소수부가 없는 텍스트는 dbspec 텍스트로 읽히고, 0이 아닌 소수부는 GRID_TEMPORAL_PRECISION으로 실패한다 (T334-3-3-7-2)
 - PHP의 기술된 table page 읽기는 행을 변환한 뒤에야 limit까지 자르므로, limit을 넘는 sentinel 행(LIMIT limit+1 읽기의 마지막 행)의 값이 page를 실패시켰다. 이제 page를 먼저 자르므로 그 행은 읽히지 않는다: catalog_connection recipe의 case described_temporal_text가 모든 runtime에서 SQLite page를 읽는다 (T334-3-3-7-1).

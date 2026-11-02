@@ -81,7 +81,7 @@ func TestCatalogDescribedTemporalRefusesSQLiteTextOutsideCheck(t *testing.T) {
 		ddl  string
 		code string
 	}{
-		{name: "loose", ddl: "CREATE TABLE loose (id INTEGER PRIMARY KEY, dt DATETIME); INSERT INTO loose VALUES (1, '2024-02-29 01:02:03')", code: "GRID_TEMPORAL_PRECISION"},
+		{name: "loose", ddl: "CREATE TABLE loose (id INTEGER PRIMARY KEY, dt DATETIME); INSERT INTO loose VALUES (1, '2024-02-29 01:02:03.5')", code: "GRID_TEMPORAL_PRECISION"},
 		{name: "wrong", ddl: "CREATE TABLE wrong (id INTEGER PRIMARY KEY, d DATE); INSERT INTO wrong VALUES (1, 'not a date')", code: "GRID_TEMPORAL_VALUE"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -158,6 +158,8 @@ func TestCatalogDescribedTemporalText(t *testing.T) {
 		{name: "SQLite date", value: "2024-02-29", native: "DATE", dialect: "sqlite", want: "2024-02-29"},
 		{name: "SQLite TIME(3) is not a dbspec declaration", value: "12:34:56.5", native: "TIME(3)", dialect: "sqlite", want: "12:34:56.5"},
 		{name: "SQLite text of other digits than its CHECK", value: "12:34:56.5", native: "TIME", dialect: "sqlite", code: "GRID_TEMPORAL_PRECISION"},
+		{name: "MySQL zero date on the described path", value: time.Time{}, native: "date", dialect: "mysql", code: "GRID_TEMPORAL_VALUE"},
+		{name: "MySQL zero datetime on the described path", value: time.Time{}, native: "datetime(3)", dialect: "mysql", code: "GRID_TEMPORAL_VALUE"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			column := CatalogColumn{Name: "c", NativeType: test.native}

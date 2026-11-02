@@ -115,6 +115,10 @@ func catalogDescribedTemporal(value any, column CatalogColumn, dialect string) (
 	var text string
 	switch v := value.(type) {
 	case time.Time:
+		if dialect == "mysql" && v.IsZero() {
+			// INT-103 and T334-3-3-4: the MySQL zero date 0000-00-00 is a date outside 0001-01-01 to 9999-12-31, as the grid path refuses it.
+			return invalid("MySQL zero date 0000-00-00 is outside 0001-01-01 to 9999-12-31")
+		}
 		date, err := catalogGridDate(v.Year(), int(v.Month()), v.Day())
 		if err != nil {
 			return invalid("%v", err)
