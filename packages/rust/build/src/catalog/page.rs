@@ -2,7 +2,7 @@
 use super::{metadata, read_only, temporal, TableMetadata, TableRef};
 use crate::tool_db::{Conn, GridQueryResult, QueryLimits};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TablePage {
     pub metadata: TableMetadata,
     pub result: GridQueryResult,
@@ -47,20 +47,17 @@ pub(super) async fn read(connection: &mut Conn, dialect: &str, table: &TableRef,
         limit + 1
     );
     read_only::validate(&sql, dialect).map_err(|error| error.to_string())?;
-    let result = temporal::read(connection, &metadata, dialect, &sql, &[], QueryLimits { max_rows: limit + 1, max_bytes: 8 * 1024 * 1024 }).await?;
+    let (result, has_more) =
+        temporal::read_page(connection, &metadata, dialect, &sql, QueryLimits { max_rows: limit + 1, max_bytes: 8 * 1024 * 1024 }, limit).await?;
     let after = metadata::describe(connection, dialect, table).await?;
-    assemble(metadata, result, after, limit, offset)
+    assemble(metadata, result, has_more, after, limit, offset)
 }
-fn assemble(metadata: TableMetadata, mut result: GridQueryResult, after: TableMetadata, limit: usize, offset: u64) -> Result<TablePage, String> {
+fn assemble(metadata: TableMetadata, result: GridQueryResult, has_more: bool, after: TableMetadata, limit: usize, offset: u64) -> Result<TablePage, String> {
     if result.columns.len() != metadata.columns.len() || result.columns.iter().zip(&metadata.columns).any(|(actual, declared)| actual.name != declared.name) {
         return Err("TABLE_PAGE_METADATA_CHANGED: prepared columns differ from descriptor".into());
     }
     if after != metadata {
         return Err("TABLE_PAGE_METADATA_CHANGED: descriptor changed during read".into());
-    }
-    let has_more = result.rows.len() > limit;
-    if has_more {
-        result.rows.pop();
     }
     let order_by = metadata.primary_key.clone();
     Ok(TablePage { metadata, result, limit, offset, order_by, has_more })

@@ -78,13 +78,14 @@ func (c *CatalogConnection) TablePage(ctx context.Context, table CatalogTableRef
 		if !sameDescriptor(after, metadata) {
 			return CatalogTablePage{}, catalogErr(catalogCodePageChanged, "descriptor changed during read")
 		}
+		// The sentinel row is cut before conversion, so a value past the page is never read.
+		hasMore := len(raw.rows) > limit
+		if hasMore {
+			raw.rows = raw.rows[:limit]
+		}
 		rows, err := catalogConvertDescribed(raw, metadata, c.dialect)
 		if err != nil {
 			return CatalogTablePage{}, err
-		}
-		hasMore := len(rows) > limit
-		if hasMore {
-			rows = rows[:limit]
 		}
 		return CatalogTablePage{
 			Metadata: metadata,
@@ -118,6 +119,21 @@ type CatalogRowSnapshot struct {
 
 // Revision is the SHA-256 revision of the descriptor and the cells of the snapshot, in lowercase hexadecimal.
 func (r CatalogRowSnapshot) Revision() string { return r.revision }
+
+// Keys returns the primary-key cells of the snapshot in constraint order.
+func (r CatalogRowSnapshot) Keys() []any {
+	keys := make([]any, len(r.keyIndexes))
+	for i, at := range r.keyIndexes {
+		keys[i] = r.cells[at]
+	}
+	return keys
+}
+
+// KeyIndexes returns the position of each primary-key cell among the columns of the snapshot, in constraint order.
+func (r CatalogRowSnapshot) KeyIndexes() []int { return slices.Clone(r.keyIndexes) }
+
+// CapturedCells returns the original cells of the snapshot in physical column order, which the revision covers.
+func (r CatalogRowSnapshot) CapturedCells() []any { return slices.Clone(r.cells) }
 
 // CatalogSnapshotFromPage captures the row at index of a page. The table must have a reliable row identity, and the page
 // must be a page of that table as TablePage reads it.

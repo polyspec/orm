@@ -2485,7 +2485,9 @@ ZEND_METHOD(Polyspec_Orm_CatalogColumn, __construct)
 {
     zend_string *name, *native, *default_expression;
     bool nullable, generated, automatic, expression_default;
-    ZEND_PARSE_PARAMETERS_START(7, 7)
+    zend_long check_precision = 0;
+    bool check_precision_null = true;
+    ZEND_PARSE_PARAMETERS_START(7, 8)
         Z_PARAM_STR(name)
         Z_PARAM_STR(native)
         Z_PARAM_BOOL(nullable)
@@ -2493,6 +2495,8 @@ ZEND_METHOD(Polyspec_Orm_CatalogColumn, __construct)
         Z_PARAM_BOOL(automatic)
         Z_PARAM_STR_OR_NULL(default_expression)
         Z_PARAM_BOOL(expression_default)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_LONG_OR_NULL(check_precision, check_precision_null)
     ZEND_PARSE_PARAMETERS_END();
     init_str(ZEND_THIS, "name", name);
     init_str(ZEND_THIS, "nativeType", native);
@@ -2501,6 +2505,9 @@ ZEND_METHOD(Polyspec_Orm_CatalogColumn, __construct)
     init_bool(ZEND_THIS, "automaticKey", automatic);
     init_str_or_null(ZEND_THIS, "defaultExpression", default_expression);
     init_bool(ZEND_THIS, "expressionDefault", expression_default);
+    zval check_value;
+    if (check_precision_null) ZVAL_NULL(&check_value); else ZVAL_LONG(&check_value, check_precision);
+    init_prop(ZEND_THIS, "checkPrecision", &check_value);
 }
 
 ZEND_METHOD(Polyspec_Orm_CatalogTableMetadata, __construct)

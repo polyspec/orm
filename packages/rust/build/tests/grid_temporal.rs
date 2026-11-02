@@ -26,7 +26,7 @@ fn quote(value: &str, dialect: &str) -> String {
     format!("{mark}{value}{mark}")
 }
 
-/// For each dialect, the table definition with date, time(0), time(3), datetime(0), datetime(6), and timestamp without p (PostgreSQL)
+/// For each dialect, the table definition with date, time(0), time(3), datetime(0), datetime(6), and timestamp without p (PostgreSQL).
 /// The last column of MySQL specifies p 6.
 fn columns(dialect: &str) -> &'static str {
     match dialect {
@@ -34,7 +34,16 @@ fn columns(dialect: &str) -> &'static str {
         "postgres" => {
             "k BIGINT NOT NULL PRIMARY KEY, d date NULL, t0 time(0) NULL, t3 time(3) NULL, dt0 timestamp(0) NULL, dt6 timestamp(6) NULL, dts timestamp NULL"
         }
-        _ => "k INTEGER NOT NULL PRIMARY KEY, d DATE NULL, t0 TIME NULL, t3 TIME NULL, dt0 DATETIME NULL, dt6 DATETIME NULL, dts DATETIME NULL",
+        // SQLite has no declared precision: a time(3) or datetime(6) column carries the dbspec CHECK that fixes its digits
+        // (INT-103), and a column without one has precision 0.
+        _ => concat!(
+            "k INTEGER NOT NULL PRIMARY KEY, d DATE NULL, t0 TIME NULL, ",
+            "t3 TIME NULL CHECK (length(\"t3\") = 12 AND substr(\"t3\", 1, 8) IS time(substr(\"t3\", 1, 8)) AND substr(\"t3\", 9, 1) = '.' AND substr(\"t3\", 10) GLOB '[0-9][0-9][0-9]')",
+            ", dt0 DATETIME NULL, ",
+            "dt6 DATETIME NULL CHECK (length(\"dt6\") = 26 AND substr(\"dt6\", 1, 19) IS datetime(substr(\"dt6\", 1, 19)) AND substr(\"dt6\", 12, 2) < '24' AND substr(\"dt6\", 20, 1) = '.' AND substr(\"dt6\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]')",
+            ", ",
+            "dts DATETIME NULL CHECK (length(\"dts\") = 26 AND substr(\"dts\", 1, 19) IS datetime(substr(\"dts\", 1, 19)) AND substr(\"dts\", 12, 2) < '24' AND substr(\"dts\", 20, 1) = '.' AND substr(\"dts\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]')"
+        ),
     }
 }
 
@@ -59,7 +68,12 @@ fn write_columns(dialect: &str) -> &'static str {
     match dialect {
         "mysql" => "k BIGINT NOT NULL PRIMARY KEY, d DATE NULL, t3 TIME(3) NULL, dt6 DATETIME(6) NULL",
         "postgres" => "k BIGINT NOT NULL PRIMARY KEY, d date NULL, t3 time(3) NULL, dt6 timestamp(6) NULL",
-        _ => "k INTEGER NOT NULL PRIMARY KEY, d DATE NULL, t3 TIME NULL, dt6 DATETIME NULL",
+        _ => concat!(
+            "k INTEGER NOT NULL PRIMARY KEY, d DATE NULL, ",
+            "t3 TIME NULL CHECK (length(\"t3\") = 12 AND substr(\"t3\", 1, 8) IS time(substr(\"t3\", 1, 8)) AND substr(\"t3\", 9, 1) = '.' AND substr(\"t3\", 10) GLOB '[0-9][0-9][0-9]')",
+            ", ",
+            "dt6 DATETIME NULL CHECK (length(\"dt6\") = 26 AND substr(\"dt6\", 1, 19) IS datetime(substr(\"dt6\", 1, 19)) AND substr(\"dt6\", 12, 2) < '24' AND substr(\"dt6\", 20, 1) = '.' AND substr(\"dt6\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]')"
+        ),
     }
 }
 

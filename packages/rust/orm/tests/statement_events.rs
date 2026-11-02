@@ -20,8 +20,10 @@ use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, StatementEvent, Subsc
 use polyspec_orm_case_database::CaseDatabase;
 use serde_json::{json, Value};
 
-static EVENTS_SCHEMA: Schema =
-    Schema::new(include_str!("../../../../contracts/fixtures/statement_events/statement_events.dbs"), "sha256:0f576f8672d1b7c7ad72fa90e88dfcbcfeb41d35efd02cc7afe3ce6765f8b207");
+static EVENTS_SCHEMA: Schema = Schema::new(
+    include_str!("../../../../contracts/fixtures/statement_events/statement_events.dbs"),
+    "sha256:0f576f8672d1b7c7ad72fa90e88dfcbcfeb41d35efd02cc7afe3ce6765f8b207",
+);
 static EVENT_PROBE: Entity = Entity {
     name: "event_probe",
     schema: &EVENTS_SCHEMA,
@@ -354,11 +356,7 @@ fn statement_events_server_transactions_named_once() {
 
 fn main() {
     let trials = vec![
-        polyspec_orm_testcase::async_trial(
-            "statement_events_server_transactions",
-            polyspec_orm_testcase::DATABASE,
-            statement_events_server_transactions,
-        ),
+        polyspec_orm_testcase::async_trial("statement_events_server_transactions", polyspec_orm_testcase::DATABASE, statement_events_server_transactions),
         polyspec_orm_testcase::trial(
             "statement_events_server_transactions_named_once",
             polyspec_orm_testcase::COMPUTE,

@@ -6,9 +6,5 @@
 use polyspec_orm_tests::recipe;
 
 fn main() {
-    polyspec_orm_testcase::run(recipe::statement_trials(
-        "statement_events_mysql",
-        "contracts/fixtures/statement_events/statement_events.json",
-        "mysql",
-    ));
+    polyspec_orm_testcase::run(recipe::statement_trials("statement_events_mysql", "contracts/fixtures/statement_events/statement_events.json", "mysql"));
 }

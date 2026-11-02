@@ -67,10 +67,10 @@ func catalogTemporalKind(column CatalogColumn, dialect string) (kind string, pre
 			if strings.ToUpper(native) == "DATETIME" {
 				kind = "datetime"
 			}
-			if column.checkPrecision == nil {
+			if column.CheckPrecision == nil {
 				return kind, 0, false, true
 			}
-			return kind, *column.checkPrecision, true, true
+			return kind, *column.CheckPrecision, true, true
 		}
 	}
 	return "", 0, false, false
@@ -101,7 +101,11 @@ func catalogDescribedTemporal(value any, column CatalogColumn, dialect string) (
 			return text, nil
 		}
 		if !declared {
-			return nil, catalogErr(CodeGridTemporalPrecision, "column %q has no dbspec CHECK that fixes its fraction digits", column.Name)
+			// INT-103 and DIA-24: a SQLite DATETIME with no CHECK has precision 0. A CHECK-less TIME stays a refusal (T334-3-3-8).
+			if kind != "datetime" {
+				return nil, catalogErr(CodeGridTemporalPrecision, "column %q has no dbspec CHECK that fixes its fraction digits", column.Name)
+			}
+			precision = 0
 		}
 		if digits != precision {
 			return nil, catalogErr(CodeGridTemporalPrecision, "column %q holds %d fraction digits; its dbspec CHECK fixes %d", column.Name, digits, precision)
@@ -111,6 +115,10 @@ func catalogDescribedTemporal(value any, column CatalogColumn, dialect string) (
 	var text string
 	switch v := value.(type) {
 	case time.Time:
+		if dialect == "mysql" && v.IsZero() {
+			// INT-103 and T334-3-3-4: the MySQL zero date 0000-00-00 is a date outside 0001-01-01 to 9999-12-31, as the grid path refuses it.
+			return invalid("MySQL zero date 0000-00-00 is outside 0001-01-01 to 9999-12-31")
+		}
 		date, err := catalogGridDate(v.Year(), int(v.Month()), v.Day())
 		if err != nil {
 			return invalid("%v", err)

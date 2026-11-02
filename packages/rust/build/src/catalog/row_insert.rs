@@ -67,6 +67,7 @@ impl CatalogConnection {
             if &descriptor != declared {
                 return Err("ROW_SCHEMA_CHANGED: insertion descriptor changed".into());
             }
+            super::temporal::check_write_precision(&mut connection, &descriptor, values, &self.dialect).await?;
             if self.dialect == "mysql" {
                 mysql_safety(&mut connection, &descriptor).await?;
             }
@@ -99,13 +100,13 @@ impl CatalogConnection {
             };
             let params = values.iter().map(|(_, value)| value.clone()).collect::<Vec<_>>();
             let keys = if let Some(keys) = keys {
-                let affected = connection.exec(&sql, &params).await.map_err(|e| e.to_string())?;
+                let affected = connection.exec(&sql, &params).await.map_err(super::catalog_write_error)?;
                 if affected != 1 {
                     return Err("ROW_WRITE_MISMATCH: expected exactly one inserted row".into());
                 }
                 keys
             } else if let Some(locator) = locator {
-                let affected = connection.exec(&sql, &params).await.map_err(|error| error.to_string())?;
+                let affected = connection.exec(&sql, &params).await.map_err(super::catalog_write_error)?;
                 if affected != 1 {
                     return Err("ROW_WRITE_MISMATCH: expected exactly one inserted row".into());
                 }

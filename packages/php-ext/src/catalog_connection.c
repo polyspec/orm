@@ -4,6 +4,8 @@
  * build the PDO handle of the Db that the extension implements (db.c); the catalog operations are here.
  */
 #include "dbspec.h"
+#include <errno.h>
+#include <ctype.h>
 
 zend_class_entry *catalog_ce;
 zend_class_entry *catalog_ce_metadata, *catalog_ce_result, *catalog_ce_table_page, *catalog_ce_snapshot;
@@ -28,7 +30,7 @@ static const char *cat_kind_sql(const char *dialect)
 static const char *cat_columns_sql(const char *dialect)
 {
     if (strcmp(dialect, "mysql") == 0) return "SELECT c.COLUMN_NAME,c.COLUMN_TYPE,c.IS_NULLABLE='YES',(c.GENERATION_EXPRESSION IS NOT NULL AND c.GENERATION_EXPRESSION<>''),COALESCE(pk.ORDINAL_POSITION,0),(c.EXTRA LIKE '%auto_increment%'),c.COLUMN_DEFAULT,(c.EXTRA LIKE '%DEFAULT_GENERATED%') FROM information_schema.COLUMNS c LEFT JOIN information_schema.KEY_COLUMN_USAGE pk ON pk.CONSTRAINT_SCHEMA=c.TABLE_SCHEMA AND pk.TABLE_NAME=c.TABLE_NAME AND pk.COLUMN_NAME=c.COLUMN_NAME AND pk.CONSTRAINT_NAME='PRIMARY' WHERE c.TABLE_SCHEMA=? AND c.TABLE_NAME=? ORDER BY c.ORDINAL_POSITION";
-    if (strcmp(dialect, "postgres") == 0) return "SELECT a.attname::text,format_type(a.atttypid,a.atttypmod),NOT a.attnotnull,(a.attgenerated<>'' OR a.attidentity='a'),COALESCE(k.ord,0),(a.attidentity<>''),pg_get_expr(d.adbin,d.adrelid),(d.adbin IS NOT NULL) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_attribute a ON a.attrelid=c.oid LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum LEFT JOIN pg_index i ON i.indrelid=c.oid AND i.indisprimary LEFT JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS k(attnum,ord) ON k.attnum=a.attnum WHERE n.nspname=? AND c.relname=? AND a.attnum>0 AND NOT a.attisdropped ORDER BY a.attnum";
+    if (strcmp(dialect, "postgres") == 0) return "SELECT a.attname::text,format_type(a.atttypid,a.atttypmod),NOT a.attnotnull,(a.attgenerated<>'' OR a.attidentity='a'),COALESCE(k.ord,0),(a.attidentity<>''),CASE WHEN length(a.attgenerated)=0 THEN pg_get_expr(d.adbin,d.adrelid) END,(d.adbin IS NOT NULL AND length(a.attgenerated)=0) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_attribute a ON a.attrelid=c.oid LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum LEFT JOIN pg_index i ON i.indrelid=c.oid AND i.indisprimary LEFT JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS k(attnum,ord) ON k.attnum=a.attnum WHERE n.nspname=? AND c.relname=? AND a.attnum>0 AND NOT a.attisdropped ORDER BY a.attnum";
     return "SELECT name,type,NOT \"notnull\",hidden<>0,pk,0,dflt_value,(dflt_value IS NOT NULL) FROM pragma_table_xinfo(?,?) ORDER BY cid";
 }
 
@@ -61,7 +63,9 @@ static bool cat_try_exec(zval *pdo, const char *sql)
     return ok;
 }
 
+static bool cat_grid_link(zval *self, zval *link);
 static bool cat_call_n(zval *obj, const char *name, zval *ret, uint32_t argc, zval *argv);
+static bool cat_open_mysqli(zval *self, zval *link);
 
 /* Executes a prepared statement with its arguments. A PHP bool is bound as a bool (DIA-29): the execute of an array binds a
  * false as the empty string, which MySQL and SQLite refuse for a boolean column. So when an argument is a bool, every
@@ -98,30 +102,128 @@ static bool cat_execute(zval *st, zval *args, zval *ret)
     return pdo_call(st, "execute", ret, 0, NULL, NULL);
 }
 
-/* A bounded result as the PHP client's query(): the names, the native type names (upper case) and the rows, all arrays the
- * caller releases. It fails with CATALOG_LIMIT when the rows or the bytes of values are over the budget. */
-static bool cat_query(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zend_long max_bytes,
-                      zval *names, zval *types, zval *rows)
+/* The MySQL buffering attribute of the PDO connection: Pdo\Mysql on PHP 8.4 and later, the PDO constant before. */
+static zend_long cat_mysql_buffered_attr(void)
 {
-    array_init(names);
-    array_init(types);
-    array_init(rows);
-    zval q, st, r;
-    ZVAL_STRING(&q, sql);
+    zval *c = zend_get_constant_str("Pdo\\Mysql::ATTR_USE_BUFFERED_QUERY", sizeof("Pdo\\Mysql::ATTR_USE_BUFFERED_QUERY") - 1);
+    if (c == NULL) {
+        c = zend_get_constant_str("PDO::MYSQL_ATTR_USE_BUFFERED_QUERY", sizeof("PDO::MYSQL_ATTR_USE_BUFFERED_QUERY") - 1);
+    }
+    return c != NULL && Z_TYPE_P(c) == IS_LONG ? Z_LVAL_P(c) : 1000;
+}
+
+/* Turns the buffering of the next MySQL statement on or off: an unbuffered statement streams its rows as they are fetched. */
+static bool cat_mysql_buffered(zval *pdo, bool on)
+{
+    zval attr, value, ret;
+    ZVAL_LONG(&attr, cat_mysql_buffered_attr());
+    ZVAL_BOOL(&value, on);
+    if (!pdo_call(pdo, "setAttribute", &ret, 2, &attr, &value)) return false;
+    zval_ptr_dtor(&ret);
+    return true;
+}
+
+/* The connection id of the PDO MySQL connection: a budget stop kills the running query by it. */
+static bool cat_mysql_connection_id(zval *pdo, zend_long *id)
+{
+    zval q, st, r, mode, row;
+    *id = 0;
+    ZVAL_STRING(&q, "SELECT CONNECTION_ID()");
     bool ok = pdo_call(pdo, "prepare", &st, 1, &q, NULL);
     zval_ptr_dtor(&q);
-    if (!ok) goto driver;
-    ok = cat_execute(&st, args, &r);
-    if (!ok) goto driver_st;
+    if (!ok) return false;
+    ok = pdo_call(&st, "execute", &r, 0, NULL, NULL);
+    if (!ok) {
+        zval_ptr_dtor(&st);
+        return false;
+    }
     zval_ptr_dtor(&r);
+    ZVAL_LONG(&mode, CAT_PDO_FETCH_NUM);
+    ok = pdo_call(&st, "fetch", &row, 1, &mode, NULL);
+    zval_ptr_dtor(&st);
+    if (!ok) return false;
+    if (Z_TYPE(row) == IS_ARRAY) {
+        zval *v = zend_hash_index_find(Z_ARRVAL(row), 0);
+        if (v != NULL && Z_TYPE_P(v) == IS_LONG) {
+            *id = Z_LVAL_P(v);
+        } else if (v != NULL && Z_TYPE_P(v) == IS_STRING) {
+            *id = ZEND_STRTOL(Z_STRVAL_P(v), NULL, 10);
+        }
+    }
+    zval_ptr_dtor(&row);
+    return true;
+}
+
+/* Kills the running query of a connection id through a connection of its own: the killed query ends with an error on its own
+ * connection, which keeps the connection that the stop rolls back. */
+static bool cat_kill_thread(zval *owner, zend_long id)
+{
+    zval link;
+    if (!cat_open_mysqli(owner, &link)) return false;
+    char sql[64];
+    snprintf(sql, sizeof(sql), "KILL QUERY %ld", (long)id);
+    zval q, ret;
+    ZVAL_STRING(&q, sql);
+    bool ok = pdo_call(&link, "query", &ret, 1, &q, NULL);
+    zval_ptr_dtor(&q);
+    zval_ptr_dtor(&link);
+    if (ok) zval_ptr_dtor(&ret);
+    return ok;
+}
+
+/* Kills the query that runs on the connection id of the PDO connection of a catalog's Db. */
+static bool cat_kill_query(zval *db, zend_long id)
+{
+    zval rv_s, *state = catalog_prop(db, "state", &rv_s);
+    zval rv_o, *owner = zend_read_property(Z_OBJCE_P(state), Z_OBJ_P(state), "catalogOwner", sizeof("catalogOwner") - 1, true, &rv_o);
+    if (Z_TYPE_P(owner) != IS_OBJECT) {
+        db_throw_orm("DRIVER", "the catalog that owns the connection is unknown");
+        return false;
+    }
+    return cat_kill_thread(owner, id);
+}
+
+/* Adds a fetched row to a bounded result. It returns 0 when the row fits, 1 when the rows are over the budget and 2 when
+ * the bytes of values are; a row that does not fit is released. */
+static int cat_bound_row(zval *rows, zval *row, zend_long max_rows, zend_long max_bytes, zend_long *budget)
+{
+    if ((zend_long)zend_hash_num_elements(Z_ARRVAL_P(rows)) == max_rows) {
+        zval_ptr_dtor(row);
+        return 1;
+    }
+    zval *v;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(row), v) {
+        *budget += Z_TYPE_P(v) == IS_STRING ? (zend_long)Z_STRLEN_P(v) : 8;
+    } ZEND_HASH_FOREACH_END();
+    if (*budget > max_bytes) {
+        zval_ptr_dtor(row);
+        return 2;
+    }
+    add_next_index_zval(rows, row);
+    return 0;
+}
+
+static void cat_limit_throw(int kind, zend_long max_rows, zend_long max_bytes)
+{
+    if (kind == 1) {
+        db_throw_orm("CATALOG_LIMIT", "result has more than %ld rows", (long)max_rows);
+    } else {
+        db_throw_orm("CATALOG_LIMIT", "result has more than %ld bytes of values", (long)max_bytes);
+    }
+}
+
+/* The column names and the upper-case native type names of an executed statement. */
+static bool cat_statement_columns(zval *st, zval *names, zval *types)
+{
     zval count;
-    ok = pdo_call(&st, "columnCount", &count, 0, NULL, NULL);
-    if (!ok) goto driver_st;
+    if (!pdo_call(st, "columnCount", &count, 0, NULL, NULL)) return false;
     for (zend_long i = 0; i < Z_LVAL(count); i++) {
         zval index, meta;
         ZVAL_LONG(&index, i);
-        ok = pdo_call(&st, "getColumnMeta", &meta, 1, &index, NULL);
-        if (!ok) goto driver_st_count;
+        if (!pdo_call(st, "getColumnMeta", &meta, 1, &index, NULL)) {
+            zval_ptr_dtor(&count);
+            return false;
+        }
         zval *name = Z_TYPE(meta) == IS_ARRAY ? zend_hash_str_find(Z_ARRVAL(meta), "name", 4) : NULL;
         zval *native = Z_TYPE(meta) == IS_ARRAY ? zend_hash_str_find(Z_ARRVAL(meta), "native_type", 11) : NULL;
         add_next_index_str(names, name != NULL && Z_TYPE_P(name) == IS_STRING ? zend_string_copy(Z_STR_P(name)) : ZSTR_EMPTY_ALLOC());
@@ -130,37 +232,276 @@ static bool cat_query(zval *db, zval *pdo, const char *sql, zval *args, zend_lon
         zval_ptr_dtor(&meta);
     }
     zval_ptr_dtor(&count);
+    return true;
+}
+
+#define CAT_CURSOR "orm_read_ext"
+#define CAT_CURSOR_CHUNK 256
+
+/* Closes the read cursor, and clears the exception of a close that fails because the read was stopped. */
+static void cat_cursor_close_quiet(zval *pdo)
+{
+    zval q, r;
+    ZVAL_STRING(&q, "CLOSE " CAT_CURSOR);
+    if (pdo_call(pdo, "exec", &r, 1, &q, NULL)) {
+        zval_ptr_dtor(&r);
+    } else {
+        zend_clear_exception();
+    }
+    zval_ptr_dtor(&q);
+}
+
+/* Closes the read cursor after a driver error, and keeps that error as the pending exception. */
+static void cat_cursor_close_keep(zval *pdo)
+{
+    bool had = EG(exception) != NULL;
+    zval saved;
+    if (had) {
+        ZVAL_OBJ(&saved, EG(exception));
+        EG(exception) = NULL;
+    }
+    cat_cursor_close_quiet(pdo);
+    if (had) EG(exception) = Z_OBJ(saved);
+}
+
+/* A PostgreSQL read without parameters through a cursor, in chunks of 256 rows: a budget stop leaves the rest of the
+ * result unread and closes the cursor. */
+static bool cat_cursor_query(zval *db, zval *pdo, const char *sql, zend_long max_rows, zend_long max_bytes,
+                             zval *names, zval *types, zval *rows)
+{
+    zval q, r;
+    zend_string *declare = zend_strpprintf(0, "DECLARE %s NO SCROLL CURSOR FOR %s", CAT_CURSOR, sql);
+    ZVAL_STR(&q, declare);
+    bool ok = pdo_call(pdo, "exec", &r, 1, &q, NULL);
+    zval_ptr_dtor(&q);
+    if (!ok) goto driver;
+    zval_ptr_dtor(&r);
+    zend_long budget = 0;
+    zend_long fetched = CAT_CURSOR_CHUNK;
+    bool described = false;
+    while (fetched == CAT_CURSOR_CHUNK) {
+        zval fq, st, mode;
+        zend_string *fetch_sql = zend_strpprintf(0, "FETCH FORWARD %d FROM %s", CAT_CURSOR_CHUNK, CAT_CURSOR);
+        ZVAL_STR(&fq, fetch_sql);
+        ok = pdo_call(pdo, "prepare", &st, 1, &fq, NULL);
+        zval_ptr_dtor(&fq);
+        if (!ok) goto driver_cursor;
+        ok = pdo_call(&st, "execute", &r, 0, NULL, NULL);
+        if (!ok) {
+            zval_ptr_dtor(&st);
+            goto driver_cursor;
+        }
+        zval_ptr_dtor(&r);
+        if (!described) {
+            if (!cat_statement_columns(&st, names, types)) {
+                zval_ptr_dtor(&st);
+                goto driver_cursor;
+            }
+            described = true;
+        }
+        fetched = 0;
+        ZVAL_LONG(&mode, CAT_PDO_FETCH_NUM);
+        for (;;) {
+            zval row;
+            ok = pdo_call(&st, "fetch", &row, 1, &mode, NULL);
+            if (!ok) {
+                zval_ptr_dtor(&st);
+                goto driver_cursor;
+            }
+            if (Z_TYPE(row) == IS_FALSE) break;
+            fetched++;
+            int limit = cat_bound_row(rows, &row, max_rows, max_bytes, &budget);
+            if (limit != 0) {
+                zval_ptr_dtor(&st);
+                cat_cursor_close_quiet(pdo);
+                cat_limit_throw(limit, max_rows, max_bytes);
+                return false;
+            }
+        }
+        zval_ptr_dtor(&st);
+    }
+    ZVAL_STRING(&q, "CLOSE " CAT_CURSOR);
+    ok = pdo_call(pdo, "exec", &r, 1, &q, NULL);
+    zval_ptr_dtor(&q);
+    if (!ok) goto driver;
+    zval_ptr_dtor(&r);
+    return true;
+driver_cursor:
+    cat_cursor_close_keep(pdo);
+driver:
+    cat_driver_error(db);
+    zval_ptr_dtor(names);
+    zval_ptr_dtor(types);
+    zval_ptr_dtor(rows);
+    return false;
+}
+
+/* Binds the parameters by their PHP types, as the PDO client does for MySQL and SQLite: execute() would bind each as a string,
+ * and a MySQL or SQLite comparison or result type would follow the string. */
+static bool cat_bind_typed(zval *st, zval *args)
+{
+    zend_long index = 1;
+    zval *v;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(args), v) {
+        zend_long type = Z_TYPE_P(v) == IS_NULL ? 0 : Z_TYPE_P(v) == IS_LONG ? 1 : (Z_TYPE_P(v) == IS_TRUE || Z_TYPE_P(v) == IS_FALSE) ? 5 : 2;
+        zval argv[3], ret;
+        ZVAL_LONG(&argv[0], index++);
+        ZVAL_COPY(&argv[1], v);
+        ZVAL_LONG(&argv[2], type);
+        bool ok = cat_call_n(st, "bindValue", &ret, 3, argv);
+        zval_ptr_dtor(&argv[1]);
+        if (!ok) return false;
+        zval_ptr_dtor(&ret);
+    } ZEND_HASH_FOREACH_END();
+    return true;
+}
+
+/* A bounded result as the PHP client's query(): the names, the native type names (upper case) and the rows, all arrays the
+ * caller releases. It fails with CATALOG_LIMIT when the rows or the bytes of values are over the budget. A MySQL statement
+ * streams its rows unbuffered, and a budget stop kills it by its connection id; a PostgreSQL statement without parameters
+ * reads through a cursor. */
+static bool cat_query_body(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zend_long max_bytes,
+                           zval *names, zval *types, zval *rows);
+
+/* A PostgreSQL statement with parameters is rewritten: PDO binds only ? placeholders, so each $n becomes ? and its parameter
+ * follows in the order of the placeholders (a repeated $n binds its value again). */
+static bool cat_pg_rewrite(zend_string *sql, zval *args, zend_string **out_sql, zval *out_args)
+{
+    smart_str s = {0};
+    array_init(out_args);
+    const char *p = ZSTR_VAL(sql), *end = p + ZSTR_LEN(sql);
+    while (p < end) {
+        if (*p == '$' && p + 1 < end && p[1] >= '0' && p[1] <= '9') {
+            const char *q = p + 1;
+            zend_ulong n = 0;
+            while (q < end && *q >= '0' && *q <= '9') {
+                n = n * 10 + (zend_ulong)(*q - '0');
+                q++;
+            }
+            zval *v = n >= 1 ? zend_hash_index_find(Z_ARRVAL_P(args), n - 1) : NULL;
+            if (v == NULL) {
+                smart_str_free(&s);
+                zval_ptr_dtor(out_args);
+                db_throw_orm("DRIVER", "placeholder $%lu has no parameter", (unsigned long)n);
+                return false;
+            }
+            Z_TRY_ADDREF_P(v);
+            add_next_index_zval(out_args, v);
+            smart_str_appendc(&s, '?');
+            p = q;
+        } else {
+            smart_str_appendc(&s, *p);
+            p++;
+        }
+    }
+    smart_str_0(&s);
+    *out_sql = smart_str_extract(&s);
+    return true;
+}
+
+static bool cat_has_pg_placeholder(const char *sql)
+{
+    for (const char *p = sql; *p != '\0'; p++) {
+        if (*p == '$' && p[1] >= '0' && p[1] <= '9') return true;
+    }
+    return false;
+}
+
+/* A bounded result as the PHP client's query(), with the PostgreSQL placeholders of a statement with parameters rewritten. */
+static bool cat_query(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zend_long max_bytes,
+                      zval *names, zval *types, zval *rows)
+{
+    array_init(names);
+    array_init(types);
+    array_init(rows);
+    zval driver;
+    if (!pdo_call(db, "driver", &driver, 0, NULL, NULL)) {
+        cat_driver_error(db);
+        zval_ptr_dtor(names);
+        zval_ptr_dtor(types);
+        zval_ptr_dtor(rows);
+        return false;
+    }
+    bool postgres = Z_TYPE(driver) == IS_STRING && zend_string_equals_literal(Z_STR_P(&driver), "postgres");
+    zval_ptr_dtor(&driver);
+    if (!postgres || zend_hash_num_elements(Z_ARRVAL_P(args)) == 0 || !cat_has_pg_placeholder(sql)) {
+        return cat_query_body(db, pdo, sql, args, max_rows, max_bytes, names, types, rows);
+    }
+    zend_string *source = zend_string_init(sql, strlen(sql), 0);
+    zend_string *rewritten = NULL;
+    zval rewritten_args;
+    bool rewrote = cat_pg_rewrite(source, args, &rewritten, &rewritten_args);
+    zend_string_release(source);
+    if (!rewrote) {
+        zval_ptr_dtor(names);
+        zval_ptr_dtor(types);
+        zval_ptr_dtor(rows);
+        return false;
+    }
+    bool ok = cat_query_body(db, pdo, ZSTR_VAL(rewritten), &rewritten_args, max_rows, max_bytes, names, types, rows);
+    zend_string_release(rewritten);
+    zval_ptr_dtor(&rewritten_args);
+    return ok;
+}
+
+static bool cat_query_body(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zend_long max_bytes,
+                           zval *names, zval *types, zval *rows)
+{
+    zval driver;
+    if (!pdo_call(db, "driver", &driver, 0, NULL, NULL)) goto driver;
+    bool postgres = Z_TYPE(driver) == IS_STRING && zend_string_equals_literal(Z_STR_P(&driver), "postgres");
+    bool mysql = Z_TYPE(driver) == IS_STRING && zend_string_equals_literal(Z_STR_P(&driver), "mysql");
+    zval_ptr_dtor(&driver);
+    if (postgres && zend_hash_num_elements(Z_ARRVAL_P(args)) == 0) {
+        return cat_cursor_query(db, pdo, sql, max_rows, max_bytes, names, types, rows);
+    }
+    zend_long connection_id = 0;
+    if (mysql && !cat_mysql_connection_id(pdo, &connection_id)) goto driver;
+    zval q, st, r;
+    ZVAL_STRING(&q, sql);
+    bool ok = pdo_call(pdo, "prepare", &st, 1, &q, NULL);
+    zval_ptr_dtor(&q);
+    if (!ok) goto driver;
+    /* MySQL and SQLite bind each parameter by its PHP type; execute() would bind every one as a string. */
+    bool typed = !postgres && zend_hash_num_elements(Z_ARRVAL_P(args)) > 0;
+    if (typed && !cat_bind_typed(&st, args)) goto driver_st;
+    if (mysql && !cat_mysql_buffered(pdo, false)) goto driver_st;
+    ok = typed ? pdo_call(&st, "execute", &r, 0, NULL, NULL) : cat_execute(&st, args, &r);
+    if (mysql && !cat_mysql_buffered(pdo, true)) {
+        if (ok) zval_ptr_dtor(&r);
+        goto driver_st;
+    }
+    if (!ok) goto driver_st;
+    zval_ptr_dtor(&r);
+    if (!cat_statement_columns(&st, names, types)) goto driver_st;
     zend_long budget = 0;
     for (;;) {
         zval mode, row;
         ZVAL_LONG(&mode, CAT_PDO_FETCH_NUM);
         ok = pdo_call(&st, "fetch", &row, 1, &mode, NULL);
         if (!ok) goto driver_st;
-        if (Z_TYPE(row) == IS_FALSE) {
-            break;
-        }
-        if (zend_hash_num_elements(Z_ARRVAL_P(rows)) == max_rows) {
-            zval_ptr_dtor(&row);
+        if (Z_TYPE(row) == IS_FALSE) break;
+        int limit = cat_bound_row(rows, &row, max_rows, max_bytes, &budget);
+        if (limit != 0) {
+            if (mysql && connection_id > 0 && !cat_kill_query(db, connection_id)) {
+                zval_ptr_dtor(&st);
+                goto driver;
+            }
+            /* The killed query ends its read with an error, the expected end of a stop, so that error is cleared. */
+            if (pdo_call(&st, "closeCursor", &r, 0, NULL, NULL)) {
+                zval_ptr_dtor(&r);
+            } else {
+                zend_clear_exception();
+            }
             zval_ptr_dtor(&st);
-            db_throw_orm("CATALOG_LIMIT", "result has more than %ld rows", (long)max_rows);
+            cat_limit_throw(limit, max_rows, max_bytes);
             return false;
         }
-        zval *v;
-        ZEND_HASH_FOREACH_VAL(Z_ARRVAL(row), v) {
-            budget += Z_TYPE_P(v) == IS_STRING ? (zend_long)Z_STRLEN_P(v) : 8;
-        } ZEND_HASH_FOREACH_END();
-        if (budget > max_bytes) {
-            zval_ptr_dtor(&row);
-            zval_ptr_dtor(&st);
-            db_throw_orm("CATALOG_LIMIT", "result has more than %ld bytes of values", (long)max_bytes);
-            return false;
-        }
-        add_next_index_zval(rows, &row);
     }
+    if (!pdo_call(&st, "closeCursor", &r, 0, NULL, NULL)) goto driver_st;
+    zval_ptr_dtor(&r);
     zval_ptr_dtor(&st);
     return true;
-driver_st_count:
-    zval_ptr_dtor(&count);
 driver_st:
     zval_ptr_dtor(&st);
 driver:
@@ -339,6 +680,11 @@ static void cat_quote(smart_str *out, zend_string *name, const char *dialect)
 static bool cat_cell_value(zval *v, zend_string *type, zval *out)
 {
     if (Z_TYPE_P(v) != IS_STRING) {
+        if (Z_TYPE_P(v) == IS_DOUBLE && (strcmp(ZSTR_VAL(type), "REAL") == 0 || strcmp(ZSTR_VAL(type), "FLOAT") == 0
+                || strcmp(ZSTR_VAL(type), "FLOAT4") == 0)) {
+            ZVAL_DOUBLE(out, (double)(float)Z_DVAL_P(v));
+            return true;
+        }
         ZVAL_COPY(out, v);
         return true;
     }
@@ -452,6 +798,7 @@ static bool cat_table_ref(zval *table, zend_string **ns, zend_string **name)
 typedef struct {
     zend_string *name, *type, *def;
     bool nullable, generated, automatic, expression;
+    zend_long check_precision; /* the CHECK fraction digits of a SQLite TIME or DATETIME column, -1 when none */
 } cat_col;
 
 typedef struct {
@@ -464,6 +811,67 @@ static void cat_col_free(cat_col *c)
     if (c->name) zend_string_release(c->name);
     if (c->type) zend_string_release(c->type);
     if (c->def) zend_string_release(c->def);
+}
+
+/* The fraction digits of a GLOB '[0-9]...' of a CHECK clause: n classes are n digits; -1 when no GLOB of that form. */
+static zend_long cat_check_glob_digits(const char *clause)
+{
+    for (const char *g = strstr(clause, "GLOB '"); g != NULL; g = strstr(g + 1, "GLOB '")) {
+        const char *p = g + 6;
+        zend_long n = 0;
+        while (strncmp(p, "[0-9]", 5) == 0) {
+            p += 5;
+            n++;
+        }
+        if (*p == '\'') return n;
+    }
+    return -1;
+}
+
+/* The fraction digits that the CHECK of a SQLite column fixes, as Go reads them (Catalog::checkPrecision): a GLOB of n
+ * [0-9] classes is n digits, and an IS time( or IS datetime( check is zero digits. -1 when no CHECK names the column. */
+static zend_long cat_check_precision(zend_string *table_sql, zend_string *column)
+{
+    smart_str quoted = {0};
+    smart_str_appendc(&quoted, '"');
+    for (size_t c = 0; c < ZSTR_LEN(column); c++) {
+        if (ZSTR_VAL(column)[c] == '"') smart_str_appendc(&quoted, '"');
+        smart_str_appendc(&quoted, ZSTR_VAL(column)[c]);
+    }
+    smart_str_appendc(&quoted, '"');
+    zend_string *needle = smart_str_extract(&quoted);
+    zend_long result = -1;
+    const char *s = ZSTR_VAL(table_sql);
+    size_t len = ZSTR_LEN(table_sql);
+    for (size_t p = 0; p + 5 <= len && result < 0; p++) {
+        if (zend_binary_strncasecmp(s + p, len - p, "CHECK", 5, 5) != 0) continue;
+        size_t q = p + 5;
+        while (q < len && isspace((unsigned char)s[q])) q++;
+        if (q >= len || s[q] != '(') continue;
+        size_t start = q + 1, i = start;
+        int depth = 1;
+        while (i < len && depth > 0) {
+            if (s[i] == '(') {
+                depth++;
+            } else if (s[i] == ')') {
+                depth--;
+            }
+            i++;
+        }
+        if (depth != 0) continue;
+        zend_string *clause = zend_string_init(s + start, i - 1 - start, 0);
+        if (strstr(ZSTR_VAL(clause), ZSTR_VAL(needle)) != NULL) {
+            zend_long digits = cat_check_glob_digits(ZSTR_VAL(clause));
+            if (digits >= 0) {
+                result = digits;
+            } else if (strstr(ZSTR_VAL(clause), "IS time(") != NULL || strstr(ZSTR_VAL(clause), "IS datetime(") != NULL) {
+                result = 0;
+            }
+        }
+        zend_string_release(clause);
+    }
+    zend_string_release(needle);
+    return result;
 }
 
 /* The descriptor of a table inside a read session (Catalog::describe): the columns in physical order, the primary key in
@@ -526,6 +934,7 @@ static bool cat_describe(zval *db, const char *dialect, zval *pdo, zend_string *
 
     ncols = zend_hash_num_elements(Z_ARRVAL(col_rows));
     cols = ecalloc(ncols ? ncols : 1, sizeof(cat_col));
+    for (size_t q = 0; q < (ncols ? ncols : 1); q++) cols[q].check_precision = -1;
     keys = ecalloc(ncols ? ncols : 1, sizeof(cat_key));
     size_t i = 0;
     zval *row;
@@ -572,6 +981,30 @@ static bool cat_describe(zval *db, const char *dialect, zval *pdo, zend_string *
         i++;
     } ZEND_HASH_FOREACH_END();
     ncols = i;
+
+    /* On SQLite the CHECK of a TIME or DATETIME column fixes its fraction digits (Catalog::describeTable). */
+    if (sqlite && kind != NULL && strcmp(kind, "table") == 0) {
+        zval sql_arg, sql_args, sql_names, sql_types, sql_rows;
+        ZVAL_STR_COPY(&sql_arg, name);
+        array_init(&sql_args);
+        add_next_index_zval(&sql_args, &sql_arg);
+        bool read_sql = cat_query(db, pdo, "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", &sql_args, 1,
+                                  CAT_METADATA_BYTES, &sql_names, &sql_types, &sql_rows);
+        zval_ptr_dtor(&sql_args);
+        if (!read_sql) goto out_cols;
+        zval *table_row = zend_hash_index_find(Z_ARRVAL(sql_rows), 0);
+        zval *table_sql = table_row != NULL && Z_TYPE_P(table_row) == IS_ARRAY ? zend_hash_index_find(Z_ARRVAL_P(table_row), 0) : NULL;
+        if (table_sql != NULL && Z_TYPE_P(table_sql) == IS_STRING) {
+            for (size_t k = 0; k < ncols; k++) {
+                if (zend_string_equals_literal_ci(cols[k].type, "TIME") || zend_string_equals_literal_ci(cols[k].type, "DATETIME")) {
+                    cols[k].check_precision = cat_check_precision(Z_STR_P(table_sql), cols[k].name);
+                }
+            }
+        }
+        zval_ptr_dtor(&sql_names);
+        zval_ptr_dtor(&sql_types);
+        zval_ptr_dtor(&sql_rows);
+    }
 
     /* The key ordinals are 1..n in constraint order. */
     for (size_t a = 1; a < nkeys; a++) {
@@ -628,7 +1061,7 @@ static bool cat_describe(zval *db, const char *dialect, zval *pdo, zend_string *
     array_init(&primary_key);
     for (size_t k = 0; k < ncols; k++) {
         cat_col *col = &cols[k];
-        zval cargs[7], column;
+        zval cargs[8], column;
         ZVAL_STR_COPY(&cargs[0], col->name);
         ZVAL_STR_COPY(&cargs[1], col->type);
         ZVAL_BOOL(&cargs[2], col->nullable);
@@ -636,8 +1069,9 @@ static bool cat_describe(zval *db, const char *dialect, zval *pdo, zend_string *
         ZVAL_BOOL(&cargs[4], col->automatic);
         if (col->def) ZVAL_STR_COPY(&cargs[5], col->def); else ZVAL_NULL(&cargs[5]);
         ZVAL_BOOL(&cargs[6], col->expression);
-        bool made = newobj("Polyspec\\Orm\\CatalogColumn", &column, 7, cargs);
-        for (int a = 0; a < 7; a++) zval_ptr_dtor(&cargs[a]);
+        if (col->check_precision >= 0) ZVAL_LONG(&cargs[7], col->check_precision); else ZVAL_NULL(&cargs[7]);
+        bool made = newobj("Polyspec\\Orm\\CatalogColumn", &column, 8, cargs);
+        for (int a = 0; a < 8; a++) zval_ptr_dtor(&cargs[a]);
         if (!made) {
             zval_ptr_dtor(&columns);
             zval_ptr_dtor(&primary_key);
@@ -1116,24 +1550,33 @@ static bool cat_table_page(zval *db, const char *dialect, zval *pdo, zend_string
         zval nrv, *native = catalog_prop(column, "nativeType", &nrv);
         add_next_index_str(&native_types, zend_string_copy(Z_STR_P(native)));
     } ZEND_HASH_FOREACH_END();
-    zval converted;
-    ok = cat_convert_rows(&rows, &native_types, &converted) && cat_described_rows(&converted, &metadata, dialect);
-    zval_ptr_dtor(&native_types);
+    /* The sentinel row is cut before conversion, so a value past the page is never read. */
+    bool has_more = zend_hash_num_elements(Z_ARRVAL(rows)) > (uint32_t)limit;
+    zval kept;
+    array_init(&kept);
+    zend_ulong taken = 0;
+    zval *raw_row;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL(rows), raw_row) {
+        if (taken == (zend_ulong)limit) break;
+        Z_TRY_ADDREF_P(raw_row);
+        add_next_index_zval(&kept, raw_row);
+        taken++;
+    } ZEND_HASH_FOREACH_END();
     zval_ptr_dtor(&rows);
+    zval converted;
+    ok = cat_convert_rows(&kept, &native_types, &converted) && cat_described_rows(&converted, &metadata, dialect);
+    zval_ptr_dtor(&native_types);
+    zval_ptr_dtor(&kept);
     if (!ok) {
         zval_ptr_dtor(&metadata);
         return false;
     }
-    bool has_more = zend_hash_num_elements(Z_ARRVAL(converted)) > (uint32_t)limit;
     zval page_rows;
     array_init(&page_rows);
-    zend_ulong taken = 0;
     zval *row;
     ZEND_HASH_FOREACH_VAL(Z_ARRVAL(converted), row) {
-        if (taken == (zend_ulong)limit) break;
         Z_TRY_ADDREF_P(row);
         add_next_index_zval(&page_rows, row);
-        taken++;
     } ZEND_HASH_FOREACH_END();
     zval_ptr_dtor(&converted);
     zval column_names;
@@ -1167,19 +1610,25 @@ static void cat_refuse(const char *message)
     db_throw_orm("CATALOG_VALUE", "unsupported grid value: %s", message);
 }
 
+/* A date or time that the grid cannot state (GRID_TEMPORAL_VALUE, as Catalog::dateText and its siblings state). */
+static void cat_refuse_temporal(const char *message)
+{
+    db_throw_orm("GRID_TEMPORAL_VALUE", "unsupported grid value: %s", message);
+}
+
 /* A date of the dbspec form YYYY-MM-DD from 0001-01-01 to 9999-12-31 (Catalog::dateText). */
 static bool cat_date_text(const char *s, size_t n, zval *out)
 {
     static const int days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
     if (n != 10 || s[4] != '-' || s[7] != '-') {
-        cat_refuse("date is not YYYY-MM-DD");
+        cat_refuse_temporal("date is not YYYY-MM-DD");
         return false;
     }
     int y = 0, m = 0, d = 0;
     for (int i = 0; i < 10; i++) {
         if (i == 4 || i == 7) continue;
         if (!cat_digit(s[i])) {
-            cat_refuse("date is not YYYY-MM-DD");
+            cat_refuse_temporal("date is not YYYY-MM-DD");
             return false;
         }
     }
@@ -1189,7 +1638,7 @@ static bool cat_date_text(const char *s, size_t n, zval *out)
     bool leap = (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
     int last = (m == 2 && leap) ? 29 : (m >= 1 && m <= 12 ? days[m - 1] : 0);
     if (y < 1 || m < 1 || m > 12 || d < 1 || d > last) {
-        cat_refuse("date outside 0001-01-01 to 9999-12-31");
+        cat_refuse_temporal("date outside 0001-01-01 to 9999-12-31");
         return false;
     }
     ZVAL_STRINGL(out, s, n);
@@ -1204,7 +1653,7 @@ static bool cat_time_text(const char *s, size_t n, zval *out)
     while (i < n && cat_digit(s[i]) && hd < 3) { i++; hd++; }
     if (hd < 2 || i >= n || s[i] != ':' || i + 6 > n || !cat_digit(s[i + 1]) || !cat_digit(s[i + 2]) || s[i + 3] != ':'
         || !cat_digit(s[i + 4]) || !cat_digit(s[i + 5])) {
-        cat_refuse("time is not a time of day");
+        cat_refuse_temporal("time is not a time of day");
         return false;
     }
     int h = 0;
@@ -1215,19 +1664,19 @@ static bool cat_time_text(const char *s, size_t n, zval *out)
     char frac[7] = "000000";
     if (p < n) {
         if (s[p] != '.') {
-            cat_refuse("time is not a time of day");
+            cat_refuse_temporal("time is not a time of day");
             return false;
         }
         p++;
         size_t fd = 0;
         while (p < n && cat_digit(s[p]) && fd < 6) { frac[fd++] = s[p++]; }
         if (fd == 0 || p != n) {
-            cat_refuse("time is not a time of day");
+            cat_refuse_temporal("time is not a time of day");
             return false;
         }
     }
     if (h > 23 || mi > 59 || se > 59) {
-        cat_refuse("time outside 00:00:00 to 23:59:59.999999");
+        cat_refuse_temporal("time outside 00:00:00 to 23:59:59.999999");
         return false;
     }
     zend_string *text = zend_strpprintf(0, "%02d:%02d:%02d.%s", h, mi, se, frac);
@@ -1240,7 +1689,7 @@ static bool cat_datetime_text(const char *s, size_t n, zval *out)
 {
     const char *sp = memchr(s, ' ', n);
     if (sp == NULL) {
-        cat_refuse("datetime has no date and time");
+        cat_refuse_temporal("datetime has no date and time");
         return false;
     }
     zval date, time;
@@ -1359,6 +1808,13 @@ static bool cat_described_rows(zval *rows, zval *metadata, const char *dialect)
             zval trv, *native = column == NULL ? NULL : catalog_prop(column, "nativeType", &trv);
             char kind = native != NULL && Z_TYPE_P(native) == IS_STRING && Z_TYPE_P(cell) == IS_STRING
                 ? cat_temporal_kind(dialect, Z_STRVAL_P(native)) : 0;
+            zend_long precision = kind != 0 ? cat_declared_precision(dialect, Z_STRVAL_P(native)) : 0;
+            if (kind == 0 && native != NULL && Z_TYPE_P(native) == IS_STRING && Z_TYPE_P(cell) == IS_STRING && strcmp(dialect, "sqlite") == 0
+                && (zend_string_equals_literal_ci(Z_STR_P(native), "TIME") || zend_string_equals_literal_ci(Z_STR_P(native), "DATETIME"))) {
+                kind = zend_string_equals_literal_ci(Z_STR_P(native), "TIME") ? 't' : 'x';
+                zval prv, *cp = catalog_prop(column, "checkPrecision", &prv);
+                precision = Z_TYPE_P(cp) == IS_LONG ? Z_LVAL_P(cp) : 0;
+            }
             zval v;
             if (native != NULL && Z_TYPE_P(native) == IS_STRING && cat_is_bool_column(dialect, Z_STRVAL_P(native))) {
                 /* A boolean column is read as a bool by its column type (DIA-29). */
@@ -1370,7 +1826,7 @@ static bool cat_described_rows(zval *rows, zval *metadata, const char *dialect)
                 }
             } else if (kind == 0) {
                 ZVAL_COPY(&v, cell);
-            } else if (!cat_described_temporal(cell, kind, cat_declared_precision(dialect, Z_STRVAL_P(native)), &v)) {
+            } else if (!cat_described_temporal(cell, kind, precision, &v)) {
                 zval_ptr_dtor(&out_row);
                 zval_ptr_dtor(&described);
                 zval_ptr_dtor(rows);
@@ -1653,7 +2109,10 @@ static bool cat_grid_mysql_cell(zval *v, zend_long type, zend_long flags, zend_l
     } else if (type == 0 || type == 246) { /* DECIMAL, NEWDECIMAL */
         ZVAL_STRING(&kind, "decimal");
         ok = cat_grid_text(v, &value);
-    } else if (type == 1 || type == 2 || type == 3 || type == 8 || type == 9 || type == 13) { /* TINY SHORT LONG LONGLONG INT24 YEAR */
+    } else if (type == 13) { /* YEAR: an integer-valued MySQL type with no grid cell (INT-103) */
+        cat_refuse("MySQL YEAR has no grid cell");
+        ok = false;
+    } else if (type == 1 || type == 2 || type == 3 || type == 8 || type == 9) { /* TINY SHORT LONG LONGLONG INT24 */
         ok = cat_integer_cell(v, unsigned_, &kind, &value);
     } else {
         ok = cat_bytes_or_text(v, charsetnr == 63, &kind, &value);
@@ -1665,6 +2124,35 @@ static bool cat_grid_mysql_cell(zval *v, zend_long type, zend_long flags, zend_l
     return cat_grid_cell_object(&kind, &value, cell);
 }
 
+
+/* A streamed MySQL grid row arrives as the text protocol's strings. An integer or float column becomes the value that the
+ * prepared statement returns, so that its cell and its byte budget are those of the buffered read. A string that does not
+ * fit stays a string. */
+static void cat_grid_native_row(zval *row, zval *fields)
+{
+    for (uint32_t i = 0; i < zend_hash_num_elements(Z_ARRVAL_P(row)); i++) {
+        zval *value = zend_hash_index_find(Z_ARRVAL_P(row), i);
+        zval *field = zend_hash_index_find(Z_ARRVAL_P(fields), i);
+        if (value == NULL || field == NULL || Z_TYPE_P(value) != IS_STRING) continue;
+        zval rv_t, *type_v = catalog_prop(field, "type", &rv_t);
+        zend_long type = Z_TYPE_P(type_v) == IS_LONG ? Z_LVAL_P(type_v) : -1;
+        if (type == 1 || type == 2 || type == 3 || type == 8 || type == 9) { /* TINY SHORT LONG LONGLONG INT24 */
+            char *end = NULL;
+            errno = 0;
+            zend_long n = ZEND_STRTOL(Z_STRVAL_P(value), &end, 10);
+            if (errno == 0 && end == Z_STRVAL_P(value) + Z_STRLEN_P(value)) {
+                zval_ptr_dtor(value);
+                ZVAL_LONG(value, n);
+            }
+        } else if (type == 4 || type == 5) { /* FLOAT DOUBLE */
+            if (is_numeric_string(Z_STRVAL_P(value), Z_STRLEN_P(value), NULL, NULL, 0)) {
+                double d = zend_strtod(Z_STRVAL_P(value), NULL);
+                zval_ptr_dtor(value);
+                ZVAL_DOUBLE(value, d);
+            }
+        }
+    }
+}
 
 /* Applies the same row and byte budget to every Catalog grid driver before converting its row. */
 static bool cat_grid_budget(zval *rows, zval *row, zend_long max_rows, zend_long max_bytes, zend_long *budget)
@@ -1687,11 +2175,53 @@ static bool cat_grid_budget(zval *rows, zval *row, zend_long max_rows, zend_long
 }
 
 /* The PDO grid query of PostgreSQL and SQLite: one bounded statement, each cell typed by its column or by its value. */
+/* A PostgreSQL grid read without parameters: the cursor reads the raw rows within the budget, and each row becomes its cells
+ * by the native type of its column, as the buffered read converts them. */
+static bool cat_grid_pdo_cursor(zval *db, zval *pdo, zval *sql, zend_long max_rows, zend_long max_bytes, zval *names, zval *rows)
+{
+    zval types, raw;
+    array_init(&types);
+    array_init(&raw);
+    if (!cat_cursor_query(db, pdo, Z_STRVAL_P(sql), max_rows, max_bytes, names, &types, &raw)) {
+        zval_ptr_dtor(&types);
+        zval_ptr_dtor(&raw);
+        return false;
+    }
+    zval_ptr_dtor(rows);
+    array_init(rows);
+    zval *row;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL(raw), row) {
+        zval cells;
+        array_init(&cells);
+        zend_ulong i = 0;
+        zval *value;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(row), value) {
+            zval *native = zend_hash_index_find(Z_ARRVAL(types), i);
+            zval cell;
+            if (!cat_grid_pdo_cell(value, "postgres", Z_STRVAL_P(native), false, &cell)) {
+                zval_ptr_dtor(&cells);
+                zval_ptr_dtor(&types);
+                zval_ptr_dtor(&raw);
+                return false;
+            }
+            add_next_index_zval(&cells, &cell);
+            i++;
+        } ZEND_HASH_FOREACH_END();
+        add_next_index_zval(rows, &cells);
+    } ZEND_HASH_FOREACH_END();
+    zval_ptr_dtor(&types);
+    zval_ptr_dtor(&raw);
+    return true;
+}
+
 static bool cat_grid_pdo(zval *db, const char *dialect, zval *pdo, zval *sql, zval *args, zend_long max_rows, zend_long max_bytes,
                          zval *names, zval *rows)
 {
     array_init(names);
     array_init(rows);
+    if (strcmp(dialect, "postgres") == 0 && zend_hash_num_elements(Z_ARRVAL_P(args)) == 0) {
+        return cat_grid_pdo_cursor(db, pdo, sql, max_rows, max_bytes, names, rows);
+    }
     zval st, ret, count;
     bool ok = pdo_call(pdo, "prepare", &st, 1, sql, NULL);
     if (!ok) {
@@ -1867,7 +2397,7 @@ static void cat_mysqli_grid_error(void)
 }
 
 /* The MySQL grid query on the grid connection: one read-only transaction, a prepared statement, and the flags of its fields. */
-static bool cat_grid_mysqli(zval *link, zval *sql, zval *args, zend_long max_rows, zend_long max_bytes, zval *names, zval *rows)
+static bool cat_grid_mysqli(zval *owner, zval *link, zval *sql, zval *args, zend_long max_rows, zend_long max_bytes, zval *names, zval *rows)
 {
     array_init(names);
     array_init(rows);
@@ -1875,36 +2405,51 @@ static bool cat_grid_mysqli(zval *link, zval *sql, zval *args, zend_long max_row
     ZVAL_LONG(&flag, 4); /* MYSQLI_TRANS_START_READ_ONLY */
     if (!pdo_call(link, "begin_transaction", &ret, 1, &flag, NULL)) goto abort;
     zval_ptr_dtor(&ret);
-    if (!pdo_call(link, "prepare", &stmt, 1, sql, NULL)) goto abort;
     uint32_t nargs = zend_hash_num_elements(Z_ARRVAL_P(args));
-    if (nargs > 0) {
-        zval *bind = ecalloc(nargs + 1, sizeof(zval));
-        smart_str types = {0};
-        zval *a;
-        uint32_t k = 1;
-        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(args), a) {
-            switch (Z_TYPE_P(a)) {
-            case IS_LONG: case IS_TRUE: case IS_FALSE: smart_str_appendc(&types, 'i'); break;
-            case IS_DOUBLE: smart_str_appendc(&types, 'd'); break;
-            default: smart_str_appendc(&types, 's'); break;
-            }
-            ZVAL_COPY(&bind[k++], a);
-        } ZEND_HASH_FOREACH_END();
-        smart_str_0(&types);
-        ZVAL_STR(&bind[0], types.s);
-        bool bound = cat_call_n(&stmt, "bind_param", &ret, nargs + 1, bind);
-        for (uint32_t j = 0; j <= nargs; j++) zval_ptr_dtor(&bind[j]);
-        efree(bind);
-        if (!bound) goto abort;
+    /* A statement without parameters streams its rows: an unbuffered result, and a budget stop kills the query by the thread
+     * id of this connection through a connection of its own. A statement with parameters is buffered. */
+    bool streamed = nargs == 0;
+    ZVAL_UNDEF(&stmt);
+    if (streamed) {
+        zval mode_flag;
+        ZVAL_LONG(&mode_flag, 1); /* MYSQLI_USE_RESULT */
+        if (!pdo_call(link, "query", &result, 2, sql, &mode_flag)) goto abort;
+        if (Z_TYPE(result) != IS_OBJECT) {
+            zval_ptr_dtor(&result);
+            db_throw_orm("DRIVER", "the grid query returned no result set");
+            goto abort;
+        }
+    } else {
+        if (!pdo_call(link, "prepare", &stmt, 1, sql, NULL)) goto abort;
+        if (nargs > 0) {
+            zval *bind = ecalloc(nargs + 1, sizeof(zval));
+            smart_str types = {0};
+            zval *a;
+            uint32_t k = 1;
+            ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(args), a) {
+                switch (Z_TYPE_P(a)) {
+                case IS_LONG: case IS_TRUE: case IS_FALSE: smart_str_appendc(&types, 'i'); break;
+                case IS_DOUBLE: smart_str_appendc(&types, 'd'); break;
+                default: smart_str_appendc(&types, 's'); break;
+                }
+                ZVAL_COPY(&bind[k++], a);
+            } ZEND_HASH_FOREACH_END();
+            smart_str_0(&types);
+            ZVAL_STR(&bind[0], types.s);
+            bool bound = cat_call_n(&stmt, "bind_param", &ret, nargs + 1, bind);
+            for (uint32_t j = 0; j <= nargs; j++) zval_ptr_dtor(&bind[j]);
+            efree(bind);
+            if (!bound) goto abort;
+            zval_ptr_dtor(&ret);
+        }
+        if (!pdo_call(&stmt, "execute", &ret, 0, NULL, NULL)) goto abort_stmt;
         zval_ptr_dtor(&ret);
-    }
-    if (!pdo_call(&stmt, "execute", &ret, 0, NULL, NULL)) goto abort_stmt;
-    zval_ptr_dtor(&ret);
-    if (!pdo_call(&stmt, "get_result", &result, 0, NULL, NULL)) goto abort_stmt;
-    if (Z_TYPE(result) != IS_OBJECT) {
-        zval_ptr_dtor(&result);
-        db_throw_orm("DRIVER", "the grid query returned no result set");
-        goto abort_stmt;
+        if (!pdo_call(&stmt, "get_result", &result, 0, NULL, NULL)) goto abort_stmt;
+        if (Z_TYPE(result) != IS_OBJECT) {
+            zval_ptr_dtor(&result);
+            db_throw_orm("DRIVER", "the grid query returned no result set");
+            goto abort_stmt;
+        }
     }
     if (!pdo_call(&result, "fetch_fields", &fields, 0, NULL, NULL)) goto abort_result;
     uint32_t nfields = zend_hash_num_elements(Z_ARRVAL(fields));
@@ -1918,7 +2463,31 @@ static bool cat_grid_mysqli(zval *link, zval *sql, zval *args, zend_long max_row
         zval row;
         if (!pdo_call(&result, "fetch_row", &row, 0, NULL, NULL)) goto abort_fields;
         if (Z_TYPE(row) == IS_NULL) break;
-        if (!cat_grid_budget(rows, &row, max_rows, max_bytes, &budget)) goto abort_fields;
+        if (streamed) cat_grid_native_row(&row, &fields);
+        if (!cat_grid_budget(rows, &row, max_rows, max_bytes, &budget)) {
+            /* The thread id is read on a stop only: a read that does not stop never needs it. */
+            zval rv_id;
+            zval *id = streamed ? zend_read_property(Z_OBJCE_P(link), Z_OBJ_P(link), "thread_id", sizeof("thread_id") - 1, true, &rv_id) : NULL;
+            zend_long thread_id = id != NULL && Z_TYPE_P(id) == IS_LONG ? Z_LVAL_P(id) : 0;
+            if (streamed && thread_id > 0) {
+                /* The stop is the pending CATALOG_LIMIT: the query is killed and its unbuffered result freed before the rollback. */
+                zval limit;
+                ZVAL_OBJ(&limit, EG(exception));
+                EG(exception) = NULL;
+                if (cat_kill_thread(owner, thread_id)) {
+                    zval freed;
+                    if (pdo_call(&result, "free", &freed, 0, NULL, NULL)) {
+                        zval_ptr_dtor(&freed);
+                    } else {
+                        zend_clear_exception();
+                    }
+                    EG(exception) = Z_OBJ(limit);
+                } else {
+                    zval_ptr_dtor(&limit);
+                }
+            }
+            goto abort_fields;
+        }
         zval cells;
         array_init(&cells);
         zend_ulong i = 0;
@@ -2545,7 +3114,83 @@ static bool cat_exceeds_char_limit(zval *column, zval *value)
     return actual > limit;
 }
 
+static bool cat_changes_map(zval *metadata, zval *values, const char *code, zval *out);
+
+/* The named changes of a write: a list of [name, value] pairs, which may repeat a name (refused as the code states), or a map
+ * of column name => value, which has distinct names. */
+/* The fraction digits of a temporal value that a write names beyond the precision of its column (Catalog::checkWritePrecision):
+ * a refusal with CODEC_ENCODE before the write. The changes are [index, value] pairs. */
+static bool cat_check_write_precision(const char *dialect, zval *metadata, zval *changes)
+{
+    bool sqlite = strcmp(dialect, "sqlite") == 0;
+    zval rv_c, *columns = catalog_prop(metadata, "columns", &rv_c);
+    zval *pair;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(changes), pair) {
+        zval *index_v = zend_hash_index_find(Z_ARRVAL_P(pair), 0);
+        zval *value = zend_hash_index_find(Z_ARRVAL_P(pair), 1);
+        if (index_v == NULL || value == NULL || Z_TYPE_P(value) != IS_STRING) continue;
+        zval *column = zend_hash_index_find(Z_ARRVAL_P(columns), (zend_ulong)Z_LVAL_P(index_v));
+        if (column == NULL) continue;
+        zval rv_n, *native_v = catalog_prop(column, "nativeType", &rv_n);
+        zval rv_p, *check = catalog_prop(column, "checkPrecision", &rv_p);
+        if (Z_TYPE_P(native_v) != IS_STRING) continue;
+        bool temporal = sqlite
+            ? (zend_string_equals_literal_ci(Z_STR_P(native_v), "TIME") || zend_string_equals_literal_ci(Z_STR_P(native_v), "DATETIME"))
+            : cat_temporal_kind(dialect, Z_STRVAL_P(native_v)) != 0;
+        if (!temporal) continue;
+        const char *dot = memchr(Z_STRVAL_P(value), '.', Z_STRLEN_P(value));
+        if (dot == NULL) continue;
+        zend_long precision;
+        if (sqlite) {
+            /* A SQLite column with no CHECK fixes no precision, so it has no write to refuse. */
+            if (Z_TYPE_P(check) != IS_LONG) continue;
+            precision = Z_LVAL_P(check);
+        } else {
+            precision = cat_declared_precision(dialect, Z_STRVAL_P(native_v));
+        }
+        size_t first = (size_t)(dot - Z_STRVAL_P(value)) + 1;
+        for (size_t d = first + (size_t)precision; d < Z_STRLEN_P(value); d++) {
+            if (Z_STRVAL_P(value)[d] != '0') {
+                db_throw_orm("CODEC_ENCODE", "temporal value \"%s\" has more fraction digits than its precision " ZEND_LONG_FMT,
+                             Z_STRVAL_P(value), precision);
+                return false;
+            }
+        }
+    } ZEND_HASH_FOREACH_END();
+    return true;
+}
+
 static bool cat_changes(zval *metadata, zval *values, const char *code, zval *out)
+{
+    if (!zend_array_is_list(Z_ARRVAL_P(values)) || zend_hash_num_elements(Z_ARRVAL_P(values)) == 0) {
+        return cat_changes_map(metadata, values, code, out);
+    }
+    zval map;
+    array_init(&map);
+    zval *pair;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(values), pair) {
+        zval *name = Z_TYPE_P(pair) == IS_ARRAY && zend_hash_num_elements(Z_ARRVAL_P(pair)) == 2
+            ? zend_hash_index_find(Z_ARRVAL_P(pair), 0) : NULL;
+        zval *value = Z_TYPE_P(pair) == IS_ARRAY ? zend_hash_index_find(Z_ARRVAL_P(pair), 1) : NULL;
+        if (name == NULL || value == NULL || Z_TYPE_P(name) != IS_STRING) {
+            zval_ptr_dtor(&map);
+            db_throw_orm(code, "an assignment is a [name, value] pair");
+            return false;
+        }
+        if (zend_symtable_exists(Z_ARRVAL(map), Z_STR_P(name))) {
+            zval_ptr_dtor(&map);
+            db_throw_orm(code, "duplicate column \"%s\"", ZSTR_VAL(Z_STR_P(name)));
+            return false;
+        }
+        Z_TRY_ADDREF_P(value);
+        zend_symtable_update(Z_ARRVAL(map), Z_STR_P(name), value);
+    } ZEND_HASH_FOREACH_END();
+    bool ok = cat_changes_map(metadata, &map, code, out);
+    zval_ptr_dtor(&map);
+    return ok;
+}
+
+static bool cat_changes_map(zval *metadata, zval *values, const char *code, zval *out)
 {
     zval rv_cols, *columns = catalog_prop(metadata, "columns", &rv_cols);
     uint32_t ncols = zend_hash_num_elements(Z_ARRVAL_P(columns));
@@ -3066,6 +3711,11 @@ ZEND_METHOD(Polyspec_Orm_Catalog, insertRow)
         zval_ptr_dtor(&key_indexes);
         return;
     }
+    if (!cat_check_write_precision(ZSTR_VAL(cat_dialect(ZEND_THIS)), declared, &changes)) {
+        zval_ptr_dtor(&changes);
+        zval_ptr_dtor(&key_indexes);
+        return;
+    }
     zval rv_cols, *columns = catalog_prop(declared, "columns", &rv_cols);
     zend_string *dialect = cat_dialect(ZEND_THIS);
     zval keys;
@@ -3316,6 +3966,10 @@ ZEND_METHOD(Polyspec_Orm_Catalog, updateRow)
     }
     zval changes;
     if (!cat_changes(metadata, values, "ROW_UPDATE_INVALID", &changes)) return;
+    if (!cat_check_write_precision(ZSTR_VAL(cat_dialect(ZEND_THIS)), metadata, &changes)) {
+        zval_ptr_dtor(&changes);
+        return;
+    }
     zval updated;
     /* A copy: the changes must not change the original cells that the row check compares with. */
     ZVAL_ARR(&updated, zend_array_dup(Z_ARRVAL_P(cells)));
@@ -3527,13 +4181,9 @@ static bool cat_constant_long(const char *name, zend_long *value)
 }
 
 /* The MySQL grid connection of a catalog: a mysqli connection opened on first use with the target of the DSN. */
-static bool cat_grid_link(zval *self, zval *link)
+/* Opens a MySQL connection to the catalog's target, uncached: a budget stop kills a query through a connection of its own. */
+static bool cat_open_mysqli(zval *self, zval *link)
 {
-    zval rv, *current = catalog_prop(self, "gridLink", &rv);
-    if (Z_TYPE_P(current) == IS_OBJECT) {
-        ZVAL_COPY(link, current);
-        return true;
-    }
     zval rv_t, *target = catalog_prop(self, "mysqlTarget", &rv_t);
     if (Z_TYPE_P(target) != IS_ARRAY) {
         db_throw_orm("CONFIG", "the catalog connection has no MySQL target");
@@ -3615,7 +4265,6 @@ static bool cat_grid_link(zval *self, zval *link)
         return false;
     }
     zval_ptr_dtor(&ret);
-    init_prop(self, "gridLink", &made);
     ZVAL_COPY(link, &made);
     zval_ptr_dtor(&made);
     return true;
@@ -3624,6 +4273,22 @@ failed:
     cat_mysqli_error();
     if (Z_TYPE(made) == IS_OBJECT) zval_ptr_dtor(&made);
     return false;
+}
+
+/* The grid connection of the catalog, opened once: the grid queries run on it. */
+static bool cat_grid_link(zval *self, zval *link)
+{
+    zval rv, *current = catalog_prop(self, "gridLink", &rv);
+    if (Z_TYPE_P(current) == IS_OBJECT) {
+        ZVAL_COPY(link, current);
+        return true;
+    }
+    zval made;
+    if (!cat_open_mysqli(self, &made)) return false;
+    init_prop(self, "gridLink", &made);
+    ZVAL_COPY(link, &made);
+    zval_ptr_dtor(&made);
+    return true;
 }
 
 ZEND_METHOD(Polyspec_Orm_Catalog, connect)
@@ -3682,6 +4347,8 @@ ZEND_METHOD(Polyspec_Orm_Catalog, connect)
     }
     object_init_ex(return_value, catalog_ce);
     init_prop(return_value, "db", &db);
+    zval rv_state, *state = catalog_prop(&db, "state", &rv_state);
+    zend_update_property(Z_OBJCE_P(state), Z_OBJ_P(state), "catalogOwner", sizeof("catalogOwner") - 1, return_value);
     init_str(return_value, "dialect", zend_string_copy(Z_STR_P(driver)));
     init_prop(return_value, "mysqlTarget", &target);
     zval no_link;
@@ -3757,11 +4424,11 @@ ZEND_METHOD(Polyspec_Orm_Catalog, currentNamespace)
     ZEND_PARSE_PARAMETERS_START(0, 0)
     ZEND_PARSE_PARAMETERS_END();
     zval rv;
+    if (!cat_open(ZEND_THIS)) return;
     zend_string *dialect = cat_dialect(ZEND_THIS);
     if (strcmp(ZSTR_VAL(dialect), "sqlite") == 0) {
         RETURN_STRING("main");
     }
-    if (!cat_open(ZEND_THIS)) return;
     zval *db = cat_db(ZEND_THIS, &rv);
     const char *query = strcmp(ZSTR_VAL(dialect), "postgres") == 0 ? "SELECT current_schema()" : "SELECT DATABASE()";
     zval pdo, empty, names, types, rows;
@@ -4014,7 +4681,7 @@ ZEND_METHOD(Polyspec_Orm_Catalog, readOnlyGridQuery)
             zval_ptr_dtor(&sql_zv);
             return;
         }
-        ok = cat_grid_mysqli(&link, &sql_zv, &args, max_rows, max_bytes, &names, &rows);
+        ok = cat_grid_mysqli(ZEND_THIS, &link, &sql_zv, &args, max_rows, max_bytes, &names, &rows);
         zval_ptr_dtor(&link);
         zval_ptr_dtor(&args);
         zval_ptr_dtor(&sql_zv);

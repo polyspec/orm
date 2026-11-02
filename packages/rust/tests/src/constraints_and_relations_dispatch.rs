@@ -150,7 +150,8 @@ async fn note_reader_op(db: &Db, op: &str, step: &Value) -> Result<Value, String
             if names(&step["columns"]) != ["seq"] || names(&relation["columns"]) != ["title"] || names(&step["order"]) != ["seq"] {
                 return Err(format!("NoteReader columns {} with relation {relation} have no recipe entry", step["columns"]));
             }
-            let rows = NoteReader::new().connect(db).relation(SharedNote::new().match_shared_note_seq_with_seq()).order_by_seq_asc().gets().await.map_err(fail)?;
+            let rows =
+                NoteReader::new().connect(db).relation(SharedNote::new().match_shared_note_seq_with_seq()).order_by_seq_asc().gets().await.map_err(fail)?;
             let mut out = Vec::new();
             for row in rows.models() {
                 let Some(note) = row.get_shared_note_model().map_err(fail)? else { continue };

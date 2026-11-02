@@ -25,6 +25,9 @@ pub struct TableColumnMetadata {
     pub automatic_key: bool,
     pub default_expression: Option<String>,
     pub expression_default: bool,
+    /// On SQLite, the fraction digits that the dbspec CHECK of a TIME or DATETIME column fixes; None when no CHECK fixes them
+    /// and on the other dialects.
+    pub check_precision: Option<i64>,
 }
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct TableMetadata {
@@ -98,7 +101,7 @@ pub(super) async fn describe(connection: &mut Conn, dialect: &str, table: &Table
     };
     let sql=match dialect {
         "mysql"=>"SELECT c.COLUMN_NAME,c.COLUMN_TYPE,c.IS_NULLABLE='YES',(c.GENERATION_EXPRESSION IS NOT NULL AND c.GENERATION_EXPRESSION<>''),COALESCE(pk.ORDINAL_POSITION,0),(c.EXTRA LIKE '%auto_increment%'),c.COLUMN_DEFAULT,(c.EXTRA LIKE '%DEFAULT_GENERATED%') FROM information_schema.COLUMNS c LEFT JOIN information_schema.KEY_COLUMN_USAGE pk ON pk.CONSTRAINT_SCHEMA=c.TABLE_SCHEMA AND pk.TABLE_NAME=c.TABLE_NAME AND pk.COLUMN_NAME=c.COLUMN_NAME AND pk.CONSTRAINT_NAME='PRIMARY' WHERE c.TABLE_SCHEMA=? AND c.TABLE_NAME=? ORDER BY c.ORDINAL_POSITION",
-        "postgres"=>"SELECT a.attname::text,format_type(a.atttypid,a.atttypmod),NOT a.attnotnull,(a.attgenerated<>'' OR a.attidentity='a'),COALESCE(k.ord,0),(a.attidentity<>''),pg_get_expr(d.adbin,d.adrelid),(d.adbin IS NOT NULL) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_attribute a ON a.attrelid=c.oid LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum LEFT JOIN pg_index i ON i.indrelid=c.oid AND i.indisprimary LEFT JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS k(attnum,ord) ON k.attnum=a.attnum WHERE n.nspname=$1 AND c.relname=$2 AND a.attnum>0 AND NOT a.attisdropped ORDER BY a.attnum",
+        "postgres"=>"SELECT a.attname::text,format_type(a.atttypid,a.atttypmod),NOT a.attnotnull,(a.attgenerated<>'' OR a.attidentity='a'),COALESCE(k.ord,0),(a.attidentity<>''),CASE WHEN length(a.attgenerated)=0 THEN pg_get_expr(d.adbin,d.adrelid) END,(d.adbin IS NOT NULL AND length(a.attgenerated)=0) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_attribute a ON a.attrelid=c.oid LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum LEFT JOIN pg_index i ON i.indrelid=c.oid AND i.indisprimary LEFT JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS k(attnum,ord) ON k.attnum=a.attnum WHERE n.nspname=$1 AND c.relname=$2 AND a.attnum>0 AND NOT a.attisdropped ORDER BY a.attnum",
         "sqlite"=>"SELECT name,type,NOT \"notnull\",hidden<>0,pk,0,dflt_value,(dflt_value IS NOT NULL) FROM pragma_table_xinfo(?2,?1) ORDER BY cid",
         _=>unreachable!(),
     };
@@ -120,6 +123,7 @@ pub(super) async fn describe(connection: &mut Conn, dialect: &str, table: &Table
                 value => Some(text(value)?),
             },
             expression_default: row[7].bool().map_err(|e| e.to_string())?,
+            check_precision: None,
         };
         if columns.iter().any(|c: &TableColumnMetadata| c.name == column.name) {
             return Err("TABLE_METADATA_INVALID: duplicate column".into());
@@ -152,5 +156,10 @@ pub(super) async fn describe(connection: &mut Conn, dialect: &str, table: &Table
     let reliable_row_identity =
         matches!(kind, TableKind::Table | TableKind::Partitioned) && !keys.is_empty() && keys.iter().all(|key| !columns[key.1].nullable);
     let primary_key = keys.iter().map(|key| columns[key.1].name.clone()).collect();
-    Ok(TableMetadata { table: table.clone(), kind, columns, primary_key, reliable_row_identity })
+    let mut metadata = TableMetadata { table: table.clone(), kind, columns, primary_key, reliable_row_identity };
+    let checks = super::temporal::sqlite_check_precisions(connection, &metadata, dialect).await?;
+    for (column, check) in metadata.columns.iter_mut().zip(checks) {
+        column.check_precision = check.map(|precision| precision as i64);
+    }
+    Ok(metadata)
 }

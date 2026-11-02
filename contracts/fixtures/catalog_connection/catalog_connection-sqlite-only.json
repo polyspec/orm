@@ -1,0 +1,198 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "INT-103"
+  ],
+  "fixture": "contracts/fixtures/catalog_connection/dbspec-set.json",
+  "seed": {
+    "rows": {
+      "author": [
+        {
+          "name": {
+            "text": "author-1"
+          },
+          "start_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          }
+        },
+        {
+          "name": {
+            "text": "author-2"
+          },
+          "start_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          }
+        },
+        {
+          "name": {
+            "text": "author-3"
+          },
+          "start_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          }
+        },
+        {
+          "name": {
+            "text": "author-4"
+          },
+          "start_dt": {
+            "datetime": "2026-06-01 00:00:00.000000"
+          }
+        }
+      ],
+      "user": [
+        {
+          "name": {
+            "text": "user-1"
+          }
+        },
+        {
+          "name": {
+            "text": "user-2"
+          }
+        },
+        {
+          "name": {
+            "text": "user-3"
+          }
+        },
+        {
+          "name": {
+            "text": "user-4"
+          }
+        },
+        {
+          "name": {
+            "text": "user-5"
+          }
+        }
+      ]
+    }
+  },
+  "cases": [
+    {
+      "id": "sqlite_temporal_checks",
+      "requirements": [
+        "INT-103"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "reason": "a datetime whose CHECK fixes the digits",
+          "sql": "CREATE TABLE kcat_temporal_ok (id INTEGER PRIMARY KEY, a DATETIME CHECK (\"a\" IS NULL OR (length(\"a\") = 23 AND substr(\"a\", 1, 19) IS datetime(substr(\"a\", 1, 19)) AND substr(\"a\", 12, 2) < '24' AND substr(\"a\", 20, 1) = '.' AND substr(\"a\", 21) GLOB '[0-9][0-9][0-9]')))"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a value in the dbspec form with the digits that its CHECK fixes",
+          "sql": "INSERT INTO kcat_temporal_ok (id, a) VALUES (1, '2026-01-02 03:04:05.123')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a datetime column with no CHECK",
+          "sql": "CREATE TABLE kcat_temporal_bare (id INTEGER PRIMARY KEY, b DATETIME)"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a text that is no dbspec datetime",
+          "sql": "INSERT INTO kcat_temporal_bare (id, b) VALUES (1, 'not a datetime')"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "kcat_temporal_ok",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id",
+            "a"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "a"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "datetime": "2026-01-02 03:04:05.123"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "id",
+                "a"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "datetime": "2026-01-02 03:04:05.123"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "a"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "datetime": "2026-01-02 03:04:05.123"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "kcat_temporal_bare",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id",
+            "b"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "GRID_TEMPORAL_VALUE"
+            },
+            "postgres": {
+              "error": "GRID_TEMPORAL_VALUE"
+            },
+            "sqlite": {
+              "error": "GRID_TEMPORAL_VALUE"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

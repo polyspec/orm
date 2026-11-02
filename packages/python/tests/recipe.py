@@ -2,10 +2,12 @@
 # test_<recipe>_<database>.py, takes the load_tests of recipe_tests for the recipe and the database, and each case of the
 # recipe is one test whose steps call the public API of polyspec.orm that each op names. It has no command line and no
 # output of its own.
+import atexit
 import dataclasses
 import json
 import math
 import re
+import shutil
 import tempfile
 import unittest
 from decimal import Decimal
@@ -57,6 +59,7 @@ from .coverage_case import native_query
 from .recipe_keys import check_keys
 from .recipe_model import model_ops
 from .markdown_conformance import same
+from .test_sqlite import generate
 from .vector_case import VectorCase, vector_load_tests
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -1101,7 +1104,10 @@ def _database_recipe_tests(path: str, database: str):
         ):
             _run_case(path, recipe, case, database, schema, dsn, install_first)
 
-    return vector_load_tests(DatabaseRecipeCase, recipe["cases"], check)
+    cases = [
+        case for case in recipe["cases"] if database in case.get("only", DATABASES)
+    ]
+    return vector_load_tests(DatabaseRecipeCase, cases, check)
 
 
 def _fixture_schema(set_path: Path):
@@ -1172,20 +1178,21 @@ def _run_case_on(
 ) -> None:
     catalog = connect_catalog(dsn)
     closers: list = []
+    context = {
+        "catalog": catalog,
+        "namespace": None,
+        "database": database,
+        "dsn": dsn,
+        "schema": schema,
+        "tables": {},
+        "bound": {"database": {"text": _database_name(dsn)}},
+        "db": db,
+        "dir": (ROOT / path).parent,
+        "closers": closers,
+    }
     try:
         namespace = catalog.current_namespace()
-        context = {
-            "catalog": catalog,
-            "namespace": namespace,
-            "database": database,
-            "dsn": dsn,
-            "schema": schema,
-            "tables": {},
-            "bound": {"database": {"text": _database_name(dsn)}},
-            "db": db,
-            "dir": (ROOT / path).parent,
-            "closers": closers,
-        }
+        context["namespace"] = namespace
         for part, rows in (
             ("recipe", recipe.get("seed", {}).get("rows")),
             ("case", case.get("seed", {}).get("rows")),
@@ -1212,7 +1219,7 @@ def _run_case_on(
     finally:
         for close in closers:
             close()
-        catalog.close()
+        context["catalog"].close()
 
 
 def _op_current_namespace(_step: dict, context: dict) -> dict:
@@ -1221,13 +1228,25 @@ def _op_current_namespace(_step: dict, context: dict) -> dict:
 
 def _op_describe_table(step: dict, context: dict) -> dict:
     metadata = context["catalog"].describe_table(
-        {"namespace": context["namespace"], "name": step["table"]}
+        {
+            "namespace": step.get("namespace", context["namespace"]),
+            "name": step["table"],
+        }
     )
+    columns = metadata.columns
     return {
         "bind": metadata,
-        "columns": [column.name for column in metadata.columns],
+        "kind": metadata.kind,
+        "columns_present": len(columns) > 0,
+        "namespace": {"text": metadata.table["namespace"]},
+        "columns": [column.name for column in columns],
         "primary_key": list(metadata.primary_key),
         "reliable_row_identity": metadata.reliable_row_identity,
+        "native_types": [column.native_type for column in columns],
+        "nullable": [column.nullable for column in columns],
+        "generated": [column.generated for column in columns],
+        "automatic_keys": [column.automatic_key for column in columns],
+        "defaults": [column.default_expression is not None for column in columns],
     }
 
 
@@ -1252,14 +1271,18 @@ def _op_table_page(step: dict, context: dict) -> dict:
 
 def _op_read_only_query(step: dict, context: dict) -> dict:
     result = context["catalog"].read_only_query(
-        _sql(step["sql"], context), (), *_limits(step)
+        _sql(step["sql"], context), _binds(step, context), *_limits(step)
     )
-    return {"rows": [[_plain(cell, None) for cell in row] for row in result.rows]}
+    return {
+        "columns": list(result.columns),
+        "rows": [[_plain(cell, None) for cell in row] for row in result.rows],
+        "row_count": len(result.rows),
+    }
 
 
 def _op_read_only_grid_query(step: dict, context: dict) -> dict:
     result = context["catalog"].read_only_grid_query(
-        _sql(step["sql"], context), (), *_limits(step)
+        _sql(step["sql"], context), _binds(step, context), *_limits(step)
     )
     return {
         "columns": list(result.columns),
@@ -1267,9 +1290,88 @@ def _op_read_only_grid_query(step: dict, context: dict) -> dict:
     }
 
 
+def _op_connect(step: dict, _context: dict) -> dict:
+    """A DSN that the library refuses fails with its code. A SQLite file that the case does not create is refused and must
+    not exist afterwards: the connect creates no file."""
+    dsn = step["dsn"]
+    if "url" in dsn:
+        connect_catalog(dsn["url"]).close()
+        return {}
+    with tempfile.TemporaryDirectory(prefix="orm_recipe_absent_") as directory:
+        path = Path(directory) / "absent.sqlite"
+        try:
+            connect_catalog(f"sqlite://{path}").close()
+        except OrmError:
+            if path.exists():
+                raise AssertionError("the connect created the SQLite file")
+            raise
+    raise AssertionError("the connect to an absent SQLite file succeeded")
+
+
+def _op_close(_step: dict, context: dict) -> dict:
+    context["catalog"].close()
+    context["closed"] = True
+    return {}
+
+
+def _op_reconnect(_step: dict, context: dict) -> dict:
+    context["catalog"] = connect_catalog(context["dsn"])
+    context["namespace"] = context["catalog"].current_namespace()
+    context["closed"] = False
+    return {}
+
+
+def _op_revision(step: dict, context: dict) -> dict:
+    return {"value": {"text": _step_argument(step["snapshot"], context).revision}}
+
+
+def _op_row_cells(step: dict, context: dict) -> dict:
+    snapshot = _step_argument(step["snapshot"], context)
+    types = [column.native_type for column in snapshot.metadata.columns]
+    return {
+        "cells": [_plain(cell, types[at]) for at, cell in enumerate(snapshot.cells)]
+    }
+
+
+_MODEL_SETS: dict = {}
+
+
+def _bench_models():
+    """The generated models of the bench set, generated once per run."""
+    if "bench" not in _MODEL_SETS:
+        directory = tempfile.mkdtemp(prefix="orm_recipe_models_")
+        atexit.register(shutil.rmtree, directory, ignore_errors=True)
+        _MODEL_SETS["bench"] = generate(
+            directory, ROOT / "contracts" / "fixtures" / "bench" / "dbspec-set.json"
+        )
+    return _MODEL_SETS["bench"]
+
+
+def _op_read_bind_cell(step: dict, context: dict) -> dict:
+    """The generated model reads the bind_cell row by its key: its body is SQL NULL or the text."""
+    models = _bench_models()
+    db = models.connect(
+        context["dsn"], aesKey="bench-salt", blindIndexKey="bench-blind-index"
+    )
+    try:
+        body = models.BindCell().connect(db).seq(step["seq"]).get().get_body()
+    finally:
+        db.close()
+    return {"value": {"null": True} if body is None else {"text": body}}
+
+
 def _op_row_snapshot(step: dict, context: dict) -> dict:
-    page = _step_argument(step["page"], context)
-    return {"bind": context["catalog"].row_snapshot_from_page(page, step["index"])}
+    if "page_with" in step:
+        bound = _bound(step["page_with"]["page"]["ref"], context)
+        page = dataclasses.replace(bound, order_by=step["page_with"]["order_by"])
+    else:
+        page = _step_argument(step["page"], context)
+    snapshot = context["catalog"].row_snapshot_from_page(page, step["index"])
+    return {
+        "bind": snapshot,
+        "keys": [_plain(key, None) for key in snapshot.keys()],
+        "key_indexes": list(snapshot.key_indexes),
+    }
 
 
 def _op_insert_row(step: dict, context: dict) -> dict:
@@ -1498,6 +1600,12 @@ _DATABASE_OPS = {
     "statements.count": lambda step, context: _op_statements_count(step, context),
     "transaction": lambda step, context: _op_transaction(step, context),
     "dsn.connect": _op_dsn_connect,
+    "catalog.connect": _op_connect,
+    "catalog.close": _op_close,
+    "catalog.reconnect": _op_reconnect,
+    "catalog.revision": _op_revision,
+    "catalog.row_cells": _op_row_cells,
+    "model.read_bind_cell": _op_read_bind_cell,
     "catalog.current_namespace": _op_current_namespace,
     "catalog.describe_table": _op_describe_table,
     "catalog.table_page": _op_table_page,
@@ -1519,6 +1627,9 @@ _DATABASE_OPS = {
 def _run_database_step(step: dict, context: dict) -> None:
     """Maps the op of step to its call and checks the result against the expect of the database. A step whose expect is
     an error passes only when the call fails with that orm error code."""
+    if database_only := step.get("only"):
+        if context["database"] not in database_only:
+            return
     op = _DATABASE_OPS.get(step["op"]) or _MODEL_OPS.get(step["op"])
     if op is None:
         raise AssertionError(f"OP_UNKNOWN {step['op']}")
@@ -1598,12 +1709,22 @@ def _resolve_refs(value, context: dict) -> Any:
     return {key: _resolve_refs(item, context) for key, item in value.items()}
 
 
-def _assignments(values: dict, context: dict) -> list:
-    """The assignments of an object of column names whose values are recipe wrappers or per-database objects."""
+def _assignments(values, context: dict) -> list:
+    """The assignments of a list of [name, value] pairs, or of an object of column names, whose values are recipe wrappers
+    or per-database objects."""
+    pairs = values.items() if isinstance(values, dict) else values
     return [
         (name, _native(_database_value(_step_argument(value, context), context)))
-        for name, value in values.items()
+        for name, value in pairs
     ]
+
+
+def _binds(step: dict, context: dict) -> tuple:
+    """The bound parameters of a query, as native values."""
+    return tuple(
+        _native(_database_value(_step_argument(value, context), context))
+        for value in step.get("binds", [])
+    )
 
 
 def _database_value(value, context: dict) -> Any:
@@ -1615,7 +1736,7 @@ def _database_value(value, context: dict) -> Any:
 def _native(wrapper: dict) -> Any:
     """The value of the Python API for a recipe wrapper."""
     ((kind, value),) = wrapper.items()
-    if kind == "int":
+    if kind in ("int", "uint"):
         return int(value)
     if kind in ("text", "date", "time", "datetime", "decimal"):
         return value
@@ -1657,6 +1778,8 @@ def _plain(value, native_type: str | None) -> dict:
         return {_temporal_kind(native_type) or "text": value}
     if isinstance(value, Decimal):
         return {"decimal": format(value, "f")}
+    if isinstance(value, float):
+        return {"float": repr(value)}
     raise AssertionError(
         f"no recipe wrapper for the plain value {value!r} of the native type {native_type}"
     )
@@ -1666,10 +1789,16 @@ def _grid(cell) -> dict:
     """The recipe wrapper of a grid cell."""
     if cell.kind == "null":
         return {"null": True}
-    if cell.kind in ("integer", "unsigned"):
+    if cell.kind == "integer":
         return {"int": str(cell.value)}
+    if cell.kind == "unsigned":
+        return {"uint": str(cell.value)}
     if cell.kind in ("decimal", "text", "date", "time", "datetime"):
         return {cell.kind: cell.value}
+    if cell.kind == "float32":
+        return {"f32_bits": cell.value}
+    if cell.kind == "float64":
+        return {"f64_bits": str(cell.value)}
     if cell.kind == "boolean":
         return {"bool": cell.value}
     if cell.kind == "binary":

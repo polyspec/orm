@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -21,6 +22,7 @@ import (
 	"github.com/polyspec/orm/packages/go/engine/dbspec"
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 	"github.com/polyspec/orm/packages/go/internal/testdb"
+	"github.com/polyspec/orm/packages/go/model"
 	"github.com/polyspec/orm/packages/go/orm"
 	_ "github.com/polyspec/orm/packages/go/orm/pg"
 	_ "github.com/polyspec/orm/packages/go/orm/sqlite"
@@ -45,31 +47,39 @@ type seed struct {
 type databaseCase struct {
 	ID      string            `json:"id"`
 	Install *bool             `json:"install"`
+	Only    []string          `json:"only"`
 	Seed    *seed             `json:"seed"`
 	Steps   []json.RawMessage `json:"steps"`
 }
 
 // databaseStep holds the fields of every database op (scripts/features/schema/recipe.schema.json).
 type databaseStep struct {
-	Op       string                     `json:"op"`
-	DSN      string                     `json:"dsn"`
-	Table    string                     `json:"table"`
-	Limit    int                        `json:"limit"`
-	Offset   int64                      `json:"offset"`
-	Columns  []string                   `json:"columns"`
-	SQL      json.RawMessage            `json:"sql"`
-	MaxRows  int                        `json:"max_rows"`
-	MaxBytes int                        `json:"max_bytes"`
-	Page     json.RawMessage            `json:"page"`
-	Index    int                        `json:"index"`
-	Metadata json.RawMessage            `json:"metadata"`
-	Values   json.RawMessage            `json:"values"`
-	Snapshot json.RawMessage            `json:"snapshot"`
-	Set      json.RawMessage            `json:"set"`
-	As       string                     `json:"as"`
-	Expect   map[string]json.RawMessage `json:"expect"`
-	Schema   json.RawMessage            `json:"schema"`
-	Steps    []json.RawMessage          `json:"steps"`
+	Op       string          `json:"op"`
+	DSN      json.RawMessage `json:"dsn"`
+	Table    string          `json:"table"`
+	Limit    int             `json:"limit"`
+	Offset   int64           `json:"offset"`
+	Columns  []string        `json:"columns"`
+	SQL      json.RawMessage `json:"sql"`
+	MaxRows  int             `json:"max_rows"`
+	MaxBytes int             `json:"max_bytes"`
+	Page     json.RawMessage `json:"page"`
+	Index    int             `json:"index"`
+	Metadata json.RawMessage `json:"metadata"`
+	Values   json.RawMessage `json:"values"`
+	Snapshot json.RawMessage `json:"snapshot"`
+	Set      json.RawMessage `json:"set"`
+	As       string          `json:"as"`
+	// The catalog fields: the databases that run the step, the namespace of a table, the binds and page of a query, and
+	// the seq of a row.
+	Only      []string                   `json:"only"`
+	Namespace string                     `json:"namespace"`
+	Binds     json.RawMessage            `json:"binds"`
+	PageWith  json.RawMessage            `json:"page_with"`
+	Seq       int64                      `json:"seq"`
+	Expect    map[string]json.RawMessage `json:"expect"`
+	Schema    json.RawMessage            `json:"schema"`
+	Steps     []json.RawMessage          `json:"steps"`
 	// The model op fields (FCV-4): the connection name, the model name, the pool size, and the arguments of the model ops.
 	Connection  string          `json:"connection"`
 	Model       string          `json:"model"`
@@ -167,6 +177,10 @@ func runDatabase(t *testing.T, path, database string) {
 		}
 	}
 	for _, c := range f.Cases {
+		// A case with only runs on the databases it names; the others do not register it (TypeScript does the same).
+		if len(c.Only) > 0 && !slices.Contains(c.Only, database) {
+			continue
+		}
 		t.Run(c.ID, func(t *testing.T) {
 			testcase.Start(t, testcase.Database)
 			runCase(t, path, f, c, database, schema, external)
@@ -241,7 +255,6 @@ func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database
 	if err != nil {
 		t.Fatalf("recipe %s case %s on %s: catalog: %v", path, c.ID, database, err)
 	}
-	defer testcase.Close(t, catalog)
 	namespace, err := catalog.CurrentNamespace(ctx)
 	if err != nil {
 		t.Fatalf("recipe %s case %s on %s: current namespace: %v", path, c.ID, database, err)
@@ -259,6 +272,11 @@ func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database
 			if err := closeConnection(); err != nil {
 				t.Errorf("recipe %s case %s: close connection: %v", path, c.ID, err)
 			}
+		}
+	}()
+	defer func() {
+		if state.catalog != nil {
+			testcase.Close(t, state.catalog)
 		}
 	}()
 	for _, s := range []*seed{f.Seed, c.Seed} {
@@ -313,6 +331,10 @@ func insertSeed(c *databaseContext, rows json.RawMessage) error {
 
 // runDatabaseStep maps the op of s to its call and compares the fields that its expect names.
 func runDatabaseStep(s databaseStep, c *databaseContext) error {
+	// A step with only runs on the databases it names, and its expect names exactly those (scripts/features/schema/recipe.schema.json).
+	if len(s.Only) > 0 && !slices.Contains(s.Only, c.database) {
+		return nil
+	}
 	var expected map[string]any
 	if raw, ok := s.Expect[c.database]; ok {
 		var parsed any
@@ -371,6 +393,41 @@ func runDatabaseStep(s databaseStep, c *databaseContext) error {
 	return nil
 }
 
+// closeFirst returns the first error of a step. A close failure is the step's error only when the step has none of its own;
+// otherwise it is joined after the first error, so that neither is lost.
+func closeFirst(err, closeErr error) error {
+	if closeErr == nil {
+		return err
+	}
+	if err == nil {
+		return closeErr
+	}
+	return errors.Join(err, closeErr)
+}
+
+// readBindCell reads the body of the bind cell at seq through a new connection, and closes that connection.
+func readBindCell(dsn string, seq int64) (out outcome, err error) {
+	db, err := model.Connect(dsn, orm.Config{AESKey: "bench-salt", BlindIndexKey: "bench-blind-index"})
+	if err != nil {
+		return outcome{}, err
+	}
+	defer func() {
+		err = closeFirst(err, db.Close())
+	}()
+	row, err := model.BindCell().Connect(db).Seq(seq).Get()
+	if err != nil {
+		return outcome{}, err
+	}
+	body, err := row.GetBody()
+	if err != nil {
+		return outcome{}, err
+	}
+	if body == nil {
+		return outcome{fields: map[string]any{"value": map[string]any{"null": "text"}}}, nil
+	}
+	return outcome{fields: map[string]any{"value": map[string]any{"text": *body}}}, nil
+}
+
 // databaseOp calls the public API that the op names and returns the fields that its expect compares (FCV-4).
 func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 	switch s.Op {
@@ -381,16 +438,33 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"text": namespace}}}, nil
 	case "catalog.describe_table":
-		metadata, err := c.catalog.DescribeTable(c.ctx, orm.CatalogTableRef{Namespace: c.namespace, Name: s.Table})
+		namespace := c.namespace
+		if s.Namespace != "" {
+			namespace = s.Namespace
+		}
+		metadata, err := c.catalog.DescribeTable(c.ctx, orm.CatalogTableRef{Namespace: namespace, Name: s.Table})
 		if err != nil {
 			return outcome{}, err
 		}
 		names := make([]string, len(metadata.Columns))
+		natives := make([]string, len(metadata.Columns))
+		nullable := make([]bool, len(metadata.Columns))
+		generated := make([]bool, len(metadata.Columns))
+		automatic := make([]bool, len(metadata.Columns))
+		defaults := make([]bool, len(metadata.Columns))
 		for i, column := range metadata.Columns {
 			names[i] = column.Name
+			natives[i] = column.NativeType
+			nullable[i] = column.Nullable
+			generated[i] = column.Generated
+			automatic[i] = column.AutomaticKey
+			defaults[i] = column.DefaultExpression != nil
 		}
 		return outcome{api: metadata, fields: map[string]any{
-			"columns": names, "primary_key": metadata.PrimaryKey, "reliable_row_identity": metadata.ReliableRowIdentity,
+			"namespace": map[string]any{"text": metadata.Table.Namespace},
+			"kind":      string(metadata.Kind), "columns_present": len(metadata.Columns) > 0,
+			"columns": names, "native_types": natives, "primary_key": metadata.PrimaryKey, "reliable_row_identity": metadata.ReliableRowIdentity,
+			"nullable": nullable, "generated": generated, "automatic_keys": automatic, "defaults": defaults,
 		}}, nil
 	case "catalog.table_page":
 		page, err := c.catalog.TablePage(c.ctx, orm.CatalogTableRef{Namespace: c.namespace, Name: s.Table}, s.Limit, s.Offset)
@@ -429,7 +503,11 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if err != nil {
 			return outcome{}, err
 		}
-		result, err := c.catalog.ReadOnlyQuery(c.ctx, query, nil, orm.CatalogQueryLimits{MaxRows: s.MaxRows, MaxBytes: s.MaxBytes})
+		binds, err := queryBinds(s.Binds, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		result, err := c.catalog.ReadOnlyQuery(c.ctx, query, binds, orm.CatalogQueryLimits{MaxRows: s.MaxRows, MaxBytes: s.MaxBytes})
 		if err != nil {
 			return outcome{}, err
 		}
@@ -437,7 +515,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if err != nil {
 			return outcome{}, err
 		}
-		return outcome{fields: map[string]any{"rows": rows}}, nil
+		return outcome{fields: map[string]any{"columns": result.Columns, "row_count": len(result.Rows), "rows": rows}}, nil
 	case "catalog.read_only_grid_query":
 		query, err := databaseText(s.SQL, c)
 		if err != nil {
@@ -453,15 +531,112 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		return outcome{fields: map[string]any{"columns": result.Columns, "rows": rows}}, nil
 	case "catalog.row_snapshot":
-		page, err := boundAPI[orm.CatalogTablePage](s.Page, c)
+		raw := s.Page
+		if len(s.PageWith) > 0 {
+			var with struct {
+				Page    json.RawMessage `json:"page"`
+				OrderBy []string        `json:"order_by"`
+			}
+			if err := json.Unmarshal(s.PageWith, &with); err != nil {
+				return outcome{}, err
+			}
+			raw = with.Page
+		}
+		page, err := boundAPI[orm.CatalogTablePage](raw, c)
 		if err != nil {
 			return outcome{}, err
+		}
+		if len(s.PageWith) > 0 {
+			var with struct {
+				OrderBy []string `json:"order_by"`
+			}
+			if err := json.Unmarshal(s.PageWith, &with); err != nil {
+				return outcome{}, err
+			}
+			page.OrderBy = with.OrderBy
 		}
 		snapshot, err := orm.CatalogSnapshotFromPage(page, s.Index)
 		if err != nil {
 			return outcome{}, err
 		}
-		return outcome{api: snapshotOf{snapshot: snapshot, metadata: page.Metadata}}, nil
+		keys := snapshot.Keys()
+		keyCells := make([]any, len(keys))
+		for i, key := range keys {
+			cell, err := plain(key, "", c.database)
+			if err != nil {
+				return outcome{}, err
+			}
+			keyCells[i] = cell
+		}
+		return outcome{api: snapshotOf{snapshot: snapshot, metadata: page.Metadata}, fields: map[string]any{
+			"keys": keyCells, "key_indexes": snapshot.KeyIndexes(),
+		}}, nil
+	case "catalog.revision":
+		snapshot, err := boundAPI[snapshotOf](s.Snapshot, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		return outcome{fields: map[string]any{"value": map[string]any{"text": snapshot.snapshot.Revision()}}}, nil
+	case "catalog.row_cells":
+		snapshot, err := boundAPI[snapshotOf](s.Snapshot, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		captured := snapshot.snapshot.CapturedCells()
+		cells := make([]any, len(captured))
+		for i, cell := range captured {
+			cells[i], err = plain(cell, snapshot.metadata.Columns[i].NativeType, c.database)
+			if err != nil {
+				return outcome{}, err
+			}
+		}
+		return outcome{fields: map[string]any{"cells": cells}}, nil
+	case "catalog.connect":
+		var target struct {
+			URL        *string `json:"url"`
+			SQLiteFile string  `json:"sqlite_file"`
+		}
+		if err := json.Unmarshal(s.DSN, &target); err != nil {
+			return outcome{}, err
+		}
+		if target.URL != nil {
+			connection, err := orm.ConnectCatalog(*target.URL)
+			if err != nil {
+				return outcome{}, err
+			}
+			return outcome{}, connection.Close()
+		}
+		// A SQLite file that the case does not create: the connection fails, and the file must not exist afterwards.
+		path := filepath.Join(c.t.TempDir(), "absent.sqlite")
+		connection, err := orm.ConnectCatalog("sqlite://" + path)
+		var closeErr error
+		if connection != nil {
+			closeErr = connection.Close()
+		}
+		if _, statErr := os.Stat(path); statErr == nil {
+			return outcome{}, closeFirst(fmt.Errorf("the connection created %s", path), closeErr)
+		}
+		if err == nil {
+			return outcome{}, closeFirst(fmt.Errorf("the connection to an absent SQLite file succeeded"), closeErr)
+		}
+		return outcome{}, closeFirst(err, closeErr)
+	case "catalog.close":
+		// The closed connection stays bound: its operations fail with CATALOG_CLOSED and send no statement.
+		return outcome{}, c.catalog.Close()
+	case "catalog.reconnect":
+		catalog, err := orm.ConnectCatalog(c.dsn)
+		if err != nil {
+			return outcome{}, err
+		}
+		namespace, err := catalog.CurrentNamespace(c.ctx)
+		if err != nil {
+			return outcome{}, closeFirst(err, catalog.Close())
+		}
+		c.catalog = catalog
+		c.namespace = namespace
+		return outcome{}, nil
+	case "model.read_bind_cell":
+		return readBindCell(c.dsn, s.Seq)
 	case "catalog.insert_row":
 		metadata, err := boundAPI[orm.CatalogTableMetadata](s.Metadata, c)
 		if err != nil {
@@ -601,7 +776,10 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return outcome{fields: map[string]any{}}, nil
 	// dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step, opened with Connect.
 	case "dsn.connect":
-		dsn := s.DSN
+		var dsn string
+		if err := json.Unmarshal(s.DSN, &dsn); err != nil {
+			return outcome{}, fmt.Errorf("dsn.connect: dsn is not a text: %w", err)
+		}
 		if dsn == "case" {
 			dsn = c.dsn
 		}
@@ -611,7 +789,10 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"text": driver}}}, nil
 	}
-	if strings.HasPrefix(s.Op, "model.") {
+	switch s.Op {
+	// The ops of the model connections (FCV-4), by their full names.
+	case "model.connect", "model.create", "model.creates", "model.save", "model.duplicate_create", "model.update",
+		"model.arithmetic", "model.delete", "model.count", "model.get_by", "model.query":
 		return modelOp(s, c)
 	}
 	if out, handled, err := statementOp(s, c); handled {
@@ -869,10 +1050,50 @@ func cellRows[T any](rows [][]T, convert func(T) (any, error)) ([]any, error) {
 
 // assignments are the assignments of an object of column names, in its order, whose values are recipe wrappers, refs to
 // bound value wrappers or per-database objects.
-func assignments(raw json.RawMessage, c *databaseContext) ([]orm.CatalogAssignment, error) {
-	members, err := orderedMembers(raw)
-	if err != nil {
+// queryBinds reads the positional binds of a read-only query: a list of recipe values, each converted as an assignment value.
+func queryBinds(raw json.RawMessage, c *databaseContext) ([]any, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	var items []json.RawMessage
+	if err := json.Unmarshal(raw, &items); err != nil {
 		return nil, err
+	}
+	out := make([]any, len(items))
+	for i, item := range items {
+		value, err := assignmentValue(item, c)
+		if err != nil {
+			return nil, fmt.Errorf("bind %d: %w", i+1, err)
+		}
+		out[i] = value
+	}
+	return out, nil
+}
+
+// assignments reads the named values of a step: an object in its key order, or a list of [name, value] pairs.
+func assignments(raw json.RawMessage, c *databaseContext) ([]orm.CatalogAssignment, error) {
+	var members []rawMember
+	if trimmed := bytes.TrimSpace(raw); len(trimmed) > 0 && trimmed[0] == '[' {
+		var pairs [][]json.RawMessage
+		if err := json.Unmarshal(raw, &pairs); err != nil {
+			return nil, err
+		}
+		for _, pair := range pairs {
+			if len(pair) != 2 {
+				return nil, fmt.Errorf("an assignment is a [name, value] pair, not %d items", len(pair))
+			}
+			var name string
+			if err := json.Unmarshal(pair[0], &name); err != nil {
+				return nil, err
+			}
+			members = append(members, rawMember{key: name, value: pair[1]})
+		}
+	} else {
+		var err error
+		members, err = orderedMembers(raw)
+		if err != nil {
+			return nil, err
+		}
 	}
 	out := make([]orm.CatalogAssignment, 0, len(members))
 	for _, m := range members {
@@ -939,6 +1160,9 @@ func plain(value any, nativeType, database string) (any, error) {
 		return map[string]any{"int": strconv.FormatInt(v, 10)}, nil
 	case bool:
 		return map[string]any{"bool": v}, nil
+	case float64:
+		// The shortest text that reads back as the same float, as the TypeScript runner writes a number.
+		return map[string]any{"float": strconv.FormatFloat(v, 'g', -1, 64)}, nil
 	case []byte:
 		return map[string]any{"bytes_hex": hex.EncodeToString(v)}, nil
 	case string:
@@ -1018,8 +1242,14 @@ func gridWrapper(cell orm.CatalogGridCell) (any, error) {
 	switch cell.Kind {
 	case orm.CatalogGridNull:
 		return map[string]any{"null": true}, nil
-	case orm.CatalogGridInteger, orm.CatalogGridUnsigned:
+	case orm.CatalogGridInteger:
 		return map[string]any{"int": fmt.Sprint(cell.Value)}, nil
+	case orm.CatalogGridUnsigned:
+		return map[string]any{"uint": fmt.Sprint(cell.Value)}, nil
+	case orm.CatalogGridFloat32:
+		return map[string]any{"f32_bits": cell.Value}, nil
+	case orm.CatalogGridFloat64:
+		return map[string]any{"f64_bits": fmt.Sprint(cell.Value)}, nil
 	case orm.CatalogGridDecimal, orm.CatalogGridText, orm.CatalogGridDate, orm.CatalogGridTime, orm.CatalogGridDateTime:
 		return map[string]any{string(cell.Kind): cell.Value}, nil
 	case orm.CatalogGridBoolean:

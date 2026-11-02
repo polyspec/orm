@@ -83,7 +83,8 @@ class FakeConnection:
         self.loaders = []
         self.closed = False
 
-    def cursor(self):
+    def cursor(self, _cursor_class=None):
+        # A streamed read asks for an unbuffered cursor class: the double answers the same either way.
         return FakeCursor(self.description, self.rows, self.loaders)
 
 
@@ -135,7 +136,7 @@ class CatalogDescribedTemporalTest(unittest.TestCase):
         for name, script, code in (
             (
                 "loose",
-                "CREATE TABLE loose (id INTEGER PRIMARY KEY, dt DATETIME); INSERT INTO loose VALUES (1, '2024-02-29 01:02:03')",
+                "CREATE TABLE loose (id INTEGER PRIMARY KEY, dt DATETIME); INSERT INTO loose VALUES (1, '2024-02-29 01:02:03.5')",
                 codes.GRID_TEMPORAL_PRECISION,
             ),
             (

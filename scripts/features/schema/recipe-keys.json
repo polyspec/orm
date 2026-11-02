@@ -13,6 +13,7 @@
   "case": [
     "id",
     "install",
+    "only",
     "requirements",
     "seed",
     "steps"
@@ -65,6 +66,7 @@
       "value"
     ],
     "sql.exec": [
+      "only",
       "op",
       "reason",
       "sql"
@@ -90,6 +92,8 @@
     "catalog.describe_table": [
       "as",
       "expect",
+      "namespace",
+      "only",
       "op",
       "table"
     ],
@@ -99,13 +103,16 @@
       "expect",
       "limit",
       "offset",
+      "only",
       "op",
       "table"
     ],
     "catalog.read_only_query": [
+      "binds",
       "expect",
       "max_bytes",
       "max_rows",
+      "only",
       "op",
       "sql"
     ],
@@ -113,14 +120,17 @@
       "expect",
       "max_bytes",
       "max_rows",
+      "only",
       "op",
       "sql"
     ],
     "catalog.row_snapshot": [
       "as",
+      "expect",
       "index",
       "op",
-      "page"
+      "page",
+      "page_with"
     ],
     "catalog.insert_row": [
       "expect",
@@ -433,6 +443,33 @@
       "expect",
       "op",
       "path"
+    ],
+    "catalog.connect": [
+      "dsn",
+      "expect",
+      "op"
+    ],
+    "catalog.close": [
+      "op"
+    ],
+    "catalog.reconnect": [
+      "op"
+    ],
+    "catalog.revision": [
+      "as",
+      "expect",
+      "op",
+      "snapshot"
+    ],
+    "catalog.row_cells": [
+      "expect",
+      "op",
+      "snapshot"
+    ],
+    "model.read_bind_cell": [
+      "expect",
+      "op",
+      "seq"
     ]
   }
 }

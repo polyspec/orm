@@ -39,7 +39,7 @@ delete process.env.ORM_RUST_TEST_FEATURES;
 
 const ownerTests: Record<string, string> = {
   go: 'packages/go/orm/dsn_test.go', php: 'packages/php/tests/DsnTest.php',
-  'php-extension': 'packages/php-ext/tests/CoverageCatalogConnectionTest.php', python: 'packages/python/tests/test_utils.py',
+  'php-extension': 'packages/php-ext/tests/CatalogConnectionSurfaceTest.php', python: 'packages/python/tests/test_utils.py',
   rust: 'packages/rust/orm/tests/zone.rs', typescript: 'packages/ts/tests/typecheck.ts',
 };
 const dependentTest = 'packages/go/model/model_test.go';
@@ -234,15 +234,18 @@ caseTest('PHP extension catalog, schema and statement event coverage use native 
   }
   const catalog = manifest.features.find(item => item.id === 'catalog_connection');
   assert.ok(catalog);
+  // The read and row-mutation units were dropped: their cases are bound by the per-database catalog_connection units.
   const catalogRequirements: Record<string, string[]> = {
-    'catalog-connection-read': ['SCH-6a', 'INT-113', 'INT-114', 'SCH-3', 'INT-103', 'INT-115'],
-    'catalog-connection-row-mutation': ['SCH-6a', 'INT-109', 'INT-123', 'DBS-113'],
+    'catalog_connection-mysql': ['SCH-6a', 'INT-113', 'INT-114', 'INT-103', 'INT-115', 'INT-109', 'INT-123', 'DBS-113', 'SCH-3'],
+    'catalog_connection-postgres': ['SCH-6a', 'INT-113', 'INT-114', 'INT-103', 'INT-115', 'INT-109', 'INT-123', 'DBS-113', 'SCH-3'],
+    'catalog_connection-sqlite': ['SCH-6a', 'INT-113', 'INT-114', 'INT-103', 'INT-115', 'INT-109', 'INT-123', 'DBS-113', 'SCH-3'],
   };
   for (const [id, requirements] of Object.entries(catalogRequirements)) {
     assert.ok(catalog.parity.includes(id), `catalog_connection omits ${id}`);
     const unit: ParityConfig['units'][number] | undefined = parityUnits.find(item => item.id === id);
     assert.ok(unit, `config/parity.json omits ${id}`);
-    assert.deepEqual(unit.requirements, requirements);
+    assert.ok(unit.requirements, `config/parity.json omits requirements for ${id}`);
+    for (const requirement of requirements) assert.ok(unit.requirements.includes(requirement), `${id} omits ${requirement}`);
     assert.ok(unit.bindings, `config/parity.json omits bindings for ${id}`);
     assert.deepEqual(
       [...new Set(unit.bindings.map(binding => binding.implementation))].toSorted(),
@@ -376,8 +379,9 @@ caseTest('Rust coverage uses the workspace manifest and applies only supported f
   ]);
 });
 
-caseTest('PHP extension catalog coverage selects the exact native methods', 1000, () => {
-  const manifest = readFeatures(new URL('../..', import.meta.url).pathname);
+caseTest('PHP extension catalog coverage selects the exact recipe entry methods', 1000, () => {
+  const root = new URL('../..', import.meta.url).pathname;
+  const manifest = readFeatures(root);
   const catalog = manifest.features.find(item => item.id === 'catalog_connection');
   assert.ok(catalog);
   assert.ok(catalog.coverage);
@@ -386,16 +390,22 @@ caseTest('PHP extension catalog coverage selects the exact native methods', 1000
   assert.ok(owner);
   const commands = owner.commands;
   assert.deepEqual(Object.keys(commands).toSorted(), [...databases].toSorted());
-  for (const nativeCommands of Object.values(commands)) {
+  // The extension class extends the shared recipe class in packages/php/tests, which declares the entry methods.
+  const methods = declaredPhpMethods(join(root, 'packages/php/tests/CatalogConnectionRecipeTest.php'));
+  const entries: Record<string, string | undefined> = { mysql: 'testMysql', postgres: 'testPostgres', sqlite: 'testSqlite' };
+  for (const [database, nativeCommands] of Object.entries(commands)) {
     assert.ok(nativeCommands);
     assert.equal(nativeCommands.length, 1);
+    const entry = entries[database];
+    assert.ok(entry, `no recipe entry method for ${database}`);
     assert.deepEqual(nativeCommands[0]?.symbols, {
-      catalog_read: 'testCatalogRead',
-      catalog_row_mutation: 'testCatalogRowMutation',
-      model_read_null_and_empty_text: 'testModelReadNullAndEmptyText',
-      catalog_grid_column_and_row_order: 'testGridColumnAndRowOrder',
-      catalog_plain_query_bounds: 'testCatalogPlainReadOnlyQueryBudgets',
+      catalog_read: entry,
+      catalog_row_mutation: entry,
+      model_read_null_and_empty_text: entry,
+      catalog_grid_column_and_row_order: entry,
+      catalog_plain_query_bounds: entry,
     });
+    assert.match(methods, new RegExp(`function ${entry}\\(`), `CatalogConnectionRecipeTest lacks ${entry}`);
   }
 });
 

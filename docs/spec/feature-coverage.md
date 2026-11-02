@@ -146,3 +146,13 @@ The case `dbspec_format_refusal` of the suite unit `schema-definition` (contract
 | schema_definition::dbspec_format_refusal | rust | schema-definition, dbspec_format_refusal |
 
 The go engine test `TestFormat` was also bound to this unit; it stays bound by `coverage-schema-definition-dbspec-format`.
+
+
+## Catalog connection exclusions {#catalog-connection-exclusions}
+
+The recipe `contracts/fixtures/catalog_connection/catalog_connection.json` covers the catalog behavior that the six runtimes share (SCH-6a, INT-117). A native test stays only for a behavior that FCV-2 leaves to one runtime, or that the recipe cannot express. Each kept behavior is listed here with its reason.
+
+- **Surface and packaging (FCV-2).** The class and method surface of `Catalog` and `Model` in PHP and the PHP extension, the loading of the extension, the Rust library surface of the build crate, and the fault-injection doubles of commit, rollback, metadata and cleanup failures, descriptor changes and trigger visibility. The recipe cannot inject a failure.
+- **Excluded from the recipe.** The TypeScript `precisionCase` is covered by the recipe case `declared_temporal_cells`, so it has no native test. MySQL `TIME(7)` is refused by the server DDL rule of DIA-54, which the catalog connection does not own; the native check of that refusal stays in each runtime that runs it.
+- **Recipe gaps (INT-136, SCH-6a).** Each behavior below needs a recipe case before its native test can go: a server error expectation for `sql.exec`, the `catalog.revision` pattern, SQLite generated keys (AUTOINCREMENT, literal and expression defaults), an insert without an identity (ROW_INSERT_IDENTITY_REQUIRED), a deferred foreign key refused at commit, a zero-row delete, a row unchanged after a refused update, a close twice and a snapshot after close, a PostgreSQL infinity date and timetz refusal, and an error message in an expectation.
+- **Codec.** No recipe case decodes empty `ordered_json` text, so its native check stays until a codec recipe case asserts it.

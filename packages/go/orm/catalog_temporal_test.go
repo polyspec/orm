@@ -81,7 +81,7 @@ func TestCatalogDescribedTemporalRefusesSQLiteTextOutsideCheck(t *testing.T) {
 		ddl  string
 		code string
 	}{
-		{name: "loose", ddl: "CREATE TABLE loose (id INTEGER PRIMARY KEY, dt DATETIME); INSERT INTO loose VALUES (1, '2024-02-29 01:02:03')", code: "GRID_TEMPORAL_PRECISION"},
+		{name: "loose", ddl: "CREATE TABLE loose (id INTEGER PRIMARY KEY, dt DATETIME); INSERT INTO loose VALUES (1, '2024-02-29 01:02:03.5')", code: "GRID_TEMPORAL_PRECISION"},
 		{name: "wrong", ddl: "CREATE TABLE wrong (id INTEGER PRIMARY KEY, d DATE); INSERT INTO wrong VALUES (1, 'not a date')", code: "GRID_TEMPORAL_VALUE"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -158,12 +158,14 @@ func TestCatalogDescribedTemporalText(t *testing.T) {
 		{name: "SQLite date", value: "2024-02-29", native: "DATE", dialect: "sqlite", want: "2024-02-29"},
 		{name: "SQLite TIME(3) is not a dbspec declaration", value: "12:34:56.5", native: "TIME(3)", dialect: "sqlite", want: "12:34:56.5"},
 		{name: "SQLite text of other digits than its CHECK", value: "12:34:56.5", native: "TIME", dialect: "sqlite", code: "GRID_TEMPORAL_PRECISION"},
+		{name: "MySQL zero date on the described path", value: time.Time{}, native: "date", dialect: "mysql", code: "GRID_TEMPORAL_VALUE"},
+		{name: "MySQL zero datetime on the described path", value: time.Time{}, native: "datetime(3)", dialect: "mysql", code: "GRID_TEMPORAL_VALUE"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			column := CatalogColumn{Name: "c", NativeType: test.native}
 			if test.dialect == "sqlite" && test.native == "TIME" {
 				precision := 3
-				column.checkPrecision = &precision
+				column.CheckPrecision = &precision
 			}
 			got, err := catalogDescribedTemporal(test.value, column, test.dialect)
 			if test.code != "" {
@@ -221,6 +223,42 @@ func TestCatalogDescribedBool(t *testing.T) {
 			}
 			if got != tc.want {
 				t.Fatalf("catalogDescribedBool(%v) = %v (%T), want %v (%T)", tc.value, got, got, tc.want, tc.want)
+			}
+		})
+	}
+}
+
+
+// Requirements: INT-103.
+//
+// go-sql-driver/mysql returns time.Time{} for the zero date 0000-00-00 (parseDateTime). MySQL's DATE and DATETIME range
+// starts at 1000-01-01 (MySQL 8.4 Reference Manual, "The DATE, DATETIME, and TIMESTAMP Types"), so 0001-01-01 is never a
+// MySQL value and a time.Time{} read from a MySQL temporal column is the zero date, which INT-103 refuses.
+func TestCatalogGridTemporalZeroDate(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	for _, test := range []struct {
+		name    string
+		value   time.Time
+		native  string
+		dialect string
+		want    any
+		code    string
+	}{
+		{name: "MySQL zero DATE", value: time.Time{}, native: "DATE", dialect: "mysql", code: "GRID_TEMPORAL_VALUE"},
+		{name: "MySQL zero DATETIME", value: time.Time{}, native: "DATETIME", dialect: "mysql", code: "GRID_TEMPORAL_VALUE"},
+		{name: "MySQL DATE at the start of its range", value: time.Date(1000, time.January, 1, 0, 0, 0, 0, time.UTC), native: "DATE", dialect: "mysql", want: "1000-01-01"},
+		{name: "PostgreSQL DATE at 0001-01-01", value: time.Time{}, native: "DATE", dialect: "postgres", want: "0001-01-01"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := catalogGridCell(test.value, test.native, test.dialect)
+			if test.code != "" {
+				if ErrorCode(err) != test.code {
+					t.Fatalf("catalogGridCell = %#v, %v; want %s", got, err, test.code)
+				}
+				return
+			}
+			if err != nil || !reflect.DeepEqual(got.Value, test.want) {
+				t.Fatalf("catalogGridCell = %#v, %v; want %#v", got, err, test.want)
 			}
 		})
 	}

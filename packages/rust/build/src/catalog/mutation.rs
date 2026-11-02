@@ -220,6 +220,7 @@ impl CatalogConnection {
         let mut connection = begin_mutation(&self.pool, &self.dialect, &cancellation).await?;
         let result = async {
             let descriptor = lock_original(&mut connection, original, &self.dialect, &keys, &cancellation, &publish).await?;
+            super::temporal::check_write_precision(&mut connection, &descriptor, changes, &self.dialect).await?;
             let sets = changes
                 .iter()
                 .enumerate()

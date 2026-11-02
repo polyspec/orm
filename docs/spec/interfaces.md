@@ -390,7 +390,7 @@ SQLite native type for an untyped column rather than inventing a type.
 
 Names require 1..1024 UTF-8 bytes and no NUL. Each catalog result is bounded to
 2048 rows and 4 MiB. Unsupported relation kinds and SQLite namespaces fail
-explicitly. This descriptor is not a complete physical schema import or an
+explicitly. A DSN that names no supported dialect fails with `CONFIG` and creates no file. This descriptor is not a complete physical schema import or an
 atomic schema revision; mutation must revalidate metadata in its owning scope.
 
 MySQL `SYSTEM VIEW` catalog relations are classified as views, never as tables
@@ -451,7 +451,10 @@ signature differs from a declared bind type; no codec guessing is permitted.
 
 Before writing, the snapshot update validator checks named assignments and must
 reject duplicates, unknown names, generated columns, invalid NULLs and oversized
-values. After writing under the same lock, compare exact requested values and
+values. A client that takes the named changes as a list of `[name, value]` pairs
+(Go, TypeScript, Python, and PHP when given a list) can receive a repeated name,
+which is refused with `ROW_UPDATE_INVALID` (`ROW_INSERT_INVALID` on insert) before
+any write; the PHP map form can hold only distinct names. After writing under the same lock, compare exact requested values and
 untouched ordinary columns; generated columns may be recomputed. A coercion or
 unrequested ordinary-column change requires rollback, never success. Pure
 verification alone is not transactional execution or mutation authorization.
@@ -520,6 +523,11 @@ The descriptor is not a complete physical schema revision and cannot detect ABA.
 Prepared native types may be data-dependent; compare projection names and the
 native descriptor, not prepared type names as schema revisions.
 
+A captured row snapshot exposes three accessors. `keys` returns the primary-key cells in
+constraint order. `key indexes` returns the position of each key cell among the columns
+in physical order, and `captured cells` returns every original cell in physical order,
+which the revision covers.
+
 ### Catalog table pages
 
 `table_page(table, limit, offset)` reads one explicit
@@ -541,10 +549,10 @@ metadata is not an atomic schema revision or authorization for row mutations.
 - **INT-98** A database cell that a typed read cannot represent in its declared type fails with `CODEC_DECODE`: a MySQL `UNSIGNED` value beyond the signed 64-bit range read as signed, the integer 2 read as a boolean, a PostgreSQL `NaN` read as a finite float, and an SQLite text read as an integer.
 - **INT-99** A typed read returns each column as its declared type in the same representation on every database: a 16-bit integer as an integer, a uuid as its text, a `time(3)` as text with three fraction digits, and a date as a date; a column that an insert omits takes its database default on every database.
 - **INT-100** Rust native model generation: Generating the models of one document set twice yields the same model, manifest and external text; the model that the crate builds from the same documents equals the generated one once the build's paths are replaced with the generation's paths.
-- **INT-101** A `time` or `datetime` column declared without a precision has the dialect's default precision: 0 on MySQL and 6 on PostgreSQL. MySQL refuses a precision above 6 (DIA-54), and PostgreSQL reads a declared precision as declared.
+- **INT-101** A `time` or `datetime` column declared without a precision has the dialect's default precision: 0 on MySQL and 6 on PostgreSQL. MySQL refuses a precision above 6 (DIA-54), and PostgreSQL reads a declared precision as declared. A typed catalog write whose `time` or `datetime` value has more fraction digits than the column's declared precision (the dialect default when none is declared, or the SQLite CHECK) fails with `CODEC_ENCODE` before any statement.
 - **INT-102** A grid floating-point cell carries the native IEEE-754 bits of its value (`Float32(u32)`, `Float64(u64)`), preserving signed zero and nonfinite values without JSON number coercion; a MySQL unsigned value is an `Unsigned(u64)` cell that preserves the whole unsigned 64-bit range.
-- **INT-103** A temporal grid cell holds the dbspec text form of its value: `Date` as `YYYY-MM-DD`, `Time` as `HH:MM:SS` and `DateTime` as `YYYY-MM-DD HH:MM:SS` in UTC, each with its fraction digits. A read of a described table writes exactly the declared precision p of the column; a read-only grid query has no declaration and writes six digits, and on SQLite it keeps the stored text and the storage class of each value. MySQL `TIMESTAMP` and PostgreSQL `timestamptz` and `timetz` are unsupported and fail with `CATALOG_VALUE`; their NULL is a null cell. A time outside 00:00:00 to 23:59:59.999999, a date outside 0001-01-01 to 9999-12-31 and a PostgreSQL infinity fail, and an SQLite text of a described table that is not in the dbspec form fails with `GRID_TEMPORAL_VALUE`.
-- **INT-104** A read-only grid query and a plain read-only query run in a database-enforced read-only scope on every database, and a statement of a plain read-only query that writes fails with `QUERY_READ_ONLY`.
+- **INT-103** A temporal grid cell holds the dbspec text form of its value: `Date` as `YYYY-MM-DD`, `Time` as `HH:MM:SS` and `DateTime` as `YYYY-MM-DD HH:MM:SS` in UTC, each with its fraction digits. A read of a described table writes exactly the declared precision p of the column; a read-only grid query has no declaration and writes six digits, and on SQLite it keeps the stored text and the storage class of each value. MySQL `TIMESTAMP` and PostgreSQL `timestamptz` and `timetz` are unsupported and fail with `CATALOG_VALUE`; their NULL is a null cell. MySQL `YEAR` is an integer-valued type with no temporal meaning that orm declares, so a grid read of it fails with `CATALOG_VALUE`. A time outside 00:00:00 to 23:59:59.999999, a date outside 0001-01-01 to 9999-12-31 (the MySQL zero date 0000-00-00 is one) and a PostgreSQL infinity fail with `GRID_TEMPORAL_VALUE`, and an SQLite text of a described table that is not in the dbspec form fails with `GRID_TEMPORAL_VALUE`. The SQLite CHECK that fixes the digits of a datetime column is SQLite's own temporal check, so the case that reads it runs on SQLite only, in the recipe catalog_connection-sqlite-only. A SQLite DATETIME column with no CHECK has precision 0: a whole-second text reads as its dbspec text, and a non-zero fraction fails with `GRID_TEMPORAL_PRECISION`.
+- **INT-104** A read-only grid query and a plain read-only query run in a database-enforced read-only scope on every database, and a statement of a plain read-only query that writes fails with `QUERY_READ_ONLY`, and so does a write that the database's read-only scope refuses in a grid query, such as a routine that writes.
 - **INT-105** The `polyspec-orm-build` commit permit rolls back a rejected native insert, update or delete; it never becomes a commit success.
 - **INT-106** A native update locks the original row by its key in a fresh transaction, compares the descriptor and the original row, and verifies the exact post-write values before commit; a failed verification or a cancellation before commit rolls back. MySQL tables that are not InnoDB and MySQL tables with triggers are rejected.
 - **INT-107** A row baseline compares exact typed values: float bits, decimal scale, binary bytes and generated-column original values. A value that differs in any of them is a conflict.

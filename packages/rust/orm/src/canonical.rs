@@ -127,11 +127,7 @@ impl Canonicalizer {
         let mut out = q.clone();
         if let Some(cols) = &q.columns {
             let mut c = cols.clone();
-            c.r#fn = cols
-                .r#fn
-                .iter()
-                .map(|(k, f)| (k.clone(), ir::ColFunc { column: f.column.clone(), r#fn: self.func(&f.r#fn) }))
-                .collect();
+            c.r#fn = cols.r#fn.iter().map(|(k, f)| (k.clone(), ir::ColFunc { column: f.column.clone(), r#fn: self.func(&f.r#fn) })).collect();
             c.sub = cols.sub.iter().map(|(k, s)| (k.clone(), self.sub(s))).collect();
             out.columns = Some(c);
         }
@@ -242,7 +238,9 @@ mod plan_cache_composite_tests {
             assert_eq!(values(&ps), want["params"].as_array().expect("canonical params").clone());
             assert_eq!(request.n_params, index(&want["n_params"]));
             match &request.query.limit {
-                Some(ir::Limit::Params { offset_p, count_p }) => assert_eq!((*offset_p, *count_p), (index(&want["limit"]["offset_p"]), index(&want["limit"]["count_p"]))),
+                Some(ir::Limit::Params { offset_p, count_p }) => {
+                    assert_eq!((*offset_p, *count_p), (index(&want["limit"]["offset_p"]), index(&want["limit"]["count_p"])))
+                }
                 other => panic!("the root limit is not parameters: {other:?}"),
             }
             assert_eq!(request.query.if_parent.as_ref().expect("the parent condition").p, index(&want["if_parent_p"]));

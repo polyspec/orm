@@ -15,6 +15,9 @@ final class CatalogColumn
         public readonly bool $automaticKey,
         public readonly ?string $defaultExpression,
         public readonly bool $expressionDefault,
+        // On SQLite, the fraction digits that the dbspec CHECK of a TIME or DATETIME column fixes; null when no CHECK
+        // fixes them and on the other databases (Go's checkPrecision).
+        public readonly ?int $checkPrecision = null,
     ) {
     }
 }

@@ -24,6 +24,17 @@ final class CatalogPageMutationStatement extends \PDOStatement
         return true;
     }
 
+    /** The answers are fixed, so a bound parameter changes nothing. */
+    public function bindValue(int|string $param, mixed $value, int $type = \PDO::PARAM_STR): bool
+    {
+        return true;
+    }
+
+    public function closeCursor(): bool
+    {
+        return true;
+    }
+
     public function columnCount(): int
     {
         return count($this->columns);

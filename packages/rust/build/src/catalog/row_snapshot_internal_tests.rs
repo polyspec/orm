@@ -13,6 +13,7 @@ fn fixture() -> TablePage {
                 automatic_key: false,
                 default_expression: None,
                 expression_default: false,
+                check_precision: None,
             }],
             primary_key: vec!["id".into()],
             reliable_row_identity: true,
@@ -38,6 +39,7 @@ fn fixture_with_payload(value: GridCell) -> TablePage {
         automatic_key: false,
         default_expression: None,
         expression_default: false,
+        check_precision: None,
     });
     page.result.columns.push(crate::tool_db::QueryColumn { name: "payload".into(), native_type: "TEXT".into() });
     page.result.rows[0].push(value);
@@ -56,6 +58,7 @@ fn primary_key_parameters_follow_declared_key_order() {
         automatic_key: false,
         default_expression: None,
         expression_default: false,
+        check_precision: None,
     });
     page.metadata.primary_key = vec!["slug".into(), "id".into()];
     let keys = key_params(&page.metadata, &[GridCell::Integer(7), GridCell::Text("row-key".into())]).unwrap();

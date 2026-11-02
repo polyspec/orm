@@ -148,3 +148,9 @@ suite unit `schema-definition`(contracts/fixtures/schema_definition.json)의 cas
 | schema_definition::dbspec_format_refusal | rust | schema-definition, dbspec_format_refusal |
 
 go engine test `TestFormat`도 이 unit에 묶여 있었다. 이 binding은 `coverage-schema-definition-dbspec-format`이 계속 묶는다.
+## Catalog 연결 제외 항목 {#catalog-connection-exclusions}
+recipe `contracts/fixtures/catalog_connection/catalog_connection.json`은 여섯 runtime이 공유하는 catalog 동작을 다룬다(SCH-6a, INT-117). 네이티브 테스트는 FCV-2가 한 runtime에 남기는 동작이거나 recipe로 표현할 수 없는 동작일 때만 남는다. 남은 동작은 이유와 함께 아래에 적는다.
+- **표면과 패키징(FCV-2).** PHP와 PHP extension의 `Catalog`, `Model` 클래스와 메서드 표면, extension 로딩, build crate의 Rust 라이브러리 표면, commit·rollback·metadata·cleanup 실패, descriptor 변경, trigger 가시성을 만드는 fault 주입 더블. recipe는 실패를 주입할 수 없다.
+- **recipe에서 제외.** TypeScript의 `precisionCase`는 recipe case `declared_temporal_cells`가 다루므로 네이티브 테스트가 없다. MySQL `TIME(7)` 거부는 DIA-54의 서버 DDL 규칙이며 catalog 연결이 소유하지 않는다. 이 거부의 네이티브 검사는 실행하는 각 runtime에 남는다.
+- **recipe 공백(INT-136, SCH-6a).** 아래 동작은 recipe case가 생겨야 네이티브 테스트를 뺄 수 있다: `sql.exec`의 서버 오류 expect, `catalog.revision` 패턴, SQLite 생성 키(AUTOINCREMENT, 리터럴과 표현식 default), identity 없는 insert(ROW_INSERT_IDENTITY_REQUIRED), commit 때 거부되는 지연 외래키, 0행 delete, 거부된 update 뒤 행이 바뀌지 않는다는 검사, 두 번 close와 close 뒤 snapshot, PostgreSQL infinity 날짜와 timetz 거부, expect의 오류 메시지.
+- **codec.** 어떤 recipe case도 빈 `ordered_json` 텍스트를 decode하지 않으므로, codec recipe case가 이를 검사할 때까지 네이티브 검사를 남긴다.

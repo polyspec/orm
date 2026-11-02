@@ -30,6 +30,8 @@ pub(crate) fn validate_param_refs<'a>(values: impl Iterator<Item = &'a P>, diale
 pub enum Val {
     Null,
     Int(i64),
+    /// A PostgreSQL real, held as the float32 value that the server stores, widened to a double.
+    Float(f64),
     Text(String),
     Bool(bool),
 }
@@ -39,6 +41,7 @@ impl Val {
         match self {
             Val::Null => String::new(),
             Val::Int(n) => n.to_string(),
+            Val::Float(f) => f.to_string(),
             Val::Text(s) => s.clone(),
             Val::Bool(b) => b.to_string(),
         }
@@ -56,6 +59,7 @@ impl Val {
             Val::Int(n) => Ok(*n),
             Val::Bool(b) => Ok(i64::from(*b)),
             Val::Text(s) => s.parse().map_err(|error| sqlx::Error::Decode(format!("Invalid tool integer: {error}").into())),
+            Val::Float(_) => Err(sqlx::Error::Decode("Invalid tool integer: a float".into())),
             Val::Null => Err(sqlx::Error::Decode("Required tool integer is NULL".into())),
         }
     }
@@ -151,7 +155,9 @@ macro_rules! cell_extra {
 macro_rules! cell_pg_extra {
     ($row:expr, $i:expr) => {{
         let (row, i) = ($row, $i);
-        if let Ok(v) = row.try_get::<Option<i8>, _>(i) {
+        if let Ok(v) = row.try_get::<Option<f32>, _>(i) {
+            Ok(v.map_or(Val::Null, |n| Val::Float(f64::from(n))))
+        } else if let Ok(v) = row.try_get::<Option<i8>, _>(i) {
             Ok(v.map_or(Val::Null, |n| Val::Text((n as u8 as char).to_string())))
         } else {
             Err($crate::tool_db::unsupported_value(format_args!("unsupported catalog cell type {}", row.columns()[i].type_info().name())))
@@ -184,7 +190,10 @@ macro_rules! grid_cell {
 macro_rules! grid_mysql {
     ($row:expr, $i:expr) => {{
         let (row, i) = ($row, $i);
-        if matches!(row.columns()[i].type_info().name(), "DECIMAL" | "DECIMAL UNSIGNED") {
+        if row.columns()[i].type_info().name() == "YEAR" {
+            // A YEAR() result is a MySQL YEAR field, which has no grid cell (docs/spec/dbspec.md, the unsupported types).
+            Err(unsupported_value("MySQL YEAR has no grid cell"))
+        } else if matches!(row.columns()[i].type_info().name(), "DECIMAL" | "DECIMAL UNSIGNED") {
             row.try_get::<Option<bigdecimal::BigDecimal>, _>(i).map(|value| value.map_or(GridCell::Null, |value| GridCell::Decimal(value.to_plain_string())))
         } else if matches!(
             row.columns()[i].type_info().name(),
@@ -220,6 +229,16 @@ macro_rules! grid_sqlite {
     };
 }
 
+/// Checks the budget of one fetched row, converts its cells and keeps them in `rows`.
+macro_rules! push_row {
+    ($row:ident, $budget:expr, $rows:ident, $cell:ident) => {
+        $budget.check_row_count($rows.len())?;
+        let values = (0..$row.columns().len()).map(|i| $cell!(&$row, i)).collect::<Result<Vec<_>, sqlx::Error>>()?;
+        $budget.add_row(&values, $rows.len())?;
+        $rows.push(values);
+    };
+}
+
 macro_rules! fetch_result {
     ($conn:expr, $sql:expr, $params:expr, $budget:expr, $cell:ident, $result:ident, $bind:ident) => {{
         let statement = prepare_query!($conn, $sql, $params, $bind);
@@ -228,11 +247,40 @@ macro_rules! fetch_result {
         let mut stream = q.fetch(&mut **$conn);
         let mut rows = Vec::new();
         while let Some(row) = stream.try_next().await? {
-            $budget.check_row_count(rows.len())?;
-            let values = (0..row.columns().len()).map(|i| $cell!(&row, i)).collect::<Result<Vec<_>, sqlx::Error>>()?;
-            $budget.add_row(&values, rows.len())?;
-            rows.push(values);
+            push_row!(row, $budget, rows, $cell);
         }
+        Ok($result { columns, rows })
+    }};
+}
+
+/// The rows that a PostgreSQL cursor fetches in one round trip.
+const PG_CURSOR_CHUNK: usize = 256;
+
+/// The sequence of the cursors that a read opens, so that each read names its cursor.
+static CURSOR_SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// The rows of a PostgreSQL read with no parameter, streamed through a cursor in chunks of PG_CURSOR_CHUNK rows. A budget
+/// stop ends the read after the chunk it stopped in, and the transaction that the read runs in closes the cursor.
+macro_rules! fetch_cursor_result {
+    ($conn:expr, $sql:expr, $budget:expr, $cell:ident, $result:ident) => {{
+        let (connection, text) = ($conn, $sql.0);
+        let statement = (&mut **connection).prepare(AssertSqlSafe(text.clone()).into_sql_str()).await?;
+        let columns = result::columns(statement.columns().iter().map(|column| (column.name(), column.type_info().name())))?;
+        let cursor = format!("orm_read_{}", CURSOR_SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
+        sqlx::query(AssertSqlSafe(format!("DECLARE {cursor} NO SCROLL CURSOR FOR {text}"))).execute(&mut **connection).await?;
+        let mut rows = Vec::new();
+        loop {
+            let mut fetched = 0usize;
+            let mut stream = sqlx::query(AssertSqlSafe(format!("FETCH FORWARD {PG_CURSOR_CHUNK} FROM {cursor}"))).fetch(&mut **connection);
+            while let Some(row) = stream.try_next().await? {
+                push_row!(row, $budget, rows, $cell);
+                fetched += 1;
+            }
+            if fetched < PG_CURSOR_CHUNK {
+                break;
+            }
+        }
+        sqlx::query(AssertSqlSafe(format!("CLOSE {cursor}"))).execute(&mut **connection).await?;
         Ok($result { columns, rows })
     }};
 }
@@ -375,10 +423,14 @@ impl Conn {
         query_result_of!(self, sql, params, budget)
     }
 
-    /// Reads converted plain values under the client-visible cell-byte budget used by catalogs.
+    /// Reads converted plain values under the client-visible cell-byte budget used by catalogs. A PostgreSQL read with no
+    /// parameter streams its rows through a cursor, so that a budget stop does not wait for the whole statement.
     pub(crate) async fn query_result_values_bounded(&mut self, sql: &str, params: &[P], limits: QueryLimits) -> Result<QueryResult, sqlx::Error> {
         let (sql, mut budget) = self.single_statement(sql, params, || limits::ValueBudget::new(limits))?;
-        query_result_of!(self, sql, params, budget)
+        match self {
+            Conn::Postgres(c) if !has_params(params) => fetch_cursor_result!(c, sql, budget, cell_pg, QueryResult),
+            _ => query_result_of!(self, sql, params, budget),
+        }
     }
 
     /// Typed SQL grid rows using the same streaming and metadata budgets.
@@ -387,10 +439,14 @@ impl Conn {
         grid_result_of!(self, sql, params, budget)
     }
 
-    /// Reads converted grid cells under the client-visible cell-byte budget used by catalogs.
+    /// Reads converted grid cells under the client-visible cell-byte budget used by catalogs. A PostgreSQL read with no
+    /// parameter streams its rows through a cursor, so that a budget stop does not wait for the whole statement.
     pub(crate) async fn grid_query_values_bounded(&mut self, sql: &str, params: &[P], limits: QueryLimits) -> Result<GridQueryResult, sqlx::Error> {
         let (sql, mut budget) = self.single_statement(sql, params, || limits::ValueBudget::new(limits))?;
-        grid_result_of!(self, sql, params, budget)
+        match self {
+            Conn::Postgres(c) if !has_params(params) => fetch_cursor_result!(c, sql, budget, grid_pg, GridQueryResult),
+            _ => grid_result_of!(self, sql, params, budget),
+        }
     }
 }
 

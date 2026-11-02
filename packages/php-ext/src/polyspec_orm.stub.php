@@ -818,6 +818,8 @@ final class DbState
 {
     public ?\PDO $pdo = null;
     public ?\Closure $reconnect = null;
+    /** @internal The catalog that owns this connection: a budget stop kills the query through its grid connection. */
+    public ?Catalog $catalogOwner = null;
     public ?\Closure $cancelConnection = null;
     public ?\Closure $cancelQuery = null;
     private bool $sqliteCancellationLoaded = false;
@@ -1762,8 +1764,10 @@ final class CatalogColumn
     public readonly bool $automaticKey;
     public readonly ?string $defaultExpression;
     public readonly bool $expressionDefault;
+    /** The fraction digits that a CHECK of a SQLite TIME or DATETIME column fixes; null when none does. */
+    public readonly ?int $checkPrecision;
 
-    public function __construct(string $name, string $nativeType, bool $nullable, bool $generated, bool $automaticKey, ?string $defaultExpression, bool $expressionDefault) {}
+    public function __construct(string $name, string $nativeType, bool $nullable, bool $generated, bool $automaticKey, ?string $defaultExpression, bool $expressionDefault, ?int $checkPrecision = null) {}
 }
 
 /** The descriptor of a table: its qualified name, its native relation kind, its columns, its primary key and whether that key is a reliable row identity. */
@@ -1844,7 +1848,19 @@ final class Catalog
     public function rowSnapshotFromPage(CatalogTablePage $page, int $index): CatalogRowSnapshot {}
     public function readOnlyQuery(string $sql, array $params = [], int $maxRows = 0, int $maxBytes = 0): CatalogResult {}
     public function readOnlyGridQuery(string $sql, array $params = [], int $maxRows = 0, int $maxBytes = 0): CatalogResult {}
+    /**
+     * The values are a list of [name, value] pairs, or a map of column name => value. A repeated name in the list is
+     * refused with ROW_INSERT_INVALID before any write (INT-111).
+     *
+     * @param array $values the list of [name, value] pairs, or the map of column name => value
+     */
     public function insertRow(CatalogTableMetadata $declared, array $values): CatalogResult {}
+    /**
+     * The values are a list of [name, value] pairs, or a map of column name => value. A repeated name in the list is
+     * refused with ROW_UPDATE_INVALID before any write (INT-111).
+     *
+     * @param array $values the list of [name, value] pairs, or the map of column name => value
+     */
     public function updateRow(CatalogRowSnapshot $original, array $values): CatalogResult {}
     public function deleteRow(CatalogRowSnapshot $original): int {}
 }

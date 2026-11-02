@@ -35,6 +35,18 @@ const CODE_PAGE_CHANGED = 'TABLE_PAGE_METADATA_CHANGED';
 const CODE_SNAPSHOT = 'ROW_SNAPSHOT_INVALID';
 const CODE_SNAPSHOT_LIMIT = 'ROW_SNAPSHOT_LIMIT';
 const CODE_INSERT_INVALID = 'ROW_INSERT_INVALID';
+const CODE_IDENTITY_REQUIRED = 'ROW_INSERT_IDENTITY_REQUIRED';
+const CODE_ENCODE = 'CODEC_ENCODE';
+// The driver code of a write that the server refuses in a read-only scope (codes.ts READ_ONLY).
+const DRIVER_READ_ONLY = 'READ_ONLY';
+
+/** A write that the database's read-only scope refuses, such as a routine that writes, fails with QUERY_READ_ONLY (INT-104). */
+function refusedWrite(error: unknown): never {
+  if (typeof error === 'object' && error !== null && (error as { code?: unknown }).code === DRIVER_READ_ONLY) {
+    throw err(CODE_READ_ONLY, error instanceof Error ? error.message : DRIVER_READ_ONLY);
+  }
+  throw error;
+}
 const CODE_UPDATE_INVALID = 'ROW_UPDATE_INVALID';
 const CODE_UPDATE_LIMIT = 'ROW_UPDATE_LIMIT';
 const CODE_CONFLICT = 'ROW_CONFLICT';
@@ -528,10 +540,12 @@ function sqliteTemporal(plain: CatalogValue, described: CatalogColumn): CatalogV
     throw err(CODE_TEMPORAL_VALUE, `${described.name} holds a value that is not a dbspec ${kind}`);
   }
   if (kind === 'date') return plain;
-  if (described.checkPrecision === null) throw err(CODE_TEMPORAL_PRECISION, `${described.name} has no dbspec CHECK that fixes its fraction digits`);
+  // INT-103 and DIA-24: a SQLite DATETIME with no CHECK has precision 0. A CHECK-less TIME stays a refusal (T334-3-3-8).
+  const fixed = described.checkPrecision ?? (kind === 'datetime' ? 0 : null);
+  if (fixed === null) throw err(CODE_TEMPORAL_PRECISION, `${described.name} has no dbspec CHECK that fixes its fraction digits`);
   const digits = fractionDigits(plain);
-  if (digits !== described.checkPrecision) {
-    throw err(CODE_TEMPORAL_PRECISION, `${described.name} holds ${digits} fraction digits; its dbspec CHECK fixes ${described.checkPrecision}`);
+  if (digits !== fixed) {
+    throw err(CODE_TEMPORAL_PRECISION, `${described.name} holds ${digits} fraction digits; its dbspec CHECK fixes ${fixed}`);
   }
   return plain;
 }
@@ -741,7 +755,17 @@ function revisionOf(metadata: CatalogTableMetadata, cells: readonly unknown[]): 
 }
 
 /** Checks named assignments against a descriptor, in the order given. */
-function checkChanges(metadata: CatalogTableMetadata, values: readonly CatalogAssignment[], code: string): Array<{ index: number; value: DriverValue }> {
+/** The fraction digits a time or datetime column of the dialect holds (INT-101): its declared precision, the dialect default, or the SQLite CHECK; null for every other column. */
+function declaredTemporalPrecision(column: CatalogColumn, dialect: string): number | null {
+  const base = column.nativeType.trim().toLowerCase();
+  if (!/^(time|datetime|timestamp)\b/.test(base)) return null;
+  const declared = /\((\d+)\)/.exec(base);
+  if (declared !== null) return Number(declared[1]);
+  if (dialect === 'sqlite') return column.checkPrecision;
+  return dialect === 'postgres' ? 6 : 0;
+}
+
+function checkChanges(metadata: CatalogTableMetadata, values: readonly CatalogAssignment[], code: string, dialect: string): Array<{ index: number; value: DriverValue }> {
   if (values.length === 0 || values.length > metadata.columns.length) throw err(code, 'invalid column assignments');
   const params = checkParams(values.map(assignment => assignment.value), CODE_PARAM);
   const seen = new Set<string>();
@@ -754,6 +778,12 @@ function checkChanges(metadata: CatalogTableMetadata, values: readonly CatalogAs
     const value = params[position] ?? null;
     if (value === null && !column.nullable) throw err(code, `NULL in non-null column "${column.name}"`);
     if (exceedsDeclaredCapacity(column, value)) throw err(code, `value exceeds the declared capacity of column "${column.name}"`);
+    if (typeof value === 'string') {
+      // A write beyond the declared precision fails before any statement, with CODEC_ENCODE (errors.yaml).
+      const precision = declaredTemporalPrecision(column, dialect);
+      const digits = /\.(\d+)$/.exec(value)?.[1]?.length ?? 0;
+      if (precision !== null && digits > precision) throw err(CODE_ENCODE, `${column.name} holds ${digits} fraction digits; its declared precision is ${precision}`);
+    }
     seen.add(column.name);
     return { index, value };
   });
@@ -870,7 +900,7 @@ const KIND_SQL: Record<DriverName, string> = {
 /** The columns of a relation in physical order: name, native type, nullable, generated, primary-key ordinal, automatic key, default and whether the default is an expression. */
 const COLUMNS_SQL: Record<DriverName, string> = {
   mysql: "SELECT c.COLUMN_NAME,c.COLUMN_TYPE,c.IS_NULLABLE='YES',(c.GENERATION_EXPRESSION IS NOT NULL AND c.GENERATION_EXPRESSION<>''),COALESCE(pk.ORDINAL_POSITION,0),(c.EXTRA LIKE '%auto_increment%'),c.COLUMN_DEFAULT,(c.EXTRA LIKE '%DEFAULT_GENERATED%') FROM information_schema.COLUMNS c LEFT JOIN information_schema.KEY_COLUMN_USAGE pk ON pk.CONSTRAINT_SCHEMA=c.TABLE_SCHEMA AND pk.TABLE_NAME=c.TABLE_NAME AND pk.COLUMN_NAME=c.COLUMN_NAME AND pk.CONSTRAINT_NAME='PRIMARY' WHERE c.TABLE_SCHEMA=? AND c.TABLE_NAME=? ORDER BY c.ORDINAL_POSITION",
-  postgres: 'SELECT a.attname::text,format_type(a.atttypid,a.atttypmod),NOT a.attnotnull,(a.attgenerated<>\'\' OR a.attidentity=\'a\'),COALESCE(k.ord,0),(a.attidentity<>\'\'),pg_get_expr(d.adbin,d.adrelid),(d.adbin IS NOT NULL) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_attribute a ON a.attrelid=c.oid LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum LEFT JOIN pg_index i ON i.indrelid=c.oid AND i.indisprimary LEFT JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS k(attnum,ord) ON k.attnum=a.attnum WHERE n.nspname=$1 AND c.relname=$2 AND a.attnum>0 AND NOT a.attisdropped ORDER BY a.attnum',
+  postgres: 'SELECT a.attname::text,format_type(a.atttypid,a.atttypmod),NOT a.attnotnull,(a.attgenerated<>\'\' OR a.attidentity=\'a\'),COALESCE(k.ord,0),(a.attidentity<>\'\'),CASE WHEN length(a.attgenerated)=0 THEN pg_get_expr(d.adbin,d.adrelid) END,(d.adbin IS NOT NULL AND length(a.attgenerated)=0) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_attribute a ON a.attrelid=c.oid LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum LEFT JOIN pg_index i ON i.indrelid=c.oid AND i.indisprimary LEFT JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS k(attnum,ord) ON k.attnum=a.attnum WHERE n.nspname=$1 AND c.relname=$2 AND a.attnum>0 AND NOT a.attisdropped ORDER BY a.attnum',
   sqlite: 'SELECT name,type,NOT "notnull",hidden<>0,pk,0,dflt_value,(dflt_value IS NOT NULL) FROM pragma_table_xinfo(?,?) ORDER BY cid',
 };
 
@@ -895,7 +925,8 @@ class Session {
   /**
    * Streams one statement and converts each row as it arrives. The stream stops at the first row past maxRows or past maxBytes, and
    * the read then fails with CATALOG_LIMIT; no row past the budget is converted or kept. Each cell is counted by its converted size
-   * (sizeOf and gridSize). A conversion error stops the stream and is thrown after it.
+   * (sizeOf and gridSize). A conversion error stops the stream and is thrown after it. With keep, the first keep rows are
+   * converted and the row after them is not: the stream stops there and past reports it, as the sentinel row of a page does.
    */
   public async collect<T>(
     sql: string,
@@ -903,15 +934,20 @@ class Session {
     maxRows: number,
     maxBytes: number,
     convert: (value: unknown, column: DriverColumn, index: number) => { cell: T; size: number },
-  ): Promise<{ columns: DriverColumn[]; rows: T[][] }> {
+    keep?: number,
+  ): Promise<{ columns: DriverColumn[]; rows: T[][]; past: boolean }> {
     const bound = checkParams(params, CODE_PARAM);
-    const out: { columns: DriverColumn[]; rows: T[][] } = { columns: [], rows: [] };
+    const out: { columns: DriverColumn[]; rows: T[][]; past: boolean } = { columns: [], rows: [], past: false };
     let bytes = 0;
     let overflow: string | undefined;
     let failure: unknown;
     const sink: RowSink = {
       columns: columns => { out.columns = columns; },
       row: values => {
+        if (keep !== undefined && out.rows.length >= keep) {
+          out.past = true;
+          return false;
+        }
         if (out.rows.length >= maxRows) {
           overflow = `result has more than ${maxRows} rows`;
           return false;
@@ -1283,15 +1319,15 @@ export class CatalogConnection {
       if (metadata.primaryKey.length > 0) sql += ` ORDER BY ${quoteList(metadata.primaryKey, this.dialect)}`;
       // One extra row is the sentinel that reports hasMore; the stream stops at that row.
       sql += ` LIMIT ${limit + 1} OFFSET ${offset}`;
-      const raw = await session.collect<CatalogValue>(sql, [], limit + 1, PAGE_BYTES, (value, column, index) => describedCell(value, column, metadata.columns[index], this.dialect));
+      // The sentinel row is not converted: the page keeps limit rows and reports the row after them.
+      const raw = await session.collect<CatalogValue>(sql, [], limit + 1, PAGE_BYTES, (value, column, index) => describedCell(value, column, metadata.columns[index], this.dialect), limit);
       if (raw.columns.length !== metadata.columns.length || raw.columns.some((column, index) => column.name !== metadata.columns[index]?.name)) {
         throw err(CODE_PAGE_CHANGED, 'prepared columns differ from descriptor');
       }
       const after = await session.describe(table);
       if (!sameDescriptor(after, metadata)) throw err(CODE_PAGE_CHANGED, 'descriptor changed during read');
-      let rows = raw.rows;
-      const hasMore = rows.length > limit;
-      if (hasMore) rows = rows.slice(0, limit);
+      const rows = raw.rows;
+      const hasMore = raw.past;
       return {
         metadata,
         result: { columns: metadata.columns.map(column => ({ ...column })), rows },
@@ -1310,7 +1346,7 @@ export class CatalogConnection {
     return this.read(async session => {
       const { columns, rows } = await session.plainRows(query, params, maxRows, maxBytes);
       return { columns: columns.map(column => column.name), rows };
-    });
+    }).catch(refusedWrite);
   }
 
   /** Runs one read query and returns typed grid cells (the Rust grid rules): each cell is typed by its column's native type. */
@@ -1325,7 +1361,7 @@ export class CatalogConnection {
         columns: raw.columns.map(column => ({ name: column.name, nativeType: column.type })),
         rows: raw.rows,
       };
-    });
+    }).catch(refusedWrite);
   }
 
   /** Checks the statement and the limits of a read; a zero limit takes its default. */
@@ -1362,7 +1398,7 @@ export class CatalogConnection {
   /** Inserts one row with explicit or database-generated primary-key values and returns the stored row before it commits. */
   public async insertRow(declared: CatalogTableMetadata, values: readonly CatalogAssignment[]): Promise<CatalogMutationResult> {
     const keyIndexes = descriptorKeys(declared);
-    const changes = checkChanges(declared, values, CODE_INSERT_INVALID);
+    const changes = checkChanges(declared, values, CODE_INSERT_INVALID, this.dialect);
     const provided = new Map(changes.map(change => [change.index, change.value] as const));
     const omittedKeys = keyIndexes.filter(index => {
       const column = declared.columns[index];
@@ -1374,7 +1410,8 @@ export class CatalogConnection {
     const keys = keyIndexes.map(index => {
       if (!provided.has(index)) {
         if (omittedKeys.includes(index)) return null;
-        throw err(CODE_INSERT_INVALID, `explicit primary-key value of "${declared.columns[index]?.name ?? ''}" is required`);
+        // INT-123: an omitted key with no automatic_key or default_expression is ROW_INSERT_IDENTITY_REQUIRED.
+        throw err(CODE_IDENTITY_REQUIRED, `primary-key value of "${declared.columns[index]?.name ?? ''}" is required`);
       }
       return provided.get(index) ?? null;
     });
@@ -1491,7 +1528,7 @@ export class CatalogConnection {
   /** Updates the row of an original snapshot. Inside the transaction it locks the row by its original keys, compares it with the snapshot and writes; then it re-reads the row and requires the written values. */
   public async updateRow(original: CatalogRowSnapshot, values: readonly CatalogAssignment[]): Promise<CatalogMutationResult> {
     original.valid();
-    const changes = checkChanges(original.metadata, values, CODE_UPDATE_INVALID);
+    const changes = checkChanges(original.metadata, values, CODE_UPDATE_INVALID, this.dialect);
     const updated = [...original.originalCells()];
     for (const change of changes) updated[change.index] = change.value;
     try { checkCells(original.metadata, updated); } catch (error) {
