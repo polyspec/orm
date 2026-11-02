@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0b7d6117d9ecda34aba892ebaa2fad688aabb0ef507bd800b1ee5c54a9f24eff -->
+<!-- source-sha256: 2f6b1e073fdaf6c56c9b7e5a9229f5ae9341b65ba60b0e6a54192fa3848991a7 -->
 # 변경 이력
 
 ## Unreleased
@@ -106,6 +106,7 @@
 - 물리 plan case의 네이티브 test 여섯 개는 case마다 결과를 하나씩 내지 않았고, tests/dbspec/plans-physical.json의 물리 기록은 어떤 suite unit에도 속하지 않았다. 이제 unit은 case를 단위로 한 suite이며, 각 runtime이 모든 case를 보고한다 (T334-3-17-5).
 
 - fulltext 레시피의 Go query.search가 외부 문서 없이 케이스 스키마를 적재했고 모델 이름 Author를 entity로 넘겨서 Go의 네 케이스가 모두 실패했다. engine.Load가 외부 문서 텍스트를 받아 runtimemodel.LoadSet으로 적재하며, 레시피는 스키마의 외부 문서와 entity author를 넘긴다 (T334-3-17-2-1).
+- php-extension bootstrap이 자신의 extension test가 상속하는 fulltext 레시피 test를 적재하지 않아, php-extension의 fulltext 레시피 case가 모두 exit 255로 끝났다. bootstrap은 이제 packages/php/tests/FulltextSearchRecipeTest.php를 require한다 (T334-3-17-2-2).
 ## 0.0.21
 
 - client-statement-runner는 statement runner의 Rust 기호를 두 공개 경로, 곧 crate root re-export와 정의 module 모두에 선언한다: `polyspec_orm::Utils::run`과 `polyspec_orm::utils::Utils::run`, `polyspec_orm::TxFrame::run`과 `polyspec_orm::tx::TxFrame::run` (T346-11).

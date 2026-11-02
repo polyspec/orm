@@ -105,6 +105,7 @@
 - The six native tests of the physical plan cases did not report one result per case, and the physical records of tests/dbspec/plans-physical.json belonged to no suite unit, so the parity check did not declare them. The unit is now a suite on its cases, and each runtime reports every case (T334-3-17-5).
 
 - The Go query.search of the fulltext recipe loaded the case schema without its external documents and passed the model name Author as the entity, so the four Go cases failed. engine.Load takes the external text and loads it with runtimemodel.LoadSet, and the recipe passes the external documents of the schema and the entity author (T334-3-17-2-1).
+- The php-extension bootstrap did not load the fulltext recipe test that its extension test extends, so every php-extension fulltext recipe case exited 255. The bootstrap now requires packages/php/tests/FulltextSearchRecipeTest.php (T334-3-17-2-2).
 ## 0.0.21
 
 - client-statement-runner declares each Rust symbol of the statement runner at both public paths, the crate-root re-export and the module of its definition: `polyspec_orm::Utils::run` and `polyspec_orm::utils::Utils::run`, `polyspec_orm::TxFrame::run` and `polyspec_orm::tx::TxFrame::run` (T346-11).
