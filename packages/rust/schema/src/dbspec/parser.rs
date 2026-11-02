@@ -815,20 +815,6 @@ impl Parser {
         true
     }
 
-    /// A `table` or `diagram` line inside a block: the block lacks its `}`.
-    fn unclosed(&mut self, tokens: &[Token]) -> bool {
-        let opens = (tokens[0].is("table") || tokens[0].is("diagram")) && tokens.len() > 1 && tokens.last().is_some_and(|t| t.is("{"));
-        if opens {
-            self.report_open_blocks();
-            match self.context {
-                Context::Diagram => self.close_diagram(),
-                _ => self.close_table(),
-            }
-            self.top_line(tokens);
-        }
-        opens
-    }
-
     fn table_line(&mut self, tokens: &[Token]) {
         if self.closing(tokens) {
             self.close_table();
@@ -1631,9 +1617,6 @@ impl Parser {
     fn diagram_line(&mut self, tokens: &[Token]) {
         if self.closing(tokens) {
             self.close_diagram();
-            return;
-        }
-        if self.unclosed(tokens) {
             return;
         }
         let comments = self.comments();

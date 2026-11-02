@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d01971c486247b12149dcfe55ef98112e89338a6487a821517aeb97e67f6ee99 -->
+<!-- source-sha256: ef51cb2d8e12f49cf38b887aab9a619e046861f4244fde46a18d2f49a9da79ed -->
 # 변경 이력
 
 ## Unreleased
 
+- Rust dbspec 분석기는 syntax 진단으로 포기된 줄의 단어를 DBS-139와 다른 runtime처럼 `word`로 분류한다. 열린 diagram 블록 안의 diagram 줄은 새 블록이 아니라 항목으로 읽는다 (T334-3-18-6-1).
 - orm은 kit 0.0.92를 고정한다. 그 target은 orm-install-rust-crates의 crate 받기와 맞고, 그 kit이 담은 원칙 사본을 받는다 (T353).
 - contracts/check-inputs.json에 dbspec-php-check/render가 선언되어 있지 않아 make run-databases가 물리 DDL 케이스를 실행하는 target을 거부했고, CI의 데이터베이스 실행이 그 케이스를 다루지 못했다. 형제 target dbspec-plan-php-check와 같은 형태로 선언했다 (CR55-1).
 - check runner는 프로세스 표를 256 MiB buffer로 읽고, 실패한 목록은 오류 코드를 밝힌다. 그래서 큰 표가 단계를 SIGTERM으로 실패시키지 않는다 (T351).

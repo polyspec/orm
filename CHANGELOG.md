@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Rust dbspec analyzer classes a word on a line abandoned with a syntax diagnostic as `word`, as DBS-139 and the other runtimes do; a diagram line inside an open diagram block is read as an entry, not as a new block (T334-3-18-6-1).
 - orm pins kit 0.0.92, whose targets match the crate fetch of orm-install-rust-crates, and takes the principles it ships (T353).
 - contracts/check-inputs.json declared no dbspec-php-check/render, so make run-databases refused the target that runs the physical DDL cases and CI's database run did not cover them. The target is declared like its sibling dbspec-plan-php-check (CR55-1).
 - The check runner reads the process table with a 256 MiB buffer and names the error code of a failed listing, so a large table no longer fails a step with SIGTERM (T351).
