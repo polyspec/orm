@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The request builder of the IR fixture cases is `polyspec_orm::testing::ir_request` (feature `test-faults`): the engine unit tests, the manifest hash test and the Rust recipe helper import it, so no crate names a file of another crate by `#[path]`, and `ir-validate-check/rust` runs its two test binaries as two parts (T334-3-25-1).
 - The PHP extension stub declares the insertRow parameter with a PHPDoc type that the arginfo generator parses (CR47).
 - The php-ext memory check runs the 14 test classes of the AES stress group with the stress test and root_in_chunking in one process under the 128M memory_limit, and it fails when the extension keeps memory across calls (T334-3-4-7).
 - A php-ext Validator releases the class-name string it looks up when it is constructed, so 1000 Validators keep no memory (T334-3-4-7-2).

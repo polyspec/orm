@@ -2798,12 +2798,14 @@ codec-check/php-extension: php-vendor-check build-php-ext
 
 # ir-validate-check runs the request validation recipe, tests/ir/validate.json, in each runtime (FCV-3): each part runs the entry of its
 # runtime that calls the recipe helper, without a database; the ir.validate steps check every request with the validator (FCV-4).
-.PHONY: ir-validate-check ir-validate-check/go ir-validate-check/rust ir-validate-check/typescript ir-validate-check/python ir-validate-check/php ir-validate-check/php-extension
+.PHONY: ir-validate-check ir-validate-check/go ir-validate-check/rust ir-validate-check/rust/recipe ir-validate-check/rust/manifest-hash ir-validate-check/typescript ir-validate-check/python ir-validate-check/php ir-validate-check/php-extension
 ir-validate-check: ir-validate-check/go ir-validate-check/rust ir-validate-check/typescript ir-validate-check/python ir-validate-check/php ir-validate-check/php-extension
 ir-validate-check/go:
 	$(GO_TEST) ./packages/go/engine/ir -run 'TestRecipeIRValidateNone' -count=1
-ir-validate-check/rust: lease-tool
+ir-validate-check/rust: ir-validate-check/rust/recipe ir-validate-check/rust/manifest-hash
+ir-validate-check/rust/recipe: lease-tool
 	cd packages/rust && $(CARGO_TEST) ir-validate-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-tests --test ir_validate_none
+ir-validate-check/rust/manifest-hash: lease-tool
 	cd packages/rust && $(CARGO_TEST) ir-validate-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm --test ir_manifest_hash
 ir-validate-check/typescript: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)

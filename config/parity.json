@@ -970,7 +970,6 @@
         "packages/rust/orm/tests/common/audit_rows.rs",
         "packages/rust/orm/tests/common/dbspec_probe.rs",
         "packages/rust/orm/tests/common/restore_rows.rs",
-        "packages/rust/orm/tests/unit/ir_request.rs",
         "packages/rust/schema/tests/common/dbspec_cases.rs",
         "packages/rust/tests/build.rs",
         "packages/rust/tests/bench_model.rs",

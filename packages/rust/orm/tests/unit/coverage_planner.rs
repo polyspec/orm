@@ -2,9 +2,9 @@
 //! recipe tests/planner/compile.json does not state. The compile cases run in tests/planner.rs.
 //! The engine's param_uses and validate are visible only inside the crate, so src/engine/mod.rs makes this file a unit test module.
 
-use super::ir_request::{repository, request, schema};
 use super::{param_uses, validate, Dialect};
 use crate::or_panic::OrPanic;
+use crate::testing::ir_request::{repository, request, schema};
 use polyspec_orm_schema::dbspec::Type;
 use serde_json::{json, Value};
 

@@ -4,16 +4,7 @@
 //! Requirements: PRT-1.
 
 use polyspec_orm::engine::validate;
-// The request builder of unit/ir_request.rs names these modules from the crate root.
-use polyspec_orm::{dbspec, ir, schema};
-
-#[path = "common/or_panic.rs"]
-mod or_panic;
-
-#[path = "unit/ir_request.rs"]
-mod ir_request;
-
-use ir_request::{request, schema as manifest_of};
+use polyspec_orm::testing::ir_request::{request, schema as manifest_of};
 
 /// A request whose manifest hash differs from the model's fails with SCHEMA_HASH_MISMATCH.
 fn manifest_hash_mismatch() {

@@ -6471,7 +6471,7 @@
         "packages/rust/orm/tests/ir_manifest_hash.rs",
         "packages/php/tests/IrValidateRecipeTest.php",
         "packages/php-ext/tests/IrValidateRecipeTestExtensionTest.php",
-        "packages/rust/orm/tests/unit/ir_request.rs",
+        "packages/rust/orm/src/testing/ir_request.rs",
         "packages/go/orm/plan_cache_test.go",
         "packages/php/tests/PlanCacheBoundTest.php",
         "packages/ts/tests/plan-cache-in.mjs",
@@ -6621,7 +6621,7 @@
             "packages/rust/orm/src/engine/validate.rs",
             "packages/rust/tests/tests/ir_validate_none.rs",
             "packages/rust/orm/tests/ir_manifest_hash.rs",
-            "packages/rust/orm/tests/unit/ir_request.rs",
+            "packages/rust/orm/src/testing/ir_request.rs",
             "tests/ir/validate.json"
           ]
         },

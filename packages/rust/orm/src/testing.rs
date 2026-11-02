@@ -9,6 +9,8 @@ use tokio::sync::Notify;
 use crate::Db;
 use crate::Error;
 
+pub mod ir_request;
+
 /// Compiles a request built from a generated model without opening a database connection.
 /// This is available only with `test-faults`, for database-independent planner tests.
 pub fn compile_core_request(core: &crate::Core, kind: &str, dialect: crate::Dialect) -> crate::Result<crate::plan::Plan> {

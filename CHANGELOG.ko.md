@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- IR fixture case의 요청 builder는 `polyspec_orm::testing::ir_request`(feature `test-faults`)다. engine 단위 시험, manifest hash 시험, Rust recipe helper가 이를 import하므로 어떤 crate도 다른 crate의 파일을 `#[path]`로 가리키지 않으며, `ir-validate-check/rust`는 두 시험 binary를 두 part로 실행한다 (T334-3-25-1).
 - PHP extension stub의 insertRow parameter는 arginfo 생성기가 읽는 PHPDoc type으로 선언한다 (CR47).
 - spec은 Go generator가 각 scan이 필요로 하는 순서로 set을 생성하고 순환을 거부하도록 요구한다 (DSL-157). parity unit이 그 시험을 연결하고, Go 테스트 루트가 옮겨진 markdown message 시험을 포함하며, 생성된 condition 메서드를 public API로 선언한다 (CR46).
 - parity unit markdown-message-vectors는 옮겨진 Go 시험의 경로 packages/go/bindmessages를 가리킨다 (CR46).

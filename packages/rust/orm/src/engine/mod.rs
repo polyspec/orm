@@ -31,10 +31,6 @@ pub fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
 }
 
 #[cfg(test)]
-#[path = "../../tests/unit/ir_request.rs"]
-mod ir_request;
-
-#[cfg(test)]
 use crate::or_panic::OrPanic;
 
 #[cfg(test)]

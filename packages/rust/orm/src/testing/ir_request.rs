@@ -1,24 +1,39 @@
-//! The IR request of a shared fixture case, read from its JSON: the planner coverage (coverage_planner.rs, a unit test
-//! module of the engine) and the shared validation vectors (tests/ir_validate.rs) build their requests with it.
-
-use crate::or_panic::OrPanic;
+//! The IR request of a shared fixture case, read from its JSON. The planner coverage of the engine (a unit test module),
+//! the manifest hash test of this crate and the recipe helper of the Rust tests (polyspec-orm-tests) build their requests with
+//! it, so it is part of the test entry point and compiles only with `test-faults`.
 
 use crate::ir;
 use crate::schema::Manifest;
 use serde_json::{json, Map, Value};
 use std::path::PathBuf;
 
-pub(crate) fn repository() -> PathBuf {
-    polyspec_orm_testcase::manifest_dir().join("../../..")
+/// The repository root, three folders above the package that cargo test runs (`CARGO_MANIFEST_DIR`).
+pub fn repository() -> PathBuf {
+    match std::env::var_os("CARGO_MANIFEST_DIR") {
+        Some(dir) => PathBuf::from(dir).join("../../.."),
+        None => panic!("CARGO_MANIFEST_DIR is unset; run the test through cargo test"),
+    }
 }
 
 /// The manifest of the dbspec document at the repository path `at`.
-pub(crate) fn schema(at: &str) -> Manifest {
+pub fn schema(at: &str) -> Manifest {
     let path = repository().join(at);
-    let text = std::fs::read_to_string(&path).or_panic(|e| format!("{}: {e}", path.display()));
-    let document = crate::dbspec::parse(&text, &Default::default()).map(|parsed| parsed.document).or_panic(|errors| format!("{}: {errors:?}", path.display()));
-    let set = crate::dbspec::manifest(&[&document]).or_panic(|errors| format!("{}: {errors:?}", path.display()));
-    Manifest::load(&set.manifest_text, &set.manifest_hash).or_panic(|e| format!("{}: {e}", path.display()))
+    let text = match std::fs::read_to_string(&path) {
+        Ok(text) => text,
+        Err(e) => panic!("{}: {e}", path.display()),
+    };
+    let document = match crate::dbspec::parse(&text, &Default::default()) {
+        Ok(parsed) => parsed.document,
+        Err(errors) => panic!("{}: {errors:?}", path.display()),
+    };
+    let set = match crate::dbspec::manifest(&[&document]) {
+        Ok(set) => set,
+        Err(errors) => panic!("{}: {errors:?}", path.display()),
+    };
+    match Manifest::load(&set.manifest_text, &set.manifest_hash) {
+        Ok(manifest) => manifest,
+        Err(e) => panic!("{}: {e}", path.display()),
+    }
 }
 
 /// Finds one `id` case in the fixture and returns its schema document path, input, and expected.
@@ -28,7 +43,7 @@ fn members_of<'a>(value: &'a Value, at: &str) -> &'a Map<String, Value> {
 }
 
 /// Reads the members of `value`. A member outside `allowed` is rejected along with its position.
-pub(crate) fn members<'a>(value: &'a Value, at: &str, allowed: &[&str]) -> &'a Map<String, Value> {
+pub fn members<'a>(value: &'a Value, at: &str, allowed: &[&str]) -> &'a Map<String, Value> {
     let object = value.as_object().unwrap_or_else(|| panic!("{REJECTED}{at}: expected an object, got {value}"));
     for key in object.keys() {
         assert!(allowed.contains(&key.as_str()), "{REJECTED}{at}.{key}: unsupported request member");
@@ -43,7 +58,7 @@ fn string(object: &Map<String, Value>, at: &str, key: &str) -> String {
 /// A panic after `REJECTED` is a request shape that Rust's typed request cannot hold: an unknown member, a member of
 /// the wrong type, or a missing required member. As a client that decodes JSON refuses such a request with IR_INVALID
 /// (docs/spec/protocol.md), the typed request cannot be built from it.
-pub(crate) const REJECTED: &str = "IR_INVALID: ";
+pub const REJECTED: &str = "IR_INVALID: ";
 
 /// A text member. A non-string value cannot be held by a typed request.
 fn text(object: &Map<String, Value>, at: &str, key: &str) -> String {
@@ -387,7 +402,7 @@ fn parse_sub(value: &Value, at: &str) -> ir::Sub {
 
 /// Reads the fixture's request as IR. Unsupported members are rejected, and the IR read is serialized again
 /// and must equal the input with the manifest hash added.
-pub(crate) fn request(input: &Value, manifest_hash: &str) -> ir::Request {
+pub fn request(input: &Value, manifest_hash: &str) -> ir::Request {
     let at = "input";
     let object = members(
         input,

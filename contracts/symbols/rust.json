@@ -8351,6 +8351,74 @@
     "exported": false,
     "signature": "pub (crate) async fn wait_at_statement_gate (db : \u0026 Db)"
   },
+  "packages/rust/orm/src/testing/ir_request.rs::assigns": {
+    "exported": false,
+    "signature": " fn assigns (value : \u0026 Value , at : \u0026 str) -\u003e Vec \u003c ir :: Assign \u003e"
+  },
+  "packages/rust/orm/src/testing/ir_request.rs::count": {
+    "exported": false,
+    "signature": " fn count (value : Option \u003c \u0026 Value \u003e , at : \u0026 str) -\u003e u32"
+  },
+  "packages/rust/orm/src/testing/ir_request.rs::func": {
+    "exported": false,
+    "signature": " fn func (value : \u0026 Value , at : \u0026 str) -\u003e ir :: Func"
+  },
+  "packages/rust/orm/src/testing/ir_request.rs::group": {
+    "exported": false,
+    "signature": " fn group (value : \u0026 Value , at : \u0026 str) -\u003e ir :: Group"
+  },
+  "packages/rust/orm/src/testing/ir_request.rs::index": {
+    "exported": false,
+    "signature": " fn index (value : \u0026 Value , at : \u0026 str) -\u003e usize"
+  },
+  "packages/rust/orm/src/testing/ir_request.rs::indexes": {
+    "exported": false,
+    "signature": " fn indexes (object : \u0026 Map \u003c String , Value \u003e , at : \u0026 str , key : \u0026 str) -\u003e Vec \u003c usize \u003e"
+  },
+  "packages/rust/orm/src/testing/ir_request.rs::members": {
+    "exported": true,
+    "signature": "pub fn members \u003c 'a \u003e (value : \u0026 'a Value , at : \u0026 str , allowed : \u0026 [\u0026 str]) -\u003e \u0026 'a Map \u003c String , Value \u003e"
+  },
+  "packages/rust/orm/src/testing/ir_request.rs::members_of": {
+    "exported": false,
+    "signature": " fn members_of \u003c 'a \u003e (value : \u0026 'a Value , at : \u0026 str) -\u003e \u0026 'a Map \u003c String , Value \u003e"
+  },
+  "packages/rust/orm/src/testing/ir_request.rs::normalized": {
+    "exported": false,
+    "signature": " fn normalized (value : \u0026 Value) -\u003e Value"
+  },
+  "packages/rust/orm/src/testing/ir_request.rs::parse_sub": {
+    "exported": false,
+    "signature": " fn parse_sub (value : \u0026 Value , at : \u0026 str) -\u003e ir :: Sub"
+  },
+  "packages/rust/orm/src/testing/ir_request.rs::query": {
+    "exported": false,
+    "signature": " fn query (value : \u0026 Value , at : \u0026 str) -\u003e ir :: Query"
+  },
+  "packages/rust/orm/src/testing/ir_request.rs::repository": {
+    "exported": true,
+    "signature": "pub fn repository () -\u003e PathBuf"
+  },
+  "packages/rust/orm/src/testing/ir_request.rs::request": {
+    "exported": true,
+    "signature": "pub fn request (input : \u0026 Value , manifest_hash : \u0026 str) -\u003e ir :: Request"
+  },
+  "packages/rust/orm/src/testing/ir_request.rs::schema": {
+    "exported": true,
+    "signature": "pub fn schema (at : \u0026 str) -\u003e Manifest"
+  },
+  "packages/rust/orm/src/testing/ir_request.rs::string": {
+    "exported": false,
+    "signature": " fn string (object : \u0026 Map \u003c String , Value \u003e , at : \u0026 str , key : \u0026 str) -\u003e String"
+  },
+  "packages/rust/orm/src/testing/ir_request.rs::strings": {
+    "exported": false,
+    "signature": " fn strings (object : \u0026 Map \u003c String , Value \u003e , at : \u0026 str , key : \u0026 str) -\u003e Vec \u003c String \u003e"
+  },
+  "packages/rust/orm/src/testing/ir_request.rs::text": {
+    "exported": false,
+    "signature": " fn text (object : \u0026 Map \u003c String , Value \u003e , at : \u0026 str , key : \u0026 str) -\u003e String"
+  },
   "packages/rust/orm/src/tx.rs::AuditInsert": {
     "exported": false,
     "signature": "pub (crate) struct AuditInsert  { pub (crate) schema : \u0026 'static Schema , pub (crate) entity : polyspec_orm_schema :: dbspec :: Entity , pub (crate) values : AuditValues , }"
