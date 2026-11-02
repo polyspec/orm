@@ -34,7 +34,7 @@ fn columns(dialect: &str) -> &'static str {
         "postgres" => {
             "k BIGINT NOT NULL PRIMARY KEY, d date NULL, t0 time(0) NULL, t3 time(3) NULL, dt0 timestamp(0) NULL, dt6 timestamp(6) NULL, dts timestamp NULL"
         }
-        _ => r#"k INTEGER NOT NULL PRIMARY KEY, d DATE NULL, t0 TIME NULL CHECK ("t0" IS NULL OR "t0" IS time("t0")), t3 TIME NULL CHECK ("t3" IS NULL OR (length("t3") = 12 AND substr("t3", 1, 8) IS time(substr("t3", 1, 8)) AND substr("t3", 9, 1) = '.' AND substr("t3", 10) GLOB '[0-9][0-9][0-9]')), dt0 DATETIME NULL CHECK ("dt0" IS NULL OR "dt0" IS datetime("dt0")), dt6 DATETIME NULL CHECK ("dt6" IS NULL OR (length("dt6") = 26 AND substr("dt6", 1, 19) IS datetime(substr("dt6", 1, 19)) AND substr("dt6", 20, 1) = '.' AND substr("dt6", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]')), dts DATETIME NULL CHECK ("dts" IS NULL OR (length("dts") = 26 AND substr("dts", 1, 19) IS datetime(substr("dts", 1, 19)) AND substr("dts", 20, 1) = '.' AND substr("dts", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))"#,
+        _ => "k INTEGER NOT NULL PRIMARY KEY, d DATE NULL, t0 TIME NULL, t3 TIME NULL, dt0 DATETIME NULL, dt6 DATETIME NULL, dts DATETIME NULL",
     }
 }
 

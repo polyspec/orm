@@ -56,18 +56,14 @@ pub(super) fn declared_precision(metadata: &TableMetadata, dialect: &str, checks
                     GridCell::Text(text) if is_temporal(kind, text) => {
                         // A SQLite fraction is kept at the digits of the CHECK that fixes it (SQLite has no temporal storage class).
                         let digits = text.split_once('.').map_or(0, |(_, fraction)| fraction.len());
-                        if kind != "date" {
-                            match checks.get(index).copied().flatten() {
-                                None => {
-                                    return Err(format!("GRID_TEMPORAL_PRECISION: column {:?} has no dbspec CHECK that fixes its fraction digits", column.name))
-                                }
-                                Some(precision) if precision != digits => {
-                                    return Err(format!(
-                                        "GRID_TEMPORAL_PRECISION: column {:?} holds {digits} fraction digits; its dbspec CHECK fixes {precision}",
-                                        column.name
-                                    ))
-                                }
-                                Some(_) => {}
+                        // DIA-24: a CHECK that fixes p requires exactly p fraction digits. A column with no CHECK has no declared p,
+                        // so its text is kept as main reads it.
+                        if let Some(precision) = checks.get(index).copied().flatten().filter(|_| kind != "date") {
+                            if precision != digits {
+                                return Err(format!(
+                                    "GRID_TEMPORAL_PRECISION: column {:?} holds {digits} fraction digits; its dbspec CHECK fixes {precision}",
+                                    column.name
+                                ));
                             }
                         }
                         match kind {

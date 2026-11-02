@@ -226,3 +226,14 @@ pub(super) fn catalog_query_error(error: sqlx::Error) -> String {
     }
     text
 }
+
+/// The error text of a catalog write. A driver error that the catalog lists keeps its code as the text's head, as the
+/// other runtimes return it (CFG-33: a violated unique key is DUPLICATE_KEY); every other driver error is DRIVER.
+pub(super) fn catalog_write_error(error: sqlx::Error) -> String {
+    let text = error.to_string();
+    let code = polyspec_orm::Error::from(error).code().to_owned();
+    if code == polyspec_orm::codes::DRIVER {
+        return text;
+    }
+    format!("{code}: {text}")
+}

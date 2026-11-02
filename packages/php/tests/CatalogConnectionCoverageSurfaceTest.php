@@ -14,15 +14,9 @@ use PHPUnit\Framework\TestCase;
 #[Small]
 final class CatalogConnectionCoverageSurfaceTest extends TestCase
 {
-    public function testLibraryCatalogIsAPhpClassAndSharedCasesAreDeclared(): void
+    public function testLibraryCatalogIsAPhpClass(): void
     {
         self::assertFalse((new \ReflectionClass(Catalog::class))->isInternal());
-        $methods = array_map(
-            static fn(\ReflectionMethod $method): string => $method->getName(),
-            (new \ReflectionClass(CatalogConnectionCoverageCases::class))->getMethods(),
-        );
-        self::assertContains('testCatalogRead', $methods);
-        self::assertContains('testCatalogRowMutation', $methods);
         $eventMethods = array_map(
             static fn(\ReflectionMethod $method): string => $method->getName(),
             (new \ReflectionClass(StatementEventsCoverageCases::class))->getMethods(),

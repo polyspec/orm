@@ -3644,7 +3644,6 @@
         "packages/php/tests/CatalogMysqlVisibilityPdo.php",
         "packages/php/tests/CatalogMysqlVisibilityCases.php",
         "packages/php/tests/UninitializedRecordingPdo.php",
-        "packages/php/tests/CatalogConnectionCoverageCases.php",
         "packages/php/tests/StatementEventsCoverageCases.php",
         "packages/php/tests/CoverageSchemaDefinitionTest.php",
         "packages/php/tests/coverage_cases.php",

@@ -3,8 +3,6 @@
 //! language, the process and the run, created before and dropped after the
 //! probe body, which runs within its deadline.
 
-#![allow(dead_code, reason = "each test binary includes this module and calls only part of it")]
-
 use polyspec_orm::db::{parse_dsn, ConnectOptions};
 use polyspec_orm::dbspec::{introspect, ApplyConnection, CatalogQuerier, IntrospectError};
 use polyspec_orm_schema::dbspec::{self, CatalogValue, Dialect, Document, Introspection};

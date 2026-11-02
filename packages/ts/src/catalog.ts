@@ -35,6 +35,7 @@ const CODE_PAGE_CHANGED = 'TABLE_PAGE_METADATA_CHANGED';
 const CODE_SNAPSHOT = 'ROW_SNAPSHOT_INVALID';
 const CODE_SNAPSHOT_LIMIT = 'ROW_SNAPSHOT_LIMIT';
 const CODE_INSERT_INVALID = 'ROW_INSERT_INVALID';
+const CODE_IDENTITY_REQUIRED = 'ROW_INSERT_IDENTITY_REQUIRED';
 const CODE_ENCODE = 'CODEC_ENCODE';
 // The driver code of a write that the server refuses in a read-only scope (codes.ts READ_ONLY).
 const DRIVER_READ_ONLY = 'READ_ONLY';
@@ -1384,7 +1385,8 @@ export class CatalogConnection {
     const keys = keyIndexes.map(index => {
       if (!provided.has(index)) {
         if (omittedKeys.includes(index)) return null;
-        throw err(CODE_INSERT_INVALID, `explicit primary-key value of "${declared.columns[index]?.name ?? ''}" is required`);
+        // INT-123: an omitted key with no automatic_key or default_expression is ROW_INSERT_IDENTITY_REQUIRED.
+        throw err(CODE_IDENTITY_REQUIRED, `primary-key value of "${declared.columns[index]?.name ?? ''}" is required`);
       }
       return provided.get(index) ?? null;
     });

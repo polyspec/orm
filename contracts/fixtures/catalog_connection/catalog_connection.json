@@ -13,7 +13,15 @@
     "INT-123",
     "INT-136",
     "SCH-6a",
-    "INT-97"
+    "INT-97",
+    "INT-102",
+    "INT-106",
+    "INT-108",
+    "INT-110",
+    "INT-112",
+    "SCH-5",
+    "DBS-113",
+    "INT-34"
   ],
   "fixture": "contracts/fixtures/catalog_connection/dbspec-set.json",
   "seed": {
@@ -89,7 +97,9 @@
         "INT-103",
         "INT-113",
         "INT-114",
-        "INT-115"
+        "INT-115",
+        "SCH-5",
+        "INT-112"
       ],
       "steps": [
         {
@@ -2716,7 +2726,10 @@
       "requirements": [
         "INT-109",
         "INT-111",
-        "INT-123"
+        "INT-123",
+        "INT-106",
+        "INT-108",
+        "INT-110"
       ],
       "steps": [
         {
@@ -4140,7 +4153,8 @@
       "id": "catalog_grid_cells",
       "requirements": [
         "INT-97",
-        "INT-103"
+        "INT-103",
+        "INT-102"
       ],
       "steps": [
         {
@@ -4896,161 +4910,6 @@
       ]
     },
     {
-      "id": "sqlite_temporal_checks",
-      "requirements": [
-        "INT-103"
-      ],
-      "only": [
-        "sqlite"
-      ],
-      "steps": [
-        {
-          "op": "sql.exec",
-          "reason": "a datetime whose CHECK fixes the digits",
-          "sql": "CREATE TABLE kcat_temporal_ok (id INTEGER PRIMARY KEY, a DATETIME CHECK (\"a\" IS NULL OR (length(\"a\") = 23 AND substr(\"a\", 1, 19) IS datetime(substr(\"a\", 1, 19)) AND substr(\"a\", 12, 2) < '24' AND substr(\"a\", 20, 1) = '.' AND substr(\"a\", 21) GLOB '[0-9][0-9][0-9]')))"
-        },
-        {
-          "op": "sql.exec",
-          "reason": "a value in the dbspec form with the digits that its CHECK fixes",
-          "sql": "INSERT INTO kcat_temporal_ok (id, a) VALUES (1, '2026-01-02 03:04:05.123')"
-        },
-        {
-          "op": "sql.exec",
-          "reason": "a datetime column with no CHECK",
-          "sql": "CREATE TABLE kcat_temporal_bare (id INTEGER PRIMARY KEY, b DATETIME)"
-        },
-        {
-          "op": "sql.exec",
-          "reason": "a text that is no dbspec datetime",
-          "sql": "INSERT INTO kcat_temporal_bare (id, b) VALUES (1, 'not a datetime')"
-        },
-        {
-          "op": "sql.exec",
-          "reason": "a datetime column with no CHECK that fixes its digits",
-          "sql": "CREATE TABLE kcat_temporal_nocheck (id INTEGER PRIMARY KEY, b DATETIME)"
-        },
-        {
-          "op": "sql.exec",
-          "reason": "a value that the column accepts without a CHECK",
-          "sql": "INSERT INTO kcat_temporal_nocheck (id, b) VALUES (1, '2026-01-02 03:04:05.123')"
-        },
-        {
-          "op": "catalog.table_page",
-          "table": "kcat_temporal_ok",
-          "limit": 1,
-          "offset": 0,
-          "columns": [
-            "id",
-            "a"
-          ],
-          "expect": {
-            "mysql": {
-              "columns": [
-                "id",
-                "a"
-              ],
-              "order_by": [
-                "id"
-              ],
-              "has_more": false,
-              "rows": [
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "datetime": "2026-01-02 03:04:05.123"
-                  }
-                ]
-              ]
-            },
-            "postgres": {
-              "columns": [
-                "id",
-                "a"
-              ],
-              "order_by": [
-                "id"
-              ],
-              "has_more": false,
-              "rows": [
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "datetime": "2026-01-02 03:04:05.123"
-                  }
-                ]
-              ]
-            },
-            "sqlite": {
-              "columns": [
-                "id",
-                "a"
-              ],
-              "order_by": [
-                "id"
-              ],
-              "has_more": false,
-              "rows": [
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "datetime": "2026-01-02 03:04:05.123"
-                  }
-                ]
-              ]
-            }
-          }
-        },
-        {
-          "op": "catalog.table_page",
-          "table": "kcat_temporal_bare",
-          "limit": 1,
-          "offset": 0,
-          "columns": [
-            "id",
-            "b"
-          ],
-          "expect": {
-            "mysql": {
-              "error": "GRID_TEMPORAL_VALUE"
-            },
-            "postgres": {
-              "error": "GRID_TEMPORAL_VALUE"
-            },
-            "sqlite": {
-              "error": "GRID_TEMPORAL_VALUE"
-            }
-          }
-        },
-        {
-          "op": "catalog.table_page",
-          "table": "kcat_temporal_nocheck",
-          "limit": 1,
-          "offset": 0,
-          "columns": [
-            "id",
-            "b"
-          ],
-          "expect": {
-            "mysql": {
-              "error": "GRID_TEMPORAL_PRECISION"
-            },
-            "postgres": {
-              "error": "GRID_TEMPORAL_PRECISION"
-            },
-            "sqlite": {
-              "error": "GRID_TEMPORAL_PRECISION"
-            }
-          }
-        }
-      ]
-    },
-    {
       "id": "catalog_null_and_empty_text",
       "requirements": [
         "COD-31",
@@ -5191,6 +5050,944 @@
               "value": {
                 "text": ""
               }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "generated_keys",
+      "requirements": [
+        "DBS-113",
+        "INT-34"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "CREATE TABLE catalog_required_identity (id BIGINT NOT NULL PRIMARY KEY, payload TEXT NOT NULL) ENGINE=InnoDB",
+            "postgres": "CREATE TABLE catalog_required_identity (id BIGINT NOT NULL PRIMARY KEY, payload TEXT NOT NULL)",
+            "sqlite": "CREATE TABLE catalog_required_identity (id BIGINT NOT NULL PRIMARY KEY, payload TEXT NOT NULL)"
+          },
+          "reason": "a primary key with no database-generated value (DBS-113), for the refused keyless insert"
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "catalog_required_identity",
+          "as": "required",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "payload"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true
+            },
+            "postgres": {
+              "columns": [
+                "id",
+                "payload"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "payload"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "required"
+          },
+          "values": [
+            [
+              "payload",
+              {
+                "text": "missing-key"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_INSERT_IDENTITY_REQUIRED"
+            },
+            "postgres": {
+              "error": "ROW_INSERT_IDENTITY_REQUIRED"
+            },
+            "sqlite": {
+              "error": "ROW_INSERT_IDENTITY_REQUIRED"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "catalog_required_identity",
+          "limit": 2,
+          "offset": 0,
+          "columns": [
+            "id",
+            "payload"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "payload"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": []
+            },
+            "postgres": {
+              "columns": [
+                "id",
+                "payload"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": []
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "payload"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": []
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "CREATE TABLE catalog_generated (id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, payload TEXT NOT NULL) ENGINE=InnoDB",
+            "postgres": "CREATE TABLE catalog_generated (id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, payload TEXT NOT NULL)",
+            "sqlite": "CREATE TABLE catalog_generated (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)"
+          },
+          "reason": "an identity primary key (DBS-113), whose insert returns the generated key (INT-34)"
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "catalog_generated",
+          "as": "generated",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "payload"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true
+            },
+            "postgres": {
+              "columns": [
+                "id",
+                "payload"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "payload"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "generated"
+          },
+          "values": [
+            [
+              "payload",
+              {
+                "text": "generated"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "generated"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "generated"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "generated"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "catalog_generated",
+          "limit": 2,
+          "offset": 0,
+          "columns": [
+            "id",
+            "payload"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "payload"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "generated"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "id",
+                "payload"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "generated"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "payload"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "generated"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "CREATE TABLE catalog_generated_default (tenant BIGINT NOT NULL, seq VARCHAR(30) NOT NULL DEFAULT 'generated', n BIGINT NOT NULL, PRIMARY KEY (tenant, seq)) ENGINE=InnoDB",
+            "postgres": "CREATE TABLE catalog_generated_default (tenant BIGINT NOT NULL, seq VARCHAR(30) NOT NULL DEFAULT 'generated', n BIGINT NOT NULL, PRIMARY KEY (tenant, seq))",
+            "sqlite": "CREATE TABLE catalog_generated_default (tenant BIGINT NOT NULL, seq VARCHAR(30) NOT NULL DEFAULT 'generated', n BIGINT NOT NULL, PRIMARY KEY (tenant, seq))"
+          },
+          "reason": "a literal column default in a composite key (DBS-113), which dbspec cannot declare here"
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "catalog_generated_default",
+          "as": "literal",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "tenant",
+                "seq",
+                "n"
+              ],
+              "primary_key": [
+                "tenant",
+                "seq"
+              ],
+              "reliable_row_identity": true
+            },
+            "postgres": {
+              "columns": [
+                "tenant",
+                "seq",
+                "n"
+              ],
+              "primary_key": [
+                "tenant",
+                "seq"
+              ],
+              "reliable_row_identity": true
+            },
+            "sqlite": {
+              "columns": [
+                "tenant",
+                "seq",
+                "n"
+              ],
+              "primary_key": [
+                "tenant",
+                "seq"
+              ],
+              "reliable_row_identity": true
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "literal"
+          },
+          "values": [
+            [
+              "tenant",
+              {
+                "int": "2"
+              }
+            ],
+            [
+              "n",
+              {
+                "int": "50"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "generated"
+                  },
+                  {
+                    "int": "50"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "generated"
+                  },
+                  {
+                    "int": "50"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "generated"
+                  },
+                  {
+                    "int": "50"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "catalog_generated_default",
+          "limit": 2,
+          "offset": 0,
+          "columns": [
+            "tenant",
+            "seq",
+            "n"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "tenant",
+                "seq",
+                "n"
+              ],
+              "order_by": [
+                "tenant",
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "generated"
+                  },
+                  {
+                    "int": "50"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "tenant",
+                "seq",
+                "n"
+              ],
+              "order_by": [
+                "tenant",
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "generated"
+                  },
+                  {
+                    "int": "50"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "tenant",
+                "seq",
+                "n"
+              ],
+              "order_by": [
+                "tenant",
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "generated"
+                  },
+                  {
+                    "int": "50"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "literal"
+          },
+          "values": [
+            [
+              "tenant",
+              {
+                "int": "2"
+              }
+            ],
+            [
+              "n",
+              {
+                "int": "51"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "DUPLICATE_KEY"
+            },
+            "postgres": {
+              "error": "DUPLICATE_KEY"
+            },
+            "sqlite": {
+              "error": "DUPLICATE_KEY"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "catalog_generated_default",
+          "limit": 2,
+          "offset": 0,
+          "columns": [
+            "tenant",
+            "seq",
+            "n"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "tenant",
+                "seq",
+                "n"
+              ],
+              "order_by": [
+                "tenant",
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "generated"
+                  },
+                  {
+                    "int": "50"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "tenant",
+                "seq",
+                "n"
+              ],
+              "order_by": [
+                "tenant",
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "generated"
+                  },
+                  {
+                    "int": "50"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "tenant",
+                "seq",
+                "n"
+              ],
+              "order_by": [
+                "tenant",
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "generated"
+                  },
+                  {
+                    "int": "50"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "CREATE TABLE catalog_generated_expression (seq VARCHAR(36) NOT NULL PRIMARY KEY DEFAULT (lower('KEY-1')), n BIGINT NOT NULL UNIQUE, label VARCHAR(20) NULL) ENGINE=InnoDB",
+            "postgres": "CREATE TABLE catalog_generated_expression (seq VARCHAR(36) NOT NULL PRIMARY KEY DEFAULT (lower('KEY-1')), n BIGINT NOT NULL UNIQUE, label VARCHAR(20) NULL)",
+            "sqlite": "CREATE TABLE catalog_generated_expression (seq TEXT NOT NULL PRIMARY KEY DEFAULT (lower('KEY-1')), n BIGINT NOT NULL UNIQUE, label TEXT NULL)"
+          },
+          "reason": "an expression default of a key (DBS-113), deterministic so that its value can be stated"
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "catalog_generated_expression",
+          "as": "expression",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "n",
+                "label"
+              ],
+              "primary_key": [
+                "seq"
+              ],
+              "reliable_row_identity": true
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "n",
+                "label"
+              ],
+              "primary_key": [
+                "seq"
+              ],
+              "reliable_row_identity": true
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "n",
+                "label"
+              ],
+              "primary_key": [
+                "seq"
+              ],
+              "reliable_row_identity": true
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "expression"
+          },
+          "values": [
+            [
+              "n",
+              {
+                "int": "1"
+              }
+            ],
+            [
+              "label",
+              {
+                "null": "text"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "key-1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "key-1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "key-1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "catalog_generated_expression",
+          "limit": 2,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "n",
+            "label"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "n",
+                "label"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "text": "key-1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "n",
+                "label"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "text": "key-1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "n",
+                "label"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "text": "key-1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "expression"
+          },
+          "values": [
+            [
+              "n",
+              {
+                "int": "1"
+              }
+            ],
+            [
+              "label",
+              {
+                "null": "text"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_IDENTITY_AMBIGUOUS"
+            },
+            "postgres": {
+              "error": "DUPLICATE_KEY"
+            },
+            "sqlite": {
+              "error": "DUPLICATE_KEY"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "catalog_generated_expression",
+          "limit": 2,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "n",
+            "label"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "n",
+                "label"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "text": "key-1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "n",
+                "label"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "text": "key-1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "n",
+                "label"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "text": "key-1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
             }
           }
         }

@@ -11,7 +11,7 @@ pub(super) async fn execute(connection: &mut Conn, metadata: &TableMetadata, sql
         .primary_key
         .iter()
         .any(|name| metadata.columns.iter().any(|column| column.name == *name && column.automatic_key) && !values.iter().any(|(column, _)| column == name));
-    let (affected, identity) = connection.mysql_insert(sql, params).await.map_err(|e| e.to_string())?;
+    let (affected, identity) = connection.mysql_insert(sql, params).await.map_err(super::catalog_write_error)?;
     if affected != 1 || (auto && identity == 0) {
         return Err("ROW_WRITE_MISMATCH: insert acknowledgement mismatch".into());
     }

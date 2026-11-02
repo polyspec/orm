@@ -19,18 +19,19 @@ final class CatalogConnectionCoverageSurfaceTest extends TestCase
         self::assertTrue((new ReflectionClass(Catalog::class))->isInternal());
         self::assertSame(Code::ROW_INSERT_IDENTITY_REQUIRED, 'ROW_INSERT_IDENTITY_REQUIRED');
         self::assertSame(Code::ROW_INSERT_UNSUPPORTED, 'ROW_INSERT_UNSUPPORTED');
-        $catalogCases = array_map(
+        $entries = array_map(
             static fn(ReflectionMethod $method): string => $method->getName(),
-            (new \ReflectionClass(CatalogConnectionCoverageCases::class))->getMethods(),
+            (new ReflectionClass(CatalogConnectionRecipeTest::class))->getMethods(),
         );
-        self::assertContains('testCatalogRead', $catalogCases);
-        self::assertContains('testCatalogRowMutation', $catalogCases);
+        self::assertContains('testMysql', $entries);
+        self::assertContains('testPostgres', $entries);
+        self::assertContains('testSqlite', $entries);
         $eventCases = array_map(
             static fn(ReflectionMethod $method): string => $method->getName(),
             (new \ReflectionClass(StatementEventsCoverageCases::class))->getMethods(),
         );
         self::assertContains('testStatementEvents', $eventCases);
-        self::assertFileExists(__DIR__ . '/CoverageCatalogConnectionTest.php');
+        self::assertFileExists(__DIR__ . '/../../php/tests/CoverageCatalogConnectionTest.php');
         self::assertFileExists(__DIR__ . '/CoverageStatementEventsTest.php');
         self::assertFileExists(__DIR__ . '/CoverageSchemaDefinitionExtensionTest.php');
     }

@@ -11907,9 +11907,10 @@
         }
       ],
       "parity": [
-        "catalog-connection-read",
+        "catalog_connection-mysql",
+        "catalog_connection-postgres",
+        "catalog_connection-sqlite",
         "catalog-temporal-native-default-precision",
-        "catalog-connection-row-mutation",
         "catalog-row-baseline-compares-exact-values",
         "model-read-null-and-empty-text",
         "catalog-table-pages-preserve-descriptors-and-reject-changes"
@@ -11960,8 +11961,6 @@
         "packages/rust/tests/tests/catalog_connection_postgres.rs",
         "packages/rust/tests/tests/catalog_connection_sqlite.rs",
         "packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
-        "packages/php-ext/tests/CatalogConnectionCoverageSurfaceTest.php",
-        "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
         "packages/go/orm/coverage_catalog_connection_test.go",
         "packages/go/orm/catalog_sqlite_sequence_test.go",
         "packages/go/orm/catalog_row_baseline_test.go",
@@ -11984,50 +11983,19 @@
         "packages/php/tests/CatalogPageValidationTest.php",
         "packages/ts/tests/catalog-page-validation.test.mjs",
         "packages/python/tests/test_catalog_page_validation.py",
-        "packages/python/tests/test_catalog_described_temporal.py"
+        "packages/python/tests/test_catalog_described_temporal.py",
+        "packages/go/orm/catalog_grid_order_test.go",
+        "packages/php/tests/CatalogConnectionSqliteOnlyRecipeTest.php",
+        "packages/php-ext/tests/CatalogConnectionSqliteOnlyRecipeTestExtensionTest.php",
+        "packages/ts/tests/catalog_connection-sqlite-only.test.mjs",
+        "packages/python/tests/test_catalog_connection_sqlite_only.py",
+        "packages/rust/tests/tests/catalog_connection_sqlite_only.rs"
       ],
       "docs": [
         "docs/spec/schema.md",
         "docs/spec/interfaces.md"
       ],
       "verification": [
-        {
-          "id": "catalog-grid-sqlite-go",
-          "command": "ORM_FEATURE_DATABASE=sqlite ORM_FEATURE_DSN=\"$BENCH_SQLITE_DSN\" node tests/go-test.mts -v -timeout 0 -tags featurecoverage ./packages/go/orm -run '^TestCoverageCatalogGridDeclared$' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/orm/catalog_grid_order_test.go",
-            "packages/go/orm/coverage_catalog_connection_test.go",
-            "contracts/fixtures/bench/bench.dbs"
-          ]
-        },
-        {
-          "id": "catalog-grid-timestamp-mysql-go",
-          "command": "ORM_FEATURE_DATABASE=mysql ORM_FEATURE_DSN=\"$BENCH_MYSQL_DSN\" node tests/go-test.mts -v -timeout 0 -tags featurecoverage ./packages/go/orm -run '^TestCoverageCatalogGridCells$' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/orm/coverage_catalog_connection_test.go",
-            "contracts/fixtures/bench/bench.dbs"
-          ]
-        },
-        {
-          "id": "catalog-grid-timestamp-postgres-go",
-          "command": "ORM_FEATURE_DATABASE=postgres ORM_FEATURE_DSN=\"$BENCH_POSTGRES_DSN\" node tests/go-test.mts -v -timeout 0 -tags featurecoverage ./packages/go/orm -run '^TestCoverageCatalogGridCells$' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/orm/coverage_catalog_connection_test.go",
-            "contracts/fixtures/bench/bench.dbs"
-          ]
-        },
-        {
-          "id": "catalog-grid-timestamp-mysql-python",
-          "command": "ORM_FEATURE_DATABASE=mysql ORM_FEATURE_DSN=\"$BENCH_MYSQL_DSN\" packages/python/.venv/bin/python -m packages.python.tests.testcase packages.python.tests.coverage_catalog_connection.CatalogConnectionCoverageTest.test_mysql_temporal_precision_refused",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/coverage_catalog_connection.py",
-            "contracts/fixtures/bench/bench.dbs"
-          ]
-        },
         {
           "id": "catalog-rust",
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts catalog-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test catalog --test 'tool_*' --test read_only_query --test 'grid_*' --test 'table_*' --test 'row_*' --test typed_binds --test generate",
@@ -12442,11 +12410,11 @@
                     "catalog_plain_query_bounds"
                   ],
                   "symbols": {
-                    "catalog_read": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testMysql",
-                    "catalog_row_mutation": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testMysql",
-                    "model_read_null_and_empty_text": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testMysql",
-                    "catalog_grid_column_and_row_order": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testMysql",
-                    "catalog_plain_query_bounds": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testMysql"
+                    "catalog_read": "testMysql",
+                    "catalog_row_mutation": "testMysql",
+                    "model_read_null_and_empty_text": "testMysql",
+                    "catalog_grid_column_and_row_order": "testMysql",
+                    "catalog_plain_query_bounds": "testMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -12463,11 +12431,11 @@
                     "catalog_plain_query_bounds"
                   ],
                   "symbols": {
-                    "catalog_read": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testPostgres",
-                    "catalog_row_mutation": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testPostgres",
-                    "model_read_null_and_empty_text": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testPostgres",
-                    "catalog_grid_column_and_row_order": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testPostgres",
-                    "catalog_plain_query_bounds": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testPostgres"
+                    "catalog_read": "testPostgres",
+                    "catalog_row_mutation": "testPostgres",
+                    "model_read_null_and_empty_text": "testPostgres",
+                    "catalog_grid_column_and_row_order": "testPostgres",
+                    "catalog_plain_query_bounds": "testPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -12484,11 +12452,11 @@
                     "catalog_plain_query_bounds"
                   ],
                   "symbols": {
-                    "catalog_read": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite",
-                    "catalog_row_mutation": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite",
-                    "model_read_null_and_empty_text": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite",
-                    "catalog_grid_column_and_row_order": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite",
-                    "catalog_plain_query_bounds": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
+                    "catalog_read": "testSqlite",
+                    "catalog_row_mutation": "testSqlite",
+                    "model_read_null_and_empty_text": "testSqlite",
+                    "catalog_grid_column_and_row_order": "testSqlite",
+                    "catalog_plain_query_bounds": "testSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -12516,11 +12484,11 @@
                     "catalog_plain_query_bounds"
                   ],
                   "symbols": {
-                    "catalog_read": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testMysql",
-                    "catalog_row_mutation": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testMysql",
-                    "model_read_null_and_empty_text": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testMysql",
-                    "catalog_grid_column_and_row_order": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testMysql",
-                    "catalog_plain_query_bounds": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testMysql"
+                    "catalog_read": "testMysql",
+                    "catalog_row_mutation": "testMysql",
+                    "model_read_null_and_empty_text": "testMysql",
+                    "catalog_grid_column_and_row_order": "testMysql",
+                    "catalog_plain_query_bounds": "testMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -12537,11 +12505,11 @@
                     "catalog_plain_query_bounds"
                   ],
                   "symbols": {
-                    "catalog_read": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testPostgres",
-                    "catalog_row_mutation": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testPostgres",
-                    "model_read_null_and_empty_text": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testPostgres",
-                    "catalog_grid_column_and_row_order": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testPostgres",
-                    "catalog_plain_query_bounds": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testPostgres"
+                    "catalog_read": "testPostgres",
+                    "catalog_row_mutation": "testPostgres",
+                    "model_read_null_and_empty_text": "testPostgres",
+                    "catalog_grid_column_and_row_order": "testPostgres",
+                    "catalog_plain_query_bounds": "testPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -12558,11 +12526,11 @@
                     "catalog_plain_query_bounds"
                   ],
                   "symbols": {
-                    "catalog_read": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite",
-                    "catalog_row_mutation": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite",
-                    "model_read_null_and_empty_text": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite",
-                    "catalog_grid_column_and_row_order": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite",
-                    "catalog_plain_query_bounds": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
+                    "catalog_read": "testSqlite",
+                    "catalog_row_mutation": "testSqlite",
+                    "model_read_null_and_empty_text": "testSqlite",
+                    "catalog_grid_column_and_row_order": "testSqlite",
+                    "catalog_plain_query_bounds": "testSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }

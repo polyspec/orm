@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 02bf02c105efa5a1b553a6b8b081c1b69c48e31bfaee12afe4cbf141c3ce00b2 -->
+<!-- source-sha256: 5c2f3740d3fddf8acce49143e3837544cfcfc9b432bec331790f26abf0ac4118 -->
 # 변경 이력
 
 ## Unreleased
 
+- catalog_connection recipe의 native 확인이 여섯 runtime에 명시된다: TypeScript와 Rust의 정수 및 중복 키 오류는 자기 코드를 유지하고(INT-123, CFG-33), CHECK가 없는 temporal 열의 Rust grid는 선언된 정밀도만 유지하며(DIA-24), coverage 기대는 recipe 진입 메서드를 가리키고 SCH-3에 묶인다 (T334-3-3-2).
+- 옛 runtime test의 나머지 catalog_connection 확인이 recipe case가 되었고, 여섯 runtime의 옛 coverage test는 제거되었다. python recipe는 실행이 끝나면 bench 모델 디렉터리를 지운다(T334-3-3-2).
 - PHP extension stub에서 Catalog::insertRow와 updateRow의 values 매개변수를 설명이 붙은 `array`로 선언한다. stub 생성기(gen_stub)가 공백이 든 제네릭 타입을 거부해 php-extension lane 빌드가 실패했고, PHP 8.4 빌드가 다시 통과한다(T334-3-3-2-10).
 - checkPrecision은 여섯 runtime 모두에서 public이다(INT-117): SQLite CHECK precision을 채우는 Go CatalogColumn 필드와 Rust TableColumnMetadata 필드를 공개 이름으로 export하고, config/parity.json은 그것들을 catalog connection이 export하는 다른 public symbol과 함께 선언한다 (T334-3-3-2-9).
 - PostgreSQL describe는 생성 컬럼에 default를 보고하지 않는다: 생성 컬럼의 생성 식은 default가 있는 자리인 pg_attrdef에 보관되므로, 모든 runtime은 그 컬럼의 default 식을 읽지 않고 default 표지를 false로 본다(SCH-6a) (T334-3-3-2-8).

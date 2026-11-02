@@ -231,6 +231,10 @@
     "exported": false,
     "signature": "pub (super) fn catalog_query_error (error : sqlx :: Error) -\u003e String"
   },
+  "packages/rust/build/src/catalog/mod.rs::catalog_write_error": {
+    "exported": false,
+    "signature": "pub (super) fn catalog_write_error (error : sqlx :: Error) -\u003e String"
+  },
   "packages/rust/build/src/catalog/mod.rs::finish_read_only": {
     "exported": false,
     "signature": " async fn finish_read_only \u003c T \u003e (connection : \u0026 mut Conn , result : Result \u003c T , String \u003e) -\u003e Result \u003c T , String \u003e"

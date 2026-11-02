@@ -1,37 +1,39 @@
 <?php
 
-// catalog_connection coverage exercises the PHP library through its owning client test.
-// Requirements: COD-31.
-// Requirements: SCH-3, SCH-5, SCH-6, SCH-6a, DBS-113, INT-4, INT-8, INT-34, INT-97, INT-101, INT-102, INT-103.
-// Requirements: INT-104, INT-106, INT-108, INT-109, INT-110, INT-111, INT-112, INT-113, INT-114, INT-115.
-// Requirements: INT-121, INT-123, INT-136, INT-117.
+// Requirements: INT-101.
+// The one native check of catalog_connection (FCV-2, docs/spec/feature-coverage.md "Catalog connection exclusions"):
+// the MySQL server refuses a TIME(7) (DIA-54). The recipe's sql.exec step has no expect that a server refusal can
+// meet, so the check stays here. It takes its MySQL database from ORM_TEST_MYSQL_DSN, as the recipe entries do.
 declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-use Polyspec\Orm\Catalog;
-use Polyspec\Orm\Model;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Orm;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
 #[Medium]
 final class CoverageCatalogConnectionTest extends TestCase
 {
-    use CatalogConnectionCoverageCases;
-
-    protected function assertCatalogImplementation(): void
+    public function testMysqlTemporalPrecisionLimit(): void
     {
-        self::assertFalse((new \ReflectionClass(Catalog::class))->isInternal());
-    }
-
-    protected function assertModelImplementation(): void
-    {
-        self::assertFalse((new \ReflectionClass(Model::class))->isInternal());
-    }
-
-    // Requirements: INT-115.
-    public function testCatalogPlainReadOnlyQueryBudgets(): void
-    {
-        $this->assertPlainQueryBounds();
+        $dsn = (string) getenv('ORM_TEST_MYSQL_DSN');
+        if ($dsn === '') {
+            self::fail('ORM_TEST_MYSQL_DSN is required; database tests never skip');
+        }
+        $setup = Orm::connect($dsn, new Config());
+        $name = 'catalog_temporal_precision_invalid_' . bin2hex(random_bytes(6));
+        try {
+            try {
+                $setup->pdo()->exec("CREATE TABLE `{$name}` (id BIGINT PRIMARY KEY, t TIME(7))");
+                self::fail('MySQL accepted temporal precision 7');
+            } catch (\PDOException $error) {
+                self::assertStringContainsString('precision', strtolower($error->getMessage()));
+            }
+        } finally {
+            $setup->pdo()->exec("DROP TABLE IF EXISTS `{$name}`");
+            $setup->close();
+        }
     }
 }

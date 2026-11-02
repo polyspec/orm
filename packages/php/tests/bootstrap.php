@@ -92,7 +92,6 @@ require_once __DIR__ . '/coverage_cases.php';
 require_once __DIR__ . '/AuthenticatedEncryptionFixtureCases.php';
 require_once __DIR__ . '/StatementRunnerCases.php';
 require_once __DIR__ . '/NativeFixtureVectors.php';
-require_once __DIR__ . '/CatalogConnectionCoverageCases.php';
 require_once __DIR__ . '/CatalogAnswerPdo.php';
 require_once __DIR__ . '/CatalogAnswerStatement.php';
 require_once __DIR__ . '/CatalogMysqlVisibilityPdo.php';
