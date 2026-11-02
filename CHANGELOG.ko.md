@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- catalog read_only_query는 모든 runtime에서 MySQL과 PostgreSQL의 date, time, datetime을 그 grid cell의 텍스트로 돌려준다 (INT-153): SELECT 12:34:56.5::time은 12:34:56.500000을 준다. 전에는 Go, TypeScript, PHP, PHP extension이 12:34:56.5를 주고, Python은 MySQL datetime에서 실패했으며, Rust는 TIME을 CATALOG_VALUE로 거부했다; byte budget은 그 텍스트를 센다 (T334-3-3-12).
 - packages/php/composer.json은 library가 쓰는 모든 PHP extension을 선언한다: ext-ctype, ext-filter, ext-mbstring은 require, ext-mysqli(MySQL catalog grid query)와 ext-pcntl은 suggest; ComposerExtensionsTest는 packages/php/src의 각 class와 함수를 그 extension으로 풀어 composer.json이 적지 않은 것이 있으면 실패한다 (T334-3-3-14).
 - Go, PHP, PHP extension, Python의 grid query byte budget은 TypeScript와 Rust처럼 변환된 cell을 센다 (INT-115): driver 값이 아니라 time cell 12:34:56.500000의 15바이트를 센다 (T334-3-3-9).
 - `make dialect-facts-check`는 dialect probe의 인용 시험을 실행한다. probe 자체는 필요한 것을 build하고 선언하는 `go-test-check`의 go 시험이므로, 이 target은 더 이상 빈 part로 그것을 전달하지 않는다 (T334-3-6-3).

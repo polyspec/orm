@@ -264,11 +264,37 @@ static void cat_cursor_close_keep(zval *pdo)
     if (had) EG(exception) = Z_OBJ(saved);
 }
 
-static zend_long cat_grid_cells_size(zval *cells);
+static zend_long cat_cells_size(zval *cells);
 
-/* Converts one fetched row into the cells that a bounded read keeps, by the native types of its columns; it returns false
- * with the exception thrown. */
-typedef bool (*cat_row_convert)(zval *row, zval *types, zval *cells);
+/* Converts one fetched row into the cells that a bounded read keeps, by the dialect and the native types of its columns; it
+ * returns false with the exception thrown. */
+typedef bool (*cat_row_convert)(zval *row, zval *types, const char *dialect, zval *cells);
+
+/* Bounds one fetched row as cat_bound_row does, after converting it: the row limit is checked first, and the byte budget
+ * counts the converted cells (INT-115). It returns false with the exception of a failed conversion thrown, and otherwise
+ * sets *limit to 0, or to the kind of budget that the row exceeds. The fetched row is released. */
+static bool cat_convert_bound(zval *rows, zval *row, zval *types, const char *dialect, cat_row_convert convert,
+                              zend_long max_rows, zend_long max_bytes, zend_long *budget, int *limit)
+{
+    if ((zend_long)zend_hash_num_elements(Z_ARRVAL_P(rows)) == max_rows) {
+        zval_ptr_dtor(row);
+        *limit = 1;
+        return true;
+    }
+    zval cells;
+    bool made = convert(row, types, dialect, &cells);
+    zval_ptr_dtor(row);
+    if (!made) return false;
+    *budget += cat_cells_size(&cells);
+    if (*budget > max_bytes) {
+        zval_ptr_dtor(&cells);
+        *limit = 2;
+        return true;
+    }
+    add_next_index_zval(rows, &cells);
+    *limit = 0;
+    return true;
+}
 
 /* A PostgreSQL read without parameters through a cursor, in chunks of 256 rows: a budget stop leaves the rest of the
  * result unread and closes the cursor. With convert, each row is converted as it is read and the byte budget counts its
@@ -320,29 +346,13 @@ static bool cat_cursor_query(zval *db, zval *pdo, const char *sql, zend_long max
             int limit;
             if (convert == NULL) {
                 limit = cat_bound_row(rows, &row, max_rows, max_bytes, &budget);
-            } else if ((zend_long)zend_hash_num_elements(Z_ARRVAL_P(rows)) == max_rows) {
-                zval_ptr_dtor(&row);
-                limit = 1;
-            } else {
-                zval cells;
-                bool made = convert(&row, types, &cells);
-                zval_ptr_dtor(&row);
-                if (!made) {
-                    /* The conversion error is the one reported and stays pending through the close; names and rows
-                     * stay the caller's, as after a read. */
-                    zval_ptr_dtor(&st);
-                    cat_cursor_close_keep(pdo);
-                    zval_ptr_dtor(types);
-                    return false;
-                }
-                budget += cat_grid_cells_size(&cells);
-                if (budget > max_bytes) {
-                    zval_ptr_dtor(&cells);
-                    limit = 2;
-                } else {
-                    add_next_index_zval(rows, &cells);
-                    limit = 0;
-                }
+            } else if (!cat_convert_bound(rows, &row, types, "postgres", convert, max_rows, max_bytes, &budget, &limit)) {
+                /* The conversion error is the one reported and stays pending through the close; names and rows stay the
+                 * caller's, as after a read. */
+                zval_ptr_dtor(&st);
+                cat_cursor_close_keep(pdo);
+                zval_ptr_dtor(types);
+                return false;
             }
             if (limit != 0) {
                 zval_ptr_dtor(&st);
@@ -394,7 +404,7 @@ static bool cat_bind_typed(zval *st, zval *args)
  * streams its rows unbuffered, and a budget stop kills it by its connection id; a PostgreSQL statement without parameters
  * reads through a cursor. */
 static bool cat_query_body(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zend_long max_bytes,
-                           zval *names, zval *types, zval *rows);
+                           zval *names, zval *types, zval *rows, cat_row_convert convert);
 
 /* A PostgreSQL statement with parameters is rewritten: PDO binds only ? placeholders, so each $n becomes ? and its parameter
  * follows in the order of the placeholders (a repeated $n binds its value again). */
@@ -442,7 +452,7 @@ static bool cat_has_pg_placeholder(const char *sql)
 
 /* A bounded result as the PHP client's query(), with the PostgreSQL placeholders of a statement with parameters rewritten. */
 static bool cat_query(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zend_long max_bytes,
-                      zval *names, zval *types, zval *rows)
+                      zval *names, zval *types, zval *rows, cat_row_convert convert)
 {
     array_init(names);
     array_init(types);
@@ -458,7 +468,7 @@ static bool cat_query(zval *db, zval *pdo, const char *sql, zval *args, zend_lon
     bool postgres = Z_TYPE(driver) == IS_STRING && zend_string_equals_literal(Z_STR_P(&driver), "postgres");
     zval_ptr_dtor(&driver);
     if (!postgres || zend_hash_num_elements(Z_ARRVAL_P(args)) == 0 || !cat_has_pg_placeholder(sql)) {
-        return cat_query_body(db, pdo, sql, args, max_rows, max_bytes, names, types, rows);
+        return cat_query_body(db, pdo, sql, args, max_rows, max_bytes, names, types, rows, convert);
     }
     zend_string *source = zend_string_init(sql, strlen(sql), 0);
     zend_string *rewritten = NULL;
@@ -471,14 +481,14 @@ static bool cat_query(zval *db, zval *pdo, const char *sql, zval *args, zend_lon
         zval_ptr_dtor(rows);
         return false;
     }
-    bool ok = cat_query_body(db, pdo, ZSTR_VAL(rewritten), &rewritten_args, max_rows, max_bytes, names, types, rows);
+    bool ok = cat_query_body(db, pdo, ZSTR_VAL(rewritten), &rewritten_args, max_rows, max_bytes, names, types, rows, convert);
     zend_string_release(rewritten);
     zval_ptr_dtor(&rewritten_args);
     return ok;
 }
 
 static bool cat_query_body(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zend_long max_bytes,
-                           zval *names, zval *types, zval *rows)
+                           zval *names, zval *types, zval *rows, cat_row_convert convert)
 {
     zval driver;
     if (!pdo_call(db, "driver", &driver, 0, NULL, NULL)) goto driver;
@@ -486,7 +496,7 @@ static bool cat_query_body(zval *db, zval *pdo, const char *sql, zval *args, zen
     bool mysql = Z_TYPE(driver) == IS_STRING && zend_string_equals_literal(Z_STR_P(&driver), "mysql");
     zval_ptr_dtor(&driver);
     if (postgres && zend_hash_num_elements(Z_ARRVAL_P(args)) == 0) {
-        return cat_cursor_query(db, pdo, sql, max_rows, max_bytes, names, types, rows, NULL);
+        return cat_cursor_query(db, pdo, sql, max_rows, max_bytes, names, types, rows, convert);
     }
     zend_long connection_id = 0;
     if (mysql && !cat_mysql_connection_id(pdo, &connection_id)) goto driver;
@@ -514,9 +524,22 @@ static bool cat_query_body(zval *db, zval *pdo, const char *sql, zval *args, zen
         ok = pdo_call(&st, "fetch", &row, 1, &mode, NULL);
         if (!ok) goto driver_st;
         if (Z_TYPE(row) == IS_FALSE) break;
-        int limit = cat_bound_row(rows, &row, max_rows, max_bytes, &budget);
+        int limit;
+        if (convert == NULL) {
+            limit = cat_bound_row(rows, &row, max_rows, max_bytes, &budget);
+        } else if (!cat_convert_bound(rows, &row, types, postgres ? "postgres" : mysql ? "mysql" : "sqlite", convert, max_rows,
+                                      max_bytes, &budget, &limit)) {
+            limit = -1;
+        }
         if (limit != 0) {
+            /* A failed conversion stops the read as a budget does, and its error is the one reported. */
+            zend_object *failure = NULL;
+            if (limit < 0) {
+                failure = EG(exception);
+                EG(exception) = NULL;
+            }
             if (mysql && connection_id > 0 && !cat_kill_query(db, connection_id)) {
+                if (failure != NULL) OBJ_RELEASE(failure);
                 zval_ptr_dtor(&st);
                 goto driver;
             }
@@ -527,7 +550,11 @@ static bool cat_query_body(zval *db, zval *pdo, const char *sql, zval *args, zen
                 zend_clear_exception();
             }
             zval_ptr_dtor(&st);
-            cat_limit_throw(limit, max_rows, max_bytes);
+            if (failure != NULL) {
+                EG(exception) = failure;
+            } else {
+                cat_limit_throw(limit, max_rows, max_bytes);
+            }
             return false;
         }
     }
@@ -943,7 +970,7 @@ static bool cat_describe(zval *db, const char *dialect, zval *pdo, zend_string *
     array_init(&args);
     add_next_index_str(&args, zend_string_copy(ns));
     add_next_index_str(&args, zend_string_copy(name));
-    if (!cat_query(db, pdo, cat_kind_sql(dialect), &args, 2, CAT_METADATA_BYTES, &kind_names, &kind_types, &kind_rows)) {
+    if (!cat_query(db, pdo, cat_kind_sql(dialect), &args, 2, CAT_METADATA_BYTES, &kind_names, &kind_types, &kind_rows, NULL)) {
         zval_ptr_dtor(&args);
         return false;
     }
@@ -973,7 +1000,7 @@ static bool cat_describe(zval *db, const char *dialect, zval *pdo, zend_string *
     array_init(&col_args);
     add_next_index_str(&col_args, zend_string_copy(sqlite ? name : ns));
     add_next_index_str(&col_args, zend_string_copy(sqlite ? ns : name));
-    if (!cat_query(db, pdo, cat_columns_sql(dialect), &col_args, CAT_METADATA_ROWS, CAT_METADATA_BYTES, &col_names, &col_types, &col_rows)) {
+    if (!cat_query(db, pdo, cat_columns_sql(dialect), &col_args, CAT_METADATA_ROWS, CAT_METADATA_BYTES, &col_names, &col_types, &col_rows, NULL)) {
         zval_ptr_dtor(&col_args);
         return false;
     }
@@ -1037,7 +1064,7 @@ static bool cat_describe(zval *db, const char *dialect, zval *pdo, zend_string *
         array_init(&sql_args);
         add_next_index_zval(&sql_args, &sql_arg);
         bool read_sql = cat_query(db, pdo, "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", &sql_args, 1,
-                                  CAT_METADATA_BYTES, &sql_names, &sql_types, &sql_rows);
+                                  CAT_METADATA_BYTES, &sql_names, &sql_types, &sql_rows, NULL);
         zval_ptr_dtor(&sql_args);
         if (!read_sql) goto out_cols;
         zval *table_row = zend_hash_index_find(Z_ARRVAL(sql_rows), 0);
@@ -1078,7 +1105,7 @@ static bool cat_describe(zval *db, const char *dialect, zval *pdo, zend_string *
         add_next_index_str(&index_args, zend_string_copy(name));
         add_next_index_str(&index_args, zend_string_copy(ns));
         if (!cat_query(db, pdo, "SELECT count(*) FROM pragma_index_list(?,?) WHERE origin='pk'", &index_args, 1, CAT_METADATA_BYTES,
-                       &index_names, &index_types, &index_rows)) {
+                       &index_names, &index_types, &index_rows, NULL)) {
             zval_ptr_dtor(&index_args);
             goto out_cols;
         }
@@ -1558,7 +1585,7 @@ static bool cat_table_page(zval *db, const char *dialect, zval *pdo, zend_string
 
     zval args, names, types, rows;
     array_init(&args);
-    bool ok = cat_query(db, pdo, ZSTR_VAL(sql.s), &args, limit + 1, CAT_PAGE_BYTES, &names, &types, &rows);
+    bool ok = cat_query(db, pdo, ZSTR_VAL(sql.s), &args, limit + 1, CAT_PAGE_BYTES, &names, &types, &rows, NULL);
     zval_ptr_dtor(&args);
     smart_str_free(&sql);
     if (!ok) {
@@ -2202,13 +2229,17 @@ static void cat_grid_native_row(zval *row, zval *fields)
     }
 }
 
-/* The bytes that the grid cells of one row count against a result budget (INT-115): the bytes of a text, decimal, date,
- * time, datetime or binary cell and 8 for every other cell, null included. */
-static zend_long cat_grid_cells_size(zval *cells)
+/* The bytes that the cells of one row count against a result budget (INT-115): the bytes of a text, decimal, date, time,
+ * datetime or binary grid cell and of a string value, and 8 for every other cell, null included. */
+static zend_long cat_cells_size(zval *cells)
 {
     zend_long size = 0;
     zval *cell;
     ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(cells), cell) {
+        if (Z_TYPE_P(cell) != IS_OBJECT) {
+            size += Z_TYPE_P(cell) == IS_STRING ? (zend_long)Z_STRLEN_P(cell) : 8;
+            continue;
+        }
         zval rk, rv;
         zval *kind = catalog_prop(cell, "kind", &rk);
         zval *value = catalog_prop(cell, "value", &rv);
@@ -2236,7 +2267,7 @@ static bool cat_grid_row_limit(zval *rows, zval *row, zend_long max_rows)
  * released. */
 static bool cat_grid_cells_budget(zval *cells, zend_long max_bytes, zend_long *budget)
 {
-    *budget += cat_grid_cells_size(cells);
+    *budget += cat_cells_size(cells);
     if (*budget > max_bytes) {
         zval_ptr_dtor(cells);
         db_throw_orm("CATALOG_LIMIT", "result has more than %ld bytes of values", (long)max_bytes);
@@ -2246,7 +2277,7 @@ static bool cat_grid_cells_budget(zval *cells, zend_long max_bytes, zend_long *b
 }
 
 /* The grid cells of one PostgreSQL row, by the native type of each column, as the buffered read converts them. */
-static bool cat_grid_postgres_row(zval *row, zval *types, zval *cells)
+static bool cat_grid_postgres_row(zval *row, zval *types, const char *dialect, zval *cells)
 {
     array_init(cells);
     zend_ulong i = 0;
@@ -2254,7 +2285,7 @@ static bool cat_grid_postgres_row(zval *row, zval *types, zval *cells)
     ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(row), value) {
         zval *native = zend_hash_index_find(Z_ARRVAL_P(types), i);
         zval cell;
-        if (!cat_grid_pdo_cell(value, "postgres", Z_STRVAL_P(native), false, &cell)) {
+        if (!cat_grid_pdo_cell(value, dialect, Z_STRVAL_P(native), false, &cell)) {
             zval_ptr_dtor(cells);
             return false;
         }
@@ -2832,7 +2863,7 @@ static bool cat_write_transaction(zval *db, const char *dialect, cat_write_opera
 static bool cat_query_params(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zval *rows)
 {
     zval names, types;
-    if (!cat_query(db, pdo, sql, args, max_rows, CAT_METADATA_BYTES, &names, &types, rows)) {
+    if (!cat_query(db, pdo, sql, args, max_rows, CAT_METADATA_BYTES, &names, &types, rows, NULL)) {
         return false;
     }
     zval_ptr_dtor(&names);
@@ -3056,7 +3087,7 @@ static bool cat_lookup(zval *db, const char *dialect, zval *pdo, zval *metadata,
     }
     smart_str_0(&sql);
     zval got_names, got_types, raw;
-    bool ok = cat_query(db, pdo, ZSTR_VAL(sql.s), &key_args, 2, CAT_PAGE_BYTES, &got_names, &got_types, &raw);
+    bool ok = cat_query(db, pdo, ZSTR_VAL(sql.s), &key_args, 2, CAT_PAGE_BYTES, &got_names, &got_types, &raw, NULL);
     smart_str_free(&sql);
     zval_ptr_dtor(&key_args);
     if (!ok) {
@@ -3385,7 +3416,7 @@ static bool cat_check_current(zval *current, zval *original)
 static bool cat_insert_rows(zval *db, const char *dialect, zval *pdo, zval *metadata, const char *sql, zval *args, zval *rows)
 {
     zval names, types, raw, expected;
-    if (!cat_query(db, pdo, sql, args, 2, CAT_PAGE_BYTES, &names, &types, &raw)) return false;
+    if (!cat_query(db, pdo, sql, args, 2, CAT_PAGE_BYTES, &names, &types, &raw, NULL)) return false;
     cat_column_names(metadata, &expected);
     bool same = zend_compare(&names, &expected) == 0;
     zval_ptr_dtor(&expected);
@@ -3567,7 +3598,7 @@ static bool cat_insert_body(zval *db, const char *dialect, zval *pdo, zval *decl
         smart_str_0(&lock);
         zval none, names, types, rows;
         array_init(&none);
-        bool locked = cat_query(db, pdo, ZSTR_VAL(lock.s), &none, 1, CAT_PAGE_BYTES, &names, &types, &rows);
+        bool locked = cat_query(db, pdo, ZSTR_VAL(lock.s), &none, 1, CAT_PAGE_BYTES, &names, &types, &rows, NULL);
         zval_ptr_dtor(&none);
         smart_str_free(&lock);
         if (!locked) return false;
@@ -4512,7 +4543,7 @@ ZEND_METHOD(Polyspec_Orm_Catalog, currentNamespace)
         return;
     }
     array_init(&empty);
-    bool ok = cat_query(db, &pdo, query, &empty, 2, CAT_METADATA_BYTES, &names, &types, &rows);
+    bool ok = cat_query(db, &pdo, query, &empty, 2, CAT_METADATA_BYTES, &names, &types, &rows, NULL);
     zval_ptr_dtor(&empty);
     if (ok) {
         zval_ptr_dtor(&names);
@@ -4700,6 +4731,38 @@ ZEND_METHOD(Polyspec_Orm_Catalog, rowSnapshotFromPage)
     }
 }
 
+/* The catalog values of one row of a read query: a MySQL or PostgreSQL date, time or datetime is the text of its grid cell
+ * (INT-153), and any other value its plain conversion (Catalog::queryValue). */
+static bool cat_query_row(zval *row, zval *types, const char *dialect, zval *cells)
+{
+    array_init(cells);
+    zend_ulong i = 0;
+    zval *value;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(row), value) {
+        zval *t = zend_hash_index_find(Z_ARRVAL_P(types), i++);
+        zval v;
+        if (t == NULL || Z_TYPE_P(t) != IS_STRING) {
+            db_throw_orm("TABLE_METADATA_INVALID", "a column has no native type");
+            zval_ptr_dtor(cells);
+            return false;
+        }
+        if (Z_TYPE_P(value) != IS_NULL && cat_temporal_kind(dialect, Z_STRVAL_P(t)) != 0) {
+            zval cell, rv;
+            if (!cat_grid_pdo_cell(value, dialect, Z_STRVAL_P(t), false, &cell)) {
+                zval_ptr_dtor(cells);
+                return false;
+            }
+            ZVAL_COPY(&v, catalog_prop(&cell, "value", &rv));
+            zval_ptr_dtor(&cell);
+        } else if (!cat_cell_value(value, Z_STR_P(t), dialect, &v)) {
+            zval_ptr_dtor(cells);
+            return false;
+        }
+        add_next_index_zval(cells, &v);
+    } ZEND_HASH_FOREACH_END();
+    return true;
+}
+
 ZEND_METHOD(Polyspec_Orm_Catalog, readOnlyQuery)
 {
     CAT_PARSE_READ_ONLY_INPUTS();
@@ -4710,23 +4773,16 @@ ZEND_METHOD(Polyspec_Orm_Catalog, readOnlyQuery)
         return;
     }
     zval names, types, rows, converted, result;
-    if (!cat_query(db, &pdo, ZSTR_VAL(sql), &args, max_rows, max_bytes, &names, &types, &rows)) {
+    if (!cat_query(db, &pdo, ZSTR_VAL(sql), &args, max_rows, max_bytes, &names, &types, &rows, cat_query_row)) {
         zval_ptr_dtor(&args);
         cat_abort(db, &pdo);
         zval_ptr_dtor(&pdo);
         return;
     }
     zval_ptr_dtor(&args);
-    bool ok = cat_convert_rows(&rows, &types, ZSTR_VAL(dialect), &converted);
-    zval_ptr_dtor(&rows);
     zval_ptr_dtor(&types);
-    if (!ok) {
-        zval_ptr_dtor(&names);
-        cat_abort(db, &pdo);
-        zval_ptr_dtor(&pdo);
-        return;
-    }
-    ok = cat_named_result(&names, &converted, &result);
+    ZVAL_COPY_VALUE(&converted, &rows);
+    bool ok = cat_named_result(&names, &converted, &result);
     zval_ptr_dtor(&names);
     zval_ptr_dtor(&converted);
     if (!ok) {

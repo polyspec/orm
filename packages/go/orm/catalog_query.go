@@ -40,23 +40,49 @@ var catalogWriteWords = map[string]bool{
 
 // ReadOnlyQuery runs one read query (SELECT, WITH or VALUES) in a fresh read-only session. A query that writes, locks or
 // has more than one statement fails with QUERY_READ_ONLY before it runs. Values come back as int64, float64, bool, string,
-// time.Time, a copy of binary bytes, decimal text or nil for NULL; any other native type fails.
+// time.Time, a copy of binary bytes, decimal text or nil for NULL; any other native type fails. A MySQL or PostgreSQL
+// date, time or datetime is the text of its grid cell (INT-153).
 func (c *CatalogConnection) ReadOnlyQuery(ctx context.Context, query string, params []any, limits CatalogQueryLimits) (CatalogQueryResult, error) {
 	args, maxRows, maxBytes, err := c.readOnlyArgs(query, params, limits)
 	if err != nil {
 		return CatalogQueryResult{}, err
 	}
 	return catalogRead(ctx, c, func(s *catalogSession) (CatalogQueryResult, error) {
-		raw, err := s.queryRaw(query, args, maxRows, maxBytes)
+		// Each value is converted as it is read, and the budget counts the converted value (INT-115).
+		var values []any
+		raw, err := s.querySized(query, args, maxRows, maxBytes, func(value any, native string) (int, error) {
+			v, err := catalogQueryValue(value, native, c.dialect)
+			if err != nil {
+				return 0, err
+			}
+			values = append(values, v)
+			return catalogSize(v), nil
+		})
 		if err != nil {
 			return CatalogQueryResult{}, err
 		}
-		rows, err := catalogConvert(raw, raw.types)
-		if err != nil {
-			return CatalogQueryResult{}, err
+		rows := make([][]any, 0, len(raw.rows))
+		for i := range raw.rows {
+			width := len(raw.names)
+			rows = append(rows, values[i*width:(i+1)*width])
 		}
 		return CatalogQueryResult{Columns: raw.names, Rows: rows}, nil
 	})
+}
+
+// catalogQueryValue is the catalog value of one value of a read query: a MySQL or PostgreSQL date, time or datetime is the
+// text of its grid cell (INT-153), and any other value its catalog value.
+func catalogQueryValue(value any, native string, dialect string) (any, error) {
+	t := strings.ToUpper(native)
+	temporal := t == "DATE" || t == "TIME" || dialect == "mysql" && t == "DATETIME" || dialect == "postgres" && t == "TIMESTAMP"
+	if value != nil && dialect != "sqlite" && temporal {
+		cell, err := catalogGridCell(value, native, dialect)
+		if err != nil {
+			return nil, err
+		}
+		return cell.Value, nil
+	}
+	return catalogValue(value, native)
 }
 
 // readOnlyArgs checks a read query, its limits and its parameters, and returns the parameters with the row and byte

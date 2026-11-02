@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- catalog read_only_query returns a MySQL or PostgreSQL date, time or datetime as the text of its grid cell in every runtime (INT-153): SELECT 12:34:56.5::time gives 12:34:56.500000, where Go, TypeScript, PHP and the PHP extension gave 12:34:56.5, Python failed on a MySQL datetime and Rust refused TIME with CATALOG_VALUE; the byte budget counts that text (T334-3-3-12).
 - packages/php/composer.json declares every PHP extension that the library uses: ext-ctype, ext-filter and ext-mbstring are required, and ext-mysqli (MySQL catalog grid queries) and ext-pcntl are suggested; ComposerExtensionsTest resolves each class and function of packages/php/src to its extension and fails on one that composer.json does not name (T334-3-3-14).
 - The byte budget of a grid query counts its converted cells in Go, PHP, the PHP extension and Python, as TypeScript and Rust do (INT-115): the 15 bytes of the time cell 12:34:56.500000, not the driver value it came from (T334-3-3-9).
 - `make dialect-facts-check` runs the citation tests of the dialect probes; the probes themselves are go tests of `go-test-check`, which builds and declares what they need, so the target no longer forwards to it with an empty part (T334-3-6-3).

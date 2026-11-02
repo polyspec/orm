@@ -1022,6 +1022,15 @@ class Session {
     });
   }
 
+  /** The rows of a read query: a MySQL or PostgreSQL date, time or datetime is the text of its grid cell (INT-153). */
+  public async queryRows(sql: string, params: readonly unknown[], maxRows: number, maxBytes: number): Promise<{ columns: DriverColumn[]; rows: CatalogValue[][] }> {
+    return this.collect<CatalogValue>(sql, params, maxRows, maxBytes, (value, column) => {
+      const grid = value !== null && temporalKind(this.dialect, column.type) !== undefined ? gridCell(value, column, this.dialect) : undefined;
+      const cell = grid !== undefined && (grid.kind === 'date' || grid.kind === 'time' || grid.kind === 'datetime') ? grid.value : plainValue(value, column);
+      return { cell, size: sizeOf(cell) };
+    });
+  }
+
   /** Reads one table descriptor: the kind, the columns, the key in constraint order and the identity flag. */
   public async describe(ref: CatalogTableRef): Promise<CatalogTableMetadata> {
     checkTable(ref);
@@ -1344,7 +1353,7 @@ export class CatalogConnection {
   public async readOnlyQuery(query: string, params: readonly unknown[], limits: CatalogQueryLimits = {}): Promise<CatalogQueryResult> {
     const { maxRows, maxBytes } = this.queryBudget(query, params, limits);
     return this.read(async session => {
-      const { columns, rows } = await session.plainRows(query, params, maxRows, maxBytes);
+      const { columns, rows } = await session.queryRows(query, params, maxRows, maxBytes);
       return { columns: columns.map(column => column.name), rows };
     }).catch(refusedWrite);
   }

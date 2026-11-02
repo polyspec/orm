@@ -976,6 +976,11 @@ _PG_FLOAT4, _PG_FLOAT8, _PG_NUMERIC, _PG_DATE, _PG_TIME, _PG_TIMESTAMP = (
 )
 _PG_TIMESTAMPTZ, _PG_TIMETZ = 1184, 1266
 _PG_TEXT_TEMPORAL = ("date", "time", "timestamp")
+# The native type codes whose value a query read gives as the text of its grid cell (INT-153).
+_QUERY_TEMPORAL = {
+    "mysql": (_MYSQL_DATE, _MYSQL_TIME, _MYSQL_DATETIME),
+    "postgres": (_PG_DATE, _PG_TIME, _PG_TIMESTAMP),
+}
 _DATE_TEXT = re.compile(r"(\d{4})-(\d{2})-(\d{2})")
 _TIME_TEXT = re.compile(r"(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?")
 
@@ -1165,9 +1170,11 @@ class _Session:
         grid=False,
         described: CatalogTableMetadata | None = None,
         keep: int | None = None,
+        query=False,
     ) -> _Raw:
         """Runs one statement. described is the descriptor of a read of a table's columns in physical order: its date, time
-        and datetime cells become their dbspec text at the declared precision of their column. With keep, the first keep
+        and datetime cells become their dbspec text at the declared precision of their column. A query read gives a MySQL or
+        PostgreSQL date, time or datetime as the text of its grid cell (INT-153). With keep, the first keep
         rows are converted and kept, and a row after them is not converted: past reports it, as the sentinel row of a page."""
         if self.dialect == "sqlite":
             text, args = sql, tuple(params)
@@ -1197,7 +1204,7 @@ class _Session:
         stopped = False
         past = False
         try:
-            if (grid or described is not None) and self.dialect == "postgres":
+            if (grid or described is not None or query) and self.dialect == "postgres":
                 # Grid cells and the cells of a described table read PostgreSQL date, time and timestamp values as their
                 # text, so that 24:00:00 and infinity are seen as the server writes them, as the Rust grid reads them.
                 # psycopg is imported only by such a PostgreSQL read.
@@ -1271,6 +1278,17 @@ class _Session:
                             for index, value in enumerate(row)
                         ]
                     )
+                    if query:
+                        converted = [
+                            _grid_cell(
+                                row[index], self.dialect, type_codes[index], False
+                            ).value
+                            if row[index] is not None
+                            and type_codes[index]
+                            in _QUERY_TEMPORAL.get(self.dialect, ())
+                            else value
+                            for index, value in enumerate(converted)
+                        ]
                     for value in converted:
                         budget += _budget_size(
                             value.value if isinstance(value, GridCell) else value
@@ -1764,7 +1782,7 @@ class CatalogConnection:
             if grid:
                 raw = session.run(query, values, rows_budget, bytes_budget, grid=True)
                 return CatalogQueryResult(columns=raw.names, rows=raw.rows)
-            raw = session.run(query, values, rows_budget, bytes_budget)
+            raw = session.run(query, values, rows_budget, bytes_budget, query=True)
             return CatalogQueryResult(columns=raw.names, rows=raw.rows)
 
         try:

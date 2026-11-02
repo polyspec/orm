@@ -2457,6 +2457,125 @@
       ]
     },
     {
+      "id": "query_temporal_values",
+      "requirements": [
+        "INT-153"
+      ],
+      "steps": [
+        {
+          "op": "catalog.read_only_query",
+          "sql": {
+            "mysql": "SELECT CAST('12:34:56.5' AS TIME(6)) AS value",
+            "postgres": "SELECT '12:34:56.5'::time AS value",
+            "sqlite": "SELECT '12:34:56.5' AS value"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "12:34:56.500000"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "12:34:56.500000"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "12:34:56.5"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": {
+            "mysql": "SELECT CAST('2020-01-02' AS DATE) AS value",
+            "postgres": "SELECT '2020-01-02'::date AS value",
+            "sqlite": "SELECT '2020-01-02' AS value"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "2020-01-02"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "2020-01-02"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "2020-01-02"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": {
+            "mysql": "SELECT CAST('2020-01-02 03:04:05' AS DATETIME(6)) AS value",
+            "postgres": "SELECT '2020-01-02 03:04:05'::timestamp AS value",
+            "sqlite": "SELECT '2020-01-02 03:04:05' AS value"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "2020-01-02 03:04:05.000000"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "2020-01-02 03:04:05.000000"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "2020-01-02 03:04:05"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "grid_zero_date",
       "requirements": [
         "INT-103"

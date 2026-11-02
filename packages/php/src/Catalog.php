@@ -411,8 +411,15 @@ final class Catalog
                 $raw = $this->gridQuery($pdo, $sql, $args, $maxRows, $maxBytes);
                 return new CatalogResult($raw['names'], $raw['rows']);
             }
-            $raw = $this->query($pdo, $sql, $args, $maxRows, $maxBytes);
-            return new CatalogResult($raw['names'], self::convertRows($raw, $raw['types'], $this->dialect));
+            $raw = $this->query(
+                $pdo,
+                $sql,
+                $args,
+                $maxRows,
+                $maxBytes,
+                fn (mixed $value, string $native): mixed => $this->queryValue($value, $native)
+            );
+            return new CatalogResult($raw['names'], $raw['rows']);
         });
     }
 
@@ -1519,15 +1526,24 @@ final class Catalog
 
     /**
      * Runs a bounded query. It fails when the result has more than maxRows rows or more than maxBytes of values.
+     * With $convert, each value becomes $convert(value, native type) as it is read, and the budget counts the
+     * converted value.
      *
      * @param list<mixed> $args
+     * @param ?\Closure(mixed, string): mixed $convert
      * @return array{names: list<string>, types: list<string>, rows: list<list<mixed>>}
      */
-    private function query(\PDO $pdo, string $sql, array $args, int $maxRows, int $maxBytes): array
-    {
+    private function query(
+        \PDO $pdo,
+        string $sql,
+        array $args,
+        int $maxRows,
+        int $maxBytes,
+        ?\Closure $convert = null
+    ): array {
         try {
             if ($this->dialect === 'postgres' && $args === []) {
-                return $this->cursorQuery($pdo, $sql, $maxRows, $maxBytes);
+                return $this->cursorQuery($pdo, $sql, $maxRows, $maxBytes, $convert);
             }
             // A MySQL budget stop kills the server query by its connection id, which is read before the query runs.
             $connectionId = null;
@@ -1550,7 +1566,8 @@ final class Catalog
                 $rows = $this->boundedRows(
                     static fn (): array|false => $st->fetch(\PDO::FETCH_NUM),
                     $maxRows,
-                    $maxBytes
+                    $maxBytes,
+                    $convert === null ? null : static fn (array $row): array => array_map($convert, $row, $types)
                 );
             } catch (OrmException $stop) {
                 $stopped = $connectionId !== null && $stop->code_ === Code::CATALOG_LIMIT;
@@ -1583,7 +1600,7 @@ final class Catalog
      *
      * @return array{names: list<string>, types: list<string>, rows: list<list<mixed>>}
      */
-    private function cursorQuery(\PDO $pdo, string $sql, int $maxRows, int $maxBytes): array
+    private function cursorQuery(\PDO $pdo, string $sql, int $maxRows, int $maxBytes, ?\Closure $convert = null): array
     {
         $names = [];
         $types = [];
@@ -1599,7 +1616,9 @@ final class Catalog
                     $types[] = strtoupper((string) ($meta['native_type'] ?? ''));
                 }
             },
-            null
+            $convert === null ? null : static function (\PDOStatement $st, array $row) use (&$types, $convert): array {
+                return array_map($convert, $row, $types);
+            }
         );
         return ['names' => $names, 'types' => $types, 'rows' => $rows];
     }
@@ -2019,6 +2038,18 @@ final class Catalog
             $out[] = $converted;
         }
         return $out;
+    }
+
+    /**
+     * The catalog value of one value of a read query: a MySQL or PostgreSQL date, time or datetime is the text of its
+     * grid cell (INT-153), and any other value its plain conversion.
+     */
+    private function queryValue(mixed $value, string $native): mixed
+    {
+        if ($value !== null && self::temporalKind($this->dialect, $native) !== null) {
+            return self::gridCell($value, $this->dialect, $native, false, false)->value;
+        }
+        return self::value($value, $native, $this->dialect);
     }
 
     /**

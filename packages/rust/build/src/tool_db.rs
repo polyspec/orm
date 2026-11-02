@@ -229,6 +229,37 @@ macro_rules! grid_sqlite {
     };
 }
 
+/// The plain value of a temporal grid cell: its text (INT-153).
+pub(crate) fn temporal_val(cell: GridCell) -> Result<Val, sqlx::Error> {
+    match cell {
+        GridCell::Null => Ok(Val::Null),
+        GridCell::Date(text) | GridCell::Time(text) | GridCell::DateTime(text) => Ok(Val::Text(text)),
+        other => Err(unsupported_value(format_args!("{other:?} is not a temporal cell"))),
+    }
+}
+
+/// A plain value of a MySQL read query: a date, time or datetime is the text of its grid cell (INT-153).
+macro_rules! query_cell {
+    ($row:expr, $i:expr) => {{
+        let (row, i) = ($row, $i);
+        match grid::mysql_temporal(row, i)? {
+            Some(temporal) => $crate::tool_db::temporal_val(temporal),
+            None => cell!(row, i),
+        }
+    }};
+}
+
+/// A plain value of a PostgreSQL read query: a date, time or timestamp is the text of its grid cell (INT-153).
+macro_rules! query_cell_pg {
+    ($row:expr, $i:expr) => {{
+        let (row, i) = ($row, $i);
+        match grid::postgres_temporal(row, i)? {
+            Some(temporal) => $crate::tool_db::temporal_val(temporal),
+            None => cell_pg!(row, i),
+        }
+    }};
+}
+
 /// Checks the budget of one fetched row, converts its cells and keeps them in `rows`.
 macro_rules! push_row {
     ($row:ident, $budget:expr, $rows:ident, $cell:ident) => {
@@ -291,6 +322,17 @@ macro_rules! query_result_of {
         match $conn {
             Conn::MySql(c) => fetch_result!(c, $sql, $params, $budget, cell, QueryResult, mysql),
             Conn::Postgres(c) => fetch_result!(c, $sql, $params, $budget, cell_pg, QueryResult, postgres),
+            Conn::Sqlite(c) => fetch_result!(c, $sql, $params, $budget, cell, QueryResult, sqlite),
+        }
+    };
+}
+
+/// The plain result of a read query on the connection of each dialect, its temporal values as grid text (INT-153).
+macro_rules! query_values_of {
+    ($conn:expr, $sql:ident, $params:ident, $budget:ident) => {
+        match $conn {
+            Conn::MySql(c) => fetch_result!(c, $sql, $params, $budget, query_cell, QueryResult, mysql),
+            Conn::Postgres(c) => fetch_result!(c, $sql, $params, $budget, query_cell_pg, QueryResult, postgres),
             Conn::Sqlite(c) => fetch_result!(c, $sql, $params, $budget, cell, QueryResult, sqlite),
         }
     };
@@ -428,8 +470,8 @@ impl Conn {
     pub(crate) async fn query_result_values_bounded(&mut self, sql: &str, params: &[P], limits: QueryLimits) -> Result<QueryResult, sqlx::Error> {
         let (sql, mut budget) = self.single_statement(sql, params, || limits::ValueBudget::new(limits))?;
         match self {
-            Conn::Postgres(c) if !has_params(params) => fetch_cursor_result!(c, sql, budget, cell_pg, QueryResult),
-            _ => query_result_of!(self, sql, params, budget),
+            Conn::Postgres(c) if !has_params(params) => fetch_cursor_result!(c, sql, budget, query_cell_pg, QueryResult),
+            _ => query_values_of!(self, sql, params, budget),
         }
     }
 
