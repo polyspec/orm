@@ -160,15 +160,21 @@ class DbspecPlanApplyTest extends TestCase
     public static function planCases(): iterable
     {
         foreach (plan_vectors()['cases'] as $case) {
-            foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
-                yield "plan/$dialect/{$case['id']}" => [$case, $dialect];
-            }
+            yield $case['id'] => [$case];
         }
     }
 
     // Requirements: PLN-102.
     #[DataProvider('planCases')]
-    public function testPlan(array $case, string $dialect): void
+    public function testPlan(array $case): void
+    {
+        foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
+            $this->applyPlan($case, $dialect);
+        }
+    }
+
+    // applyPlan applies one case to one dialect: the source, the steps, the rollback and the finalize, checked at each step.
+    private function applyPlan(array $case, string $dialect): void
     {
         $parsed = Dbspec::parsePlan(dbspec_plan_text($case['plan']));
         $plan = $parsed->plan ?? plan_failure($case['id'], $parsed->diagnostics);

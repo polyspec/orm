@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 901f1b93ad031bc206f7c5d7ac2464fe4123f9d5e83ba24a13905cbb2f1635f2 -->
+<!-- source-sha256: f5e5b73143e76339b8e5fcf2a7ea7673d0591fec7eb350dbf4b7fc7d369c542c -->
 # 변경 이력
 
 ## Unreleased
@@ -99,6 +99,7 @@
 - 중단된 실행이 남긴 compiler fixture case의 오래된 source 때문에 다음 실행이 EEXIST로 실패하고 디렉터리가 트리에 남았다. 이제 실행은 오래된 source를 덮어쓰고 끝에 임시 디렉터리를 지운다 (CR25).
 - 데이터베이스 기능이 실행 데이터베이스에서 recipe로 도는 방식을 spec이 밝힌다: docs/spec/feature-coverage.md의 FCV-8부터 FCV-14까지가 전환, `databases` need와 TEST_ENV로 받는 데이터베이스, 제외 없는 세 데이터베이스, DSN 누락 실패, 사례별 결과, seed 소유, 네이티브 테스트를 정한다 (T334-3-4-0).
 - 여섯 runtime의 스키마 설치 case가 하나의 recipe(`contracts/fixtures/schema_install/schema_install.json`)가 되어 MySQL, PostgreSQL, SQLite에서 돈다. 같은 동작의 네이티브 테스트는 지웠고, register 테스트는 거부 테스트와 hash별 engine 테스트로 나눴으며, SCH-14부터 SCH-17까지는 FCV-2에 따라 네이티브로 남는 case(감사 transaction, load 시점 hash 검사, bench 모델, hash별 engine)를 나타낸다(T334-3-4).
+- 물리 plan case의 네이티브 test 여섯 개는 case마다 결과를 하나씩 내지 않았고, tests/dbspec/plans-physical.json의 물리 기록은 어떤 suite unit에도 속하지 않았다. 이제 unit은 case를 단위로 한 suite이며, 각 runtime이 모든 case를 보고한다 (T334-3-17-5).
 
 ## 0.0.21
 

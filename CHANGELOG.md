@@ -98,6 +98,7 @@
 - The preempted test of DbspecRenderTest failed in test (feature_verify_other) of main CI run 41324077414 with nine DSN errors, because it ran the whole file without the database DSNs. testBehaviourPhysical (CR16-1-3) now carries the group database, which the preempted run excludes; the physical cases still run in dbspec-php-check/render (CR55).
 - A leftover source of a compiler fixture case, from an interrupted run, made the next run fail with EEXIST and left its directory in the tree. The run now overwrites a stale source and removes its scratch directory at the end (CR25).
 - The spec states how a database feature runs as a recipe on the run databases: FCV-8 to FCV-14 of docs/spec/feature-coverage.md give the conversion, the databases from the `databases` need and TEST_ENV, the three databases with no exclusion, the failure of a missing DSN, the per-case result, the seed ownership and the native tests (T334-3-4-0).
+- The six native tests of the physical plan cases did not report one result per case, and the physical records of tests/dbspec/plans-physical.json belonged to no suite unit, so the parity check did not declare them. The unit is now a suite on its cases, and each runtime reports every case (T334-3-17-5).
 
 ## 0.0.21
 
