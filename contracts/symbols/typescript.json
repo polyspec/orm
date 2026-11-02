@@ -465,7 +465,7 @@
   },
   "packages/ts/src/catalog.ts::Session.collect": {
     "exported": false,
-    "signature": "public async collect\u003cT\u003e(sql: string, params: readonly unknown[], maxRows: number, maxBytes: number, convert: (value: unknown, column: DriverColumn, index: number) =\u003e { cell: T; size: number; }): Promise\u003c{ columns: DriverColumn[]; rows: T[][]; }\u003e"
+    "signature": "public async collect\u003cT\u003e(sql: string, params: readonly unknown[], maxRows: number, maxBytes: number, convert: (value: unknown, column: DriverColumn, index: number) =\u003e { cell: T; size: number; }, keep?: number): Promise\u003c{ columns: DriverColumn[]; rows: T[][]; past: boolean; }\u003e"
   },
   "packages/ts/src/catalog.ts::Session.control": {
     "exported": false,

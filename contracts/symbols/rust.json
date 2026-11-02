@@ -361,7 +361,7 @@
   },
   "packages/rust/build/src/catalog/page.rs::assemble": {
     "exported": false,
-    "signature": " fn assemble (metadata : TableMetadata , mut result : GridQueryResult , after : TableMetadata , limit : usize , offset : u64) -\u003e Result \u003c TablePage , String \u003e"
+    "signature": " fn assemble (metadata : TableMetadata , result : GridQueryResult , has_more : bool , after : TableMetadata , limit : usize , offset : u64) -\u003e Result \u003c TablePage , String \u003e"
   },
   "packages/rust/build/src/catalog/page.rs::quote": {
     "exported": false,
@@ -650,6 +650,10 @@
   "packages/rust/build/src/catalog/temporal.rs::read": {
     "exported": false,
     "signature": "pub (super) async fn read (connection : \u0026 mut Conn , metadata : \u0026 TableMetadata , dialect : \u0026 str , sql : \u0026 str , params : \u0026 [P] , limits : QueryLimits) -\u003e Result \u003c GridQueryResult , String \u003e"
+  },
+  "packages/rust/build/src/catalog/temporal.rs::read_page": {
+    "exported": false,
+    "signature": "pub (super) async fn read_page (connection : \u0026 mut Conn , metadata : \u0026 TableMetadata , dialect : \u0026 str , sql : \u0026 str , limits : QueryLimits , keep : usize) -\u003e Result \u003c (GridQueryResult , bool) , String \u003e"
   },
   "packages/rust/build/src/catalog/temporal.rs::sqlite_check_precisions": {
     "exported": false,
