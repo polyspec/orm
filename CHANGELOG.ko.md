@@ -1,10 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4ff6fc69682057d066db7cf8a5211888557fddb54f4b91f3caf5e4864d9d5f0b -->
+<!-- source-sha256: 8c542bde848368e24b414ca7d71afde008454e3a6b84425bfaad4e13eadbb430 -->
 # 변경 이력
 
 ## Unreleased
 
 - TypeScript recipe helper가 ir.answer의 bind step을 bind_fixture model에서 실행한다. 그 slot column의 setter와 insert를 거치므로 tests/ir/answers.json의 bind_time3과 bind_datetime3이 TypeScript에서 통과한다 (T334-3-15-3c-4).
+
+- Python recipe helper가 ir.answer의 bind step을 tests/bind/dbspec-set.json에서 생성한 bind model에서 실행한다. 그 slot column의 setter와 insert를 거치므로 tests/ir/answers.json의 bind_time3과 bind_datetime3이 Python에서 통과한다 (T334-3-15-3c-5).
 
 - recipe의 ir.answer expect는 `{"none": {"params": [...]}}` 형식을 받는다. 이 형식은 listener가 받은 request 하나의 params를 비교하므로(PRT-66, PRT-67), chain의 bind 값과 wire 값을 recipe case로 쓸 수 있다. 여섯 runtime이 각자의 recipe helper에 이를 구현했다 (T334-3-15-5).
 
