@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4f7b33132376591b72121739dc37d60443555e2f16e3acf9a562b2a268aeba98 -->
+<!-- source-sha256: 9c361f0af9187198a24389d8ec8414c156768488969dcbd8649c9cc3c515b9e0 -->
 # 변경 이력
 
 ## Unreleased
@@ -105,6 +105,7 @@
 - 데이터베이스 기능이 실행 데이터베이스에서 recipe로 도는 방식을 spec이 밝힌다: docs/spec/feature-coverage.md의 FCV-8부터 FCV-14까지가 전환, `databases` need와 TEST_ENV로 받는 데이터베이스, 제외 없는 세 데이터베이스, DSN 누락 실패, 사례별 결과, seed 소유, 네이티브 테스트를 정한다 (T334-3-4-0).
 - 여섯 runtime의 스키마 설치 case가 하나의 recipe(`contracts/fixtures/schema_install/schema_install.json`)가 되어 MySQL, PostgreSQL, SQLite에서 돈다. 같은 동작의 네이티브 테스트는 지웠고, register 테스트는 거부 테스트와 hash별 engine 테스트로 나눴으며, SCH-14부터 SCH-17까지는 FCV-2에 따라 네이티브로 남는 case(감사 transaction, load 시점 hash 검사, bench 모델, hash별 engine)를 나타낸다(T334-3-4).
 - drop 단계는 복제본이 적용하지 않은 binary log 정리를 거부하고, 거부 메시지에 복제본 SQL thread의 상태와 마지막 오류를 적는다. 테스트 서버 시작은 SQL thread가 멈춘 MySQL 복제본을 재사용하지 않고, 마지막 오류와 함께 보고한 뒤 다시 시작한다 (G5.55-2).
+- dbspec 텍스트의 format 거부(DBS-141, ORES-14)가 feature coverage-schema-definition-dbspec-format-refusal의 native binding 여섯 개로 돌았고, 각 binding은 schema-definition의 suite case dbspec_format_refusal과 같은 함수였다. binding을 지우고 suite case만 남긴다. set 파일 generator 규칙(ORES-21)은 FCV-2의 runtime별 진입점으로 각 runtime에 native로 남는다 (T334-3-21-1)
 
 ## 0.0.21
 
