@@ -130,6 +130,10 @@ final class Recipe
                     self::answerStep($step);
                     continue;
                 }
+                if ($step['op'] === 'collection.key') {
+                    self::collectionKeyStep($step, $database);
+                    continue;
+                }
                 if ($step['op'] === 'planner.compile') {
                     self::planStep($step, $path, $database);
                     continue;
@@ -479,6 +483,42 @@ final class Recipe
             $actual,
             'got ' . MarkdownConformanceTest::jsonText($actual) . ', want ' . MarkdownConformanceTest::jsonText($expect)
         );
+    }
+
+    /**
+     * Runs a collection.key step: each value through the public Collection::keyOf and Collection::identityOf. Its groups are,
+     * for each key, the index of the first key equal to it, and its types the native type that keyOf keeps (INT-11, INT-63,
+     * PRT-35).
+     */
+    private static function collectionKeyStep(array $step, string $database): void
+    {
+        $got = ['groups' => [], 'types' => []];
+        $seen = [];
+        try {
+            foreach ($step['keys'] as $index => $entry) {
+                $value = match ($entry['type']) {
+                    'null' => null,
+                    'bytes' => new \Polyspec\Orm\Bytes(hex2bin($entry['hex'])),
+                    'datetime' => new \DateTime($entry['value']),
+                    default => $entry['value'],
+                };
+                $key = \Polyspec\Orm\Collection::keyOf($value);
+                Assert::assertSame($value, $key, 'a key changed its native value');
+                $identity = \Polyspec\Orm\Collection::identityOf($value);
+                $seen[$identity] ??= $index;
+                $got['groups'][] = $seen[$identity];
+                $got['types'][] = match (true) {
+                    is_string($key) => 'text',
+                    is_bool($key) => 'bool',
+                    is_int($key) => 'int',
+                    $key instanceof \Polyspec\Orm\Bytes => 'bytes',
+                    $key instanceof \DateTimeInterface => 'datetime',
+                };
+            }
+        } catch (OrmException $error) {
+            $got = ['error' => $error->code_, 'message' => $error->getMessage()];
+        }
+        Assert::assertSame($step['expect'][$database], $got);
     }
 
     /** The params of the request message that a server received, in the JSON form of PRT-67 (PRT-66). */

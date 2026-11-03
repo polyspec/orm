@@ -517,7 +517,6 @@
         "packages/php/tests/MarkdownTest.php",
         "packages/php/tests/markdown_test_server.php",
         "packages/php/tests/RelationKeysTest.php",
-        "packages/php/tests/ParentSlotPaddingTest.php",
         "packages/php/tests/HostcodecTest.php",
         "packages/php/tests/EngineTest.php",
         "tests/ir/validate.json",
@@ -962,8 +961,7 @@
         "packages/python/tests/test_collection_identity.py",
         "packages/rust/orm/src/collection.rs",
         "packages/rust/orm/tests/collection_identity.rs",
-        "packages/rust/orm/src/model.rs",
-        "packages/rust/tests/tests/collection_get_fetched.rs"
+        "packages/rust/orm/src/model.rs"
       ]
     },
     "interface-typescript-extractor-check": {

@@ -111,21 +111,6 @@ trait DatabaseTestAssertions
         }
     }
 
-    protected function assertTuplePredicatePadsByRepeatingLastRow(Model $model): void
-    {
-        $request = new \Polyspec\Orm\Request('all', 'sha256:tuple-padding');
-        $predicate = (new \ReflectionMethod(Model::class, 'predIr'))->invoke($model, [
-            'kind' => 'tuple',
-            'column' => '',
-            'op' => 'tuple_in',
-            'cols' => ['tenant_id', 'account_id'],
-            'value' => [[10, 1], [10, 2], [10, 3]],
-        ], $request, new \Polyspec\Orm\Frame($model, null));
-
-        Assert::assertSame(range(0, 7), $predicate['ps']);
-        Assert::assertSame([10, 1, 10, 2, 10, 3, 10, 3], $request->params);
-    }
-
     protected function assertIpHostStyleValidation(string $rejectedInputMessage): void
     {
         $column = ['codec' => ['ip']];

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 26d54a16b8a9b4eba2f57f04fc87f393ffbdaa5804d3aff213be235be6c3a28f -->
+<!-- source-sha256: 8809c008672b0631b09cb4f9aa9ecb7a11bab4bfa843234c53a8f1c69d40ce98 -->
 # 변경 이력
 
 ## Unreleased
 
+- collection의 key identity, typed lookup, group 값의 정확성, 설정된 key를 새 op `collection.key`와 markdown chain `group_count_i64`, `collection_typed_key`, `collection_key_name`을 통해 recipe `collection`의 case로 옮겼습니다.
 - markdown 답의 정수는 소수부와 지수가 없는 JSON number다(PRT-69). 정수 열의 `3.0`은 `CODEC_DECODE`다.
 - 컬렉션의 group row 단위는 recipe `tests/collection/collection.json`의 case이며 여섯 runtime 모두 `ir.answer`로 실행한다. chain `group_count_views`는 group 결과의 길이, 순서, 값과 `COLUMN_UNSELECTED`를 읽는다. driver cell만 담는 count 형태는 `group-row-driver-cell-forms`로 native에 남는다.
 - PHP extension은 타입이 맞지 않는 markdown 값에 다른 runtime처럼 `INTERNAL`이 아니라 `CODEC_DECODE`로 답한다.

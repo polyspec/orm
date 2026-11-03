@@ -11,7 +11,7 @@ import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { AesKeyring, BindCell, CORE, Db, OrmError, StyledValue, blindIndex, chainPlans, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
+import { AesKeyring, BindCell, CORE, Collection, Db, OrmError, StyledValue, blindIndex, chainPlans, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
 import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, readDbspecBytes } from '../dist/dbspec/entry.js';
 import { exportMermaid, importMermaid } from '../dist/dbspec/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
@@ -58,6 +58,7 @@ export function runRecipe(path, database) {
           else if (step.op === 'planner.compile') checkPlanner(step, dirname(path), database);
           else if (dbspecOps.includes(step.op)) checkDbspec(step, bound, database);
           else if (step.op === 'ir.answer') await checkAnswer(step, database, answerText(literal, caseIndex, index));
+          else if (step.op === 'collection.key') checkCollectionKey(step, database);
           else if (step.op === 'dsn.connect') await checkDsnConnect(step, database);
           else if (step.op === 'generator.generate') checkGenerator(step, dir, database);
           else if (dbspecFileOps.includes(step.op)) await checkDbspecFiles(step, dir, database);
@@ -872,6 +873,39 @@ function validationModel(schemaPath) {
 }
 
 // requestText is the request of the step as its ordered-json text, so a number keeps its literal (0.0 is not 0).
+// checkCollectionKey runs a collection.key step: each value through the public put and get of a Collection. Its groups are, for each
+// key, the index of the first key equal to it, and its types the native type of the key that the collection returns (INT-11, INT-63, PRT-35).
+function checkCollectionKey(step, database) {
+  const native = entry => {
+    switch (entry.type) {
+      case 'null': return null;
+      case 'bytes': return Uint8Array.from(Buffer.from(entry.hex, 'hex'));
+      case 'datetime': return new Date(entry.value);
+      default: return entry.value;
+    }
+  };
+  const typeName = key => key instanceof Date ? 'datetime' : key instanceof Uint8Array ? 'bytes' : { string: 'text', boolean: 'bool', number: 'int' }[typeof key];
+  const collection = new Collection();
+  let got;
+  try {
+    const groups = [];
+    for (const [index, entry] of step.keys.entries()) {
+      const key = native(entry);
+      const first = collection.get(key);
+      groups.push(first === undefined ? index : first.group);
+      if (first === undefined) collection.put(key, { group: index });
+    }
+    got = { groups, types: step.keys.map(entry => typeName(native(entry))) };
+    const distinct = [...new Set(groups)].map(group => native(step.keys[group]));
+    if (!isDeepStrictEqual(collection.keys(), distinct)) throw new Error('the keys changed their native values or their order');
+  } catch (error) {
+    if (!(error instanceof OrmError)) throw error;
+    got = { error: error.code, message: error.message };
+  }
+  const want = step.expect[database];
+  if (!isDeepStrictEqual(got, want)) throw new Error(`got ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
+}
+
 // answerText is the answer of an ir.answer step as its recipe writes it, so that a number keeps its form on the wire: JSON.parse
 // would make 3.0 the 3 of an integer. A step of answers has none.
 function answerText(literal, caseIndex, stepIndex) {

@@ -749,6 +749,7 @@
             "codec.host_encode",
             "codec.host_decode",
             "codec.blind_index",
+            "collection.key",
             "sql.exec",
             "query.search",
             "query.search_chain",
@@ -851,6 +852,9 @@
         },
         {
           "$ref": "#/$defs/ops/codec.blind_index"
+        },
+        {
+          "$ref": "#/$defs/ops/collection.key"
         },
         {
           "$ref": "#/$defs/ops/sql.exec"
@@ -1516,6 +1520,86 @@
           },
           "expect": {
             "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "collection.key": {
+        "type": "object",
+        "required": [
+          "op",
+          "keys",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "collection.key"
+          },
+          "keys": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "type"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "enum": [
+                    "text",
+                    "bool",
+                    "int",
+                    "bytes",
+                    "datetime",
+                    "null"
+                  ]
+                },
+                "value": {
+                  "type": [
+                    "string",
+                    "boolean",
+                    "integer"
+                  ]
+                },
+                "hex": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "groups": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "types": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "error": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
           }
         }
       },

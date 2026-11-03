@@ -206,6 +206,9 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
     if step["op"] == "markdown.send" {
         return markdown_send(step);
     }
+    if step["op"] == "collection.key" {
+        return collection_key(step, database);
+    }
     if step["op"] == "model.assign" {
         return model_assign(step);
     }
@@ -1114,6 +1117,55 @@ fn markdown_send(step: &Value) -> Result<(), String> {
 
 /// One model.assign step (FCV-4): the public setter of a column of a new row of the slots model, then the insert that the
 /// listener records. The setter takes text, so the Rust cases exclude a nil value (DSL-29).
+fn collection_key(step: &Value, database: &str) -> Result<(), String> {
+    let mut keys: Vec<polyspec_orm::Key> = Vec::new();
+    let mut groups: Vec<usize> = Vec::new();
+    let mut types: Vec<&str> = Vec::new();
+    let mut failure = None;
+    for entry in step["keys"].as_array().ok_or("collection.key has no keys")? {
+        let value = match entry["type"].as_str().unwrap_or_default() {
+            "null" => Val::Null,
+            "text" => Val::Str(entry["value"].as_str().ok_or("a text key holds no text")?.to_owned()),
+            "bool" => Val::Bool(entry["value"].as_bool().ok_or("a bool key holds no bool")?),
+            "int" => Val::I64(entry["value"].as_i64().ok_or("an int key holds no integer")?),
+            "bytes" => {
+                let text = entry["hex"].as_str().ok_or("a bytes key holds no hex")?;
+                let digits = (0..text.len()).step_by(2).map(|index| u8::from_str_radix(&text[index..index + 2], 16));
+                Val::Bytes(digits.collect::<Result<Vec<u8>, _>>().map_err(|error| error.to_string())?)
+            }
+            "datetime" => {
+                let text = entry["value"].as_str().ok_or("a datetime key holds no text")?;
+                Val::DateTime(polyspec_orm::chrono::DateTime::parse_from_rfc3339(text).map_err(|error| error.to_string())?.naive_utc())
+            }
+            other => return Err(format!("collection.key has no type {other}")),
+        };
+        let key = match polyspec_orm::Key::of(&value) {
+            Ok(key) => key,
+            Err(error) => {
+                failure = Some(json!({ "error": error.code(), "message": error.to_string() }));
+                break;
+            }
+        };
+        groups.push(keys.iter().position(|other| other == &key).map_or(keys.len(), |index| groups[index]));
+        types.push(match (&key, &value) {
+            (polyspec_orm::Key::I(left), Val::I64(right)) if left == right => "int",
+            (polyspec_orm::Key::S(left), Val::Str(right)) if left == right => "text",
+            (polyspec_orm::Key::B(left), Val::Bool(right)) if left == right => "bool",
+            (polyspec_orm::Key::X(left), Val::Bytes(right)) if left == right => "bytes",
+            (polyspec_orm::Key::T(left), Val::DateTime(right)) if left == right => "datetime",
+            _ => return Err(format!("key {key:?} changed its native value")),
+        });
+        keys.push(key);
+    }
+    let got = failure.unwrap_or_else(|| json!({ "groups": groups, "types": types }));
+    let want = &step["expect"][database];
+    if &got == want {
+        Ok(())
+    } else {
+        Err(format!("got {got}, want {want}"))
+    }
+}
+
 fn model_assign(step: &Value) -> Result<(), String> {
     let model = step["model"].as_str().unwrap_or_default();
     let column = step["column"].as_str().unwrap_or_default();

@@ -1136,10 +1136,6 @@ group-count-boolean-rust-unit-check:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) group-count-boolean-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --manifest-path packages/rust/Cargo.toml --locked --offline --workspace --features "$(ORM_RUST_TEST_FEATURES)" -p polyspec-orm --lib row::declared_boolean_tests::invalid_stored_boolean_is_codec_decode -- --test-threads=1 --exact
 
 # Runs the exact i64 grouped result decode and assembly test with the checkout's target lease.
-.PHONY: group-result-exact-i64-rust-unit-check
-group-result-exact-i64-rust-unit-check:
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) group-result-exact-i64-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --manifest-path packages/rust/Cargo.toml --locked --offline --workspace --features "$(ORM_RUST_TEST_FEATURES)" -p polyspec-orm --lib row::exact_i64_tests::grouped_result_preserves_exact_i64_value -- --test-threads=1 --exact
-
 # Runs the GroupRow count decoder unit with the checkout's target lease.
 .PHONY: group-row-count-rust-unit-check
 group-row-count-rust-unit-check:
@@ -1149,15 +1145,13 @@ group-row-count-rust-unit-check:
 group-count-boolean-unit-check: lease-tool php-vendor-check php-model-check python-venv-check typescript-build php-models
 	@set +e; status=0; last_result=0; \
 	run_case() { label=$$1; shift; printf '[group-result] %s\n' "$$label"; "$$@"; last_result=$$?; printf '[group-result] %s exit %s\n' "$$label" "$$last_result"; if [ "$$last_result" -ne 0 ]; then status=1; fi; return 0; }; \
-	run_case go $(GO_TEST) ./packages/go/orm -run '^(TestGroupCountRejectsInvalidStoredBoolean|TestGroupCountPreservesExactI64Value|TestGroupRowDriverCellForms)$$' -count=1; \
-	run_case php env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/GroupRowsTest.php --filter 'testGroupValueRejectsInvalidStoredBoolean|testGroupRowPreservesTypedValuesAndChecksItsCount|testGroupResultPreservesExactI64Value|testGroupRowDriverCellForms'; \
+	run_case go $(GO_TEST) ./packages/go/orm -run '^(TestGroupCountRejectsInvalidStoredBoolean|TestGroupRowDriverCellForms)$$' -count=1; \
+	run_case php env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/GroupRowsTest.php --filter 'testGroupValueRejectsInvalidStoredBoolean|testGroupRowPreservesTypedValuesAndChecksItsCount|testGroupRowDriverCellForms'; \
 	run_case php-extension $(MAKE) --no-print-directory group-count-boolean-php-extension-unit-check; \
-	run_case typescript $(NODE) --test --test-name-pattern='group_rows/(boolean_invalid_stored_value|exact_i64_preserved|driver_cell_forms)' packages/ts/tests/group_rows.mjs; \
+	run_case typescript $(NODE) --test --test-name-pattern='group_rows/(boolean_invalid_stored_value|driver_cell_forms)' packages/ts/tests/group_rows.mjs; \
 	run_case python-boolean $(PYTHON_VENV)/bin/python -m packages.python.tests.test_group_rows GroupBooleanValueTest.test_group_boolean_rejects_non_boolean_float; \
-	run_case python-i64 $(PYTHON_VENV)/bin/python -m packages.python.tests.test_group_rows GroupExactI64ValueTest.test_group_result_preserves_exact_i64_value; \
 	run_case python-count $(PYTHON_VENV)/bin/python -m packages.python.tests.test_group_rows GroupRowDriverCellFormsTest.test_driver_cell_forms; \
 	run_case rust-boolean $(MAKE) --no-print-directory group-count-boolean-rust-unit-check; \
-	run_case rust-i64 $(MAKE) --no-print-directory group-result-exact-i64-rust-unit-check; \
 	run_case rust-count $(MAKE) --no-print-directory group-row-count-rust-unit-check; \
 	exit "$$status"
 
@@ -2557,16 +2551,14 @@ collection-composite-key-check: typescript-build php-vendor-check python-venv-ch
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	status=0; \
-	$(RUN_TESTS) node --test --test-name-pattern='collection-views/preserve-order-and-connect-every-model|collection/get-fetched-value-use-typed-key|collection-key/(identity-from-fixture|composite-typed-components|nullable-composite-row-has-no-key)' packages/ts/tests/collection_identity.mjs || status=1; \
-	$(GO_TEST) ./packages/go/orm -run '^(TestCollectionViewsPreserveOrderAndConnectEveryModel|TestCollectionGetAndFetchedValueUseTypedKey|TestCollectionKeyIdentityFromFixture|TestCompositeCollectionKeyTypedComponentsFromFixture|TestCompositeCollectionKeyMicrosecondPrecisionFromFixture|TestNullableCompositeRowHasNoCollectionKey)$$' -count=1 || status=1; \
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CollectionIdentityTest.php --filter 'testToArrayPreservesCollectionModelOrder|testGetAndFetchedValueUseTheTypedKey|testEveryFixtureKeyHasItsOwnStableIdentity|testCompositeComponentsPreserveTypedIdentityAndSharedEncoding|testCompositeDateTimeMicrosecondsTrimTrailingZeroes|testNullCompositeRowHasNoCollectionKey' || status=1; \
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_collection_identity.CollectionIdentityTest.test_collection_views_preserve_order_and_connect_every_model packages.python.tests.test_collection_identity.CollectionIdentityTest.test_get_and_fetched_value_use_the_typed_key packages.python.tests.test_collection_identity.CollectionIdentityTest.test_every_fixture_key_has_its_own_identity packages.python.tests.test_collection_identity.CollectionIdentityTest.test_native_key_values_keep_their_types_and_reject_unsupported_values packages.python.tests.test_collection_identity.CollectionIdentityTest.test_composite_components_preserve_typed_identity_and_shared_encoding packages.python.tests.test_collection_identity.CollectionIdentityTest.test_composite_datetime_microseconds_trim_trailing_zeroes packages.python.tests.test_collection_identity.CollectionIdentityTest.test_a_null_composite_row_has_no_collection_key || status=1; \
+	$(RUN_TESTS) node --test --test-name-pattern='collection-views/preserve-order-and-connect-every-model|collection-key/(composite-typed-components|nullable-composite-row-has-no-key)' packages/ts/tests/collection_identity.mjs || status=1; \
+	$(GO_TEST) ./packages/go/orm -run '^(TestCollectionViewsPreserveOrderAndConnectEveryModel|TestCompositeCollectionKeyTypedComponentsFromFixture|TestCompositeCollectionKeyMicrosecondPrecisionFromFixture|TestNullableCompositeRowHasNoCollectionKey)$$' -count=1 || status=1; \
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CollectionIdentityTest.php --filter 'testToArrayPreservesCollectionModelOrder|testCompositeComponentsPreserveTypedIdentityAndSharedEncoding|testCompositeDateTimeMicrosecondsTrimTrailingZeroes|testNullCompositeRowHasNoCollectionKey' || status=1; \
+	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_collection_identity.CollectionIdentityTest.test_collection_views_preserve_order_and_connect_every_model packages.python.tests.test_collection_identity.CollectionIdentityTest.test_native_key_values_keep_their_types_and_reject_unsupported_values packages.python.tests.test_collection_identity.CollectionIdentityTest.test_composite_components_preserve_typed_identity_and_shared_encoding packages.python.tests.test_collection_identity.CollectionIdentityTest.test_composite_datetime_microseconds_trim_trailing_zeroes packages.python.tests.test_collection_identity.CollectionIdentityTest.test_a_null_composite_row_has_no_collection_key || status=1; \
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib model::page_order_tests::collection_views_preserve_model_order_and_connect_every_model || status=1; \
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --test collection_identity composite || status=1; \
-	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --test collection_identity every_fixture_key_has_its_own_identity || status=1; \
-	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm-tests --test collection_get_fetched || status=1; \
 	if $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); then \
-	  env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelAssemblyTest.php packages/php-ext/tests/CollectionTest.php --filter 'testTypedIdentityOrderedReplacementAndArrayViews|testGetAndFetchedValueUseTheTypedKey|testFixtureKeysKeepTheirNativeTypesAndLookupValue|testCompositeComponentsPreserveTypedIdentityAndSharedEncoding|testCompositeDateTimeMicrosecondsTrimTrailingZeroes|testNullCompositeRowHasNoCollectionKey' || status=1; \
+	  env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelAssemblyTest.php packages/php-ext/tests/CollectionTest.php --filter 'testTypedIdentityOrderedReplacementAndArrayViews|testCompositeComponentsPreserveTypedIdentityAndSharedEncoding|testCompositeDateTimeMicrosecondsTrimTrailingZeroes|testNullCompositeRowHasNoCollectionKey' || status=1; \
 	else status=1; fi; \
 	test $$status -eq 0
 

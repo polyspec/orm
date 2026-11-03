@@ -92,21 +92,6 @@ class CollectionIdentityTest(unittest.TestCase):
             "CONFIG: limit requires a non-negative offset and a positive count",
         )
 
-    # Requirements: INT-80, INT-86.
-    def test_get_and_fetched_value_use_the_typed_key(self):
-        integer = object()
-        text = object()
-        collection = Collection()
-        collection.put(7, integer, fetched="integer")
-        collection.put("7", text, fetched="text")
-
-        self.assertIs(collection.get(7), integer)
-        self.assertIs(collection.get("7"), text)
-        self.assertIsNone(collection.get(8))
-        self.assertEqual(collection.fetched(7), "integer")
-        self.assertEqual(collection.fetched("7"), "text")
-        self.assertIsNone(collection.fetched(8))
-
     # Requirements: INT-62, INT-81, INT-82, INT-83, INT-84, INT-85.
     # Requirements: PLN-6.
     def test_collection_views_preserve_order_and_connect_every_model(self):
@@ -176,42 +161,6 @@ class CollectionIdentityTest(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(OrmError) as raised:
                 collection.put(value, {})
             self.assertEqual(raised.exception.code, "CODEC_DECODE")
-
-    def test_every_fixture_key_has_its_own_identity(self):
-        # Requirements: INT-11, INT-63, PRT-35.
-        fixture = load_fixture()
-        collection = Collection()
-        distinct = [entry for entry in fixture["keys"] if "same_as" not in entry]
-        expected_keys = []
-        for entry in distinct:
-            key = value_of(entry)
-            collection.put(key, {"name": entry["name"]})
-            expected_keys.append(key)
-        self.assertEqual(
-            collection.length,
-            len(distinct),
-            "two keys of the fixture share an identity",
-        )
-        for entry in fixture["keys"]:
-            self.assertEqual(
-                collection.get(value_of(entry))["name"],
-                entry.get("same_as", entry["name"]),
-            )
-        self.assertEqual(collection.keys(), expected_keys)
-        self.assertEqual(
-            [type(value) for value in collection.keys()],
-            [type(value) for value in expected_keys],
-        )
-
-    def test_a_null_key_is_codec_decode(self):
-        # Requirements: PRT-35.
-        expected = load_fixture()["null"]
-        with self.assertRaises(OrmError) as raised:
-            Collection().put(None, {})
-        self.assertEqual(raised.exception.code, expected["code"])
-        self.assertEqual(
-            str(raised.exception), f"{expected['code']}: {expected['message']}"
-        )
 
     def test_composite_components_preserve_typed_identity_and_shared_encoding(self):
         # Requirements: PRT-35.

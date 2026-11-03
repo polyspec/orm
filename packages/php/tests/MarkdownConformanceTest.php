@@ -360,6 +360,30 @@ class MarkdownConformanceTest extends TestCase
                 }
                 return ['length' => count($rows), 'counts' => $counts, 'rows' => $rows->toArray(), 'first' => $first];
             },
+            'group_count_i64' => static function (Served $s): mixed {
+                return (new Logs())->connect($s->db)->groupById()->orderByIdAsc()->getsCount()->toArray();
+            },
+            'collection_typed_key' => static function (Served $s): mixed {
+                $rows = (new Logs())->connect($s->db)->fetchValue(static fn ($row) => $row->getNote())->gets();
+                $id = static fn ($row) => $row === null ? null : $row->getId();
+                return [
+                    'length' => count($rows),
+                    'keys' => $rows->keys(),
+                    'first' => $id($rows->first()),
+                    'get' => $id($rows->get(1)),
+                    'get_text' => $id($rows->get('1')),
+                    'get_missing' => $id($rows->get(2)),
+                    'has' => $rows->has(1),
+                    'has_text' => $rows->has('1'),
+                    'fetched' => $rows->fetchedValue(1),
+                    'fetched_text' => $rows->fetchedValue('1'),
+                    'fetched_missing' => $rows->fetchedValue(2),
+                    'array' => $rows->toArray(),
+                ];
+            },
+            'collection_key_name' => static function (Served $s): mixed {
+                return (new People())->connect($s->db)->keyNameAge()->gets()->keys();
+            },
             'sum' => static function (Served $s): mixed {
                 return (new Tasks())->connect($s->db)->sumPoints()->getSum();
             },

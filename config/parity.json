@@ -15797,46 +15797,6 @@
       ]
     },
     {
-      "id": "group-result-exact-i64",
-      "kind": "feature",
-      "requirements": [
-        "PRT-69",
-        "INT-1"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/group_rows_test.go",
-          "id": "TestGroupCountPreservesExactI64Value"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/GroupRowsTest.php",
-          "id": "GroupRowsTest::testGroupResultPreservesExactI64Value"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
-          "id": "ModelAssemblyTest::testGroupResultPreservesExactI64Value"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/group_rows.mjs",
-          "id": "group_rows/exact_i64_preserved"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_group_rows.py",
-          "id": "test_group_result_preserves_exact_i64_value"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/row.rs",
-          "id": "row::exact_i64_tests::grouped_result_preserves_exact_i64_value"
-        }
-      ]
-    },
-    {
       "id": "dbspec-apply-pooler",
       "kind": "feature",
       "requirements": [
@@ -23862,86 +23822,6 @@
       ]
     },
     {
-      "id": "parent-slot-padding-repeats-last-composite-key",
-      "kind": "feature",
-      "requirements": [
-        "PRT-40"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/collection_key_test.go",
-          "id": "TestParentSlotExpansionPadsCompositeKeysAndRenumbersFollowingSlots"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ParentSlotPaddingTest.php",
-          "id": "ParentSlotPaddingTest::testTuplePredicatePadsByRepeatingTheLastRow"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelNativeTest.php",
-          "id": "ModelNativeTest::testTuplePredicatePadsByRepeatingTheLastRow"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/parent-slot-expansion.mjs",
-          "id": "parent-slot-expansion/pads-composite-keys"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_query_methods.py",
-          "id": "test_tuple_predicate_pads_by_repeating_the_last_row"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/request.rs",
-          "id": "request::tuple_padding_tests::composite_tuple_padding_repeats_the_last_row"
-        }
-      ]
-    },
-    {
-      "id": "collection-identity-from-fixture",
-      "kind": "feature",
-      "requirements": [
-        "INT-11",
-        "INT-63",
-        "PRT-35"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/collection_identity_test.go",
-          "id": "TestCollectionKeyIdentityFromFixture"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CollectionIdentityTest.php",
-          "id": "CollectionIdentityTest::testEveryFixtureKeyHasItsOwnStableIdentity"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CollectionTest.php",
-          "id": "CollectionTest::testFixtureKeysKeepTheirNativeTypesAndLookupValue"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/collection_identity.mjs",
-          "id": "collection-key/identity-from-fixture"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_collection_identity.py",
-          "id": "test_every_fixture_key_has_its_own_identity"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/collection_identity.rs",
-          "id": "every_fixture_key_has_its_own_identity"
-        }
-      ]
-    },
-    {
       "id": "split-root-merge-rejects-sql-null-identity",
       "kind": "feature",
       "requirements": [
@@ -24016,45 +23896,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/src/model.rs",
           "id": "model::related_tests::split_root_merge_rejects_sql_null_identity"
-        }
-      ]
-    },
-    {
-      "id": "collection-key-null-is-codec-decode",
-      "kind": "feature",
-      "requirements": [
-        "PRT-35"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/collection_identity_test.go",
-          "id": "TestCollectionKeyNullIsCodecDecodeFromFixture"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CollectionIdentityTest.php",
-          "id": "CollectionIdentityTest::testANullKeyIsCodecDecode"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CollectionIdentityTestExtensionTest.php",
-          "id": "CollectionIdentityTestExtensionTest::testANullKeyIsCodecDecode"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/collection_identity.mjs",
-          "id": "collection-key/null-is-codec-decode"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_collection_identity.py",
-          "id": "test_a_null_key_is_codec_decode"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/collection_identity.rs",
-          "id": "a_null_key_is_codec_decode"
         }
       ]
     },
@@ -29394,51 +29235,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/src/utils.rs",
           "id": "utils::keyring_tests::versions_lists_the_declared_versions_in_ascending_order"
-        }
-      ]
-    },
-    {
-      "id": "collection-get-fetched-value-typed-key",
-      "kind": "feature",
-      "requirements": [
-        "INT-80",
-        "INT-86"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/collection_identity_test.go",
-          "id": "TestCollectionGetAndFetchedValueUseTypedKey"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CollectionIdentityTest.php",
-          "id": "CollectionIdentityTest::testGetAndFetchedValueUseTheTypedKey"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CollectionTest.php",
-          "id": "CollectionTest::testGetAndFetchedValueUseTheTypedKey"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/collection_identity.mjs",
-          "id": "collection/get-fetched-value-use-typed-key"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_collection_identity.py",
-          "id": "test_get_and_fetched_value_use_the_typed_key"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/collection_get_fetched.rs",
-          "id": "get_and_fetched_value_use_the_typed_key"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_collection.py",
-          "id": "test_get_has_and_fetched_read_the_stored_key"
         }
       ]
     },
@@ -43524,11 +43320,20 @@
       "id": "collection-recipe",
       "kind": "suite",
       "requirements": [
+        "INT-1",
+        "INT-11",
+        "INT-62",
+        "INT-63",
         "INT-68",
         "INT-69",
         "INT-70",
         "INT-71",
+        "INT-80",
+        "INT-81",
+        "INT-84",
+        "INT-86",
         "INT-90",
+        "PRT-35",
         "PRT-69"
       ],
       "file": "tests/collection/collection.json",
@@ -43561,6 +43366,45 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/collection_none.rs",
           "symbol": "collection_none"
+        }
+      ]
+    },
+    {
+      "id": "collection-composite-key-encoding",
+      "kind": "feature",
+      "requirements": [
+        "PRT-35"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/collection_identity_test.go",
+          "id": "TestCompositeCollectionKeyTypedComponentsFromFixture"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CollectionIdentityTest.php",
+          "id": "CollectionIdentityTest::testCompositeComponentsPreserveTypedIdentityAndSharedEncoding"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CollectionIdentityTestExtensionTest.php",
+          "id": "CollectionIdentityTestExtensionTest::testCompositeComponentsPreserveTypedIdentityAndSharedEncoding"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/collection_identity.mjs",
+          "id": "collection-key/composite-typed-components"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_collection_identity.py",
+          "id": "test_composite_components_preserve_typed_identity_and_shared_encoding"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/collection_identity.rs",
+          "id": "composite_components_preserve_typed_identity_and_shared_encoding"
         }
       ]
     },
