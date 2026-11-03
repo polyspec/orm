@@ -8625,6 +8625,26 @@
       "page": {
         "oneOf": [
           {
+            "description": "A page whose cell is too large to state in the recipe: its columns and has_more.",
+            "type": "object",
+            "required": [
+              "columns",
+              "has_more"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "columns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "has_more": {
+                "type": "boolean"
+              }
+            }
+          },
+          {
             "type": "object",
             "required": [
               "columns",
