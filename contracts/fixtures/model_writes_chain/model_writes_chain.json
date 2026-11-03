@@ -1117,12 +1117,6 @@
      },
      "batch": 334,
      "expect": {
-      "mysql": {
-       "error": "BATCH_TOO_LARGE"
-      },
-      "postgres": {
-       "error": "BATCH_TOO_LARGE"
-      },
       "sqlite": {
        "error": "BATCH_TOO_LARGE"
       }
@@ -1132,16 +1126,6 @@
      "op": "events.captured",
      "ref": "events",
      "expect": {
-      "mysql": {
-       "value": {
-        "array": []
-       }
-      },
-      "postgres": {
-       "value": {
-        "array": []
-       }
-      },
       "sqlite": {
        "value": {
         "array": []

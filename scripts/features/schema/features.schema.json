@@ -114,13 +114,16 @@
         "items": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["runner", "test", "cases"],
+          "required": ["runner", "test"],
+          "if": { "properties": { "recipe": true }, "required": ["recipe"] },
+          "else": { "properties": { "cases": true }, "required": ["cases"] },
           "properties": {
             "runner": { "enum": ["go", "php", "cargo", "node", "python"] },
             "test": { "$ref": "#/$defs/text" },
             "cases": { "$ref": "#/$defs/cases" },
             "symbols": { "type": "object", "additionalProperties": { "type": "string" } },
             "dsn_env": { "type": "string" },
+            "case_database": { "const": true },
             "recipe": { "$ref": "#/$defs/text" },
             "symbol": { "$ref": "#/$defs/text" },
             "database": { "enum": ["mysql", "postgres", "sqlite"] }
@@ -131,7 +134,7 @@
     "coverage": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "cases", "owners", "dependents"],
+      "required": ["kind", "owners", "dependents"],
       "properties": {
         "kind": { "enum": ["database", "independent"] },
         "execution": { "enum": ["parallel", "exclusive"] },

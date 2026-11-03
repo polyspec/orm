@@ -1,0 +1,87 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "DIA-191"
+  ],
+  "cases": [
+    {
+      "id": "quoted_column_without_check",
+      "requirements": [
+        "DIA-191"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect_sqlite",
+          "sql": [
+            "CREATE TABLE \"probe\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"junk\" INTEGER NULL)"
+          ],
+          "expect": {
+            "none": {
+              "unsupported": [
+                {
+                  "kind": "column",
+                  "table": "probe",
+                  "name": "junk",
+                  "reason": "declared type INTEGER with CHECK \"\" has no dbspec type"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "unquoted_column_without_check",
+      "requirements": [
+        "DIA-191"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect_sqlite",
+          "sql": [
+            "CREATE TABLE \"probe\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, junk INTEGER NULL)"
+          ],
+          "expect": {
+            "none": {
+              "unsupported": [
+                {
+                  "kind": "column",
+                  "table": "probe",
+                  "name": "junk",
+                  "reason": "declared type INTEGER with CHECK \"\" has no dbspec type"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "alter_added_unquoted_column_without_check",
+      "requirements": [
+        "DIA-191"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect_sqlite",
+          "sql": [
+            "CREATE TABLE \"probe\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT)",
+            "ALTER TABLE \"probe\" ADD COLUMN junk INTEGER NULL"
+          ],
+          "expect": {
+            "none": {
+              "unsupported": [
+                {
+                  "kind": "column",
+                  "table": "probe",
+                  "name": "junk",
+                  "reason": "declared type INTEGER with CHECK \"\" has no dbspec type"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

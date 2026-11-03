@@ -5,12 +5,10 @@
 polyspec_orm::models!();
 
 mod coverage_complex_query;
-mod coverage_constraints_and_relations;
 #[path = "../common/coverage_database.rs"]
 mod coverage_database;
 mod coverage_env;
 mod coverage_group_rows_db;
-mod coverage_transactions;
 mod result_chains;
 #[path = "../common/result_code.rs"]
 mod result_code;

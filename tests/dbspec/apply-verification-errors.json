@@ -1,0 +1,291 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "PLN-92",
+    "PLN-93",
+    "PLN-96"
+  ],
+  "cases": [
+    {
+      "id": "settled-introspection-error",
+      "requirements": [
+        "PLN-92"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 create_from_empty",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+            "}",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "plan",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.apply_fault",
+          "plan": {
+            "ref": "plan"
+          },
+          "call": "apply",
+          "fail_catalog_read": 1,
+          "expect": {
+            "none": {
+              "code": "verify"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "settled-schema-drift",
+      "requirements": [
+        "PLN-92"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 create_from_empty",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+            "}",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "plan",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.apply_fault",
+          "plan": {
+            "ref": "plan"
+          },
+          "call": "apply",
+          "sql": [
+            "CREATE TABLE unrelated (id INTEGER)"
+          ],
+          "expect": {
+            "none": {
+              "code": "drift"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "rollback-introspection-error",
+      "requirements": [
+        "PLN-96"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 create_from_empty",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+            "}",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "plan",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.apply_fault",
+          "plan": {
+            "ref": "plan"
+          },
+          "call": "rollback",
+          "applied_first": true,
+          "fail_catalog_read": 1,
+          "expect": {
+            "none": {
+              "code": "verify"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "rollback-schema-drift",
+      "requirements": [
+        "PLN-96"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 create_from_empty",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+            "}",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "plan",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.apply_fault",
+          "plan": {
+            "ref": "plan"
+          },
+          "call": "rollback",
+          "applied_first": true,
+          "sql": [
+            "CREATE TABLE unrelated (id INTEGER)"
+          ],
+          "expect": {
+            "none": {
+              "code": "drift"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "post-forward-introspection-error",
+      "requirements": [
+        "PLN-93"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 create_from_empty",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+            "}",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "plan",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.apply_fault",
+          "plan": {
+            "ref": "plan"
+          },
+          "call": "apply",
+          "fail_catalog_read": 2,
+          "expect": {
+            "none": {
+              "code": "verify",
+              "history_state": "applying",
+              "absent_events": [
+                "verified",
+                "done"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

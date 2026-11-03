@@ -9,7 +9,7 @@ import { introspectCatalog, type DbspecIntrospection } from './dbspec/introspect
 import { CatalogRow } from './dbspec/introspect_catalog.js';
 import type { RuntimeModel } from './engine/model.js';
 import { present } from './present.js';
-import { OrmError, joinedErrors, rollbackFailed } from './runtime_error.js';
+import { OrmError, joinedErrors, rollbackFailed, transactionConflict } from './runtime_error.js';
 import * as codes from './codes.js';
 
 export interface AesRotationStatus {
@@ -161,7 +161,7 @@ export class Utils {
     switch (this.db.driver) {
       case 'mysql': {
         const got = (await frame.statement('utility', [], 'SELECT GET_LOCK(?, 50)', [key])).rows[0]?.[0];
-        if (Number(got) !== 1) throw new OrmError(codes.DEADLOCK, `lock ${key} was not acquired`);
+        if (Number(got) !== 1) throw transactionConflict(`lock ${key} was not acquired`);
         frame.locks.push(key);
         return;
       }
@@ -479,7 +479,7 @@ export class AesUtils {
             driverValue(version, `the stored AES version of ${spec.table}`),
           ];
           const result = await frame.statement('utility', [spec.table], updateSql, params);
-          if (result.affected !== 1) throw new OrmError(codes.DEADLOCK, `aes rotation of ${spec.table} changed ${result.affected} rows`);
+          if (result.affected !== 1) throw transactionConflict(`aes rotation of ${spec.table} changed ${result.affected} rows`);
           rotated++;
         }
       }
