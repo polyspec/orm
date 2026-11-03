@@ -674,6 +674,14 @@ caseTest('the start reports a stopped MySQL replica SQL thread with its last err
   }
 });
 
+// The Unix socket authenticates a client as 'orm'@'localhost', and the backends of ProxySQL as 'orm'@'127.0.0.1'; a running server takes the same statements (T343-7).
+caseTest('the MySQL accounts of the user orm name both hosts and are idempotent', COMPUTE, () => {
+  for (const host of ['127.0.0.1', 'localhost']) {
+    assert.ok(servers.ORM_ACCOUNTS_SQL.includes(`CREATE USER IF NOT EXISTS 'orm'@'${host}' IDENTIFIED BY 'orm';`), `no account for ${host}`);
+    assert.ok(servers.ORM_ACCOUNTS_SQL.includes(`GRANT ALL ON *.* TO 'orm'@'${host}';`), `no grant for ${host}`);
+  }
+});
+
 // The case-socket DSN of the MySQL recipe cases (FCV-4, CFG-10) reads the primary's Unix socket from the environment file.
 caseTest('the test-server environment writes the MySQL socket of the primary as ORM_TEST_MYSQL_SOCKET', COMPUTE, () => {
   const p = paths('/checkout');
