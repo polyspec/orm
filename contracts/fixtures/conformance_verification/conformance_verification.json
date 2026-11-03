@@ -60635,6 +60635,11 @@
      }
     },
     {
+     "op": "clock.read",
+     "edge": "lower",
+     "as": "before"
+    },
+    {
      "op": "transaction",
      "connection": "db",
      "steps": [
@@ -60669,12 +60674,25 @@
      ]
     },
     {
+     "op": "clock.read",
+     "edge": "upper",
+     "as": "after"
+    },
+    {
      "op": "catalog.read_only_query",
      "sql": {
-      "mysql": "SELECT COUNT(*) FROM author WHERE name = 'clock' AND created_ts = updated_ts AND created_ts > UTC_TIMESTAMP(6) - INTERVAL 1 MINUTE AND created_ts < UTC_TIMESTAMP(6) + INTERVAL 1 MINUTE",
-      "postgres": "SELECT COUNT(*) FROM author WHERE name = 'clock' AND created_ts = updated_ts AND created_ts > (now() AT TIME ZONE 'UTC') - INTERVAL '1 minute' AND created_ts < (now() AT TIME ZONE 'UTC') + INTERVAL '1 minute'",
-      "sqlite": "SELECT COUNT(*) FROM author WHERE name = 'clock' AND created_ts = updated_ts AND created_ts > datetime('now', '-1 minute') AND created_ts < datetime('now', '+1 minute')"
+      "mysql": "SELECT COUNT(*) FROM author WHERE name = 'clock' AND created_ts = updated_ts AND created_ts >= ? AND created_ts <= ?",
+      "postgres": "SELECT COUNT(*) FROM author WHERE name = 'clock' AND created_ts = updated_ts AND created_ts >= $1::timestamp AND created_ts <= $2::timestamp",
+      "sqlite": "SELECT COUNT(*) FROM author WHERE name = 'clock' AND created_ts = updated_ts AND created_ts >= ? AND created_ts <= ? AND created_ts LIKE '____-__-__ __:__:__.______'"
      },
+     "binds": [
+      {
+       "ref": "before"
+      },
+      {
+       "ref": "after"
+      }
+     ],
      "expect": {
       "mysql": {
        "rows": [
@@ -79080,6 +79098,11 @@
      "as": "db"
     },
     {
+     "op": "clock.read",
+     "edge": "lower",
+     "as": "before"
+    },
+    {
      "op": "model.create",
      "connection": "db",
      "model": "ClockCell",
@@ -79240,12 +79263,25 @@
      }
     },
     {
+     "op": "clock.read",
+     "edge": "upper",
+     "as": "after"
+    },
+    {
      "op": "catalog.read_only_query",
      "sql": {
-      "mysql": "SELECT COUNT(*) FROM clock_cell WHERE at6 > UTC_TIMESTAMP(6) - INTERVAL 1 MINUTE AND at6 < UTC_TIMESTAMP(6) + INTERVAL 1 MINUTE",
-      "postgres": "SELECT COUNT(*) FROM clock_cell WHERE at6 > (now() AT TIME ZONE 'UTC') - INTERVAL '1 minute' AND at6 < (now() AT TIME ZONE 'UTC') + INTERVAL '1 minute'",
-      "sqlite": "SELECT COUNT(*) FROM clock_cell WHERE at6 > datetime('now', '-1 minute') AND at6 < datetime('now', '+1 minute') AND at6 LIKE '____-__-__ __:__:__.______'"
+      "mysql": "SELECT COUNT(*) FROM clock_cell WHERE at6 >= ? AND at6 <= ?",
+      "postgres": "SELECT COUNT(*) FROM clock_cell WHERE at6 >= $1::timestamp AND at6 <= $2::timestamp",
+      "sqlite": "SELECT COUNT(*) FROM clock_cell WHERE at6 >= ? AND at6 <= ? AND at6 LIKE '____-__-__ __:__:__.______'"
      },
+     "binds": [
+      {
+       "ref": "before"
+      },
+      {
+       "ref": "after"
+      }
+     ],
      "expect": {
       "mysql": {
        "rows": [
@@ -79325,6 +79361,11 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
+    },
+    {
+     "op": "clock.read",
+     "edge": "lower",
+     "as": "before"
     },
     {
      "op": "model.create",
@@ -79583,12 +79624,25 @@
      "row": "mark15"
     },
     {
+     "op": "clock.read",
+     "edge": "upper",
+     "as": "after"
+    },
+    {
      "op": "catalog.read_only_query",
      "sql": {
-      "mysql": "SELECT COUNT(*) FROM soft_record WHERE deleted_at > UTC_TIMESTAMP(6) - INTERVAL 1 MINUTE AND deleted_at < UTC_TIMESTAMP(6) + INTERVAL 1 MINUTE",
-      "postgres": "SELECT COUNT(*) FROM soft_record WHERE deleted_at > (now() AT TIME ZONE 'UTC') - INTERVAL '1 minute' AND deleted_at < (now() AT TIME ZONE 'UTC') + INTERVAL '1 minute'",
-      "sqlite": "SELECT COUNT(*) FROM soft_record WHERE deleted_at > datetime('now', '-1 minute') AND deleted_at < datetime('now', '+1 minute') AND deleted_at LIKE '____-__-__ __:__:__.______'"
+      "mysql": "SELECT COUNT(*) FROM soft_record WHERE deleted_at >= ? AND deleted_at <= ?",
+      "postgres": "SELECT COUNT(*) FROM soft_record WHERE deleted_at >= $1::timestamp AND deleted_at <= $2::timestamp",
+      "sqlite": "SELECT COUNT(*) FROM soft_record WHERE deleted_at >= ? AND deleted_at <= ? AND deleted_at LIKE '____-__-__ __:__:__.______'"
      },
+     "binds": [
+      {
+       "ref": "before"
+      },
+      {
+       "ref": "after"
+      }
+     ],
      "expect": {
       "mysql": {
        "rows": [
