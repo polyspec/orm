@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a2c8683e485b1329f1b8890938fd50886d08d12de093c96d0c7d040d9a08e584 -->
+<!-- source-sha256: 7e1bbbea206700e990b8f92f5dcf4ca7530d64bba4e231eb448903d9782c652a -->
 # 변경 이력
 
 ## Unreleased
 
+- catalog_read_budgets는 recipe의 sql 규칙대로 대기 문을 세 database 모두에 적음.
 - CR32에 PHP 확장 catalog_read_budgets의 exit 137 원인에서 제외한 것을 적음. 보낸 쪽은 아직 모르며 수정은 없음.
 - CR31에 사실을 적음: PHP 확장은 CatalogColumn::$checkPrecision을 이미 계산하고 선언함.
 - coverage 시험은 정상 실행에 자기 숫자로 기한을 걸지 않고, 끝나지 않는 프로세스가 프로세스 기한을 시험한다 (#T334-3-4-19)
